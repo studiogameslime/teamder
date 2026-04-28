@@ -217,7 +217,8 @@ service cloud.firestore {
       // bypasses these rules entirely. Client writes are denied.
       allow write: if false;
 
-      // Individual votes: only the rater may write their own vote.
+      // Individual votes: only the rater may write their own vote, and
+      // ONLY if both rater and rated are members of the same community.
       // ratedUid must not equal raterUid (no self-rating). Rating must
       // be an integer 1..5. Reading a vote is restricted to the rater
       // themselves so voter identity never leaks.
@@ -226,6 +227,11 @@ service cloud.firestore {
         allow create, update: if isSignedIn()
           && request.auth.uid == raterUid
           && raterUid != ratedUid
+          && isGroupMember(gid)
+          && (
+            ratedUid in groupDoc(gid).playerIds ||
+            ratedUid in groupDoc(gid).adminIds
+          )
           && request.resource.data.raterUserId == raterUid
           && request.resource.data.ratedUserId == ratedUid
           && request.resource.data.rating is int

@@ -391,12 +391,11 @@ export const sendGameReminders = onSchedule(
 // ─── Rating: keep summary doc in sync with vote subcollection ──────────
 
 /**
- * Vote subcollection trigger. Whenever a vote doc under
- *   /groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}
- * is created, updated, or deleted, recompute the parent summary doc
- * by reading every vote in the subcollection. Cheap for the small
- * communities we target; revisit with incremental sum/count maths if
- * a community ever exceeds a few hundred raters per player.
+ * Vote subcollection trigger. Incremental update — we read the
+ * before/after values from the event itself and apply a transactional
+ * delta to the parent summary doc. No full scan of the votes
+ * subcollection, so latency stays O(1) even when a community grows
+ * to thousands of voters.
  */
 export const onVoteWritten = onDocumentWritten(
   'groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}',
@@ -405,40 +404,58 @@ export const onVoteWritten = onDocumentWritten(
       groupId: string;
       ratedUserId: string;
     };
+
+    const before = event.data?.before.data() as
+      | { rating?: number }
+      | undefined;
+    const after = event.data?.after.data() as
+      | { rating?: number }
+      | undefined;
+    const validRating = (r: unknown): r is number =>
+      typeof r === 'number' && Number.isInteger(r) && r >= 1 && r <= 5;
+    const oldR = validRating(before?.rating) ? (before!.rating as number) : null;
+    const newR = validRating(after?.rating) ? (after!.rating as number) : null;
+
+    let countDelta = 0;
+    let sumDelta = 0;
+    if (oldR === null && newR !== null) {
+      countDelta = 1;
+      sumDelta = newR;
+    } else if (oldR !== null && newR === null) {
+      countDelta = -1;
+      sumDelta = -oldR;
+    } else if (oldR !== null && newR !== null) {
+      // update — count unchanged, sum shifts by the delta
+      sumDelta = newR - oldR;
+    } else {
+      return; // no rating before or after; nothing to do
+    }
+
     const summaryRef = db
       .collection('groups')
       .doc(groupId)
       .collection('ratings')
       .doc(ratedUserId);
-    const snap = await summaryRef.collection('votes').get();
-    let count = 0;
-    let sum = 0;
-    snap.docs.forEach((d) => {
-      const r = (d.data() as { rating?: number }).rating;
-      if (typeof r === 'number' && r >= 1 && r <= 5) {
-        count += 1;
-        sum += r;
-      }
-    });
-    if (count === 0) {
-      // No votes left — keep the doc but zero it so the client shows
-      // "no ratings yet" rather than a stale average.
-      await summaryRef.set({
+
+    // Transaction so two near-simultaneous votes don't race on the
+    // count/sum read-modify-write.
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(summaryRef);
+      const cur =
+        snap.exists && snap.data()
+          ? (snap.data() as { count?: number; sum?: number })
+          : { count: 0, sum: 0 };
+      const newCount = Math.max(0, (cur.count ?? 0) + countDelta);
+      const newSum = Math.max(0, (cur.sum ?? 0) + sumDelta);
+      const newAvg =
+        newCount > 0 ? Math.round((newSum / newCount) * 10) / 10 : 0;
+      tx.set(summaryRef, {
         userId: ratedUserId,
-        average: 0,
-        count: 0,
-        sum: 0,
+        count: newCount,
+        sum: newSum,
+        average: newAvg,
         updatedAt: Date.now(),
       });
-      return;
-    }
-    const average = Math.round((sum / count) * 10) / 10;
-    await summaryRef.set({
-      userId: ratedUserId,
-      average,
-      count,
-      sum,
-      updatedAt: Date.now(),
     });
   },
 );
@@ -471,11 +488,26 @@ function perTeamSize(format: BalanceGameDoc['format']): number {
   return 5;
 }
 
+/** In-place Fisher–Yates shuffle. */
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 /**
  * rating_greedy_v1 — distribute registered players into N teams so the
- * sum of ratings per team is roughly equal. Unrated players get the
- * neutral 3.0 score and are shuffled into the queue with the rest.
- * Overflow players land on the bench in registration order.
+ * sum of ratings per team is roughly equal.
+ *
+ * - Unrated players are scored at the neutral 3.0.
+ * - The whole list is shuffled BEFORE sorting so every run is
+ *   non-deterministic when several players share a rating (Array.sort
+ *   is stable in V8 since ES2019, so the shuffle order is preserved
+ *   for ties).
+ * - Greedy assignment respects a hard `perTeam` cap; any registered
+ *   player who can't fit lands on the bench in shuffled order.
+ * - Tie-breaker order: lowest team total → fewest players → random.
  */
 function balanceTeamsV1(
   playerIds: string[],
@@ -488,23 +520,20 @@ function balanceTeamsV1(
   teamRatings: number[];
   unratedCount: number;
 } {
-  // Build a [{id, rating, isUnrated}] list. Unrated → 3.0 + small
-  // jitter so they don't all sort to one end deterministically.
   let unratedCount = 0;
   const scored = playerIds.map((id) => {
     const known = ratings[id];
     if (typeof known === 'number') {
-      return { id, rating: known, jitter: Math.random(), unrated: false };
+      return { id, rating: known, unrated: false };
     }
     unratedCount += 1;
-    return { id, rating: 3, jitter: Math.random(), unrated: true };
+    return { id, rating: 3, unrated: true };
   });
-  // Sort: rating desc, then random within ties so reruns aren't
-  // identical and unrated players don't all clump.
-  scored.sort((a, b) => {
-    if (a.rating !== b.rating) return b.rating - a.rating;
-    return a.jitter - b.jitter;
-  });
+
+  // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
+  // stable, so shuffled-order survives within any tied rating bucket.
+  shuffleInPlace(scored);
+  scored.sort((a, b) => b.rating - a.rating);
 
   const teams: { ids: string[]; total: number }[] = Array.from(
     { length: numberOfTeams },
@@ -514,40 +543,33 @@ function balanceTeamsV1(
   const assignments: Record<string, 'teamA' | 'teamB' | 'bench'> = {};
   const benchOrder: string[] = [];
 
-  // Greedy: each player goes to the team with lowest total + capacity.
   for (const p of scored) {
-    let target: typeof teams[number] | null = null;
-    for (const t of teams) {
-      if (t.ids.length >= capacity) continue;
-      if (!target) {
-        target = t;
-        continue;
-      }
-      if (t.total < target.total) target = t;
-      else if (
-        t.total === target.total &&
-        t.ids.length < target.ids.length
-      ) {
-        target = t;
-      }
-    }
-    if (target) {
-      target.ids.push(p.id);
-      target.total += p.rating;
-    } else {
+    // Build the candidate list of teams that still have capacity.
+    const open = teams.filter((t) => t.ids.length < capacity);
+    if (open.length === 0) {
+      // Capacity exhausted — overflow to bench.
       benchOrder.push(p.id);
+      continue;
     }
+    // Tie-breaker: lowest total → fewest players → random pick among
+    // remaining ties so identical seeds don't clump on team[0].
+    open.sort((a, b) => {
+      if (a.total !== b.total) return a.total - b.total;
+      if (a.ids.length !== b.ids.length) return a.ids.length - b.ids.length;
+      return Math.random() - 0.5;
+    });
+    const target = open[0];
+    target.ids.push(p.id);
+    target.total += p.rating;
   }
 
   // Map team[0] / team[1] → 'teamA' / 'teamB'. Live-match state model
-  // only handles 2 teams natively today; if numberOfTeams > 2 the
-  // overflow goes to the bench so the existing UI still works.
+  // only handles 2 teams natively today; any extra team's roster
+  // spills onto the bench so we never drop registered players.
   teams.forEach((t, i) => {
     const zone: 'teamA' | 'teamB' | null =
       i === 0 ? 'teamA' : i === 1 ? 'teamB' : null;
     if (!zone) {
-      // Pour extra teams onto the bench in order so we never drop
-      // players just because the live-match UI is 2-team-only.
       benchOrder.push(...t.ids);
       return;
     }
@@ -592,11 +614,18 @@ async function loadGroupRatings(
 }
 
 /**
- * Scheduled every 5 minutes. Finds open games whose
- * `startsAt - autoTeamGenerationMinutesBeforeStart` window is within
- * the next ~5 minutes, and writes the balanced live-match state to
- * each one. Skips games whose coach has already touched the teams
- * (`teamsEditedManually` true) so manual edits are sticky.
+ * Scheduled every 5 minutes. Narrow Firestore window first
+ * (startsAt within the next 65 minutes), then per-game we re-check
+ * the configured `autoTeamGenerationMinutesBeforeStart` so a game
+ * with a custom 30-min window only fires when its own trigger
+ * crosses. The 65-min cap covers the default 60-min option plus
+ * scheduler drift; longer windows (e.g. 120-min) trigger when the
+ * game finally enters the 65-min horizon.
+ *
+ * The actual write is wrapped in a Firestore transaction that
+ * re-reads `autoTeamsGeneratedAt` and `teamsEditedManually` so we
+ * NEVER overwrite either a previous auto-generation or a coach's
+ * manual edit (transaction aborts if either flag is now set).
  */
 export const scheduledAutoGenerateTeams = onSchedule(
   {
@@ -605,12 +634,15 @@ export const scheduledAutoGenerateTeams = onSchedule(
   },
   async () => {
     const now = Date.now();
-    // Loose upper bound: 2h ahead is the longest configurable window.
-    const horizon = now + 2 * 60 * 60 * 1000 + 60 * 1000;
+    // Tight window: only games starting in the next 65 minutes are
+    // candidates. The per-game check below filters further by the
+    // configured minutesBeforeStart.
+    const upper = now + 65 * 60 * 1000;
     const snap = await db
       .collection('games')
       .where('status', '==', 'open')
-      .where('startsAt', '<=', horizon)
+      .where('startsAt', '>=', now)
+      .where('startsAt', '<=', upper)
       .get();
 
     if (snap.empty) {
@@ -622,11 +654,9 @@ export const scheduledAutoGenerateTeams = onSchedule(
     for (const doc of snap.docs) {
       const g = doc.data() as BalanceGameDoc;
       g.id = doc.id;
-      // Skip — already generated.
+      // Quick filters before paying for the transaction round-trip.
       if (g.autoTeamsGeneratedAt) continue;
-      // Skip — coach already edited.
       if (g.teamsEditedManually) continue;
-      // Skip — no group / no players.
       if (!g.groupId) continue;
       const players = g.players ?? [];
       if (players.length === 0) continue;
@@ -635,13 +665,12 @@ export const scheduledAutoGenerateTeams = onSchedule(
         g.autoTeamGenerationMinutesBeforeStart ??
         DEFAULT_AUTO_BALANCE_MINUTES;
       const triggerAt = startsAt - minutesBefore * 60 * 1000;
-      // Only fire when we're within the trigger window OR past it
-      // (catches any game we missed in the last 5-minute slot).
+      // Per-game trigger: only fire when we've crossed the
+      // configured window. Games whose minutesBefore is 120 (i.e.
+      // they want generation 2h before kickoff) only trigger once
+      // they're inside the 65-min query window — that's a documented
+      // trade-off for the simpler tight-window query.
       if (now < triggerAt) continue;
-      // Skip games that already kicked off — no point auto-balancing
-      // a finished/in-progress match.
-      if (now > startsAt) continue;
-
       ops.push(generateForGame(doc.ref, g));
     }
     await Promise.all(ops);
@@ -654,6 +683,9 @@ async function generateForGame(
   g: BalanceGameDoc,
 ): Promise<void> {
   try {
+    // Load ratings BEFORE the transaction so the transaction body
+    // stays small and fast (transactions retry; we don't want to
+    // re-read every rating doc each retry).
     const players = g.players ?? [];
     const ratings = await loadGroupRatings(g.groupId!, players);
     const perTeam = perTeamSize(g.format);
@@ -661,45 +693,60 @@ async function generateForGame(
       typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
         ? g.numberOfTeams
         : 2;
-    const result = balanceTeamsV1(
-      players,
-      ratings,
-      numberOfTeams,
-      perTeam,
-    );
-    const liveMatch = {
-      phase: 'organizing' as const,
-      assignments: result.assignments,
-      benchOrder: result.benchOrder,
-      scoreA: 0,
-      scoreB: 0,
-      lateUserIds: [],
-      updatedAt: Date.now(),
-    };
-    await ref.update({
-      liveMatch,
-      autoTeamsGeneratedAt: Date.now(),
-      autoTeamsGeneratedBy: 'system',
-      teamBalanceMeta: {
-        generatedAt: Date.now(),
-        algorithm: 'rating_greedy_v1',
-        unratedCount: result.unratedCount,
-        teamRatings: result.teamRatings,
-      },
-      updatedAt: Date.now(),
+
+    const wrote = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) return false;
+      const data = fresh.data() as BalanceGameDoc;
+      // Re-check inside the transaction so a concurrent function
+      // run, or a coach edit between the outer query and this write,
+      // can't be clobbered.
+      if (data.autoTeamsGeneratedAt) return false;
+      if (data.teamsEditedManually) return false;
+      const freshPlayers = data.players ?? players;
+      if (freshPlayers.length === 0) return false;
+
+      const result = balanceTeamsV1(
+        freshPlayers,
+        ratings,
+        numberOfTeams,
+        perTeam,
+      );
+      const liveMatch = {
+        phase: 'organizing' as const,
+        assignments: result.assignments,
+        benchOrder: result.benchOrder,
+        scoreA: 0,
+        scoreB: 0,
+        lateUserIds: [],
+        updatedAt: Date.now(),
+      };
+      tx.update(ref, {
+        liveMatch,
+        autoTeamsGeneratedAt: Date.now(),
+        autoTeamsGeneratedBy: 'system',
+        teamBalanceMeta: {
+          generatedAt: Date.now(),
+          algorithm: 'rating_greedy_v1',
+          unratedCount: result.unratedCount,
+          teamRatings: result.teamRatings,
+        },
+        updatedAt: Date.now(),
+        // INTENTIONALLY NOT touching teamsEditedManually — system
+        // generation must never flip that flag; only UI edits do.
+      });
+      return true;
     });
 
-    // Best-effort notification fan-out.
-    await db.collection('notifications').add({
-      type: 'gameCanceledOrUpdated',
-      recipientId: ref.id, // fan-out marker
-      payload: {
-        gameId: ref.id,
-        action: 'teams_generated',
-      },
-      createdAt: Date.now(),
-      delivered: false,
-    });
+    if (wrote) {
+      await db.collection('notifications').add({
+        type: 'gameCanceledOrUpdated',
+        recipientId: ref.id, // fan-out marker
+        payload: { gameId: ref.id, action: 'teams_generated' },
+        createdAt: Date.now(),
+        delivered: false,
+      });
+    }
   } catch (err) {
     console.error('[autoBalance] generateForGame failed', ref.id, err);
   }
