@@ -31,6 +31,12 @@
       "expo-localization",
       "@react-native-google-signin/google-signin",
       [
+        "expo-notifications",
+        {
+          "color": "#16A34A"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "כדי להציג קבוצות כדורגל בקרבת מקום ולעזור לסנן לפי 'קרוב אליי'."

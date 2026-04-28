@@ -12,6 +12,25 @@ LogBox.ignoreLogs([
   "Cannot find native module 'ExpoPushTokenManager'",
   'Cannot find native module',
 ]);
+
+// Foreground notification behavior. Without this, a push that arrives
+// while the user has the app open is delivered silently to the JS
+// side and never shows as a banner. Lazy-required + try/catch so we
+// don't crash in environments where the native module isn't linked
+// (Expo Go / dev clients before rebuild).
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {
+  // expo-notifications native module not available — no-op.
+}
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
