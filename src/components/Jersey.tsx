@@ -6,10 +6,11 @@
 //   3. Pattern layer (clipped to body via overflow:hidden)
 //   4. Neck cutout (surface-colored notch at top center of body)
 //   5. Number-safe-zone disc (solid shirt color, only on non-solid patterns)
-//   6. Number text (always on top, with theme-aware contrast + shadow)
+//   6. Display-name above number, number below (printed-on-shirt look)
 //
 // At sizes < 40dp the pattern layer simplifies (or is skipped) so the
-// number stays readable on cards and in-field jerseys.
+// number stays readable on cards and in-field jerseys. The on-shirt
+// name is suppressed below 56dp regardless of `showName`.
 
 import React from 'react';
 import {
@@ -27,7 +28,11 @@ interface Props {
   user?: Pick<User, 'id' | 'name'> | null;
   /** Outer width in dp. Height = width. Default 64. */
   size?: number;
-  /** Show display-name caption below the shirt. */
+  /**
+   * Render the display name printed ON the shirt above the number,
+   * like the back of a real football jersey. Auto-suppressed for very
+   * small sizes where the text would be illegible.
+   */
   showName?: boolean;
   /** Highlight ring around the body (used for picker preview). */
   showRing?: boolean;
@@ -59,8 +64,19 @@ export function Jersey({
   const neckW = Math.round(size * 0.26);
   const neckH = Math.round(size * 0.08);
 
-  const numberSize = Math.round(bodyW * 0.5);
+  // Whether the display name is rendered ON the shirt. We need a
+  // sensible minimum body height for a 1-line printed name to read;
+  // below 56dp the shirt drops the name and centers the number alone.
+  const showShirtName = showName && size >= 56 && (j.displayName || '').trim().length > 0;
+  const nameFontSize = Math.round(bodyW * 0.16);
+  const nameAreaH = showShirtName ? Math.round(bodyH * 0.22) : 0;
+  const numberSize = Math.round(bodyW * (showShirtName ? 0.46 : 0.5));
   const safeZone = Math.round(numberSize * 1.3);
+  // Number's vertical center inside the body; the safe-zone disc tracks
+  // it so the disc stays centered behind the digit when the name area
+  // pushes the number below the body's geometric center.
+  const numberCenterY = nameAreaH + (bodyH - nameAreaH) / 2;
+  const discTop = Math.round(numberCenterY - safeZone / 2);
 
   // White-ish jerseys need a hairline outline so they don't disappear
   // on a white card. Same logic for the sleeves and neck-edge.
@@ -135,7 +151,7 @@ export function Jersey({
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                top: (bodyH - safeZone) / 2,
+                top: discTop,
                 left: (bodyW - safeZone) / 2,
                 width: safeZone,
                 height: safeZone,
@@ -145,11 +161,40 @@ export function Jersey({
             />
           ) : null}
 
-          {/* Number — sits centered in the body, above the safe zone */}
-          <View
-            pointerEvents="none"
-            style={StyleSheet.absoluteFill}
-          >
+          {/* Content layer — printed name (when requested) above the
+              big centered number. Mirrors the back of a real football
+              shirt. */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {showShirtName ? (
+              <View
+                style={{
+                  height: nameAreaH,
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingHorizontal: 4,
+                }}
+              >
+                <Text
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                  style={{
+                    color: fg,
+                    fontSize: nameFontSize,
+                    fontWeight: '800',
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                    maxWidth: bodyW * 0.86,
+                    textAlign: 'center',
+                    textShadowColor: shadowColor,
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                    includeFontPadding: false,
+                  }}
+                >
+                  {j.displayName}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.numberWrap}>
               <Text
                 allowFontScaling={false}
@@ -187,22 +232,6 @@ export function Jersey({
         />
       </View>
 
-      {showName ? (
-        <Text
-          allowFontScaling={false}
-          numberOfLines={1}
-          style={[
-            styles.displayName,
-            {
-              fontSize: Math.max(11, size * 0.13),
-              maxWidth: size * 1.6,
-              marginTop: 4,
-            },
-          ]}
-        >
-          {j.displayName}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -362,11 +391,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  displayName: {
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   stripesRow: {
     flexDirection: 'row',

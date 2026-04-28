@@ -1,6 +1,17 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { I18nManager, StatusBar, View } from 'react-native';
+import { I18nManager, LogBox, StatusBar, View } from 'react-native';
+
+// Suppress LogBox red overlays for known-noisy errors that the app
+// already swallows internally. expo-notifications throws in Expo Go /
+// dev clients without the native module linked; the JS layer catches
+// it and returns null, but Metro's global error handler still surfaces
+// it as an "Uncaught Error" red box during dev. Listing the message
+// pattern here keeps the dev session clean without affecting prod.
+LogBox.ignoreLogs([
+  "Cannot find native module 'ExpoPushTokenManager'",
+  'Cannot find native module',
+]);
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 

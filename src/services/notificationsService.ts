@@ -180,11 +180,28 @@ export const notificationsService = {
    */
   async requestAndRegisterPushToken(uid: UserId): Promise<string | null> {
     if (USE_MOCK_DATA) return null;
+    // Push tokens require a native module that is NOT bundled in Expo Go
+    // (SDK 49+). Bail out early so we never trigger the throw — and so
+    // Metro's LogBox doesn't surface the caught-but-noisy red overlay.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants').default;
+    if (
+      Constants?.appOwnership === 'expo' ||
+      Constants?.executionEnvironment === 'storeClient'
+    ) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[notifications] skipping push-token registration (Expo Go has no native module).',
+        );
+      }
+      return null;
+    }
     let Notifications: typeof import('expo-notifications') | null = null;
     try {
       // Lazy require so the bundle doesn't fail when the native module
-      // isn't linked into the running binary (Expo Go, fresh dev clients
-      // before the post-install rebuild, etc.).
+      // isn't linked into the running binary (fresh dev clients before
+      // the post-install rebuild, etc.).
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Notifications = require('expo-notifications');
     } catch (err) {

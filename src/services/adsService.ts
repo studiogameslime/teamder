@@ -24,6 +24,16 @@ import { View } from 'react-native';
 // error if a literal string require() can't be resolved at bundle time, and
 // that error escapes ordinary try/catch. The flag avoids the require entirely.
 const ADS_ENABLED = (process.env.EXPO_PUBLIC_ADMOB_ENABLED ?? '').trim() === '1';
+/**
+ * Internal-testing escape hatch. When set to '1', the banner + app-open
+ * ad unit IDs ALWAYS resolve to AdMob's test IDs even in release
+ * builds. Lets us verify the ad slot renders on a real device while
+ * the production AdMob unit is still warming up (fresh units often
+ * start at 0% fill). Per AdMob TOS this is allowed for internal /
+ * pre-launch testing builds only — flip it off before publishing.
+ */
+const FORCE_TEST_IDS =
+  (process.env.EXPO_PUBLIC_ADMOB_USE_TEST_IDS ?? '').trim() === '1';
 
 // ─── Module loading ───────────────────────────────────────────────────────
 
@@ -87,13 +97,13 @@ function val(v: string | undefined): string {
 
 function bannerUnitId(): string {
   if (!adsMod) return '';
-  if (__DEV__) return adsMod.TestIds.BANNER ?? '';
+  if (__DEV__ || FORCE_TEST_IDS) return adsMod.TestIds.BANNER ?? '';
   return val(process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID);
 }
 
 function appOpenUnitId(): string {
   if (!adsMod) return '';
-  if (__DEV__) return adsMod.TestIds.APP_OPEN ?? '';
+  if (__DEV__ || FORCE_TEST_IDS) return adsMod.TestIds.APP_OPEN ?? '';
   return val(process.env.EXPO_PUBLIC_ADMOB_APP_OPEN_UNIT_ID);
 }
 
