@@ -80,9 +80,6 @@ export function CommunityEditScreen() {
   const [preferredHour, setPreferredHour] = useState(
     original?.preferredHour ?? '',
   );
-  const [costPerGame, setCostPerGame] = useState(
-    original?.costPerGame ? String(original.costPerGame) : '',
-  );
   const [maxMembers, setMaxMembers] = useState(
     original?.maxMembers ? String(original.maxMembers) : '',
   );
@@ -134,7 +131,6 @@ export function CommunityEditScreen() {
     if (!canSave) return;
     setBusy(true);
     try {
-      const cost = parseInt(costPerGame, 10);
       const cap = parseInt(maxMembers, 10);
       const teams = parseInt(recurringNumberOfTeams, 10);
       await groupService.updateGroupMetadata(original.id, me.id, {
@@ -147,7 +143,6 @@ export function CommunityEditScreen() {
         skillLevel,
         preferredDays,
         preferredHour: preferredHour || undefined,
-        costPerGame: Number.isFinite(cost) && cost >= 0 ? cost : undefined,
         maxMembers: Number.isFinite(cap) && cap > 0 ? cap : undefined,
         isOpen,
         recurringGameEnabled,
@@ -267,12 +262,6 @@ export function CommunityEditScreen() {
           onChange={setPreferredHour}
         />
 
-        <Field
-          label={he.createGroupCostPerGame}
-          value={costPerGame}
-          onChange={setCostPerGame}
-          keyboardType="number-pad"
-        />
         <Field
           label={he.createGroupMaxMembers}
           value={maxMembers}

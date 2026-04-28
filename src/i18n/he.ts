@@ -275,10 +275,8 @@ export const he = {
   // Filters
   filtersTitle: 'סינון',
   filterOpenOnly: 'פתוחות בלבד',
-  filterMembersAny: 'כל הגדלים',
-  filterMembersSmall: 'עד 15 שחקנים',
-  filterMembersMedium: '15–30 שחקנים',
-  filterMembersLarge: '30+ שחקנים',
+  filterHasRoom: 'מקום פנוי',
+  filterNearby: 'קרוב אליי',
 
   // Card actions
   communityEnter: 'כניסה לקבוצה',

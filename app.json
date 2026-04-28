@@ -31,6 +31,12 @@
       "expo-localization",
       "@react-native-google-signin/google-signin",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "כדי להציג קבוצות כדורגל בקרבת מקום ולעזור לסנן לפי 'קרוב אליי'."
+        }
+      ],
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-4452511612073107~1968239705",

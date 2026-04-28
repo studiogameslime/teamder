@@ -40,12 +40,66 @@ import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
 
 type RowAction = 'enter' | 'pending' | 'joinAuto' | 'requestJoin';
-type MemberSize = 'any' | 'small' | 'medium' | 'large';
 
-function bucketForSize(n: number): Exclude<MemberSize, 'any'> {
-  if (n < 15) return 'small';
-  if (n < 30) return 'medium';
-  return 'large';
+/** Treat two free-text city strings as a match (Hebrew, case/space tolerant). */
+function citiesMatch(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** A community has open spots if it caps `maxMembers` and isn't there yet. */
+function hasOpenSpot(g: GroupPublic): boolean {
+  if (typeof g.maxMembers !== 'number') return true; // no cap → always open
+  return g.memberCount < g.maxMembers;
+}
+
+/**
+ * Determine the viewer's current city for the "קרוב אליי" filter.
+ *
+ * Order of attempts:
+ *   1. GPS → reverse-geocode (expo-location)
+ *   2. Saved `availability.preferredCity` from the profile
+ *   3. null (filter excludes everything until something resolves)
+ *
+ * Lazy-required so the bundle still loads in environments where
+ * expo-location isn't linked (Expo Go, fresh dev clients).
+ */
+async function resolveNearbyCity(
+  fallbackCity: string | undefined,
+): Promise<string | null> {
+  let Location:
+    | typeof import('expo-location')
+    | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    Location = require('expo-location');
+  } catch {
+    Location = null;
+  }
+  if (Location) {
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.granted) {
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const places = await Location.reverseGeocodeAsync({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+        const place = places[0];
+        const city =
+          place?.city || place?.subregion || place?.region || null;
+        if (city && city.trim().length > 0) return city.trim();
+      }
+    } catch (err) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn('[nearby] location resolve failed', err);
+      }
+    }
+  }
+  return fallbackCity?.trim() || null;
 }
 
 export function PublicGroupsFeedScreen() {
@@ -60,9 +114,38 @@ export function PublicGroupsFeedScreen() {
   const [items, setItems] = useState<GroupPublic[] | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Filters
-  const [openOnly, setOpenOnly] = useState(false);
-  const [memberSize, setMemberSize] = useState<MemberSize>('any');
+  // Filters — two independent toggles. "hasRoom" filters communities
+  // that aren't at their member cap; "nearby" derives the viewer's
+  // current city from GPS (reverse-geocoded once per toggle) and
+  // matches it against the community's `city`. Falls back to the
+  // user's saved `availability.preferredCity` if location permission
+  // is denied or expo-location can't resolve a city.
+  const [hasRoom, setHasRoom] = useState(false);
+  const [nearby, setNearby] = useState(false);
+  const [nearbyCity, setNearbyCity] = useState<string | null>(null);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+
+  // Resolve the "nearby" city the moment the toggle flips ON.
+  useEffect(() => {
+    if (!nearby) {
+      setNearbyCity(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      setNearbyLoading(true);
+      const city = await resolveNearbyCity(
+        user?.availability?.preferredCity,
+      );
+      if (alive) {
+        setNearbyCity(city);
+        setNearbyLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [nearby, user?.availability?.preferredCity]);
 
   // Initial load + debounced search.
   useEffect(() => {
@@ -115,9 +198,13 @@ export function PublicGroupsFeedScreen() {
   }
 
   function passesDiscoveryFilters(g: GroupPublic): boolean {
-    if (openOnly && !g.isOpen) return false;
-    if (memberSize !== 'any') {
-      if (bucketForSize(g.memberCount) !== memberSize) return false;
+    if (hasRoom && !hasOpenSpot(g)) return false;
+    if (nearby) {
+      // While we're still resolving GPS / reverse-geocode, hide
+      // discovery results so the list doesn't briefly show
+      // unfiltered groups before snapping to the filtered set.
+      if (nearbyLoading || !nearbyCity) return false;
+      if (!citiesMatch(g.city, nearbyCity)) return false;
     }
     return true;
   }
@@ -149,7 +236,7 @@ export function PublicGroupsFeedScreen() {
           passesDiscoveryFilters(g)
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, memberIds, pendingIds, openOnly, memberSize]
+    [items, memberIds, pendingIds, hasRoom, nearby, nearbyCity, nearbyLoading]
   );
 
   // When the user is searching, collapse into a single result list — the
@@ -236,39 +323,21 @@ export function PublicGroupsFeedScreen() {
         />
       </View>
 
-      {/* Filter pills (always visible; collapse to a row on search since
-          "My" section is hidden during search). */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
+      {/* Filter pills — wrap-row instead of horizontal scroll so RTL
+          doesn't clip the rightmost pill on Android. With three short
+          toggles they fit on one row at typical widths anyway. */}
+      <View style={styles.filterRow}>
         <FilterPill
-          label={he.filterOpenOnly}
-          active={openOnly}
-          onPress={() => setOpenOnly((v) => !v)}
+          label={he.filterHasRoom}
+          active={hasRoom}
+          onPress={() => setHasRoom((v) => !v)}
         />
         <FilterPill
-          label={he.filterMembersAny}
-          active={memberSize === 'any'}
-          onPress={() => setMemberSize('any')}
+          label={he.filterNearby}
+          active={nearby}
+          onPress={() => setNearby((v) => !v)}
         />
-        <FilterPill
-          label={he.filterMembersSmall}
-          active={memberSize === 'small'}
-          onPress={() => setMemberSize('small')}
-        />
-        <FilterPill
-          label={he.filterMembersMedium}
-          active={memberSize === 'medium'}
-          onPress={() => setMemberSize('medium')}
-        />
-        <FilterPill
-          label={he.filterMembersLarge}
-          active={memberSize === 'large'}
-          onPress={() => setMemberSize('large')}
-        />
-      </ScrollView>
+      </View>
 
       {totalKnown === 0 ? (
         <View style={styles.emptyAll}>
@@ -536,6 +605,7 @@ const styles = StyleSheet.create({
 
   filterRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,

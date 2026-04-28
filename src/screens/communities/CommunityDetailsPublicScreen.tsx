@@ -195,13 +195,6 @@ export function CommunityDetailsPublicScreen() {
               value={group.preferredHour}
             />
           ) : null}
-          {group.costPerGame !== undefined ? (
-            <MetaRow
-              icon="cash-outline"
-              label={he.communityDetailsCost}
-              value={he.communityDetailsCostFmt(group.costPerGame)}
-            />
-          ) : null}
           <MetaRow
             icon="people-outline"
             label={he.communityDetailsMembers}

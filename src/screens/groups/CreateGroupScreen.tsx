@@ -58,7 +58,6 @@ export function CreateGroupScreen() {
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('mixed');
   const [preferredDays, setPreferredDays] = useState<WeekdayIndex[]>([]);
   const [preferredHour, setPreferredHour] = useState('');
-  const [costPerGame, setCostPerGame] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -94,7 +93,6 @@ export function CreateGroupScreen() {
     try {
       const parsedMax = parseInt(maxPlayers, 10);
       const parsedMaxMembers = parseInt(maxMembers, 10);
-      const parsedCost = parseInt(costPerGame, 10);
       const cityVal = city.trim();
       const streetVal = street.trim();
       const note = addressNote.trim();
@@ -117,7 +115,6 @@ export function CreateGroupScreen() {
         skillLevel,
         preferredDays: preferredDays.length > 0 ? preferredDays : undefined,
         preferredHour: preferredHour.trim() || undefined,
-        costPerGame: Number.isFinite(parsedCost) ? parsedCost : undefined,
         notes: notes.trim() || undefined,
         creator: user,
       });
@@ -253,13 +250,6 @@ export function CreateGroupScreen() {
           label={he.createGroupPreferredHour}
           value={preferredHour}
           onChange={setPreferredHour}
-        />
-        <Field
-          label={he.createGroupCostPerGame}
-          value={costPerGame}
-          onChange={setCostPerGame}
-          placeholder={he.createGroupCostPerGamePlaceholder}
-          keyboardType="number-pad"
         />
         <Field
           label={he.createGroupMaxPlayers}

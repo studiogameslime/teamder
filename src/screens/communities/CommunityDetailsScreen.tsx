@@ -283,10 +283,6 @@ export function CommunityDetailsScreen() {
             <MetaRow icon="time-outline" label={he.communityDetailsPreferredHour}
               value={group.preferredHour} />
           ) : null}
-          {group.costPerGame !== undefined ? (
-            <MetaRow icon="cash-outline" label={he.communityDetailsCost}
-              value={he.communityDetailsCostFmt(group.costPerGame)} />
-          ) : null}
           {group.notes ? (
             <View style={{ marginTop: spacing.sm }}>
               <Text style={styles.label}>{he.communityDetailsNotes}</Text>
