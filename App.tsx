@@ -11,6 +11,13 @@ import { I18nManager, LogBox, StatusBar, View } from 'react-native';
 LogBox.ignoreLogs([
   "Cannot find native module 'ExpoPushTokenManager'",
   'Cannot find native module',
+  // AdMob warns on every "no fill" response. The BannerAd component
+  // already handles this with setFailed(true) → renders null. The
+  // warning stays in console.log for debugging; this just keeps the
+  // dev-mode LogBox overlay clean.
+  '[ads] banner load failed',
+  'googleMobileAds/error-code-internal-error',
+  'googleMobileAds/error-code-no-fill',
 ]);
 
 // Foreground notification behavior. Without this, a push that arrives

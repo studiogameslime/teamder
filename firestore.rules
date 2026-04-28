@@ -41,17 +41,20 @@ service cloud.firestore {
 
     // ── /users/{uid} ────────────────────────────────────────────────────
     // Self can update anything on their own doc. Other signed-in users may
-    // touch ONLY the `discipline` subfield (+ `updatedAt`) so coaches can
-    // issue / revoke yellow & red cards on members of their teams. The
-    // narrow allow-list keeps the surface tight; spam risk is bounded to
-    // discipline counters (no name/email/jersey vandalism).
+    // touch ONLY the `discipline` and `achievements` subfields (+ updatedAt):
+    //   • discipline  → coaches issuing/revoking yellow & red cards
+    //   • achievements → cross-user counter bumps (teamsJoined when admin
+    //     approves a new member, etc.) so achievement badges stay correct
+    // The narrow allow-list keeps the surface tight; spam risk is bounded
+    // to those two structured-counter fields (no name/email/jersey
+    // vandalism possible).
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSelf(uid);
       allow update: if isSelf(uid) || (
         isSignedIn() &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['discipline', 'updatedAt'])
+          .hasOnly(['discipline', 'achievements', 'updatedAt'])
       );
       allow delete: if false;
     }
