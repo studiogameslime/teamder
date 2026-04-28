@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
@@ -25,7 +26,10 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { DisciplineCards } from '@/components/DisciplineCards';
+import { RatingModal } from '@/components/RatingModal';
 import { toast } from '@/components/Toast';
+import { ratingsService } from '@/services/ratingsService';
+import type { GroupRatingSummary } from '@/types';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
@@ -42,12 +46,25 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
-type RouteParams = { PlayerCard: { userId: string } };
+type RouteParams = {
+  PlayerCard: {
+    userId: string;
+    /**
+     * Optional community context. When set, the card shows the
+     * viewed user's average rating in that community + a button to
+     * cast/update the viewer's own vote.
+     */
+    groupId?: string;
+  };
+};
 
 export function PlayerCardScreen() {
   const route = useRoute<RouteProp<RouteParams, 'PlayerCard'>>();
   const nav = useNavigation();
-  const { userId } = route.params ?? { userId: '' };
+  const { userId, groupId } = route.params ?? {
+    userId: '',
+    groupId: undefined,
+  };
   const me = useUserStore((s) => s.currentUser);
 
   const [user, setUser] = useState<User | null>(null);
@@ -203,6 +220,14 @@ export function PlayerCardScreen() {
           />
         </View>
 
+        {groupId ? (
+          <RatingSection
+            groupId={groupId}
+            viewerId={me?.id ?? null}
+            ratedUser={user}
+          />
+        ) : null}
+
         <DisciplineSection
           user={user}
           viewerId={me?.id}
@@ -283,6 +308,105 @@ function StatTile({
       </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Card>
+  );
+}
+
+function RatingSection({
+  groupId,
+  viewerId,
+  ratedUser,
+}: {
+  groupId: string;
+  viewerId: string | null;
+  ratedUser: User;
+}) {
+  const [summary, setSummary] = useState<GroupRatingSummary | null>(null);
+  const [open, setOpen] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+
+  // Live summary subscription so the badge re-renders right after a save.
+  useEffect(() => {
+    const unsub = ratingsService.subscribeSummary(
+      groupId,
+      ratedUser.id,
+      setSummary,
+    );
+    return unsub;
+  }, [groupId, ratedUser.id]);
+
+  // Whether the viewer already cast a vote — drives the button label
+  // and the prefill in the modal.
+  useEffect(() => {
+    if (!viewerId || viewerId === ratedUser.id) {
+      setHasVoted(false);
+      return;
+    }
+    let alive = true;
+    ratingsService.getMyVote(groupId, viewerId, ratedUser.id).then((v) => {
+      if (alive) setHasVoted(!!v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [groupId, viewerId, ratedUser.id]);
+
+  const isSelf = !!viewerId && viewerId === ratedUser.id;
+
+  return (
+    <View style={styles.ratingSection}>
+      <Text style={styles.achievementsTitle}>{he.ratingInThisGroup}</Text>
+      {summary && summary.count > 0 ? (
+        <View style={styles.ratingHeader}>
+          <Ionicons
+            name="star"
+            size={20}
+            color={colors.warning}
+            style={{ marginEnd: 4 }}
+          />
+          <Text style={styles.ratingValue}>
+            {summary.average.toFixed(1)}
+          </Text>
+          <Text style={styles.ratingCount}>
+            {' · '}
+            {he.ratingCount(summary.count)}
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.emptyHint}>{he.ratingNone}</Text>
+      )}
+
+      {!isSelf && viewerId ? (
+        <Button
+          title={hasVoted ? he.ratingButtonReRate : he.ratingButtonRate}
+          variant="outline"
+          size="sm"
+          iconLeft="star-outline"
+          onPress={() => setOpen(true)}
+          fullWidth
+        />
+      ) : null}
+
+      <RatingModal
+        visible={open}
+        groupId={groupId}
+        raterUserId={viewerId}
+        ratedUserId={ratedUser.id}
+        ratedDisplayName={ratedUser.name}
+        onClose={() => setOpen(false)}
+        onChanged={async () => {
+          // Force-refresh the local "have I voted?" flag so the button
+          // toggles between "rate" / "update rating" without delay.
+          if (viewerId) {
+            const v = await ratingsService.getMyVote(
+              groupId,
+              viewerId,
+              ratedUser.id,
+            );
+            setHasVoted(!!v);
+          }
+        }}
+      />
+    </View>
   );
 }
 
@@ -539,6 +663,27 @@ const styles = StyleSheet.create({
   },
   ctaCard: {
     gap: spacing.sm,
+  },
+  ratingSection: {
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingValue: {
+    ...typography.h2,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  ratingCount: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   disciplineSection: { gap: spacing.sm },
   disciplineHeader: {

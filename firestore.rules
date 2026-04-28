@@ -204,6 +204,37 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── /groups/{gid}/ratings — community-scoped player ratings ────────
+    // Summary docs (one per rated user) are written ONLY by the
+    // onVoteWritten Cloud Function — clients never write them, so a
+    // malicious client can't fabricate an inflated average. Reading
+    // is open to any signed-in user (the badge on PlayerCard /
+    // MemberRow needs it; voter identity stays private via the
+    // votes subcollection rule below).
+    match /groups/{gid}/ratings/{ratedUid} {
+      allow read: if isSignedIn();
+      // Trusted writes only — Cloud Function uses admin SDK and
+      // bypasses these rules entirely. Client writes are denied.
+      allow write: if false;
+
+      // Individual votes: only the rater may write their own vote.
+      // ratedUid must not equal raterUid (no self-rating). Rating must
+      // be an integer 1..5. Reading a vote is restricted to the rater
+      // themselves so voter identity never leaks.
+      match /votes/{raterUid} {
+        allow read: if isSignedIn() && request.auth.uid == raterUid;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == raterUid
+          && raterUid != ratedUid
+          && request.resource.data.raterUserId == raterUid
+          && request.resource.data.ratedUserId == ratedUid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5;
+        allow delete: if isSignedIn() && request.auth.uid == raterUid;
+      }
+    }
+
     // ── /notifications/{id} (Phase E) ───────────────────────────────────
     // Outbound queue from clients to a Cloud Function consumer. Any
     // signed-in user can create a dispatch — the CF reads the recipient's

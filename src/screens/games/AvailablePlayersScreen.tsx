@@ -153,7 +153,10 @@ export function AvailablePlayersScreen() {
                   user={item}
                   size={44}
                   onPress={() =>
-                    nav.navigate('PlayerCard', { userId: item.id })
+                    nav.navigate('PlayerCard', {
+                      userId: item.id,
+                      groupId: game?.groupId,
+                    })
                   }
                 />
                 <View style={{ flex: 1 }}>

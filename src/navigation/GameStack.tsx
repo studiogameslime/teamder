@@ -36,7 +36,7 @@ export type GameStackParamList = {
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
   AvailablePlayers: { gameId: string };
-  PlayerCard: { userId: string };
+  PlayerCard: { userId: string; groupId?: string };
 };
 
 const Stack = createNativeStackNavigator<GameStackParamList>();

@@ -33,6 +33,7 @@ import { Card } from '@/components/Card';
 import { GameCard } from '@/components/GameCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { groupService } from '@/services';
+import { ratingsService } from '@/services/ratingsService';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
 import {
@@ -450,6 +451,7 @@ export function CommunityDetailsScreen() {
               <MemberRow
                 key={u.id}
                 user={u}
+                groupId={group.id}
                 isAdmin
                 isCreator={creatorId === u.id}
                 viewerIsCreator={!!me && creatorId === me.id}
@@ -461,7 +463,7 @@ export function CommunityDetailsScreen() {
                 onOpenCard={() =>
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'PlayerCard',
-                    { userId: u.id },
+                    { userId: u.id, groupId: group.id },
                   )
                 }
               />
@@ -479,6 +481,7 @@ export function CommunityDetailsScreen() {
               <MemberRow
                 key={u.id}
                 user={u}
+                groupId={group.id}
                 isAdmin={false}
                 isCreator={false}
                 viewerIsCreator={!!me && creatorId === me.id}
@@ -490,7 +493,7 @@ export function CommunityDetailsScreen() {
                 onOpenCard={() =>
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'PlayerCard',
-                    { userId: u.id },
+                    { userId: u.id, groupId: group.id },
                   )
                 }
               />
@@ -653,6 +656,7 @@ function MetaRow({
 
 function MemberRow({
   user,
+  groupId,
   isAdmin,
   isCreator,
   viewerIsCreator,
@@ -661,6 +665,7 @@ function MemberRow({
   onOpenCard,
 }: {
   user: User;
+  groupId: string;
   isAdmin: boolean;
   isCreator?: boolean;
   viewerIsCreator?: boolean;
@@ -668,12 +673,27 @@ function MemberRow({
   onDemote?: () => void;
   onOpenCard?: () => void;
 }) {
+  const [avg, setAvg] = useState<number>(0);
+  const [count, setCount] = useState<number>(0);
+  useEffect(() => {
+    const unsub = ratingsService.subscribeSummary(groupId, user.id, (s) => {
+      setAvg(s.average);
+      setCount(s.count);
+    });
+    return unsub;
+  }, [groupId, user.id]);
   return (
     <Pressable style={styles.memberRow} onPress={onOpenCard}>
       <PlayerIdentity user={user} size="sm" onPress={onOpenCard} />
       <Text style={styles.memberName} numberOfLines={1}>
         {user.name}
       </Text>
+      {count > 0 ? (
+        <View style={styles.ratingChip}>
+          <Ionicons name="star" size={12} color={colors.warning} />
+          <Text style={styles.ratingChipText}>{avg.toFixed(1)}</Text>
+        </View>
+      ) : null}
       {isCreator ? (
         <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
           <Text style={[styles.adminBadgeText, { color: '#fff' }]}>
@@ -750,6 +770,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   adminBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  ratingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  ratingChipText: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+  },
   roleAction: {
     ...typography.caption,
     color: colors.primary,

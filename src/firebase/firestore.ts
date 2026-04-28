@@ -545,6 +545,12 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       liveMatch: g.liveMatch ?? null,
       reminderSent: g.reminderSent ?? false,
       arrivals: g.arrivals ?? null,
+      autoTeamGenerationMinutesBeforeStart:
+        g.autoTeamGenerationMinutesBeforeStart ?? null,
+      autoTeamsGeneratedAt: g.autoTeamsGeneratedAt ?? null,
+      autoTeamsGeneratedBy: g.autoTeamsGeneratedBy ?? null,
+      teamsEditedManually: g.teamsEditedManually ?? false,
+      teamBalanceMeta: g.teamBalanceMeta ?? null,
       createdAt: g.createdAt,
       updatedAt: g.updatedAt ?? Date.now(),
     };
@@ -634,11 +640,41 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       liveMatch: readLiveMatch(d.liveMatch),
       reminderSent: d.reminderSent === true,
       arrivals: readArrivals(d.arrivals),
+      autoTeamGenerationMinutesBeforeStart:
+        typeof d.autoTeamGenerationMinutesBeforeStart === 'number' &&
+        d.autoTeamGenerationMinutesBeforeStart > 0
+          ? d.autoTeamGenerationMinutesBeforeStart
+          : undefined,
+      autoTeamsGeneratedAt:
+        typeof d.autoTeamsGeneratedAt === 'number'
+          ? d.autoTeamsGeneratedAt
+          : undefined,
+      autoTeamsGeneratedBy:
+        d.autoTeamsGeneratedBy === 'system' ? 'system' : undefined,
+      teamsEditedManually: d.teamsEditedManually === true,
+      teamBalanceMeta: readTeamBalanceMeta(d.teamBalanceMeta),
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };
   },
 };
+
+function readTeamBalanceMeta(
+  v: unknown,
+): import('@/types').Game['teamBalanceMeta'] | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  if (typeof o.generatedAt !== 'number') return undefined;
+  if (o.algorithm !== 'rating_greedy_v1') return undefined;
+  return {
+    generatedAt: o.generatedAt,
+    algorithm: 'rating_greedy_v1',
+    unratedCount: typeof o.unratedCount === 'number' ? o.unratedCount : 0,
+    teamRatings: Array.isArray(o.teamRatings)
+      ? o.teamRatings.filter((n): n is number => typeof n === 'number')
+      : [],
+  };
+}
 
 function readArrivals(
   v: unknown,
@@ -749,6 +785,21 @@ export const col = {
   notifications() {
     return collection(getFirebase().db, 'notifications');
   },
+  /** Per-community rating summaries: /groups/{gid}/ratings/{uid}. */
+  ratings(groupId: GroupId) {
+    return collection(getFirebase().db, 'groups', groupId, 'ratings');
+  },
+  /** Individual votes nested under a summary: /groups/{gid}/ratings/{uid}/votes/{raterUid}. */
+  ratingVotes(groupId: GroupId, ratedUserId: UserId) {
+    return collection(
+      getFirebase().db,
+      'groups',
+      groupId,
+      'ratings',
+      ratedUserId,
+      'votes',
+    );
+  },
 };
 
 export const docs = {
@@ -772,6 +823,12 @@ export const docs = {
   },
   playerStats(uid: UserId) {
     return doc(col.playerStats(), uid);
+  },
+  ratingSummary(groupId: GroupId, ratedUserId: UserId) {
+    return doc(col.ratings(groupId), ratedUserId);
+  },
+  ratingVote(groupId: GroupId, ratedUserId: UserId, raterUserId: UserId) {
+    return doc(col.ratingVotes(groupId, ratedUserId), raterUserId);
   },
 };
 

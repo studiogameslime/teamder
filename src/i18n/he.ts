@@ -10,6 +10,18 @@ export const he = {
   loading: 'טוען...',
   error: 'שגיאה',
 
+  // Community ratings
+  ratingTitle: 'דרג את {name} בקבוצה הזו',
+  ratingNoSelf: 'אי אפשר לדרג את עצמך',
+  ratingNone: 'עדיין אין דירוגים',
+  ratingInThisGroup: 'דירוג בקבוצה הזו',
+  ratingSaved: 'הדירוג נשמר',
+  ratingCleared: 'הדירוג הוסר',
+  ratingButtonRate: 'דרג שחקן',
+  ratingButtonReRate: 'עדכן דירוג',
+  ratingCount: (n: number) =>
+    n === 1 ? 'דירוג אחד' : `${n} דירוגים`,
+
   // Toasts (top-of-screen confirmations for "send/save/approve" actions)
   toastJoinRequestSent: 'הבקשה נשלחה',
   toastJoinSuccess: 'הצטרפת לקבוצה',
@@ -180,6 +192,10 @@ export const he = {
   createGameFieldType: 'משטח המגרש',
   createGameMatchDuration: 'אורך המשחק (דקות)',
   createGameMatchDurationHint: 'ברירת המחדל לטיימר במגרש',
+  createGameAutoBalanceTiming: 'מתי לסדר כוחות אוטומטית?',
+  createGameAutoBalance30: '30 דקות לפני',
+  createGameAutoBalance60: 'שעה לפני',
+  createGameAutoBalance120: 'שעתיים לפני',
   fieldTypeAsphalt: 'אספלט',
   fieldTypeSynthetic: 'סינטטי',
   fieldTypeGrass: 'דשא',

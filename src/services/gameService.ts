@@ -371,6 +371,7 @@ export const gameService = {
     cancelDeadlineHours?: number;
     fieldType?: import('@/types').FieldType;
     matchDurationMinutes?: number;
+    autoTeamGenerationMinutesBeforeStart?: number;
     isPublic: boolean;
     requiresApproval: boolean;
     bringBall: boolean;
@@ -403,6 +404,8 @@ export const gameService = {
       cancelDeadlineHours: input.cancelDeadlineHours,
       fieldType: input.fieldType,
       matchDurationMinutes: input.matchDurationMinutes,
+      autoTeamGenerationMinutesBeforeStart:
+        input.autoTeamGenerationMinutesBeforeStart,
       bringBall: input.bringBall,
       bringShirts: input.bringShirts,
       notes: input.notes,
@@ -708,13 +711,15 @@ export const gameService = {
    */
   async setLiveMatch(
     gameId: string,
-    next: LiveMatchState
+    next: LiveMatchState,
+    opts: { markTeamsEditedManually?: boolean } = {},
   ): Promise<void> {
     const stamped: LiveMatchState = { ...next, updatedAt: Date.now() };
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
       g.liveMatch = stamped;
+      if (opts.markTeamsEditedManually) g.teamsEditedManually = true;
       g.updatedAt = Date.now();
       mockLiveSubscribers.get(gameId)?.forEach((cb) => cb(stamped));
       return;
@@ -726,10 +731,17 @@ export const gameService = {
     // required Game field that's absent from the patch and Firestore
     // would reject the write with "Function setDoc() called with
     // invalid data: Unsupported field value: undefined".
-    await updateDoc(docs.game(gameId), {
+    const patch: Record<string, unknown> = {
       liveMatch: stamped,
       updatedAt: Date.now(),
-    });
+    };
+    // Only flip the flag when the caller asked us to. The scheduled
+    // auto-balance Cloud Function will write `liveMatch` directly
+    // (with admin SDK) and explicitly NOT pass this flag, so it
+    // never marks the game as manually edited.
+    if (opts.markTeamsEditedManually) patch.teamsEditedManually = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(docs.game(gameId), patch as any);
   },
 
   /**

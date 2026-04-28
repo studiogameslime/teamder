@@ -108,6 +108,7 @@ export function GameCreateScreen() {
   const [cancelDeadlineHours, setCancelDeadlineHours] = useState<string>('');
   const [fieldType, setFieldType] = useState<FieldType | undefined>(undefined);
   const [matchDuration, setMatchDuration] = useState<string>('');
+  const [autoBalanceMinutes, setAutoBalanceMinutes] = useState<number>(60);
   const [isPublic, setIsPublic] = useState(false);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [bringBall, setBringBall] = useState(true);
@@ -157,6 +158,7 @@ export function GameCreateScreen() {
             const n = parseInt(matchDuration, 10);
             return Number.isFinite(n) && n > 0 ? n : undefined;
           })(),
+        autoTeamGenerationMinutesBeforeStart: autoBalanceMinutes,
         isPublic,
         requiresApproval,
         bringBall,
@@ -343,6 +345,41 @@ export function GameCreateScreen() {
             keyboardType="number-pad"
           />
           <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
+        </View>
+
+        <View>
+          <Text style={styles.label}>{he.createGameAutoBalanceTiming}</Text>
+          <View style={styles.formatRow}>
+            {(
+              [
+                { v: 30, label: he.createGameAutoBalance30 },
+                { v: 60, label: he.createGameAutoBalance60 },
+                { v: 120, label: he.createGameAutoBalance120 },
+              ] as const
+            ).map((opt) => (
+              <Pressable
+                key={opt.v}
+                onPress={() => setAutoBalanceMinutes(opt.v)}
+                style={({ pressed }) => [
+                  styles.formatPill,
+                  autoBalanceMinutes === opt.v && styles.formatPillActive,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.formatPillText,
+                    autoBalanceMinutes === opt.v && {
+                      color: colors.primary,
+                      fontWeight: '600',
+                    },
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View>

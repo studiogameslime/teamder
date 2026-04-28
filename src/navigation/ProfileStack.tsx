@@ -20,7 +20,7 @@ export type ProfileStackParamList = {
   AvailabilityEdit: undefined;
   JerseyPicker: undefined;
   NotificationsSettings: undefined;
-  PlayerCard: { userId: string };
+  PlayerCard: { userId: string; groupId?: string };
   AdminApproval: undefined;
   Stats: undefined;
   History: undefined;

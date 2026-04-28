@@ -243,8 +243,15 @@ export function LiveMatchScreen() {
   }, [me, game, myCommunities]);
 
   // ─── Persist + commit helpers ──────────────────────────────────────────
+  // `markEdited` propagates to the gameService write so the Game doc's
+  // `teamsEditedManually` flag flips. Score-only commits leave the
+  // flag alone — only assignment changes (drag, shuffle, undo) count
+  // as manual team edits and lock out the auto-balance scheduler.
   const commit = useCallback(
-    (next: LiveMatchState, opts: { undoable?: boolean } = {}) => {
+    (
+      next: LiveMatchState,
+      opts: { undoable?: boolean; markEdited?: boolean } = {},
+    ) => {
       if (!gameId) return;
       if (live && opts.undoable) {
         undoStackRef.current.push(live);
@@ -254,9 +261,13 @@ export function LiveMatchScreen() {
         setHasUndo(true);
       }
       setLive(next);
-      gameService.setLiveMatch(gameId, next).catch((err) => {
-        if (__DEV__) console.warn('[live] setLiveMatch failed', err);
-      });
+      gameService
+        .setLiveMatch(gameId, next, {
+          markTeamsEditedManually: !!opts.markEdited,
+        })
+        .catch((err) => {
+          if (__DEV__) console.warn('[live] setLiveMatch failed', err);
+        });
     },
     [gameId, live],
   );
@@ -285,7 +296,7 @@ export function LiveMatchScreen() {
       next.assignments[uid] = zone;
       next.benchOrder = next.benchOrder.filter((x) => x !== uid);
       if (zone === 'bench') next.benchOrder.push(uid);
-      commit(next, { undoable: true });
+      commit(next, { undoable: true, markEdited: true });
     },
     [live, isAdmin, commit],
   );
@@ -329,7 +340,10 @@ export function LiveMatchScreen() {
         benchOrder.push(uid);
       }
     });
-    commit({ ...live, assignments, benchOrder }, { undoable: true });
+    commit(
+      { ...live, assignments, benchOrder },
+      { undoable: true, markEdited: true },
+    );
   }, [game, live, isAdmin, commit]);
 
   const handleUndo = useCallback(() => {
@@ -338,9 +352,11 @@ export function LiveMatchScreen() {
     if (!prev) return;
     setHasUndo(undoStackRef.current.length > 0);
     setLive(prev);
-    gameService.setLiveMatch(gameId, prev).catch((err) => {
-      if (__DEV__) console.warn('[live] undo persist failed', err);
-    });
+    gameService
+      .setLiveMatch(gameId, prev, { markTeamsEditedManually: true })
+      .catch((err) => {
+        if (__DEV__) console.warn('[live] undo persist failed', err);
+      });
   }, [isAdmin, gameId]);
 
   const handleScore = (team: 'A' | 'B', delta: number) => {

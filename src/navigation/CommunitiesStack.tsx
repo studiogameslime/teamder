@@ -21,7 +21,7 @@ export type CommunitiesStackParamList = {
   CommunityDetails: { groupId: string };
   CommunityDetailsPublic: { groupId: string };
   CommunityEdit: { groupId: string };
-  PlayerCard: { userId: string };
+  PlayerCard: { userId: string; groupId?: string };
 };
 
 const Stack = createNativeStackNavigator<CommunitiesStackParamList>();

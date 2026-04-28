@@ -2,7 +2,7 @@
 // Reachable from the Profile tab when the current user is admin of the group.
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList } from 'react-native';
+import { Pressable, StyleSheet, Text, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -49,14 +49,23 @@ export function AdminApprovalScreen() {
           keyExtractor={(u) => u.id}
           renderItem={({ item }) => (
             <Card style={styles.row}>
-              <PlayerIdentity
-                user={item}
-                size={42}
+              {/* Whole identity area (jersey + name) is one tap target
+                  → PlayerCard. Approve/Reject buttons stay separate so
+                  they don't clash with row taps. */}
+              <Pressable
+                style={styles.identityHit}
                 onPress={() =>
-                  nav.navigate('PlayerCard', { userId: item.id })
+                  nav.navigate('PlayerCard', {
+                    userId: item.id,
+                    groupId: group.id,
+                  })
                 }
-              />
-              <Text style={styles.name}>{item.name}</Text>
+              >
+                <PlayerIdentity user={item} size={42} />
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.name}
+                </Text>
+              </Pressable>
               <Button
                 title={he.approve}
                 variant="success"
@@ -100,4 +109,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   name: { ...typography.body, color: colors.text, flex: 1 },
+  identityHit: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
 });

@@ -23,7 +23,10 @@
 //   firebase deploy --only functions
 
 import * as admin from 'firebase-admin';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import {
+  onDocumentCreated,
+  onDocumentWritten,
+} from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 
@@ -384,3 +387,320 @@ export const sendGameReminders = onSchedule(
     console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
   }
 );
+
+// ─── Rating: keep summary doc in sync with vote subcollection ──────────
+
+/**
+ * Vote subcollection trigger. Whenever a vote doc under
+ *   /groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}
+ * is created, updated, or deleted, recompute the parent summary doc
+ * by reading every vote in the subcollection. Cheap for the small
+ * communities we target; revisit with incremental sum/count maths if
+ * a community ever exceeds a few hundred raters per player.
+ */
+export const onVoteWritten = onDocumentWritten(
+  'groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}',
+  async (event) => {
+    const { groupId, ratedUserId } = event.params as {
+      groupId: string;
+      ratedUserId: string;
+    };
+    const summaryRef = db
+      .collection('groups')
+      .doc(groupId)
+      .collection('ratings')
+      .doc(ratedUserId);
+    const snap = await summaryRef.collection('votes').get();
+    let count = 0;
+    let sum = 0;
+    snap.docs.forEach((d) => {
+      const r = (d.data() as { rating?: number }).rating;
+      if (typeof r === 'number' && r >= 1 && r <= 5) {
+        count += 1;
+        sum += r;
+      }
+    });
+    if (count === 0) {
+      // No votes left — keep the doc but zero it so the client shows
+      // "no ratings yet" rather than a stale average.
+      await summaryRef.set({
+        userId: ratedUserId,
+        average: 0,
+        count: 0,
+        sum: 0,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+    const average = Math.round((sum / count) * 10) / 10;
+    await summaryRef.set({
+      userId: ratedUserId,
+      average,
+      count,
+      sum,
+      updatedAt: Date.now(),
+    });
+  },
+);
+
+// ─── Scheduled: auto-balance teams before a game ───────────────────────
+
+const DEFAULT_AUTO_BALANCE_MINUTES = 60;
+
+interface BalanceGameDoc {
+  id: string;
+  groupId?: string;
+  startsAt?: number;
+  status?: string;
+  players?: string[];
+  format?: '5v5' | '6v6' | '7v7';
+  numberOfTeams?: number;
+  autoTeamGenerationMinutesBeforeStart?: number;
+  autoTeamsGeneratedAt?: number;
+  teamsEditedManually?: boolean;
+}
+
+interface RatingSummaryDoc {
+  count?: number;
+  average?: number;
+}
+
+function perTeamSize(format: BalanceGameDoc['format']): number {
+  if (format === '6v6') return 6;
+  if (format === '7v7') return 7;
+  return 5;
+}
+
+/**
+ * rating_greedy_v1 — distribute registered players into N teams so the
+ * sum of ratings per team is roughly equal. Unrated players get the
+ * neutral 3.0 score and are shuffled into the queue with the rest.
+ * Overflow players land on the bench in registration order.
+ */
+function balanceTeamsV1(
+  playerIds: string[],
+  ratings: Record<string, number>,
+  numberOfTeams: number,
+  perTeam: number,
+): {
+  assignments: Record<string, 'teamA' | 'teamB' | 'bench'>;
+  benchOrder: string[];
+  teamRatings: number[];
+  unratedCount: number;
+} {
+  // Build a [{id, rating, isUnrated}] list. Unrated → 3.0 + small
+  // jitter so they don't all sort to one end deterministically.
+  let unratedCount = 0;
+  const scored = playerIds.map((id) => {
+    const known = ratings[id];
+    if (typeof known === 'number') {
+      return { id, rating: known, jitter: Math.random(), unrated: false };
+    }
+    unratedCount += 1;
+    return { id, rating: 3, jitter: Math.random(), unrated: true };
+  });
+  // Sort: rating desc, then random within ties so reruns aren't
+  // identical and unrated players don't all clump.
+  scored.sort((a, b) => {
+    if (a.rating !== b.rating) return b.rating - a.rating;
+    return a.jitter - b.jitter;
+  });
+
+  const teams: { ids: string[]; total: number }[] = Array.from(
+    { length: numberOfTeams },
+    () => ({ ids: [], total: 0 }),
+  );
+  const capacity = perTeam;
+  const assignments: Record<string, 'teamA' | 'teamB' | 'bench'> = {};
+  const benchOrder: string[] = [];
+
+  // Greedy: each player goes to the team with lowest total + capacity.
+  for (const p of scored) {
+    let target: typeof teams[number] | null = null;
+    for (const t of teams) {
+      if (t.ids.length >= capacity) continue;
+      if (!target) {
+        target = t;
+        continue;
+      }
+      if (t.total < target.total) target = t;
+      else if (
+        t.total === target.total &&
+        t.ids.length < target.ids.length
+      ) {
+        target = t;
+      }
+    }
+    if (target) {
+      target.ids.push(p.id);
+      target.total += p.rating;
+    } else {
+      benchOrder.push(p.id);
+    }
+  }
+
+  // Map team[0] / team[1] → 'teamA' / 'teamB'. Live-match state model
+  // only handles 2 teams natively today; if numberOfTeams > 2 the
+  // overflow goes to the bench so the existing UI still works.
+  teams.forEach((t, i) => {
+    const zone: 'teamA' | 'teamB' | null =
+      i === 0 ? 'teamA' : i === 1 ? 'teamB' : null;
+    if (!zone) {
+      // Pour extra teams onto the bench in order so we never drop
+      // players just because the live-match UI is 2-team-only.
+      benchOrder.push(...t.ids);
+      return;
+    }
+    t.ids.forEach((uid) => {
+      assignments[uid] = zone;
+    });
+  });
+  benchOrder.forEach((uid) => {
+    assignments[uid] = 'bench';
+  });
+
+  return {
+    assignments,
+    benchOrder,
+    teamRatings: teams.slice(0, 2).map((t) => Math.round(t.total * 10) / 10),
+    unratedCount,
+  };
+}
+
+/** Read every rating summary in the group as a uid → average map. */
+async function loadGroupRatings(
+  groupId: string,
+  uids: string[],
+): Promise<Record<string, number>> {
+  if (uids.length === 0) return {};
+  const out: Record<string, number> = {};
+  // Firestore doesn't support an `in` query against subcollection doc
+  // ids cleanly across many groups, but per-group we just batched
+  // get the docs.
+  const refs = uids.map((u) =>
+    db.collection('groups').doc(groupId).collection('ratings').doc(u),
+  );
+  const snaps = await db.getAll(...refs);
+  snaps.forEach((s, i) => {
+    if (!s.exists) return;
+    const d = s.data() as RatingSummaryDoc;
+    if (typeof d.average === 'number' && (d.count ?? 0) > 0) {
+      out[uids[i]] = d.average;
+    }
+  });
+  return out;
+}
+
+/**
+ * Scheduled every 5 minutes. Finds open games whose
+ * `startsAt - autoTeamGenerationMinutesBeforeStart` window is within
+ * the next ~5 minutes, and writes the balanced live-match state to
+ * each one. Skips games whose coach has already touched the teams
+ * (`teamsEditedManually` true) so manual edits are sticky.
+ */
+export const scheduledAutoGenerateTeams = onSchedule(
+  {
+    schedule: 'every 5 minutes',
+    timeZone: 'Asia/Jerusalem',
+  },
+  async () => {
+    const now = Date.now();
+    // Loose upper bound: 2h ahead is the longest configurable window.
+    const horizon = now + 2 * 60 * 60 * 1000 + 60 * 1000;
+    const snap = await db
+      .collection('games')
+      .where('status', '==', 'open')
+      .where('startsAt', '<=', horizon)
+      .get();
+
+    if (snap.empty) {
+      console.log('[autoBalance] no candidate games');
+      return;
+    }
+
+    const ops: Promise<unknown>[] = [];
+    for (const doc of snap.docs) {
+      const g = doc.data() as BalanceGameDoc;
+      g.id = doc.id;
+      // Skip — already generated.
+      if (g.autoTeamsGeneratedAt) continue;
+      // Skip — coach already edited.
+      if (g.teamsEditedManually) continue;
+      // Skip — no group / no players.
+      if (!g.groupId) continue;
+      const players = g.players ?? [];
+      if (players.length === 0) continue;
+      const startsAt = g.startsAt ?? 0;
+      const minutesBefore =
+        g.autoTeamGenerationMinutesBeforeStart ??
+        DEFAULT_AUTO_BALANCE_MINUTES;
+      const triggerAt = startsAt - minutesBefore * 60 * 1000;
+      // Only fire when we're within the trigger window OR past it
+      // (catches any game we missed in the last 5-minute slot).
+      if (now < triggerAt) continue;
+      // Skip games that already kicked off — no point auto-balancing
+      // a finished/in-progress match.
+      if (now > startsAt) continue;
+
+      ops.push(generateForGame(doc.ref, g));
+    }
+    await Promise.all(ops);
+    console.log(`[autoBalance] generated for ${ops.length} game(s)`);
+  },
+);
+
+async function generateForGame(
+  ref: FirebaseFirestore.DocumentReference,
+  g: BalanceGameDoc,
+): Promise<void> {
+  try {
+    const players = g.players ?? [];
+    const ratings = await loadGroupRatings(g.groupId!, players);
+    const perTeam = perTeamSize(g.format);
+    const numberOfTeams =
+      typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
+        ? g.numberOfTeams
+        : 2;
+    const result = balanceTeamsV1(
+      players,
+      ratings,
+      numberOfTeams,
+      perTeam,
+    );
+    const liveMatch = {
+      phase: 'organizing' as const,
+      assignments: result.assignments,
+      benchOrder: result.benchOrder,
+      scoreA: 0,
+      scoreB: 0,
+      lateUserIds: [],
+      updatedAt: Date.now(),
+    };
+    await ref.update({
+      liveMatch,
+      autoTeamsGeneratedAt: Date.now(),
+      autoTeamsGeneratedBy: 'system',
+      teamBalanceMeta: {
+        generatedAt: Date.now(),
+        algorithm: 'rating_greedy_v1',
+        unratedCount: result.unratedCount,
+        teamRatings: result.teamRatings,
+      },
+      updatedAt: Date.now(),
+    });
+
+    // Best-effort notification fan-out.
+    await db.collection('notifications').add({
+      type: 'gameCanceledOrUpdated',
+      recipientId: ref.id, // fan-out marker
+      payload: {
+        gameId: ref.id,
+        action: 'teams_generated',
+      },
+      createdAt: Date.now(),
+      delivered: false,
+    });
+  } catch (err) {
+    console.error('[autoBalance] generateForGame failed', ref.id, err);
+  }
+}

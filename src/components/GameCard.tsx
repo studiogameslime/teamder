@@ -289,7 +289,10 @@ function PlayersStrip({ game }: { game: Game }) {
               user={{ id: uid, name, jersey: p?.jersey }}
               size="sm"
               onPress={() =>
-                nav.navigate('PlayerCard', { userId: uid })
+                nav.navigate('PlayerCard', {
+                  userId: uid,
+                  groupId: game.groupId,
+                })
               }
             />
             {isBallHolder ? (

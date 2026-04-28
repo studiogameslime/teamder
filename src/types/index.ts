@@ -385,6 +385,40 @@ export function getTeamCreatorId(g: Pick<Group, 'creatorId' | 'adminIds'>): User
   return g.creatorId ?? g.adminIds[0];
 }
 
+// ─── Community-scoped player ratings ─────────────────────────────────────
+
+/** Per-vote rating value. Pin the integer 1–5 in the type for safety. */
+export type RatingValue = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * One rater's vote on one rated user inside one community. Stored at:
+ *   /groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}
+ *
+ * Privacy rules in firestore.rules: only the rater themselves can
+ * read this doc; other community members read the parent summary
+ * (which strips voter identity).
+ */
+export interface RatingVote {
+  raterUserId: UserId;
+  ratedUserId: UserId;
+  rating: RatingValue;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Summary doc kept in sync by a Cloud Function trigger so the client
+ * never has to load every vote to display the average. Stored at:
+ *   /groups/{groupId}/ratings/{ratedUserId}
+ */
+export interface GroupRatingSummary {
+  userId: UserId;
+  average: number; // 0..5; 0 means no votes yet
+  count: number;
+  sum: number;
+  updatedAt: number;
+}
+
 /** Lightweight projection used by the search screen. */
 export interface GroupSearchHit {
   id: GroupId;
@@ -592,6 +626,30 @@ export interface Game {
    * write to the same map. Discipline auto-issuance reads from here.
    */
   arrivals?: Record<UserId, ArrivalStatus>;
+
+  /**
+   * Phase: community-rating-driven auto-balance.
+   * Minutes before kickoff to run the scheduled team generator.
+   * Default 60 when missing.
+   */
+  autoTeamGenerationMinutesBeforeStart?: number;
+  /** ms epoch — set by the scheduled function the first time teams are generated. */
+  autoTeamsGeneratedAt?: number;
+  /** Provenance marker so we can distinguish system-generated from coach-edited. */
+  autoTeamsGeneratedBy?: 'system';
+  /**
+   * Flipped to true the moment the coach drags / shuffles the team
+   * assignments. Once true, the scheduled auto-balance must skip
+   * this game forever — manual edits are sticky.
+   */
+  teamsEditedManually?: boolean;
+  /** Diagnostic snapshot of the last auto-balance run. */
+  teamBalanceMeta?: {
+    generatedAt: number;
+    algorithm: 'rating_greedy_v1';
+    unratedCount: number;
+    teamRatings: number[];
+  };
 
   createdAt: number;
   updatedAt?: number;
