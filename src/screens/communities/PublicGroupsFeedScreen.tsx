@@ -27,6 +27,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { toast } from '@/components/Toast';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { openWhatsApp } from '@/services/whatsappService';
@@ -248,9 +249,17 @@ export function PublicGroupsFeedScreen() {
 
   const handleRequest = async (item: GroupPublic) => {
     if (!user) return;
-    const status = await requestJoinById(item.id, user.id);
-    if (status === 'pending') {
-      logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: item.id });
+    try {
+      const status = await requestJoinById(item.id, user.id);
+      if (status === 'pending') {
+        logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: item.id });
+        toast.success(he.toastJoinRequestSent);
+      } else if (status === 'already_member') {
+        toast.info(he.groupAlreadyMember);
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[publicFeed] join request failed', err);
+      toast.error(he.toastRequestFailed);
     }
   };
 

@@ -10,6 +10,14 @@ export const he = {
   loading: 'טוען...',
   error: 'שגיאה',
 
+  // Toasts (top-of-screen confirmations for "send/save/approve" actions)
+  toastJoinRequestSent: 'הבקשה נשלחה',
+  toastJoinSuccess: 'הצטרפת לקבוצה',
+  toastRequestFailed: 'שליחת הבקשה נכשלה. נסה שוב.',
+  toastMemberApproved: 'השחקן אושר',
+  toastMemberRejected: 'הבקשה נדחתה',
+  toastSaved: 'נשמר',
+
   // Date/time field strings
   dtfPickTime: 'בחר שעה',
   dtfPickDate: 'בחר תאריך',

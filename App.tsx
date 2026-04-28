@@ -17,6 +17,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { MockModeBanner } from '@/components/MockModeBanner';
+import { ToastHost } from '@/components/Toast';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 
@@ -65,6 +66,9 @@ export default function App() {
             <RootNavigator />
           </View>
         </View>
+        {/* Mounted at the navigator level so toasts overlay every screen
+            but stay below RN's modal dialogs. */}
+        <ToastHost />
       </NavigationContainer>
     </SafeAreaProvider>
   );

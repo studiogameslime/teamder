@@ -9,7 +9,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -26,6 +25,7 @@ import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
+import { toast } from '@/components/Toast';
 import type { Game, User } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -112,8 +112,11 @@ export function AvailablePlayersScreen() {
       });
       achievementsService.bump(me.id, 'invitesSent', 1);
       setInvitedIds((s) => new Set([...s, target.id]));
+      toast.success(
+        he.playerCardInviteSentToast.replace('{name}', target.name),
+      );
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      toast.error(String((e as Error).message ?? e));
     } finally {
       setInvitingId(null);
     }

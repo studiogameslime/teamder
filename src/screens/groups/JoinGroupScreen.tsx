@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { toast } from '@/components/Toast';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -21,11 +22,11 @@ export function JoinGroupScreen() {
     try {
       const status = await requestJoin(code.trim(), user.id);
       if (status === 'pending') {
-        Alert.alert(he.groupJoinSuccess, he.groupPendingBody);
+        toast.success(he.toastJoinRequestSent);
       } else if (status === 'already_member') {
-        Alert.alert(he.groupAlreadyMember);
+        toast.info(he.groupAlreadyMember);
       } else if (status === 'not_found') {
-        Alert.alert(he.groupNotFound);
+        toast.error(he.groupNotFound);
       }
     } finally {
       setBusy(false);

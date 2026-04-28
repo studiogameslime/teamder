@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { toast } from '@/components/Toast';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useGroupStore, useCurrentGroup } from '@/store/groupStore';
@@ -55,6 +56,7 @@ export function AdminApprovalScreen() {
                 onPress={() => {
                   approve(item.id);
                   setUsers((prev) => prev.filter((u) => u.id !== item.id));
+                  toast.success(he.toastMemberApproved);
                 }}
               />
               <Button
@@ -64,6 +66,7 @@ export function AdminApprovalScreen() {
                 onPress={() => {
                   reject(item.id);
                   setUsers((prev) => prev.filter((u) => u.id !== item.id));
+                  toast.info(he.toastMemberRejected);
                 }}
               />
             </Card>

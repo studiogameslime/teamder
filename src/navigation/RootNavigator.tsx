@@ -14,7 +14,6 @@ import { OnboardingScreen } from '@/screens/onboarding/OnboardingScreen';
 import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
 import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
-import { PendingApprovalScreen } from '@/screens/groups/PendingApprovalScreen';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
 import { initAnalytics } from '@/services/analyticsService';
@@ -111,12 +110,10 @@ export function RootNavigator() {
 
   // Wait for group hydration so the membership state is real.
   if (!groupHydrated) return <Splash />;
-  if (membership === 'pending') return <PendingApprovalScreen />;
-  // New users without any community land directly on MainTabs — the
-  // Communities tab is the first/default tab, so they immediately see
-  // the public-groups feed and can join from there. The legacy
-  // GroupStack (GroupChoose / GroupCreate / GroupJoin / GroupSearch)
-  // is no longer reachable from this entry point.
+  // No more dedicated full-screen views for "pending request" or "new
+  // user without community". Both states fall through to MainTabs and
+  // surface their context inline (toasts on submit + a "pending" tag
+  // in the communities feed).
   return <MainTabs />;
 }
 

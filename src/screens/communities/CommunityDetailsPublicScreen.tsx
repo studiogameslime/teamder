@@ -33,6 +33,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
 import {
   isValidIsraeliPhone,
@@ -143,7 +144,16 @@ export function CommunityDetailsPublicScreen() {
       const status = await requestJoinById(group.id, me.id);
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: group.id });
+        toast.success(
+          group.isOpen ? he.toastJoinSuccess : he.toastJoinRequestSent,
+        );
+        nav.goBack();
+      } else if (status === 'already_member') {
+        toast.info(he.groupAlreadyMember);
       }
+    } catch (err) {
+      if (__DEV__) console.warn('[communityPublic] join failed', err);
+      toast.error(he.toastRequestFailed);
     } finally {
       setBusyJoin(false);
     }

@@ -25,6 +25,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { DisciplineCards } from '@/components/DisciplineCards';
+import { toast } from '@/components/Toast';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
@@ -242,9 +243,12 @@ export function PlayerCardScreen() {
                 // Lock the button so a second tap can't dispatch a
                 // duplicate invite for the same game/recipient pair.
                 setInviteSent(true);
+                toast.success(
+                  he.playerCardInviteSentToast.replace('{name}', user.name),
+                );
               } catch (err) {
                 if (__DEV__) console.warn('[PlayerCard] invite failed', err);
-                Alert.alert(he.error, he.playerCardInviteFailed);
+                toast.error(he.playerCardInviteFailed);
               } finally {
                 setBusyInvite(false);
               }
