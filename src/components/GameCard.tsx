@@ -21,6 +21,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Card } from './Card';
 import { Button } from './Button';
 import { PlayerIdentity } from './PlayerIdentity';
@@ -266,6 +267,7 @@ function PublicityChip({ isPublic }: { isPublic: boolean }) {
  */
 function PlayersStrip({ game }: { game: Game }) {
   const playersMap = useGameStore((s) => s.players);
+  const nav = useNavigation<any>();
   if (game.players.length === 0) return null;
   const VISIBLE = 6;
   const head = game.players.slice(0, VISIBLE);
@@ -286,6 +288,9 @@ function PlayersStrip({ game }: { game: Game }) {
             <PlayerIdentity
               user={{ id: uid, name, jersey: p?.jersey }}
               size="sm"
+              onPress={() =>
+                nav.navigate('PlayerCard', { userId: uid })
+              }
             />
             {isBallHolder ? (
               <View style={styles.indicator}>

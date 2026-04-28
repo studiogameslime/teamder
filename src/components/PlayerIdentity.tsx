@@ -7,7 +7,7 @@
 // only update this file.
 
 import React from 'react';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Jersey } from './Jersey';
 import type { User } from '@/types';
 import { colors, typography } from '@/theme';
@@ -28,6 +28,11 @@ interface Props {
   showShirtName?: boolean;
   /** Highlight ring around the jersey (used for picker preview). */
   highlight?: boolean;
+  /**
+   * When set, the entire identity becomes tappable. Callers typically
+   * wire this to navigate to the PlayerCard for `user.id`.
+   */
+  onPress?: () => void;
   style?: ViewStyle;
 }
 
@@ -49,13 +54,14 @@ export function PlayerIdentity({
   showName = false,
   showShirtName = false,
   highlight = false,
+  onPress,
   style,
 }: Props) {
   const px = typeof size === 'number' ? size : SIZE_MAP[size];
   const name = user?.name ?? '';
 
-  return (
-    <View style={[styles.root, style]}>
+  const content = (
+    <>
       <Jersey
         jersey={user?.jersey}
         user={user ? { id: user.id, name } : null}
@@ -75,8 +81,24 @@ export function PlayerIdentity({
           {name}
         </Text>
       ) : null}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.root,
+          pressed && { opacity: 0.7 },
+          style,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+  return <View style={[styles.root, style]}>{content}</View>;
 }
 
 const styles = StyleSheet.create({

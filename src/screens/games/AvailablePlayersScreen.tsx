@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
@@ -36,6 +36,7 @@ type RouteParams = { AvailablePlayers: { gameId: string } };
 
 export function AvailablePlayersScreen() {
   const route = useRoute<RouteProp<RouteParams, 'AvailablePlayers'>>();
+  const nav = useNavigation<any>();
   const { gameId } = route.params;
   const me = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
@@ -148,7 +149,13 @@ export function AvailablePlayersScreen() {
             const sent = invitedIds.has(item.id);
             return (
               <View style={styles.row}>
-                <PlayerIdentity user={item} size={44} />
+                <PlayerIdentity
+                  user={item}
+                  size={44}
+                  onPress={() =>
+                    nav.navigate('PlayerCard', { userId: item.id })
+                  }
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name} numberOfLines={1}>
                     {item.name}

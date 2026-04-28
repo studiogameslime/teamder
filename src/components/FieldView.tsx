@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View, ImageBackground } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { PlayerIdentity } from './PlayerIdentity';
 import { Player, TeamColor } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -128,6 +129,7 @@ function PlayerToken({
   x: number;
   y: number;
 }) {
+  const nav = useNavigation<any>();
   return (
     <View
       style={[
@@ -147,6 +149,7 @@ function PlayerToken({
           }}
           size={isGk ? 44 : 38}
           highlight
+          onPress={() => nav.navigate('PlayerCard', { userId: player.id })}
         />
         {isGk && <Text style={styles.gloveBadge}>🧤</Text>}
       </View>

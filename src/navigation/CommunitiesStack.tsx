@@ -13,6 +13,7 @@ import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
 import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
+import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 
 export type CommunitiesStackParamList = {
   CommunitiesFeed: undefined;
@@ -20,6 +21,7 @@ export type CommunitiesStackParamList = {
   CommunityDetails: { groupId: string };
   CommunityDetailsPublic: { groupId: string };
   CommunityEdit: { groupId: string };
+  PlayerCard: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<CommunitiesStackParamList>();
@@ -38,6 +40,7 @@ export function CommunitiesStack() {
         component={CommunityDetailsPublicScreen}
       />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
+      <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
     </Stack.Navigator>
   );
 }

@@ -458,6 +458,12 @@ export function CommunityDetailsScreen() {
                     ? () => handleDemote(u.id)
                     : undefined
                 }
+                onOpenCard={() =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'PlayerCard',
+                    { userId: u.id },
+                  )
+                }
               />
             ))}
           </Card>
@@ -480,6 +486,12 @@ export function CommunityDetailsScreen() {
                   !!me && creatorId === me.id
                     ? () => handlePromote(u.id)
                     : undefined
+                }
+                onOpenCard={() =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'PlayerCard',
+                    { userId: u.id },
+                  )
                 }
               />
             ))}
@@ -646,6 +658,7 @@ function MemberRow({
   viewerIsCreator,
   onPromote,
   onDemote,
+  onOpenCard,
 }: {
   user: User;
   isAdmin: boolean;
@@ -653,10 +666,11 @@ function MemberRow({
   viewerIsCreator?: boolean;
   onPromote?: () => void;
   onDemote?: () => void;
+  onOpenCard?: () => void;
 }) {
   return (
-    <Pressable style={styles.memberRow}>
-      <PlayerIdentity user={user} size="sm" />
+    <Pressable style={styles.memberRow} onPress={onOpenCard}>
+      <PlayerIdentity user={user} size="sm" onPress={onOpenCard} />
       <Text style={styles.memberName} numberOfLines={1}>
         {user.name}
       </Text>

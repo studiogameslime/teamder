@@ -15,6 +15,7 @@ import { TeamSetupScreen } from '@/screens/TeamSetupScreen';
 import { GoalkeeperOrderScreen } from '@/screens/GoalkeeperOrderScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
+import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { TeamColor } from '@/types';
 
 export type GameStackParamList = {
@@ -35,6 +36,7 @@ export type GameStackParamList = {
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
   AvailablePlayers: { gameId: string };
+  PlayerCard: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<GameStackParamList>();
@@ -56,6 +58,7 @@ export function GameStack() {
         name="AvailablePlayers"
         component={AvailablePlayersScreen}
       />
+      <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { PlayerIdentity } from './PlayerIdentity';
 import { Player } from '@/types';
 import { colors, spacing, typography } from '@/theme';
@@ -14,6 +15,11 @@ interface Props {
 }
 
 export function PlayerRow({ player, index, rightIcon, rightLabel, onPress }: Props) {
+  const nav = useNavigation<any>();
+  // When no row-level onPress is supplied, tapping the identity itself
+  // navigates to the player's card. The row stays tappable for callers
+  // that need other behavior (e.g. selection).
+  const openCard = () => nav.navigate('PlayerCard', { userId: player.id });
   return (
     <Pressable
       onPress={onPress}
@@ -27,6 +33,7 @@ export function PlayerRow({ player, index, rightIcon, rightLabel, onPress }: Pro
           jersey: player.jersey,
         }}
         size="sm"
+        onPress={onPress ? undefined : openCard}
       />
       <Text style={styles.name} numberOfLines={1}>
         {player.displayName}

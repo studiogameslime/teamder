@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { PlayerIdentity } from './PlayerIdentity';
 import { Player, TeamColor } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -26,6 +27,7 @@ const ACCENT: Record<TeamColor, { dot: string; bg: string; border: string }> = {
 
 export function TeamCard({ color, players, isWaiting, onConfigureGoalkeepers }: Props) {
   const accent = ACCENT[color];
+  const nav = useNavigation<any>();
   return (
     <View style={[styles.card, { backgroundColor: accent.bg, borderColor: accent.border }]}>
       <View style={styles.header}>
@@ -41,6 +43,7 @@ export function TeamCard({ color, players, isWaiting, onConfigureGoalkeepers }: 
             <PlayerIdentity
               user={{ id: p.id, name: p.displayName, jersey: p.jersey }}
               size={42}
+              onPress={() => nav.navigate('PlayerCard', { userId: p.id })}
             />
             <Text style={styles.playerName} numberOfLines={1}>
               {p.displayName}

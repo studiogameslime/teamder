@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
@@ -18,6 +18,7 @@ const TEAM_NUMBER = { team1: 1, team2: 2, team3: 3 } as const;
 
 export function GoalkeeperOrderScreen() {
   const route = useRoute<R>();
+  const nav = useNavigation<any>();
   const teamColor = route.params.teamColor;
   const team = useGameStore((s) => s.game.teams?.find((t) => t.color === teamColor));
   const players = useGameStore((s) => s.players);
@@ -56,6 +57,7 @@ export function GoalkeeperOrderScreen() {
                 <PlayerIdentity
                   user={{ id: pid, name: p.displayName, jersey: p.jersey }}
                   size="sm"
+                  onPress={() => nav.navigate('PlayerCard', { userId: pid })}
                 />
                 <Text style={styles.name} numberOfLines={1}>
                   {p.displayName}

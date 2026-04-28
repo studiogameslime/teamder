@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
@@ -17,6 +18,7 @@ import { groupService } from '@/services';
 import { User } from '@/types';
 
 export function AdminApprovalScreen() {
+  const nav = useNavigation<any>();
   const group = useCurrentGroup();
   const approve = useGroupStore((s) => s.approve);
   const reject = useGroupStore((s) => s.reject);
@@ -47,7 +49,13 @@ export function AdminApprovalScreen() {
           keyExtractor={(u) => u.id}
           renderItem={({ item }) => (
             <Card style={styles.row}>
-              <PlayerIdentity user={item} size={42} />
+              <PlayerIdentity
+                user={item}
+                size={42}
+                onPress={() =>
+                  nav.navigate('PlayerCard', { userId: item.id })
+                }
+              />
               <Text style={styles.name}>{item.name}</Text>
               <Button
                 title={he.approve}
