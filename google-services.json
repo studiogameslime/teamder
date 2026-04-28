@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "559368532219",
+    "project_id": "soccer-app-52b6b",
+    "storage_bucket": "soccer-app-52b6b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:559368532219:android:5e7f33d130f6c4d709005e",
+        "android_client_info": {
+          "package_name": "com.studiogameslime.soccerapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "559368532219-br75ir9boq69lsdjth9e79qoaq0bai86.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.studiogameslime.soccerapp",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "559368532219-qgklkgbkfpu18kacetvm2lvjjidfk54b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.studiogameslime.soccerapp",
+            "certificate_hash": "22682e44f436831c2203cf19d1da81aa869e3054"
+          }
+        },
+        {
+          "client_id": "559368532219-0ahvo59n6b9gkh8f1p5jrtrrg96drhro.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCG-OXvqoCT3SESraD3byS6c3R12W9zu8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "559368532219-0ahvo59n6b9gkh8f1p5jrtrrg96drhro.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
