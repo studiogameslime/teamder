@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Footy",
+    "slug": "soccer-game",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": [
+      "footy",
+      "com.studiogameslime.soccerapp"
+    ],
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#16A34A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.studiogameslime.soccerapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#16A34A"
+      },
+      "package": "com.studiogameslime.soccerapp",
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      "expo-localization",
+      "@react-native-google-signin/google-signin",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4452511612073107~1968239705",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
+          "skAdNetworkItems": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "382fd359-9632-4210-ad26-fb967a8a893a"
+      }
+    },
+    "owner": "studiogameslimes-organization"
+  }
+}

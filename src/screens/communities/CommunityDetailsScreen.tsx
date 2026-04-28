@@ -1,0 +1,770 @@
+// CommunityDetailsScreen — full read-only view of a single community for
+// members + admins, with primary actions (WhatsApp / invite / leave).
+//
+// Phase A scope: the screen renders, contact + invite + leave work,
+// upcoming games are loaded from gameService. Editing the community is
+// covered later (Phase B's CreateGroupScreen extension is reused for
+// edit). For now we don't show edit affordances here.
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { GameCard } from '@/components/GameCard';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { groupService } from '@/services';
+import { gameService } from '@/services/gameService';
+import { notificationsService } from '@/services/notificationsService';
+import {
+  isValidIsraeliPhone,
+  openWhatsApp,
+} from '@/services/whatsappService';
+import { Game, Group, User, WeekdayIndex, getTeamCreatorId } from '@/types';
+import { colors, radius, spacing, typography } from '@/theme';
+import { he } from '@/i18n/he';
+import { useUserStore } from '@/store/userStore';
+import { useGroupStore } from '@/store/groupStore';
+import { Switch } from 'react-native';
+import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
+
+type Nav = NativeStackNavigationProp<
+  CommunitiesStackParamList,
+  'CommunityDetails'
+>;
+type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetails'>;
+
+const SKILL_LABELS: Record<string, string> = {
+  beginner: he.skillBeginner,
+  intermediate: he.skillIntermediate,
+  advanced: he.skillAdvanced,
+  mixed: he.skillMixed,
+};
+
+function formatDays(days: WeekdayIndex[] | undefined): string {
+  if (!days || days.length === 0) return '';
+  return days
+    .slice()
+    .sort()
+    .map((d) => he.availabilityDayShort[d])
+    .join(', ');
+}
+
+export function CommunityDetailsScreen() {
+  const nav = useNavigation<Nav>();
+  const { groupId } = useRoute<Params>().params;
+  const me = useUserStore((s) => s.currentUser);
+  const leaveGroup = useGroupStore((s) => s.leaveGroup);
+
+  const [group, setGroup] = useState<Group | null>(null);
+  const [members, setMembers] = useState<User[]>([]);
+  const [upcoming, setUpcoming] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyLeave, setBusyLeave] = useState(false);
+  const [busyRecurring, setBusyRecurring] = useState(false);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const g = await groupService.get(groupId);
+      setGroup(g);
+      if (g) {
+        const memberIds = Array.from(
+          new Set([...g.adminIds, ...g.playerIds])
+        );
+        const [users, games] = await Promise.all([
+          groupService.hydrateUsers(memberIds),
+          gameService.getCommunityGames(me?.id ?? '', [g.id]).catch(() => [] as Game[]),
+        ]);
+        // Include games where the user is already involved too.
+        const myGames = me
+          ? await gameService.getMyGames(me.id).catch(() => [] as Game[])
+          : [];
+        const allUpcoming = mergeById([...games, ...myGames]).filter(
+          (x) => x.groupId === g.id && x.status === 'open'
+        );
+        allUpcoming.sort((a, b) => a.startsAt - b.startsAt);
+        setMembers(users);
+        setUpcoming(allUpcoming);
+      } else {
+        setMembers([]);
+        setUpcoming([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [groupId, me]);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const isMember = useMemo(
+    () => !!group && !!me && group.playerIds.includes(me.id),
+    [group, me]
+  );
+  const isAdmin = useMemo(
+    () => !!group && !!me && group.adminIds.includes(me.id),
+    [group, me]
+  );
+
+  const adminMembers = useMemo(
+    () => members.filter((u) => group?.adminIds.includes(u.id)),
+    [members, group]
+  );
+  const regularMembers = useMemo(
+    () =>
+      members.filter(
+        (u) =>
+          group?.playerIds.includes(u.id) && !group?.adminIds.includes(u.id)
+      ),
+    [members, group]
+  );
+
+  const creatorId = group ? getTeamCreatorId(group) : undefined;
+
+  const handlePromote = async (uid: string) => {
+    if (!group || !me) return;
+    try {
+      const next = await groupService.promoteToCoach(group.id, me.id, uid);
+      // Reflect locally so the lists re-partition without a refetch.
+      setGroup(next);
+    } catch (e) {
+      Alert.alert(he.error, String((e as Error).message ?? e));
+    }
+  };
+  const handleDemote = async (uid: string) => {
+    if (!group || !me) return;
+    Alert.alert(he.communityDetailsDemoteConfirmTitle, '', [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.communityDetailsDemoteConfirm,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const next = await groupService.demoteCoach(
+              group.id,
+              me.id,
+              uid,
+            );
+            setGroup(next);
+          } catch (e) {
+            Alert.alert(he.error, String((e as Error).message ?? e));
+          }
+        },
+      },
+    ]);
+  };
+
+  const phoneValid =
+    !!group?.contactPhone && isValidIsraeliPhone(group.contactPhone);
+
+  const handleLeave = () => {
+    if (!group || !me) return;
+    if (group.adminIds.includes(me.id) && group.adminIds.length === 1) {
+      Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
+      return;
+    }
+    Alert.alert(
+      he.communityDetailsLeaveConfirmTitle,
+      he.communityDetailsLeaveConfirmBody,
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.communityDetailsLeave,
+          style: 'destructive',
+          onPress: async () => {
+            setBusyLeave(true);
+            try {
+              await leaveGroup(group.id, me.id);
+              nav.goBack();
+            } catch (e) {
+              const msg = (e as Error).message;
+              if (msg === 'LAST_ADMIN') {
+                Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
+              } else {
+                Alert.alert(he.error, String(msg ?? e));
+              }
+            } finally {
+              setBusyLeave(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleInvite = async () => {
+    if (!group) return;
+    try {
+      await Share.share({
+        title: he.inviteShareSubject,
+        message: he.communityInviteShareBody(group.name, group.inviteCode),
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('[community] share failed', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title="" />
+        <ActivityIndicator
+          size="small"
+          color={colors.primary}
+          style={{ marginTop: spacing.lg }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (!group) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title="" />
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>{he.communitiesEmpty}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const skill = group.skillLevel ? SKILL_LABELS[group.skillLevel] : '';
+  const days = formatDays(group.preferredDays);
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title={group.name} />
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* About / metadata */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>{he.communityDetailsAbout}</Text>
+          {group.description ? (
+            <Text style={styles.bodyText}>{group.description}</Text>
+          ) : null}
+          <MetaRow icon="location-outline" label={he.communityDetailsCity}
+            value={[group.city, group.fieldAddress].filter(Boolean).join(', ')} />
+          <MetaRow icon="football-outline" label={he.communityDetailsField}
+            value={group.fieldName} />
+          {skill ? (
+            <MetaRow icon="trophy-outline" label={he.communityDetailsSkill}
+              value={skill} />
+          ) : null}
+          {days ? (
+            <MetaRow icon="calendar-outline" label={he.communityDetailsPreferredDays}
+              value={days} />
+          ) : null}
+          {group.preferredHour ? (
+            <MetaRow icon="time-outline" label={he.communityDetailsPreferredHour}
+              value={group.preferredHour} />
+          ) : null}
+          {group.costPerGame !== undefined ? (
+            <MetaRow icon="cash-outline" label={he.communityDetailsCost}
+              value={he.communityDetailsCostFmt(group.costPerGame)} />
+          ) : null}
+          {group.notes ? (
+            <View style={{ marginTop: spacing.sm }}>
+              <Text style={styles.label}>{he.communityDetailsNotes}</Text>
+              <Text style={styles.bodyText}>{group.notes}</Text>
+            </View>
+          ) : null}
+          {group.createdAt ? (
+            <MetaRow
+              icon="calendar-clear-outline"
+              label={he.communityDetailsCreated}
+              value={formatHebrewDate(group.createdAt)}
+            />
+          ) : null}
+        </Card>
+
+        {group.rules ? (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>{he.communityDetailsRules}</Text>
+            <Text style={styles.bodyText}>{group.rules}</Text>
+          </Card>
+        ) : null}
+
+        {/* Phase 7: recurring-game block. Shown when the community has
+            either explicit recurring config or fallback preferred-days/
+            hour info that's enough to derive the next occurrence. */}
+        {isAdmin && me && hasRecurringInfo(group) ? (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {he.communityDetailsRecurring}
+            </Text>
+            <Text style={styles.bodyText}>
+              {recurringSummary(group)}
+            </Text>
+            <Button
+              title={he.communityDetailsCreateRecurringGame}
+              variant="outline"
+              size="md"
+              fullWidth
+              iconLeft="add-circle-outline"
+              loading={busyRecurring}
+              disabled={busyRecurring}
+              onPress={() => {
+                if (!me || busyRecurring) return;
+                const ts = nextOccurrence(group);
+                if (!ts) {
+                  Alert.alert(he.error, he.communityDetailsRecurringNoConfig);
+                  return;
+                }
+                Alert.alert(
+                  he.communityDetailsCreateRecurringGame,
+                  `${recurringSummary(group)} · ${formatHebrewDate(ts)}`,
+                  [
+                    { text: he.cancel, style: 'cancel' },
+                    {
+                      text: he.communityDetailsRecurringConfirm,
+                      onPress: async () => {
+                        // Lock immediately so the dialog's confirm tap
+                        // can't double-fire (Android can stack dialogs;
+                        // a fast double-tap can also re-enter).
+                        if (busyRecurring) return;
+                        setBusyRecurring(true);
+                        try {
+                          const r = await createRecurring(group, me.id);
+                          if (!r.ok) {
+                            Alert.alert(
+                              he.error,
+                              he.communityDetailsRecurringFailed,
+                            );
+                          }
+                        } finally {
+                          setBusyRecurring(false);
+                        }
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={{ marginTop: spacing.sm }}
+            />
+          </Card>
+        ) : null}
+
+        {/* Action buttons */}
+        <View style={styles.actions}>
+          {phoneValid ? (
+            <Button
+              title={he.communityDetailsContactAdmin}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconLeft="logo-whatsapp"
+              onPress={() => openWhatsApp(group.contactPhone)}
+            />
+          ) : null}
+          {isMember ? (
+            <Button
+              title={he.communityDetailsInvite}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconLeft="share-outline"
+              onPress={handleInvite}
+            />
+          ) : null}
+          {isAdmin ? (
+            <Button
+              title={he.communityEditTitle}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconLeft="create-outline"
+              onPress={() =>
+                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                  'CommunityEdit',
+                  { groupId: group.id },
+                )
+              }
+            />
+          ) : null}
+        </View>
+
+        {/* Per-community "new game" subscription. Only members see it —
+            non-members can't get notifications for a community they
+            haven't joined. */}
+        {isMember && me ? (
+          <Card style={styles.section}>
+            <View style={styles.subscriptionRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subscriptionLabel}>
+                  {he.communityNotifyNewGames}
+                </Text>
+              </View>
+              <Switch
+                value={(me.newGameSubscriptions ?? []).includes(group.id)}
+                onValueChange={async (next) => {
+                  const cur = me.newGameSubscriptions ?? [];
+                  const updated = next
+                    ? Array.from(new Set([...cur, group.id]))
+                    : cur.filter((g) => g !== group.id);
+                  // Optimistic local update so the switch responds
+                  // immediately; the persist write is fire-and-forget.
+                  useUserStore.setState({
+                    currentUser: { ...me, newGameSubscriptions: updated },
+                  });
+                  notificationsService.setCommunitySubscription(
+                    me.id,
+                    group.id,
+                    next
+                  );
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+          </Card>
+        ) : null}
+
+        {/* Admins */}
+        {adminMembers.length > 0 ? (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {he.communityDetailsAdmins} ({adminMembers.length})
+            </Text>
+            {adminMembers.map((u) => (
+              <MemberRow
+                key={u.id}
+                user={u}
+                isAdmin
+                isCreator={creatorId === u.id}
+                viewerIsCreator={!!me && creatorId === me.id}
+                onDemote={
+                  !!me && creatorId === me.id && creatorId !== u.id
+                    ? () => handleDemote(u.id)
+                    : undefined
+                }
+              />
+            ))}
+          </Card>
+        ) : null}
+
+        {/* Regular members */}
+        {regularMembers.length > 0 ? (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {he.communityDetailsMembers} ({regularMembers.length})
+            </Text>
+            {regularMembers.map((u) => (
+              <MemberRow
+                key={u.id}
+                user={u}
+                isAdmin={false}
+                isCreator={false}
+                viewerIsCreator={!!me && creatorId === me.id}
+                onPromote={
+                  !!me && creatorId === me.id
+                    ? () => handlePromote(u.id)
+                    : undefined
+                }
+              />
+            ))}
+          </Card>
+        ) : null}
+
+        {/* Upcoming games */}
+        <View style={styles.upcomingWrap}>
+          <Text style={styles.sectionTitle}>
+            {he.communityDetailsUpcoming}
+          </Text>
+          {upcoming.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                {he.communityDetailsNoUpcoming}
+              </Text>
+            </Card>
+          ) : (
+            upcoming.map((g) => (
+              <GameCard
+                key={g.id}
+                game={g}
+                userId={me?.id ?? ''}
+                onPrimary={() => {
+                  /* join/cancel handled in Games tab; details screen is
+                     read-mostly. Tapping a card here is a no-op. */
+                }}
+              />
+            ))
+          )}
+        </View>
+
+        {/* Leave (members + admins; admin-last guard handled inside) */}
+        {isMember || isAdmin ? (
+          <View style={{ marginTop: spacing.md }}>
+            <Button
+              title={he.communityDetailsLeave}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconLeft="exit-outline"
+              loading={busyLeave}
+              onPress={handleLeave}
+            />
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function formatHebrewDate(ms: number): string {
+  const d = new Date(ms);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+function effectiveRecurringDay(g: Group): WeekdayIndex | undefined {
+  if (typeof g.recurringDayOfWeek === 'number') return g.recurringDayOfWeek;
+  // Fallback to the first preferred day so existing communities can use
+  // the recurring shortcut without an editor screen.
+  return g.preferredDays?.[0];
+}
+function effectiveRecurringTime(g: Group): string | undefined {
+  return g.recurringTime || g.preferredHour;
+}
+function hasRecurringInfo(g: Group): boolean {
+  return !!effectiveRecurringDay(g) && !!effectiveRecurringTime(g);
+}
+function recurringSummary(g: Group): string {
+  const dayIdx = effectiveRecurringDay(g);
+  const time = effectiveRecurringTime(g);
+  if (dayIdx === undefined || !time) return '';
+  return `${he.availabilityDayShort[dayIdx]} · ${time}`;
+}
+function nextOccurrence(g: Group): number | null {
+  const dayIdx = effectiveRecurringDay(g);
+  const time = effectiveRecurringTime(g);
+  if (dayIdx === undefined || !time) return null;
+  const [hh, mm] = time.split(':').map((n) => parseInt(n, 10));
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  const now = new Date();
+  const target = new Date(now);
+  const delta = (dayIdx - now.getDay() + 7) % 7;
+  target.setDate(now.getDate() + (delta === 0 ? 7 : delta));
+  target.setHours(hh, mm, 0, 0);
+  return target.getTime();
+}
+async function createRecurring(
+  group: Group,
+  creatorId: string,
+): Promise<{ ok: boolean; gameId?: string }> {
+  const ts = nextOccurrence(group);
+  if (!ts) return { ok: false };
+  const fmt: import('@/types').GameFormat =
+    group.recurringDefaultFormat ?? '5v5';
+  const teams = group.recurringNumberOfTeams ?? 2;
+  const perTeam = fmt === '5v5' ? 5 : fmt === '6v6' ? 6 : 7;
+  try {
+    const created = await import('@/services/gameService').then((m) =>
+      m.gameService.createGameV2({
+        groupId: group.id,
+        title: group.name,
+        startsAt: ts,
+        fieldName: group.fieldName,
+        maxPlayers: perTeam * teams,
+        format: fmt,
+        numberOfTeams: teams,
+        skillLevel: group.skillLevel,
+        cancelDeadlineHours: undefined,
+        isPublic: false,
+        requiresApproval: !group.isOpen,
+        bringBall: true,
+        bringShirts: true,
+        createdBy: creatorId,
+      }),
+    );
+    return { ok: true, gameId: created.id };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function mergeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const it of items) {
+    if (seen.has(it.id)) continue;
+    seen.add(it.id);
+    out.push(it);
+  }
+  return out;
+}
+
+function MetaRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+}) {
+  if (!value) return null;
+  return (
+    <View style={styles.metaRow}>
+      <Ionicons name={icon} size={14} color={colors.textMuted} />
+      <Text style={styles.metaLabel}>{label}:</Text>
+      <Text style={styles.metaValue} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function MemberRow({
+  user,
+  isAdmin,
+  isCreator,
+  viewerIsCreator,
+  onPromote,
+  onDemote,
+}: {
+  user: User;
+  isAdmin: boolean;
+  isCreator?: boolean;
+  viewerIsCreator?: boolean;
+  onPromote?: () => void;
+  onDemote?: () => void;
+}) {
+  return (
+    <Pressable style={styles.memberRow}>
+      <PlayerIdentity user={user} size="sm" />
+      <Text style={styles.memberName} numberOfLines={1}>
+        {user.name}
+      </Text>
+      {isCreator ? (
+        <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.adminBadgeText, { color: '#fff' }]}>
+            {he.communityDetailsCreatorBadge}
+          </Text>
+        </View>
+      ) : isAdmin ? (
+        <View style={styles.adminBadge}>
+          <Text style={styles.adminBadgeText}>
+            {he.communityDetailsAdminBadge}
+          </Text>
+        </View>
+      ) : null}
+      {viewerIsCreator && onPromote ? (
+        <Pressable onPress={onPromote} hitSlop={8}>
+          <Text style={styles.roleAction}>
+            {he.communityDetailsPromoteCoach}
+          </Text>
+        </Pressable>
+      ) : null}
+      {viewerIsCreator && onDemote ? (
+        <Pressable onPress={onDemote} hitSlop={8}>
+          <Text style={[styles.roleAction, { color: colors.danger }]}>
+            {he.communityDetailsDemoteCoach}
+          </Text>
+        </Pressable>
+      ) : null}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+
+  section: { gap: spacing.xs },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
+  bodyText: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'right',
+  },
+
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  metaLabel: { ...typography.caption, color: colors.textMuted },
+  metaValue: { ...typography.caption, color: colors.text, flex: 1, textAlign: 'right' },
+  label: { ...typography.label, color: colors.textMuted, marginTop: spacing.xs },
+
+  actions: { gap: spacing.sm },
+
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  memberName: { ...typography.body, color: colors.text, flex: 1 },
+  adminBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
+  },
+  adminBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  roleAction: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+
+  upcomingWrap: { gap: spacing.sm },
+
+  subscriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  subscriptionLabel: { ...typography.body, color: colors.text, fontWeight: '600' },
+
+  emptyCard: { alignItems: 'center', paddingVertical: spacing.lg },
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+});

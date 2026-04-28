@@ -1,0 +1,225 @@
+rules_version = '2';
+
+// v2 rules. Updated to match the renamed collections / fields:
+//   /gameNights → /games   ·   gameNightId → gameId   ·   isOpenForRequests dropped
+//   registeredUserIds → players   ·   waitlistUserIds → waitlist
+//   pendingUserIds → pending   ·   participantIds (denormalized union)
+//
+// Posture: middle-ground. Reads are open to any signed-in user; writes are
+// constrained to "self" patterns where it's cheap to express (own user
+// doc, self-add to community-pending, self-add to game-participant).
+// Anything else is gated behind being a group admin or the game's
+// organizer (createdBy). Production hardening (stricter array diffs,
+// per-field writes) can come on top of this.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function affectedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function groupDoc(gid) {
+      return get(/databases/$(database)/documents/groups/$(gid)).data;
+    }
+    function isGroupAdmin(gid) {
+      return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
+    }
+    function isGroupMember(gid) {
+      return isSignedIn() && (
+        request.auth.uid in groupDoc(gid).playerIds ||
+        request.auth.uid in groupDoc(gid).adminIds
+      );
+    }
+
+    // ── /users/{uid} ────────────────────────────────────────────────────
+    // Self can update anything on their own doc. Other signed-in users may
+    // touch ONLY the `discipline` subfield (+ `updatedAt`) so coaches can
+    // issue / revoke yellow & red cards on members of their teams. The
+    // narrow allow-list keeps the surface tight; spam risk is bounded to
+    // discipline counters (no name/email/jersey vandalism).
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['discipline', 'updatedAt'])
+      );
+      allow delete: if false;
+    }
+
+    // ── /groups/{gid} — private community state ─────────────────────────
+    // Reads: members + admins only (outsiders use /groupsPublic).
+    // Create: the creator becomes the sole admin and only player.
+    // Update: admin may change anything; outsiders may only self-add to
+    //   pendingPlayerIds (community join-request path).
+    match /groups/{gid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid in resource.data.playerIds ||
+        request.auth.uid in resource.data.adminIds
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.adminIds == [request.auth.uid] &&
+        request.resource.data.playerIds.hasOnly([request.auth.uid]) &&
+        request.resource.data.pendingPlayerIds.size() == 0;
+      allow update: if (
+        // Coaches (adminIds) can change everything EXCEPT the
+        // adminIds list itself — promotions/demotions are gated to
+        // the creator (Phase 8).
+        isGroupAdmin(gid) &&
+        (
+          !affectedKeys().hasAny(['adminIds']) ||
+          request.auth.uid == (
+            'creatorId' in resource.data
+              ? resource.data.creatorId
+              : resource.data.adminIds[0]
+          )
+        ) &&
+        // The creator can never be removed from adminIds.
+        (
+          !affectedKeys().hasAny(['adminIds']) ||
+          (
+            'creatorId' in resource.data
+              ? resource.data.creatorId in request.resource.data.adminIds
+              : resource.data.adminIds[0] in request.resource.data.adminIds
+          )
+        )
+      ) || (
+        // self-add to pendingPlayerIds (community join request)
+        isSignedIn() &&
+        !(request.auth.uid in resource.data.playerIds) &&
+        !(request.auth.uid in resource.data.adminIds) &&
+        affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
+        request.resource.data.pendingPlayerIds.size() ==
+          resource.data.pendingPlayerIds.size() + 1 &&
+        request.auth.uid in request.resource.data.pendingPlayerIds
+      );
+      allow delete: if false;
+    }
+
+    // ── /groupsPublic/{gid} — public discovery projection ───────────────
+    match /groupsPublic/{gid} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isGroupAdmin(gid);
+      allow delete: if false;
+    }
+
+    // ── /groupJoinRequests/{rid} — admin-side audit trail ──────────────
+    match /groupJoinRequests/{rid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        isGroupAdmin(resource.data.groupId)
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if isGroupAdmin(resource.data.groupId) &&
+        request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if false;
+    }
+
+    // ── /games/{id} ─────────────────────────────────────────────────────
+    // Reads: any signed-in user (so public games are discoverable AND
+    //   members of communities can see scheduled games). The "Open Games"
+    //   section relies on this.
+    // Create: the creator is the organizer (createdBy=self) and a member
+    //   of the parent community.
+    // Update: organizer (createdBy) or group admin may change anything.
+    //   Anyone signed-in may add/remove THEIR OWN uid from
+    //   players/waitlist/pending/participantIds — that's the join/cancel
+    //   path. The status field cannot flip via this branch.
+    match /games/{id} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.status == 'open';
+
+      allow update: if isSignedIn() && (
+        // Organizer / admin can do anything.
+        request.auth.uid == resource.data.createdBy ||
+        isGroupAdmin(resource.data.groupId) ||
+        // Self join/cancel — only mutate participation arrays + updatedAt.
+        (
+          resource.data.status == 'open' &&
+          request.resource.data.status == 'open' &&
+          affectedKeys().hasOnly([
+            'players', 'waitlist', 'pending', 'participantIds', 'updatedAt'
+          ])
+        ) ||
+        // Live-match writes by any participant (Phase D.1). Limited to
+        // the liveMatch sub-object + updatedAt; the client UI further
+        // restricts non-admin players to "I'm late" only. Tighter
+        // server-side checks (path-level diff on liveMatch) are a
+        // future hardening.
+        (
+          request.auth.uid in resource.data.participantIds &&
+          affectedKeys().hasOnly(['liveMatch', 'updatedAt'])
+        )
+      );
+
+      allow delete: if isSignedIn() &&
+        (request.auth.uid == resource.data.createdBy ||
+         isGroupAdmin(resource.data.groupId));
+    }
+
+    // ── /rounds/{id} ────────────────────────────────────────────────────
+    // Read: signed-in (mirrors /games). Write: game organizer / admin.
+    match /rounds/{id} {
+      function gameOrgId(gid) {
+        return get(/databases/$(database)/documents/games/$(gid)).data.createdBy;
+      }
+      function gameGroupId(gid) {
+        return get(/databases/$(database)/documents/games/$(gid)).data.groupId;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        request.auth.uid == gameOrgId(request.resource.data.gameId) ||
+        isGroupAdmin(gameGroupId(request.resource.data.gameId))
+      );
+      allow update: if isSignedIn() && (
+        request.auth.uid == gameOrgId(resource.data.gameId) ||
+        isGroupAdmin(gameGroupId(resource.data.gameId))
+      );
+      allow delete: if false;
+    }
+
+    // ── /playerStats/{uid} ──────────────────────────────────────────────
+    // Read: any signed-in. Write: server-side only (Cloud Function +
+    // Admin SDK bypass these rules).
+    match /playerStats/{uid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── /notifications/{id} (Phase E) ───────────────────────────────────
+    // Outbound queue from clients to a Cloud Function consumer. Any
+    // signed-in user can create a dispatch — the CF reads the recipient's
+    // prefs + tokens before delivering, and it's the CF (not the client)
+    // that talks to FCM.
+    //
+    // Reads: only the recipient or the dispatch's creator can read back
+    // a notification doc, since the payload may include light personal
+    // info (group name, requester id). Updates / deletes: server-only
+    // (Admin SDK bypass).
+    match /notifications/{id} {
+      allow create: if isSignedIn() &&
+        request.resource.data.recipientId is string &&
+        request.resource.data.type is string &&
+        request.resource.data.delivered == false;
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.recipientId
+      );
+      allow update, delete: if false;
+    }
+  }
+}

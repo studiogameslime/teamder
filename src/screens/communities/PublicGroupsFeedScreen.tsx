@@ -1,0 +1,661 @@
+// Communities tab — sectioned feed with filters.
+//
+// Sections (only one is rendered at a time when the user has typed a search):
+//   1. My Communities    — current user is a member or has a pending request
+//   2. Nearby             — same city as the user's preferredCity (no geo)
+//   3. Open               — everything else, sorted by member count desc
+//
+// Filters apply to sections 2 + 3 (the discovery half). The "My" section
+// always shows everything the user already belongs to so they can switch
+// between communities without juggling filters.
+
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { groupService } from '@/services';
+import { openWhatsApp } from '@/services/whatsappService';
+import { GroupPublic } from '@/types';
+import { colors, radius, spacing, typography } from '@/theme';
+import { he } from '@/i18n/he';
+import { useUserStore } from '@/store/userStore';
+import { useGroupStore } from '@/store/groupStore';
+import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
+
+type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
+
+type RowAction = 'enter' | 'pending' | 'joinAuto' | 'requestJoin';
+type MemberSize = 'any' | 'small' | 'medium' | 'large';
+
+function bucketForSize(n: number): Exclude<MemberSize, 'any'> {
+  if (n < 15) return 'small';
+  if (n < 30) return 'medium';
+  return 'large';
+}
+
+export function PublicGroupsFeedScreen() {
+  const nav = useNavigation<Nav>();
+  const user = useUserStore((s) => s.currentUser);
+  const memberGroups = useGroupStore((s) => s.groups);
+  const pendingGroups = useGroupStore((s) => s.pendingGroups);
+  const requestJoinById = useGroupStore((s) => s.requestJoinById);
+  const setCurrentGroup = useGroupStore((s) => s.setCurrentGroup);
+
+  const [text, setText] = useState('');
+  const [items, setItems] = useState<GroupPublic[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Filters
+  const [openOnly, setOpenOnly] = useState(false);
+  const [memberSize, setMemberSize] = useState<MemberSize>('any');
+
+  // Initial load + debounced search.
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const list =
+          text.trim().length === 0
+            ? await groupService.listPublicGroups()
+            : await groupService.searchPublicGroups(text);
+        if (text.trim().length > 0) logEvent(AnalyticsEvent.GroupSearch, { query: text });
+        if (alive) setItems(list);
+      } catch {
+        if (alive) setItems([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [text]);
+
+  const memberIds = useMemo(
+    () => new Set(memberGroups.map((g) => g.id)),
+    [memberGroups]
+  );
+  const pendingIds = useMemo(
+    () => new Set(pendingGroups.map((g) => g.id)),
+    [pendingGroups]
+  );
+  // Communities the current user is an admin of — taken from the
+  // private-groups list in groupStore (memberGroups is everything the
+  // user reads from /groups, including ones where they're admin).
+  const adminIds = useMemo(() => {
+    if (!user) return new Set<string>();
+    return new Set(
+      memberGroups
+        .filter((g) => g.adminIds.includes(user.id))
+        .map((g) => g.id)
+    );
+  }, [memberGroups, user]);
+
+  function actionFor(g: GroupPublic): RowAction {
+    if (memberIds.has(g.id)) return 'enter';
+    if (pendingIds.has(g.id)) return 'pending';
+    return g.isOpen ? 'joinAuto' : 'requestJoin';
+  }
+
+  function passesDiscoveryFilters(g: GroupPublic): boolean {
+    if (openOnly && !g.isOpen) return false;
+    if (memberSize !== 'any') {
+      if (bucketForSize(g.memberCount) !== memberSize) return false;
+    }
+    return true;
+  }
+
+  // Partition into 3 sections per spec:
+  //   קהילות בניהולי   — admin
+  //   קהילות שאני חבר בהן — member-but-not-admin (+ pending so the user
+  //                            can see what they're waiting on)
+  //   קהילות פתוחות    — discovery (everything else, with filters applied)
+  const adminItems = useMemo(
+    () => (items ?? []).filter((g) => adminIds.has(g.id)),
+    [items, adminIds]
+  );
+  const memberOnlyItems = useMemo(
+    () =>
+      (items ?? []).filter(
+        (g) =>
+          !adminIds.has(g.id) &&
+          (memberIds.has(g.id) || pendingIds.has(g.id))
+      ),
+    [items, memberIds, pendingIds, adminIds]
+  );
+  const discoveryItems = useMemo(
+    () =>
+      (items ?? []).filter(
+        (g) =>
+          !memberIds.has(g.id) &&
+          !pendingIds.has(g.id) &&
+          passesDiscoveryFilters(g)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, memberIds, pendingIds, openOnly, memberSize]
+  );
+
+  // When the user is searching, collapse into a single result list — the
+  // section breakdown is noise relative to "did my query match anything".
+  const isSearching = text.trim().length > 0;
+  const searchMatches = isSearching
+    ? discoveryItems.concat(adminItems, memberOnlyItems)
+    : [];
+
+  const handleRequest = async (item: GroupPublic) => {
+    if (!user) return;
+    const status = await requestJoinById(item.id, user.id);
+    if (status === 'pending') {
+      logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: item.id });
+    }
+  };
+
+  const handleEnter = async (item: GroupPublic) => {
+    // For an existing member, "enter" navigates to the community details
+    // page rather than just setting the current group — the user can read
+    // about the community there and access actions (invite, leave, etc.).
+    await setCurrentGroup(item.id);
+    nav.navigate('CommunityDetails', { groupId: item.id });
+  };
+
+  const handleOpenDetails = (item: GroupPublic) => {
+    // Route based on membership so we read the right Firestore doc:
+    //   member/admin → /groups/{id} (CommunityDetails — full view)
+    //   non-member   → /groupsPublic/{id} (CommunityDetailsPublic)
+    // Firestore rules deny non-members reading /groups/{id}, so this
+    // split is what keeps the public preview working.
+    if (memberIds.has(item.id)) {
+      nav.navigate('CommunityDetails', { groupId: item.id });
+    } else {
+      nav.navigate('CommunityDetailsPublic', { groupId: item.id });
+    }
+  };
+
+  const renderRow = (g: GroupPublic) => (
+    <FeedRow
+      key={g.id}
+      g={g}
+      action={actionFor(g)}
+      onPrimary={() => {
+        const a = actionFor(g);
+        if (a === 'enter') return handleEnter(g);
+        if (a === 'requestJoin' || a === 'joinAuto') return handleRequest(g);
+      }}
+      onOpen={() => handleOpenDetails(g)}
+    />
+  );
+
+  // ── Render ────────────────────────────────────────────────────────────
+
+  if (loading && items === null) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top']}>
+        <ScreenHeader title={he.communitiesTitle} showBack={false} />
+        <ActivityIndicator
+          size="small"
+          color={colors.primary}
+          style={{ marginTop: spacing.lg }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const totalKnown = (items ?? []).length;
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <ScreenHeader title={he.communitiesTitle} showBack={false} />
+
+      <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={he.communitiesSearchPlaceholder}
+          placeholderTextColor={colors.textMuted}
+          style={styles.searchInput}
+          textAlign="right"
+          returnKeyType="search"
+        />
+      </View>
+
+      {/* Filter pills (always visible; collapse to a row on search since
+          "My" section is hidden during search). */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
+        <FilterPill
+          label={he.filterOpenOnly}
+          active={openOnly}
+          onPress={() => setOpenOnly((v) => !v)}
+        />
+        <FilterPill
+          label={he.filterMembersAny}
+          active={memberSize === 'any'}
+          onPress={() => setMemberSize('any')}
+        />
+        <FilterPill
+          label={he.filterMembersSmall}
+          active={memberSize === 'small'}
+          onPress={() => setMemberSize('small')}
+        />
+        <FilterPill
+          label={he.filterMembersMedium}
+          active={memberSize === 'medium'}
+          onPress={() => setMemberSize('medium')}
+        />
+        <FilterPill
+          label={he.filterMembersLarge}
+          active={memberSize === 'large'}
+          onPress={() => setMemberSize('large')}
+        />
+      </ScrollView>
+
+      {totalKnown === 0 ? (
+        <View style={styles.emptyAll}>
+          <Ionicons name="globe-outline" size={64} color={colors.textMuted} />
+          <Text style={styles.emptyAllTitle}>{he.communitiesEmptyAll}</Text>
+          <Text style={styles.emptyAllSub}>{he.communitiesEmptyAllSub}</Text>
+          <Button
+            title={he.communitiesCreateFirst}
+            variant="primary"
+            size="lg"
+            iconLeft="add-circle-outline"
+            onPress={() => nav.navigate('CommunitiesCreate')}
+            style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
+            fullWidth
+          />
+        </View>
+      ) : isSearching ? (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          {searchMatches.length === 0 ? (
+            <Text style={styles.empty}>{he.communitiesEmpty}</Text>
+          ) : (
+            searchMatches.map(renderRow)
+          )}
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <Section
+            title={he.communitiesSectionAdmin}
+            items={adminItems}
+            emptyText={he.communitiesEmptyAdmin}
+            renderRow={renderRow}
+          />
+          <Section
+            title={he.communitiesSectionMember}
+            items={memberOnlyItems}
+            emptyText={he.communitiesEmptyMember}
+            renderRow={renderRow}
+          />
+          <Section
+            title={he.communitiesSectionOpen}
+            items={discoveryItems}
+            emptyText={he.communitiesEmptyOpenSection}
+            renderRow={renderRow}
+          />
+        </ScrollView>
+      )}
+
+      <Pressable
+        style={styles.fab}
+        onPress={() => nav.navigate('CommunitiesCreate')}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
+    </SafeAreaView>
+  );
+}
+
+// ─── Sub-components ────────────────────────────────────────────────────────
+
+function Section({
+  title,
+  items,
+  emptyText,
+  renderRow,
+}: {
+  title: string;
+  items: GroupPublic[];
+  emptyText: string;
+  renderRow: (g: GroupPublic) => React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {items.length === 0 ? (
+        <Card style={styles.sectionEmpty}>
+          <Text style={styles.sectionEmptyText}>{emptyText}</Text>
+        </Card>
+      ) : (
+        items.map(renderRow)
+      )}
+    </View>
+  );
+}
+
+function FilterPill({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.filterPill,
+        active && styles.filterPillActive,
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Text
+        style={[
+          styles.filterPillText,
+          active && { color: colors.primary, fontWeight: '600' },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function FeedRow({
+  g,
+  action,
+  onPrimary,
+  onOpen,
+}: {
+  g: GroupPublic;
+  action: RowAction;
+  onPrimary: () => void;
+  onOpen: () => void;
+}) {
+  const locationLine = [g.city, g.fieldName, g.fieldAddress]
+    .filter((s) => s && s.trim().length > 0)
+    .join(' · ');
+
+  return (
+    <Card style={styles.row} onPress={onOpen}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.rowHeader}>
+          <Text style={styles.name} numberOfLines={1}>
+            {g.name}
+          </Text>
+          <StatusPill action={action} />
+        </View>
+        {locationLine ? (
+          <View style={styles.meta}>
+            <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              {locationLine}
+            </Text>
+          </View>
+        ) : null}
+        {g.description ? (
+          <Text style={styles.desc} numberOfLines={2}>
+            {g.description}
+          </Text>
+        ) : null}
+        <View style={styles.metaRow}>
+          <View style={styles.meta}>
+            <Ionicons name="people-outline" size={14} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.primary }]}>
+              {he.groupsSearchMembers(g.memberCount)}
+            </Text>
+          </View>
+          {g.contactPhone ? (
+            <Pressable
+              onPress={() => openWhatsApp(g.contactPhone)}
+              style={styles.waBtn}
+              accessibilityLabel="open-whatsapp"
+            >
+              <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
+              <Text style={styles.waText}>{he.communityWhatsApp}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <View style={{ marginTop: spacing.sm }}>
+          <PrimaryAction action={action} onPress={onPrimary} />
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function StatusPill({ action }: { action: RowAction }) {
+  if (action === 'enter') {
+    return (
+      <View style={[styles.pill, { backgroundColor: colors.primaryLight }]}>
+        <Text style={[styles.pillText, { color: colors.primary }]}>
+          {he.groupsActionMember}
+        </Text>
+      </View>
+    );
+  }
+  if (action === 'pending') {
+    return (
+      <View style={[styles.pill, { backgroundColor: colors.surfaceMuted }]}>
+        <Text style={[styles.pillText, { color: colors.textMuted }]}>
+          {he.groupsActionPending}
+        </Text>
+      </View>
+    );
+  }
+  return null;
+}
+
+function PrimaryAction({
+  action,
+  onPress,
+}: {
+  action: RowAction;
+  onPress: () => void;
+}) {
+  if (action === 'enter') {
+    return (
+      <Button
+        title={he.communityEnter}
+        variant="primary"
+        size="sm"
+        onPress={onPress}
+        fullWidth
+      />
+    );
+  }
+  if (action === 'joinAuto') {
+    return (
+      <Button
+        title={he.communityJoinAuto}
+        variant="primary"
+        size="sm"
+        onPress={onPress}
+        fullWidth
+      />
+    );
+  }
+  if (action === 'requestJoin') {
+    return (
+      <Button
+        title={he.communityRequestToJoin}
+        variant="outline"
+        size="sm"
+        onPress={onPress}
+        fullWidth
+      />
+    );
+  }
+  // pending / closed: no primary action — the status pill conveys state.
+  return null;
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  searchInput: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
+    paddingVertical: spacing.sm,
+  },
+
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  filterPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  filterPillText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+
+  listContent: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: 120,
+  },
+  section: { gap: spacing.sm },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'right',
+  },
+  sectionEmpty: { alignItems: 'center', paddingVertical: spacing.lg },
+  sectionEmptyText: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+
+  empty: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+  },
+  emptyAll: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+  },
+  emptyAllTitle: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  emptyAllSub: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+
+  row: {
+    padding: spacing.md,
+  },
+  rowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  name: { ...typography.bodyBold, color: colors.text, flex: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  metaText: { ...typography.caption, color: colors.textMuted },
+  desc: { ...typography.caption, color: colors.text, marginTop: spacing.xs },
+  pill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  pillText: { ...typography.caption, fontWeight: '600' },
+  waBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: '#E7F8EE',
+  },
+  waText: {
+    ...typography.caption,
+    color: '#1FAA59',
+    fontWeight: '600',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    end: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+});

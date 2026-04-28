@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Firebase Storage rules.
+// We only use Storage for user avatars right now. Each user can write
+// their own avatar; everyone signed-in can read avatars (so the Communities
+// feed and profile screens can display them).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // 5 MB cap
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
