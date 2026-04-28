@@ -13,7 +13,6 @@ import { useGroupStore } from '@/store/groupStore';
 import { OnboardingScreen } from '@/screens/onboarding/OnboardingScreen';
 import { PostSignInOnboardingScreen } from '@/screens/onboarding/PostSignInOnboardingScreen';
 import { AuthStack } from './AuthStack';
-import { GroupStack } from './GroupStack';
 import { MainTabs } from './MainTabs';
 import { PendingApprovalScreen } from '@/screens/groups/PendingApprovalScreen';
 import { colors } from '@/theme';
@@ -110,11 +109,14 @@ export function RootNavigator() {
 
   if (!profileComplete) return <AuthStack initialRoute="ProfileSetup" />;
 
-  // Need group membership to enter the main app.
+  // Wait for group hydration so the membership state is real.
   if (!groupHydrated) return <Splash />;
   if (membership === 'pending') return <PendingApprovalScreen />;
-  if (membership !== 'member') return <GroupStack />;
-
+  // New users without any community land directly on MainTabs — the
+  // Communities tab is the first/default tab, so they immediately see
+  // the public-groups feed and can join from there. The legacy
+  // GroupStack (GroupChoose / GroupCreate / GroupJoin / GroupSearch)
+  // is no longer reachable from this entry point.
   return <MainTabs />;
 }
 
