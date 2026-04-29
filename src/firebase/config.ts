@@ -86,10 +86,3 @@ export function getFirebase(): { app: FirebaseApp; db: Firestore; auth: Auth } {
   return { app: _app!, db: _db!, auth: _auth! };
 }
 
-if (__DEV__) {
-  // Surface mode at startup so dev confusion is one console line away.
-  console.log(
-    `[footy] mode: ${USE_MOCK_DATA ? 'MOCK' : 'FIREBASE'}` +
-      (USE_MOCK_DATA && !FORCE_MOCK ? ' (config missing)' : '')
-  );
-}

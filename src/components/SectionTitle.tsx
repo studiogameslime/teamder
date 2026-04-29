@@ -42,10 +42,14 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   action: {
     ...typography.label,
     color: colors.primary,
     fontWeight: '600',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });

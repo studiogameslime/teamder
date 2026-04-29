@@ -121,7 +121,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   field: {
-    flexDirection: 'row',
+    // `row-reverse` places the LAST JSX child (the icon) on the
+    // physical RIGHT under forceRTL — the leading position in Hebrew
+    // reading order. Plain `row` would auto-flip and put the icon on
+    // the left, which trailed the text input awkwardly.
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
     borderRadius: radius.lg,
@@ -133,11 +137,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     textAlign: 'right',
+    writingDirection: 'rtl',
     // Pull the cursor onto the same baseline as the icon — RN's default
     // line-height pushes the digit down a few pixels otherwise.
     paddingVertical: spacing.sm,
   },
   iconRight: {
-    marginStart: spacing.sm,
+    // With `flexDirection:'row-reverse'` the icon sits on the right.
+    // `marginEnd` is its physical LEFT side under forceRTL — the gap
+    // separating it from the input field.
+    marginEnd: spacing.sm,
   },
 });

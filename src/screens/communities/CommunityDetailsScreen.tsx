@@ -228,7 +228,7 @@ export function CommunityDetailsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
@@ -237,7 +237,7 @@ export function CommunityDetailsScreen() {
   if (!group) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{he.communitiesEmpty}</Text>
         </View>

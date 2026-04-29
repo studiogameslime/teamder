@@ -105,7 +105,7 @@ export function CommunityDetailsPublicScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
@@ -114,7 +114,7 @@ export function CommunityDetailsPublicScreen() {
   if (!group) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{he.communitiesEmpty}</Text>
         </View>
@@ -249,19 +249,30 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginBottom: spacing.xs,
   },
-  bodyText: { ...typography.body, color: colors.text, textAlign: 'right' },
+  bodyText: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
-  metaLabel: { ...typography.caption, color: colors.textMuted },
+  metaLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
   metaValue: {
     ...typography.caption,
     color: colors.text,
     flex: 1,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   empty: {
     flex: 1,
@@ -273,5 +284,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+    writingDirection: 'rtl',
   },
 });

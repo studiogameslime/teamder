@@ -386,9 +386,15 @@ export const he = {
   communityEditPreferredDaysLabel: 'ימי משחק קבועים',
   communityEditPreferredHourLabel: 'שעה קבועה',
   communityEditOptional: 'לא חובה',
-  /** Schedule preview shown under section B when enough data exists. */
-  communityEditSchedulePreview: (day: string, hour: string, field: string) =>
-    `משחק קבוע בימי ${day} בשעה ${hour} ב${field}`,
+  /** Schedule preview shown under section B when enough data exists.
+   *  Strips a leading "ה" off the field name so the "ב" prefix doesn't
+   *  produce "בה_field_" (e.g. "המגרש של אלירן" → "במגרש של אלירן"). */
+  communityEditSchedulePreview: (day: string, hour: string, field: string) => {
+    const trimmed = field.trim();
+    if (!day || !hour || !trimmed) return '';
+    const fieldStem = trimmed.startsWith('ה') ? trimmed.slice(1) : trimmed;
+    return `משחק קבוע בימי ${day} בשעה ${hour} ב${fieldStem}`;
+  },
   communityDetailsCreatorBadge: 'מייסד',
   communityDetailsPromoteCoach: 'הפוך למאמן',
   communityDetailsDemoteCoach: 'הסר מאמן',

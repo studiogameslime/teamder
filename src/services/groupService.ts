@@ -33,6 +33,7 @@ import { storage } from './storage';
 import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
+import { stripUndefined } from '@/utils/stripUndefined';
 
 let groupsById: Record<GroupId, Group> = {
   [mockGroup.id]: { ...mockGroup },
@@ -480,10 +481,13 @@ export const groupService = {
     // groupConverter / groupPublic converter only implements the full-
     // object overload of toFirestore, so partial set+merge writes leak
     // `undefined` values that Firestore rejects.
-    batch.update(docs.group(groupId), {
-      ...cleaned,
-      updatedAt: Date.now(),
-    });
+    batch.update(
+      docs.group(groupId),
+      stripUndefined({
+        ...cleaned,
+        updatedAt: Date.now(),
+      }),
+    );
     const publicPatch: Record<string, unknown> = {
       ...(cleaned.name !== undefined
         ? { name: cleaned.name, normalizedName: cleaned.normalizedName }
@@ -507,7 +511,10 @@ export const groupService = {
       // shape; we deliberately pass a flat field map and bypass typing
       // for the partial-update — runtime shape is correct.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (batch.update as any)(docs.groupPublic(groupId), publicPatch);
+      (batch.update as any)(
+        docs.groupPublic(groupId),
+        stripUndefined(publicPatch),
+      );
     }
     await batch.commit();
     const fresh = await this.get(groupId);

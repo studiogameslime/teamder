@@ -40,12 +40,6 @@ function ensureGoogleConfigured() {
         `Firebase will reject id_tokens with a different audience. Got: ${googleOAuth.webClientId}`
     );
   }
-  if (__DEV__) {
-    console.log('[auth] GoogleSignin.configure', {
-      webClientId: googleOAuth.webClientId,
-      offlineAccess: false,
-    });
-  }
   GoogleSignin.configure({
     webClientId: googleOAuth.webClientId,
     offlineAccess: false,
@@ -74,30 +68,12 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
   ensureGoogleConfigured();
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-  if (__DEV__) {
-    console.log('[auth] calling GoogleSignin.signIn()');
-  }
-
   const result = await GoogleSignin.signIn();
   if (!isSuccessResponse(result)) {
-    if (__DEV__) {
-      console.log('[auth] GoogleSignin.signIn returned non-success', {
-        type: result.type,
-      });
-    }
     throw new Error('Sign-in cancelled');
   }
 
   const data = result.data;
-  if (__DEV__) {
-    console.log('[auth] GoogleSignin.signIn → success', {
-      hasIdToken: !!data.idToken,
-      hasServerAuthCode: !!data.serverAuthCode,
-      scopes: data.scopes,
-      email: data.user.email,
-      userId: data.user.id,
-    });
-  }
 
   if (!data.idToken) {
     throw new Error('Google Sign-In succeeded but no idToken was returned');
@@ -106,13 +82,6 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
   const credential = GoogleAuthProvider.credential(data.idToken);
   try {
     const cred = await signInWithCredential(auth, credential);
-    if (__DEV__) {
-      console.log('[auth] Firebase signInWithCredential → success', {
-        uid: cred.user.uid,
-        email: cred.user.email,
-        providerId: cred.user.providerId,
-      });
-    }
     return cred.user;
   } catch (err) {
     const e = err as { name?: string; code?: string; message?: string; customData?: unknown };

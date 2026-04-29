@@ -47,6 +47,7 @@ import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GameDoc } from '@/firebase/firestore';
+import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
 import { disciplineService } from './disciplineService';
@@ -54,16 +55,25 @@ import { disciplineService } from './disciplineService';
 let activeGame: Game | null = null;
 
 /**
- * Drop keys whose value is `undefined`. Firestore rejects undefined
- * values with "Unsupported field value: undefined" — every patch we
- * send through `updateDoc` therefore needs to be sanitised.
+ * Typed wrapper around `updateDoc` for the games collection. The
+ * Firestore SDK's typed converter requires a full `Game` on partial
+ * writes, but we only ever want to send the keys we changed — sending
+ * a converted partial would re-emit nullable optionals (liveMatch,
+ * fieldLat, …) and trigger permission-denied on the self-join rule
+ * which whitelists ['players','waitlist','pending','participantIds',
+ * 'updatedAt']. The single `any` cast lives here so the rest of the
+ * service stays type-safe.
+ *
+ * Always run the patch through `stripUndefined` first — Firestore
+ * rejects `undefined` field values with "Unsupported field value:
+ * undefined" and the helper has zero cost in the happy path.
  */
-function stripUndefined<T extends object>(o: T): T {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(o)) {
-    if (v !== undefined) out[k] = v;
-  }
-  return out as T;
+async function updateGameDoc(
+  gameId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await updateDoc(docs.game(gameId), stripUndefined(patch) as any);
 }
 
 function ensureMockGame(): Game {
@@ -573,8 +583,7 @@ export const gameService = {
     // would re-emit nullable optional fields (liveMatch, fieldLat, …) and
     // get rejected as "permission denied" even when the join itself is
     // legal.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(ref, updates as any);
+    await updateGameDoc(gameId, updates);
     if (bucket !== 'pending') {
       achievementsService.bump(userId, 'gamesJoined', 1);
     }
@@ -782,8 +791,7 @@ export const gameService = {
     // (with admin SDK) and explicitly NOT pass this flag, so it
     // never marks the game as manually edited.
     if (opts.markTeamsEditedManually) patch.teamsEditedManually = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(docs.game(gameId), patch as any);
+    await updateGameDoc(gameId, patch);
   },
 
   /**
@@ -883,12 +891,10 @@ export const gameService = {
       throw new Error('GAME_FULL');
     }
     const next = [...(data.guests ?? []), guest];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(ref, {
+    await updateGameDoc(gameId, {
       guests: next,
       updatedAt: Date.now(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
     return guest;
   },
 
@@ -954,12 +960,10 @@ export const gameService = {
     if (idx < 0) throw new Error('updateGuest: guest not found');
     const updated = apply(guests[idx]);
     const next = [...guests.slice(0, idx), updated, ...guests.slice(idx + 1)];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(ref, {
+    await updateGameDoc(gameId, {
       guests: next,
       updatedAt: Date.now(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
     return updated;
   },
 
@@ -1012,13 +1016,11 @@ export const gameService = {
     await assertGuestPermission(data.createdBy, data.groupId, callerId);
     const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
     const nextLive = stripFromLive(data.liveMatch);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(ref, {
+    await updateGameDoc(gameId, {
       guests: nextGuests,
       ...(nextLive ? { liveMatch: nextLive } : {}),
       updatedAt: Date.now(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
   },
 };
 

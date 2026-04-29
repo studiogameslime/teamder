@@ -71,6 +71,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  title: { ...typography.h3, color: colors.text },
-  subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  // Header titles are visually centered, but the text inside still
+  // reads RTL (Hebrew flows right→left within its centered box).
+  title: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  subtitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
 });

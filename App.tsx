@@ -45,6 +45,13 @@ try {
   const Notifications = require('expo-notifications');
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
+      // expo-notifications split `shouldShowAlert` into the more
+      // granular `shouldShowBanner` (head-up alert) +
+      // `shouldShowList` (notification center) in newer SDKs. We set
+      // both true to mirror the old `shouldShowAlert: true` behaviour
+      // — and keep the legacy field too so older SDKs still honour it.
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,

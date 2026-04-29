@@ -174,7 +174,8 @@ export function CommunityEditScreen() {
 
   // Schedule preview — only shown when we have enough to render a
   // useful sentence. Uses the FIRST preferred day so the line stays
-  // readable even when the team plays multiple days a week.
+  // readable even when the team plays multiple days a week. Returns
+  // null on missing data so the caller can suppress the row entirely.
   const schedulePreview = useMemo(() => {
     if (
       preferredDays.length === 0 ||
@@ -184,11 +185,12 @@ export function CommunityEditScreen() {
       return null;
     }
     const day = he.weekdayLong[preferredDays[0]];
-    return he.communityEditSchedulePreview(
+    const text = he.communityEditSchedulePreview(
       day,
       preferredHour,
       fieldName.trim(),
     );
+    return text || null;
   }, [preferredDays, preferredHour, fieldName]);
 
   return (

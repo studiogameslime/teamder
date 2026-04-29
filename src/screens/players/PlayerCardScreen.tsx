@@ -145,7 +145,7 @@ export function PlayerCardScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
@@ -154,7 +154,7 @@ export function PlayerCardScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title="" />
+        <ScreenHeader title={he.loading} />
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{he.playerCardNotFound}</Text>
         </View>
