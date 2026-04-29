@@ -1,11 +1,23 @@
-import React from 'react';
+// ProfileScreen — premium player hub.
+//
+// Layout:
+//   ① Hero card — green-gradient backdrop, big jersey, name, email
+//   ② BIG headline stat (games played) — single tile
+//   ③ Three secondary stat tiles in a row (attended / win-rate / cancel)
+//   ④ Achievements horizontal rail (most-recent unlocks)
+//   ⑤ Settings sections grouped under SectionTitle headers
+//
+// Hierarchy: hero > main stat > secondary stats > nav rows > footer
+// actions. Each band sits inside cards with the standard card shadow,
+// separated by 24dp gaps.
+
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Linking,
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -14,16 +26,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Badge } from '@/components/Badge';
+import { StatTile } from '@/components/StatTile';
+import { SectionTitle } from '@/components/SectionTitle';
+import { AchievementBadge } from '@/components/AchievementBadge';
+import { achievementsService } from '@/services/achievementsService';
+import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
-import { useGroupStore, useCurrentGroup, useIsAdmin } from '@/store/groupStore';
-import { Group } from '@/types';
+import { useCurrentGroup, useIsAdmin } from '@/store/groupStore';
+import { getAttendanceRate, getCancelRate, type User } from '@/types';
 
 const SUPPORT_EMAIL = 'support@hippocampus.me';
 const PLAY_STORE_URL =
@@ -32,184 +51,314 @@ const APP_STORE_URL = 'https://apps.apple.com/app/id000000000';
 
 export function ProfileScreen() {
   const nav = useNavigation<any>();
-  const user = useUserStore((s) => s.currentUser);
+  const localUser = useUserStore((s) => s.currentUser);
   const signOut = useUserStore((s) => s.signOut);
 
   const currentGroup = useCurrentGroup();
-  const isAdmin = useIsAdmin(user?.id);
+  const isAdmin = useIsAdmin(localUser?.id);
+
+  // Pull the freshest copy from /users so the stats / achievements
+  // numbers are always current — the local store only holds the auth /
+  // profile-edit slice and may be stale by minutes.
+  const [user, setUser] = useState<User | null>(localUser);
+  useEffect(() => {
+    if (!localUser) return;
+    let alive = true;
+    userService
+      .getUserById(localUser.id)
+      .then((u) => {
+        if (alive && u) setUser(u);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [localUser?.id]);
 
   if (!user) return null;
 
-  const handleInvite = async () => {
-    if (!currentGroup) return;
-    const link = `https://footy.app/join/${currentGroup.inviteCode}`;
-    try {
-      await Share.share({
-        message: he.inviteShareBody(currentGroup.name, link),
-        title: he.inviteShareSubject,
-      });
-      logEvent(AnalyticsEvent.InviteShared, { groupId: currentGroup.id });
-    } catch (err) {
-      if (__DEV__) console.warn('[invite] share failed', err);
-    }
-  };
+  const totalGames = user.stats?.totalGames ?? 0;
+  const attendedCount = user.stats?.attended ?? 0;
+  const attended = getAttendanceRate(user.stats);
+  const cancelRate = getCancelRate(user.stats);
+
+  const achievements = achievementsService.list(user);
+  const unlocked = achievements.filter((a) => a.unlocked);
+  const pendingApprovals =
+    isAdmin && currentGroup ? currentGroup.pendingPlayerIds.length : 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Identity — read-only on the main profile. Editing routes
-            through "ערוך פרופיל" below; the jersey is no longer
-            tappable here so there's a single, unambiguous edit entry
-            point. */}
-        <View style={styles.header}>
-          <PlayerIdentity user={user} size="lg" />
-          <Text style={styles.name}>{user.name}</Text>
-          {user.email && <Text style={styles.email}>{user.email}</Text>}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ① HERO — full-bleed green gradient with the jersey + name. */}
+        <View style={styles.heroWrap}>
+          <LinearGradient
+            colors={['#16A34A', '#15803D', '#0F5F2C']}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroContent}>
+            <PlayerIdentity user={user} size="xl" showShirtName />
+            <Text style={styles.heroName} numberOfLines={1}>
+              {user.name}
+            </Text>
+            {user.email ? (
+              <Text style={styles.heroEmail} numberOfLines={1}>
+                {user.email}
+              </Text>
+            ) : null}
+            <View style={styles.heroBadgeRow}>
+              {currentGroup ? (
+                <Badge
+                  label={currentGroup.name}
+                  tone="primary"
+                  icon="people-outline"
+                />
+              ) : null}
+              {isAdmin ? (
+                <Badge
+                  label={he.profileBadgeAdmin}
+                  tone="warning"
+                  icon="shield-checkmark"
+                />
+              ) : null}
+            </View>
+          </View>
         </View>
 
+        <View style={styles.body}>
+          {/* ② BIG headline stat */}
+          <StatTile
+            size="lg"
+            tone="primary"
+            value={String(totalGames)}
+            label={he.profileStatTotalGames}
+            icon="football"
+          />
 
-        {/* Quick links: Player Card / Availability / Stats / History / Admin */}
-        <View style={styles.linksGroup}>
-          <NavRow
-            icon="person-circle-outline"
-            label={he.profileSectionPlayerCard}
-            onPress={() =>
-              nav.navigate('PlayerCard', { userId: user.id })
-            }
-          />
-          <NavRow
-            icon="calendar-outline"
-            label={he.profileSectionAvailability}
-            onPress={() => nav.navigate('AvailabilityEdit')}
-          />
-          <NavRow
-            icon="notifications-outline"
-            label={he.profileSectionNotifications}
-            onPress={() => nav.navigate('NotificationsSettings')}
-          />
-          <NavRow
-            icon="stats-chart-outline"
-            label={he.profileSectionStats}
-            onPress={() => nav.navigate('Stats')}
-          />
-          <NavRow
-            icon="time-outline"
-            label={he.profileSectionHistory}
-            onPress={() => nav.navigate('History')}
-          />
-          {isAdmin && currentGroup && currentGroup.pendingPlayerIds.length > 0 && (
-            <NavRow
-              icon="alert-circle-outline"
-              label={`${he.profileSectionApprovals} (${currentGroup.pendingPlayerIds.length})`}
-              tint={colors.warning}
-              onPress={() => nav.navigate('AdminApproval')}
+          {/* ③ Secondary stat row */}
+          <View style={styles.statsRow}>
+            <StatTile
+              size="md"
+              tone="info"
+              value={`${attended}%`}
+              label={he.profileStatAttendance}
+              icon="checkmark-circle-outline"
             />
-          )}
-        </View>
+            <StatTile
+              size="md"
+              tone="accent"
+              value={String(attendedCount)}
+              label={he.profileStatAttended}
+              icon="trophy-outline"
+            />
+            <StatTile
+              size="md"
+              tone={cancelRate > 30 ? 'danger' : 'neutral'}
+              value={`${cancelRate}%`}
+              label={he.profileStatCancelRate}
+              icon="close-circle-outline"
+            />
+          </View>
 
-        {/* Settings actions */}
-        <View style={styles.linksGroup}>
-          <NavRow
-            icon="bug-outline"
-            label={he.settingsReportBug}
-            onPress={() => openMailto(he.settingsBugSubject, user.id)}
-          />
-          <NavRow
-            icon="bulb-outline"
-            label={he.settingsSuggestFeature}
-            onPress={() => openMailto(he.settingsSuggestSubject, user.id)}
-          />
-          <NavRow
-            icon="star-outline"
-            label={he.settingsRateApp}
-            onPress={openStore}
-          />
-        </View>
+          {/* ④ Achievements rail */}
+          {achievements.length > 0 ? (
+            <View>
+              <SectionTitle
+                title={he.achievementsTitle}
+                action={`${unlocked.length} / ${achievements.length}`}
+                onActionPress={() =>
+                  nav.navigate('PlayerCard', { userId: user.id })
+                }
+              />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.achievementsRail}
+              >
+                {achievements.slice(0, 10).map((a) => (
+                  <View key={a.def.id} style={styles.achievementCell}>
+                    <AchievementBadge
+                      def={a.def}
+                      unlocked={a.unlocked}
+                      size={68}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
 
-        <Button
-          title={he.profileEdit}
-          variant="outline"
-          iconLeft="create-outline"
-          fullWidth
-          onPress={() => nav.navigate('ProfileEdit')}
-          style={{ marginTop: spacing.md }}
-        />
-        <Button
-          title={he.profileSignOut}
-          variant="outline"
-          iconLeft="log-out-outline"
-          fullWidth
-          onPress={signOut}
-          style={{ marginTop: spacing.sm }}
-        />
+          {/* Approvals — high-priority callout when admin has pending */}
+          {pendingApprovals > 0 ? (
+            <Pressable onPress={() => nav.navigate('AdminApproval')}>
+              <Card style={styles.approvalsCard}>
+                <View style={styles.approvalsRow}>
+                  <View style={styles.approvalsIcon}>
+                    <Ionicons
+                      name="alert-circle"
+                      size={22}
+                      color="#C2410C"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.approvalsTitle}>
+                      {he.profileSectionApprovals}
+                    </Text>
+                    <Text style={styles.approvalsSub}>
+                      {he.profileApprovalsCount(pendingApprovals)}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-back"
+                    size={20}
+                    color="#C2410C"
+                  />
+                </View>
+              </Card>
+            </Pressable>
+          ) : null}
 
-        <View style={{ marginTop: spacing.lg }}>
+          {/* ⑤ Settings — Account section */}
+          <View>
+            <SectionTitle title={he.profileSectionAccount} />
+            <Card style={styles.linksCard}>
+              <NavRow
+                icon="person-circle-outline"
+                label={he.profileSectionPlayerCard}
+                onPress={() =>
+                  nav.navigate('PlayerCard', { userId: user.id })
+                }
+              />
+              <NavRow
+                icon="create-outline"
+                label={he.profileEdit}
+                onPress={() => nav.navigate('ProfileEdit')}
+              />
+              <NavRow
+                icon="shirt-outline"
+                label={he.jerseyOpenPicker}
+                onPress={() => nav.navigate('JerseyPicker')}
+                isLast
+              />
+            </Card>
+          </View>
+
+          {/* Matches & schedule */}
+          <View>
+            <SectionTitle title={he.profileSectionMatches} />
+            <Card style={styles.linksCard}>
+              <NavRow
+                icon="calendar-outline"
+                label={he.profileSectionAvailability}
+                onPress={() => nav.navigate('AvailabilityEdit')}
+              />
+              <NavRow
+                icon="stats-chart-outline"
+                label={he.profileSectionStats}
+                onPress={() => nav.navigate('Stats')}
+              />
+              <NavRow
+                icon="time-outline"
+                label={he.profileSectionHistory}
+                onPress={() => nav.navigate('History')}
+                isLast
+              />
+            </Card>
+          </View>
+
+          {/* Notifications + social */}
+          <View>
+            <SectionTitle title={he.profileSectionPreferences} />
+            <Card style={styles.linksCard}>
+              <NavRow
+                icon="notifications-outline"
+                label={he.profileSectionNotifications}
+                onPress={() => nav.navigate('NotificationsSettings')}
+                isLast
+              />
+            </Card>
+          </View>
+
+          {/* Help / feedback */}
+          <View>
+            <SectionTitle title={he.profileSectionSupport} />
+            <Card style={styles.linksCard}>
+              <NavRow
+                icon="bug-outline"
+                label={he.settingsReportBug}
+                onPress={() => openMailto(he.settingsBugSubject, user.id)}
+              />
+              <NavRow
+                icon="bulb-outline"
+                label={he.settingsSuggestFeature}
+                onPress={() => openMailto(he.settingsSuggestSubject, user.id)}
+              />
+              <NavRow
+                icon="star-outline"
+                label={he.settingsRateApp}
+                onPress={openStore}
+                isLast
+              />
+            </Card>
+          </View>
+
+          {/* Sign out */}
+          <Button
+            title={he.profileSignOut}
+            variant="outline"
+            iconLeft="log-out-outline"
+            fullWidth
+            onPress={signOut}
+            style={{ marginTop: spacing.sm }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── Subcomponents ────────────────────────────────────────────────────────
-
-function GroupRow({
-  group,
-  isActive,
-  onSelect,
-}: {
-  group: Group;
-  isActive: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onSelect}
-      style={({ pressed }) => [
-        styles.groupRow,
-        isActive && styles.groupRowActive,
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={styles.groupName}>{group.name}</Text>
-        <Text style={styles.groupSub}>{group.fieldName}</Text>
-      </View>
-      {isActive ? (
-        <View style={styles.activeBadge}>
-          <Ionicons name="checkmark" size={14} color="#fff" />
-          <Text style={styles.activeBadgeText}>{he.profileGroupActive}</Text>
-        </View>
-      ) : (
-        <Text style={styles.switchLink}>{he.profileGroupSwitch}</Text>
-      )}
-    </Pressable>
-  );
-}
+// ─── NavRow ──────────────────────────────────────────────────────────────
 
 function NavRow({
   icon,
   label,
   tint,
   onPress,
+  isLast,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   tint?: string;
   onPress: () => void;
+  isLast?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [
+        styles.navRow,
+        !isLast && styles.navRowDivider,
+        pressed && { opacity: 0.6 },
+      ]}
     >
-      <Ionicons name={icon} size={22} color={tint ?? colors.textMuted} />
-      <Text style={[styles.navLabel, tint ? { color: tint } : null]}>{label}</Text>
+      <Ionicons
+        name={icon}
+        size={22}
+        color={tint ?? colors.primary}
+        style={styles.navIcon}
+      />
+      <Text style={[styles.navLabel, tint ? { color: tint } : null]}>
+        {label}
+      </Text>
       <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
 
-// ─── Settings link helpers ────────────────────────────────────────────────
+// ─── Settings link helpers ─────────────────────────────────────────────
 
 function debugInfoBlock(uid: string): string {
   const v = Constants.expoConfig?.version ?? 'unknown';
@@ -224,7 +373,7 @@ function debugInfoBlock(uid: string): string {
 async function openMailto(subject: string, uid: string): Promise<void> {
   const isBug = subject === he.settingsBugSubject;
   logEvent(
-    isBug ? AnalyticsEvent.ReportBugClicked : AnalyticsEvent.SuggestFeatureClicked
+    isBug ? AnalyticsEvent.ReportBugClicked : AnalyticsEvent.SuggestFeatureClicked,
   );
   const url =
     `mailto:${SUPPORT_EMAIL}` +
@@ -251,105 +400,118 @@ async function openStore(): Promise<void> {
   }
 }
 
+// ─── Styles ────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg },
+  scroll: { paddingBottom: spacing.xxxxl },
 
-  header: {
+  // Hero
+  heroWrap: {
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xxxl,
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    overflow: 'hidden',
+    borderBottomLeftRadius: radius.xxl,
+    borderBottomRightRadius: radius.xxl,
+    ...shadows.hero,
+  },
+  heroContent: {
+    alignItems: 'center',
     gap: spacing.xs,
   },
-  avatarWrap: { position: 'relative' },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 2,
-    end: 2,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    width: 28,
-    height: 28,
+  heroName: {
+    ...typography.h1,
+    color: '#fff',
+    marginTop: spacing.md,
+    fontWeight: '800',
+  },
+  heroEmail: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  heroBadgeRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+
+  body: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.xl,
+  },
+
+  // Stat row
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+
+  // Achievements
+  achievementsRail: {
+    paddingVertical: spacing.xs,
+    gap: spacing.md,
+    paddingEnd: spacing.lg,
+  },
+  achievementCell: {
+    width: 84,
+    alignItems: 'center',
+  },
+
+  // Approvals callout
+  approvalsCard: {
+    backgroundColor: '#FFEDD5',
+    paddingVertical: spacing.md,
+  },
+  approvalsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  approvalsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.bg,
   },
-  name: { ...typography.h2, color: colors.text, marginTop: spacing.sm },
-  email: { ...typography.caption, color: colors.textMuted },
-  changeHint: {
+  approvalsTitle: {
+    ...typography.bodyBold,
+    color: '#9A3412',
+  },
+  approvalsSub: {
     ...typography.caption,
-    color: colors.primary,
-    marginTop: 2,
-    fontWeight: '600',
+    color: '#9A3412',
   },
 
-  section: { gap: spacing.sm, marginBottom: spacing.lg },
-  sectionLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.xs,
-  },
-  groupsList: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  groupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  groupRowActive: { backgroundColor: colors.primaryLight },
-  groupName: { ...typography.bodyBold, color: colors.text },
-  groupSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  activeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-  },
-  activeBadgeText: { ...typography.caption, color: '#fff', fontWeight: '600' },
-  switchLink: { ...typography.label, color: colors.primary },
-
-  inviteCard: { gap: spacing.xs },
-  cardLabel: { ...typography.caption, color: colors.textMuted },
-  codeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    marginTop: spacing.xs,
-  },
-  code: { ...typography.h3, color: colors.text, letterSpacing: 3 },
-
-  linksGroup: {
-    marginTop: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+  // Settings link list
+  linksCard: {
+    padding: 0,
     overflow: 'hidden',
   },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
+  },
+  navRowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
   },
-  navLabel: { ...typography.body, color: colors.text, flex: 1 },
+  navIcon: {
+    width: 24,
+    textAlign: 'center',
+  },
+  navLabel: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
+    fontWeight: '500',
+  },
 });

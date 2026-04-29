@@ -91,11 +91,15 @@ export function Button({
 function variantPalette(v: Variant) {
   switch (v) {
     case 'primary':
+      // Brand-green CTA. The reference design uses this for every
+      // primary action — "Save", "Send rating", "Create game".
       return { bg: colors.primary, text: colors.textOnPrimary, border: colors.primary };
     case 'secondary':
-      return { bg: colors.surfaceMuted, text: colors.text, border: colors.border };
+      return { bg: colors.surfaceMuted, text: colors.text, border: 'transparent' };
     case 'outline':
-      return { bg: colors.surface, text: colors.text, border: colors.border };
+      // Outline = white pill with a green border + green text. Used for
+      // secondary actions like "Cancel" beside a primary CTA.
+      return { bg: colors.surface, text: colors.primary, border: colors.primary };
     case 'team1':
       return { bg: colors.team1, text: colors.textOnPrimary, border: colors.team1 };
     case 'team2':
@@ -107,10 +111,14 @@ function variantPalette(v: Variant) {
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    // Pill-rounded for the primary CTA aesthetic. radius.pill (=999) is
+    // intentional — at our paddings the result reads as a true pill,
+    // not the classic rounded-rectangle.
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
   },
   content: {
     flexDirection: 'row',

@@ -24,6 +24,7 @@ import { Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card } from './Card';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { PlayerIdentity } from './PlayerIdentity';
 import { Game, GameFormat, SkillLevel, UserId } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -345,32 +346,16 @@ function PlayersStrip({ game }: { game: Game }) {
 }
 
 function StatusPill({ status }: { status: GameCardStatus }) {
+  // Use the shared Badge primitive — gives us identical visual language
+  // across the app (community list, ratings, profile, …).
   if (status === 'joined') {
-    return (
-      <View style={[styles.statusPill, { backgroundColor: colors.primaryLight }]}>
-        <Text style={[styles.statusPillText, { color: colors.primary }]}>
-          {he.gameStatusJoined}
-        </Text>
-      </View>
-    );
+    return <Badge label={he.gameStatusJoined} tone="primary" icon="checkmark-circle" />;
   }
   if (status === 'waitlist') {
-    return (
-      <View style={[styles.statusPill, { backgroundColor: '#FEF3C7' }]}>
-        <Text style={[styles.statusPillText, { color: colors.warning }]}>
-          {he.gameStatusWaitlist}
-        </Text>
-      </View>
-    );
+    return <Badge label={he.gameStatusWaitlist} tone="warning" icon="time-outline" />;
   }
   if (status === 'pending') {
-    return (
-      <View style={[styles.statusPill, { backgroundColor: colors.surfaceMuted }]}>
-        <Text style={[styles.statusPillText, { color: colors.textMuted }]}>
-          {he.gameStatusPending}
-        </Text>
-      </View>
-    );
+    return <Badge label={he.gameStatusPending} tone="neutral" icon="hourglass-outline" />;
   }
   return null;
 }
@@ -416,12 +401,13 @@ function PrimaryButton({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: spacing.md, gap: spacing.xs },
+  card: { padding: spacing.lg, gap: spacing.sm },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   headerChips: {
     flexDirection: 'row',
@@ -429,7 +415,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     flexWrap: 'wrap',
   },
-  title: { ...typography.bodyBold, color: colors.text, flex: 1 },
+  title: {
+    ...typography.h3,
+    color: colors.text,
+    flex: 1,
+    fontWeight: '800',
+  },
 
   formatPill: {
     paddingHorizontal: spacing.sm,

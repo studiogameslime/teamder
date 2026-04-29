@@ -6,10 +6,10 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { InputField } from '@/components/InputField';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -81,14 +81,11 @@ export function GroupSearchScreen() {
       <ScreenHeader title={he.groupsSearchTitle} />
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-        <TextInput
+        <InputField
           value={text}
           onChangeText={setText}
           placeholder={he.groupsSearchPlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          textAlign="right"
+          icon="search-outline"
           autoFocus
           returnKeyType="search"
         />
@@ -173,23 +170,8 @@ function GroupRow({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
-  },
-  searchInput: {
-    ...typography.body,
-    color: colors.text,
-    flex: 1,
-    paddingVertical: spacing.sm,
   },
   empty: {
     ...typography.body,

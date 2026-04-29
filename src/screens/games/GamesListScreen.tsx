@@ -1,16 +1,25 @@
-// Games tab — sectioned list (Phase 4 wiring).
+// GamesListScreen — Matches tab.
 //
-// Sections (each loaded independently):
-//   1. My Games               — games the user joined / waitlisted / pending
-//   2. From My Communities    — games in their communities they haven't joined
-//   3. Open Games             — public games from any community
+// Goal of this redesign: a fast-scanning vertical list of compact match
+// cards with two segmented tabs at the top — "שלי" (my games) and
+// "פתוחים" (everything else, i.e. community + open public games).
 //
-// Empty state: when ALL three sections are empty we show a single centered
-// CTA instead of three empty cards. The FAB only appears once at least one
-// section has games — otherwise the centered CTA carries the "create"
-// affordance and a FAB on top of it would be redundant.
+//   ┌─────────────────────────────────────┐
+//   │  משחקים                              │  header
+//   │  [ שלי ]  [ פתוחים ]                  │  segmented tabs
+//   ├─────────────────────────────────────┤
+//   │  [ MatchCard ]                       │
+//   │  [ MatchCard ]                       │
+//   │  …                                   │
+//   ├─────────────────────────────────────┤
+//   │                              ⊕      │  floating "+" FAB
+//   └─────────────────────────────────────┘
+//
+// Tapping a card → MatchDetails (NOT the live-match screen). Card has
+// its own small action pill (join / leave) that handles the bucket
+// logic without leaving the list.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -25,12 +34,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { GameCard, GameCardCta } from '@/components/GameCard';
+import { MatchCard, MatchCardCta } from '@/components/MatchCard';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -39,12 +47,15 @@ import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'GamesList'>;
 
+type Tab = 'mine' | 'open';
+
 export function GamesListScreen() {
   const nav = useNavigation<Nav>();
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
+  const [tab, setTab] = useState<Tab>('mine');
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
@@ -64,21 +75,16 @@ export function GamesListScreen() {
       setMyGames(a);
       setCommunityGames(b);
       setOpenGames(c);
-      // Hydrate players' avatars/names so the GameCard's avatar strip
-      // shows real users instead of initials. Cheap — gameStore caches
-      // and only fetches uids it doesn't already have.
       const uids = Array.from(
         new Set(
           [...a, ...b, ...c].flatMap((g) => [
             ...g.players,
             ...g.waitlist,
             ...(g.pending ?? []),
-          ])
-        )
+          ]),
+        ),
       );
-      if (uids.length > 0) {
-        hydratePlayers(uids);
-      }
+      if (uids.length > 0) hydratePlayers(uids);
     } catch (err) {
       if (__DEV__) console.warn('[gamesList] reload failed', err);
     } finally {
@@ -86,25 +92,22 @@ export function GamesListScreen() {
     }
   }, [user, myCommunities, hydratePlayers]);
 
-  // Refresh whenever the tab regains focus so a join/cancel done elsewhere
-  // (or a new game created via FAB) shows up immediately.
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload])
+    }, [reload]),
   );
-
   useEffect(() => {
     reload();
   }, [reload]);
 
   const handleCreate = () => nav.navigate('GameCreate');
 
-  const handleCardPrimary = async (game: Game, cta: GameCardCta) => {
-    if (!user) return;
+  const handleCardPrimary = async (game: Game, cta: MatchCardCta) => {
+    if (!user || cta === 'none' || cta === 'pending') return;
     setBusyGameId(game.id);
     try {
-      if (cta === 'join' || cta === 'joinWaitlist' || cta === 'requestJoin') {
+      if (cta === 'join' || cta === 'waitlist') {
         await gameService.joinGameV2(game.id, user.id);
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
         await gameService.cancelGameV2(game.id, user.id);
@@ -117,91 +120,93 @@ export function GamesListScreen() {
     }
   };
 
-  const isEmpty =
-    myGames.length === 0 &&
-    communityGames.length === 0 &&
-    openGames.length === 0;
+  // Sort upcoming games first by start time, ascending. Old games
+  // shouldn't dominate the list.
+  const sortByStart = (a: Game, b: Game) => a.startsAt - b.startsAt;
 
-  if (loading && isEmpty) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <ScreenHeader title={he.gamesListTitle} showBack={false} />
-        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
-      </SafeAreaView>
-    );
-  }
+  const visible = useMemo(() => {
+    if (tab === 'mine') return [...myGames].sort(sortByStart);
+    // "פתוחים" tab — everything that's not strictly "mine". We
+    // de-dupe across the community + open buckets in case a game
+    // appears in both.
+    const set = new Map<string, Game>();
+    [...communityGames, ...openGames].forEach((g) => set.set(g.id, g));
+    return Array.from(set.values()).sort(sortByStart);
+  }, [tab, myGames, communityGames, openGames]);
 
-  if (isEmpty) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <ScreenHeader title={he.gamesListTitle} showBack={false} />
-        <View style={styles.emptyAll}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="football-outline" size={64} color={colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>{he.gamesEmptyAllTitle}</Text>
-          <Text style={styles.emptySub}>{he.gamesEmptyAllSub}</Text>
-          <Button
-            title={he.gamesCreate}
-            variant="primary"
-            size="lg"
-            iconLeft="add-circle-outline"
-            onPress={handleCreate}
-            style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
-            fullWidth
-          />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const renderGame = (g: Game) => {
-    const adminCommunity = myCommunities.find((c) => c.id === g.groupId);
-    const isAdmin =
-      !!user &&
-      (g.createdBy === user.id ||
-        (!!adminCommunity && adminCommunity.adminIds.includes(user.id)));
-    return (
-      <GameCard
-        key={g.id}
-        game={g}
-        userId={user?.id ?? ''}
-        busy={busyGameId === g.id}
-        onPrimary={(cta) => handleCardPrimary(g, cta)}
-        isAdmin={isAdmin}
-        onManage={() => nav.navigate('LiveMatch', { gameId: g.id })}
-      />
-    );
-  };
+  const isEmpty = visible.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.gamesListTitle} showBack={false} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Section
-          title={he.gamesSectionMy}
-          empty={he.gamesEmptyMy}
-          items={myGames}
-          render={renderGame}
-        />
-        <Section
-          title={he.gamesSectionFromCommunities}
-          empty={he.gamesEmptyFromCommunities}
-          items={communityGames}
-          render={renderGame}
-        />
-        <Section
-          title={he.gamesSectionOpen}
-          empty={he.gamesEmptyOpen}
-          items={openGames}
-          render={renderGame}
-        />
-      </ScrollView>
 
+      {/* Segmented tabs */}
+      <View style={styles.tabsWrap}>
+        <SegmentedTabs
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'mine', label: he.matchesTabMine, badge: myGames.length },
+            {
+              value: 'open',
+              label: he.matchesTabOpen,
+              badge: communityGames.length + openGames.length,
+            },
+          ]}
+        />
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <SoccerBallLoader size={40} />
+        </View>
+      ) : isEmpty ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="football-outline" size={56} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>
+            {tab === 'mine' ? he.matchesEmptyMine : he.matchesEmptyOpen}
+          </Text>
+          {tab === 'mine' ? (
+            <Button
+              title={he.gamesCreate}
+              variant="primary"
+              size="md"
+              iconLeft="add-circle-outline"
+              onPress={handleCreate}
+              style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
+              fullWidth
+            />
+          ) : null}
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        >
+          {visible.map((g) => (
+            <MatchCard
+              key={g.id}
+              game={g}
+              userId={user?.id ?? ''}
+              busy={busyGameId === g.id}
+              onPrimary={(cta) => handleCardPrimary(g, cta)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Floating "+" — always visible while the user has any matches OR
+          is on the "mine" tab (so first-time users still see a creation
+          shortcut even though the empty state already has one). */}
       <Pressable
-        style={styles.fab}
         onPress={handleCreate}
-        accessibilityLabel="create-game"
+        style={({ pressed }) => [
+          styles.fab,
+          pressed && { transform: [{ scale: 0.95 }] },
+        ]}
+        accessibilityLabel="create-match"
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
@@ -209,88 +214,164 @@ export function GamesListScreen() {
   );
 }
 
-function Section<T>({
-  title,
-  empty,
-  items,
-  render,
+// ─── SegmentedTabs ─────────────────────────────────────────────────────
+
+function SegmentedTabs<T extends string>({
+  value,
+  onChange,
+  options,
 }: {
-  title: string;
-  empty: string;
-  items: T[];
-  render: (item: T) => React.ReactNode;
+  value: T;
+  onChange: (v: T) => void;
+  options: Array<{ value: T; label: string; badge?: number }>;
 }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {items.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{empty}</Text>
-        </Card>
-      ) : (
-        items.map((it) => render(it))
-      )}
+    <View style={tabStyles.wrap}>
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            style={[tabStyles.tab, active && tabStyles.tabActive]}
+          >
+            <Text
+              style={[tabStyles.label, active && tabStyles.labelActive]}
+              numberOfLines={1}
+            >
+              {opt.label}
+            </Text>
+            {opt.badge !== undefined && opt.badge > 0 ? (
+              <View
+                style={[
+                  tabStyles.badge,
+                  active && tabStyles.badgeActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    tabStyles.badgeText,
+                    active && tabStyles.badgeTextActive,
+                  ]}
+                >
+                  {opt.badge}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
+const tabStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    padding: 4,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    ...shadows.card,
+  },
+  label: {
+    ...typography.label,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  labelActive: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  badgeActive: {
+    backgroundColor: colors.primaryLight,
+  },
+  badgeText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  badgeTextActive: {
+    color: colors.primary,
+  },
+});
+
+// ─── Screen styles ──────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: 120 },
 
-  emptyAll: {
+  tabsWrap: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 120,
+    gap: spacing.md,
+  },
+
+  loadingWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
+  },
+
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xxl,
+    gap: spacing.md,
   },
   emptyIcon: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
   },
-  emptyTitle: { ...typography.h2, color: colors.text, textAlign: 'center' },
-  emptySub: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-
-  section: { gap: spacing.sm },
-  sectionTitle: {
+  emptyTitle: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
-  },
-  emptyCard: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  emptyText: {
-    ...typography.body,
-    color: colors.textMuted,
     textAlign: 'center',
+    fontWeight: '700',
   },
 
   fab: {
     position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
+    bottom: spacing.xxl,
+    end: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    ...shadows.raised,
   },
 });

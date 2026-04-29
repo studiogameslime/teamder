@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { InputField } from '@/components/InputField';
 import { gameService } from '@/services/gameService';
 import { FieldType, GameFormat, Group, SkillLevel } from '@/types';
 import { AppDateTimeField } from '@/components/DateTimeFields';
@@ -486,22 +486,14 @@ function Field({
   keyboardType?: 'default' | 'number-pad';
 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        style={[
-          styles.input,
-          multiline && { minHeight: 80, textAlignVertical: 'top' },
-        ]}
-        textAlign="right"
-        multiline={multiline}
-        keyboardType={keyboardType}
-      />
-    </View>
+    <InputField
+      label={label}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      multiline={multiline}
+      keyboardType={keyboardType}
+    />
   );
 }
 

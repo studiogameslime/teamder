@@ -15,10 +15,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { InputField } from '@/components/InputField';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,6 +26,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Badge } from '@/components/Badge';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -316,14 +317,11 @@ export function PublicGroupsFeedScreen() {
       <ScreenHeader title={he.communitiesTitle} showBack={false} />
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-        <TextInput
+        <InputField
           value={text}
           onChangeText={setText}
           placeholder={he.communitiesSearchPlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          textAlign="right"
+          icon="search-outline"
           returnKeyType="search"
         />
       </View>
@@ -521,23 +519,13 @@ function FeedRow({
 }
 
 function StatusPill({ action }: { action: RowAction }) {
+  // Reuse the design-system Badge so community statuses render with
+  // identical pixels to game / rating / approval statuses elsewhere.
   if (action === 'enter') {
-    return (
-      <View style={[styles.pill, { backgroundColor: colors.primaryLight }]}>
-        <Text style={[styles.pillText, { color: colors.primary }]}>
-          {he.groupsActionMember}
-        </Text>
-      </View>
-    );
+    return <Badge label={he.groupsActionMember} tone="primary" icon="checkmark-circle" />;
   }
   if (action === 'pending') {
-    return (
-      <View style={[styles.pill, { backgroundColor: colors.surfaceMuted }]}>
-        <Text style={[styles.pillText, { color: colors.textMuted }]}>
-          {he.groupsActionPending}
-        </Text>
-      </View>
-    );
+    return <Badge label={he.groupsActionPending} tone="neutral" icon="hourglass-outline" />;
   }
   return null;
 }
@@ -549,17 +537,13 @@ function PrimaryAction({
   action: RowAction;
   onPress: () => void;
 }) {
-  if (action === 'enter') {
-    return (
-      <Button
-        title={he.communityEnter}
-        variant="primary"
-        size="sm"
-        onPress={onPress}
-        fullWidth
-      />
-    );
-  }
+  // 'enter' — user is already a member. We deliberately render NO
+  // button: the "כבר חבר" badge in the card header already conveys the
+  // status, and tapping the card itself opens the community details
+  // where they can do anything member-related. A "כניסה לקבוצה" CTA
+  // here was just visual noise on a list of cards the user mostly
+  // scans for NEW communities to join.
+  if (action === 'enter') return null;
   if (action === 'joinAuto') {
     return (
       <Button
@@ -589,23 +573,8 @@ function PrimaryAction({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
-  },
-  searchInput: {
-    ...typography.body,
-    color: colors.text,
-    flex: 1,
-    paddingVertical: spacing.sm,
   },
 
   filterRow: {

@@ -1,3 +1,3 @@
 export { colors, isDarkTheme } from './colors';
-export { spacing, radius } from './spacing';
+export { spacing, radius, shadows } from './spacing';
 export { typography } from './typography';

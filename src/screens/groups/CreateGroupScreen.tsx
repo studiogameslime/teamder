@@ -6,13 +6,13 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -332,23 +332,15 @@ function Field({
   keyboardType?: 'default' | 'number-pad' | 'phone-pad';
 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        style={[
-          styles.input,
-          multiline && { minHeight: 80, textAlignVertical: 'top' },
-        ]}
-        textAlign="right"
-        autoFocus={autoFocus}
-        multiline={multiline}
-        keyboardType={keyboardType}
-      />
-    </View>
+    <InputField
+      label={label}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      multiline={multiline}
+      keyboardType={keyboardType}
+    />
   );
 }
 

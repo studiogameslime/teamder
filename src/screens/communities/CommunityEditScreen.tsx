@@ -12,7 +12,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { InputField } from '@/components/InputField';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { groupService } from '@/services';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
@@ -399,19 +399,14 @@ function Field({
   keyboardType?: 'default' | 'number-pad' | 'phone-pad';
 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        multiline={multiline}
-        keyboardType={keyboardType ?? 'default'}
-        style={[styles.input, multiline && { minHeight: 88, textAlignVertical: 'top' }]}
-        textAlign="right"
-      />
-    </View>
+    <InputField
+      label={label}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      multiline={multiline}
+      keyboardType={keyboardType ?? 'default'}
+    />
   );
 }
 

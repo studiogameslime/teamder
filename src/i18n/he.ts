@@ -21,6 +21,15 @@ export const he = {
   ratingButtonReRate: 'עדכן דירוג',
   ratingCount: (n: number) =>
     n === 1 ? 'דירוג אחד' : `${n} דירוגים`,
+  ratingHowWasTheir: 'איך היית מדרג את ההופעה?',
+  ratingCommentPlaceholder: 'כתוב הערה (אופציונלי)…',
+  ratingSend: 'שלח דירוג',
+  ratingClear: 'נקה דירוג קיים',
+  ratingLabel1: 'חלש',
+  ratingLabel2: 'בסדר',
+  ratingLabel3: 'טוב',
+  ratingLabel4: 'טוב מאוד!',
+  ratingLabel5: 'מצוין!',
 
   // Toasts (top-of-screen confirmations for "send/save/approve" actions)
   toastJoinRequestSent: 'הבקשה נשלחה',
@@ -410,6 +419,7 @@ export const he = {
 
   // Profile setup
   profileTitle: 'בוא נכיר',
+  profileName: 'שם',
   profileNamePlaceholder: 'איך לקרוא לך?',
   profileSave: 'שמור והמשך',
   profileEdit: 'ערוך פרופיל',
@@ -556,6 +566,51 @@ export const he = {
   profileSectionAvailability: 'הזמינות שלי',
   profileSectionPlayerCard: 'הכרטיס שלי',
   profileSectionNotifications: 'התראות',
+  // New section labels for the redesigned profile
+  profileSectionAccount: 'החשבון שלי',
+  profileSectionMatches: 'משחקים ולוח זמנים',
+  profileSectionPreferences: 'התראות והעדפות',
+  profileSectionSupport: 'עזרה ומשוב',
+  profileBadgeAdmin: 'מאמן',
+  profileStatTotalGames: 'משחקים',
+  profileStatAttendance: 'הגעה',
+  profileStatWinRate: 'אחוז ניצחון',
+  profileStatAttended: 'הופעות',
+  profileStatCancelRate: 'ביטולים',
+  profileApprovalsCount: (n: number) =>
+    n === 1 ? 'בקשה אחת ממתינה' : `${n} בקשות ממתינות`,
+
+  // Compact match card on the Matches list
+  matchCardJoin: 'הצטרף',
+  matchCardWaitlist: 'המתנה',
+  matchCardLeave: 'בטל הרשמה',
+  matchCardPlayersOf: (n: number, max: number) => `${n}/${max} שחקנים`,
+  matchStatusOpen: 'פתוח',
+  matchStatusFull: 'מלא',
+  matchStatusJoined: 'נרשמת',
+  matchStatusWaitlist: 'בהמתנה',
+  matchStatusPending: 'ממתין לאישור',
+
+  // Matches tab header / segmented tabs
+  matchesTabMine: 'שלי',
+  matchesTabOpen: 'פתוחים',
+  matchesEmptyMine: 'לא נרשמת עדיין למשחקים',
+  matchesEmptyOpen: 'אין משחקים פתוחים בקרבתך',
+
+  // Match details screen
+  matchDetailsTitle: 'פרטי המשחק',
+  matchDetailsDate: 'תאריך ושעה',
+  matchDetailsLocation: 'מיקום',
+  matchDetailsField: 'סוג מגרש',
+  matchDetailsFormat: 'פורמט',
+  matchDetailsPlayers: 'שחקנים רשומים',
+  matchDetailsManage: 'ניהול משחק',
+  matchDetailsCancel: 'בטל הרשמה',
+  matchDetailsJoin: 'הצטרף למשחק',
+  matchDetailsDuration: 'משך',
+  matchDetailsRoleAdmin: 'מנהל',
+  matchDetailsAddGuest: 'הוסף אורח',
+  matchDetailsGoLive: 'עבור למצב לייב',
 
   // Notifications settings
   notificationsTitle: 'הגדרות התראות',

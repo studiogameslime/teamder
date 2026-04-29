@@ -122,8 +122,11 @@ const darkPalette: Palette = {
   gkGlove: '#22C55E',
 };
 
-const scheme = Appearance.getColorScheme();
-export const isDarkTheme = scheme === 'dark';
-export const colors: Palette = isDarkTheme ? darkPalette : lightPalette;
+// Force LIGHT mode app-wide per design spec — no dark variant exposed.
+// `Appearance.getColorScheme` is intentionally not consulted.
+void Appearance; // keep the import valid; consumer may re-enable later
+export const isDarkTheme = false;
+export const colors: Palette = lightPalette;
+void darkPalette; // retained for future dark-mode work
 
 export type Color = keyof Palette;

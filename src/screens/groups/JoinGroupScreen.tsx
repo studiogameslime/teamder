@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { Card } from '@/components/Card';
+import { InputField } from '@/components/InputField';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -34,23 +35,21 @@ export function JoinGroupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.groupJoinTitle} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>{he.groupJoinCodeLabel}</Text>
-        <TextInput
+    <ScreenContainer title={he.groupJoinTitle}>
+      <Card>
+        <InputField
+          label={he.groupJoinCodeLabel}
           value={code}
           onChangeText={(t) => setCode(t.toUpperCase())}
           placeholder={he.groupJoinCodePlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="center"
+          icon="key-outline"
           autoCapitalize="characters"
           autoFocus
           maxLength={12}
         />
-      </ScrollView>
-      <View style={{ padding: spacing.lg }}>
+      </Card>
+
+      <View style={styles.actions}>
         <Button
           title={he.groupJoinSubmit}
           variant="primary"
@@ -61,23 +60,13 @@ export function JoinGroupScreen() {
           onPress={submit}
         />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.sm },
-  label: { ...typography.label, color: colors.textMuted },
-  input: {
-    ...typography.h2,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    letterSpacing: 4,
+  actions: {
+    marginTop: 'auto',
+    paddingTop: spacing.lg,
   },
 });

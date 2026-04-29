@@ -11,7 +11,8 @@
 // through to the existing GroupChooseScreen.
 
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { InputField } from '@/components/InputField';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -115,14 +116,12 @@ export function PostSignInOnboardingScreen() {
             size="xl"
           />
         </View>
-        <TextInput
+        <InputField
           value={name}
           onChangeText={setName}
           placeholder={he.profileNamePlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="right"
           maxLength={40}
+          icon="person-outline"
         />
         {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
       </View>

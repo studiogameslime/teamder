@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// ProfileSetupScreen — first-run name capture.
+//
+// Redesign: ScreenContainer + Card layout. Title at top, centred avatar
+// preview, InputField for the name, full-width primary CTA pinned to
+// the bottom.
 
+import React, { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { Card } from '@/components/Card';
+import { InputField } from '@/components/InputField';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -24,30 +32,30 @@ export function ProfileSetupScreen() {
     }
   };
 
-  // Show a live identity preview using the current name + the user's
-  // existing jersey (or the deterministic auto-jersey when missing).
   const previewUser = user
     ? { ...user, name: name.trim() || user.name }
     : null;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{he.profileTitle}</Text>
-        <View style={{ marginVertical: spacing.lg }}>
-          <PlayerIdentity user={previewUser} size="xl" />
-        </View>
-        <TextInput
+    <ScreenContainer>
+      <Text style={styles.title}>{he.profileTitle}</Text>
+
+      <Card style={styles.identityCard}>
+        <PlayerIdentity user={previewUser} size="xl" />
+      </Card>
+
+      <Card>
+        <InputField
+          label={he.profileName}
           value={name}
           onChangeText={setName}
           placeholder={he.profileNamePlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="right"
           maxLength={40}
+          icon="person-outline"
         />
-      </ScrollView>
-      <View style={{ padding: spacing.lg }}>
+      </Card>
+
+      <View style={{ marginTop: 'auto' }}>
         <Button
           title={he.profileSave}
           variant="primary"
@@ -58,27 +66,18 @@ export function ProfileSetupScreen() {
           onPress={handleSave}
         />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    alignItems: 'center',
-  },
-  title: { ...typography.h1, color: colors.text, textAlign: 'center' },
-  input: {
-    ...typography.h3,
+  title: {
+    ...typography.h1,
     color: colors.text,
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
+  identityCard: {
+    alignItems: 'center',
   },
 });

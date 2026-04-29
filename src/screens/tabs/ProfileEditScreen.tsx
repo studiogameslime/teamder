@@ -1,19 +1,19 @@
 // ProfileEditScreen — edit display name + jump to jersey customization.
 //
-// Identity is jersey-first across the app, so this screen no longer
-// shows an avatar grid. The user previews their current jersey at the
-// top, edits their name inline, and taps "ערוך גופייה" to push the
-// dedicated JerseyPicker for color/pattern/number/displayName edits.
+// Redesign: ScreenContainer + Card sections. Avatar preview at top, name
+// in an InputField, jersey edit as an outline PrimaryButton, save as a
+// full-width green PrimaryButton pinned to the bottom.
 
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { Card } from '@/components/Card';
+import { InputField } from '@/components/InputField';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
-import { colors, radius, spacing, typography } from '@/theme';
+import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -42,26 +42,20 @@ export function ProfileEditScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.profileEdit} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Live preview of the user's current jersey — read-only here.
-            Editing the jersey is gated to the dedicated picker so the
-            entry point is unambiguous. */}
-        <View style={styles.previewWrap}>
-          <PlayerIdentity user={user} size="lg" />
-        </View>
+    <ScreenContainer title={he.profileEdit}>
+      <Card style={styles.identityCard}>
+        <PlayerIdentity user={user} size="lg" />
+      </Card>
 
-        <TextInput
+      <Card style={styles.formCard}>
+        <InputField
+          label={he.profileName}
           value={name}
           onChangeText={setName}
           placeholder={he.profileNamePlaceholder}
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="right"
           maxLength={40}
+          icon="person-outline"
         />
-
         <Button
           title={he.jerseyOpenPicker}
           variant="outline"
@@ -69,10 +63,11 @@ export function ProfileEditScreen() {
           fullWidth
           iconLeft="shirt-outline"
           onPress={() => nav.navigate('JerseyPicker')}
-          style={{ marginTop: spacing.md }}
+          style={{ marginTop: spacing.lg }}
         />
-      </ScrollView>
-      <View style={{ padding: spacing.lg }}>
+      </Card>
+
+      <View style={{ marginTop: 'auto' }}>
         <Button
           title={he.profileSave}
           variant="primary"
@@ -83,26 +78,15 @@ export function ProfileEditScreen() {
           onPress={save}
         />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  content: { alignItems: 'center', padding: spacing.lg, paddingTop: spacing.xl },
-  previewWrap: {
+  identityCard: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
   },
-  input: {
-    ...typography.h3,
-    color: colors.text,
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+  formCard: {
+    gap: spacing.md,
   },
 });

@@ -11,6 +11,7 @@ import { GamesListScreen } from '@/screens/games/GamesListScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
 import { GameRegistrationScreen } from '@/screens/GameRegistrationScreen';
 import { GameDetailsScreen } from '@/screens/GameDetailsScreen';
+import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { TeamSetupScreen } from '@/screens/TeamSetupScreen';
 import { GoalkeeperOrderScreen } from '@/screens/GoalkeeperOrderScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
@@ -30,6 +31,8 @@ export type GameStackParamList = {
       };
   GameRegistration: undefined;
   GameDetails: undefined;
+  /** Phase: matches-list redesign — read-mostly view of one match. */
+  MatchDetails: { gameId: string };
   TeamSetup: undefined;
   GoalkeeperOrder: { teamColor: TeamColor };
   /** v2 — live-match screen takes the gameId of the game it manages. */
@@ -51,6 +54,7 @@ export function GameStack() {
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />
       <Stack.Screen name="GameRegistration" component={GameRegistrationScreen} />
       <Stack.Screen name="GameDetails" component={GameDetailsScreen} />
+      <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="TeamSetup" component={TeamSetupScreen} />
       <Stack.Screen name="GoalkeeperOrder" component={GoalkeeperOrderScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />

@@ -1,6 +1,13 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
-import { I18nManager, LogBox, StatusBar, View } from 'react-native';
+import {
+  I18nManager,
+  LogBox,
+  StatusBar,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import * as ExpoSplash from 'expo-splash-screen';
 
 // Hold the OS-level splash up until our custom animation has actually
@@ -60,11 +67,48 @@ import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 // ── Force RTL on first launch ───────────────────────────────────────────────
 // Hebrew is RTL. Setting this once at startup mirrors the entire layout.
 // In production you'd typically force RTL at the native side too (see README).
+I18nManager.allowRTL(true);
 if (!I18nManager.isRTL) {
-  I18nManager.allowRTL(true);
   I18nManager.forceRTL(true);
   // NOTE: a forced RTL switch normally requires a JS reload to take effect.
   // Expo Go users: shake → Reload after first launch.
+}
+
+// ── Global text-alignment defaults (RTL-bulletproof) ────────────────────────
+// On Android (and on iOS dev clients that didn't fully restart after the
+// forceRTL call) RN sometimes leaves <Text> with default left alignment
+// even though the layout is mirrored. We set defaultProps so EVERY Text
+// and TextInput in the tree starts with `textAlign:'right'` and an
+// explicit RTL writingDirection. Components that genuinely want a
+// different alignment (e.g., button labels) can still override per
+// instance via their own style.
+//
+// Note: defaultProps on RN core components is the supported escape hatch
+// for global typography overrides; we deliberately accept the deprecation
+// noise it produces in newer RN dev builds because the alternative
+// (wrapping every Text in a custom component) would touch dozens of
+// screens and is much more invasive than this single hook.
+{
+  type WithDefaultProps = {
+    defaultProps?: {
+      style?: unknown;
+      allowFontScaling?: boolean;
+    };
+  };
+  const RTL_TEXT_DEFAULTS = {
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  } as const;
+  const baseText = (Text as unknown as WithDefaultProps).defaultProps ?? {};
+  (Text as unknown as WithDefaultProps).defaultProps = {
+    ...baseText,
+    style: [RTL_TEXT_DEFAULTS, (baseText as { style?: unknown }).style],
+  };
+  const baseInput = (TextInput as unknown as WithDefaultProps).defaultProps ?? {};
+  (TextInput as unknown as WithDefaultProps).defaultProps = {
+    ...baseInput,
+    style: [RTL_TEXT_DEFAULTS, (baseInput as { style?: unknown }).style],
+  };
 }
 
 export default function App() {
@@ -122,7 +166,12 @@ export default function App() {
       />
       <NavigationContainer theme={navTheme}>
         {/* Stack the navigator under a dev-only banner. The banner renders
-            nothing in real mode, so production layouts are untouched. */}
+            nothing in real mode, so production layouts are untouched.
+            RTL is pinned via two paths:
+              1. I18nManager.forceRTL above — flips flex direction
+              2. Text.defaultProps above — applies textAlign:'right' +
+                 writingDirection:'rtl' to every Text in the tree
+            That combination is bulletproof across iOS + Android. */}
         <View style={{ flex: 1, backgroundColor: colors.bg }}>
           <MockModeBanner />
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
