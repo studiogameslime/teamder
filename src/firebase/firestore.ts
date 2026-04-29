@@ -379,6 +379,9 @@ function readWeekdays(v: unknown): WeekdayIndex[] | undefined {
 const VALID_ZONES: LiveMatchZone[] = [
   'teamA',
   'teamB',
+  'teamC',
+  'teamD',
+  'teamE',
   'bench',
   'gkA',
   'gkB',
@@ -406,12 +409,26 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
   const lateUserIds = Array.isArray(o.lateUserIds)
     ? (o.lateUserIds.filter((s) => typeof s === 'string') as string[])
     : [];
+  const readSlots = (raw: unknown): Record<UserId, number> | undefined => {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const out: Record<UserId, number> = {};
+    for (const [uid, idx] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof idx === 'number' && idx >= 0) out[uid] = idx;
+    }
+    return Object.keys(out).length ? out : undefined;
+  };
+
   return {
     phase,
     assignments,
     benchOrder,
     scoreA: typeof o.scoreA === 'number' ? o.scoreA : 0,
     scoreB: typeof o.scoreB === 'number' ? o.scoreB : 0,
+    scoreC: typeof o.scoreC === 'number' ? o.scoreC : undefined,
+    scoreD: typeof o.scoreD === 'number' ? o.scoreD : undefined,
+    scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,
+    teamASlots: readSlots(o.teamASlots),
+    teamBSlots: readSlots(o.teamBSlots),
     lateUserIds,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };

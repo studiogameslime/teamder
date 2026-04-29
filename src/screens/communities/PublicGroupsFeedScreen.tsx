@@ -211,23 +211,30 @@ export function PublicGroupsFeedScreen() {
     return true;
   }
 
-  // Partition into 3 sections per spec:
-  //   קהילות בניהולי   — admin
-  //   קהילות שאני חבר בהן — member-but-not-admin (+ pending so the user
-  //                            can see what they're waiting on)
-  //   קהילות פתוחות    — discovery (everything else, with filters applied)
-  const adminItems = useMemo(
-    () => (items ?? []).filter((g) => adminIds.has(g.id)),
-    [items, adminIds]
-  );
-  const memberOnlyItems = useMemo(
-    () =>
-      (items ?? []).filter(
+  // Partition into 2 sections per spec:
+  //   הקבוצות שלי     — anywhere I'm a member, admin, or have a pending
+  //                      request. Coach communities are flagged inline
+  //                      with a "מאמן" badge instead of a separate
+  //                      section, so the user has one home for "all
+  //                      the communities I'm in".
+  //   קבוצות פתוחות   — discovery (everything else, with filters applied)
+  const myItems = useMemo(
+    () => {
+      const list = (items ?? []).filter(
         (g) =>
-          !adminIds.has(g.id) &&
-          (memberIds.has(g.id) || pendingIds.has(g.id))
-      ),
-    [items, memberIds, pendingIds, adminIds]
+          memberIds.has(g.id) ||
+          pendingIds.has(g.id) ||
+          adminIds.has(g.id),
+      );
+      // Coach-of communities float to the top so the user sees what
+      // they manage first; member-only and pending follow.
+      return list.sort((a, b) => {
+        const aRank = adminIds.has(a.id) ? 0 : 1;
+        const bRank = adminIds.has(b.id) ? 0 : 1;
+        return aRank - bRank;
+      });
+    },
+    [items, memberIds, pendingIds, adminIds],
   );
   const discoveryItems = useMemo(
     () =>
@@ -245,7 +252,7 @@ export function PublicGroupsFeedScreen() {
   // section breakdown is noise relative to "did my query match anything".
   const isSearching = text.trim().length > 0;
   const searchMatches = isSearching
-    ? discoveryItems.concat(adminItems, memberOnlyItems)
+    ? discoveryItems.concat(myItems)
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
@@ -290,6 +297,7 @@ export function PublicGroupsFeedScreen() {
       key={g.id}
       g={g}
       action={actionFor(g)}
+      isCoach={adminIds.has(g.id)}
       onPrimary={() => {
         const a = actionFor(g);
         if (a === 'enter') return handleEnter(g);
@@ -368,14 +376,8 @@ export function PublicGroupsFeedScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.listContent}>
           <Section
-            title={he.communitiesSectionAdmin}
-            items={adminItems}
-            emptyText={he.communitiesEmptyAdmin}
-            renderRow={renderRow}
-          />
-          <Section
             title={he.communitiesSectionMember}
-            items={memberOnlyItems}
+            items={myItems}
             emptyText={he.communitiesEmptyMember}
             renderRow={renderRow}
           />
@@ -458,11 +460,13 @@ function FilterPill({
 function FeedRow({
   g,
   action,
+  isCoach,
   onPrimary,
   onOpen,
 }: {
   g: GroupPublic;
   action: RowAction;
+  isCoach: boolean;
   onPrimary: () => void;
   onOpen: () => void;
 }) {
@@ -477,7 +481,15 @@ function FeedRow({
           <Text style={styles.name} numberOfLines={1}>
             {g.name}
           </Text>
-          <StatusPill action={action} />
+          {isCoach ? (
+            <Badge
+              label={he.communityDetailsAdminBadge}
+              tone="primary"
+              icon="star"
+            />
+          ) : (
+            <StatusPill action={action} />
+          )}
         </View>
         {locationLine ? (
           <View style={styles.meta}>

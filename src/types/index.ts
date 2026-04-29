@@ -707,7 +707,22 @@ export function parseGuestRosterId(rosterId: string): string | null {
 }
 
 export type LiveMatchPhase = 'organizing' | 'live' | 'finished';
-export type LiveMatchZone = 'teamA' | 'teamB' | 'bench' | 'gkA' | 'gkB';
+/**
+ * Per-player zones supported by the live-match screen. Up to 5 teams
+ * (A..E) can exist in the roster; only the first two (A & B) appear on
+ * the pitch at a time. The dedicated GK zones are scoped to those two
+ * — waiting teams (C..E) hold their full roster in `team{X}` and pick a
+ * keeper at swap-onto-field time.
+ */
+export type LiveMatchZone =
+  | 'teamA'
+  | 'teamB'
+  | 'teamC'
+  | 'teamD'
+  | 'teamE'
+  | 'bench'
+  | 'gkA'
+  | 'gkB';
 
 export interface LiveMatchState {
   phase: LiveMatchPhase;
@@ -724,6 +739,24 @@ export interface LiveMatchState {
   benchOrder: UserId[];
   scoreA: number;
   scoreB: number;
+  /** Score for team C — only used when numberOfTeams ≥ 3. */
+  scoreC?: number;
+  /** Score for team D — only used when numberOfTeams ≥ 4. */
+  scoreD?: number;
+  /** Score for team E — only used when numberOfTeams ≥ 5. */
+  scoreE?: number;
+  /**
+   * Per-player slot index within their team's outfield. Lets the
+   * coach drag a player into a specific formation position rather
+   * than letting the UI auto-place. Keys are user ids whose
+   * `assignments` value is `teamA`; the value is the formation outfield
+   * index (0..playersPerTeam-2 — slot 0 of the formation is the
+   * keeper, who lives in the `gkA` zone instead). Players with an
+   * assignment of `teamA` but no entry here render in the first
+   * available empty slot.
+   */
+  teamASlots?: Record<UserId, number>;
+  teamBSlots?: Record<UserId, number>;
   /** Players who tapped "I'm late". Persisted as an array. */
   lateUserIds: UserId[];
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */

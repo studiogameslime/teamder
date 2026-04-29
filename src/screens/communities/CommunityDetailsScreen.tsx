@@ -28,9 +28,10 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { GameCard } from '@/components/GameCard';
+import { MatchCard } from '@/components/MatchCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { groupService } from '@/services';
 import { ratingsService } from '@/services/ratingsService';
@@ -41,7 +42,7 @@ import {
   openWhatsApp,
 } from '@/services/whatsappService';
 import { Game, Group, User, WeekdayIndex, getTeamCreatorId } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -253,66 +254,121 @@ export function CommunityDetailsScreen() {
 
   const skill = group.skillLevel ? SKILL_LABELS[group.skillLevel] : '';
   const days = formatDays(group.preferredDays);
+  const memberCount = (group.playerIds?.length ?? 0);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={group.name} />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* About / metadata */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{he.communityDetailsAbout}</Text>
-          {group.description ? (
-            <Text style={styles.bodyText}>{group.description}</Text>
-          ) : null}
-          <MetaRow icon="location-outline" label={he.communityDetailsCity}
-            value={[group.city, group.fieldAddress].filter(Boolean).join(', ')} />
-          <MetaRow icon="football-outline" label={he.communityDetailsField}
-            value={group.fieldName} />
-          {skill ? (
-            <MetaRow icon="trophy-outline" label={he.communityDetailsSkill}
-              value={skill} />
-          ) : null}
-          {days ? (
-            <MetaRow icon="calendar-outline" label={he.communityDetailsPreferredDays}
-              value={days} />
-          ) : null}
-          {group.preferredHour ? (
-            <MetaRow icon="time-outline" label={he.communityDetailsPreferredHour}
-              value={group.preferredHour} />
-          ) : null}
-          {group.notes ? (
-            <View style={{ marginTop: spacing.sm }}>
-              <Text style={styles.label}>{he.communityDetailsNotes}</Text>
-              <Text style={styles.bodyText}>{group.notes}</Text>
+        {/* ① HERO — name + role badge + city/field sub-info */}
+        <View style={styles.hero}>
+          <View style={styles.heroTopRow}>
+            <Text style={styles.heroTitle} numberOfLines={2}>
+              {group.name}
+            </Text>
+            <HeroRoleBadge isAdmin={isAdmin} isMember={isMember} />
+          </View>
+          <View style={styles.heroSub}>
+            {group.city || group.fieldAddress ? (
+              <View style={styles.subLine}>
+                <View style={styles.subRow}>
+                  <Ionicons
+                    name="location-outline"
+                    size={14}
+                    color={colors.textMuted}
+                    style={styles.subIcon}
+                  />
+                  <Text style={styles.subText} numberOfLines={1}>
+                    {[group.city, group.fieldAddress]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
+                <View />
+              </View>
+            ) : null}
+            <View style={styles.subLine}>
+              <View style={styles.subRow}>
+                <Ionicons
+                  name="football-outline"
+                  size={14}
+                  color={colors.textMuted}
+                  style={styles.subIcon}
+                />
+                <Text style={styles.subText} numberOfLines={1}>
+                  {group.fieldName}
+                </Text>
+              </View>
+              <View />
             </View>
-          ) : null}
-          {group.createdAt ? (
-            <MetaRow
-              icon="calendar-clear-outline"
-              label={he.communityDetailsCreated}
-              value={formatHebrewDate(group.createdAt)}
-            />
-          ) : null}
-        </Card>
+          </View>
+          <View style={styles.divider} />
+        </View>
 
+        {/* ② INFO GRID — strict 2×2 */}
+        <View style={styles.infoGrid}>
+          <InfoCell
+            icon="people-outline"
+            label={he.communityDetailsMembers}
+            value={String(memberCount)}
+          />
+          <InfoCell
+            icon="trophy-outline"
+            label={he.communityDetailsSkill}
+            value={skill || '—'}
+          />
+          <InfoCell
+            icon="calendar-outline"
+            label={he.communityDetailsPreferredDays}
+            value={days || '—'}
+          />
+          <InfoCell
+            icon="time-outline"
+            label={he.communityDetailsPreferredHour}
+            value={group.preferredHour || '—'}
+          />
+        </View>
+
+        {/* ③ ABOUT (description) */}
+        {group.description ? (
+          <View>
+            <Text style={styles.sectionTitle}>{he.communityDetailsAbout}</Text>
+            <Card style={styles.bodyCard}>
+              <Text style={styles.bodyText}>{group.description}</Text>
+            </Card>
+          </View>
+        ) : null}
+
+        {/* ④ RULES */}
         {group.rules ? (
-          <Card style={styles.section}>
+          <View>
             <Text style={styles.sectionTitle}>{he.communityDetailsRules}</Text>
-            <Text style={styles.bodyText}>{group.rules}</Text>
-          </Card>
+            <Card style={styles.bodyCard}>
+              <Text style={styles.bodyText}>{group.rules}</Text>
+            </Card>
+          </View>
+        ) : null}
+
+        {/* ⑤ NOTES */}
+        {group.notes ? (
+          <View>
+            <Text style={styles.sectionTitle}>{he.communityDetailsNotes}</Text>
+            <Card style={styles.bodyCard}>
+              <Text style={styles.bodyText}>{group.notes}</Text>
+            </Card>
+          </View>
         ) : null}
 
         {/* Phase 7: recurring-game block. Shown when the community has
             either explicit recurring config or fallback preferred-days/
             hour info that's enough to derive the next occurrence. */}
         {isAdmin && me && hasRecurringInfo(group) ? (
-          <Card style={styles.section}>
+          <View>
             <Text style={styles.sectionTitle}>
               {he.communityDetailsRecurring}
             </Text>
-            <Text style={styles.bodyText}>
-              {recurringSummary(group)}
-            </Text>
+            <Card style={styles.bodyCard}>
+              <Text style={styles.bodyText}>{recurringSummary(group)}</Text>
             <Button
               title={he.communityDetailsCreateRecurringGame}
               variant="outline"
@@ -359,7 +415,8 @@ export function CommunityDetailsScreen() {
               }}
               style={{ marginTop: spacing.sm }}
             />
-          </Card>
+            </Card>
+          </View>
         ) : null}
 
         {/* Action buttons */}
@@ -439,68 +496,79 @@ export function CommunityDetailsScreen() {
 
         {/* Admins */}
         {adminMembers.length > 0 ? (
-          <Card style={styles.section}>
+          <View>
             <Text style={styles.sectionTitle}>
-              {he.communityDetailsAdmins} ({adminMembers.length})
+              {he.communityDetailsAdmins}{' '}
+              <Text style={styles.sectionCount}>({adminMembers.length})</Text>
             </Text>
-            {adminMembers.map((u) => (
-              <MemberRow
-                key={u.id}
-                user={u}
-                groupId={group.id}
-                isAdmin
-                isCreator={creatorId === u.id}
-                viewerIsCreator={!!me && creatorId === me.id}
-                onDemote={
-                  !!me && creatorId === me.id && creatorId !== u.id
-                    ? () => handleDemote(u.id)
-                    : undefined
-                }
-                onOpenCard={() =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'PlayerCard',
-                    { userId: u.id, groupId: group.id },
-                  )
-                }
-              />
-            ))}
-          </Card>
+            <Card style={styles.membersCard}>
+              {adminMembers.map((u, i) => (
+                <MemberRow
+                  key={u.id}
+                  user={u}
+                  groupId={group.id}
+                  isAdmin
+                  isCreator={creatorId === u.id}
+                  viewerIsCreator={!!me && creatorId === me.id}
+                  onDemote={
+                    !!me && creatorId === me.id && creatorId !== u.id
+                      ? () => handleDemote(u.id)
+                      : undefined
+                  }
+                  onOpenCard={() =>
+                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                      'PlayerCard',
+                      { userId: u.id, groupId: group.id },
+                    )
+                  }
+                  showDivider={i > 0}
+                />
+              ))}
+            </Card>
+          </View>
         ) : null}
 
         {/* Regular members */}
         {regularMembers.length > 0 ? (
-          <Card style={styles.section}>
+          <View>
             <Text style={styles.sectionTitle}>
-              {he.communityDetailsMembers} ({regularMembers.length})
+              {he.communityDetailsMembers}{' '}
+              <Text style={styles.sectionCount}>({regularMembers.length})</Text>
             </Text>
-            {regularMembers.map((u) => (
-              <MemberRow
-                key={u.id}
-                user={u}
-                groupId={group.id}
-                isAdmin={false}
-                isCreator={false}
-                viewerIsCreator={!!me && creatorId === me.id}
-                onPromote={
-                  !!me && creatorId === me.id
-                    ? () => handlePromote(u.id)
-                    : undefined
-                }
-                onOpenCard={() =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'PlayerCard',
-                    { userId: u.id, groupId: group.id },
-                  )
-                }
-              />
-            ))}
-          </Card>
+            <Card style={styles.membersCard}>
+              {regularMembers.map((u, i) => (
+                <MemberRow
+                  key={u.id}
+                  user={u}
+                  groupId={group.id}
+                  isAdmin={false}
+                  isCreator={false}
+                  viewerIsCreator={!!me && creatorId === me.id}
+                  onPromote={
+                    !!me && creatorId === me.id
+                      ? () => handlePromote(u.id)
+                      : undefined
+                  }
+                  onOpenCard={() =>
+                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                      'PlayerCard',
+                      { userId: u.id, groupId: group.id },
+                    )
+                  }
+                  showDivider={i > 0}
+                />
+              ))}
+            </Card>
+          </View>
         ) : null}
 
-        {/* Nearest upcoming game — single-card section, sorted by start
-            time. Full multi-game listing lives in the Games tab. */}
-        <View style={styles.upcomingWrap}>
-          <Text style={styles.sectionTitle}>{he.communityDetailsNextGame}</Text>
+        {/* Nearest upcoming game — uses MatchCard so it matches the
+            Games tab pixel-for-pixel. Full multi-game listing lives
+            in the Games tab. */}
+        <View>
+          <Text style={styles.sectionTitle}>
+            {he.communityDetailsNextGame}
+          </Text>
           {upcoming.length === 0 ? (
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyText}>
@@ -508,12 +576,12 @@ export function CommunityDetailsScreen() {
               </Text>
             </Card>
           ) : (
-            <GameCard
+            <MatchCard
               game={upcoming[0]}
               userId={me?.id ?? ''}
               onPrimary={() => {
-                /* join/cancel handled in Games tab; details screen is
-                   read-mostly. Tapping a card here is a no-op. */
+                /* join/cancel handled on MatchDetails; tap on the card
+                   itself routes there via MatchCard's own handler. */
               }}
             />
           )}
@@ -646,6 +714,67 @@ function MetaRow({
   );
 }
 
+/** Hero badge — same visual language as MatchDetails. */
+function HeroRoleBadge({
+  isAdmin,
+  isMember,
+}: {
+  isAdmin: boolean;
+  isMember: boolean;
+}) {
+  if (isAdmin) {
+    return (
+      <Badge
+        label={he.communityDetailsAdminBadge}
+        tone="primary"
+        icon="star"
+        size="md"
+      />
+    );
+  }
+  if (isMember) {
+    return (
+      <Badge
+        label={he.groupsActionMember}
+        tone="primary"
+        icon="checkmark-circle"
+        size="md"
+      />
+    );
+  }
+  return null;
+}
+
+/** Mirror of MatchDetails' InfoCell so the two screens read identically. */
+function InfoCell({
+  icon,
+  label,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.infoCell}>
+      <Ionicons
+        name={icon}
+        size={18}
+        color={colors.primary}
+        style={styles.infoCellIcon}
+      />
+      <View style={styles.infoCellText}>
+        <Text style={styles.infoLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={styles.infoValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function MemberRow({
   user,
   groupId,
@@ -655,6 +784,7 @@ function MemberRow({
   onPromote,
   onDemote,
   onOpenCard,
+  showDivider,
 }: {
   user: User;
   groupId: string;
@@ -664,6 +794,9 @@ function MemberRow({
   onPromote?: () => void;
   onDemote?: () => void;
   onOpenCard?: () => void;
+  /** When true, render a hairline above the row. First row in a card
+   *  shouldn't have one — the caller decides per index. */
+  showDivider?: boolean;
 }) {
   const [avg, setAvg] = useState<number>(0);
   const [count, setCount] = useState<number>(0);
@@ -675,7 +808,10 @@ function MemberRow({
     return unsub;
   }, [groupId, user.id]);
   return (
-    <Pressable style={styles.memberRow} onPress={onOpenCard}>
+    <Pressable
+      style={[styles.memberRow, showDivider && styles.memberRowDivider]}
+      onPress={onOpenCard}
+    >
       <PlayerIdentity user={user} size="sm" onPress={onOpenCard} />
       <Text style={styles.memberName} numberOfLines={1}>
         {user.name}
@@ -719,14 +855,103 @@ function MemberRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
 
-  section: { gap: spacing.xs },
-  sectionTitle: {
-    ...typography.h3,
+  // ① HERO — title + role badge + sub-info, mirrors MatchDetailsScreen.
+  hero: { gap: spacing.sm },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  heroTitle: {
     color: colors.text,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '800',
     textAlign: 'right',
-    marginBottom: spacing.xs,
+    flexShrink: 1,
+  },
+  heroSub: { gap: 4 },
+  subLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  subIcon: { marginEnd: 8 },
+  subText: { color: colors.textMuted, fontSize: 14 },
+  divider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginTop: spacing.sm,
+  },
+
+  // ② INFO GRID
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  infoCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flexBasis: '48%',
+    flexGrow: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    ...shadows.card,
+  },
+  infoCellText: {
+    alignItems: 'flex-start',
+    flexShrink: 1,
+  },
+  infoCellIcon: { marginEnd: spacing.sm },
+  infoLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'right',
+  },
+  infoValue: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 2,
+    textAlign: 'right',
+  },
+
+  // Section header — same as MatchDetails
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'right',
+    marginBottom: spacing.sm,
+  },
+  sectionCount: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Free-text body card (about / rules / notes / recurring summary)
+  bodyCard: {
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadows.card,
   },
   bodyText: {
     ...typography.body,
@@ -734,6 +959,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // Legacy metaRow — kept for the fallback MetaRow component (no
+  // current callsites, but other screens import it indirectly through
+  // PR diffs, so leaving the style in place is harmless).
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -741,16 +969,31 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   metaLabel: { ...typography.caption, color: colors.textMuted },
-  metaValue: { ...typography.caption, color: colors.text, flex: 1, textAlign: 'right' },
+  metaValue: {
+    ...typography.caption,
+    color: colors.text,
+    flex: 1,
+    textAlign: 'right',
+  },
   label: { ...typography.label, color: colors.textMuted, marginTop: spacing.xs },
 
+  // Action buttons row — gap matches MatchDetails sticky CTA spacing.
   actions: { gap: spacing.sm },
 
+  // Members card — single Card holding multiple rows separated by
+  // hairlines (same shape as MatchDetails.playersCard).
+  membersCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  memberRowDivider: {
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
@@ -761,7 +1004,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.primaryLight,
   },
-  adminBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  adminBadgeText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
   ratingChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -780,14 +1027,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  upcomingWrap: { gap: spacing.sm },
-
+  // Subscription card retains the old `section` style — leaving the
+  // alias here so the existing `styles.section` reference still
+  // resolves with a sensible look.
+  section: { gap: spacing.xs },
   subscriptionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  subscriptionLabel: { ...typography.body, color: colors.text, fontWeight: '600' },
+  subscriptionLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
 
   emptyCard: { alignItems: 'center', paddingVertical: spacing.lg },
   empty: {

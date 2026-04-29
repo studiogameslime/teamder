@@ -54,6 +54,19 @@ import { disciplineService } from './disciplineService';
 
 let activeGame: Game | null = null;
 
+/**
+ * Drop keys whose value is `undefined`. Firestore rejects undefined
+ * values with "Unsupported field value: undefined" — every patch we
+ * send through `updateDoc` therefore needs to be sanitised.
+ */
+function stripUndefined<T extends object>(o: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as T;
+}
+
 function ensureMockGame(): Game {
   if (!activeGame) activeGame = JSON.parse(JSON.stringify(mockGame)) as Game;
   return activeGame;
@@ -738,7 +751,15 @@ export const gameService = {
     next: LiveMatchState,
     opts: { markTeamsEditedManually?: boolean } = {},
   ): Promise<void> {
-    const stamped: LiveMatchState = { ...next, updatedAt: Date.now() };
+    // Firestore rejects `undefined` field values, so strip them
+    // before writing. Optional fields (scoreC/D/E, per-team orders,
+    // updatedAt) can legitimately be missing on legacy state, and
+    // round-tripping a freshly-read state through `setLiveMatch`
+    // would otherwise blow up with "Unsupported field value: undefined".
+    const stamped = stripUndefined({
+      ...next,
+      updatedAt: Date.now(),
+    }) as LiveMatchState;
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
