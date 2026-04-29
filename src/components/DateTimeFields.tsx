@@ -667,7 +667,16 @@ function formatDateTime(ts: number): string {
 
 const styles = StyleSheet.create({
   field: { gap: spacing.xs },
-  label: { ...typography.label, color: colors.textMuted },
+  label: {
+    ...typography.label,
+    color: colors.textMuted,
+    // Explicit RTL — App.tsx's Text defaultProps cascade gets
+    // overridden the moment a child passes its own `style` prop.
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    alignSelf: 'stretch',
+    width: '100%',
+  },
   input: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

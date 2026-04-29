@@ -22,7 +22,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { InputField } from '@/components/InputField';
 import { gameService } from '@/services/gameService';
-import { FieldType, GameFormat, Group, SkillLevel } from '@/types';
+import { FieldType, GameFormat, Group } from '@/types';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -34,12 +34,6 @@ type Nav = NativeStackNavigationProp<GameStackParamList, 'GameCreate'>;
 
 const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
 const TEAM_COUNTS = [2, 3, 4, 5] as const;
-const SKILL_LEVELS: SkillLevel[] = [
-  'beginner',
-  'intermediate',
-  'advanced',
-  'mixed',
-];
 
 function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
@@ -52,13 +46,6 @@ function formatLabel(f: GameFormat): string {
   if (f === '6v6') return he.gameFormat6;
   return he.gameFormat7;
 }
-
-const SKILL_LABEL: Record<SkillLevel, string> = {
-  beginner: he.skillBeginner,
-  intermediate: he.skillIntermediate,
-  advanced: he.skillAdvanced,
-  mixed: he.skillMixed,
-};
 
 function playersPerTeam(f: GameFormat): number {
   return f === '5v5' ? 5 : f === '6v6' ? 6 : 7;
@@ -102,9 +89,6 @@ export function GameCreateScreen() {
   const [format, setFormat] = useState<GameFormat>('5v5');
   const [numberOfTeams, setNumberOfTeams] = useState<number>(3);
   const [minPlayers, setMinPlayers] = useState<string>('');
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>(
-    selectedGroup?.skillLevel ?? 'mixed'
-  );
   const [cancelDeadlineHours, setCancelDeadlineHours] = useState<string>('');
   const [fieldType, setFieldType] = useState<FieldType | undefined>(undefined);
   const [matchDuration, setMatchDuration] = useState<string>('');
@@ -125,7 +109,6 @@ export function GameCreateScreen() {
     setGroupId(id);
     const g = myCommunities.find((x) => x.id === id);
     if (g?.fieldName) setFieldName(g.fieldName);
-    if (g?.skillLevel) setSkillLevel(g.skillLevel);
   };
 
   const canSave =
@@ -147,7 +130,6 @@ export function GameCreateScreen() {
           Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
         format,
         numberOfTeams,
-        skillLevel,
         cancelDeadlineHours:
           Number.isFinite(parsedDeadline) && parsedDeadline > 0
             ? parsedDeadline
@@ -276,36 +258,6 @@ export function GameCreateScreen() {
             keyboardType="number-pad"
           />
           <Text style={styles.hint}>{he.createGameMinPlayersHint}</Text>
-        </View>
-
-        {/* Skill level pills */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGameSkillLevel}</Text>
-          <View style={styles.formatRow}>
-            {SKILL_LEVELS.map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => setSkillLevel(s)}
-                style={({ pressed }) => [
-                  styles.formatPill,
-                  skillLevel === s && styles.formatPillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.formatPillText,
-                    skillLevel === s && {
-                      color: colors.primary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {SKILL_LABEL[s]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         <View>

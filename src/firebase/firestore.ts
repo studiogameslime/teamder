@@ -39,7 +39,6 @@ import {
   MatchRound,
   NotificationPrefs,
   PlayerStats,
-  SkillLevel,
   DisciplineEvent,
   UnlockedAchievement,
   User,
@@ -282,7 +281,6 @@ const groupConverter: FirestoreDataConverter<Group> = {
       isOpen: g.isOpen ?? null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
-      skillLevel: g.skillLevel ?? null,
       preferredDays: g.preferredDays ?? [],
       preferredHour: g.preferredHour ?? null,
       costPerGame: g.costPerGame ?? null,
@@ -324,7 +322,6 @@ const groupConverter: FirestoreDataConverter<Group> = {
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,
-      skillLevel: readSkillLevel(d.skillLevel),
       preferredDays: readWeekdays(d.preferredDays),
       preferredHour:
         typeof d.preferredHour === 'string' ? d.preferredHour : undefined,
@@ -363,11 +360,6 @@ function readFieldType(v: unknown): import('@/types').FieldType | undefined {
   return v === 'asphalt' || v === 'synthetic' || v === 'grass' ? v : undefined;
 }
 
-function readSkillLevel(v: unknown): SkillLevel | undefined {
-  return v === 'beginner' || v === 'intermediate' || v === 'advanced' || v === 'mixed'
-    ? v
-    : undefined;
-}
 function readWeekdays(v: unknown): WeekdayIndex[] | undefined {
   if (!Array.isArray(v)) return undefined;
   return v.filter(
@@ -449,7 +441,6 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       isOpen: g.isOpen ?? null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
-      skillLevel: g.skillLevel ?? null,
       preferredDays: g.preferredDays ?? [],
       preferredHour: g.preferredHour ?? null,
       costPerGame: g.costPerGame ?? null,
@@ -474,7 +465,6 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,
-      skillLevel: readSkillLevel(d.skillLevel),
       preferredDays: readWeekdays(d.preferredDays),
       preferredHour:
         typeof d.preferredHour === 'string' ? d.preferredHour : undefined,
@@ -552,7 +542,6 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       requiresApproval: g.requiresApproval ?? false,
       format: g.format ?? null,
       numberOfTeams: g.numberOfTeams ?? null,
-      skillLevel: g.skillLevel ?? null,
       cancelDeadlineHours: g.cancelDeadlineHours ?? null,
       fieldType: g.fieldType ?? null,
       matchDurationMinutes: g.matchDurationMinutes ?? null,
@@ -650,7 +639,6 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         typeof d.numberOfTeams === 'number' && d.numberOfTeams >= 2
           ? d.numberOfTeams
           : undefined,
-      skillLevel: readSkillLevel(d.skillLevel),
       cancelDeadlineHours:
         typeof d.cancelDeadlineHours === 'number'
           ? d.cancelDeadlineHours

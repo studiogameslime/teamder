@@ -55,13 +55,6 @@ type Nav = NativeStackNavigationProp<
 >;
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetails'>;
 
-const SKILL_LABELS: Record<string, string> = {
-  beginner: he.skillBeginner,
-  intermediate: he.skillIntermediate,
-  advanced: he.skillAdvanced,
-  mixed: he.skillMixed,
-};
-
 function formatDays(days: WeekdayIndex[] | undefined): string {
   if (!days || days.length === 0) return '';
   return days
@@ -252,7 +245,6 @@ export function CommunityDetailsScreen() {
     );
   }
 
-  const skill = group.skillLevel ? SKILL_LABELS[group.skillLevel] : '';
   const days = formatDays(group.preferredDays);
   const memberCount = (group.playerIds?.length ?? 0);
 
@@ -313,11 +305,6 @@ export function CommunityDetailsScreen() {
             value={String(memberCount)}
           />
           <InfoCell
-            icon="trophy-outline"
-            label={he.communityDetailsSkill}
-            value={skill || '—'}
-          />
-          <InfoCell
             icon="calendar-outline"
             label={he.communityDetailsPreferredDays}
             value={days || '—'}
@@ -326,6 +313,11 @@ export function CommunityDetailsScreen() {
             icon="time-outline"
             label={he.communityDetailsPreferredHour}
             value={group.preferredHour || '—'}
+          />
+          <InfoCell
+            icon="football-outline"
+            label={he.communityDetailsField}
+            value={group.fieldName || '—'}
           />
         </View>
 
@@ -419,44 +411,20 @@ export function CommunityDetailsScreen() {
           </View>
         ) : null}
 
-        {/* Action buttons */}
-        <View style={styles.actions}>
-          {phoneValid ? (
-            <Button
-              title={he.communityDetailsContactAdmin}
-              variant="outline"
-              size="lg"
-              fullWidth
-              iconLeft="logo-whatsapp"
-              onPress={() => openWhatsApp(group.contactPhone)}
-            />
-          ) : null}
-          {isMember ? (
-            <Button
-              title={he.communityDetailsInvite}
-              variant="outline"
-              size="lg"
-              fullWidth
-              iconLeft="share-outline"
-              onPress={handleInvite}
-            />
-          ) : null}
-          {isAdmin ? (
-            <Button
-              title={he.communityEditTitle}
-              variant="outline"
-              size="lg"
-              fullWidth
-              iconLeft="create-outline"
-              onPress={() =>
-                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                  'CommunityEdit',
-                  { groupId: group.id },
-                )
-              }
-            />
-          ) : null}
-        </View>
+        {/* Contact admin button stays near the top — it's the only
+            non-management action and members reach for it often. The
+            management actions (edit / invite / leave) are grouped at
+            the bottom of the screen. */}
+        {phoneValid ? (
+          <Button
+            title={he.communityDetailsContactAdmin}
+            variant="outline"
+            size="lg"
+            fullWidth
+            iconLeft="logo-whatsapp"
+            onPress={() => openWhatsApp(group.contactPhone)}
+          />
+        ) : null}
 
         {/* Per-community "new game" subscription. Only members see it —
             non-members can't get notifications for a community they
@@ -587,12 +555,42 @@ export function CommunityDetailsScreen() {
           )}
         </View>
 
-        {/* Leave (members + admins; admin-last guard handled inside) */}
+        {/* Bottom action stack — management actions live here, away
+            from the read-mostly content. Admin gets edit; members
+            get invite; everyone in the community can leave (with the
+            admin-last guard handled inside the handler). Leave is
+            visually red so it doesn't compete with the green primary
+            actions further up the screen. */}
         {isMember || isAdmin ? (
-          <View style={{ marginTop: spacing.md }}>
+          <View style={[styles.actions, { marginTop: spacing.md }]}>
+            {isAdmin ? (
+              <Button
+                title={he.communityEditTitle}
+                variant="outline"
+                size="lg"
+                fullWidth
+                iconLeft="create-outline"
+                onPress={() =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'CommunityEdit',
+                    { groupId: group.id },
+                  )
+                }
+              />
+            ) : null}
+            {isMember ? (
+              <Button
+                title={he.communityDetailsInvite}
+                variant="outline"
+                size="lg"
+                fullWidth
+                iconLeft="share-outline"
+                onPress={handleInvite}
+              />
+            ) : null}
             <Button
               title={he.communityDetailsLeave}
-              variant="outline"
+              variant="danger"
               size="lg"
               fullWidth
               iconLeft="exit-outline"
@@ -667,7 +665,6 @@ async function createRecurring(
         maxPlayers: perTeam * teams,
         format: fmt,
         numberOfTeams: teams,
-        skillLevel: group.skillLevel,
         cancelDeadlineHours: undefined,
         isPublic: false,
         requiresApproval: !group.isOpen,

@@ -10,7 +10,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/theme';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'team1' | 'team2' | 'success';
+type Variant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'danger'
+  | 'team1'
+  | 'team2'
+  | 'success';
 type Size = 'sm' | 'md' | 'lg';
 
 interface Props {
@@ -100,6 +107,12 @@ function variantPalette(v: Variant) {
       // Outline = white pill with a green border + green text. Used for
       // secondary actions like "Cancel" beside a primary CTA.
       return { bg: colors.surface, text: colors.primary, border: colors.primary };
+    case 'danger':
+      // Red outline — destructive actions that we don't want to be a
+      // filled CTA (e.g. "leave community", "cancel game"). Pairs the
+      // outline shape with the danger token so it reads as "destructive
+      // but you have to opt in" rather than a primary path.
+      return { bg: colors.surface, text: colors.danger, border: colors.danger };
     case 'team1':
       return { bg: colors.team1, text: colors.textOnPrimary, border: colors.team1 };
     case 'team2':

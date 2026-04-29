@@ -21,24 +21,12 @@ import {
   searchStreets,
 } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
-import { SkillLevel, WeekdayIndex } from '@/types';
+import { WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 
-const SKILL_LEVELS: SkillLevel[] = [
-  'beginner',
-  'intermediate',
-  'advanced',
-  'mixed',
-];
-const SKILL_LABEL: Record<SkillLevel, string> = {
-  beginner: he.skillBeginner,
-  intermediate: he.skillIntermediate,
-  advanced: he.skillAdvanced,
-  mixed: he.skillMixed,
-};
 const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
 export function CreateGroupScreen() {
@@ -55,7 +43,6 @@ export function CreateGroupScreen() {
   const [maxMembers, setMaxMembers] = useState('40');
   const [isOpen, setIsOpen] = useState(false);
   const [contactPhone, setContactPhone] = useState('');
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>('mixed');
   const [preferredDays, setPreferredDays] = useState<WeekdayIndex[]>([]);
   const [preferredHour, setPreferredHour] = useState('');
   const [notes, setNotes] = useState('');
@@ -112,7 +99,6 @@ export function CreateGroupScreen() {
         maxMembers: Number.isFinite(parsedMaxMembers) ? parsedMaxMembers : undefined,
         isOpen,
         contactPhone: phone,
-        skillLevel,
         preferredDays: preferredDays.length > 0 ? preferredDays : undefined,
         preferredHour: preferredHour.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -185,36 +171,6 @@ export function CreateGroupScreen() {
           placeholder="לא חובה"
           multiline
         />
-
-        {/* Skill level — single-select pill row */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGroupSkillLevel}</Text>
-          <View style={styles.pillRow}>
-            {SKILL_LEVELS.map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => setSkillLevel(s)}
-                style={({ pressed }) => [
-                  styles.pill,
-                  skillLevel === s && styles.pillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.pillText,
-                    skillLevel === s && {
-                      color: colors.primary,
-                      fontWeight: '700',
-                    },
-                  ]}
-                >
-                  {SKILL_LABEL[s]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
 
         {/* Preferred days — multi-select pill row */}
         <View style={styles.field}>

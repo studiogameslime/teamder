@@ -341,8 +341,6 @@ export interface Group {
    */
   contactPhone?: string;
 
-  /** Community vibe / skill level. Free-form union, "mixed" is the default. */
-  skillLevel?: SkillLevel;
   /** Days the community usually plays on (e.g., [4] = Thursday). */
   preferredDays?: WeekdayIndex[];
   /** "HH:mm" — typical kick-off time of a regular game. */
@@ -370,12 +368,6 @@ export interface Group {
   createdAt: number;
   updatedAt?: number;
 }
-
-/**
- * Vibe of a community / game. Strings (not numbers) so we can sort and
- * present in Hebrew without a numeric mapping.
- */
-export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'mixed';
 
 /**
  * Resolve the team's founder. Falls back to `adminIds[0]` for legacy
@@ -449,7 +441,6 @@ export interface GroupPublic {
   isOpen?: boolean;
   maxMembers?: number;
   contactPhone?: string;
-  skillLevel?: SkillLevel;
   preferredDays?: WeekdayIndex[];
   preferredHour?: string;
   costPerGame?: number;
@@ -583,8 +574,6 @@ export interface Game {
   format?: GameFormat;
   /** Number of teams (2–5). maxPlayers = playersPerTeam(format) * numberOfTeams. */
   numberOfTeams?: number;
-  /** Suggested skill level for players joining this game. */
-  skillLevel?: SkillLevel;
   /**
    * Hours before kickoff after which a player can no longer cancel without
    * a "no-show". Pure metadata for now — the UI surfaces it but doesn't

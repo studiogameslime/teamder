@@ -111,7 +111,14 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.textMuted,
+    // App.tsx sets a Text default with textAlign:'right', but a `style`
+    // prop on a child Text overrides defaultProps entirely (React doesn't
+    // merge style arrays from defaultProps). Spelling out the RTL pair
+    // here guarantees the label hugs the right edge.
     textAlign: 'right',
+    writingDirection: 'rtl',
+    alignSelf: 'stretch',
+    width: '100%',
   },
   field: {
     flexDirection: 'row',

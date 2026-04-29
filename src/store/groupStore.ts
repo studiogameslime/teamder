@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
-import { Group, GroupId, SkillLevel, User, UserId } from '@/types';
+import { Group, GroupId, User, UserId } from '@/types';
 import { groupService } from '@/services';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -42,7 +42,6 @@ interface GroupStore {
     maxMembers?: number;
     isOpen?: boolean;
     contactPhone?: string;
-    skillLevel?: SkillLevel;
     preferredDays?: number[];
     preferredHour?: string;
     costPerGame?: number;

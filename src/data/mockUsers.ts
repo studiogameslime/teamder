@@ -44,7 +44,6 @@ export const mockGroup: Group = {
   isOpen: false,           // admin-approval flow
   maxMembers: 40,
   contactPhone: '+972501234567',
-  skillLevel: 'mixed',
   preferredDays: [4],
   preferredHour: '20:00',
   costPerGame: 25,
@@ -67,7 +66,6 @@ export const mockOtherGroup: Group = {
   inviteCode: 'OTHER1',
   isOpen: true,            // auto-join community
   maxMembers: 30,
-  skillLevel: 'intermediate',
   preferredDays: [5],
   preferredHour: '07:00',
   costPerGame: 0,

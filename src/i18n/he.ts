@@ -214,7 +214,6 @@ export const he = {
   createGameMinPlayersHint: 'מתחת למספר הזה המשחק עלול להתבטל',
   createGameNumberOfTeams: 'מספר קבוצות',
   createGameTotalPlayers: (n: number) => `סה״כ שחקנים: ${n}`,
-  createGameSkillLevel: 'רמת המשחק',
   createGameFieldType: 'משטח המגרש',
   createGameMatchDuration: 'אורך המשחק (דקות)',
   createGameMatchDurationHint: 'ברירת המחדל לטיימר במגרש',
@@ -299,7 +298,6 @@ export const he = {
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" בקבוצה',
   createGroupContactPhoneInvalid: 'מספר לא תקין. פורמט: 05XXXXXXXX או +9725XXXXXXXX',
-  createGroupSkillLevel: 'רמת המשחק',
   createGroupPreferredDays: 'ימי משחק קבועים',
   createGroupPreferredHour: 'שעת משחק (לא חובה)',
   createGroupPreferredHourPlaceholder: '20:00',
@@ -338,7 +336,6 @@ export const he = {
   communityDetailsAbout: 'על הקבוצה',
   communityDetailsField: 'מגרש',
   communityDetailsCity: 'עיר',
-  communityDetailsSkill: 'רמה',
   communityDetailsPreferredDays: 'ימי משחק',
   communityDetailsPreferredHour: 'שעת משחק',
   communityDetailsCost: 'עלות למשחק',
@@ -378,6 +375,20 @@ export const he = {
   communityEditTitle: 'עריכת קבוצה',
   communityEditNoPermission: 'רק מאמן יכול לערוך את הקבוצה',
   communityEditRecurringEnabled: 'הפעל משחק קבוע',
+  communityEditRecurringHint: 'יוצר משחק חדש אוטומטית לפי הימים והשעה למעלה',
+  communityEditSectionBasics: 'פרטים בסיסיים',
+  communityEditSectionSchedule: 'מתי משחקים',
+  communityEditSectionSettings: 'הגדרות קבוצה',
+  communityEditSectionExtra: 'פרטים נוספים',
+  communityEditIsOpenHint: 'כשמופעל, שחקנים מצטרפים ללא אישור מאמן',
+  communityEditTimeUnset: 'לא הוגדר',
+  communityEditTimePick: 'בחר שעה',
+  communityEditPreferredDaysLabel: 'ימי משחק קבועים',
+  communityEditPreferredHourLabel: 'שעה קבועה',
+  communityEditOptional: 'לא חובה',
+  /** Schedule preview shown under section B when enough data exists. */
+  communityEditSchedulePreview: (day: string, hour: string, field: string) =>
+    `משחק קבוע בימי ${day} בשעה ${hour} ב${field}`,
   communityDetailsCreatorBadge: 'מייסד',
   communityDetailsPromoteCoach: 'הפוך למאמן',
   communityDetailsDemoteCoach: 'הסר מאמן',
@@ -393,12 +404,6 @@ export const he = {
   communityInviteShareBody: (name: string, code: string) =>
     `הצטרף לקבוצת הכדורגל שלנו ב־Footy ⚽\n${name}\nקוד הזמנה: ${code}`,
   communityMembersCount: (n: number) => `${n} שחקנים`,
-
-  // Skill levels
-  skillBeginner: 'מתחילים',
-  skillIntermediate: 'בינוני',
-  skillAdvanced: 'מתקדם',
-  skillMixed: 'מעורב',
 
   // Settings
   settingsReportBug: 'דיווח על תקלה',
@@ -513,6 +518,18 @@ export const he = {
   availabilityIntro: 'איך אנחנו יודעים מתי להציע לך משחקים',
   availabilityDays: 'ימים מועדפים',
   availabilityDayShort: ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'],
+  /** Full Hebrew names of weekdays — same index as availabilityDayShort.
+   *  Used by long-form copy like the schedule preview where "ימי ב'"
+   *  reads worse than "ימי שני". */
+  weekdayLong: [
+    'ראשון',
+    'שני',
+    'שלישי',
+    'רביעי',
+    'חמישי',
+    'שישי',
+    'שבת',
+  ],
   availabilityTimeFrom: 'משעה',
   availabilityTimeTo: 'עד שעה',
   availabilityCity: 'אזור / עיר מועדפים',

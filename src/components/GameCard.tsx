@@ -26,7 +26,7 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { PlayerIdentity } from './PlayerIdentity';
-import { Game, GameFormat, SkillLevel, UserId } from '@/types';
+import { Game, GameFormat, UserId } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useGameStore } from '@/store/gameStore';
@@ -40,13 +40,6 @@ export type GameCardCta =
   | 'none';
 
 export type GameCardStatus = 'joined' | 'waitlist' | 'pending' | 'none';
-
-const SKILL_LABEL: Record<SkillLevel, string> = {
-  beginner: he.skillBeginner,
-  intermediate: he.skillIntermediate,
-  advanced: he.skillAdvanced,
-  mixed: he.skillMixed,
-};
 
 export function statusForUser(g: Game, userId: UserId): GameCardStatus {
   if (g.players.includes(userId)) return 'joined';
@@ -116,7 +109,6 @@ export function GameCard({
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
   const fmt = formatLabel(game.format);
-  const skill = game.skillLevel ? SKILL_LABEL[game.skillLevel] : null;
 
   const open = Math.max(0, game.maxPlayers - game.players.length);
   const isFull = open === 0;
@@ -138,11 +130,6 @@ export function GameCard({
           {fmt ? (
             <View style={styles.formatPill}>
               <Text style={styles.formatPillText}>{fmt}</Text>
-            </View>
-          ) : null}
-          {skill ? (
-            <View style={styles.skillPill}>
-              <Text style={styles.skillPillText}>{skill}</Text>
             </View>
           ) : null}
         </View>
@@ -429,14 +416,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   formatPillText: { ...typography.caption, color: colors.text, fontWeight: '600' },
-
-  skillPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    backgroundColor: '#EEF2FF',
-  },
-  skillPillText: { ...typography.caption, color: '#4338CA', fontWeight: '600' },
 
   publicChip: {
     flexDirection: 'row',

@@ -38,7 +38,6 @@ import {
   LiveMatchState,
   MatchRound,
   Player,
-  SkillLevel,
   Team,
   TeamColor,
   toGuestRosterId,
@@ -400,7 +399,6 @@ export const gameService = {
     minPlayers?: number;
     format?: GameFormat;
     numberOfTeams?: number;
-    skillLevel?: SkillLevel;
     cancelDeadlineHours?: number;
     fieldType?: import('@/types').FieldType;
     matchDurationMinutes?: number;
@@ -433,7 +431,6 @@ export const gameService = {
       requiresApproval: input.requiresApproval,
       format: input.format,
       numberOfTeams: input.numberOfTeams,
-      skillLevel: input.skillLevel,
       cancelDeadlineHours: input.cancelDeadlineHours,
       fieldType: input.fieldType,
       matchDurationMinutes: input.matchDurationMinutes,

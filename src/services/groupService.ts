@@ -24,7 +24,6 @@ import {
   GroupId,
   GroupPublic,
   GroupSearchHit,
-  SkillLevel,
   User,
   UserId,
 } from '@/types';
@@ -141,8 +140,7 @@ export const groupService = {
     isOpen?: boolean;
     /** v2: phone for WhatsApp contact button (Israeli format, validated by caller). */
     contactPhone?: string;
-    /** Phase B: skill level + schedule + cost + extended notes. */
-    skillLevel?: SkillLevel;
+    /** Phase B: schedule + cost + extended notes. */
     preferredDays?: number[];
     preferredHour?: string;
     costPerGame?: number;
@@ -163,7 +161,6 @@ export const groupService = {
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
       contactPhone: input.contactPhone,
-      skillLevel: input.skillLevel,
       preferredDays: input.preferredDays as Group['preferredDays'],
       preferredHour: input.preferredHour,
       costPerGame: input.costPerGame,
@@ -415,7 +412,6 @@ export const groupService = {
         | 'contactPhone'
         | 'description'
         | 'rules'
-        | 'skillLevel'
         | 'preferredDays'
         | 'preferredHour'
         | 'costPerGame'
@@ -451,7 +447,6 @@ export const groupService = {
       'contactPhone',
       'description',
       'rules',
-      'skillLevel',
       'preferredDays',
       'preferredHour',
       'costPerGame',
@@ -497,7 +492,6 @@ export const groupService = {
       ...(cleaned.fieldName !== undefined ? { fieldName: cleaned.fieldName } : {}),
       ...(cleaned.fieldAddress !== undefined ? { fieldAddress: cleaned.fieldAddress } : {}),
       ...(cleaned.description !== undefined ? { description: cleaned.description } : {}),
-      ...(cleaned.skillLevel !== undefined ? { skillLevel: cleaned.skillLevel } : {}),
       ...(cleaned.preferredDays !== undefined ? { preferredDays: cleaned.preferredDays } : {}),
       ...(cleaned.preferredHour !== undefined ? { preferredHour: cleaned.preferredHour } : {}),
       ...(cleaned.costPerGame !== undefined ? { costPerGame: cleaned.costPerGame } : {}),

@@ -4,7 +4,7 @@
 // read-restricted to members + admins by Firestore rules). The fields we
 // show match what's serialized into GroupPublic by groupPublicConverter:
 //   name, city, fieldName, fieldAddress, description,
-//   skillLevel, preferredDays, preferredHour, costPerGame,
+//   preferredDays, preferredHour, costPerGame,
 //   memberCount, isOpen, contactPhone.
 //
 // Hidden by design: members list, admin list, pendingPlayerIds — anything
@@ -52,13 +52,6 @@ type Nav = NativeStackNavigationProp<
   'CommunityDetailsPublic'
 >;
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetailsPublic'>;
-
-const SKILL_LABELS: Record<string, string> = {
-  beginner: he.skillBeginner,
-  intermediate: he.skillIntermediate,
-  advanced: he.skillAdvanced,
-  mixed: he.skillMixed,
-};
 
 function formatDays(days: WeekdayIndex[] | undefined): string {
   if (!days || days.length === 0) return '';
@@ -155,7 +148,6 @@ export function CommunityDetailsPublicScreen() {
     }
   };
 
-  const skill = group.skillLevel ? SKILL_LABELS[group.skillLevel] : '';
   const days = formatDays(group.preferredDays);
   // CTA label depends on `isOpen` — auto-join vs admin approval.
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
@@ -180,13 +172,6 @@ export function CommunityDetailsPublicScreen() {
             label={he.communityDetailsField}
             value={group.fieldName}
           />
-          {skill ? (
-            <MetaRow
-              icon="trophy-outline"
-              label={he.communityDetailsSkill}
-              value={skill}
-            />
-          ) : null}
           {days ? (
             <MetaRow
               icon="calendar-outline"
