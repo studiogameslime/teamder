@@ -750,8 +750,6 @@ export function LiveMatchScreen() {
     [live],
   );
 
-  const benchPlayers = useMemo(() => inZone('bench'), [inZone]);
-
   // Total match duration (ms) for the timer ceiling.
   const totalMs =
     (game?.matchDurationMinutes ?? DEFAULT_DURATION_MIN) * 60 * 1000;
@@ -880,6 +878,7 @@ export function LiveMatchScreen() {
 
         {/* ─── FIELD — always teamA (top) vs teamB (bottom) ─── */}
         <View style={styles.field} onLayout={remeasureZones}>
+          <PitchBackground />
           <TeamHalf
             half="top"
             team="A"
@@ -955,41 +954,6 @@ export function LiveMatchScreen() {
             })}
           </View>
         ) : null}
-
-        {/* ─── BENCH ─── */}
-        <View
-          ref={(v) => {
-            zoneRefs.current.bench = v;
-          }}
-          onLayout={() => remeasureZone('bench')}
-          style={styles.bench}
-        >
-          <ZoneHighlight zoneKey="bench" hoverZone={hoverZone} />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.benchRow}
-          >
-            {benchPlayers.length === 0 ? (
-              <Text style={styles.benchEmpty}>{he.liveBench}</Text>
-            ) : (
-              benchPlayers.map((uid) => (
-                <DraggablePlayer
-                  key={uid}
-                  uid={uid}
-                  isMe={uid === me?.id}
-                  isAdmin={isAdmin}
-                  size={36}
-                  onDrop={handleDrop}
-                  onHover={handleHover}
-                  onClearHover={clearHover}
-                  remeasure={remeasureZones}
-                  guests={game.guests}
-                />
-              ))
-            )}
-          </ScrollView>
-        </View>
 
         {/* ─── BOTTOM ACTION BAR ─── */}
         <View style={styles.actionBar}>
@@ -1495,6 +1459,55 @@ function WaitingTeamRow({
   );
 }
 
+/**
+ * Soccer-pitch backdrop. Pure presentation: alternating mowing
+ * stripes for the grass effect, white touchlines around the
+ * perimeter, a centre circle + spot, and penalty / goal areas at
+ * each end. Renders as the first child of `styles.field` so all the
+ * formation slots layer on top.
+ */
+function PitchBackground() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Mowing stripes — 8 horizontal bands, alternating bands tinted
+          slightly lighter so the grass reads as "mown". */}
+      {Array.from({ length: 8 }).map((_, i) => (
+        <View
+          key={`stripe-${i}`}
+          style={[
+            styles.pitchStripe,
+            {
+              top: `${i * 12.5}%`,
+              backgroundColor:
+                i % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'transparent',
+            },
+          ]}
+        />
+      ))}
+
+      {/* Touchlines — thin white border around the entire pitch. */}
+      <View style={styles.pitchOuterBorder} />
+
+      {/* Centre circle + spot, centred via flex. */}
+      <View style={styles.pitchCenterWrap}>
+        <View style={styles.pitchCenterCircle}>
+          <View style={styles.pitchCenterSpot} />
+        </View>
+      </View>
+
+      {/* Top half — penalty area / goal area / goal mouth. */}
+      <View style={[styles.pitchPenaltyArea, styles.pitchPenaltyTop]} />
+      <View style={[styles.pitchGoalArea, styles.pitchGoalTop]} />
+      <View style={[styles.pitchGoalLine, styles.pitchGoalLineTop]} />
+
+      {/* Bottom half — same set, mirrored. */}
+      <View style={[styles.pitchPenaltyArea, styles.pitchPenaltyBottom]} />
+      <View style={[styles.pitchGoalArea, styles.pitchGoalBottom]} />
+      <View style={[styles.pitchGoalLine, styles.pitchGoalLineBottom]} />
+    </View>
+  );
+}
+
 function ZoneHighlight({
   zoneKey,
   hoverZone,
@@ -1913,9 +1926,98 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   centerLine: {
+    // Soccer halfway line — full-width white line bisecting the pitch.
     height: 2,
-    backgroundColor: colors.fieldLine,
-    opacity: 0.7,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+
+  // Pitch backdrop — mowing stripes + touchlines + circles + boxes.
+  pitchStripe: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: '12.5%',
+  },
+  pitchOuterBorder: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderRadius: radius.lg,
+  },
+  /** Flex container that vertically + horizontally centres the centre
+   *  circle. Using flexbox lets the circle stay perfectly centred
+   *  without depending on measured field dimensions. */
+  pitchCenterWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pitchCenterCircle: {
+    width: '32%',
+    aspectRatio: 1,
+    borderRadius: 9999,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pitchCenterSpot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  /** Penalty area — wider rectangle anchored to the goal line. */
+  pitchPenaltyArea: {
+    position: 'absolute',
+    left: '18%',
+    right: '18%',
+    height: '15%',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  pitchPenaltyTop: {
+    top: 0,
+    borderTopWidth: 0, // the touchline supplies the top edge
+  },
+  pitchPenaltyBottom: {
+    bottom: 0,
+    borderBottomWidth: 0,
+  },
+  /** Goal area (six-yard box) — smaller rectangle inside the penalty. */
+  pitchGoalArea: {
+    position: 'absolute',
+    left: '34%',
+    right: '34%',
+    height: '6%',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  pitchGoalTop: {
+    top: 0,
+    borderTopWidth: 0,
+  },
+  pitchGoalBottom: {
+    bottom: 0,
+    borderBottomWidth: 0,
+  },
+  /** Goal mouth — bold white line on the goal side. */
+  pitchGoalLine: {
+    position: 'absolute',
+    left: '42%',
+    right: '42%',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  pitchGoalLineTop: {
+    top: -1, // hairline overlap with the touchline so they merge cleanly
+  },
+  pitchGoalLineBottom: {
+    bottom: -1,
   },
 
   // Outfield slot wrap — column with jersey area on top + label
@@ -2047,28 +2149,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     paddingVertical: 6,
-  },
-
-  // Bench
-  bench: {
-    height: 76,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    position: 'relative',
-  },
-  benchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: 4,
-  },
-  benchEmpty: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingVertical: spacing.md,
   },
 
   // Bottom action bar
