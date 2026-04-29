@@ -13,6 +13,8 @@ web-build/
 .DS_Store
 .env
 .env.local
+# Local-only secrets reference (keystore creds, API keys, build notes).
+LOCAL-SECRETS.md
 # google-services.json + GoogleService-Info.plist are NOT secrets — they
 # only carry public client identifiers + API keys. Firestore Rules + the
 # SHA-1 fingerprint registered in Firebase Console are the real security
