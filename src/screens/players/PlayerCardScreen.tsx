@@ -9,13 +9,12 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +34,7 @@ import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
 import { disciplineService } from '@/services/disciplineService';
-import { useGroupStore } from '@/store/groupStore';
+import { useCurrentGroup } from '@/store/groupStore';
 import {
   Game,
   getAttendanceRate,
@@ -61,11 +60,26 @@ type RouteParams = {
 export function PlayerCardScreen() {
   const route = useRoute<RouteProp<RouteParams, 'PlayerCard'>>();
   const nav = useNavigation();
-  const { userId, groupId } = route.params ?? {
+  const { userId, groupId: routeGroupId } = route.params ?? {
     userId: '',
     groupId: undefined,
   };
   const me = useUserStore((s) => s.currentUser);
+  // Fallback to the user's currently active community when the caller
+  // didn't pass an explicit groupId. This makes the rating section
+  // available from any entry point (home tab, search, live match jersey,
+  // etc.) — coaches and players alike can rate as long as a community
+  // context exists.
+  const currentGroup = useCurrentGroup();
+  const groupId = routeGroupId ?? currentGroup?.id;
+  const ratedIsInGroup =
+    !!groupId &&
+    !!currentGroup &&
+    currentGroup.id === groupId &&
+    (currentGroup.playerIds.includes(userId) ||
+      currentGroup.adminIds.includes(userId));
+  const effectiveRatingGroupId =
+    routeGroupId ?? (ratedIsInGroup ? groupId : undefined);
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,13 +106,6 @@ export function PlayerCardScreen() {
       alive = false;
     };
   }, [userId]);
-
-  // Re-fetch on demand — used by the discipline override actions so the
-  // UI reflects the new counters without a full screen pop / push.
-  const reloadUser = async () => {
-    const u = await userService.getUserById(userId);
-    setUser(u);
-  };
 
   // Pre-load the inviter's next admin-organized game so the CTA can
   // reflect the target's actual status (joined / waitlist / pending)
@@ -139,11 +146,7 @@ export function PlayerCardScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title="" />
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
   }
@@ -196,12 +199,7 @@ export function PlayerCardScreen() {
       <ScreenHeader title={user.name} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <PlayerIdentity
-            user={user}
-            size="xl"
-            showShirtName
-            highlight
-          />
+          <PlayerIdentity user={user} size="xl" showShirtName />
           <Text style={styles.name}>{user.name}</Text>
           {user.email ? <Text style={styles.email}>{user.email}</Text> : null}
         </View>
@@ -220,19 +218,15 @@ export function PlayerCardScreen() {
           />
         </View>
 
-        {groupId ? (
+        {effectiveRatingGroupId ? (
           <RatingSection
-            groupId={groupId}
+            groupId={effectiveRatingGroupId}
             viewerId={me?.id ?? null}
             ratedUser={user}
           />
         ) : null}
 
-        <DisciplineSection
-          user={user}
-          viewerId={me?.id}
-          onChange={reloadUser}
-        />
+        <DisciplineSection user={user} />
 
         <AchievementsSection user={user} />
 
@@ -410,73 +404,14 @@ function RatingSection({
   );
 }
 
-function DisciplineSection({
-  user,
-  viewerId,
-  onChange,
-}: {
-  user: User;
-  viewerId?: string;
-  onChange: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState<null | 'yellow' | 'red' | string>(null);
-  const groups = useGroupStore((s) => s.groups);
+function DisciplineSection({ user }: { user: User }) {
+  // Read-only: counts + last 5 events. Issue/revoke are post-game admin
+  // flows and intentionally do not appear on the public Player Card.
   const state = disciplineService.state(user);
-  // Coach controls show ONLY when the viewer admins a group that the
-  // viewed user is a member of (and the viewer isn't viewing their own
-  // card). Showing them on every Player Card was too permissive — a
-  // coach of group A would see issue/revoke buttons on a member of
-  // group B. The Firestore rule still allows the write, but the UI
-  // shouldn't expose the surface.
-  const sharesGroupAsAdmin =
-    !!viewerId &&
-    viewerId !== user.id &&
-    groups.some(
-      (g) =>
-        g.adminIds.includes(viewerId) &&
-        (g.playerIds.includes(user.id) || g.adminIds.includes(user.id)),
-    );
-  const isAnyAdmin = sharesGroupAsAdmin;
-
-  // "Recent red" warning if a red card was issued in the last 30 days.
   const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
   const hasRecentRed = state.events.some(
     (e) => e.type === 'red' && Date.now() - e.createdAt < RECENT_MS,
   );
-
-  const issue = async (type: 'yellow' | 'red') => {
-    setBusy(type);
-    try {
-      await disciplineService.issueCard({
-        userId: user.id,
-        type,
-        reason: 'manual',
-        issuedBy: viewerId,
-      });
-      await onChange();
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const revoke = (eventId: string) => {
-    Alert.alert(he.disciplineConfirmRevoke, '', [
-      { text: he.cancel, style: 'cancel' },
-      {
-        text: he.disciplineRevoke,
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(eventId);
-          try {
-            await disciplineService.revokeCard(user.id, eventId);
-            await onChange();
-          } finally {
-            setBusy(null);
-          }
-        },
-      },
-    ]);
-  };
 
   return (
     <View style={styles.disciplineSection}>
@@ -510,54 +445,15 @@ function DisciplineSection({
                 hideEmpty
               />
               <View style={{ flex: 1 }}>
-                <Text style={styles.eventReason}>
-                  {reasonLabel(e.reason)}
-                </Text>
+                <Text style={styles.eventReason}>{reasonLabel(e.reason)}</Text>
                 <Text style={styles.eventDate}>
                   {formatHebrewDate(e.createdAt)}
                 </Text>
               </View>
-              {isAnyAdmin ? (
-                <Button
-                  title={he.disciplineRevoke}
-                  variant="outline"
-                  size="sm"
-                  loading={busy === e.id}
-                  onPress={() => revoke(e.id)}
-                />
-              ) : null}
             </View>
           ))}
         </Card>
       )}
-
-      {isAnyAdmin ? (
-        <View style={styles.coachActions}>
-          <Text style={styles.coachActionsLabel}>
-            {he.disciplineCoachActions}
-          </Text>
-          <View style={styles.coachActionsRow}>
-            <Button
-              title={he.disciplineGiveYellow}
-              variant="outline"
-              size="sm"
-              loading={busy === 'yellow'}
-              onPress={() => issue('yellow')}
-              fullWidth
-              style={{ flex: 1 }}
-            />
-            <Button
-              title={he.disciplineGiveRed}
-              variant="outline"
-              size="sm"
-              loading={busy === 'red'}
-              onPress={() => issue('red')}
-              fullWidth
-              style={{ flex: 1 }}
-            />
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -728,16 +624,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: 'right',
-  },
-  coachActions: { gap: spacing.xs },
-  coachActionsLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    textAlign: 'right',
-  },
-  coachActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
   },
   achievementsSection: {
     gap: spacing.md,

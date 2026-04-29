@@ -60,11 +60,16 @@ import {
 } from '@react-navigation/native';
 
 import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { GuestModal } from '@/components/GuestModal';
 import { gameService } from '@/services/gameService';
 import {
   Game,
+  GameGuest,
+  isGuestId,
   LiveMatchState,
   LiveMatchZone,
+  parseGuestRosterId,
+  toGuestRosterId,
   UserId,
 } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -157,6 +162,7 @@ export function LiveMatchScreen() {
   const [timerRunning, setTimerRunning] = useState(false);
 
   const [busyCancel, setBusyCancel] = useState(false);
+  const [guestModalOpen, setGuestModalOpen] = useState(false);
 
   // 1-step undo for drag/shuffle.
   const undoStackRef = useRef<LiveMatchState[]>([]);
@@ -211,7 +217,17 @@ export function LiveMatchScreen() {
     };
   }, [gameId, me, myCommunities]);
 
+  // Roster = real players + guests (encoded as `guest:<id>`). Every flow
+  // below — bench seeding, reconcile, shuffle — operates on this combined
+  // list so guests are first-class draggables.
+  const rosterIds = useMemo<UserId[]>(() => {
+    if (!game) return [];
+    const guestRoster = (game.guests ?? []).map((g) => toGuestRosterId(g.id));
+    return [...game.players, ...guestRoster];
+  }, [game?.players, game?.guests]);
+
   // ─── Hydrate user → display name / jersey lookup ───────────────────────
+  // Guests don't have /users docs; we hydrate the uids only.
   useEffect(() => {
     if (!game) return;
     hydratePlayers(game.players);
@@ -221,11 +237,11 @@ export function LiveMatchScreen() {
   useEffect(() => {
     if (!gameId || !game) return;
     const unsub = gameService.subscribeLiveMatch(gameId, (state) => {
-      const initial = state ?? makeFreshState(game.players);
-      setLive(reconcile(initial, game.players));
+      const initial = state ?? makeFreshState(rosterIds);
+      setLive(reconcile(initial, rosterIds));
     });
     return unsub;
-  }, [gameId, game]);
+  }, [gameId, game, rosterIds]);
 
   // ─── Local timer tick ──────────────────────────────────────────────────
   useEffect(() => {
@@ -326,13 +342,13 @@ export function LiveMatchScreen() {
 
   const handleShuffle = useCallback(() => {
     if (!game || !live || !isAdmin) return;
-    const shuffled = shuffle(game.players);
+    const shuffled = shuffle(rosterIds);
     const half = Math.ceil(shuffled.length / 2);
     const a = new Set(shuffled.slice(0, half));
     const b = new Set(shuffled.slice(half));
     const assignments: Record<UserId, Zone> = {};
     const benchOrder: UserId[] = [];
-    game.players.forEach((uid) => {
+    rosterIds.forEach((uid) => {
       if (a.has(uid)) assignments[uid] = 'teamA';
       else if (b.has(uid)) assignments[uid] = 'teamB';
       else {
@@ -344,7 +360,7 @@ export function LiveMatchScreen() {
       { ...live, assignments, benchOrder },
       { undoable: true, markEdited: true },
     );
-  }, [game, live, isAdmin, commit]);
+  }, [game, live, isAdmin, commit, rosterIds]);
 
   const handleUndo = useCallback(() => {
     if (!isAdmin || !gameId) return;
@@ -487,6 +503,7 @@ export function LiveMatchScreen() {
                   onDrop={handleDrop}
                   remeasure={remeasureZones}
                   badge="🧤"
+                  guests={game?.guests}
                 />
               ) : null}
             </View>
@@ -500,6 +517,7 @@ export function LiveMatchScreen() {
                   size={44}
                   onDrop={handleDrop}
                   remeasure={remeasureZones}
+                  guests={game?.guests}
                 />
               ))}
             </View>
@@ -526,6 +544,7 @@ export function LiveMatchScreen() {
                   size={44}
                   onDrop={handleDrop}
                   remeasure={remeasureZones}
+                  guests={game?.guests}
                 />
               ))}
             </View>
@@ -545,6 +564,7 @@ export function LiveMatchScreen() {
                   onDrop={handleDrop}
                   remeasure={remeasureZones}
                   badge="🧤"
+                  guests={game?.guests}
                 />
               ) : null}
             </View>
@@ -576,6 +596,7 @@ export function LiveMatchScreen() {
                   size={36}
                   onDrop={handleDrop}
                   remeasure={remeasureZones}
+                  guests={game?.guests}
                 />
               ))
             )}
@@ -606,6 +627,11 @@ export function LiveMatchScreen() {
             {/* Left column — secondary controls */}
             <View style={[styles.fabColumn, styles.fabColumnLeft]}>
               <FAB
+                icon="person-add-outline"
+                onPress={() => setGuestModalOpen(true)}
+                accessibilityLabel="add-guest"
+              />
+              <FAB
                 icon="shuffle"
                 onPress={handleShuffle}
                 accessibilityLabel="shuffle"
@@ -625,6 +651,26 @@ export function LiveMatchScreen() {
               />
             </View>
           </>
+        ) : null}
+
+        {/* Guest modal: only renders when admin tapped "+אורח". On save
+            the snapshot listener for liveMatch + a fresh game refetch
+            via the rosterIds memo will re-seed the bench with the new
+            guest. */}
+        {gameId && me ? (
+          <GuestModal
+            visible={guestModalOpen}
+            gameId={gameId}
+            callerId={me.id}
+            onClose={() => setGuestModalOpen(false)}
+            onChanged={async () => {
+              // Re-fetch the game so guests + roster are refreshed.
+              const fresh = await gameService
+                .getGameById(gameId)
+                .catch(() => null);
+              if (fresh) setGame(fresh);
+            }}
+          />
         ) : null}
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -717,6 +763,9 @@ interface DragProps {
   onDrop: (uid: UserId, pageX: number, pageY: number) => void;
   remeasure: () => void;
   badge?: string;
+  /** Guest list passed in by the screen so we can resolve `guest:<id>`
+      ids to a display name without a roundtrip through the players map. */
+  guests?: GameGuest[];
 }
 
 function DraggablePlayer({
@@ -727,6 +776,7 @@ function DraggablePlayer({
   onDrop,
   remeasure,
   badge,
+  guests,
 }: DragProps) {
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -734,9 +784,15 @@ function DraggablePlayer({
   const z = useSharedValue(0);
 
   const playersMap = useGameStore((s) => s.players);
+  const guestId = parseGuestRosterId(uid);
+  const guest = guestId ? guests?.find((g) => g.id === guestId) : undefined;
   const p = playersMap[uid];
-  const name = p?.displayName ?? '';
-  const jersey = p?.jersey;
+  const name = guest ? guest.name : (p?.displayName ?? '');
+  const jersey = guest ? undefined : p?.jersey;
+  // Goalkeeper glove (or any emoji caller passes) keeps the tight 20×20
+  // corner badge — but the "אורח" text doesn't fit there. Render a
+  // separate wider pill below the name for guests.
+  const cornerBadge = guest ? null : badge;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -787,9 +843,9 @@ function DraggablePlayer({
             user={{ id: uid, name: name || '?', jersey }}
             size={size}
           />
-          {badge ? (
+          {cornerBadge ? (
             <View style={styles.gkBadge}>
-              <Text style={styles.gkBadgeText}>{badge}</Text>
+              <Text style={styles.gkBadgeText}>{cornerBadge}</Text>
             </View>
           ) : null}
           {name ? (
@@ -800,6 +856,17 @@ function DraggablePlayer({
             >
               {name}
             </Text>
+          ) : null}
+          {guest ? (
+            <View style={styles.guestPill}>
+              <Text
+                style={styles.guestPillText}
+                allowFontScaling={false}
+                numberOfLines={1}
+              >
+                {he.guestBadge}
+              </Text>
+            </View>
           ) : null}
         </View>
       </Animated.View>
@@ -1000,4 +1067,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   gkBadgeText: { fontSize: 11 },
+  guestPill: {
+    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: colors.warning,
+  },
+  guestPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
 });

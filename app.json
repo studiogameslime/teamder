@@ -4,12 +4,14 @@
     "slug": "soccer-game",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./Logo.png",
     "scheme": [
       "footy",
       "com.studiogameslime.soccerapp"
     ],
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#16A34A"
     },
@@ -22,6 +24,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./Logo.png",
         "backgroundColor": "#16A34A"
       },
       "package": "com.studiogameslime.soccerapp",
@@ -33,6 +36,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./Logo.png",
           "color": "#16A34A"
         }
       ],
@@ -49,6 +53,16 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
           "skAdNetworkItems": []
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "34.0.0"
+          }
         }
       ]
     ],

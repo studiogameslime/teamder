@@ -260,18 +260,31 @@ function PublicityChip({ isPublic }: { isPublic: boolean }) {
 }
 
 /**
- * Compact horizontal row of player avatars. We pull the avatar/name from
- * `gameStore.players` (the in-memory roster the store hydrates as games
- * load); falling back to a colored initial if the user isn't loaded yet.
- * Caps at 6 visible — the rest collapse into a "+N" tile.
+ * Compact horizontal row of player avatars. Iterates real players from
+ * `gameStore.players` (hydrated lazily) AND any guests attached to this
+ * specific game (from `game.guests`). Guests get a small "אורח" pill
+ * below the jersey and tapping a guest is a no-op (they have no
+ * PlayerCard).
+ *
+ * Caps the visible head at 6; the rest collapse into a "+N" tile.
  */
 function PlayersStrip({ game }: { game: Game }) {
   const playersMap = useGameStore((s) => s.players);
   const nav = useNavigation<any>();
-  if (game.players.length === 0) return null;
+  const guests = game.guests ?? [];
+  const total = game.players.length + guests.length;
+  if (total === 0) return null;
   const VISIBLE = 6;
-  const head = game.players.slice(0, VISIBLE);
-  const overflow = game.players.length - head.length;
+  // Composite list: real uids first, guest sentinel objects after.
+  type Slot =
+    | { kind: 'user'; uid: string }
+    | { kind: 'guest'; guest: import('@/types').GameGuest };
+  const slots: Slot[] = [
+    ...game.players.map<Slot>((uid) => ({ kind: 'user', uid })),
+    ...guests.map<Slot>((g) => ({ kind: 'guest', guest: g })),
+  ];
+  const head = slots.slice(0, VISIBLE);
+  const overflow = slots.length - head.length;
   return (
     <ScrollView
       horizontal
@@ -279,7 +292,24 @@ function PlayersStrip({ game }: { game: Game }) {
       style={styles.playersStrip}
       contentContainerStyle={styles.playersStripContent}
     >
-      {head.map((uid) => {
+      {head.map((slot, i) => {
+        if (slot.kind === 'guest') {
+          const g = slot.guest;
+          return (
+            <View key={`guest:${g.id}`} style={styles.playerSlot}>
+              <PlayerIdentity
+                user={{ id: `guest:${g.id}`, name: g.name }}
+                size="sm"
+              />
+              <View style={styles.guestPill}>
+                <Text style={styles.guestPillText} numberOfLines={1}>
+                  {he.guestBadge}
+                </Text>
+              </View>
+            </View>
+          );
+        }
+        const uid = slot.uid;
         const p = playersMap[uid];
         const name = p?.displayName ?? uid;
         const isBallHolder = game.ballHolderUserId === uid;
@@ -467,8 +497,22 @@ const styles = StyleSheet.create({
   },
   playerSlot: {
     width: 36,
-    height: 36,
+    minHeight: 36,
     position: 'relative',
+    alignItems: 'center',
+  },
+  guestPill: {
+    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: colors.warning,
+  },
+  guestPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   indicator: {
     position: 'absolute',

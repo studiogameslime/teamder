@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerRow } from '@/components/PlayerRow';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import {
@@ -221,7 +222,7 @@ function CenteredState({
       <ScreenHeader title={he.eveningList} showBack={false} />
       <View style={styles.centerWrap}>
         {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: spacing.lg }} />
+          <SoccerBallLoader size={56} style={{ marginBottom: spacing.lg }} />
         ) : (
           <View style={[styles.iconCircle, { backgroundColor: bg }]}>
             <Ionicons name={icon} size={56} color={iconColor} />

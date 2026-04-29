@@ -470,12 +470,23 @@ interface BalanceGameDoc {
   startsAt?: number;
   status?: string;
   players?: string[];
+  guests?: GuestDoc[];
   format?: '5v5' | '6v6' | '7v7';
   numberOfTeams?: number;
   autoTeamGenerationMinutesBeforeStart?: number;
   autoTeamsGeneratedAt?: number;
   teamsEditedManually?: boolean;
 }
+
+interface GuestDoc {
+  id: string;
+  name: string;
+  estimatedRating?: number | null;
+  addedBy: string;
+  createdAt: number;
+}
+
+const GUEST_ID_PREFIX = 'guest:';
 
 interface RatingSummaryDoc {
   count?: number;
@@ -704,11 +715,32 @@ async function generateForGame(
       if (data.autoTeamsGeneratedAt) return false;
       if (data.teamsEditedManually) return false;
       const freshPlayers = data.players ?? players;
-      if (freshPlayers.length === 0) return false;
+      const freshGuests = data.guests ?? [];
+      if (freshPlayers.length === 0 && freshGuests.length === 0) return false;
+
+      // Compose the roster: real users keep their uid; guests are
+      // encoded as `guest:<id>` so the roster id space is disjoint.
+      // Their rating is `estimatedRating` when set, otherwise the
+      // neutral 3.0 (handled by balanceTeamsV1's unrated branch).
+      const guestRoster: string[] = freshGuests.map(
+        (gu) => `${GUEST_ID_PREFIX}${gu.id}`,
+      );
+      const guestRatings: Record<string, number> = {};
+      for (const gu of freshGuests) {
+        if (
+          typeof gu.estimatedRating === 'number' &&
+          gu.estimatedRating >= 1 &&
+          gu.estimatedRating <= 5
+        ) {
+          guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
+        }
+      }
+      const rosterIds = [...freshPlayers, ...guestRoster];
+      const combinedRatings = { ...ratings, ...guestRatings };
 
       const result = balanceTeamsV1(
-        freshPlayers,
-        ratings,
+        rosterIds,
+        combinedRatings,
         numberOfTeams,
         perTeam,
       );

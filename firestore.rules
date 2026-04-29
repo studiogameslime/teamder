@@ -67,7 +67,8 @@ service cloud.firestore {
     match /groups/{gid} {
       allow read: if isSignedIn() && (
         request.auth.uid in resource.data.playerIds ||
-        request.auth.uid in resource.data.adminIds
+        request.auth.uid in resource.data.adminIds ||
+        request.auth.uid in resource.data.pendingPlayerIds
       );
       allow create: if isSignedIn() &&
         request.resource.data.adminIds == [request.auth.uid] &&
@@ -109,9 +110,16 @@ service cloud.firestore {
     }
 
     // ── /groupsPublic/{gid} — public discovery projection ───────────────
+    // Create is split from update because the /groups/{gid} doc doesn't
+    // exist yet at the moment a creator runs the dual-write batch — so
+    // isGroupAdmin(gid) would throw and reject a legitimate first write.
+    // The companion /groups/{gid} create rule already enforces that the
+    // caller becomes the sole admin/player, so allowing the public
+    // mirror to be created by any signed-in user is safe.
     match /groupsPublic/{gid} {
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && isGroupAdmin(gid);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isGroupAdmin(gid);
       allow delete: if false;
     }
 

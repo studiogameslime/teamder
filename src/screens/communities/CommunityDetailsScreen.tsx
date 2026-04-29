@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -235,11 +235,7 @@ export function CommunityDetailsScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title="" />
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
   }
@@ -501,11 +497,10 @@ export function CommunityDetailsScreen() {
           </Card>
         ) : null}
 
-        {/* Upcoming games */}
+        {/* Nearest upcoming game — single-card section, sorted by start
+            time. Full multi-game listing lives in the Games tab. */}
         <View style={styles.upcomingWrap}>
-          <Text style={styles.sectionTitle}>
-            {he.communityDetailsUpcoming}
-          </Text>
+          <Text style={styles.sectionTitle}>{he.communityDetailsNextGame}</Text>
           {upcoming.length === 0 ? (
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyText}>
@@ -513,17 +508,14 @@ export function CommunityDetailsScreen() {
               </Text>
             </Card>
           ) : (
-            upcoming.map((g) => (
-              <GameCard
-                key={g.id}
-                game={g}
-                userId={me?.id ?? ''}
-                onPrimary={() => {
-                  /* join/cancel handled in Games tab; details screen is
-                     read-mostly. Tapping a card here is a no-op. */
-                }}
-              />
-            ))
+            <GameCard
+              game={upcoming[0]}
+              userId={me?.id ?? ''}
+              onPrimary={() => {
+                /* join/cancel handled in Games tab; details screen is
+                   read-mostly. Tapping a card here is a no-op. */
+              }}
+            />
           )}
         </View>
 

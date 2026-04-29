@@ -49,7 +49,7 @@ export function ProfileEditScreen() {
             Editing the jersey is gated to the dedicated picker so the
             entry point is unambiguous. */}
         <View style={styles.previewWrap}>
-          <PlayerIdentity user={user} size="lg" highlight />
+          <PlayerIdentity user={user} size="lg" />
         </View>
 
         <TextInput

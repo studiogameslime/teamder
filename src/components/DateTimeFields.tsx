@@ -250,12 +250,9 @@ function TimePickerModal({
         >
           <Text style={styles.modalTitle}>{he.dtfPickTime}</Text>
           <View style={styles.wheelRow}>
-            <WheelColumn
-              values={Array.from({ length: 24 }, (_, i) => pad2(i))}
-              selected={pad2(h)}
-              onSelect={(v) => setSel({ h: parseInt(v, 10), m })}
-            />
-            <Text style={styles.wheelSep}>:</Text>
+            {/* Order: minutes first, then hours. RTL flexbox renders the
+                first child on the right, so this lands minutes on the
+                right and hours on the left as Hebrew users expect. */}
             <WheelColumn
               values={Array.from(
                 { length: 60 / MINUTE_STEP },
@@ -263,6 +260,12 @@ function TimePickerModal({
               )}
               selected={snapMinute(m)}
               onSelect={(v) => setSel({ h, m: parseInt(v, 10) })}
+            />
+            <Text style={styles.wheelSep}>:</Text>
+            <WheelColumn
+              values={Array.from({ length: 24 }, (_, i) => pad2(i))}
+              selected={pad2(h)}
+              onSelect={(v) => setSel({ h: parseInt(v, 10), m })}
             />
           </View>
           <View style={styles.modalFooter}>
@@ -411,15 +414,6 @@ function DateTimePickerModal({
             <Text style={styles.timeStripLabel}>{he.dtfTime}</Text>
             <View style={styles.wheelRow}>
               <WheelColumn
-                values={Array.from({ length: 24 }, (_, i) => pad2(i))}
-                selected={pad2(hh)}
-                onSelect={(v) =>
-                  setPicked(applyTime(picked, parseInt(v, 10), mm))
-                }
-                short
-              />
-              <Text style={styles.wheelSep}>:</Text>
-              <WheelColumn
                 values={Array.from(
                   { length: 60 / MINUTE_STEP },
                   (_, i) => pad2(i * MINUTE_STEP),
@@ -427,6 +421,15 @@ function DateTimePickerModal({
                 selected={snapMinute(mm)}
                 onSelect={(v) =>
                   setPicked(applyTime(picked, hh, parseInt(v, 10)))
+                }
+                short
+              />
+              <Text style={styles.wheelSep}>:</Text>
+              <WheelColumn
+                values={Array.from({ length: 24 }, (_, i) => pad2(i))}
+                selected={pad2(hh)}
+                onSelect={(v) =>
+                  setPicked(applyTime(picked, parseInt(v, 10), mm))
                 }
                 short
               />

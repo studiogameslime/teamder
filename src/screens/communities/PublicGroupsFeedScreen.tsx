@@ -11,7 +11,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -304,11 +304,7 @@ export function PublicGroupsFeedScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <ScreenHeader title={he.communitiesTitle} showBack={false} />
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
   }

@@ -30,14 +30,18 @@ import {
   ArrivalStatus,
   Game,
   GameFormat,
+  GameGuest,
   GameSummary,
   GroupId,
+  GUEST_ID_PREFIX,
+  isGuestId,
   LiveMatchState,
   MatchRound,
   Player,
   SkillLevel,
   Team,
   TeamColor,
+  toGuestRosterId,
   UserId,
 } from '@/types';
 import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
@@ -86,6 +90,22 @@ export const gameService = {
    *
    * Mock mode always returns the canned game.
    */
+  /**
+   * Read one v2 game by id. Returns null when the doc doesn't exist.
+   * Mock mode falls back to the in-memory store. Used by screens that
+   * already know the gameId and just need to refresh after a write.
+   */
+  async getGameById(gameId: string): Promise<Game | null> {
+    if (!gameId) return null;
+    if (USE_MOCK_DATA) {
+      const found = mockGamesV2.find((g) => g.id === gameId);
+      return found ? ({ ...found, matches: [] } as Game) : null;
+    }
+    const snap = await getDoc(docs.game(gameId));
+    if (!snap.exists()) return null;
+    return { ...snap.data(), matches: [] };
+  },
+
   async getActiveGameForGroup(groupId: GroupId): Promise<Game | null> {
     if (USE_MOCK_DATA) return ensureMockGame();
 
@@ -471,10 +491,13 @@ export const gameService = {
         return { bucket: where };
       }
       let bucket: 'players' | 'waitlist' | 'pending';
+      // Capacity is shared between real players and guests — guests are
+      // first-class participants per the spec.
+      const occupancy = g.players.length + (g.guests?.length ?? 0);
       if (g.requiresApproval) {
         g.pending = [...(g.pending ?? []), userId];
         bucket = 'pending';
-      } else if (g.players.length < g.maxPlayers) {
+      } else if (occupancy < g.maxPlayers) {
         g.players = [...g.players, userId];
         bucket = 'players';
       } else {
@@ -516,10 +539,13 @@ export const gameService = {
     }
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     let bucket: 'players' | 'waitlist' | 'pending';
+    // Guests count toward capacity. A coach who pre-fills the roster
+    // with two guests on a 12-cap game leaves 10 slots for real users.
+    const occupancy = players.length + (data.guests ?? []).length;
     if (data.requiresApproval) {
       updates.pending = [...pending, userId];
       bucket = 'pending';
-    } else if (players.length < (data.maxPlayers ?? 15)) {
+    } else if (occupancy < (data.maxPlayers ?? 15)) {
       updates.players = [...players, userId];
       bucket = 'players';
     } else {
@@ -530,10 +556,15 @@ export const gameService = {
       ? data.participantIds
       : [];
     updates.participantIds = Array.from(new Set([...existingParticipants, userId]));
-    const { db } = getFirebase();
-    const batch = writeBatch(db);
-    batch.set(ref, { ...data, ...updates }, { merge: true });
-    await batch.commit();
+    // updateDoc bypasses the converter so only the keys we changed land in
+    // affectedKeys() — critical for the self-join Firestore rule, which
+    // restricts updates to ['players','waitlist','pending','participantIds',
+    // 'updatedAt']. A `set(...,{merge:true})` through the typed converter
+    // would re-emit nullable optional fields (liveMatch, fieldLat, …) and
+    // get rejected as "permission denied" even when the join itself is
+    // legal.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(ref, updates as any);
     if (bucket !== 'pending') {
       achievementsService.bump(userId, 'gamesJoined', 1);
     }
@@ -593,21 +624,14 @@ export const gameService = {
     const participantIds = Array.isArray(data.participantIds)
       ? data.participantIds.filter((id: string) => id !== userId)
       : Array.from(new Set([...players, ...waitlist, ...pending]));
-    const { db } = getFirebase();
-    const batch = writeBatch(db);
-    batch.set(
-      ref,
-      {
-        ...data,
-        players,
-        waitlist,
-        pending,
-        participantIds,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
-    await batch.commit();
+    // updateDoc, not set+merge — see the comment in joinGameV2 above.
+    await updateDoc(ref, {
+      players,
+      waitlist,
+      pending,
+      participantIds,
+      updatedAt: Date.now(),
+    });
     if (promotedUid) {
       notificationsService.dispatch({
         type: 'spotOpened',
@@ -778,7 +802,270 @@ export const gameService = {
     );
     return unsub;
   },
+
+  // ── Guests ──────────────────────────────────────────────────────────────
+  // Coach/admin-only mutations. Guests live in the game doc, count toward
+  // capacity, and participate in auto-balance with `guest:<id>` ids.
+
+  /**
+   * Add a guest to the game. Caller must be the organizer (createdBy)
+   * or a community admin (group.adminIds). Throws on:
+   *   - missing/blank/over-long name
+   *   - rating outside [1,5]
+   *   - capacity exceeded (players + guests >= maxPlayers)
+   *   - permission denied (also enforced by Firestore rules)
+   */
+  async addGuest(
+    gameId: string,
+    callerId: UserId,
+    input: { name: string; estimatedRating?: number },
+  ): Promise<GameGuest> {
+    const name = (input.name ?? '').trim();
+    if (!name) throw new Error('addGuest: name is required');
+    if (name.length > 20) throw new Error('addGuest: name too long (>20)');
+    const rating = input.estimatedRating;
+    if (
+      rating !== undefined &&
+      (typeof rating !== 'number' ||
+        !Number.isFinite(rating) ||
+        rating < 1 ||
+        rating > 5)
+    ) {
+      throw new Error('addGuest: estimatedRating must be 1..5');
+    }
+    const guest: GameGuest = {
+      id: genGuestId(),
+      name,
+      estimatedRating: rating,
+      addedBy: callerId,
+      createdAt: Date.now(),
+    };
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('addGuest: game not found');
+      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      const occupancy = g.players.length + (g.guests?.length ?? 0);
+      if (occupancy >= g.maxPlayers) {
+        throw new Error('GAME_FULL');
+      }
+      g.guests = [...(g.guests ?? []), guest];
+      g.updatedAt = Date.now();
+      return guest;
+    }
+
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('addGuest: game not found');
+    const data = snap.data();
+    await assertGuestPermission(data.createdBy, data.groupId, callerId);
+    const playersLen = (data.players ?? []).length;
+    const guestsLen = (data.guests ?? []).length;
+    if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
+      throw new Error('GAME_FULL');
+    }
+    const next = [...(data.guests ?? []), guest];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(ref, {
+      guests: next,
+      updatedAt: Date.now(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    return guest;
+  },
+
+  /**
+   * Update an existing guest. Same permission rules as addGuest.
+   * Only `name` and `estimatedRating` are editable; other fields
+   * (id, addedBy, createdAt) are immutable.
+   */
+  async updateGuest(
+    gameId: string,
+    callerId: UserId,
+    guestId: string,
+    patch: { name?: string; estimatedRating?: number | null },
+  ): Promise<GameGuest> {
+    const apply = (g: GameGuest): GameGuest => {
+      const nextName =
+        patch.name !== undefined ? patch.name.trim() : g.name;
+      if (!nextName) throw new Error('updateGuest: name is required');
+      if (nextName.length > 20) {
+        throw new Error('updateGuest: name too long (>20)');
+      }
+      let nextRating = g.estimatedRating;
+      if (patch.estimatedRating === null) {
+        nextRating = undefined;
+      } else if (patch.estimatedRating !== undefined) {
+        const r = patch.estimatedRating;
+        if (
+          typeof r !== 'number' ||
+          !Number.isFinite(r) ||
+          r < 1 ||
+          r > 5
+        ) {
+          throw new Error('updateGuest: estimatedRating must be 1..5');
+        }
+        nextRating = r;
+      }
+      return { ...g, name: nextName, estimatedRating: nextRating };
+    };
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('updateGuest: game not found');
+      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      const idx = (g.guests ?? []).findIndex((x) => x.id === guestId);
+      if (idx < 0) throw new Error('updateGuest: guest not found');
+      const updated = apply(g.guests![idx]);
+      g.guests = [
+        ...g.guests!.slice(0, idx),
+        updated,
+        ...g.guests!.slice(idx + 1),
+      ];
+      g.updatedAt = Date.now();
+      return updated;
+    }
+
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('updateGuest: game not found');
+    const data = snap.data();
+    await assertGuestPermission(data.createdBy, data.groupId, callerId);
+    const guests = data.guests ?? [];
+    const idx = guests.findIndex((x) => x.id === guestId);
+    if (idx < 0) throw new Error('updateGuest: guest not found');
+    const updated = apply(guests[idx]);
+    const next = [...guests.slice(0, idx), updated, ...guests.slice(idx + 1)];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(ref, {
+      guests: next,
+      updatedAt: Date.now(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    return updated;
+  },
+
+  /**
+   * Remove a guest. Also strips `guest:<id>` from any team assignments
+   * already saved to liveMatch (assignments + benchOrder), so the
+   * coach doesn't end up with a phantom slot. Same permission rules.
+   */
+  async removeGuest(
+    gameId: string,
+    callerId: UserId,
+    guestId: string,
+  ): Promise<void> {
+    const rosterId = toGuestRosterId(guestId);
+
+    const stripFromLive = (
+      live: LiveMatchState | undefined,
+    ): LiveMatchState | undefined => {
+      if (!live) return live;
+      if (
+        !live.assignments?.[rosterId] &&
+        !(live.benchOrder ?? []).includes(rosterId)
+      ) {
+        return live;
+      }
+      const { [rosterId]: _gone, ...rest } = live.assignments ?? {};
+      void _gone;
+      return {
+        ...live,
+        assignments: rest,
+        benchOrder: (live.benchOrder ?? []).filter((id) => id !== rosterId),
+      };
+    };
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      g.guests = (g.guests ?? []).filter((x) => x.id !== guestId);
+      g.liveMatch = stripFromLive(g.liveMatch);
+      g.updatedAt = Date.now();
+      mockLiveSubscribers.get(gameId)?.forEach((cb) => cb(g.liveMatch ?? null));
+      return;
+    }
+
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    await assertGuestPermission(data.createdBy, data.groupId, callerId);
+    const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
+    const nextLive = stripFromLive(data.liveMatch);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(ref, {
+      guests: nextGuests,
+      ...(nextLive ? { liveMatch: nextLive } : {}),
+      updatedAt: Date.now(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+  },
 };
+
+/**
+ * Permission gate for guest mutations. Caller is allowed if they're the
+ * game organizer (createdBy) OR an admin of the parent community.
+ * Mirrors the Firestore rule on /games/{id}.update — duplicated here so
+ * we can fail fast with a clear error before the network round-trip.
+ */
+async function assertGuestPermission(
+  createdBy: string | null | undefined,
+  groupId: string | null | undefined,
+  callerId: string,
+): Promise<void> {
+  if (createdBy && callerId === createdBy) return;
+  if (!groupId) {
+    throw new Error('PERMISSION_DENIED');
+  }
+  if (USE_MOCK_DATA) {
+    const { groupService } = await import('./groupService');
+    const g = await groupService.get(groupId);
+    if (g && g.adminIds.includes(callerId)) return;
+    throw new Error('PERMISSION_DENIED');
+  }
+  const groupSnap = await getDoc(docs.group(groupId));
+  if (!groupSnap.exists()) throw new Error('PERMISSION_DENIED');
+  const grp = groupSnap.data();
+  if ((grp.adminIds ?? []).includes(callerId)) return;
+  throw new Error('PERMISSION_DENIED');
+}
+
+function genGuestId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Resolve a roster id (uid OR `guest:<id>`) to a display-friendly object.
+ * Used by every renderer that mixes real users and guests in the same
+ * list: TeamCard, FieldView (live match), the registered list, etc.
+ */
+export function resolveRosterEntry(
+  rosterId: string,
+  game: Pick<Game, 'guests'> | null | undefined,
+):
+  | { kind: 'guest'; guest: GameGuest; rosterId: string }
+  | { kind: 'user'; userId: string; rosterId: string } {
+  if (isGuestId(rosterId)) {
+    const guestId = rosterId.slice(GUEST_ID_PREFIX.length);
+    const guest = game?.guests?.find((g) => g.id === guestId);
+    if (guest) return { kind: 'guest', guest, rosterId };
+    // Unknown guest id (e.g., removed mid-session) — degrade to a
+    // synthetic placeholder so the UI doesn't crash.
+    return {
+      kind: 'guest',
+      guest: {
+        id: guestId,
+        name: '—',
+        addedBy: '',
+        createdAt: 0,
+      },
+      rosterId,
+    };
+  }
+  return { kind: 'user', userId: rosterId, rosterId };
+}
 
 // In-memory pub/sub used by mock mode so subscribeLiveMatch has the
 // same shape (callback-based) regardless of mode.

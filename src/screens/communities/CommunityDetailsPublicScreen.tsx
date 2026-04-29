@@ -14,12 +14,12 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -113,11 +113,7 @@ export function CommunityDetailsPublicScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title="" />
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
   }

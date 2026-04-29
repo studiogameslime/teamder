@@ -628,6 +628,13 @@ export interface Game {
   arrivals?: Record<UserId, ArrivalStatus>;
 
   /**
+   * Guests attached to this game only. Default `[]` for legacy docs.
+   * Mutated by the coach via gameService.addGuest / removeGuest /
+   * updateGuest — regular players can never write this field.
+   */
+  guests?: GameGuest[];
+
+  /**
    * Phase: community-rating-driven auto-balance.
    * Minutes before kickoff to run the scheduled team generator.
    * Default 60 when missing.
@@ -661,6 +668,43 @@ export interface Game {
  * concrete status.
  */
 export type ArrivalStatus = 'unknown' | 'arrived' | 'late' | 'no_show';
+
+/**
+ * A guest player attached to ONE game only. Guests are not real /users
+ * docs — they have no account, no notifications, no achievements, no
+ * player card. They DO count toward game capacity and DO participate in
+ * team balancing. Only the game creator / community admin can add /
+ * edit / remove guests.
+ *
+ * Wherever a player id is stored as a flat string (Team.playerIds,
+ * LiveMatchState.assignments keys, …) guests are encoded as
+ * `guest:<guestId>` so they don't collide with real uids.
+ */
+export interface GameGuest {
+  id: string;
+  /** Display name. Trimmed; max 20 chars (validated by service). */
+  name: string;
+  /** Optional 1–5 rating used by auto-balance when the coach knows the level. */
+  estimatedRating?: number;
+  /** uid of the coach who added the guest. */
+  addedBy: UserId;
+  createdAt: number;
+}
+
+/** Prefix used to distinguish guest ids from real uids in flat string id arrays. */
+export const GUEST_ID_PREFIX = 'guest:';
+
+export function isGuestId(id: string): boolean {
+  return typeof id === 'string' && id.startsWith(GUEST_ID_PREFIX);
+}
+
+export function toGuestRosterId(guestId: string): string {
+  return `${GUEST_ID_PREFIX}${guestId}`;
+}
+
+export function parseGuestRosterId(rosterId: string): string | null {
+  return isGuestId(rosterId) ? rosterId.slice(GUEST_ID_PREFIX.length) : null;
+}
 
 export type LiveMatchPhase = 'organizing' | 'live' | 'finished';
 export type LiveMatchZone = 'teamA' | 'teamB' | 'bench' | 'gkA' | 'gkB';

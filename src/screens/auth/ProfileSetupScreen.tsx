@@ -35,7 +35,7 @@ export function ProfileSetupScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{he.profileTitle}</Text>
         <View style={{ marginVertical: spacing.lg }}>
-          <PlayerIdentity user={previewUser} size="xl" highlight />
+          <PlayerIdentity user={previewUser} size="xl" />
         </View>
         <TextInput
           value={name}

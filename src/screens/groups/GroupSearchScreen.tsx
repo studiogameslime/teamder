@@ -3,13 +3,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -95,11 +95,7 @@ export function GroupSearchScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       ) : text.trim().length === 0 ? (
         <Text style={styles.empty}>{he.groupsSearchPrompt}</Text>
       ) : hits.length === 0 ? (

@@ -110,6 +110,15 @@ function appOpenUnitId(): string {
 // ─── Service ──────────────────────────────────────────────────────────────
 
 let initialized = false;
+// Resolves once `MobileAds().initialize()` has actually completed. The
+// banner component awaits this before rendering — without it, the
+// native banner can mount before the SDK is ready and silently no-op.
+// (App-open works either way because `appOpenAdHandle.load()` is called
+// AFTER `await sdk.initialize()` in `initializeAds` itself.)
+let initResolve: (() => void) | null = null;
+const initReady: Promise<void> = new Promise((res) => {
+  initResolve = res;
+});
 let appOpenShownThisSession = false;
 let appOpenAdHandle: ReturnType<AdsModule['AppOpenAd']['createForAdRequest']> | null =
   null;
@@ -119,35 +128,42 @@ export const adsService = {
   async initializeAds(): Promise<void> {
     if (initialized) return;
     initialized = true;
-    if (!ADS_ENABLED) return; // fast path when the flag is off
-    let mod: AdsModule | null = null;
+    // Whichever branch we exit through, unblock any BannerAd that's
+    // already mounted. `initResolve()` is one-shot (the Promise resolves
+    // exactly once), so calling it on every path is safe.
     try {
-      mod = loadAdsMod();
-    } catch (err) {
-      if (__DEV__) console.warn('[ads] loadAdsMod threw', err);
-      return;
-    }
-    if (!mod) return;
-    try {
-      // v14.x: default export is a factory; call it to get the singleton.
-      const sdk =
-        typeof mod.default === 'function'
-          ? mod.default()
-          : (mod.MobileAds?.() ?? null);
-      if (!sdk) {
-        if (__DEV__) console.warn('[ads] no MobileAds singleton in module');
+      if (!ADS_ENABLED) return;
+      let mod: AdsModule | null = null;
+      try {
+        mod = loadAdsMod();
+      } catch (err) {
+        if (__DEV__) console.warn('[ads] loadAdsMod threw', err);
         return;
       }
-      await sdk.initialize();
-      const id = appOpenUnitId();
-      if (id) {
-        appOpenAdHandle = mod.AppOpenAd.createForAdRequest(id, {
-          requestNonPersonalizedAdsOnly: true,
-        });
-        appOpenAdHandle.load();
+      if (!mod) return;
+      try {
+        // v14.x: default export is a factory; call it to get the singleton.
+        const sdk =
+          typeof mod.default === 'function'
+            ? mod.default()
+            : (mod.MobileAds?.() ?? null);
+        if (!sdk) {
+          if (__DEV__) console.warn('[ads] no MobileAds singleton in module');
+          return;
+        }
+        await sdk.initialize();
+        const id = appOpenUnitId();
+        if (id) {
+          appOpenAdHandle = mod.AppOpenAd.createForAdRequest(id, {
+            requestNonPersonalizedAdsOnly: true,
+          });
+          appOpenAdHandle.load();
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('[ads] initializeAds failed', err);
       }
-    } catch (err) {
-      if (__DEV__) console.warn('[ads] initializeAds failed', err);
+    } finally {
+      initResolve?.();
     }
   },
 
@@ -181,7 +197,23 @@ export const adsService = {
 
 export function BannerAd(): React.ReactElement | null {
   const [failed, setFailed] = React.useState(false);
-  if (!ADS_ENABLED || failed) return null;
+  // Gate the actual native render until MobileAds().initialize() has
+  // resolved. Without this, the banner can mount before the SDK is
+  // ready and the native side silently never sends a request — which
+  // matches the "0 requests" symptom we saw in AdMob console.
+  const [ready, setReady] = React.useState(initialized);
+  React.useEffect(() => {
+    if (ready) return;
+    let alive = true;
+    initReady.then(() => {
+      if (alive) setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [ready]);
+
+  if (!ADS_ENABLED || failed || !ready) return null;
   let mod: AdsModule | null = null;
   try {
     mod = loadAdsMod();
@@ -192,13 +224,30 @@ export function BannerAd(): React.ReactElement | null {
   const unitId = bannerUnitId();
   if (!unitId) return null;
   const Banner = mod.BannerAd;
+  // Use the fixed `BANNER` size (320×50). The adaptive variant requires
+  // the parent View to have a measurable width before it can request an
+  // ad, and our TabBar wrapper didn't always provide one — so the
+  // request never left the device. A fixed size sidesteps the layout
+  // chicken-and-egg.
+  const size =
+    (mod.BannerAdSize as Record<string, string> | undefined)?.BANNER ??
+    'BANNER';
   return React.createElement(
     View,
-    { style: { alignItems: 'center' } },
+    {
+      style: {
+        width: '100%',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+      },
+    },
     React.createElement(Banner, {
       unitId,
-      size: mod.BannerAdSize.ANCHORED_ADAPTIVE_BANNER ?? 'BANNER',
+      size,
       requestOptions: { requestNonPersonalizedAdsOnly: true },
+      onAdLoaded: () => {
+        if (__DEV__) console.log('[ads] banner loaded', unitId);
+      },
       onAdFailedToLoad: (err: unknown) => {
         if (__DEV__) console.warn('[ads] banner load failed', err);
         setFailed(true);

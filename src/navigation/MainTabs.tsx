@@ -41,8 +41,12 @@ const NO_ADS_ROUTES = new Set<string>(['LiveMatch']);
 
 function TabBarWithBanner(props: BottomTabBarProps) {
   const showBanner = !NO_ADS_ROUTES.has(leafRouteName(props.state) ?? '');
+  // `width: '100%'` is load-bearing — `ANCHORED_ADAPTIVE_BANNER` (and
+  // even some fixed sizes) need a measurable width on the parent or
+  // the native ad request never fires. Without it the banner mounts
+  // into a 0-width View and AdMob shows 0 requests in the console.
   return (
-    <View>
+    <View style={{ width: '100%' }}>
       {showBanner ? <BannerAd /> : null}
       <BottomTabBar {...props} />
     </View>

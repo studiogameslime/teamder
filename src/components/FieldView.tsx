@@ -148,7 +148,6 @@ function PlayerToken({
             jersey: player.jersey,
           }}
           size={isGk ? 44 : 38}
-          highlight
           onPress={() => nav.navigate('PlayerCard', { userId: player.id })}
         />
         {isGk && <Text style={styles.gloveBadge}>🧤</Text>}

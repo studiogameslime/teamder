@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "382fd359-9632-4210-ad26-fb967a8a893a"
+      }
+    },
+    "owner": "studiogameslimes-organization",
+    "slug": "soccer-game"
+  }
+}

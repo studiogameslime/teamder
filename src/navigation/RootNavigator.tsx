@@ -7,7 +7,8 @@
 // compatibility, so I don't have to touch the working screens.
 
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { OnboardingScreen } from '@/screens/onboarding/OnboardingScreen';
@@ -119,8 +120,15 @@ export function RootNavigator() {
 
 function Splash() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center' }}>
-      <ActivityIndicator size="large" color={colors.primary} />
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <SoccerBallLoader size={56} />
     </View>
   );
 }

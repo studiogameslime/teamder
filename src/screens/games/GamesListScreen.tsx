@@ -12,7 +12,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,6 +26,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { GameCard, GameCardCta } from '@/components/GameCard';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types';
@@ -126,11 +126,7 @@ export function GamesListScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <ScreenHeader title={he.gamesListTitle} showBack={false} />
-        <ActivityIndicator
-          size="small"
-          color={colors.primary}
-          style={{ marginTop: spacing.lg }}
-        />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       </SafeAreaView>
     );
   }

@@ -62,7 +62,7 @@ export function ProfileScreen() {
             tappable here so there's a single, unambiguous edit entry
             point. */}
         <View style={styles.header}>
-          <PlayerIdentity user={user} size="lg" highlight />
+          <PlayerIdentity user={user} size="lg" />
           <Text style={styles.name}>{user.name}</Text>
           {user.email && <Text style={styles.email}>{user.email}</Text>}
         </View>

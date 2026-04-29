@@ -1,6 +1,14 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { I18nManager, LogBox, StatusBar, View } from 'react-native';
+import * as ExpoSplash from 'expo-splash-screen';
+
+// Hold the OS-level splash up until our custom animation has actually
+// taken over the screen. This avoids the brief flash of plain bg
+// between the native splash dismissing and Reanimated's first frame.
+ExpoSplash.preventAutoHideAsync().catch(() => {
+  // Already hidden / not available — non-fatal.
+});
 
 // Suppress LogBox red overlays for known-noisy errors that the app
 // already swallows internally. expo-notifications throws in Expo Go /
@@ -43,7 +51,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { MockModeBanner } from '@/components/MockModeBanner';
+import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
+import { adsService } from '@/services/adsService';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 
@@ -58,9 +68,36 @@ if (!I18nManager.isRTL) {
 }
 
 export default function App() {
+  // The kickoff splash plays once per app launch. We render it OVER the
+  // navigator (not in place of it) so RootNavigator can mount + hydrate
+  // stores in parallel — the splash fades out at the end and the user
+  // lands on a ready UI without an extra spinner step.
+  const [splashDone, setSplashDone] = useState(false);
+
   useEffect(() => {
+    // Hand the screen over from the OS splash to our React layer the
+    // moment App mounts. The custom SplashScreen component is already
+    // in the tree, so there's no flicker.
+    ExpoSplash.hideAsync().catch(() => {
+      // already hidden — non-fatal
+    });
+
     // Place for one-time bootstraps: analytics init, FCM token registration, etc.
   }, []);
+
+  // After the animation finishes, try to show the App Open ad. If the
+  // SDK already pre-loaded one (initializeAds() runs on app boot), the
+  // call resolves when the ad is closed; if nothing is ready it returns
+  // immediately. Either way we then drop the splash and reveal the app.
+  const handleSplashFinish = async () => {
+    try {
+      await adsService.showAppOpenAdIfAvailable();
+    } catch {
+      // showAppOpenAdIfAvailable swallows internally; this is just a
+      // belt-and-suspenders guard against future signature changes.
+    }
+    setSplashDone(true);
+  };
 
   // Build a React Navigation theme so headers / cards / focus tints
   // pick up the active palette without per-screen refactors.
@@ -96,6 +133,12 @@ export default function App() {
             but stay below RN's modal dialogs. */}
         <ToastHost />
       </NavigationContainer>
+
+      {/* Splash sits ABOVE everything. RootNavigator keeps mounting +
+          hydrating behind it; when the animation finishes we hand off
+          to the ad flow → once that resolves (or no-ops) we unmount the
+          splash and the navigator is already live. */}
+      {!splashDone ? <SplashScreen onFinish={handleSplashFinish} /> : null}
     </SafeAreaProvider>
   );
 }

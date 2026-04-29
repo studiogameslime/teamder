@@ -551,6 +551,16 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       autoTeamsGeneratedBy: g.autoTeamsGeneratedBy ?? null,
       teamsEditedManually: g.teamsEditedManually ?? false,
       teamBalanceMeta: g.teamBalanceMeta ?? null,
+      guests: Array.isArray(g.guests)
+        ? (g.guests as import('@/types').GameGuest[]).map((x) => ({
+            id: x.id,
+            name: x.name,
+            estimatedRating:
+              typeof x.estimatedRating === 'number' ? x.estimatedRating : null,
+            addedBy: x.addedBy,
+            createdAt: x.createdAt,
+          }))
+        : [],
       createdAt: g.createdAt,
       updatedAt: g.updatedAt ?? Date.now(),
     };
@@ -653,11 +663,36 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         d.autoTeamsGeneratedBy === 'system' ? 'system' : undefined,
       teamsEditedManually: d.teamsEditedManually === true,
       teamBalanceMeta: readTeamBalanceMeta(d.teamBalanceMeta),
+      guests: readGuests(d.guests),
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };
   },
 };
+
+function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: import('@/types').GameGuest[] = [];
+  for (const raw of v) {
+    if (!raw || typeof raw !== 'object') continue;
+    const o = raw as Record<string, unknown>;
+    if (typeof o.id !== 'string' || typeof o.name !== 'string') continue;
+    const rating =
+      typeof o.estimatedRating === 'number' &&
+      o.estimatedRating >= 1 &&
+      o.estimatedRating <= 5
+        ? o.estimatedRating
+        : undefined;
+    out.push({
+      id: o.id,
+      name: o.name,
+      estimatedRating: rating,
+      addedBy: typeof o.addedBy === 'string' ? o.addedBy : '',
+      createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
+    });
+  }
+  return out;
+}
 
 function readTeamBalanceMeta(
   v: unknown,

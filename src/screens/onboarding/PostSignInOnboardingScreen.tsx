@@ -113,7 +113,6 @@ export function PostSignInOnboardingScreen() {
           <PlayerIdentity
             user={user ? { ...user, name: name.trim() || user.name } : null}
             size="xl"
-            highlight
           />
         </View>
         <TextInput
