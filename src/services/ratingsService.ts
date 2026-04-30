@@ -30,6 +30,8 @@ import {
 } from '@/types';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { docs } from '@/firebase/firestore';
+import { mockGroup } from '@/data/mockUsers';
+import { AnalyticsEvent, logEvent } from './analyticsService';
 
 // ─── Mock store ───────────────────────────────────────────────────────────
 
@@ -91,6 +93,7 @@ export const ratingsService = {
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       });
+      logEvent(AnalyticsEvent.PlayerRated, { groupId, rating, isUpdate: !!existing });
       return;
     }
     const ref = docs.ratingVote(groupId, ratedUserId, raterUserId);
@@ -108,6 +111,11 @@ export const ratingsService = {
       createdAt,
       updatedAt: now,
     } satisfies RatingVote);
+    logEvent(AnalyticsEvent.PlayerRated, {
+      groupId,
+      rating,
+      isUpdate: !!existing?.exists(),
+    });
   },
 
   /** Read the rater's own vote, if any. Returns null when not voted yet. */
@@ -144,6 +152,7 @@ export const ratingsService = {
   ): Promise<void> {
     if (USE_MOCK_DATA) {
       mockVotes.delete(mockKey(groupId, ratedUserId, raterUserId));
+      logEvent(AnalyticsEvent.RatingCleared, { groupId });
       return;
     }
     await deleteDoc(
@@ -151,6 +160,7 @@ export const ratingsService = {
     ).catch(() => {
       /* swallow — best effort */
     });
+    logEvent(AnalyticsEvent.RatingCleared, { groupId });
   },
 
   /**
@@ -232,6 +242,55 @@ export const ratingsService = {
 // Used for tests; lets the runtime reset between scenarios.
 export function __resetRatingsForTests(): void {
   mockVotes.clear();
+  mockSeeded = false;
+}
+
+// ─── Mock seeding ─────────────────────────────────────────────────────────
+// Pre-fill realistic ratings for the demo community (g1) so player cards
+// already show averages without anyone having to vote first. Skill values
+// are hand-picked per player; each rater's vote is derived deterministically
+// from (rater id, rated id) so reloads produce identical averages.
+const MOCK_SKILL_BY_PLAYER_ID: Record<UserId, number> = {
+  p1: 4.2, p2: 3.5, p3: 4.5, p4: 3.0, p5: 3.8,
+  p6: 4.0, p7: 3.5, p8: 3.2, p9: 4.3, p10: 2.8,
+  p11: 3.7, p12: 4.0, p13: 2.5, p14: 4.6, p15: 3.4,
+  p16: 3.0, p17: 3.5, p18: 4.1, p19: 2.9, p20: 3.8,
+  p21: 3.3, p22: 4.4, p23: 3.6, p24: 3.4, p25: 3.7,
+};
+
+let mockSeeded = false;
+function seedMockRatings(): void {
+  if (mockSeeded) return;
+  mockSeeded = true;
+  const groupId: GroupId = mockGroup.id;
+  const memberIds = mockGroup.playerIds;
+  const now = Date.now();
+  const week = 1000 * 60 * 60 * 24 * 7;
+  for (const rater of memberIds) {
+    for (const rated of memberIds) {
+      if (rater === rated) continue;
+      const base = MOCK_SKILL_BY_PLAYER_ID[rated] ?? 3.5;
+      // Deterministic ±0.5 noise from a hash of (rater, rated).
+      const seed =
+        (rater.charCodeAt(0) + rater.charCodeAt(rater.length - 1)) * 31 +
+        rated.charCodeAt(rated.length - 1) * 17;
+      const noise = ((seed % 11) - 5) / 10;
+      let v = Math.round(base + noise);
+      if (v < 1) v = 1;
+      if (v > 5) v = 5;
+      mockVotes.set(mockKey(groupId, rated, rater), {
+        raterUserId: rater,
+        ratedUserId: rated,
+        rating: v as RatingValue,
+        createdAt: now - week,
+        updatedAt: now - week / 2,
+      });
+    }
+  }
+}
+
+if (USE_MOCK_DATA) {
+  seedMockRatings();
 }
 
 // Suppress unused-import warning for serverTimestamp — kept available

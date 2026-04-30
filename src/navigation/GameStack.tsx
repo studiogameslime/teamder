@@ -12,6 +12,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GamesListScreen } from '@/screens/games/GamesListScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
+import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -27,6 +28,8 @@ export type GameStackParamList = {
         format?: import('@/types').GameFormat;
         numberOfTeams?: number;
       };
+  /** Edit metadata of an existing game. Only the organizer should reach this. */
+  GameEdit: { gameId: string };
   /** Read-mostly view of one match. */
   MatchDetails: { gameId: string };
   /** v2 — live-match screen takes the gameId of the game it manages. */
@@ -46,6 +49,7 @@ export function GameStack() {
     >
       <Stack.Screen name="GamesList" component={GamesListScreen} />
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />
+      <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen

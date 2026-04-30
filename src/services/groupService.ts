@@ -10,6 +10,7 @@
 import {
   arrayRemove,
   arrayUnion,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -269,7 +270,7 @@ export const groupService = {
     userId: UserId
   ): Promise<{
     group: Group;
-    status: 'pending' | 'already_member' | 'not_found';
+    status: 'pending' | 'joined' | 'already_member' | 'not_found';
   }> {
     if (USE_MOCK_DATA) {
       const g = Object.values(groupsById).find(
@@ -289,7 +290,7 @@ export const groupService = {
     userId: UserId
   ): Promise<{
     group: Group;
-    status: 'pending' | 'already_member' | 'not_found';
+    status: 'pending' | 'joined' | 'already_member' | 'not_found';
   }> {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
@@ -649,6 +650,38 @@ export const groupService = {
     await batch.commit();
   },
 
+  /**
+   * Permanently delete a community. Caller must be a group admin —
+   * Firestore rules enforce this. Deletes both the canonical /groups
+   * doc and its /groupsPublic mirror. Games created under this group
+   * become orphaned (rules will block reads since playerIds is gone),
+   * which is acceptable for now; a sweep job can collect them later.
+   */
+  async deleteGroup(groupId: GroupId, callerId: UserId): Promise<void> {
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (!g) return;
+      if (!g.adminIds.includes(callerId)) {
+        throw new Error('deleteGroup: caller is not an admin');
+      }
+      delete groupsById[groupId];
+      const idx = mockPublicGroups.findIndex((p) => p.id === groupId);
+      if (idx >= 0) mockPublicGroups.splice(idx, 1);
+      return;
+    }
+    // Two separate deletes — order matters: /groups first so the public
+    // doc's "fall-through" delete rule fires (the rule allows deletion
+    // when the canonical doc no longer exists). Doing them in a batch
+    // would also work, but two sequential deletes keep error surfaces
+    // separable if the second one fails for any reason.
+    await deleteDoc(docs.group(groupId));
+    try {
+      await deleteDoc(docs.groupPublic(groupId));
+    } catch (err) {
+      if (__DEV__) console.warn('[groupService] groupsPublic cleanup failed', err);
+    }
+  },
+
   async hydrateUsers(userIds: UserId[]): Promise<User[]> {
     if (USE_MOCK_DATA) {
       return userIds.map((id) => {
@@ -713,9 +746,15 @@ function syncMockPublic(g: Group): void {
 function mockSubmitJoin(
   g: Group,
   userId: UserId
-): { group: Group; status: 'pending' | 'already_member' } {
+): { group: Group; status: 'pending' | 'joined' | 'already_member' } {
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
+  }
+  if (g.isOpen) {
+    g.playerIds = [...g.playerIds, userId];
+    g.updatedAt = Date.now();
+    syncMockPublic(g);
+    return { group: g, status: 'joined' };
   }
   if (!g.pendingPlayerIds.includes(userId)) {
     g.pendingPlayerIds = [...g.pendingPlayerIds, userId];
@@ -727,14 +766,20 @@ function mockSubmitJoin(
 async function submitJoin(
   g: Group,
   userId: UserId
-): Promise<{ group: Group; status: 'pending' | 'already_member' }> {
+): Promise<{ group: Group; status: 'pending' | 'joined' | 'already_member' }> {
   // Used by the code-based path, which started from a query on /groups by
   // inviteCode. The caller already has read access (the query succeeded
   // because they had access — or the invite-code lookup is admin-readable).
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
   }
-  await writeJoin(g.id, userId);
+  await writeJoin(g.id, userId, !!g.isOpen);
+  if (g.isOpen) {
+    return {
+      group: { ...g, playerIds: [...g.playerIds, userId] },
+      status: 'joined',
+    };
+  }
   return {
     group: {
       ...g,
@@ -756,8 +801,12 @@ async function submitJoin(
 async function submitJoinByPublic(
   groupId: GroupId,
   userId: UserId
-): Promise<{ group: Group; status: 'pending' }> {
-  await writeJoin(groupId, userId);
+): Promise<{ group: Group; status: 'pending' | 'joined' }> {
+  // Read the public projection so we can branch on `isOpen` without needing
+  // read access to /groups (non-members can't read it).
+  const pubSnap = await getDoc(docs.groupPublic(groupId));
+  const isOpen = pubSnap.exists() ? !!pubSnap.data()?.isOpen : false;
+  await writeJoin(groupId, userId, isOpen);
   return {
     group: {
       id: groupId,
@@ -767,40 +816,60 @@ async function submitJoinByPublic(
       normalizedName: '',
       fieldName: '',
       adminIds: [],
-      playerIds: [],
-      pendingPlayerIds: [userId],
+      playerIds: isOpen ? [userId] : [],
+      pendingPlayerIds: isOpen ? [] : [userId],
       inviteCode: '',
       createdAt: 0,
     },
-    status: 'pending',
+    status: isOpen ? 'joined' : 'pending',
   };
 }
 
-async function writeJoin(groupId: GroupId, userId: UserId): Promise<void> {
-  const existing = await getDocs(
-    query(
-      col.joinRequests(),
-      where('groupId', '==', groupId),
-      where('userId', '==', userId),
-      where('status', '==', 'pending')
-    )
-  );
+async function writeJoin(
+  groupId: GroupId,
+  userId: UserId,
+  isOpen: boolean,
+): Promise<void> {
   const { db } = getFirebase();
   const batch = writeBatch(db);
-  if (existing.empty) {
-    const reqRef = doc(col.joinRequests());
-    batch.set(reqRef, {
-      id: reqRef.id,
-      groupId,
-      userId,
-      status: 'pending',
-      createdAt: Date.now(),
-    } as GroupJoinRequestDoc);
+  if (isOpen) {
+    // Open community: skip the join-request doc entirely and add the user
+    // straight to playerIds. Mirrors the rule clause that allows a self-add
+    // to playerIds when the group has isOpen=true.
+    //
+    // Note: we deliberately do NOT bump /groupsPublic.memberCount from the
+    // client. The /groupsPublic update rule requires isGroupAdmin(gid),
+    // and the joining user is not an admin. The public count can drift
+    // by one until an admin write touches it; that's a cosmetic-only
+    // staleness that's not worth a Cloud Function for now.
+    batch.update(docs.group(groupId), {
+      playerIds: arrayUnion(userId),
+      updatedAt: Date.now(),
+    });
+  } else {
+    const existing = await getDocs(
+      query(
+        col.joinRequests(),
+        where('groupId', '==', groupId),
+        where('userId', '==', userId),
+        where('status', '==', 'pending'),
+      ),
+    );
+    if (existing.empty) {
+      const reqRef = doc(col.joinRequests());
+      batch.set(reqRef, {
+        id: reqRef.id,
+        groupId,
+        userId,
+        status: 'pending',
+        createdAt: Date.now(),
+      } as GroupJoinRequestDoc);
+    }
+    batch.update(docs.group(groupId), {
+      pendingPlayerIds: arrayUnion(userId),
+      updatedAt: Date.now(),
+    });
   }
-  batch.update(docs.group(groupId), {
-    pendingPlayerIds: arrayUnion(userId),
-    updatedAt: Date.now(),
-  });
   await batch.commit();
 }
 

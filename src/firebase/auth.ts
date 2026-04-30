@@ -18,6 +18,8 @@ import {
   signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  deleteUser,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { getFirebase, googleOAuth, USE_MOCK_DATA } from './config';
@@ -125,6 +127,38 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
       resolve(user);
     });
   });
+}
+
+/**
+ * Delete the currently signed-in Firebase Auth user. If Auth requires a
+ * fresh login (the default after ~1h), we re-authenticate silently via
+ * Google and retry once. Throws on cancellation or any other error so
+ * the caller can surface a Hebrew message.
+ */
+export async function deleteCurrentFirebaseUser(): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { auth } = getFirebase();
+  const user = auth.currentUser;
+  if (!user) throw new Error('deleteCurrentFirebaseUser: no current user');
+  try {
+    await deleteUser(user);
+  } catch (e: any) {
+    if (e?.code !== 'auth/requires-recent-login') throw e;
+    if (Platform.OS !== 'android') throw e;
+    ensureGoogleConfigured();
+    await GoogleSignin.signOut().catch(() => {});
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const res = await GoogleSignin.signIn();
+    if (!isSuccessResponse(res)) {
+      throw new Error('reauth: cancelled');
+    }
+    const idToken = res.data?.idToken;
+    if (!idToken) throw new Error('reauth: no idToken');
+    const credential = GoogleAuthProvider.credential(idToken);
+    const fresh = getFirebase().auth.currentUser ?? user;
+    await reauthenticateWithCredential(fresh, credential);
+    await deleteUser(getFirebase().auth.currentUser ?? fresh);
+  }
 }
 
 // ─── Legacy helper kept so the old import path still resolves ──────────────

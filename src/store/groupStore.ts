@@ -51,12 +51,12 @@ interface GroupStore {
   requestJoin: (
     code: string,
     userId: UserId
-  ) => Promise<'pending' | 'already_member' | 'not_found'>;
+  ) => Promise<'pending' | 'joined' | 'already_member' | 'not_found'>;
   /** Search-based join (no invite code). */
   requestJoinById: (
     groupId: GroupId,
     userId: UserId
-  ) => Promise<'pending' | 'already_member' | 'not_found'>;
+  ) => Promise<'pending' | 'joined' | 'already_member' | 'not_found'>;
   approve: (userId: UserId) => Promise<void>;
   reject: (userId: UserId) => Promise<void>;
   /**
@@ -65,6 +65,8 @@ interface GroupStore {
    * message.
    */
   leaveGroup: (groupId: GroupId, userId: UserId) => Promise<void>;
+  /** Admin-only. Hard-delete the community + its public mirror. */
+  deleteGroup: (groupId: GroupId, userId: UserId) => Promise<void>;
 }
 
 export const useGroupStore = create<GroupStore>((set, get) => ({
@@ -150,6 +152,10 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
           },
         });
       });
+    } else if (status === 'joined') {
+      // Open community: re-hydrate so the group jumps from "discoverable"
+      // to "my groups" without a manual refresh.
+      await get().hydrate(userId);
     }
     return status;
   },
@@ -177,6 +183,8 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
           },
         });
       });
+    } else if (status === 'joined') {
+      await get().hydrate(userId);
     }
     return status;
   },
@@ -222,6 +230,20 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       const groups = s.groups.filter((g) => g.id !== groupId);
       // If we just left the active group, switch to whatever's next, or
       // null if the user has no other communities.
+      let currentGroupId = s.currentGroupId;
+      if (s.currentGroupId === groupId) {
+        currentGroupId = groups[0]?.id ?? null;
+        storage.setCurrentGroupId(currentGroupId);
+      }
+      return { groups, currentGroupId };
+    });
+    logEvent(AnalyticsEvent.GroupLeft, { groupId });
+  },
+
+  deleteGroup: async (groupId, userId) => {
+    await groupService.deleteGroup(groupId, userId);
+    set((s) => {
+      const groups = s.groups.filter((g) => g.id !== groupId);
       let currentGroupId = s.currentGroupId;
       if (s.currentGroupId === groupId) {
         currentGroupId = groups[0]?.id ?? null;

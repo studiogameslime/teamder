@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מחיקת חשבון — Teamder</title>
+  <meta name="description" content="איך למחוק את חשבון Teamder שלך ואת כל הנתונים שמשויכים אליו." />
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-dark: #16a34a;
+      --green: #22c55e;
+      --green-light: #84cc16;
+      --bg: #ffffff;
+      --bg-soft: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: var(--green-dark); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Top nav */
+    nav.topnav {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: saturate(180%) blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topnav .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand img { height: 32px; }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 14px;
+    }
+    .nav-links a { color: var(--muted); font-weight: 500; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* Page header */
+    section.page-header {
+      padding: 64px 0 32px;
+      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+    }
+    .page-header .container { max-width: 760px; }
+    .page-eyebrow {
+      color: var(--green-dark);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0 0 12px;
+    }
+    .page-title {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+    }
+    .page-lead {
+      color: var(--muted);
+      font-size: 18px;
+      margin: 0;
+      max-width: 580px;
+    }
+
+    /* Body */
+    section.page-body {
+      padding: 40px 0 80px;
+    }
+    .page-body .container { max-width: 760px; }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .card h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin: 0 0 16px;
+    }
+    .steps-list {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .steps-list li {
+      position: relative;
+      padding: 12px 0 12px 56px;
+      padding-inline-start: 56px;
+      padding-inline-end: 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 16px;
+    }
+    .steps-list li:last-child { border-bottom: 0; }
+    .steps-list li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      inset-inline-start: 0;
+      top: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      box-shadow: var(--shadow-sm);
+    }
+    .steps-list strong { font-weight: 700; }
+
+    table.fate {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+    table.fate td {
+      padding: 14px 0;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border);
+    }
+    table.fate tr:last-child td { border-bottom: 0; }
+    table.fate td.what { padding-inline-start: 12px; }
+    table.fate td.when {
+      color: var(--muted);
+      text-align: end;
+      font-size: 14px;
+      white-space: nowrap;
+      padding-inline-start: 16px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .pill.kept {
+      background: #dcfce7;
+      color: var(--green-dark);
+    }
+    .pill.deleted {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    /* Footer (shared) */
+    footer.site {
+      border-top: 1px solid var(--border);
+      padding: 48px 0 32px;
+      background: var(--bg-soft);
+    }
+    .footer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .footer-brand img { height: 24px; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+    .footer-links a { color: var(--muted); font-weight: 500; }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+    .footer-copy {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      section.page-header { padding: 40px 0 24px; }
+      section.page-body { padding: 24px 0 56px; }
+      .card { padding: 22px; }
+      table.fate td.what { padding-inline-start: 0; }
+      .pill { display: block; margin-bottom: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top nav -->
+  <nav class="topnav">
+    <div class="container row">
+      <a class="brand" href="/">
+        <img src="/logo2.png" alt="Teamder" />
+      </a>
+      <div class="nav-links">
+        <a href="/#features">פיצ׳רים</a>
+        <a href="/#how">איך זה עובד</a>
+        <a href="/#beta">הצטרפות לבטא</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <section class="page-header">
+    <div class="container">
+      <p class="page-eyebrow">חשבון</p>
+      <h1 class="page-title">מחיקת חשבון</h1>
+      <p class="page-lead">אפשר למחוק את החשבון ואת הנתונים שלכם בכל רגע, ישירות מתוך האפליקציה.</p>
+    </div>
+  </section>
+
+  <!-- Body -->
+  <section class="page-body">
+    <div class="container">
+
+      <div class="card">
+        <h2>איך מוחקים</h2>
+        <ol class="steps-list">
+          <li>פתחו את Teamder והיכנסו לחשבון.</li>
+          <li>עברו לטאב <strong>"הפרופיל שלי"</strong>.</li>
+          <li>גללו לתחתית המסך והקישו על <strong>"מחיקת חשבון"</strong>.</li>
+          <li>אשרו את הפעולה. החשבון יימחק תוך מספר שניות.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>מה נמחק ומה נשמר</h2>
+        <table class="fate">
+          <tr>
+            <td class="what"><span class="pill deleted">נמחק מיד</span> פרטי הפרופיל (שם, טלפון, עיר, תמונה)</td>
+            <td class="when">תוך שניות</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="pill deleted">נמחק מיד</span> חברויות בקבוצות והיסטוריית הרשמות</td>
+            <td class="when">תוך שניות</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="pill deleted">נמחק מיד</span> תמונות פרופיל מהאחסון</td>
+            <td class="when">תוך שניות</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="pill kept">נשמר</span> דוחות קריסה אנונימיים (Crashlytics) ותעבורה אנונימית (Analytics)</td>
+            <td class="when">עד 14 חודשים</td>
+          </tr>
+          <tr>
+            <td class="what"><span class="pill kept">נשמר</span> משחקים שיצרת/ניהלת — נשארים בקבוצה אך ללא שמך (מוחלף ב־"משתמש שהוסר")</td>
+            <td class="when">קבוע</td>
+          </tr>
+        </table>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site">
+    <div class="container">
+      <div class="footer-row">
+        <div class="footer-brand">
+          <img src="/logo2.png" alt="Teamder" />
+          <span>· מארגנים משחקי כדורגל בלי בלגן</span>
+        </div>
+        <div class="footer-links">
+          <a href="/privacy">מדיניות פרטיות</a>
+          <a href="/delete-account">מחיקת חשבון</a>
+          <a href="mailto:studiogameslime@gmail.com">צור קשר</a>
+        </div>
+      </div>
+      <div class="footer-copy">
+        © Studio Games Lime · כל הזכויות שמורות
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

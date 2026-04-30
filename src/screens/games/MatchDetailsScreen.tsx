@@ -14,6 +14,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,7 +37,10 @@ import { Badge } from '@/components/Badge';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { GuestModal } from '@/components/GuestModal';
+import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, GameFormat, FieldType, UserId } from '@/types';
 import { colors, shadows, spacing } from '@/theme';
 import { he } from '@/i18n/he';
@@ -102,6 +106,7 @@ export function MatchDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const reload = React.useCallback(async () => {
     setLoading(true);
@@ -109,6 +114,7 @@ export function MatchDetailsScreen() {
       const g = await gameService.getGameById(gameId);
       setGame(g);
       if (g) {
+        logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
         const uids = Array.from(
           new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
         );
@@ -195,11 +201,32 @@ export function MatchDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.matchDetailsTitle} />
+      <ScreenHeader
+        title={he.matchDetailsTitle}
+        actions={
+          isAdmin
+            ? [
+                {
+                  icon: 'create-outline',
+                  onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
+                  label: he.matchDetailsEdit,
+                },
+              ]
+            : undefined
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={reload}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* ① HEADER */}
         <View style={styles.header}>
@@ -409,31 +436,48 @@ export function MatchDetailsScreen() {
         />
       ) : null}
 
-      {/* ⑤ STICKY CTA */}
-      <View style={styles.cta}>
-        {primaryDestructive ? (
-          // Outline-only red — never fills the button. Conveys "cancel"
-          // without dominating the screen the way a filled red would.
-          <Pressable
-            onPress={handlePrimary}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.cancelBtn,
-              (pressed || busy) && { opacity: 0.7 },
-            ]}
-          >
-            <Text style={styles.cancelBtnLabel}>{primaryLabel}</Text>
-          </Pressable>
-        ) : (
+      <ConfirmDestructiveModal
+        visible={deleteOpen}
+        title={he.deleteGameTitle}
+        body={he.deleteGameBody}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          try {
+            await gameService.deleteGame(game.id);
+            setDeleteOpen(false);
+            toast.success(he.deleteGameSuccess);
+            nav.goBack();
+          } catch (err) {
+            if (__DEV__) console.warn('[matchDetails] delete failed', err);
+            toast.error(he.error);
+          }
+        }}
+      />
+
+      {/* ⑤ STICKY CTA — primary action + admin-only delete on the same row. */}
+      <View style={[styles.cta, isAdmin && styles.ctaRow]}>
+        <View style={{ flex: 1 }}>
           <Button
             title={primaryLabel}
-            variant="primary"
+            variant={primaryDestructive ? 'danger' : 'primary'}
             size="lg"
             fullWidth
             loading={busy}
             onPress={handlePrimary}
           />
-        )}
+        </View>
+        {isAdmin ? (
+          <View style={{ flex: 1 }}>
+            <Button
+              title={he.deleteGameTitle}
+              variant="danger"
+              size="lg"
+              fullWidth
+              iconLeft="trash-outline"
+              onPress={() => setDeleteOpen(true)}
+            />
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -684,7 +728,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // ④ Manage row (admin)
+  // ④ Manage row (admin) — kept for legacy callers.
   manageRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -708,6 +752,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
+
   // ⑤ Sticky CTA
   cta: {
     position: 'absolute',
@@ -721,18 +766,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
-  cancelBtn: {
-    minHeight: 52,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnLabel: {
-    color: '#DC2626',
-    fontSize: 15,
-    fontWeight: '700',
+  ctaRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });

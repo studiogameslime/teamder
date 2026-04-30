@@ -21,6 +21,8 @@
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,12 +33,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { groupService } from '@/services';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
 import { WeekdayIndex } from '@/types';
 import { colors, radius, shadows, spacing, typography } from '@/theme';
@@ -50,7 +55,9 @@ const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
 export function CommunityEditScreen() {
   const route = useRoute<RouteProp<RouteParams, 'CommunityEdit'>>();
-  const nav = useNavigation();
+  const nav = useNavigation<
+    NativeStackNavigationProp<CommunitiesStackParamList, 'CommunityEdit'>
+  >();
   const { groupId } = route.params;
   const me = useUserStore((s) => s.currentUser);
   const groups = useGroupStore((s) => s.groups);
@@ -163,8 +170,9 @@ export function CommunityEditScreen() {
         isOpen,
         recurringGameEnabled,
       });
+      logEvent(AnalyticsEvent.GroupSettingsEdited, { groupId: original.id });
       await reloadGroups(me.id);
-      nav.goBack();
+      nav.replace('CommunityDetails', { groupId: original.id });
     } catch (e) {
       Alert.alert(he.error, String((e as Error).message ?? e));
     } finally {
@@ -196,7 +204,14 @@ export function CommunityEditScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.communityEditTitle} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* ─── A. פרטים בסיסיים ─────────────────────────── */}
         <SectionTitle title={he.communityEditSectionBasics} />
         <View style={styles.fieldStack}>
@@ -326,6 +341,7 @@ export function CommunityEditScreen() {
           />
         </View>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

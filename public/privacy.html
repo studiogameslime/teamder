@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מדיניות פרטיות — Teamder</title>
+  <meta name="description" content="מדיניות הפרטיות של Teamder — איזה מידע אנחנו אוספים, למה, ומה אפשר לעשות איתו." />
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-dark: #16a34a;
+      --green: #22c55e;
+      --green-light: #84cc16;
+      --bg: #ffffff;
+      --bg-soft: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: var(--green-dark); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Top nav */
+    nav.topnav {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: saturate(180%) blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topnav .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand img { height: 32px; }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 14px;
+    }
+    .nav-links a { color: var(--muted); font-weight: 500; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* Page header */
+    section.page-header {
+      padding: 64px 0 32px;
+      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+    }
+    .page-header .container { max-width: 760px; }
+    .page-eyebrow {
+      color: var(--green-dark);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0 0 12px;
+    }
+    .page-title {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+    }
+    .page-meta {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0;
+    }
+
+    /* Body */
+    section.page-body {
+      padding: 40px 0 80px;
+    }
+    .page-body .container { max-width: 760px; }
+    .page-body p { font-size: 16px; color: #1e293b; }
+    .page-body h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin: 40px 0 12px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .page-body h2:first-of-type { padding-top: 0; border-top: 0; margin-top: 24px; }
+    .page-body h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 24px 0 8px;
+    }
+    .page-body ul, .page-body ol {
+      padding-inline-start: 22px;
+      margin: 8px 0;
+    }
+    .page-body li { margin-bottom: 6px; color: #1e293b; }
+    .page-body strong { font-weight: 700; }
+
+    .info-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 16px 0;
+    }
+    .info-card.tight { padding: 16px 20px; }
+
+    table.clean {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 8px;
+      font-size: 15px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    table.clean th, table.clean td {
+      padding: 14px 16px;
+      text-align: start;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    table.clean tr:last-child td { border-bottom: 0; }
+    table.clean th {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: var(--bg-soft);
+    }
+
+    code {
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 14px;
+      direction: ltr;
+      display: inline-block;
+      color: #475569;
+    }
+
+    /* Footer (shared) */
+    footer.site {
+      border-top: 1px solid var(--border);
+      padding: 48px 0 32px;
+      background: var(--bg-soft);
+    }
+    .footer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .footer-brand img { height: 24px; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+    .footer-links a { color: var(--muted); font-weight: 500; }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+    .footer-copy {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      section.page-header { padding: 40px 0 24px; }
+      section.page-body { padding: 24px 0 56px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top nav -->
+  <nav class="topnav">
+    <div class="container row">
+      <a class="brand" href="/">
+        <img src="/logo2.png" alt="Teamder" />
+      </a>
+      <div class="nav-links">
+        <a href="/#features">פיצ׳רים</a>
+        <a href="/#how">איך זה עובד</a>
+        <a href="/#beta">הצטרפות לבטא</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <section class="page-header">
+    <div class="container">
+      <p class="page-eyebrow">משפטי</p>
+      <h1 class="page-title">מדיניות פרטיות</h1>
+      <p class="page-meta">תאריך עדכון אחרון: 30 באפריל 2026 · Teamder · Studio Games Lime</p>
+    </div>
+  </section>
+
+  <!-- Body -->
+  <section class="page-body">
+    <div class="container">
+      <p>במדיניות זו נסביר אילו פרטים אישיים נאספים כשאתם משתמשים באפליקציית Teamder ("האפליקציה"), למה הם משמשים, ואיזו שליטה יש לכם עליהם. השימוש באפליקציה מהווה הסכמה למדיניות הזו.</p>
+
+      <h2>1. מי אנחנו</h2>
+      <p>האפליקציה פותחה ומופעלת על ידי <strong>Studio Games Lime</strong>. ליצירת קשר בנושאי פרטיות: <a href="mailto:studiogameslime@gmail.com">studiogameslime@gmail.com</a>.</p>
+
+      <h2>2. מה אנחנו אוספים</h2>
+
+      <h3>2.1 פרטים שאתם מספקים ישירות</h3>
+      <ul>
+        <li><strong>פרטי חשבון:</strong> שם, כתובת אימייל, תמונת פרופיל — מתקבלים אוטומטית מ-Google בעת התחברות עם Google Sign-In.</li>
+        <li><strong>פרטי פרופיל:</strong> מספר טלפון, עיר מגורים, רמת מיומנות, ימים מועדפים למשחק (אופציונלי).</li>
+        <li><strong>פרטי קבוצות שיצרתם:</strong> שם הקבוצה, עיר, רחוב המגרש, ימים מועדפים, רמה.</li>
+        <li><strong>תמונות שתעלו:</strong> תמונת פרופיל בלבד, נשמרת ב-Firebase Storage.</li>
+      </ul>
+
+      <h3>2.2 פרטים שנאספים אוטומטית</h3>
+      <ul>
+        <li><strong>מזהה משתמש (Firebase UID):</strong> מזהה אקראי שמשייך אתכם לרשומה שלכם בשרת.</li>
+        <li><strong>פעילות באפליקציה:</strong> אילו מסכים נצפו, פעולות (הצטרפות לקבוצה, רישום למשחק, יצירת משחק) — דרך Firebase Analytics.</li>
+        <li><strong>דוחות קריסה:</strong> מידע טכני אנונימי על שגיאות וקריסות — דרך Firebase Crashlytics.</li>
+        <li><strong>נתוני מכשיר ומפרסם:</strong> סוג מכשיר, גרסת מערכת הפעלה, מזהה מפרסם (Android Advertising ID), כתובת IP — לצורך הצגת מודעות והגנה מפני שימוש לרעה.</li>
+      </ul>
+
+      <h2>3. למה משמש המידע</h2>
+      <table class="clean">
+        <tr>
+          <th>מטרה</th>
+          <th>נתונים</th>
+        </tr>
+        <tr>
+          <td>הפעלת האפליקציה (התחברות, שיוך לקבוצות, רישום למשחקים)</td>
+          <td>פרטי חשבון, מזהה משתמש</td>
+        </tr>
+        <tr>
+          <td>הצגת פרופיל לחברי קבוצה</td>
+          <td>שם, תמונה, רמת מיומנות</td>
+        </tr>
+        <tr>
+          <td>שיפור ביצועים ויציבות</td>
+          <td>דוחות קריסה, פעילות באפליקציה</td>
+        </tr>
+        <tr>
+          <td>הצגת מודעות (Google AdMob)</td>
+          <td>מזהה מפרסם, כתובת IP, סוג מכשיר</td>
+        </tr>
+        <tr>
+          <td>מניעת שימוש לרעה ועמידה בחוק</td>
+          <td>מזהה משתמש, IP, פעילות</td>
+        </tr>
+      </table>
+
+      <h2>4. עם מי המידע משותף</h2>
+      <p>אנחנו לא מוכרים את המידע שלכם. הוא משותף רק עם:</p>
+      <ul>
+        <li><strong>Google Firebase</strong> (Auth, Firestore, Storage, Analytics, Crashlytics) — כספק תשתית הענן.</li>
+        <li><strong>Google AdMob</strong> — להצגת מודעות בתוך האפליקציה. AdMob עשוי להשתמש במזהה המפרסם להתאמה אישית. אפשר לאפס/לבטל את המזהה בהגדרות המכשיר → Google → מודעות.</li>
+        <li><strong>חברי הקבוצות שלכם</strong> — חברים אחרים בקבוצה רואים את שמכם, תמונתכם ואת רמת המיומנות שלכם. הם <em>אינם</em> רואים את הטלפון, האימייל או פרטים פרטיים אחרים.</li>
+        <li><strong>רשויות חוק</strong> — רק במקרה של דרישה חוקית מחייבת.</li>
+      </ul>
+
+      <h2>5. היכן המידע נשמר</h2>
+      <p>המידע מאוחסן בשרתי Google Cloud, ככל הנראה באזורי <code>us-central</code>. ההעברה מתבצעת מוצפנת באמצעות HTTPS/TLS.</p>
+
+      <h2>6. כמה זמן נשמר המידע</h2>
+      <ul>
+        <li><strong>פרטי חשבון ופרופיל:</strong> כל עוד החשבון פעיל. נמחקים תוך שניות אחרי בקשת מחיקה.</li>
+        <li><strong>היסטוריית משחקים שיצרתם:</strong> נשמרת בקבוצה גם אחרי מחיקת החשבון, אך השם מוחלף ב-"משתמש שהוסר".</li>
+        <li><strong>Analytics ו-Crashlytics:</strong> עד 14 חודשים, אנונימי.</li>
+        <li><strong>לוגים טכניים:</strong> עד 60 יום.</li>
+      </ul>
+
+      <h2>7. הזכויות שלכם</h2>
+      <p>אתם רשאים בכל רגע:</p>
+      <ul>
+        <li><strong>לצפות</strong> בנתונים שלכם דרך מסך הפרופיל.</li>
+        <li><strong>לעדכן</strong> שם, תמונה ופרטים אישיים מהפרופיל.</li>
+        <li><strong>למחוק</strong> את החשבון — דרך כפתור באפליקציה או דרך <a href="/delete-account">דף מחיקת החשבון</a>.</li>
+        <li><strong>לבטל הסכמה</strong> למודעות מותאמות אישית בהגדרות המכשיר.</li>
+      </ul>
+
+      <h2>8. ילדים</h2>
+      <p>האפליקציה אינה מיועדת לילדים מתחת לגיל 13. אם נדע שנאסף מידע על קטין מתחת לגיל זה — נמחק אותו מיידית.</p>
+
+      <h2>9. אבטחה</h2>
+      <p>אנחנו משתמשים בכלי האבטחה הסטנדרטיים של Google Cloud — תעבורה מוצפנת ב-TLS, חוקי גישה (Firestore Security Rules) שמגבילים את הגישה לנתונים שלכם, ואימות דו-שלבי לחשבונות הניהול. עם זאת, אף מערכת אינה חסינה ב-100%, ולא נוכל להבטיח אבטחה מוחלטת.</p>
+
+      <h2>10. שינויים במדיניות</h2>
+      <p>אם נעדכן את המדיניות, נשנה את תאריך העדכון בראש העמוד. שינויים מהותיים יודיעו במסך הראשי של האפליקציה.</p>
+
+      <h2>11. יצירת קשר</h2>
+      <p>שאלות, בקשות או תלונות בנושא פרטיות: <a href="mailto:studiogameslime@gmail.com">studiogameslime@gmail.com</a>.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site">
+    <div class="container">
+      <div class="footer-row">
+        <div class="footer-brand">
+          <img src="/logo2.png" alt="Teamder" />
+          <span>· מארגנים משחקי כדורגל בלי בלגן</span>
+        </div>
+        <div class="footer-links">
+          <a href="/privacy">מדיניות פרטיות</a>
+          <a href="/delete-account">מחיקת חשבון</a>
+          <a href="mailto:studiogameslime@gmail.com">צור קשר</a>
+        </div>
+      </div>
+      <div class="footer-copy">
+        © Studio Games Lime · כל הזכויות שמורות
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

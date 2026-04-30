@@ -12,6 +12,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -115,6 +116,8 @@ export function PublicGroupsFeedScreen() {
   const [text, setText] = useState('');
   const [items, setItems] = useState<GroupPublic[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // Bump to force a re-fetch (pull-to-refresh).
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // Filters — two independent toggles. "hasRoom" filters communities
   // that aren't at their member cap; "nearby" derives the viewer's
@@ -171,7 +174,7 @@ export function PublicGroupsFeedScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [text]);
+  }, [text, refreshTick]);
 
   const memberIds = useMemo(
     () => new Set(memberGroups.map((g) => g.id)),
@@ -262,6 +265,10 @@ export function PublicGroupsFeedScreen() {
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: item.id });
         toast.success(he.toastJoinRequestSent);
+      } else if (status === 'joined') {
+        toast.success(he.toastJoinedGroup);
+        // Refresh the public feed too so the row updates from joinAuto → enter.
+        setRefreshTick((n) => n + 1);
       } else if (status === 'already_member') {
         toast.info(he.groupAlreadyMember);
       }
@@ -366,7 +373,17 @@ export function PublicGroupsFeedScreen() {
           />
         </View>
       ) : isSearching ? (
-        <ScrollView contentContainerStyle={styles.listContent}>
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={() => setRefreshTick((n) => n + 1)}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
           {searchMatches.length === 0 ? (
             <Text style={styles.empty}>{he.communitiesEmpty}</Text>
           ) : (
@@ -374,7 +391,17 @@ export function PublicGroupsFeedScreen() {
           )}
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.listContent}>
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={() => setRefreshTick((n) => n + 1)}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
           <Section
             title={he.communitiesSectionMember}
             items={myItems}

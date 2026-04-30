@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -33,7 +34,10 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { MatchCard } from '@/components/MatchCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ratingsService } from '@/services/ratingsService';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
@@ -69,6 +73,7 @@ export function CommunityDetailsScreen() {
   const { groupId } = useRoute<Params>().params;
   const me = useUserStore((s) => s.currentUser);
   const leaveGroup = useGroupStore((s) => s.leaveGroup);
+  const deleteGroup = useGroupStore((s) => s.deleteGroup);
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
@@ -76,6 +81,7 @@ export function CommunityDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [busyLeave, setBusyLeave] = useState(false);
   const [busyRecurring, setBusyRecurring] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -83,6 +89,7 @@ export function CommunityDetailsScreen() {
       const g = await groupService.get(groupId);
       setGroup(g);
       if (g) {
+        logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
         const memberIds = Array.from(
           new Set([...g.adminIds, ...g.playerIds])
         );
@@ -216,10 +223,13 @@ export function CommunityDetailsScreen() {
   const handleInvite = async () => {
     if (!group) return;
     try {
-      await Share.share({
+      const result = await Share.share({
         title: he.inviteShareSubject,
         message: he.communityInviteShareBody(group.name, group.inviteCode),
       });
+      if (result.action !== 'dismissedAction') {
+        logEvent(AnalyticsEvent.InviteShared, { groupId: group.id });
+      }
     } catch (err) {
       if (__DEV__) console.warn('[community] share failed', err);
     }
@@ -250,8 +260,35 @@ export function CommunityDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={group.name} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScreenHeader
+        title={group.name}
+        actions={
+          isAdmin
+            ? [
+                {
+                  icon: 'create-outline',
+                  onPress: () =>
+                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                      'CommunityEdit',
+                      { groupId: group.id },
+                    ),
+                  label: he.communityEditTitle,
+                },
+              ]
+            : undefined
+        }
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={reload}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {/* ① HERO — name + role badge + city/field sub-info */}
         <View style={styles.hero}>
           <View style={styles.heroTopRow}>
@@ -563,21 +600,6 @@ export function CommunityDetailsScreen() {
             actions further up the screen. */}
         {isMember || isAdmin ? (
           <View style={[styles.actions, { marginTop: spacing.md }]}>
-            {isAdmin ? (
-              <Button
-                title={he.communityEditTitle}
-                variant="outline"
-                size="lg"
-                fullWidth
-                iconLeft="create-outline"
-                onPress={() =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'CommunityEdit',
-                    { groupId: group.id },
-                  )
-                }
-              />
-            ) : null}
             {isMember ? (
               <Button
                 title={he.communityDetailsInvite}
@@ -588,18 +610,54 @@ export function CommunityDetailsScreen() {
                 onPress={handleInvite}
               />
             ) : null}
-            <Button
-              title={he.communityDetailsLeave}
-              variant="danger"
-              size="lg"
-              fullWidth
-              iconLeft="exit-outline"
-              loading={busyLeave}
-              onPress={handleLeave}
-            />
+            {/* Destructive row — leave + (admin-only) delete side by side. */}
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={he.communityDetailsLeave}
+                  variant="danger"
+                  size="lg"
+                  fullWidth
+                  iconLeft="exit-outline"
+                  loading={busyLeave}
+                  onPress={handleLeave}
+                />
+              </View>
+              {isAdmin ? (
+                <View style={{ flex: 1 }}>
+                  <Button
+                    title={he.deleteGroupTitle}
+                    variant="danger"
+                    size="lg"
+                    fullWidth
+                    iconLeft="trash-outline"
+                    onPress={() => setDeleteOpen(true)}
+                  />
+                </View>
+              ) : null}
+            </View>
           </View>
         ) : null}
       </ScrollView>
+
+      <ConfirmDestructiveModal
+        visible={deleteOpen}
+        title={he.deleteGroupTitle}
+        body={he.deleteGroupBody}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          if (!me) return;
+          try {
+            await deleteGroup(group.id, me.id);
+            setDeleteOpen(false);
+            toast.success(he.deleteGroupSuccess);
+            (nav as { goBack: () => void }).goBack();
+          } catch (err) {
+            if (__DEV__) console.warn('[community] delete failed', err);
+            toast.error(he.error);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

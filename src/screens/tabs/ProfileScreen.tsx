@@ -17,6 +17,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -53,6 +54,34 @@ export function ProfileScreen() {
   const nav = useNavigation<any>();
   const localUser = useUserStore((s) => s.currentUser);
   const signOut = useUserStore((s) => s.signOut);
+  const deleteOwnAccount = useUserStore((s) => s.deleteOwnAccount);
+  const [deleting, setDeleting] = useState(false);
+
+  const onDeleteAccount = () => {
+    Alert.alert(
+      he.profileDeleteAccountTitle,
+      he.profileDeleteAccountMessage,
+      [
+        { text: he.profileDeleteAccountCancel, style: 'cancel' },
+        {
+          text: he.profileDeleteAccountConfirm,
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteOwnAccount();
+            } catch (err) {
+              if (__DEV__) console.warn('[profile] delete failed', err);
+              Alert.alert(he.profileDeleteAccountFailed);
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
 
   const currentGroup = useCurrentGroup();
   const isAdmin = useIsAdmin(localUser?.id);
@@ -61,6 +90,17 @@ export function ProfileScreen() {
   // numbers are always current — the local store only holds the auth /
   // profile-edit slice and may be stale by minutes.
   const [user, setUser] = useState<User | null>(localUser);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshUser = React.useCallback(async () => {
+    if (!localUser) return;
+    setRefreshing(true);
+    try {
+      const u = await userService.getUserById(localUser.id);
+      if (u) setUser(u);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [localUser]);
   useEffect(() => {
     if (!localUser) return;
     let alive = true;
@@ -92,6 +132,14 @@ export function ProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshUser}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* ① HERO — full-bleed green gradient with the jersey + name. */}
         <View style={styles.heroWrap}>
@@ -314,6 +362,22 @@ export function ProfileScreen() {
             onPress={signOut}
             style={{ marginTop: spacing.sm }}
           />
+
+          {/* Delete account — required for Play Store compliance */}
+          <Pressable
+            onPress={onDeleteAccount}
+            disabled={deleting}
+            style={({ pressed }) => [
+              styles.deleteAccountRow,
+              pressed && { opacity: 0.6 },
+              deleting && { opacity: 0.5 },
+            ]}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Text style={styles.deleteAccountText}>
+              {he.profileDeleteAccount}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -513,5 +577,18 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     fontWeight: '500',
+  },
+  deleteAccountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  deleteAccountText: {
+    ...typography.caption,
+    color: colors.danger,
+    fontWeight: '600',
   },
 });

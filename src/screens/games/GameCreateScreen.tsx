@@ -1,10 +1,12 @@
-// Create-game form. Communities the user belongs to populate the select.
-// Default location is pre-filled from the chosen community's fieldName so
-// the typical "same field every week" path is one tap.
+// Create game-session form. The user lands here, fills in the essentials,
+// and creates a session in ~10 seconds. Less common knobs are tucked
+// behind an "advanced" accordion so they don't clutter the primary path.
 
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { Card } from '@/components/Card';
 import { InputField } from '@/components/InputField';
 import { gameService } from '@/services/gameService';
 import { FieldType, GameFormat, Group } from '@/types';
@@ -56,7 +57,7 @@ export function GameCreateScreen() {
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
 
-  // Empty-community state — show a friendly message and bounce out.
+  // Empty-community state — bounce out with a friendly message.
   if (myCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -72,11 +73,11 @@ export function GameCreateScreen() {
   const [groupId, setGroupId] = useState<string>(myCommunities[0].id);
   const selectedGroup = useMemo<Group | undefined>(
     () => myCommunities.find((g) => g.id === groupId),
-    [myCommunities, groupId]
+    [myCommunities, groupId],
   );
 
   const [startsAt, setStartsAt] = useState<number>(() => {
-    // Default to next Thursday, 20:00.
+    // Default to next Thursday 20:00 — typical session slot.
     const d = new Date();
     const delta = (4 - d.getDay() + 7) % 7 || 7;
     d.setDate(d.getDate() + delta);
@@ -84,25 +85,27 @@ export function GameCreateScreen() {
     return d.getTime();
   });
   const [fieldName, setFieldName] = useState<string>(
-    selectedGroup?.fieldName ?? ''
+    selectedGroup?.fieldName ?? '',
   );
   const [format, setFormat] = useState<GameFormat>('5v5');
-  const [numberOfTeams, setNumberOfTeams] = useState<number>(3);
+  // Round duration default 8 min — the canonical "משחקון" length.
+  const [roundDuration, setRoundDuration] = useState<string>('8');
+
+  // Advanced (collapsed by default).
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [numberOfTeams, setNumberOfTeams] = useState<number>(2);
+  const [fieldType, setFieldType] = useState<FieldType | undefined>(undefined);
   const [minPlayers, setMinPlayers] = useState<string>('');
   const [cancelDeadlineHours, setCancelDeadlineHours] = useState<string>('');
-  const [fieldType, setFieldType] = useState<FieldType | undefined>(undefined);
-  const [matchDuration, setMatchDuration] = useState<string>('');
-  const [autoBalanceMinutes, setAutoBalanceMinutes] = useState<number>(60);
-  const [isPublic, setIsPublic] = useState(false);
-  const [requiresApproval, setRequiresApproval] = useState(false);
   const [bringBall, setBringBall] = useState(true);
   const [bringShirts, setBringShirts] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [notes, setNotes] = useState('');
+
   const [busy, setBusy] = useState(false);
 
-  // Derived: maxPlayers is computed live from format × numberOfTeams.
-  // No manual override — clearer mental model and prevents arithmetic
-  // mistakes (e.g., 5v5 × 3 = 15, not "what feels right").
+  // Derived: total registrant capacity (format × team count).
   const maxPlayers = playersPerTeam(format) * numberOfTeams;
 
   const handleGroupChange = (id: string) => {
@@ -112,7 +115,7 @@ export function GameCreateScreen() {
   };
 
   const canSave =
-    !busy && !!user && selectedGroup && fieldName.trim().length > 0;
+    !busy && !!user && !!selectedGroup && fieldName.trim().length > 0;
 
   const submit = async () => {
     if (!user || !selectedGroup || !canSave) return;
@@ -120,7 +123,8 @@ export function GameCreateScreen() {
     try {
       const parsedMin = parseInt(minPlayers, 10);
       const parsedDeadline = parseInt(cancelDeadlineHours, 10);
-      await gameService.createGameV2({
+      const parsedRound = parseInt(roundDuration, 10);
+      const created = await gameService.createGameV2({
         groupId: selectedGroup.id,
         title: selectedGroup.name,
         startsAt,
@@ -136,11 +140,10 @@ export function GameCreateScreen() {
             : undefined,
         fieldType,
         matchDurationMinutes:
-          (() => {
-            const n = parseInt(matchDuration, 10);
-            return Number.isFinite(n) && n > 0 ? n : undefined;
-          })(),
-        autoTeamGenerationMinutesBeforeStart: autoBalanceMinutes,
+          Number.isFinite(parsedRound) && parsedRound > 0
+            ? parsedRound
+            : undefined,
+        autoTeamGenerationMinutesBeforeStart: 60,
         isPublic,
         requiresApproval,
         bringBall,
@@ -148,7 +151,7 @@ export function GameCreateScreen() {
         notes: notes.trim() || undefined,
         createdBy: user.id,
       });
-      nav.goBack();
+      nav.replace('MatchDetails', { gameId: created.id });
     } catch (e) {
       Alert.alert(he.error, String((e as Error).message ?? e));
     } finally {
@@ -159,295 +162,242 @@ export function GameCreateScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.createGameTitle} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Community select */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGameCommunity}</Text>
-          <Text style={styles.hint}>{he.createGameCommunityHint}</Text>
-          <View style={styles.communityList}>
-            {myCommunities.map((g) => (
-              <CommunityRow
-                key={g.id}
-                group={g}
-                selected={g.id === groupId}
-                onSelect={() => handleGroupChange(g.id)}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ─── Community select — only when more than one to pick from ── */}
+          {myCommunities.length > 1 ? (
+            <View style={styles.section}>
+              <Text style={styles.label}>{he.createGameCommunity}</Text>
+              <View style={styles.communityList}>
+                {myCommunities.map((g) => (
+                  <CommunityRow
+                    key={g.id}
+                    group={g}
+                    selected={g.id === groupId}
+                    onSelect={() => handleGroupChange(g.id)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* ─── Date/time ────────────────────────────────────────────── */}
+          <AppDateTimeField
+            label={he.createGameDateTime}
+            value={startsAt}
+            onChange={setStartsAt}
+          />
+
+          {/* ─── Location ─────────────────────────────────────────────── */}
+          <InputField
+            label={he.createGameField}
+            value={fieldName}
+            onChangeText={setFieldName}
+          />
+
+          {/* ─── Format ───────────────────────────────────────────────── */}
+          <View style={styles.section}>
+            <Text style={styles.label}>{he.createGameFormat}</Text>
+            <View style={styles.pillRow}>
+              {FORMATS.map((f) => (
+                <Pressable
+                  key={f}
+                  onPress={() => setFormat(f)}
+                  style={({ pressed }) => [
+                    styles.pill,
+                    format === f && styles.pillActive,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.pillText,
+                      format === f && styles.pillTextActive,
+                    ]}
+                  >
+                    {formatLabel(f)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* ─── Match duration ───────────────────────────────────── */}
+          <View>
+            <InputField
+              label={he.createGameMatchDuration}
+              value={roundDuration}
+              onChangeText={setRoundDuration}
+              keyboardType="number-pad"
+            />
+            <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
+          </View>
+
+          {/* ─── Total players (derived display) ───────────────────────── */}
+          <View style={styles.totalRow}>
+            <Ionicons name="people-outline" size={18} color={colors.primary} />
+            <Text style={styles.totalText}>
+              {he.createGameTotalShort(maxPlayers)}
+            </Text>
+          </View>
+
+          {/* ─── Advanced accordion ─────────────────────────────────── */}
+          <Pressable
+            onPress={() => setAdvancedOpen((v) => !v)}
+            style={({ pressed }) => [
+              styles.advancedHeader,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.advancedTitle}>{he.createGameAdvanced}</Text>
+            <Ionicons
+              name={advancedOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </Pressable>
+
+          {advancedOpen ? (
+            <View style={styles.advancedBody}>
+              {/* Number of teams */}
+              <View style={styles.section}>
+                <Text style={styles.label}>{he.createGameNumberOfTeams}</Text>
+                <View style={styles.pillRow}>
+                  {TEAM_COUNTS.map((n) => (
+                    <Pressable
+                      key={n}
+                      onPress={() => setNumberOfTeams(n)}
+                      style={({ pressed }) => [
+                        styles.pill,
+                        numberOfTeams === n && styles.pillActive,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          numberOfTeams === n && styles.pillTextActive,
+                        ]}
+                      >
+                        {String(n)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Field type */}
+              <View style={styles.section}>
+                <Text style={styles.label}>{he.createGameFieldType}</Text>
+                <View style={styles.pillRow}>
+                  {(['asphalt', 'synthetic', 'grass'] as const).map((f) => (
+                    <Pressable
+                      key={f}
+                      onPress={() =>
+                        setFieldType(fieldType === f ? undefined : f)
+                      }
+                      style={({ pressed }) => [
+                        styles.pill,
+                        fieldType === f && styles.pillActive,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          fieldType === f && styles.pillTextActive,
+                        ]}
+                      >
+                        {fieldTypeLabel(f)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Min players */}
+              <View>
+                <InputField
+                  label={he.createGameMinPlayers}
+                  value={minPlayers}
+                  onChangeText={setMinPlayers}
+                  keyboardType="number-pad"
+                />
+                <Text style={styles.hint}>{he.createGameMinPlayersHint}</Text>
+              </View>
+
+              {/* Cancel deadline */}
+              <View>
+                <InputField
+                  label={he.createGameCancelDeadline}
+                  value={cancelDeadlineHours}
+                  onChangeText={setCancelDeadlineHours}
+                  keyboardType="number-pad"
+                />
+                <Text style={styles.hint}>
+                  {he.createGameCancelDeadlineHint}
+                </Text>
+              </View>
+
+              {/* Optional rules — toggles + free-text notes */}
+              <ToggleRow
+                label={he.createGameBringBall}
+                value={bringBall}
+                onChange={setBringBall}
               />
-            ))}
-          </View>
-        </View>
+              <ToggleRow
+                label={he.createGameBringShirts}
+                value={bringShirts}
+                onChange={setBringShirts}
+              />
+              <ToggleRow
+                label={he.createGameIsPublic}
+                hint={he.createGameIsPublicHint}
+                value={isPublic}
+                onChange={setIsPublic}
+              />
+              <ToggleRow
+                label={he.createGameRequiresApproval}
+                hint={he.createGameRequiresApprovalHint}
+                value={requiresApproval}
+                onChange={setRequiresApproval}
+              />
 
-        <AppDateTimeField
-          label={he.createGameDateTime}
-          value={startsAt}
-          onChange={setStartsAt}
-        />
-        <Field
-          label={he.createGameField}
-          value={fieldName}
-          onChange={setFieldName}
-        />
+              <InputField
+                label={he.createGameNotes}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="לדוגמה: שער דרומי, חניה ברחוב"
+                multiline
+              />
+            </View>
+          ) : null}
+        </ScrollView>
 
-        {/* Format picker — pill row */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGameFormat}</Text>
-          <View style={styles.formatRow}>
-            {FORMATS.map((f) => (
-              <Pressable
-                key={f}
-                onPress={() => setFormat(f)}
-                style={({ pressed }) => [
-                  styles.formatPill,
-                  format === f && styles.formatPillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.formatPillText,
-                    format === f && {
-                      color: colors.primary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {formatLabel(f)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Number of teams (2–5) — pill row. maxPlayers is derived. */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGameNumberOfTeams}</Text>
-          <View style={styles.formatRow}>
-            {TEAM_COUNTS.map((n) => (
-              <Pressable
-                key={n}
-                onPress={() => setNumberOfTeams(n)}
-                style={({ pressed }) => [
-                  styles.formatPill,
-                  numberOfTeams === n && styles.formatPillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.formatPillText,
-                    numberOfTeams === n && {
-                      color: colors.primary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {String(n)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.totalText}>
-            {he.createGameTotalPlayers(maxPlayers)}
-          </Text>
-        </View>
-
-        <View>
-          <Field
-            label={he.createGameMinPlayers}
-            value={minPlayers}
-            onChange={setMinPlayers}
-            keyboardType="number-pad"
+        {/* ─── Sticky CTA ─────────────────────────────────────────────── */}
+        <View style={styles.ctaWrap}>
+          <Button
+            title={he.createGameSubmit}
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!canSave}
+            loading={busy}
+            onPress={submit}
           />
-          <Text style={styles.hint}>{he.createGameMinPlayersHint}</Text>
         </View>
-
-        <View>
-          <Text style={styles.label}>{he.createGameFieldType}</Text>
-          <View style={styles.formatRow}>
-            {(['asphalt', 'synthetic', 'grass'] as const).map((f) => (
-              <Pressable
-                key={f}
-                onPress={() => setFieldType(fieldType === f ? undefined : f)}
-                style={({ pressed }) => [
-                  styles.formatPill,
-                  fieldType === f && styles.formatPillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.formatPillText,
-                    fieldType === f && {
-                      color: colors.primary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {fieldTypeLabel(f)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <Field
-            label={he.createGameMatchDuration}
-            value={matchDuration}
-            onChange={setMatchDuration}
-            keyboardType="number-pad"
-          />
-          <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
-        </View>
-
-        <View>
-          <Text style={styles.label}>{he.createGameAutoBalanceTiming}</Text>
-          <View style={styles.formatRow}>
-            {(
-              [
-                { v: 30, label: he.createGameAutoBalance30 },
-                { v: 60, label: he.createGameAutoBalance60 },
-                { v: 120, label: he.createGameAutoBalance120 },
-              ] as const
-            ).map((opt) => (
-              <Pressable
-                key={opt.v}
-                onPress={() => setAutoBalanceMinutes(opt.v)}
-                style={({ pressed }) => [
-                  styles.formatPill,
-                  autoBalanceMinutes === opt.v && styles.formatPillActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.formatPillText,
-                    autoBalanceMinutes === opt.v && {
-                      color: colors.primary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <Field
-            label={he.createGameCancelDeadline}
-            value={cancelDeadlineHours}
-            onChange={setCancelDeadlineHours}
-            keyboardType="number-pad"
-          />
-          <Text style={styles.hint}>{he.createGameCancelDeadlineHint}</Text>
-        </View>
-
-        <ToggleRow
-          label={he.createGameIsPublic}
-          hint={he.createGameIsPublicHint}
-          value={isPublic}
-          onChange={setIsPublic}
-        />
-        <ToggleRow
-          label={he.createGameRequiresApproval}
-          hint={he.createGameRequiresApprovalHint}
-          value={requiresApproval}
-          onChange={setRequiresApproval}
-        />
-        <ToggleRow
-          label={he.createGameBringBall}
-          value={bringBall}
-          onChange={setBringBall}
-        />
-        <ToggleRow
-          label={he.createGameBringShirts}
-          value={bringShirts}
-          onChange={setBringShirts}
-        />
-
-        <Field
-          label={he.createGameNotes}
-          value={notes}
-          onChange={setNotes}
-          placeholder="לדוגמה: שער דרומי, חניה ברחוב"
-          multiline
-        />
-      </ScrollView>
-
-      <View style={{ padding: spacing.lg }}>
-        <Button
-          title={he.createGameSubmit}
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!canSave}
-          loading={busy}
-          onPress={submit}
-        />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// ─── Helpers + sub-components ──────────────────────────────────────────────
-
-function formatDateInput(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
-}
-
-function parseDateInput(s: string): number | null {
-  // Accept "DD/MM/YYYY HH:mm" — same shape we render in the placeholder.
-  const m = s.match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/
-  );
-  if (!m) return null;
-  const [, dd, mm, yy, hh, mi] = m;
-  const d = new Date(
-    Number(yy),
-    Number(mm) - 1,
-    Number(dd),
-    Number(hh),
-    Number(mi),
-    0,
-    0
-  );
-  if (Number.isNaN(d.getTime())) return null;
-  return d.getTime();
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  multiline,
-  keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChange: (s: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: 'default' | 'number-pad';
-}) {
-  return (
-    <InputField
-      label={label}
-      value={value}
-      onChangeText={onChange}
-      placeholder={placeholder}
-      multiline={multiline}
-      keyboardType={keyboardType}
-    />
-  );
-}
+// ─── Sub-components ──────────────────────────────────────────────────────
 
 function ToggleRow({
   label,
@@ -463,7 +413,7 @@ function ToggleRow({
   return (
     <View style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.toggleLabel}>{label}</Text>
         {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       </View>
       <Switch
@@ -501,11 +451,7 @@ function CommunityRow({
       {selected ? (
         <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
       ) : (
-        <Ionicons
-          name="ellipse-outline"
-          size={22}
-          color={colors.textMuted}
-        />
+        <Ionicons name="ellipse-outline" size={22} color={colors.textMuted} />
       )}
     </Pressable>
   );
@@ -518,36 +464,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.xl,
   },
-  field: { gap: spacing.xs },
+
+  section: { gap: spacing.xs },
   label: { ...typography.label, color: colors.textMuted },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  input: {
-    ...typography.body,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
 
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-
-  formatRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  formatPill: {
+  // Pill row used for format / number-of-teams / field-type pickers.
+  pillRow: { flexDirection: 'row', gap: spacing.xs },
+  pill: {
     flex: 1,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
@@ -556,19 +484,60 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
   },
-  formatPillActive: {
+  pillActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
-  formatPillText: { ...typography.body, color: colors.textMuted },
+  pillText: { ...typography.body, color: colors.textMuted },
+  pillTextActive: { color: colors.primary, fontWeight: '600' },
+
+  // Derived "total players" display — sits between the format pills and
+  // the advanced accordion as a clear hint of capacity.
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
   totalText: {
     ...typography.label,
     color: colors.primary,
-    textAlign: 'right',
-    marginTop: spacing.xs,
     fontWeight: '700',
   },
 
+  // Toggle row used in advanced.
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  toggleLabel: { ...typography.body, color: colors.text, fontWeight: '500' },
+
+  // Advanced accordion
+  advancedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: spacing.sm,
+  },
+  advancedTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  advancedBody: {
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+  },
+
+  // Community select (only shown if user is in 2+ groups)
   communityList: { gap: spacing.xs, marginTop: spacing.xs },
   communityRow: {
     flexDirection: 'row',
@@ -585,8 +554,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   communityName: { ...typography.bodyBold, color: colors.text },
-  communitySub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  communitySub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 
+  // Sticky CTA
+  ctaWrap: {
+    padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    backgroundColor: colors.bg,
+  },
+
+  // Empty state
   emptyAll: {
     flex: 1,
     alignItems: 'center',

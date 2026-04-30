@@ -7,7 +7,7 @@
 //   │                                                          │
 //   │                          📅 30/04 · 20:00                │   INFO  alignItems:flex-end
 //   │                          📍 המגרש של אלירן                │         each row row-reverse
-//   │                          ⚽ 5 על 5                        │
+//   │                          ⚽ 5 × 5                         │
 //   │                          🍃 סינטטי                        │
 //   │                                                          │
 //   │  6/15 שחקנים  👕                          [join / leave]  │  BOTTOM row-reverse

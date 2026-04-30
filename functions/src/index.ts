@@ -135,14 +135,30 @@ function buildMessage(
 }
 
 function formatHebrewWhen(ms: number): string {
+  // Cloud Functions run in UTC; use Israel local time so notification
+  // text matches the time the user actually expects to play. Without
+  // this override, a 20:00 Israel game renders as 17:00 (UTC).
+  const tz = 'Asia/Jerusalem';
   const d = new Date(ms);
   const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-  const day = days[d.getDay()];
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `יום ${day} ${dd}/${mm} ${hh}:${mi}`;
+  const dayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const weekdayShort = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: tz,
+  }).format(d);
+  const day = days[dayMap[weekdayShort] ?? 0];
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const part = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  return `יום ${day} ${part('day')}/${part('month')} ${part('hour')}:${part('minute')}`;
 }
 
 // ─── Recipient resolution ──────────────────────────────────────────────

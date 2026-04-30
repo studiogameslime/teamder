@@ -3,13 +3,14 @@
 // in AsyncStorage so name/avatar edits survive reload.
 // In real mode we hit Firebase Auth + /users/{uid} in Firestore.
 
-import { getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteField, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { User } from '@/types';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import {
+  deleteCurrentFirebaseUser,
   signInWithGoogle as fbSignInWithGoogle,
   signOutFirebase,
   waitForAuthRestore,
@@ -232,6 +233,48 @@ export const userService = {
       .map((d) => d.data())
       .filter(matches)
       .slice(0, limit);
+  },
+
+  /**
+   * Permanently delete the user's account.
+   *
+   * Step 1: anonymize the /users/{uid} doc — wipe name/email/photo/push
+   * tokens/availability so historical references in other collections
+   * (game rosters, ratings) no longer expose any PII. We don't hard-
+   * delete the doc because Firestore rules forbid it: keeping the row
+   * preserves referential integrity (game.players[] still resolves to
+   * "משתמש שהוסר" instead of dangling).
+   *
+   * Step 2: delete the Firebase Auth user. After this, the next sign-in
+   * with the same Google account creates a brand-new uid.
+   *
+   * Step 3: clear local AsyncStorage so the app boots into the
+   * sign-in screen.
+   */
+  async deleteOwnAccount(): Promise<void> {
+    if (USE_MOCK_DATA) {
+      await storage.setAuthUserJson(null);
+      await storage.setCurrentGroupId(null);
+      return;
+    }
+    const cur = await this.getCurrentUser();
+    if (!cur) throw new Error('deleteOwnAccount: no current user');
+    const ref = docs.user(cur.id);
+    await updateDoc(ref, {
+      name: 'משתמש שהוסר',
+      email: deleteField(),
+      photoUrl: deleteField(),
+      avatarId: deleteField(),
+      jersey: deleteField(),
+      availability: deleteField(),
+      fcmTokens: deleteField(),
+      notificationPrefs: deleteField(),
+      newGameSubscriptions: deleteField(),
+      onboardingCompleted: false,
+      updatedAt: Date.now(),
+    });
+    await deleteCurrentFirebaseUser();
+    await storage.setCurrentGroupId(null);
   },
 
   async signOut(): Promise<void> {

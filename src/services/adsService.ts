@@ -169,6 +169,7 @@ export const adsService = {
 
   /** Show pre-warmed app-open ad, once per session. Always swallows errors. */
   async showAppOpenAdIfAvailable(opts?: { skip?: boolean }): Promise<void> {
+    if (SCREENSHOT_MODE) return;
     if (opts?.skip) return;
     if (!ADS_ENABLED) return;
     if (appOpenShownThisSession) return;
@@ -195,6 +196,11 @@ export const adsService = {
 // render this unconditionally without worrying about feature detection.
 // Built with React.createElement so this file can stay .ts (no JSX).
 
+// ⚠️ SCREENSHOT MODE — flip SCREENSHOT_MODE back to false when
+// finished capturing for the Play Store. Hides both BannerAd and
+// the App Open ad.
+const SCREENSHOT_MODE = false;
+
 export function BannerAd(): React.ReactElement | null {
   const [failed, setFailed] = React.useState(false);
   // Gate the actual native render until MobileAds().initialize() has
@@ -213,6 +219,7 @@ export function BannerAd(): React.ReactElement | null {
     };
   }, [ready]);
 
+  if (SCREENSHOT_MODE) return null;
   if (!ADS_ENABLED || failed || !ready) return null;
   let mod: AdsModule | null = null;
   try {

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -107,6 +108,9 @@ export function NotificationsSettingsScreen() {
       // a round-trip to Firestore.
       useUserStore.setState({
         currentUser: { ...user, notificationPrefs: prefs },
+      });
+      logEvent(AnalyticsEvent.NotificationsToggled, {
+        enabledCount: String(Object.values(prefs).filter(Boolean).length),
       });
       nav.goBack();
     } catch (e) {

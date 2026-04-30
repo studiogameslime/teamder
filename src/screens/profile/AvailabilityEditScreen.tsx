@@ -25,6 +25,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { userService } from '@/services';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
@@ -86,6 +87,11 @@ export function AvailabilityEditScreen() {
       // needs its own write. We piggyback by writing through a thin direct
       // call so we don't have to grow updateProfile's surface for one field.
       await persistAvailability(user.id, next);
+      logEvent(AnalyticsEvent.AvailabilitySet, {
+        days: days.join(','),
+        invitable: String(invitable),
+        hasCity: city.trim().length > 0,
+      });
       await reloadUser();
       nav.goBack();
     } catch (e) {

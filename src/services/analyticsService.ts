@@ -22,22 +22,59 @@ import { Platform } from 'react-native';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 
 export const AnalyticsEvent = {
+  // Navigation
+  ScreenView: 'screen_view',
+
   // Auth
   SignInSuccess: 'sign_in_success',
+  SignOut: 'sign_out',
+  AccountDeleted: 'account_deleted',
+  OnboardingCompleted: 'onboarding_completed',
+
+  // Profile
   ProfileCreated: 'profile_created',
+  ProfileEdited: 'profile_edited',
+  AvatarChanged: 'avatar_changed',
+  AvailabilitySet: 'availability_set',
+  NotificationsToggled: 'notifications_toggled',
+
   // Groups
   GroupCreated: 'group_created',
   GroupSearch: 'group_search',
   GroupJoinRequested: 'group_join_requested',
   GroupJoinApproved: 'group_join_approved',
+  GroupLeft: 'group_left',
+  GroupMemberRemoved: 'group_member_removed',
+  GroupSettingsEdited: 'group_settings_edited',
+  GroupViewed: 'group_viewed',
   InviteShared: 'invite_shared',
-  // Game nights
+  InviteCodeCopied: 'invite_code_copied',
+
+  // Games
+  GameCreated: 'game_created',
   GameJoined: 'game_joined',
   GameCancelled: 'game_cancelled',
   WaitlistJoined: 'waitlist_joined',
+  GameEdited: 'game_edited',
+  GameLocked: 'game_locked',
   GameStarted: 'game_started',
-  MatchCompleted: 'match_completed',
   GameFinished: 'game_finished',
+  GameViewed: 'game_viewed',
+  ArrivalMarked: 'arrival_marked',
+  GuestAdded: 'guest_added',
+  GuestRemoved: 'guest_removed',
+
+  // Live match
+  LiveMatchOpened: 'live_match_opened',
+  PlayersShuffled: 'players_shuffled',
+  TeamScoreChanged: 'team_score_changed',
+  MatchRoundCompleted: 'match_round_completed',
+  MatchCompleted: 'match_completed',
+
+  // Ratings
+  PlayerRated: 'player_rated',
+  RatingCleared: 'rating_cleared',
+
   // Settings
   ReportBugClicked: 'report_bug_clicked',
   SuggestFeatureClicked: 'suggest_feature_clicked',

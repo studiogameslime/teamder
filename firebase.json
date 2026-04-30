@@ -6,6 +6,16 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
+  },
   "functions": [
     {
       "source": "functions",

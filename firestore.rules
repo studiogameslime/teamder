@@ -97,7 +97,7 @@ service cloud.firestore {
           )
         )
       ) || (
-        // self-add to pendingPlayerIds (community join request)
+        // self-add to pendingPlayerIds (community join request — closed group)
         isSignedIn() &&
         !(request.auth.uid in resource.data.playerIds) &&
         !(request.auth.uid in resource.data.adminIds) &&
@@ -105,8 +105,23 @@ service cloud.firestore {
         request.resource.data.pendingPlayerIds.size() ==
           resource.data.pendingPlayerIds.size() + 1 &&
         request.auth.uid in request.resource.data.pendingPlayerIds
+      ) || (
+        // self-add to playerIds (auto-join — open group). The flag
+        // resource.data.isOpen == true gates this; otherwise the path
+        // above (pendingPlayerIds) is the only legal self-write.
+        isSignedIn() &&
+        resource.data.isOpen == true &&
+        !(request.auth.uid in resource.data.playerIds) &&
+        !(request.auth.uid in resource.data.adminIds) &&
+        affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
+        request.resource.data.playerIds.size() ==
+          resource.data.playerIds.size() + 1 &&
+        request.auth.uid in request.resource.data.playerIds
       );
-      allow delete: if false;
+      // Group admins can delete the canonical doc; the public mirror is
+      // cleaned up by the same caller via the rule directly below.
+      allow delete: if isSignedIn() &&
+        request.auth.uid in resource.data.adminIds;
     }
 
     // ── /groupsPublic/{gid} — public discovery projection ───────────────
@@ -120,7 +135,15 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && isGroupAdmin(gid);
-      allow delete: if false;
+      // Allow deletion by an admin of the (still-existing) canonical group,
+      // OR after the canonical doc has already been deleted (rules-driven
+      // race: the client deletes /groups first, /groupsPublic second; by
+      // the time the second write commits, isGroupAdmin() can't read the
+      // deleted doc, so we fall through to a permissive clause).
+      allow delete: if isSignedIn() && (
+        isGroupAdmin(gid) ||
+        !exists(/databases/$(database)/documents/groups/$(gid))
+      );
     }
 
     // ── /groupJoinRequests/{rid} — admin-side audit trail ──────────────

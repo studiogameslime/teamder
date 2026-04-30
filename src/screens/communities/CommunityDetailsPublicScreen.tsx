@@ -133,9 +133,10 @@ export function CommunityDetailsPublicScreen() {
       const status = await requestJoinById(group.id, me.id);
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: group.id });
-        toast.success(
-          group.isOpen ? he.toastJoinSuccess : he.toastJoinRequestSent,
-        );
+        toast.success(he.toastJoinRequestSent);
+        nav.goBack();
+      } else if (status === 'joined') {
+        toast.success(he.toastJoinedGroup);
         nav.goBack();
       } else if (status === 'already_member') {
         toast.info(he.groupAlreadyMember);

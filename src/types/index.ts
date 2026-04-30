@@ -748,6 +748,11 @@ export interface LiveMatchState {
   teamBSlots?: Record<UserId, number>;
   /** Players who tapped "I'm late". Persisted as an array. */
   lateUserIds: UserId[];
+  /**
+   * Current round (משחקון) number. Increments after every "סיים משחקון".
+   * Optional so legacy state without the field reads as round 1.
+   */
+  roundNumber?: number;
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */
   updatedAt?: number;
 }

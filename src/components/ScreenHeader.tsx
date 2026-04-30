@@ -4,11 +4,31 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '@/theme';
 
+export interface HeaderAction {
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  /** Tint color override; defaults to colors.text. Use colors.danger for destructive. */
+  tint?: string;
+  /** Optional accessibility label. */
+  label?: string;
+}
+
 interface Props {
   title: string;
   subtitle?: string;
+  /**
+   * @deprecated Use `actions` instead. `rightIcon` + `onRightPress` are
+   * kept for backward compatibility — they render as a single action in
+   * the same slot.
+   */
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
+  /**
+   * Action buttons rendered in the slot opposite to "back". In an RTL
+   * layout (this app's default) that visually lands on the LEFT side of
+   * the header. Pass an array; the first action is closest to the title.
+   */
+  actions?: HeaderAction[];
   showBack?: boolean;
 }
 
@@ -17,10 +37,19 @@ export function ScreenHeader({
   subtitle,
   rightIcon,
   onRightPress,
+  actions,
   showBack = true,
 }: Props) {
   const navigation = useNavigation<any>();
   const canGoBack = showBack && navigation.canGoBack();
+
+  // Merge legacy single-icon API into the actions array.
+  const resolvedActions: HeaderAction[] =
+    actions && actions.length > 0
+      ? actions
+      : rightIcon && onRightPress
+        ? [{ icon: rightIcon, onPress: onRightPress }]
+        : [];
 
   return (
     <View style={styles.root}>
@@ -42,12 +71,25 @@ export function ScreenHeader({
           </Text>
         )}
       </View>
-      <View style={styles.side}>
-        {rightIcon && (
-          <Pressable onPress={onRightPress} hitSlop={12}>
-            <Ionicons name={rightIcon} size={24} color={colors.text} />
+      <View style={[styles.side, styles.actionsSide]}>
+        {resolvedActions.map((a, i) => (
+          <Pressable
+            key={`${a.icon}-${i}`}
+            onPress={a.onPress}
+            hitSlop={10}
+            accessibilityLabel={a.label}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Ionicons
+              name={a.icon}
+              size={22}
+              color={a.tint ?? colors.text}
+            />
           </Pressable>
-        )}
+        ))}
       </View>
     </View>
   );
@@ -66,6 +108,19 @@ const styles = StyleSheet.create({
   side: {
     width: 32,
     alignItems: 'center',
+  },
+  // Override fixed width when there's room for multiple actions; allow
+  // the side to grow up to the content size while staying compact.
+  actionsSide: {
+    width: 'auto',
+    minWidth: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  actionBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   center: {
     flex: 1,

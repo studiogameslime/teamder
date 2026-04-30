@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
@@ -30,6 +35,9 @@ import { useGroupStore } from '@/store/groupStore';
 const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
 export function CreateGroupScreen() {
+  const nav = useNavigation<
+    NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesCreate'>
+  >();
   const user = useUserStore((s) => s.currentUser);
   const createGroup = useGroupStore((s) => s.createGroup);
 
@@ -105,6 +113,7 @@ export function CreateGroupScreen() {
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
+      nav.replace('CommunityDetails', { groupId: group.id });
     } catch (e) {
       Alert.alert(he.error, String((e as Error).message ?? e));
     } finally {
@@ -117,6 +126,10 @@ export function CreateGroupScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.createGroupTitle} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -266,6 +279,7 @@ export function CreateGroupScreen() {
           onPress={submit}
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

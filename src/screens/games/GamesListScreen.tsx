@@ -22,6 +22,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -184,6 +185,14 @@ export function GamesListScreen() {
         <ScrollView
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={reload}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
         >
           {visible.map((g) => (
             <MatchCard

@@ -17,6 +17,7 @@ interface UserStore {
   currentUser: User | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteOwnAccount: () => Promise<void>;
   updateProfile: (
     patch: Partial<Pick<User, 'name' | 'avatarId'>>
   ) => Promise<void>;
@@ -59,6 +60,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
   signOut: async () => {
     await userService.signOut();
     set({ currentUser: null });
+    logEvent(AnalyticsEvent.SignOut);
+  },
+
+  deleteOwnAccount: async () => {
+    await userService.deleteOwnAccount();
+    set({ currentUser: null });
+    logEvent(AnalyticsEvent.AccountDeleted);
   },
 
   updateProfile: async (patch) => {
@@ -69,6 +77,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // First time the profile transitions from "incomplete" → "has name".
     if (!wasComplete && next.name.trim().length > 0) {
       logEvent(AnalyticsEvent.ProfileCreated);
+    } else {
+      const fields = Object.keys(patch).filter((k) => patch[k as keyof typeof patch] !== undefined);
+      logEvent(AnalyticsEvent.ProfileEdited, { fields: fields.join(',') });
+      if (patch.avatarId !== undefined) {
+        logEvent(AnalyticsEvent.AvatarChanged);
+      }
     }
   },
 
@@ -86,5 +100,6 @@ export const useUserStore = create<UserStore>((set, get) => ({
     const next = await userService.completeOnboarding(patch);
     set({ currentUser: next });
     logEvent(AnalyticsEvent.ProfileCreated);
+    logEvent(AnalyticsEvent.OnboardingCompleted);
   },
 }));

@@ -30,6 +30,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -60,7 +61,9 @@ import {
 
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { TeamsOverviewSheet, TeamSlot } from '@/components/TeamsOverviewSheet';
+import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   Game,
   GameFormat,
@@ -246,6 +249,28 @@ export function LiveMatchScreen() {
   const [timerStarted, setTimerStarted] = useState(false);
 
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [endRoundOpen, setEndRoundOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [scoreEditOpen, setScoreEditOpen] = useState(false);
+
+  // Round-finished summary (transient — captured at end-round, cleared
+  // when the next round kicks off). When non-null, the screen is in the
+  // `round_finished` state.
+  const [lastSummary, setLastSummary] = useState<{
+    winner: 'A' | 'B' | 'draw';
+    scoreA: number;
+    scoreB: number;
+    roundNumber: number;
+  } | null>(null);
+
+  // Tick once a minute so the `scheduled → ready_to_start` transition
+  // becomes visible without a manual refresh once the session time
+  // arrives. Cheap; doesn't drive any other re-renders.
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // 1-step undo for drag/shuffle.
   const undoStackRef = useRef<LiveMatchState[]>([]);
@@ -321,7 +346,10 @@ export function LiveMatchScreen() {
         mine.find((x) => x.id === gameId) ??
         community.find((x) => x.id === gameId) ??
         null;
-      if (alive) setGame(g);
+      if (alive) {
+        setGame(g);
+        if (g) logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id });
+      }
     })();
     return () => {
       alive = false;
@@ -651,6 +679,11 @@ export function LiveMatchScreen() {
       },
       { undoable: true, markEdited: true },
     );
+    logEvent(AnalyticsEvent.PlayersShuffled, {
+      gameId: game.id,
+      teamCount: teamLetters.length,
+      rosterSize: rosterIds.length,
+    });
   }, [game, live, isAdmin, commit, rosterIds, teamLetters]);
 
   const handleUndo = useCallback(() => {
@@ -670,7 +703,170 @@ export function LiveMatchScreen() {
     if (!live || !isAdmin) return;
     const prev = scoreOf(live, letter);
     commit(setScoreOf(live, letter, Math.max(0, prev + delta)));
+    if (gameId) {
+      logEvent(AnalyticsEvent.TeamScoreChanged, {
+        gameId,
+        team: letter,
+        delta,
+      });
+    }
   };
+
+  // ─── Session state machine ─────────────────────────────────────────────
+  // Derived purely from start time + timer + round-finished flag.
+  // Defined here (above the handlers) so handlers can guard against
+  // illegal state transitions without forward references.
+  type SessionState =
+    | 'scheduled'
+    | 'ready_to_start'
+    | 'round_active'
+    | 'round_paused'
+    | 'round_finished';
+  const sessionInFuture =
+    !!game && typeof game.startsAt === 'number' && game.startsAt > Date.now();
+  const sessionState: SessionState = (() => {
+    if (sessionInFuture) return 'scheduled';
+    if (lastSummary) return 'round_finished';
+    if (!timerStarted) return 'ready_to_start';
+    return timerRunning ? 'round_active' : 'round_paused';
+  })();
+  const canManageRound = isAdmin && sessionState !== 'scheduled';
+  const canLogGoal = isAdmin && sessionState === 'round_active';
+  const canEditScore =
+    isAdmin && (sessionState === 'round_active' || sessionState === 'round_paused');
+
+  /**
+   * End the current round.
+   *
+   * "winner" is the on-field letter that won (A or B), or 'draw' for a
+   * tie. With ≥3 teams the loser rotates to the tail of the waiting
+   * queue, the front of the waiting queue takes the field, and the
+   * winner stays. With 2 teams (no waiting) we just reset and bump the
+   * round counter — same matchup plays again.
+   *
+   * Side effects: scores zero out, round counter increments, timer
+   * resets locally. Slot maps for the team whose composition changed
+   * are cleared so the auto-placer fills the formation cleanly.
+   */
+  const handleEndRound = useCallback(
+    (winner: 'A' | 'B' | 'draw') => {
+      if (!live || !isAdmin || !gameId) return;
+      if (sessionState === 'scheduled' || sessionState === 'round_finished') {
+        return; // can't end a round that hasn't started or already ended
+      }
+      const currentRoundNumber = live.roundNumber ?? 1;
+      // Snapshot scores + winner for the summary banner that renders
+      // while we're in `round_finished` state.
+      setLastSummary({
+        winner,
+        scoreA: live.scoreA,
+        scoreB: live.scoreB,
+        roundNumber: currentRoundNumber,
+      });
+
+      const resetScores = {
+        scoreA: 0,
+        scoreB: 0,
+        scoreC: 0,
+        scoreD: 0,
+        scoreE: 0,
+      };
+
+      let next: LiveMatchState;
+      if (winner === 'draw' || waitingLetters.length === 0) {
+        // No rotation — same matchup will play again next round.
+        next = { ...live, ...resetScores };
+      } else {
+        const loser: 'A' | 'B' = winner === 'A' ? 'B' : 'A';
+        const loserZone: Zone = `team${loser}` as Zone;
+        const loserGkZone: Zone = `gk${loser}` as Zone;
+        const waitingZones: Zone[] = waitingLetters.map(
+          (l) => `team${l}` as Zone,
+        );
+
+        // Queue rotation: [loser, w0, w1, ...]  →  [w0, w1, ..., loser]
+        const before: Zone[] = [loserZone, ...waitingZones];
+        const after: Zone[] = [...waitingZones, loserZone];
+        const remap = new Map<Zone, Zone>();
+        before.forEach((z, i) => remap.set(z, after[i]));
+        remap.set(loserGkZone, after[0]);
+
+        const newAssignments: Record<UserId, Zone> = {};
+        for (const uid of Object.keys(live.assignments) as UserId[]) {
+          const cur = live.assignments[uid];
+          newAssignments[uid] = remap.get(cur) ?? cur;
+        }
+
+        const nextTeamASlots = loser === 'A' ? {} : (live.teamASlots ?? {});
+        const nextTeamBSlots = loser === 'B' ? {} : (live.teamBSlots ?? {});
+
+        next = {
+          ...live,
+          assignments: newAssignments,
+          teamASlots: nextTeamASlots,
+          teamBSlots: nextTeamBSlots,
+          ...resetScores,
+        };
+      }
+
+      commit(next, { undoable: false, markEdited: true });
+      setEndRoundOpen(false);
+      // Pause and freeze local timer until the next round is started.
+      setTimerRunning(false);
+      logEvent(AnalyticsEvent.MatchRoundCompleted, {
+        gameId,
+        roundNumber: currentRoundNumber,
+        outcome: winner,
+      });
+    },
+    [live, isAdmin, gameId, waitingLetters, commit, sessionState],
+  );
+
+  /**
+   * Move from `round_finished` → `round_active` with the next round
+   * number. Bumps `roundNumber` (persisted) and immediately starts the
+   * timer for the new round.
+   */
+  const handleStartNextRound = useCallback(() => {
+    if (!live || !isAdmin) return;
+    const nextRoundNumber = (live.roundNumber ?? 1) + 1;
+    commit(
+      { ...live, roundNumber: nextRoundNumber },
+      { undoable: false, markEdited: false },
+    );
+    setLastSummary(null);
+    setTimerMs(0);
+    setTimerStarted(true);
+    setTimerRunning(true);
+  }, [live, isAdmin, commit]);
+
+  /**
+   * Apply a goal — credits the team's score by 1. Used by the goal-log
+   * modal. Honours the "own goal" toggle by crediting the OTHER team.
+   */
+  const handleLogGoal = useCallback(
+    (scoringTeam: 'A' | 'B', isOwnGoal: boolean) => {
+      if (!live || !canLogGoal) return;
+      const credited: 'A' | 'B' = isOwnGoal
+        ? scoringTeam === 'A'
+          ? 'B'
+          : 'A'
+        : scoringTeam;
+      const prev = scoreOf(live, credited);
+      commit(setScoreOf(live, credited, prev + 1));
+      setGoalModalOpen(false);
+      toast.success(he.liveGoalRecorded);
+      if (gameId) {
+        logEvent(AnalyticsEvent.TeamScoreChanged, {
+          gameId,
+          team: credited,
+          delta: 1,
+          source: isOwnGoal ? 'own_goal' : 'goal',
+        });
+      }
+    },
+    [live, canLogGoal, commit, gameId],
+  );
 
   // ─── Timer controls ────────────────────────────────────────────────────
   const onTimerStart = () => {
@@ -816,7 +1012,10 @@ export function LiveMatchScreen() {
           </Pressable>
         </View>
 
-        {/* ─── TIMER ─── */}
+        {/* ─── TIMER + STATE BANNER ─── */}
+        {/* The timer card doubles as the session-state banner. The label
+            below the time tells the user exactly which state they're in
+            (scheduled / ready / active / paused / finished). */}
         <View style={styles.timerCard}>
           <Text style={styles.timerValue}>
             {formatTime(timerMs)}
@@ -824,16 +1023,23 @@ export function LiveMatchScreen() {
               {`  /  ${formatTime(totalMs)}`}
             </Text>
           </Text>
-          {isAdmin ? (
+          <Text
+            style={[
+              styles.roundLabel,
+              sessionState === 'round_active' && { color: colors.primary },
+              sessionState === 'scheduled' && { color: colors.textMuted },
+            ]}
+          >
+            {sessionStateLabel(
+              sessionState,
+              live.roundNumber ?? 1,
+            )}
+          </Text>
+          {/* Timer controls — only when admin AND the session is in play
+              (i.e. not scheduled, not finished). */}
+          {isAdmin && (sessionState === 'round_active' || sessionState === 'round_paused') ? (
             <View style={styles.timerBtnRow}>
-              {!timerStarted ? (
-                <TimerBtn
-                  label={he.liveTimerStart}
-                  icon="play"
-                  primary
-                  onPress={onTimerStart}
-                />
-              ) : timerRunning ? (
+              {sessionState === 'round_active' ? (
                 <TimerBtn
                   label={he.liveTimerPause}
                   icon="pause"
@@ -847,34 +1053,47 @@ export function LiveMatchScreen() {
                   onPress={onTimerResume}
                 />
               )}
-              <TimerBtn
-                label={he.liveTimerReset}
-                icon="refresh"
-                onPress={onTimerReset}
-                disabled={!timerStarted && timerMs === 0}
-              />
             </View>
           ) : null}
         </View>
 
         {/* ─── SCORE CARDS — only the on-field matchup ─── */}
-        {/* The pitch only shows two teams at a time (A vs B), so the
-            scoreboard up here mirrors that. Waiting teams keep their
-            score on their own strip below the pitch. */}
-        <View style={styles.scoreRow}>
-          {teamSlots.slice(0, 2).map((slot, i) => (
-            <ScoreCard
-              key={slot.index}
-              label={he.liveTeamLabel(slot.index)}
-              tint={slot.tint}
-              value={slot.score}
-              isAdmin={isAdmin}
-              onPlus={() => handleScore(teamLetters[i], 1)}
-              onMinus={() => handleScore(teamLetters[i], -1)}
-              expand
-            />
-          ))}
-        </View>
+        {/* Display only — no inline +/- buttons. Goal logging is the
+            primary path; manual edits live behind the small pencil
+            action below the score row (admin-only). */}
+        {sessionState !== 'round_finished' ? (
+          <View style={styles.scoreRow}>
+            {teamSlots.slice(0, 2).map((slot) => (
+              <ScoreCard
+                key={slot.index}
+                label={he.liveTeamLabel(slot.index)}
+                tint={slot.tint}
+                value={slot.score}
+                expand
+              />
+            ))}
+            {canEditScore ? (
+              <Pressable
+                onPress={() => setScoreEditOpen(true)}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.scoreEditBtn,
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityLabel={he.liveEditScore}
+              >
+                <Ionicons name="pencil" size={14} color={colors.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          // Round-finished: replace the live scoreboard with a summary.
+          <RoundFinishedSummary
+            summary={lastSummary!}
+            teamATint={TEAM_TINTS[0]}
+            teamBTint={TEAM_TINTS[1]}
+          />
+        )}
 
         {/* ─── FIELD — always teamA (top) vs teamB (bottom) ─── */}
         <View style={styles.field} onLayout={remeasureZones}>
@@ -955,46 +1174,102 @@ export function LiveMatchScreen() {
           </View>
         ) : null}
 
-        {/* ─── BOTTOM ACTION BAR ─── */}
+        {/* ─── BOTTOM ACTION BAR — state-aware ─── */}
+        {/* Exactly one primary green button is shown at a time. The
+            secondary "צפייה בקבוצות" lives on the side; "סיים משחקון"
+            (red) appears only when a round is actually in play. */}
         <View style={styles.actionBar}>
+          {/* Primary green — varies by state. */}
+          {canManageRound ? (
+            sessionState === 'ready_to_start' ? (
+              <Pressable
+                onPress={onTimerStart}
+                style={({ pressed }) => [
+                  styles.actionPrimary,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityLabel={he.liveStartRound}
+              >
+                <Ionicons name="play" size={18} color="#fff" />
+                <Text style={styles.actionPrimaryText}>
+                  {he.liveStartRound}
+                </Text>
+              </Pressable>
+            ) : sessionState === 'round_active' ? (
+              <Pressable
+                onPress={() => setGoalModalOpen(true)}
+                style={({ pressed }) => [
+                  styles.actionPrimary,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityLabel={he.liveLogGoal}
+              >
+                <Ionicons name="football" size={18} color="#fff" />
+                <Text style={styles.actionPrimaryText}>{he.liveLogGoal}</Text>
+              </Pressable>
+            ) : sessionState === 'round_paused' ? (
+              <Pressable
+                onPress={onTimerResume}
+                style={({ pressed }) => [
+                  styles.actionPrimary,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityLabel={he.liveTimerResume}
+              >
+                <Ionicons name="play" size={18} color="#fff" />
+                <Text style={styles.actionPrimaryText}>
+                  {he.liveTimerResume}
+                </Text>
+              </Pressable>
+            ) : sessionState === 'round_finished' ? (
+              <Pressable
+                onPress={handleStartNextRound}
+                style={({ pressed }) => [
+                  styles.actionPrimary,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityLabel={he.liveStartNextRound}
+              >
+                <Ionicons name="play-forward" size={18} color="#fff" />
+                <Text style={styles.actionPrimaryText}>
+                  {he.liveStartNextRound}
+                </Text>
+              </Pressable>
+            ) : null
+          ) : null}
+
+          {/* Always-visible secondary — overview. */}
           <Pressable
             onPress={() => setOverviewOpen(true)}
             style={({ pressed }) => [
-              styles.actionPrimary,
-              pressed && { opacity: 0.85 },
+              styles.actionSecondary,
+              pressed && { opacity: 0.7 },
             ]}
+            accessibilityLabel={he.liveTeamsOverview}
           >
-            <Ionicons name="people-outline" size={18} color="#fff" />
-            <Text style={styles.actionPrimaryText}>{he.liveTeamsOverview}</Text>
+            <Ionicons name="people-outline" size={18} color={colors.text} />
+            <Text style={styles.actionSecondaryText} numberOfLines={1}>
+              {he.liveTeamsOverview}
+            </Text>
           </Pressable>
-          {isAdmin ? (
-            <>
-              <Pressable
-                onPress={handleShuffle}
-                style={({ pressed }) => [
-                  styles.actionSecondary,
-                  pressed && { opacity: 0.7 },
-                ]}
-                accessibilityLabel={he.liveShuffleTeams}
-              >
-                <Ionicons name="shuffle" size={18} color={colors.text} />
-                <Text style={styles.actionSecondaryText} numberOfLines={1}>
-                  {he.liveShuffleTeams}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={handleUndo}
-                disabled={!hasUndo}
-                style={({ pressed }) => [
-                  styles.actionIconBtn,
-                  !hasUndo && { opacity: 0.3 },
-                  pressed && hasUndo && { opacity: 0.7 },
-                ]}
-                accessibilityLabel={he.liveUndo}
-              >
-                <Ionicons name="arrow-undo" size={20} color={colors.text} />
-              </Pressable>
-            </>
+
+          {/* End-round — destructive, only while a round is in play. */}
+          {isAdmin &&
+          (sessionState === 'round_active' ||
+            sessionState === 'round_paused') ? (
+            <Pressable
+              onPress={() => setEndRoundOpen(true)}
+              style={({ pressed }) => [
+                styles.actionDanger,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel={he.liveEndRound}
+            >
+              <Ionicons name="flag-outline" size={18} color="#fff" />
+              <Text style={styles.actionDangerText} numberOfLines={1}>
+                {he.liveEndRound}
+              </Text>
+            </Pressable>
           ) : null}
         </View>
 
@@ -1009,6 +1284,50 @@ export function LiveMatchScreen() {
           guests={game.guests ?? []}
           onClose={() => setOverviewOpen(false)}
         />
+
+        <EndRoundModal
+          visible={endRoundOpen}
+          roundNumber={live.roundNumber ?? 1}
+          teamATint={TEAM_TINTS[0]}
+          teamBTint={TEAM_TINTS[1]}
+          teamAScore={live.scoreA}
+          teamBScore={live.scoreB}
+          onCancel={() => setEndRoundOpen(false)}
+          onSelect={handleEndRound}
+        />
+
+        <GoalLogModal
+          visible={goalModalOpen}
+          teamAPlayers={teamSlots[0]?.playerIds ?? []}
+          teamBPlayers={teamSlots[1]?.playerIds ?? []}
+          teamATint={TEAM_TINTS[0]}
+          teamBTint={TEAM_TINTS[1]}
+          guests={game.guests ?? []}
+          onCancel={() => setGoalModalOpen(false)}
+          onPick={(team, isOwn) => handleLogGoal(team, isOwn)}
+        />
+
+        <ScoreEditModal
+          visible={scoreEditOpen}
+          scoreA={live.scoreA}
+          scoreB={live.scoreB}
+          teamATint={TEAM_TINTS[0]}
+          teamBTint={TEAM_TINTS[1]}
+          onClose={() => setScoreEditOpen(false)}
+          onAdjust={(team, delta) => {
+            if (!live) return;
+            const prev = scoreOf(live, team);
+            commit(setScoreOf(live, team, Math.max(0, prev + delta)));
+            if (gameId) {
+              logEvent(AnalyticsEvent.TeamScoreChanged, {
+                gameId,
+                team,
+                delta,
+                source: 'manual',
+              });
+            }
+          }}
+        />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -1020,20 +1339,17 @@ function ScoreCard({
   label,
   value,
   tint,
-  isAdmin,
-  onPlus,
-  onMinus,
   expand,
 }: {
   label: string;
   value: number;
   tint: string;
-  isAdmin: boolean;
-  onPlus: () => void;
-  onMinus: () => void;
   /** When true, card uses flex:1 to fill the row. Otherwise content-sized. */
   expand?: boolean;
 }) {
+  // Display-only. Inline +/- adjusters are gone — goal logging is the
+  // primary path and any correction goes through the admin-only score
+  // edit modal.
   return (
     <View style={[styles.scoreCard, expand && styles.scoreCardExpand]}>
       <View style={styles.scoreCardHeader}>
@@ -1042,18 +1358,427 @@ function ScoreCard({
           {label}
         </Text>
       </View>
-      <View style={styles.scoreCardRow}>
-        {isAdmin ? (
-          <Pressable onPress={onMinus} hitSlop={8} style={styles.scoreBtn}>
-            <Ionicons name="remove" size={16} color={colors.text} />
+      <Text style={[styles.scoreCardValue, { color: tint }]}>{value}</Text>
+    </View>
+  );
+}
+
+/**
+ * End-of-round confirmation modal. Admin picks the winner (or draw)
+ * and we return that to the parent which performs the queue rotation.
+ */
+function EndRoundModal({
+  visible,
+  roundNumber,
+  teamATint,
+  teamBTint,
+  teamAScore,
+  teamBScore,
+  onCancel,
+  onSelect,
+}: {
+  visible: boolean;
+  roundNumber: number;
+  teamATint: string;
+  teamBTint: string;
+  teamAScore: number;
+  teamBScore: number;
+  onCancel: () => void;
+  onSelect: (winner: 'A' | 'B' | 'draw') => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <Pressable style={styles.endRoundBackdrop} onPress={onCancel}>
+        <Pressable
+          style={styles.endRoundCard}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <Text style={styles.endRoundEyebrow}>
+            {he.liveRoundLabel(roundNumber)}
+          </Text>
+          <Text style={styles.endRoundTitle}>{he.liveEndRoundTitle}</Text>
+          <Text style={styles.endRoundQuestion}>{he.liveEndRoundQuestion}</Text>
+
+          <Pressable
+            onPress={() => onSelect('A')}
+            style={({ pressed }) => [
+              styles.endRoundOption,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <View style={[styles.endRoundDot, { backgroundColor: teamATint }]} />
+            <Text style={styles.endRoundOptionLabel}>
+              {he.liveTeamLabel(0)}
+            </Text>
+            <Text style={styles.endRoundScore}>{teamAScore}</Text>
           </Pressable>
-        ) : null}
-        <Text style={[styles.scoreCardValue, { color: tint }]}>{value}</Text>
-        {isAdmin ? (
-          <Pressable onPress={onPlus} hitSlop={8} style={styles.scoreBtn}>
-            <Ionicons name="add" size={16} color={colors.text} />
+
+          <Pressable
+            onPress={() => onSelect('B')}
+            style={({ pressed }) => [
+              styles.endRoundOption,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <View style={[styles.endRoundDot, { backgroundColor: teamBTint }]} />
+            <Text style={styles.endRoundOptionLabel}>
+              {he.liveTeamLabel(1)}
+            </Text>
+            <Text style={styles.endRoundScore}>{teamBScore}</Text>
           </Pressable>
-        ) : null}
+
+          <Pressable
+            onPress={() => onSelect('draw')}
+            style={({ pressed }) => [
+              styles.endRoundOption,
+              styles.endRoundOptionDraw,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="git-compare-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.endRoundOptionLabel}>{he.liveDrawLabel}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onCancel}
+            style={({ pressed }) => [
+              styles.endRoundCancel,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.endRoundCancelText}>{he.cancel}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** Maps the SessionState enum to its Hebrew banner label. */
+function sessionStateLabel(
+  state:
+    | 'scheduled'
+    | 'ready_to_start'
+    | 'round_active'
+    | 'round_paused'
+    | 'round_finished',
+  roundNumber: number,
+): string {
+  if (state === 'scheduled') return he.liveStatusScheduled;
+  if (state === 'ready_to_start') return he.liveStatusReady(roundNumber);
+  if (state === 'round_active') return he.liveStatusActive(roundNumber);
+  if (state === 'round_paused') return he.liveStatusPaused(roundNumber);
+  return he.liveStatusFinished(roundNumber);
+}
+
+/**
+ * "Who scored?" bottom-sheet style modal. Lists the on-field rosters
+ * grouped by team. Tapping a player credits their team with a goal —
+ * unless the "גול עצמי" toggle is on, in which case the goal is
+ * credited to the other team.
+ */
+function GoalLogModal({
+  visible,
+  teamAPlayers,
+  teamBPlayers,
+  teamATint,
+  teamBTint,
+  guests,
+  onCancel,
+  onPick,
+}: {
+  visible: boolean;
+  teamAPlayers: UserId[];
+  teamBPlayers: UserId[];
+  teamATint: string;
+  teamBTint: string;
+  guests: GameGuest[];
+  onCancel: () => void;
+  onPick: (team: 'A' | 'B', isOwnGoal: boolean) => void;
+}) {
+  const [ownGoal, setOwnGoal] = useState(false);
+  // Reset the toggle each time the modal reopens so a previous own-goal
+  // pick doesn't silently persist.
+  useEffect(() => {
+    if (visible) setOwnGoal(false);
+  }, [visible]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <Pressable style={styles.modalBackdrop} onPress={onCancel}>
+        <Pressable
+          style={styles.goalModalCard}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <Text style={styles.goalModalTitle}>{he.liveLogGoalTitle}</Text>
+
+          <ScrollView
+            contentContainerStyle={{ paddingVertical: spacing.sm }}
+            showsVerticalScrollIndicator={false}
+          >
+            <GoalTeamSection
+              label={he.liveTeamLabel(0)}
+              tint={teamATint}
+              players={teamAPlayers}
+              guests={guests}
+              onPick={() => onPick('A', ownGoal)}
+            />
+            <View style={{ height: spacing.md }} />
+            <GoalTeamSection
+              label={he.liveTeamLabel(1)}
+              tint={teamBTint}
+              players={teamBPlayers}
+              guests={guests}
+              onPick={() => onPick('B', ownGoal)}
+            />
+          </ScrollView>
+
+          <Pressable
+            onPress={() => setOwnGoal((v) => !v)}
+            style={({ pressed }) => [
+              styles.ownGoalRow,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <View
+              style={[
+                styles.ownGoalBox,
+                ownGoal && styles.ownGoalBoxChecked,
+              ]}
+            >
+              {ownGoal ? (
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              ) : null}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ownGoalLabel}>{he.liveLogGoalOwn}</Text>
+              <Text style={styles.ownGoalHint}>{he.liveLogGoalOwnHint}</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={onCancel}
+            style={({ pressed }) => [
+              styles.endRoundCancel,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.endRoundCancelText}>{he.cancel}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function GoalTeamSection({
+  label,
+  tint,
+  players,
+  guests,
+  onPick,
+}: {
+  label: string;
+  tint: string;
+  players: UserId[];
+  guests: GameGuest[];
+  onPick: (uid: UserId) => void;
+}) {
+  return (
+    <View>
+      <View style={styles.goalTeamHeader}>
+        <View style={[styles.goalTeamDot, { backgroundColor: tint }]} />
+        <Text style={styles.goalTeamLabel}>{label}</Text>
+      </View>
+      {players.length === 0 ? (
+        <Text style={styles.goalEmptyText}>—</Text>
+      ) : (
+        <View style={styles.goalPlayerGrid}>
+          {players.map((uid) => (
+            <GoalPlayerChip
+              key={uid}
+              uid={uid}
+              guests={guests}
+              onPick={() => onPick(uid)}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function GoalPlayerChip({
+  uid,
+  guests,
+  onPick,
+}: {
+  uid: UserId;
+  guests: GameGuest[];
+  onPick: () => void;
+}) {
+  const name = usePlayerName(uid, guests);
+  return (
+    <Pressable
+      onPress={onPick}
+      style={({ pressed }) => [
+        styles.goalPlayerChip,
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Text style={styles.goalPlayerName} numberOfLines={1}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Manual score-correction modal. Hidden behind a small pencil icon so
+ * it isn't a primary action. Per-team +/- adjusters with no auto-save.
+ */
+function ScoreEditModal({
+  visible,
+  scoreA,
+  scoreB,
+  teamATint,
+  teamBTint,
+  onClose,
+  onAdjust,
+}: {
+  visible: boolean;
+  scoreA: number;
+  scoreB: number;
+  teamATint: string;
+  teamBTint: string;
+  onClose: () => void;
+  onAdjust: (team: 'A' | 'B', delta: number) => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable
+          style={styles.endRoundCard}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <Text style={styles.endRoundTitle}>{he.liveEditScoreTitle}</Text>
+
+          <EditableScoreRow
+            label={he.liveTeamLabel(0)}
+            tint={teamATint}
+            value={scoreA}
+            onMinus={() => onAdjust('A', -1)}
+            onPlus={() => onAdjust('A', 1)}
+          />
+          <EditableScoreRow
+            label={he.liveTeamLabel(1)}
+            tint={teamBTint}
+            value={scoreB}
+            onMinus={() => onAdjust('B', -1)}
+            onPlus={() => onAdjust('B', 1)}
+          />
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.endRoundCancel,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={styles.endRoundCancelText}>{he.save}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function EditableScoreRow({
+  label,
+  tint,
+  value,
+  onMinus,
+  onPlus,
+}: {
+  label: string;
+  tint: string;
+  value: number;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  return (
+    <View style={styles.editScoreRow}>
+      <View style={[styles.endRoundDot, { backgroundColor: tint }]} />
+      <Text style={styles.endRoundOptionLabel}>{label}</Text>
+      <Pressable onPress={onMinus} hitSlop={6} style={styles.editScoreBtn}>
+        <Ionicons name="remove" size={16} color={colors.text} />
+      </Pressable>
+      <Text style={[styles.endRoundScore, { minWidth: 36, textAlign: 'center' }]}>
+        {value}
+      </Text>
+      <Pressable onPress={onPlus} hitSlop={6} style={styles.editScoreBtn}>
+        <Ionicons name="add" size={16} color={colors.text} />
+      </Pressable>
+    </View>
+  );
+}
+
+/** Banner shown while the screen is in `round_finished` state. */
+function RoundFinishedSummary({
+  summary,
+  teamATint,
+  teamBTint,
+}: {
+  summary: {
+    winner: 'A' | 'B' | 'draw';
+    scoreA: number;
+    scoreB: number;
+    roundNumber: number;
+  };
+  teamATint: string;
+  teamBTint: string;
+}) {
+  const winnerTint =
+    summary.winner === 'A'
+      ? teamATint
+      : summary.winner === 'B'
+        ? teamBTint
+        : colors.textMuted;
+  const winnerLabel =
+    summary.winner === 'draw'
+      ? he.liveRoundFinishedDraw
+      : he.liveRoundFinishedWinner(
+          he.liveTeamLabel(summary.winner === 'A' ? 0 : 1),
+        );
+  return (
+    <View style={[styles.summaryCard, { borderColor: winnerTint }]}>
+      <View style={styles.summaryHeader}>
+        <View style={[styles.summaryDot, { backgroundColor: winnerTint }]} />
+        <Text style={styles.summaryTitle}>{winnerLabel}</Text>
+      </View>
+      <View style={styles.summaryScoreRow}>
+        <Text style={[styles.summaryScore, { color: teamATint }]}>
+          {summary.scoreA}
+        </Text>
+        <Text style={styles.summaryDivider}>–</Text>
+        <Text style={[styles.summaryScore, { color: teamBTint }]}>
+          {summary.scoreB}
+        </Text>
       </View>
     </View>
   );
@@ -1231,9 +1956,19 @@ function TeamHalf({
               pointerEvents="box-none"
             >
               <View style={styles.gkJerseyArea} pointerEvents="box-none">
-                <JerseyPlaceholder size={GK_JERSEY_SIZE} tint={tint} />
+                <JerseyPlaceholder
+                  size={GK_PLACEHOLDER_SIZE}
+                  tint={tint}
+                />
                 {gkPlayer ? (
-                  <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                  // Same centring trick as the outfield slots — the
+                  // keeper jersey sits in the geometric middle of the
+                  // (slightly-larger) dashed placeholder so a thin
+                  // tinted ring stays visible behind the colored shirt.
+                  <View
+                    style={[StyleSheet.absoluteFill, styles.slotPlayerCenter]}
+                    pointerEvents="box-none"
+                  >
                     <DraggablePlayer
                       uid={gkPlayer}
                       isMe={gkPlayer === meId}
@@ -1307,11 +2042,16 @@ function SlotCell({
   emptyLabel: string;
 }) {
   const playerName = usePlayerName(uid, guests);
-  // Wrap dimensions = jersey area + label area below. Pre-computed
+  // Placeholder is slightly larger than the player jersey on every
+  // side, so when a player is placed the dashed team-coloured outline
+  // peeks out around them — keeping the team identity visible at a
+  // glance even on a fully populated pitch. +8dp total = ~4dp ring.
+  const placeholderSize = jerseySize + 8;
+  // Wrap dimensions = placeholder area + label area below. Pre-computed
   // here so the wrap is centered cleanly around its (left, top)
   // anchor regardless of jersey size.
-  const wrapWidth = jerseySize + 16;
-  const wrapHeight = jerseySize + SLOT_LABEL_GAP + LABEL_HEIGHT;
+  const wrapWidth = placeholderSize + 8;
+  const wrapHeight = placeholderSize + SLOT_LABEL_GAP + LABEL_HEIGHT;
   return (
     <View
       ref={(v) => {
@@ -1335,13 +2075,19 @@ function SlotCell({
       <View
         style={[
           styles.slotJerseyArea,
-          { width: jerseySize, height: jerseySize },
+          { width: placeholderSize, height: placeholderSize },
         ]}
         pointerEvents="box-none"
       >
-        <JerseyPlaceholder size={jerseySize} tint={tint} />
+        <JerseyPlaceholder size={placeholderSize} tint={tint} />
         {uid ? (
-          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          // Centre the player jersey precisely inside the slightly
+          // larger placeholder. flex centring + absoluteFill keeps the
+          // jersey at the geometric middle of the dashed shape.
+          <View
+            style={[StyleSheet.absoluteFill, styles.slotPlayerCenter]}
+            pointerEvents="box-none"
+          >
             <DraggablePlayer
               uid={uid}
               isMe={uid === meId}
@@ -1773,11 +2519,14 @@ function JerseyPlaceholder({
 // These shared constants drive the label band that's identical
 // across every slot.
 const GK_JERSEY_SIZE = 56;
+/** Placeholder is +8dp wider than the jersey so a thin tinted ring
+ *  shows around an occupied keeper. Matches SlotCell's outfield rule. */
+const GK_PLACEHOLDER_SIZE = GK_JERSEY_SIZE + 8;
 const LABEL_HEIGHT = 16;
 const SLOT_LABEL_GAP = 2;
 
-const GK_WRAP_WIDTH = GK_JERSEY_SIZE + 20;
-const GK_WRAP_HEIGHT = GK_JERSEY_SIZE + SLOT_LABEL_GAP + LABEL_HEIGHT;
+const GK_WRAP_WIDTH = GK_PLACEHOLDER_SIZE + 16;
+const GK_WRAP_HEIGHT = GK_PLACEHOLDER_SIZE + SLOT_LABEL_GAP + LABEL_HEIGHT;
 const GK_WRAP_HALF_W = GK_WRAP_WIDTH / 2;
 const GK_WRAP_HALF_H = GK_WRAP_HEIGHT / 2;
 
@@ -1853,6 +2602,29 @@ const styles = StyleSheet.create({
   timerBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  roundLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  startRoundBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    marginTop: 4,
+    minWidth: 200,
+  },
+  startRoundBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 16,
   },
 
   // Score row — only the on-field matchup (2 cards), flex-distributed.
@@ -2028,10 +2800,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   /** Square area that holds the jersey-shaped placeholder + the
-   *  optional player overlay. Sized to the jersey itself so the
-   *  placeholder and the player jersey occupy the same bounds. */
+   *  optional player overlay. Sized to the placeholder (jerseySize+8dp)
+   *  so the dashed team-coloured outline forms a thin ring around the
+   *  inner colored jersey. */
   slotJerseyArea: {
     position: 'relative',
+  },
+  /** Centring overlay for the player jersey inside the placeholder.
+   *  Used as `[StyleSheet.absoluteFill, slotPlayerCenter]` so the
+   *  DraggablePlayer lands at the geometric middle of the slot. */
+  slotPlayerCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   /** Label below the placeholder — shows the player's name when the
    *  slot is filled, "פנוי" otherwise. Same vertical position in
@@ -2057,8 +2837,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gkJerseyArea: {
-    width: GK_JERSEY_SIZE,
-    height: GK_JERSEY_SIZE,
+    width: GK_PLACEHOLDER_SIZE,
+    height: GK_PLACEHOLDER_SIZE,
     position: 'relative',
   },
 
@@ -2194,15 +2974,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
-  actionIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  actionDanger: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
+  },
+  actionDangerText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
   },
   viewerHint: {
     ...typography.caption,
@@ -2249,4 +3034,243 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   gkBadgeText: { fontSize: 11 },
+
+  // End-round modal
+  endRoundBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  endRoundCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  endRoundEyebrow: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  endRoundTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+  },
+  endRoundQuestion: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  endRoundOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  endRoundOptionDraw: {
+    justifyContent: 'flex-start',
+  },
+  endRoundDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  endRoundOptionLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    flex: 1,
+  },
+  endRoundScore: {
+    ...typography.h3,
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '900',
+  },
+  endRoundCancel: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+  },
+  endRoundCancelText: {
+    ...typography.body,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+
+  // Shared modal backdrop (goal-log + score-edit reuse)
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Goal-log modal
+  goalModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    maxHeight: '80%',
+  },
+  goalModalTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+  },
+  goalTeamHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  goalTeamDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  goalTeamLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  goalEmptyText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    paddingVertical: 4,
+  },
+  goalPlayerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  goalPlayerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  goalPlayerName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    maxWidth: 100,
+  },
+  ownGoalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  ownGoalBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg,
+  },
+  ownGoalBoxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  ownGoalLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  ownGoalHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+
+  // Score-edit modal
+  editScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  editScoreBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  // Subtle pencil button next to the on-field score row.
+  scoreEditBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+    alignSelf: 'center',
+  },
+
+  // Round-finished summary banner
+  summaryCard: {
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    gap: 6,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  summaryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  summaryTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+    fontWeight: '800',
+  },
+  summaryScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.md,
+  },
+  summaryScore: {
+    fontSize: 32,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  summaryDivider: {
+    fontSize: 24,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
 });

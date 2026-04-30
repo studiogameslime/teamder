@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   I18nManager,
   LogBox,
@@ -60,7 +60,7 @@ try {
 } catch {
   // expo-notifications native module not available — no-op.
 }
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
@@ -68,6 +68,7 @@ import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
 import { adsService } from '@/services/adsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 
@@ -124,6 +125,8 @@ export default function App() {
   // stores in parallel — the splash fades out at the end and the user
   // lands on a ready UI without an extra spinner step.
   const [splashDone, setSplashDone] = useState(false);
+  const [navContainerRef] = useState(() => createNavigationContainerRef());
+  const currentScreenRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Hand the screen over from the OS splash to our React layer the
@@ -171,7 +174,30 @@ export default function App() {
         barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bg}
       />
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer
+        theme={navTheme}
+        ref={navContainerRef}
+        onReady={() => {
+          // Seed the initial route so the first screen_view fires before
+          // any subsequent state change (otherwise it'd only fire on the
+          // *second* navigation).
+          const r = navContainerRef.isReady()
+            ? navContainerRef.getCurrentRoute()
+            : null;
+          if (r) {
+            currentScreenRef.current = r.name;
+            logEvent(AnalyticsEvent.ScreenView, { screen: r.name });
+          }
+        }}
+        onStateChange={() => {
+          if (!navContainerRef.isReady()) return;
+          const next = navContainerRef.getCurrentRoute()?.name;
+          if (next && next !== currentScreenRef.current) {
+            currentScreenRef.current = next;
+            logEvent(AnalyticsEvent.ScreenView, { screen: next });
+          }
+        }}
+      >
         {/* Stack the navigator under a dev-only banner. The banner renders
             nothing in real mode, so production layouts are untouched.
             RTL is pinned via two paths:

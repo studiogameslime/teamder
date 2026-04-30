@@ -131,14 +131,30 @@ function buildMessage(type, payload) {
     }
 }
 function formatHebrewWhen(ms) {
+    // Cloud Functions run in UTC; use Israel local time so notification
+    // text matches the time the user actually expects to play. Without
+    // this override, a 20:00 Israel game renders as 17:00 (UTC).
+    const tz = 'Asia/Jerusalem';
     const d = new Date(ms);
     const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-    const day = days[d.getDay()];
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `יום ${day} ${dd}/${mm} ${hh}:${mi}`;
+    const dayMap = {
+        Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    const weekdayShort = new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        timeZone: tz,
+    }).format(d);
+    const day = days[dayMap[weekdayShort] ?? 0];
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).formatToParts(d);
+    const part = (t) => parts.find((p) => p.type === t)?.value ?? '';
+    return `יום ${day} ${part('day')}/${part('month')} ${part('hour')}:${part('minute')}`;
 }
 // ─── Recipient resolution ──────────────────────────────────────────────
 async function loadUsers(uids) {
@@ -392,6 +408,7 @@ exports.onVoteWritten = (0, firestore_1.onDocumentWritten)('groups/{groupId}/rat
 });
 // ─── Scheduled: auto-balance teams before a game ───────────────────────
 const DEFAULT_AUTO_BALANCE_MINUTES = 60;
+const GUEST_ID_PREFIX = 'guest:';
 function perTeamSize(format) {
     if (format === '6v6')
         return 6;
@@ -588,9 +605,25 @@ async function generateForGame(ref, g) {
             if (data.teamsEditedManually)
                 return false;
             const freshPlayers = data.players ?? players;
-            if (freshPlayers.length === 0)
+            const freshGuests = data.guests ?? [];
+            if (freshPlayers.length === 0 && freshGuests.length === 0)
                 return false;
-            const result = balanceTeamsV1(freshPlayers, ratings, numberOfTeams, perTeam);
+            // Compose the roster: real users keep their uid; guests are
+            // encoded as `guest:<id>` so the roster id space is disjoint.
+            // Their rating is `estimatedRating` when set, otherwise the
+            // neutral 3.0 (handled by balanceTeamsV1's unrated branch).
+            const guestRoster = freshGuests.map((gu) => `${GUEST_ID_PREFIX}${gu.id}`);
+            const guestRatings = {};
+            for (const gu of freshGuests) {
+                if (typeof gu.estimatedRating === 'number' &&
+                    gu.estimatedRating >= 1 &&
+                    gu.estimatedRating <= 5) {
+                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
+                }
+            }
+            const rosterIds = [...freshPlayers, ...guestRoster];
+            const combinedRatings = { ...ratings, ...guestRatings };
+            const result = balanceTeamsV1(rosterIds, combinedRatings, numberOfTeams, perTeam);
             const liveMatch = {
                 phase: 'organizing',
                 assignments: result.assignments,

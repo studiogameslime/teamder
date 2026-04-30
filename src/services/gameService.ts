@@ -15,6 +15,7 @@
 
 import {
   addDoc,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -51,6 +52,7 @@ import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
 import { disciplineService } from './disciplineService';
+import { AnalyticsEvent, logEvent } from './analyticsService';
 
 let activeGame: Game | null = null;
 
@@ -479,7 +481,87 @@ export const gameService = {
       },
     });
 
+    logEvent(AnalyticsEvent.GameCreated, {
+      gameId: createdId,
+      groupId: input.groupId,
+      format: input.format ?? '',
+      isPublic: String(!!input.isPublic),
+      requiresApproval: String(!!input.requiresApproval),
+    });
+
     return { ...base, id: createdId };
+  },
+
+  /**
+   * Edit an existing game's metadata. Caller must be the organizer
+   * (createdBy) — server-side rules enforce this; we don't double-check
+   * here. Only the editable fields below are accepted; player rosters,
+   * status, and live match state are out of scope.
+   *
+   * Notes participants of the change so subscribers' UIs refresh and an
+   * (eventual) push notification can be wired through.
+   */
+  async updateGameV2(
+    gameId: string,
+    patch: Partial<{
+      title: string;
+      startsAt: number;
+      fieldName: string;
+      maxPlayers: number;
+      minPlayers: number;
+      format: GameFormat;
+      numberOfTeams: number;
+      cancelDeadlineHours: number;
+      fieldType: import('@/types').FieldType;
+      matchDurationMinutes: number;
+      isPublic: boolean;
+      requiresApproval: boolean;
+      bringBall: boolean;
+      bringShirts: boolean;
+      notes: string;
+    }>,
+  ): Promise<void> {
+    const updates: Record<string, unknown> = {
+      ...patch,
+      updatedAt: Date.now(),
+    };
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('updateGameV2: game not found');
+      Object.assign(g, updates);
+    } else {
+      await updateGameDoc(gameId, updates);
+    }
+    notificationsService.dispatch({
+      type: 'gameCanceledOrUpdated',
+      recipientId: gameId,
+      payload: { gameId, action: 'updated' },
+    });
+    logEvent(AnalyticsEvent.GameEdited, {
+      gameId,
+      fields: Object.keys(patch).join(','),
+    });
+  },
+
+  /**
+   * Permanently remove a game. Caller must be the creator or a community
+   * admin — Firestore rules enforce this; we don't double-check here.
+   * Notifies participants so subscribed UIs can navigate away.
+   */
+  async deleteGame(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const idx = mockGamesV2.findIndex((x) => x.id === gameId);
+      if (idx >= 0) mockGamesV2.splice(idx, 1);
+    } else {
+      await deleteDoc(docs.game(gameId));
+    }
+    notificationsService.dispatch({
+      type: 'gameCanceledOrUpdated',
+      recipientId: gameId,
+      payload: { gameId, action: 'deleted' },
+    });
+    logEvent(AnalyticsEvent.GameFinished, { gameId, deleted: true });
   },
 
   /**
@@ -533,6 +615,10 @@ export const gameService = {
       if (bucket !== 'pending') {
         achievementsService.bump(userId, 'gamesJoined', 1);
       }
+      logEvent(
+        bucket === 'waitlist' ? AnalyticsEvent.WaitlistJoined : AnalyticsEvent.GameJoined,
+        { gameId, bucket },
+      );
       return { bucket };
     }
     // Firebase: re-read the doc to compute the right bucket, then write.
@@ -587,6 +673,10 @@ export const gameService = {
     if (bucket !== 'pending') {
       achievementsService.bump(userId, 'gamesJoined', 1);
     }
+    logEvent(
+      bucket === 'waitlist' ? AnalyticsEvent.WaitlistJoined : AnalyticsEvent.GameJoined,
+      { gameId, bucket },
+    );
     return { bucket };
   },
 
@@ -620,6 +710,7 @@ export const gameService = {
           payload: { gameId, gameTitle: g.title },
         });
       }
+      logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
       return;
     }
     const ref = docs.game(gameId);
@@ -658,6 +749,7 @@ export const gameService = {
         payload: { gameId, gameTitle: data.title ?? '' },
       });
     }
+    logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
   },
 
   /**
@@ -695,6 +787,7 @@ export const gameService = {
       recipientId: gameId, // fan-out marker — CF resolves participants
       payload: { gameId, action: 'cancelled' },
     });
+    logEvent(AnalyticsEvent.GameFinished, { gameId, byAdmin: true });
   },
 
   // ── Phase 5: arrival status (foundation for GPS-based detection) ──────
@@ -726,6 +819,7 @@ export const gameService = {
       g.arrivals = { ...(g.arrivals ?? {}), [userId]: status };
       g.updatedAt = Date.now();
       await fireDisciplineForArrival(userId, gameId, g.startsAt, status);
+      logEvent(AnalyticsEvent.ArrivalMarked, { gameId, status });
       return { changed: true };
     }
 
@@ -741,6 +835,7 @@ export const gameService = {
       updatedAt: Date.now(),
     });
     await fireDisciplineForArrival(userId, gameId, data.startsAt, status);
+    logEvent(AnalyticsEvent.ArrivalMarked, { gameId, status });
     return { changed: true };
   },
 
@@ -877,6 +972,7 @@ export const gameService = {
       }
       g.guests = [...(g.guests ?? []), guest];
       g.updatedAt = Date.now();
+      logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
       return guest;
     }
 
@@ -895,6 +991,7 @@ export const gameService = {
       guests: next,
       updatedAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
     return guest;
   },
 
@@ -1006,6 +1103,7 @@ export const gameService = {
       g.liveMatch = stripFromLive(g.liveMatch);
       g.updatedAt = Date.now();
       mockLiveSubscribers.get(gameId)?.forEach((cb) => cb(g.liveMatch ?? null));
+      logEvent(AnalyticsEvent.GuestRemoved, { gameId });
       return;
     }
 
@@ -1021,6 +1119,7 @@ export const gameService = {
       ...(nextLive ? { liveMatch: nextLive } : {}),
       updatedAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.GuestRemoved, { gameId });
   },
 };
 
