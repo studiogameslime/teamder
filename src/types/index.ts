@@ -593,6 +593,18 @@ export interface Game {
   bringShirts?: boolean;
   /** Free-text note from the organizer ("שער צפוני, חניה ברחוב..."). */
   notes?: string;
+  /** Per-game city override (defaults to the parent group's city in UI). */
+  city?: string;
+  /** Per-game full address override (defaults to the parent group's address). */
+  fieldAddress?: string;
+  /** Game-rule flag: there's a referee on the night. */
+  hasReferee?: boolean;
+  /** Game-rule flag: penalty shootout decides ties. */
+  hasPenalties?: boolean;
+  /** Game-rule flag: matches play with halves (חוצים) instead of one straight period. */
+  hasHalfTime?: boolean;
+  /** Optional extra time minutes added to the match duration. */
+  extraTimeMinutes?: number;
 
   /**
    * Persisted live-match state — Phase D.1. Optional so unstarted games

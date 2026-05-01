@@ -15,7 +15,67 @@
 //      AdMob does NOT work in Expo Go.
 
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
+
+// Toggle to inspect ad lifecycle in a non-DEV build (e.g. internal-testing
+// release). Off in production.
+const SHOW_AD_DEBUG = false;
+const DEBUG_VISIBLE = __DEV__ || SHOW_AD_DEBUG;
+
+type AdDebugStatus =
+  | { kind: 'idle' }
+  | { kind: 'loaded' }
+  | { kind: 'failed'; code: number | string | null; message: string };
+
+let adDebugStatus: AdDebugStatus = { kind: 'idle' };
+const adDebugListeners = new Set<(s: AdDebugStatus) => void>();
+
+function setAdDebugStatus(next: AdDebugStatus): void {
+  adDebugStatus = next;
+  adDebugListeners.forEach((cb) => cb(next));
+}
+
+function decodeAdError(err: unknown): {
+  code: number | string | null;
+  message: string;
+} {
+  if (!err || typeof err !== 'object') {
+    return { code: null, message: String(err) };
+  }
+  const e = err as {
+    code?: number | string;
+    message?: string;
+    nativeErrorCode?: number;
+  };
+  const code = e.code ?? e.nativeErrorCode ?? null;
+  const message = e.message ?? JSON.stringify(err);
+  return { code, message };
+}
+
+function adErrorLabel(code: number | string | null): string {
+  switch (code) {
+    case 0:
+      return 'INTERNAL ERROR';
+    case 1:
+      return 'INVALID REQUEST';
+    case 2:
+      return 'NETWORK ERROR';
+    case 3:
+      return 'NO FILL';
+    case 8:
+      return 'APP ID MISSING';
+    case 'ERROR_CODE_NO_FILL':
+      return 'NO FILL';
+    case 'ERROR_CODE_NETWORK_ERROR':
+      return 'NETWORK ERROR';
+    case 'ERROR_CODE_INVALID_REQUEST':
+      return 'INVALID REQUEST';
+    case 'ERROR_CODE_INTERNAL_ERROR':
+      return 'INTERNAL ERROR';
+    default:
+      return code != null ? `ERROR ${code}` : 'ERROR';
+  }
+}
 
 // ─── Feature flag ─────────────────────────────────────────────────────────
 // We deliberately gate the entire ads system behind an explicit env var so
@@ -220,7 +280,7 @@ export function BannerAd(): React.ReactElement | null {
   }, [ready]);
 
   if (SCREENSHOT_MODE) return null;
-  if (!ADS_ENABLED || failed || !ready) return null;
+  if (!ADS_ENABLED || !ready) return null;
   let mod: AdsModule | null = null;
   try {
     mod = loadAdsMod();
@@ -230,6 +290,14 @@ export function BannerAd(): React.ReactElement | null {
   if (!mod) return null;
   const unitId = bannerUnitId();
   if (!unitId) return null;
+  // Sanity guard: a banner slot must never be the App-Open slot. Catches
+  // env-var typos that would otherwise silently 0-fill (App-Open units
+  // refuse banner requests).
+  if (__DEV__ && unitId === appOpenUnitId()) {
+    console.warn(
+      '[ads] BANNER unit id matches APP-OPEN id — check EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID'
+    );
+  }
   const Banner = mod.BannerAd;
   // Use the fixed `BANNER` size (320×50). The adaptive variant requires
   // the parent View to have a measurable width before it can request an
@@ -239,27 +307,112 @@ export function BannerAd(): React.ReactElement | null {
   const size =
     (mod.BannerAdSize as Record<string, string> | undefined)?.BANNER ??
     'BANNER';
+  // Wrapper stays mounted even after a load failure so the slot remains
+  // visible (with the debug label) — only the inner Banner element is
+  // dropped on failure. minHeight reserves space so a 0-fill doesn't
+  // collapse the layout while we're diagnosing.
   return React.createElement(
     View,
     {
       style: {
         width: '100%',
+        minHeight: 60,
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: 'transparent',
       },
     },
-    React.createElement(Banner, {
-      unitId,
-      size,
-      requestOptions: { requestNonPersonalizedAdsOnly: true },
-      onAdLoaded: () => {
-        if (__DEV__) console.log('[ads] banner loaded', unitId);
+    failed
+      ? null
+      : React.createElement(Banner, {
+          unitId,
+          size,
+          requestOptions: { requestNonPersonalizedAdsOnly: true },
+          onAdLoaded: () => {
+            if (__DEV__) console.log('[ads] BANNER LOADED', unitId);
+            if (DEBUG_VISIBLE) setAdDebugStatus({ kind: 'loaded' });
+          },
+          onAdFailedToLoad: (err: unknown) => {
+            const { code, message } = decodeAdError(err);
+            if (__DEV__) console.warn('[ads] BANNER FAILED', code, message, err);
+            if (DEBUG_VISIBLE)
+              setAdDebugStatus({ kind: 'failed', code, message });
+            setFailed(true);
+          },
+        }),
+    DEBUG_VISIBLE
+      ? React.createElement(
+          Text,
+          {
+            style: {
+              position: 'absolute',
+              top: 2,
+              fontSize: 9,
+              color: 'rgba(0,0,0,0.5)',
+            },
+            numberOfLines: 1,
+          },
+          `slot: …${unitId.slice(-12)}${failed ? ' · failed' : ''}`
+        )
+      : null
+  );
+}
+
+export function AdDebugOverlay(): React.ReactElement | null {
+  // Hooks called unconditionally so React's order check stays stable
+  // when DEBUG_VISIBLE flips between builds.
+  const [status, setStatus] = React.useState<AdDebugStatus>(adDebugStatus);
+  React.useEffect(() => {
+    if (!DEBUG_VISIBLE) return;
+    const cb = (s: AdDebugStatus) => setStatus(s);
+    adDebugListeners.add(cb);
+    return () => {
+      adDebugListeners.delete(cb);
+    };
+  }, []);
+
+  if (!DEBUG_VISIBLE) return null;
+
+  let line = '— ad: idle —';
+  if (status.kind === 'loaded') line = 'AD LOADED';
+  else if (status.kind === 'failed') {
+    const label = adErrorLabel(status.code);
+    line = status.message ? `${label} · ${status.message}` : label;
+  }
+
+  return React.createElement(
+    View,
+    {
+      pointerEvents: 'none',
+      style: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 4 : 2,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 9999,
       },
-      onAdFailedToLoad: (err: unknown) => {
-        if (__DEV__) console.warn('[ads] banner load failed', err);
-        setFailed(true);
+    },
+    React.createElement(
+      View,
+      {
+        style: {
+          backgroundColor: 'rgba(0,0,0,0.55)',
+          paddingHorizontal: 8,
+          paddingVertical: 2,
+          borderRadius: 6,
+          maxWidth: '92%',
+        },
       },
-    })
+      React.createElement(
+        Text,
+        {
+          numberOfLines: 1,
+          style: { color: '#fff', fontSize: 10, fontWeight: '600' },
+        },
+        line,
+      ),
+    ),
   );
 }
 

@@ -29,7 +29,7 @@ interface UserStore {
   // Post-sign-in onboarding: true once /users/{uid}.onboardingCompleted is true.
   hasCompletedOnboarding: () => boolean;
   completePostSignInOnboarding: (
-    patch: { name: string; avatarId?: string }
+    patch: { name: string; avatarId?: string; jersey?: import('@/types').Jersey }
   ) => Promise<void>;
 }
 

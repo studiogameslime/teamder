@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   I18nManager,
   LogBox,
   StatusBar,
@@ -67,8 +68,10 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
-import { adsService } from '@/services/adsService';
+import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { checkForUpdate, type UpdateKind } from '@/services/updateService';
+import { UpdateModal } from '@/components/UpdateModal';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 
@@ -128,6 +131,18 @@ export default function App() {
   const [navContainerRef] = useState(() => createNavigationContainerRef());
   const currentScreenRef = useRef<string | null>(null);
 
+  // App-update prompt. Single source of truth: a plain enum kept
+  // here at the App root.
+  const [updateKind, setUpdateKind] = useState<UpdateKind>('none');
+  // Guard so the post-splash check fires exactly once even if the
+  // splash effect re-runs.
+  const updateCheckedRef = useRef(false);
+  // Once the user taps "later" on an optional prompt we suppress
+  // re-showing it for the rest of the session — even if the
+  // AppState listener re-runs the check after returning from the
+  // store. Force-update results still win unconditionally.
+  const optionalUpdateDismissedRef = useRef(false);
+
   useEffect(() => {
     // Hand the screen over from the OS splash to our React layer the
     // moment App mounts. The custom SplashScreen component is already
@@ -135,9 +150,43 @@ export default function App() {
     ExpoSplash.hideAsync().catch(() => {
       // already hidden — non-fatal
     });
-
     // Place for one-time bootstraps: analytics init, FCM token registration, etc.
   }, []);
+
+  // Resolve the freshly-fetched UpdateKind into a UI verdict. Force
+  // wins always; optional is suppressed when already dismissed this
+  // session.
+  const applyUpdateResult = useCallback((kind: UpdateKind) => {
+    if (kind === 'force') {
+      setUpdateKind('force');
+      return;
+    }
+    if (kind === 'optional' && optionalUpdateDismissedRef.current) {
+      setUpdateKind('none');
+      return;
+    }
+    setUpdateKind(kind);
+  }, []);
+
+  // Run the version check only after the splash animation has
+  // finished. Guarded by `updateCheckedRef` so we never fire twice.
+  useEffect(() => {
+    if (!splashDone || updateCheckedRef.current) return;
+    updateCheckedRef.current = true;
+    checkForUpdate().then(applyUpdateResult);
+  }, [splashDone, applyUpdateResult]);
+
+  // Re-check when the app returns from background → active. Catches
+  // the "user updated from the store and came back" case so the
+  // modal disappears on its own. Force results re-appear regardless
+  // of any prior optional dismissal.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active' || !updateCheckedRef.current) return;
+      checkForUpdate().then(applyUpdateResult);
+    });
+    return () => sub.remove();
+  }, [applyUpdateResult]);
 
   // After the animation finishes, try to show the App Open ad. If the
   // SDK already pre-loaded one (initializeAds() runs on app boot), the
@@ -221,6 +270,21 @@ export default function App() {
           to the ad flow → once that resolves (or no-ops) we unmount the
           splash and the navigator is already live. */}
       {!splashDone ? <SplashScreen onFinish={handleSplashFinish} /> : null}
+
+      <AdDebugOverlay />
+
+      {splashDone && updateKind === 'force' ? (
+        <UpdateModal type="force" />
+      ) : null}
+      {splashDone && updateKind === 'optional' ? (
+        <UpdateModal
+          type="optional"
+          onClose={() => {
+            optionalUpdateDismissedRef.current = true;
+            setUpdateKind('none');
+          }}
+        />
+      ) : null}
     </SafeAreaProvider>
   );
 }

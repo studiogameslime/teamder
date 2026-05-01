@@ -16,6 +16,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -41,8 +42,21 @@ import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, GameFormat, FieldType, UserId } from '@/types';
-import { colors, shadows, spacing } from '@/theme';
+import {
+  getForecastFor,
+  weatherIcon,
+  type WeatherForecast,
+} from '@/services/weatherService';
+import {
+  Game,
+  GameFormat,
+  FieldType,
+  LiveMatchState,
+  LiveMatchZone,
+  UserId,
+  toGuestRosterId,
+} from '@/types';
+import { colors, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -93,6 +107,165 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 
+// ─── Session-state machine ───────────────────────────────────────────────
+// Derived from the persisted `liveMatch.phase`, the registered roster
+// vs. the minimum required to play, and a quick scan of player
+// assignments. Drives the single primary CTA + the status pill at the
+// top of the screen.
+type SessionStatus =
+  | 'waiting_for_players'
+  | 'ready_to_create_teams'
+  | 'teams_invalid'
+  | 'teams_ready'
+  | 'active';
+
+/**
+ * Minimum number of registered players (incl. guests) required before
+ * teams can be generated. Honours the organizer's explicit override
+ * (`game.minPlayers`); otherwise we fall back to "enough for two
+ * on-field teams" using the chosen format.
+ */
+function effectiveMinPlayers(game: Game): number {
+  if (game.minPlayers && game.minPlayers > 0) return game.minPlayers;
+  const perTeam =
+    game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
+  return perTeam * 2;
+}
+
+/**
+ * Inspect `liveMatch.assignments` against the current registered roster.
+ * Stale uids (a player who was assigned to a team and then unregistered
+ * from the game) cause `state: 'invalid'` so the UI can prompt to
+ * rebuild the teams. Bench-zone stale entries are silently dropped —
+ * they're not visible to the user and don't affect team validity.
+ *
+ * Returns the cleaned assignment map (only registered roster members)
+ * so renderers don't have to filter at every call site.
+ */
+function teamsValidity(game: Game): {
+  state: 'no_teams' | 'valid' | 'invalid';
+  cleanedAssignments: Record<UserId, LiveMatchZone>;
+} {
+  if (!game.liveMatch) {
+    return { state: 'no_teams', cleanedAssignments: {} };
+  }
+  const validIds = new Set<UserId>([
+    ...game.players,
+    ...(game.guests ?? []).map((g) => toGuestRosterId(g.id)),
+  ]);
+  const cleaned: Record<UserId, LiveMatchZone> = {};
+  let hasPlacement = false;
+  let hasStalePlacement = false;
+  const assignments = game.liveMatch.assignments ?? {};
+  for (const uid of Object.keys(assignments) as UserId[]) {
+    const z = assignments[uid];
+    if (validIds.has(uid)) {
+      cleaned[uid] = z;
+      if (z !== 'bench') hasPlacement = true;
+    } else if (z !== 'bench') {
+      hasStalePlacement = true;
+    }
+  }
+  if (hasStalePlacement) {
+    return { state: 'invalid', cleanedAssignments: cleaned };
+  }
+  return {
+    state: hasPlacement ? 'valid' : 'no_teams',
+    cleanedAssignments: cleaned,
+  };
+}
+
+function deriveSessionStatus(
+  game: Game,
+  totalParticipants: number,
+): SessionStatus {
+  const validity = teamsValidity(game);
+  if (validity.state === 'invalid') return 'teams_invalid';
+  if (validity.state === 'valid') {
+    return game.liveMatch?.phase === 'live' ? 'active' : 'teams_ready';
+  }
+  // No teams placed (or only bench) — fall back to the roster gate.
+  const min = effectiveMinPlayers(game);
+  return totalParticipants >= min
+    ? 'ready_to_create_teams'
+    : 'waiting_for_players';
+}
+
+/**
+ * Auto-shuffle the registered roster into N teams matching the game's
+ * format. Mirrors the LiveMatchScreen shuffle algorithm but stays local
+ * to this screen so the session-details flow can stand on its own.
+ *
+ * Each on-field team's first player becomes the keeper (gkA / gkB);
+ * the rest fill outfield slots in order. Players beyond
+ * `numberOfTeams * playersPerTeam` are placed on the bench.
+ */
+function buildShuffledLiveMatch(game: Game): LiveMatchState {
+  const ids: UserId[] = [
+    ...game.players,
+    ...(game.guests ?? []).map((g) => toGuestRosterId(g.id)),
+  ];
+  // Fisher-Yates.
+  const shuffled = ids.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const slotsPerTeam =
+    game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
+  const buckets = Math.min(Math.max(game.numberOfTeams ?? 2, 2), 5);
+  const letters: Array<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
+
+  const assignments: Record<UserId, LiveMatchZone> = {};
+  const teamASlots: Record<UserId, number> = {};
+  const teamBSlots: Record<UserId, number> = {};
+  const benchOrder: UserId[] = [];
+  let teamACounter = 0;
+  let teamBCounter = 0;
+
+  shuffled.forEach((uid, i) => {
+    const bucketIdx = Math.floor(i / slotsPerTeam);
+    const positionInBucket = i % slotsPerTeam;
+    if (bucketIdx >= buckets) {
+      assignments[uid] = 'bench';
+      benchOrder.push(uid);
+      return;
+    }
+    if (bucketIdx === 0) {
+      if (positionInBucket === 0) {
+        assignments[uid] = 'gkA';
+      } else {
+        assignments[uid] = 'teamA';
+        teamASlots[uid] = teamACounter++;
+      }
+    } else if (bucketIdx === 1) {
+      if (positionInBucket === 0) {
+        assignments[uid] = 'gkB';
+      } else {
+        assignments[uid] = 'teamB';
+        teamBSlots[uid] = teamBCounter++;
+      }
+    } else {
+      const letter = letters[bucketIdx];
+      assignments[uid] = `team${letter}` as LiveMatchZone;
+    }
+  });
+
+  return {
+    phase: 'organizing',
+    assignments,
+    benchOrder,
+    scoreA: 0,
+    scoreB: 0,
+    scoreC: 0,
+    scoreD: 0,
+    scoreE: 0,
+    teamASlots,
+    teamBSlots,
+    lateUserIds: [],
+  };
+}
+
 export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
@@ -107,6 +280,7 @@ export function MatchDetailsScreen() {
   const [busy, setBusy] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [forecast, setForecast] = useState<WeatherForecast | null>(null);
 
   const reload = React.useCallback(async () => {
     setLoading(true);
@@ -135,6 +309,46 @@ export function MatchDetailsScreen() {
       reload();
     }, [reload]),
   );
+
+  // Fetch the forecast once we know the field's coordinates and the
+  // game's start time. We fall back to the parent community's lat/lng
+  // when the game itself wasn't pinned to a precise location — most
+  // real games today only carry a free-text fieldName, so without the
+  // fallback the chip would never render.
+  //
+  // Open-Meteo only serves forecasts for "now or future, up to ~16
+  // days"; the service returns null outside that window and the chip
+  // below stays hidden.
+  useEffect(() => {
+    if (!game?.startsAt) return;
+    const groupForGame = myCommunities.find((g) => g.id === game.groupId);
+    const lat = game.fieldLat ?? groupForGame?.lat;
+    const lng = game.fieldLng ?? groupForGame?.lng;
+    const city = groupForGame?.city;
+    // weatherService falls back to city geocoding when lat/lng is
+    // missing. Both the top-level coords path and the city path are
+    // memoised so the cost of repeated screen visits is one network
+    // call max.
+    if (
+      (typeof lat !== 'number' || typeof lng !== 'number') &&
+      (!city || city.trim().length === 0)
+    ) {
+      return;
+    }
+    let alive = true;
+    getForecastFor({ lat, lng, city, startsAt: game.startsAt }).then((f) => {
+      if (alive) setForecast(f);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [
+    game?.fieldLat,
+    game?.fieldLng,
+    game?.startsAt,
+    game?.groupId,
+    myCommunities,
+  ]);
 
   const isAdmin = useMemo(() => {
     if (!user || !game) return false;
@@ -199,6 +413,93 @@ export function MatchDetailsScreen() {
     return he.matchDetailsJoin;
   })();
 
+  // ─── Session state machine ─────────────────────────────────────────────
+  const sessionStatus = deriveSessionStatus(game, totalParticipants);
+  const minPlayers = effectiveMinPlayers(game);
+  // Cleaned-on-render assignment map. Used by the teams renderer so a
+  // stale uid (player removed after the team was set) never surfaces.
+  const validity = teamsValidity(game);
+
+  /**
+   * Admin tap on "צור כוחות". Auto-shuffles the registered roster into
+   * teams (using the game's format + numberOfTeams) and persists the
+   * fresh liveMatch. After this the screen flips to `teams_ready`.
+   */
+  const handleCreateTeams = async () => {
+    if (!game || !isAdmin) return;
+    // Allow regenerate from `teams_invalid` so admins can fix stale
+    // rosters in one tap. Other states (already ready / live) shouldn't
+    // wipe the existing arrangement.
+    if (
+      sessionStatus !== 'ready_to_create_teams' &&
+      sessionStatus !== 'teams_invalid'
+    ) {
+      return;
+    }
+    if (game.players.length === 0 && (game.guests ?? []).length === 0) return;
+    setBusy(true);
+    try {
+      const next = buildShuffledLiveMatch(game);
+      await gameService.setLiveMatch(game.id, next, {
+        markTeamsEditedManually: true,
+      });
+      await reload();
+    } catch (err) {
+      if (__DEV__) console.warn('[matchDetails] create teams failed', err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Admin tap on "הזמן שחקנים". Opens the native share sheet with a
+   * pre-built invite text. Logs analytics so we can see how often
+   * organizers reach for this when the roster is short.
+   */
+  const handleInvitePlayers = async () => {
+    if (!game) return;
+    try {
+      const result = await Share.share({
+        title: game.title,
+        message: he.sessionInviteShareBody(game.title),
+      });
+      if (result.action !== 'dismissedAction') {
+        logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[matchDetails] invite share failed', err);
+    }
+  };
+
+  /**
+   * Admin tap on "התחל ערב". Flips `liveMatch.phase` to `'live'` and
+   * jumps straight to the LiveMatch screen so the round can begin.
+   */
+  const handleStartSession = async () => {
+    if (!game || !isAdmin || sessionStatus !== 'teams_ready') return;
+    if (!game.liveMatch) return;
+    setBusy(true);
+    try {
+      await gameService.setLiveMatch(
+        game.id,
+        { ...game.liveMatch, phase: 'live' },
+        { markTeamsEditedManually: false },
+      );
+      logEvent(AnalyticsEvent.GameStarted, { gameId: game.id });
+      nav.navigate('LiveMatch', { gameId: game.id });
+    } catch (err) {
+      if (__DEV__) console.warn('[matchDetails] start session failed', err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Admin tap on "עבור ללייב" — already active, just navigate. */
+  const handleGoLive = () => {
+    if (!game) return;
+    nav.navigate('LiveMatch', { gameId: game.id });
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader
@@ -228,78 +529,98 @@ export function MatchDetailsScreen() {
           />
         }
       >
-        {/* ① HEADER */}
-        <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <Text style={styles.heroTitle} numberOfLines={2}>
-              {game.title}
-            </Text>
-            <HeroStatusBadge status={status} game={game} />
-          </View>
-          <View style={styles.headerSub}>
-            {/* Mirrors MatchCard's infoLine pattern: a full-width
-                space-between row with the content atom on the RIGHT
-                and an empty placeholder pushing it there. The atom
-                itself is content-sized (icon + text, no flex). */}
-            <View style={styles.subLine}>
-              <View style={styles.subRow}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color={colors.textMuted}
-                  style={styles.subIcon}
-                />
-                <Text style={styles.subText}>{formatDateLong(game.startsAt)}</Text>
-              </View>
-              <View />
-            </View>
-            <View style={styles.subLine}>
-              <View style={styles.subRow}>
-                <Ionicons
-                  name="location-outline"
-                  size={14}
-                  color={colors.textMuted}
-                  style={styles.subIcon}
-                />
-                <Text style={styles.subText} numberOfLines={1}>
-                  {game.fieldName}
-                </Text>
-              </View>
-              <View />
-            </View>
-          </View>
-          <View style={styles.divider} />
-        </View>
-
-        {/* ② INFO GRID — strict 2×2 */}
-        <View style={styles.infoGrid}>
-          <InfoCell
-            icon="football-outline"
-            label={he.matchDetailsFormat}
-            value={fmt ?? '—'}
+        {/* ① TOP — clean meta block, no cards. Title → 3 meta lines. */}
+        <View style={styles.topBlock}>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {game.title}
+          </Text>
+          <MetaLine
+            icon="calendar-outline"
+            text={formatDateLong(game.startsAt)}
           />
-          <InfoCell
+          <MetaLine
+            icon="location-outline"
+            text={game.fieldName}
+          />
+          <MetaLine
             icon="people-outline"
-            label={he.matchDetailsPlayers}
-            value={`${totalParticipants}/${game.maxPlayers}`}
-          />
-          <InfoCell
-            icon="leaf-outline"
-            label={he.matchDetailsField}
-            value={game.fieldType ? fieldTypeLabel(game.fieldType) : '—'}
-          />
-          <InfoCell
-            icon="time-outline"
-            label={he.matchDetailsDuration}
-            value={
-              game.matchDurationMinutes
-                ? `${game.matchDurationMinutes} ${he.minutesShort}`
-                : '—'
-            }
+            text={`${totalParticipants}/${game.maxPlayers} שחקנים${
+              fmt ? ` · ${fmt}` : ''
+            }`}
           />
         </View>
 
-        {/* ③ PLAYERS */}
+        {/* ② STATUS — context-aware pill + (when waiting) a one-line
+            helper that explains the threshold for moving on. */}
+        <SessionStatusPill
+          status={sessionStatus}
+          totalPlayers={totalParticipants}
+          maxPlayers={game.maxPlayers}
+        />
+        {sessionStatus === 'waiting_for_players' ? (
+          <Text style={styles.statusHelper}>
+            {he.sessionWaitingHelper(minPlayers)}
+          </Text>
+        ) : null}
+        {sessionStatus === 'teams_invalid' ? (
+          <Text style={styles.statusHelper}>{he.sessionInvalidHelper}</Text>
+        ) : null}
+
+        {/* ③ TEAMS SECTION
+            • teams_ready / active   → render the actual teams (using
+              the cleaned-on-render assignment map so stale uids never
+              show up)
+            • teams_invalid → no teams shown; the helper above
+              instructs the admin to rebuild
+            • waiting / ready_to_create → quiet placeholder so the user
+              doesn't think they've missed a step.
+            Only admin sees the placeholder; for plain members it's
+            redundant noise before kickoff. */}
+        {(sessionStatus === 'teams_ready' || sessionStatus === 'active') &&
+        game.liveMatch ? (
+          <TeamsBlock
+            game={game}
+            assignments={validity.cleanedAssignments}
+            playersMap={playersMap}
+          />
+        ) : sessionStatus === 'teams_invalid' ? null : isAdmin ? (
+          <Text style={styles.teamsPlaceholder}>
+            {he.sessionTeamsPlaceholder}
+          </Text>
+        ) : null}
+
+        {/* ④ WEATHER CHIP — visual weight reduced (smaller padding/icon)
+            so it sits BELOW the primary information rather than rivalling
+            it. Hidden when no coords / past game / >14 days out. */}
+        {forecast ? (
+          <View style={styles.weatherCard}>
+            <Text style={styles.weatherIcon}>
+              {weatherIcon(forecast.weatherCode)}
+            </Text>
+            <View style={styles.weatherTextCol}>
+              <Text style={styles.weatherEyebrow}>
+                {he.weatherForecastFor}
+              </Text>
+              <View style={styles.weatherStatsRow}>
+                <View style={styles.weatherStat}>
+                  <Ionicons name="thermometer-outline" size={12} color={colors.textMuted} />
+                  <Text style={styles.weatherStatValue}>
+                    {`${forecast.tempC}°`}
+                  </Text>
+                </View>
+                <View style={styles.weatherStatDivider} />
+                <View style={styles.weatherStat}>
+                  <Ionicons name="rainy-outline" size={12} color={colors.textMuted} />
+                  <Text style={styles.weatherStatValue}>
+                    {`${forecast.rainProb}%`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {/* ⑤ PLAYERS */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {he.matchDetailsPlayers}{' '}
@@ -307,7 +628,10 @@ export function MatchDetailsScreen() {
               ({totalParticipants}/{game.maxPlayers})
             </Text>
           </Text>
-          {isAdmin ? (
+          {isAdmin &&
+          (sessionStatus === 'waiting_for_players' ||
+            sessionStatus === 'ready_to_create_teams' ||
+            sessionStatus === 'teams_invalid') ? (
             <Pressable
               onPress={() => setGuestModalOpen(true)}
               hitSlop={6}
@@ -402,26 +726,6 @@ export function MatchDetailsScreen() {
           </Card>
         )}
 
-        {/* ④ MANAGE — admin only.
-            JSX ordered for RTL flow: TEXT first (renders RIGHT),
-            settings + chevron clustered on the LEFT. The text now
-            says "עבור למצב לייב" — clearer call-to-action than the
-            generic "ניהול משחק". */}
-        {isAdmin ? (
-          <Pressable
-            onPress={() => nav.navigate('LiveMatch', { gameId: game.id })}
-            style={({ pressed }) => [
-              styles.manageRow,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text style={styles.manageText}>{he.matchDetailsGoLive}</Text>
-            <View style={styles.manageIcons}>
-              <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
-              <Ionicons name="chevron-back" size={16} color={colors.primary} />
-            </View>
-          </Pressable>
-        ) : null}
       </ScrollView>
 
       {/* Guest modal — admin-only entry point. Reuses the same modal
@@ -454,17 +758,67 @@ export function MatchDetailsScreen() {
         }}
       />
 
-      {/* ⑤ STICKY CTA — primary action + admin-only delete on the same row. */}
+      {/* ⑥ STICKY CTA — single primary green driven by sessionStatus
+          (admins) or by registration status (regular users). Delete
+          stays on the same row for admins as a destructive secondary. */}
       <View style={[styles.cta, isAdmin && styles.ctaRow]}>
         <View style={{ flex: 1 }}>
-          <Button
-            title={primaryLabel}
-            variant={primaryDestructive ? 'danger' : 'primary'}
-            size="lg"
-            fullWidth
-            loading={busy}
-            onPress={handlePrimary}
-          />
+          {isAdmin ? (
+            (() => {
+              // One CTA per state: invite → create teams → start → live.
+              // Each transition is gated by the sessionStatus, so an
+              // admin can never trigger a step out of order.
+              const cfg = (() => {
+                if (sessionStatus === 'waiting_for_players') {
+                  return {
+                    title: he.sessionActionInvitePlayers,
+                    onPress: handleInvitePlayers,
+                  };
+                }
+                if (sessionStatus === 'ready_to_create_teams') {
+                  return {
+                    title: he.sessionActionCreateTeams,
+                    onPress: handleCreateTeams,
+                  };
+                }
+                if (sessionStatus === 'teams_invalid') {
+                  return {
+                    title: he.sessionActionRecreateTeams,
+                    onPress: handleCreateTeams,
+                  };
+                }
+                if (sessionStatus === 'teams_ready') {
+                  return {
+                    title: he.sessionActionStart,
+                    onPress: handleStartSession,
+                  };
+                }
+                return {
+                  title: he.sessionActionGoLive,
+                  onPress: handleGoLive,
+                };
+              })();
+              return (
+                <Button
+                  title={cfg.title}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  loading={busy}
+                  onPress={cfg.onPress}
+                />
+              );
+            })()
+          ) : (
+            <Button
+              title={primaryLabel}
+              variant={primaryDestructive ? 'danger' : 'primary'}
+              size="lg"
+              fullWidth
+              loading={busy}
+              onPress={handlePrimary}
+            />
+          )}
         </View>
         {isAdmin ? (
           <View style={{ flex: 1 }}>
@@ -484,6 +838,161 @@ export function MatchDetailsScreen() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────
+
+/** A single icon + text line in the clean top meta block. */
+function MetaLine({
+  icon,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}) {
+  return (
+    <View style={styles.metaLine}>
+      <Ionicons name={icon} size={16} color={colors.textMuted} />
+      <Text style={styles.metaLineText} numberOfLines={1}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Visually-prominent state pill. Four-way colour split tracks the
+ * SessionStatus enum: gray / amber-light-green / blue / green.
+ * Counts (e.g. "2/24") live in the label itself for the waiting state.
+ */
+function SessionStatusPill({
+  status,
+  totalPlayers,
+  maxPlayers,
+}: {
+  status: SessionStatus;
+  totalPlayers: number;
+  maxPlayers: number;
+}) {
+  const cfg = (() => {
+    if (status === 'waiting_for_players') {
+      return {
+        bg: '#F1F5F9', // slate-100 — quiet, not alarming
+        fg: '#334155', // slate-700
+        dot: colors.textMuted,
+        label: he.sessionStatusWaitingPlayers(totalPlayers, maxPlayers),
+      };
+    }
+    if (status === 'ready_to_create_teams') {
+      return {
+        bg: '#DCFCE7', // green-100
+        fg: '#15803D', // green-700
+        dot: colors.primary,
+        label: he.sessionStatusEnoughPlayers,
+      };
+    }
+    if (status === 'teams_invalid') {
+      return {
+        bg: '#FEE2E2', // red-100
+        fg: '#B91C1C', // red-700
+        dot: colors.danger,
+        label: he.sessionStatusTeamsInvalid,
+      };
+    }
+    if (status === 'teams_ready') {
+      return {
+        bg: '#DBEAFE', // blue-100
+        fg: '#1D4ED8', // blue-700
+        dot: '#2563EB',
+        label: he.sessionStatusTeamsReady,
+      };
+    }
+    return {
+      bg: '#DCFCE7',
+      fg: '#15803D',
+      dot: colors.primary,
+      label: he.sessionStatusActive,
+    };
+  })();
+  return (
+    <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+      <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
+      <Text style={[styles.statusText, { color: cfg.fg }]}>{cfg.label}</Text>
+    </View>
+  );
+}
+
+/**
+ * Compact "teams" block — color dot + name + small player avatars.
+ * Renders only the cleaned (stale-filtered) assignment map so a player
+ * who was removed from the roster after teams were built doesn't
+ * appear as a phantom shirt. The `playersMap` hydration ensures each
+ * shirt shows the player's actual saved jersey (number + colors)
+ * rather than a deterministic auto-jersey based on uid.
+ */
+function TeamsBlock({
+  game,
+  assignments,
+  playersMap,
+}: {
+  game: Game;
+  assignments: Record<UserId, LiveMatchZone>;
+  playersMap: Record<string, { displayName: string; jersey?: import('@/types').Jersey }>;
+}) {
+  const teamCount = Math.min(Math.max(game.numberOfTeams ?? 2, 2), 5);
+  const letters: Array<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
+  const letterTints = [
+    colors.team1,
+    colors.team2,
+    colors.team3,
+    colors.warning,
+    colors.info,
+  ];
+  const rosterFor = (
+    letter: 'A' | 'B' | 'C' | 'D' | 'E',
+    idx: number,
+  ): UserId[] => {
+    const ids: UserId[] = [];
+    for (const uid of Object.keys(assignments) as UserId[]) {
+      const z = assignments[uid];
+      if (z === `team${letter}`) ids.push(uid);
+      if (idx === 0 && z === 'gkA') ids.push(uid);
+      if (idx === 1 && z === 'gkB') ids.push(uid);
+    }
+    return ids;
+  };
+  return (
+    <View style={styles.teamsBlock}>
+      <Text style={styles.teamsBlockTitle}>{he.sessionTeamsHeading}</Text>
+      {letters.slice(0, teamCount).map((letter, i) => {
+        const tint = letterTints[i];
+        const players = rosterFor(letter, i);
+        return (
+          <View key={letter} style={styles.teamRow}>
+            <View style={[styles.teamDot, { backgroundColor: tint }]} />
+            <Text style={styles.teamName}>{he.liveTeamLabel(i)}</Text>
+            <View style={styles.teamAvatars}>
+              {players.slice(0, 7).map((uid) => {
+                const p = playersMap[uid];
+                return (
+                  <PlayerIdentity
+                    key={uid}
+                    user={{
+                      id: uid,
+                      name: p?.displayName ?? '',
+                      jersey: p?.jersey,
+                    }}
+                    size={26}
+                  />
+                );
+              })}
+              {players.length > 7 ? (
+                <Text style={styles.teamMoreText}>+{players.length - 7}</Text>
+              ) : null}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 function HeroStatusBadge({ status, game }: { status: CardStatus; game: Game }) {
   if (status === 'joined')
@@ -599,7 +1108,147 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  // ② Info grid
+  // ① v2 — clean meta block (no cards, no borders, just spacing)
+  topBlock: {
+    gap: 6,
+  },
+  metaLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaLineText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    flexShrink: 1,
+  },
+
+  // ② Status pill — yellow / blue / green
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+
+  // ④ Teams block
+  teamsBlock: {
+    gap: spacing.sm,
+  },
+  teamsBlockTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'right',
+    width: '100%',
+  },
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 6,
+  },
+  teamDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  teamName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    minWidth: 70,
+  },
+  teamAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  teamMoreText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginStart: 4,
+  },
+
+  // ② Helper text under status pill (waiting state only)
+  statusHelper: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -spacing.sm + 2,
+  },
+
+  // Empty placeholder shown in lieu of teams when teams aren't ready yet.
+  teamsPlaceholder: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+
+  // ④ Weather chip — slimmed-down. Reduced padding + smaller icon so
+  // it sits as a low-key info row rather than a large hero card.
+  weatherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC', // slate-50 — quieter than the old blue card
+  },
+  weatherIcon: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  weatherTextCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weatherEyebrow: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  weatherStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  weatherStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  weatherStatValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  weatherStatDivider: {
+    width: 1,
+    height: 10,
+    backgroundColor: colors.divider,
+  },
+
+  // ③ Info grid
   infoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -658,6 +1307,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     textAlign: 'right',
+    // RTL stretch: a content-sized Text inside a row+space-between
+    // lands at the visual LEFT under forceRTL (RN's space-between
+    // implementation places lone children at flex-start without
+    // flipping). `flex: 1` forces the title to fill the row so
+    // `textAlign:'right'` actually puts the glyphs at the right edge.
+    flex: 1,
   },
   sectionCount: {
     color: colors.textMuted,

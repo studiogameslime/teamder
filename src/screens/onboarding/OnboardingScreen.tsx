@@ -20,20 +20,23 @@ interface Slide {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   body: string;
+  isFinal?: boolean;
 }
 
 const SLIDES: Slide[] = [
-  { icon: 'flash-outline',     title: he.onb1Title, body: he.onb1Body },
-  { icon: 'list-outline',      title: he.onb2Title, body: he.onb2Body },
-  { icon: 'people-circle-outline', title: he.onb3Title, body: he.onb3Body },
-  { icon: 'phone-portrait-outline', title: he.onb4Title, body: he.onb4Body },
+  { icon: 'search-outline', title: he.onb1Title, body: he.onb1Body },
+  { icon: 'add-circle-outline', title: he.onb2Title, body: he.onb2Body },
+  { icon: 'football-outline', title: he.onb3Title, body: he.onb3Body },
+  { icon: 'rocket-outline', title: he.onb4Title, body: he.onb4Body, isFinal: true },
 ];
 
 const { width } = Dimensions.get('window');
 
 export function OnboardingScreen() {
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const signInWithGoogle = useUserStore((s) => s.signInWithGoogle);
   const [index, setIndex] = useState(0);
+  const [busy, setBusy] = useState(false);
   const ref = useRef<FlatList<Slide>>(null);
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -41,20 +44,33 @@ export function OnboardingScreen() {
   }).current;
 
   const isLast = index >= SLIDES.length - 1;
+
   const advance = () => {
-    if (isLast) {
-      completeOnboarding();
-    } else {
+    if (!isLast) {
       ref.current?.scrollToIndex({ index: index + 1, animated: true });
+    }
+  };
+
+  const handleSignIn = async () => {
+    setBusy(true);
+    try {
+      await completeOnboarding();
+      await signInWithGoogle();
+    } catch {
+      // sign-in failure is surfaced by the existing flow further up
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.skipRow}>
-        <Pressable onPress={completeOnboarding} hitSlop={12}>
-          <Text style={styles.skip}>{he.onbSkip}</Text>
-        </Pressable>
+        {!isLast ? (
+          <Pressable onPress={completeOnboarding} hitSlop={12}>
+            <Text style={styles.skip}>{he.onbSkip}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <FlatList
@@ -64,8 +80,6 @@ export function OnboardingScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        // RTL note: with I18nManager.forceRTL the viewport flips. We invert
-        // the data direction so swipe right→left reveals the next slide.
         inverted
         onViewableItemsChanged={onViewable}
         viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
@@ -93,13 +107,25 @@ export function OnboardingScreen() {
       </View>
 
       <View style={styles.cta}>
-        <Button
-          title={isLast ? he.onbStart : he.onbNext}
-          variant="primary"
-          size="lg"
-          onPress={advance}
-          fullWidth
-        />
+        {isLast ? (
+          <Button
+            title={he.onbCtaSignIn}
+            variant="primary"
+            size="lg"
+            fullWidth
+            iconLeft="logo-google"
+            loading={busy}
+            onPress={handleSignIn}
+          />
+        ) : (
+          <Button
+            title={he.onbNext}
+            variant="primary"
+            size="lg"
+            fullWidth
+            onPress={advance}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -112,6 +138,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    minHeight: 28,
   },
   skip: { ...typography.label, color: colors.textMuted },
   slide: {
@@ -129,8 +156,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xl,
   },
-  title: { ...typography.h1, color: colors.text, textAlign: 'center', marginBottom: spacing.md },
-  body: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
+  title: {
+    ...typography.h1,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  body: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -140,8 +177,11 @@ const styles = StyleSheet.create({
   dot: {
     width: 8,
     height: 8,
-    borderRadius: radius.pill,
+    borderRadius: 4,
     backgroundColor: colors.border,
   },
-  cta: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+  cta: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
 });

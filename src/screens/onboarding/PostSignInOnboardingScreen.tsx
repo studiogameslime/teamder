@@ -1,27 +1,27 @@
-// Post-sign-in onboarding flow.
-//
-// Three steps in one component (welcome → how it works → profile confirm).
-// They share the in-progress display name so editing on step 3 starts from
-// the Google value the user just authenticated with — and the only thing
-// that needs to be persisted at the end is the (possibly edited) name +
-// the onboardingCompleted flag.
-//
-// RootNavigator gates this whole screen on `!user.onboardingCompleted`, so
-// finishing here flips that flag in /users/{uid} and the navigator falls
-// through to the existing GroupChooseScreen.
+// Post-sign-in onboarding — short personalisation step.
+// Welcome → How → Profile (name + jersey editor with live preview).
 
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { InputField } from '@/components/InputField';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { Jersey } from '@/components/Jersey';
+import { InputField } from '@/components/InputField';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { JERSEY_COLORS, JERSEY_PATTERNS, autoJersey } from '@/data/jerseys';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import type { Jersey as JerseyType, JerseyPattern } from '@/types';
 
 type Step = 'welcome' | 'how' | 'profile';
 
@@ -43,6 +43,15 @@ export function PostSignInOnboardingScreen() {
   const [step, setStep] = useState<Step>('welcome');
   const [name, setName] = useState(user?.name ?? '');
   const [busy, setBusy] = useState(false);
+
+  // Jersey state — seeded from the user's existing jersey, or from the
+  // deterministic auto-jersey based on uid+name when nothing's saved.
+  const initialJersey: JerseyType =
+    user?.jersey ??
+    (user
+      ? autoJersey(user.id, user.name || '')
+      : { color: JERSEY_COLORS[2].hex, pattern: 'solid', number: 10, displayName: '' });
+  const [jersey, setJersey] = useState<JerseyType>(initialJersey);
 
   if (step === 'welcome') {
     return (
@@ -97,25 +106,47 @@ export function PostSignInOnboardingScreen() {
   const handleSave = async () => {
     setBusy(true);
     try {
-      await complete({ name: name.trim() });
+      await complete({
+        name: name.trim(),
+        jersey: {
+          ...jersey,
+          displayName: jersey.displayName.trim().slice(0, 10),
+        },
+      });
     } catch (err) {
-      if (__DEV__) console.warn('[onboarding] completePostSignInOnboarding failed', err);
+      if (__DEV__) console.warn('[onboarding] complete failed', err);
       Alert.alert(he.error, he.signInFailed);
     } finally {
       setBusy(false);
     }
   };
 
+  const cycleNumber = (delta: number) => {
+    setJersey((j) => {
+      const n = ((j.number - 1 + delta + 99) % 99) + 1;
+      return { ...j, number: n };
+    });
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.profileScroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>{he.psoProfileTitle}</Text>
-        <View style={{ marginVertical: spacing.lg }}>
-          <PlayerIdentity
-            user={user ? { ...user, name: name.trim() || user.name } : null}
-            size="xl"
+
+        {/* Live jersey preview — sits at top, updates instantly. */}
+        <View style={styles.previewWrap}>
+          <Jersey
+            jersey={jersey}
+            user={user ? { id: user.id, name: jersey.displayName.trim() || name.trim() || user.name } : null}
+            size={140}
+            showName
           />
         </View>
+
+        {/* Name */}
         <InputField
           value={name}
           onChangeText={setName}
@@ -123,17 +154,107 @@ export function PostSignInOnboardingScreen() {
           maxLength={40}
           icon="person-outline"
         />
+
+        {/* Optional nickname (printed on the shirt) */}
+        <InputField
+          label={he.psoProfileNickname}
+          value={jersey.displayName}
+          onChangeText={(t) =>
+            setJersey((j) => ({ ...j, displayName: t.slice(0, 10) }))
+          }
+          placeholder={he.psoProfileNicknamePlaceholder}
+          maxLength={10}
+        />
+
+        {/* Number stepper */}
+        <View style={styles.numberRow}>
+          <Text style={styles.label}>{he.psoProfileNumber}</Text>
+          <View style={styles.numberStepper}>
+            <Pressable
+              onPress={() => cycleNumber(-1)}
+              hitSlop={6}
+              style={styles.stepperBtn}
+            >
+              <Ionicons name="remove" size={18} color={colors.text} />
+            </Pressable>
+            <Text style={styles.numberValue}>{jersey.number}</Text>
+            <Pressable
+              onPress={() => cycleNumber(1)}
+              hitSlop={6}
+              style={styles.stepperBtn}
+            >
+              <Ionicons name="add" size={18} color={colors.text} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Color swatches */}
+        <View>
+          <Text style={styles.label}>{he.psoProfileColor}</Text>
+          <View style={styles.swatchRow}>
+            {JERSEY_COLORS.map((c) => (
+              <Pressable
+                key={c.id}
+                onPress={() => setJersey((j) => ({ ...j, color: c.hex }))}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: c.hex },
+                  jersey.color === c.hex && styles.swatchActive,
+                ]}
+              >
+                {jersey.color === c.hex ? (
+                  <Ionicons
+                    name="checkmark"
+                    size={18}
+                    color={c.hex === '#F8FAFC' ? colors.text : '#fff'}
+                  />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Pattern pills */}
+        <View>
+          <Text style={styles.label}>{he.psoProfilePattern}</Text>
+          <View style={styles.patternRow}>
+            {JERSEY_PATTERNS.map((p) => (
+              <Pressable
+                key={p.id}
+                onPress={() =>
+                  setJersey((j) => ({ ...j, pattern: p.id as JerseyPattern }))
+                }
+                style={[
+                  styles.patternPill,
+                  jersey.pattern === p.id && styles.patternPillActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.patternText,
+                    jersey.pattern === p.id && styles.patternTextActive,
+                  ]}
+                >
+                  {p.nameHe}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
+      </ScrollView>
+      <View style={styles.profileCta}>
+        <Button
+          title={he.psoProfileSave}
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={!canSave}
+          loading={busy}
+          onPress={handleSave}
+        />
       </View>
-      <Button
-        title={he.psoProfileSave}
-        variant="primary"
-        size="lg"
-        fullWidth
-        disabled={!canSave}
-        loading={busy}
-        onPress={handleSave}
-      />
     </SafeAreaView>
   );
 }
@@ -150,23 +271,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xl,
   },
-  title: { ...typography.h1, color: colors.text, textAlign: 'center' },
+  title: {
+    ...typography.h1,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
   subtitle: {
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
+    lineHeight: 24,
   },
-  cards: {
-    width: '100%',
-    gap: spacing.md,
-    marginTop: spacing.xl,
-  },
+  cards: { gap: spacing.md, alignSelf: 'stretch', marginTop: spacing.lg },
   howCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    padding: spacing.md,
   },
   howIcon: {
     width: 48,
@@ -177,31 +299,99 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   howTitle: {
-    ...typography.h3,
+    ...typography.bodyBold,
     color: colors.text,
     flex: 1,
     textAlign: 'right',
   },
-  input: {
+
+  // Profile step
+  profileScroll: {
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
+  },
+  previewWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  label: {
+    ...typography.label,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginBottom: spacing.xs,
+  },
+  numberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  numberStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  stepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numberValue: {
     ...typography.h3,
     color: colors.text,
-    width: '100%',
-    backgroundColor: colors.surface,
+    fontWeight: '800',
+    minWidth: 36,
+    textAlign: 'center',
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  swatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  swatchActive: {
+    borderColor: colors.text,
+    transform: [{ scale: 1.1 }],
+  },
+  patternRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  patternPill: {
+    flex: 1,
+    paddingVertical: spacing.sm,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
   },
+  patternPillActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  patternText: { ...typography.body, color: colors.textMuted },
+  patternTextActive: { color: colors.primary, fontWeight: '700' },
   email: {
-    ...typography.body,
+    ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
-  pickerWrap: {
-    width: '100%',
-    flexShrink: 1,
-    marginTop: spacing.md,
+  profileCta: {
+    paddingTop: spacing.sm,
   },
 });

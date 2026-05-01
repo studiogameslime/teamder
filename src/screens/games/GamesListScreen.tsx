@@ -38,6 +38,7 @@ import { Button } from '@/components/Button';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { MatchCard, MatchCardCta } from '@/components/MatchCard';
 import { gameService } from '@/services/gameService';
+import { storage } from '@/services/storage';
 import { Game } from '@/types';
 import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -62,6 +63,18 @@ export function GamesListScreen() {
   const [openGames, setOpenGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
+  // First-run hint pointing at the FAB. Surfaces once per device,
+  // dismissible, never blocks taps on the FAB itself.
+  const [hintVisible, setHintVisible] = useState(false);
+  useEffect(() => {
+    storage.getHintCreateGameSeen().then((seen) => {
+      if (!seen) setHintVisible(true);
+    });
+  }, []);
+  const dismissHint = () => {
+    setHintVisible(false);
+    storage.setHintCreateGameSeen();
+  };
 
   const reload = useCallback(async () => {
     if (!user) return;
@@ -166,20 +179,25 @@ export function GamesListScreen() {
           <View style={styles.emptyIcon}>
             <Ionicons name="football-outline" size={56} color={colors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>
-            {tab === 'mine' ? he.matchesEmptyMine : he.matchesEmptyOpen}
-          </Text>
-          {tab === 'mine' ? (
+          <Text style={styles.emptyBody}>{he.emptyHomeBody}</Text>
+          <View style={styles.emptyActions}>
             <Button
-              title={he.gamesCreate}
+              title={he.emptyHomePrimary}
               variant="primary"
-              size="md"
+              size="lg"
               iconLeft="add-circle-outline"
               onPress={handleCreate}
-              style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
               fullWidth
             />
-          ) : null}
+            <Button
+              title={he.emptyHomeSecondary}
+              variant="outline"
+              size="lg"
+              iconLeft="search-outline"
+              onPress={() => setTab('open')}
+              fullWidth
+            />
+          </View>
         </View>
       ) : (
         <ScrollView
@@ -210,7 +228,10 @@ export function GamesListScreen() {
           is on the "mine" tab (so first-time users still see a creation
           shortcut even though the empty state already has one). */}
       <Pressable
-        onPress={handleCreate}
+        onPress={() => {
+          if (hintVisible) dismissHint();
+          handleCreate();
+        }}
         style={({ pressed }) => [
           styles.fab,
           pressed && { transform: [{ scale: 0.95 }] },
@@ -219,6 +240,13 @@ export function GamesListScreen() {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      {hintVisible ? (
+        <Pressable style={styles.hintBubble} onPress={dismissHint}>
+          <Text style={styles.hintText}>{he.hintCreateGame}</Text>
+          <View style={styles.hintArrow} />
+        </Pressable>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -365,10 +393,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    ...typography.h3,
+    ...typography.h2,
     color: colors.text,
     textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  emptyBody: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  emptyActions: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
+    gap: spacing.sm,
   },
 
   fab: {
@@ -382,5 +421,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.raised,
+  },
+
+  // First-run hint bubble pointing at the FAB.
+  hintBubble: {
+    position: 'absolute',
+    bottom: spacing.xxl + 56 + 12,
+    end: spacing.xl,
+    backgroundColor: colors.text,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    maxWidth: 220,
+  },
+  hintText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  hintArrow: {
+    position: 'absolute',
+    bottom: -6,
+    end: 24,
+    width: 12,
+    height: 12,
+    backgroundColor: colors.text,
+    transform: [{ rotate: '45deg' }],
   },
 });

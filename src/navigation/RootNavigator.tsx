@@ -17,7 +17,6 @@ import { AuthStack } from './AuthStack';
 import { MainTabs } from './MainTabs';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
-import { initAnalytics } from '@/services/analyticsService';
 import { notificationsService } from '@/services/notificationsService';
 import { useGameStore } from '@/store/gameStore';
 
@@ -42,11 +41,6 @@ export function RootNavigator() {
   // Each side service is wrapped so a failure in one doesn't break boot.
   useEffect(() => {
     hydrateUser();
-    try {
-      initAnalytics();
-    } catch (err) {
-      if (__DEV__) console.warn('[boot] initAnalytics threw', err);
-    }
     try {
       adsService.initializeAds();
     } catch (err) {

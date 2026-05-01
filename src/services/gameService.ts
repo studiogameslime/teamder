@@ -420,6 +420,12 @@ export const gameService = {
     bringBall: boolean;
     bringShirts: boolean;
     notes?: string;
+    city?: string;
+    fieldAddress?: string;
+    hasReferee?: boolean;
+    hasPenalties?: boolean;
+    hasHalfTime?: boolean;
+    extraTimeMinutes?: number;
     createdBy: UserId;
   }): Promise<Game> {
     const now = Date.now();
@@ -451,6 +457,12 @@ export const gameService = {
       bringBall: input.bringBall,
       bringShirts: input.bringShirts,
       notes: input.notes,
+      city: input.city,
+      fieldAddress: input.fieldAddress,
+      hasReferee: input.hasReferee,
+      hasPenalties: input.hasPenalties,
+      hasHalfTime: input.hasHalfTime,
+      extraTimeMinutes: input.extraTimeMinutes,
       createdAt: now,
       updatedAt: now,
     };
@@ -519,6 +531,12 @@ export const gameService = {
       bringBall: boolean;
       bringShirts: boolean;
       notes: string;
+      city: string;
+      fieldAddress: string;
+      hasReferee: boolean;
+      hasPenalties: boolean;
+      hasHalfTime: boolean;
+      extraTimeMinutes: number;
     }>,
   ): Promise<void> {
     const updates: Record<string, unknown> = {

@@ -25,7 +25,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 interface Props
   extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
@@ -107,16 +107,13 @@ export function InputField({
 const styles = StyleSheet.create({
   wrap: {
     gap: spacing.xs,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   label: {
     ...typography.label,
     color: colors.textMuted,
-    // App.tsx sets a Text default with textAlign:'right', but a `style`
-    // prop on a child Text overrides defaultProps entirely (React doesn't
-    // merge style arrays from defaultProps). Spelling out the RTL pair
-    // here guarantees the label hugs the right edge.
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
     width: '100%',
   },
@@ -136,8 +133,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     // Pull the cursor onto the same baseline as the icon — RN's default
     // line-height pushes the digit down a few pixels otherwise.
     paddingVertical: spacing.sm,

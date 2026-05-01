@@ -90,6 +90,7 @@ export const userService = {
   async completeOnboarding(patch: {
     name: string;
     avatarId?: string;
+    jersey?: import('@/types').Jersey;
   }): Promise<User> {
     const trimmedName = patch.name.trim();
     if (!trimmedName) throw new Error('completeOnboarding: name is required');
@@ -100,6 +101,7 @@ export const userService = {
         ...cur,
         name: trimmedName,
         ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
+        ...(patch.jersey ? { jersey: patch.jersey } : {}),
         onboardingCompleted: true,
         updatedAt: Date.now(),
       };
@@ -116,11 +118,13 @@ export const userService = {
       updatedAt,
     };
     if (patch.avatarId) updates.avatarId = patch.avatarId;
+    if (patch.jersey) updates.jersey = patch.jersey;
     await updateDoc(ref, updates);
     return {
       ...cur,
       name: trimmedName,
       ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
+      ...(patch.jersey ? { jersey: patch.jersey } : {}),
       onboardingCompleted: true,
       updatedAt,
     };

@@ -7,6 +7,7 @@ const KEYS = {
   ONBOARDING_DONE: 'footy.onboarding.done',
   AUTH_USER: 'footy.auth.user',           // stringified User
   CURRENT_GROUP: 'footy.group.current',   // GroupId
+  HINT_CREATE_GAME_SEEN: 'footy.hint.createGame.seen',
 } as const;
 
 export const storage = {
@@ -32,5 +33,12 @@ export const storage = {
   async setCurrentGroupId(id: string | null): Promise<void> {
     if (id === null) await AsyncStorage.removeItem(KEYS.CURRENT_GROUP);
     else await AsyncStorage.setItem(KEYS.CURRENT_GROUP, id);
+  },
+
+  async getHintCreateGameSeen(): Promise<boolean> {
+    return (await AsyncStorage.getItem(KEYS.HINT_CREATE_GAME_SEEN)) === '1';
+  },
+  async setHintCreateGameSeen(): Promise<void> {
+    await AsyncStorage.setItem(KEYS.HINT_CREATE_GAME_SEEN, '1');
   },
 };

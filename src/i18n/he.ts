@@ -6,6 +6,14 @@ export const he = {
   back: 'חזור',
   cancel: 'בטל',
   save: 'שמור',
+  // App-update prompts
+  updateForceTitle: 'נדרש עדכון',
+  updateForceBody: 'יש גרסה חדשה לאפליקציה. חובה לעדכן כדי להמשיך להשתמש.',
+  updateOptionalTitle: 'גרסה חדשה זמינה',
+  updateOptionalBody: 'יש גרסה חדשה זמינה לאפליקציה.',
+  updateNow: 'עדכן עכשיו',
+  updateLater: 'אולי אחר כך',
+
   // Destructive confirmation (irreversible delete dialog)
   confirmDeleteAck: 'אני מבין שהפעולה בלתי הפיכה',
   confirmDeleteSubmit: 'אישור מחיקה',
@@ -74,6 +82,30 @@ export const he = {
   expectedAttendance: 'אחוז הגעה צפוי',
   shareInvite: 'שתף הזמנה',
   rainProb: 'סיכוי לגשם',
+  weatherTemp: 'טמפרטורה',
+  weatherRain: 'גשם',
+  weatherForecastFor: 'תחזית למועד המשחק',
+  // Session state pills (Match Details)
+  sessionStatusWaitingPlayers: (cur: number, max: number) =>
+    `⏳ מחכים לשחקנים (${cur}/${max})`,
+  sessionStatusEnoughPlayers: 'יש מספיק שחקנים 🎉',
+  sessionStatusTeamsReady: 'כוחות מוכנים',
+  sessionStatusActive: 'משחק פעיל',
+  sessionStatusTeamsInvalid: 'צריך ליצור כוחות מחדש',
+  sessionInvalidHelper: 'הכוחות מתייחסים לשחקנים שכבר לא רשומים. צרו אותם מחדש.',
+  sessionActionRecreateTeams: 'צור כוחות מחדש',
+  sessionWaitingHelper: (min: number) =>
+    `תצטרכו לפחות ${min} שחקנים כדי ליצור כוחות ולהתחיל`,
+  sessionActionInvitePlayers: 'הזמן שחקנים',
+  sessionActionShareLink: 'שיתוף קישור',
+  sessionActionCreateTeams: 'צור כוחות',
+  sessionActionStart: 'התחל ערב משחקים',
+  sessionActionGoLive: 'עבור ללייב',
+  sessionTeamsHeading: 'כוחות',
+  sessionTeamsPlaceholder:
+    'אין עדיין כוחות — יווצרו אוטומטית כשיהיו מספיק שחקנים',
+  sessionInviteShareBody: (title: string) =>
+    `הצטרפו אליי ל${title} 🏟️\nהורידו את Teamder וצטרפו: https://soccer-app-52b6b.web.app/`,
   numWaiting: 'ספסל',
   numRegistered: 'נרשמים',
 
@@ -254,6 +286,7 @@ export const he = {
   createGameFieldType: 'משטח המגרש',
   createGameMatchDuration: 'אורך המשחק (דקות)',
   createGameMatchDurationHint: 'ברירת המחדל לטיימר במגרש',
+  createGameExtraTime: 'תוספת זמן (דקות)',
   createGameAutoBalanceTiming: 'מתי לסדר כוחות אוטומטית?',
   createGameAutoBalance30: '30 דקות לפני',
   createGameAutoBalance60: 'שעה לפני',
@@ -279,6 +312,43 @@ export const he = {
   editGameTitle: 'עריכת משחק',
   editGameSubmit: 'שמירת שינויים',
   matchDetailsEdit: 'עריכה',
+  // Wizard
+  wizardStep1: 'פרטים',
+  wizardStep2: 'חוקים',
+  wizardStep3: 'מתקדם',
+  wizardStepBack: 'חזרה',
+  wizardStepNext: 'המשך',
+  wizardStepSkip: 'דלג',
+  wizardGameTitle: 'שם המשחק',
+  wizardGameTitlePlaceholder: 'לדוגמה: חמישי כדורגל',
+  wizardCity: 'עיר',
+  wizardCityPlaceholder: 'לדוגמה: תל אביב',
+  wizardAddress: 'כתובת מלאה',
+  wizardAddressPlaceholder: 'רחוב הספורט 12',
+  wizardLocation: 'מיקום',
+  wizardLocationPlaceholder: 'עיר, רחוב ומספר',
+  wizardTitleOptional: 'שם המשחק (אופציונלי)',
+  wizardCancelOptionNone: 'ללא הגבלה',
+  wizardCancelOption: (h: number) => `${h} שעות`,
+  wizardSectionRules: 'חוקי המשחק',
+  wizardHasReferee: 'יש שופט',
+  wizardHasRefereeHint: 'שופט במגרש לאכיפת חוקים ופתיחת משחקונים',
+  wizardHasPenalties: 'פנדלים',
+  wizardHasPenaltiesHint: 'סבב פנדלים בתיקו',
+  wizardHasHalfTime: 'חוצים',
+  wizardHasHalfTimeHint: 'משחקים עם חוצים',
+  wizardSectionVisibility: 'נראות',
+  wizardVisibilityCommunity: 'רק לקהילה שלי',
+  wizardVisibilityPublic: 'פתוח לכולם',
+  wizardSectionAdvanced: 'הגדרות מתקדמות',
+  wizardCancelDeadline: 'עד כמה שעות לפני אפשר לבטל הרשמה',
+  wizardCancelDeadlineHint:
+    'מעבר לזמן הזה, ביטול ייחשב כאי־הגעה. השאר ריק לחוסר הגבלה.',
+  wizardSummaryTitle: 'תקציר המשחק',
+  wizardSummaryDate: 'מתי',
+  wizardSummaryWhere: 'איפה',
+  wizardSummaryFormat: 'פורמט',
+  wizardSummaryVisibility: 'נראות',
   createGameNoCommunities: 'לפני שתוכל ליצור משחק, צריך להצטרף לקבוצה',
 
   // Admin gating
@@ -472,14 +542,17 @@ export const he = {
   onbSkip: 'דלג',
   onbNext: 'הבא',
   onbStart: 'בוא נתחיל',
-  onb1Title: 'מספיק עם הבלאגן בוואטסאפ ⚽',
-  onb1Body: 'מארגנים משחק כדורגל אחד בקליק. בלי ויכוחים, בלי שכפולים.',
-  onb2Title: 'הרשמה פשוטה ובלי בלבולים',
-  onb2Body: 'ספסל אוטומטי. מי שביטל - הבא בתור נכנס.',
-  onb3Title: 'קבוצות הוגנות וסידור שוערים',
-  onb3Body: 'כפתור אחד מערבב את הקבוצות ויוצר סדר שוערים מסתובב.',
-  onb4Title: 'בלי טלפון בזמן המשחק',
-  onb4Body: 'נכנסים, מגדירים, משחקים. האפליקציה לא מפריעה.',
+  onbCtaSignIn: 'התחבר עם Google',
+  onb1Title: 'מצא משחק כדורגל בקלות',
+  onb1Body: 'הצטרף למשחקים קרובים או צור אחד משלך',
+  onb2Title: 'צור משחק תוך שניות',
+  onb2Body: 'בחר מגרש, קבע שעה והזמן שחקנים',
+  onb3Title: 'נהל משחק בזמן אמת',
+  onb3Body: 'קבע כוחות, עקוב אחרי התוצאה ושמור על סדר',
+  // 4th = final CTA screen — see onbStart / onbCtaSignIn above
+  // (kept onb4* as legacy strings in case any UI still references them)
+  onb4Title: 'בוא נתחיל',
+  onb4Body: 'התחבר ותתחיל לארגן משחקים',
 
   // Auth
   signInTitle: 'בואו נתחיל',
@@ -587,9 +660,9 @@ export const he = {
   availabilitySave: 'שמור זמינות',
 
   // Post sign-in onboarding (welcome → how it works → profile confirm)
-  psoWelcomeTitle: 'ברוך הבא ל־Footy',
+  psoWelcomeTitle: 'ברוך הבא ל־Teamder',
   psoWelcomeBody:
-    'מאמנים כדורגל שכונתי בלי בלגן — הרשמה, ספסל, קבוצות, שוערים וטיימר.',
+    'מארגנים כדורגל שכונתי בלי בלגן — הרשמה, ספסל, קבוצות, שוערים וטיימר.',
   psoWelcomeCta: 'בוא נתחיל',
   psoHowTitle: 'איך זה עובד',
   psoHow1: 'מצטרפים לקבוצה',
@@ -597,7 +670,22 @@ export const he = {
   psoHow3: 'משחקים בלי להתעסק בטלפון',
   psoHowCta: 'המשך',
   psoProfileTitle: 'בוא נכיר',
-  psoProfileSave: 'שמור והמשך',
+  psoProfileSave: 'המשך',
+  psoProfileNickname: 'כינוי על החולצה (אופציונלי)',
+  psoProfileNicknamePlaceholder: 'עד 10 תווים',
+  psoProfileNumber: 'מספר',
+  psoProfileColor: 'צבע',
+  psoProfilePattern: 'דוגמה',
+
+  // Empty state — first-time main screen
+  emptyHomeTitle: 'אין לך עדיין משחקים',
+  emptyHomeBody: 'צור משחק חדש או הצטרף למשחק קיים',
+  emptyHomePrimary: 'צור משחק',
+  emptyHomeSecondary: 'מצא משחקים',
+
+  // First-run hint (tooltip)
+  hintCreateGame: 'כאן יוצרים משחק חדש',
+  hintGotIt: 'הבנתי',
 
   // Groups
   groupsChooseTitle: 'הצטרף לקבוצה',

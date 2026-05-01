@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 const HEBREW_DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -670,10 +670,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.textMuted,
-    // Explicit RTL — App.tsx's Text defaultProps cascade gets
-    // overridden the moment a child passes its own `style` prop.
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
     width: '100%',
   },
@@ -694,7 +691,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Modal
@@ -716,7 +713,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   modalFooter: {
     flexDirection: 'row',
@@ -845,6 +842,6 @@ const styles = StyleSheet.create({
   timeStripLabel: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 });

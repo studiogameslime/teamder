@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Footy",
+    "name": "Teamder",
     "slug": "soccer-game",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -32,6 +32,7 @@
     },
     "plugins": [
       "expo-localization",
+      "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
       [
         "expo-notifications",
@@ -62,6 +63,9 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "buildToolsVersion": "34.0.0"
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ]

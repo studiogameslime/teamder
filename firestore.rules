@@ -292,5 +292,15 @@ service cloud.firestore {
       );
       allow update, delete: if false;
     }
+
+    // ── /appConfig/{platform} — public version-gate config ─────────────
+    // Read by every client on launch (force/optional update prompts).
+    // No auth required because the only field is the version threshold,
+    // and a stale read just delays the prompt by one launch. Writes are
+    // admin-only via the Firebase console / Admin SDK.
+    match /appConfig/{platform} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }
