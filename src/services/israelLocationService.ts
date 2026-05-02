@@ -88,13 +88,30 @@ export async function searchCities(query: string): Promise<string[]> {
   const cached = cityCache.get(q);
   if (cached) return cached;
   try {
-    const records = await fetchRecords(CITIES_RESOURCE_ID, q);
+    // CKAN's tsquery requires WHOLE-word matches: a query of "אור יהו"
+    // returns 0 hits because "יהו" isn't a complete token of any
+    // city's name. We work around this by sending only the longest
+    // word to the server (which surfaces broad candidates) and then
+    // filtering client-side, where every user-typed word must appear
+    // as a *prefix* of some word in the city name. Result: typing
+    // "אור יהו" still surfaces "אור יהודה".
+    const userWords = q.split(/\s+/).filter((w) => w.length > 0);
+    const longest = userWords.reduce(
+      (a, b) => (b.length > a.length ? b : a),
+      userWords[0] ?? '',
+    );
+
+    const records = await fetchRecords(CITIES_RESOURCE_ID, longest, 50);
     const out: string[] = [];
     const seen = new Set<string>();
     for (const r of records) {
-      // The cities dataset stores the name under שם_ישוב (with a couple of
-      // historical variants we try in order).
       const name = pickStringField(r, ['שם_ישוב', 'שם_ישוב_לועזי', 'name']);
+      if (!name) continue;
+      const nameWords = name.split(/\s+/).filter((w) => w.length > 0);
+      const matchesAll = userWords.every((uw) =>
+        nameWords.some((nw) => nw.startsWith(uw)),
+      );
+      if (!matchesAll) continue;
       uniquePush(out, seen, name);
     }
     cityCache.set(q, out);
@@ -128,17 +145,52 @@ export async function searchStreets(
   if (perCity?.has(q)) return perCity.get(q)!;
 
   try {
-    // Combined query — works on any CKAN datastore that exposes a
-    // full-text `q` parameter. If the configured resource supports the
-    // dedicated `filters` parameter you can swap this for the more precise:
-    //   `&filters=${encodeURIComponent(JSON.stringify({ 'שם_ישוב': city }))}`
-    const records = await fetchRecords(STREETS_RESOURCE_ID, `${city} ${q}`);
-    const out: string[] = [];
-    const seen = new Set<string>();
-    for (const r of records) {
-      const street = pickStringField(r, ['שם_רחוב', 'street_name', 'name']);
-      uniquePush(out, seen, street);
+    // CKAN's `q` matches only whole words, so we send the longest
+    // user-typed token to the server (broad recall) and re-filter
+    // client-side: city must match exactly, and every user-typed
+    // word must appear as a *prefix* of some word in the street name.
+    // This makes "אשכ" / "אשכול" / "נווה אש" all surface "נווה אשכול".
+    const userWords = q.split(/\s+/).filter((w) => w.length > 0);
+    const longest = userWords.reduce(
+      (a, b) => (b.length > a.length ? b : a),
+      userWords[0] ?? '',
+    );
+
+    const collect = (records: Record<string, unknown>[]): string[] => {
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const r of records) {
+        const recCity = pickStringField(r, ['שם_ישוב', 'city_name']);
+        if (recCity !== city) continue;
+        const street = pickStringField(r, ['שם_רחוב', 'street_name', 'name']);
+        if (!street) continue;
+        const streetWords = street.split(/\s+/).filter((w) => w.length > 0);
+        const matchesAll = userWords.every((uw) =>
+          streetWords.some((sw) => sw.startsWith(uw)),
+        );
+        if (!matchesAll) continue;
+        uniquePush(out, seen, street);
+      }
+      return out;
+    };
+
+    // Pass 1: server-narrow on city + longest user word. Pass 2
+    // (broad) widens the search if the precise pass returned little —
+    // catches edge cases where the city tokens don't index cleanly.
+    const combined = await fetchRecords(
+      STREETS_RESOURCE_ID,
+      `${city} ${longest}`,
+      100,
+    );
+    let out = collect(combined);
+
+    if (out.length < 5) {
+      const broad = await fetchRecords(STREETS_RESOURCE_ID, longest, 200);
+      const merged = new Set(out);
+      for (const s of collect(broad)) merged.add(s);
+      out = Array.from(merged);
     }
+
     if (!perCity) {
       perCity = new Map();
       streetCache.set(city, perCity);

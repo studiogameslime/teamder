@@ -37,6 +37,13 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { MatchCard, MatchCardCta } from '@/components/MatchCard';
+import {
+  GameFilterSheet,
+  EMPTY_GAME_FILTERS,
+  applyGameFilters,
+  activeFiltersCount,
+  type GameFilters,
+} from '@/components/GameFilterSheet';
 import { gameService } from '@/services/gameService';
 import { storage } from '@/services/storage';
 import { Game } from '@/types';
@@ -63,6 +70,11 @@ export function GamesListScreen() {
   const [openGames, setOpenGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
+
+  // Filter state — kept on the screen so it survives tab switching but
+  // resets on remount. The sheet itself is purely presentational.
+  const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   // First-run hint pointing at the FAB. Surfaces once per device,
   // dismissible, never blocks taps on the FAB itself.
   const [hintVisible, setHintVisible] = useState(false);
@@ -139,14 +151,21 @@ export function GamesListScreen() {
   const sortByStart = (a: Game, b: Game) => a.startsAt - b.startsAt;
 
   const visible = useMemo(() => {
-    if (tab === 'mine') return [...myGames].sort(sortByStart);
-    // "פתוחים" tab — everything that's not strictly "mine". We
-    // de-dupe across the community + open buckets in case a game
-    // appears in both.
-    const set = new Map<string, Game>();
-    [...communityGames, ...openGames].forEach((g) => set.set(g.id, g));
-    return Array.from(set.values()).sort(sortByStart);
-  }, [tab, myGames, communityGames, openGames]);
+    let base: Game[];
+    if (tab === 'mine') {
+      base = [...myGames];
+    } else {
+      // "פתוחים" tab — everything that's not strictly "mine". We
+      // de-dupe across the community + open buckets in case a game
+      // appears in both.
+      const set = new Map<string, Game>();
+      [...communityGames, ...openGames].forEach((g) => set.set(g.id, g));
+      base = Array.from(set.values());
+    }
+    return applyGameFilters(base, filters).sort(sortByStart);
+  }, [tab, myGames, communityGames, openGames, filters]);
+
+  const filterCount = activeFiltersCount(filters);
 
   const isEmpty = visible.length === 0;
 
@@ -154,20 +173,49 @@ export function GamesListScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.gamesListTitle} showBack={false} />
 
-      {/* Segmented tabs */}
+      {/* Segmented tabs + filter button. Filter sits next to the tabs
+          so it's discoverable but doesn't compete for vertical space. */}
       <View style={styles.tabsWrap}>
-        <SegmentedTabs
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'mine', label: he.matchesTabMine, badge: myGames.length },
-            {
-              value: 'open',
-              label: he.matchesTabOpen,
-              badge: communityGames.length + openGames.length,
-            },
-          ]}
-        />
+        <View style={styles.tabsRow}>
+          <View style={{ flex: 1 }}>
+            <SegmentedTabs
+              value={tab}
+              onChange={setTab}
+              options={[
+                {
+                  value: 'mine',
+                  label: he.matchesTabMine,
+                  badge: myGames.length,
+                },
+                {
+                  value: 'open',
+                  label: he.matchesTabOpen,
+                  badge: communityGames.length + openGames.length,
+                },
+              ]}
+            />
+          </View>
+          <Pressable
+            onPress={() => setFilterOpen(true)}
+            style={({ pressed }) => [
+              styles.filterButton,
+              filterCount > 0 && styles.filterButtonActive,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityLabel="filters"
+          >
+            <Ionicons
+              name="filter"
+              size={20}
+              color={filterCount > 0 ? colors.primary : colors.textMuted}
+            />
+            {filterCount > 0 ? (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{filterCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -247,6 +295,13 @@ export function GamesListScreen() {
           <View style={styles.hintArrow} />
         </Pressable>
       ) : null}
+
+      <GameFilterSheet
+        visible={filterOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setFilterOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -363,6 +418,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  filterButton: {
+    width: 44,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primaryLight,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
   },
 
   list: {

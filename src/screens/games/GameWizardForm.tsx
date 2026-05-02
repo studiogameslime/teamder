@@ -29,6 +29,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AppDateTimeField } from '@/components/DateTimeFields';
+import { StepIndicator } from '@/components/StepIndicator';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -164,7 +165,10 @@ export function GameWizardForm({
               The community dropdown only belongs to step 1 — once the
               user has confirmed the group there's no value in showing
               it on later steps, so we hide it from step 2 onward. */}
-          <StepIndicator current={step} />
+          <StepIndicator
+            current={step}
+            labels={[he.wizardStep1, he.wizardStep2, he.wizardStep3]}
+          />
           {extraTopSlot && step === 1 ? (
             <View style={styles.extraSlot}>{extraTopSlot}</View>
           ) : null}
@@ -213,68 +217,6 @@ export function GameWizardForm({
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-// ─── Step indicator ──────────────────────────────────────────────────────
-
-function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
-  const steps: Array<{ n: 1 | 2 | 3; label: string }> = [
-    { n: 1, label: he.wizardStep1 },
-    { n: 2, label: he.wizardStep2 },
-    { n: 3, label: he.wizardStep3 },
-  ];
-  return (
-    <View style={styles.stepBar}>
-      {steps.map((s, i) => {
-        const state =
-          s.n < current ? 'done' : s.n === current ? 'current' : 'upcoming';
-        return (
-          <React.Fragment key={s.n}>
-            <View style={styles.stepItem}>
-              <View
-                style={[
-                  styles.stepCircle,
-                  state === 'current' && styles.stepCircleCurrent,
-                  state === 'done' && styles.stepCircleDone,
-                ]}
-              >
-                {state === 'done' ? (
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                ) : (
-                  <Text
-                    style={[
-                      styles.stepNum,
-                      state === 'current' && styles.stepNumCurrent,
-                    ]}
-                  >
-                    {s.n}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.stepLabel,
-                  state === 'current' && styles.stepLabelCurrent,
-                  state === 'done' && styles.stepLabelDone,
-                ]}
-                numberOfLines={1}
-              >
-                {s.label}
-              </Text>
-            </View>
-            {i < steps.length - 1 ? (
-              <View
-                style={[
-                  styles.stepConnector,
-                  state === 'done' && styles.stepConnectorDone,
-                ]}
-              />
-            ) : null}
-          </React.Fragment>
-        );
-      })}
-    </View>
   );
 }
 
@@ -648,65 +590,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   stack: { gap: spacing.md },
-
-  // Step indicator
-  stepBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    gap: 4,
-  },
-  stepItem: {
-    alignItems: 'center',
-    gap: 6,
-    width: 70,
-  },
-  stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCircleCurrent: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  stepCircleDone: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  stepNum: {
-    color: colors.textMuted,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  stepNumCurrent: { color: '#fff' },
-  stepLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  stepLabelCurrent: { color: colors.text, fontWeight: '800' },
-  stepLabelDone: { color: colors.primary, fontWeight: '700' },
-  stepConnector: {
-    flex: 1,
-    height: 2,
-    backgroundColor: colors.border,
-    marginTop: 15,
-    marginHorizontal: 2,
-    borderRadius: 1,
-  },
-  stepConnectorDone: { backgroundColor: colors.primary },
 
   // Step bodies
   section: { gap: spacing.xs, alignItems: 'stretch' },

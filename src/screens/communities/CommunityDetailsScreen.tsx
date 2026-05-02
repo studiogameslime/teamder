@@ -37,6 +37,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
+import { deepLinkService } from '@/services/deepLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ratingsService } from '@/services/ratingsService';
 import { gameService } from '@/services/gameService';
@@ -223,9 +224,14 @@ export function CommunityDetailsScreen() {
   const handleInvite = async () => {
     if (!group) return;
     try {
+      const link = deepLinkService.buildInviteUrl({
+        type: 'team',
+        id: group.id,
+        invitedBy: me?.id,
+      });
       const result = await Share.share({
         title: he.inviteShareSubject,
-        message: he.communityInviteShareBody(group.name, group.inviteCode),
+        message: he.communityInviteShareBody(link),
       });
       if (result.action !== 'dismissedAction') {
         logEvent(AnalyticsEvent.InviteShared, { groupId: group.id });

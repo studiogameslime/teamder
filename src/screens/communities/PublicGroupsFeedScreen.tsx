@@ -30,9 +30,15 @@ import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
+import {
+  CommunityFilterSheet,
+  EMPTY_GROUP_FILTERS,
+  applyGroupFilters,
+  activeGroupFiltersCount,
+  type GroupFilters,
+} from '@/components/CommunityFilterSheet';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
-import { openWhatsApp } from '@/services/whatsappService';
 import { GroupPublic } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -43,18 +49,6 @@ import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
 
 type RowAction = 'enter' | 'pending' | 'joinAuto' | 'requestJoin';
-
-/** Treat two free-text city strings as a match (Hebrew, case/space tolerant). */
-function citiesMatch(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
-/** A community has open spots if it caps `maxMembers` and isn't there yet. */
-function hasOpenSpot(g: GroupPublic): boolean {
-  if (typeof g.maxMembers !== 'number') return true; // no cap → always open
-  return g.memberCount < g.maxMembers;
-}
 
 /**
  * Determine the viewer's current city for the "קרוב אליי" filter.
@@ -119,20 +113,17 @@ export function PublicGroupsFeedScreen() {
   // Bump to force a re-fetch (pull-to-refresh).
   const [refreshTick, setRefreshTick] = useState(0);
 
-  // Filters — two independent toggles. "hasRoom" filters communities
-  // that aren't at their member cap; "nearby" derives the viewer's
-  // current city from GPS (reverse-geocoded once per toggle) and
-  // matches it against the community's `city`. Falls back to the
-  // user's saved `availability.preferredCity` if location permission
-  // is denied or expo-location can't resolve a city.
-  const [hasRoom, setHasRoom] = useState(false);
-  const [nearby, setNearby] = useState(false);
+  // Filters live in one struct now — see CommunityFilterSheet for the
+  // shape. The "nearby" toggle still triggers a side-effect (GPS +
+  // reverse-geocode) so we hold the resolved city out-of-band.
+  const [filters, setFilters] = useState<GroupFilters>(EMPTY_GROUP_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [nearbyCity, setNearbyCity] = useState<string | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   // Resolve the "nearby" city the moment the toggle flips ON.
   useEffect(() => {
-    if (!nearby) {
+    if (!filters.nearby) {
       setNearbyCity(null);
       return;
     }
@@ -150,7 +141,9 @@ export function PublicGroupsFeedScreen() {
     return () => {
       alive = false;
     };
-  }, [nearby, user?.availability?.preferredCity]);
+  }, [filters.nearby, user?.availability?.preferredCity]);
+
+  const filterCount = activeGroupFiltersCount(filters);
 
   // Initial load + debounced search.
   useEffect(() => {
@@ -202,16 +195,15 @@ export function PublicGroupsFeedScreen() {
     return g.isOpen ? 'joinAuto' : 'requestJoin';
   }
 
+  // Discovery filters are now driven entirely by the GroupFilters
+  // struct — `applyGroupFilters` does the heavy lifting. We still need
+  // a per-row predicate for the React-memoized partition below.
   function passesDiscoveryFilters(g: GroupPublic): boolean {
-    if (hasRoom && !hasOpenSpot(g)) return false;
-    if (nearby) {
-      // While we're still resolving GPS / reverse-geocode, hide
-      // discovery results so the list doesn't briefly show
-      // unfiltered groups before snapping to the filtered set.
-      if (nearbyLoading || !nearbyCity) return false;
-      if (!citiesMatch(g.city, nearbyCity)) return false;
-    }
-    return true;
+    if (filters.nearby && (nearbyLoading || !nearbyCity)) return false;
+    return (
+      applyGroupFilters([g], filters, { nearbyCity: nearbyCity ?? undefined })
+        .length > 0
+    );
   }
 
   // Partition into 2 sections per spec:
@@ -248,7 +240,7 @@ export function PublicGroupsFeedScreen() {
           passesDiscoveryFilters(g)
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, memberIds, pendingIds, hasRoom, nearby, nearbyCity, nearbyLoading]
+    [items, memberIds, pendingIds, filters, nearbyCity, nearbyLoading]
   );
 
   // When the user is searching, collapse into a single result list — the
@@ -341,20 +333,35 @@ export function PublicGroupsFeedScreen() {
         />
       </View>
 
-      {/* Filter pills — wrap-row instead of horizontal scroll so RTL
-          doesn't clip the rightmost pill on Android. With three short
-          toggles they fit on one row at typical widths anyway. */}
+      {/* Single filter button — opens a sheet with the full filter
+          surface. Replaces the old hasRoom/nearby pill row so the
+          discovery toggles share a consistent container with the new
+          isOpen / freeOnly / preferredDays dimensions. */}
       <View style={styles.filterRow}>
-        <FilterPill
-          label={he.filterHasRoom}
-          active={hasRoom}
-          onPress={() => setHasRoom((v) => !v)}
-        />
-        <FilterPill
-          label={he.filterNearby}
-          active={nearby}
-          onPress={() => setNearby((v) => !v)}
-        />
+        <Pressable
+          onPress={() => setFilterOpen(true)}
+          style={({ pressed }) => [
+            styles.filterButton,
+            filterCount > 0 && styles.filterButtonActive,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Ionicons
+            name="filter"
+            size={18}
+            color={filterCount > 0 ? colors.primary : colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.filterButtonText,
+              filterCount > 0 && { color: colors.primary, fontWeight: '700' },
+            ]}
+          >
+            {filterCount > 0
+              ? he.gameFiltersActive(filterCount)
+              : he.gameFiltersButton}
+          </Text>
+        </Pressable>
       </View>
 
       {totalKnown === 0 ? (
@@ -423,6 +430,20 @@ export function PublicGroupsFeedScreen() {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      <CommunityFilterSheet
+        visible={filterOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setFilterOpen(false)}
+        nearbyCaption={
+          filters.nearby
+            ? nearbyLoading
+              ? he.communitiesNearbyResolving
+              : nearbyCity ?? he.communitiesNearbyUnknown
+            : undefined
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -451,36 +472,6 @@ function Section({
         items.map(renderRow)
       )}
     </View>
-  );
-}
-
-function FilterPill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.filterPill,
-        active && styles.filterPillActive,
-        pressed && { opacity: 0.85 },
-      ]}
-    >
-      <Text
-        style={[
-          styles.filterPillText,
-          active && { color: colors.primary, fontWeight: '600' },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -538,16 +529,10 @@ function FeedRow({
               {he.groupsSearchMembers(g.memberCount)}
             </Text>
           </View>
-          {g.contactPhone ? (
-            <Pressable
-              onPress={() => openWhatsApp(g.contactPhone)}
-              style={styles.waBtn}
-              accessibilityLabel="open-whatsapp"
-            >
-              <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-              <Text style={styles.waText}>{he.communityWhatsApp}</Text>
-            </Pressable>
-          ) : null}
+          {/* WhatsApp button intentionally NOT shown here. The Communities
+              feed is the discovery surface; non-members shouldn't be able
+              to ping the admin's phone before joining. The button is still
+              rendered on CommunityDetailsScreen for actual members. */}
         </View>
         <View style={{ marginTop: spacing.sm }}>
           <PrimaryAction action={action} onPress={onPrimary} />
@@ -618,27 +603,28 @@ const styles = StyleSheet.create({
 
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
-  filterPill: {
+  // The single "Filters" button replaces the old wrap-row of toggle
+  // pills. Active state mirrors the games-list filter button.
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
   },
-  filterPillActive: {
+  filterButtonActive: {
     backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
   },
-  filterPillText: {
+  filterButtonText: {
     ...typography.caption,
     color: colors.textMuted,
+    fontWeight: '600',
   },
 
   listContent: {
@@ -711,20 +697,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   pillText: { ...typography.caption, fontWeight: '600' },
-  waBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: '#E7F8EE',
-  },
-  waText: {
-    ...typography.caption,
-    color: '#1FAA59',
-    fontWeight: '600',
-  },
   fab: {
     position: 'absolute',
     bottom: spacing.xl,

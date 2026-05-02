@@ -5,6 +5,25 @@ export const he = {
   // Common
   back: 'חזור',
   cancel: 'בטל',
+  yes: 'כן',
+  no: 'לא',
+
+  // Filters (games + communities)
+  gameFiltersTitle: 'סינון משחקים',
+  gameFiltersAny: 'הכל',
+  gameFiltersApply: 'החל',
+  gameFiltersReset: 'איפוס',
+  gameFiltersVisibility: 'נראות',
+  gameFiltersOnlyAvailable: 'רק משחקים עם מקומות פנויים',
+  gameFiltersButton: 'סינון',
+  gameFiltersActive: (n: number) =>
+    n === 1 ? 'פילטר אחד פעיל' : `${n} פילטרים פעילים`,
+  communityFiltersTitle: 'סינון קבוצות',
+  communityFiltersOnlyOpen: 'רק קבוצות עם הצטרפות פתוחה',
+  communityFiltersFreeOnly: 'רק קבוצות חינמיות',
+  communityFiltersCity: 'עיר',
+  communitiesNearbyResolving: 'מאתר את העיר שלך…',
+  communitiesNearbyUnknown: 'לא הצלחנו לאתר עיר',
   save: 'שמור',
   // App-update prompts
   updateForceTitle: 'נדרש עדכון',
@@ -104,8 +123,8 @@ export const he = {
   sessionTeamsHeading: 'כוחות',
   sessionTeamsPlaceholder:
     'אין עדיין כוחות — יווצרו אוטומטית כשיהיו מספיק שחקנים',
-  sessionInviteShareBody: (title: string) =>
-    `הצטרפו אליי ל${title} 🏟️\nהורידו את Teamder וצטרפו: https://soccer-app-52b6b.web.app/`,
+  sessionInviteShareBody: (link: string) =>
+    `הוזמנת למשחק ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
   numWaiting: 'ספסל',
   numRegistered: 'נרשמים',
 
@@ -316,6 +335,9 @@ export const he = {
   wizardStep1: 'פרטים',
   wizardStep2: 'חוקים',
   wizardStep3: 'מתקדם',
+  // Group-specific step 2 label (the group wizard only has 2 steps and
+  // step 2 is the catch-all for optional + advanced settings).
+  groupWizardStep2: 'מתקדם',
   wizardStepBack: 'חזרה',
   wizardStepNext: 'המשך',
   wizardStepSkip: 'דלג',
@@ -399,12 +421,12 @@ export const he = {
   createGroupStreet: 'רחוב',
   createGroupStreetPlaceholder: 'התחל להקליד שם רחוב',
   createGroupStreetDisabledHint: 'בחר עיר תחילה',
-  createGroupAddressNote: 'מספר / הערה למיקום (לא חובה)',
+  createGroupAddressNote: 'הערה למיקום (לא חובה)',
   createGroupAddressNotePlaceholder: 'לדוגמה: שער צפוני, ליד בית הספר',
   createGroupDescription: 'תיאור הקבוצה (לא חובה)',
   createGroupMaxPlayers: 'מקסימום שחקנים במשחק',
   createGroupMaxMembers: 'מקסימום שחקנים בקבוצה',
-  createGroupIsOpen: 'הצטרפות פתוחה',
+  createGroupIsOpen: 'קבוצה פתוחה',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מאמן.',
   createGroupContactPhone: 'טלפון איש קשר (חובה)',
   createGroupContactPhonePlaceholder: '050-1234567',
@@ -519,8 +541,8 @@ export const he = {
   communityDetailsLeaveConfirmBody: 'תמיד תוכל לבקש להצטרף שוב מאוחר יותר.',
   communityDetailsLeaveLastAdmin:
     'אתה המאמן היחיד. הוסף מאמן נוסף לפני שתעזוב.',
-  communityInviteShareBody: (name: string, code: string) =>
-    `הצטרף לקבוצת הכדורגל שלנו ב־Footy ⚽\n${name}\nקוד הזמנה: ${code}`,
+  communityInviteShareBody: (link: string) =>
+    `הוזמנת להצטרף לקבוצה ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
   communityMembersCount: (n: number) => `${n} שחקנים`,
 
   // Settings
@@ -755,6 +777,7 @@ export const he = {
   profileStatWinRate: 'אחוז ניצחון',
   profileStatAttended: 'הופעות',
   profileStatCancelRate: 'ביטולים',
+  profileStatInvited: 'שחקנים שהצטרפו דרכי',
   profileApprovalsCount: (n: number) =>
     n === 1 ? 'בקשה אחת ממתינה' : `${n} בקשות ממתינות`,
 

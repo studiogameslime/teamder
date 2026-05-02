@@ -1,9 +1,22 @@
-import React, { useCallback, useState } from 'react';
+// 2-step wizard for creating a new community.
+//
+// Step 1 (פרטים)   — required basics: name, fieldName + location autocomplete.
+// Step 2 (מתקדם) — optional defaults: description, preferred schedule,
+//                  contact phone, member caps, open-join toggle, cost,
+//                  free-text notes. Anything left empty falls back to a
+//                  sensible default in createGroup.
+//
+// Mirrors GameWizardForm's structure: shared StepIndicator with soccer-
+// ball glyphs, same fade-on-step-change animation, fixed-bottom footer
+// with back / next / submit. Lives in a single file (no shared form
+// component) because CommunityEditScreen has its own bespoke layout.
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -19,20 +32,17 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
-import { AppTimeField } from '@/components/DateTimeFields';
+import { StepIndicator } from '@/components/StepIndicator';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   searchCities,
   searchStreets,
 } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
-import { WeekdayIndex } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-
-const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
 export function CreateGroupScreen() {
   const nav = useNavigation<
@@ -41,20 +51,21 @@ export function CreateGroupScreen() {
   const user = useUserStore((s) => s.currentUser);
   const createGroup = useGroupStore((s) => s.createGroup);
 
+  const [step, setStep] = useState<1 | 2>(1);
+  const [busy, setBusy] = useState(false);
+
+  // Step-1 fields.
   const [name, setName] = useState('');
-  const [fieldName, setFieldName] = useState('');
   const [city, setCity] = useState('');
   const [street, setStreet] = useState('');
+
+  // Step-2 fields.
   const [addressNote, setAddressNote] = useState('');
   const [description, setDescription] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('15');
   const [maxMembers, setMaxMembers] = useState('40');
   const [isOpen, setIsOpen] = useState(false);
-  const [contactPhone, setContactPhone] = useState('');
-  const [preferredDays, setPreferredDays] = useState<WeekdayIndex[]>([]);
-  const [preferredHour, setPreferredHour] = useState('');
-  const [notes, setNotes] = useState('');
-  const [busy, setBusy] = useState(false);
 
   // Resetting the dependent street whenever the city text changes prevents
   // a stale street from one city sticking around when the user picks
@@ -69,18 +80,34 @@ export function CreateGroupScreen() {
     [city]
   );
 
-  const toggleDay = (d: WeekdayIndex) => {
-    setPreferredDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
-    );
-  };
-
-  const phoneValid = isValidIsraeliPhone(contactPhone);
+  // Phone is optional but if entered must be a valid IL mobile.
   const phoneEntered = contactPhone.trim().length > 0;
-  const phoneError = phoneEntered && !phoneValid;
+  const phoneValid = !phoneEntered || isValidIsraeliPhone(contactPhone);
+  const phoneError = phoneEntered && !isValidIsraeliPhone(contactPhone);
 
-  const canSave =
-    !!name.trim() && !!fieldName.trim() && !!user && phoneValid && !busy;
+  // Step-1 gate: name is the bare minimum to make a usable community.
+  // Everything else (city/street + step-2 details) is optional.
+  const step1Valid = name.trim().length > 0;
+  const canSave = step1Valid && !!user && phoneValid && !busy;
+
+  // Subtle fade-in when transitioning between steps.
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    fade.setValue(0);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [step, fade]);
+
+  const goNext = () => {
+    if (step === 1 && !step1Valid) return;
+    if (step < 2) setStep(2);
+  };
+  const goBack = () => {
+    if (step > 1) setStep(1);
+  };
 
   const submit = async () => {
     if (!user || !canSave) return;
@@ -97,19 +124,21 @@ export function CreateGroupScreen() {
         (note ? ` — ${note}` : '');
       const group = await createGroup({
         name: name.trim(),
-        fieldName: fieldName.trim(),
+        // The wizard no longer asks for a separate "שם המגרש" — the
+        // address line above is enough. Existing screens fall back to
+        // city/fieldAddress when this is empty.
+        fieldName: '',
         fieldAddress: composedAddress.length > 0 ? composedAddress : undefined,
         city: cityVal || undefined,
         street: streetVal || undefined,
         addressNote: note || undefined,
         description: description.trim() || undefined,
         defaultMaxPlayers: Number.isFinite(parsedMax) ? parsedMax : 15,
-        maxMembers: Number.isFinite(parsedMaxMembers) ? parsedMaxMembers : undefined,
+        maxMembers: Number.isFinite(parsedMaxMembers)
+          ? parsedMaxMembers
+          : undefined,
         isOpen,
-        contactPhone: phone,
-        preferredDays: preferredDays.length > 0 ? preferredDays : undefined,
-        preferredHour: preferredHour.trim() || undefined,
-        notes: notes.trim() || undefined,
+        contactPhone: phone || undefined,
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
@@ -130,204 +159,204 @@ export function CreateGroupScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Field
-          label={he.groupCreateName}
-          value={name}
-          onChange={setName}
-          placeholder="חמישי כדורגל"
-          autoFocus
-        />
-        <AutocompleteInput
-          label={he.createGroupCity}
-          value={city}
-          onChange={handleCityChange}
-          onSelect={(v) => {
-            setCity(v);
-            if (street.length > 0) setStreet('');
-          }}
-          placeholder={he.createGroupCityPlaceholder}
-          fetchSuggestions={fetchCities}
-        />
-        <AutocompleteInput
-          label={he.createGroupStreet}
-          value={street}
-          onChange={setStreet}
-          onSelect={setStreet}
-          placeholder={
-            cityChosen
-              ? he.createGroupStreetPlaceholder
-              : he.createGroupStreetDisabledHint
-          }
-          disabled={!cityChosen}
-          fetchSuggestions={fetchStreets}
-        />
-        <Field
-          label={he.createGroupAddressNote}
-          value={addressNote}
-          onChange={setAddressNote}
-          placeholder={he.createGroupAddressNotePlaceholder}
-        />
-        <Field
-          label={he.groupCreateField}
-          value={fieldName}
-          onChange={setFieldName}
-          placeholder="המגרש הקבוע"
-        />
-        <Field
-          label={he.createGroupDescription}
-          value={description}
-          onChange={setDescription}
-          placeholder="לא חובה"
-          multiline
-        />
-
-        {/* Preferred days — multi-select pill row */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.createGroupPreferredDays}</Text>
-          <View style={styles.pillRow}>
-            {ALL_DAYS.map((d) => {
-              const active = preferredDays.includes(d);
-              return (
-                <Pressable
-                  key={d}
-                  onPress={() => toggleDay(d)}
-                  style={({ pressed }) => [
-                    styles.dayPill,
-                    active && styles.pillActive,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      active && { color: colors.primary, fontWeight: '700' },
-                    ]}
-                  >
-                    {he.availabilityDayShort[d]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <AppTimeField
-          label={he.createGroupPreferredHour}
-          value={preferredHour}
-          onChange={setPreferredHour}
-        />
-        <Field
-          label={he.createGroupMaxPlayers}
-          value={maxPlayers}
-          onChange={setMaxPlayers}
-          keyboardType="number-pad"
-        />
-        <Field
-          label={he.createGroupMaxMembers}
-          value={maxMembers}
-          onChange={setMaxMembers}
-          keyboardType="number-pad"
-        />
-        <View style={styles.toggleRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{he.createGroupIsOpen}</Text>
-            <Text style={styles.hint}>{he.createGroupIsOpenHint}</Text>
-          </View>
-          <Switch
-            value={isOpen}
-            onValueChange={setIsOpen}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#fff"
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <StepIndicator
+            current={step}
+            labels={[he.wizardStep1, he.groupWizardStep2]}
           />
-        </View>
-        <View>
-          <Field
-            label={he.createGroupContactPhone}
-            value={contactPhone}
-            onChange={setContactPhone}
-            placeholder={he.createGroupContactPhonePlaceholder}
-            keyboardType="phone-pad"
-          />
-          {phoneError ? (
-            <Text style={styles.hintError}>
-              {he.createGroupContactPhoneInvalid}
-            </Text>
-          ) : phoneEntered ? (
-            <Text style={styles.hint}>{he.createGroupContactPhoneHint}</Text>
+          <Animated.View style={[styles.body, { opacity: fade }]}>
+            {step === 1 ? (
+              <View style={styles.stack}>
+                <InputField
+                  label={he.groupCreateName}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="לדוגמה: חמישי כדורגל"
+                  autoFocus
+                />
+                <AutocompleteInput
+                  label={he.createGroupCity}
+                  value={city}
+                  onChange={handleCityChange}
+                  onSelect={(v) => {
+                    setCity(v);
+                    if (street.length > 0) setStreet('');
+                  }}
+                  placeholder={he.createGroupCityPlaceholder}
+                  fetchSuggestions={fetchCities}
+                />
+                <AutocompleteInput
+                  label={he.createGroupStreet}
+                  value={street}
+                  onChange={setStreet}
+                  onSelect={setStreet}
+                  placeholder={
+                    cityChosen
+                      ? he.createGroupStreetPlaceholder
+                      : he.createGroupStreetDisabledHint
+                  }
+                  disabled={!cityChosen}
+                  fetchSuggestions={fetchStreets}
+                />
+
+                {/* Open-join is the most consequential setting at
+                    creation time (decides whether new players need
+                    admin approval), so it lives in step 1 right after
+                    the location identity. */}
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleLabel}>
+                      {he.createGroupIsOpen}
+                    </Text>
+                    <Text style={styles.hint}>{he.createGroupIsOpenHint}</Text>
+                  </View>
+                  <Switch
+                    value={isOpen}
+                    onValueChange={setIsOpen}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {step === 2 ? (
+              <View style={styles.stack}>
+                <InputField
+                  label={he.createGroupAddressNote}
+                  value={addressNote}
+                  onChangeText={setAddressNote}
+                  placeholder={he.createGroupAddressNotePlaceholder}
+                />
+                <InputField
+                  label={he.createGroupDescription}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                />
+
+                <View>
+                  <InputField
+                    label={he.createGroupContactPhone}
+                    value={contactPhone}
+                    onChangeText={setContactPhone}
+                    placeholder={he.createGroupContactPhonePlaceholder}
+                    keyboardType="phone-pad"
+                  />
+                  {phoneError ? (
+                    <Text style={styles.hintError}>
+                      {he.createGroupContactPhoneInvalid}
+                    </Text>
+                  ) : phoneEntered ? (
+                    <Text style={styles.hint}>
+                      {he.createGroupContactPhoneHint}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Player + member caps share a row — they're related
+                    counts users tend to set together. */}
+                <View style={styles.numberRow}>
+                  <View style={styles.numberCell}>
+                    <InputField
+                      label={he.createGroupMaxPlayers}
+                      value={maxPlayers}
+                      onChangeText={setMaxPlayers}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                  <View style={styles.numberCell}>
+                    <InputField
+                      label={he.createGroupMaxMembers}
+                      value={maxMembers}
+                      onChangeText={setMaxMembers}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </Animated.View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          {step > 1 ? (
+            <Button
+              title={he.wizardStepBack}
+              variant="outline"
+              size="lg"
+              onPress={goBack}
+              disabled={busy}
+            />
           ) : null}
+          <View style={{ flex: 1 }}>
+            {step < 2 ? (
+              <Button
+                title={he.wizardStepNext}
+                variant="primary"
+                size="lg"
+                fullWidth
+                onPress={goNext}
+                disabled={busy || !step1Valid}
+              />
+            ) : (
+              <Button
+                title={he.createGroupSubmit}
+                variant="primary"
+                size="lg"
+                fullWidth
+                onPress={submit}
+                loading={busy}
+                disabled={!canSave}
+              />
+            )}
+          </View>
         </View>
-        <Field
-          label={he.createGroupNotes}
-          value={notes}
-          onChange={setNotes}
-          placeholder={he.createGroupNotesPlaceholder}
-          multiline
-        />
-      </ScrollView>
-      <View style={{ padding: spacing.lg }}>
-        <Button
-          title={he.createGroupSubmit}
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!canSave}
-          loading={busy}
-          onPress={submit}
-        />
-      </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  autoFocus,
-  multiline,
-  keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChange: (s: string) => void;
-  placeholder?: string;
-  autoFocus?: boolean;
-  multiline?: boolean;
-  keyboardType?: 'default' | 'number-pad' | 'phone-pad';
-}) {
-  return (
-    <InputField
-      label={label}
-      value={value}
-      onChangeText={onChange}
-      placeholder={placeholder}
-      autoFocus={autoFocus}
-      multiline={multiline}
-      keyboardType={keyboardType}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
-  field: { gap: spacing.xs },
-  label: { ...typography.label, color: colors.textMuted },
+  scroll: { paddingBottom: spacing.xl },
+  body: { padding: spacing.lg, gap: spacing.md },
+  stack: { gap: spacing.md },
+  section: { gap: spacing.xs, alignItems: 'stretch' },
+  label: {
+    ...typography.label,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  toggleLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '500',
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   hintError: {
     ...typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   toggleRow: {
     flexDirection: 'row',
@@ -335,42 +364,20 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.sm,
   },
-  input: {
-    ...typography.body,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  pillRow: {
+  numberRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
-  pill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+  numberCell: {
+    flex: 1,
   },
-  dayPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 44,
+  footer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    backgroundColor: colors.bg,
     alignItems: 'center',
   },
-  pillActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  pillText: { ...typography.body, color: colors.textMuted },
 });

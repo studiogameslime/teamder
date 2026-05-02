@@ -85,6 +85,24 @@ export interface User {
    * badges on Player Card. Optional so legacy users round-trip.
    */
   discipline?: UserDisciplineState;
+
+  /**
+   * Invite attribution — set ONCE on fresh signup if the user arrived
+   * via an invite link with `?invitedBy=<uid>`. Never overwritten and
+   * never set on existing accounts. The four fields are written in
+   * one transaction so `invitedBy` always implies the rest are set.
+   * Powers the "שחקנים שהצטרפו דרכי" stat via a count aggregation.
+   */
+  invitedBy?: UserId;
+  invitedByType?: 'session' | 'team';
+  invitedByTargetId?: string;
+  /**
+   * Firestore server time at the moment we recorded the attribution
+   * — written via `serverTimestamp()` (NOT client-side `Date.now()`)
+   * so it's resistant to client-clock drift and useful for analytics
+   * downstream. Read consumers can call `.toMillis()` to get a number.
+   */
+  invitedAt?: import('firebase/firestore').Timestamp;
 }
 
 // ─── Achievements ────────────────────────────────────────────────────────

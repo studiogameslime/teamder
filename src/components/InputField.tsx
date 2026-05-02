@@ -87,7 +87,9 @@ export function InputField({
             {...textInputProps}
             value={value}
             placeholder={placeholder}
-            placeholderTextColor={colors.textMuted}
+            // Lighter than `colors.textMuted` so an empty input visibly
+            // reads as a hint, not as a pre-filled value.
+            placeholderTextColor="#9CA3AF"
             style={styles.input}
           />
           {icon ? (
@@ -133,7 +135,13 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     flex: 1,
-    textAlign: RTL_LABEL_ALIGN,
+    // TextInput value uses physical 'right' on every platform — unlike
+    // the Hebrew label workaround above, digit content (number-pad
+    // inputs like phone, max-players) renders LTR and would otherwise
+    // hug the visual left under Android forceRTL. Plain `'right'`
+    // pushes both Hebrew text and digit values to the right edge.
+    textAlign: 'right',
+    writingDirection: 'rtl',
     // Pull the cursor onto the same baseline as the icon — RN's default
     // line-height pushes the digit down a few pixels otherwise.
     paddingVertical: spacing.sm,

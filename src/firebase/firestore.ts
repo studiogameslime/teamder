@@ -129,6 +129,13 @@ const userConverter: FirestoreDataConverter<User> = {
       jersey: u.jersey ?? null,
       achievements: u.achievements ?? null,
       discipline: u.discipline ?? null,
+      invitedBy: u.invitedBy ?? null,
+      invitedByType: u.invitedByType ?? null,
+      invitedByTargetId: u.invitedByTargetId ?? null,
+      // invitedAt is intentionally NOT written here — userService
+      // writes it directly via updateDoc with serverTimestamp(), and
+      // re-saves of the User object via the converter must not
+      // overwrite it (would clobber the original server time).
     };
   },
   fromFirestore(snap: QueryDocumentSnapshot<DocumentData>): User {
@@ -157,9 +164,37 @@ const userConverter: FirestoreDataConverter<User> = {
       jersey: readJersey(d.jersey),
       achievements: readAchievements(d.achievements),
       discipline: readDiscipline(d.discipline),
+      invitedBy: typeof d.invitedBy === 'string' ? d.invitedBy : undefined,
+      invitedByType:
+        d.invitedByType === 'session' || d.invitedByType === 'team'
+          ? d.invitedByType
+          : undefined,
+      invitedByTargetId:
+        typeof d.invitedByTargetId === 'string'
+          ? d.invitedByTargetId
+          : undefined,
+      // Passes the Firestore Timestamp through as-is; consumers call
+      // `.toMillis()` / `.toDate()` if they need a number/Date.
+      invitedAt: readTimestamp(d.invitedAt),
     };
   },
 };
+
+/**
+ * Narrow an unknown field to a Firestore Timestamp instance, or
+ * undefined for anything else (missing, FieldValue sentinel that
+ * hasn't resolved server-side yet, etc.).
+ */
+function readTimestamp(
+  v: unknown,
+): import('firebase/firestore').Timestamp | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as { toMillis?: unknown; toDate?: unknown };
+  if (typeof o.toMillis === 'function' && typeof o.toDate === 'function') {
+    return v as import('firebase/firestore').Timestamp;
+  }
+  return undefined;
+}
 
 function readDiscipline(v: unknown): UserDisciplineState | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -269,6 +304,9 @@ const groupConverter: FirestoreDataConverter<Group> = {
       city: g.city ?? null,
       street: g.street ?? null,
       addressNote: g.addressNote ?? null,
+      description: g.description ?? null,
+      defaultMaxPlayers:
+        typeof g.defaultMaxPlayers === 'number' ? g.defaultMaxPlayers : null,
       lat: g.lat ?? null,
       lng: g.lng ?? null,
       creatorId: g.creatorId ?? g.adminIds[0] ?? null,
@@ -310,6 +348,12 @@ const groupConverter: FirestoreDataConverter<Group> = {
       city: d.city ?? undefined,
       street: d.street ?? undefined,
       addressNote: d.addressNote ?? undefined,
+      description:
+        typeof d.description === 'string' ? d.description : undefined,
+      defaultMaxPlayers:
+        typeof d.defaultMaxPlayers === 'number'
+          ? d.defaultMaxPlayers
+          : undefined,
       lat: d.lat ?? undefined,
       lng: d.lng ?? undefined,
       creatorId:
@@ -548,6 +592,17 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       bringBall: g.bringBall ?? false,
       bringShirts: g.bringShirts ?? false,
       notes: g.notes ?? null,
+      // Per-game location overrides + game-rule flags. Round-trip is
+      // load-bearing for the GamesList filter chips and edit screen.
+      fieldAddress: g.fieldAddress ?? null,
+      city: g.city ?? null,
+      hasReferee: g.hasReferee ?? false,
+      hasPenalties: g.hasPenalties ?? false,
+      hasHalfTime: g.hasHalfTime ?? false,
+      extraTimeMinutes:
+        typeof g.extraTimeMinutes === 'number' && g.extraTimeMinutes > 0
+          ? g.extraTimeMinutes
+          : null,
       liveMatch: g.liveMatch ?? null,
       reminderSent: g.reminderSent ?? false,
       arrivals: g.arrivals ?? null,
@@ -652,6 +707,16 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       bringBall: d.bringBall === true,
       bringShirts: d.bringShirts === true,
       notes: typeof d.notes === 'string' ? d.notes : undefined,
+      fieldAddress:
+        typeof d.fieldAddress === 'string' ? d.fieldAddress : undefined,
+      city: typeof d.city === 'string' ? d.city : undefined,
+      hasReferee: d.hasReferee === true,
+      hasPenalties: d.hasPenalties === true,
+      hasHalfTime: d.hasHalfTime === true,
+      extraTimeMinutes:
+        typeof d.extraTimeMinutes === 'number' && d.extraTimeMinutes > 0
+          ? d.extraTimeMinutes
+          : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       reminderSent: d.reminderSent === true,
       arrivals: readArrivals(d.arrivals),

@@ -50,6 +50,35 @@ const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
 const APP_STORE_URL = 'https://apps.apple.com/app/id000000000';
 
+/**
+ * Reads the count of users this profile invited via Firestore's count
+ * aggregation. Returns 0 while loading or on error — the consumer
+ * hides the tile when the value is 0 so a freshly-installed user
+ * doesn't see a dead "0 שחקנים שהצטרפו דרכי".
+ */
+function useInvitedUsersCount(userId: string): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!userId) {
+      setCount(0);
+      return;
+    }
+    let alive = true;
+    userService
+      .getInvitedUsersCount(userId)
+      .then((n) => {
+        if (alive) setCount(n);
+      })
+      .catch(() => {
+        if (alive) setCount(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
+  return count;
+}
+
 export function ProfileScreen() {
   const nav = useNavigation<any>();
   const localUser = useUserStore((s) => s.currentUser);
@@ -114,6 +143,11 @@ export function ProfileScreen() {
       alive = false;
     };
   }, [localUser?.id]);
+
+  // Hook called unconditionally so the order stays stable across
+  // renders even if the user briefly resolves to null while we're
+  // hydrating /users/{uid}. Empty id → service returns 0 immediately.
+  const invitedCount = useInvitedUsersCount(user?.id ?? '');
 
   if (!user) return null;
 
@@ -210,6 +244,19 @@ export function ProfileScreen() {
               icon="close-circle-outline"
             />
           </View>
+
+          {/* Invite attribution — only surfaced when the count is
+              non-zero so a brand-new user isn't confronted with a
+              dead "0" stat that adds no value. */}
+          {invitedCount > 0 ? (
+            <StatTile
+              size="md"
+              tone="primary"
+              value={String(invitedCount)}
+              label={he.profileStatInvited}
+              icon="people-outline"
+            />
+          ) : null}
 
           {/* ④ Achievements rail */}
           {achievements.length > 0 ? (

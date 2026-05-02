@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Teamder · הזמנה</title>
+<style>
+  :root {
+    --green:#16A34A;
+    --green-dark:#15803D;
+    --gray:#6B7280;
+    --bg:#F9FAFB;
+    --surface:#FFFFFF;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);
+    color:#111;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px;
+  }
+  .card {
+    background:var(--surface);
+    border-radius:24px;
+    padding:36px 28px;
+    max-width:420px;
+    width:100%;
+    box-shadow:0 12px 48px rgba(0,0,0,0.08);
+    text-align:center;
+  }
+  .logo {
+    width:104px;
+    height:104px;
+    margin:0 auto 20px;
+    border-radius:28px;
+    background:var(--green);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:54px;
+  }
+  h1 {
+    font-size:24px;
+    margin:0 0 10px;
+    font-weight:800;
+  }
+  p.sub {
+    color:var(--gray);
+    font-size:15px;
+    line-height:1.55;
+    margin:0 0 28px;
+  }
+  .btn {
+    display:block;
+    width:100%;
+    padding:15px 20px;
+    border-radius:14px;
+    border:none;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    margin-bottom:12px;
+    text-decoration:none;
+    text-align:center;
+    font-family:inherit;
+  }
+  .btn-primary { background:var(--green); color:#fff; }
+  .btn-primary:hover, .btn-primary:active { background:var(--green-dark); }
+  .btn-secondary {
+    background:transparent;
+    color:var(--green);
+    border:2px solid var(--green);
+  }
+  .note {
+    font-size:13px;
+    color:var(--gray);
+    margin-top:20px;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">⚽</div>
+  <h1 id="title">הוזמנת ל־Teamder</h1>
+  <p class="sub" id="subtitle">פתח את הקישור באפליקציה כדי להצטרף.</p>
+  <button class="btn btn-primary" id="openBtn" type="button">פתח באפליקציה</button>
+  <a class="btn btn-secondary" id="installBtn"
+     href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">
+    הורד את האפליקציה
+  </a>
+  <!-- The Play Store link's `referrer` query param is rewritten in JS
+       below to include the invite (e.g. invite_session_<id>). When the
+       app is installed via that link, Google Play forwards the value
+       to the app on first launch via the Play Install Referrer API,
+       so we can recover the invite context after a fresh install. -->
+
+  <p class="note">אם האפליקציה לא מותקנת, הורד אותה מהחנות וחזור לקישור ההזמנה.</p>
+</div>
+
+<script>
+  // Hosting rewrites /session/* and /team/* to this single file, so we
+  // recover the original target via location.pathname.
+  var parts = location.pathname.split('/').filter(Boolean);
+  var type = parts[0] === 'session' ? 'session' : parts[0] === 'team' ? 'team' : null;
+  var id = parts[1] || '';
+  var invitedBy = (new URLSearchParams(location.search).get('invitedBy') || '').trim();
+
+  var titleEl = document.getElementById('title');
+  var subEl = document.getElementById('subtitle');
+  if (type === 'session') {
+    titleEl.textContent = 'הוזמנת למשחק ב־Teamder';
+    subEl.textContent = 'משחק שכונתי מחכה לך. ראה מי מגיע והצטרף בלחיצה אחת.';
+  } else if (type === 'team') {
+    titleEl.textContent = 'הוזמנת לקבוצה ב־Teamder';
+    subEl.textContent = 'הצטרף לקבוצה קבועה וקבל עדכונים על משחקים חדשים.';
+  }
+
+  function deepLink() {
+    if (!type || !id) return null;
+    var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
+    return 'teamder://' + type + '/' + encodeURIComponent(id) + query;
+  }
+
+  // Persist invite in localStorage as a belt-and-suspenders cache.
+  // Mainly useful for the *web* re-visit flow (user returns to this
+  // page in the same browser session) — the app side relies on the
+  // Play Install Referrer below for cross-install recovery.
+  if (type && id) {
+    try {
+      var cached = { type: type, id: id };
+      if (invitedBy) cached.invitedBy = invitedBy;
+      localStorage.setItem('pendingInvite', JSON.stringify(cached));
+    } catch (_) { /* private mode / quota — non-fatal */ }
+  }
+
+  // Append `referrer=invite_<type>_<id>[_by_<uid>]` to the Play Store
+  // link. The Play Install Referrer API delivers this verbatim to the
+  // freshly installed app on first launch, letting
+  // installReferrerService recover the invite context AND the
+  // inviter's id after the install.
+  if (type && id) {
+    var installEl = document.getElementById('installBtn');
+    var ref = 'invite_' + type + '_' + encodeURIComponent(id);
+    if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
+    installEl.href =
+      'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp' +
+      '&referrer=' + encodeURIComponent(ref);
+  }
+
+  // Button-only — no auto-attempt, no forced redirect to the Play
+  // Store. The user controls the action; if the deep link doesn't
+  // resolve (app not installed), they can tap "הורד את האפליקציה".
+  document.getElementById('openBtn').addEventListener('click', function () {
+    var url = deepLink();
+    if (url) location.href = url;
+  });
+</script>
+</body>
+</html>

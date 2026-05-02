@@ -61,10 +61,18 @@ try {
 } catch {
   // expo-notifications native module not available — no-op.
 }
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
+import { navigationRef } from '@/navigation/navigationRef';
+import {
+  parseInviteUrl,
+  stashPendingInvite,
+} from '@/services/deepLinkService';
+import { consumeInstallReferrerIfFresh } from '@/services/installReferrerService';
+import { storage } from '@/services/storage';
 import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
@@ -128,7 +136,6 @@ export default function App() {
   // stores in parallel — the splash fades out at the end and the user
   // lands on a ready UI without an extra spinner step.
   const [splashDone, setSplashDone] = useState(false);
-  const [navContainerRef] = useState(() => createNavigationContainerRef());
   const currentScreenRef = useRef<string | null>(null);
 
   // App-update prompt. Single source of truth: a plain enum kept
@@ -151,6 +158,61 @@ export default function App() {
       // already hidden — non-fatal
     });
     // Place for one-time bootstraps: analytics init, FCM token registration, etc.
+  }, []);
+
+  // Invite-link plumbing. Three potential sources, in strict priority
+  // order on cold-start:
+  //   1. `Linking.getInitialURL()` — app launched FROM a deep link.
+  //   2. Existing stash in storage — set by a previous launch that
+  //      didn't get consumed (auth incomplete, navigation race).
+  //   3. Play Install Referrer — the user installed via the store and
+  //      this is their first launch.
+  //
+  // Whichever fires first wins. `stashPendingInvite` itself enforces
+  // set-once, but we ALSO short-circuit between steps 1 and 3 here
+  // so the install-referrer native call is skipped entirely when an
+  // earlier source already produced a stash. RootNavigator owns the
+  // consumer side; nothing in this file ever navigates.
+  useEffect(() => {
+    const handle = async (url: string | null) => {
+      if (!url) return;
+      const parsed = parseInviteUrl(url);
+      if (!parsed) return;
+      try {
+        await stashPendingInvite(parsed);
+      } catch (err) {
+        if (__DEV__) console.warn('[invite] stash failed', err);
+      }
+    };
+
+    (async () => {
+      // 1. Initial URL.
+      const initialUrl = await Linking.getInitialURL();
+      if (__DEV__) console.info('[invite] getInitialURL →', initialUrl);
+      await handle(initialUrl);
+
+      // 2. Already-stashed invite? If so, skip the referrer call —
+      //    we have a target, no need to re-derive one from the past.
+      const existing = await storage.getPendingInvite();
+      if (__DEV__) console.info('[invite] existing pending →', existing);
+      if (existing) return;
+
+      // 3. Last resort: Play Install Referrer (Android-only). No-op on
+      //    iOS / Expo Go / sideload. The service has its own internal
+      //    set-once guard as a second line of defence.
+      try {
+        await consumeInstallReferrerIfFresh();
+        if (__DEV__) {
+          const after = await storage.getPendingInvite();
+          console.info('[invite] after install-referrer →', after);
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('[invite] install-referrer threw', err);
+      }
+    })();
+
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
   }, []);
 
   // Resolve the freshly-fetched UpdateKind into a UI verdict. Force
@@ -225,13 +287,13 @@ export default function App() {
       />
       <NavigationContainer
         theme={navTheme}
-        ref={navContainerRef}
+        ref={navigationRef}
         onReady={() => {
           // Seed the initial route so the first screen_view fires before
           // any subsequent state change (otherwise it'd only fire on the
           // *second* navigation).
-          const r = navContainerRef.isReady()
-            ? navContainerRef.getCurrentRoute()
+          const r = navigationRef.isReady()
+            ? navigationRef.getCurrentRoute()
             : null;
           if (r) {
             currentScreenRef.current = r.name;
@@ -239,8 +301,8 @@ export default function App() {
           }
         }}
         onStateChange={() => {
-          if (!navContainerRef.isReady()) return;
-          const next = navContainerRef.getCurrentRoute()?.name;
+          if (!navigationRef.isReady()) return;
+          const next = navigationRef.getCurrentRoute()?.name;
           if (next && next !== currentScreenRef.current) {
             currentScreenRef.current = next;
             logEvent(AnalyticsEvent.ScreenView, { screen: next });

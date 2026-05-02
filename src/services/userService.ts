@@ -3,7 +3,16 @@
 // in AsyncStorage so name/avatar edits survive reload.
 // In real mode we hit Firebase Auth + /users/{uid} in Firestore.
 
-import { deleteField, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  deleteField,
+  getCountFromServer,
+  getDoc,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { User } from '@/types';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
@@ -15,7 +24,7 @@ import {
   signOutFirebase,
   waitForAuthRestore,
 } from '@/firebase/auth';
-import { docs } from '@/firebase/firestore';
+import { col, docs } from '@/firebase/firestore';
 
 export const userService = {
   /**
@@ -51,6 +60,7 @@ export const userService = {
       onboardingCompleted: false,
     };
     await setDoc(ref, fresh);
+    await applyInviteAttributionIfFresh(fresh.id);
     return fresh;
   },
 
@@ -79,6 +89,7 @@ export const userService = {
       onboardingCompleted: false,
     };
     await setDoc(ref, fresh);
+    await applyInviteAttributionIfFresh(fresh.id);
     return fresh;
   },
 
@@ -315,4 +326,73 @@ export const userService = {
     }
     return next;
   },
+
+  /**
+   * Returns how many users have `invitedBy === userId`. Powers the
+   * "שחקנים שהצטרפו דרכי" stat on the player card. Uses Firestore's
+   * count aggregation so we don't pay for a full collection scan or
+   * download user docs we don't display.
+   *
+   * Best-effort: returns 0 on failure (no Firestore, query not
+   * indexed, rules deny). The stat row hides itself when this is 0
+   * so the UI doesn't show a dead "0" for everyone.
+   */
+  async getInvitedUsersCount(userId: string): Promise<number> {
+    if (USE_MOCK_DATA) return 0;
+    if (!userId) return 0;
+    try {
+      const q = query(col.users(), where('invitedBy', '==', userId));
+      const snap = await getCountFromServer(q);
+      return snap.data().count ?? 0;
+    } catch (err) {
+      if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
+      return 0;
+    }
+  },
 };
+
+/**
+ * Best-effort invite attribution. Called once per *fresh* user
+ * creation (lazy-create on cold start, or new account from Google
+ * sign-in). Reads the pending invite from storage and writes the
+ * inviter's id + the invite target onto the new user's profile.
+ *
+ * Guards (each is a hard bail):
+ *   • USE_MOCK_DATA — no-op (not meaningful when the dataset resets).
+ *   • No pending invite at all.
+ *   • Pending invite has no `invitedBy` (anonymous link).
+ *   • `invitedBy === newUserId` — self-invite, ignored.
+ *   • The user doc already has `invitedBy` set — never overwrite.
+ *
+ * Failures are swallowed so the signup path never fails because of
+ * the attribution write. We re-fetch the user doc inside the guard
+ * to be defensive even though both call sites just `setDoc`'d a
+ * fresh user without these fields.
+ */
+async function applyInviteAttributionIfFresh(
+  newUserId: string,
+): Promise<void> {
+  try {
+    if (USE_MOCK_DATA) return;
+    const pending = await storage.getPendingInvite();
+    if (!pending?.invitedBy) return;
+    if (pending.invitedBy === newUserId) return;
+
+    const ref = docs.user(newUserId);
+    const snap = await getDoc(ref);
+    const existing = snap.data();
+    if (existing?.invitedBy) return;
+
+    // serverTimestamp() (NOT Date.now()) so the attribution time is
+    // resilient to a wrong device clock and analytics queries can
+    // trust ordering. Firestore replaces the sentinel server-side.
+    await updateDoc(ref, {
+      invitedBy: pending.invitedBy,
+      invitedByType: pending.type,
+      invitedByTargetId: pending.id,
+      invitedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    if (__DEV__) console.warn('[userService] invite attribution failed', err);
+  }
+}

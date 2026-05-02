@@ -14,7 +14,11 @@
       "**/node_modules/**"
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "rewrites": [
+      { "source": "/session/**", "destination": "/invite.html" },
+      { "source": "/team/**", "destination": "/invite.html" }
+    ]
   },
   "functions": [
     {

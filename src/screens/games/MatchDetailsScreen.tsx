@@ -41,6 +41,7 @@ import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { deepLinkService } from '@/services/deepLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   getForecastFor,
@@ -459,9 +460,14 @@ export function MatchDetailsScreen() {
   const handleInvitePlayers = async () => {
     if (!game) return;
     try {
+      const link = deepLinkService.buildInviteUrl({
+        type: 'session',
+        id: game.id,
+        invitedBy: user?.id,
+      });
       const result = await Share.share({
         title: game.title,
-        message: he.sessionInviteShareBody(game.title),
+        message: he.sessionInviteShareBody(link),
       });
       if (result.action !== 'dismissedAction') {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });

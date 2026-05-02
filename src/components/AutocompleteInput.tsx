@@ -117,7 +117,9 @@ export function AutocompleteInput({
           onChangeText={handleChange}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
-          placeholderTextColor={colors.textMuted}
+          // Match InputField — lighter than textMuted so the hint
+          // doesn't look like a real value.
+          placeholderTextColor="#9CA3AF"
           editable={!disabled}
           style={[styles.input, disabled && styles.inputDisabled]}
           textAlign="right"
@@ -156,18 +158,18 @@ const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   label: { ...typography.label, color: colors.textMuted },
   inputWrap: { position: 'relative' },
+  // Matches InputField visually so an autocomplete cell sits in the
+  // same form rhythm as the regular text inputs around it (light-gray
+  // pill, no border, identical padding + radius).
   input: {
     ...typography.body,
     color: colors.text,
-    backgroundColor: colors.surface,
+    backgroundColor: '#F5F5F5',
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
   inputDisabled: {
-    backgroundColor: colors.surfaceMuted,
     color: colors.textMuted,
   },
   loader: {
