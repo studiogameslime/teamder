@@ -39,6 +39,10 @@ interface Props
   /** Visible only on the tap-to-pick variant. Greys out the icon + text. */
   placeholder?: string;
   containerStyle?: ViewStyle;
+  /** When true, render a red asterisk next to the label so the user
+   *  can spot required fields at a glance. Purely visual — actual
+   *  validation lives in the submitting screen. */
+  required?: boolean;
 }
 
 export function InputField({
@@ -48,13 +52,19 @@ export function InputField({
   placeholder,
   containerStyle,
   value,
+  required,
   ...textInputProps
 }: Props) {
   const hasValue = typeof value === 'string' && value.length > 0;
 
   return (
     <View style={[styles.wrap, containerStyle]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? (
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+        </Text>
+      ) : null}
       {onPress ? (
         // Tap-to-pick variant — non-editable text + icon, opens a modal
         // when tapped. We deliberately render a `<Text>` so the
@@ -119,6 +129,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
   },
+  requiredStar: {
+    color: colors.danger,
+    fontWeight: '700',
+  },
   field: {
     // `row-reverse` places the LAST JSX child (the icon) on the
     // physical RIGHT under forceRTL — the leading position in Hebrew
@@ -135,11 +149,16 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     flex: 1,
-    // TextInput value uses physical 'right' on every platform — unlike
-    // the Hebrew label workaround above, digit content (number-pad
-    // inputs like phone, max-players) renders LTR and would otherwise
-    // hug the visual left under Android forceRTL. Plain `'right'`
-    // pushes both Hebrew text and digit values to the right edge.
+    // TextInput value uses physical 'right' on every platform.
+    // Unlike <Text> labels (where Android forceRTL interprets
+    // textAlign:'right' as logical end → visual LEFT and we have
+    // RTL_LABEL_ALIGN to compensate), Android <TextInput> respects
+    // PHYSICAL alignment: 'right' actually pushes both Hebrew and
+    // digit content to the visual right edge. The earlier sweep that
+    // replaced literal 'right' with RTL_LABEL_ALIGN here regressed
+    // short Hebrew values into hugging the LEFT — restoring the
+    // explicit 'right' fixes both the date Pressable text and the
+    // editable TextInput.
     textAlign: 'right',
     writingDirection: 'rtl',
     // Pull the cursor onto the same baseline as the icon — RN's default

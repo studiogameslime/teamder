@@ -44,7 +44,7 @@ import { groupService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
 import { WeekdayIndex } from '@/types';
-import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -219,6 +219,7 @@ export function CommunityEditScreen() {
             label={he.groupCreateName}
             value={name}
             onChangeText={setName}
+            required
           />
           <InputField
             label={he.createGroupCity}
@@ -435,7 +436,7 @@ function ToggleCard({
  * that lives inside a flex row where the parent controls width.
  */
 const RTL_TEXT = {
-  textAlign: 'right' as const,
+  textAlign: RTL_LABEL_ALIGN,
   writingDirection: 'rtl' as const,
 };
 const RTL_TEXT_BLOCK = {

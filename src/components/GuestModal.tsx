@@ -20,7 +20,7 @@ import { Button } from './Button';
 import { toast } from './Toast';
 import { gameService } from '@/services/gameService';
 import type { GameGuest } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 const MAX_NAME_LEN = 20;
@@ -31,8 +31,17 @@ interface Props {
   callerId: string | null;
   existing?: GameGuest | null;
   onClose: () => void;
-  /** Fires after a successful save so the parent can refresh. */
-  onChanged?: () => void;
+  /** Fires after a successful save with the saved guest. Lets the
+   *  parent splice the change into local state directly — relying on
+   *  a fresh `getDoc()` here was racy because Firestore returns the
+   *  pre-write snapshot for a brief window after the transaction
+   *  commit. Modal awaits the returned promise (if any) before it
+   *  closes, so the screen reflects the change by the time the user
+   *  sees it again. */
+  onChanged?: (
+    action: 'added' | 'updated',
+    guest: GameGuest,
+  ) => void | Promise<void>;
 }
 
 export function GuestModal({
@@ -61,20 +70,29 @@ export function GuestModal({
     if (!canSave || !callerId) return;
     setBusy(true);
     try {
+      let saved: GameGuest;
+      let action: 'added' | 'updated';
       if (existing) {
-        await gameService.updateGuest(gameId, callerId, existing.id, {
+        saved = await gameService.updateGuest(gameId, callerId, existing.id, {
           name: trimmed,
           estimatedRating: rating ?? null,
         });
-        toast.success(he.guestSaved);
+        action = 'updated';
       } else {
-        await gameService.addGuest(gameId, callerId, {
+        saved = await gameService.addGuest(gameId, callerId, {
           name: trimmed,
           estimatedRating: rating ?? undefined,
         });
-        toast.success(he.guestAdded);
+        action = 'added';
       }
-      onChanged?.();
+      // Success feedback is owned by the realtime banner the parent
+      // gets from the useGameEvents listener (`bannerGuestAdded`) —
+      // showing a separate toast here would render two notices for
+      // the same event. We hand the saved guest to the parent so it
+      // can splice it into local state directly; this avoids the
+      // post-write Firestore read race that occasionally returned the
+      // pre-commit snapshot.
+      if (onChanged) await onChanged(action, saved);
       onClose();
     } catch (err) {
       const msg = (err as Error).message ?? '';
@@ -101,7 +119,10 @@ export function GuestModal({
           </Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>{he.guestNameLabel}</Text>
+            <Text style={styles.label}>
+              {he.guestNameLabel}
+              <Text style={styles.requiredStar}>{' *'}</Text>
+            </Text>
             <TextInput
               value={name}
               onChangeText={(t) => setName(t.slice(0, MAX_NAME_LEN))}
@@ -184,7 +205,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   field: {
     gap: spacing.xs,
@@ -192,7 +213,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   input: {
     ...typography.body,
@@ -201,12 +222,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    // TextInput value: physical 'right' (Android TextInput respects
+    // physical alignment, unlike <Text> labels which need
+    // RTL_LABEL_ALIGN to compensate for the forceRTL flip).
     textAlign: 'right',
   },
   helper: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  requiredStar: {
+    color: colors.danger,
+    fontWeight: '700',
   },
   starsRow: {
     flexDirection: 'row',

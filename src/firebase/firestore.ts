@@ -582,7 +582,14 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: g.currentMatchIndex,
       weather: g.weather ?? null,
       createdBy: g.createdBy ?? null,
-      isPublic: g.isPublic ?? false,
+      // `visibility` is now the only access-control flag. Default to
+      // 'community' when missing — the conservative choice so a
+      // half-built write never accidentally exposes a doc to the
+      // global feed.
+      visibility:
+        g.visibility === 'public' || g.visibility === 'community'
+          ? g.visibility
+          : 'community',
       requiresApproval: g.requiresApproval ?? false,
       format: g.format ?? null,
       numberOfTeams: g.numberOfTeams ?? null,
@@ -605,6 +612,8 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : null,
       liveMatch: g.liveMatch ?? null,
       reminderSent: g.reminderSent ?? false,
+      rateReminderSent: g.rateReminderSent ?? false,
+      capacityNoticeSent: g.capacityNoticeSent ?? false,
       arrivals: g.arrivals ?? null,
       autoTeamGenerationMinutesBeforeStart:
         g.autoTeamGenerationMinutesBeforeStart ?? null,
@@ -628,9 +637,21 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
   },
   fromFirestore(snap): GameDoc {
     const d = snap.data();
+    // Stage 2 lifecycle: accept all valid GameStatus values; anything
+    // unrecognised collapses to 'open' so a typo in Firestore can't
+    // brick the screen. Legacy docs missing the field also fall back
+    // to 'open' (the safe default — list filters will exclude games
+    // whose start time has passed regardless).
     const rawStatus = d.status;
     const status: GameDoc['status'] =
-      rawStatus === 'locked' || rawStatus === 'finished' ? rawStatus : 'open';
+      rawStatus === 'scheduled' ||
+      rawStatus === 'open' ||
+      rawStatus === 'locked' ||
+      rawStatus === 'active' ||
+      rawStatus === 'finished' ||
+      rawStatus === 'cancelled'
+        ? rawStatus
+        : 'open';
     const fmt = d.format;
     const format: GameDoc['format'] =
       fmt === '5v5' || fmt === '6v6' || fmt === '7v7' ? fmt : undefined;
@@ -687,7 +708,14 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       currentMatchIndex: d.currentMatchIndex ?? 0,
       weather: d.weather ?? undefined,
       createdBy: typeof d.createdBy === 'string' ? d.createdBy : undefined,
-      isPublic: d.isPublic === true,
+      // Default missing visibility to 'community' so legacy docs are
+      // hidden from the public feed until an admin explicitly opens
+      // them. Never project unknowns as 'public' — that would be a
+      // silent data leak.
+      visibility:
+        d.visibility === 'public' || d.visibility === 'community'
+          ? d.visibility
+          : 'community',
       requiresApproval: d.requiresApproval === true,
       format,
       numberOfTeams:
@@ -719,6 +747,8 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       reminderSent: d.reminderSent === true,
+      rateReminderSent: d.rateReminderSent === true,
+      capacityNoticeSent: d.capacityNoticeSent === true,
       arrivals: readArrivals(d.arrivals),
       autoTeamGenerationMinutesBeforeStart:
         typeof d.autoTeamGenerationMinutesBeforeStart === 'number' &&
@@ -753,12 +783,18 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
       o.estimatedRating <= 5
         ? o.estimatedRating
         : undefined;
+    // OMIT the key when there's no rating instead of writing
+    // `estimatedRating: undefined`. Callers (addGuest / updateGuest)
+    // re-write the whole `guests` array via tx.update, which bypasses
+    // the converter. If the projected object carried the key with
+    // `undefined`, that value would land in the next write and
+    // Firestore would reject the whole transaction.
     out.push({
       id: o.id,
       name: o.name,
-      estimatedRating: rating,
       addedBy: typeof o.addedBy === 'string' ? o.addedBy : '',
       createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
+      ...(rating !== undefined ? { estimatedRating: rating } : {}),
     });
   }
   return out;

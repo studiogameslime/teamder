@@ -72,10 +72,13 @@ export function AdminApprovalScreen() {
   }, [adminGroups, pendingUserIds]);
 
   const handleApprove = async (row: PendingRow) => {
-    // groupStore.approve targets the *current* group, so for a multi-group
-    // admin we go through groupService directly with the explicit groupId.
+    // Use the store wrapper (groupId-aware) so the local `groups`
+    // cache stays consistent across all screens that read from it
+    // (badges on the Communities tab, ProfileScreen counter, etc.).
     try {
-      await groupService.approveMember(row.group.id, row.user.id);
+      await useGroupStore
+        .getState()
+        .approveMember(row.group.id, row.user.id);
       setRows((prev) =>
         prev.filter(
           (r) => !(r.group.id === row.group.id && r.user.id === row.user.id),
@@ -89,7 +92,9 @@ export function AdminApprovalScreen() {
 
   const handleReject = async (row: PendingRow) => {
     try {
-      await groupService.rejectMember(row.group.id, row.user.id);
+      await useGroupStore
+        .getState()
+        .rejectMember(row.group.id, row.user.id);
       setRows((prev) =>
         prev.filter(
           (r) => !(r.group.id === row.group.id && r.user.id === row.user.id),

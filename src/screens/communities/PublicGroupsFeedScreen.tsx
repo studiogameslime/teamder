@@ -26,6 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Card } from '@/components/Card';
+import { PressableScale } from '@/components/PressableScale';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -40,7 +41,7 @@ import {
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { GroupPublic } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -188,6 +189,20 @@ export function PublicGroupsFeedScreen() {
         .map((g) => g.id)
     );
   }, [memberGroups, user]);
+  // Per-community pending-request counts, keyed by groupId. Computed
+  // only for communities the viewer admins — others get 0 so the
+  // badge stays hidden. Sourced from the same memberGroups list that
+  // already has the canonical `pendingPlayerIds` array.
+  const pendingCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!user) return out;
+    memberGroups.forEach((g) => {
+      if (g.adminIds.includes(user.id)) {
+        out[g.id] = g.pendingPlayerIds.length;
+      }
+    });
+    return out;
+  }, [memberGroups, user]);
 
   function actionFor(g: GroupPublic): RowAction {
     if (memberIds.has(g.id)) return 'enter';
@@ -297,6 +312,7 @@ export function PublicGroupsFeedScreen() {
       g={g}
       action={actionFor(g)}
       isCoach={adminIds.has(g.id)}
+      pendingCount={pendingCounts[g.id] ?? 0}
       onPrimary={() => {
         const a = actionFor(g);
         if (a === 'enter') return handleEnter(g);
@@ -479,66 +495,86 @@ function FeedRow({
   g,
   action,
   isCoach,
+  pendingCount,
   onPrimary,
   onOpen,
 }: {
   g: GroupPublic;
   action: RowAction;
   isCoach: boolean;
+  pendingCount: number;
   onPrimary: () => void;
   onOpen: () => void;
 }) {
   const locationLine = [g.city, g.fieldName, g.fieldAddress]
     .filter((s) => s && s.trim().length > 0)
     .join(' · ');
+  const showPendingBadge = isCoach && pendingCount > 0;
 
   return (
-    <Card style={styles.row} onPress={onOpen}>
-      <View style={{ flex: 1 }}>
-        <View style={styles.rowHeader}>
-          <Text style={styles.name} numberOfLines={1}>
-            {g.name}
-          </Text>
-          {isCoach ? (
-            <Badge
-              label={he.communityDetailsAdminBadge}
-              tone="primary"
-              icon="star"
-            />
-          ) : (
-            <StatusPill action={action} />
-          )}
-        </View>
-        {locationLine ? (
-          <View style={styles.meta}>
-            <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-            <Text style={styles.metaText} numberOfLines={1}>
-              {locationLine}
+    <PressableScale onPress={onOpen}>
+      <Card style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.rowHeader}>
+            <Text style={styles.name} numberOfLines={1}>
+              {g.name}
             </Text>
+            <View style={styles.rowHeaderRight}>
+              {showPendingBadge ? (
+                <View
+                  style={styles.pendingBadge}
+                  accessibilityLabel={he.pendingApprovalsBadge(pendingCount)}
+                >
+                  <Ionicons
+                    name="person-add"
+                    size={11}
+                    color={colors.textOnPrimary}
+                  />
+                  <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
+                </View>
+              ) : null}
+              {isCoach ? (
+                <Badge
+                  label={he.communityDetailsAdminBadge}
+                  tone="primary"
+                  icon="star"
+                />
+              ) : (
+                <StatusPill action={action} />
+              )}
+            </View>
           </View>
-        ) : null}
-        {g.description ? (
-          <Text style={styles.desc} numberOfLines={2}>
-            {g.description}
-          </Text>
-        ) : null}
-        <View style={styles.metaRow}>
-          <View style={styles.meta}>
-            <Ionicons name="people-outline" size={14} color={colors.primary} />
-            <Text style={[styles.metaText, { color: colors.primary }]}>
-              {he.groupsSearchMembers(g.memberCount)}
+          {locationLine ? (
+            <View style={styles.meta}>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {locationLine}
+              </Text>
+            </View>
+          ) : null}
+          {g.description ? (
+            <Text style={styles.desc} numberOfLines={2}>
+              {g.description}
             </Text>
+          ) : null}
+          <View style={styles.metaRow}>
+            <View style={styles.meta}>
+              <Ionicons name="people-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.primary }]}>
+                {he.groupsSearchMembers(g.memberCount)}
+              </Text>
+            </View>
+            {/* WhatsApp button intentionally NOT shown here. The Communities
+                feed is the discovery surface; non-members shouldn't be able
+                to ping the admin's phone before joining. The button is still
+                rendered on CommunityDetailsScreen for actual members. */}
           </View>
-          {/* WhatsApp button intentionally NOT shown here. The Communities
-              feed is the discovery surface; non-members shouldn't be able
-              to ping the admin's phone before joining. The button is still
-              rendered on CommunityDetailsScreen for actual members. */}
+          <View style={{ marginTop: spacing.sm }}>
+            <PrimaryAction action={action} onPress={onPrimary} />
+          </View>
         </View>
-        <View style={{ marginTop: spacing.sm }}>
-          <PrimaryAction action={action} onPress={onPrimary} />
-        </View>
-      </View>
-    </Card>
+      </Card>
+    </PressableScale>
   );
 }
 
@@ -636,7 +672,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   sectionEmpty: { alignItems: 'center', paddingVertical: spacing.lg },
   sectionEmptyText: {
@@ -679,6 +715,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
     marginBottom: spacing.xs,
+  },
+  rowHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  pendingBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 3,
+  },
+  pendingBadgeText: {
+    color: colors.textOnPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   name: { ...typography.bodyBold, color: colors.text, flex: 1 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },

@@ -3,8 +3,8 @@
 // Two URL families both flow through `parseInviteUrl`:
 //   1. Custom scheme: teamder://session/<id>
 //                     teamder://team/<id>
-//   2. Hosting URL:   https://teamder.web.app/session/<id>
-//                     https://teamder.web.app/team/<id>
+//   2. Hosting URL:   https://teamderfc.web.app/session/<id>
+//                     https://teamderfc.web.app/team/<id>
 //
 // We deliberately do NOT use React Navigation's `linking` prop — the
 // app's navigator tree depends on auth state (RootNavigator swaps
@@ -26,11 +26,21 @@
 import * as Linking from 'expo-linking';
 import { storage, type PendingInvite } from './storage';
 
-/** All hostnames + custom-scheme prefixes we treat as our invite links. */
-const HOSTING_DOMAINS = new Set(['teamder.web.app', 'teamder.firebaseapp.com']);
+/** All hostnames + custom-scheme prefixes we treat as our invite links.
+ *  The bare "teamder" subdomain was reserved by another Firebase project
+ *  before we owned the brand, so we ship under "teamderfc" (fc =
+ *  football club). The plain "teamder.web.app" is kept in the set so
+ *  that any pre-existing shared link still parses (returning a usable
+ *  PendingInvite) even though we can't actually serve that origin. */
+const HOSTING_DOMAINS = new Set([
+  'teamderfc.web.app',
+  'teamderfc.firebaseapp.com',
+  'teamder.web.app',
+  'teamder.firebaseapp.com',
+]);
 
 /** Public hosting origin used when building share URLs. */
-const HOSTING_ORIGIN = 'https://teamder.web.app';
+const HOSTING_ORIGIN = 'https://teamderfc.web.app';
 
 /**
  * Parse an invite URL in either supported form. Returns null for any
@@ -82,7 +92,7 @@ export function parseInviteUrl(url: string): PendingInvite | null {
 
 /**
  * Build a public share URL for a session or team. Points at Firebase
- * Hosting (`teamder.web.app`), which renders the landing page that
+ * Hosting (`teamderfc.web.app`), which renders the landing page that
  * tries the deep link and falls back to the Play Store. When
  * `invitedBy` is provided we append `?invitedBy=<uid>` so the new
  * user's profile picks up an inviter on signup.

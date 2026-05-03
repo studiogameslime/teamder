@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 interface Props {
   title: string;
@@ -42,14 +42,14 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   action: {
     ...typography.label,
     color: colors.primary,
     fontWeight: '600',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
 });

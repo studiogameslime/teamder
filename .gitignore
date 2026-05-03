@@ -22,3 +22,7 @@ LOCAL-SECRETS.md
 GoogleService-Info.plist
 ios/
 android/
+
+# Claude Code session data + Firebase CLI cache (machine-local)
+.claude/
+.firebase/

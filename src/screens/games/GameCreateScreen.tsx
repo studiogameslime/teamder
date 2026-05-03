@@ -47,7 +47,11 @@ function buildInitial(g: Group): GameFormValues {
     hasReferee: false,
     hasPenalties: false,
     hasHalfTime: false,
-    isPublic: false,
+    // Open communities default to public games (anyone can discover
+    // and join). Closed/private communities default to community-only
+    // — matches user expectation that a private group's games stay
+    // inside the group unless the admin explicitly opens them.
+    visibility: g.isOpen === true ? 'public' : 'community',
     fieldType: undefined,
     cancelDeadlineHours: undefined,
     requiresApproval: false,
@@ -119,7 +123,7 @@ export function GameCreateScreen() {
           ? parsedDuration
           : undefined,
       autoTeamGenerationMinutesBeforeStart: 60,
-      isPublic: v.isPublic,
+      visibility: v.visibility,
       requiresApproval: v.requiresApproval,
       bringBall: v.bringBall,
       bringShirts: v.bringShirts,

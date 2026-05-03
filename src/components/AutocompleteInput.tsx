@@ -20,7 +20,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 interface Props {
   label: string;
@@ -168,6 +168,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    // TextInput value uses physical 'right' (Android TextInput
+    // respects physical alignment, unlike <Text> labels). Without
+    // this, short Hebrew values cling to the visual LEFT of the
+    // pill on Android.
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   inputDisabled: {
     color: colors.textMuted,
@@ -195,6 +201,6 @@ const styles = StyleSheet.create({
   optionText: {
     ...typography.body,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 });

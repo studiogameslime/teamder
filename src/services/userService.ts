@@ -49,8 +49,13 @@ export const userService = {
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
     if (snap.exists()) return snap.data();
-    // Lazily create with a random built-in avatar so the user always has
-    // a face on first render — they can change it from ProfileSetup.
+    // Lazily (re-)create with a random built-in avatar — handles two
+    // cases: (a) brand-new sign-in where signInWithGoogle's setDoc
+    // never ran, (b) recovery after a previous launch left an Auth
+    // user with no /users doc (e.g. that setDoc failed). Wrapped in
+    // try/catch so a transient write failure doesn't crash the app
+    // — we surface `null` and the caller sees "not signed in" until
+    // the next launch retries.
     const fresh: User = {
       id: fbUser.uid,
       name: fbUser.displayName ?? '',
@@ -59,7 +64,12 @@ export const userService = {
       createdAt: Date.now(),
       onboardingCompleted: false,
     };
-    await setDoc(ref, fresh);
+    try {
+      await setDoc(ref, fresh);
+    } catch (err) {
+      if (__DEV__) console.warn('[auth] lazy user-doc create failed', err);
+      return null;
+    }
     await applyInviteAttributionIfFresh(fresh.id);
     return fresh;
   },
@@ -88,7 +98,24 @@ export const userService = {
       createdAt: Date.now(),
       onboardingCompleted: false,
     };
-    await setDoc(ref, fresh);
+    // Defensive try/catch: if the doc write fails (rules denied,
+    // quota exceeded, network blip), we MUST sign the user back out —
+    // otherwise we'd leave a Firebase Auth user with no /users doc,
+    // and the next launch would crash on `currentUser.name`.
+    try {
+      await setDoc(ref, fresh);
+    } catch (err) {
+      if (__DEV__) console.warn('[auth] user doc create failed', err);
+      // Best-effort sign-out — if THAT fails too there's nothing we
+      // can do but propagate. Auth restore on next launch will hit
+      // `getCurrentUser()` which lazy-creates the doc anyway.
+      try {
+        await signOutFirebase();
+      } catch {
+        /* swallow */
+      }
+      throw err;
+    }
     await applyInviteAttributionIfFresh(fresh.id);
     return fresh;
   },

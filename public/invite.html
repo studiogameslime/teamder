@@ -125,7 +125,13 @@
   function deepLink() {
     if (!type || !id) return null;
     var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
-    return 'teamder://' + type + '/' + encodeURIComponent(id) + query;
+    // We use the `footy://` scheme rather than `teamder://` because
+    // every shipped build of the app has registered `footy` since
+    // launch, while `teamder` was only added later and isn't present
+    // in installed copies of older versions. The app's deep-link
+    // parser accepts both, so this gives us universal coverage with
+    // no client-side branching.
+    return 'footy://' + type + '/' + encodeURIComponent(id) + query;
   }
 
   // Persist invite in localStorage as a belt-and-suspenders cache.

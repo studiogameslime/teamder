@@ -24,7 +24,7 @@ import { RatingStars } from './RatingStars';
 import { ratingsService } from '@/services/ratingsService';
 import { userService } from '@/services';
 import type { RatingValue, User } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { toast } from './Toast';
 
@@ -295,7 +295,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     minHeight: 80,
+    // TextInput value: physical 'right' (Android TextInput respects
+    // physical alignment, unlike <Text> labels).
     textAlign: 'right',
+    writingDirection: 'rtl',
     textAlignVertical: 'top',
   },
   selfHint: {

@@ -75,7 +75,7 @@ export interface GameFormValues {
   hasReferee: boolean;
   hasPenalties: boolean;
   hasHalfTime: boolean;
-  isPublic: boolean;
+  visibility: 'public' | 'community';
   fieldType: FieldType | undefined;
   /** Hours (number) or undefined for "no limit". */
   cancelDeadlineHours: number | undefined;
@@ -155,20 +155,23 @@ export function GameWizardForm({
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Pinned step indicator — stays visible while the user
+            scrolls the form so they always see which step they're on
+            (and the surface area for tapping back/next stays
+            predictable). Lives OUTSIDE the ScrollView for that
+            reason. The optional caller extras (community picker on
+            create) and the actual step body still scroll normally. */}
+        <View style={styles.stickyHeader}>
+          <StepIndicator
+            current={step}
+            labels={[he.wizardStep1, he.wizardStep2, he.wizardStep3]}
+          />
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Wizard step indicator sits at the top of the page, above
-              any caller-supplied extras (community picker, etc.).
-              The community dropdown only belongs to step 1 — once the
-              user has confirmed the group there's no value in showing
-              it on later steps, so we hide it from step 2 onward. */}
-          <StepIndicator
-            current={step}
-            labels={[he.wizardStep1, he.wizardStep2, he.wizardStep3]}
-          />
           {extraTopSlot && step === 1 ? (
             <View style={styles.extraSlot}>{extraTopSlot}</View>
           ) : null}
@@ -242,6 +245,7 @@ function Step1({
         label={he.createGameDateTime}
         value={values.startsAt}
         onChange={(n) => set('startsAt', n)}
+        required
       />
 
       {/* Location is the most-asked field after date — promoted up the
@@ -252,6 +256,7 @@ function Step1({
         onChangeText={(t) => set('location', t)}
         placeholder={he.wizardLocationPlaceholder}
         icon="location-outline"
+        required
       />
 
       <PillRow
@@ -279,6 +284,7 @@ function Step1({
         label={he.createGameField}
         value={values.fieldName}
         onChangeText={(t) => set('fieldName', t)}
+        required
       />
     </View>
   );
@@ -354,14 +360,14 @@ function Step3({
         <Text style={styles.label}>{he.wizardSectionVisibility}</Text>
         <View style={styles.pillRow}>
           <Pill
-            active={!values.isPublic}
+            active={values.visibility === 'community'}
             label={he.wizardVisibilityCommunity}
-            onPress={() => set('isPublic', false)}
+            onPress={() => set('visibility', 'community')}
           />
           <Pill
-            active={values.isPublic}
+            active={values.visibility === 'public'}
             label={he.wizardVisibilityPublic}
-            onPress={() => set('isPublic', true)}
+            onPress={() => set('visibility', 'public')}
           />
         </View>
       </View>
@@ -440,9 +446,10 @@ function SummaryCard({
     [values.fieldName, values.location].filter((s) => s.trim().length > 0)
       .join(' · ') || '—';
   const formatStr = `${formatLabel(values.format)} · ${maxPlayers} שחקנים`;
-  const visibilityStr = values.isPublic
-    ? he.wizardVisibilityPublic
-    : he.wizardVisibilityCommunity;
+  const visibilityStr =
+    values.visibility === 'public'
+      ? he.wizardVisibilityPublic
+      : he.wizardVisibilityCommunity;
 
   return (
     <View style={styles.summary}>
@@ -558,8 +565,11 @@ function ToggleRow({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  // Wrap the whole row in a Pressable so tapping anywhere on the
+  // label or hint also flips the Switch — the bare Switch was a tiny
+  // target on the LEFT edge.
   return (
-    <View style={styles.toggleRow}>
+    <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
         <Text style={styles.toggleLabel}>{label}</Text>
         {hint ? <Text style={styles.hint}>{hint}</Text> : null}
@@ -570,7 +580,7 @@ function ToggleRow({
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -580,6 +590,11 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: {
     paddingBottom: spacing.xl,
+  },
+  stickyHeader: {
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
   extraSlot: {
     paddingHorizontal: spacing.lg,
@@ -709,7 +724,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   footer: {

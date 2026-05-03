@@ -23,6 +23,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   updateDoc,
   where,
   writeBatch,
@@ -47,6 +48,7 @@ import {
 import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
@@ -115,9 +117,25 @@ export const gameService = {
    * Mock mode always returns the canned game.
    */
   /**
-   * Read one v2 game by id. Returns null when the doc doesn't exist.
-   * Mock mode falls back to the in-memory store. Used by screens that
-   * already know the gameId and just need to refresh after a write.
+   * Read one v2 game by id.
+   *
+   * Two distinct outcomes by design — callers must handle them
+   * separately so users see the right message:
+   *
+   *   • returns `null` — doc genuinely doesn't exist (deleted /
+   *     never existed). UI: "המשחק לא קיים".
+   *
+   *   • throws `{ code: 'ACCESS_BLOCKED' }` — Firestore rules
+   *     denied the read. The doc exists but this viewer can't see
+   *     it (typical: non-member opening a community-only game).
+   *     UI: dedicated blocked-access screen, no info leak.
+   *
+   * We catch the raw FirebaseError here and re-throw with a stable
+   * code so callers don't have to know about Firebase internals.
+   * Any other error is re-thrown unchanged.
+   *
+   * Mock mode falls back to the in-memory store and only ever
+   * returns null / found — there's no rules layer to deny.
    */
   async getGameById(gameId: string): Promise<Game | null> {
     if (!gameId) return null;
@@ -125,9 +143,24 @@ export const gameService = {
       const found = mockGamesV2.find((g) => g.id === gameId);
       return found ? ({ ...found, matches: [] } as Game) : null;
     }
-    const snap = await getDoc(docs.game(gameId));
-    if (!snap.exists()) return null;
-    return { ...snap.data(), matches: [] };
+    try {
+      const snap = await getDoc(docs.game(gameId));
+      if (!snap.exists()) return null;
+      return { ...snap.data(), matches: [] };
+    } catch (err) {
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'permission-denied') {
+        const blocked: Error & { code: string } = Object.assign(
+          new Error('getGameById: access blocked by security rules'),
+          { code: 'ACCESS_BLOCKED' as const },
+        );
+        throw blocked;
+      }
+      throw err;
+    }
   },
 
   async getActiveGameForGroup(groupId: GroupId): Promise<Game | null> {
@@ -137,17 +170,23 @@ export const gameService = {
     if (!auth.currentUser) throw new Error('getActiveGameForGroup: not signed in');
 
     // Active = the most recent night that's not yet finished. Once a night
-    // is marked finished it falls into history (see getHistory).
+    // is marked finished it falls into history (see getHistory). We pull
+    // a small window (limit=3) and pick the first non-stale one — this
+    // way a single zombie at the top of the order doesn't mask the real
+    // upcoming game while the cleanup CF hasn't run yet.
     const q = query(
       col.games(),
       where('groupId', '==', groupId),
       where('status', 'in', ['open', 'locked']),
       orderBy('startsAt', 'desc'),
-      limit(1)
+      limit(3)
     );
     const snap = await getDocs(q);
     if (snap.empty) return null;
-    const docData = snap.docs[0].data();
+    const docData = snap.docs
+      .map((d) => d.data())
+      .find((g) => !isStaleAfterStart({ ...g, matches: [] } as Game));
+    if (!docData) return null;
     const matches = await loadRoundsFor(docData.id);
     return { ...docData, matches };
   },
@@ -199,11 +238,14 @@ export const gameService = {
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {
     if (USE_MOCK_DATA) return mockHistory;
 
-    // History: any night that's no longer 'open' (i.e. locked or finished).
+    // Stage 2 lifecycle: history = terminal evenings only. 'locked' is
+    // a mid-flow state (registration frozen, game not started) and
+    // does NOT belong here — the previous filter accidentally surfaced
+    // unfinished games as "history".
     const q = query(
       col.games(),
       where('groupId', '==', groupId),
-      where('status', 'in', ['locked', 'finished']),
+      where('status', 'in', ['finished', 'cancelled']),
       orderBy('startsAt', 'desc'),
       limit(20)
     );
@@ -218,6 +260,7 @@ export const gameService = {
           groupId: g.groupId,
           date: g.startsAt,
           matchCount: rounds.length,
+          status: g.status === 'cancelled' ? 'cancelled' : 'finished',
           lastResult:
             last && last.winner
               ? { teamA: last.teamA, teamB: last.teamB, winner: last.winner }
@@ -299,6 +342,7 @@ export const gameService = {
     return snap.docs
       .map((d) => ({ ...d.data(), matches: [] }))
       .filter((g) => g.status === 'open')
+      .filter((g) => !isStaleAfterStart(g))
       .sort((a, b) => a.startsAt - b.startsAt);
   },
 
@@ -344,6 +388,7 @@ export const gameService = {
         seen.add(d.id);
         const data = d.data();
         if (data.status !== 'open') return;
+        if (isStaleAfterStart({ ...data, matches: [] } as Game)) return;
         if (
           data.players.includes(userId) ||
           data.waitlist.includes(userId) ||
@@ -357,20 +402,26 @@ export const gameService = {
   },
 
   /**
-   * Public games (`isPublic=true`) the user is not a community member of
-   * AND not already involved in. Surfaces the "discover" half of the
-   * Games tab.
+   * Public games the user is not a community member of AND not already
+   * involved in. Surfaces the "discover" half of the Games tab.
+   *
+   * Visibility gate: only games with `visibility === 'public'` AND
+   * `status === 'open'` AND `startsAt > now`. Anything else is hidden
+   * — community-only games never surface here regardless of who is
+   * looking, past games are excluded by definition.
    */
   async getOpenGames(
     userId: UserId,
     excludeCommunityIds: string[]
   ): Promise<Game[]> {
+    const now = Date.now();
     if (USE_MOCK_DATA) {
       return mockGamesV2
         .filter(
           (g) =>
             g.status === 'open' &&
-            g.isPublic === true &&
+            g.visibility === 'public' &&
+            g.startsAt > now &&
             !excludeCommunityIds.includes(g.groupId) &&
             !g.players.includes(userId) &&
             !g.waitlist.includes(userId) &&
@@ -378,17 +429,19 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    // Firebase: single-field equality on `isPublic` (auto-indexed).
-    // Status filter + sort + community/participant exclusion run
-    // client-side, so no composite index is required.
+    // Firebase: equality query on the canonical visibility field
+    // (auto-indexed). status / startsAt / participation filters run
+    // client-side so we don't need a composite index.
     const snap = await getDocs(
-      query(col.games(), where('isPublic', '==', true)),
+      query(col.games(), where('visibility', '==', 'public')),
     );
     return snap.docs
       .map((d) => ({ ...d.data(), matches: [] }))
       .filter(
         (g) =>
           g.status === 'open' &&
+          g.startsAt > now &&
+          !isStaleAfterStart(g) &&
           !excludeCommunityIds.includes(g.groupId) &&
           !g.players.includes(userId) &&
           !g.waitlist.includes(userId) &&
@@ -415,7 +468,7 @@ export const gameService = {
     fieldType?: import('@/types').FieldType;
     matchDurationMinutes?: number;
     autoTeamGenerationMinutesBeforeStart?: number;
-    isPublic: boolean;
+    visibility: 'public' | 'community';
     requiresApproval: boolean;
     bringBall: boolean;
     bringShirts: boolean;
@@ -428,6 +481,12 @@ export const gameService = {
     extraTimeMinutes?: number;
     createdBy: UserId;
   }): Promise<Game> {
+    // Defensive: callers come from a TS-typed wizard but the field is
+    // user-controlled, so reject anything that isn't one of the two
+    // valid values rather than letting a typo land in Firestore.
+    if (input.visibility !== 'public' && input.visibility !== 'community') {
+      throw new Error('createGameV2: invalid visibility');
+    }
     const now = Date.now();
     const base: Omit<Game, 'id'> = {
       groupId: input.groupId,
@@ -445,7 +504,7 @@ export const gameService = {
       currentMatchIndex: 0,
       matches: [],
       createdBy: input.createdBy,
-      isPublic: input.isPublic,
+      visibility: input.visibility,
       requiresApproval: input.requiresApproval,
       format: input.format,
       numberOfTeams: input.numberOfTeams,
@@ -472,6 +531,17 @@ export const gameService = {
       mockGamesV2.unshift(game);
       createdId = game.id;
     } else {
+      if (__DEV__) {
+        // Temporary diagnostic — see what we're handing to addDoc so
+        // we can pinpoint which rule field is failing if the create
+        // permission-denieds.
+        console.log('[createGameV2] payload', {
+          createdBy: base.createdBy,
+          status: base.status,
+          visibility: base.visibility,
+          groupId: base.groupId,
+        });
+      }
       const ref = await addDoc(col.games(), { id: '', ...base });
       createdId = ref.id;
     }
@@ -490,6 +560,10 @@ export const gameService = {
         title: input.title,
         startsAt: input.startsAt,
         fieldName: input.fieldName,
+        // Carry the creator's uid so the CF can exclude self from
+        // the fan-out — admins shouldn't get pinged about their
+        // own game.
+        createdBy: input.createdBy,
       },
     });
 
@@ -497,7 +571,7 @@ export const gameService = {
       gameId: createdId,
       groupId: input.groupId,
       format: input.format ?? '',
-      isPublic: String(!!input.isPublic),
+      visibility: input.visibility,
       requiresApproval: String(!!input.requiresApproval),
     });
 
@@ -526,7 +600,7 @@ export const gameService = {
       cancelDeadlineHours: number;
       fieldType: import('@/types').FieldType;
       matchDurationMinutes: number;
-      isPublic: boolean;
+      visibility: 'public' | 'community';
       requiresApproval: boolean;
       bringBall: boolean;
       bringShirts: boolean;
@@ -539,6 +613,13 @@ export const gameService = {
       extraTimeMinutes: number;
     }>,
   ): Promise<void> {
+    // Visibility is access-control. Don't accept it through the
+    // generic edit path — there are extra checks (admin, status,
+    // enum) that only `setVisibility` enforces. Callers should
+    // route visibility flips through that handler instead.
+    if ('visibility' in patch) {
+      throw new Error('updateGameV2: use setVisibility() to change visibility');
+    }
     const updates: Record<string, unknown> = {
       ...patch,
       updatedAt: Date.now(),
@@ -639,63 +720,251 @@ export const gameService = {
       );
       return { bucket };
     }
-    // Firebase: re-read the doc to compute the right bucket, then write.
+    // Firebase: atomic join via runTransaction. The previous read-then-
+    // write pattern lost updates under concurrent joins (two users
+    // hitting the last spot both observed `players.length<max`, both
+    // appended themselves, second write overwrote the first → roster
+    // overflow or silent drop). Inside the transaction we re-read the
+    // current snapshot, re-validate capacity AND lifecycle, then commit
+    // — the SDK retries on contention.
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) throw new Error('joinGameV2: game not found');
-    const data = snap.data();
-    const players = data.players ?? [];
-    const waitlist = data.waitlist ?? [];
-    const pending = data.pending ?? [];
-    if (
-      players.includes(userId) ||
-      waitlist.includes(userId) ||
-      pending.includes(userId)
-    ) {
-      // already joined — fall back to detected bucket
-      return {
-        bucket: players.includes(userId)
-          ? 'players'
-          : waitlist.includes(userId)
-            ? 'waitlist'
-            : 'pending',
-      };
-    }
-    const updates: Record<string, unknown> = { updatedAt: Date.now() };
-    let bucket: 'players' | 'waitlist' | 'pending';
-    // Guests count toward capacity. A coach who pre-fills the roster
-    // with two guests on a 12-cap game leaves 10 slots for real users.
-    const occupancy = players.length + (data.guests ?? []).length;
-    if (data.requiresApproval) {
-      updates.pending = [...pending, userId];
-      bucket = 'pending';
-    } else if (occupancy < (data.maxPlayers ?? 15)) {
-      updates.players = [...players, userId];
-      bucket = 'players';
-    } else {
-      updates.waitlist = [...waitlist, userId];
-      bucket = 'waitlist';
-    }
-    const existingParticipants: string[] = Array.isArray(data.participantIds)
-      ? data.participantIds
-      : [];
-    updates.participantIds = Array.from(new Set([...existingParticipants, userId]));
-    // updateDoc bypasses the converter so only the keys we changed land in
-    // affectedKeys() — critical for the self-join Firestore rule, which
-    // restricts updates to ['players','waitlist','pending','participantIds',
-    // 'updatedAt']. A `set(...,{merge:true})` through the typed converter
-    // would re-emit nullable optional fields (liveMatch, fieldLat, …) and
-    // get rejected as "permission denied" even when the join itself is
-    // legal.
-    await updateGameDoc(gameId, updates);
-    if (bucket !== 'pending') {
+    const { db } = getFirebase();
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('joinGameV2: game not found');
+      const data = snap.data();
+
+      // Lifecycle gate (mirrors firestore.rules — fail fast client-side
+      // with a typed error so the UI can show a friendly message).
+      if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
+      if (data.startsAt && data.startsAt < Date.now()) {
+        throw new Error('GAME_STARTED');
+      }
+      if (data.liveMatch?.phase === 'live') throw new Error('GAME_LIVE');
+
+      const players = data.players ?? [];
+      const waitlist = data.waitlist ?? [];
+      const pending = data.pending ?? [];
+      // Idempotency — already joined? Return the detected bucket
+      // without writing. Important: must be inside the txn so the
+      // observation is consistent with the eventual write decision.
+      if (players.includes(userId)) {
+        return { bucket: 'players' as const };
+      }
+      if (waitlist.includes(userId)) {
+        return { bucket: 'waitlist' as const };
+      }
+      if (pending.includes(userId)) {
+        return { bucket: 'pending' as const };
+      }
+
+      // Guests count toward capacity. A coach who pre-fills the roster
+      // with two guests on a 12-cap game leaves 10 slots for real users.
+      const occupancy = players.length + (data.guests ?? []).length;
+      const updates: Record<string, unknown> = { updatedAt: Date.now() };
+      let bucket: 'players' | 'waitlist' | 'pending';
+      if (data.requiresApproval) {
+        updates.pending = [...pending, userId];
+        bucket = 'pending';
+      } else if (occupancy < (data.maxPlayers ?? 15)) {
+        updates.players = [...players, userId];
+        bucket = 'players';
+      } else {
+        updates.waitlist = [...waitlist, userId];
+        bucket = 'waitlist';
+      }
+      const existingParticipants: string[] = Array.isArray(
+        data.participantIds,
+      )
+        ? data.participantIds
+        : [];
+      updates.participantIds = Array.from(
+        new Set([...existingParticipants, userId]),
+      );
+      // tx.update bypasses the converter so only the keys we changed
+      // land in affectedKeys() — critical for the self-join rule which
+      // whitelists ['players','waitlist','pending','participantIds',
+      // 'updatedAt']. The cast mirrors `updateGameDoc` above.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, updates as any);
+      return { bucket };
+    });
+
+    if (result.bucket !== 'pending') {
       achievementsService.bump(userId, 'gamesJoined', 1);
     }
     logEvent(
-      bucket === 'waitlist' ? AnalyticsEvent.WaitlistJoined : AnalyticsEvent.GameJoined,
-      { gameId, bucket },
+      result.bucket === 'waitlist'
+        ? AnalyticsEvent.WaitlistJoined
+        : AnalyticsEvent.GameJoined,
+      { gameId, bucket: result.bucket },
     );
-    return { bucket };
+    return result;
+  },
+
+  /**
+   * Admin-only: approve a pending join. Moves the user from `pending[]`
+   * into `players[]` (if there's room) or `waitlist[]` (if the cap is
+   * already filled by other approved players + guests).
+   *
+   * Idempotent: if the user is no longer in `pending[]` (already
+   * approved, rejected, or removed) the call returns the current
+   * bucket without writing.
+   */
+  async approveGameJoin(
+    gameId: string,
+    userId: UserId,
+  ): Promise<{ bucket: 'players' | 'waitlist' | 'noop' }> {
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('approveGameJoin: game not found');
+      const wasPending = (g.pending ?? []).includes(userId);
+      if (!wasPending) return { bucket: 'noop' };
+      g.pending = (g.pending ?? []).filter((id) => id !== userId);
+      const occupancy = g.players.length + (g.guests?.length ?? 0);
+      let bucket: 'players' | 'waitlist';
+      if (occupancy < g.maxPlayers) {
+        g.players = [...g.players, userId];
+        bucket = 'players';
+      } else {
+        g.waitlist = [...g.waitlist, userId];
+        bucket = 'waitlist';
+      }
+      g.participantIds = Array.from(
+        new Set([...(g.participantIds ?? []), userId]),
+      );
+      g.updatedAt = Date.now();
+      achievementsService.bump(userId, 'gamesJoined', 1);
+      notificationsService.dispatch({
+        type: 'approved',
+        recipientId: userId,
+        payload: { gameId, gameTitle: g.title, bucket },
+      });
+      logEvent(AnalyticsEvent.GameJoined, { gameId, bucket, viaApproval: true });
+      return { bucket };
+    }
+    const ref = docs.game(gameId);
+    const { db } = getFirebase();
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('approveGameJoin: game not found');
+      const data = snap.data();
+      const pending = (data.pending ?? []) as string[];
+      if (!pending.includes(userId)) {
+        return { bucket: 'noop' as const, title: data.title ?? '' };
+      }
+      const players = (data.players ?? []) as string[];
+      const waitlist = (data.waitlist ?? []) as string[];
+      const occupancy = players.length + (data.guests ?? []).length;
+      const nextPending = pending.filter((id) => id !== userId);
+      let bucket: 'players' | 'waitlist';
+      const updates: Record<string, unknown> = {
+        pending: nextPending,
+        updatedAt: Date.now(),
+      };
+      if (occupancy < (data.maxPlayers ?? 15)) {
+        updates.players = [...players, userId];
+        bucket = 'players';
+      } else {
+        updates.waitlist = [...waitlist, userId];
+        bucket = 'waitlist';
+      }
+      const existingParticipants: string[] = Array.isArray(
+        data.participantIds,
+      )
+        ? data.participantIds
+        : [];
+      updates.participantIds = Array.from(
+        new Set([...existingParticipants, userId]),
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, updates as any);
+      return { bucket, title: data.title ?? '' };
+    });
+
+    if (result.bucket === 'noop') return { bucket: 'noop' };
+    achievementsService.bump(userId, 'gamesJoined', 1);
+    notificationsService.dispatch({
+      type: 'approved',
+      recipientId: userId,
+      payload: {
+        gameId,
+        gameTitle: result.title,
+        bucket: result.bucket,
+      },
+    });
+    logEvent(AnalyticsEvent.GameJoined, {
+      gameId,
+      bucket: result.bucket,
+      viaApproval: true,
+    });
+    return { bucket: result.bucket };
+  },
+
+  /**
+   * Admin-only: deny a pending join. Removes the user from `pending[]`
+   * with no other state change. Idempotent: a no-op if the user is
+   * already gone from pending.
+   */
+  async rejectGameJoin(gameId: string, userId: UserId): Promise<void> {
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      const before = (g.pending ?? []).length;
+      g.pending = (g.pending ?? []).filter((id) => id !== userId);
+      if (g.pending.length === before) return;
+      g.participantIds = (g.participantIds ?? []).filter(
+        (id) => id !== userId || g.players.includes(id) || g.waitlist.includes(id),
+      );
+      g.updatedAt = Date.now();
+      notificationsService.dispatch({
+        type: 'rejected',
+        recipientId: userId,
+        payload: { gameId, gameTitle: g.title },
+      });
+      return;
+    }
+    const ref = docs.game(gameId);
+    const { db } = getFirebase();
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return { changed: false, title: '' };
+      const data = snap.data();
+      const pending = ((data.pending ?? []) as string[]).filter(
+        (id) => id !== userId,
+      );
+      if (pending.length === ((data.pending ?? []) as string[]).length) {
+        return { changed: false, title: data.title ?? '' };
+      }
+      const players = (data.players ?? []) as string[];
+      const waitlist = (data.waitlist ?? []) as string[];
+      // Recompute participantIds: drop the rejected user only if they
+      // aren't still on players/waitlist (defensive — they shouldn't be).
+      const stillIn =
+        players.includes(userId) || waitlist.includes(userId);
+      const existingParticipants: string[] = Array.isArray(
+        data.participantIds,
+      )
+        ? data.participantIds
+        : [];
+      const participantIds = stillIn
+        ? existingParticipants
+        : existingParticipants.filter((id) => id !== userId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, {
+        pending,
+        participantIds,
+        updatedAt: Date.now(),
+      } as any);
+      return { changed: true, title: data.title ?? '' };
+    });
+
+    if (!result.changed) return;
+    notificationsService.dispatch({
+      type: 'rejected',
+      recipientId: userId,
+      payload: { gameId, gameTitle: result.title },
+    });
   },
 
   /**
@@ -731,43 +1000,60 @@ export const gameService = {
       logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
       return;
     }
+    // Atomic cancel via runTransaction. Fixes the lost-update bug
+    // where two concurrent cancels promoted the same waitlist head
+    // (both wrote `players: [...players, waitlist[0]]` from the same
+    // pre-cancel snapshot, leaving the promoted user in BOTH arrays).
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    const wasInPlayers = (data.players ?? []).includes(userId);
-    let players = (data.players ?? []).filter((id: string) => id !== userId);
-    let waitlist = (data.waitlist ?? []).filter((id: string) => id !== userId);
-    const pending = (data.pending ?? []).filter((id: string) => id !== userId);
-    let promotedUid: string | null = null;
-    if (
-      wasInPlayers &&
-      waitlist.length > 0 &&
-      players.length < (data.maxPlayers ?? 15)
-    ) {
-      promotedUid = waitlist[0];
-      waitlist = waitlist.slice(1);
-      players = [...players, promotedUid];
-    }
-    const participantIds = Array.isArray(data.participantIds)
-      ? data.participantIds.filter((id: string) => id !== userId)
-      : Array.from(new Set([...players, ...waitlist, ...pending]));
-    // updateDoc, not set+merge — see the comment in joinGameV2 above.
-    await updateDoc(ref, {
-      players,
-      waitlist,
-      pending,
-      participantIds,
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return { promotedUid: null, title: '' };
+      const data = snap.data();
+      const wasInPlayers = (data.players ?? []).includes(userId);
+      let players = (data.players ?? []).filter(
+        (id: string) => id !== userId,
+      );
+      let waitlist = (data.waitlist ?? []).filter(
+        (id: string) => id !== userId,
+      );
+      const pending = (data.pending ?? []).filter(
+        (id: string) => id !== userId,
+      );
+      let promotedUid: string | null = null;
+      if (
+        wasInPlayers &&
+        waitlist.length > 0 &&
+        players.length < (data.maxPlayers ?? 15)
+      ) {
+        promotedUid = waitlist[0];
+        waitlist = waitlist.slice(1);
+        players = [...players, promotedUid];
+      }
+      const participantIds = Array.isArray(data.participantIds)
+        ? data.participantIds.filter((id: string) => id !== userId)
+        : Array.from(new Set([...players, ...waitlist, ...pending]));
+      tx.update(ref, {
+        players,
+        waitlist,
+        pending,
+        participantIds,
+        updatedAt: Date.now(),
+      });
+      return { promotedUid, title: data.title ?? '' };
     });
-    if (promotedUid) {
+
+    if (result.promotedUid) {
       notificationsService.dispatch({
         type: 'spotOpened',
-        recipientId: promotedUid,
-        payload: { gameId, gameTitle: data.title ?? '' },
+        recipientId: result.promotedUid,
+        payload: { gameId, gameTitle: result.title },
       });
     }
-    logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
+    logEvent(AnalyticsEvent.GameCancelled, {
+      gameId,
+      promoted: !!result.promotedUid,
+    });
   },
 
   /**
@@ -784,19 +1070,22 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
-      g.status = 'finished';
+      // Stage 2: cancellation is its own status — used to be overloaded
+      // onto 'finished' which made history labelling impossible.
+      g.status = 'cancelled';
       g.locked = true;
       g.updatedAt = Date.now();
     } else {
       const ref = docs.game(gameId);
       const snap = await getDoc(ref);
       if (!snap.exists()) return;
-      // Don't re-dispatch if a previous cancel already landed; the
+      const status = snap.data().status;
+      // Don't re-dispatch if a terminal state already landed; the
       // fan-out notification has already been written.
-      if (snap.data().status === 'finished') return;
+      if (status === 'cancelled' || status === 'finished') return;
       // updateDoc bypasses the converter; see `setLiveMatch` note.
       await updateDoc(ref, {
-        status: 'finished',
+        status: 'cancelled',
         updatedAt: Date.now(),
       });
     }
@@ -805,6 +1094,185 @@ export const gameService = {
       recipientId: gameId, // fan-out marker — CF resolves participants
       payload: { gameId, action: 'cancelled' },
     });
+    logEvent(AnalyticsEvent.GameFinished, { gameId, byAdmin: true });
+  },
+
+  /**
+   * Admin-only: flip the per-game visibility between 'public' and
+   * 'community'. Layers of validation:
+   *
+   *   1. Enum check — value must be one of the two allowed strings.
+   *   2. Status check — game must be in 'open'. Locked / active /
+   *      finished / cancelled games can't be reopened to / hidden
+   *      from the public feed; the registration window is the only
+   *      meaningful time to flip this.
+   *   3. Authorization — the caller must be the game's createdBy or
+   *      an admin of the parent group. We check client-side here AND
+   *      Firestore rules re-check server-side; both layers reject
+   *      non-admins so a forged client can't bypass.
+   *
+   * Idempotent: writing the same value is a no-op (and we still
+   * bump updatedAt so cleanly track the touch in audit logs).
+   */
+  async setVisibility(
+    gameId: string,
+    visibility: 'public' | 'community',
+  ): Promise<void> {
+    if (!gameId) return;
+    if (visibility !== 'public' && visibility !== 'community') {
+      throw new Error('setVisibility: invalid visibility');
+    }
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('setVisibility: game not found');
+      if (g.status !== 'open') {
+        throw new Error('setVisibility: game is not in open status');
+      }
+      g.visibility = visibility;
+      g.updatedAt = Date.now();
+      return;
+    }
+    const { auth } = getFirebase();
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('setVisibility: not signed in');
+
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('setVisibility: game not found');
+    const game = snap.data();
+    if (game.status !== 'open') {
+      throw new Error('setVisibility: game is not in open status');
+    }
+    // Admin = creator OR group admin. Group lookup pulls the parent
+    // doc once; cheaper than doing it server-side per query.
+    const isCreator = game.createdBy === uid;
+    let isGroupAdmin = false;
+    if (!isCreator) {
+      const groupSnap = await getDoc(docs.group(game.groupId));
+      if (groupSnap.exists()) {
+        isGroupAdmin = (groupSnap.data().adminIds ?? []).includes(uid);
+      }
+    }
+    if (!isCreator && !isGroupAdmin) {
+      throw new Error('setVisibility: not authorised');
+    }
+    await updateDoc(ref, {
+      visibility,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Stage 2 lifecycle transition: admin freezes registration (no more
+   * joins/cancels). Used between "registration open" and "evening
+   * starts" — gives the organizer time to form teams without the
+   * roster shifting under their feet.
+   */
+  async lockRegistration(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      if (g.status !== 'open') return;
+      g.status = 'locked';
+      g.locked = true;
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    if (snap.data().status !== 'open') return;
+    await updateDoc(ref, { status: 'locked', updatedAt: Date.now() });
+  },
+
+  /**
+   * Stage 2 lifecycle transition: admin starts the evening. Flips
+   * `Game.status` to 'active' AND seeds `liveMatch.phase` so the
+   * live screen has a sub-state to render. Idempotent — calling on
+   * an already-active game is a no-op.
+   *
+   * NOTE: this is the canonical "start" path going forward.
+   * MatchDetailsScreen's existing `handleStartSession` calls
+   * `setLiveMatch({phase:'live'})` directly for backward-compat; over
+   * time, that should be migrated to call this method instead.
+   */
+  async startEvening(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      if (g.status === 'active' || g.status === 'finished' ||
+          g.status === 'cancelled') return;
+      g.status = 'active';
+      g.liveMatch = {
+        ...(g.liveMatch ?? { phase: 'organizing', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0, lateUserIds: [] }),
+        phase: 'roundReady',
+      };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (
+      data.status === 'active' ||
+      data.status === 'finished' ||
+      data.status === 'cancelled'
+    ) {
+      return;
+    }
+    const liveMatch = {
+      ...(data.liveMatch ?? {
+        phase: 'organizing',
+        assignments: {},
+        benchOrder: [],
+        scoreA: 0,
+        scoreB: 0,
+        lateUserIds: [],
+      }),
+      phase: 'roundReady' as const,
+    };
+    await updateDoc(ref, {
+      status: 'active',
+      liveMatch,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Stage 2 lifecycle transition: admin ends the evening. Flips
+   * `Game.status` to 'finished' AND `liveMatch.phase` to 'finished'
+   * so consumers that key off either field agree. Read-only after
+   * this; the game now belongs to history.
+   */
+  async endEvening(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      if (g.status === 'finished' || g.status === 'cancelled') return;
+      g.status = 'finished';
+      g.locked = true;
+      if (g.liveMatch) g.liveMatch = { ...g.liveMatch, phase: 'finished' };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (data.status === 'finished' || data.status === 'cancelled') return;
+    const updates: Record<string, unknown> = {
+      status: 'finished',
+      updatedAt: Date.now(),
+    };
+    if (data.liveMatch) {
+      updates.liveMatch = { ...data.liveMatch, phase: 'finished' };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(ref, updates as any);
     logEvent(AnalyticsEvent.GameFinished, { gameId, byAdmin: true });
   },
 
@@ -972,12 +1440,17 @@ export const gameService = {
     ) {
       throw new Error('addGuest: estimatedRating must be 1..5');
     }
+    // Firestore rejects writes that include `undefined` values
+    // (`Unsupported field value`). Build the guest object WITHOUT
+    // `estimatedRating` when the caller didn't supply one — including
+    // the key with `undefined` would crash the addDoc/update below
+    // even though the field is optional in the type.
     const guest: GameGuest = {
       id: genGuestId(),
       name,
-      estimatedRating: rating,
       addedBy: callerId,
       createdAt: Date.now(),
+      ...(rating !== undefined ? { estimatedRating: rating } : {}),
     };
 
     if (USE_MOCK_DATA) {
@@ -994,20 +1467,34 @@ export const gameService = {
       return guest;
     }
 
+    // Permission check is done OUTSIDE the transaction (it reads the
+    // /groups doc, which Firestore txns can't include in their
+    // read-write set without inflating contention). The capacity check
+    // + guest write happen INSIDE the txn so an admin can't overflow
+    // capacity by racing concurrent guest additions or user joins.
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) throw new Error('addGuest: game not found');
-    const data = snap.data();
-    await assertGuestPermission(data.createdBy, data.groupId, callerId);
-    const playersLen = (data.players ?? []).length;
-    const guestsLen = (data.guests ?? []).length;
-    if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
-      throw new Error('GAME_FULL');
-    }
-    const next = [...(data.guests ?? []), guest];
-    await updateGameDoc(gameId, {
-      guests: next,
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    const snapForPerm = await getDoc(ref);
+    if (!snapForPerm.exists()) throw new Error('addGuest: game not found');
+    const permData = snapForPerm.data();
+    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('addGuest: game not found');
+      const data = snap.data();
+      // Lifecycle guard mirrors firestore.rules: no guest mutations on
+      // a game that's already finished/locked.
+      if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
+      const playersLen = (data.players ?? []).length;
+      const guestsLen = (data.guests ?? []).length;
+      if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
+        throw new Error('GAME_FULL');
+      }
+      tx.update(ref, {
+        guests: [...(data.guests ?? []), guest],
+        updatedAt: Date.now(),
+      });
     });
     logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
     return guest;
@@ -1046,7 +1533,15 @@ export const gameService = {
         }
         nextRating = r;
       }
-      return { ...g, name: nextName, estimatedRating: nextRating };
+      // Same Firestore-undefined gotcha as addGuest: drop the key
+      // entirely when there's no rating instead of writing
+      // `estimatedRating: undefined`.
+      const { estimatedRating: _drop, ...rest } = g;
+      return {
+        ...rest,
+        name: nextName,
+        ...(nextRating !== undefined ? { estimatedRating: nextRating } : {}),
+      };
     };
 
     if (USE_MOCK_DATA) {
@@ -1066,20 +1561,31 @@ export const gameService = {
     }
 
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) throw new Error('updateGuest: game not found');
-    const data = snap.data();
-    await assertGuestPermission(data.createdBy, data.groupId, callerId);
-    const guests = data.guests ?? [];
-    const idx = guests.findIndex((x) => x.id === guestId);
-    if (idx < 0) throw new Error('updateGuest: guest not found');
-    const updated = apply(guests[idx]);
-    const next = [...guests.slice(0, idx), updated, ...guests.slice(idx + 1)];
-    await updateGameDoc(gameId, {
-      guests: next,
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    const snapForPerm = await getDoc(ref);
+    if (!snapForPerm.exists()) throw new Error('updateGuest: game not found');
+    const permData = snapForPerm.data();
+    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+
+    return await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('updateGuest: game not found');
+      const data = snap.data();
+      const guests = data.guests ?? [];
+      const idx = guests.findIndex((x) => x.id === guestId);
+      if (idx < 0) throw new Error('updateGuest: guest not found');
+      const updated = apply(guests[idx]);
+      const next = [
+        ...guests.slice(0, idx),
+        updated,
+        ...guests.slice(idx + 1),
+      ];
+      tx.update(ref, {
+        guests: next,
+        updatedAt: Date.now(),
+      });
+      return updated;
     });
-    return updated;
   },
 
   /**
@@ -1126,16 +1632,23 @@ export const gameService = {
     }
 
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    await assertGuestPermission(data.createdBy, data.groupId, callerId);
-    const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
-    const nextLive = stripFromLive(data.liveMatch);
-    await updateGameDoc(gameId, {
-      guests: nextGuests,
-      ...(nextLive ? { liveMatch: nextLive } : {}),
-      updatedAt: Date.now(),
+    const { db } = getFirebase();
+    const snapForPerm = await getDoc(ref);
+    if (!snapForPerm.exists()) return;
+    const permData = snapForPerm.data();
+    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
+      const nextLive = stripFromLive(data.liveMatch);
+      tx.update(ref, {
+        guests: nextGuests,
+        ...(nextLive ? { liveMatch: nextLive } : {}),
+        updatedAt: Date.now(),
+      });
     });
     logEvent(AnalyticsEvent.GuestRemoved, { gameId });
   },

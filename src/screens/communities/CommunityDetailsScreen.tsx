@@ -41,13 +41,20 @@ import { deepLinkService } from '@/services/deepLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ratingsService } from '@/services/ratingsService';
 import { gameService } from '@/services/gameService';
+import {
+  canCancelRegistration,
+  canJoinGame,
+  isCancelled,
+  isFinished,
+  isRoundRunning,
+} from '@/services/gameLifecycle';
 import { notificationsService } from '@/services/notificationsService';
 import {
   isValidIsraeliPhone,
   openWhatsApp,
 } from '@/services/whatsappService';
 import { Game, Group, User, WeekdayIndex, getTeamCreatorId } from '@/types';
-import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -91,8 +98,11 @@ export function CommunityDetailsScreen() {
       setGroup(g);
       if (g) {
         logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
+        // Pull pending users into the same hydrate batch so the
+        // approval section below can render their names + jerseys
+        // without a second round-trip.
         const memberIds = Array.from(
-          new Set([...g.adminIds, ...g.playerIds])
+          new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds])
         );
         const [users, games] = await Promise.all([
           groupService.hydrateUsers(memberIds),
@@ -474,34 +484,51 @@ export function CommunityDetailsScreen() {
             haven't joined. */}
         {isMember && me ? (
           <Card style={styles.section}>
-            <View style={styles.subscriptionRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.subscriptionLabel}>
-                  {he.communityNotifyNewGames}
-                </Text>
-              </View>
-              <Switch
-                value={(me.newGameSubscriptions ?? []).includes(group.id)}
-                onValueChange={async (next) => {
-                  const cur = me.newGameSubscriptions ?? [];
-                  const updated = next
-                    ? Array.from(new Set([...cur, group.id]))
-                    : cur.filter((g) => g !== group.id);
-                  // Optimistic local update so the switch responds
-                  // immediately; the persist write is fire-and-forget.
-                  useUserStore.setState({
-                    currentUser: { ...me, newGameSubscriptions: updated },
-                  });
-                  notificationsService.setCommunitySubscription(
-                    me.id,
-                    group.id,
-                    next
-                  );
-                }}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#fff"
-              />
-            </View>
+            {(() => {
+              const subscribed = (me.newGameSubscriptions ?? []).includes(
+                group.id,
+              );
+              const flip = (next: boolean) => {
+                const cur = me.newGameSubscriptions ?? [];
+                const updated = next
+                  ? Array.from(new Set([...cur, group.id]))
+                  : cur.filter((g) => g !== group.id);
+                // Optimistic local update so the switch responds
+                // immediately; the persist write is fire-and-forget.
+                useUserStore.setState({
+                  currentUser: { ...me, newGameSubscriptions: updated },
+                });
+                notificationsService.setCommunitySubscription(
+                  me.id,
+                  group.id,
+                  next,
+                );
+              };
+              return (
+                // Tap-anywhere: wrapping the row in a Pressable lets
+                // the user hit the label (not just the small Switch)
+                // to toggle the subscription.
+                <Pressable
+                  onPress={() => flip(!subscribed)}
+                  style={styles.subscriptionRow}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.subscriptionLabel}>
+                      {he.communityNotifyNewGames}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={subscribed}
+                    onValueChange={flip}
+                    trackColor={{
+                      false: colors.border,
+                      true: colors.primary,
+                    }}
+                    thumbColor="#fff"
+                  />
+                </Pressable>
+              );
+            })()}
           </Card>
         ) : null}
 
@@ -535,6 +562,111 @@ export function CommunityDetailsScreen() {
                   showDivider={i > 0}
                 />
               ))}
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Pending join approvals — admin-only. Each row gets ✓/✗
+            actions that call groupService.approveMember/rejectMember
+            and reload to refresh the list. The same hydrateUsers call
+            above already loaded these user docs. */}
+        {isAdmin && group.pendingPlayerIds.length > 0 ? (
+          <View>
+            <Text style={styles.sectionTitle}>
+              {he.communityDetailsPendingTitle}{' '}
+              <Text style={styles.sectionCount}>
+                ({group.pendingPlayerIds.length})
+              </Text>
+            </Text>
+            <Card style={styles.membersCard}>
+              {group.pendingPlayerIds.map((uid, i) => {
+                const u = members.find((m) => m.id === uid);
+                const name = u?.name ?? '...';
+                return (
+                  <View
+                    key={`pending:${uid}`}
+                    style={[
+                      styles.pendingRow,
+                      i > 0 && styles.pendingRowDivider,
+                    ]}
+                  >
+                    <PlayerIdentity
+                      user={{ id: uid, name, jersey: u?.jersey }}
+                      size={32}
+                    />
+                    <Text style={styles.pendingName} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    <View style={styles.pendingActions}>
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            // Use the store wrapper so the local
+                            // `groups` cache flips immediately —
+                            // calling the service directly here used
+                            // to leave the badge stale until app
+                            // restart.
+                            await useGroupStore
+                              .getState()
+                              .approveMember(group.id, uid);
+                            await reload();
+                          } catch (err) {
+                            if (__DEV__) {
+                              console.warn(
+                                '[communityDetails] approveMember failed',
+                                err,
+                              );
+                            }
+                            toast.error(he.error);
+                          }
+                        }}
+                        hitSlop={6}
+                        accessibilityLabel={he.pendingApprove}
+                        style={({ pressed }) => [
+                          styles.pendingApproveBtn,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="checkmark"
+                          size={16}
+                          color={colors.textOnPrimary}
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            await useGroupStore
+                              .getState()
+                              .rejectMember(group.id, uid);
+                            await reload();
+                          } catch (err) {
+                            if (__DEV__) {
+                              console.warn(
+                                '[communityDetails] rejectMember failed',
+                                err,
+                              );
+                            }
+                            toast.error(he.error);
+                          }
+                        }}
+                        hitSlop={6}
+                        accessibilityLabel={he.pendingReject}
+                        style={({ pressed }) => [
+                          styles.pendingRejectBtn,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={16}
+                          color={colors.danger}
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
             </Card>
           </View>
         ) : null}
@@ -590,9 +722,153 @@ export function CommunityDetailsScreen() {
             <MatchCard
               game={upcoming[0]}
               userId={me?.id ?? ''}
-              onPrimary={() => {
-                /* join/cancel handled on MatchDetails; tap on the card
-                   itself routes there via MatchCard's own handler. */
+              onPrimary={async (cta) => {
+                // Real join/cancel — same logic MatchDetails runs but
+                // inline so the user doesn't need to navigate away.
+                // After a successful mutation we reload() to refresh
+                // the upcoming preview with the new roster.
+                if (!me) return;
+                const game = upcoming[0];
+                const wantJoin =
+                  cta === 'join' ||
+                  cta === 'waitlist' ||
+                  cta === 'pending';
+                const wantCancel =
+                  cta === 'cancel' || cta === 'leaveWaitlist';
+                if (wantJoin) {
+                  if (!canJoinGame(game)) {
+                    if (isFinished(game)) {
+                      toast.info(he.matchDetailsAlreadyFinished);
+                    } else if (isCancelled(game)) {
+                      toast.info(he.matchDetailsAlreadyCancelled);
+                    } else if (isRoundRunning(game)) {
+                      toast.info(he.matchDetailsAlreadyLive);
+                    } else if (
+                      game.startsAt && game.startsAt < Date.now()
+                    ) {
+                      toast.info(he.matchDetailsAlreadyStarted);
+                    } else {
+                      toast.info(he.matchDetailsClosedForRegistration);
+                    }
+                    return;
+                  }
+                } else if (wantCancel) {
+                  if (!canCancelRegistration(game)) {
+                    toast.info(he.matchDetailsAlreadyLive);
+                    return;
+                  }
+                } else {
+                  return;
+                }
+                try {
+                  // Splice the local upcoming preview directly with
+                  // the result instead of doing a getDoc-based
+                  // reload — same race avoidance as the guest-add
+                  // path. The CF realtime listeners on other devices
+                  // still fire normally; only the local UI is
+                  // updated optimistically.
+                  if (wantJoin) {
+                    const result = await gameService.joinGameV2(
+                      game.id,
+                      me.id,
+                    );
+                    setUpcoming((prev) =>
+                      prev.map((g) => {
+                        if (g.id !== game.id) return g;
+                        const next = { ...g };
+                        if (
+                          result.bucket === 'players' &&
+                          !g.players.includes(me.id)
+                        ) {
+                          next.players = [...g.players, me.id];
+                        } else if (
+                          result.bucket === 'waitlist' &&
+                          !g.waitlist.includes(me.id)
+                        ) {
+                          next.waitlist = [...g.waitlist, me.id];
+                        } else if (
+                          result.bucket === 'pending' &&
+                          !(g.pending ?? []).includes(me.id)
+                        ) {
+                          next.pending = [...(g.pending ?? []), me.id];
+                        }
+                        next.participantIds = Array.from(
+                          new Set([...(g.participantIds ?? []), me.id]),
+                        );
+                        return next;
+                      }),
+                    );
+                    toast.success(
+                      result.bucket === 'players'
+                        ? he.toastGameJoined
+                        : result.bucket === 'waitlist'
+                          ? he.toastGameJoinedWaitlist
+                          : he.toastGameJoinedPending,
+                    );
+                  } else {
+                    await gameService.cancelGameV2(game.id, me.id);
+                    setUpcoming((prev) =>
+                      prev.map((g) => {
+                        if (g.id !== game.id) return g;
+                        const wasPlayer = g.players.includes(me.id);
+                        const players = g.players.filter(
+                          (id) => id !== me.id,
+                        );
+                        let waitlist = g.waitlist.filter(
+                          (id) => id !== me.id,
+                        );
+                        const pending = (g.pending ?? []).filter(
+                          (id) => id !== me.id,
+                        );
+                        let promotedPlayers = players;
+                        if (
+                          wasPlayer &&
+                          waitlist.length > 0 &&
+                          players.length < g.maxPlayers
+                        ) {
+                          promotedPlayers = [...players, waitlist[0]];
+                          waitlist = waitlist.slice(1);
+                        }
+                        const participantIds = (
+                          g.participantIds ?? []
+                        ).filter((id) => id !== me.id);
+                        return {
+                          ...g,
+                          players: promotedPlayers,
+                          waitlist,
+                          pending,
+                          participantIds,
+                        };
+                      }),
+                    );
+                    toast.success(he.toastGameLeft);
+                  }
+                } catch (err) {
+                  if (__DEV__) {
+                    console.warn(
+                      '[communityDetails] join/cancel failed',
+                      err,
+                    );
+                  }
+                  const msg = String((err as Error)?.message ?? '');
+                  const code =
+                    typeof (err as { code?: unknown })?.code === 'string'
+                      ? ((err as { code: string }).code)
+                      : '';
+                  if (msg.includes('GAME_STARTED')) {
+                    toast.info(he.matchDetailsAlreadyStarted);
+                  } else if (msg.includes('GAME_LIVE')) {
+                    toast.info(he.matchDetailsAlreadyLive);
+                  } else if (msg.includes('GAME_NOT_OPEN')) {
+                    toast.info(he.matchDetailsClosedForRegistration);
+                  } else if (__DEV__) {
+                    toast.error(
+                      `${he.error}: ${code || msg || 'unknown'}`,
+                    );
+                  } else {
+                    toast.error(he.error);
+                  }
+                }
               }}
             />
           )}
@@ -730,7 +1006,10 @@ async function createRecurring(
         format: fmt,
         numberOfTeams: teams,
         cancelDeadlineHours: undefined,
-        isPublic: false,
+        // Quick-create from a community always defaults to
+        // community-only — the admin can flip to public from the
+        // game's own MatchDetails toggle if they want broader reach.
+        visibility: 'community',
         requiresApproval: !group.isOpen,
         bringBall: true,
         bringShirts: true,
@@ -935,8 +1214,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '800',
-    textAlign: 'right',
-    flexShrink: 1,
+    textAlign: RTL_LABEL_ALIGN,
+    // Same fix as MatchDetails heroTitle: without an explicit width
+    // hint, RN sizes Text to its content and `textAlign` has no
+    // canvas to anchor against. `flex:1` lets it occupy all the row
+    // space the badge doesn't claim; the badge is content-sized so
+    // it stays compact on the leading edge.
+    flex: 1,
   },
   heroSub: { gap: 4 },
   subLine: {
@@ -984,14 +1268,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '500',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   infoValue: {
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
     marginTop: 2,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Section header — same as MatchDetails
@@ -999,7 +1283,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.sm,
   },
   sectionCount: {
@@ -1017,7 +1301,7 @@ const styles = StyleSheet.create({
   bodyText: {
     ...typography.body,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Legacy metaRow — kept for the fallback MetaRow component (no
@@ -1034,7 +1318,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   label: { ...typography.label, color: colors.textMuted, marginTop: spacing.xs },
 
@@ -1059,6 +1343,41 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   memberName: { ...typography.body, color: colors.text, flex: 1 },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  pendingRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  pendingName: { ...typography.body, color: colors.text, flex: 1 },
+  pendingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pendingApproveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingRejectBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   adminBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -1101,6 +1420,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   emptyCard: { alignItems: 'center', paddingVertical: spacing.lg },

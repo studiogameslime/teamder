@@ -41,7 +41,7 @@ import {
   getCancelRate,
   User,
 } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -602,13 +602,13 @@ const styles = StyleSheet.create({
   emptyHint: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   disciplineEventsCard: { gap: spacing.sm },
   eventListLabel: {
     ...typography.label,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   eventRow: {
     flexDirection: 'row',
@@ -618,12 +618,12 @@ const styles = StyleSheet.create({
   eventReason: {
     ...typography.body,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   eventDate: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   achievementsSection: {
     gap: spacing.md,
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
   achievementsTitle: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   achievementsCount: {
     ...typography.caption,
@@ -666,17 +666,17 @@ const styles = StyleSheet.create({
   detailTitle: {
     ...typography.bodyBold,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   detailDesc: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   detailMeta: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   unavailable: {
     ...typography.caption,

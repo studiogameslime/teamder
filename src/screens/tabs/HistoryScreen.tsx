@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 import { Card } from '@/components/Card';
+import { PressableScale } from '@/components/PressableScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { colors, spacing, typography } from '@/theme';
+import { Badge } from '@/components/Badge';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { GameSummary, TeamColor } from '@/types';
 import { gameService } from '@/services';
@@ -18,6 +21,12 @@ const TEAM_LABEL: Record<TeamColor, string> = {
 
 export function HistoryScreen() {
   const group = useCurrentGroup();
+  // `useNavigation<any>` because History lives in ProfileStack but
+  // navigates cross-stack into GameTab → MatchDetails. The shape is
+  // verified by the deep-link consumer (navigationRef.navigateInvite)
+  // and exercised in production already.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
 
   useEffect(() => {
@@ -31,24 +40,46 @@ export function HistoryScreen() {
     };
   }, [group]);
 
+  const openDetails = (gameId: string) => {
+    // Cross-stack navigation: jump to the Games tab and push the
+    // MatchDetails route there. The screen's own lifecycle helpers
+    // (canJoinGame / canCancelRegistration / etc.) ensure the read-
+    // only state is rendered correctly for finished + cancelled.
+    nav.navigate('GameTab', {
+      screen: 'MatchDetails',
+      params: { gameId },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.historyTitle} />
       {items.length === 0 ? (
-        <Text style={styles.empty}>{he.historyEmptyReal}</Text>
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>{he.historyEmptyReal}</Text>
+          <Text style={styles.emptyHint}>{he.historyEmptyHint}</Text>
+        </View>
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
           data={items}
           keyExtractor={(g) => g.id}
-          renderItem={({ item }) => <HistoryRow item={item} />}
-          />
+          renderItem={({ item }) => (
+            <HistoryRow item={item} onPress={() => openDetails(item.id)} />
+          )}
+        />
       )}
     </SafeAreaView>
   );
 }
 
-function HistoryRow({ item }: { item: GameSummary }) {
+function HistoryRow({
+  item,
+  onPress,
+}: {
+  item: GameSummary;
+  onPress: () => void;
+}) {
   const d = new Date(item.date);
   const dateLabel = `${d.getDate()}.${d.getMonth() + 1}.${String(d.getFullYear()).slice(2)}`;
   const winner = item.lastResult?.winner;
@@ -58,16 +89,47 @@ function HistoryRow({ item }: { item: GameSummary }) {
     resultText = he.tie;
   } else if (winner) {
     resultText = TEAM_LABEL[winner];
-    resultColor = winner === 'team1' ? colors.team1 : winner === 'team2' ? colors.team2 : colors.team3;
+    resultColor =
+      winner === 'team1'
+        ? colors.team1
+        : winner === 'team2'
+          ? colors.team2
+          : colors.team3;
   }
+
+  // Status label — `cancelled` gets a danger-toned badge so it visually
+  // distinguishes from a normal completion. Older history docs without
+  // a `status` field default to "finished" via the converter projection.
+  const isCancelled = item.status === 'cancelled';
+
   return (
-    <Card style={styles.row}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.date}>{dateLabel}</Text>
-        <Text style={styles.matches}>{he.historyMatches(item.matchCount)}</Text>
-      </View>
-      <Text style={[styles.result, { color: resultColor }]}>{resultText}</Text>
-    </Card>
+    <PressableScale
+      onPress={onPress}
+      style={styles.rowPressable}
+      accessibilityLabel="open-history-game"
+    >
+      <Card style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.headerRow}>
+            <Text style={styles.date}>{dateLabel}</Text>
+            <Badge
+              label={
+                isCancelled
+                  ? he.matchDetailsAlreadyCancelled
+                  : he.matchDetailsAlreadyFinished
+              }
+              tone={isCancelled ? 'danger' : 'neutral'}
+            />
+          </View>
+          <Text style={styles.matches}>{he.historyMatches(item.matchCount)}</Text>
+        </View>
+        {resultText ? (
+          <Text style={[styles.result, { color: resultColor }]}>
+            {resultText}
+          </Text>
+        ) : null}
+      </Card>
+    </PressableScale>
   );
 }
 
@@ -85,12 +147,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
   },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xs,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  emptyHint: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  rowPressable: {
+    borderRadius: radius.lg,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
   },
-  date: { ...typography.h3, color: colors.text },
-  matches: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  date: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  matches: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   result: { ...typography.bodyBold },
 });

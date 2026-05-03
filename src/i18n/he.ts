@@ -72,6 +72,10 @@ export const he = {
   toastJoinRequestSent: 'הבקשה נשלחה',
   toastJoinedGroup: 'ברוך הבא לקבוצה',
   toastJoinSuccess: 'הצטרפת לקבוצה',
+  toastGameJoined: 'הצטרפת למשחק',
+  toastGameJoinedWaitlist: 'נוספת לרשימת המתנה',
+  toastGameJoinedPending: 'בקשת ההצטרפות נשלחה',
+  toastGameLeft: 'יצאת מהמשחק',
   toastRequestFailed: 'שליחת הבקשה נכשלה. נסה שוב.',
   toastMemberApproved: 'השחקן אושר',
   toastMemberRejected: 'הבקשה נדחתה',
@@ -409,7 +413,8 @@ export const he = {
   // Empty states (real mode)
   statsEmpty: 'אין עדיין נתונים',
   statsEmptySub: 'הסטטיסטיקות יתעדכנו אחרי המשחקים הראשונים שלך',
-  historyEmptyReal: 'אין משחקים קודמים',
+  historyEmptyReal: 'אין עדיין היסטוריית משחקים',
+  historyEmptyHint: 'ברגע שתסיים משחקים, הם יופיעו כאן',
 
   // Mock mode banner
   mockBanner: 'מצב נתוני דמו — לא קיים חיבור ל-Firebase',
@@ -808,9 +813,81 @@ export const he = {
   matchDetailsManage: 'ניהול משחק',
   matchDetailsCancel: 'בטל הרשמה',
   matchDetailsJoin: 'הצטרף למשחק',
+  matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
+  matchDetailsAlreadyStarted: 'המשחק כבר התחיל',
+  matchDetailsAlreadyLive: 'המשחק כבר במצב לייב',
+  matchDetailsAlreadyFinished: 'המשחק הסתיים',
+  matchDetailsAlreadyCancelled: 'המשחק בוטל',
+  matchDetailsTerminalSub: 'לא ניתן לבצע פעולות על המשחק הזה',
+  matchDetailsNotFound: 'המשחק לא קיים יותר',
+  // Stage 2 lifecycle CTAs / banners
+  lifecycleCtaJoin: 'הירשם למשחק',
+  lifecycleCtaCancelRegistration: 'בטל הרשמה',
+  lifecycleCtaStartEvening: 'התחל ערב',
+  lifecycleCtaGoLive: 'עבור ללייב',
+  lifecycleCtaStartRound: 'התחל משחקון',
+  lifecycleCtaRecordGoal: 'תעד גול',
+  lifecycleCtaEndRound: 'סיים משחקון',
+  lifecycleCtaEndEvening: 'סיים ערב',
+  lifecycleCannotJoin: 'אין אפשרות להצטרף למשחק הזה',
+  liveMatchNotActiveYet: 'המשחק עדיין לא פעיל',
+  // Top in-app banners (event signals, distinct from system toasts).
+  // These fire from the realtime game-doc listener, so they describe
+  // events that may be triggered by other users on other devices.
+  bannerPlayerJoined: 'שחקן הצטרף למשחק',
+  bannerPlayerLeft: 'שחקן יצא מהמשחק',
+  bannerGuestAdded: 'אורח נוסף למשחק',
+  bannerTeamsReady: 'הכוחות מוכנים',
+  bannerGoalRecorded: 'גול נרשם',
+  bannerEveningEnded: 'הערב הסתיים',
+  bannerGameCancelled: 'המשחק בוטל',
+  // Inline soft prompt at the top of MatchDetails for finished games
+  // the user played in. Complements the post-game push so a player who
+  // muted notifications still gets a clear nudge to rate teammates.
+  rateBannerTitle: 'דרג את חבריך מהמשחק',
+  rateBannerSub: 'תן דירוג מהיר לכל מי ששיחק איתך — חמש כוכבים, סוגר תוך דקה.',
+  rateBannerCta: 'התחל לדרג',
+  rateBannerDismiss: 'סגור',
+  // Pending join-request approvals — used both for community and game.
+  pendingApprove: 'אשר',
+  pendingReject: 'דחה',
+  pendingApprovalsBadge: (n: number) =>
+    n === 1 ? 'בקשה ממתינה' : `${n} בקשות ממתינות`,
+  matchDetailsPendingTitle: 'ממתינים לאישור',
+  communityDetailsPendingTitle: 'ממתינים לאישור',
+  // Per-game visibility — admin-only switch in MatchDetails. ON = the
+  // game appears in the global "Open Games" feed; OFF = only members
+  // of the parent community can see it.
+  matchVisibilityToggle: 'הצג לכל האפליקציה',
+  matchVisibilityHelper:
+    'כשהאפשרות כבויה, רק חברי הקהילה יראו את המשחק',
+  matchVisibilityErrorPublic: 'לא הצלחנו לפרסם את המשחק',
+  matchVisibilityErrorCommunity: 'לא הצלחנו להגביל את המשחק לקהילה',
+  // Blocked-state screen rendered when a non-member tries to open a
+  // community-only game (deep link / invite / push / stale nav). Must
+  // not leak any private game info — title, time, venue, players.
+  communityOnlyGameTitle: 'משחק לחברי קהילה בלבד',
+  communityOnlyGameSubtitle: 'המשחק הזה פתוח רק לחברי הקהילה',
+  communityOnlyGameBack: 'חזור',
   matchDetailsDuration: 'משך',
   matchDetailsRoleAdmin: 'מנהל',
   matchDetailsAddGuest: 'הוסף אורח',
+  matchDetailsJoinAsPlayer: 'הצטרף כשחקן',
+  // Refactored status card — single block replacing the old pill +
+  // helper + teams placeholder trio.
+  statusWaitingTitle: 'מחכים לשחקנים',
+  statusWaitingSub: (n: number) =>
+    n === 1 ? 'חסר עוד שחקן אחד כדי להתחיל' : `חסרים עוד ${n} שחקנים כדי להתחיל`,
+  statusReadyTitle: 'מוכנים להתחלה',
+  statusReadySub: 'אפשר ליצור כוחות ולהתחיל',
+  statusTeamsInvalidTitle: 'הכוחות לא מסונכרנים',
+  statusTeamsInvalidSub: 'צריך לבנות מחדש לפני שמתחילים',
+  // Empty-state inside the players card.
+  playersEmptyMissing: (n: number) =>
+    n === 1 ? 'חסר עוד שחקן אחד' : `חסרים עוד ${n} שחקנים`,
+  // Admin "manage game" section at the bottom.
+  manageSectionTitle: 'ניהול משחק',
+  deleteGameAction: 'מחיקת משחק',
   matchDetailsGoLive: 'עבור למצב לייב',
 
   // Notifications settings
@@ -835,6 +912,10 @@ export const he = {
   notifGrowthMilestoneSub: '10/20/30/50 שחקנים — אופציונלי',
   notifInviteToGame: 'הזמנות אישיות למשחקים',
   notifInviteToGameSub: 'כששחקן אחר מזמין אותך למשחק',
+  notifRateReminder: 'תזכורת לדרג חברים',
+  notifRateReminderSub: 'אחרי משחק שסיימת — שעה אחרי הסיום',
+  notifGameFillingUp: 'מקום אחרון במשחק קרוב',
+  notifGameFillingUpSub: 'משחקים בקבוצה שלך שכמעט מלאים',
   notifSave: 'שמור',
   notifSaved: 'נשמר',
 

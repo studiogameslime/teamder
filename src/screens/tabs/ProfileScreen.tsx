@@ -11,7 +11,7 @@
 // actions. Each band sits inside cards with the standard card shadow,
 // separated by 24dp gaps.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -31,24 +31,66 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Card } from '@/components/Card';
+import { PressableScale } from '@/components/PressableScale';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { StatTile } from '@/components/StatTile';
 import { SectionTitle } from '@/components/SectionTitle';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { achievementsService } from '@/services/achievementsService';
-import { userService } from '@/services';
+import { gameService, userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
-import { useCurrentGroup, useIsAdmin } from '@/store/groupStore';
+import { useCurrentGroup, useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { getAttendanceRate, getCancelRate, type User } from '@/types';
 
 const SUPPORT_EMAIL = 'support@hippocampus.me';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
 const APP_STORE_URL = 'https://apps.apple.com/app/id000000000';
+
+/**
+ * Returns a one-line preview of the most recent terminal game in the
+ * current community ("DD.MM.YY · המשחק הסתיים"). Used as the History
+ * NavRow's subtitle so the user sees the entry has fresh content
+ * without first navigating in. `null` while loading or when no
+ * history exists — the row gracefully omits the subtitle then.
+ */
+function useLastHistoryPreview(groupId: string | undefined): string | null {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!groupId) {
+      setPreview(null);
+      return;
+    }
+    let alive = true;
+    gameService
+      .getHistory(groupId)
+      .then((items) => {
+        if (!alive) return;
+        const top = items[0];
+        if (!top) return setPreview(null);
+        const d = new Date(top.date);
+        const dateLabel = `${d.getDate()}.${d.getMonth() + 1}.${String(
+          d.getFullYear(),
+        ).slice(2)}`;
+        const statusLabel =
+          top.status === 'cancelled'
+            ? he.matchDetailsAlreadyCancelled
+            : he.matchDetailsAlreadyFinished;
+        setPreview(`${dateLabel} · ${statusLabel}`);
+      })
+      .catch(() => {
+        if (alive) setPreview(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [groupId]);
+  return preview;
+}
 
 /**
  * Reads the count of users this profile invited via Firestore's count
@@ -148,6 +190,7 @@ export function ProfileScreen() {
   // renders even if the user briefly resolves to null while we're
   // hydrating /users/{uid}. Empty id → service returns 0 immediately.
   const invitedCount = useInvitedUsersCount(user?.id ?? '');
+  const lastHistoryPreview = useLastHistoryPreview(currentGroup?.id);
 
   if (!user) return null;
 
@@ -158,8 +201,16 @@ export function ProfileScreen() {
 
   const achievements = achievementsService.list(user);
   const unlocked = achievements.filter((a) => a.unlocked);
-  const pendingApprovals =
-    isAdmin && currentGroup ? currentGroup.pendingPlayerIds.length : 0;
+  // Sum across every community where I'm an admin, not just the
+  // currently-active one — otherwise an admin of multiple groups
+  // misses requests outside their selected group.
+  const myCommunities = useGroupStore((s) => s.groups);
+  const pendingApprovals = useMemo(() => {
+    if (!user) return 0;
+    return myCommunities
+      .filter((g) => g.adminIds.includes(user.id))
+      .reduce((acc, g) => acc + g.pendingPlayerIds.length, 0);
+  }, [myCommunities, user]);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -358,6 +409,7 @@ export function ProfileScreen() {
               <NavRow
                 icon="time-outline"
                 label={he.profileSectionHistory}
+                subtitle={lastHistoryPreview ?? undefined}
                 onPress={() => nav.navigate('History')}
                 isLast
               />
@@ -436,36 +488,40 @@ export function ProfileScreen() {
 function NavRow({
   icon,
   label,
+  subtitle,
   tint,
   onPress,
   isLast,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  /** Optional one-line caption under the label (muted). */
+  subtitle?: string;
   tint?: string;
   onPress: () => void;
   isLast?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.navRow,
-        !isLast && styles.navRowDivider,
-        pressed && { opacity: 0.6 },
-      ]}
+      style={!isLast ? styles.navRowDivider : undefined}
     >
-      <Ionicons
-        name={icon}
-        size={22}
-        color={tint ?? colors.primary}
-        style={styles.navIcon}
-      />
-      <Text style={[styles.navLabel, tint ? { color: tint } : null]}>
-        {label}
-      </Text>
-      <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-    </Pressable>
+      <View style={styles.navRow}>
+        <Ionicons
+          name={icon}
+          size={22}
+          color={tint ?? colors.primary}
+          style={styles.navIcon}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.navLabel, tint ? { color: tint } : null]}>
+            {label}
+          </Text>
+          {subtitle ? <Text style={styles.navSubtitle}>{subtitle}</Text> : null}
+        </View>
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+      </View>
+    </PressableScale>
   );
 }
 
@@ -622,8 +678,12 @@ const styles = StyleSheet.create({
   navLabel: {
     ...typography.body,
     color: colors.text,
-    flex: 1,
     fontWeight: '500',
+  },
+  navSubtitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   deleteAccountRow: {
     flexDirection: 'row',

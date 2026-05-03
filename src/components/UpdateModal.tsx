@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
 import { openStore } from '@/services/updateService';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   body: {
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 22,
     marginBottom: spacing.sm,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   actions: {

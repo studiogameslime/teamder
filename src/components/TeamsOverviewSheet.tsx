@@ -30,7 +30,7 @@ import {
   parseGuestRosterId,
   UserId,
 } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useGameStore } from '@/store/gameStore';
 
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.bodyBold,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
   scrollBody: {
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   cardName: {
     ...typography.bodyBold,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   waitingPill: {
     paddingHorizontal: 8,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   playerName: {
     ...typography.body,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
   guestPill: {
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   empty: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     paddingVertical: spacing.sm,
   },
 });

@@ -224,6 +224,10 @@ export interface NotificationPrefs {
   growthMilestone: boolean;
   /** Player: someone invited me directly to a game. */
   inviteToGame: boolean;
+  /** Player: a game I played in just ended — please rate teammates. */
+  rateReminder: boolean;
+  /** Player: a game in my community is almost full — last spots. */
+  gameFillingUp: boolean;
 }
 
 /** Defaults applied when `User.notificationPrefs` is missing or partial. */
@@ -237,6 +241,8 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   imLate: true,
   growthMilestone: false,
   inviteToGame: true,
+  rateReminder: true,
+  gameFillingUp: true,
 };
 
 /** Discriminated union of dispatch payloads stored under /notifications. */
@@ -250,7 +256,9 @@ export type NotificationType =
   | 'spotOpened'
   | 'imLate'
   | 'growthMilestone'
-  | 'inviteToGame';
+  | 'inviteToGame'
+  | 'rateReminder'
+  | 'gameFillingUp';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on
@@ -474,6 +482,13 @@ export interface GameSummary {
   date: number;       // ms epoch
   matchCount: number;
   lastResult?: { teamA: TeamColor; teamB: TeamColor; winner: TeamColor | 'tie' };
+  /**
+   * Terminal status — `'finished'` for normal completion, `'cancelled'`
+   * for an admin-cancelled evening. Used by the History screen to
+   * render the right banner. Optional for backward-compat with the
+   * mock seed data which predates the field.
+   */
+  status?: 'finished' | 'cancelled';
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────
@@ -528,7 +543,34 @@ export interface MatchRound {
 // EXCEPT for the `matches` array (which lives in /rounds). Registration is
 // flat user-id arrays — community-membership lives on Group, not here.
 
-export type GameStatus = 'open' | 'locked' | 'finished';
+/**
+ * Top-level lifecycle for a game/evening. Stage 2 lifecycle model:
+ *
+ *   scheduled  — future game; not yet open for registration. (Reserved
+ *                for upcoming UX where the organizer drafts a game in
+ *                advance; today most games are created already 'open'.)
+ *   open       — registration is open. Users can join/cancel.
+ *   locked     — registration closed. Admin prepares teams; no joins.
+ *   active     — evening in progress. Live screen drives the
+ *                sub-state via `liveMatch.phase`. No registration
+ *                changes; admin can record goals / rotate rounds.
+ *   finished   — evening ended. Read-only. Surfaces only in history.
+ *   cancelled  — admin cancelled the game. Read-only. Hidden from the
+ *                active/open lists. (Distinct from 'finished' — used
+ *                to be overloaded; see `cancelGameByAdmin`.)
+ *
+ * Backward compat: legacy data may have `status='finished'` for what
+ * is logically a cancellation. The lifecycle helpers in
+ * `src/services/gameLifecycle.ts` treat both as terminal — the
+ * distinction only matters for history labeling.
+ */
+export type GameStatus =
+  | 'scheduled'
+  | 'open'
+  | 'locked'
+  | 'active'
+  | 'finished'
+  | 'cancelled';
 export type GameFormat = '5v5' | '6v6' | '7v7';
 /** Surface of the pitch. Drives default match-duration suggestions. */
 export type FieldType = 'asphalt' | 'synthetic' | 'grass';
@@ -584,8 +626,28 @@ export interface Game {
   // ── New fields for the v2 Games tab. All optional so old docs still load.
   /** UID of the user who created the game. Required for approval workflows. */
   createdBy?: UserId;
-  /** When true, surfaces in the public "Open Games" section. */
-  isPublic?: boolean;
+  /**
+   * Access-control on the game doc — the only flag controlling who
+   * can read and discover the game.
+   *
+   *   • 'public'    — any signed-in user can read the game and join
+   *                   (subject to `requiresApproval`). Surfaces in
+   *                   the global "Open Games" feed.
+   *
+   *   • 'community' — only approved members + admins of the parent
+   *                   group can read the game. Pending users are NOT
+   *                   members and are blocked at the rules layer.
+   *
+   * Default at creation: `'public'` when the parent group is open
+   * (`isOpen === true`), otherwise `'community'`. Admin can flip via
+   * MatchDetailsScreen post-creation while the game is still in
+   * status='open'.
+   *
+   * Optional in the type for legacy docs only — the converter
+   * defaults missing fields to `'community'` (the conservative
+   * choice; never silently exposes a doc).
+   */
+  visibility?: 'community' | 'public';
   /** When true, joining is a request that the creator must approve. */
   requiresApproval?: boolean;
   /** Match format. Drives team-size + player count suggestions. */
@@ -637,6 +699,20 @@ export interface Game {
    * subsequent run doesn't double-send.
    */
   reminderSent?: boolean;
+
+  /**
+   * Flipped to true by `sendRateReminders` once the post-game
+   * "rate teammates" push has been dispatched. Idempotency guard so a
+   * subsequent run doesn't re-notify the same players.
+   */
+  rateReminderSent?: boolean;
+
+  /**
+   * Flipped to true by `onGameRosterChanged` once the "almost full"
+   * FOMO push has been dispatched for this game. We only want to fire
+   * the notice once — additional joins shouldn't re-trigger.
+   */
+  capacityNoticeSent?: boolean;
 
   /**
    * Per-player arrival status, keyed by user id. Missing keys are
@@ -725,7 +801,20 @@ export function parseGuestRosterId(rosterId: string): string | null {
   return isGuestId(rosterId) ? rosterId.slice(GUEST_ID_PREFIX.length) : null;
 }
 
-export type LiveMatchPhase = 'organizing' | 'live' | 'finished';
+/**
+ * Sub-state of an `active` game's live evening. The `'live'` value is
+ * a legacy alias kept for backward compatibility with games written
+ * before Stage 2 — newer code should prefer the round-aware
+ * sub-states. Helpers in `gameLifecycle.ts` treat `'live'` and
+ * `'roundRunning'` as equivalent for "match running" semantics.
+ */
+export type LiveMatchPhase =
+  | 'organizing'
+  | 'roundReady'
+  | 'roundRunning'
+  | 'roundEnded'
+  | 'finished'
+  | 'live';
 /**
  * Per-player zones supported by the live-match screen. Up to 5 teams
  * (A..E) can exist in the roster; only the first two (A & B) appear on

@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -26,7 +27,7 @@ import {
   defaultNotificationPrefs,
 } from '@/services/notificationsService';
 import { NotificationPrefs } from '@/types';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -81,6 +82,16 @@ const ROWS: Row[] = [
     sub: he.notifInviteToGameSub,
   },
   {
+    key: 'rateReminder',
+    label: he.notifRateReminder,
+    sub: he.notifRateReminderSub,
+  },
+  {
+    key: 'gameFillingUp',
+    label: he.notifGameFillingUp,
+    sub: he.notifGameFillingUpSub,
+  },
+  {
     key: 'growthMilestone',
     label: he.notifGrowthMilestone,
     sub: he.notifGrowthMilestoneSub,
@@ -90,9 +101,13 @@ const ROWS: Row[] = [
 export function NotificationsSettingsScreen() {
   const nav = useNavigation();
   const user = useUserStore((s) => s.currentUser);
-  const [prefs, setPrefs] = useState<NotificationPrefs>(
-    user?.notificationPrefs ?? defaultNotificationPrefs
-  );
+  // Merge defaults under saved prefs so a legacy user whose stored
+  // `notificationPrefs` predates the latest fields still gets sensible
+  // values for the new toggles instead of an unchecked switch.
+  const [prefs, setPrefs] = useState<NotificationPrefs>({
+    ...defaultNotificationPrefs,
+    ...(user?.notificationPrefs ?? {}),
+  });
   const [busy, setBusy] = useState(false);
 
   if (!user) return null;
@@ -127,8 +142,9 @@ export function NotificationsSettingsScreen() {
         <Text style={styles.intro}>{he.notificationsIntro}</Text>
         <Card style={styles.card}>
           {ROWS.map((row, i) => (
-            <View
+            <Pressable
               key={row.key}
+              onPress={() => toggle(row.key)}
               style={[styles.row, i > 0 && styles.rowDivider]}
             >
               <View style={{ flex: 1 }}>
@@ -141,7 +157,7 @@ export function NotificationsSettingsScreen() {
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#fff"
               />
-            </View>
+            </Pressable>
           ))}
         </Card>
       </ScrollView>
@@ -165,7 +181,7 @@ const styles = StyleSheet.create({
   intro: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   card: { padding: 0, overflow: 'hidden' },
   row: {

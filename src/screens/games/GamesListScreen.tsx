@@ -45,9 +45,13 @@ import {
   type GameFilters,
 } from '@/components/GameFilterSheet';
 import { gameService } from '@/services/gameService';
+import {
+  isVisibleInMyGames,
+  isVisibleInOpenGames,
+} from '@/services/gameLifecycle';
 import { storage } from '@/services/storage';
 import { Game } from '@/types';
-import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -153,13 +157,19 @@ export function GamesListScreen() {
   const visible = useMemo(() => {
     let base: Game[];
     if (tab === 'mine') {
-      base = [...myGames];
+      // "שלי" — exclude finished + cancelled. They belong to history,
+      // not the active list. The lifecycle helper handles legacy data
+      // (status='finished' meaning either real completion or
+      // cancellation) uniformly.
+      base = myGames.filter(isVisibleInMyGames);
     } else {
-      // "פתוחים" tab — everything that's not strictly "mine". We
-      // de-dupe across the community + open buckets in case a game
-      // appears in both.
+      // "פתוחים" — discovery list. Show only currently joinable games:
+      // status='open' AND startsAt > now. De-dupe across the community
+      // + open buckets in case a game appears in both.
       const set = new Map<string, Game>();
-      [...communityGames, ...openGames].forEach((g) => set.set(g.id, g));
+      [...communityGames, ...openGames]
+        .filter(isVisibleInOpenGames)
+        .forEach((g) => set.set(g.id, g));
       base = Array.from(set.values());
     }
     return applyGameFilters(base, filters).sort(sortByStart);
@@ -527,7 +537,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   hintArrow: {
     position: 'absolute',

@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.sendGameReminders = exports.onNotificationCreated = void 0;
+exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.cleanupStaleGames = exports.sendGameReminders = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -77,13 +77,28 @@ function buildMessage(type, payload) {
                 title: 'בקשת הצטרפות חדשה',
                 body: `מישהו מבקש להצטרף ל${groupName}`,
             };
-        case 'approved':
-            return { title: 'הבקשה אושרה', body: `אושרת ל${groupName}` };
-        case 'rejected':
+        case 'approved': {
+            // Same notification type covers both community membership
+            // approval and game-join approval. The presence of `gameId` in
+            // the payload is the discriminator — community approvals carry
+            // a groupName (or default), game approvals carry a gameTitle.
+            const isGameApproval = typeof payload.gameId === 'string';
+            return {
+                title: 'הבקשה אושרה',
+                body: isGameApproval
+                    ? `אושרת ל${gameTitle}`
+                    : `אושרת ל${groupName}`,
+            };
+        }
+        case 'rejected': {
+            const isGameRejection = typeof payload.gameId === 'string';
             return {
                 title: 'הבקשה נדחתה',
-                body: `הבקשה שלך ל${groupName} נדחתה`,
+                body: isGameRejection
+                    ? `הבקשה שלך ל${gameTitle} נדחתה`
+                    : `הבקשה שלך ל${groupName} נדחתה`,
             };
+        }
         case 'newGameInCommunity': {
             const title = payload.title || groupName;
             return {
@@ -122,6 +137,21 @@ function buildMessage(type, payload) {
                 body: when
                     ? `${inviter} הזמין אותך ל${gameTitle} (${when})`
                     : `${inviter} הזמין אותך ל${gameTitle}`,
+            };
+        }
+        case 'rateReminder':
+            return {
+                title: 'דרג את חבריך מהמשחק',
+                body: `המשחק ${gameTitle} הסתיים — תן דירוג בלחיצה אחת.`,
+            };
+        case 'gameFillingUp': {
+            const remaining = payload.remaining ?? 0;
+            const head = remaining === 1 ? 'מקום אחרון' : `${remaining} מקומות אחרונים`;
+            return {
+                title: `${head} ב${gameTitle}`,
+                body: when
+                    ? `${head} — המשחק ${when}, הירשם לפני שייסגר.`
+                    : `${head} — הירשם לפני שייסגר.`,
             };
         }
         case 'growthMilestone':
@@ -178,14 +208,34 @@ async function resolveRecipients(notif) {
         const groupId = payload.groupId || notif.recipientId;
         if (!groupId)
             return [];
+        // Self-exclusion: the admin who just created the game shouldn't
+        // get pinged about their own creation. We prefer payload.createdBy
+        // (forward-compatible) and fall back to reading the game doc —
+        // older app builds didn't include createdBy in the payload, but
+        // it's always written on the game itself.
+        let createdBy = typeof payload.createdBy === 'string' ? payload.createdBy : '';
+        if (!createdBy) {
+            const gameId = typeof payload.gameId === 'string' ? payload.gameId : '';
+            if (gameId) {
+                const gSnap = await db.collection('games').doc(gameId).get();
+                if (gSnap.exists) {
+                    const gd = gSnap.data();
+                    if (typeof gd.createdBy === 'string')
+                        createdBy = gd.createdBy;
+                }
+            }
+        }
         const snap = await db
             .collection('users')
             .where('newGameSubscriptions', 'array-contains', groupId)
             .get();
-        return snap.docs.map((d) => d.data());
+        return snap.docs
+            .filter((d) => d.id !== createdBy)
+            .map((d) => d.data());
     }
     if (notif.type === 'gameReminder' ||
-        notif.type === 'gameCanceledOrUpdated') {
+        notif.type === 'gameCanceledOrUpdated' ||
+        notif.type === 'rateReminder') {
         const gameId = payload.gameId || notif.recipientId;
         if (!gameId)
             return [];
@@ -193,14 +243,38 @@ async function resolveRecipients(notif) {
         if (!gSnap.exists)
             return [];
         const g = gSnap.data();
-        const ids = notif.type === 'gameReminder'
-            ? g.players || []
-            : Array.from(new Set([
+        const ids = notif.type === 'gameCanceledOrUpdated'
+            ? Array.from(new Set([
                 ...(g.players || []),
                 ...(g.waitlist || []),
                 ...(g.pending || []),
-            ]));
+            ]))
+            : g.players || []; // gameReminder + rateReminder → players only
         return loadUsers(ids);
+    }
+    if (notif.type === 'gameFillingUp') {
+        // Fan out to community members who could still join — exclude
+        // anyone already on the roster (players, waitlist, pending). The
+        // `recipientId` carries the gameId; payload.groupId is required.
+        const gameId = payload.gameId || notif.recipientId;
+        const groupId = payload.groupId;
+        if (!gameId || !groupId)
+            return [];
+        const [gSnap, grpSnap] = await Promise.all([
+            db.collection('games').doc(gameId).get(),
+            db.collection('groups').doc(groupId).get(),
+        ]);
+        if (!gSnap.exists || !grpSnap.exists)
+            return [];
+        const g = gSnap.data();
+        const grp = grpSnap.data();
+        const inRoster = new Set([
+            ...(g.players || []),
+            ...(g.waitlist || []),
+            ...(g.pending || []),
+        ]);
+        const candidates = (grp.playerIds || []).filter((u) => !inRoster.has(u));
+        return loadUsers(candidates);
     }
     // Single recipient.
     const snap = await db.collection('users').doc(notif.recipientId).get();
@@ -349,6 +423,290 @@ exports.sendGameReminders = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
+});
+// ─── Scheduled: stale-game cleanup ─────────────────────────────────────
+/**
+ * Hourly sweep that retires games whose kickoff was more than 6h ago
+ * but never reached a terminal state. Two outcomes per stale game:
+ *
+ *   • Zombie (nobody ever joined: `players` and `guests` both empty)
+ *     → delete the game doc + every `/rounds/{id}` it owns. Keeps the
+ *       DB free of "ghost" entries the user never engaged with.
+ *
+ *   • Anything else (people registered, possibly played, just nobody
+ *     pressed "סיים ערב")
+ *     → flip status to 'finished' and lock=true. The doc keeps living
+ *       so the History tab and any shared invite links continue to
+ *       resolve cleanly.
+ *
+ * The CF and the client guards in gameLifecycle.ts are intentionally
+ * redundant: clients hide stale games from the UI immediately, and the
+ * CF makes the change durable in Firestore so writes from older
+ * clients (or admins reaching the doc via direct nav) can't resurrect.
+ */
+exports.cleanupStaleGames = (0, scheduler_1.onSchedule)({
+    schedule: 'every 60 minutes',
+    timeZone: 'Asia/Jerusalem',
+}, async () => {
+    const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
+    const cutoff = Date.now() - STALE_AFTER_MS;
+    // We only care about games that haven't reached a terminal state.
+    // 'in' supports up to 30 values so three buckets fit fine.
+    const snap = await db
+        .collection('games')
+        .where('status', 'in', ['open', 'locked', 'active'])
+        .where('startsAt', '<', cutoff)
+        .get();
+    if (snap.empty) {
+        console.log('[cleanupStaleGames] no stale games');
+        return;
+    }
+    let deleted = 0;
+    let finished = 0;
+    const ops = [];
+    for (const gameDoc of snap.docs) {
+        const g = gameDoc.data();
+        const playerCount = (g.players ?? []).length;
+        const guestCount = (g.guests ?? []).length;
+        const isZombie = playerCount === 0 && guestCount === 0;
+        if (isZombie) {
+            // Nuke the game and any /rounds it owns. We use a chunked delete
+            // because a single batch caps at 500 ops — round counts here are
+            // tiny (≤ ~10), but the pattern is safe regardless.
+            ops.push((async () => {
+                const rounds = await db
+                    .collection('rounds')
+                    .where('gameId', '==', gameDoc.id)
+                    .get();
+                const batch = db.batch();
+                rounds.docs.forEach((r) => batch.delete(r.ref));
+                batch.delete(gameDoc.ref);
+                await batch.commit();
+                deleted++;
+            })());
+        }
+        else {
+            ops.push(gameDoc.ref.update({ status: 'finished', locked: true }).then(() => {
+                finished++;
+            }));
+        }
+    }
+    await Promise.all(ops);
+    console.log(`[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`);
+});
+// ─── Scheduled: post-game "rate teammates" reminder ────────────────────
+/**
+ * Wake players up to rate their teammates after the evening ends.
+ *
+ * Window: a game is eligible once `startsAt` is between 60-180 minutes
+ * in the past AND it has at least one player. The wide window covers
+ * scheduler skew (we run every 30m) and games whose admin pressed
+ * "סיים ערב" late. The `rateReminderSent` flag latches the reminder so
+ * a second run inside that window doesn't double-fire.
+ *
+ * We don't gate on `status === 'finished'` because a perfectly normal
+ * game might still be `'active'` 90 minutes after kickoff (admin
+ * forgot to press end). The cleanup CF will eventually flip it; in the
+ * meantime players still want a reminder while the night is fresh.
+ *
+ * Status guard: skip 'cancelled' explicitly — there are no teammates
+ * to rate. 'open' / 'locked' games where kickoff was 60+ min ago and
+ * nothing happened mean a no-show; the cleanup CF deletes those as
+ * zombies anyway, so we'd never fire on them in practice — the guard
+ * is belt-and-suspenders.
+ */
+exports.sendRateReminders = (0, scheduler_1.onSchedule)({
+    schedule: 'every 30 minutes',
+    timeZone: 'Asia/Jerusalem',
+}, async () => {
+    const now = Date.now();
+    // Window: 1h..6h after kickoff. Aligns with the 6h cleanup-CF
+    // boundary — past that point the cleanup flips the game to
+    // 'finished' and we'd skip it anyway. Wider than strictly
+    // necessary so we never miss a game between scheduler runs.
+    const lower = now - 6 * 60 * 60 * 1000;
+    const upper = now - 60 * 60 * 1000;
+    const snap = await db
+        .collection('games')
+        .where('startsAt', '>=', lower)
+        .where('startsAt', '<', upper)
+        .get();
+    if (snap.empty) {
+        console.log('[sendRateReminders] no candidate games');
+        return;
+    }
+    const ops = [];
+    let dispatched = 0;
+    for (const gameDoc of snap.docs) {
+        const g = gameDoc.data();
+        if (g.rateReminderSent)
+            continue;
+        // Skip cancellations explicitly. We also skip 'open' games — a
+        // game still 'open' 1h+ after kickoff with players means nothing
+        // happened (no admin pressed start). Asking those players to
+        // rate is meaningless. The cleanup CF will eventually retire it.
+        if (g.status === 'cancelled')
+            continue;
+        if (g.status === 'open')
+            continue;
+        if (!g.players || g.players.length === 0)
+            continue;
+        // One fan-out notification doc per game; the resolver expands it
+        // to game.players. recipientId carries the gameId, mirroring the
+        // pattern used by `gameReminder`.
+        ops.push(db.collection('notifications').add({
+            type: 'rateReminder',
+            recipientId: gameDoc.id,
+            payload: {
+                gameId: gameDoc.id,
+                gameTitle: g.title || 'המשחק',
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            delivered: false,
+        }));
+        ops.push(gameDoc.ref.update({ rateReminderSent: true }));
+        dispatched++;
+    }
+    await Promise.all(ops);
+    console.log(`[sendRateReminders] dispatched ${dispatched} rate reminder(s)`);
+});
+// ─── Realtime trigger: community join request → admin push ─────────────
+/**
+ * Watches community docs for additions to `pendingPlayerIds` and fans
+ * out a `joinRequest` push to every admin server-side.
+ *
+ * Why this lives on the server: the user submitting the request goes
+ * through the public-projection path (groupsPublic) — they can't read
+ * the private `/groups/{id}` doc, so `group.adminIds` comes back empty
+ * client-side and the existing client-side dispatch in
+ * `groupStore.requestJoinById` silently no-ops. The CF reads the
+ * private doc with admin credentials and dispatches per admin.
+ *
+ * Idempotency: we only fire when the array actually grew on this
+ * write. Edits to the same doc that don't change pendingPlayerIds
+ * (rename, settings, etc.) are no-ops here. We never persist a "sent"
+ * flag because each request is its own event — sending twice means
+ * the user genuinely re-requested.
+ */
+exports.onGroupPendingChanged = (0, firestore_1.onDocumentWritten)('groups/{groupId}', async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after)
+        return;
+    const beforeIds = new Set(before?.pendingPlayerIds ?? []);
+    const afterIds = after.pendingPlayerIds ?? [];
+    const newcomers = afterIds.filter((id) => !beforeIds.has(id));
+    if (newcomers.length === 0)
+        return;
+    const admins = after.adminIds ?? [];
+    if (admins.length === 0)
+        return;
+    const groupId = event.params.groupId;
+    const groupName = after.name || 'הקבוצה';
+    const ops = [];
+    for (const requesterId of newcomers) {
+        for (const adminId of admins) {
+            ops.push(db.collection('notifications').add({
+                type: 'joinRequest',
+                recipientId: adminId,
+                payload: {
+                    groupId,
+                    groupName,
+                    requesterId,
+                },
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                delivered: false,
+            }));
+        }
+    }
+    await Promise.all(ops);
+    console.log(`[onGroupPendingChanged] dispatched ${ops.length} joinRequest push(es) for group ${groupId}`);
+});
+// ─── Realtime trigger: "almost full" FOMO push ─────────────────────────
+/**
+ * Fan-out a "last spots" push when a game's roster crosses the 90%
+ * capacity threshold. Triggers on every write to a game doc, but the
+ * `capacityNoticeSent` latch on the doc itself ensures we only fire
+ * once per game even if the threshold is briefly bounced (player
+ * cancels, then someone new joins).
+ *
+ * Ignored when:
+ *   • the game has no roster cap (`maxPlayers <= 0`)
+ *   • the game's status is anything but 'open' (locked/active/etc are
+ *     past the registration window — too late for a "join now" push)
+ *   • capacity was already at/over 90% on the *previous* version of
+ *     the doc — we only want to fire on the actual crossing event,
+ *     not on every subsequent edit while it's full
+ *   • the latch is already set
+ *
+ * Recipient resolution and de-duplication happen downstream in
+ * `onNotificationCreated → resolveRecipients` (see `gameFillingUp`
+ * branch there).
+ */
+exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}', async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after)
+        return; // doc deleted
+    if (after.capacityNoticeSent)
+        return;
+    if (after.status !== 'open')
+        return;
+    const max = after.maxPlayers ?? 0;
+    if (max <= 0)
+        return;
+    const beforeCount = (before?.players?.length ?? 0) + (before?.guests?.length ?? 0);
+    const afterCount = (after.players?.length ?? 0) + (after.guests?.length ?? 0);
+    const threshold = Math.ceil(max * 0.9);
+    const crossed = beforeCount < threshold && afterCount >= threshold;
+    if (!crossed)
+        return;
+    // Don't fire if the roster is already closed (full or over). At
+    // 100% the message "last spots" is misleading; new joiners would
+    // hit the waitlist instead.
+    if (afterCount >= max)
+        return;
+    const remaining = max - afterCount;
+    const gameId = event.params.gameId;
+    // Latch via transaction so two concurrent triggers (e.g. two
+    // players joining the same game in the same second) can't both
+    // observe `capacityNoticeSent=false` and each write a duplicate
+    // notification. The transaction reads the doc fresh and aborts if
+    // the latch is already set; only the winner proceeds to dispatch.
+    const ref = event.data.after.ref;
+    let claimed = false;
+    try {
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(ref);
+            if (!fresh.exists)
+                return;
+            const data = fresh.data();
+            if (data.capacityNoticeSent)
+                return; // someone else won
+            tx.update(ref, { capacityNoticeSent: true });
+            claimed = true;
+        });
+    }
+    catch (err) {
+        console.error('[onGameRosterChanged] latch transaction failed', err);
+        return;
+    }
+    if (!claimed)
+        return;
+    await db.collection('notifications').add({
+        type: 'gameFillingUp',
+        recipientId: gameId,
+        payload: {
+            gameId,
+            groupId: after.groupId || '',
+            gameTitle: after.title || 'המשחק',
+            startsAt: after.startsAt ?? null,
+            remaining,
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        delivered: false,
+    });
+    console.log(`[onGameRosterChanged] dispatched gameFillingUp for ${gameId} (${afterCount}/${max}, ${remaining} left)`);
 });
 // ─── Rating: keep summary doc in sync with vote subcollection ──────────
 /**

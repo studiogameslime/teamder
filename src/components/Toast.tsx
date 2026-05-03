@@ -20,7 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -177,6 +177,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 });

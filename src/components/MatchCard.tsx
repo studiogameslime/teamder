@@ -30,10 +30,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Card } from './Card';
 import { Badge } from './Badge';
 import { PlayerIdentity } from './PlayerIdentity';
+import { PressableScale } from './PressableScale';
 import { Game, GameFormat, FieldType, UserId } from '@/types';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { colors, radius, shadows, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useGameStore } from '@/store/gameStore';
+import { useGroupStore } from '@/store/groupStore';
 
 export type MatchCardCta =
   | 'join'
@@ -107,20 +109,43 @@ export function MatchCard({ game, userId, onPrimary, busy }: Props) {
   const fmt = formatLabel(game.format);
   const occupancy = game.players.length + (game.guests?.length ?? 0);
 
-  const openDetails = () => nav.navigate('MatchDetails', { gameId: game.id });
+  // Admin = game creator OR an admin of the parent group. Mirrors the
+  // gate used in MatchDetailsScreen so the badge is visible to anyone
+  // who can act on it.
+  const myCommunities = useGroupStore((s) => s.groups);
+  const isAdmin =
+    game.createdBy === userId ||
+    !!myCommunities
+      .find((c) => c.id === game.groupId)
+      ?.adminIds.includes(userId);
+  const pendingCount = (game.pending ?? []).length;
+  const showPendingBadge = isAdmin && pendingCount > 0;
+
+  // MatchCard renders in two parents — GameStack (where MatchDetails
+  // is a sibling and the bare `nav.navigate('MatchDetails', ...)`
+  // works) and CommunitiesStack (where it isn't, and the bare call
+  // throws "NAVIGATE was not handled"). Routing via the GameTab
+  // nested form works in both places: from within GameStack it's a
+  // same-tab push; from CommunitiesStack it switches tabs and lands
+  // on MatchDetails.
+  const openDetails = () =>
+    nav.navigate('GameTab', {
+      screen: 'MatchDetails',
+      params: { gameId: game.id },
+    });
 
   return (
-    <Pressable
-      onPress={openDetails}
-      style={({ pressed }) => [pressed && { transform: [{ scale: 0.985 }] }]}
-    >
+    <PressableScale onPress={openDetails}>
       <Card style={styles.card}>
         {/* TOP — title (RIGHT) + status badge (LEFT) */}
         <View style={styles.topRow}>
           <Text style={styles.title} numberOfLines={1}>
             {game.title}
           </Text>
-          <StatusBadge status={status} game={game} />
+          <View style={styles.topRight}>
+            {showPendingBadge ? <PendingBadge count={pendingCount} /> : null}
+            <StatusBadge status={status} game={game} />
+          </View>
         </View>
 
         {/* MIDDLE — two compact rows. Each row carries two atoms:
@@ -161,7 +186,7 @@ export function MatchCard({ game, userId, onPrimary, busy }: Props) {
           <ActionButton cta={cta} busy={busy} onPress={() => onPrimary(cta)} />
         </View>
       </Card>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -192,6 +217,20 @@ function InfoRow({
       <Text style={styles.infoText} numberOfLines={1}>
         {text}
       </Text>
+    </View>
+  );
+}
+
+/**
+ * Small red pill showing the count of pending join requests. Visible
+ * only to admins (the ones who can act on it). Tapping the card
+ * navigates to MatchDetails where the approval section lives.
+ */
+function PendingBadge({ count }: { count: number }) {
+  return (
+    <View style={styles.pendingBadge} accessibilityLabel={he.pendingApprovalsBadge(count)}>
+      <Ionicons name="person-add" size={11} color={colors.textOnPrimary} />
+      <Text style={styles.pendingBadgeText}>{count}</Text>
     </View>
   );
 }
@@ -272,13 +311,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.sm,
   },
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   title: {
     color: colors.text,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
+  },
+  pendingBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 3,
+  },
+  pendingBadgeText: {
+    color: colors.textOnPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 14,
   },
 
   // INFO — two rows × two atoms each.
@@ -340,7 +401,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
     fontWeight: '600',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Join CTA — green pill, compact.

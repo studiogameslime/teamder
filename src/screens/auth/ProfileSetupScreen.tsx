@@ -52,6 +52,7 @@ export function ProfileSetupScreen() {
           placeholder={he.profileNamePlaceholder}
           maxLength={40}
           icon="person-outline"
+          required
         />
       </Card>
 

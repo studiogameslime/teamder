@@ -41,7 +41,7 @@ function gameToValues(g: Game): GameFormValues {
     hasReferee: !!g.hasReferee,
     hasPenalties: !!g.hasPenalties,
     hasHalfTime: !!g.hasHalfTime,
-    isPublic: !!g.isPublic,
+    visibility: g.visibility ?? 'community',
     fieldType: g.fieldType,
     cancelDeadlineHours: g.cancelDeadlineHours,
     requiresApproval: !!g.requiresApproval,
@@ -61,10 +61,29 @@ export function GameEditScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const g = await gameService.getGameById(gameId);
-      if (!alive) return;
-      setGame(g);
-      setLoading(false);
+      try {
+        const g = await gameService.getGameById(gameId);
+        if (!alive) return;
+        // null and ACCESS_BLOCKED both render the generic error
+        // state below — by design, an admin who landed here without
+        // permission to read the doc shouldn't be silently shown
+        // anything else. We don't differentiate further because
+        // GameEdit is admin-only; non-admins can't reach this route.
+        setGame(g);
+      } catch (err) {
+        const code =
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? ((err as { code: string }).code)
+            : '';
+        if (alive && code === 'ACCESS_BLOCKED') {
+          setGame(null); // empty state below; nav already restricts
+                          // who can hit this route.
+        } else if (__DEV__) {
+          console.warn('[gameEdit] load failed', err);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
     })();
     return () => {
       alive = false;
@@ -99,6 +118,12 @@ export function GameEditScreen() {
     const parsedExtra = parseInt(v.extraTimeMinutes, 10);
     const playersPerTeam =
       v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
+    // Visibility is access-control: routed through the dedicated
+    // setVisibility handler so its admin/status/enum guards run, not
+    // through the generic patch path (which now rejects `visibility`).
+    if (v.visibility !== game.visibility) {
+      await gameService.setVisibility(game.id, v.visibility);
+    }
     await gameService.updateGameV2(game.id, {
       title: v.title.trim() || game.title,
       startsAt: v.startsAt,
@@ -114,7 +139,6 @@ export function GameEditScreen() {
         Number.isFinite(parsedDuration) && parsedDuration > 0
           ? parsedDuration
           : undefined,
-      isPublic: v.isPublic,
       requiresApproval: v.requiresApproval,
       bringBall: v.bringBall,
       bringShirts: v.bringShirts,

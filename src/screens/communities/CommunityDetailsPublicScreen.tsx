@@ -40,7 +40,7 @@ import {
   openWhatsApp,
 } from '@/services/whatsappService';
 import { GroupPublic, WeekdayIndex } from '@/types';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.xs,
   },
   bodyText: {
     ...typography.body,
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   metaRow: {
@@ -265,14 +265,14 @@ const styles = StyleSheet.create({
   metaLabel: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   metaValue: {
     ...typography.caption,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     writingDirection: 'rtl',
   },
   empty: {

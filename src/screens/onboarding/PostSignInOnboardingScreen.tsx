@@ -18,7 +18,7 @@ import { InputField } from '@/components/InputField';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { JERSEY_COLORS, JERSEY_PATTERNS, autoJersey } from '@/data/jerseys';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import type { Jersey as JerseyType, JerseyPattern } from '@/types';
@@ -148,11 +148,13 @@ export function PostSignInOnboardingScreen() {
 
         {/* Name */}
         <InputField
+          label={he.profileName}
           value={name}
           onChangeText={setName}
           placeholder={he.profileNamePlaceholder}
           maxLength={40}
           icon="person-outline"
+          required
         />
 
         {/* Optional nickname (printed on the shirt) */}
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
     ...typography.bodyBold,
     color: colors.text,
     flex: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Profile step
@@ -317,7 +319,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.xs,
   },
   numberRow: {

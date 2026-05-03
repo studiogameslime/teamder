@@ -28,7 +28,7 @@ import {
   trimDisplayName,
 } from '@/data/jerseys';
 import type { Jersey, JerseyPattern } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   intro: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   previewCard: {
     alignItems: 'center',
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   input: {
     ...typography.body,
@@ -251,6 +251,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    // Hebrew TextInput on Android needs physical 'right' to hug the
+    // visual right edge. Number inputs override this with an inline
+    // textAlign='center' prop on the TextInput itself.
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   swatchRow: {
     flexDirection: 'row',

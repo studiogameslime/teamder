@@ -18,6 +18,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -39,8 +40,19 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { PlayerCountBar } from '@/components/PlayerCountBar';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { useGameEvents } from '@/services/useGameEvents';
+import {
+  canCancelRegistration,
+  canJoinGame,
+  isCancelled,
+  isFinished,
+  isOpen,
+  isRoundRunning,
+  isTerminal as isTerminalGame,
+} from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
@@ -57,7 +69,7 @@ import {
   UserId,
   toGuestRosterId,
 } from '@/types';
-import { colors, shadows, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -183,7 +195,12 @@ function deriveSessionStatus(
   const validity = teamsValidity(game);
   if (validity.state === 'invalid') return 'teams_invalid';
   if (validity.state === 'valid') {
-    return game.liveMatch?.phase === 'live' ? 'active' : 'teams_ready';
+    // Stage 2: Game.status='active' OR legacy liveMatch.phase='live'.
+    // The helper centralises both cases so we don't drift from the
+    // service / rule definitions of "match is live".
+    return isRoundRunning(game) || game.status === 'active'
+      ? 'active'
+      : 'teams_ready';
   }
   // No teams placed (or only bench) — fall back to the roster gate.
   const min = effectiveMinPlayers(game);
@@ -282,25 +299,65 @@ export function MatchDetailsScreen() {
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
+  // Local-only dismiss for the post-game "rate teammates" banner.
+  // Intentionally not persisted — re-entering the screen is a fine
+  // place to surface the prompt again if the user navigated away
+  // without acting. If we ever want it sticky, switch to AsyncStorage
+  // keyed by gameId.
+  const [rateBannerDismissed, setRateBannerDismissed] = useState(false);
+  // Set when Firestore returns permission-denied for this game —
+  // typically a non-member following an old invite link to a game
+  // that's now visibility='community'. We render a dedicated blocked
+  // screen (NOT the normal MatchDetails layout) to guarantee no
+  // private info is rendered for that user.
+  const [accessBlocked, setAccessBlocked] = useState(false);
+
+  // Realtime banners for joins, guests, teams-ready, goals, status
+  // changes — fired by the shared listener so every device sees the
+  // same signals regardless of who triggered the change.
+  useGameEvents(gameId);
 
   const reload = React.useCallback(async () => {
     setLoading(true);
     try {
       const g = await gameService.getGameById(gameId);
-      setGame(g);
-      if (g) {
-        logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
-        const uids = Array.from(
-          new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
-        );
-        if (uids.length > 0) hydratePlayers(uids);
+      // null === doc genuinely doesn't exist (deleted / never was).
+      // ACCESS_BLOCKED was thrown above and is handled in the catch
+      // — it never reaches this branch, so null here is unambiguous.
+      if (g === null) {
+        setGame(null);
+        setAccessBlocked(false);
+        toast.error(he.matchDetailsNotFound);
+        if (nav.canGoBack()) nav.goBack();
+        return;
       }
+      setGame(g);
+      setAccessBlocked(false);
+      logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
+      const uids = Array.from(
+        new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+      );
+      if (uids.length > 0) hydratePlayers(uids);
     } catch (err) {
+      // Service surfaces a stable code for the rules-denied case; we
+      // pivot the whole screen to the blocked-access render so no
+      // game info ever mounts. Any other error stays opaque (logged
+      // in dev) — we don't want to mistakenly show "blocked" for a
+      // transient network failure.
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'ACCESS_BLOCKED') {
+        setGame(null);
+        setAccessBlocked(true);
+        return;
+      }
       if (__DEV__) console.warn('[matchDetails] reload failed', err);
     } finally {
       setLoading(false);
     }
-  }, [gameId, hydratePlayers]);
+  }, [gameId, hydratePlayers, nav]);
 
   useEffect(() => {
     reload();
@@ -370,20 +427,144 @@ export function MatchDetailsScreen() {
   const handlePrimary = async () => {
     if (!user || !game) return;
     const status = statusForUser(game, user.id);
+    // Lifecycle gate via the shared helper (mirrors the txn check
+    // inside joinGameV2 and the firestore.rules clause). Cancel
+    // doesn't go through canJoinGame — a player who's already in can
+    // still bail until a round is actually running.
+    const isJoinAction =
+      status !== 'joined' && status !== 'waitlist' && status !== 'pending';
+    if (isJoinAction) {
+      if (!canJoinGame(game)) {
+        if (isFinished(game)) toast.info(he.matchDetailsAlreadyFinished);
+        else if (isCancelled(game)) toast.info(he.matchDetailsAlreadyCancelled);
+        else if (isRoundRunning(game)) toast.info(he.matchDetailsAlreadyLive);
+        else if (game.startsAt && game.startsAt < Date.now()) {
+          toast.info(he.matchDetailsAlreadyStarted);
+        } else toast.info(he.matchDetailsClosedForRegistration);
+        return;
+      }
+    } else if (!canCancelRegistration(game)) {
+      // Mid-round cancel — block. Other terminal states already
+      // hide the cancel CTA, but defensively guard the path.
+      toast.info(he.matchDetailsAlreadyLive);
+      return;
+    }
     setBusy(true);
     try {
-      if (status === 'joined' || status === 'waitlist' || status === 'pending') {
+      if (!isJoinAction) {
         await gameService.cancelGameV2(game.id, user.id);
+        // Splice locally — same race avoidance as the guest-add
+        // path: a getDoc round-trip after the transaction commit
+        // sometimes returned the pre-commit snapshot, leaving the
+        // UI showing stale state.
+        setGame((prev) => {
+          if (!prev) return prev;
+          const wasPlayer = prev.players.includes(user.id);
+          const players = prev.players.filter((id) => id !== user.id);
+          let waitlist = prev.waitlist.filter((id) => id !== user.id);
+          const pending = (prev.pending ?? []).filter((id) => id !== user.id);
+          // Match the server-side promote-from-waitlist behaviour so
+          // the UI stays consistent even before the next snapshot.
+          let promotedPlayers = players;
+          if (
+            wasPlayer &&
+            waitlist.length > 0 &&
+            players.length < prev.maxPlayers
+          ) {
+            promotedPlayers = [...players, waitlist[0]];
+            waitlist = waitlist.slice(1);
+          }
+          const participantIds = (prev.participantIds ?? []).filter(
+            (id) => id !== user.id,
+          );
+          return {
+            ...prev,
+            players: promotedPlayers,
+            waitlist,
+            pending,
+            participantIds,
+          };
+        });
       } else {
-        await gameService.joinGameV2(game.id, user.id);
+        const result = await gameService.joinGameV2(game.id, user.id);
+        setGame((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev };
+          if (result.bucket === 'players' && !prev.players.includes(user.id)) {
+            next.players = [...prev.players, user.id];
+          } else if (
+            result.bucket === 'waitlist' &&
+            !prev.waitlist.includes(user.id)
+          ) {
+            next.waitlist = [...prev.waitlist, user.id];
+          } else if (
+            result.bucket === 'pending' &&
+            !(prev.pending ?? []).includes(user.id)
+          ) {
+            next.pending = [...(prev.pending ?? []), user.id];
+          }
+          next.participantIds = Array.from(
+            new Set([...(prev.participantIds ?? []), user.id]),
+          );
+          return next;
+        });
       }
-      await reload();
     } catch (err) {
       if (__DEV__) console.warn('[matchDetails] primary failed', err);
+      // Surface the typed error from the transaction.
+      const msg = String((err as Error)?.message ?? '');
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (msg.includes('GAME_STARTED')) {
+        toast.info(he.matchDetailsAlreadyStarted);
+      } else if (msg.includes('GAME_LIVE')) {
+        toast.info(he.matchDetailsAlreadyLive);
+      } else if (msg.includes('GAME_NOT_OPEN')) {
+        toast.info(he.matchDetailsClosedForRegistration);
+      } else if (__DEV__) {
+        // Dev-only verbose toast so we can pinpoint which check the
+        // transaction or rules are failing on. Production stays
+        // generic.
+        toast.error(`${he.error}: ${code || msg || 'unknown'}`);
+      } else {
+        toast.error(he.error);
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  // Blocked-state render — non-member opened a community-only game
+  // (rules denied the read). Render a self-contained "no access"
+  // screen with NO private fields, NO group identity, NO loaded
+  // playersMap reference. The header title is the generic screen
+  // title so even that doesn't leak the game name.
+  if (accessBlocked) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.matchDetailsTitle} />
+        <View style={styles.center}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={48}
+            color={colors.textMuted}
+          />
+          <Text style={styles.blockedTitle}>{he.communityOnlyGameTitle}</Text>
+          <Text style={styles.blockedSub}>{he.communityOnlyGameSubtitle}</Text>
+          <Button
+            title={he.communityOnlyGameBack}
+            variant="primary"
+            size="lg"
+            onPress={() => {
+              if (nav.canGoBack()) nav.goBack();
+            }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading || !game) {
     return (
@@ -445,6 +626,9 @@ export function MatchDetailsScreen() {
         markTeamsEditedManually: true,
       });
       await reload();
+      // Note: the "teams ready" banner is fired by the realtime
+      // useGameEvents listener so it shows on every connected device,
+      // not just the admin's local one.
     } catch (err) {
       if (__DEV__) console.warn('[matchDetails] create teams failed', err);
     } finally {
@@ -459,6 +643,13 @@ export function MatchDetailsScreen() {
    */
   const handleInvitePlayers = async () => {
     if (!game) return;
+    // Community-only games never share through the public sheet —
+    // the link would land on the rules-blocked landing for any
+    // non-member who tapped it. The CTA is hidden for this case
+    // upstream; this guard is defence-in-depth.
+    if (game.visibility !== 'public') return;
+    if (!isOpen(game)) return;
+    if (game.startsAt <= Date.now()) return;
     try {
       const link = deepLinkService.buildInviteUrl({
         type: 'session',
@@ -535,53 +726,92 @@ export function MatchDetailsScreen() {
           />
         }
       >
-        {/* ① TOP — clean meta block, no cards. Title → 3 meta lines. */}
+        {/* ─── A. HEADER / GAME INFO ───────────────────────────────
+            Title, date+time (with a compact inline weather chip when
+            we have a forecast), location, format pill, and the
+            roster progress bar. No descriptive paragraphs here —
+            metadata only, status copy lives in section B. */}
         <View style={styles.topBlock}>
           <Text style={styles.heroTitle} numberOfLines={2}>
             {game.title}
           </Text>
-          <MetaLine
-            icon="calendar-outline"
-            text={formatDateLong(game.startsAt)}
-          />
-          <MetaLine
-            icon="location-outline"
-            text={game.fieldName}
-          />
-          <MetaLine
-            icon="people-outline"
-            text={`${totalParticipants}/${game.maxPlayers} שחקנים${
-              fmt ? ` · ${fmt}` : ''
-            }`}
+          <View style={styles.dateRow}>
+            <MetaLine
+              icon="calendar-outline"
+              text={formatDateLong(game.startsAt)}
+            />
+            {forecast ? (
+              <View style={styles.weatherChip}>
+                <Text style={styles.weatherChipIcon}>
+                  {weatherIcon(forecast.weatherCode)}
+                </Text>
+                <Text style={styles.weatherChipText}>
+                  {`${forecast.tempC}° · ${forecast.rainProb}%`}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <MetaLine icon="location-outline" text={game.fieldName} />
+          <PlayerCountBar
+            current={totalParticipants}
+            max={game.maxPlayers}
+            label={
+              fmt
+                ? `${totalParticipants}/${game.maxPlayers} שחקנים · ${fmt}`
+                : undefined
+            }
           />
         </View>
 
-        {/* ② STATUS — context-aware pill + (when waiting) a one-line
-            helper that explains the threshold for moving on. */}
-        <SessionStatusPill
-          status={sessionStatus}
-          totalPlayers={totalParticipants}
-          maxPlayers={game.maxPlayers}
-        />
-        {sessionStatus === 'waiting_for_players' ? (
-          <Text style={styles.statusHelper}>
-            {he.sessionWaitingHelper(minPlayers)}
-          </Text>
-        ) : null}
-        {sessionStatus === 'teams_invalid' ? (
-          <Text style={styles.statusHelper}>{he.sessionInvalidHelper}</Text>
+        {/* ─── B. GAME STATUS CARD ─────────────────────────────────
+            Single card with title + sub. Replaces the old pill +
+            helper + teams-placeholder triple. Hidden once the game
+            reaches teams_ready / active — the teams block + bottom
+            CTA carry the remaining narrative there. */}
+        {sessionStatus === 'waiting_for_players' ||
+        sessionStatus === 'ready_to_create_teams' ||
+        sessionStatus === 'teams_invalid' ? (
+          <Card style={styles.statusCard}>
+            <Ionicons
+              name={
+                sessionStatus === 'teams_invalid'
+                  ? 'alert-circle-outline'
+                  : sessionStatus === 'ready_to_create_teams'
+                    ? 'checkmark-circle-outline'
+                    : 'hourglass-outline'
+              }
+              size={22}
+              color={
+                sessionStatus === 'teams_invalid'
+                  ? colors.warning
+                  : colors.primary
+              }
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusCardTitle}>
+                {sessionStatus === 'teams_invalid'
+                  ? he.statusTeamsInvalidTitle
+                  : sessionStatus === 'ready_to_create_teams'
+                    ? he.statusReadyTitle
+                    : he.statusWaitingTitle}
+              </Text>
+              <Text style={styles.statusCardSub}>
+                {sessionStatus === 'teams_invalid'
+                  ? he.statusTeamsInvalidSub
+                  : sessionStatus === 'ready_to_create_teams'
+                    ? he.statusReadySub
+                    : he.statusWaitingSub(
+                        Math.max(0, minPlayers - totalParticipants),
+                      )}
+              </Text>
+            </View>
+          </Card>
         ) : null}
 
-        {/* ③ TEAMS SECTION
-            • teams_ready / active   → render the actual teams (using
-              the cleaned-on-render assignment map so stale uids never
-              show up)
-            • teams_invalid → no teams shown; the helper above
-              instructs the admin to rebuild
-            • waiting / ready_to_create → quiet placeholder so the user
-              doesn't think they've missed a step.
-            Only admin sees the placeholder; for plain members it's
-            redundant noise before kickoff. */}
+        {/* ─── TEAMS BLOCK ─────────────────────────────────────────
+            Only shows once teams are placed. The "no teams yet"
+            placeholder text was removed (it was noise — the status
+            card above already conveys the same intent). */}
         {(sessionStatus === 'teams_ready' || sessionStatus === 'active') &&
         game.liveMatch ? (
           <TeamsBlock
@@ -589,44 +819,118 @@ export function MatchDetailsScreen() {
             assignments={validity.cleanedAssignments}
             playersMap={playersMap}
           />
-        ) : sessionStatus === 'teams_invalid' ? null : isAdmin ? (
-          <Text style={styles.teamsPlaceholder}>
-            {he.sessionTeamsPlaceholder}
-          </Text>
         ) : null}
 
-        {/* ④ WEATHER CHIP — visual weight reduced (smaller padding/icon)
-            so it sits BELOW the primary information rather than rivalling
-            it. Hidden when no coords / past game / >14 days out. */}
-        {forecast ? (
-          <View style={styles.weatherCard}>
-            <Text style={styles.weatherIcon}>
-              {weatherIcon(forecast.weatherCode)}
-            </Text>
-            <View style={styles.weatherTextCol}>
-              <Text style={styles.weatherEyebrow}>
-                {he.weatherForecastFor}
+        {/* ⑤a PENDING APPROVAL — admin-only. Surfaces only when the
+            game has `requiresApproval=true` and someone has requested
+            to join. Each row gets ✓/✗ buttons that call the
+            transactional approve/reject handlers in gameService. */}
+        {isAdmin && (game.pending ?? []).length > 0 ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {he.matchDetailsPendingTitle}{' '}
+                <Text style={styles.sectionCount}>
+                  ({(game.pending ?? []).length})
+                </Text>
               </Text>
-              <View style={styles.weatherStatsRow}>
-                <View style={styles.weatherStat}>
-                  <Ionicons name="thermometer-outline" size={12} color={colors.textMuted} />
-                  <Text style={styles.weatherStatValue}>
-                    {`${forecast.tempC}°`}
-                  </Text>
-                </View>
-                <View style={styles.weatherStatDivider} />
-                <View style={styles.weatherStat}>
-                  <Ionicons name="rainy-outline" size={12} color={colors.textMuted} />
-                  <Text style={styles.weatherStatValue}>
-                    {`${forecast.rainProb}%`}
-                  </Text>
-                </View>
-              </View>
             </View>
-          </View>
+            <Card style={styles.playersCard}>
+              {(game.pending ?? []).map((uid, i, arr) => {
+                const p = playersMap[uid];
+                const name = p?.displayName ?? '...';
+                const isLast = i === arr.length - 1;
+                return (
+                  <View
+                    key={`pending:${uid}`}
+                    style={[
+                      styles.playerRow,
+                      !isLast && styles.playerRowDivider,
+                    ]}
+                  >
+                    <PlayerIdentity
+                      user={{ id: uid, name, jersey: p?.jersey }}
+                      size={32}
+                    />
+                    <Text style={styles.playerName} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    <View style={styles.pendingActions}>
+                      <Pressable
+                        onPress={async () => {
+                          if (busy) return;
+                          setBusy(true);
+                          try {
+                            await gameService.approveGameJoin(game.id, uid);
+                            await reload();
+                          } catch (err) {
+                            if (__DEV__) {
+                              console.warn(
+                                '[matchDetails] approveGameJoin failed',
+                                err,
+                              );
+                            }
+                            toast.error(he.error);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                        hitSlop={6}
+                        accessibilityLabel={he.pendingApprove}
+                        style={({ pressed }) => [
+                          styles.pendingApproveBtn,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="checkmark"
+                          size={16}
+                          color={colors.textOnPrimary}
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={async () => {
+                          if (busy) return;
+                          setBusy(true);
+                          try {
+                            await gameService.rejectGameJoin(game.id, uid);
+                            await reload();
+                          } catch (err) {
+                            if (__DEV__) {
+                              console.warn(
+                                '[matchDetails] rejectGameJoin failed',
+                                err,
+                              );
+                            }
+                            toast.error(he.error);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                        hitSlop={6}
+                        accessibilityLabel={he.pendingReject}
+                        style={({ pressed }) => [
+                          styles.pendingRejectBtn,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={16}
+                          color={colors.danger}
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </Card>
+          </>
         ) : null}
 
-        {/* ⑤ PLAYERS */}
+        {/* ─── PLAYERS — clean header, no inline action buttons.
+            All admin actions (add-guest, share-invite, etc.) live in
+            the bottom CTA stack now so the header stays readable. */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {he.matchDetailsPlayers}{' '}
@@ -634,26 +938,12 @@ export function MatchDetailsScreen() {
               ({totalParticipants}/{game.maxPlayers})
             </Text>
           </Text>
-          {isAdmin &&
-          (sessionStatus === 'waiting_for_players' ||
-            sessionStatus === 'ready_to_create_teams' ||
-            sessionStatus === 'teams_invalid') ? (
-            <Pressable
-              onPress={() => setGuestModalOpen(true)}
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.addGuestBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="add" size={16} color={colors.primary} />
-              <Text style={styles.addGuestText}>{he.matchDetailsAddGuest}</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         {game.players.length === 0 && (game.guests ?? []).length === 0 ? (
-          <Text style={styles.emptyText}>{he.gameCardMissing(game.maxPlayers)}</Text>
+          <Text style={styles.emptyText}>
+            {he.playersEmptyMissing(game.maxPlayers)}
+          </Text>
         ) : (
           <Card style={styles.playersCard}>
             {game.players.map((uid, i) => {
@@ -732,6 +1022,90 @@ export function MatchDetailsScreen() {
           </Card>
         )}
 
+        {/* ─── ניהול משחק (admin-only) ──────────────────────────────
+            Houses the visibility toggle and the destructive
+            "מחיקת משחק" action. Pulled out of the bottom CTA stack
+            so the bottom bar stays a single primary-action lane. */}
+        {isAdmin && !isTerminalGame(game) ? (
+          <View style={styles.manageSection}>
+            <Text style={styles.sectionTitle}>{he.manageSectionTitle}</Text>
+            <Card style={styles.manageCard}>
+              {isOpen(game) ? (
+                (() => {
+                  const flipVisibility = async (next: boolean) => {
+                    const target: 'public' | 'community' = next
+                      ? 'public'
+                      : 'community';
+                    if (target === game.visibility) return;
+                    setBusy(true);
+                    try {
+                      await gameService.setVisibility(game.id, target);
+                      await reload();
+                    } catch (err) {
+                      if (__DEV__) {
+                        console.warn(
+                          '[matchDetails] setVisibility failed',
+                          err,
+                        );
+                      }
+                      toast.error(
+                        target === 'public'
+                          ? he.matchVisibilityErrorPublic
+                          : he.matchVisibilityErrorCommunity,
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  };
+                  return (
+                    <Pressable
+                      onPress={() =>
+                        flipVisibility(game.visibility !== 'public')
+                      }
+                      style={styles.manageRowItem}
+                      disabled={busy}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.visibilityLabel}>
+                          {he.matchVisibilityToggle}
+                        </Text>
+                        <Text style={styles.visibilityHelper}>
+                          {he.matchVisibilityHelper}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={game.visibility === 'public'}
+                        disabled={busy}
+                        onValueChange={flipVisibility}
+                        trackColor={{
+                          false: colors.surfaceMuted,
+                          true: colors.primary,
+                        }}
+                      />
+                    </Pressable>
+                  );
+                })()
+              ) : null}
+              <Pressable
+                onPress={() => setDeleteOpen(true)}
+                style={({ pressed }) => [
+                  styles.manageDeleteRow,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={18}
+                  color={colors.danger}
+                />
+                <Text style={styles.manageDeleteText}>
+                  {he.deleteGameAction}
+                </Text>
+              </Pressable>
+            </Card>
+          </View>
+        ) : null}
+
       </ScrollView>
 
       {/* Guest modal — admin-only entry point. Reuses the same modal
@@ -742,7 +1116,23 @@ export function MatchDetailsScreen() {
           gameId={game.id}
           callerId={user.id}
           onClose={() => setGuestModalOpen(false)}
-          onChanged={reload}
+          onChanged={(action, saved) => {
+            // Splice the change directly into local state — the
+            // Firestore-roundtrip refresh used to race the commit and
+            // sometimes returned the pre-write snapshot, leaving the
+            // new guest invisible until a manual reload.
+            setGame((prev) => {
+              if (!prev) return prev;
+              const guests = prev.guests ?? [];
+              if (action === 'added') {
+                return { ...prev, guests: [...guests, saved] };
+              }
+              return {
+                ...prev,
+                guests: guests.map((g) => (g.id === saved.id ? saved : g)),
+              };
+            });
+          }}
         />
       ) : null}
 
@@ -764,81 +1154,197 @@ export function MatchDetailsScreen() {
         }}
       />
 
-      {/* ⑥ STICKY CTA — single primary green driven by sessionStatus
-          (admins) or by registration status (regular users). Delete
-          stays on the same row for admins as a destructive secondary. */}
-      <View style={[styles.cta, isAdmin && styles.ctaRow]}>
-        <View style={{ flex: 1 }}>
-          {isAdmin ? (
-            (() => {
-              // One CTA per state: invite → create teams → start → live.
-              // Each transition is gated by the sessionStatus, so an
-              // admin can never trigger a step out of order.
-              const cfg = (() => {
-                if (sessionStatus === 'waiting_for_players') {
-                  return {
-                    title: he.sessionActionInvitePlayers,
-                    onPress: handleInvitePlayers,
-                  };
-                }
-                if (sessionStatus === 'ready_to_create_teams') {
-                  return {
-                    title: he.sessionActionCreateTeams,
-                    onPress: handleCreateTeams,
-                  };
-                }
-                if (sessionStatus === 'teams_invalid') {
-                  return {
-                    title: he.sessionActionRecreateTeams,
-                    onPress: handleCreateTeams,
-                  };
-                }
-                if (sessionStatus === 'teams_ready') {
-                  return {
-                    title: he.sessionActionStart,
-                    onPress: handleStartSession,
-                  };
-                }
-                return {
-                  title: he.sessionActionGoLive,
-                  onPress: handleGoLive,
-                };
-              })();
-              return (
-                <Button
-                  title={cfg.title}
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  loading={busy}
-                  onPress={cfg.onPress}
-                />
-              );
-            })()
-          ) : (
-            <Button
-              title={primaryLabel}
-              variant={primaryDestructive ? 'danger' : 'primary'}
-              size="lg"
-              fullWidth
-              loading={busy}
-              onPress={handlePrimary}
+      {/* ⑥ STICKY CTA — terminal evenings short-circuit to a clear
+          read-only banner so a finished/cancelled game never shows a
+          dangling "Join" or "Live" button (rules + helpers would
+          block them anyway, but a disabled button is still misleading
+          UX). Non-terminal games render the regular admin/user CTA.
+          Players who finished a game get an inline "rate teammates"
+          banner instead of the plain terminal one — the post-game
+          push is best-effort, this is the always-visible nudge. */}
+      {isTerminalGame(game) ? (
+        isFinished(game) &&
+        user &&
+        game.players.includes(user.id) &&
+        !rateBannerDismissed &&
+        game.players.some((p) => p !== user.id) ? (
+          <View style={[styles.terminalBanner, styles.rateBanner]}>
+            <Ionicons
+              name="star-outline"
+              size={20}
+              color={colors.primary}
             />
-          )}
-        </View>
-        {isAdmin ? (
-          <View style={{ flex: 1 }}>
-            <Button
-              title={he.deleteGameTitle}
-              variant="danger"
-              size="lg"
-              fullWidth
-              iconLeft="trash-outline"
-              onPress={() => setDeleteOpen(true)}
-            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.terminalBannerTitle}>
+                {he.rateBannerTitle}
+              </Text>
+              <Text style={styles.terminalBannerSub}>
+                {he.rateBannerSub}
+              </Text>
+            </View>
+            <View style={styles.rateBannerActions}>
+              <Pressable
+                onPress={() => {
+                  // Navigate to the first teammate's PlayerCard. The
+                  // user can rate them, then back-navigate and pick
+                  // the next from the roster list below. Once any
+                  // PlayerCard nav fires we also drop the banner so it
+                  // doesn't keep nagging on return.
+                  const firstTeammate = game.players.find(
+                    (p) => p !== user.id,
+                  );
+                  if (!firstTeammate) return;
+                  setRateBannerDismissed(true);
+                  nav.navigate('PlayerCard', {
+                    userId: firstTeammate,
+                    groupId: game.groupId,
+                  });
+                }}
+                style={({ pressed }) => [
+                  styles.rateBannerCta,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityLabel={he.rateBannerCta}
+              >
+                <Text style={styles.rateBannerCtaText}>
+                  {he.rateBannerCta}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setRateBannerDismissed(true)}
+                hitSlop={8}
+                style={({ pressed }) => pressed && { opacity: 0.6 }}
+                accessibilityLabel={he.rateBannerDismiss}
+              >
+                <Ionicons name="close" size={18} color={colors.textMuted} />
+              </Pressable>
+            </View>
           </View>
-        ) : null}
-      </View>
+        ) : (
+          <View style={styles.terminalBanner}>
+            <Ionicons
+              name={
+                isCancelled(game) ? 'close-circle-outline' : 'checkmark-done'
+              }
+              size={20}
+              color={isCancelled(game) ? colors.danger : colors.textMuted}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.terminalBannerTitle}>
+                {isCancelled(game)
+                  ? he.matchDetailsAlreadyCancelled
+                  : he.matchDetailsAlreadyFinished}
+              </Text>
+              <Text style={styles.terminalBannerSub}>
+                {he.matchDetailsTerminalSub}
+              </Text>
+            </View>
+          </View>
+        )
+      ) : (
+        // Bottom CTA — single primary lane (one big button) plus an
+        // optional outline secondary stacked above it. Two greens
+        // side-by-side were noisy and the delete-game button is now
+        // in "ניהול משחק" instead.
+        (() => {
+          if (isAdmin) {
+            const canShareInvite =
+              game.visibility === 'public' &&
+              isOpen(game) &&
+              game.startsAt > Date.now();
+            // Pick the primary action by sessionStatus.
+            let primary:
+              | { title: string; onPress: () => void }
+              | null = null;
+            let secondary:
+              | { title: string; onPress: () => void }
+              | null = null;
+            if (sessionStatus === 'waiting_for_players') {
+              if (canShareInvite) {
+                primary = {
+                  title: he.sessionActionInvitePlayers,
+                  onPress: handleInvitePlayers,
+                };
+              }
+              secondary = {
+                title: he.matchDetailsAddGuest,
+                onPress: () => setGuestModalOpen(true),
+              };
+            } else if (sessionStatus === 'ready_to_create_teams') {
+              primary = {
+                title: he.sessionActionCreateTeams,
+                onPress: handleCreateTeams,
+              };
+              secondary = {
+                title: he.matchDetailsAddGuest,
+                onPress: () => setGuestModalOpen(true),
+              };
+            } else if (sessionStatus === 'teams_invalid') {
+              primary = {
+                title: he.sessionActionRecreateTeams,
+                onPress: handleCreateTeams,
+              };
+            } else if (sessionStatus === 'teams_ready') {
+              primary = {
+                title: he.sessionActionStart,
+                onPress: handleStartSession,
+              };
+            } else {
+              primary = {
+                title: he.sessionActionGoLive,
+                onPress: handleGoLive,
+              };
+            }
+            if (!primary && !secondary) return null;
+            return (
+              <View style={styles.cta}>
+                {secondary ? (
+                  <Button
+                    title={secondary.title}
+                    variant="outline"
+                    size="lg"
+                    fullWidth
+                    onPress={secondary.onPress}
+                  />
+                ) : null}
+                {primary ? (
+                  <Button
+                    title={primary.title}
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    loading={busy}
+                    onPress={primary.onPress}
+                  />
+                ) : null}
+              </View>
+            );
+          }
+          // Regular user: one CTA — join (or cancel if already in).
+          // Cancel is hidden once the roster is frozen so we don't
+          // ship a misleading disabled button.
+          if (primaryDestructive && !canCancelRegistration(game)) {
+            return null;
+          }
+          return (
+            <View style={styles.cta}>
+              <Button
+                title={primaryLabel}
+                variant={primaryDestructive ? 'danger' : 'primary'}
+                size="lg"
+                fullWidth
+                loading={busy}
+                disabled={
+                  primaryDestructive
+                    ? !canCancelRegistration(game)
+                    : false
+                }
+                onPress={handlePrimary}
+              />
+            </View>
+          );
+        })()
+      )}
     </SafeAreaView>
   );
 }
@@ -1058,6 +1564,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  blockedTitle: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  blockedSub: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
 
   // ① Header
@@ -1079,9 +1598,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '800',
-    textAlign: 'right',
-    // `flexShrink:1` (NOT flex:1) lets a long match name truncate
-    // gracefully without stealing the badge's slot on the LEFT corner.
+    textAlign: RTL_LABEL_ALIGN,
+    // `alignSelf:'stretch'` forces the Text box to fill the column's
+    // width so `textAlign` actually has a wide canvas to anchor
+    // glyphs on (without it, RN sizes Text to its content width and
+    // textAlign has no effect — the title would visually clump at
+    // the start of the row). `flexShrink:1` keeps long titles
+    // truncating gracefully via `numberOfLines={2}`.
+    alignSelf: 'stretch',
     flexShrink: 1,
   },
   headerSub: {
@@ -1158,7 +1682,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     width: '100%',
   },
   teamRow: {
@@ -1198,6 +1722,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: -spacing.sm + 2,
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Empty placeholder shown in lieu of teams when teams aren't ready yet.
@@ -1205,6 +1730,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     fontStyle: 'italic',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // ④ Weather chip — slimmed-down. Reduced padding + smaller icon so
@@ -1232,6 +1758,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
   },
   weatherStatsRow: {
     flexDirection: 'row',
@@ -1292,14 +1819,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '500',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   infoValue: {
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
     marginTop: 2,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // ③ Players
@@ -1308,11 +1835,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  sectionHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     // RTL stretch: a content-sized Text inside a row+space-between
     // lands at the visual LEFT under forceRTL (RN's space-between
     // implementation places lone children at flex-start without
@@ -1370,7 +1902,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: '500',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
   guestTrashAuto: {
@@ -1404,7 +1936,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 15,
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
   manageIcons: {
@@ -1414,7 +1946,10 @@ const styles = StyleSheet.create({
   },
 
 
-  // ⑤ Sticky CTA
+  // Sticky CTA — single column. Stack secondary (outline) over the
+  // green primary so a destructive / accidental tap on a green
+  // button is unlikely. Old `ctaRow` (side-by-side greens) was
+  // dropped in the structured-layout refactor.
   cta: {
     position: 'absolute',
     bottom: 0,
@@ -1426,9 +1961,172 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
-  },
-  ctaRow: {
-    flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Read-only banner shown in place of the sticky CTA when the game
+  // is finished or cancelled. Same docking behaviour as `cta` (sticks
+  // to the bottom) but visually muted so it doesn't compete with
+  // primary actions.
+  terminalBanner: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.surfaceMuted,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  terminalBannerTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  terminalBannerSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  rateBanner: {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.primary,
+    borderTopWidth: 2,
+  },
+  rateBannerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  rateBannerCta: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  rateBannerCtaText: {
+    ...typography.caption,
+    color: colors.textOnPrimary,
+    fontWeight: '700',
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginStart: 'auto',
+  },
+  pendingApproveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingRejectBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visibilityLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  visibilityHelper: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+
+  // Section A — header + inline weather chip under date.
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  weatherChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  weatherChipIcon: {
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  weatherChipText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+
+  // Section B — single status card.
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    backgroundColor: '#F7F7F7',
+  },
+  statusCardTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  statusCardSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+
+  // ניהול משחק — admin-only at the bottom of the scroll content.
+  manageSection: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  manageCard: {
+    paddingVertical: spacing.sm,
+  },
+  manageRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+    // Stretch so the entire row (label + Switch + spacer) is the
+    // tap target, not just the content-sized text.
+    alignSelf: 'stretch',
+  },
+  manageDeleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    // Same — fills the card horizontally so a tap anywhere on the
+    // row triggers the delete confirmation.
+    alignSelf: 'stretch',
+  },
+  manageDeleteText: {
+    ...typography.bodyBold,
+    color: colors.danger,
   },
 });

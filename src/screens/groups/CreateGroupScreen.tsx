@@ -159,15 +159,19 @@ export function CreateGroupScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Pinned step indicator — same pattern as GameWizardForm.
+            Stays visible while the user scrolls the form. */}
+        <View style={styles.stickyHeader}>
+          <StepIndicator
+            current={step}
+            labels={[he.wizardStep1, he.groupWizardStep2]}
+          />
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <StepIndicator
-            current={step}
-            labels={[he.wizardStep1, he.groupWizardStep2]}
-          />
           <Animated.View style={[styles.body, { opacity: fade }]}>
             {step === 1 ? (
               <View style={styles.stack}>
@@ -177,6 +181,7 @@ export function CreateGroupScreen() {
                   onChangeText={setName}
                   placeholder="לדוגמה: חמישי כדורגל"
                   autoFocus
+                  required
                 />
                 <AutocompleteInput
                   label={he.createGroupCity}
@@ -207,7 +212,10 @@ export function CreateGroupScreen() {
                     creation time (decides whether new players need
                     admin approval), so it lives in step 1 right after
                     the location identity. */}
-                <View style={styles.toggleRow}>
+                <Pressable
+                  onPress={() => setIsOpen(!isOpen)}
+                  style={styles.toggleRow}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.toggleLabel}>
                       {he.createGroupIsOpen}
@@ -220,7 +228,7 @@ export function CreateGroupScreen() {
                     trackColor={{ false: colors.border, true: colors.primary }}
                     thumbColor="#fff"
                   />
-                </View>
+                </Pressable>
               </View>
             ) : null}
 
@@ -324,6 +332,11 @@ export function CreateGroupScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: spacing.xl },
+  stickyHeader: {
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
   body: { padding: spacing.lg, gap: spacing.md },
   stack: { gap: spacing.md },
   section: { gap: spacing.xs, alignItems: 'stretch' },

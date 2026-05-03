@@ -46,10 +46,13 @@ import {
   Gesture,
 } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -63,6 +66,12 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { TeamsOverviewSheet, TeamSlot } from '@/components/TeamsOverviewSheet';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import {
+  canEnterLive,
+  isCancelled as isCancelledHelper,
+  isFinished as isFinishedHelper,
+} from '@/services/gameLifecycle';
+import { useGameEvents } from '@/services/useGameEvents';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   Game,
@@ -240,6 +249,11 @@ export function LiveMatchScreen() {
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
+  // Realtime banners for live events — goals, status changes, late
+  // joins/leaves, etc. Listener is shared with MatchDetailsScreen so
+  // identical events surface consistently across the flow.
+  useGameEvents(gameId ?? undefined);
+
   const [game, setGame] = useState<Game | null>(null);
   const [live, setLive] = useState<LiveMatchState | null>(null);
 
@@ -349,12 +363,24 @@ export function LiveMatchScreen() {
       if (alive) {
         setGame(g);
         if (g) logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id });
+        // Lifecycle guard: the live screen is meaningful ONLY for an
+        // active evening. If the user lands here from a stale link or
+        // before the admin has tapped "התחל ערב", surface a clear
+        // toast and back out instead of rendering empty state.
+        if (g && !canEnterLive(g)) {
+          toast.info(
+            isFinishedHelper(g) || isCancelledHelper(g)
+              ? he.matchDetailsAlreadyFinished
+              : he.liveMatchNotActiveYet,
+          );
+          if (nav.canGoBack()) nav.goBack();
+        }
       }
     })();
     return () => {
       alive = false;
     };
-  }, [gameId, me, myCommunities]);
+  }, [gameId, me, myCommunities, nav]);
 
   // Roster = real players + guests (encoded as `guest:<id>`).
   const rosterIds = useMemo<UserId[]>(() => {
@@ -710,6 +736,8 @@ export function LiveMatchScreen() {
         delta,
       });
     }
+    // The goal banner is fired by the realtime useGameEvents listener
+    // (driven by the persisted score change) so every device sees it.
   };
 
   // ─── Session state machine ─────────────────────────────────────────────
@@ -950,6 +978,41 @@ export function LiveMatchScreen() {
   const totalMs =
     (game?.matchDurationMinutes ?? DEFAULT_DURATION_MIN) * 60 * 1000;
 
+  // ─── Timer pulse animation ─────────────────────────────────────────────
+  // While running, the displayed time pulses subtly so the eye knows
+  // the round is active (vs paused). Final 60s tints amber (color-only
+  // signal), final 10s adds a slightly stronger pulse + red tint.
+  // Animation runs on the UI thread via Reanimated; we cancel + reset
+  // whenever the timer pauses to keep the static state visually stable.
+  const remainingMs = Math.max(0, totalMs - timerMs);
+  const isLastTen = timerRunning && remainingMs > 0 && remainingMs <= 10_000;
+  const isLastMinute =
+    timerRunning && remainingMs > 0 && remainingMs <= 60_000;
+  const timerPulse = useSharedValue(1);
+  useEffect(() => {
+    cancelAnimation(timerPulse);
+    if (!timerRunning) {
+      timerPulse.value = withTiming(1, { duration: 150 });
+      return;
+    }
+    // Calibrated to feel alive, not broken: barely-there 0.02 amplitude
+    // by default, bumping to 0.04 only inside the final 10 seconds. The
+    // final-minute amber tint is the color-only cue — no extra pulse.
+    const amplitude = isLastTen ? 0.04 : 0.02;
+    const period = isLastTen ? 360 : 700;
+    timerPulse.value = withRepeat(
+      withSequence(
+        withTiming(1 + amplitude, { duration: period / 2 }),
+        withTiming(1, { duration: period / 2 }),
+      ),
+      -1,
+      false,
+    );
+  }, [timerRunning, isLastTen, timerPulse]);
+  const timerPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: timerPulse.value }],
+  }));
+
   // Build the team-slot list — same shape passed to TeamsOverviewSheet
   // and the score header. One slot per active team; rosters include
   // both the GK (when `letter` is on-field) and outfield.
@@ -1017,12 +1080,22 @@ export function LiveMatchScreen() {
             below the time tells the user exactly which state they're in
             (scheduled / ready / active / paused / finished). */}
         <View style={styles.timerCard}>
-          <Text style={styles.timerValue}>
+          <Animated.Text
+            style={[
+              styles.timerValue,
+              isLastTen
+                ? { color: colors.danger }
+                : isLastMinute
+                  ? { color: colors.warning }
+                  : null,
+              timerPulseStyle,
+            ]}
+          >
             {formatTime(timerMs)}
             <Text style={styles.timerCeiling}>
               {`  /  ${formatTime(totalMs)}`}
             </Text>
-          </Text>
+          </Animated.Text>
           <Text
             style={[
               styles.roundLabel,

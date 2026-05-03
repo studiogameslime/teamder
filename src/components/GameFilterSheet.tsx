@@ -34,8 +34,9 @@ const FIELD_TYPES: FieldType[] = ['asphalt', 'synthetic', 'grass'];
 export interface GameFilters {
   formats: GameFormat[];
   fieldTypes: FieldType[];
-  /** true = "must be public", false = "must be community-only", null = any. */
-  isPublic: boolean | null;
+  /** "public" = must be open to the whole app, "community" = members-only,
+   *  null = any. */
+  visibility: 'public' | 'community' | null;
   hasReferee: boolean | null;
   hasPenalties: boolean | null;
   hasHalfTime: boolean | null;
@@ -49,7 +50,7 @@ export interface GameFilters {
 export const EMPTY_GAME_FILTERS: GameFilters = {
   formats: [],
   fieldTypes: [],
-  isPublic: null,
+  visibility: null,
   hasReferee: null,
   hasPenalties: null,
   hasHalfTime: null,
@@ -63,7 +64,7 @@ export function isFiltersEmpty(f: GameFilters): boolean {
   return (
     f.formats.length === 0 &&
     f.fieldTypes.length === 0 &&
-    f.isPublic === null &&
+    f.visibility === null &&
     f.hasReferee === null &&
     f.hasPenalties === null &&
     f.hasHalfTime === null &&
@@ -78,7 +79,7 @@ export function activeFiltersCount(f: GameFilters): number {
   let n = 0;
   if (f.formats.length) n += 1;
   if (f.fieldTypes.length) n += 1;
-  if (f.isPublic !== null) n += 1;
+  if (f.visibility !== null) n += 1;
   if (f.hasReferee !== null) n += 1;
   if (f.hasPenalties !== null) n += 1;
   if (f.hasHalfTime !== null) n += 1;
@@ -162,11 +163,25 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
               </PillRow>
             </Section>
 
-            {/* Visibility tri-state */}
+            {/* Visibility tri-state — adapter maps the new
+                'public'|'community'|null filter to the boolean
+                tri-state component without redesigning it. */}
             <Section title={he.gameFiltersVisibility}>
               <TriState
-                value={filters.isPublic}
-                onChange={(v) => onChange({ ...filters, isPublic: v })}
+                value={
+                  filters.visibility === 'public'
+                    ? true
+                    : filters.visibility === 'community'
+                      ? false
+                      : null
+                }
+                onChange={(v) =>
+                  onChange({
+                    ...filters,
+                    visibility:
+                      v === true ? 'public' : v === false ? 'community' : null,
+                  })
+                }
                 yesLabel={he.wizardVisibilityPublic}
                 noLabel={he.wizardVisibilityCommunity}
               />
@@ -359,7 +374,7 @@ function fieldTypeLabel(f: FieldType): string {
 export function applyGameFilters<T extends {
   format?: GameFormat;
   fieldType?: FieldType;
-  isPublic?: boolean;
+  visibility?: 'public' | 'community';
   hasReferee?: boolean;
   hasPenalties?: boolean;
   hasHalfTime?: boolean;
@@ -379,7 +394,9 @@ export function applyGameFilters<T extends {
     ) {
       return false;
     }
-    if (f.isPublic !== null && !!g.isPublic !== f.isPublic) return false;
+    if (f.visibility !== null && (g.visibility ?? 'community') !== f.visibility) {
+      return false;
+    }
     if (f.hasReferee !== null && !!g.hasReferee !== f.hasReferee) return false;
     if (f.hasPenalties !== null && !!g.hasPenalties !== f.hasPenalties) {
       return false;

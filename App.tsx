@@ -76,6 +76,7 @@ import { storage } from '@/services/storage';
 import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
+import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { checkForUpdate, type UpdateKind } from '@/services/updateService';
@@ -250,6 +251,53 @@ export default function App() {
     return () => sub.remove();
   }, [applyUpdateResult]);
 
+  // ─── Push-notification tap → screen navigation ──────────────────────
+  // Two paths to cover:
+  //   1. App is running (background or foreground): the user taps a
+  //      push from the OS shade → addNotificationResponseReceivedListener
+  //      fires synchronously.
+  //   2. App was killed: the OS launches us cold; the response is
+  //      retrievable via getLastNotificationResponseAsync. We may fire
+  //      before the navigator is ready, so retry briefly until isReady.
+  useEffect(() => {
+    let Notifications: typeof import('expo-notifications') | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      Notifications = require('expo-notifications');
+    } catch {
+      return; // native module not linked (Expo Go) — no-op
+    }
+    if (!Notifications) return;
+
+    const handleResponse = async (response: {
+      notification: { request: { content: { data?: Record<string, unknown> } } };
+    }) => {
+      const data = response.notification.request.content.data ?? {};
+      const type = typeof data.type === 'string' ? data.type : '';
+      if (!type) return;
+      // Wait briefly for the navigator to be ready (cold-start case);
+      // give up after ~3s so a permanently broken nav doesn't stall.
+      for (let i = 0; i < 30; i++) {
+        if (navigationRef.isReady()) {
+          const { navigateForPush } = await import('@/navigation/navigationRef');
+          navigateForPush(type, data);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    };
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+
+    // Cold-start tap: the listener above only fires for live taps;
+    // launching from a tap delivers via getLastNotificationResponseAsync.
+    Notifications.getLastNotificationResponseAsync().then((resp) => {
+      if (resp) handleResponse(resp);
+    });
+
+    return () => sub.remove();
+  }, []);
+
   // After the animation finishes, try to show the App Open ad. If the
   // SDK already pre-loaded one (initializeAds() runs on app boot), the
   // call resolves when the ad is closed; if nothing is ready it returns
@@ -325,6 +373,7 @@ export default function App() {
         {/* Mounted at the navigator level so toasts overlay every screen
             but stay below RN's modal dialogs. */}
         <ToastHost />
+        <BannerHost />
       </NavigationContainer>
 
       {/* Splash sits ABOVE everything. RootNavigator keeps mounting +

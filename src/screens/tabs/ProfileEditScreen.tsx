@@ -55,6 +55,7 @@ export function ProfileEditScreen() {
           placeholder={he.profileNamePlaceholder}
           maxLength={40}
           icon="person-outline"
+          required
         />
         <Button
           title={he.jerseyOpenPicker}

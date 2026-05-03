@@ -45,3 +45,76 @@ export function navigateInvite(args: {
   });
   return true;
 }
+
+/**
+ * Route a tapped push notification to the most relevant screen, based
+ * on the notification's `type` + payload. Returns false if the nav
+ * isn't ready yet — the caller is expected to either retry or stash
+ * the payload for later (App.tsx does the latter for cold-start taps).
+ *
+ * The mapping mirrors the user's intent for each push type:
+ *   joinRequest        → AdminApproval queue (ProfileTab)
+ *   approved/rejected  → MatchDetails (game flow) or CommunityDetails (group)
+ *   newGameInCommunity → MatchDetails for the new game
+ *   gameReminder       → MatchDetails (the reminded game)
+ *   gameCanceledOrUpdated → MatchDetails (or harmless if game deleted)
+ *   spotOpened         → MatchDetails (the freed spot)
+ *   inviteToGame       → MatchDetails (invited game)
+ *   rateReminder       → MatchDetails (where the rating CTA lives)
+ *   gameFillingUp      → MatchDetails (the filling game)
+ */
+export function navigateForPush(
+  type: string,
+  data: Record<string, unknown>,
+): boolean {
+  if (!navigationRef.isReady()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  const gameId = typeof data.gameId === 'string' ? data.gameId : undefined;
+  const groupId = typeof data.groupId === 'string' ? data.groupId : undefined;
+
+  switch (type) {
+    case 'joinRequest':
+      nav.navigate('ProfileTab', { screen: 'AdminApproval' });
+      return true;
+
+    case 'approved':
+    case 'rejected':
+      // Game-context approvals carry a gameId; community ones carry
+      // groupId. Pick the screen that matches what the user just got
+      // a yes/no for.
+      if (gameId) {
+        nav.navigate('GameTab', {
+          screen: 'MatchDetails',
+          params: { gameId },
+        });
+        return true;
+      }
+      if (groupId) {
+        nav.navigate('CommunitiesTab', {
+          screen: 'CommunityDetails',
+          params: { groupId },
+        });
+        return true;
+      }
+      return false;
+
+    case 'newGameInCommunity':
+    case 'gameReminder':
+    case 'gameCanceledOrUpdated':
+    case 'spotOpened':
+    case 'inviteToGame':
+    case 'rateReminder':
+    case 'gameFillingUp':
+    case 'imLate':
+      if (!gameId) return false;
+      nav.navigate('GameTab', {
+        screen: 'MatchDetails',
+        params: { gameId },
+      });
+      return true;
+
+    default:
+      return false;
+  }
+}

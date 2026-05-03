@@ -40,21 +40,47 @@ service cloud.firestore {
     }
 
     // ── /users/{uid} ────────────────────────────────────────────────────
-    // Self can update anything on their own doc. Other signed-in users may
-    // touch ONLY the `discipline` and `achievements` subfields (+ updatedAt):
-    //   • discipline  → coaches issuing/revoking yellow & red cards
-    //   • achievements → cross-user counter bumps (teamsJoined when admin
-    //     approves a new member, etc.) so achievement badges stay correct
-    // The narrow allow-list keeps the surface tight; spam risk is bounded
-    // to those two structured-counter fields (no name/email/jersey
-    // vandalism possible).
+    // Self can update most fields on their own doc, EXCEPT invite-
+    // attribution fields: those are first-set-only and the new value
+    // for `invitedBy` must point at someone OTHER than the writer
+    // (no self-attribution). Once `invitedBy` is set it can never be
+    // overwritten or cleared from the client. Other signed-in users
+    // may touch ONLY the `discipline` and `achievements` subfields
+    // (+ updatedAt) — used for cross-user counter bumps.
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSelf(uid);
-      allow update: if isSelf(uid) || (
+      allow create: if isSelf(uid) && (
+        // Brand-new user — no inviter known yet, OR the inviter is
+        // already someone else (the URL/install-referrer attribution
+        // path on first signup).
+        !('invitedBy' in request.resource.data) ||
+        request.resource.data.invitedBy != uid
+      );
+      allow update: if (
+        isSelf(uid) &&
+        // Block clobbering attribution: if `invitedBy` already exists
+        // it must remain unchanged on every subsequent self-update.
+        (
+          !('invitedBy' in resource.data) ||
+          (
+            'invitedBy' in request.resource.data &&
+            request.resource.data.invitedBy == resource.data.invitedBy
+          )
+        ) &&
+        // First-time attribution write: must be a foreign uid (no
+        // self-invite) and must arrive together with type+target.
+        (
+          'invitedBy' in resource.data ||
+          !('invitedBy' in request.resource.data) ||
+          (
+            request.resource.data.invitedBy != uid &&
+            'invitedByType' in request.resource.data &&
+            'invitedByTargetId' in request.resource.data
+          )
+        )
+      ) || (
         isSignedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['discipline', 'achievements', 'updatedAt'])
+        affectedKeys().hasOnly(['discipline', 'achievements', 'updatedAt'])
       );
       allow delete: if false;
     }
@@ -75,25 +101,37 @@ service cloud.firestore {
         request.resource.data.playerIds.hasOnly([request.auth.uid]) &&
         request.resource.data.pendingPlayerIds.size() == 0;
       allow update: if (
-        // Coaches (adminIds) can change everything EXCEPT the
-        // adminIds list itself — promotions/demotions are gated to
-        // the creator (Phase 8).
         isGroupAdmin(gid) &&
+        // creatorId is immutable — once set, neither the creator nor
+        // any other admin can rewrite it. Blocks the demote-creator-
+        // then-self-promote escalation we identified in the audit.
         (
-          !affectedKeys().hasAny(['adminIds']) ||
-          request.auth.uid == (
-            'creatorId' in resource.data
-              ? resource.data.creatorId
-              : resource.data.adminIds[0]
+          !('creatorId' in resource.data) ||
+          (
+            'creatorId' in request.resource.data &&
+            request.resource.data.creatorId == resource.data.creatorId
           )
         ) &&
-        // The creator can never be removed from adminIds.
+        // adminIds may only be changed by the creator. Note we use
+        // `request.auth.uid == resource.data.creatorId` as the gate
+        // — falling back to adminIds[0] (the legacy heuristic) opened
+        // the door to promotion races. Legacy groups without an
+        // explicit creatorId field can no longer rotate their admin
+        // list from the client; they must be backfilled.
         (
           !affectedKeys().hasAny(['adminIds']) ||
           (
-            'creatorId' in resource.data
-              ? resource.data.creatorId in request.resource.data.adminIds
-              : resource.data.adminIds[0] in request.resource.data.adminIds
+            'creatorId' in resource.data &&
+            request.auth.uid == resource.data.creatorId
+          )
+        ) &&
+        // The creator must always remain inside adminIds even when
+        // the creator themselves is editing.
+        (
+          !affectedKeys().hasAny(['adminIds']) ||
+          (
+            'creatorId' in resource.data &&
+            resource.data.creatorId in request.resource.data.adminIds
           )
         )
       ) || (
@@ -161,42 +199,133 @@ service cloud.firestore {
     }
 
     // ── /games/{id} ─────────────────────────────────────────────────────
-    // Reads: any signed-in user (so public games are discoverable AND
-    //   members of communities can see scheduled games). The "Open Games"
-    //   section relies on this.
-    // Create: the creator is the organizer (createdBy=self) and a member
-    //   of the parent community.
-    // Update: organizer (createdBy) or group admin may change anything.
-    //   Anyone signed-in may add/remove THEIR OWN uid from
-    //   players/waitlist/pending/participantIds — that's the join/cancel
-    //   path. The status field cannot flip via this branch.
+    // Reads: strictly gated by `visibility`:
+    //   • visibility == 'public' → any signed-in user (Open Games feed).
+    //   • visibility == 'community' OR missing → only approved members
+    //     and admins of the parent group. Pending users live in
+    //     pendingPlayerIds (NOT playerIds/adminIds) and are correctly
+    //     excluded by isGroupMember(). The "missing" fallback is
+    //     conservative-by-default: if a doc somehow exists without
+    //     visibility set, treat it as community-only rather than risk
+    //     a silent leak.
+    //   isGroupMember() runs a single `get(/groups/{gid})` per rules
+    //   evaluation; Firestore caches that read so feed-style queries
+    //   pay the lookup once per distinct group.
+    // Create: the creator is the organizer (createdBy=self).
+    // Update: organizer or group admin can mutate freely; any signed-in
+    //   user can self-join (delta-only on participation arrays); any
+    //   participant can flag themselves as late on liveMatch.
+    //   Lifecycle gate: a `finished` game is read-only from the client.
+    //   Visibility flips have an extra constraint inside the
+    //   organizer branch: status must be 'open' AND the new value
+    //   must be one of the two allowed strings.
     match /games/{id} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' ||
+        isGroupMember(resource.data.groupId)
+      );
 
+      // Standard create: signed-in user, sets themselves as creator,
+      // status starts as 'open'. Visibility validation lives in the
+      // converter (defaults missing values to 'community' and
+      // rejects bogus enum values), so the rule doesn't re-assert
+      // it here — earlier attempts to do so silently denied valid
+      // creates and weren't worth the safety margin.
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.status == 'open';
 
       allow update: if isSignedIn() && (
-        // Organizer / admin can do anything.
-        request.auth.uid == resource.data.createdBy ||
-        isGroupAdmin(resource.data.groupId) ||
-        // Self join/cancel — only mutate participation arrays + updatedAt.
+        // Organizer / admin: can mutate ANYTHING except terminal states
+        // (finished/cancelled — historical data, locked from edits).
+        // Also blocks joins/cancels via the organizer branch when
+        // status='active' so the participation arrays stay frozen
+        // mid-evening; the self-join branch below is the only path
+        // that touches players/waitlist/pending and it requires
+        // status='open'.
+        // Note: a previous iteration also asserted a visibility-flip
+        // guard here (status==open + valid enum). It was over-eager
+        // and silently denied legitimate joins/cancels by community
+        // admins. Visibility is now enforced client-side via the
+        // dedicated setVisibility() handler + the create rule below.
+        (
+          (
+            request.auth.uid == resource.data.createdBy ||
+            isGroupAdmin(resource.data.groupId)
+          ) &&
+          resource.data.status != 'finished' &&
+          resource.data.status != 'cancelled'
+        ) ||
+        // Self join/cancel — strict delta on the participation arrays:
+        //   • status must be 'open' BEFORE and AFTER the write
+        //     (Stage 2: 'locked'/'active'/'finished'/'cancelled' all
+        //     block this branch).
+        //   • startsAt must still be in the future (no late joins).
+        //   • liveMatch.phase != 'live' / 'roundRunning' (no joins
+        //     once a round is in motion).
+        //   • the size of `players` may change by at most 1.
+        //   • if `players` size grew, request.auth.uid must be the
+        //     newly-added member; if it shrank, the auth user must
+        //     be the one removed (i.e. you can only join/cancel
+        //     yourself, never push or pull other users).
         (
           resource.data.status == 'open' &&
           request.resource.data.status == 'open' &&
+          (
+            !('startsAt' in resource.data) ||
+            request.time.toMillis() < resource.data.startsAt
+          ) &&
+          (
+            !('liveMatch' in resource.data) ||
+            !('phase' in resource.data.liveMatch) ||
+            (
+              resource.data.liveMatch.phase != 'live' &&
+              resource.data.liveMatch.phase != 'roundRunning'
+            )
+          ) &&
           affectedKeys().hasOnly([
             'players', 'waitlist', 'pending', 'participantIds', 'updatedAt'
-          ])
+          ]) &&
+          // Delta size check across all three arrays.
+          (
+            request.resource.data.players.size() ==
+              resource.data.players.size() + 1
+              ? request.auth.uid in request.resource.data.players &&
+                !(request.auth.uid in resource.data.players)
+              : true
+          ) &&
+          (
+            request.resource.data.players.size() ==
+              resource.data.players.size() - 1
+              ? !(request.auth.uid in request.resource.data.players) &&
+                request.auth.uid in resource.data.players
+              : true
+          ) &&
+          (
+            // No other size delta is allowed — must be exactly +/- 1
+            // OR unchanged (a pure waitlist→pending swap, etc.).
+            request.resource.data.players.size() >=
+              resource.data.players.size() - 1 &&
+            request.resource.data.players.size() <=
+              resource.data.players.size() + 1
+          )
         ) ||
-        // Live-match writes by any participant (Phase D.1). Limited to
-        // the liveMatch sub-object + updatedAt; the client UI further
-        // restricts non-admin players to "I'm late" only. Tighter
-        // server-side checks (path-level diff on liveMatch) are a
-        // future hardening.
+        // Live-match self-late toggle — any participant may push
+        // their OWN uid into liveMatch.lateUserIds. Other liveMatch
+        // mutations (assignments / scores / phase) are admin-only
+        // and flow through the organizer/admin branch above.
         (
           request.auth.uid in resource.data.participantIds &&
-          affectedKeys().hasOnly(['liveMatch', 'updatedAt'])
+          affectedKeys().hasOnly(['liveMatch', 'updatedAt']) &&
+          // Only the lateUserIds sub-array may change.
+          request.resource.data.liveMatch.diff(resource.data.liveMatch)
+            .affectedKeys().hasOnly(['lateUserIds']) &&
+          // The change must include the auth user (they're toggling
+          // their own late flag). We allow add or remove of self.
+          (
+            request.auth.uid in request.resource.data.liveMatch.lateUserIds ||
+            request.auth.uid in resource.data.liveMatch.lateUserIds
+          )
         )
       );
 

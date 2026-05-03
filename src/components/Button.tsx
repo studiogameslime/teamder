@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -8,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { PressableScale } from './PressableScale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Variant =
@@ -50,17 +50,19 @@ export function Button({
   const padH = size === 'sm' ? spacing.md : spacing.lg;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      // PressableScale provides scale-on-press; we still pin the
+      // disabled-opacity here so the visual contrast is consistent.
+      style={[
         styles.base,
         {
           backgroundColor: palette.bg,
           borderColor: palette.border,
           paddingVertical: padV,
           paddingHorizontal: padH,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+          opacity: disabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
         },
         style,
@@ -91,7 +93,7 @@ export function Button({
           )}
         </View>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 

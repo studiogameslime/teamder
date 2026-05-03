@@ -59,6 +59,12 @@ interface GroupStore {
   ) => Promise<'pending' | 'joined' | 'already_member' | 'not_found'>;
   approve: (userId: UserId) => Promise<void>;
   reject: (userId: UserId) => Promise<void>;
+  /** Admin-only: approve a pending join request for a specific group.
+   *  Use this from any screen that knows the groupId — it both writes
+   *  to Firestore and updates the local `groups` cache so badges and
+   *  rows refresh without a full app reload. */
+  approveMember: (groupId: GroupId, userId: UserId) => Promise<void>;
+  rejectMember: (groupId: GroupId, userId: UserId) => Promise<void>;
   /**
    * Leave a community. Throws "LAST_ADMIN" if the user is the only
    * remaining admin — UI catches that to show a "transfer admin first"
@@ -136,22 +142,11 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
           ? s.pendingGroups
           : [...s.pendingGroups, group],
       }));
-      // Notify each admin of the targeted group. We pull adminIds from
-      // the freshly-returned group object — `submitJoinByPublic` returns
-      // an empty stub, so this only fires for code-based joins (where
-      // we read the private group successfully). Search-based joins go
-      // through `requestJoinById` below, which has the same behaviour.
-      group.adminIds.forEach((adminId) => {
-        notificationsService.dispatch({
-          type: 'joinRequest',
-          recipientId: adminId,
-          payload: {
-            groupId: group.id,
-            groupName: group.name,
-            requesterId: userId,
-          },
-        });
-      });
+      // Admin push is dispatched server-side by the
+      // `onGroupPendingChanged` Cloud Function — it reads the private
+      // group doc with admin credentials and fans out per admin. No
+      // client-side dispatch here, both to avoid double-send and to
+      // keep one canonical source for join-request notifications.
     } else if (status === 'joined') {
       // Open community: re-hydrate so the group jumps from "discoverable"
       // to "my groups" without a manual refresh.
@@ -168,21 +163,8 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
           ? s.pendingGroups
           : [...s.pendingGroups, group],
       }));
-      // Notify admins. For the public-projection path, group.adminIds
-      // is empty (the non-member can't read it), so the dispatch happens
-      // server-side via the join-request audit doc — left as a TODO for
-      // the Cloud Function.
-      group.adminIds.forEach((adminId) => {
-        notificationsService.dispatch({
-          type: 'joinRequest',
-          recipientId: adminId,
-          payload: {
-            groupId: group.id,
-            groupName: group.name,
-            requesterId: userId,
-          },
-        });
-      });
+      // See requestJoin above — admin push is fully owned by the
+      // server-side `onGroupPendingChanged` Cloud Function.
     } else if (status === 'joined') {
       await get().hydrate(userId);
     }
@@ -221,6 +203,41 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       type: 'rejected',
       recipientId: userId,
       payload: { groupId: g.id, groupName: g.name },
+    });
+  },
+
+  approveMember: async (groupId, userId) => {
+    const g = get().groups.find((x) => x.id === groupId);
+    if (!g) return;
+    const next = await groupService.approveMember(groupId, userId);
+    // Mirror the freshest copy into the local cache so any UI that
+    // reads `pendingPlayerIds` (badges, lists) flips immediately —
+    // without this the row stays stale until the next hydrate.
+    set((s) => ({
+      groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
+    }));
+    logEvent(AnalyticsEvent.GroupJoinApproved, { groupId, userId });
+    notificationsService.dispatch({
+      type: 'approved',
+      recipientId: userId,
+      payload: { groupId, groupName: g.name },
+    });
+    achievementsService.bump(userId, 'teamsJoined', 1);
+    const me = useUserStore.getState().currentUser;
+    if (me?.id) achievementsService.bump(me.id, 'playersCoached', 1);
+  },
+
+  rejectMember: async (groupId, userId) => {
+    const g = get().groups.find((x) => x.id === groupId);
+    if (!g) return;
+    const next = await groupService.rejectMember(groupId, userId);
+    set((s) => ({
+      groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
+    }));
+    notificationsService.dispatch({
+      type: 'rejected',
+      recipientId: userId,
+      payload: { groupId, groupName: g.name },
     });
   },
 

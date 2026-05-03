@@ -69,12 +69,19 @@ export function RootNavigator() {
       }
       if (!pending) return;
 
-      // Pre-flight existence check. If the target is gone (deleted
-      // game, missing community), we surface a friendly toast and
-      // skip the navigation rather than dumping the user on a
-      // silently-empty screen. A *fetch error* (network, transient)
-      // doesn't block — we navigate optimistically and let the
-      // target screen render its own loading/error UI.
+      // Pre-flight existence check. Three explicit outcomes:
+      //   • exists=true  → navigate; the target screen renders the
+      //     game/group as usual (or its own blocked-access UI).
+      //   • exists=false → target genuinely deleted; toast + clear
+      //     the stash so we don't keep retrying on next launch.
+      //   • exists=true (after ACCESS_BLOCKED) → the doc exists but
+      //     we can't read it (community-only invite to non-member).
+      //     We still navigate so MatchDetails shows its dedicated
+      //     blocked-access screen; the user gets a clear message
+      //     instead of a misleading "link is invalid" toast.
+      //   Any other fetch error (network/transient) is also
+      //     optimistic-navigate — the target screen handles loading
+      //     errors better than the consumer can here.
       let exists = true;
       try {
         if (pending.type === 'session') {
@@ -83,8 +90,18 @@ export function RootNavigator() {
           exists = (await groupService.getPublic(pending.id)) !== null;
         }
       } catch (err) {
-        if (__DEV__) console.warn('[invite] pre-flight failed', err);
-        exists = true;
+        const code =
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? ((err as { code: string }).code)
+            : '';
+        if (code === 'ACCESS_BLOCKED') {
+          // Doc exists; viewer just isn't allowed in. Navigate so
+          // the target screen can render the rules-blocked UI.
+          exists = true;
+        } else {
+          if (__DEV__) console.warn('[invite] pre-flight failed', err);
+          exists = true;
+        }
       }
       if (!exists) {
         if (__DEV__) {

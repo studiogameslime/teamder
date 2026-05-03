@@ -58,6 +58,8 @@ interface AppTimeFieldProps {
   allowClear?: boolean;
   placeholder?: string;
   style?: ViewStyle;
+  /** Adds a red asterisk next to the label. Visual cue only. */
+  required?: boolean;
 }
 
 export function AppTimeField({
@@ -67,11 +69,15 @@ export function AppTimeField({
   allowClear = true,
   placeholder,
   style,
+  required,
 }: AppTimeFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
@@ -123,6 +129,7 @@ interface AppDateFieldProps {
   value: number;
   onChange: (ts: number) => void;
   style?: ViewStyle;
+  required?: boolean;
 }
 
 export function AppDateField({
@@ -130,11 +137,15 @@ export function AppDateField({
   value,
   onChange,
   style,
+  required,
 }: AppDateFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
@@ -170,6 +181,7 @@ interface AppDateTimeFieldProps {
   value: number;
   onChange: (ts: number) => void;
   style?: ViewStyle;
+  required?: boolean;
 }
 
 /**
@@ -182,11 +194,15 @@ export function AppDateTimeField({
   value,
   onChange,
   style,
+  required,
 }: AppDateTimeFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
@@ -673,6 +689,10 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
     width: '100%',
+  },
+  requiredStar: {
+    color: colors.danger,
+    fontWeight: '700',
   },
   input: {
     backgroundColor: colors.surface,
