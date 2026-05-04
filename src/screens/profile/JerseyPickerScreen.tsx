@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Jersey as JerseyView } from '@/components/Jersey';
+import { JerseyNumberInput } from '@/components/JerseyNumberInput';
 import { userService } from '@/services';
 import {
   JERSEY_COLORS,
@@ -165,17 +166,11 @@ export function JerseyPickerScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>{he.jerseySectionNumber}</Text>
-          <TextInput
+          <JerseyNumberInput
             value={number}
-            onChangeText={(t) => setNumber(t.replace(/[^0-9]/g, '').slice(0, 2))}
-            placeholder="7"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-            textAlign="center"
-            keyboardType="number-pad"
-            maxLength={2}
+            onChangeText={setNumber}
+            hint={he.jerseyNumberHint}
           />
-          <Text style={styles.hint}>{he.jerseyNumberHint}</Text>
         </View>
 
         <View style={styles.field}>

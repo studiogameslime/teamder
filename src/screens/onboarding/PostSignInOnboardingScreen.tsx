@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Jersey } from '@/components/Jersey';
 import { InputField } from '@/components/InputField';
+import { JerseyNumberInput } from '@/components/JerseyNumberInput';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { JERSEY_COLORS, JERSEY_PATTERNS, autoJersey } from '@/data/jerseys';
@@ -121,13 +122,6 @@ export function PostSignInOnboardingScreen() {
     }
   };
 
-  const cycleNumber = (delta: number) => {
-    setJersey((j) => {
-      const n = ((j.number - 1 + delta + 99) % 99) + 1;
-      return { ...j, number: n };
-    });
-  };
-
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScrollView
@@ -168,26 +162,23 @@ export function PostSignInOnboardingScreen() {
           maxLength={10}
         />
 
-        {/* Number stepper */}
+        {/* Jersey number — 2-digit text field replacing the old
+            +/- stepper. The shared component owns the visual; we
+            only manage parsing here. Empty input is allowed mid-edit
+            and clamped to a minimum of 1 on commit so the preview
+            never shows "0". */}
         <View style={styles.numberRow}>
           <Text style={styles.label}>{he.psoProfileNumber}</Text>
-          <View style={styles.numberStepper}>
-            <Pressable
-              onPress={() => cycleNumber(-1)}
-              hitSlop={6}
-              style={styles.stepperBtn}
-            >
-              <Ionicons name="remove" size={18} color={colors.text} />
-            </Pressable>
-            <Text style={styles.numberValue}>{jersey.number}</Text>
-            <Pressable
-              onPress={() => cycleNumber(1)}
-              hitSlop={6}
-              style={styles.stepperBtn}
-            >
-              <Ionicons name="add" size={18} color={colors.text} />
-            </Pressable>
-          </View>
+          <JerseyNumberInput
+            value={jersey.number > 0 ? String(jersey.number) : ''}
+            onChangeText={(t) => {
+              const n = parseInt(t, 10);
+              setJersey((j) => ({
+                ...j,
+                number: Number.isFinite(n) && n >= 1 && n <= 99 ? n : j.number,
+              }));
+            }}
+          />
         </View>
 
         {/* Color swatches */}
@@ -327,28 +318,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
-  },
-  numberStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.md,
-  },
-  stepperBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  numberValue: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    minWidth: 36,
-    textAlign: 'center',
   },
   swatchRow: {
     flexDirection: 'row',

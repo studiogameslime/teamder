@@ -9,7 +9,7 @@
 // always shows everything the user already belongs to so they can switch
 // between communities without juggling filters.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -22,7 +22,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { InputField } from '@/components/InputField';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Card } from '@/components/Card';
@@ -107,6 +107,13 @@ export function PublicGroupsFeedScreen() {
   const pendingGroups = useGroupStore((s) => s.pendingGroups);
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
   const setCurrentGroup = useGroupStore((s) => s.setCurrentGroup);
+
+  // Scroll-to-top when the user re-taps the focused tab. The two
+  // ScrollViews below (search vs default) are conditional renders,
+  // so only one is mounted at a time — pointing one ref at whichever
+  // is alive is enough.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   const [text, setText] = useState('');
   const [items, setItems] = useState<GroupPublic[] | null>(null);
@@ -339,21 +346,20 @@ export function PublicGroupsFeedScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.communitiesTitle} showBack={false} />
 
-      <View style={styles.searchWrap}>
-        <InputField
-          value={text}
-          onChangeText={setText}
-          placeholder={he.communitiesSearchPlaceholder}
-          icon="search-outline"
-          returnKeyType="search"
-        />
-      </View>
-
-      {/* Single filter button — opens a sheet with the full filter
-          surface. Replaces the old hasRoom/nearby pill row so the
-          discovery toggles share a consistent container with the new
-          isOpen / freeOnly / preferredDays dimensions. */}
-      <View style={styles.filterRow}>
+      {/* Search + filter on a single row. RTL flips child order, so
+          the InputField (first child) sits on the right and the
+          icon-only filter button (second child) sits on the left —
+          mirrors the GamesListScreen tabs row for consistency. */}
+      <View style={styles.searchRow}>
+        <View style={{ flex: 1 }}>
+          <InputField
+            value={text}
+            onChangeText={setText}
+            placeholder={he.communitiesSearchPlaceholder}
+            icon="search-outline"
+            returnKeyType="search"
+          />
+        </View>
         <Pressable
           onPress={() => setFilterOpen(true)}
           style={({ pressed }) => [
@@ -361,22 +367,18 @@ export function PublicGroupsFeedScreen() {
             filterCount > 0 && styles.filterButtonActive,
             pressed && { opacity: 0.85 },
           ]}
+          accessibilityLabel={he.gameFiltersButton}
         >
           <Ionicons
             name="filter"
-            size={18}
+            size={20}
             color={filterCount > 0 ? colors.primary : colors.textMuted}
           />
-          <Text
-            style={[
-              styles.filterButtonText,
-              filterCount > 0 && { color: colors.primary, fontWeight: '700' },
-            ]}
-          >
-            {filterCount > 0
-              ? he.gameFiltersActive(filterCount)
-              : he.gameFiltersButton}
-          </Text>
+          {filterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
 
@@ -397,6 +399,7 @@ export function PublicGroupsFeedScreen() {
         </View>
       ) : isSearching ? (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
@@ -415,6 +418,7 @@ export function PublicGroupsFeedScreen() {
         </ScrollView>
       ) : (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
@@ -632,35 +636,45 @@ function PrimaryAction({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  searchWrap: {
+  // Search input + filter button live on a single row. The icon-only
+  // filter button mirrors GamesListScreen's pattern (44×40 pill with
+  // optional badge) so the two tabs feel consistent.
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
   },
-
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  // The single "Filters" button replaces the old wrap-row of toggle
-  // pills. Active state mirrors the games-list filter button.
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    width: 44,
+    height: 40,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   filterButtonActive: {
     backgroundColor: colors.primaryLight,
   },
-  filterButtonText: {
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
     ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '600',
+    color: colors.textOnPrimary,
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   listContent: {

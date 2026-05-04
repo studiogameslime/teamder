@@ -30,6 +30,13 @@ function gameToValues(g: Game): GameFormValues {
     startsAt: g.startsAt,
     fieldName: g.fieldName ?? '',
     location: g.fieldAddress ?? g.city ?? '',
+    // Strict: never infer "selected from list" from a pre-filled
+    // string. The flag flips to true only when the user actively
+    // taps a city in the autocomplete dropdown. On edit this means
+    // the user must re-pick the city from the list before submit
+    // — guarantees the saved fieldAddress always corresponds to a
+    // real city pick (no free-typed leftovers).
+    locationFromList: false,
     format: g.format ?? '5v5',
     numberOfTeams: g.numberOfTeams ?? 2,
     matchDurationMinutes: g.matchDurationMinutes

@@ -59,6 +59,69 @@ import { AnalyticsEvent, logEvent } from './analyticsService';
 let activeGame: Game | null = null;
 
 /**
+ * Registration-conflict window. A user can't be registered for two
+ * games whose start times are within this many ms of each other.
+ * 4h before + 4h after = 8h total no-overlap zone around any
+ * existing registration. Tweakable in one place.
+ */
+const REG_CONFLICT_WINDOW_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * Defensive cap on the number of "games this user is participating
+ * in" docs we'll fetch when checking conflicts. A typical user has
+ * a handful of active games at most; this limit only kicks in for
+ * pathological histories and prevents a runaway scan.
+ */
+const CONFLICT_QUERY_LIMIT = 50;
+
+export interface RegistrationConflict {
+  gameId: string;
+  title: string;
+  startsAt: number;
+  groupId: string;
+}
+
+/**
+ * Typed error the join flow throws when a registration would clash
+ * with another game in the user's calendar. Carries the conflict
+ * payload so the UI can deep-link to the offending game.
+ *
+ * Plain `Error` extension: we attach a stable `code` string ("plain
+ * code-on-error" pattern used elsewhere in this service — e.g.
+ * `getGameById` throws `{code:'ACCESS_BLOCKED'}`) plus the structured
+ * conflict, which UI code reads via `(err as Error & {conflict}).conflict`.
+ *
+ * Side-effect: emits a `registration_conflict_blocked` analytics
+ * event the moment the error is constructed. This is the central
+ * point where both mock and Firebase paths surface a conflict, so
+ * logging here guarantees zero-skew telemetry without each callsite
+ * remembering to fire its own event.
+ */
+function makeRegistrationConflictError(
+  target: { id: string; groupId?: string; startsAt?: number },
+  conflict: RegistrationConflict,
+): Error & { code: 'REGISTRATION_CONFLICT'; conflict: RegistrationConflict } {
+  const timeDiffMinutes =
+    typeof target.startsAt === 'number'
+      ? Math.round(Math.abs(conflict.startsAt - target.startsAt) / 60000)
+      : -1;
+  const sameGroup = !!target.groupId && target.groupId === conflict.groupId;
+  logEvent(AnalyticsEvent.RegistrationConflictBlocked, {
+    targetGameId: target.id,
+    conflictGameId: conflict.gameId,
+    timeDiffMinutes,
+    sameGroup,
+  });
+  const err = new Error('REGISTRATION_CONFLICT') as Error & {
+    code: 'REGISTRATION_CONFLICT';
+    conflict: RegistrationConflict;
+  };
+  err.code = 'REGISTRATION_CONFLICT';
+  err.conflict = conflict;
+  return err;
+}
+
+/**
  * Typed wrapper around `updateDoc` for the games collection. The
  * Firestore SDK's typed converter requires a full `Game` on partial
  * writes, but we only ever want to send the keys we changed — sending
@@ -233,6 +296,69 @@ export const gameService = {
     // the active group. The store hydrates this when needed; gameService
     // returns []. (The store uses currentUser + group.playerIds to resolve.)
     return [];
+  },
+
+  /**
+   * Per-community player stats. For every uid in `userIds` returns:
+   *   • gamesPlayed — finished games in this community where the user
+   *     was assigned to ANY team (mirrors the discipline / achievement
+   *     definition: "actually showed up").
+   *   • wins — match rounds across those games where the user's team
+   *     was the winner (rounds with `winner === 'tie'` are excluded).
+   *
+   * Bounded by `getHistory`'s recent window (20 most recent terminal
+   * games), so the read cost is `~20 game docs + 20 round subqueries`
+   * regardless of how many users we score.
+   *
+   * Mock-mode returns zeros — there's no rounds backing in mock data.
+   */
+  async getCommunityPlayerStats(
+    groupId: GroupId,
+    userIds: UserId[],
+  ): Promise<Record<UserId, { gamesPlayed: number; wins: number }>> {
+    const acc: Record<UserId, { gamesPlayed: number; wins: number }> = {};
+    for (const uid of userIds) acc[uid] = { gamesPlayed: 0, wins: 0 };
+    if (USE_MOCK_DATA || userIds.length === 0) return acc;
+
+    const q = query(
+      col.games(),
+      where('groupId', '==', groupId),
+      where('status', '==', 'finished'),
+      orderBy('startsAt', 'desc'),
+      limit(20),
+    );
+    const snap = await getDocs(q);
+    // Sequential fetch of rounds — Firestore SDK throttles parallel
+    // subqueries anyway, and history rarely exceeds 20 games per
+    // community. If this becomes hot we can promise-all chunks of 5.
+    for (const doc of snap.docs) {
+      const g = doc.data();
+      const teams = g.teams ?? [];
+      if (teams.length === 0) continue;
+      // Per-uid: which team color was this user on (if any)?
+      const colorByUid: Record<UserId, string> = {};
+      for (const t of teams) {
+        for (const pid of t.playerIds ?? []) {
+          colorByUid[pid] = t.color;
+        }
+      }
+      // Count gamesPlayed once per uid that appears in any team.
+      const requestedSet = new Set(userIds);
+      for (const uid of Object.keys(colorByUid)) {
+        if (!requestedSet.has(uid)) continue;
+        acc[uid].gamesPlayed += 1;
+      }
+      // Tally wins from this game's rounds.
+      const rounds = await loadRoundsFor(g.id);
+      for (const r of rounds) {
+        if (!r.winner || r.winner === 'tie') continue;
+        for (const uid of Object.keys(colorByUid)) {
+          if (!requestedSet.has(uid)) continue;
+          if (colorByUid[uid] === r.winner) acc[uid].wins += 1;
+        }
+      }
+    }
+    return acc;
   },
 
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {
@@ -664,6 +790,147 @@ export const gameService = {
   },
 
   /**
+   * Look for a registration conflict — another active game the user is
+   * already registered to whose start time is within ±REG_CONFLICT_WINDOW_MS
+   * of the target game. Used to block "double-booking" the same evening.
+   *
+   * Returns null when there's no conflict (caller should proceed). When
+   * a conflict exists, returns a compact summary of the closest one so
+   * the UI can surface a deep-link to it.
+   *
+   * Conflict counts:
+   *   • players / waitlist / pending — all real registration buckets
+   *   • participantIds — the denormalised union (queried directly).
+   *     Defensive fallback (post-filter): also accept a doc if user is
+   *     in players[]/waitlist[]/pending[] but missing from participantIds
+   *     (covers stale denormalisation from older writes).
+   *
+   * Conflict ignores:
+   *   • finished / cancelled / scheduled (status not in active set)
+   *   • the target game itself (excluded by id)
+   *
+   * Special case — `status === 'active'` (round in progress):
+   *   ALWAYS counts as a conflict regardless of startsAt comparison.
+   *   A live game IS the user's "now"; you can't be in two places at
+   *   once even if the active game's startsAt is missing or outside
+   *   the ±4h window. This handles legacy/edge-case games without a
+   *   startsAt that have already been marked active.
+   *
+   * Edge cases:
+   *   • target.startsAt missing → window comparison disabled, but an
+   *     `active` candidate still blocks. Other candidates pass through
+   *     (no time anchor → can't compute distance).
+   *   • exact same startsAt → `>= && <=` (inclusive) → blocks.
+   *   • multiple conflicts → returns the one whose start time is
+   *     CLOSEST to the target's start (smallest |Δstart|), so the UI
+   *     can deep-link to the most relevant clash. `active` candidates
+   *     are pinned to distance 0 so they win ties (most urgent).
+   *   • performance — capped to CONFLICT_QUERY_LIMIT docs per fetch
+   *     so a pathological participation history can't blow up the
+   *     read. Most users will have <10 active games at any time.
+   */
+  async findRegistrationConflict(
+    userId: UserId,
+    targetGame: { id: string; startsAt?: number },
+  ): Promise<{
+    gameId: string;
+    title: string;
+    startsAt: number;
+    groupId: string;
+  } | null> {
+    const hasStart = typeof targetGame?.startsAt === 'number';
+    const windowStart = hasStart
+      ? (targetGame.startsAt as number) - REG_CONFLICT_WINDOW_MS
+      : 0;
+    const windowEnd = hasStart
+      ? (targetGame.startsAt as number) + REG_CONFLICT_WINDOW_MS
+      : 0;
+    const ACTIVE_STATUSES: readonly string[] = ['open', 'locked', 'active'];
+
+    const candidates: Game[] = await (async () => {
+      if (USE_MOCK_DATA) {
+        return mockGamesV2
+          .filter((g) =>
+            (g.participantIds ?? [
+              ...g.players,
+              ...g.waitlist,
+              ...(g.pending ?? []),
+            ]).includes(userId),
+          )
+          .map((g) => ({ ...g, matches: [] } as Game));
+      }
+      // Single array-contains query — Firestore supports only one
+      // per request. Status + window filters run client-side. The
+      // same index already exists for `getMyGames`
+      // (`participantIds` auto-index), so this adds zero infra cost.
+      // limit() bounds worst-case scan; a typical user is in < 10
+      // active games so this rarely truncates real data.
+      const snap = await getDocs(
+        query(
+          col.games(),
+          where('participantIds', 'array-contains', userId),
+          limit(CONFLICT_QUERY_LIMIT),
+        ),
+      );
+      return snap.docs.map((d) => ({ ...d.data(), matches: [] } as Game));
+    })();
+
+    const userParticipates = (g: Game): boolean => {
+      // Trust participantIds first — that's why we queried on it. The
+      // fallback merge is a defensive net for docs whose denormalised
+      // field drifted out of sync with the bucket arrays. Cheap O(n)
+      // membership checks; n is the size of one game's roster.
+      if ((g.participantIds ?? []).includes(userId)) return true;
+      if (g.players?.includes(userId)) return true;
+      if (g.waitlist?.includes(userId)) return true;
+      if ((g.pending ?? []).includes(userId)) return true;
+      return false;
+    };
+
+    const conflicts = candidates.filter((g) => {
+      if (g.id === targetGame.id) return false;
+      if (!ACTIVE_STATUSES.includes(g.status)) return false;
+      if (!userParticipates(g)) return false;
+      // Live game ALWAYS conflicts — the user is presently committed
+      // there, time-window logic doesn't apply.
+      if (g.status === 'active') return true;
+      // Otherwise we need both sides of the window to evaluate.
+      if (!hasStart) return false;
+      if (typeof g.startsAt !== 'number') return false;
+      return g.startsAt >= windowStart && g.startsAt <= windowEnd;
+    });
+    if (conflicts.length === 0) return null;
+
+    // Sort: active games first (distance 0), then by absolute time
+    // distance to target. If target has no startsAt, fall back to
+    // "earliest first" so the user sees the most imminent clash.
+    conflicts.sort((a, b) => {
+      const da =
+        a.status === 'active'
+          ? 0
+          : hasStart && typeof a.startsAt === 'number'
+            ? Math.abs(a.startsAt - (targetGame.startsAt as number))
+            : a.startsAt ?? Number.MAX_SAFE_INTEGER;
+      const db =
+        b.status === 'active'
+          ? 0
+          : hasStart && typeof b.startsAt === 'number'
+            ? Math.abs(b.startsAt - (targetGame.startsAt as number))
+            : b.startsAt ?? Number.MAX_SAFE_INTEGER;
+      return da - db;
+    });
+    const c = conflicts[0];
+    return {
+      gameId: c.id,
+      title: c.title,
+      // startsAt may legitimately be 0/missing for an active game with
+      // no scheduled time. The UI guards on this when formatting.
+      startsAt: typeof c.startsAt === 'number' ? c.startsAt : 0,
+      groupId: c.groupId,
+    };
+  },
+
+  /**
    * Add the current user to a game, choosing the right bucket based on
    * the game's rules:
    *   - requiresApproval=true → pending[] (organizer must approve)
@@ -691,6 +958,19 @@ export const gameService = {
             : 'pending';
         return { bucket: where };
       }
+      // Conflict guard — same rule as the Firebase path. Skipped when
+      // the user is already in this game (handled by the idempotent
+      // check above). For mocks we just reuse the helper.
+      const conflict = await gameService.findRegistrationConflict(userId, {
+        id: g.id,
+        startsAt: g.startsAt,
+      });
+      if (conflict) {
+        throw makeRegistrationConflictError(
+          { id: g.id, groupId: g.groupId, startsAt: g.startsAt },
+          conflict,
+        );
+      }
       let bucket: 'players' | 'waitlist' | 'pending';
       // Capacity is shared between real players and guests — guests are
       // first-class participants per the spec.
@@ -708,6 +988,14 @@ export const gameService = {
       g.participantIds = Array.from(
         new Set([...(g.participantIds ?? []), userId])
       );
+      // Clear any prior cancellation timestamp — re-joining means
+      // the user reversed their decision, and a stale timestamp
+      // would otherwise still count as a "late cancellation" in
+      // the discipline snapshot.
+      if (g.cancellations && g.cancellations[userId] !== undefined) {
+        const { [userId]: _drop, ...rest } = g.cancellations;
+        g.cancellations = Object.keys(rest).length > 0 ? rest : undefined;
+      }
       g.updatedAt = Date.now();
       // Phase 3: count this as a "game joined" for achievements. Pending
       // bucket is excluded — those joins haven't actually been admitted.
@@ -729,6 +1017,49 @@ export const gameService = {
     // — the SDK retries on contention.
     const ref = docs.game(gameId);
     const { db } = getFirebase();
+    // Authoritative pre-transaction conflict check. Per spec the
+    // check fires BEFORE any write — so we don't need to roll back
+    // state if the user is double-booking. We pull the target with
+    // a single getDoc; the conflict helper does its own
+    // array-contains query (one extra read at most).
+    //
+    // Even when target.startsAt is missing we still call the helper
+    // — an `active` registration always blocks regardless of time
+    // anchor (the user is currently playing somewhere else).
+    //
+    // Skipped only when the user is already a participant in this
+    // game — re-joining your own game shouldn't be blocked by
+    // yourself.
+    //
+    // The check sits as close as possible to runTransaction(): the
+    // race window between the helper resolving and the txn opening
+    // is just the JS scheduler tick between two sequential awaits,
+    // which is the smallest gap we can give without doing a query
+    // inside the transaction (Firestore web SDK forbids queries in
+    // transactions).
+    //
+    // Network errors here propagate up so the caller can surface a
+    // generic error rather than silently allowing the join.
+    const targetSnap = await getDoc(ref);
+    if (!targetSnap.exists()) throw new Error('joinGameV2: game not found');
+    const targetData = targetSnap.data();
+    const alreadyInTarget = (targetData.participantIds ?? []).includes(userId);
+    if (!alreadyInTarget) {
+      const conflict = await gameService.findRegistrationConflict(userId, {
+        id: gameId,
+        startsAt: targetData.startsAt,
+      });
+      if (conflict) {
+        throw makeRegistrationConflictError(
+          {
+            id: gameId,
+            groupId: targetData.groupId,
+            startsAt: targetData.startsAt,
+          },
+          conflict,
+        );
+      }
+    }
     const result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('joinGameV2: game not found');
@@ -781,10 +1112,21 @@ export const gameService = {
       updates.participantIds = Array.from(
         new Set([...existingParticipants, userId]),
       );
+      // Clear any prior cancellation timestamp on re-join — see the
+      // mock branch comment for the rationale (stale timestamps
+      // would otherwise leak into the discipline snapshot).
+      const existingCancellations: Record<string, number> | undefined =
+        data.cancellations && typeof data.cancellations === 'object'
+          ? (data.cancellations as Record<string, number>)
+          : undefined;
+      if (existingCancellations && existingCancellations[userId] !== undefined) {
+        const { [userId]: _drop, ...rest } = existingCancellations;
+        updates.cancellations = Object.keys(rest).length > 0 ? rest : null;
+      }
       // tx.update bypasses the converter so only the keys we changed
       // land in affectedKeys() — critical for the self-join rule which
       // whitelists ['players','waitlist','pending','participantIds',
-      // 'updatedAt']. The cast mirrors `updateGameDoc` above.
+      // 'cancellations','updatedAt']. The cast mirrors `updateGameDoc`.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, updates as any);
       return { bucket };
@@ -989,6 +1331,10 @@ export const gameService = {
       // Re-derive the union: cancelling user is gone; promoted user is still
       // a participant so we just drop the cancelled one.
       g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
+      // Stamp the cancellation time. Discipline derivation reads this
+      // to compare against the game's `cancelDeadlineHours` and decide
+      // whether the cancel was on time or after the deadline.
+      g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       if (promotedUid) {
         notificationsService.dispatch({
@@ -1033,11 +1379,21 @@ export const gameService = {
       const participantIds = Array.isArray(data.participantIds)
         ? data.participantIds.filter((id: string) => id !== userId)
         : Array.from(new Set([...players, ...waitlist, ...pending]));
+      // Stamp the cancellation timestamp (set-and-overwrite) so the
+      // discipline snapshot can compare it against the game's
+      // cancelDeadlineHours later. We merge into the existing map
+      // rather than replacing it — other users' cancellations on the
+      // same game must not be wiped.
+      const cancellations = {
+        ...((data.cancellations as Record<string, number> | undefined) ?? {}),
+        [userId]: Date.now(),
+      };
       tx.update(ref, {
         players,
         waitlist,
         pending,
         participantIds,
+        cancellations,
         updatedAt: Date.now(),
       });
       return { promotedUid, title: data.title ?? '' };

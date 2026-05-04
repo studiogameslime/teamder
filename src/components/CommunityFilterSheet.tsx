@@ -207,7 +207,10 @@ function SwitchRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <View style={styles.switchRow}>
+    <Pressable
+      onPress={() => onChange(!value)}
+      style={styles.switchRow}
+    >
       <View style={{ flex: 1 }}>
         <Text style={styles.switchLabel}>{label}</Text>
         {caption ? <Text style={styles.switchCaption}>{caption}</Text> : null}
@@ -218,7 +221,7 @@ function SwitchRow({
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />
-    </View>
+    </Pressable>
   );
 }
 

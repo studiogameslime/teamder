@@ -48,6 +48,7 @@ export const AnalyticsEvent = {
   GameJoined: 'game_joined',
   GameCancelled: 'game_cancelled',
   WaitlistJoined: 'waitlist_joined',
+  RegistrationConflictBlocked: 'registration_conflict_blocked',
   GameEdited: 'game_edited',
   GameLocked: 'game_locked',
   GameStarted: 'game_started',

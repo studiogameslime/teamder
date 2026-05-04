@@ -81,17 +81,65 @@ export function MainTabs() {
         name="CommunitiesTab"
         component={CommunitiesStack}
         options={{ title: he.tabCommunities }}
+        listeners={({ navigation, route }) => ({
+          // Tapping a tab from inside a deep route (e.g. CommunityDetails
+          // → MatchDetails) used to leave the user on that nested
+          // screen. The intuitive behaviour is "tap tab = go home" —
+          // pop the nested stack to its root when the user re-presses
+          // the already-focused tab.
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+        })}
       />
       <Tab.Screen
         name="GameTab"
         component={GameStack}
         options={{ title: he.tabGame }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+        })}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStack}
         options={{ title: he.tabProfile }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+        })}
       />
     </Tab.Navigator>
   );
+}
+
+// When the focused tab is tapped again, pop the inner stack back to
+// its root screen instead of being a no-op (RN Navigation default).
+// Other tab presses (focus change) keep the default — preserving the
+// nested route the user was on. If the user is already on the root
+// of the focused tab we DO NOTHING — re-navigating triggers an
+// extra render + a brief flicker for no UX gain.
+function resetTabToRoot(
+  e: { defaultPrevented: boolean; preventDefault: () => void },
+  navigation: { isFocused: () => boolean; getState: () => unknown; dispatch: (a: unknown) => void },
+  tabName: string,
+) {
+  if (!navigation.isFocused()) return; // first tap → just focus
+  const state = navigation.getState() as {
+    routes: Array<{
+      name: string;
+      state?: { index?: number; routes: Array<{ name: string }> };
+    }>;
+  };
+  const tabRoute = state.routes.find((r) => r.name === tabName);
+  const stackRoutes = tabRoute?.state?.routes;
+  const rootName = stackRoutes?.[0]?.name;
+  if (!rootName) return;
+  // Already at the root of this tab? Suppress the navigate to avoid
+  // re-mount / flicker. `index` is the focused route index in the
+  // nested stack; 0 means "on root, no children pushed".
+  const stackIndex = tabRoute?.state?.index ?? 0;
+  if (stackIndex === 0 && stackRoutes && stackRoutes.length === 1) {
+    return;
+  }
+  e.preventDefault();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (navigation as any).navigate(tabName, { screen: rootName });
 }

@@ -723,6 +723,18 @@ export interface Game {
   arrivals?: Record<UserId, ArrivalStatus>;
 
   /**
+   * Per-player cancellation timestamp (ms epoch), keyed by user id.
+   * Written by `cancelGameV2` whenever a registered user cancels;
+   * used by the discipline-snapshot logic to distinguish "cancelled
+   * in time" from "cancelled after the deadline" — only the latter
+   * counts as a yellow card. The map is set-and-overwrite (latest
+   * cancellation wins if the user re-joins then cancels again);
+   * `joinGameV2` clears the entry on re-join so a stale timestamp
+   * can't haunt a player who corrected their plan.
+   */
+  cancellations?: Record<UserId, number>;
+
+  /**
    * Guests attached to this game only. Default `[]` for legacy docs.
    * Mutated by the coach via gameService.addGuest / removeGuest /
    * updateGuest — regular players can never write this field.

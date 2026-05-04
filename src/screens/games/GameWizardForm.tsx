@@ -28,8 +28,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
+import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
+import { toast } from '@/components/Toast';
+import { searchCities } from '@/services/israelLocationService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -66,8 +69,14 @@ export interface GameFormValues {
   title: string;
   startsAt: number;
   fieldName: string;
-  /** Single combined location string — saved into Game.fieldAddress. */
+  /** Single combined location string — saved into Game.fieldAddress.
+   *  Must be picked from the autocomplete (Israeli cities list) —
+   *  free-typed values are blocked at submit by the wizard. */
   location: string;
+  /** Internal flag — true once the user picked a city from the
+   *  autocomplete dropdown. Reset to false on any free-text edit
+   *  so a typed-then-cleared field doesn't pass validation. */
+  locationFromList: boolean;
   format: GameFormat;
   numberOfTeams: number;
   matchDurationMinutes: string;
@@ -131,13 +140,25 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
+  // City must be a real autocomplete selection — `locationFromList`
+  // is the single source of truth (true only on `onSelect`, false on
+  // any manual edit). Per spec we block submit / step-nav whenever
+  // it isn't true, including the empty case (which is also "not
+  // selected"). Edit flows pre-fill the flag from persisted data.
+  const validateLocation = (): boolean => {
+    if (values.locationFromList) return true;
+    toast.error(he.wizardLocationMustBeFromList);
+    return false;
+  };
   const goNext = () => {
+    if (step === 1 && !validateLocation()) return;
     if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
   };
   const goBack = () => {
     if (step > 1) setStep(((step - 1) as 1 | 2 | 3));
   };
   const submit = async () => {
+    if (!validateLocation()) return;
     setBusy(true);
     try {
       await onSubmit(values);
@@ -248,15 +269,27 @@ function Step1({
         required
       />
 
-      {/* Location is the most-asked field after date — promoted up the
-          form, with a pin icon to make it the visual anchor of step 1. */}
-      <InputField
+      {/* Location — autocomplete-only city picker. Typing free text
+          flips `locationFromList` to false; the wizard's submit
+          handler uses that flag to block free-typed values with a
+          toast prompt. */}
+      <AutocompleteInput
         label={he.wizardLocation}
         value={values.location}
-        onChangeText={(t) => set('location', t)}
+        onChange={(t) => {
+          // ANY manual edit invalidates the prior selection — even if
+          // the resulting string happens to match a real city, the
+          // user must re-select from the dropdown so the flag truly
+          // tracks "user explicitly picked this".
+          set('location', t);
+          set('locationFromList', false);
+        }}
+        onSelect={(v) => {
+          set('location', v);
+          set('locationFromList', true);
+        }}
         placeholder={he.wizardLocationPlaceholder}
-        icon="location-outline"
-        required
+        fetchSuggestions={(q) => searchCities(q)}
       />
 
       <PillRow

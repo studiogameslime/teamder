@@ -615,6 +615,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rateReminderSent: g.rateReminderSent ?? false,
       capacityNoticeSent: g.capacityNoticeSent ?? false,
       arrivals: g.arrivals ?? null,
+      cancellations: g.cancellations ?? null,
       autoTeamGenerationMinutesBeforeStart:
         g.autoTeamGenerationMinutesBeforeStart ?? null,
       autoTeamsGeneratedAt: g.autoTeamsGeneratedAt ?? null,
@@ -750,6 +751,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,
       arrivals: readArrivals(d.arrivals),
+      cancellations: readCancellations(d.cancellations),
       autoTeamGenerationMinutesBeforeStart:
         typeof d.autoTeamGenerationMinutesBeforeStart === 'number' &&
         d.autoTeamGenerationMinutesBeforeStart > 0
@@ -815,6 +817,17 @@ function readTeamBalanceMeta(
       ? o.teamRatings.filter((n): n is number => typeof n === 'number')
       : [],
   };
+}
+
+function readCancellations(v: unknown): Record<string, number> | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    // Defensive: only accept positive ms timestamps. Drop garbage so a
+    // single bad entry can't blow up the discipline snapshot.
+    if (typeof val === 'number' && val > 0) out[k] = val;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function readArrivals(

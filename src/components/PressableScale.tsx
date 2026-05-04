@@ -58,12 +58,19 @@ export function PressableScale({
       disabled={disabled}
       style={style}
       onPressIn={(e) => {
+        // Suppress the scale animation entirely when disabled —
+        // Pressable's native `disabled` already blocks `onPress`,
+        // but `onPressIn`/`onPressOut` still fire, so without this
+        // guard a disabled button would still bounce on tap and
+        // feel interactive.
+        if (disabled) return;
         // Faster ramp on press-in so the touch feels immediate;
         // spring back on release so the bounce is friendly.
         scale.value = withTiming(pressedScale, { duration: 80 });
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
+        if (disabled) return;
         scale.value = withSpring(1, { damping: 12, stiffness: 220 });
         onPressOut?.(e);
       }}

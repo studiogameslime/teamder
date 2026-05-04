@@ -66,7 +66,9 @@ import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
-import { navigationRef } from '@/navigation/navigationRef';
+import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
+import { useUserStore } from '@/store/userStore';
+import { useGroupStore } from '@/store/groupStore';
 import {
   parseInviteUrl,
   stashPendingInvite,
@@ -151,6 +153,30 @@ export default function App() {
   // store. Force-update results still win unconditionally.
   const optionalUpdateDismissedRef = useRef(false);
 
+  // Live "navigator is mounted and ready to navigate" flag. Flipped
+  // by NavigationContainer's `onReady`. We pair it with `pendingLink`
+  // below so a deep link that arrives before navigation is ready
+  // gets retried the moment readiness flips on. RootNavigator's
+  // one-shot `consumedRef` covers cold-start storage stash; this
+  // pair covers warm-app URLs that race the navigator mount.
+  const [navReady, setNavReady] = useState(false);
+  // In-memory pending deep link. Set by the warm URL handler when
+  // it can't navigate immediately (auth not ready, navigator still
+  // mounting). Last-write-wins semantics: the most recent URL
+  // overwrites any prior pending — taps are explicit user intent
+  // and the stale one is no longer interesting.
+  const [pendingLink, setPendingLink] = useState<{
+    type: 'session' | 'team';
+    id: string;
+  } | null>(null);
+  // Auth signals — already maintained by the user store. We watch
+  // them here so the consumer effect re-fires the moment the user
+  // finishes signing in / completes onboarding while the link is
+  // sitting in pendingLink.
+  const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
+  const profileComplete = useUserStore((s) => s.isProfileComplete());
+  const onboardingComplete = useUserStore((s) => s.hasCompletedOnboarding());
+
   useEffect(() => {
     // Hand the screen over from the OS splash to our React layer the
     // moment App mounts. The custom SplashScreen component is already
@@ -161,22 +187,44 @@ export default function App() {
     // Place for one-time bootstraps: analytics init, FCM token registration, etc.
   }, []);
 
-  // Invite-link plumbing. Three potential sources, in strict priority
-  // order on cold-start:
+  // Invite-link plumbing. Three potential sources on COLD start, in
+  // strict priority order:
   //   1. `Linking.getInitialURL()` — app launched FROM a deep link.
   //   2. Existing stash in storage — set by a previous launch that
   //      didn't get consumed (auth incomplete, navigation race).
   //   3. Play Install Referrer — the user installed via the store and
   //      this is their first launch.
   //
-  // Whichever fires first wins. `stashPendingInvite` itself enforces
-  // set-once, but we ALSO short-circuit between steps 1 and 3 here
-  // so the install-referrer native call is skipped entirely when an
-  // earlier source already produced a stash. RootNavigator owns the
-  // consumer side; nothing in this file ever navigates.
+  // For WARM/background URLs (app already mounted), we take a
+  // different path: try to navigate IMMEDIATELY and bypass the
+  // stash + RootNavigator consumer entirely. The consumer there
+  // uses a one-shot `consumedRef` so it never re-fires after the
+  // first cold-start consumption — which used to silently swallow
+  // every subsequent deep link until the user fully restarted the
+  // app. The `forWarm` branch below is the fix.
+  //
+  // De-duplication: tapping the same URL twice within DUP_WINDOW
+  // triggers navigation only once. Without this, iOS sometimes
+  // delivers the same URL via getInitialURL AND the listener on
+  // the same launch, double-navigating into the target.
   useEffect(() => {
-    const handle = async (url: string | null) => {
+    const DUP_WINDOW_MS = 3000;
+    let lastUrl: string | null = null;
+    let lastUrlAt = 0;
+
+    const isDuplicate = (url: string): boolean => {
+      const now = Date.now();
+      const dup = url === lastUrl && now - lastUrlAt < DUP_WINDOW_MS;
+      lastUrl = url;
+      lastUrlAt = now;
+      return dup;
+    };
+
+    // Cold-start handler — stash and let RootNavigator consume after
+    // auth is ready. This is the legacy path; behavior unchanged.
+    const handleCold = async (url: string | null) => {
       if (!url) return;
+      if (isDuplicate(url)) return;
       const parsed = parseInviteUrl(url);
       if (!parsed) return;
       try {
@@ -186,11 +234,70 @@ export default function App() {
       }
     };
 
+    // Warm-start handler — fired by `addEventListener` while the
+    // app is mounted. If the user is signed in & onboarded AND the
+    // navigator is ready, navigate DIRECTLY. Otherwise stash both
+    // in-memory (pendingLink, consumed by the effect below) AND in
+    // storage (recovery across cold restarts).
+    //
+    // The dual-store matters: RootNavigator's one-shot `consumedRef`
+    // could already have fired by the time a warm URL arrives, so
+    // we can't rely on the storage stash alone — that path runs
+    // exactly once per launch. The in-memory pendingLink + consumer
+    // effect runs whenever (navReady, auth, pendingLink) flip,
+    // which is the only setup that survives an
+    // already-passed-by-consumer state.
+    const handleWarm = async (url: string) => {
+      if (!url) return;
+      if (isDuplicate(url)) return;
+      const parsed = parseInviteUrl(url);
+      if (!parsed) return;
+
+      const userState = useUserStore.getState();
+      const isAuthReady =
+        !!userState.currentUser &&
+        userState.isProfileComplete() &&
+        userState.hasCompletedOnboarding();
+
+      if (isAuthReady && navigationRef.isReady()) {
+        const cachedGroups = useGroupStore.getState().groups;
+        const isMember =
+          parsed.type === 'team'
+            ? cachedGroups.some((g) => g.id === parsed.id)
+            : false;
+        const ok = navigateInvite({
+          type: parsed.type,
+          id: parsed.id,
+          isMember,
+        });
+        if (ok) {
+          await storage.clearPendingInvite().catch(() => undefined);
+          if (__DEV__) {
+            console.info('[invite] warm — navigated directly', parsed);
+          }
+          return;
+        }
+      }
+
+      // Not ready — last-link-wins overwrite of in-memory pending.
+      // Also write through to storage so a cold restart picks it up.
+      setPendingLink({ type: parsed.type, id: parsed.id });
+      await storage.clearPendingInvite().catch(() => undefined);
+      try {
+        await stashPendingInvite(parsed);
+        if (__DEV__) {
+          console.info('[invite] warm — pending (not ready)', parsed);
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('[invite] warm stash failed', err);
+      }
+    };
+
     (async () => {
       // 1. Initial URL.
       const initialUrl = await Linking.getInitialURL();
       if (__DEV__) console.info('[invite] getInitialURL →', initialUrl);
-      await handle(initialUrl);
+      await handleCold(initialUrl);
 
       // 2. Already-stashed invite? If so, skip the referrer call —
       //    we have a target, no need to re-derive one from the past.
@@ -212,9 +319,48 @@ export default function App() {
       }
     })();
 
-    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    const sub = Linking.addEventListener('url', (e) => handleWarm(e.url));
     return () => sub.remove();
   }, []);
+
+  // Pending-link consumer. Re-runs on every change of (pendingLink,
+  // navReady, currentUserId, profileComplete, onboardingComplete) —
+  // this guarantees a deep link sitting in pendingLink fires the
+  // moment the navigator AND the user are both ready, regardless of
+  // which one became ready last. RootNavigator's storage-stash
+  // consumer covers cold-start; this covers warm URLs that arrived
+  // mid-launch or while the user was on Auth/Onboarding.
+  useEffect(() => {
+    if (!pendingLink) return;
+    if (!navReady) return;
+    if (!navigationRef.isReady()) return;
+    if (!currentUserId || !profileComplete || !onboardingComplete) return;
+    const cachedGroups = useGroupStore.getState().groups;
+    const isMember =
+      pendingLink.type === 'team'
+        ? cachedGroups.some((g) => g.id === pendingLink.id)
+        : false;
+    const ok = navigateInvite({
+      type: pendingLink.type,
+      id: pendingLink.id,
+      isMember,
+    });
+    if (ok) {
+      // Clear both stores so a stale link can never re-fire on the
+      // next ready-tick.
+      setPendingLink(null);
+      storage.clearPendingInvite().catch(() => undefined);
+      if (__DEV__) {
+        console.info('[invite] consumer (pending) — navigated', pendingLink);
+      }
+    }
+  }, [
+    pendingLink,
+    navReady,
+    currentUserId,
+    profileComplete,
+    onboardingComplete,
+  ]);
 
   // Resolve the freshly-fetched UpdateKind into a UI verdict. Force
   // wins always; optional is suppressed when already dismissed this
@@ -337,6 +483,11 @@ export default function App() {
         theme={navTheme}
         ref={navigationRef}
         onReady={() => {
+          // Flag readiness so the pendingLink consumer effect above
+          // can fire the queued deep link (if any). Without this the
+          // warm URL sits forever waiting for an event it would
+          // never get on its own.
+          setNavReady(true);
           // Seed the initial route so the first screen_view fires before
           // any subsequent state change (otherwise it'd only fire on the
           // *second* navigation).

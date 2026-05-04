@@ -401,7 +401,10 @@ function ToggleCard({
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View style={styles.toggleCard}>
+    <Pressable
+      onPress={() => onValueChange(!value)}
+      style={styles.toggleCard}
+    >
       <View style={styles.toggleText}>
         <Text style={styles.toggleLabel} numberOfLines={2}>
           {label}
@@ -418,7 +421,7 @@ function ToggleCard({
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />
-    </View>
+    </Pressable>
   );
 }
 

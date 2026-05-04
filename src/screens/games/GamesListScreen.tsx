@@ -19,7 +19,7 @@
 // its own small action pill (join / leave) that handles the bucket
 // logic without leaving the list.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -30,7 +30,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useNavigation,
+  useScrollToTop,
+} from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -67,6 +71,14 @@ export function GamesListScreen() {
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+
+  // Scroll-to-top: react-navigation emits `tabPress` on the focused
+  // tab even when our MainTabs listener doesn't preventDefault (the
+  // already-at-root case). `useScrollToTop` listens for that event
+  // and scrolls the ref'd ScrollView to offset 0. Tap-tab-twice =
+  // jump to top.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   const [tab, setTab] = useState<Tab>('mine');
   const [myGames, setMyGames] = useState<Game[]>([]);
@@ -233,32 +245,56 @@ export function GamesListScreen() {
           <SoccerBallLoader size={40} />
         </View>
       ) : isEmpty ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="football-outline" size={56} color={colors.primary} />
-          </View>
-          <Text style={styles.emptyBody}>{he.emptyHomeBody}</Text>
-          <View style={styles.emptyActions}>
-            <Button
-              title={he.emptyHomePrimary}
-              variant="primary"
-              size="lg"
-              iconLeft="add-circle-outline"
-              onPress={handleCreate}
-              fullWidth
-            />
-            <Button
-              title={he.emptyHomeSecondary}
-              variant="outline"
-              size="lg"
-              iconLeft="search-outline"
-              onPress={() => setTab('open')}
-              fullWidth
-            />
-          </View>
-        </View>
+        (() => {
+          // The "מצא משחקים" button switches to the open tab — useful
+          // only when that tab actually has something to show. When
+          // both tabs are empty (no community/discoverable games
+          // anywhere), the button dead-ends, so we replace it with
+          // motivational copy that points the user to the create CTA.
+          const otherTabHasGames =
+            tab === 'mine'
+              ? communityGames.length + openGames.length > 0
+              : myGames.length > 0;
+          return (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name="football-outline"
+                  size={56}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.emptyBody}>
+                {otherTabHasGames
+                  ? he.emptyHomeBody
+                  : he.emptyHomeNoGamesAnywhere}
+              </Text>
+              <View style={styles.emptyActions}>
+                <Button
+                  title={he.emptyHomePrimary}
+                  variant="primary"
+                  size="lg"
+                  iconLeft="add-circle-outline"
+                  onPress={handleCreate}
+                  fullWidth
+                />
+                {otherTabHasGames && tab === 'mine' ? (
+                  <Button
+                    title={he.emptyHomeSecondary}
+                    variant="outline"
+                    size="lg"
+                    iconLeft="search-outline"
+                    onPress={() => setTab('open')}
+                    fullWidth
+                  />
+                ) : null}
+              </View>
+            </View>
+          );
+        })()
       ) : (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={

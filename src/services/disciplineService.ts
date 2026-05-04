@@ -12,18 +12,26 @@
 // /users/{uid}.discipline. We don't write to the game doc — discipline
 // review happens via the user's own card history.
 
-import { updateDoc, increment } from 'firebase/firestore';
+import {
+  getDocs,
+  increment,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import {
   DisciplineCardType,
   DisciplineEvent,
   DisciplineReason,
+  Game,
   User,
   UserDisciplineState,
   UserId,
   defaultDisciplineState,
 } from '@/types';
 import { USE_MOCK_DATA } from '@/firebase/config';
-import { docs } from '@/firebase/firestore';
+import { col, docs } from '@/firebase/firestore';
+import { mockGamesV2 } from '@/data/mockData';
 import { storage } from './storage';
 
 /** Minutes past kickoff at which a yellow becomes a red. */
@@ -32,6 +40,18 @@ export const RED_THRESHOLD_MIN = 60;
 export const YELLOW_THRESHOLD_MIN = 5;
 /** How many events to keep on the user doc. */
 const MAX_EVENTS = 20;
+
+/**
+ * Window size for the displayed-trust snapshot. Spec calls for "last
+ * 10 games" — anything older falls off the indicator so a single bad
+ * stretch doesn't permanently blacken a profile. The lifetime
+ * counters on /users/{uid}.discipline are kept untouched for backward
+ * compatibility (other surfaces may still read them) but are NOT
+ * what the player card shows anymore.
+ */
+const SNAPSHOT_WINDOW_GAMES = 10;
+/** Terminal statuses that count as "a game that happened". */
+const SNAPSHOT_TERMINAL_STATUSES: readonly string[] = ['finished', 'cancelled'];
 
 export const disciplineService = {
   /**
@@ -134,6 +154,143 @@ export const disciplineService = {
   /** Read-only helper for the Player Card. */
   state(user: User | null | undefined): UserDisciplineState {
     return readState(user);
+  },
+
+  /**
+   * Snapshot of yellow/red signals derived from the user's MOST
+   * RECENT SNAPSHOT_WINDOW_GAMES (default 10) PAST terminal games.
+   * This is what the player card surfaces — lifetime counters are
+   * deliberately NOT shown so a single bad stretch doesn't
+   * permanently mark a profile.
+   *
+   * The derivation is intentionally objective — no human reports,
+   * no admin marking. Two purely data-driven signals:
+   *
+   *   YELLOW (cancelled after the deadline):
+   *     • the game has `cancelDeadlineHours` defined (admin set
+   *       a deadline at creation), AND
+   *     • the user appears in `cancellations` with a timestamp
+   *       LATER than (startsAt - cancelDeadlineHours hours).
+   *     Games without a deadline are SKIPPED for the yellow check
+   *     — there's no objective "late" boundary to compare against.
+   *
+   *   RED (no-show):
+   *     • the game has `teams` populated (admin used the team
+   *       feature; without it we have no proof of who showed up),
+   *     • the user is in the final `players[]` (still registered
+   *       at game end, did NOT cancel), AND
+   *     • the user does NOT appear in any team's `playerIds`.
+   *     Games without team data are SKIPPED for the red check —
+   *     we don't punish the user for the admin's tooling choice.
+   *
+   * A single game contributes at most one card. If both signals
+   * fire (theoretically impossible — a cancelled user can't
+   * simultaneously be in players[]) the red wins.
+   *
+   * Selection criteria:
+   *   • the user appears in `participantIds` for the array-contains
+   *     query (defensive fallback merges players/waitlist/pending/
+   *     cancellations so a re-joined-then-cancelled user is still
+   *     in the candidate pool)
+   *   • status ∈ {finished, cancelled}
+   *   • startsAt < now (past only)
+   *   • sorted by startsAt desc, take first SNAPSHOT_WINDOW_GAMES
+   *
+   * gamesCounted reflects how many of the user's past games were
+   * actually evaluable (passed the selection filter). It does NOT
+   * tell you how many games contributed to each signal — a game
+   * without `cancelDeadlineHours` is still counted in
+   * `gamesCounted` but is invisible to the yellow check.
+   *
+   * Network failures are surfaced to the caller (Promise rejects)
+   * — the card has its own catch + skeleton UI.
+   */
+  async getPlayerDisciplineSnapshot(userId: UserId): Promise<{
+    yellowCardsLast10: number;
+    redCardsLast10: number;
+    gamesCounted: number;
+  }> {
+    if (!userId) {
+      return { yellowCardsLast10: 0, redCardsLast10: 0, gamesCounted: 0 };
+    }
+    const candidates: Game[] = USE_MOCK_DATA
+      ? mockGamesV2.map((g) => ({ ...g, matches: [] } as Game))
+      : await (async () => {
+          const snap = await getDocs(
+            query(
+              col.games(),
+              where('participantIds', 'array-contains', userId),
+            ),
+          );
+          return snap.docs.map((d) => ({ ...d.data(), matches: [] } as Game));
+        })();
+
+    const userInvolved = (g: Game): boolean => {
+      if ((g.participantIds ?? []).includes(userId)) return true;
+      if (g.players?.includes(userId)) return true;
+      if (g.waitlist?.includes(userId)) return true;
+      if ((g.pending ?? []).includes(userId)) return true;
+      // A user who cancelled may have been removed from
+      // participantIds. They still belong in the snapshot pool
+      // because we want to evaluate the late-cancel signal.
+      if (g.cancellations?.[userId] !== undefined) return true;
+      return false;
+    };
+
+    // Past-only: a "completed" game must actually have happened.
+    // Without this, a future game that was prematurely marked
+    // finished/cancelled (rare but possible: organizer cancels in
+    // advance) would inflate the window. When startsAt is missing
+    // we trust the terminal status alone.
+    const now = Date.now();
+    const recent = candidates
+      .filter((g) => {
+        if (!SNAPSHOT_TERMINAL_STATUSES.includes(g.status)) return false;
+        if (!userInvolved(g)) return false;
+        if (typeof g.startsAt === 'number' && g.startsAt >= now) return false;
+        return true;
+      })
+      .sort((a, b) => (b.startsAt ?? 0) - (a.startsAt ?? 0))
+      .slice(0, SNAPSHOT_WINDOW_GAMES);
+
+    const HOUR_MS = 60 * 60 * 1000;
+    let yellow = 0;
+    let red = 0;
+    for (const g of recent) {
+      // YELLOW — cancelled after deadline.
+      const cancelTs = g.cancellations?.[userId];
+      if (
+        typeof cancelTs === 'number' &&
+        typeof g.cancelDeadlineHours === 'number' &&
+        typeof g.startsAt === 'number'
+      ) {
+        const deadlineMs = g.startsAt - g.cancelDeadlineHours * HOUR_MS;
+        if (cancelTs > deadlineMs) {
+          yellow += 1;
+          continue; // a cancellation can't ALSO be a no-show
+        }
+      }
+      // RED — no-show: in the final roster, no team membership,
+      // teams data exists.
+      const teams = g.teams;
+      if (
+        Array.isArray(teams) &&
+        teams.length > 0 &&
+        (g.players ?? []).includes(userId)
+      ) {
+        const inSomeTeam = teams.some((t) =>
+          (t.playerIds ?? []).includes(userId),
+        );
+        if (!inSomeTeam) {
+          red += 1;
+        }
+      }
+    }
+    return {
+      yellowCardsLast10: yellow,
+      redCardsLast10: red,
+      gamesCounted: recent.length,
+    };
   },
 };
 

@@ -40,6 +40,11 @@ function buildInitial(g: Group): GameFormValues {
     startsAt: nextThursday20(),
     fieldName: g.fieldName ?? '',
     location: baseLocation,
+    // Strict: never infer "selected from list" from a pre-filled
+    // string. The flag flips to true only when the user actively
+    // taps a city in the autocomplete dropdown. This guarantees the
+    // saved fieldAddress always corresponds to a real city pick.
+    locationFromList: false,
     format: '5v5',
     numberOfTeams: 2,
     matchDurationMinutes: '8',

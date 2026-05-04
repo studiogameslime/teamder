@@ -221,8 +221,18 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
               onChange={(v) => onChange({ ...filters, requiresApproval: v })}
             />
 
-            {/* Availability boolean */}
-            <View style={styles.switchRow}>
+            {/* Availability boolean — wrapped in Pressable so the
+                label is also tappable, matching the rest of the
+                toggle rows in the app. */}
+            <Pressable
+              onPress={() =>
+                onChange({
+                  ...filters,
+                  onlyAvailable: !filters.onlyAvailable,
+                })
+              }
+              style={styles.switchRow}
+            >
               <Text style={styles.switchLabel}>{he.gameFiltersOnlyAvailable}</Text>
               <Switch
                 value={filters.onlyAvailable}
@@ -232,7 +242,7 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#fff"
               />
-            </View>
+            </Pressable>
           </ScrollView>
 
           <View style={styles.footer}>

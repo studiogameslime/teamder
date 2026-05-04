@@ -16,7 +16,12 @@ import {
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -87,6 +92,11 @@ export function PlayerCardScreen() {
   const [nextGame, setNextGame] = useState<Game | null>(null);
   const [gamesLoading, setGamesLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState(false);
+  // Successful referrals — count of users whose `invitedBy === userId`.
+  // Loaded once per `userId` change (i.e. once per profile open) so
+  // the screen doesn't re-query on every render. Failure → null,
+  // which the UI hides instead of showing a misleading "0".
+  const [referralCount, setReferralCount] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -106,6 +116,37 @@ export function PlayerCardScreen() {
       alive = false;
     };
   }, [userId]);
+
+  // Referral count: re-fetched on every screen focus so a new
+  // referral that lands while the user is elsewhere in the app
+  // shows up the moment they return to this card. We don't poll
+  // and we don't depend on snapshot-listeners — focus-only
+  // refresh is the right cadence for a stat the user expects to
+  // be roughly current, not real-time. The first focus after
+  // mount also serves as the initial load.
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+      userService
+        .getInvitedUsersCount(userId)
+        .then((n) => {
+          if (alive) setReferralCount(n);
+        })
+        .catch((err) => {
+          if (__DEV__) {
+            console.warn('[playerCard] getInvitedUsersCount failed', err);
+          }
+          // Leave the previous count visible on transient failures
+          // — flicker-back-to-loading on every focus would be worse
+          // UX than a slightly stale number. On the very first
+          // focus this stays at the initial null and the row
+          // simply doesn't render.
+        });
+      return () => {
+        alive = false;
+      };
+    }, [userId]),
+  );
 
   // Pre-load the inviter's next admin-organized game so the CTA can
   // reflect the target's actual status (joined / waitlist / pending)
@@ -217,6 +258,23 @@ export function PlayerCardScreen() {
             tint={cancelRate > 30 ? colors.danger : colors.textMuted}
           />
         </View>
+
+        {/* Referrals — hidden until the count is loaded so we never
+            flash a misleading 0. The helper text under the value
+            disambiguates this from "joined my game" / "joined my
+            community" stats which exist elsewhere. */}
+        {referralCount !== null ? (
+          <View style={styles.referralRow}>
+            <StatTile
+              label={he.playerCardReferrals}
+              value={String(referralCount)}
+              tint={referralCount > 0 ? colors.primary : colors.textMuted}
+            />
+            <Text style={styles.referralHelper}>
+              {he.playerCardReferralsHelper}
+            </Text>
+          </View>
+        ) : null}
 
         {effectiveRatingGroupId ? (
           <RatingSection
@@ -405,24 +463,93 @@ function RatingSection({
 }
 
 function DisciplineSection({ user }: { user: User }) {
-  // Read-only: counts + last 5 events. Issue/revoke are post-game admin
-  // flows and intentionally do not appear on the public Player Card.
+  // Read-only: snapshot from last 10 PAST games + last 5 events log.
+  // Issue/revoke are post-game admin flows and intentionally do not
+  // appear on the public Player Card.
+  //
+  // The DISPLAYED yellow/red counts come from
+  // `getPlayerDisciplineSnapshot` — a windowed view over the user's
+  // 10 most recent terminal games. Lifetime counters on
+  // `user.discipline` are kept for backward compat but are NOT what
+  // the card surfaces.
+  //
+  // Tri-state UI:
+  //   • 'loading' — first fetch in flight; render a small spinner,
+  //     never numbers (a 0 here would lie: "clean player" vs
+  //     "unknown" must look different).
+  //   • 'error'   — fetch failed; render "אין נתונים זמינים".
+  //   • Snapshot  — render the actual numbers + caption.
   const state = disciplineService.state(user);
+  type SnapshotState =
+    | { kind: 'loading' }
+    | { kind: 'error' }
+    | {
+        kind: 'ready';
+        yellowCardsLast10: number;
+        redCardsLast10: number;
+        gamesCounted: number;
+      };
+  const [snapshot, setSnapshot] = useState<SnapshotState>({ kind: 'loading' });
+  useEffect(() => {
+    let alive = true;
+    setSnapshot({ kind: 'loading' });
+    disciplineService
+      .getPlayerDisciplineSnapshot(user.id)
+      .then((s) => {
+        if (alive) {
+          setSnapshot({
+            kind: 'ready',
+            yellowCardsLast10: s.yellowCardsLast10,
+            redCardsLast10: s.redCardsLast10,
+            gamesCounted: s.gamesCounted,
+          });
+        }
+      })
+      .catch((err) => {
+        if (__DEV__) {
+          console.warn('[playerCard] discipline snapshot failed', err);
+        }
+        if (alive) setSnapshot({ kind: 'error' });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [user.id]);
   const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
   const hasRecentRed = state.events.some(
     (e) => e.type === 'red' && Date.now() - e.createdAt < RECENT_MS,
   );
 
+  const captionText =
+    snapshot.kind === 'ready'
+      ? snapshot.gamesCounted === 0
+        ? he.disciplineSnapshotEmpty
+        : snapshot.gamesCounted >= 10
+          ? he.disciplineSnapshotCaptionFull
+          : he.disciplineSnapshotCaptionPartial(snapshot.gamesCounted)
+      : null;
+
   return (
     <View style={styles.disciplineSection}>
       <View style={styles.disciplineHeader}>
         <Text style={styles.achievementsTitle}>{he.disciplineTitle}</Text>
-        <DisciplineCards
-          yellowCards={state.yellowCards}
-          redCards={state.redCards}
-          size={32}
-        />
+        {snapshot.kind === 'loading' ? (
+          <SoccerBallLoader size={20} />
+        ) : snapshot.kind === 'error' ? (
+          <Text style={styles.disciplineUnavailable}>
+            {he.disciplineSnapshotUnavailable}
+          </Text>
+        ) : (
+          <DisciplineCards
+            yellowCards={snapshot.yellowCardsLast10}
+            redCards={snapshot.redCardsLast10}
+            size={32}
+          />
+        )}
       </View>
+      {captionText ? (
+        <Text style={styles.disciplineCaption}>{captionText}</Text>
+      ) : null}
       {hasRecentRed ? (
         <View style={styles.warningPill}>
           <Text style={styles.warningPillText}>
@@ -544,6 +671,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  referralRow: {
+    gap: spacing.xs,
+    alignItems: 'stretch',
+  },
+  referralHelper: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
   statTile: {
     flex: 1,
     alignItems: 'center',
@@ -586,6 +722,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  disciplineCaption: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: -spacing.xs,
+  },
+  disciplineUnavailable: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontStyle: 'italic',
   },
   warningPill: {
     backgroundColor: '#FEE2E2',

@@ -357,7 +357,7 @@ export const he = {
   wizardCancelOptionNone: 'ללא הגבלה',
   wizardCancelOption: (h: number) => `${h} שעות`,
   wizardSectionRules: 'חוקי המשחק',
-  wizardHasReferee: 'יש שופט',
+  wizardHasReferee: 'שופט',
   wizardHasRefereeHint: 'שופט במגרש לאכיפת חוקים ופתיחת משחקונים',
   wizardHasPenalties: 'פנדלים',
   wizardHasPenaltiesHint: 'סבב פנדלים בתיקו',
@@ -549,6 +549,31 @@ export const he = {
   communityInviteShareBody: (link: string) =>
     `הוזמנת להצטרף לקבוצה ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
   communityMembersCount: (n: number) => `${n} שחקנים`,
+  // Community details — redesign strings
+  communityNextGameTitle: 'משחק קרוב',
+  communityNextGameNone: 'לא נקבע משחק קרוב',
+  communityNextGameCta: 'לצפייה בפרטי המשחק',
+  communityPlayersTitle: 'שחקנים',
+  communityPlayersSeeAll: 'לצפייה בכל השחקנים',
+  communityPlayersEmpty: 'אין עדיין שחקנים בקהילה',
+  communityPlayersScreenTitle: 'שחקני הקהילה',
+  communityPlayerGames: (n: number) =>
+    n === 1 ? 'משחק אחד' : `${n} משחקים`,
+  communityPlayerWins: (n: number) =>
+    n === 1 ? 'ניצחון אחד' : `${n} ניצחונות`,
+  communitySummaryPlayers: 'שחקנים',
+  communitySummaryDays: 'ימי משחק',
+  communitySummaryHour: 'שעת משחק',
+  communitySummaryField: 'מגרש',
+  communityNotifyRow: 'עדכן אותי על משחקים חדשים בקבוצה',
+  // Hamburger menu sections for community
+  communityMenuSectionCommunity: 'קהילה',
+  communityMenuSectionPlayers: 'שחקנים',
+  communityMenuSectionActions: 'פעולות',
+  communityMenuApprovals: 'בקשות ממתינות לאישור',
+  communityMenuRecurringGame: 'צור משחק חוזר',
+  communityMenuContactAdmin: 'צור קשר עם המאמן',
+  communityMenuShareInvite: 'שתף הזמנה לקהילה',
 
   // Settings
   settingsReportBug: 'דיווח על תקלה',
@@ -598,6 +623,11 @@ export const he = {
   playerCardTotalGames: 'משחקים',
   playerCardAttendance: 'אחוז הגעה',
   playerCardCancelRate: 'אחוז ביטולים',
+  // Successful-referral stat — counts users whose invitedBy points
+  // at this profile. Helper text clarifies the source so the value
+  // isn't confused with "joined my game" / "joined my community".
+  playerCardReferrals: 'צירף לאפליקציה',
+  playerCardReferralsHelper: 'משתמשים שנרשמו דרך קישור שלך',
   playerCardInvite: 'הזמן למשחק',
   playerCardNotAvailable: 'לא זמין להזמנות',
   playerCardNotFound: 'לא הצלחנו לטעון את השחקן',
@@ -627,6 +657,18 @@ export const he = {
   disciplineRevoke: 'הסר',
   disciplineConfirmRevoke: 'להסיר את הכרטיס?',
   disciplineWarningRecentRed: 'התקבל כרטיס אדום לאחרונה',
+  // Snapshot caption — shown under the yellow/red display so the
+  // user understands the window. We surface "10 המשחקים האחרונים"
+  // when the user has at least 10 terminal games on file, and the
+  // truncated "X משחקים אחרונים" otherwise.
+  disciplineSnapshotTitle: 'משמעת (10 משחקים אחרונים)',
+  disciplineSnapshotCaptionFull: 'מתוך 10 המשחקים האחרונים',
+  disciplineSnapshotCaptionPartial: (n: number) =>
+    `מתוך ${n} משחקים אחרונים`,
+  disciplineSnapshotEmpty: 'אין עדיין היסטוריית משחקים להצגה',
+  // Shown when the snapshot fetch fails — distinct from "0 cards".
+  // A clean player and an unknown player must look different.
+  disciplineSnapshotUnavailable: 'אין נתונים זמינים',
   disciplineLateAuto: (mins: number, type: 'yellow' | 'red') =>
     type === 'red'
       ? `איחור של ${mins} דק׳ — נרשם כרטיס אדום`
@@ -709,6 +751,10 @@ export const he = {
   emptyHomeBody: 'צור משחק חדש או הצטרף למשחק קיים',
   emptyHomePrimary: 'צור משחק',
   emptyHomeSecondary: 'מצא משחקים',
+  // Shown instead of "מצא משחקים" when there's nothing to find — both
+  // tabs are empty, so the button would dead-end. Encourages the user
+  // to be the one who starts a game in their community.
+  emptyHomeNoGamesAnywhere: 'אין משחקים פתוחים כרגע — היה הראשון לפתוח משחק לקהילה שלך',
 
   // First-run hint (tooltip)
   hintCreateGame: 'כאן יוצרים משחק חדש',
@@ -770,6 +816,10 @@ export const he = {
   profileSectionApprovals: 'בקשות לסגל',
   profileSectionAvailability: 'הזמינות שלי',
   profileSectionPlayerCard: 'הכרטיס שלי',
+  // Hamburger label for the achievements view. Distinct word from the
+  // existing "תארים" (which is the in-screen section title) — the user
+  // asked specifically for "הישגים" in the menu.
+  profileSectionMyAchievements: 'ההישגים שלי',
   profileSectionNotifications: 'התראות',
   // New section labels for the redesigned profile
   profileSectionAccount: 'החשבון שלי',
@@ -777,12 +827,28 @@ export const he = {
   profileSectionPreferences: 'התראות והעדפות',
   profileSectionSupport: 'עזרה ומשוב',
   profileBadgeAdmin: 'מאמן',
+  profileBadgePlayer: 'שחקן',
+  // Hamburger menu — section titles + meta strings.
+  profileMenuOpen: 'פתח תפריט',
+  profileMenuClose: 'סגור תפריט',
+  profileMenuSectionProfile: 'פרופיל',
+  profileMenuSectionGames: 'משחקים',
+  profileMenuSectionSystem: 'הגדרות',
+  profileMenuSectionSupport: 'עזרה ומשוב',
+  profileMenuSectionAccount: 'חשבון',
   profileStatTotalGames: 'משחקים',
   profileStatAttendance: 'הגעה',
   profileStatWinRate: 'אחוז ניצחון',
   profileStatAttended: 'הופעות',
   profileStatCancelRate: 'ביטולים',
   profileStatInvited: 'שחקנים שהצטרפו דרכי',
+  // Always-visible nudge under the invited-count tile. Even when the
+  // count is 0 we want the user to see the metric AND have a one-tap
+  // path to grow it — hiding both the number and the CTA together is
+  // a missed engagement opportunity.
+  profileInviteFriendsCta: 'הזמן חברים לאפליקציה',
+  profileInviteShareBody: (link: string) =>
+    `אני משחק כדורגל בעזרת אפליקציית Teamder ⚽\nתוריד גם אתה ובוא לשחק:\n${link}`,
   profileApprovalsCount: (n: number) =>
     n === 1 ? 'בקשה אחת ממתינה' : `${n} בקשות ממתינות`,
 
@@ -872,6 +938,122 @@ export const he = {
   matchDetailsDuration: 'משך',
   matchDetailsRoleAdmin: 'מנהל',
   matchDetailsAddGuest: 'הוסף אורח',
+  matchDetailsNavigateWaze: 'נווט עם Waze',
+  matchDetailsNoLocation: 'אין מיקום למשחק',
+  matchDetailsCannotOpenNavigation: 'לא ניתן לפתוח ניווט',
+  // ── Match details redesign ───────────────────────────────────────────
+  matchHeroNoLocation: 'אין מיקום',
+  matchHeroPlayers: (now: number, max: number) => `${now}/${max} שחקנים`,
+  matchPlayersTitle: 'שחקנים',
+  matchPlayersSeeAll: 'לצפייה ברשימה המלאה',
+  matchPlayersEmpty: 'אין עדיין שחקנים רשומים',
+  matchPlayersOpenSlot: 'מקום פנוי',
+  // Compact preview chips + names line.
+  matchPlayersOpenChip: (n: number) => `+${n} פנויים`,
+  matchPlayersMoreChip: (n: number) => `+${n} נוספים`,
+  matchPlayersAndMore: (n: number) => `ועוד ${n}`,
+  matchPlayersNobodyYet: 'אף אחד עוד לא נרשם — אתה הראשון!',
+  // Status + CTA card titles
+  matchStatusCardWaiting: 'מחכים לשחקנים',
+  matchStatusCardWaitingHelper: (n: number) =>
+    `חסרים עוד ${n} שחקנים כדי להתחיל`,
+  matchStatusCardYouRegistered: 'אתה רשום למשחק',
+  matchStatusCardReadyTeams: 'מוכנים להרכיב קבוצות',
+  matchStatusCardTeamsReady: 'הקבוצות מוכנות — אפשר להתחיל',
+  matchStatusCardTeamsInvalid: 'יש לעדכן את הקבוצות',
+  matchStatusCardLive: 'המשחק בעיצומו',
+  matchStatusCardFinished: 'המשחק נגמר',
+  matchStatusCardCancelled: 'המשחק בוטל',
+  matchPlayersScreenTitle: 'שחקני המשחק',
+  matchPlayersSectionRegistered: 'שחקנים רשומים',
+  matchPlayersSectionWaitlist: 'רשימת המתנה',
+  matchPlayersSectionPending: 'ממתינים לאישור',
+  matchPlayersSectionGuests: 'אורחים',
+  matchPlayersAdminTag: 'מאמן',
+  matchPlayersWaitlistTag: 'המתנה',
+  matchPlayersPendingTag: 'ממתין',
+  matchPlayersGuestTag: 'אורח',
+  matchPlayersLateTag: 'באיחור',
+  matchPlayersNoShowTag: 'לא הופיע',
+  // Hamburger sections + items for match
+  matchMenuSectionMatch: 'משחק',
+  matchMenuSectionPlayers: 'שחקנים',
+  matchMenuSectionDanger: 'מסוכן',
+  matchMenuEdit: 'ערוך משחק',
+  matchMenuPlayers: 'ניהול שחקנים',
+  matchMenuShare: 'שתף משחק',
+  // Visibility-toggle labels — flip dynamically with current state.
+  matchMenuMakePublic: 'הפוך למשחק פתוח',
+  matchMenuMakeCommunity: 'הפוך למשחק לקהילה בלבד',
+  matchMenuManage: 'ניהול משחק',
+  matchManageScreenTitle: 'ניהול משחק',
+  matchManageSectionAccess: 'גישה למשחק',
+  matchManageSectionDanger: 'פעולות מסוכנות',
+  matchManageVisibilityLocked: 'אפשר לעדכן רק כשהמשחק במצב פתוח להרשמה',
+  matchManageAdminOnly: 'רק מאמן יכול לנהל את המשחק',
+  // Manage section toggle title
+  matchManageToggle: 'ניהול משחק',
+  // Compact status helpers — used by MatchStatusCard
+  matchStatusWaitingTitle: 'מחכים לשחקנים',
+  matchStatusWaitingHelper: (n: number) => `חסרים עוד ${n} שחקנים`,
+  matchStatusReadyToCreate: 'אפשר להרכיב קבוצות',
+  matchStatusTeamsReady: 'הקבוצות מוכנות — אפשר להתחיל',
+  matchStatusTeamsInvalid: 'יש לעדכן את הקבוצות לפני התחלה',
+  // Conflict CTA copy
+  matchPrimaryConflict: 'יש לך משחק אחר בזמן הזה',
+  // Compact status chip shown in the hero strip — three tiers based
+  // on capacity ratio. "חסרים N" is the default green state; we
+  // switch to yellow at 80% full and red when fully booked.
+  matchStatusNearFull: 'כמעט מלא',
+  matchStatusMissing: (n: number) =>
+    n === 1 ? 'חסר שחקן אחד' : `חסרים ${n} שחקנים`,
+  // Notes / rules row + bottom sheet
+  matchNotesRowTitle: 'חוקים והערות',
+  matchNotesSheetTitle: 'חוקים והערות',
+  matchNotesEmpty: 'לא הוזנו הערות למשחק',
+  // Cancel-registration as a subtle outlined link (not a destructive
+  // primary). Same Hebrew copy as before.
+  matchCancelRegistrationLink: 'בטל הרשמה',
+  // History menu entry — navigates the user to their general match
+  // history surface (no per-game history screen yet).
+  matchMenuHistory: 'היסטוריית משחקים',
+  matchMenuLeave: 'יציאה מהמשחק',
+  // Registration conflict — surfaced in the modal that blocks a join
+  // when the user is already registered to a game within ±4h of the
+  // target. The helper variant is for the inline disabled-CTA hint.
+  registrationConflictTitle: 'אתה כבר רשום למשחק קרוב',
+  // Variant shown when the conflicting game lives in a DIFFERENT
+  // community than the target. Same body copy works for both — only
+  // the title needs to clarify the cross-group case.
+  registrationConflictTitleOtherGroup: 'אתה כבר רשום למשחק קרוב בקבוצה אחרת',
+  registrationConflictMessage:
+    'כדי להירשם למשחק הזה, בטל קודם את ההרשמה למשחק השני.',
+  registrationConflictHelper: 'כבר נרשמת למשחק קרוב',
+  registrationConflictViewGame: 'צפה במשחק',
+  // Fallback group label used in the modal when we can't resolve
+  // the conflicting game's group name from the local store
+  // (typically because the user isn't a member of that community).
+  registrationConflictUnknownGroup: 'קבוצה אחרת',
+  // Time-difference helper. Shown inside the modal so the user can
+  // see exactly how close the two games are. Hidden when either side
+  // lacks a startsAt (e.g. an active game with no scheduled time).
+  registrationConflictTimeDiffMinutes: (min: number) =>
+    `המשחקים בהפרש של ${min} דקות`,
+  registrationConflictTimeDiffHoursMinutes: (h: number, min: number) =>
+    min === 0
+      ? `המשחקים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`}`
+      : `המשחקים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`} ו־${min} דקות`,
+  // Direct-cancel action lets the user resolve the conflict without
+  // navigating away. After success we re-run the pre-check; the
+  // user still has to tap "הצטרף" again — we never auto-join.
+  registrationConflictCancelOther: 'ביטול ההרשמה מהמשחק האחר',
+  registrationConflictCancelSuccess: 'ההרשמה למשחק האחר בוטלה',
+  registrationConflictCancelFailed: 'לא ניתן לבטל את ההרשמה כרגע',
+  registrationConflictViewOther: 'צפה במשחק האחר',
+  registrationConflictClose: 'סגור',
+  wizardLocationMustBeFromList: 'יש לבחור עיר מהרשימה',
+  sessionActionInviteCommunityOnly:
+    'זמין רק למשחקים פתוחים לכלל האפליקציה',
   matchDetailsJoinAsPlayer: 'הצטרף כשחקן',
   // Refactored status card — single block replacing the old pill +
   // helper + teams placeholder trio.

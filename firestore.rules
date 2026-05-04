@@ -199,7 +199,7 @@ service cloud.firestore {
     }
 
     // ── /games/{id} ─────────────────────────────────────────────────────
-    // Reads: strictly gated by `visibility`:
+    // Reads: three logical paths:
     //   • visibility == 'public' → any signed-in user (Open Games feed).
     //   • visibility == 'community' OR missing → only approved members
     //     and admins of the parent group. Pending users live in
@@ -208,6 +208,15 @@ service cloud.firestore {
     //     conservative-by-default: if a doc somehow exists without
     //     visibility set, treat it as community-only rather than risk
     //     a silent leak.
+    //   • participant override → if the user is in the game's
+    //     participantIds (player / waitlist / pending), they can
+    //     read it regardless of visibility or current group
+    //     membership. Required so `getMyGames` (which queries
+    //     `participantIds array-contains uid`) is statically secure
+    //     — without this clause Firestore rejects the entire query
+    //     when a single result wouldn't pass the visibility/member
+    //     check (e.g., user left the community after joining a
+    //     community-only game).
     //   isGroupMember() runs a single `get(/groups/{gid})` per rules
     //   evaluation; Firestore caches that read so feed-style queries
     //   pay the lookup once per distinct group.
@@ -222,7 +231,8 @@ service cloud.firestore {
     match /games/{id} {
       allow read: if isSignedIn() && (
         resource.data.visibility == 'public' ||
-        isGroupMember(resource.data.groupId)
+        isGroupMember(resource.data.groupId) ||
+        request.auth.uid in resource.data.participantIds
       );
 
       // Standard create: signed-in user, sets themselves as creator,
@@ -284,7 +294,8 @@ service cloud.firestore {
             )
           ) &&
           affectedKeys().hasOnly([
-            'players', 'waitlist', 'pending', 'participantIds', 'updatedAt'
+            'players', 'waitlist', 'pending', 'participantIds',
+            'cancellations', 'updatedAt'
           ]) &&
           // Delta size check across all three arrays.
           (

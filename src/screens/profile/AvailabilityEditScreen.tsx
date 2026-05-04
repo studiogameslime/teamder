@@ -160,7 +160,10 @@ export function AvailabilityEditScreen() {
           <Text style={styles.hint}>{he.availabilityCityHint}</Text>
         </View>
 
-        <View style={styles.toggleRow}>
+        <Pressable
+          onPress={() => setInvitable(!invitable)}
+          style={styles.toggleRow}
+        >
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>{he.availabilityInvitable}</Text>
             <Text style={styles.hint}>{he.availabilityInvitableHint}</Text>
@@ -171,7 +174,7 @@ export function AvailabilityEditScreen() {
             trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor="#fff"
           />
-        </View>
+        </Pressable>
       </ScrollView>
 
       <View style={{ padding: spacing.lg }}>

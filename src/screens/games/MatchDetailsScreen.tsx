@@ -13,6 +13,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Linking,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +25,12 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   RouteProp,
@@ -42,7 +50,15 @@ import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { PlayerCountBar } from '@/components/PlayerCountBar';
 import { toast } from '@/components/Toast';
-import { gameService } from '@/services/gameService';
+import {
+  HamburgerMenu,
+  type HamburgerSection,
+} from '@/components/profile/HamburgerMenu';
+import { MatchHeroStrip } from '@/components/match/MatchHeroStrip';
+import { MatchPlayersPreview } from '@/components/match/MatchPlayersPreview';
+import { MatchStatusCTACard } from '@/components/match/MatchStatusCTACard';
+import { MatchNotesRow } from '@/components/match/MatchNotesRow';
+import { gameService, type RegistrationConflict } from '@/services/gameService';
 import { useGameEvents } from '@/services/useGameEvents';
 import {
   canCancelRegistration,
@@ -218,6 +234,121 @@ function deriveSessionStatus(
  * the rest fill outfield slots in order. Players beyond
  * `numberOfTeams * playersPerTeam` are placed on the bench.
  */
+
+/**
+ * Resolve title + subtitle + CTA shape for the MatchStatusCTACard.
+ * Pulled into a pure function so the giant ternary lives outside
+ * the JSX. Inputs intentionally widened — caller passes in just
+ * what's needed to decide the copy / kind, no hidden dependencies.
+ */
+function buildStatusCardProps(args: {
+  game: Game;
+  isAdmin: boolean;
+  status: CardStatus;
+  sessionStatus: ReturnType<typeof deriveSessionStatus>;
+  totalParticipants: number;
+  minPlayers: number;
+  primary: { title: string; onPress: () => void } | null;
+  primaryDestructive: boolean;
+  primaryLabel: string;
+  blockedByConflict: boolean;
+  handlePrimary: () => void;
+}): {
+  title: string;
+  subtitle?: string;
+  kind: import('@/components/match/MatchStatusCTACard').CTAKind;
+  primaryLabel?: string;
+} {
+  const {
+    game,
+    isAdmin,
+    status,
+    sessionStatus,
+    totalParticipants,
+    minPlayers,
+    primary,
+    primaryDestructive,
+    primaryLabel,
+    blockedByConflict,
+  } = args;
+
+  // Terminal states win — they short-circuit everything else.
+  if (game.status === 'finished') {
+    return { title: he.matchStatusCardFinished, kind: 'none' };
+  }
+  if (game.status === 'cancelled') {
+    return { title: he.matchStatusCardCancelled, kind: 'none' };
+  }
+
+  // Subtitle for waiting state — always reflects "how many to go".
+  const missing = Math.max(0, minPlayers - totalParticipants);
+  const waitingSubtitle =
+    missing > 0 ? he.matchStatusCardWaitingHelper(missing) : undefined;
+
+  // Title selection — registered users see the personal "אתה רשום
+  // למשחק" copy regardless of whether the game is still waiting or
+  // teams are forming. Admin session-states override only when the
+  // user is NOT yet in the roster (admin who hasn't joined sees the
+  // session state directly).
+  const userIsIn = status !== 'none';
+  let title: string;
+  if (userIsIn) {
+    title = he.matchStatusCardYouRegistered;
+  } else if (sessionStatus === 'ready_to_create_teams') {
+    title = he.matchStatusCardReadyTeams;
+  } else if (sessionStatus === 'teams_ready') {
+    title = he.matchStatusCardTeamsReady;
+  } else if (sessionStatus === 'teams_invalid') {
+    title = he.matchStatusCardTeamsInvalid;
+  } else if (sessionStatus !== 'waiting_for_players') {
+    title = he.matchStatusCardLive;
+  } else {
+    title = he.matchStatusCardWaiting;
+  }
+
+  // CTA kind + label.
+  if (blockedByConflict) {
+    return {
+      title,
+      subtitle: waitingSubtitle,
+      kind: 'blocked',
+      primaryLabel: he.matchPrimaryConflict,
+    };
+  }
+  if (!primary) {
+    // No positive primary action — usually waiting + already
+    // registered. Show the cancel pill so users still have an exit.
+    if (primaryDestructive) {
+      return {
+        title,
+        subtitle: waitingSubtitle,
+        kind: 'cancel',
+        primaryLabel: he.matchCancelRegistrationLink,
+      };
+    }
+    return { title, subtitle: waitingSubtitle, kind: 'none' };
+  }
+  // Admin session-action wins as a positive primary even when the
+  // user is registered (e.g. "צור כוחות").
+  const isAdminAction =
+    isAdmin && sessionStatus !== 'waiting_for_players';
+  if (isAdminAction) {
+    return {
+      title,
+      subtitle: waitingSubtitle,
+      kind: 'admin',
+      primaryLabel: primary.title,
+    };
+  }
+  // Plain join.
+  return {
+    title,
+    subtitle: waitingSubtitle,
+    kind: 'join',
+    primaryLabel: primary.title,
+  };
+}
+
 function buildShuffledLiveMatch(game: Game): LiveMatchState {
   const ids: UserId[] = [
     ...game.players,
@@ -287,7 +418,7 @@ function buildShuffledLiveMatch(game: Game): LiveMatchState {
 export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
-  const gameId = route.params.gameId;
+  const gameId = route.params?.gameId;
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -311,6 +442,27 @@ export function MatchDetailsScreen() {
   // screen (NOT the normal MatchDetails layout) to guarantee no
   // private info is rendered for that user.
   const [accessBlocked, setAccessBlocked] = useState(false);
+  // Conflict modal — set when joinGameV2 throws REGISTRATION_CONFLICT,
+  // OR when the user taps "join" while preCheckConflict is already set.
+  // Either way the same modal renders.
+  const [conflictModal, setConflictModal] = useState<RegistrationConflict | null>(
+    null,
+  );
+  // Pre-check result — populated by an effect after the game loads,
+  // so the join CTA can render disabled with a helper text BEFORE
+  // the user even taps. Null === no conflict (or check skipped).
+  const [preCheckConflict, setPreCheckConflict] =
+    useState<RegistrationConflict | null>(null);
+  // Bumped every time the user taps the (blocked) join button. The
+  // CTA wraps in <ShakeOnTrigger triggerKey={...}> so each bump
+  // restarts the shake — no useEffect dance in the parent.
+  const [conflictShake, setConflictShake] = useState(0);
+  // In-flight flag for the "cancel the other registration" action
+  // inside the conflict modal. Guards against double-tap and lets
+  // every modal button render disabled while the cancel is pending.
+  const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
+  // Hamburger bottom-sheet visibility.
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Realtime banners for joins, guests, teams-ready, goals, status
   // changes — fired by the shared listener so every device sees the
@@ -318,6 +470,16 @@ export function MatchDetailsScreen() {
   useGameEvents(gameId);
 
   const reload = React.useCallback(async () => {
+    // Defensive: if a navigation path mounts MatchDetails without
+    // params (e.g. a tab-reset action that lands the user on the
+    // stack root), bail out cleanly instead of crashing on a missing
+    // id. The render below handles the null state.
+    if (!gameId) {
+      setGame(null);
+      setLoading(false);
+      if (nav.canGoBack()) nav.goBack();
+      return;
+    }
     setLoading(true);
     try {
       const g = await gameService.getGameById(gameId);
@@ -367,6 +529,45 @@ export function MatchDetailsScreen() {
       reload();
     }, [reload]),
   );
+
+  // Pre-check for a registration conflict so the join CTA can render
+  // disabled with a helper text before the user even taps. Only runs
+  // for users who are NOT already in the target game (no point telling
+  // someone they "have a nearby game" if the nearby game IS this one
+  // — handled by the helper itself excluding target.id, but we still
+  // skip the call entirely when the user is already a participant).
+  // Network errors leave preCheckConflict at null (we don't want a
+  // transient failure to silently block joins — the in-flight join
+  // will re-run the check authoritatively and surface the error).
+  useEffect(() => {
+    if (!game || !user) {
+      setPreCheckConflict(null);
+      return;
+    }
+    const alreadyIn = (game.participantIds ?? []).includes(user.id);
+    if (alreadyIn || typeof game.startsAt !== 'number') {
+      setPreCheckConflict(null);
+      return;
+    }
+    let alive = true;
+    gameService
+      .findRegistrationConflict(user.id, {
+        id: game.id,
+        startsAt: game.startsAt,
+      })
+      .then((c) => {
+        if (alive) setPreCheckConflict(c);
+      })
+      .catch((err) => {
+        if (__DEV__) {
+          console.warn('[matchDetails] pre-check conflict failed', err);
+        }
+        if (alive) setPreCheckConflict(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [game, user]);
 
   // Fetch the forecast once we know the field's coordinates and the
   // game's start time. We fall back to the parent community's lat/lng
@@ -517,7 +718,21 @@ export function MatchDetailsScreen() {
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)
           : '';
-      if (msg.includes('GAME_STARTED')) {
+      if (code === 'REGISTRATION_CONFLICT') {
+        // Authoritative server-side conflict — show the modal so the
+        // user can deep-link to the clashing game and resolve it.
+        const conflict = (err as { conflict?: RegistrationConflict }).conflict;
+        if (conflict) {
+          setConflictModal(conflict);
+          // Sync the pre-check state so the CTA flips to disabled
+          // even if the in-screen pre-check hadn't completed yet.
+          setPreCheckConflict(conflict);
+        } else {
+          // Defensive: error code without payload — fall back to a
+          // toast so the user isn't left guessing.
+          toast.error(he.registrationConflictTitle);
+        }
+      } else if (msg.includes('GAME_STARTED')) {
         toast.info(he.matchDetailsAlreadyStarted);
       } else if (msg.includes('GAME_LIVE')) {
         toast.info(he.matchDetailsAlreadyLive);
@@ -533,6 +748,61 @@ export function MatchDetailsScreen() {
       }
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Cancel the user's registration on the OTHER (conflicting) game,
+  // straight from the conflict modal — saves a navigate-out trip.
+  // Behaviour:
+  //   • Calls cancelGameV2 against the conflict's gameId.
+  //   • On success: closes the modal, clears the pre-check flag (so
+  //     the join CTA flips back to enabled), re-runs the conflict
+  //     query to confirm, shows a success toast. The user still has
+  //     to tap "הצטרף" themselves — we never auto-join, per spec.
+  //   • On failure: keeps the modal open, shows an error toast so
+  //     the user can retry without losing context.
+  // Safety: callers (modal) are responsible for never invoking this
+  // with the current game's id; we re-assert here as a defence in
+  // depth so a future code path can't accidentally cancel the wrong
+  // game.
+  const handleCancelConflicting = async (otherGameId: string) => {
+    if (!user || !game) return;
+    if (!otherGameId || otherGameId === game.id) return;
+    if (cancelOtherBusy) return;
+    setCancelOtherBusy(true);
+    try {
+      await gameService.cancelGameV2(otherGameId, user.id);
+      // Successful cancel — drop both the modal AND the pre-check
+      // result so the join button immediately flips to enabled.
+      // We then re-run the pre-check to be sure no OTHER game is
+      // still inside the window (rare but possible: the user has
+      // 3 games at the same hour). The re-check populates
+      // preCheckConflict as needed; until it resolves the CTA is
+      // enabled, which is correct — we trust the just-completed
+      // cancel.
+      setConflictModal(null);
+      setPreCheckConflict(null);
+      toast.success(he.registrationConflictCancelSuccess);
+      if (typeof game.startsAt === 'number') {
+        try {
+          const next = await gameService.findRegistrationConflict(user.id, {
+            id: game.id,
+            startsAt: game.startsAt,
+          });
+          setPreCheckConflict(next);
+        } catch {
+          // Network hiccup on the post-check is non-blocking — the
+          // authoritative re-check inside joinGameV2 will catch any
+          // remaining clash when the user actually taps "הצטרף".
+        }
+      }
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[matchDetails] cancel conflicting failed', err);
+      }
+      toast.error(he.registrationConflictCancelFailed);
+    } finally {
+      setCancelOtherBusy(false);
     }
   };
 
@@ -697,21 +967,291 @@ export function MatchDetailsScreen() {
     nav.navigate('LiveMatch', { gameId: game.id });
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────
+
+  // Build the player-card list for the preview (5 jerseys). Pulls
+  // from the playersMap that's already hydrated by `reload`. The
+  // store holds `Player` (id+displayName+jersey); the inline list
+  // component expects `{user:{id,name,jersey}, isAdmin}` so we map
+  // and resolve the admin set from the game's parent group.
+  const groupAdminIds = new Set<string>(
+    myCommunities.find((g) => g.id === game.groupId)?.adminIds ?? [],
+  );
+  const inlinePlayers: Array<{
+    user: { id: string; name: string; jersey?: import('@/types').Jersey };
+    isAdmin: boolean;
+  }> = (game.players ?? []).map((uid) => {
+    const p = playersMap[uid];
+    return {
+      user: {
+        id: uid,
+        name: p?.displayName ?? '...',
+        jersey: p?.jersey,
+      },
+      isAdmin: groupAdminIds.has(uid),
+    };
+  });
+
+  // Compose the location string used by the hero strip + Waze link.
+  const locationStr =
+    [game.fieldName, game.fieldAddress, game.city]
+      .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+      .join(' · ') || undefined;
+
+  // Waze handler — same chain we had in the old version: try Waze,
+  // fall back to Google Maps web URL, fall back to a toast.
+  const openWaze = () => {
+    const dest = [game.fieldAddress, game.city, game.fieldName]
+      .filter((s) => typeof s === 'string' && s.trim().length > 0)
+      .join(', ')
+      .trim();
+    if (!dest) {
+      toast.info(he.matchDetailsNoLocation);
+      return;
+    }
+    const q = encodeURIComponent(dest);
+    Linking.openURL(`waze://?q=${q}`)
+      .catch(() =>
+        Linking.openURL(
+          `https://www.google.com/maps/search/?api=1&query=${q}`,
+        ),
+      )
+      .catch(() => toast.error(he.matchDetailsCannotOpenNavigation));
+  };
+
+  // Share handler — community-only games still suppress the share
+  // because the link would land on the rules-blocked screen for
+  // non-members.
+  const handleShare = async () => {
+    if (game.visibility !== 'public') {
+      toast.info(he.sessionActionInviteCommunityOnly);
+      return;
+    }
+    if (!isOpen(game) || game.startsAt <= Date.now()) return;
+    try {
+      const link = deepLinkService.buildInviteUrl({
+        type: 'session',
+        id: game.id,
+        invitedBy: user?.id,
+      });
+      const result = await Share.share({
+        title: game.title,
+        message: he.sessionInviteShareBody(link),
+      });
+      if (result.action !== 'dismissedAction') {
+        logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[matchDetails] share failed', err);
+    }
+  };
+
+  // Visibility toggle — preserved from the previous design, now
+  // hosted inside the collapsible MatchManageSection.
+  const flipVisibility = async (next: boolean) => {
+    const target: 'public' | 'community' = next ? 'public' : 'community';
+    if (target === game.visibility) return;
+    setBusy(true);
+    try {
+      await gameService.setVisibility(game.id, target);
+      await reload();
+    } catch (err) {
+      if (__DEV__) console.warn('[matchDetails] setVisibility failed', err);
+      toast.error(
+        target === 'public'
+          ? he.matchVisibilityErrorPublic
+          : he.matchVisibilityErrorCommunity,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Primary CTA — POSITIVE actions only. Cancel-registration is
+  // intentionally NOT a primary anymore: it's a subtle outline-red
+  // link below the quick actions so a stray tap can't accidentally
+  // bail the user out of a game they meant to play.
+  const primary = (() => {
+    if (isTerminalGame(game)) return null;
+    if (isAdmin) {
+      if (sessionStatus === 'waiting_for_players') {
+        // Admin not joined yet → join is the right primary.
+        // Admin already joined → "הזמן חברים" gives them an active
+        // call to action instead of an empty top-of-fold. Routes to
+        // the same share/invite flow.
+        if (status === 'none') {
+          return {
+            title: he.matchDetailsJoin,
+            onPress: handlePrimary,
+          };
+        }
+        return {
+          title: he.sessionActionInvitePlayers,
+          onPress: handleShare,
+        };
+      }
+      if (sessionStatus === 'ready_to_create_teams') {
+        return {
+          title: he.sessionActionCreateTeams,
+          onPress: handleCreateTeams,
+        };
+      }
+      if (sessionStatus === 'teams_invalid') {
+        return {
+          title: he.sessionActionRecreateTeams,
+          onPress: handleCreateTeams,
+        };
+      }
+      if (sessionStatus === 'teams_ready') {
+        return {
+          title: he.sessionActionStart,
+          onPress: handleStartSession,
+        };
+      }
+      return {
+        title: he.sessionActionGoLive,
+        onPress: handleGoLive,
+      };
+    }
+    // Regular user — primary is "join" only when not already in.
+    if (primaryDestructive) return null;
+    return {
+      title: primaryLabel,
+      onPress: handlePrimary,
+    };
+  })();
+
+  // Cancel registration — surfaces as a subtle outlined link, not a
+  // primary button. Visible only when the user is in the roster AND
+  // still allowed to cancel (lifecycle gate via canCancelRegistration).
+  const showCancelLink =
+    primaryDestructive && canCancelRegistration(game) && !isTerminalGame(game);
+
+  // Conflict gate — only when the user is about to JOIN.
+  const blockedByConflict =
+    !!preCheckConflict && !!primary && status === 'none';
+
+  // Single-section hamburger — no titles, ordered by frequency of
+  // use. Destructive items sit at the bottom in the danger tone.
+  //
+  // "ניהול משחק" navigates to the LiveMatch surface — that's where
+  // teams, scores and the on-pitch flow live, which is the original
+  // semantics of "match management" in the app. The settings-style
+  // MatchManageScreen we previously built was the wrong destination.
+  const sections: HamburgerSection[] = [
+    {
+      id: 'main',
+      items: [
+        ...(isAdmin
+          ? [
+              {
+                id: 'edit',
+                label: he.matchMenuEdit,
+                icon: 'create-outline' as const,
+                onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
+              },
+            ]
+          : []),
+        {
+          id: 'history',
+          label: he.matchMenuHistory,
+          icon: 'time-outline' as const,
+          onPress: () =>
+            (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+              'ProfileTab',
+              { screen: 'History' },
+            ),
+        },
+        {
+          id: 'managePlayers',
+          label: he.matchMenuPlayers,
+          icon: 'people-outline' as const,
+          onPress: () => nav.navigate('MatchPlayers', { gameId: game.id }),
+        },
+        ...(isAdmin
+          ? [
+              {
+                id: 'manage',
+                label: he.matchMenuManage,
+                icon: 'settings-outline' as const,
+                // → LiveMatch (the on-pitch / teams / score
+                // management surface). This is the original
+                // meaning of "ניהול משחק" — the user corrected me
+                // when I pointed it at a settings screen.
+                onPress: () => nav.navigate('LiveMatch', { gameId: game.id }),
+              },
+            ]
+          : []),
+        // Visibility toggle — admin only, only when the game is
+        // still in 'open' state (matches gameService.setVisibility
+        // gating). Tap flips public ↔ community-only.
+        ...(isAdmin && isOpen(game)
+          ? [
+              {
+                id: 'visibility',
+                label:
+                  game.visibility === 'public'
+                    ? he.matchMenuMakeCommunity
+                    : he.matchMenuMakePublic,
+                icon: 'globe-outline' as const,
+                toggle: {
+                  value: game.visibility === 'public',
+                  onChange: (next: boolean) => flipVisibility(next),
+                  disabled: busy,
+                },
+                onPress: () => undefined,
+              },
+            ]
+          : []),
+        // Leave game — only when the user is registered and can
+        // still cancel.
+        ...(primaryDestructive && canCancelRegistration(game)
+          ? [
+              {
+                id: 'leave',
+                label: he.matchMenuLeave,
+                icon: 'exit-outline' as const,
+                onPress: handlePrimary,
+                tone: 'danger' as const,
+              },
+            ]
+          : []),
+        ...(isAdmin
+          ? [
+              {
+                id: 'delete',
+                label: he.deleteGameAction,
+                icon: 'trash-outline' as const,
+                onPress: () => setDeleteOpen(true),
+                tone: 'danger' as const,
+              },
+            ]
+          : []),
+      ],
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader
-        title={he.matchDetailsTitle}
-        actions={
-          isAdmin
-            ? [
+        title={game.title}
+        actions={[
+          // Hamburger only when there's actually something inside —
+          // non-admins have no menu items right now, so skipping the
+          // button avoids opening an empty sheet. Share lives as the
+          // primary "הזמן חברים" CTA below for admins; non-admins
+          // can still share via the menu's manage-players /
+          // history items if they need a discoverable surface.
+          ...(sections.some((s) => s.items.length > 0)
+            ? ([
                 {
-                  icon: 'create-outline',
-                  onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
-                  label: he.matchDetailsEdit,
+                  icon: 'menu' as const,
+                  onPress: () => setMenuOpen(true),
+                  label: he.profileMenuOpen,
                 },
-              ]
-            : undefined
-        }
+              ] as const)
+            : []),
+        ]}
       />
 
       <ScrollView
@@ -726,390 +1266,123 @@ export function MatchDetailsScreen() {
           />
         }
       >
-        {/* ─── A. HEADER / GAME INFO ───────────────────────────────
-            Title, date+time (with a compact inline weather chip when
-            we have a forecast), location, format pill, and the
-            roster progress bar. No descriptive paragraphs here —
-            metadata only, status copy lives in section B. */}
-        <View style={styles.topBlock}>
-          <Text style={styles.heroTitle} numberOfLines={2}>
-            {game.title}
-          </Text>
-          <View style={styles.dateRow}>
-            <MetaLine
-              icon="calendar-outline"
-              text={formatDateLong(game.startsAt)}
-            />
-            {forecast ? (
-              <View style={styles.weatherChip}>
-                <Text style={styles.weatherChipIcon}>
-                  {weatherIcon(forecast.weatherCode)}
-                </Text>
-                <Text style={styles.weatherChipText}>
-                  {`${forecast.tempC}° · ${forecast.rainProb}%`}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <MetaLine icon="location-outline" text={game.fieldName} />
-          <PlayerCountBar
-            current={totalParticipants}
-            max={game.maxPlayers}
-            label={
-              fmt
-                ? `${totalParticipants}/${game.maxPlayers} שחקנים · ${fmt}`
-                : undefined
-            }
-          />
-        </View>
+        <MatchHeroStrip
+          startsAt={game.startsAt}
+          location={locationStr}
+          onLocationPress={openWaze}
+          registered={totalParticipants}
+          capacity={game.maxPlayers}
+          weather={
+            forecast
+              ? { tempC: forecast.tempC, rainProb: forecast.rainProb }
+              : undefined
+          }
+        />
 
-        {/* ─── B. GAME STATUS CARD ─────────────────────────────────
-            Single card with title + sub. Replaces the old pill +
-            helper + teams-placeholder triple. Hidden once the game
-            reaches teams_ready / active — the teams block + bottom
-            CTA carry the remaining narrative there. */}
-        {sessionStatus === 'waiting_for_players' ||
-        sessionStatus === 'ready_to_create_teams' ||
-        sessionStatus === 'teams_invalid' ? (
-          <Card style={styles.statusCard}>
-            <Ionicons
-              name={
-                sessionStatus === 'teams_invalid'
-                  ? 'alert-circle-outline'
-                  : sessionStatus === 'ready_to_create_teams'
-                    ? 'checkmark-circle-outline'
-                    : 'hourglass-outline'
-              }
-              size={22}
-              color={
-                sessionStatus === 'teams_invalid'
-                  ? colors.warning
-                  : colors.primary
-              }
-            />
+        {/* Status + CTA card. One block to read "what's the game's
+            state" + "what can I do about it". Title flips for users
+            who are already registered, the primary button switches
+            between filled green (positive action) and outline red
+            (cancel registration), and the secondary chip surfaces
+            "הוסף אורח" for admins in waiting state only. */}
+        <MatchStatusCTACard
+          {...buildStatusCardProps({
+            game,
+            isAdmin,
+            status,
+            sessionStatus,
+            totalParticipants,
+            minPlayers,
+            primary,
+            primaryDestructive,
+            primaryLabel,
+            blockedByConflict,
+            handlePrimary,
+          })}
+          busy={busy}
+          blockedShake={conflictShake}
+          blockedHelper={
+            blockedByConflict ? he.registrationConflictHelper : undefined
+          }
+          onPrimary={
+            blockedByConflict
+              ? () => {
+                  setConflictShake((n) => n + 1);
+                  setConflictModal(preCheckConflict);
+                }
+              : primary?.onPress ?? handlePrimary
+          }
+          secondary={
+            isAdmin && sessionStatus === 'waiting_for_players'
+              ? {
+                  label: he.matchDetailsAddGuest,
+                  icon: 'person-add-outline',
+                  onPress: () => setGuestModalOpen(true),
+                }
+              : undefined
+          }
+        />
+
+        <MatchPlayersPreview
+          registered={totalParticipants}
+          capacity={game.maxPlayers}
+          members={inlinePlayers.map((p) => p.user)}
+          onPress={() => nav.navigate('MatchPlayers', { gameId: game.id })}
+        />
+
+        {/* Notes / rules — single tappable row. Hidden when game has
+            no notes at all (passing null skips the render entirely). */}
+        <MatchNotesRow notes={game.notes ?? null} />
+
+        {isFinished(game) &&
+        user &&
+        (game.players ?? []).includes(user.id) &&
+        !rateBannerDismissed &&
+        (game.players ?? []).some((p) => p !== user.id) ? (
+          <View style={styles.rateBanner}>
+            <Ionicons name="star-outline" size={20} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.statusCardTitle}>
-                {sessionStatus === 'teams_invalid'
-                  ? he.statusTeamsInvalidTitle
-                  : sessionStatus === 'ready_to_create_teams'
-                    ? he.statusReadyTitle
-                    : he.statusWaitingTitle}
-              </Text>
-              <Text style={styles.statusCardSub}>
-                {sessionStatus === 'teams_invalid'
-                  ? he.statusTeamsInvalidSub
-                  : sessionStatus === 'ready_to_create_teams'
-                    ? he.statusReadySub
-                    : he.statusWaitingSub(
-                        Math.max(0, minPlayers - totalParticipants),
-                      )}
-              </Text>
+              <Text style={styles.rateBannerTitle}>{he.rateBannerTitle}</Text>
+              <Text style={styles.rateBannerSub}>{he.rateBannerSub}</Text>
             </View>
-          </Card>
-        ) : null}
-
-        {/* ─── TEAMS BLOCK ─────────────────────────────────────────
-            Only shows once teams are placed. The "no teams yet"
-            placeholder text was removed (it was noise — the status
-            card above already conveys the same intent). */}
-        {(sessionStatus === 'teams_ready' || sessionStatus === 'active') &&
-        game.liveMatch ? (
-          <TeamsBlock
-            game={game}
-            assignments={validity.cleanedAssignments}
-            playersMap={playersMap}
-          />
-        ) : null}
-
-        {/* ⑤a PENDING APPROVAL — admin-only. Surfaces only when the
-            game has `requiresApproval=true` and someone has requested
-            to join. Each row gets ✓/✗ buttons that call the
-            transactional approve/reject handlers in gameService. */}
-        {isAdmin && (game.pending ?? []).length > 0 ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                {he.matchDetailsPendingTitle}{' '}
-                <Text style={styles.sectionCount}>
-                  ({(game.pending ?? []).length})
-                </Text>
-              </Text>
-            </View>
-            <Card style={styles.playersCard}>
-              {(game.pending ?? []).map((uid, i, arr) => {
-                const p = playersMap[uid];
-                const name = p?.displayName ?? '...';
-                const isLast = i === arr.length - 1;
-                return (
-                  <View
-                    key={`pending:${uid}`}
-                    style={[
-                      styles.playerRow,
-                      !isLast && styles.playerRowDivider,
-                    ]}
-                  >
-                    <PlayerIdentity
-                      user={{ id: uid, name, jersey: p?.jersey }}
-                      size={32}
-                    />
-                    <Text style={styles.playerName} numberOfLines={1}>
-                      {name}
-                    </Text>
-                    <View style={styles.pendingActions}>
-                      <Pressable
-                        onPress={async () => {
-                          if (busy) return;
-                          setBusy(true);
-                          try {
-                            await gameService.approveGameJoin(game.id, uid);
-                            await reload();
-                          } catch (err) {
-                            if (__DEV__) {
-                              console.warn(
-                                '[matchDetails] approveGameJoin failed',
-                                err,
-                              );
-                            }
-                            toast.error(he.error);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                        hitSlop={6}
-                        accessibilityLabel={he.pendingApprove}
-                        style={({ pressed }) => [
-                          styles.pendingApproveBtn,
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <Ionicons
-                          name="checkmark"
-                          size={16}
-                          color={colors.textOnPrimary}
-                        />
-                      </Pressable>
-                      <Pressable
-                        onPress={async () => {
-                          if (busy) return;
-                          setBusy(true);
-                          try {
-                            await gameService.rejectGameJoin(game.id, uid);
-                            await reload();
-                          } catch (err) {
-                            if (__DEV__) {
-                              console.warn(
-                                '[matchDetails] rejectGameJoin failed',
-                                err,
-                              );
-                            }
-                            toast.error(he.error);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                        hitSlop={6}
-                        accessibilityLabel={he.pendingReject}
-                        style={({ pressed }) => [
-                          styles.pendingRejectBtn,
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <Ionicons
-                          name="close"
-                          size={16}
-                          color={colors.danger}
-                        />
-                      </Pressable>
-                    </View>
-                  </View>
+            <Pressable
+              onPress={() => {
+                const firstTeammate = (game.players ?? []).find(
+                  (p) => p !== user.id,
                 );
-              })}
-            </Card>
-          </>
-        ) : null}
-
-        {/* ─── PLAYERS — clean header, no inline action buttons.
-            All admin actions (add-guest, share-invite, etc.) live in
-            the bottom CTA stack now so the header stays readable. */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {he.matchDetailsPlayers}{' '}
-            <Text style={styles.sectionCount}>
-              ({totalParticipants}/{game.maxPlayers})
-            </Text>
-          </Text>
-        </View>
-
-        {game.players.length === 0 && (game.guests ?? []).length === 0 ? (
-          <Text style={styles.emptyText}>
-            {he.playersEmptyMissing(game.maxPlayers)}
-          </Text>
-        ) : (
-          <Card style={styles.playersCard}>
-            {game.players.map((uid, i) => {
-              const p = playersMap[uid];
-              const name = p?.displayName ?? '...';
-              const isOrganizer = adminUids.has(uid);
-              const isLast =
-                i === game.players.length - 1 && (game.guests ?? []).length === 0;
-              return (
-                <View
-                  key={uid}
-                  style={[styles.playerRow, !isLast && styles.playerRowDivider]}
-                >
-                  {/* Player row — RTL order:
-                      SHIRT (right) → ROLE BADGE → NAME → ⚽ ball.
-                      Badge sits between shirt and name so the role
-                      pill reads as a label on the shirt itself, not
-                      a trailing afterthought. */}
-                  <PlayerIdentity
-                    user={{ id: uid, name, jersey: p?.jersey }}
-                    size={32}
-                  />
-                  {isOrganizer ? (
-                    <Badge label={he.matchDetailsRoleAdmin} tone="info" size="sm" />
-                  ) : null}
-                  <Text style={styles.playerName} numberOfLines={1}>
-                    {name}
-                  </Text>
-                  {game.ballHolderUserId === uid ? (
-                    <Text style={styles.ballHolder}>⚽</Text>
-                  ) : null}
-                </View>
-              );
-            })}
-            {(game.guests ?? []).map((g, i, arr) => {
-              const isLast = i === arr.length - 1;
-              return (
-                <View
-                  key={`guest:${g.id}`}
-                  style={[styles.playerRow, !isLast && styles.playerRowDivider]}
-                >
-                  {/* Same RTL order as registered rows: SHIRT (right)
-                      → "אורח" badge → NAME → trash (LEFT, admin-only).
-                      Badge clings to the shirt; trash stays in its
-                      own corner via `marginStart:'auto'`. */}
-                  <PlayerIdentity user={{ id: `guest:${g.id}`, name: g.name }} size={32} />
-                  <Badge label={he.guestBadge} tone="warning" size="sm" />
-                  <Text style={styles.playerName} numberOfLines={1}>
-                    {g.name}
-                  </Text>
-                  {isAdmin ? (
-                    <Pressable
-                      onPress={() =>
-                        user &&
-                        gameService
-                          .removeGuest(game.id, user.id, g.id)
-                          .then(() => reload())
-                          .catch((err) => {
-                            if (__DEV__)
-                              console.warn('[matchDetails] removeGuest failed', err);
-                          })
-                      }
-                      hitSlop={6}
-                      style={({ pressed }) => [
-                        styles.guestRemove,
-                        styles.guestTrashAuto,
-                        pressed && { opacity: 0.6 },
-                      ]}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                    </Pressable>
-                  ) : null}
-                </View>
-              );
-            })}
-          </Card>
-        )}
-
-        {/* ─── ניהול משחק (admin-only) ──────────────────────────────
-            Houses the visibility toggle and the destructive
-            "מחיקת משחק" action. Pulled out of the bottom CTA stack
-            so the bottom bar stays a single primary-action lane. */}
-        {isAdmin && !isTerminalGame(game) ? (
-          <View style={styles.manageSection}>
-            <Text style={styles.sectionTitle}>{he.manageSectionTitle}</Text>
-            <Card style={styles.manageCard}>
-              {isOpen(game) ? (
-                (() => {
-                  const flipVisibility = async (next: boolean) => {
-                    const target: 'public' | 'community' = next
-                      ? 'public'
-                      : 'community';
-                    if (target === game.visibility) return;
-                    setBusy(true);
-                    try {
-                      await gameService.setVisibility(game.id, target);
-                      await reload();
-                    } catch (err) {
-                      if (__DEV__) {
-                        console.warn(
-                          '[matchDetails] setVisibility failed',
-                          err,
-                        );
-                      }
-                      toast.error(
-                        target === 'public'
-                          ? he.matchVisibilityErrorPublic
-                          : he.matchVisibilityErrorCommunity,
-                      );
-                    } finally {
-                      setBusy(false);
-                    }
-                  };
-                  return (
-                    <Pressable
-                      onPress={() =>
-                        flipVisibility(game.visibility !== 'public')
-                      }
-                      style={styles.manageRowItem}
-                      disabled={busy}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.visibilityLabel}>
-                          {he.matchVisibilityToggle}
-                        </Text>
-                        <Text style={styles.visibilityHelper}>
-                          {he.matchVisibilityHelper}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={game.visibility === 'public'}
-                        disabled={busy}
-                        onValueChange={flipVisibility}
-                        trackColor={{
-                          false: colors.surfaceMuted,
-                          true: colors.primary,
-                        }}
-                      />
-                    </Pressable>
-                  );
-                })()
-              ) : null}
-              <Pressable
-                onPress={() => setDeleteOpen(true)}
-                style={({ pressed }) => [
-                  styles.manageDeleteRow,
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={18}
-                  color={colors.danger}
-                />
-                <Text style={styles.manageDeleteText}>
-                  {he.deleteGameAction}
-                </Text>
-              </Pressable>
-            </Card>
+                if (!firstTeammate) return;
+                setRateBannerDismissed(true);
+                nav.navigate('PlayerCard', {
+                  userId: firstTeammate,
+                  groupId: game.groupId,
+                });
+              }}
+              style={({ pressed }) => [
+                styles.rateBannerCta,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={styles.rateBannerCtaText}>{he.rateBannerCta}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setRateBannerDismissed(true)}
+              hitSlop={8}
+              accessibilityLabel={he.rateBannerDismiss}
+            >
+              <Ionicons name="close" size={18} color={colors.textMuted} />
+            </Pressable>
           </View>
         ) : null}
-
       </ScrollView>
 
-      {/* Guest modal — admin-only entry point. Reuses the same modal
-          used by the LiveMatch screen so the form stays consistent. */}
+      {/* ─── Modals ──────────────────────────────────────────────────── */}
+
+      <HamburgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        sections={sections}
+      />
+
       {user ? (
         <GuestModal
           visible={guestModalOpen}
@@ -1117,10 +1390,6 @@ export function MatchDetailsScreen() {
           callerId={user.id}
           onClose={() => setGuestModalOpen(false)}
           onChanged={(action, saved) => {
-            // Splice the change directly into local state — the
-            // Firestore-roundtrip refresh used to race the commit and
-            // sometimes returned the pre-write snapshot, leaving the
-            // new guest invisible until a manual reload.
             setGame((prev) => {
               if (!prev) return prev;
               const guests = prev.guests ?? [];
@@ -1154,202 +1423,162 @@ export function MatchDetailsScreen() {
         }}
       />
 
-      {/* ⑥ STICKY CTA — terminal evenings short-circuit to a clear
-          read-only banner so a finished/cancelled game never shows a
-          dangling "Join" or "Live" button (rules + helpers would
-          block them anyway, but a disabled button is still misleading
-          UX). Non-terminal games render the regular admin/user CTA.
-          Players who finished a game get an inline "rate teammates"
-          banner instead of the plain terminal one — the post-game
-          push is best-effort, this is the always-visible nudge. */}
-      {isTerminalGame(game) ? (
-        isFinished(game) &&
-        user &&
-        game.players.includes(user.id) &&
-        !rateBannerDismissed &&
-        game.players.some((p) => p !== user.id) ? (
-          <View style={[styles.terminalBanner, styles.rateBanner]}>
-            <Ionicons
-              name="star-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.terminalBannerTitle}>
-                {he.rateBannerTitle}
-              </Text>
-              <Text style={styles.terminalBannerSub}>
-                {he.rateBannerSub}
-              </Text>
-            </View>
-            <View style={styles.rateBannerActions}>
-              <Pressable
-                onPress={() => {
-                  // Navigate to the first teammate's PlayerCard. The
-                  // user can rate them, then back-navigate and pick
-                  // the next from the roster list below. Once any
-                  // PlayerCard nav fires we also drop the banner so it
-                  // doesn't keep nagging on return.
-                  const firstTeammate = game.players.find(
-                    (p) => p !== user.id,
-                  );
-                  if (!firstTeammate) return;
-                  setRateBannerDismissed(true);
-                  nav.navigate('PlayerCard', {
-                    userId: firstTeammate,
-                    groupId: game.groupId,
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.rateBannerCta,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityLabel={he.rateBannerCta}
-              >
-                <Text style={styles.rateBannerCtaText}>
-                  {he.rateBannerCta}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setRateBannerDismissed(true)}
-                hitSlop={8}
-                style={({ pressed }) => pressed && { opacity: 0.6 }}
-                accessibilityLabel={he.rateBannerDismiss}
-              >
-                <Ionicons name="close" size={18} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.terminalBanner}>
-            <Ionicons
-              name={
-                isCancelled(game) ? 'close-circle-outline' : 'checkmark-done'
-              }
-              size={20}
-              color={isCancelled(game) ? colors.danger : colors.textMuted}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.terminalBannerTitle}>
-                {isCancelled(game)
-                  ? he.matchDetailsAlreadyCancelled
-                  : he.matchDetailsAlreadyFinished}
-              </Text>
-              <Text style={styles.terminalBannerSub}>
-                {he.matchDetailsTerminalSub}
-              </Text>
-            </View>
-          </View>
-        )
-      ) : (
-        // Bottom CTA — single primary lane (one big button) plus an
-        // optional outline secondary stacked above it. Two greens
-        // side-by-side were noisy and the delete-game button is now
-        // in "ניהול משחק" instead.
-        (() => {
-          if (isAdmin) {
-            const canShareInvite =
-              game.visibility === 'public' &&
-              isOpen(game) &&
-              game.startsAt > Date.now();
-            // Pick the primary action by sessionStatus.
-            let primary:
-              | { title: string; onPress: () => void }
-              | null = null;
-            let secondary:
-              | { title: string; onPress: () => void }
-              | null = null;
-            if (sessionStatus === 'waiting_for_players') {
-              if (canShareInvite) {
-                primary = {
-                  title: he.sessionActionInvitePlayers,
-                  onPress: handleInvitePlayers,
-                };
-              }
-              secondary = {
-                title: he.matchDetailsAddGuest,
-                onPress: () => setGuestModalOpen(true),
-              };
-            } else if (sessionStatus === 'ready_to_create_teams') {
-              primary = {
-                title: he.sessionActionCreateTeams,
-                onPress: handleCreateTeams,
-              };
-              secondary = {
-                title: he.matchDetailsAddGuest,
-                onPress: () => setGuestModalOpen(true),
-              };
-            } else if (sessionStatus === 'teams_invalid') {
-              primary = {
-                title: he.sessionActionRecreateTeams,
-                onPress: handleCreateTeams,
-              };
-            } else if (sessionStatus === 'teams_ready') {
-              primary = {
-                title: he.sessionActionStart,
-                onPress: handleStartSession,
-              };
-            } else {
-              primary = {
-                title: he.sessionActionGoLive,
-                onPress: handleGoLive,
-              };
-            }
-            if (!primary && !secondary) return null;
-            return (
-              <View style={styles.cta}>
-                {secondary ? (
-                  <Button
-                    title={secondary.title}
-                    variant="outline"
-                    size="lg"
-                    fullWidth
-                    onPress={secondary.onPress}
-                  />
-                ) : null}
-                {primary ? (
-                  <Button
-                    title={primary.title}
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    loading={busy}
-                    onPress={primary.onPress}
-                  />
-                ) : null}
-              </View>
-            );
-          }
-          // Regular user: one CTA — join (or cancel if already in).
-          // Cancel is hidden once the roster is frozen so we don't
-          // ship a misleading disabled button.
-          if (primaryDestructive && !canCancelRegistration(game)) {
-            return null;
-          }
-          return (
-            <View style={styles.cta}>
-              <Button
-                title={primaryLabel}
-                variant={primaryDestructive ? 'danger' : 'primary'}
-                size="lg"
-                fullWidth
-                loading={busy}
-                disabled={
-                  primaryDestructive
-                    ? !canCancelRegistration(game)
-                    : false
-                }
-                onPress={handlePrimary}
+      <Modal
+        visible={!!conflictModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConflictModal(null)}
+      >
+        <Pressable
+          style={styles.conflictBackdrop}
+          onPress={() => setConflictModal(null)}
+        >
+          <Pressable
+            style={styles.conflictCard}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.conflictIconWrap}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={28}
+                color={colors.warning}
               />
             </View>
-          );
-        })()
-      )}
+            {(() => {
+              if (!conflictModal) return null;
+              const conflictGroup = myCommunities.find(
+                (g) => g.id === conflictModal.groupId,
+              );
+              const conflictGroupName =
+                conflictGroup?.name ?? he.registrationConflictUnknownGroup;
+              const isCrossGroup = conflictModal.groupId !== game.groupId;
+              const title = isCrossGroup
+                ? he.registrationConflictTitleOtherGroup
+                : he.registrationConflictTitle;
+              const isSameAsCurrent = conflictModal.gameId === game.id;
+              const bothHaveTime =
+                typeof game.startsAt === 'number' &&
+                game.startsAt > 0 &&
+                conflictModal.startsAt > 0;
+              const diffMinutes = bothHaveTime
+                ? Math.round(
+                    Math.abs(conflictModal.startsAt - game.startsAt) / 60000,
+                  )
+                : null;
+              const diffText =
+                diffMinutes === null
+                  ? null
+                  : diffMinutes < 60
+                    ? he.registrationConflictTimeDiffMinutes(diffMinutes)
+                    : he.registrationConflictTimeDiffHoursMinutes(
+                        Math.floor(diffMinutes / 60),
+                        diffMinutes % 60,
+                      );
+              const canDirectCancel =
+                !!conflictModal.gameId && !isSameAsCurrent && !!user;
+              return (
+                <>
+                  <Text style={styles.conflictTitle}>{title}</Text>
+                  <Text style={styles.conflictBody}>
+                    {he.registrationConflictMessage}
+                  </Text>
+                  <View style={styles.conflictGameRow}>
+                    <Text style={styles.conflictGameTitle} numberOfLines={2}>
+                      {conflictModal.title}
+                    </Text>
+                    {conflictModal.startsAt > 0 ? (
+                      <Text style={styles.conflictGameWhen}>
+                        {formatDateLong(conflictModal.startsAt)}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.conflictGameGroup}>
+                      {conflictGroupName}
+                    </Text>
+                  </View>
+                  {diffText ? (
+                    <Text style={styles.conflictDiff}>{diffText}</Text>
+                  ) : null}
+                  <View style={styles.conflictActions}>
+                    {canDirectCancel ? (
+                      <Button
+                        title={he.registrationConflictCancelOther}
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        loading={cancelOtherBusy}
+                        disabled={cancelOtherBusy}
+                        onPress={() =>
+                          handleCancelConflicting(conflictModal.gameId)
+                        }
+                      />
+                    ) : null}
+                    {!isSameAsCurrent ? (
+                      <Button
+                        title={he.registrationConflictViewOther}
+                        variant="outline"
+                        size="lg"
+                        fullWidth
+                        disabled={cancelOtherBusy}
+                        onPress={() => {
+                          const target = conflictModal.gameId;
+                          setConflictModal(null);
+                          nav.replace('MatchDetails', { gameId: target });
+                        }}
+                      />
+                    ) : null}
+                    <Button
+                      title={he.registrationConflictClose}
+                      variant="outline"
+                      size="sm"
+                      fullWidth
+                      disabled={cancelOtherBusy}
+                      onPress={() => setConflictModal(null)}
+                    />
+                  </View>
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────
+
+/**
+ * Wrapper that fires a small horizontal shake every time `triggerKey`
+ * changes. Used on the disabled-by-conflict join button so the user
+ * gets immediate kinaesthetic feedback ("nope, blocked") on top of
+ * the modal that opens. Keeping it on Reanimated keeps the JS thread
+ * free during the bounce. The shake is intentionally subtle (±8 px,
+ * 70 ms each leg) — this is feedback, not punishment.
+ */
+function ShakeOnTrigger({
+  triggerKey,
+  children,
+  style,
+}: {
+  triggerKey: number;
+  children: React.ReactNode;
+  style?: import('react-native').ViewStyle;
+}) {
+  const tx = useSharedValue(0);
+  useEffect(() => {
+    if (triggerKey === 0) return;
+    tx.value = withSequence(
+      withTiming(-8, { duration: 70 }),
+      withTiming(8, { duration: 70 }),
+      withTiming(-6, { duration: 60 }),
+      withTiming(0, { duration: 60 }),
+    );
+  }, [triggerKey, tx]);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }],
+  }));
+  return <Animated.View style={[style, animStyle]}>{children}</Animated.View>;
+}
 
 /** A single icon + text line in the clean top meta block. */
 function MetaLine({
@@ -1556,7 +1785,14 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: 110,
+    // Has to clear the absolutely-positioned sticky CTA. Worst case
+    // is admin + waiting-for-players: secondary outline + primary
+    // green + helper text + the CTA's own paddings stack to ~190 px.
+    // 110 was tuned for the single-button era and clipped the last
+    // section ("ניהול משחק" / מחיקת משחק) once we added the second
+    // button + helper. Round up so future copy tweaks don't clip
+    // again.
+    paddingBottom: 220,
     gap: spacing.lg,
   },
 
@@ -1963,6 +2199,118 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     gap: spacing.sm,
   },
+  ctaHelper: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  // Wrapper applied to the join Button when a registration conflict
+  // exists. We dim the visual but keep the onPress active so the tap
+  // can open the conflict modal — see the call site for the rationale.
+  ctaBlocked: { opacity: 0.55 },
+  // Cancel-registration link — sits inline as a quiet outlined row
+  // with a red text. Deliberately NOT a filled button so it can't be
+  // mistaken for a primary action.
+  cancelLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.28)',
+  },
+  cancelLinkText: {
+    ...typography.caption,
+    color: colors.danger,
+    fontWeight: '700',
+  },
+  // Conflict modal — same shape as ConfirmDestructiveModal but a
+  // warning palette (orange, not red) since this is an informative
+  // block, not a destructive choice.
+  conflictBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  conflictCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  conflictIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  conflictTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  conflictBody: {
+    ...typography.body,
+    color: colors.textMuted,
+    lineHeight: 22,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  conflictGameRow: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: 4,
+  },
+  conflictGameTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  conflictGameWhen: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  conflictGameGroup: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  conflictDiff: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: -spacing.xs,
+  },
+  // Stacked action column — primary (cancel-other) is the most
+  // common resolution path so it gets the top, full-width slot.
+  // The view+close buttons follow as outline/sm so the dialog reads
+  // top-down: "fix it · or · go look · or · close".
+  conflictActions: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  // Legacy alias — the old "horizontal footer" usage was replaced
+  // by `conflictActions` above. Keeping the key in case stragglers
+  // reference it; the value is identical to `conflictActions` so
+  // there's no visual surprise if someone re-introduces it.
+  conflictFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   // Read-only banner shown in place of the sticky CTA when the game
   // is finished or cancelled. Same docking behaviour as `cta` (sticks
   // to the bottom) but visually muted so it doesn't compete with
@@ -1993,21 +2341,36 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: RTL_LABEL_ALIGN,
   },
+  // Slim inline banner shown after a finished game to nudge the
+  // user to rate teammates. Pulled into the redesign as a single
+  // flex row instead of the old multi-line block.
   rateBanner: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.primary,
-    borderTopWidth: 2,
-  },
-  rateBannerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: 12,
+  },
+  rateBannerTitle: {
+    ...typography.caption,
+    color: colors.primaryDark,
+    fontWeight: '800',
+    fontSize: 13,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  rateBannerSub: {
+    ...typography.caption,
+    color: colors.primaryDark,
+    textAlign: RTL_LABEL_ALIGN,
+    opacity: 0.85,
   },
   rateBannerCta: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   rateBannerCtaText: {
     ...typography.caption,
@@ -2065,6 +2428,24 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceMuted,
+  },
+  // Tiny inline "navigate with Waze" pill rendered just under the
+  // location row. Size matches the existing meta-line text so it
+  // reads as a one-tap action attached to the address.
+  wazeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-end',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: '#DCFCE7',
+  },
+  wazeText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   weatherChipIcon: {
     fontSize: 13,
