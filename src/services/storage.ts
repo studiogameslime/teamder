@@ -8,6 +8,11 @@ const KEYS = {
   AUTH_USER: 'footy.auth.user',           // stringified User
   CURRENT_GROUP: 'footy.group.current',   // GroupId
   HINT_CREATE_GAME_SEEN: 'footy.hint.createGame.seen',
+  // Per-uid latch set after the account-deletion sweep has notified
+  // game admins. Prevents a deleteOwnAccount retry from re-pushing
+  // the same "X deleted account" notification to every admin again.
+  // Cleared once the auth-delete actually succeeds.
+  DELETE_SWEEP_NOTIFIED: 'footy.deleteSweep.notified',
   // Stash for an invite link (teamder://session/<id> or /team/<id>) the
   // user opened before they were authenticated. RootNavigator consumes
   // this after the post-sign-in onboarding completes.
@@ -61,6 +66,19 @@ export const storage = {
   },
   async setHintCreateGameSeen(): Promise<void> {
     await AsyncStorage.setItem(KEYS.HINT_CREATE_GAME_SEEN, '1');
+  },
+
+  async wasDeleteSweepNotified(uid: string): Promise<boolean> {
+    if (!uid) return false;
+    const raw = await AsyncStorage.getItem(KEYS.DELETE_SWEEP_NOTIFIED);
+    return raw === uid;
+  },
+  async setDeleteSweepNotified(uid: string): Promise<void> {
+    if (!uid) return;
+    await AsyncStorage.setItem(KEYS.DELETE_SWEEP_NOTIFIED, uid);
+  },
+  async clearDeleteSweepNotified(): Promise<void> {
+    await AsyncStorage.removeItem(KEYS.DELETE_SWEEP_NOTIFIED);
   },
 
   async getPendingInvite(): Promise<PendingInvite | null> {

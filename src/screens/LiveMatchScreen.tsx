@@ -39,6 +39,7 @@ import {
   type View as RNView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   GestureDetector,
@@ -106,6 +107,18 @@ const TEAM_TINTS = [
   colors.team3,
   colors.warning,
   colors.info,
+] as const;
+
+// Soft (low-saturation) variant of each team's accent — used as
+// background tint for player rows / team headers in the redesigned
+// live screen, so the colour reads as "this is team X" without
+// stamping the card with a fully saturated band.
+const TEAM_TINTS_SOFT = [
+  '#DBEAFE', // blue-100
+  '#FEE2E2', // red-100
+  '#DCFCE7', // green-100
+  '#FFEDD5', // orange-100
+  '#F3E8FF', // purple-100
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -185,7 +198,6 @@ function makeFreshState(playerIds: UserId[]): LiveMatchState {
     scoreC: 0,
     scoreD: 0,
     scoreE: 0,
-    lateUserIds: [],
   };
 }
 
@@ -199,7 +211,6 @@ function reconcile(
     ...state,
     assignments: { ...state.assignments },
     benchOrder: state.benchOrder.filter((id) => roster.has(id)),
-    lateUserIds: state.lateUserIds.filter((id) => roster.has(id)),
   };
   for (const uid of Object.keys(next.assignments)) {
     if (!roster.has(uid)) delete next.assignments[uid];
@@ -363,17 +374,31 @@ export function LiveMatchScreen() {
       if (alive) {
         setGame(g);
         if (g) logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id });
-        // Lifecycle guard: the live screen is meaningful ONLY for an
-        // active evening. If the user lands here from a stale link or
-        // before the admin has tapped "התחל ערב", surface a clear
-        // toast and back out instead of rendering empty state.
-        if (g && !canEnterLive(g)) {
-          toast.info(
-            isFinishedHelper(g) || isCancelledHelper(g)
-              ? he.matchDetailsAlreadyFinished
-              : he.liveMatchNotActiveYet,
-          );
-          if (nav.canGoBack()) nav.goBack();
+        // Lifecycle guard:
+        //   • Terminal (finished/cancelled) — always redirect; nothing
+        //     to do or see.
+        //   • Non-active and the viewer is NOT an admin — also
+        //     redirect: regular players have nothing to do until the
+        //     admin starts the evening.
+        //   • Non-active but the viewer IS an admin — allow entry so
+        //     the admin can preview the field/roster and reach the
+        //     "התחל ערב" CTA from inside the live surface (the menu
+        //     entry "ניהול משחק" lands the admin here).
+        if (g) {
+          const terminal = isFinishedHelper(g) || isCancelledHelper(g);
+          const adminHere =
+            !!me &&
+            (g.createdBy === me.id ||
+              myCommunities.some(
+                (c) => c.id === g.groupId && c.adminIds.includes(me.id),
+              ));
+          if (terminal) {
+            toast.info(he.matchDetailsAlreadyFinished);
+            if (nav.canGoBack()) nav.goBack();
+          } else if (!canEnterLive(g) && !adminHere) {
+            toast.info(he.liveMatchNotActiveYet);
+            if (nav.canGoBack()) nav.goBack();
+          }
         }
       }
     })();
@@ -800,10 +825,21 @@ export function LiveMatchScreen() {
         scoreE: 0,
       };
 
+      // Persist a +1 to the winning team's position. A draw doesn't
+      // count for either side. The loser's position keeps its tally
+      // as long as the same players stay there; if rotation happens
+      // below the loser's slot is wiped (new team starts fresh).
+      const prevWins = live.winsByTeam ?? {};
+      const winnerWins =
+        winner === 'draw'
+          ? prevWins
+          : { ...prevWins, [winner]: (prevWins[winner] ?? 0) + 1 };
+
       let next: LiveMatchState;
       if (winner === 'draw' || waitingLetters.length === 0) {
-        // No rotation — same matchup will play again next round.
-        next = { ...live, ...resetScores };
+        // No rotation — same matchup will play again next round. The
+        // winner (if any) carries its updated tally forward.
+        next = { ...live, ...resetScores, winsByTeam: winnerWins };
       } else {
         const loser: 'A' | 'B' = winner === 'A' ? 'B' : 'A';
         const loserZone: Zone = `team${loser}` as Zone;
@@ -812,12 +848,30 @@ export function LiveMatchScreen() {
           (l) => `team${l}` as Zone,
         );
 
-        // Queue rotation: [loser, w0, w1, ...]  →  [w0, w1, ..., loser]
-        const before: Zone[] = [loserZone, ...waitingZones];
-        const after: Zone[] = [...waitingZones, loserZone];
+        // Queue: [active(loser), wait1, wait2, ...]. After rotation:
+        //   • the first waiting team takes over the active (loser's)
+        //     zone — they enter the field;
+        //   • each subsequent waiting team moves up one slot;
+        //   • the loser drops to the back of the queue.
+        // Translated to a per-player remap (assignments[uid] = zone):
+        // we move every player from their current zone to whichever
+        // zone NOW holds that queue position.
+        //
+        // Earlier implementation rotated the queue in the wrong
+        // direction (the loser moved into wait1, not the back) — so
+        // the team that was supposed to enter the field never did.
+        const positions: Zone[] = [loserZone, ...waitingZones];
         const remap = new Map<Zone, Zone>();
-        before.forEach((z, i) => remap.set(z, after[i]));
-        remap.set(loserGkZone, after[0]);
+        for (let i = 0; i < positions.length; i++) {
+          const dest =
+            i === 0 ? positions[positions.length - 1] : positions[i - 1];
+          remap.set(positions[i], dest);
+        }
+        // The loser's GK zone behaves the same as the rest of the
+        // loser's roster — that player goes to the back of the queue
+        // (last waiting position) and gets re-picked as a regular
+        // outfield slot when the team comes back on later.
+        remap.set(loserGkZone, positions[positions.length - 1]);
 
         const newAssignments: Record<UserId, Zone> = {};
         for (const uid of Object.keys(live.assignments) as UserId[]) {
@@ -828,11 +882,17 @@ export function LiveMatchScreen() {
         const nextTeamASlots = loser === 'A' ? {} : (live.teamASlots ?? {});
         const nextTeamBSlots = loser === 'B' ? {} : (live.teamBSlots ?? {});
 
+        // Loser's position is now occupied by a fresh team — wipe its
+        // win tally so the new players don't inherit the loser's
+        // history. The winner's tally was already incremented above.
+        const rotatedWins = { ...winnerWins, [loser]: 0 };
+
         next = {
           ...live,
           assignments: newAssignments,
           teamASlots: nextTeamASlots,
           teamBSlots: nextTeamBSlots,
+          winsByTeam: rotatedWins,
           ...resetScores,
         };
       }
@@ -1041,6 +1101,83 @@ export function LiveMatchScreen() {
     });
   }, [live, teamLetters]);
 
+  // ─── Tap-to-swap state ────────────────────────────────────────────────
+  // Replaces the old drag-and-drop interaction. Tap a player to select;
+  // tap another player on the OPPOSITE on-field team to swap them. Tap
+  // the same player again to deselect. Non-admins are locked out.
+  //
+  // IMPORTANT: All hooks below MUST sit above the loading early-return
+  // a few lines down. Moving any hook past the early return will fire
+  // a different number of hooks on the loading vs loaded renders and
+  // crash with "Rendered more hooks than during the previous render".
+  const [selectedUid, setSelectedUid] = useState<UserId | null>(null);
+
+  const handleSwap = useCallback(
+    (a: UserId, b: UserId) => {
+      if (!live || !isAdmin) return;
+      const za = live.assignments[a];
+      const zb = live.assignments[b];
+      if (!za || !zb) return;
+      // Guard: only allow cross-team swaps between teamA and teamB
+      // (the two playing teams). Same-team taps just clear selection.
+      const isTeamAZone = (z: Zone) => z === 'teamA' || z === 'gkA';
+      const isTeamBZone = (z: Zone) => z === 'teamB' || z === 'gkB';
+      const oneAndTwo =
+        (isTeamAZone(za) && isTeamBZone(zb)) ||
+        (isTeamBZone(za) && isTeamAZone(zb));
+      if (!oneAndTwo) return;
+      const next: LiveMatchState = {
+        ...live,
+        assignments: {
+          ...live.assignments,
+          [a]: zb,
+          [b]: za,
+        },
+        // Slot maps are tied to specific uids — clear them so the new
+        // formation auto-fills cleanly after the swap.
+        teamASlots: {},
+        teamBSlots: {},
+      };
+      commit(next, { undoable: false, markEdited: true });
+    },
+    [live, isAdmin, commit],
+  );
+
+  const handlePlayerTap = useCallback(
+    (uid: UserId) => {
+      if (!isAdmin) return;
+      if (!selectedUid) {
+        setSelectedUid(uid);
+        return;
+      }
+      if (selectedUid === uid) {
+        setSelectedUid(null);
+        return;
+      }
+      handleSwap(selectedUid, uid);
+      setSelectedUid(null);
+    },
+    [selectedUid, isAdmin, handleSwap],
+  );
+
+  // Players currently on the two playing teams (A on the right,
+  // B on the left under RTL). Each entry includes both outfield and
+  // GK roster members for that team.
+  const teamAOnField: UserId[] = useMemo(() => {
+    if (!live) return [];
+    return (Object.keys(live.assignments) as UserId[]).filter((uid) => {
+      const z = live.assignments[uid];
+      return z === 'teamA' || z === 'gkA';
+    });
+  }, [live]);
+  const teamBOnField: UserId[] = useMemo(() => {
+    if (!live) return [];
+    return (Object.keys(live.assignments) as UserId[]).filter((uid) => {
+      const z = live.assignments[uid];
+      return z === 'teamB' || z === 'gkB';
+    });
+  }, [live]);
+
   // ─── Render ───────────────────────────────────────────────────────────
   if (!gameId || !game || !live) {
     return (
@@ -1052,357 +1189,213 @@ export function LiveMatchScreen() {
     );
   }
 
+  // Decide what the bottom-right primary CTA should do, based on the
+  // current session state. `null` → no primary action available.
+  const primaryAction = (() => {
+    if (!canManageRound) return null;
+    if (sessionState === 'ready_to_start')
+      return { label: he.liveStartRound, icon: 'play' as const, onPress: onTimerStart };
+    if (sessionState === 'round_active')
+      return { label: he.liveLogGoal, icon: 'football' as const, onPress: () => setGoalModalOpen(true) };
+    if (sessionState === 'round_paused')
+      return {
+        label: he.liveTimerResume,
+        icon: 'play' as const,
+        onPress: onTimerResume,
+      };
+    if (sessionState === 'round_finished')
+      return {
+        label: he.liveStartNextRound,
+        icon: 'play-forward' as const,
+        onPress: handleStartNextRound,
+      };
+    return null;
+  })();
+
+  const showEndRound =
+    isAdmin &&
+    (sessionState === 'round_active' || sessionState === 'round_paused');
+
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        {/* ─── HEADER — back button to MatchDetails ─── */}
-        <View style={styles.headerBar}>
-          <Pressable
-            onPress={() => nav.goBack()}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.backBtn,
-              pressed && { opacity: 0.6 },
-            ]}
-            accessibilityLabel={he.liveBackToDetails}
-          >
-            {/* In RTL, `chevron-forward` (>) points right — the
-                correct "back" direction in Hebrew. */}
-            <Ionicons name="chevron-forward" size={20} color={colors.text} />
-            <Text style={styles.backLabel} numberOfLines={1}>
-              {he.liveBackToDetails}
-            </Text>
-          </Pressable>
-        </View>
+    <View style={styles.root}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <LiveStadiumHero
+          timerMs={timerMs}
+          totalMs={totalMs}
+          isLastTen={isLastTen}
+          isLastMinute={isLastMinute}
+          sessionStateLabel={sessionStateLabel(
+            sessionState,
+            live.roundNumber ?? 1,
+          )}
+          onBack={() => nav.goBack()}
+        />
 
-        {/* ─── TIMER + STATE BANNER ─── */}
-        {/* The timer card doubles as the session-state banner. The label
-            below the time tells the user exactly which state they're in
-            (scheduled / ready / active / paused / finished). */}
-        <View style={styles.timerCard}>
-          <Animated.Text
-            style={[
-              styles.timerValue,
-              isLastTen
-                ? { color: colors.danger }
-                : isLastMinute
-                  ? { color: colors.warning }
-                  : null,
-              timerPulseStyle,
-            ]}
-          >
-            {formatTime(timerMs)}
-            <Text style={styles.timerCeiling}>
-              {`  /  ${formatTime(totalMs)}`}
-            </Text>
-          </Animated.Text>
-          <Text
-            style={[
-              styles.roundLabel,
-              sessionState === 'round_active' && { color: colors.primary },
-              sessionState === 'scheduled' && { color: colors.textMuted },
-            ]}
-          >
-            {sessionStateLabel(
-              sessionState,
-              live.roundNumber ?? 1,
-            )}
-          </Text>
-          {/* Timer controls — only when admin AND the session is in play
-              (i.e. not scheduled, not finished). */}
-          {isAdmin && (sessionState === 'round_active' || sessionState === 'round_paused') ? (
-            <View style={styles.timerBtnRow}>
-              {sessionState === 'round_active' ? (
-                <TimerBtn
-                  label={he.liveTimerPause}
-                  icon="pause"
-                  onPress={onTimerPause}
-                />
-              ) : (
-                <TimerBtn
-                  label={he.liveTimerResume}
-                  icon="play"
-                  primary
-                  onPress={onTimerResume}
-                />
-              )}
-            </View>
+        <View style={styles.body}>
+          <CurrentMatchPanel
+            sessionState={sessionState}
+            teamA={{
+              tint: TEAM_TINTS[0],
+              softTint: TEAM_TINTS_SOFT[0],
+              name: he.liveTeamLabel(0),
+              // The number under the team name is cumulative round
+              // wins (not the in-round goal count). The big scoreboard
+              // above the panel renders the live goal score.
+              score: live.winsByTeam?.A ?? 0,
+              players: teamAOnField,
+            }}
+            teamB={{
+              tint: TEAM_TINTS[1],
+              softTint: TEAM_TINTS_SOFT[1],
+              name: he.liveTeamLabel(1),
+              score: live.winsByTeam?.B ?? 0,
+              players: teamBOnField,
+            }}
+            guests={game.guests ?? []}
+            isAdmin={isAdmin}
+            selectedUid={selectedUid}
+            onPlayerTap={handlePlayerTap}
+          />
+
+          {waitingLetters.length > 0 ? (
+            <TeamQueuePanel
+              teams={waitingLetters.map((letter, idx) => {
+                const slotIndex = idx + 2;
+                return {
+                  letter,
+                  position: idx + 1,
+                  name: he.liveTeamLabel(slotIndex),
+                  tint: TEAM_TINTS[slotIndex] ?? colors.text,
+                  softTint: TEAM_TINTS_SOFT[slotIndex] ?? '#F1F5F9',
+                  // Same semantics as the active panel — show wins,
+                  // not the (zero, since they're not playing) goal score.
+                  score:
+                    (live.winsByTeam as Record<string, number> | undefined)?.[
+                      letter
+                    ] ?? 0,
+                };
+              })}
+            />
+          ) : null}
+
+          {!isAdmin ? (
+            <Text style={styles.viewerHint}>{he.liveViewerOnly}</Text>
           ) : null}
         </View>
+      </ScrollView>
 
-        {/* ─── SCORE CARDS — only the on-field matchup ─── */}
-        {/* Display only — no inline +/- buttons. Goal logging is the
-            primary path; manual edits live behind the small pencil
-            action below the score row (admin-only). */}
-        {sessionState !== 'round_finished' ? (
-          <View style={styles.scoreRow}>
-            {teamSlots.slice(0, 2).map((slot) => (
-              <ScoreCard
-                key={slot.index}
-                label={he.liveTeamLabel(slot.index)}
-                tint={slot.tint}
-                value={slot.score}
-                expand
-              />
-            ))}
-            {canEditScore ? (
-              <Pressable
-                onPress={() => setScoreEditOpen(true)}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.scoreEditBtn,
-                  pressed && { opacity: 0.6 },
-                ]}
-                accessibilityLabel={he.liveEditScore}
-              >
-                <Ionicons name="pencil" size={14} color={colors.textMuted} />
-              </Pressable>
-            ) : null}
-          </View>
-        ) : (
-          // Round-finished: replace the live scoreboard with a summary.
-          <RoundFinishedSummary
-            summary={lastSummary!}
-            teamATint={TEAM_TINTS[0]}
-            teamBTint={TEAM_TINTS[1]}
-          />
-        )}
-
-        {/* ─── FIELD — always teamA (top) vs teamB (bottom) ─── */}
-        <View style={styles.field} onLayout={remeasureZones}>
-          <PitchBackground />
-          <TeamHalf
-            half="top"
-            team="A"
-            zoneRefs={zoneRefs}
-            remeasureZone={remeasureZone}
-            slotRefs={slotRefsRef}
-            remeasureSlot={remeasureSlot}
-            outfieldByIdx={outfieldByIdx('A', outfieldCountForFormat(game.format))}
-            gkPlayer={inZone('gkA')[0]}
-            tint={TEAM_TINTS[0]}
-            format={game.format}
-            isAdmin={isAdmin}
-            meId={me?.id}
-            onDrop={handleDrop}
-            onHover={handleHover}
-            onClearHover={clearHover}
-            remeasure={remeasureZones}
-            guests={game.guests}
-            hoverZone={hoverZone}
-          />
-          <View style={styles.centerLine} />
-          <TeamHalf
-            half="bottom"
-            team="B"
-            zoneRefs={zoneRefs}
-            remeasureZone={remeasureZone}
-            slotRefs={slotRefsRef}
-            remeasureSlot={remeasureSlot}
-            outfieldByIdx={outfieldByIdx('B', outfieldCountForFormat(game.format))}
-            gkPlayer={inZone('gkB')[0]}
-            tint={TEAM_TINTS[1]}
-            format={game.format}
-            isAdmin={isAdmin}
-            meId={me?.id}
-            onDrop={handleDrop}
-            onHover={handleHover}
-            onClearHover={clearHover}
-            remeasure={remeasureZones}
-            guests={game.guests}
-            hoverZone={hoverZone}
-          />
-        </View>
-
-        {/* ─── WAITING TEAMS — one full-width row per team ─── */}
-        {/* Stacks vertically: 3 teams → 1 row, 4 → 2 rows, 5 → 3.
-            Each row is its own drop target (teamC/D/E zone). */}
-        {waitingLetters.length > 0 ? (
-          <View style={styles.waitingStack}>
-            {waitingLetters.map((letter, idx) => {
-              const slotIndex = idx + 2; // letters[0..1] are on-field
-              const tint = TEAM_TINTS[slotIndex] ?? colors.text;
-              const players = inZone(teamZoneFor(letter));
-              return (
-                <WaitingTeamRow
-                  key={letter}
-                  letter={letter}
-                  slotIndex={slotIndex}
-                  tint={tint}
-                  players={players}
-                  score={scoreOf(live, letter)}
-                  guests={game.guests}
-                  meId={me?.id}
-                  isAdmin={isAdmin}
-                  onDrop={handleDrop}
-                  onHover={handleHover}
-                  onClearHover={clearHover}
-                  remeasure={remeasureZones}
-                  zoneRefs={zoneRefs}
-                  remeasureZone={remeasureZone}
-                  hoverZone={hoverZone}
-                />
-              );
-            })}
-          </View>
-        ) : null}
-
-        {/* ─── BOTTOM ACTION BAR — state-aware ─── */}
-        {/* Exactly one primary green button is shown at a time. The
-            secondary "צפייה בקבוצות" lives on the side; "סיים משחקון"
-            (red) appears only when a round is actually in play. */}
+      <SafeAreaView edges={['bottom']} style={styles.actionBarSafe}>
         <View style={styles.actionBar}>
-          {/* Primary green — varies by state. */}
-          {canManageRound ? (
-            sessionState === 'ready_to_start' ? (
-              <Pressable
-                onPress={onTimerStart}
-                style={({ pressed }) => [
-                  styles.actionPrimary,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityLabel={he.liveStartRound}
-              >
-                <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.actionPrimaryText}>
-                  {he.liveStartRound}
-                </Text>
-              </Pressable>
-            ) : sessionState === 'round_active' ? (
-              <Pressable
-                onPress={() => setGoalModalOpen(true)}
-                style={({ pressed }) => [
-                  styles.actionPrimary,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityLabel={he.liveLogGoal}
-              >
-                <Ionicons name="football" size={18} color="#fff" />
-                <Text style={styles.actionPrimaryText}>{he.liveLogGoal}</Text>
-              </Pressable>
-            ) : sessionState === 'round_paused' ? (
-              <Pressable
-                onPress={onTimerResume}
-                style={({ pressed }) => [
-                  styles.actionPrimary,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityLabel={he.liveTimerResume}
-              >
-                <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.actionPrimaryText}>
-                  {he.liveTimerResume}
-                </Text>
-              </Pressable>
-            ) : sessionState === 'round_finished' ? (
-              <Pressable
-                onPress={handleStartNextRound}
-                style={({ pressed }) => [
-                  styles.actionPrimary,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityLabel={he.liveStartNextRound}
-              >
-                <Ionicons name="play-forward" size={18} color="#fff" />
-                <Text style={styles.actionPrimaryText}>
-                  {he.liveStartNextRound}
-                </Text>
-              </Pressable>
-            ) : null
-          ) : null}
-
-          {/* Always-visible secondary — overview. */}
-          <Pressable
-            onPress={() => setOverviewOpen(true)}
-            style={({ pressed }) => [
-              styles.actionSecondary,
-              pressed && { opacity: 0.7 },
-            ]}
-            accessibilityLabel={he.liveTeamsOverview}
-          >
-            <Ionicons name="people-outline" size={18} color={colors.text} />
-            <Text style={styles.actionSecondaryText} numberOfLines={1}>
-              {he.liveTeamsOverview}
-            </Text>
-          </Pressable>
-
-          {/* End-round — destructive, only while a round is in play. */}
-          {isAdmin &&
-          (sessionState === 'round_active' ||
-            sessionState === 'round_paused') ? (
+          {showEndRound ? (
             <Pressable
               onPress={() => setEndRoundOpen(true)}
               style={({ pressed }) => [
-                styles.actionDanger,
+                styles.endMatchBtn,
                 pressed && { opacity: 0.85 },
               ]}
+              accessibilityRole="button"
               accessibilityLabel={he.liveEndRound}
             >
-              <Ionicons name="flag-outline" size={18} color="#fff" />
-              <Text style={styles.actionDangerText} numberOfLines={1}>
-                {he.liveEndRound}
+              <Ionicons name="flag" size={18} color="#EF4444" />
+              <Text style={styles.endMatchText}>{he.liveEndRound}</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setOverviewOpen(true)}
+              style={({ pressed }) => [
+                styles.endMatchBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.liveTeamsOverview}
+            >
+              <Ionicons name="people-outline" size={18} color="#475569" />
+              <Text style={[styles.endMatchText, { color: '#475569' }]}>
+                {he.liveTeamsOverview}
               </Text>
             </Pressable>
-          ) : null}
+          )}
+
+          {primaryAction ? (
+            <Pressable
+              onPress={primaryAction.onPress}
+              style={({ pressed }) => [
+                styles.startMatchBtn,
+                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={primaryAction.label}
+            >
+              <Text style={styles.startMatchText}>{primaryAction.label}</Text>
+              <Ionicons name={primaryAction.icon} size={20} color="#FFFFFF" />
+            </Pressable>
+          ) : (
+            <View style={styles.startMatchBtn} pointerEvents="none">
+              <Text style={[styles.startMatchText, { opacity: 0.5 }]}>
+                {sessionState === 'scheduled'
+                  ? he.liveStatusScheduled
+                  : he.liveStartRound}
+              </Text>
+            </View>
+          )}
         </View>
-
-        {!isAdmin ? (
-          <Text style={styles.viewerHint}>{he.liveViewerOnly}</Text>
-        ) : null}
-
-        <TeamsOverviewSheet
-          visible={overviewOpen}
-          groupId={game.groupId}
-          teams={teamSlots}
-          guests={game.guests ?? []}
-          onClose={() => setOverviewOpen(false)}
-        />
-
-        <EndRoundModal
-          visible={endRoundOpen}
-          roundNumber={live.roundNumber ?? 1}
-          teamATint={TEAM_TINTS[0]}
-          teamBTint={TEAM_TINTS[1]}
-          teamAScore={live.scoreA}
-          teamBScore={live.scoreB}
-          onCancel={() => setEndRoundOpen(false)}
-          onSelect={handleEndRound}
-        />
-
-        <GoalLogModal
-          visible={goalModalOpen}
-          teamAPlayers={teamSlots[0]?.playerIds ?? []}
-          teamBPlayers={teamSlots[1]?.playerIds ?? []}
-          teamATint={TEAM_TINTS[0]}
-          teamBTint={TEAM_TINTS[1]}
-          guests={game.guests ?? []}
-          onCancel={() => setGoalModalOpen(false)}
-          onPick={(team, isOwn) => handleLogGoal(team, isOwn)}
-        />
-
-        <ScoreEditModal
-          visible={scoreEditOpen}
-          scoreA={live.scoreA}
-          scoreB={live.scoreB}
-          teamATint={TEAM_TINTS[0]}
-          teamBTint={TEAM_TINTS[1]}
-          onClose={() => setScoreEditOpen(false)}
-          onAdjust={(team, delta) => {
-            if (!live) return;
-            const prev = scoreOf(live, team);
-            commit(setScoreOf(live, team, Math.max(0, prev + delta)));
-            if (gameId) {
-              logEvent(AnalyticsEvent.TeamScoreChanged, {
-                gameId,
-                team,
-                delta,
-                source: 'manual',
-              });
-            }
-          }}
-        />
       </SafeAreaView>
-    </GestureHandlerRootView>
+
+      <TeamsOverviewSheet
+        visible={overviewOpen}
+        groupId={game.groupId}
+        teams={teamSlots}
+        guests={game.guests ?? []}
+        onClose={() => setOverviewOpen(false)}
+      />
+
+      <EndRoundModal
+        visible={endRoundOpen}
+        roundNumber={live.roundNumber ?? 1}
+        teamATint={TEAM_TINTS[0]}
+        teamBTint={TEAM_TINTS[1]}
+        teamAScore={live.scoreA}
+        teamBScore={live.scoreB}
+        onCancel={() => setEndRoundOpen(false)}
+        onSelect={handleEndRound}
+      />
+
+      <GoalLogModal
+        visible={goalModalOpen}
+        teamAPlayers={teamSlots[0]?.playerIds ?? []}
+        teamBPlayers={teamSlots[1]?.playerIds ?? []}
+        teamATint={TEAM_TINTS[0]}
+        teamBTint={TEAM_TINTS[1]}
+        guests={game.guests ?? []}
+        onCancel={() => setGoalModalOpen(false)}
+        onPick={(team, isOwn) => handleLogGoal(team, isOwn)}
+      />
+
+      <ScoreEditModal
+        visible={scoreEditOpen}
+        scoreA={live.scoreA}
+        scoreB={live.scoreB}
+        teamATint={TEAM_TINTS[0]}
+        teamBTint={TEAM_TINTS[1]}
+        onClose={() => setScoreEditOpen(false)}
+        onAdjust={(team, delta) => {
+          if (!live) return;
+          const prev = scoreOf(live, team);
+          commit(setScoreOf(live, team, Math.max(0, prev + delta)));
+          if (gameId) {
+            logEvent(AnalyticsEvent.TeamScoreChanged, {
+              gameId,
+              team,
+              delta,
+              source: 'manual',
+            });
+          }
+        }}
+      />
+    </View>
   );
 }
 
@@ -2603,10 +2596,695 @@ const GK_WRAP_HEIGHT = GK_PLACEHOLDER_SIZE + SLOT_LABEL_GAP + LABEL_HEIGHT;
 const GK_WRAP_HALF_W = GK_WRAP_WIDTH / 2;
 const GK_WRAP_HALF_H = GK_WRAP_HEIGHT / 2;
 
+// ─── New live-screen sub-components ──────────────────────────────────────
+//
+// Stadium-themed hero with a back link, LIVE pill, and a big timer.
+// Replaces the old header bar + timer card combo.
+
+function LiveStadiumHero({
+  timerMs,
+  totalMs,
+  isLastTen,
+  isLastMinute,
+  sessionStateLabel,
+  onBack,
+}: {
+  timerMs: number;
+  totalMs: number;
+  isLastTen: boolean;
+  isLastMinute: boolean;
+  sessionStateLabel: string;
+  onBack: () => void;
+}) {
+  const remainingMs = Math.max(0, totalMs - timerMs);
+  return (
+    <View style={liveHeroStyles.wrap}>
+      <LinearGradient
+        colors={['#0F1B4D', '#1E3A8A', '#1E40AF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView edges={['top']} style={liveHeroStyles.safe}>
+        <View style={liveHeroStyles.topRow}>
+          <Pressable
+            onPress={onBack}
+            hitSlop={10}
+            style={({ pressed }) => [
+              liveHeroStyles.backBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.liveBackToDetails}
+          >
+            <Text style={liveHeroStyles.backText}>{he.liveBackToDetails}</Text>
+            <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+          </Pressable>
+          <View style={liveHeroStyles.livePill}>
+            <View style={liveHeroStyles.liveDot} />
+            <Text style={liveHeroStyles.liveText}>LIVE</Text>
+          </View>
+        </View>
+
+        <View style={liveHeroStyles.timerWrap}>
+          <Text
+            style={[
+              liveHeroStyles.timerValue,
+              isLastTen
+                ? { color: '#FCA5A5' }
+                : isLastMinute
+                  ? { color: '#FCD34D' }
+                  : null,
+            ]}
+          >
+            {formatTime(timerMs)}
+          </Text>
+          <Text style={liveHeroStyles.timerSubtitle}>
+            {`${formatTime(remainingMs)} נותר`}
+          </Text>
+          <Text style={liveHeroStyles.statusLabel}>{sessionStateLabel}</Text>
+        </View>
+
+        <Ionicons
+          name="football"
+          size={120}
+          color="rgba(255,255,255,0.08)"
+          style={liveHeroStyles.bgIcon}
+        />
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const liveHeroStyles = StyleSheet.create({
+  wrap: {
+    overflow: 'hidden',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 22,
+    elevation: 8,
+  },
+  safe: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.sm,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  backText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(239,68,68,0.92)',
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  liveText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  timerWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: 4,
+  },
+  timerValue: {
+    color: '#FFFFFF',
+    fontSize: 56,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 1.5,
+  },
+  timerSubtitle: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusLabel: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  bgIcon: {
+    position: 'absolute',
+    top: 70,
+    end: -20,
+    transform: [{ rotate: '15deg' }],
+  },
+});
+
+// ─── Current match panel ────────────────────────────────────────────────
+//
+// Two team headers + a VS divider, with a pair of player columns
+// underneath. Tap a player to select; tap a player on the OPPOSITE
+// team to swap them. The currently selected player gets a colored
+// ring around their row.
+
+interface MatchTeam {
+  tint: string;
+  softTint: string;
+  name: string;
+  score: number;
+  players: UserId[];
+}
+
+function CurrentMatchPanel({
+  sessionState,
+  teamA,
+  teamB,
+  guests,
+  isAdmin,
+  selectedUid,
+  onPlayerTap,
+}: {
+  sessionState: string;
+  teamA: MatchTeam;
+  teamB: MatchTeam;
+  guests: GameGuest[];
+  isAdmin: boolean;
+  selectedUid: UserId | null;
+  onPlayerTap: (uid: UserId) => void;
+}) {
+  const guestsById = useMemo(() => {
+    const map: Record<string, GameGuest> = {};
+    for (const g of guests) map[g.id] = g;
+    return map;
+  }, [guests]);
+  const userMap = useGameStore((s) => s.players);
+
+  // Pad the shorter list with `null` so the two columns always render
+  // the same number of rows — keeps the VS divider centred and the
+  // visual rhythm consistent regardless of imbalance.
+  const rows = Math.max(teamA.players.length, teamB.players.length);
+  const teamAPadded = useMemo(() => {
+    const arr: (UserId | null)[] = [...teamA.players];
+    while (arr.length < rows) arr.push(null);
+    return arr;
+  }, [teamA.players, rows]);
+  const teamBPadded = useMemo(() => {
+    const arr: (UserId | null)[] = [...teamB.players];
+    while (arr.length < rows) arr.push(null);
+    return arr;
+  }, [teamB.players, rows]);
+
+  const resolveDisplay = useCallback(
+    (uid: UserId): { name: string; number: number | null } => {
+      const guestId = parseGuestRosterId(uid);
+      if (guestId) {
+        const g = guestsById[guestId];
+        return {
+          name: g?.name ?? 'אורח',
+          // Guests don't carry a jersey number — fall back to the
+          // row index in PlayerRow.
+          number: null,
+        };
+      }
+      const u = userMap[uid];
+      return {
+        name: u?.displayName ?? 'שחקן',
+        number: u?.jersey?.number ?? null,
+      };
+    },
+    [guestsById, userMap],
+  );
+
+  return (
+    <View style={currentMatchStyles.card}>
+      <Text style={currentMatchStyles.title}>{he.liveCurrentMatchTitle}</Text>
+
+      <View style={currentMatchStyles.headerRow}>
+        <TeamHeader team={teamA} />
+        <View style={currentMatchStyles.vsBadge}>
+          <Text style={currentMatchStyles.vsText}>VS</Text>
+        </View>
+        <TeamHeader team={teamB} />
+      </View>
+
+      {rows === 0 ? (
+        <Text style={currentMatchStyles.emptyHint}>
+          {he.liveCurrentMatchEmpty}
+        </Text>
+      ) : (
+        <View style={currentMatchStyles.columnsRow}>
+          <View style={currentMatchStyles.column}>
+            {teamAPadded.map((uid, i) => (
+              <PlayerRow
+                key={`A-${i}-${uid ?? 'empty'}`}
+                uid={uid}
+                index={i + 1}
+                tint={teamA.tint}
+                softTint={teamA.softTint}
+                selected={!!uid && uid === selectedUid}
+                onTap={onPlayerTap}
+                resolveDisplay={resolveDisplay}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </View>
+          <View style={currentMatchStyles.divider} />
+          <View style={currentMatchStyles.column}>
+            {teamBPadded.map((uid, i) => (
+              <PlayerRow
+                key={`B-${i}-${uid ?? 'empty'}`}
+                uid={uid}
+                index={i + 1}
+                tint={teamB.tint}
+                softTint={teamB.softTint}
+                selected={!!uid && uid === selectedUid}
+                onTap={onPlayerTap}
+                resolveDisplay={resolveDisplay}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {isAdmin && rows > 0 ? (
+        <Text style={currentMatchStyles.swapHint}>{he.liveSwapHint}</Text>
+      ) : null}
+
+      {/* Suppress unused-prop lint while we wire up state-aware copy. */}
+      {sessionState === '__never__' ? <View /> : null}
+    </View>
+  );
+}
+
+function TeamHeader({ team }: { team: MatchTeam }) {
+  return (
+    <View style={currentMatchStyles.teamHeader}>
+      <View
+        style={[
+          currentMatchStyles.jerseyDisc,
+          { backgroundColor: team.tint },
+        ]}
+      >
+        <Ionicons name="shirt" size={22} color="#FFFFFF" />
+      </View>
+      <Text style={currentMatchStyles.teamName} numberOfLines={1}>
+        {team.name}
+      </Text>
+      <Text style={currentMatchStyles.teamWins}>
+        {he.liveTeamWinsLabel(team.score)}
+      </Text>
+    </View>
+  );
+}
+
+function PlayerRow({
+  uid,
+  index,
+  tint,
+  softTint,
+  selected,
+  onTap,
+  resolveDisplay,
+  isAdmin,
+}: {
+  uid: UserId | null;
+  index: number;
+  tint: string;
+  softTint: string;
+  selected: boolean;
+  onTap: (uid: UserId) => void;
+  resolveDisplay: (uid: UserId) => { name: string; number: number | null };
+  isAdmin: boolean;
+}) {
+  if (!uid) {
+    return <View style={[currentMatchStyles.row, currentMatchStyles.rowEmpty]} />;
+  }
+  const { name, number } = resolveDisplay(uid);
+  return (
+    <Pressable
+      onPress={() => onTap(uid)}
+      disabled={!isAdmin}
+      style={({ pressed }) => [
+        currentMatchStyles.row,
+        { backgroundColor: softTint },
+        selected && { borderColor: tint, borderWidth: 2 },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <View style={[currentMatchStyles.rowNumber, { backgroundColor: tint }]}>
+        <Text style={currentMatchStyles.rowNumberText}>
+          {number ?? index}
+        </Text>
+      </View>
+      <Text
+        style={[currentMatchStyles.rowName, { color: '#0F172A' }]}
+        numberOfLines={1}
+      >
+        {name}
+      </Text>
+      {isAdmin ? (
+        <Ionicons
+          name="swap-horizontal"
+          size={14}
+          color="#94A3B8"
+          style={{ marginStart: 4 }}
+        />
+      ) : null}
+    </Pressable>
+  );
+}
+
+const currentMatchStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: spacing.lg,
+    gap: spacing.md,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  title: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  teamHeader: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  jerseyDisc: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamName: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  teamWins: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  vsBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F172A',
+  },
+  vsText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  columnsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  column: {
+    flex: 1,
+    gap: 6,
+  },
+  divider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'stretch',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    minHeight: 38,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  rowEmpty: {
+    backgroundColor: '#F8FAFC',
+    minHeight: 38,
+  },
+  rowNumber: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowNumberText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  rowName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  emptyHint: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
+  swapHint: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+});
+
+// ─── Team queue panel ───────────────────────────────────────────────────
+//
+// Horizontal row of waiting teams in queue order. Each card shows the
+// position number, a colored disc, the team's Hebrew name, and the
+// running win count.
+
+interface QueueTeam {
+  letter: TeamLetter;
+  position: number;
+  name: string;
+  tint: string;
+  softTint: string;
+  score: number;
+}
+
+function TeamQueuePanel({ teams }: { teams: QueueTeam[] }) {
+  return (
+    <View style={queueStyles.wrap}>
+      <Text style={queueStyles.title}>{he.liveQueueTitle}</Text>
+      <View style={queueStyles.row}>
+        {teams.map((t, i) => (
+          <React.Fragment key={t.letter}>
+            <View
+              style={[queueStyles.card, { backgroundColor: t.softTint }]}
+            >
+              <View
+                style={[queueStyles.position, { backgroundColor: t.tint }]}
+              >
+                <Text style={queueStyles.positionText}>{t.position}</Text>
+              </View>
+              <View
+                style={[queueStyles.disc, { backgroundColor: t.tint }]}
+              >
+                <Ionicons name="shield" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={queueStyles.name} numberOfLines={1}>
+                {t.name}
+              </Text>
+              <Text style={queueStyles.wins}>
+                {he.liveTeamWinsLabel(t.score)}
+              </Text>
+            </View>
+            {i < teams.length - 1 ? (
+              <Ionicons
+                name="chevron-back"
+                size={16}
+                color="#94A3B8"
+                style={{ alignSelf: 'center' }}
+              />
+            ) : null}
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const queueStyles = StyleSheet.create({
+  wrap: { gap: spacing.sm },
+  title: {
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 6,
+  },
+  card: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: 6,
+    borderRadius: 16,
+    gap: 4,
+    minHeight: 110,
+  },
+  position: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: 6,
+    end: 6,
+  },
+  positionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  disc: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  name: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  wins: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+});
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },
+
+  // ─── Redesigned screen layout ────────────────────────────────────────
+  scroll: {
+    paddingBottom: 120,
+  },
+  body: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    gap: spacing.lg,
+  },
+  viewerHint: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  // Bottom action bar — pinned to the bottom of the screen, sits above
+  // the safe-area inset.
+  actionBarSafe: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  // "סיים משחק" — small red outline pill on the visual LEFT.
+  endMatchBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    backgroundColor: '#FFFFFF',
+  },
+  endMatchText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  // "הפעל משחק" — large green pill on the visual RIGHT, primary CTA.
+  startMatchBtn: {
+    flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: '#22C55E',
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  startMatchText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
 
   headerBar: {
     paddingHorizontal: spacing.md,
@@ -3002,75 +3680,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     paddingVertical: 6,
-  },
-
-  // Bottom action bar
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  actionPrimary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-  },
-  actionPrimaryText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  actionSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionSecondaryText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  actionDanger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: colors.danger,
-  },
-  actionDangerText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  viewerHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
   },
 
   // Players

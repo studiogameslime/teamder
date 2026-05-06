@@ -52,16 +52,26 @@ export function navigateInvite(args: {
  * isn't ready yet — the caller is expected to either retry or stash
  * the payload for later (App.tsx does the latter for cold-start taps).
  *
- * The mapping mirrors the user's intent for each push type:
- *   joinRequest        → AdminApproval queue (ProfileTab)
- *   approved/rejected  → MatchDetails (game flow) or CommunityDetails (group)
- *   newGameInCommunity → MatchDetails for the new game
- *   gameReminder       → MatchDetails (the reminded game)
- *   gameCanceledOrUpdated → MatchDetails (or harmless if game deleted)
- *   spotOpened         → MatchDetails (the freed spot)
- *   inviteToGame       → MatchDetails (invited game)
- *   rateReminder       → MatchDetails (where the rating CTA lives)
- *   gameFillingUp      → MatchDetails (the filling game)
+ * The mapping mirrors the user's intent for each push type. Every
+ * NotificationType from `src/types/index.ts` is covered:
+ *
+ *   joinRequest         → AdminApproval queue (ProfileTab)
+ *   approved/rejected   → MatchDetails (game flow) or CommunityDetails (group)
+ *                         based on which id the payload carries
+ *   newGameInCommunity  → MatchDetails for the new game (falls back to
+ *                         the community's CommunityDetails if gameId is
+ *                         missing — better than a dead-end)
+ *   gameReminder        → MatchDetails (the reminded game)
+ *   gameCanceledOrUpdated → MatchDetails (or the user's GamesList if
+ *                         the game was deleted and the doc no longer
+ *                         exists; MatchDetails handles the empty case)
+ *   spotOpened          → MatchDetails (the freed spot)
+ *   inviteToGame        → MatchDetails (invited game)
+ *   rateReminder        → MatchDetails (where the rating CTA lives)
+ *   gameFillingUp       → MatchDetails (the filling game)
+ *   growthMilestone     → Achievements (where the badge / milestone
+ *                         is displayed; payload.badgeId is read by
+ *                         Achievements to highlight on entry)
  */
 export function navigateForPush(
   type: string,
@@ -75,6 +85,9 @@ export function navigateForPush(
 
   switch (type) {
     case 'joinRequest':
+      // Group-bound: always goes to the admin approval queue. Living
+      // in ProfileTab keeps a single home for "things waiting on me",
+      // independent of which community sent the request.
       nav.navigate('ProfileTab', { screen: 'AdminApproval' });
       return true;
 
@@ -100,18 +113,50 @@ export function navigateForPush(
       return false;
 
     case 'newGameInCommunity':
+      // The notification announces a NEW game — drop the user straight
+      // into the match details so they can see all info + join. If the
+      // gameId is somehow missing fall back to the community page.
+      if (gameId) {
+        nav.navigate('GameTab', {
+          screen: 'MatchDetails',
+          params: { gameId },
+        });
+        return true;
+      }
+      if (groupId) {
+        nav.navigate('CommunitiesTab', {
+          screen: 'CommunityDetails',
+          params: { groupId },
+        });
+        return true;
+      }
+      return false;
+
     case 'gameReminder':
     case 'gameCanceledOrUpdated':
     case 'spotOpened':
     case 'inviteToGame':
     case 'rateReminder':
     case 'gameFillingUp':
-    case 'imLate':
-      if (!gameId) return false;
+    case 'playerCancelled':
+      // Account-deletion variant: no specific gameId in the payload
+      // (the user dropped from multiple games at once). Send the
+      // admin to the Communities tab so they can pick which of
+      // their groups to inspect.
+      if (!gameId) {
+        nav.navigate('CommunitiesTab', { screen: 'CommunitiesFeed' });
+        return true;
+      }
       nav.navigate('GameTab', {
         screen: 'MatchDetails',
         params: { gameId },
       });
+      return true;
+
+    case 'growthMilestone':
+      // Achievements page surfaces all unlocked badges; the inner
+      // detail popover keys off the optional `badgeId` payload field.
+      nav.navigate('ProfileTab', { screen: 'Achievements' });
       return true;
 
     default:

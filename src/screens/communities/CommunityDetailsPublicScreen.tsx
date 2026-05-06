@@ -142,8 +142,16 @@ export function CommunityDetailsPublicScreen() {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
-      if (__DEV__) console.warn('[communityPublic] join failed', err);
-      toast.error(he.toastRequestFailed);
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'GROUP_FULL') {
+        toast.error(he.toastGroupFull);
+      } else {
+        if (__DEV__) console.warn('[communityPublic] join failed', err);
+        toast.error(he.toastRequestFailed);
+      }
     } finally {
       setBusyJoin(false);
     }

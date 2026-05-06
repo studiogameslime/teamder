@@ -56,63 +56,108 @@ export function DisciplineRow({ userId }: Props) {
     };
   }, [userId]);
 
+  // New layout: prominent red+yellow square indicators on the
+  // leading edge (RTL: visually left), title + small caption to the
+  // right, chevron on the trailing side. Mirrors the social/info
+  // cards on the same screen so the profile reads as one set of
+  // matched rows.
+  const captionText =
+    snapshot.kind === 'ready'
+      ? snapshot.gamesCounted >= 10
+        ? he.disciplineSnapshotCaptionFull
+        : snapshot.gamesCounted === 0
+          ? he.disciplineSnapshotEmpty
+          : he.disciplineSnapshotCaptionPartial(snapshot.gamesCounted)
+      : null;
   return (
     <View style={styles.card}>
-      <View style={styles.row}>
-        <Text style={styles.title}>{he.disciplineSnapshotTitle}</Text>
-        {snapshot.kind === 'loading' ? (
+      {snapshot.kind === 'loading' ? (
+        <View style={styles.loadingWrap}>
           <SoccerBallLoader size={20} />
-        ) : snapshot.kind === 'error' ? (
-          <Text style={styles.unavailable}>
+        </View>
+      ) : (
+        <View style={styles.indicatorWrap}>
+          <View style={[styles.indicator, styles.indicatorRed]}>
+            <Text style={styles.indicatorText}>
+              {snapshot.kind === 'ready' ? snapshot.red : '—'}
+            </Text>
+          </View>
+          <View style={[styles.indicator, styles.indicatorYellow]}>
+            <Text style={styles.indicatorText}>
+              {snapshot.kind === 'ready' ? snapshot.yellow : '—'}
+            </Text>
+          </View>
+        </View>
+      )}
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={1}>
+          {he.disciplineSnapshotTitle}
+        </Text>
+        {snapshot.kind === 'error' ? (
+          <Text style={styles.unavailable} numberOfLines={1}>
             {he.disciplineSnapshotUnavailable}
           </Text>
-        ) : (
-          <DisciplineCards
-            yellowCards={snapshot.yellow}
-            redCards={snapshot.red}
-            size={26}
-          />
-        )}
+        ) : captionText ? (
+          <Text style={styles.caption} numberOfLines={1}>
+            {captionText}
+          </Text>
+        ) : null}
       </View>
-      {snapshot.kind === 'ready' && snapshot.gamesCounted > 0 ? (
-        <Text style={styles.caption}>
-          {snapshot.gamesCounted >= 10
-            ? he.disciplineSnapshotCaptionFull
-            : he.disciplineSnapshotCaptionPartial(snapshot.gamesCounted)}
-        </Text>
-      ) : snapshot.kind === 'ready' && snapshot.gamesCounted === 0 ? (
-        <Text style={styles.caption}>{he.disciplineSnapshotEmpty}</Text>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     gap: spacing.md,
-    minHeight: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  // Two prominent square indicators on the leading edge — red over
+  // yellow, each showing its current count. Sized like the icon
+  // circle on the sibling cards so the row aligns vertically.
+  indicatorWrap: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  indicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicatorRed: { backgroundColor: '#EF4444' },
+  indicatorYellow: { backgroundColor: '#F59E0B' },
+  indicatorText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  loadingWrap: {
+    width: 78,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    flex: 1,
+    gap: 2,
   },
   title: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    flex: 1,
   },
   caption: {
     ...typography.caption,
@@ -123,7 +168,22 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     fontStyle: 'italic',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  // Reserved for future muted bg when there's a recent red.
-  _bgWarn: { backgroundColor: '#FEF3C7', borderRadius: radius.lg },
+  chevron: {
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevronInner: {
+    width: 8,
+    height: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: colors.textMuted,
+    transform: [{ rotate: '-45deg' }],
+  },
+  // Reserved alias (kept so prior radius/border-radius refs still
+  // resolve if used by tests/snapshots).
+  _r: { borderRadius: radius.lg },
 });

@@ -21,10 +21,10 @@ const TEAM_LABEL: Record<TeamColor, string> = {
 
 export function HistoryScreen() {
   const group = useCurrentGroup();
-  // `useNavigation<any>` because History lives in ProfileStack but
-  // navigates cross-stack into GameTab → MatchDetails. The shape is
-  // verified by the deep-link consumer (navigationRef.navigateInvite)
-  // and exercised in production already.
+  // `useNavigation<any>` to keep this screen's navigation untyped —
+  // History lives in ProfileStack which now registers MatchDetails
+  // alongside its own routes, so the bare navigate below resolves to
+  // a same-stack push.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
@@ -41,14 +41,10 @@ export function HistoryScreen() {
   }, [group]);
 
   const openDetails = (gameId: string) => {
-    // Cross-stack navigation: jump to the Games tab and push the
-    // MatchDetails route there. The screen's own lifecycle helpers
-    // (canJoinGame / canCancelRegistration / etc.) ensure the read-
-    // only state is rendered correctly for finished + cancelled.
-    nav.navigate('GameTab', {
-      screen: 'MatchDetails',
-      params: { gameId },
-    });
+    // Push within the current stack (ProfileStack) — back returns to
+    // History rather than jumping the user to GamesList in the Games
+    // tab, which the previous cross-tab navigate did.
+    nav.navigate('MatchDetails', { gameId });
   };
 
   return (

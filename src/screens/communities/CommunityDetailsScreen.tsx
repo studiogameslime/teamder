@@ -1,34 +1,27 @@
-// CommunityDetailsScreen — redesigned community overview.
+// CommunityDetailsScreen — premium "stadium-style" community page.
 //
-// New structure (replaces the previous everything-on-one-screen blob):
-//   ① Compact gradient header with name, location, מאמן badge,
-//      hamburger button at top-leading
-//   ② Pending-approvals callout (admin-only, when count > 0)
-//   ③ 2×2 summary grid (members, days, hour, field)
-//   ④ Slim notification toggle row (members)
-//   ⑤ Next-game card (deep-link to MatchDetails)
-//   ⑥ Players preview (5 jerseys + +N + nav to full list)
-//   ⑦ Hamburger bottom sheet hosting all settings/destructive actions
+// Layout (top → bottom, RTL):
+//   ① Stadium hero (full-bleed photo + dark gradient + ⋯/☰ + name)
+//   ② Floating 2×2 stats grid lifted onto the bottom of the hero
+//   ③ Notification toggle row (members only)
+//   ④ Next-game card — primary focus, dark blue gradient
+//   ⑤ Active-players preview — horizontal jersey rail
+//   ⑥ "שתף הזמנה לקהילה" gradient CTA (members only)
 //
-// All long-text blocks (description / rules / notes), the recurring-
-// game admin shortcut, contact-admin and community-share have been
-// pulled off the main screen — they live in the hamburger menu (or
-// the dedicated edit screen for admin-touch concerns).
+// All admin / destructive actions live behind the ☰ hamburger menu;
+// the ⋯ overflow opens the same menu (a single source of truth keeps
+// menu items consistent regardless of which icon the user tapped).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   RouteProp,
   useFocusEffect,
@@ -39,17 +32,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Button } from '@/components/Button';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { toast } from '@/components/Toast';
 import {
   HamburgerMenu,
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
-import { CommunityHeader } from '@/components/community/CommunityHeader';
-import { SummaryGrid } from '@/components/community/SummaryGrid';
+import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
+import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
+import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { PlayersPreview } from '@/components/community/PlayersPreview';
+import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -61,11 +55,12 @@ import {
 } from '@/services/whatsappService';
 import {
   Game,
+  GameSummary,
   Group,
   User,
   WeekdayIndex,
 } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -87,9 +82,9 @@ export function CommunityDetailsScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
+  const [history, setHistory] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyLeave, setBusyLeave] = useState(false);
-  const [busyRecurring, setBusyRecurring] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -101,26 +96,28 @@ export function CommunityDetailsScreen() {
       if (!g) {
         setMembers([]);
         setUpcoming([]);
+        setHistory([]);
         return;
       }
       logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
       const memberIds = Array.from(
         new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds]),
       );
-      const [users, games] = await Promise.all([
+      const [users, games, hist] = await Promise.all([
         groupService.hydrateUsers(memberIds),
-        gameService
-          .getCommunityGames(me?.id ?? '', [g.id])
-          .catch(() => [] as Game[]),
+        // ALL upcoming open games of THIS community (regardless of
+        // whether the current user is registered) — this is the
+        // correct read for the "next game" card. The discovery
+        // helper `getCommunityGames` is wrong here because it
+        // excludes games the user is already in, so admins/members
+        // who'd already RSVP'd would either see no card or worse,
+        // a card from a different community.
+        gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
+        gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
       ]);
-      const now = Date.now();
-      const allUpcoming = games
-        .filter(
-          (x) => x.groupId === g.id && x.status === 'open' && x.startsAt > now,
-        )
-        .sort((a, b) => a.startsAt - b.startsAt);
       setMembers(users);
-      setUpcoming(allUpcoming);
+      setUpcoming(games);
+      setHistory(hist);
     } finally {
       setLoading(false);
     }
@@ -203,71 +200,75 @@ export function CommunityDetailsScreen() {
     }
   };
 
-  const handleCreateRecurring = async () => {
-    if (!group || !me || busyRecurring) return;
+  const handleCreateRecurring = () => {
+    if (!group || !me) return;
     const ts = nextOccurrence(group);
     if (!ts) {
       Alert.alert(he.error, he.communityDetailsRecurringNoConfig);
       return;
     }
-    Alert.alert(
-      he.communityDetailsCreateRecurringGame,
-      `${recurringSummary(group)} · ${formatHebrewDate(ts)}`,
-      [
-        { text: he.cancel, style: 'cancel' },
-        {
-          text: he.communityDetailsRecurringConfirm,
-          onPress: async () => {
-            if (busyRecurring) return;
-            setBusyRecurring(true);
-            try {
-              const r = await createRecurring(group, me.id);
-              if (!r.ok) {
-                Alert.alert(he.error, he.communityDetailsRecurringFailed);
-              } else {
-                await reload();
-              }
-            } finally {
-              setBusyRecurring(false);
-            }
-          },
-        },
-      ],
+    // Open the create-game wizard pre-filled with the community's
+    // recurring config. The wizard's recurring mode adds a required
+    // "registrationOpensAt" picker at step 3 — the new game stays
+    // hidden + closed for joins until that time. The previous
+    // implementation called `createGameV2` directly with no UI step,
+    // bypassing the wizard.
+    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+      'GameCreate',
+      {
+        recurring: true,
+        groupId: group.id,
+        startsAt: ts,
+        format: group.recurringDefaultFormat,
+        numberOfTeams: group.recurringNumberOfTeams,
+      },
     );
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────
+  const handleNotify = (next: boolean) => {
+    if (!me || !group) return;
+    // Optimistic local store update — other screens see the change
+    // immediately. Persist write is fire-and-forget.
+    const cur = me.newGameSubscriptions ?? [];
+    const updated = next
+      ? Array.from(new Set([...cur, group.id]))
+      : cur.filter((g) => g !== group.id);
+    useUserStore.setState({
+      currentUser: { ...me, newGameSubscriptions: updated },
+    });
+    notificationsService.setCommunitySubscription(me.id, group.id, next);
+  };
+
+  // ─── Loading / empty states ─────────────────────────────────────────────
 
   if (loading && !group) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <View style={styles.root}>
         <ScreenHeader title={he.loading} />
         <View style={styles.center}>
           <SoccerBallLoader size={40} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!group) {
     return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <View style={styles.root}>
         <ScreenHeader title={he.loading} />
         <View style={styles.center}>
           <Text style={styles.emptyText}>{he.communitiesEmpty}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  const location =
-    [group.city, group.fieldAddress].filter(Boolean).join(' · ') || undefined;
   const nextGame = upcoming[0];
+  const matchesHeld = history.filter((h) => h.status === 'finished').length;
 
-  // Single-section hamburger — no titles, ordered by importance.
-  // Share moved out of the menu and into a primary CTA at the
-  // bottom of the screen so members get a one-tap path to invite
-  // friends without hunting for it.
+  // Hamburger menu — all admin / destructive / contact actions live
+  // here. The ⋯ overflow opens the same sheet so users get one mental
+  // model: "more actions live in the menu".
   const sections: HamburgerSection[] = [
     {
       id: 'main',
@@ -305,8 +306,8 @@ export function CommunityDetailsScreen() {
                 badge: group.pendingPlayerIds.length,
                 onPress: () =>
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'ProfileTab',
-                    { screen: 'AdminApproval' },
+                    'AdminApproval',
+                    undefined,
                   ),
               },
             ]
@@ -357,6 +358,8 @@ export function CommunityDetailsScreen() {
     },
   ];
 
+  const openMenu = () => setMenuOpen(true);
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -371,128 +374,113 @@ export function CommunityDetailsScreen() {
           />
         }
       >
-        <SafeAreaView edges={['top']} style={styles.headerArea}>
-          <CommunityHeader
-            name={group.name}
-            location={location}
-            isAdmin={isAdmin}
-            onMenuPress={() => setMenuOpen(true)}
-          />
-        </SafeAreaView>
+        {/* ① Stadium hero */}
+        <CommunityStadiumHero
+          name={group.name}
+          memberCount={group.playerIds?.length ?? 0}
+          onBackPress={() => nav.goBack()}
+          onMenuPress={openMenu}
+        />
 
-        <View style={styles.body}>
-          {/* ② Pending-approvals callout — admin only. Stays on the
-              main screen because it's high-urgency; everything else
-              that admin-touched moved to the hamburger. */}
-          {isAdmin && group.pendingPlayerIds.length > 0 ? (
-            <Pressable
-              onPress={() =>
-                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                  'ProfileTab',
-                  { screen: 'AdminApproval' },
-                )
-              }
-              style={({ pressed }) => [
-                styles.approvalsCard,
-                pressed && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-            >
-              <View style={styles.approvalsIcon}>
-                <Ionicons name="alert-circle" size={20} color="#C2410C" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.approvalsTitle}>
-                  {he.communityMenuApprovals}
-                </Text>
-                <Text style={styles.approvalsSub}>
-                  {he.communityDetailsPendingTitle}{' '}
-                  ({group.pendingPlayerIds.length})
-                </Text>
-              </View>
-              <Ionicons name="chevron-back" size={18} color="#C2410C" />
-            </Pressable>
-          ) : null}
-
-          {/* ③ Summary grid */}
-          <SummaryGrid
+        {/* ② Floating stats grid — pulled UP via negative margin so it
+            overlaps the bottom of the hero (the hero leaves a 56px
+            strip of stadium for exactly this overlap zone). Trimmed
+            to two stats: founding date and matches held. The other
+            two metrics moved elsewhere — member count is now a pill
+            badge under the title in the hero, and the regular field
+            is shown on each game card already. */}
+        <View style={styles.statsFloat}>
+          <CommunityStatsGrid
             items={[
               {
-                label: he.communitySummaryPlayers,
-                value: String(group.playerIds?.length ?? 0),
-                icon: 'people-outline',
+                icon: 'calendar',
+                label: he.communityStatsCreatedAt,
+                value: formatShortDate(group.createdAt),
               },
               {
-                label: he.communitySummaryDays,
-                value: formatDays(group.preferredDays) || '—',
-                icon: 'calendar-outline',
-              },
-              {
-                label: he.communitySummaryHour,
-                value: group.preferredHour || '—',
-                icon: 'time-outline',
-              },
-              {
-                label: he.communitySummaryField,
-                value: group.fieldName || '—',
-                icon: 'football-outline',
+                icon: 'football',
+                label: he.communityStatsMatchesHeld,
+                value: matchesHeld > 0 ? String(matchesHeld) : '—',
               },
             ]}
           />
+        </View>
 
-          {/* ④ Notification toggle — slim row, members only */}
+        <View style={styles.body}>
+          {/* ③ Notification toggle — members only */}
           {isMember && me ? (
-            <NotificationToggleRow
-              userId={me.id}
-              groupId={group.id}
+            <CommunityNotifyToggle
               subscribed={(me.newGameSubscriptions ?? []).includes(group.id)}
+              onChange={handleNotify}
             />
           ) : null}
 
-          {/* ⑤ Next game */}
+          {/* ④ Next game — main focus.
+               Navigates within THIS stack (CommunitiesStack now hosts
+               MatchDetails too) so back returns to CommunityDetails.
+               Crossing into GameTab would dump the user on GamesList
+               on back.
+               If the next game is still in `scheduled` status (its
+               `registrationOpensAt` is in the future), tapping the
+               card pops a small Alert telling the user when
+               registration opens — admins can still navigate to the
+               edit screen via the overflow menu, but anyone (admins
+               included) sees the same lock UI on the card. */}
           <NextGameCard
             startsAt={nextGame?.startsAt}
-            gameId={nextGame?.id}
+            fieldName={nextGame?.fieldName ?? group.fieldName}
+            registrationOpensAt={
+              nextGame?.status === 'scheduled'
+                ? nextGame.registrationOpensAt
+                : undefined
+            }
             onPress={
               nextGame
-                ? () =>
-                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                      'GameTab',
-                      {
-                        screen: 'MatchDetails',
-                        params: { gameId: nextGame.id },
-                      },
-                    )
+                ? () => {
+                    if (
+                      nextGame.status === 'scheduled' &&
+                      typeof nextGame.registrationOpensAt === 'number'
+                    ) {
+                      const d = new Date(nextGame.registrationOpensAt);
+                      const dd = String(d.getDate()).padStart(2, '0');
+                      const mm = String(d.getMonth() + 1).padStart(2, '0');
+                      const hh = String(d.getHours()).padStart(2, '0');
+                      const mn = String(d.getMinutes()).padStart(2, '0');
+                      Alert.alert(
+                        he.communityNextGameLocked,
+                        he.communityNextGameLockedBody(
+                          `${dd}.${mm} ${hh}:${mn}`,
+                        ),
+                      );
+                      return;
+                    }
+                    nav.navigate('MatchDetails', { gameId: nextGame.id });
+                  }
                 : undefined
             }
           />
 
-          {/* ⑥ Players preview */}
+          {/* ⑤ Players preview */}
           <PlayersPreview
             total={group.playerIds?.length ?? 0}
             members={members.filter((u) => group.playerIds.includes(u.id))}
-            onPress={() =>
+            onSeeAll={() =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                 'CommunityPlayers',
                 { groupId: group.id },
               )
             }
+            onPressMember={(uid) =>
+              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                'PlayerCard',
+                { userId: uid, groupId: group.id },
+              )
+            }
           />
 
-          {/* ⑦ Share invite — primary CTA at the bottom for members.
-              Pulled out of the hamburger so growing the community is
-              a one-tap path. Hidden for non-members (they can't
-              meaningfully invite to a group they aren't part of). */}
+          {/* ⑥ Share-invite CTA — members & admins only */}
           {isMember || isAdmin ? (
-            <Button
-              title={he.communityMenuShareInvite}
-              variant="primary"
-              size="lg"
-              fullWidth
-              iconLeft="share-social-outline"
-              onPress={handleInvite}
-              style={{ marginTop: spacing.sm }}
-            />
+            <CommunityShareInviteCta onPress={handleInvite} />
           ) : null}
         </View>
       </ScrollView>
@@ -531,79 +519,17 @@ export function CommunityDetailsScreen() {
   );
 }
 
-// ─── Slim notification-subscription row ─────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────
 
-function NotificationToggleRow({
-  userId,
-  groupId,
-  subscribed: initial,
-}: {
-  userId: string;
-  groupId: string;
-  subscribed: boolean;
-}) {
-  const [subscribed, setSubscribed] = useState(initial);
-  const flip = (next: boolean) => {
-    setSubscribed(next);
-    // Optimistic local store update so other screens see the change
-    // immediately. The persist write is fire-and-forget.
-    const me = useUserStore.getState().currentUser;
-    if (me) {
-      const cur = me.newGameSubscriptions ?? [];
-      const updated = next
-        ? Array.from(new Set([...cur, groupId]))
-        : cur.filter((g) => g !== groupId);
-      useUserStore.setState({
-        currentUser: { ...me, newGameSubscriptions: updated },
-      });
-    }
-    notificationsService.setCommunitySubscription(userId, groupId, next);
-  };
-  return (
-    <Pressable
-      onPress={() => flip(!subscribed)}
-      style={({ pressed }) => [
-        styles.notifyRow,
-        pressed && { backgroundColor: colors.surfaceMuted },
-      ]}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: subscribed }}
-    >
-      <Ionicons
-        name="notifications-outline"
-        size={18}
-        color={subscribed ? colors.primary : colors.textMuted}
-      />
-      <Text style={styles.notifyLabel} numberOfLines={1}>
-        {he.communityNotifyRow}
-      </Text>
-      <Switch
-        value={subscribed}
-        onValueChange={flip}
-        trackColor={{ false: colors.border, true: colors.primary }}
-        thumbColor="#fff"
-      />
-    </Pressable>
-  );
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
 }
 
-// ─── Helpers (recurring game) ───────────────────────────────────────────
-
-function formatDays(days: WeekdayIndex[] | undefined): string {
-  if (!days || days.length === 0) return '';
-  return days
-    .slice()
-    .sort()
-    .map((d) => he.availabilityDayShort[d])
-    .join(', ');
-}
-
-function formatHebrewDate(ms: number): string {
+function formatShortDate(ms: number): string {
   const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(2);
-  return `${dd}/${mm}/${yy}`;
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${String(
+    d.getFullYear(),
+  ).slice(2)}`;
 }
 
 function effectiveRecurringDay(g: Group): WeekdayIndex | undefined {
@@ -615,12 +541,6 @@ function effectiveRecurringTime(g: Group): string | undefined {
 }
 function hasRecurringInfo(g: Group): boolean {
   return !!effectiveRecurringDay(g) && !!effectiveRecurringTime(g);
-}
-function recurringSummary(g: Group): string {
-  const dayIdx = effectiveRecurringDay(g);
-  const time = effectiveRecurringTime(g);
-  if (dayIdx === undefined || !time) return '';
-  return `${he.availabilityDayShort[dayIdx]} · ${time}`;
 }
 function nextOccurrence(g: Group): number | null {
   const dayIdx = effectiveRecurringDay(g);
@@ -635,40 +555,6 @@ function nextOccurrence(g: Group): number | null {
   target.setHours(hh, mm, 0, 0);
   return target.getTime();
 }
-async function createRecurring(
-  group: Group,
-  creatorId: string,
-): Promise<{ ok: boolean; gameId?: string }> {
-  const ts = nextOccurrence(group);
-  if (!ts) return { ok: false };
-  const fmt: import('@/types').GameFormat =
-    group.recurringDefaultFormat ?? '5v5';
-  const teams = group.recurringNumberOfTeams ?? 2;
-  const perTeam = fmt === '5v5' ? 5 : fmt === '6v6' ? 6 : 7;
-  try {
-    const created = await import('@/services/gameService').then((m) =>
-      m.gameService.createGameV2({
-        groupId: group.id,
-        title: group.name,
-        startsAt: ts,
-        fieldName: group.fieldName,
-        maxPlayers: perTeam * teams,
-        format: fmt,
-        numberOfTeams: teams,
-        cancelDeadlineHours: undefined,
-        visibility: 'community',
-        requiresApproval: !group.isOpen,
-        bringBall: true,
-        bringShirts: true,
-        createdBy: creatorId,
-      }),
-    );
-    return { ok: true, gameId: created.id };
-  } catch {
-    return { ok: false };
-  }
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: {
@@ -684,69 +570,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
-  headerArea: {
-    backgroundColor: '#15803D',
+  // Pulls the stats grid up onto the bottom of the stadium hero. The
+  // hero leaves 56px of paddingBottom for this overlap; if you tweak
+  // one of these, tweak the other in tandem.
+  statsFloat: {
+    paddingHorizontal: spacing.lg,
+    marginTop: -42,
   },
   body: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    // More breathing room between cards. Was spacing.md (12) which
-    // made the four cards stack visually crowded; lg (16) gives
-    // each card room to read as its own unit.
     gap: spacing.lg,
   },
-  // Approvals callout — high-priority admin shortcut
-  approvalsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#FED7AA',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 14,
-  },
-  approvalsIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  approvalsTitle: {
-    ...typography.body,
-    color: '#9A3412',
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  approvalsSub: {
-    ...typography.caption,
-    color: '#9A3412',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  // Notification toggle row — slim, single line
-  notifyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  notifyLabel: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: RTL_LABEL_ALIGN,
-    flex: 1,
-  },
-  // Loading-overlay during leave
   busyOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

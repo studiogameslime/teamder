@@ -141,7 +141,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // ─── Coaching ──────────────────────────────────────────────────────────
   {
     id: 'coachOf10',
-    titleHe: 'מאמן של 10',
+    titleHe: 'מנהל של 10',
     descriptionHe: 'אישרת 10 שחקנים לקבוצה',
     category: 'coaching',
     metric: 'playersCoached',
@@ -151,7 +151,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'coachOf20',
-    titleHe: 'מאמן של 20',
+    titleHe: 'מנהל של 20',
     descriptionHe: 'אישרת 20 שחקנים לקבוצה',
     category: 'coaching',
     metric: 'playersCoached',
@@ -161,7 +161,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'coachOf30',
-    titleHe: 'מאמן של 30',
+    titleHe: 'מנהל של 30',
     descriptionHe: 'אישרת 30 שחקנים לקבוצה',
     category: 'coaching',
     metric: 'playersCoached',

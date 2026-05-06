@@ -46,6 +46,8 @@ interface GroupStore {
     preferredHour?: string;
     costPerGame?: number;
     notes?: string;
+    rules?: string;
+    recurringGameEnabled?: boolean;
     creator: User;
   }) => Promise<Group>;
   requestJoin: (

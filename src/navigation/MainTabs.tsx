@@ -110,18 +110,19 @@ export function MainTabs() {
   );
 }
 
-// When the focused tab is tapped again, pop the inner stack back to
-// its root screen instead of being a no-op (RN Navigation default).
-// Other tab presses (focus change) keep the default — preserving the
-// nested route the user was on. If the user is already on the root
-// of the focused tab we DO NOTHING — re-navigating triggers an
-// extra render + a brief flicker for no UX gain.
+// Every tab press — whether the tab is currently focused or not —
+// pops the nested stack back to its root screen ("the feed"). The
+// previous logic only reset on a re-press of the focused tab, which
+// meant switching to a tab from elsewhere kept whatever nested route
+// the user had last been on. The user expects "tap tab = go to that
+// tab's feed", so we reset every time. We still skip the dispatch
+// when the user is already at the root to avoid an unnecessary
+// re-mount / flicker.
 function resetTabToRoot(
   e: { defaultPrevented: boolean; preventDefault: () => void },
   navigation: { isFocused: () => boolean; getState: () => unknown; dispatch: (a: unknown) => void },
   tabName: string,
 ) {
-  if (!navigation.isFocused()) return; // first tap → just focus
   const state = navigation.getState() as {
     routes: Array<{
       name: string;
@@ -132,13 +133,15 @@ function resetTabToRoot(
   const stackRoutes = tabRoute?.state?.routes;
   const rootName = stackRoutes?.[0]?.name;
   if (!rootName) return;
-  // Already at the root of this tab? Suppress the navigate to avoid
-  // re-mount / flicker. `index` is the focused route index in the
-  // nested stack; 0 means "on root, no children pushed".
+  // Already at the root of this tab AND it's the focused tab → no-op.
+  // (If the user is on tab A's root and taps tab A again, nothing to
+  // do.) When switching FROM a different tab we let the navigate fire
+  // even if the destination was already at root, because we still
+  // need to actually focus the tab.
   const stackIndex = tabRoute?.state?.index ?? 0;
-  if (stackIndex === 0 && stackRoutes && stackRoutes.length === 1) {
-    return;
-  }
+  const alreadyAtRoot =
+    stackIndex === 0 && stackRoutes && stackRoutes.length === 1;
+  if (alreadyAtRoot && navigation.isFocused()) return;
   e.preventDefault();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (navigation as any).navigate(tabName, { screen: rootName });

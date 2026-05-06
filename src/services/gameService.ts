@@ -67,6 +67,15 @@ let activeGame: Game | null = null;
 const REG_CONFLICT_WINDOW_MS = 4 * 60 * 60 * 1000;
 
 /**
+ * Window used by the create-overlap guard. Two non-terminal games in
+ * the same community within ±2h of each other are treated as an
+ * "accidental duplicate" — the admin probably tapped twice or already
+ * scheduled this slot manually. We surface a human-readable error
+ * instead of letting both go live.
+ */
+const GAME_OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/**
  * Defensive cap on the number of "games this user is participating
  * in" docs we'll fetch when checking conflicts. A typical user has
  * a handful of active games at most; this limit only kicks in for
@@ -169,6 +178,53 @@ async function loadRoundsFor(gameId: string): Promise<MatchRound[]> {
     };
     return rest;
   });
+}
+
+/**
+ * Look for an existing non-terminal game in the same community whose
+ * `startsAt` is within ±GAME_OVERLAP_WINDOW_MS of the new one. Used
+ * by `createGameV2` to block "two games at the same slot" mistakes,
+ * and by `updateGameV2` to block moving an existing game's startsAt
+ * onto another game's slot. Pass `excludeGameId` on the edit path so
+ * the game being edited doesn't match itself.
+ *
+ * Returns the closest conflicting game's id/title/startsAt, or null
+ * when nothing overlaps.
+ */
+async function findOverlappingGameInGroup(
+  groupId: GroupId,
+  startsAt: number,
+  excludeGameId?: string,
+): Promise<{ gameId: string; title: string; startsAt: number } | null> {
+  const lower = startsAt - GAME_OVERLAP_WINDOW_MS;
+  const upper = startsAt + GAME_OVERLAP_WINDOW_MS;
+  // Single equality query on `groupId` (auto-indexed). Status + window
+  // filters run client-side so we don't need a composite index.
+  const snap = await getDocs(
+    query(col.games(), where('groupId', '==', groupId)),
+  );
+  const candidates = snap.docs
+    .map((d) => d.data())
+    .filter((g) => {
+      if (excludeGameId && g.id === excludeGameId) return false;
+      // Non-terminal only — finished/cancelled games don't block a
+      // new creation. 'scheduled' DOES block (an admin shouldn't be
+      // able to stack a manual game on top of a recurring slot).
+      if (g.status === 'finished' || g.status === 'cancelled') return false;
+      if (typeof g.startsAt !== 'number') return false;
+      return g.startsAt >= lower && g.startsAt <= upper;
+    });
+  if (candidates.length === 0) return null;
+  candidates.sort(
+    (a, b) =>
+      Math.abs(a.startsAt - startsAt) - Math.abs(b.startsAt - startsAt),
+  );
+  const c = candidates[0];
+  return {
+    gameId: c.id,
+    title: c.title ?? '',
+    startsAt: c.startsAt,
+  };
 }
 
 export const gameService = {
@@ -528,6 +584,49 @@ export const gameService = {
   },
 
   /**
+   * All upcoming games of a single community whose registration is or
+   * will be open — regardless of the caller's membership in any
+   * individual game.
+   *
+   * Includes both `status === 'open'` (joinable now) AND
+   * `status === 'scheduled'` (deferred-open: registration hasn't
+   * started yet). Scheduled games surface on the community page as
+   * "registration opens at HH:MM" so members and admins can see what's
+   * coming, but the UI should NOT route a tap on them to MatchDetails
+   * — joins are blocked until the CF flips status to 'open'.
+   *
+   * Distinct from `getCommunityGames` (discovery) which deliberately
+   * excludes games the user is already in.
+   */
+  async getUpcomingGamesForGroup(groupId: GroupId): Promise<Game[]> {
+    const now = Date.now();
+    const isUpcomingStatus = (s: string | undefined) =>
+      s === 'open' || s === 'scheduled';
+    if (USE_MOCK_DATA) {
+      return mockGamesV2
+        .filter(
+          (g) =>
+            g.groupId === groupId &&
+            isUpcomingStatus(g.status) &&
+            g.startsAt > now,
+        )
+        .sort((a, b) => a.startsAt - b.startsAt);
+    }
+    const snap = await getDocs(
+      query(col.games(), where('groupId', '==', groupId)),
+    );
+    const out: Game[] = [];
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (!isUpcomingStatus(data.status)) return;
+      if (data.startsAt <= now) return;
+      if (isStaleAfterStart({ ...data, matches: [] } as Game)) return;
+      out.push({ ...data, matches: [] });
+    });
+    return out.sort((a, b) => a.startsAt - b.startsAt);
+  },
+
+  /**
    * Public games the user is not a community member of AND not already
    * involved in. Surfaces the "discover" half of the Games tab.
    *
@@ -605,6 +704,14 @@ export const gameService = {
     hasPenalties?: boolean;
     hasHalfTime?: boolean;
     extraTimeMinutes?: number;
+    /**
+     * Optional ms-epoch deferred-open timestamp. When present and in
+     * the future, the game is created with `status: 'scheduled'` and
+     * stays hidden + closed for joins until a CF flips it to 'open'
+     * (`flipScheduledGames`, every 5 min). Used by the recurring-game
+     * wizard. Past / undefined → game opens immediately.
+     */
+    registrationOpensAt?: number;
     createdBy: UserId;
   }): Promise<Game> {
     // Defensive: callers come from a TS-typed wizard but the field is
@@ -614,6 +721,60 @@ export const gameService = {
       throw new Error('createGameV2: invalid visibility');
     }
     const now = Date.now();
+
+    // Invariant: when both fields are set, registration must open
+    // strictly BEFORE the kickoff time. Without this guard, a deferred
+    // game whose `registrationOpensAt` lands AFTER `startsAt` would
+    // sit in 'scheduled' forever; the cron flip-CF would still flip
+    // it, but past the moment players could realistically join.
+    // Mirrors the same check on `updateGameV2`.
+    if (
+      typeof input.registrationOpensAt === 'number' &&
+      input.registrationOpensAt > 0 &&
+      input.startsAt <= input.registrationOpensAt
+    ) {
+      const err = new Error('GAME_REG_AFTER_KICKOFF') as Error & {
+        code: 'GAME_REG_AFTER_KICKOFF';
+      };
+      err.code = 'GAME_REG_AFTER_KICKOFF';
+      throw err;
+    }
+
+    // Overlap guard — block creating a second game in the same
+    // community within ±OVERLAP_WINDOW_MS of an existing one. Catches
+    // the "admin pressed 'recurring' twice" / "admin already scheduled
+    // manually" mistakes BEFORE the doc is written. Skipped in mock
+    // mode where there's no risk of mis-clicks. The error carries the
+    // conflicting game's title + start time so the UI can show a
+    // human-readable explanation.
+    if (!USE_MOCK_DATA) {
+      const overlap = await findOverlappingGameInGroup(
+        input.groupId,
+        input.startsAt,
+      );
+      if (overlap) {
+        const err = new Error('GAME_OVERLAP') as Error & {
+          code: 'GAME_OVERLAP';
+          conflict: {
+            gameId: string;
+            title: string;
+            startsAt: number;
+          };
+        };
+        err.code = 'GAME_OVERLAP';
+        err.conflict = overlap;
+        throw err;
+      }
+    }
+
+    // Deferred-open mode: stays in 'scheduled' until the CF flips it.
+    // The push is intentionally NOT dispatched here — the CF that
+    // performs the flip dispatches `newGameInCommunity` so the
+    // notification arrives at the moment registration actually opens.
+    const isDeferred =
+      typeof input.registrationOpensAt === 'number' &&
+      input.registrationOpensAt > now;
+    const initialStatus: Game['status'] = isDeferred ? 'scheduled' : 'open';
     const base: Omit<Game, 'id'> = {
       groupId: input.groupId,
       title: input.title,
@@ -625,7 +786,7 @@ export const gameService = {
       waitlist: [],
       pending: [],
       participantIds: [],
-      status: 'open',
+      status: initialStatus,
       locked: false,
       currentMatchIndex: 0,
       matches: [],
@@ -648,6 +809,7 @@ export const gameService = {
       hasPenalties: input.hasPenalties,
       hasHalfTime: input.hasHalfTime,
       extraTimeMinutes: input.extraTimeMinutes,
+      registrationOpensAt: input.registrationOpensAt,
       createdAt: now,
       updatedAt: now,
     };
@@ -677,21 +839,28 @@ export const gameService = {
     // recognises this notification type and resolves recipients by
     // querying users where `newGameSubscriptions` array-contains the
     // groupId. Best-effort; failure here doesn't roll back the create.
-    notificationsService.dispatch({
-      type: 'newGameInCommunity',
-      recipientId: input.groupId,
-      payload: {
-        groupId: input.groupId,
-        gameId: createdId,
-        title: input.title,
-        startsAt: input.startsAt,
-        fieldName: input.fieldName,
-        // Carry the creator's uid so the CF can exclude self from
-        // the fan-out — admins shouldn't get pinged about their
-        // own game.
-        createdBy: input.createdBy,
-      },
-    });
+    //
+    // Skip when the game is deferred-open (`status: 'scheduled'`) —
+    // the `flipScheduledGames` CF dispatches the same notification at
+    // the moment registration actually opens. Sending it now would
+    // notify users about a game they can't yet see / join.
+    if (!isDeferred) {
+      notificationsService.dispatch({
+        type: 'newGameInCommunity',
+        recipientId: input.groupId,
+        payload: {
+          groupId: input.groupId,
+          gameId: createdId,
+          title: input.title,
+          startsAt: input.startsAt,
+          fieldName: input.fieldName,
+          // Carry the creator's uid so the CF can exclude self from
+          // the fan-out — admins shouldn't get pinged about their
+          // own game.
+          createdBy: input.createdBy,
+        },
+      });
+    }
 
     logEvent(AnalyticsEvent.GameCreated, {
       gameId: createdId,
@@ -737,6 +906,11 @@ export const gameService = {
       hasPenalties: boolean;
       hasHalfTime: boolean;
       extraTimeMinutes: number;
+      /** Editable on a `status:'scheduled'` game so an admin can
+       *  shift the open-time before the CF flips it. The CF's
+       *  `openedNotificationSent` latch ensures this never fires a
+       *  second push if the original time already passed. */
+      registrationOpensAt: number;
     }>,
   ): Promise<void> {
     // Visibility is access-control. Don't accept it through the
@@ -746,14 +920,112 @@ export const gameService = {
     if ('visibility' in patch) {
       throw new Error('updateGameV2: use setVisibility() to change visibility');
     }
+    // Pre-flight validation that needs the current doc — the overlap
+    // check and the startsAt-vs-registrationOpensAt invariant. We
+    // read once and reuse the snapshot for both. Mock mode reads
+    // from the in-memory list. We only need a tiny slice of fields,
+    // so type loosely instead of forcing GameDoc → Game.
+    type GameSlice = {
+      startsAt: number;
+      registrationOpensAt?: number;
+      groupId: GroupId;
+      status: string;
+    };
+    let existing: GameSlice | null;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      existing = m
+        ? {
+            startsAt: m.startsAt,
+            registrationOpensAt: m.registrationOpensAt,
+            groupId: m.groupId,
+            status: m.status,
+          }
+        : null;
+    } else {
+      const snap = await getDoc(docs.game(gameId));
+      const d = snap.exists() ? snap.data() : null;
+      existing = d
+        ? {
+            startsAt: d.startsAt,
+            registrationOpensAt: d.registrationOpensAt,
+            groupId: d.groupId,
+            status: d.status,
+          }
+        : null;
+    }
+    if (!existing) {
+      throw new Error('updateGameV2: game not found');
+    }
+    // Once the game has started — either the kickoff time has
+    // passed, or the status flipped to active/finished/cancelled —
+    // edits are no longer permitted. UI hides the edit affordance
+    // via canEditGame(), this is the defense-in-depth check on the
+    // service layer. The typed code lets the screen show a clean
+    // "המשחק כבר התחיל" message instead of falling through to a
+    // generic permission-denied.
+    const startedByStatus =
+      existing.status === 'active' ||
+      existing.status === 'finished' ||
+      existing.status === 'cancelled';
+    const startedByTime =
+      typeof existing.startsAt === 'number' &&
+      existing.startsAt <= Date.now();
+    if (startedByStatus || startedByTime) {
+      const err = new Error('GAME_ALREADY_STARTED') as Error & {
+        code: 'GAME_ALREADY_STARTED';
+      };
+      err.code = 'GAME_ALREADY_STARTED';
+      throw err;
+    }
+    const nextStartsAt =
+      typeof patch.startsAt === 'number' ? patch.startsAt : existing.startsAt;
+    const nextRegOpensAt =
+      typeof patch.registrationOpensAt === 'number'
+        ? patch.registrationOpensAt
+        : existing.registrationOpensAt ?? 0;
+    // Invariant: registration must open BEFORE the game itself
+    // kicks off. Only enforce when both are positive — a
+    // registrationOpensAt of 0 means "registration already open".
+    if (nextRegOpensAt > 0 && nextStartsAt <= nextRegOpensAt) {
+      const err = new Error('GAME_REG_AFTER_KICKOFF') as Error & {
+        code: 'GAME_REG_AFTER_KICKOFF';
+      };
+      err.code = 'GAME_REG_AFTER_KICKOFF';
+      throw err;
+    }
+    // Overlap check: only if startsAt is actually being moved AND
+    // the game is non-terminal (no point blocking edits to historical
+    // docs). Pass the current gameId so the game doesn't conflict
+    // with itself.
+    if (
+      typeof patch.startsAt === 'number' &&
+      patch.startsAt !== existing.startsAt &&
+      existing.status !== 'finished' &&
+      existing.status !== 'cancelled'
+    ) {
+      const overlap = await findOverlappingGameInGroup(
+        existing.groupId,
+        patch.startsAt,
+        gameId,
+      );
+      if (overlap) {
+        const err = new Error('GAME_OVERLAP') as Error & {
+          code: 'GAME_OVERLAP';
+          conflict: { gameId: string; title: string; startsAt: number };
+        };
+        err.code = 'GAME_OVERLAP';
+        err.conflict = overlap;
+        throw err;
+      }
+    }
     const updates: Record<string, unknown> = {
       ...patch,
       updatedAt: Date.now(),
     };
     if (USE_MOCK_DATA) {
-      const g = mockGamesV2.find((x) => x.id === gameId);
-      if (!g) throw new Error('updateGameV2: game not found');
-      Object.assign(g, updates);
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) Object.assign(m, updates);
     } else {
       await updateGameDoc(gameId, updates);
     }
@@ -875,16 +1147,15 @@ export const gameService = {
       return snap.docs.map((d) => ({ ...d.data(), matches: [] } as Game));
     })();
 
+    // A user "blocks" further joins only when they're in `players`
+    // of the conflicting game — the bucket that represents an
+    // actually-confirmed slot. Sitting on someone else's waitlist or
+    // a pending approval doesn't burn the slot yet, so the user
+    // should be free to stack waitlists/pendings across overlapping
+    // games (more chances to actually play). Live games still block
+    // unconditionally regardless of bucket — see the caller filter.
     const userParticipates = (g: Game): boolean => {
-      // Trust participantIds first — that's why we queried on it. The
-      // fallback merge is a defensive net for docs whose denormalised
-      // field drifted out of sync with the bucket arrays. Cheap O(n)
-      // membership checks; n is the size of one game's roster.
-      if ((g.participantIds ?? []).includes(userId)) return true;
-      if (g.players?.includes(userId)) return true;
-      if (g.waitlist?.includes(userId)) return true;
-      if ((g.pending ?? []).includes(userId)) return true;
-      return false;
+      return g.players?.includes(userId) ?? false;
     };
 
     const conflicts = candidates.filter((g) => {
@@ -944,6 +1215,13 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('joinGameV2: game not found');
+      // Defense-in-depth — the UI should hide scheduled games from
+      // every feed, but if a stale deep-link or cached doc lets a
+      // user attempt a join before the game's registrationOpensAt
+      // we reject loudly rather than silently let them in.
+      if (g.status === 'scheduled') {
+        throw new Error('joinGameV2: registration not yet open');
+      }
       const already =
         g.players.includes(userId) ||
         g.waitlist.includes(userId) ||
@@ -1318,6 +1596,9 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
+      // Past-deadline cancellation is allowed (the UI shows a red
+      // confirmation prompt before getting here) — discipline still
+      // tracks the late timestamp via the `cancellations` map below.
       const wasInPlayers = g.players.includes(userId);
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
@@ -1343,6 +1624,21 @@ export const gameService = {
           payload: { gameId, gameTitle: g.title },
         });
       }
+      // Notify the game admin on every player cancel (not waitlist
+      // drop-out — admins don't care about those). Skip when the
+      // canceller IS the admin (don't push to yourself).
+      if (wasInPlayers && g.createdBy && g.createdBy !== userId) {
+        notificationsService.dispatch({
+          type: 'playerCancelled',
+          recipientId: g.createdBy,
+          payload: {
+            gameId,
+            gameTitle: g.title,
+            cancellingUserId: userId,
+            promotedUserId: promotedUid ?? null,
+          },
+        });
+      }
       logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
       return;
     }
@@ -1350,12 +1646,24 @@ export const gameService = {
     // where two concurrent cancels promoted the same waitlist head
     // (both wrote `players: [...players, waitlist[0]]` from the same
     // pre-cancel snapshot, leaving the promoted user in BOTH arrays).
+    // The transaction also re-reads the game so the cancel-deadline
+    // gate is evaluated against canonical state, not a stale snapshot.
     const ref = docs.game(gameId);
     const { db } = getFirebase();
     const result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
-      if (!snap.exists()) return { promotedUid: null, title: '' };
+      if (!snap.exists())
+        return {
+          promotedUid: null as string | null,
+          title: '',
+          createdBy: '',
+          wasInPlayers: false,
+        };
       const data = snap.data();
+      // Past-deadline cancellation is allowed. The UI shows a red
+      // confirmation modal first; the discipline derivation reads
+      // `cancellations[userId]` against `cancelDeadlineHours` later
+      // to flag late cancellers.
       const wasInPlayers = (data.players ?? []).includes(userId);
       let players = (data.players ?? []).filter(
         (id: string) => id !== userId,
@@ -1396,7 +1704,12 @@ export const gameService = {
         cancellations,
         updatedAt: Date.now(),
       });
-      return { promotedUid, title: data.title ?? '' };
+      return {
+        promotedUid,
+        title: data.title ?? '',
+        createdBy: typeof data.createdBy === 'string' ? data.createdBy : '',
+        wasInPlayers,
+      };
     });
 
     if (result.promotedUid) {
@@ -1406,10 +1719,207 @@ export const gameService = {
         payload: { gameId, gameTitle: result.title },
       });
     }
+    if (result.wasInPlayers && result.createdBy && result.createdBy !== userId) {
+      notificationsService.dispatch({
+        type: 'playerCancelled',
+        recipientId: result.createdBy,
+        payload: {
+          gameId,
+          gameTitle: result.title,
+          cancellingUserId: userId,
+          promotedUserId: result.promotedUid ?? null,
+        },
+      });
+    }
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
       promoted: !!result.promotedUid,
     });
+  },
+
+  /**
+   * Account-deletion sweep: remove `userId` from every non-terminal
+   * game they're registered to (players / waitlist / pending) and
+   * notify each game's organizer. Mirrors `cancelGameV2`'s waitlist-
+   * promotion + admin-notify behaviour, but BYPASSES the
+   * cancel-deadline gate — the user is leaving the platform; there's
+   * no realistic way for them to "show up" anyway.
+   *
+   * Best-effort: a per-game transaction failure is logged (in dev)
+   * and the sweep continues to the next game so deleteOwnAccount
+   * doesn't end up half-applied.
+   */
+  async leaveAllGamesForAccountDeletion(
+    userId: UserId,
+    opts?: { suppressNotifications?: boolean },
+  ): Promise<void> {
+    if (!userId) return;
+    const suppressNotifications = !!opts?.suppressNotifications;
+    // Per-admin tally — collected during the sweep, dispatched once
+    // at the end. A user who's in 5 games run by the same admin
+    // would otherwise spam the admin with 5 separate pushes; this
+    // path consolidates them into a single "X deleted account, left
+    // games A, B, C" notification. Skipped on a deleteOwnAccount
+    // retry — the first run already notified everyone, and we don't
+    // want to spam admins twice.
+    const adminTitles = new Map<string, string[]>();
+    const noteAdmin = (createdBy: string, title: string): void => {
+      if (!createdBy || createdBy === userId) return;
+      const cur = adminTitles.get(createdBy) ?? [];
+      cur.push(title || '');
+      adminTitles.set(createdBy, cur);
+    };
+
+    if (USE_MOCK_DATA) {
+      for (const g of mockGamesV2) {
+        if (g.status === 'finished' || g.status === 'cancelled') continue;
+        const wasInPlayers = g.players.includes(userId);
+        const touched =
+          wasInPlayers ||
+          g.waitlist.includes(userId) ||
+          (g.pending ?? []).includes(userId);
+        if (!touched) continue;
+        g.players = g.players.filter((id) => id !== userId);
+        g.waitlist = g.waitlist.filter((id) => id !== userId);
+        g.pending = (g.pending ?? []).filter((id) => id !== userId);
+        let promotedUid: string | null = null;
+        if (
+          wasInPlayers &&
+          g.waitlist.length > 0 &&
+          g.players.length < g.maxPlayers
+        ) {
+          promotedUid = g.waitlist[0];
+          g.waitlist = g.waitlist.slice(1);
+          g.players = [...g.players, promotedUid];
+        }
+        g.participantIds = (g.participantIds ?? []).filter(
+          (id) => id !== userId,
+        );
+        g.updatedAt = Date.now();
+        if (promotedUid) {
+          notificationsService.dispatch({
+            type: 'spotOpened',
+            recipientId: promotedUid,
+            payload: { gameId: g.id, gameTitle: g.title },
+          });
+        }
+        if (wasInPlayers) noteAdmin(g.createdBy ?? '', g.title);
+      }
+      // Fan out one consolidated push per admin. Falls under the
+      // existing `playerCancelled` type so the admin's pref toggle
+      // covers it; the CF discriminates on payload.reason +
+      // payload.gameTitles.
+      if (!suppressNotifications) {
+        for (const [adminId, titles] of adminTitles) {
+          notificationsService.dispatch({
+            type: 'playerCancelled',
+            recipientId: adminId,
+            payload: {
+              cancellingUserId: userId,
+              gameTitles: titles,
+              reason: 'accountDeleted',
+            },
+          });
+        }
+      }
+      return;
+    }
+    // Find all games the user is in via the denormalised participantIds
+    // index. We filter status client-side to avoid a composite index.
+    let snap;
+    try {
+      snap = await getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      );
+    } catch (err) {
+      if (__DEV__) console.warn('[leaveAll] query failed', err);
+      return;
+    }
+    for (const gd of snap.docs) {
+      const data = gd.data();
+      if (data.status === 'finished' || data.status === 'cancelled') continue;
+      const ref = docs.game(gd.id);
+      const { db } = getFirebase();
+      try {
+        const result = await runTransaction(db, async (tx) => {
+          const fresh = await tx.get(ref);
+          if (!fresh.exists())
+            return {
+              promotedUid: null as string | null,
+              title: '',
+              createdBy: '',
+              wasInPlayers: false,
+            };
+          const d = fresh.data();
+          const wasInPlayers = (d.players ?? []).includes(userId);
+          let players = (d.players ?? []).filter(
+            (id: string) => id !== userId,
+          );
+          let waitlist = (d.waitlist ?? []).filter(
+            (id: string) => id !== userId,
+          );
+          const pending = (d.pending ?? []).filter(
+            (id: string) => id !== userId,
+          );
+          let promotedUid: string | null = null;
+          if (
+            wasInPlayers &&
+            waitlist.length > 0 &&
+            players.length < (d.maxPlayers ?? 15)
+          ) {
+            promotedUid = waitlist[0];
+            waitlist = waitlist.slice(1);
+            players = [...players, promotedUid];
+          }
+          const participantIds = Array.isArray(d.participantIds)
+            ? d.participantIds.filter((id: string) => id !== userId)
+            : Array.from(new Set([...players, ...waitlist, ...pending]));
+          const cancellations = {
+            ...((d.cancellations as Record<string, number> | undefined) ?? {}),
+            [userId]: Date.now(),
+          };
+          tx.update(ref, {
+            players,
+            waitlist,
+            pending,
+            participantIds,
+            cancellations,
+            updatedAt: Date.now(),
+          });
+          return {
+            promotedUid,
+            title: d.title ?? '',
+            createdBy: typeof d.createdBy === 'string' ? d.createdBy : '',
+            wasInPlayers,
+          };
+        });
+        if (result.promotedUid) {
+          notificationsService.dispatch({
+            type: 'spotOpened',
+            recipientId: result.promotedUid,
+            payload: { gameId: gd.id, gameTitle: result.title },
+          });
+        }
+        if (result.wasInPlayers) noteAdmin(result.createdBy, result.title);
+      } catch (err) {
+        if (__DEV__) console.warn('[leaveAll] tx failed', gd.id, err);
+      }
+    }
+    // One push per admin, regardless of how many games they ran
+    // that the user was in.
+    if (!suppressNotifications) {
+      for (const [adminId, titles] of adminTitles) {
+        notificationsService.dispatch({
+          type: 'playerCancelled',
+          recipientId: adminId,
+          payload: {
+            cancellingUserId: userId,
+            gameTitles: titles,
+            reason: 'accountDeleted',
+          },
+        });
+      }
+    }
   },
 
   /**
@@ -1562,7 +2072,7 @@ export const gameService = {
           g.status === 'cancelled') return;
       g.status = 'active';
       g.liveMatch = {
-        ...(g.liveMatch ?? { phase: 'organizing', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0, lateUserIds: [] }),
+        ...(g.liveMatch ?? { phase: 'organizing', assignments: {}, benchOrder: [], scoreA: 0, scoreB: 0 }),
         phase: 'roundReady',
       };
       g.updatedAt = Date.now();
@@ -1586,7 +2096,6 @@ export const gameService = {
         benchOrder: [],
         scoreA: 0,
         scoreB: 0,
-        lateUserIds: [],
       }),
       phase: 'roundReady' as const,
     };

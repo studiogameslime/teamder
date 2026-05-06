@@ -15,7 +15,6 @@
 //   gameReminder         → fan-out: game.players (read from games/{gameId})
 //   gameCanceledOrUpdated→ fan-out: game.players + waitlist + pending
 //   spotOpened           → single recipient (the promoted user)
-//   imLate               → single recipient (the organizer)
 //   inviteToGame         → single recipient (the invited user)
 //
 // Deploy:
@@ -56,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.cleanupStaleGames = exports.sendGameReminders = exports.onNotificationCreated = void 0;
+exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.cleanupStaleGames = exports.flipScheduledGames = exports.sendGameReminders = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -82,12 +81,27 @@ function buildMessage(type, payload) {
             // approval and game-join approval. The presence of `gameId` in
             // the payload is the discriminator — community approvals carry
             // a groupName (or default), game approvals carry a gameTitle.
+            // Game approvals also carry `bucket: 'players' | 'waitlist'` so
+            // a user who lands on the waitlist (capacity already filled by
+            // the time the admin approved) gets honest copy instead of
+            // assuming they're in.
             const isGameApproval = typeof payload.gameId === 'string';
+            if (isGameApproval) {
+                const bucket = typeof payload.bucket === 'string' ? payload.bucket : '';
+                if (bucket === 'waitlist') {
+                    return {
+                        title: 'הבקשה אושרה — נכנסת לרשימת המתנה',
+                        body: `אושרת ל${gameTitle}, אבל ההרכב מלא. שובצת ברשימת המתנה ותקבל התראה אם יתפנה מקום.`,
+                    };
+                }
+                return {
+                    title: 'הבקשה אושרה',
+                    body: `אושרת ל${gameTitle}`,
+                };
+            }
             return {
                 title: 'הבקשה אושרה',
-                body: isGameApproval
-                    ? `אושרת ל${gameTitle}`
-                    : `אושרת ל${groupName}`,
+                body: `אושרת ל${groupName}`,
             };
         }
         case 'rejected': {
@@ -113,23 +127,31 @@ function buildMessage(type, payload) {
                     ? `${gameTitle} מתחיל ב-${when}`
                     : `${gameTitle} מתחיל בקרוב`,
             };
-        case 'gameCanceledOrUpdated':
+        case 'gameCanceledOrUpdated': {
+            // The dispatch site sends `action: 'cancelled' | 'deleted' |
+            // 'updated'`. A plain edit (e.g. admin tweaks the time / field)
+            // should NOT produce a "המשחק בוטל" banner — that misleads
+            // players into thinking the game is gone. Branch on the action
+            // so updates and cancellations get distinct copy.
+            const action = typeof payload.action === 'string' ? payload.action : '';
+            if (action === 'updated') {
+                return {
+                    title: 'המשחק עודכן',
+                    body: `${gameTitle} עודכן. בדוק את הפרטים בלשונית המשחקים.`,
+                };
+            }
+            // 'cancelled' / 'deleted' (or unknown — old payloads default to
+            // the cancellation copy as a safe fallback).
             return {
                 title: 'המשחק בוטל',
                 body: `${gameTitle} בוטל. בדוק את לשונית המשחקים.`,
             };
+        }
         case 'spotOpened':
             return {
                 title: 'נפתח לך מקום במשחק!',
                 body: `מישהו ביטל ב${gameTitle} — אתה רשום כעת.`,
             };
-        case 'imLate': {
-            const lateName = payload.lateUserName || 'שחקן';
-            return {
-                title: 'שחקן מאחר',
-                body: `${lateName} הודיע שיאחר ל${gameTitle}`,
-            };
-        }
         case 'inviteToGame': {
             const inviter = payload.inviterName || 'מאמן המשחק';
             return {
@@ -152,6 +174,39 @@ function buildMessage(type, payload) {
                 body: when
                     ? `${head} — המשחק ${when}, הירשם לפני שייסגר.`
                     : `${head} — הירשם לפני שייסגר.`,
+            };
+        }
+        case 'playerCancelled': {
+            // Sent only to the game admin. Three flavours:
+            //   • account-deletion sweep with multiple games:
+            //     payload.reason='accountDeleted' AND gameTitles[] is set
+            //     → consolidated "X deleted account, left games A, B, C"
+            //   • single game cancellation with waitlist promotion:
+            //     payload.promotedUserId is a string
+            //     → "X cancelled in <game>, waitlist player took the spot"
+            //   • plain single cancellation:
+            //     → "X cancelled in <game>, find a replacement"
+            const reason = typeof payload.reason === 'string' ? payload.reason : '';
+            const titles = Array.isArray(payload.gameTitles)
+                ? payload.gameTitles.filter((s) => typeof s === 'string' && s.length > 0)
+                : [];
+            if (reason === 'accountDeleted' && titles.length > 0) {
+                const list = titles.length === 1
+                    ? titles[0]
+                    : titles.length === 2
+                        ? `${titles[0]} ו-${titles[1]}`
+                        : `${titles.slice(0, 2).join(', ')} ועוד ${titles.length - 2}`;
+                return {
+                    title: 'שחקן מחק את החשבון',
+                    body: `שחקן מחק את חשבונו והוסר מהמשחקים: ${list}.`,
+                };
+            }
+            const promoted = typeof payload.promotedUserId === 'string';
+            return {
+                title: 'שחקן ביטל השתתפות',
+                body: promoted
+                    ? `שחקן ביטל ב${gameTitle} — שחקן מרשימת ההמתנה אוּשר במקומו.`
+                    : `שחקן ביטל ב${gameTitle}. כדאי לחפש מחליף.`,
             };
         }
         case 'growthMilestone':
@@ -424,6 +479,101 @@ exports.sendGameReminders = (0, scheduler_1.onSchedule)({
     await Promise.all(ops);
     console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
 });
+// ─── Scheduled: deferred-open flip for recurring games ──────────────────
+//
+// Every 5 minutes, look for games in `status: 'scheduled'` whose
+// `registrationOpensAt` has passed and:
+//   1. Dispatch the `newGameInCommunity` push so subscribed members
+//      learn registration just opened.
+//   2. Mark the game with `openedNotificationSent: true` to stop a
+//      retry from re-firing on the next run.
+//   3. Flip status → 'open' (so feeds, joins and rules stop hiding it).
+//
+// Order matters for failure recovery: notify-then-flag-then-flip means
+// the cron predicate (status='scheduled' AND !openedNotificationSent)
+// keeps retrying until BOTH the dispatch AND the flag write land. The
+// status flip is the last step — once it lands the game leaves the
+// query window for good.
+//
+// `openedNotificationSent` is also the guard that prevents an admin's
+// post-creation edit of `registrationOpensAt` from firing a second
+// push: once the flag is true we never dispatch again for this game.
+exports.flipScheduledGames = (0, scheduler_1.onSchedule)({
+    schedule: 'every 5 minutes',
+    timeZone: 'Asia/Jerusalem',
+}, async () => {
+    const now = Date.now();
+    // Equality query — auto-indexed, no composite needed. The
+    // registrationOpensAt + openedNotificationSent filters run
+    // client-side.
+    const snap = await db
+        .collection('games')
+        .where('status', '==', 'scheduled')
+        .get();
+    if (snap.empty) {
+        console.log('[flipScheduledGames] no scheduled games');
+        return;
+    }
+    let flipped = 0;
+    let notifiedOnly = 0;
+    for (const doc of snap.docs) {
+        const g = doc.data();
+        if (typeof g.registrationOpensAt !== 'number' ||
+            g.registrationOpensAt > now) {
+            continue;
+        }
+        // Step 1 — dispatch notification (only if not already sent).
+        // The notification doc → CF fan-out → FCM, so a second cron run
+        // that re-enters this branch would double-notify. The flag
+        // write below makes that impossible.
+        if (!g.openedNotificationSent) {
+            try {
+                await db.collection('notifications').add({
+                    type: 'newGameInCommunity',
+                    recipientId: g.groupId ?? doc.id,
+                    payload: {
+                        groupId: g.groupId,
+                        gameId: doc.id,
+                        title: g.title || 'המשחק',
+                        startsAt: g.startsAt,
+                        fieldName: g.fieldName,
+                        createdBy: g.createdBy,
+                    },
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    delivered: false,
+                });
+                // Step 2 — flag the game so a future run won't re-notify.
+                // Done as a separate write because if step 1 throws we
+                // should NOT mark the flag — the next cron run must retry.
+                await doc.ref.update({
+                    openedNotificationSent: true,
+                    updatedAt: now,
+                });
+                notifiedOnly++;
+            }
+            catch (err) {
+                console.error(`[flipScheduledGames] notify failed for ${doc.id}`, err);
+                // Skip the status flip too — we'll come back next run.
+                continue;
+            }
+        }
+        // Step 3 — flip status. Once this lands the game leaves the
+        // 'scheduled' query window forever. Failure here is recoverable
+        // because next run will still see status='scheduled' AND
+        // openedNotificationSent=true → skip step 1, retry step 3.
+        try {
+            await doc.ref.update({
+                status: 'open',
+                updatedAt: now,
+            });
+            flipped++;
+        }
+        catch (err) {
+            console.error(`[flipScheduledGames] flip failed for ${doc.id}`, err);
+        }
+    }
+    console.log(`[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`);
+});
 // ─── Scheduled: stale-game cleanup ─────────────────────────────────────
 /**
  * Hourly sweep that retires games whose kickoff was more than 6h ago
@@ -591,6 +741,21 @@ exports.sendRateReminders = (0, scheduler_1.onSchedule)({
 exports.onGroupPendingChanged = (0, firestore_1.onDocumentWritten)('groups/{groupId}', async (event) => {
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
+    // Group deletion: canonical /groups doc is gone. Clean up the
+    // public mirror in case the client-side delete swallowed an
+    // error (network drop, transient quota). Without this, the
+    // discovery feed would surface a "ghost" community whose
+    // canonical no longer exists.
+    if (!after && before) {
+        const groupId = event.params.groupId;
+        try {
+            await db.collection('groupsPublic').doc(groupId).delete();
+        }
+        catch (err) {
+            console.warn('[onGroupDeleted] groupsPublic cleanup failed', groupId, err);
+        }
+        return;
+    }
     if (!after)
         return;
     const beforeIds = new Set(before?.pendingPlayerIds ?? []);
@@ -988,7 +1153,6 @@ async function generateForGame(ref, g) {
                 benchOrder: result.benchOrder,
                 scoreA: 0,
                 scoreB: 0,
-                lateUserIds: [],
                 updatedAt: Date.now(),
             };
             tx.update(ref, {

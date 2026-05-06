@@ -2,7 +2,7 @@
 // the existing game's saved values and submitting via updateGameV2.
 
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -56,7 +56,29 @@ function gameToValues(g: Game): GameFormValues {
     bringBall: g.bringBall ?? true,
     bringShirts: g.bringShirts ?? true,
     minPlayers: g.minPlayers ? String(g.minPlayers) : '',
+    // Surfaced by the wizard ONLY when this game was originally
+    // created with a deferred-open time (`registrationOpensAt > 0`
+    // OR `status='scheduled'`). The edit screen passes
+    // `mode='recurring'` in that case so the picker renders.
+    registrationOpensAt: g.registrationOpensAt ?? 0,
   };
+}
+
+/**
+ * Decides whether the wizard should run in recurring mode for this
+ * edit. We surface the `registrationOpensAt` picker in two cases:
+ *   • the game still has a future open-time (status='scheduled'), so
+ *     the admin can adjust the schedule before the CF flips it.
+ *   • the game already opened but was originally a recurring create
+ *     (`registrationOpensAt > 0`). Editing here is mostly inert —
+ *     the CF's `openedNotificationSent` latch prevents a second push
+ *     — but exposing the field keeps the form symmetric with create.
+ */
+function shouldEditAsRecurring(g: Game): boolean {
+  return (
+    g.status === 'scheduled' ||
+    (typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > 0)
+  );
 }
 
 export function GameEditScreen() {
@@ -119,6 +141,8 @@ export function GameEditScreen() {
     );
   }
 
+  const isRecurringEdit = shouldEditAsRecurring(game);
+
   const submit = async (v: GameFormValues) => {
     const parsedMin = parseInt(v.minPlayers, 10);
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
@@ -131,34 +155,73 @@ export function GameEditScreen() {
     if (v.visibility !== game.visibility) {
       await gameService.setVisibility(game.id, v.visibility);
     }
-    await gameService.updateGameV2(game.id, {
-      title: v.title.trim() || game.title,
-      startsAt: v.startsAt,
-      fieldName: v.fieldName.trim(),
-      maxPlayers: playersPerTeam * v.numberOfTeams,
-      minPlayers:
-        Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
-      format: v.format,
-      numberOfTeams: v.numberOfTeams,
-      cancelDeadlineHours: v.cancelDeadlineHours,
-      fieldType: v.fieldType,
-      matchDurationMinutes:
-        Number.isFinite(parsedDuration) && parsedDuration > 0
-          ? parsedDuration
-          : undefined,
-      requiresApproval: v.requiresApproval,
-      bringBall: v.bringBall,
-      bringShirts: v.bringShirts,
-      notes: v.notes.trim() || undefined,
-      fieldAddress: v.location.trim() || undefined,
-      hasReferee: v.hasReferee,
-      hasPenalties: v.hasPenalties,
-      hasHalfTime: v.hasHalfTime,
-      extraTimeMinutes:
-        Number.isFinite(parsedExtra) && parsedExtra > 0
-          ? parsedExtra
-          : 0,
-    });
+    // `registrationOpensAt` is patched only for recurring edits,
+    // and only while the game is still in 'scheduled' state — once
+    // the CF has flipped it to 'open' the field is moot. The CF's
+    // `openedNotificationSent` flag prevents a re-flip from
+    // dispatching a second push.
+    const regOpensPatch =
+      isRecurringEdit && game.status === 'scheduled' && v.registrationOpensAt > 0
+        ? { registrationOpensAt: v.registrationOpensAt }
+        : {};
+    try {
+      await gameService.updateGameV2(game.id, {
+        title: v.title.trim() || game.title,
+        startsAt: v.startsAt,
+        fieldName: v.fieldName.trim(),
+        maxPlayers: playersPerTeam * v.numberOfTeams,
+        minPlayers:
+          Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
+        format: v.format,
+        numberOfTeams: v.numberOfTeams,
+        cancelDeadlineHours: v.cancelDeadlineHours,
+        fieldType: v.fieldType,
+        matchDurationMinutes:
+          Number.isFinite(parsedDuration) && parsedDuration > 0
+            ? parsedDuration
+            : undefined,
+        requiresApproval: v.requiresApproval,
+        bringBall: v.bringBall,
+        bringShirts: v.bringShirts,
+        notes: v.notes.trim() || undefined,
+        fieldAddress: v.location.trim() || undefined,
+        hasReferee: v.hasReferee,
+        hasPenalties: v.hasPenalties,
+        hasHalfTime: v.hasHalfTime,
+        extraTimeMinutes:
+          Number.isFinite(parsedExtra) && parsedExtra > 0
+            ? parsedExtra
+            : 0,
+        ...regOpensPatch,
+      });
+    } catch (err) {
+      const e = err as Error & {
+        code?: string;
+        conflict?: { title: string; startsAt: number };
+      };
+      if (e.code === 'GAME_OVERLAP' && e.conflict) {
+        const ts = new Date(e.conflict.startsAt);
+        const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
+        Alert.alert(
+          he.createGameOverlapTitle,
+          he.createGameOverlapBody(
+            e.conflict.title || he.createGameOverlapUnknownTitle,
+            when,
+          ),
+        );
+        return;
+      }
+      if (e.code === 'GAME_REG_AFTER_KICKOFF') {
+        Alert.alert(he.editGameRegAfterKickoffTitle, he.editGameRegAfterKickoffBody);
+        return;
+      }
+      if (e.code === 'GAME_ALREADY_STARTED') {
+        Alert.alert(he.editGameAlreadyStartedTitle, he.editGameAlreadyStartedBody);
+        nav.replace('MatchDetails', { gameId: game.id });
+        return;
+      }
+      throw err;
+    }
     nav.replace('MatchDetails', { gameId: game.id });
   };
 
@@ -168,6 +231,7 @@ export function GameEditScreen() {
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}
       onSubmit={submit}
+      mode={isRecurringEdit ? 'recurring' : 'standard'}
     />
   );
 }

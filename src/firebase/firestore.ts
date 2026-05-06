@@ -442,9 +442,6 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
   const benchOrder = Array.isArray(o.benchOrder)
     ? (o.benchOrder.filter((s) => typeof s === 'string') as string[])
     : [];
-  const lateUserIds = Array.isArray(o.lateUserIds)
-    ? (o.lateUserIds.filter((s) => typeof s === 'string') as string[])
-    : [];
   const readSlots = (raw: unknown): Record<UserId, number> | undefined => {
     if (!raw || typeof raw !== 'object') return undefined;
     const out: Record<UserId, number> = {};
@@ -465,7 +462,6 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
     scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,
     teamASlots: readSlots(o.teamASlots),
     teamBSlots: readSlots(o.teamBSlots),
-    lateUserIds,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };
 }

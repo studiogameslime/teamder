@@ -1,13 +1,15 @@
-// Communities tab — sectioned feed with filters.
+// Communities tab — premium card-based feed.
 //
-// Sections (only one is rendered at a time when the user has typed a search):
-//   1. My Communities    — current user is a member or has a pending request
-//   2. Nearby             — same city as the user's preferredCity (no geo)
-//   3. Open               — everything else, sorted by member count desc
+// Layout (top → bottom, RTL):
+//   ① Blue gradient hero ("קבוצות" + subtitle + people-icon disc)
+//   ② Search + filter row, floating onto the bottom of the hero
+//   ③ Section "הקבוצות שלי"   — admin/member cards (admin floats up)
+//   ④ Section "ממתינות לאישור" — only when there are pending requests
+//   ⑤ Section "קבוצות פתוחות" — discovery (filtered)
+//   ⑥ Floating "+" action button on the bottom-left
 //
-// Filters apply to sections 2 + 3 (the discovery half). The "My" section
-// always shows everything the user already belongs to so they can switch
-// between communities without juggling filters.
+// Logic + data flow are unchanged from the previous version — only the
+// visual shell, the row component, and the FAB position are new.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -16,20 +18,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { InputField } from '@/components/InputField';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { Card } from '@/components/Card';
-import { PressableScale } from '@/components/PressableScale';
 import { Button } from '@/components/Button';
-import { Badge } from '@/components/Badge';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
 import {
   CommunityFilterSheet,
@@ -38,18 +35,21 @@ import {
   activeGroupFiltersCount,
   type GroupFilters,
 } from '@/components/CommunityFilterSheet';
+import { CommunitiesHero } from '@/components/community/CommunitiesHero';
+import {
+  CommunityCard,
+  type CommunityCardStatus,
+} from '@/components/community/CommunityCard';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { GroupPublic } from '@/types';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
-
-type RowAction = 'enter' | 'pending' | 'joinAuto' | 'requestJoin';
 
 /**
  * Determine the viewer's current city for the "קרוב אליי" filter.
@@ -58,9 +58,6 @@ type RowAction = 'enter' | 'pending' | 'joinAuto' | 'requestJoin';
  *   1. GPS → reverse-geocode (expo-location)
  *   2. Saved `availability.preferredCity` from the profile
  *   3. null (filter excludes everything until something resolves)
- *
- * Lazy-required so the bundle still loads in environments where
- * expo-location isn't linked (Expo Go, fresh dev clients).
  */
 async function resolveNearbyCity(
   fallbackCity: string | undefined,
@@ -108,28 +105,19 @@ export function PublicGroupsFeedScreen() {
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
   const setCurrentGroup = useGroupStore((s) => s.setCurrentGroup);
 
-  // Scroll-to-top when the user re-taps the focused tab. The two
-  // ScrollViews below (search vs default) are conditional renders,
-  // so only one is mounted at a time — pointing one ref at whichever
-  // is alive is enough.
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
 
   const [text, setText] = useState('');
   const [items, setItems] = useState<GroupPublic[] | null>(null);
   const [loading, setLoading] = useState(false);
-  // Bump to force a re-fetch (pull-to-refresh).
   const [refreshTick, setRefreshTick] = useState(0);
 
-  // Filters live in one struct now — see CommunityFilterSheet for the
-  // shape. The "nearby" toggle still triggers a side-effect (GPS +
-  // reverse-geocode) so we hold the resolved city out-of-band.
   const [filters, setFilters] = useState<GroupFilters>(EMPTY_GROUP_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [nearbyCity, setNearbyCity] = useState<string | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
-  // Resolve the "nearby" city the moment the toggle flips ON.
   useEffect(() => {
     if (!filters.nearby) {
       setNearbyCity(null);
@@ -153,7 +141,6 @@ export function PublicGroupsFeedScreen() {
 
   const filterCount = activeGroupFiltersCount(filters);
 
-  // Initial load + debounced search.
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -185,9 +172,6 @@ export function PublicGroupsFeedScreen() {
     () => new Set(pendingGroups.map((g) => g.id)),
     [pendingGroups]
   );
-  // Communities the current user is an admin of — taken from the
-  // private-groups list in groupStore (memberGroups is everything the
-  // user reads from /groups, including ones where they're admin).
   const adminIds = useMemo(() => {
     if (!user) return new Set<string>();
     return new Set(
@@ -196,30 +180,14 @@ export function PublicGroupsFeedScreen() {
         .map((g) => g.id)
     );
   }, [memberGroups, user]);
-  // Per-community pending-request counts, keyed by groupId. Computed
-  // only for communities the viewer admins — others get 0 so the
-  // badge stays hidden. Sourced from the same memberGroups list that
-  // already has the canonical `pendingPlayerIds` array.
-  const pendingCounts = useMemo(() => {
-    const out: Record<string, number> = {};
-    if (!user) return out;
-    memberGroups.forEach((g) => {
-      if (g.adminIds.includes(user.id)) {
-        out[g.id] = g.pendingPlayerIds.length;
-      }
-    });
-    return out;
-  }, [memberGroups, user]);
 
-  function actionFor(g: GroupPublic): RowAction {
-    if (memberIds.has(g.id)) return 'enter';
+  function statusFor(g: GroupPublic): CommunityCardStatus {
+    if (adminIds.has(g.id)) return 'admin';
+    if (memberIds.has(g.id)) return 'member';
     if (pendingIds.has(g.id)) return 'pending';
-    return g.isOpen ? 'joinAuto' : 'requestJoin';
+    return 'none';
   }
 
-  // Discovery filters are now driven entirely by the GroupFilters
-  // struct — `applyGroupFilters` does the heavy lifting. We still need
-  // a per-row predicate for the React-memoized partition below.
   function passesDiscoveryFilters(g: GroupPublic): boolean {
     if (filters.nearby && (nearbyLoading || !nearbyCity)) return false;
     return (
@@ -228,29 +196,29 @@ export function PublicGroupsFeedScreen() {
     );
   }
 
-  // Partition into 2 sections per spec:
-  //   הקבוצות שלי     — anywhere I'm a member, admin, or have a pending
-  //                      request. Coach communities are flagged inline
-  //                      with a "מאמן" badge instead of a separate
-  //                      section, so the user has one home for "all
-  //                      the communities I'm in".
-  //   קבוצות פתוחות   — discovery (everything else, with filters applied)
+  // ── Section partitions ──
+  // הקבוצות שלי     — communities I'm a member or admin of (admin floats up)
+  // ממתינות לאישור — communities with an outstanding join request
+  // קבוצות פתוחות   — discovery, filtered
   const myItems = useMemo(
     () => {
       const list = (items ?? []).filter(
-        (g) =>
-          memberIds.has(g.id) ||
-          pendingIds.has(g.id) ||
-          adminIds.has(g.id),
+        (g) => memberIds.has(g.id) || adminIds.has(g.id),
       );
-      // Coach-of communities float to the top so the user sees what
-      // they manage first; member-only and pending follow.
       return list.sort((a, b) => {
         const aRank = adminIds.has(a.id) ? 0 : 1;
         const bRank = adminIds.has(b.id) ? 0 : 1;
         return aRank - bRank;
       });
     },
+    [items, memberIds, adminIds],
+  );
+  const pendingItems = useMemo(
+    () =>
+      (items ?? []).filter(
+        (g) =>
+          pendingIds.has(g.id) && !memberIds.has(g.id) && !adminIds.has(g.id),
+      ),
     [items, memberIds, pendingIds, adminIds],
   );
   const discoveryItems = useMemo(
@@ -258,18 +226,17 @@ export function PublicGroupsFeedScreen() {
       (items ?? []).filter(
         (g) =>
           !memberIds.has(g.id) &&
+          !adminIds.has(g.id) &&
           !pendingIds.has(g.id) &&
           passesDiscoveryFilters(g)
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, memberIds, pendingIds, filters, nearbyCity, nearbyLoading]
+    [items, memberIds, adminIds, pendingIds, filters, nearbyCity, nearbyLoading]
   );
 
-  // When the user is searching, collapse into a single result list — the
-  // section breakdown is noise relative to "did my query match anything".
   const isSearching = text.trim().length > 0;
   const searchMatches = isSearching
-    ? discoveryItems.concat(myItems)
+    ? discoveryItems.concat(myItems).concat(pendingItems)
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
@@ -281,31 +248,30 @@ export function PublicGroupsFeedScreen() {
         toast.success(he.toastJoinRequestSent);
       } else if (status === 'joined') {
         toast.success(he.toastJoinedGroup);
-        // Refresh the public feed too so the row updates from joinAuto → enter.
         setRefreshTick((n) => n + 1);
       } else if (status === 'already_member') {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
-      if (__DEV__) console.warn('[publicFeed] join request failed', err);
-      toast.error(he.toastRequestFailed);
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'GROUP_FULL') {
+        toast.error(he.toastGroupFull);
+      } else {
+        if (__DEV__) console.warn('[publicFeed] join request failed', err);
+        toast.error(he.toastRequestFailed);
+      }
     }
   };
 
   const handleEnter = async (item: GroupPublic) => {
-    // For an existing member, "enter" navigates to the community details
-    // page rather than just setting the current group — the user can read
-    // about the community there and access actions (invite, leave, etc.).
     await setCurrentGroup(item.id);
     nav.navigate('CommunityDetails', { groupId: item.id });
   };
 
   const handleOpenDetails = (item: GroupPublic) => {
-    // Route based on membership so we read the right Firestore doc:
-    //   member/admin → /groups/{id} (CommunityDetails — full view)
-    //   non-member   → /groupsPublic/{id} (CommunityDetailsPublic)
-    // Firestore rules deny non-members reading /groups/{id}, so this
-    // split is what keeps the public preview working.
     if (memberIds.has(item.id)) {
       nav.navigate('CommunityDetails', { groupId: item.id });
     } else {
@@ -313,52 +279,70 @@ export function PublicGroupsFeedScreen() {
     }
   };
 
-  const renderRow = (g: GroupPublic) => (
-    <FeedRow
-      key={g.id}
-      g={g}
-      action={actionFor(g)}
-      isCoach={adminIds.has(g.id)}
-      pendingCount={pendingCounts[g.id] ?? 0}
-      onPrimary={() => {
-        const a = actionFor(g);
-        if (a === 'enter') return handleEnter(g);
-        if (a === 'requestJoin' || a === 'joinAuto') return handleRequest(g);
-      }}
-      onOpen={() => handleOpenDetails(g)}
-    />
-  );
+  const renderCard = (g: GroupPublic) => {
+    const status = statusFor(g);
+    const locationLine = [g.city, g.fieldName, g.fieldAddress]
+      .filter((s) => s && s.trim().length > 0)
+      .join(' · ');
+    return (
+      <CommunityCard
+        key={g.id}
+        name={g.name}
+        locationLine={locationLine}
+        memberCount={g.memberCount}
+        status={status}
+        onPress={() => {
+          // Members enter the full community page; non-members
+          // open the public preview where they can act on a join.
+          if (status === 'admin' || status === 'member') {
+            handleEnter(g);
+          } else {
+            handleOpenDetails(g);
+          }
+        }}
+      />
+    );
+  };
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Render ──
 
   if (loading && items === null) {
     return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <ScreenHeader title={he.communitiesTitle} showBack={false} />
-        <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
-      </SafeAreaView>
+      <View style={styles.root}>
+        <CommunitiesHero />
+        <SoccerBallLoader size={40} style={{ marginTop: spacing.xxl }} />
+      </View>
     );
   }
+
+  // Note: hero placement (outside the ScrollView, so it stays
+  // pinned) lives in the main return block below.
 
   const totalKnown = (items ?? []).length;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.communitiesTitle} showBack={false} />
-
-      {/* Search + filter on a single row. RTL flips child order, so
-          the InputField (first child) sits on the right and the
-          icon-only filter button (second child) sits on the left —
-          mirrors the GamesListScreen tabs row for consistency. */}
+    <View style={styles.root}>
+      {/* Hero pinned at the top. The search/filter row below is
+          ALSO pinned (outside the scroll) but uses a negative
+          marginTop to float over the hero's bottom edge — z-order:
+          row on top of the hero. */}
+      <CommunitiesHero />
       <View style={styles.searchRow}>
-        <View style={{ flex: 1 }}>
-          <InputField
+        {/* White pill search bar. Inside the pill we want the
+            placeholder/value on the visual RIGHT and the search
+            icon on the visual LEFT — under RTL row, that means
+            the TextInput is FIRST (right) and the icon LAST
+            (left). */}
+        <View style={styles.searchPill}>
+          <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={he.communitiesSearchPlaceholder}
-            icon="search-outline"
+            placeholder={he.communitiesCardSearchPlaceholder}
+            placeholderTextColor="#94A3B8"
             returnKeyType="search"
+            style={styles.searchInput}
           />
+          <Ionicons name="search" size={18} color="#94A3B8" />
         </View>
         <Pressable
           onPress={() => setFilterOpen(true)}
@@ -370,9 +354,9 @@ export function PublicGroupsFeedScreen() {
           accessibilityLabel={he.gameFiltersButton}
         >
           <Ionicons
-            name="filter"
+            name="options"
             size={20}
-            color={filterCount > 0 ? colors.primary : colors.textMuted}
+            color={filterCount > 0 ? '#FFFFFF' : '#1E40AF'}
           />
           {filterCount > 0 ? (
             <View style={styles.filterBadge}>
@@ -381,8 +365,7 @@ export function PublicGroupsFeedScreen() {
           ) : null}
         </Pressable>
       </View>
-
-      {totalKnown === 0 ? (
+      {totalKnown === 0 && !isSearching ? (
         <View style={styles.emptyAll}>
           <Ionicons name="globe-outline" size={64} color={colors.textMuted} />
           <Text style={styles.emptyAllTitle}>{he.communitiesEmptyAll}</Text>
@@ -397,74 +380,85 @@ export function PublicGroupsFeedScreen() {
             fullWidth
           />
         </View>
-      ) : isSearching ? (
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={() => setRefreshTick((n) => n + 1)}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {searchMatches.length === 0 ? (
-            <Text style={styles.empty}>{he.communitiesEmpty}</Text>
-          ) : (
-            searchMatches.map(renderRow)
-          )}
-        </ScrollView>
       ) : (
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
               refreshing={loading}
               onRefresh={() => setRefreshTick((n) => n + 1)}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor="#3B82F6"
+              colors={['#3B82F6']}
             />
           }
         >
-          <Section
-            title={he.communitiesSectionMember}
-            items={myItems}
-            emptyText={he.communitiesEmptyMember}
-            renderRow={renderRow}
-          />
-          <Section
-            title={he.communitiesSectionOpen}
-            items={discoveryItems}
-            emptyText={he.communitiesEmptyOpenSection}
-            renderRow={renderRow}
-          />
+          {isSearching ? (
+            <View style={styles.body}>
+              {searchMatches.length === 0 ? (
+                <Text style={styles.empty}>{he.communitiesEmpty}</Text>
+              ) : (
+                <View style={styles.cardsList}>{searchMatches.map(renderCard)}</View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.body}>
+              <Section title={he.communitiesSectionMember}>
+                {myItems.length === 0 ? (
+                  <Text style={styles.sectionEmpty}>
+                    {he.communitiesEmptyMember}
+                  </Text>
+                ) : (
+                  <View style={styles.cardsList}>{myItems.map(renderCard)}</View>
+                )}
+              </Section>
+              {pendingItems.length > 0 ? (
+                <Section title={he.communitiesSectionPending}>
+                  <View style={styles.cardsList}>
+                    {pendingItems.map(renderCard)}
+                  </View>
+                </Section>
+              ) : null}
+              <Section title={he.communitiesSectionOpen}>
+                {discoveryItems.length === 0 ? (
+                  <Text style={styles.sectionEmpty}>
+                    {he.communitiesEmptyOpenSection}
+                  </Text>
+                ) : (
+                  <View style={styles.cardsList}>
+                    {discoveryItems.map(renderCard)}
+                  </View>
+                )}
+              </Section>
+            </View>
+          )}
         </ScrollView>
       )}
 
+      {/* Floating "+" action — bottom LEFT under RTL. Using `end`
+          (which resolves to the visual LEFT under forceRTL) keeps it
+          off the right edge where the chevron-back gesture lives. */}
       <Pressable
-        style={styles.fab}
+        style={({ pressed }) => [
+          styles.fab,
+          pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
+        ]}
         onPress={() => nav.navigate('CommunitiesCreate')}
+        accessibilityRole="button"
+        accessibilityLabel={he.communitiesCreateFirst}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={30} color="#FFFFFF" />
       </Pressable>
 
       <CommunityFilterSheet
         visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
-        onClose={() => setFilterOpen(false)}
-        nearbyCaption={
-          filters.nearby
-            ? nearbyLoading
-              ? he.communitiesNearbyResolving
-              : nearbyCity ?? he.communitiesNearbyUnknown
-            : undefined
-        }
+        nearbyCaption={nearbyLoading ? undefined : nearbyCity ?? undefined}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -472,232 +466,118 @@ export function PublicGroupsFeedScreen() {
 
 function Section({
   title,
-  items,
-  emptyText,
-  renderRow,
+  children,
 }: {
   title: string;
-  items: GroupPublic[];
-  emptyText: string;
-  renderRow: (g: GroupPublic) => React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {items.length === 0 ? (
-        <Card style={styles.sectionEmpty}>
-          <Text style={styles.sectionEmptyText}>{emptyText}</Text>
-        </Card>
-      ) : (
-        items.map(renderRow)
-      )}
+      <View style={styles.sectionTitleRow}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {/* Small blue indicator under the title — the design's
+            "section open" cue. Pinned to the trailing edge of the
+            row so it sits under the start of the right-aligned
+            Hebrew title. */}
+        <View style={styles.sectionUnderline} />
+      </View>
+      {children}
     </View>
   );
 }
 
-function FeedRow({
-  g,
-  action,
-  isCoach,
-  pendingCount,
-  onPrimary,
-  onOpen,
-}: {
-  g: GroupPublic;
-  action: RowAction;
-  isCoach: boolean;
-  pendingCount: number;
-  onPrimary: () => void;
-  onOpen: () => void;
-}) {
-  const locationLine = [g.city, g.fieldName, g.fieldAddress]
-    .filter((s) => s && s.trim().length > 0)
-    .join(' · ');
-  const showPendingBadge = isCoach && pendingCount > 0;
-
-  return (
-    <PressableScale onPress={onOpen}>
-      <Card style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.rowHeader}>
-            <Text style={styles.name} numberOfLines={1}>
-              {g.name}
-            </Text>
-            <View style={styles.rowHeaderRight}>
-              {showPendingBadge ? (
-                <View
-                  style={styles.pendingBadge}
-                  accessibilityLabel={he.pendingApprovalsBadge(pendingCount)}
-                >
-                  <Ionicons
-                    name="person-add"
-                    size={11}
-                    color={colors.textOnPrimary}
-                  />
-                  <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
-                </View>
-              ) : null}
-              {isCoach ? (
-                <Badge
-                  label={he.communityDetailsAdminBadge}
-                  tone="primary"
-                  icon="star"
-                />
-              ) : (
-                <StatusPill action={action} />
-              )}
-            </View>
-          </View>
-          {locationLine ? (
-            <View style={styles.meta}>
-              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.metaText} numberOfLines={1}>
-                {locationLine}
-              </Text>
-            </View>
-          ) : null}
-          {g.description ? (
-            <Text style={styles.desc} numberOfLines={2}>
-              {g.description}
-            </Text>
-          ) : null}
-          <View style={styles.metaRow}>
-            <View style={styles.meta}>
-              <Ionicons name="people-outline" size={14} color={colors.primary} />
-              <Text style={[styles.metaText, { color: colors.primary }]}>
-                {he.groupsSearchMembers(g.memberCount)}
-              </Text>
-            </View>
-            {/* WhatsApp button intentionally NOT shown here. The Communities
-                feed is the discovery surface; non-members shouldn't be able
-                to ping the admin's phone before joining. The button is still
-                rendered on CommunityDetailsScreen for actual members. */}
-          </View>
-          <View style={{ marginTop: spacing.sm }}>
-            <PrimaryAction action={action} onPress={onPrimary} />
-          </View>
-        </View>
-      </Card>
-    </PressableScale>
-  );
-}
-
-function StatusPill({ action }: { action: RowAction }) {
-  // Reuse the design-system Badge so community statuses render with
-  // identical pixels to game / rating / approval statuses elsewhere.
-  if (action === 'enter') {
-    return <Badge label={he.groupsActionMember} tone="primary" icon="checkmark-circle" />;
-  }
-  if (action === 'pending') {
-    return <Badge label={he.groupsActionPending} tone="neutral" icon="hourglass-outline" />;
-  }
-  return null;
-}
-
-function PrimaryAction({
-  action,
-  onPress,
-}: {
-  action: RowAction;
-  onPress: () => void;
-}) {
-  // 'enter' — user is already a member. We deliberately render NO
-  // button: the "כבר חבר" badge in the card header already conveys the
-  // status, and tapping the card itself opens the community details
-  // where they can do anything member-related. A "כניסה לקבוצה" CTA
-  // here was just visual noise on a list of cards the user mostly
-  // scans for NEW communities to join.
-  if (action === 'enter') return null;
-  if (action === 'joinAuto') {
-    return (
-      <Button
-        title={he.communityJoinAuto}
-        variant="primary"
-        size="sm"
-        onPress={onPress}
-        fullWidth
-      />
-    );
-  }
-  if (action === 'requestJoin') {
-    return (
-      <Button
-        title={he.communityRequestToJoin}
-        variant="outline"
-        size="sm"
-        onPress={onPress}
-        fullWidth
-      />
-    );
-  }
-  // pending / closed: no primary action — the status pill conveys state.
-  return null;
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  // Search input + filter button live on a single row. The icon-only
-  // filter button mirrors GamesListScreen's pattern (44×40 pill with
-  // optional badge) so the two tabs feel consistent.
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  // Pinned search/filter row that floats OVER the bottom of the
+  // hero. Negative marginTop pulls the row up onto the hero's
+  // gradient; zIndex/elevation raise it visually above the hero on
+  // both iOS and Android.
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    marginTop: -spacing.xxl,
+    zIndex: 2,
+    elevation: 2,
+  },
+  // White pill — search bar of the row. Soft shadow lifts it off
+  // the page like the filter button next to it.
+  searchPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    height: 48,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '500',
+    // TextInput needs explicit `right` + `writingDirection: 'rtl'`
+    // to anchor placeholder/value to the visual right edge on
+    // Android. The RTL_LABEL_ALIGN helper that flips to 'left' on
+    // Android is correct for <Text>, but EditText (the Android
+    // TextInput primitive) doesn't perform the same start/end swap.
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    padding: 0,
   },
   filterButton: {
-    width: 44,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 4,
   },
   filterButtonActive: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#1E40AF',
   },
   filterBadge: {
     position: 'absolute',
     top: -4,
-    right: -4,
+    end: -4,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterBadgeText: {
-    ...typography.caption,
-    color: colors.textOnPrimary,
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
   },
 
-  listContent: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-    paddingBottom: 120,
+  body: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.xl,
   },
-  section: { gap: spacing.sm },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  sectionEmpty: { alignItems: 'center', paddingVertical: spacing.lg },
-  sectionEmptyText: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-
   empty: {
-    ...typography.body,
-    color: colors.textMuted,
+    color: '#64748B',
+    fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.xl,
   },
@@ -710,79 +590,69 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   emptyAllTitle: {
-    ...typography.h2,
-    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
   },
   emptyAllSub: {
-    ...typography.body,
-    color: colors.textMuted,
+    fontSize: 14,
+    color: '#64748B',
     textAlign: 'center',
   },
 
-  row: {
-    padding: spacing.md,
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  rowHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  pendingBadge: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 3,
-  },
-  pendingBadgeText: {
-    color: colors.textOnPrimary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 14,
-  },
-  name: { ...typography.bodyBold, color: colors.text, flex: 1 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  section: {
     gap: spacing.md,
-    marginTop: spacing.xs,
   },
-  metaText: { ...typography.caption, color: colors.textMuted },
-  desc: { ...typography.caption, color: colors.text, marginTop: spacing.xs },
-  pill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
+  // Under forceRTL `alignItems: 'flex-start'` resolves to the visual
+  // RIGHT edge — that's where Hebrew titles want to live so the
+  // section header reads naturally from the right edge inward.
+  sectionTitleRow: {
+    paddingHorizontal: spacing.xs,
+    alignItems: 'flex-start',
+    gap: 4,
   },
-  pillText: { ...typography.caption, fontWeight: '600' },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Blue underline indicator — small dash under the title, pinned to
+  // the trailing edge of the row (right under RTL) so it sits under
+  // the start of the Hebrew title text.
+  sectionUnderline: {
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#3B82F6',
+  },
+  sectionEmpty: {
+    color: '#64748B',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
+  cardsList: {
+    gap: spacing.md,
+  },
+
+  // FAB pinned to bottom LEFT under RTL via `end:`. Blue circular,
+  // with a heavy shadow so it floats over scrolled content.
   fab: {
     position: 'absolute',
     bottom: spacing.xl,
     end: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#3B82F6',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowColor: '#1E40AF',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
 });

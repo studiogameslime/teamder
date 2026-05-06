@@ -1,135 +1,217 @@
-// PlayersPreview — replaces the inline full members list. Shows up
-// to 5 jersey circles plus a "+N" overflow chip and a "see all" CTA.
-// The whole card is one tap target — opens the new
-// CommunityPlayersScreen.
+// PlayersPreview — horizontal jersey rail for the redesigned
+// CommunityDetailsScreen. Replaces the old wrap-grid of avatar
+// circles. Each cell shows the player's actual jersey (number printed
+// on the shirt) with their name underneath; the last cell is a "+N"
+// chip when more players exist than fit.
+//
+// Layout:
+//   header → "שחקנים פעילים (N)"  ………………… "לצפייה בכל השחקנים →"
+//   rail   → [shirt][shirt][shirt] … [+N]   (FlatList horizontal)
+//
+// Under forceRTL the FlatList still scrolls horizontally, but the
+// natural reading order is right→left, so the first item in `members`
+// renders visually rightmost. We keep it that way intentionally —
+// there's no `inverted` flag needed.
 
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ListRenderItem,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PlayerIdentity } from '@/components/PlayerIdentity';
+import { Jersey } from '@/components/Jersey';
 import type { User } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
-  /** Total members count (used in the title and the +N chip). */
+  /** Total active players (used in the title and the +N chip). */
   total: number;
-  /** Hydrated subset to render — first MAX_VISIBLE entries are shown. */
+  /** Hydrated subset to render in the rail; first MAX_VISIBLE used. */
   members: Array<Pick<User, 'id' | 'name' | 'jersey'>>;
-  onPress: () => void;
+  onSeeAll: () => void;
+  onPressMember?: (uid: string) => void;
 }
 
-const MAX_VISIBLE = 5;
-const JERSEY_SIZE = 48;
+const MAX_VISIBLE = 8;
+const SHIRT_SIZE = 64;
+const ACCENT = '#3B82F6';
 
-export function PlayersPreview({ total, members, onPress }: Props) {
+type Cell =
+  | { kind: 'player'; user: Pick<User, 'id' | 'name' | 'jersey'> }
+  | { kind: 'overflow'; count: number };
+
+export function PlayersPreview({
+  total,
+  members,
+  onSeeAll,
+  onPressMember,
+}: Props) {
   const visible = members.slice(0, MAX_VISIBLE);
   const overflow = Math.max(0, total - visible.length);
+
+  const data: Cell[] = [
+    ...visible.map((u) => ({ kind: 'player' as const, user: u })),
+    ...(overflow > 0 ? [{ kind: 'overflow' as const, count: overflow }] : []),
+  ];
+
+  const renderItem = useCallback<ListRenderItem<Cell>>(
+    ({ item }) => {
+      if (item.kind === 'overflow') {
+        return (
+          <Pressable
+            onPress={onSeeAll}
+            style={({ pressed }) => [
+              styles.cell,
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.communityPlayersSeeAll}
+          >
+            <View style={styles.overflowDisc}>
+              <Text style={styles.overflowText}>+{item.count}</Text>
+            </View>
+            <Text style={styles.overflowLabel} numberOfLines={1}>
+              {he.communityPlayersSeeAll}
+            </Text>
+          </Pressable>
+        );
+      }
+      const u = item.user;
+      return (
+        <Pressable
+          onPress={() => onPressMember?.(u.id)}
+          style={({ pressed }) => [
+            styles.cell,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={u.name}
+        >
+          <Jersey jersey={u.jersey} user={u} size={SHIRT_SIZE} />
+          <Text style={styles.name} numberOfLines={1}>
+            {u.name}
+          </Text>
+        </Pressable>
+      );
+    },
+    [onPressMember, onSeeAll],
+  );
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-      accessibilityRole="button"
-    >
+    <View style={styles.wrap}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>
-          {he.communityPlayersTitle}{' '}
+          {he.communityPlayersActiveTitle}{' '}
           <Text style={styles.count}>({total})</Text>
         </Text>
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>{he.communityPlayersSeeAll}</Text>
-          <Ionicons name="chevron-back" size={16} color={colors.primary} />
-        </View>
+        <Pressable onPress={onSeeAll} hitSlop={8} style={styles.seeAllBtn}>
+          <Text style={styles.seeAllText}>{he.communityPlayersSeeAll}</Text>
+          <Ionicons name="chevron-back" size={14} color={ACCENT} />
+        </Pressable>
       </View>
-      {visible.length === 0 ? (
-        <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
-      ) : (
-        <View style={styles.row}>
-          {visible.map((m) => (
-            <View key={m.id} style={styles.cell}>
-              <PlayerIdentity user={m} size={JERSEY_SIZE} />
-            </View>
-          ))}
-          {overflow > 0 ? (
-            <View style={styles.overflow}>
-              <Text style={styles.overflowText}>+{overflow}</Text>
-            </View>
-          ) : null}
+
+      {data.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
         </View>
+      ) : (
+        <FlatList
+          data={data}
+          horizontal
+          keyExtractor={(it, i) =>
+            it.kind === 'overflow' ? `overflow-${i}` : it.user.id
+          }
+          renderItem={renderItem}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rail}
+        />
       )}
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
+  wrap: { gap: spacing.sm },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
   title: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
   count: {
-    color: colors.textMuted,
+    color: '#64748B',
     fontWeight: '500',
   },
-  cta: {
+  seeAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
-  ctaText: {
-    ...typography.caption,
-    color: colors.primary,
+  seeAllText: {
+    color: ACCENT,
+    fontSize: 13,
     fontWeight: '700',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    flexWrap: 'wrap',
+  rail: {
+    paddingHorizontal: spacing.xs,
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
   },
   cell: {
-    // Tighten each jersey cell so 5 fit comfortably on the smallest
-    // phones (~360 dp) with overflow chip room to spare.
-    width: JERSEY_SIZE + 4,
+    width: SHIRT_SIZE + 12,
     alignItems: 'center',
+    gap: 6,
   },
-  overflow: {
-    width: JERSEY_SIZE,
-    height: JERSEY_SIZE,
-    borderRadius: JERSEY_SIZE / 2,
-    backgroundColor: colors.surfaceMuted,
+  name: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    maxWidth: SHIRT_SIZE + 8,
+  },
+  // Overflow chip — same footprint as a jersey cell so the rail
+  // rhythm stays even.
+  overflowDisc: {
+    width: SHIRT_SIZE,
+    height: SHIRT_SIZE,
+    borderRadius: SHIRT_SIZE / 2,
+    backgroundColor: 'rgba(59,130,246,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginStart: spacing.xs,
   },
   overflowText: {
-    ...typography.caption,
-    color: colors.textMuted,
+    color: ACCENT,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  overflowLabel: {
+    color: ACCENT,
+    fontSize: 11,
     fontWeight: '700',
-    fontSize: 13,
+    textAlign: 'center',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
   },
   empty: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

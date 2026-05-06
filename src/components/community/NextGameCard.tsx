@@ -1,139 +1,273 @@
-// NextGameCard — single tappable card showing the soonest upcoming
-// open game in the community, or a muted empty state when none is
-// scheduled. The full match flow lives elsewhere; this card is a
-// signpost to it.
+// NextGameCard — primary-focus dark blue card for the redesigned
+// CommunityDetailsScreen. This is the loudest section in the body
+// (after the hero) — visually larger and higher-contrast than the
+// surrounding stat cards.
+//
+// Layout under forceRTL:
+//
+//   ┌──────────────────────────────────────────────┐
+//   │  [□ לפרטי משחק]      המשחק הקרוב            │
+//   │      → arrow         יום + תאריך            │
+//   │                      19:30                  │
+//   │                      📍 שם המגרש            │
+//   └──────────────────────────────────────────────┘
+//   ↑ leading (left)                  trailing (right) ↑
+//
+// The CTA square sits FIRST in the JSX → leading edge under RTL → the
+// visual LEFT side of the card. The text block sits SECOND → trailing
+// edge under RTL → visual RIGHT.
+//
+// When no upcoming game exists the card collapses to a muted empty
+// state (no CTA) — the user still gets context that the section is
+// here and intentionally empty, not broken.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
-  /** ms epoch — undefined when no upcoming game exists. */
+  /** ms epoch — undefined when there is no upcoming game. */
   startsAt?: number;
-  /** Game id — required if startsAt is provided. */
-  gameId?: string;
+  /** Optional venue name shown under the time. */
+  fieldName?: string;
+  /** When set, registration hasn't opened yet — the card swaps the
+   *  "לפרטי משחק" CTA for a muted "ההרשמה תיפתח ב..." badge. */
+  registrationOpensAt?: number;
   onPress?: () => void;
 }
 
-export function NextGameCard({ startsAt, gameId, onPress }: Props) {
-  const hasGame = !!gameId && typeof startsAt === 'number';
-  const content = (
-    <View style={styles.cardInner}>
-      <View style={styles.iconWrap}>
-        <Ionicons
-          name="calendar"
-          size={18}
-          color={hasGame ? colors.primary : colors.textMuted}
-        />
-      </View>
-      <View style={styles.body}>
-        <Text style={styles.title}>{he.communityNextGameTitle}</Text>
-        <Text
-          style={[
-            styles.subtitle,
-            hasGame ? styles.subtitleActive : styles.subtitleMuted,
-          ]}
-          numberOfLines={1}
-        >
-          {hasGame ? formatWhen(startsAt!) : he.communityNextGameNone}
-        </Text>
-      </View>
-      {hasGame ? (
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>{he.communityNextGameCta}</Text>
-          <Ionicons name="chevron-back" size={16} color={colors.primary} />
+const DAYS = [
+  'יום ראשון',
+  'יום שני',
+  'יום שלישי',
+  'יום רביעי',
+  'יום חמישי',
+  'יום שישי',
+  'שבת',
+];
+
+export function NextGameCard({
+  startsAt,
+  fieldName,
+  registrationOpensAt,
+  onPress,
+}: Props) {
+  const hasGame = typeof startsAt === 'number';
+  // Deferred-open mode: registration hasn't started yet. The card
+  // shows "ההרשמה תיפתח ב-X" instead of the "לפרטי משחק" CTA, and tap
+  // simply pops a non-blocking toast/alert (handled by the parent —
+  // we expose `onPress` regardless and let the parent decide).
+  const isDeferred =
+    typeof registrationOpensAt === 'number' &&
+    registrationOpensAt > Date.now();
+  const inner = (
+    <View style={styles.inner}>
+      {hasGame && onPress && !isDeferred ? (
+        <View style={styles.ctaSquare}>
+          {/* Arrow points to the trailing edge of the card under RTL,
+              so we use chevron-back (← under LTR is ← , under RTL it
+              points right). */}
+          <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+          <Text style={styles.ctaText}>{he.communityNextGameDetailsCta}</Text>
         </View>
       ) : null}
+      {hasGame && isDeferred ? (
+        <View style={[styles.ctaSquare, styles.ctaSquareLocked]}>
+          <Ionicons
+            name="lock-closed"
+            size={22}
+            color="rgba(255,255,255,0.85)"
+          />
+          <Text style={styles.ctaText} numberOfLines={2}>
+            {he.communityNextGameLocked}
+          </Text>
+          <Text style={styles.lockedTime} numberOfLines={1}>
+            {formatLockTime(registrationOpensAt!)}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.textBlock}>
+        <Text style={styles.title}>{he.communityNextGameTitle}</Text>
+        {hasGame ? (
+          <>
+            <Text style={styles.dateLine} numberOfLines={1}>
+              {formatDateLine(startsAt!)}
+            </Text>
+            <Text style={styles.timeLine}>{formatTime(startsAt!)}</Text>
+            {fieldName ? (
+              <View style={styles.locationRow}>
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {fieldName}
+                </Text>
+                <Ionicons
+                  name="location"
+                  size={14}
+                  color="rgba(255,255,255,0.85)"
+                />
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.emptyLine}>{he.communityNextGameNone}</Text>
+        )}
+      </View>
     </View>
   );
 
   if (!hasGame || !onPress) {
-    return <View style={styles.card}>{content}</View>;
+    return (
+      <View style={styles.card}>
+        <LinearGradient
+          colors={['#1E3A8A', '#1E40AF', '#0F172A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {inner}
+      </View>
+    );
   }
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [
+        styles.card,
+        pressed && { opacity: 0.92 },
+      ]}
       accessibilityRole="button"
-      accessibilityLabel={he.communityNextGameCta}
+      accessibilityLabel={
+        isDeferred
+          ? he.communityNextGameLocked
+          : he.communityNextGameDetailsCta
+      }
     >
-      {content}
+      <LinearGradient
+        colors={['#1E3A8A', '#1E40AF', '#0F172A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {inner}
     </Pressable>
   );
 }
 
-function formatWhen(ms: number): string {
+function formatLockTime(ms: number): string {
   const d = new Date(ms);
-  const days = [
-    'יום ראשון',
-    'יום שני',
-    'יום שלישי',
-    'יום רביעי',
-    'יום חמישי',
-    'יום שישי',
-    'שבת',
-  ];
-  const day = days[d.getDay()];
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mn = String(d.getMinutes()).padStart(2, '0');
-  return `${day} · ${dd}/${mm} · ${hh}:${mn}`;
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function formatDateLine(ms: number): string {
+  const d = new Date(ms);
+  return `${DAYS[d.getDay()]} · ${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
+}
+function formatTime(ms: number): string {
+  const d = new Date(ms);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    overflow: 'hidden',
+    borderRadius: 22,
+    minHeight: 156,
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    elevation: 8,
   },
-  cardInner: {
+  inner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+  // Big tappable square on the leading (left under RTL) edge. Hugged
+  // to a square aspect so it reads as a button, not a label.
+  ctaSquare: {
+    width: 110,
+    height: 110,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  body: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  subtitle: {
-    ...typography.caption,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  subtitleActive: { color: colors.textMuted },
-  subtitleMuted: { color: colors.textMuted, fontStyle: 'italic' },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   ctaText: {
-    ...typography.caption,
-    color: colors.primary,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  // Locked variant — gray-tinted, signals "you can't enter yet".
+  ctaSquareLocked: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  lockedTime: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
     fontWeight: '700',
   },
-  // reserved
-  _r: { borderRadius: radius.lg },
+  // Text block — fills the rest, right-aligned under RTL.
+  textBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  title: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  dateLine: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Time is the loudest single string in the card.
+  timeLine: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+    // Push to the trailing (right under RTL) edge so it lines up with
+    // the right-aligned text above it.
+    alignSelf: 'flex-end',
+  },
+  locationText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  emptyLine: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontWeight: '500',
+    fontStyle: 'italic',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 6,
+  },
 });

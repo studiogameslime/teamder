@@ -16,6 +16,7 @@ import {
   getDocs,
   orderBy,
   query,
+  runTransaction,
   updateDoc,
   where,
   writeBatch,
@@ -35,6 +36,7 @@ import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
+import { notificationsService } from './notificationsService';
 
 let groupsById: Record<GroupId, Group> = {
   [mockGroup.id]: { ...mockGroup },
@@ -147,6 +149,10 @@ export const groupService = {
     preferredHour?: string;
     costPerGame?: number;
     notes?: string;
+    /** Code-of-conduct text shown on the community page. */
+    rules?: string;
+    /** When true, the wizard's recurring-game configuration is active. */
+    recurringGameEnabled?: boolean;
     creator: User;
   }): Promise<Group> {
     const now = Date.now();
@@ -167,6 +173,8 @@ export const groupService = {
       preferredHour: input.preferredHour,
       costPerGame: input.costPerGame,
       notes: input.notes,
+      rules: input.rules,
+      recurringGameEnabled: input.recurringGameEnabled,
       creatorId: input.creator.id,
       adminIds: [input.creator.id],
       playerIds: [input.creator.id],
@@ -310,12 +318,55 @@ export const groupService = {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
       if (!g) throw new Error('approveMember: group not found');
+      // Capacity recheck at approve time — even if the request was
+      // created when there was room, an earlier approval today may
+      // have filled the cap. Race-safe in mock mode by virtue of the
+      // single-threaded JS runtime.
+      if (
+        typeof g.maxMembers === 'number' &&
+        g.maxMembers > 0 &&
+        !g.playerIds.includes(userId) &&
+        g.playerIds.length >= g.maxMembers
+      ) {
+        const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+        err.code = 'GROUP_FULL';
+        throw err;
+      }
       g.pendingPlayerIds = g.pendingPlayerIds.filter((id) => id !== userId);
       if (!g.playerIds.includes(userId)) g.playerIds = [...g.playerIds, userId];
       g.updatedAt = Date.now();
       syncMockPublic(g);
       return g;
     }
+    // Capacity recheck — race-safe via a transaction so two admins
+    // approving simultaneously can't push the group past maxMembers.
+    const { db, auth } = getFirebase();
+    await runTransaction(db, async (tx) => {
+      const gSnap = await tx.get(docs.group(groupId));
+      if (!gSnap.exists()) {
+        throw new Error('approveMember: group not found');
+      }
+      const g = gSnap.data();
+      const already = (g.playerIds ?? []).includes(userId);
+      if (
+        !already &&
+        typeof g.maxMembers === 'number' &&
+        g.maxMembers > 0 &&
+        (g.playerIds?.length ?? 0) >= g.maxMembers
+      ) {
+        const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+        err.code = 'GROUP_FULL';
+        throw err;
+      }
+      tx.update(docs.group(groupId), {
+        playerIds: arrayUnion(userId),
+        pendingPlayerIds: arrayRemove(userId),
+        updatedAt: Date.now(),
+      });
+    });
+    // Audit-trail flip happens outside the transaction (different
+    // collection); keeping it best-effort is fine — the canonical
+    // membership is already correct.
     const reqs = await getDocs(
       query(
         col.joinRequests(),
@@ -324,7 +375,6 @@ export const groupService = {
         where('status', '==', 'pending')
       )
     );
-    const { db, auth } = getFirebase();
     const batch = writeBatch(db);
     reqs.docs.forEach((r) =>
       batch.update(r.ref, {
@@ -333,12 +383,6 @@ export const groupService = {
         decidedBy: auth.currentUser?.uid ?? null,
       })
     );
-    // Move user from pending → approved on the canonical group doc.
-    batch.update(docs.group(groupId), {
-      playerIds: arrayUnion(userId),
-      pendingPlayerIds: arrayRemove(userId),
-      updatedAt: Date.now(),
-    });
     await batch.commit();
     const g = await this.get(groupId);
     if (!g) throw new Error('approveMember: group disappeared');
@@ -364,6 +408,11 @@ export const groupService = {
       if (!g) throw new Error('rejectMember: group not found');
       g.pendingPlayerIds = g.pendingPlayerIds.filter((id) => id !== userId);
       g.updatedAt = Date.now();
+      notificationsService.dispatch({
+        type: 'rejected',
+        recipientId: userId,
+        payload: { groupId, groupName: g.name },
+      });
       return g;
     }
     const reqs = await getDocs(
@@ -390,6 +439,14 @@ export const groupService = {
     await batch.commit();
     const g = await this.get(groupId);
     if (!g) throw new Error('rejectMember: group disappeared');
+    // Push the rejected user a "your request was declined" notification.
+    // The CF builds the body string from groupName; we pass it through
+    // so the user sees which community declined them.
+    notificationsService.dispatch({
+      type: 'rejected',
+      recipientId: userId,
+      payload: { groupId, groupName: g.name },
+    });
     return g;
   },
 
@@ -417,6 +474,7 @@ export const groupService = {
         | 'preferredDays'
         | 'preferredHour'
         | 'costPerGame'
+        | 'defaultMaxPlayers'
         | 'maxMembers'
         | 'isOpen'
         | 'notes'
@@ -431,6 +489,23 @@ export const groupService = {
     const guard = (g: Group): void => {
       if (!g.adminIds.includes(callerId)) {
         throw new Error('updateGroupMetadata: caller is not a coach');
+      }
+      // Refuse to lower maxMembers below the current member count.
+      // We don't auto-kick anyone, and silently accepting would
+      // produce confusing "29/25" displays + a permanently-blocked
+      // join queue. The UI catches this with a toast.
+      if (
+        typeof patch.maxMembers === 'number' &&
+        patch.maxMembers > 0 &&
+        patch.maxMembers < (g.playerIds?.length ?? 0)
+      ) {
+        const err = new Error('GROUP_MAX_BELOW_CURRENT') as Error & {
+          code: 'GROUP_MAX_BELOW_CURRENT';
+          currentCount: number;
+        };
+        err.code = 'GROUP_MAX_BELOW_CURRENT';
+        err.currentCount = g.playerIds?.length ?? 0;
+        throw err;
       }
     };
     // Whitelist the fields we accept so a bad caller can't smuggle in
@@ -452,6 +527,7 @@ export const groupService = {
       'preferredDays',
       'preferredHour',
       'costPerGame',
+      'defaultMaxPlayers',
       'maxMembers',
       'isOpen',
       'notes',
@@ -652,10 +728,21 @@ export const groupService = {
 
   /**
    * Permanently delete a community. Caller must be a group admin —
-   * Firestore rules enforce this. Deletes both the canonical /groups
-   * doc and its /groupsPublic mirror. Games created under this group
-   * become orphaned (rules will block reads since playerIds is gone),
-   * which is acceptable for now; a sweep job can collect them later.
+   * Firestore rules enforce this. Cleans up cascading state in this
+   * order:
+   *   1. notify every player registered (players/waitlist/pending)
+   *      to any non-terminal game in this group, then delete the
+   *      game doc;
+   *   2. mark every still-pending /groupJoinRequests for this group
+   *      as `rejected` (their target community is gone);
+   *   3. delete the canonical /groups doc;
+   *   4. delete the /groupsPublic mirror.
+   *
+   * Steps 1–2 must run BEFORE step 3 — the firestore rules used to
+   * authorize game-delete and join-request-update both depend on
+   * `isGroupAdmin(groupId)`, which reads the still-existing /groups
+   * doc. After step 3, that read fails and the cleanup writes would
+   * be denied.
    */
   async deleteGroup(groupId: GroupId, callerId: UserId): Promise<void> {
     if (USE_MOCK_DATA) {
@@ -669,16 +756,95 @@ export const groupService = {
       if (idx >= 0) mockPublicGroups.splice(idx, 1);
       return;
     }
-    // Two separate deletes — order matters: /groups first so the public
-    // doc's "fall-through" delete rule fires (the rule allows deletion
-    // when the canonical doc no longer exists). Doing them in a batch
-    // would also work, but two sequential deletes keep error surfaces
-    // separable if the second one fails for any reason.
-    await deleteDoc(docs.group(groupId));
+    // 1) Find all games in this community. We notify each affected
+    // user (player / waitlist / pending) and then delete the game doc
+    // outright. We don't filter by status — even a 'finished' game
+    // doc is fair game to remove since the parent community is going
+    // away and historical reads would 404 anyway.
     try {
-      await deleteDoc(docs.groupPublic(groupId));
+      const gamesSnap = await getDocs(
+        query(col.games(), where('groupId', '==', groupId)),
+      );
+      for (const gd of gamesSnap.docs) {
+        const game = gd.data();
+        const recipients = new Set<string>();
+        (game.players ?? []).forEach((u) => recipients.add(u));
+        (game.waitlist ?? []).forEach((u) => recipients.add(u));
+        (game.pending ?? []).forEach((u) => recipients.add(u));
+        recipients.delete(callerId); // don't notify the admin themselves
+        for (const uid of recipients) {
+          notificationsService.dispatch({
+            type: 'gameCanceledOrUpdated',
+            recipientId: uid,
+            payload: {
+              gameId: game.id,
+              action: 'cancelled',
+              reason: 'communityDeleted',
+            },
+          });
+        }
+        try {
+          await deleteDoc(docs.game(game.id));
+        } catch (err) {
+          if (__DEV__)
+            console.warn('[groupService] game cascade delete failed', game.id, err);
+        }
+      }
     } catch (err) {
-      if (__DEV__) console.warn('[groupService] groupsPublic cleanup failed', err);
+      if (__DEV__) console.warn('[groupService] game cascade lookup failed', err);
+    }
+    // 2) Reject all still-pending join requests so the requester's
+    // "pending" badge clears (the audit trail itself stays).
+    try {
+      const reqSnap = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('status', '==', 'pending'),
+        ),
+      );
+      for (const rd of reqSnap.docs) {
+        try {
+          await updateDoc(docs.joinRequest(rd.id), {
+            status: 'rejected',
+            decidedAt: Date.now(),
+            decidedBy: callerId,
+          });
+        } catch (err) {
+          if (__DEV__)
+            console.warn('[groupService] joinRequest reject failed', rd.id, err);
+        }
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[groupService] joinRequest cleanup failed', err);
+    }
+    // 3) Canonical group doc — must precede the public mirror so the
+    // mirror's "fall-through" delete rule fires.
+    await deleteDoc(docs.group(groupId));
+    // 4) Public projection. Retry once on transient failure — if the
+    // public mirror lingers after delete, the discovery feed would
+    // happily surface a community that no longer exists. The reads
+    // would then 404 / permission-deny when the user taps in.
+    let publicDeleted = false;
+    for (let attempt = 0; attempt < 2 && !publicDeleted; attempt++) {
+      try {
+        await deleteDoc(docs.groupPublic(groupId));
+        publicDeleted = true;
+      } catch (err) {
+        if (__DEV__)
+          console.warn(
+            '[groupService] groupsPublic cleanup failed, attempt',
+            attempt + 1,
+            err,
+          );
+      }
+    }
+    if (!publicDeleted && __DEV__) {
+      console.warn(
+        '[groupService] groupsPublic still lingering for',
+        groupId,
+        '— discovery feed will filter at read time',
+      );
     }
   },
 
@@ -750,6 +916,20 @@ function mockSubmitJoin(
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
   }
+  // Capacity gate: if the community has a maxMembers cap and is at or
+  // above it, refuse the join — both for open groups (would auto-add)
+  // and closed groups (would create a pending request that can never
+  // be approved). The error is propagated as `GROUP_FULL` so the UI
+  // can show a dedicated message.
+  if (
+    typeof g.maxMembers === 'number' &&
+    g.maxMembers > 0 &&
+    g.playerIds.length >= g.maxMembers
+  ) {
+    const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+    err.code = 'GROUP_FULL';
+    throw err;
+  }
   if (g.isOpen) {
     g.playerIds = [...g.playerIds, userId];
     g.updatedAt = Date.now();
@@ -772,6 +952,15 @@ async function submitJoin(
   // because they had access — or the invite-code lookup is admin-readable).
   if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
     return { group: g, status: 'already_member' };
+  }
+  if (
+    typeof g.maxMembers === 'number' &&
+    g.maxMembers > 0 &&
+    g.playerIds.length >= g.maxMembers
+  ) {
+    const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+    err.code = 'GROUP_FULL';
+    throw err;
   }
   await writeJoin(g.id, userId, !!g.isOpen);
   if (g.isOpen) {
@@ -806,6 +995,22 @@ async function submitJoinByPublic(
   // read access to /groups (non-members can't read it).
   const pubSnap = await getDoc(docs.groupPublic(groupId));
   const isOpen = pubSnap.exists() ? !!pubSnap.data()?.isOpen : false;
+  // Capacity gate based on the public projection — that's all a
+  // non-member can see. memberCount is denormalised; if it lags a
+  // newly-approved member, we'll let the canonical-side check on
+  // approveMember catch it.
+  if (pubSnap.exists()) {
+    const pub = pubSnap.data();
+    if (
+      typeof pub.maxMembers === 'number' &&
+      pub.maxMembers > 0 &&
+      pub.memberCount >= pub.maxMembers
+    ) {
+      const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+      err.code = 'GROUP_FULL';
+      throw err;
+    }
+  }
   await writeJoin(groupId, userId, isOpen);
   return {
     group: {

@@ -135,18 +135,32 @@ service cloud.firestore {
           )
         )
       ) || (
-        // self-add to pendingPlayerIds (community join request — closed group)
+        // self-add to pendingPlayerIds (community join request — closed group).
+        // Capacity gate: refuse when playerIds is already at maxMembers
+        // — the request could never be approved anyway, and silently
+        // accepting it leaves a permanently-stuck "pending" badge in
+        // the user's UI. The client surfaces this as `GROUP_FULL`.
         isSignedIn() &&
         !(request.auth.uid in resource.data.playerIds) &&
         !(request.auth.uid in resource.data.adminIds) &&
         affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
         request.resource.data.pendingPlayerIds.size() ==
           resource.data.pendingPlayerIds.size() + 1 &&
-        request.auth.uid in request.resource.data.pendingPlayerIds
+        request.auth.uid in request.resource.data.pendingPlayerIds &&
+        (
+          !('maxMembers' in resource.data) ||
+          resource.data.maxMembers <= 0 ||
+          resource.data.playerIds.size() < resource.data.maxMembers
+        )
       ) || (
         // self-add to playerIds (auto-join — open group). The flag
         // resource.data.isOpen == true gates this; otherwise the path
         // above (pendingPlayerIds) is the only legal self-write.
+        // Capacity gate enforced server-side too — the public
+        // projection's memberCount that the client checks lags by
+        // up to ~minutes after admin approvals, so two simultaneous
+        // joins to a near-full group could otherwise sneak past
+        // both the client check AND the previous "size + 1" rule.
         isSignedIn() &&
         resource.data.isOpen == true &&
         !(request.auth.uid in resource.data.playerIds) &&
@@ -154,7 +168,12 @@ service cloud.firestore {
         affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
         request.resource.data.playerIds.size() ==
           resource.data.playerIds.size() + 1 &&
-        request.auth.uid in request.resource.data.playerIds
+        request.auth.uid in request.resource.data.playerIds &&
+        (
+          !('maxMembers' in resource.data) ||
+          resource.data.maxMembers <= 0 ||
+          resource.data.playerIds.size() < resource.data.maxMembers
+        )
       );
       // Group admins can delete the canonical doc; the public mirror is
       // cleaned up by the same caller via the rule directly below.
@@ -236,14 +255,22 @@ service cloud.firestore {
       );
 
       // Standard create: signed-in user, sets themselves as creator,
-      // status starts as 'open'. Visibility validation lives in the
-      // converter (defaults missing values to 'community' and
-      // rejects bogus enum values), so the rule doesn't re-assert
-      // it here — earlier attempts to do so silently denied valid
-      // creates and weren't worth the safety margin.
+      // and is a member (player OR admin) of the parent group. Pure
+      // outsiders — even outsiders who somehow forged a groupId —
+      // cannot create games inside a community they don't belong to.
+      // Status starts as 'open' (immediate registration) OR
+      // 'scheduled' (deferred — recurring-game wizard sets a future
+      // `registrationOpensAt` and a CF flips status when the time
+      // arrives). Visibility validation lives in the converter
+      // (defaults missing values to 'community' and rejects bogus
+      // enum values), so the rule doesn't re-assert it here —
+      // earlier attempts to do so silently denied valid creates and
+      // weren't worth the safety margin.
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid &&
-        request.resource.data.status == 'open';
+        isGroupMember(request.resource.data.groupId) &&
+        (request.resource.data.status == 'open' ||
+         request.resource.data.status == 'scheduled');
 
       allow update: if isSignedIn() && (
         // Organizer / admin: can mutate ANYTHING except terminal states
@@ -319,23 +346,6 @@ service cloud.firestore {
               resource.data.players.size() - 1 &&
             request.resource.data.players.size() <=
               resource.data.players.size() + 1
-          )
-        ) ||
-        // Live-match self-late toggle — any participant may push
-        // their OWN uid into liveMatch.lateUserIds. Other liveMatch
-        // mutations (assignments / scores / phase) are admin-only
-        // and flow through the organizer/admin branch above.
-        (
-          request.auth.uid in resource.data.participantIds &&
-          affectedKeys().hasOnly(['liveMatch', 'updatedAt']) &&
-          // Only the lateUserIds sub-array may change.
-          request.resource.data.liveMatch.diff(resource.data.liveMatch)
-            .affectedKeys().hasOnly(['lateUserIds']) &&
-          // The change must include the auth user (they're toggling
-          // their own late flag). We allow add or remove of self.
-          (
-            request.auth.uid in request.resource.data.liveMatch.lateUserIds ||
-            request.auth.uid in resource.data.liveMatch.lateUserIds
           )
         )
       );

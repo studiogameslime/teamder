@@ -1,10 +1,7 @@
-// ReferralCard — full-width card showing how many users joined the
-// app via this player's invite link, plus the helper copy. Visually
-// matches the StatCard family but spans the full row so the metric
-// stands on its own (it isn't part of the 4-stat 2×2 grid).
-//
-// Loading / error states render gracefully — the card never shows a
-// misleading "0" while the count is in flight.
+// ReferralCard — full-width row showing how many users joined the
+// app via this player's invite link. Visual layout mirrors the
+// other profile cards: icon circle on the leading edge, label +
+// helper in the middle, big value + chevron on the trailing side.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -14,8 +11,7 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
-  /** Null while loading; number once resolved. Caller is responsible
-   *  for re-fetching on focus. */
+  /** Null while loading; number once resolved. */
   count: number | null;
 }
 
@@ -23,11 +19,15 @@ export function ReferralCard({ count }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
-        <Ionicons name="people" size={22} color={colors.primary} />
+        <Ionicons name="people" size={22} color="#3B82F6" />
       </View>
       <View style={styles.body}>
-        <Text style={styles.label}>{he.profileStatInvited}</Text>
-        <Text style={styles.helper}>{he.playerCardReferralsHelper}</Text>
+        <Text style={styles.label} numberOfLines={1}>
+          {he.profileStatInvited}
+        </Text>
+        <Text style={styles.helper} numberOfLines={1}>
+          {he.playerCardReferralsHelper}
+        </Text>
       </View>
       <View style={styles.valueWrap}>
         {count === null ? (
@@ -52,21 +52,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 1,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
   helper: {
@@ -94,10 +94,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
   },
-  valuePositive: {
-    color: colors.primary,
+  valuePositive: { color: '#3B82F6' },
+  valueZero: { color: colors.text },
+  chevron: {
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  valueZero: {
-    color: colors.textMuted,
+  chevronInner: {
+    width: 8,
+    height: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: colors.textMuted,
+    transform: [{ rotate: '-45deg' }],
   },
 });

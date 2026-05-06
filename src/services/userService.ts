@@ -25,6 +25,7 @@ import {
   waitForAuthRestore,
 } from '@/firebase/auth';
 import { col, docs } from '@/firebase/firestore';
+import { gameService } from './gameService';
 
 export const userService = {
   /**
@@ -295,12 +296,72 @@ export const userService = {
    */
   async deleteOwnAccount(): Promise<void> {
     if (USE_MOCK_DATA) {
+      const cur = await this.getCurrentUser();
+      if (cur) {
+        await gameService.leaveAllGamesForAccountDeletion(cur.id);
+      }
       await storage.setAuthUserJson(null);
       await storage.setCurrentGroupId(null);
       return;
     }
     const cur = await this.getCurrentUser();
     if (!cur) throw new Error('deleteOwnAccount: no current user');
+
+    // Why this order:
+    //   • Anonymisation requires the user's own auth (rules: isSelf).
+    //     Once the auth user is deleted, no client-side write to the
+    //     /users doc can succeed, so anonymise CANNOT come after
+    //     auth deletion.
+    //   • Conversely, if anonymisation succeeds and auth deletion
+    //     then fails (network drop, token expiry, etc.), we'd be
+    //     stuck with a half-deleted state. To avoid that, we cache
+    //     the original profile data BEFORE anonymising and restore
+    //     it on auth-deletion failure. Anonymisation is safe to
+    //     retry — restoring + re-anonymising is idempotent.
+    //   • Game sweep runs first so registered admins get the
+    //     "playerCancelled" push while the user's name is still
+    //     intact. (The push body resolves the user name on the CF
+    //     side at delivery time; sequencing matters only for the
+    //     window between sweep and anonymise.)
+
+    // Idempotent push gate: if a previous attempt already notified
+    // admins (latch in AsyncStorage), suppress notifications on this
+    // run. The sweep itself is naturally idempotent (a second
+    // transaction simply reads no-op state and writes nothing).
+    const alreadyNotified = await storage.wasDeleteSweepNotified(cur.id);
+    try {
+      await gameService.leaveAllGamesForAccountDeletion(cur.id, {
+        suppressNotifications: alreadyNotified,
+      });
+      if (!alreadyNotified) {
+        // Latch the marker so a retry of deleteOwnAccount doesn't
+        // re-fire the per-admin pushes. Cleared after auth-delete
+        // succeeds so future sign-ins start fresh.
+        await storage.setDeleteSweepNotified(cur.id);
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[deleteAccount] game sweep failed', err);
+    }
+
+    // Cache fields that anonymisation will overwrite, so we can
+    // restore on failure. Only round-trip the keys we touch — no
+    // need to copy the entire doc.
+    const restorePayload: Record<string, unknown> = {
+      name: cur.name,
+      onboardingCompleted: cur.onboardingCompleted ?? true,
+    };
+    if (cur.email !== undefined) restorePayload.email = cur.email;
+    if (cur.photoUrl !== undefined) restorePayload.photoUrl = cur.photoUrl;
+    if (cur.avatarId !== undefined) restorePayload.avatarId = cur.avatarId;
+    if (cur.jersey !== undefined) restorePayload.jersey = cur.jersey;
+    if (cur.availability !== undefined)
+      restorePayload.availability = cur.availability;
+    if (cur.fcmTokens !== undefined) restorePayload.fcmTokens = cur.fcmTokens;
+    if (cur.notificationPrefs !== undefined)
+      restorePayload.notificationPrefs = cur.notificationPrefs;
+    if (cur.newGameSubscriptions !== undefined)
+      restorePayload.newGameSubscriptions = cur.newGameSubscriptions;
+
     const ref = docs.user(cur.id);
     await updateDoc(ref, {
       name: 'משתמש שהוסר',
@@ -315,7 +376,28 @@ export const userService = {
       onboardingCompleted: false,
       updatedAt: Date.now(),
     });
-    await deleteCurrentFirebaseUser();
+    try {
+      await deleteCurrentFirebaseUser();
+    } catch (err) {
+      // Auth deletion failed — restore the profile so the user
+      // isn't stuck in a "anonymised but signed-in" limbo.
+      // The user can retry deleteOwnAccount safely. The
+      // sweep-notified latch stays SET so the retry's sweep won't
+      // re-spam admins.
+      try {
+        await updateDoc(ref, {
+          ...restorePayload,
+          updatedAt: Date.now(),
+        });
+      } catch (restoreErr) {
+        if (__DEV__)
+          console.warn('[deleteAccount] restore after auth fail failed', restoreErr);
+      }
+      throw err;
+    }
+    // Auth-delete succeeded — clear the latch so this device starts
+    // fresh next time someone signs in.
+    await storage.clearDeleteSweepNotified();
     await storage.setCurrentGroupId(null);
   },
 

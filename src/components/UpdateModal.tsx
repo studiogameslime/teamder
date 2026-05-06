@@ -32,7 +32,7 @@ export function UpdateModal({ type, onClose }: Props) {
             <Ionicons
               name="cloud-download-outline"
               size={28}
-              color={colors.primary}
+              color="#3B82F6"
             />
           </View>
           <Text style={styles.title}>
@@ -60,6 +60,7 @@ export function UpdateModal({ type, onClose }: Props) {
                 size="lg"
                 fullWidth
                 onPress={openStore}
+                style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
               />
             </View>
           </View>
@@ -86,7 +87,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primaryLight,
+    // Soft blue tint to match the new accent on the modal's primary
+    // CTA below.
+    backgroundColor: 'rgba(59,130,246,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',

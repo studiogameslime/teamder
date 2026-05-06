@@ -66,8 +66,15 @@ const styles = StyleSheet.create({
   },
   // Pill-card with a subtle inset look so the field reads as a slot,
   // not as a generic inline text input. Width is sized for two digits
-  // at the chosen font size — 96 px is enough headroom on tablet
+  // at the chosen font size — 110 px is enough headroom on tablet
   // scaling while still feeling tight.
+  //
+  // We deliberately avoid `alignItems/justifyContent: 'center'` here.
+  // Combined with the TextInput's `width:'100%', height:'100%'` they
+  // collapse the input's tappable area to the size of the placeholder
+  // glyph — the user could see the slot but couldn't tap into it.
+  // Letting the TextInput fill the shell with absolute positioning
+  // keeps the tap area = visible card.
   fieldShell: {
     width: 110,
     height: 84,
@@ -75,23 +82,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Elevation/shadow on iOS only — Android renders shadow weirdly
-    // on a TextInput parent and we don't need both layers.
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 2,
   },
   input: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     color: colors.text,
     fontSize: 44,
     fontWeight: '800',
     lineHeight: 52,
-    width: '100%',
-    height: '100%',
     textAlign: 'center',
+    // Android-only — vertically centers the digit inside the slot.
+    // iOS centers automatically based on lineHeight + padding.
+    textAlignVertical: 'center',
     // Slight letter-spacing reads as "two digit slot" instead of a
     // single number, reinforcing the affordance.
     letterSpacing: 4,

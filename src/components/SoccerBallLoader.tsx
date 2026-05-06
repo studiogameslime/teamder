@@ -62,7 +62,7 @@ export function SoccerBallLoader({ size = 56, style }: Props) {
   return (
     <View style={[styles.wrap, style]}>
       <Animated.View style={animatedStyle}>
-        <SoccerBall size={size} />
+        <SoccerBall size={size} color="#3B82F6" />
       </Animated.View>
     </View>
   );

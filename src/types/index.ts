@@ -218,8 +218,6 @@ export interface NotificationPrefs {
   gameCanceledOrUpdated: boolean;
   /** Player: a registered player canceled and the waitlist promoted me. */
   spotOpened: boolean;
-  /** Organizer: a registered player marked themselves as late. */
-  imLate: boolean;
   /** Admin: my community hit a member-count milestone. */
   growthMilestone: boolean;
   /** Player: someone invited me directly to a game. */
@@ -228,6 +226,8 @@ export interface NotificationPrefs {
   rateReminder: boolean;
   /** Player: a game in my community is almost full — last spots. */
   gameFillingUp: boolean;
+  /** Organizer: a registered player just cancelled their participation. */
+  playerCancelled: boolean;
 }
 
 /** Defaults applied when `User.notificationPrefs` is missing or partial. */
@@ -238,11 +238,11 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   gameReminder: true,
   gameCanceledOrUpdated: true,
   spotOpened: true,
-  imLate: true,
   growthMilestone: false,
   inviteToGame: true,
   rateReminder: true,
   gameFillingUp: true,
+  playerCancelled: true,
 };
 
 /** Discriminated union of dispatch payloads stored under /notifications. */
@@ -254,11 +254,16 @@ export type NotificationType =
   | 'gameReminder'
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
-  | 'imLate'
   | 'growthMilestone'
   | 'inviteToGame'
   | 'rateReminder'
-  | 'gameFillingUp';
+  | 'gameFillingUp'
+  /**
+   * Sent to the game admin (createdBy) every time a registered player
+   * cancels their participation. The admin needs visibility into who
+   * dropped out so they can chase replacements before the deadline.
+   */
+  | 'playerCancelled';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on
@@ -304,6 +309,13 @@ export interface UserStats {
   totalGames: number;       // games the user was registered for and locked
   attended: number;         // status flipped to "arrived" by admin
   cancelled: number;        // user cancelled their own registration
+  /**
+   * Lifetime goals scored. Not currently written by any path —
+   * kept on the type so the profile UI can render a stable "0"
+   * without a cast, and a future LiveMatch/round writer can fill
+   * it in without a schema migration.
+   */
+  goals?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
@@ -694,6 +706,33 @@ export interface Game {
   liveMatch?: LiveMatchState;
 
   /**
+   * ms epoch — the moment when this game's registration officially
+   * opens. Until this point the game sits at `status: 'scheduled'`,
+   * is hidden from every feed, and refuses joins. A scheduled CF
+   * (`flipScheduledGames`) flips status to `'open'` and dispatches the
+   * `newGameInCommunity` push to subscribers when the time arrives.
+   *
+   * Used today only by the recurring-game flow: an admin schedules a
+   * weekly fixture days in advance but doesn't want it occupying feed
+   * real estate (or accepting registrations) before, say, the day
+   * before kickoff.
+   *
+   * Optional — when missing the game is feed-visible immediately on
+   * creation, mirroring legacy behaviour for one-shot games.
+   */
+  registrationOpensAt?: number;
+
+  /**
+   * Idempotency latch flipped by `flipScheduledGames` once the CF has
+   * dispatched the `newGameInCommunity` push for this game. Prevents
+   * the cron from re-firing the notification on subsequent runs (e.g.
+   * if the status flip failed and we retry), and prevents an admin
+   * edit of `registrationOpensAt` from triggering a second push —
+   * once the community has been notified, they don't need a duplicate.
+   */
+  openedNotificationSent?: boolean;
+
+  /**
    * Phase E.2.2: flipped to true by the scheduled `sendGameReminders`
    * Cloud Function once it has dispatched the 1h-before reminder, so a
    * subsequent run doesn't double-send.
@@ -877,13 +916,26 @@ export interface LiveMatchState {
    */
   teamASlots?: Record<UserId, number>;
   teamBSlots?: Record<UserId, number>;
-  /** Players who tapped "I'm late". Persisted as an array. */
-  lateUserIds: UserId[];
   /**
    * Current round (משחקון) number. Increments after every "סיים משחקון".
    * Optional so legacy state without the field reads as round 1.
    */
   roundNumber?: number;
+  /**
+   * Cumulative round-wins per team POSITION (A..E). The position is
+   * stable across rotations — when a team loses and is rotated to the
+   * back of the queue, the new active team starts fresh at 0. Used by
+   * the team header so players can see who's been winning the day.
+   * Optional so legacy live state without the field reads as 0 wins
+   * for every team.
+   */
+  winsByTeam?: {
+    A?: number;
+    B?: number;
+    C?: number;
+    D?: number;
+    E?: number;
+  };
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */
   updatedAt?: number;
 }

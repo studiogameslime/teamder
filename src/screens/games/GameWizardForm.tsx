@@ -31,7 +31,6 @@ import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
-import { toast } from '@/components/Toast';
 import { searchCities } from '@/services/israelLocationService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -65,6 +64,19 @@ function cancelOptionLabel(h: number | undefined): string {
   return h === undefined ? he.wizardCancelOptionNone : he.wizardCancelOption(h);
 }
 
+/**
+ * Default "registration opens" timestamp shown in the picker BEFORE
+ * the user picks one in recurring mode. Convention: 1 day before
+ * kickoff at 10:00 local. The user can override; this is purely a
+ * starting position so the picker doesn't open on the Unix epoch.
+ */
+function defaultRegOpensAt(startsAt: number): number {
+  const d = new Date(startsAt);
+  d.setDate(d.getDate() - 1);
+  d.setHours(10, 0, 0, 0);
+  return d.getTime();
+}
+
 export interface GameFormValues {
   title: string;
   startsAt: number;
@@ -93,6 +105,10 @@ export interface GameFormValues {
   bringBall: boolean;
   bringShirts: boolean;
   minPlayers: string;
+  /** ms epoch — only used in `mode='recurring'`. Stored on Game as
+   *  `registrationOpensAt`. 0 means "not set" (the field is required
+   *  in recurring mode, so submit blocks until the user picks a time). */
+  registrationOpensAt: number;
 }
 
 interface Props {
@@ -106,6 +122,13 @@ interface Props {
    * as the steps so the whole page scrolls together.
    */
   extraTopSlot?: React.ReactNode;
+  /**
+   * 'recurring' surfaces the required `registrationOpensAt` field at
+   * step 3 (used by CommunityDetails' "צור משחק קבוע" entry). Default
+   * 'standard' hides the field entirely — registration opens
+   * immediately on creation, mirroring legacy behaviour.
+   */
+  mode?: 'standard' | 'recurring';
 }
 
 export function GameWizardForm({
@@ -114,6 +137,7 @@ export function GameWizardForm({
   initial,
   onSubmit,
   extraTopSlot,
+  mode = 'standard',
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
@@ -140,25 +164,41 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
-  // City must be a real autocomplete selection — `locationFromList`
-  // is the single source of truth (true only on `onSelect`, false on
-  // any manual edit). Per spec we block submit / step-nav whenever
-  // it isn't true, including the empty case (which is also "not
-  // selected"). Edit flows pre-fill the flag from persisted data.
-  const validateLocation = (): boolean => {
-    if (values.locationFromList) return true;
-    toast.error(he.wizardLocationMustBeFromList);
-    return false;
-  };
+  // The location field is a free-text autocomplete: the user can pick
+  // a city from the dropdown or just type their own. We no longer
+  // gate step-nav / submit on `locationFromList` — the autocomplete
+  // is a convenience, not a hard requirement. The flag is still
+  // tracked for analytics / future use but doesn't block flow.
   const goNext = () => {
-    if (step === 1 && !validateLocation()) return;
     if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
   };
   const goBack = () => {
     if (step > 1) setStep(((step - 1) as 1 | 2 | 3));
   };
-  const submit = async () => {
-    if (!validateLocation()) return;
+  // Recurring mode requires the user to pick a "registration opens
+  // at" time. The only hard constraints are:
+  //   1. value must be set (not 0)
+  //   2. value must be strictly before kickoff (`startsAt`)
+  // Past values are ALLOWED — the field accepts them and the create
+  // path treats them as "open immediately". A submit-time confirm
+  // dialog warns the admin when they pick a past value or a value
+  // less than 4h before kickoff (recommended-not-required guardrail).
+  const SHORT_OPEN_WINDOW_MS = 4 * 60 * 60 * 1000;
+  const validateRegistrationOpensAt = (): boolean => {
+    if (mode !== 'recurring') return true;
+    const v = values.registrationOpensAt;
+    if (!v) {
+      Alert.alert(he.error, he.wizardRegOpensRequired);
+      return false;
+    }
+    if (v >= values.startsAt) {
+      Alert.alert(he.error, he.wizardRegOpensMustBeBeforeKickoff);
+      return false;
+    }
+    return true;
+  };
+
+  const finalizeSubmit = async () => {
     setBusy(true);
     try {
       await onSubmit(values);
@@ -167,6 +207,35 @@ export function GameWizardForm({
     } finally {
       setBusy(false);
     }
+  };
+
+  const submit = async () => {
+    if (!validateRegistrationOpensAt()) return;
+    if (mode === 'recurring' && values.registrationOpensAt > 0) {
+      const now = Date.now();
+      const delta = values.startsAt - values.registrationOpensAt;
+      const isPast = values.registrationOpensAt <= now;
+      const isShort = !isPast && delta < SHORT_OPEN_WINDOW_MS;
+      if (isPast || isShort) {
+        // Soft warning — admin can choose to continue. The hard
+        // "must be before kickoff" check above is the only block.
+        Alert.alert(
+          he.wizardRegOpensWarnTitle,
+          isPast
+            ? he.wizardRegOpensWarnPastBody
+            : he.wizardRegOpensWarnShortBody,
+          [
+            { text: he.wizardRegOpensWarnEdit, style: 'cancel' },
+            {
+              text: he.wizardRegOpensWarnContinue,
+              onPress: finalizeSubmit,
+            },
+          ],
+        );
+        return;
+      }
+    }
+    await finalizeSubmit();
   };
 
   return (
@@ -202,7 +271,12 @@ export function GameWizardForm({
             ) : null}
             {step === 2 ? <Step2 values={values} set={set} /> : null}
             {step === 3 ? (
-              <Step3 values={values} set={set} maxPlayers={maxPlayers} />
+              <Step3
+                values={values}
+                set={set}
+                maxPlayers={maxPlayers}
+                mode={mode}
+              />
             ) : null}
           </Animated.View>
         </ScrollView>
@@ -382,13 +456,37 @@ function Step3({
   values,
   set,
   maxPlayers,
+  mode,
 }: {
   values: GameFormValues;
   set: SetFn;
   maxPlayers: number;
+  mode: 'standard' | 'recurring';
 }) {
   return (
     <View style={styles.stack}>
+      {/* Recurring-only field — when set, the new game stays hidden +
+          unjoinable until this exact moment, then a CF flips it open
+          and notifies subscribed community members. Past values are
+          accepted (with an inline hint) and treated as immediate-open
+          on submit. */}
+      {mode === 'recurring' ? (
+        <View style={styles.section}>
+          <AppDateTimeField
+            label={he.wizardRegOpensLabel}
+            value={values.registrationOpensAt || defaultRegOpensAt(values.startsAt)}
+            onChange={(ms) => set('registrationOpensAt', ms)}
+            required
+          />
+          <Text style={styles.hint}>
+            {values.registrationOpensAt > 0 &&
+            values.registrationOpensAt <= Date.now()
+              ? he.wizardRegOpensHintPast
+              : he.wizardRegOpensHint}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.label}>{he.wizardSectionVisibility}</Text>
         <View style={styles.pillRow}>

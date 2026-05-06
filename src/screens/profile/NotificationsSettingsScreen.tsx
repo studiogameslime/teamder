@@ -72,11 +72,6 @@ const ROWS: Row[] = [
     sub: he.notifSpotOpenedSub,
   },
   {
-    key: 'imLate',
-    label: he.notifImLate,
-    sub: he.notifImLateSub,
-  },
-  {
     key: 'inviteToGame',
     label: he.notifInviteToGame,
     sub: he.notifInviteToGameSub,
@@ -90,6 +85,11 @@ const ROWS: Row[] = [
     key: 'gameFillingUp',
     label: he.notifGameFillingUp,
     sub: he.notifGameFillingUpSub,
+  },
+  {
+    key: 'playerCancelled',
+    label: he.notifPlayerCancelled,
+    sub: he.notifPlayerCancelledSub,
   },
   {
     key: 'growthMilestone',

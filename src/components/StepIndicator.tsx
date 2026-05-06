@@ -164,7 +164,7 @@ export function StepIndicator({ current, labels }: Props) {
           <Ionicons
             name="football"
             size={ICON_SIZE_CURRENT}
-            color={colors.primary}
+            color="#3B82F6"
           />
         </Animated.View>
       ) : null}

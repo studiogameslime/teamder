@@ -86,7 +86,16 @@ export function AdminApprovalScreen() {
       );
       toast.success(he.toastMemberApproved);
     } catch (err) {
-      if (__DEV__) console.warn('[approve] failed', err);
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'GROUP_FULL') {
+        toast.error(he.toastApproveGroupFull);
+      } else {
+        if (__DEV__) console.warn('[approve] failed', err);
+        toast.error(he.toastApproveFailed);
+      }
     }
   };
 

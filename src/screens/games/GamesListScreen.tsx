@@ -1,23 +1,18 @@
-// GamesListScreen — Matches tab.
+// GamesListScreen — Matches tab, redesigned.
 //
-// Goal of this redesign: a fast-scanning vertical list of compact match
-// cards with two segmented tabs at the top — "שלי" (my games) and
-// "פתוחים" (everything else, i.e. community + open public games).
+// Layout (top → bottom, RTL):
+//   ① Blue gradient hero with stadium photo, title + subtitle, calendar
+//      disc on the right, filter button on the left.
+//   ② Pill segmented control: פתוחים (default) / שלי. Floating up onto
+//      the bottom of the hero via negative marginTop.
+//   ③ Section title with blue underline indicator.
+//   ④ List of MatchListCards (premium, with format strip on left).
+//   ⑤ MatchEmptyHintCard at the bottom — a static "still didn't find
+//      a match?" CTA card that lives below the list, not in place of
+//      it. Empty state (no cards at all) replaces the list entirely.
+//   ⑥ Floating "+" FAB pinned to the bottom-LEFT.
 //
-//   ┌─────────────────────────────────────┐
-//   │  משחקים                              │  header
-//   │  [ שלי ]  [ פתוחים ]                  │  segmented tabs
-//   ├─────────────────────────────────────┤
-//   │  [ MatchCard ]                       │
-//   │  [ MatchCard ]                       │
-//   │  …                                   │
-//   ├─────────────────────────────────────┤
-//   │                              ⊕      │  floating "+" FAB
-//   └─────────────────────────────────────┘
-//
-// Tapping a card → MatchDetails (NOT the live-match screen). Card has
-// its own small action pill (join / leave) that handles the bucket
-// logic without leaving the list.
+// Logic / data flow / navigation are all unchanged.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -29,7 +24,6 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
   useNavigation,
@@ -37,10 +31,17 @@ import {
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { MatchCard, MatchCardCta } from '@/components/MatchCard';
+import { toast } from '@/components/Toast';
+import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import {
+  MatchListCard,
+  type MatchCardCta,
+} from '@/components/match/MatchListCard';
+import { MatchesHero } from '@/components/match/MatchesHero';
+import { MatchSegmentControl } from '@/components/match/MatchSegmentControl';
+import { MatchEmptyHintCard } from '@/components/match/MatchEmptyHintCard';
 import {
   GameFilterSheet,
   EMPTY_GAME_FILTERS,
@@ -55,7 +56,7 @@ import {
 } from '@/services/gameLifecycle';
 import { storage } from '@/services/storage';
 import { Game } from '@/types';
-import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -72,25 +73,24 @@ export function GamesListScreen() {
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
-  // Scroll-to-top: react-navigation emits `tabPress` on the focused
-  // tab even when our MainTabs listener doesn't preventDefault (the
-  // already-at-root case). `useScrollToTop` listens for that event
-  // and scrolls the ref'd ScrollView to offset 0. Tap-tab-twice =
-  // jump to top.
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
 
-  const [tab, setTab] = useState<Tab>('mine');
+  // Default to "open" so a freshly-opened app shows discovery first —
+  // the spec marks פתוחים as the active tab.
+  const [tab, setTab] = useState<Tab>('open');
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
+  // Soft-confirm for cancellations past the cancel-deadline window.
+  // Holds the target game so onConfirm knows what to cancel.
+  const [lateCancelGame, setLateCancelGame] = useState<Game | null>(null);
 
-  // Filter state — kept on the screen so it survives tab switching but
-  // resets on remount. The sheet itself is purely presentational.
   const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+
   // First-run hint pointing at the FAB. Surfaces once per device,
   // dismissible, never blocks taps on the FAB itself.
   const [hintVisible, setHintVisible] = useState(false);
@@ -145,8 +145,37 @@ export function GamesListScreen() {
 
   const handleCreate = () => nav.navigate('GameCreate');
 
+  // Returns true if "now" is inside the cancel-deadline danger
+  // window (e.g. < 12h before kickoff with a 12h deadline). The
+  // service no longer hard-blocks late cancels; we ask once.
+  const isPastCancelDeadline = (g: Game): boolean => {
+    if (!g.cancelDeadlineHours || g.cancelDeadlineHours <= 0) return false;
+    if (typeof g.startsAt !== 'number') return false;
+    return Date.now() > g.startsAt - g.cancelDeadlineHours * 60 * 60 * 1000;
+  };
+
+  const runCancel = async (game: Game) => {
+    if (!user) return;
+    setBusyGameId(game.id);
+    try {
+      await gameService.cancelGameV2(game.id, user.id);
+      await reload();
+    } catch (err) {
+      if (__DEV__) console.warn('[gamesList] late-cancel failed', err);
+      toast.error(he.error);
+    } finally {
+      setBusyGameId(null);
+    }
+  };
+
   const handleCardPrimary = async (game: Game, cta: MatchCardCta) => {
     if (!user || cta === 'none' || cta === 'pending') return;
+    // Soft-confirm late cancellations. Only the cancel CTA goes
+    // through the modal — `leaveWaitlist` is harmless, no prompt.
+    if (cta === 'cancel' && isPastCancelDeadline(game)) {
+      setLateCancelGame(game);
+      return;
+    }
     setBusyGameId(game.id);
     try {
       if (cta === 'join' || cta === 'waitlist') {
@@ -156,28 +185,33 @@ export function GamesListScreen() {
       }
       await reload();
     } catch (err) {
-      if (__DEV__) console.warn('[gamesList] action failed', err);
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      if (code === 'REGISTRATION_CONFLICT') {
+        // The user is already registered to another game in the
+        // conflict window. We surface a heads-up toast — it's a
+        // warning ("you might want to know"), not an error — and
+        // stay on this screen. Navigating into MatchDetails was
+        // surprising; the user just tapped "Join" on a card and
+        // didn't ask to leave the list.
+        toast.info(he.registrationConflictTitle);
+      } else if (__DEV__) {
+        console.warn('[gamesList] action failed', err);
+      }
     } finally {
       setBusyGameId(null);
     }
   };
 
-  // Sort upcoming games first by start time, ascending. Old games
-  // shouldn't dominate the list.
   const sortByStart = (a: Game, b: Game) => a.startsAt - b.startsAt;
 
   const visible = useMemo(() => {
     let base: Game[];
     if (tab === 'mine') {
-      // "שלי" — exclude finished + cancelled. They belong to history,
-      // not the active list. The lifecycle helper handles legacy data
-      // (status='finished' meaning either real completion or
-      // cancellation) uniformly.
       base = myGames.filter(isVisibleInMyGames);
     } else {
-      // "פתוחים" — discovery list. Show only currently joinable games:
-      // status='open' AND startsAt > now. De-dupe across the community
-      // + open buckets in case a game appears in both.
       const set = new Map<string, Game>();
       [...communityGames, ...openGames]
         .filter(isVisibleInOpenGames)
@@ -188,139 +222,128 @@ export function GamesListScreen() {
   }, [tab, myGames, communityGames, openGames, filters]);
 
   const filterCount = activeFiltersCount(filters);
-
   const isEmpty = visible.length === 0;
 
+  // Counts shown on the segmented tabs — same numbers used to drive
+  // the "switch to other tab" CTA on the empty state.
+  const mineCount = myGames.filter(isVisibleInMyGames).length;
+  const openCount = useMemo(() => {
+    const set = new Set<string>();
+    [...communityGames, ...openGames]
+      .filter(isVisibleInOpenGames)
+      .forEach((g) => set.add(g.id));
+    return set.size;
+  }, [communityGames, openGames]);
+
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.gamesListTitle} showBack={false} />
-
-      {/* Segmented tabs + filter button. Filter sits next to the tabs
-          so it's discoverable but doesn't compete for vertical space. */}
-      <View style={styles.tabsWrap}>
-        <View style={styles.tabsRow}>
-          <View style={{ flex: 1 }}>
-            <SegmentedTabs
-              value={tab}
-              onChange={setTab}
-              options={[
-                {
-                  value: 'mine',
-                  label: he.matchesTabMine,
-                  badge: myGames.length,
-                },
-                {
-                  value: 'open',
-                  label: he.matchesTabOpen,
-                  badge: communityGames.length + openGames.length,
-                },
-              ]}
-            />
-          </View>
-          <Pressable
-            onPress={() => setFilterOpen(true)}
-            style={({ pressed }) => [
-              styles.filterButton,
-              filterCount > 0 && styles.filterButtonActive,
-              pressed && { opacity: 0.85 },
+    <View style={styles.root}>
+      {/* Hero pinned at the top of the screen. The controls row
+          below it is ALSO pinned (outside the scroll) but uses a
+          negative marginTop to float over the hero's bottom edge —
+          z-order: controls on top of hero. Same visual as before
+          the pinning change, just with the hero no longer scrolling. */}
+      <MatchesHero />
+      <View style={styles.controlsFloat}>
+        <View style={{ flex: 1 }}>
+          <MatchSegmentControl
+            value={tab}
+            onChange={setTab}
+            options={[
+              {
+                value: 'open',
+                label: he.matchesTabOpen,
+                badge: openCount,
+              },
+              {
+                value: 'mine',
+                label: he.matchesTabMine,
+                badge: mineCount,
+              },
             ]}
-            accessibilityLabel="filters"
-          >
-            <Ionicons
-              name="filter"
-              size={20}
-              color={filterCount > 0 ? colors.primary : colors.textMuted}
-            />
-            {filterCount > 0 ? (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{filterCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+          />
         </View>
-      </View>
-
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <SoccerBallLoader size={40} />
-        </View>
-      ) : isEmpty ? (
-        (() => {
-          // The "מצא משחקים" button switches to the open tab — useful
-          // only when that tab actually has something to show. When
-          // both tabs are empty (no community/discoverable games
-          // anywhere), the button dead-ends, so we replace it with
-          // motivational copy that points the user to the create CTA.
-          const otherTabHasGames =
-            tab === 'mine'
-              ? communityGames.length + openGames.length > 0
-              : myGames.length > 0;
-          return (
-            <View style={styles.emptyWrap}>
-              <View style={styles.emptyIcon}>
-                <Ionicons
-                  name="football-outline"
-                  size={56}
-                  color={colors.primary}
-                />
-              </View>
-              <Text style={styles.emptyBody}>
-                {otherTabHasGames
-                  ? he.emptyHomeBody
-                  : he.emptyHomeNoGamesAnywhere}
-              </Text>
-              <View style={styles.emptyActions}>
-                <Button
-                  title={he.emptyHomePrimary}
-                  variant="primary"
-                  size="lg"
-                  iconLeft="add-circle-outline"
-                  onPress={handleCreate}
-                  fullWidth
-                />
-                {otherTabHasGames && tab === 'mine' ? (
-                  <Button
-                    title={he.emptyHomeSecondary}
-                    variant="outline"
-                    size="lg"
-                    iconLeft="search-outline"
-                    onPress={() => setTab('open')}
-                    fullWidth
-                  />
-                ) : null}
-              </View>
-            </View>
-          );
-        })()
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={reload}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
+        <Pressable
+          onPress={() => setFilterOpen(true)}
+          style={({ pressed }) => [
+            styles.filterBtn,
+            filterCount > 0 && styles.filterBtnActive,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.gameFiltersButton}
         >
-          {visible.map((g) => (
-            <MatchCard
-              key={g.id}
-              game={g}
-              userId={user?.id ?? ''}
-              busy={busyGameId === g.id}
-              onPrimary={(cta) => handleCardPrimary(g, cta)}
-            />
-          ))}
-        </ScrollView>
-      )}
+          <Ionicons
+            name="options"
+            size={20}
+            color={filterCount > 0 ? '#FFFFFF' : '#1E40AF'}
+          />
+          {filterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={reload}
+            tintColor="#3B82F6"
+            colors={['#3B82F6']}
+          />
+        }
+      >
 
-      {/* Floating "+" — always visible while the user has any matches OR
-          is on the "mine" tab (so first-time users still see a creation
-          shortcut even though the empty state already has one). */}
+        <View style={styles.body}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>
+              {tab === 'open'
+                ? he.matchesSectionOpen
+                : he.matchesSectionMine}
+            </Text>
+            <View style={styles.sectionUnderline} />
+          </View>
+
+          {loading && visible.length === 0 ? (
+            <View style={styles.loadingWrap}>
+              <SoccerBallLoader size={40} />
+            </View>
+          ) : isEmpty ? (
+            <FullEmptyState
+              tab={tab}
+              hasGamesInOtherTab={
+                tab === 'mine' ? openCount > 0 : mineCount > 0
+              }
+              onCreate={handleCreate}
+              onSwitchToOpen={() => setTab('open')}
+            />
+          ) : (
+            <View style={styles.cardsList}>
+              {visible.map((g) => (
+                <MatchListCard
+                  key={g.id}
+                  game={g}
+                  userId={user?.id ?? ''}
+                  busy={busyGameId === g.id}
+                  onPrimary={(cta) => handleCardPrimary(g, cta)}
+                />
+              ))}
+              {/* Inviting CTA card after the list — only shown when
+                  there are visible cards already. The full empty
+                  state above replaces the list entirely. */}
+              <MatchEmptyHintCard onPress={handleCreate} />
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Floating "+" FAB — pinned to the bottom-LEFT under forceRTL.
+          `end: spacing.xl` is the trailing edge under RTL, which is
+          the visual LEFT (per spec). */}
       <Pressable
         onPress={() => {
           if (hintVisible) dismissHint();
@@ -332,7 +355,7 @@ export function GamesListScreen() {
         ]}
         accessibilityLabel="create-match"
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={30} color="#FFFFFF" />
       </Pressable>
 
       {hintVisible ? (
@@ -348,229 +371,190 @@ export function GamesListScreen() {
         onChange={setFilters}
         onClose={() => setFilterOpen(false)}
       />
-    </SafeAreaView>
-  );
-}
 
-// ─── SegmentedTabs ─────────────────────────────────────────────────────
-
-function SegmentedTabs<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: Array<{ value: T; label: string; badge?: number }>;
-}) {
-  return (
-    <View style={tabStyles.wrap}>
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <Pressable
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            style={[tabStyles.tab, active && tabStyles.tabActive]}
-          >
-            <Text
-              style={[tabStyles.label, active && tabStyles.labelActive]}
-              numberOfLines={1}
-            >
-              {opt.label}
-            </Text>
-            {opt.badge !== undefined && opt.badge > 0 ? (
-              <View
-                style={[
-                  tabStyles.badge,
-                  active && tabStyles.badgeActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    tabStyles.badgeText,
-                    active && tabStyles.badgeTextActive,
-                  ]}
-                >
-                  {opt.badge}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        );
-      })}
+      <ConfirmDestructiveModal
+        visible={!!lateCancelGame}
+        title={he.lateCancelTitle}
+        body={he.lateCancelBody(lateCancelGame?.cancelDeadlineHours ?? 0)}
+        confirmLabel={he.lateCancelConfirm}
+        onClose={() => setLateCancelGame(null)}
+        onConfirm={async () => {
+          const target = lateCancelGame;
+          setLateCancelGame(null);
+          if (target) await runCancel(target);
+        }}
+      />
     </View>
   );
 }
 
-const tabStyles = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.pill,
-    padding: 4,
-    gap: 4,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-  },
-  tabActive: {
-    backgroundColor: '#fff',
-    ...shadows.card,
-  },
-  label: {
-    ...typography.label,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  labelActive: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-  badgeActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  badgeText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-    fontSize: 11,
-  },
-  badgeTextActive: {
-    color: colors.primary,
-  },
-});
+// ─── Empty state (no cards in the active tab) ───────────────────────────
 
-// ─── Screen styles ──────────────────────────────────────────────────────
+function FullEmptyState({
+  tab,
+  hasGamesInOtherTab,
+  onCreate,
+  onSwitchToOpen,
+}: {
+  tab: Tab;
+  hasGamesInOtherTab: boolean;
+  onCreate: () => void;
+  onSwitchToOpen: () => void;
+}) {
+  return (
+    <View style={emptyStyles.wrap}>
+      <View style={emptyStyles.icon}>
+        <Ionicons name="football-outline" size={56} color="#3B82F6" />
+      </View>
+      <Text style={emptyStyles.body}>
+        {hasGamesInOtherTab
+          ? he.emptyHomeBody
+          : he.emptyHomeNoGamesAnywhere}
+      </Text>
+      <View style={emptyStyles.actions}>
+        <Button
+          title={he.emptyHomePrimary}
+          variant="primary"
+          size="lg"
+          iconLeft="add-circle-outline"
+          onPress={onCreate}
+          fullWidth
+        />
+        {hasGamesInOtherTab && tab === 'mine' ? (
+          <Button
+            title={he.emptyHomeSecondary}
+            variant="outline"
+            size="lg"
+            iconLeft="search-outline"
+            onPress={onSwitchToOpen}
+            fullWidth
+          />
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+// ─── Styles ────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-
-  tabsWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: {
+    paddingBottom: 120,
   },
-  tabsRow: {
+  // Pinned controls row that floats OVER the bottom edge of the
+  // hero. Negative marginTop pulls it up so the row sits on the
+  // hero's gradient instead of starting below it. zIndex/elevation
+  // raised so it visually layers on top of the hero across both
+  // platforms.
+  controlsFloat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop: -spacing.xxl,
+    zIndex: 2,
+    elevation: 2,
   },
-  filterButton: {
-    width: 44,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
+  filterBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 4,
   },
-  filterButtonActive: {
-    backgroundColor: colors.primaryLight,
+  filterBtnActive: {
+    backgroundColor: '#1E40AF',
   },
   filterBadge: {
     position: 'absolute',
     top: -4,
-    right: -4,
+    end: -4,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterBadgeText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
   },
-
-  list: {
+  body: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: 120,
-    gap: spacing.md,
+    paddingTop: spacing.xl,
+    gap: spacing.lg,
   },
-
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Section title row + blue underline indicator. `alignItems:
+  // 'flex-start'` resolves to the visual RIGHT under forceRTL — the
+  // same trick used on the Communities screen.
+  sectionTitleRow: {
+    paddingHorizontal: spacing.xs,
+    alignItems: 'flex-start',
+    gap: 4,
   },
-
-  emptyWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-    gap: spacing.md,
-  },
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: 'center',
+  sectionTitle: {
+    fontSize: 17,
     fontWeight: '800',
+    color: '#0F172A',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  emptyBody: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
+  sectionUnderline: {
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#3B82F6',
   },
-  emptyActions: {
-    alignSelf: 'stretch',
-    marginTop: spacing.lg,
-    gap: spacing.sm,
+  cardsList: {
+    gap: spacing.md,
+  },
+  loadingWrap: {
+    paddingVertical: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
+  // Floating action button — bottom LEFT under forceRTL.
   fab: {
     position: 'absolute',
     bottom: spacing.xxl,
     end: spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#3B82F6',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.raised,
+    shadowColor: '#1E40AF',
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
 
   // First-run hint bubble pointing at the FAB.
   hintBubble: {
     position: 'absolute',
-    bottom: spacing.xxl + 56 + 12,
+    bottom: spacing.xxl + 60 + 12,
     end: spacing.xl,
-    backgroundColor: colors.text,
+    backgroundColor: '#0F172A',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: 14,
     maxWidth: 220,
   },
   hintText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
@@ -581,7 +565,35 @@ const styles = StyleSheet.create({
     end: 24,
     width: 12,
     height: 12,
-    backgroundColor: colors.text,
+    backgroundColor: '#0F172A',
     transform: [{ rotate: '45deg' }],
+  },
+});
+
+const emptyStyles = StyleSheet.create({
+  wrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
+  },
+  icon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(59,130,246,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  actions: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
+    gap: spacing.sm,
   },
 });

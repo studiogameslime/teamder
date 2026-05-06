@@ -3,10 +3,10 @@
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -23,6 +23,7 @@ import {
 } from '@/screens/games/GameWizardForm';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'GameCreate'>;
+type Params = RouteProp<GameStackParamList, 'GameCreate'>;
 
 function nextThursday20(): number {
   const d = new Date();
@@ -32,12 +33,19 @@ function nextThursday20(): number {
   return d.getTime();
 }
 
-function buildInitial(g: Group): GameFormValues {
+function buildInitial(
+  g: Group,
+  overrides?: {
+    startsAt?: number;
+    format?: GameFormValues['format'];
+    numberOfTeams?: number;
+  },
+): GameFormValues {
   // Pre-fill location from the community's address+city when available.
   const baseLocation = [g.fieldAddress, g.city].filter((s) => !!s).join(', ');
   return {
     title: g.name,
-    startsAt: nextThursday20(),
+    startsAt: overrides?.startsAt ?? nextThursday20(),
     fieldName: g.fieldName ?? '',
     location: baseLocation,
     // Strict: never infer "selected from list" from a pre-filled
@@ -45,8 +53,8 @@ function buildInitial(g: Group): GameFormValues {
     // taps a city in the autocomplete dropdown. This guarantees the
     // saved fieldAddress always corresponds to a real city pick.
     locationFromList: false,
-    format: '5v5',
-    numberOfTeams: 2,
+    format: overrides?.format ?? '5v5',
+    numberOfTeams: overrides?.numberOfTeams ?? 2,
     matchDurationMinutes: '8',
     extraTimeMinutes: '',
     hasReferee: false,
@@ -64,11 +72,16 @@ function buildInitial(g: Group): GameFormValues {
     bringBall: true,
     bringShirts: true,
     minPlayers: '',
+    // 0 = unset. The wizard surfaces a default when it renders the
+    // recurring-only picker; standard mode never reads this field.
+    registrationOpensAt: 0,
   };
 }
 
 export function GameCreateScreen() {
   const nav = useNavigation<Nav>();
+  const route = useRoute<Params>();
+  const params = route.params ?? {};
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
 
@@ -84,7 +97,14 @@ export function GameCreateScreen() {
     );
   }
 
-  const [groupId, setGroupId] = useState<string>(myCommunities[0].id);
+  const isRecurring = params.recurring === true;
+  // In recurring mode the route locks us to the originating community
+  // (passed via params). In standard mode the user can pick from a
+  // dropdown across all their communities.
+  const lockedGroupId = isRecurring && params.groupId ? params.groupId : null;
+  const initialGroupId = lockedGroupId ?? myCommunities[0].id;
+
+  const [groupId, setGroupId] = useState<string>(initialGroupId);
   const selectedGroup = useMemo<Group | undefined>(
     () => myCommunities.find((g) => g.id === groupId),
     [myCommunities, groupId],
@@ -94,7 +114,12 @@ export function GameCreateScreen() {
   // pre-filled values (title, fieldName, address) match.
   const [initialKey, setInitialKey] = useState(0);
   const initial = useMemo(
-    () => buildInitial(selectedGroup ?? myCommunities[0]),
+    () =>
+      buildInitial(selectedGroup ?? myCommunities[0], {
+        startsAt: params.startsAt,
+        format: params.format,
+        numberOfTeams: params.numberOfTeams,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedGroup?.id, initialKey],
   );
@@ -111,47 +136,89 @@ export function GameCreateScreen() {
     const parsedExtra = parseInt(v.extraTimeMinutes, 10);
     const playersPerTeam =
       v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
-    const created = await gameService.createGameV2({
-      groupId: selectedGroup.id,
-      title: v.title.trim() || selectedGroup.name,
-      startsAt: v.startsAt,
-      fieldName: v.fieldName.trim(),
-      maxPlayers: playersPerTeam * v.numberOfTeams,
-      minPlayers:
-        Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
-      format: v.format,
-      numberOfTeams: v.numberOfTeams,
-      cancelDeadlineHours: v.cancelDeadlineHours,
-      fieldType: v.fieldType,
-      matchDurationMinutes:
-        Number.isFinite(parsedDuration) && parsedDuration > 0
-          ? parsedDuration
-          : undefined,
-      autoTeamGenerationMinutesBeforeStart: 60,
-      visibility: v.visibility,
-      requiresApproval: v.requiresApproval,
-      bringBall: v.bringBall,
-      bringShirts: v.bringShirts,
-      notes: v.notes.trim() || undefined,
-      fieldAddress: v.location.trim() || undefined,
-      hasReferee: v.hasReferee || undefined,
-      hasPenalties: v.hasPenalties || undefined,
-      hasHalfTime: v.hasHalfTime || undefined,
-      extraTimeMinutes:
-        Number.isFinite(parsedExtra) && parsedExtra > 0
-          ? parsedExtra
-          : undefined,
-      createdBy: user.id,
-    });
-    nav.replace('MatchDetails', { gameId: created.id });
+    // In recurring mode the wizard exposes a `registrationOpensAt`
+    // picker. Past values are allowed (they fall through to immediate
+    // open below) — the inline hint warns the admin that the push
+    // will fire right away. Standard mode has no field, so the value
+    // stays at 0 and we simply omit it from the create payload.
+    const regOpensAt =
+      isRecurring && v.registrationOpensAt > 0
+        ? v.registrationOpensAt
+        : undefined;
+    try {
+      const created = await gameService.createGameV2({
+        groupId: selectedGroup.id,
+        title: v.title.trim() || selectedGroup.name,
+        startsAt: v.startsAt,
+        fieldName: v.fieldName.trim(),
+        maxPlayers: playersPerTeam * v.numberOfTeams,
+        minPlayers:
+          Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
+        format: v.format,
+        numberOfTeams: v.numberOfTeams,
+        cancelDeadlineHours: v.cancelDeadlineHours,
+        fieldType: v.fieldType,
+        matchDurationMinutes:
+          Number.isFinite(parsedDuration) && parsedDuration > 0
+            ? parsedDuration
+            : undefined,
+        autoTeamGenerationMinutesBeforeStart: 60,
+        visibility: v.visibility,
+        requiresApproval: v.requiresApproval,
+        bringBall: v.bringBall,
+        bringShirts: v.bringShirts,
+        notes: v.notes.trim() || undefined,
+        fieldAddress: v.location.trim() || undefined,
+        hasReferee: v.hasReferee || undefined,
+        hasPenalties: v.hasPenalties || undefined,
+        hasHalfTime: v.hasHalfTime || undefined,
+        extraTimeMinutes:
+          Number.isFinite(parsedExtra) && parsedExtra > 0
+            ? parsedExtra
+            : undefined,
+        registrationOpensAt: regOpensAt,
+        createdBy: user.id,
+      });
+      (nav as { replace: (s: string, p: unknown) => void }).replace(
+        'MatchDetails',
+        { gameId: created.id },
+      );
+    } catch (err) {
+      // Overlap guard hit — show the user the existing game's title +
+      // time so they understand WHY we blocked the create. Other
+      // errors fall through to the wizard's generic error alert.
+      const e = err as Error & {
+        code?: string;
+        conflict?: { title: string; startsAt: number };
+      };
+      if (e.code === 'GAME_OVERLAP' && e.conflict) {
+        const ts = new Date(e.conflict.startsAt);
+        const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
+        Alert.alert(
+          he.createGameOverlapTitle,
+          he.createGameOverlapBody(e.conflict.title || he.createGameOverlapUnknownTitle, when),
+        );
+        return;
+      }
+      if (e.code === 'GAME_REG_AFTER_KICKOFF') {
+        Alert.alert(
+          he.editGameRegAfterKickoffTitle,
+          he.editGameRegAfterKickoffBody,
+        );
+        return;
+      }
+      throw err;
+    }
   };
 
   // Multi-community: render the picker as the wizard's top slot so the
   // whole page (header, picker, step indicator, form) shares one scroll.
   // Compact dropdown variant (rather than expanded card list) — keeps
   // step 1 short and scannable when the user has multiple groups.
+  // Recurring mode hides the picker entirely — the route param locks
+  // the community.
   const extraTopSlot =
-    myCommunities.length > 1 ? (
+    !lockedGroupId && myCommunities.length > 1 ? (
       <CommunityDropdown
         options={myCommunities}
         selected={selectedGroup}
@@ -161,11 +228,23 @@ export function GameCreateScreen() {
 
   return (
     <GameWizardForm
-      headerTitle={he.createGameTitle}
+      // Force a remount whenever the user picks a different community
+      // from the dropdown. Without this, GameWizardForm's internal
+      // `useState(initial)` only seeds on first mount and never re-
+      // syncs when `initial` changes — so the form fields kept showing
+      // the FIRST community's pre-fill (title/fieldName/address) even
+      // after the user picked a different community. Visually this
+      // looked like "I picked X but it created a game on Y", because
+      // the title displayed was Y's name (the original community's).
+      key={`${selectedGroup?.id ?? 'none'}-${initialKey}`}
+      headerTitle={
+        isRecurring ? he.createGameRecurringTitle : he.createGameTitle
+      }
       submitLabel={he.createGameSubmit}
       initial={initial}
       onSubmit={submit}
       extraTopSlot={extraTopSlot}
+      mode={isRecurring ? 'recurring' : 'standard'}
     />
   );
 }

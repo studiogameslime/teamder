@@ -162,6 +162,12 @@ export function canEditGame(game: Game, actor: ActorFlags): boolean {
   if (!actor.isOrganizerOrAdmin) return false;
   if (isTerminal(game)) return false;
   if (isActive(game)) return false; // mid-evening: edit-by-mistake risk
+  // Once kickoff time has passed, the game is "live in the world"
+  // even if the status hasn't auto-flipped yet — editing things like
+  // start time / format / location after that point is more
+  // confusing than helpful. Locks the affordance regardless of
+  // whether the auto-flip CF has caught up.
+  if (hasStarted(game)) return false;
   return true;
 }
 

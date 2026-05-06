@@ -36,11 +36,11 @@ import {
 import Constants from 'expo-constants';
 
 import { Button } from '@/components/Button';
-import { AchievementBadge } from '@/components/AchievementBadge';
-import { ProfileHeader } from '@/components/profile/ProfileHeader';
-import { StatsGrid } from '@/components/profile/StatsGrid';
+import { ProfileHeroCard } from '@/components/profile/ProfileHeroCard';
+import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
 import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { ReferralCard } from '@/components/profile/ReferralCard';
+import { AchievementsRail } from '@/components/profile/AchievementsRail';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -208,7 +208,6 @@ export function ProfileScreen() {
 
   const totalGames = user.stats?.totalGames ?? 0;
   const attendedCount = user.stats?.attended ?? 0;
-  const cancelledCount = user.stats?.cancelled ?? 0;
   const attendance = getAttendanceRate(user.stats);
   // Strict derivation when ready; while computing we render nothing
   // rather than risk showing stale stored counters.
@@ -395,96 +394,62 @@ export function ProfileScreen() {
           />
         }
       >
-        {/* ① HEADER. Hamburger button floats inside the gradient at
-            the top-leading edge — RTL flips so it lands on the right
-            visually, which is the natural spot for a back/menu
-            affordance in Hebrew. */}
-        <SafeAreaView edges={['top']} style={styles.headerArea}>
-          <ProfileHeader jersey={headerJersey} name={user.name} />
-          <Pressable
-            onPress={() => setMenuOpen(true)}
-            hitSlop={10}
-            style={({ pressed }) => [
-              styles.menuButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            accessibilityLabel={he.profileMenuOpen}
-            accessibilityRole="button"
-          >
-            <Ionicons name="menu" size={24} color="#FFFFFF" />
-          </Pressable>
-        </SafeAreaView>
+        {/* ① HERO. ImageBackground stadium + dark gradient + the
+            top-bar buttons. Hamburger lives inside the hero so the
+            background image fills behind it. */}
+        <ProfileHeroCard
+          jersey={headerJersey}
+          name={user.name}
+          subtitle={he.profileSubtitlePlayer}
+          onMenuPress={() => setMenuOpen(true)}
+          onEditJersey={() => nav.navigate('JerseyPicker')}
+          onNotificationsPress={() => nav.navigate('NotificationsSettings')}
+        />
 
-        {/* ② STATS GRID */}
-        <View style={styles.body}>
-          <StatsGrid
-            stats={[
-              {
-                label: he.profileStatTotalGames,
-                value: String(totalGames),
-                icon: 'football-outline',
-              },
-              {
-                label: he.profileStatAttendance,
-                value: `${attendance}%`,
-                tint: colors.primary,
-                icon: 'checkmark-circle-outline',
-              },
-              {
-                label: he.profileStatAttended,
-                value: String(attendedCount),
-                icon: 'trophy-outline',
-              },
-              {
-                label: he.profileStatCancelRate,
-                value: String(cancelledCount),
-                tint:
-                  cancelledCount > 0 && totalGames > 0
-                    ? colors.textMuted
-                    : undefined,
-                icon: 'close-circle-outline',
-              },
-            ]}
+        {/* ② Floating stats card overlapping the hero bottom. */}
+        <View style={styles.statsWrap}>
+          <HeroStatsCard
+            totalGames={totalGames}
+            attended={attendedCount}
+            goals={user.stats?.goals ?? 0}
+            attendancePct={attendance}
           />
+        </View>
 
-          {/* ③ Referral metric — full width, single line */}
+        <View style={styles.body}>
+          {/* ③ Referral row */}
           <ReferralCard count={referralCount} />
 
-          {/* ④ Discipline snapshot — compact row */}
+          {/* ④ Discipline row (red/yellow indicators on leading edge) */}
           <DisciplineRow userId={user.id} />
 
-          {/* ⑤ Achievements rail — kept lightweight, optional */}
-          {achievements.length > 0 ? (
-            <View style={styles.achievementsBlock}>
-              <Text style={styles.sectionTitle}>{he.achievementsTitle}</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.achievementsRail}
-              >
-                {achievements.slice(0, 12).map((a) => (
-                  <View key={a.def.id} style={styles.achievementCell}>
-                    <AchievementBadge
-                      def={a.def}
-                      unlocked={a.unlocked}
-                      size={56}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-
-          {/* ⑥ PRIMARY CTA — sole call-to-action on this screen */}
-          <Button
-            title={he.profileInviteFriendsCta}
-            variant="primary"
-            size="lg"
-            iconLeft="share-social-outline"
-            fullWidth
-            onPress={handleShareInvite}
-            style={{ marginTop: spacing.sm }}
+          {/* ⑤ Achievements rail (circular ring + label) */}
+          <AchievementsRail
+            items={achievements}
+            onSeeAll={() => nav.navigate('Achievements')}
           />
+
+          {/* ⑥ PRIMARY CTA — invite friends. Blue accent (matches
+              the new profile palette) but uses the brand-Button for
+              consistency with the rest of the app. */}
+          <Pressable
+            onPress={handleShareInvite}
+            style={({ pressed }) => [
+              styles.inviteCta,
+              pressed && { opacity: 0.9 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.profileInviteFriendsCta}
+          >
+            <Ionicons
+              name="share-social-outline"
+              size={18}
+              color="#FFFFFF"
+            />
+            <Text style={styles.inviteCtaText}>
+              {he.profileInviteFriendsCta}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -547,55 +512,41 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing.xxl,
   },
-  // SafeAreaView wraps the gradient so the status bar area is part
-  // of the green band — looks more polished than a status bar floating
-  // over the content. The hamburger button sits absolutely on top.
-  headerArea: {
-    backgroundColor: '#15803D', // matches gradient end colour
-    position: 'relative',
-  },
-  menuButton: {
-    position: 'absolute',
-    top: 0,
-    // RN flips `start`/`end` at runtime under RTL. The spec asks for
-    // top-left (the actual leading visual edge in our left-running
-    // gesture model), so under forceRTL=true the leading edge is the
-    // right side of the screen — `start` lands there. If we ever
-    // disable forceRTL the same code lands on the visual left.
-    start: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    // Push well below the status-bar / safe-area inset so the icon
-    // doesn't fight for space with the time/network indicators.
-    // ~32 px is enough on every notch/punch-hole Android we test on.
-    marginTop: spacing.xl,
+  // Floating stats card — pulled UP via negative margin to overlap
+  // the bottom edge of the hero gradient, then padded so its
+  // shadow doesn't get clipped by the next section.
+  statsWrap: {
+    marginTop: -28,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   body: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
     gap: spacing.md,
   },
-  sectionTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-    marginBottom: spacing.xs,
-  },
-  achievementsBlock: {
-    gap: spacing.xs,
-  },
-  achievementsRail: {
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  achievementCell: {
+  // Bespoke invite CTA — bright royal blue (matches the new
+  // profile palette) with a subtle shadow. Hand-rolled instead of
+  // the brand-green Button so the screen's accent stays cohesive.
+  inviteCta: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: '#2563EB',
+    marginTop: spacing.sm,
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  // Reserved tokens for future visual tweaks.
+  inviteCtaText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  // Reserved aliases — keep so any straggling refs still resolve.
   _radius: { borderRadius: radius.lg },
 });
