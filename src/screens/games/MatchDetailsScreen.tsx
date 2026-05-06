@@ -922,7 +922,7 @@ export function MatchDetailsScreen() {
             onPress={() => {
               // Reset to the games list — no back stack relies on
               // this screen, so we navigate fresh.
-              const navAny = nav as { navigate: (s: string, p?: unknown) => void };
+              const navAny = nav as unknown as { navigate: (s: string, p?: unknown) => void };
               navAny.navigate('GameTab', { screen: 'GamesList' });
             }}
           />

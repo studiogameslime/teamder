@@ -618,6 +618,18 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       autoTeamsGeneratedBy: g.autoTeamsGeneratedBy ?? null,
       teamsEditedManually: g.teamsEditedManually ?? false,
       teamBalanceMeta: g.teamBalanceMeta ?? null,
+      // Deferred-open recurring games. `registrationOpensAt` is the
+      // ms epoch the CF flips status from 'scheduled' to 'open' at;
+      // `openedNotificationSent` is the idempotency latch the CF
+      // sets after firing the "registration opened" push so a retry
+      // doesn't double-notify. Both round-trip through the converter
+      // (createGameV2 → addDoc → toFirestore) — leaving them out
+      // here silently drops them at write time.
+      registrationOpensAt:
+        typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > 0
+          ? g.registrationOpensAt
+          : null,
+      openedNotificationSent: g.openedNotificationSent ?? false,
       guests: Array.isArray(g.guests)
         ? (g.guests as import('@/types').GameGuest[]).map((x) => ({
             id: x.id,
@@ -762,6 +774,11 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       teamsEditedManually: d.teamsEditedManually === true,
       teamBalanceMeta: readTeamBalanceMeta(d.teamBalanceMeta),
       guests: readGuests(d.guests),
+      registrationOpensAt:
+        typeof d.registrationOpensAt === 'number' && d.registrationOpensAt > 0
+          ? d.registrationOpensAt
+          : undefined,
+      openedNotificationSent: d.openedNotificationSent === true,
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };

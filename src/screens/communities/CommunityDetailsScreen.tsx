@@ -280,7 +280,7 @@ export function CommunityDetailsScreen() {
             size="lg"
             style={{ marginTop: spacing.lg }}
             onPress={() => {
-              const navAny = nav as { navigate: (s: string, p?: unknown) => void };
+              const navAny = nav as unknown as { navigate: (s: string, p?: unknown) => void };
               navAny.navigate('CommunitiesTab', {
                 screen: 'CommunitiesFeed',
               });
