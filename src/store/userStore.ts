@@ -39,9 +39,17 @@ export const useUserStore = create<UserStore>((set, get) => ({
   currentUser: null,
 
   hydrate: async () => {
+    // Defensive: each branch wrapped so a single failure (transient
+    // network drop on the /users/{uid} read, AsyncStorage corruption)
+    // doesn't leave `hydrated: false` forever. RootNavigator gates
+    // the splash on this flag — silent rejections meant a perma-
+    // splash that was unrecoverable without a force-close.
     const [onboardingDone, user] = await Promise.all([
-      storage.getOnboardingDone(),
-      userService.getCurrentUser(),
+      storage.getOnboardingDone().catch(() => false),
+      userService.getCurrentUser().catch((err) => {
+        if (__DEV__) console.warn('[userStore.hydrate] getCurrentUser', err);
+        return null;
+      }),
     ]);
     set({ hydrated: true, onboardingDone, currentUser: user });
   },

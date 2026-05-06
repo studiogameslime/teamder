@@ -84,19 +84,31 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   pendingGroups: [],
 
   hydrate: async (userId) => {
+    // Each fetch wrapped individually so a single failure doesn't
+    // reject the whole Promise.all and leave `hydrated: false`
+    // forever — RootNavigator gates the splash on this flag, so a
+    // silent rejection meant a permanently-stuck loader after,
+    // e.g., a transient permission-denied or a fresh-install state
+    // where the queries return empty under odd rules.
     const [groups, pendingGroups, savedId] = await Promise.all([
-      groupService.listForUser(userId),
-      groupService.listPendingForUser(userId),
-      storage.getCurrentGroupId(),
+      groupService.listForUser(userId).catch((err) => {
+        if (__DEV__) console.warn('[groupStore.hydrate] listForUser', err);
+        return [] as Group[];
+      }),
+      groupService.listPendingForUser(userId).catch((err) => {
+        if (__DEV__) console.warn('[groupStore.hydrate] listPending', err);
+        return [] as Group[];
+      }),
+      storage.getCurrentGroupId().catch(() => null),
     ]);
     let currentGroupId = savedId;
     if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
       currentGroupId = null;
-      await storage.setCurrentGroupId(null);
+      await storage.setCurrentGroupId(null).catch(() => {});
     }
     if (!currentGroupId && groups.length > 0) {
       currentGroupId = groups[0].id;
-      await storage.setCurrentGroupId(currentGroupId);
+      await storage.setCurrentGroupId(currentGroupId).catch(() => {});
     }
     set({ hydrated: true, groups, pendingGroups, currentGroupId });
   },
