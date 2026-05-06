@@ -62,6 +62,7 @@ import {
   type ParticipantEntry,
 } from '@/components/match/MatchParticipantsSection';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
+import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import { useGameEvents } from '@/services/useGameEvents';
 import {
   canCancelRegistration,
@@ -653,6 +654,24 @@ export function MatchDetailsScreen() {
     const grp = myCommunities.find((c) => c.id === game.groupId);
     return !!grp && grp.adminIds.includes(user.id);
   }, [user, game, myCommunities]);
+
+  // Store-review trigger A: the organiser of this game is looking
+  // at it and the roster has filled to capacity. That's the
+  // emotional peak for an admin — their effort paid off — so we
+  // ask for a rating. The service throttles cross-game (90d) and
+  // dedups in-session per gameId, so we can fire on every render
+  // without worrying about loops.
+  useEffect(() => {
+    if (!user || !game) return;
+    if (game.createdBy !== user.id) return;
+    if (game.status === 'finished' || game.status === 'cancelled') return;
+    const totalSeats = game.maxPlayers ?? 0;
+    if (totalSeats <= 0) return;
+    const filled =
+      (game.players?.length ?? 0) + (game.guests?.length ?? 0);
+    if (filled < totalSeats) return;
+    void maybeRequestStoreReview('gameFilled', game.id);
+  }, [user, game]);
 
   const adminUids = useMemo(() => {
     if (!game) return new Set<string>();

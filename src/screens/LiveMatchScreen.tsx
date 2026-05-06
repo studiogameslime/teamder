@@ -67,6 +67,7 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { TeamsOverviewSheet, TeamSlot } from '@/components/TeamsOverviewSheet';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import {
   canEnterLive,
   isCancelled as isCancelledHelper,
@@ -917,6 +918,14 @@ export function LiveMatchScreen() {
         roundNumber: currentRoundNumber,
         outcome: winner,
       });
+      // Store-review trigger B: a sustained successful evening.
+      // After the third round ends the user has had a real soccer
+      // experience worth rating — we ask once per gameId, throttled
+      // to once per 90 days globally. Earlier rounds skip; later
+      // rounds dedup via the service's session+disk latches.
+      if (currentRoundNumber >= 3) {
+        void maybeRequestStoreReview('matchFinished', gameId);
+      }
     },
     [live, isAdmin, gameId, waitingLetters, commit, sessionState],
   );

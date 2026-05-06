@@ -13,6 +13,11 @@ const KEYS = {
   // the same "X deleted account" notification to every admin again.
   // Cleared once the auth-delete actually succeeds.
   DELETE_SWEEP_NOTIFIED: 'footy.deleteSweep.notified',
+  // Last time we surfaced the in-app store-review prompt (ms epoch).
+  // Combined with a 90-day cool-down before the next ask, on top of
+  // the OS-level rate limit. Stored once per device — shared across
+  // the user's accounts so we don't prompt on a borrowed phone.
+  STORE_REVIEW_LAST_SHOWN: 'footy.storeReview.lastShown',
   // Stash for an invite link (teamder://session/<id> or /team/<id>) the
   // user opened before they were authenticated. RootNavigator consumes
   // this after the post-sign-in onboarding completes.
@@ -79,6 +84,16 @@ export const storage = {
   },
   async clearDeleteSweepNotified(): Promise<void> {
     await AsyncStorage.removeItem(KEYS.DELETE_SWEEP_NOTIFIED);
+  },
+
+  async getStoreReviewLastShownAt(): Promise<number> {
+    const raw = await AsyncStorage.getItem(KEYS.STORE_REVIEW_LAST_SHOWN);
+    if (!raw) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  },
+  async setStoreReviewLastShownAt(ms: number): Promise<void> {
+    await AsyncStorage.setItem(KEYS.STORE_REVIEW_LAST_SHOWN, String(ms));
   },
 
   async getPendingInvite(): Promise<PendingInvite | null> {

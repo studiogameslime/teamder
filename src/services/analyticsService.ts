@@ -105,6 +105,13 @@ export const AnalyticsEvent = {
    *  `NotificationsToggled` which only counts how many are on). */
   NotificationPrefChanged: 'notification_pref_changed',
 
+  // Growth
+  /** We surfaced the in-app store-review prompt. The OS doesn't tell
+   *  us whether the user actually rated, so this just measures how
+   *  often the prompt was shown — gives us a top-of-funnel number
+   *  to weigh against new ratings appearing in the store console. */
+  StoreReviewPrompted: 'store_review_prompted',
+
   // Settings
   ReportBugClicked: 'report_bug_clicked',
   SuggestFeatureClicked: 'suggest_feature_clicked',
