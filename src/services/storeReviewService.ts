@@ -57,7 +57,12 @@ export async function maybeRequestStoreReview(
   }
 
   const key = sessionKey(trigger, contextId);
+  // Add to the dedup set SYNCHRONOUSLY before any await — otherwise
+  // a second caller (e.g. a re-render firing the same effect again
+  // while the first call is awaiting AsyncStorage) can pass the
+  // `has(key)` check and we'd end up calling requestReview twice.
   if (sessionShown.has(key)) return false;
+  sessionShown.add(key);
 
   try {
     const lastAt = await storage.getStoreReviewLastShownAt();
@@ -67,7 +72,6 @@ export async function maybeRequestStoreReview(
     const available = await StoreReview.isAvailableAsync();
     if (!available) return false;
 
-    sessionShown.add(key);
     await storage.setStoreReviewLastShownAt(Date.now());
     logEvent(AnalyticsEvent.StoreReviewPrompted, {
       trigger,
