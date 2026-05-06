@@ -49,6 +49,7 @@ type NotificationType =
   | 'inviteToGame'
   | 'rateReminder'
   | 'gameFillingUp'
+  | 'gameRsvpNudge'
   | 'playerCancelled'
   | 'groupDeleted';
 
@@ -132,6 +133,13 @@ function buildMessage(
         body: when
           ? `${gameTitle} מתחיל ב-${when}`
           : `${gameTitle} מתחיל בקרוב`,
+      };
+    case 'gameRsvpNudge':
+      return {
+        title: 'אתה בא למשחק?',
+        body: when
+          ? `${gameTitle} מתחיל ב-${when}. אתה מצטרף?`
+          : `${gameTitle} מתחיל היום. אתה מצטרף?`,
       };
     case 'gameCanceledOrUpdated': {
       // The dispatch site sends `action: 'cancelled' | 'deleted' |
@@ -422,10 +430,13 @@ async function deliverBatch(
   // Notifications that should render with action buttons advertise
   // a category id; expo-notifications matches it against the
   // categories the client registered at boot (see App.tsx) and the
-  // OS draws the buttons. `gameReminder` is the only category right
-  // now ("אני בא" / "לא בא") — adding more is a one-line append.
+  // OS draws the buttons. `gameReminder` and `gameRsvpNudge` both
+  // use the same "אני בא / לא בא" pair — they differ only in
+  // recipient list and timing.
   const categoryIdentifier =
-    type === 'gameReminder' ? 'GAME_REMINDER' : undefined;
+    type === 'gameReminder' || type === 'gameRsvpNudge'
+      ? 'GAME_REMINDER'
+      : undefined;
 
   // sendEachForMulticast is capped at 500 tokens per call.
   const all = Array.from(tokens);
@@ -622,6 +633,131 @@ export const sendGameReminders = onSchedule(
     await Promise.all(ops);
     console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
   }
+);
+
+// ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
+
+/**
+ * Per-user push to community members who are still on the fence
+ * 5 hours before kickoff. The push carries the same JOIN/CANCEL
+ * action buttons as `gameReminder`, so the recipient can lock
+ * their answer without opening the app — exactly the WhatsApp-poll
+ * UX we're trying to replace.
+ *
+ * Eligibility:
+ *   • game.status === 'open'
+ *   • game.startsAt in [now+4h50m, now+5h10m]  (matches our 15-min
+ *     cron cadence)
+ *   • !game.rsvpNudgeSent  (per-game latch)
+ *   • not already at capacity
+ *
+ * Recipients per game:
+ *   • the parent group's playerIds + adminIds  (community members)
+ *   • MINUS anyone already in players / waitlist / pending
+ *   • MINUS anyone in `cancellations` (they explicitly opted out)
+ *   • MINUS the game's createdBy (don't ping the organiser about
+ *     their own game)
+ */
+export const sendRsvpNudges = onSchedule(
+  {
+    schedule: 'every 15 minutes',
+    timeZone: 'Asia/Jerusalem',
+  },
+  async () => {
+    const now = Date.now();
+    const lower = now + 4 * 60 * 60 * 1000 + 50 * 60 * 1000;
+    const upper = now + 5 * 60 * 60 * 1000 + 10 * 60 * 1000;
+
+    const snap = await db
+      .collection('games')
+      .where('startsAt', '>=', lower)
+      .where('startsAt', '<', upper)
+      .get();
+
+    if (snap.empty) {
+      console.log('[sendRsvpNudges] no candidate games');
+      return;
+    }
+
+    let nudged = 0;
+    for (const doc of snap.docs) {
+      const g = doc.data() as {
+        title?: string;
+        startsAt?: number;
+        status?: string;
+        rsvpNudgeSent?: boolean;
+        groupId?: string;
+        createdBy?: string;
+        players?: string[];
+        waitlist?: string[];
+        pending?: string[];
+        cancellations?: Record<string, number>;
+        guests?: unknown[];
+        maxPlayers?: number;
+      };
+      if (g.rsvpNudgeSent) continue;
+      if (g.status !== 'open') continue;
+      if (!g.groupId) continue;
+      const playersCount = g.players?.length ?? 0;
+      const guestsCount = g.guests?.length ?? 0;
+      if (g.maxPlayers && playersCount + guestsCount >= g.maxPlayers) continue;
+
+      // Pull the parent group to enumerate its members.
+      const groupSnap = await db.collection('groups').doc(g.groupId).get();
+      if (!groupSnap.exists) continue;
+      const grp = groupSnap.data() as {
+        playerIds?: string[];
+        adminIds?: string[];
+      };
+      const members = new Set<string>([
+        ...(grp.playerIds ?? []),
+        ...(grp.adminIds ?? []),
+      ]);
+
+      // Exclusions: anyone already in any roster bucket, anyone who
+      // already cancelled (they opted out), the organiser themselves.
+      const exclude = new Set<string>([
+        ...(g.players ?? []),
+        ...(g.waitlist ?? []),
+        ...(g.pending ?? []),
+        ...Object.keys(g.cancellations ?? {}),
+      ]);
+      if (g.createdBy) exclude.add(g.createdBy);
+
+      const targets = Array.from(members).filter((uid) => !exclude.has(uid));
+      if (targets.length === 0) {
+        // Still flip the latch so we don't re-query this game every
+        // 15 min until kickoff.
+        await doc.ref.update({ rsvpNudgeSent: true });
+        continue;
+      }
+
+      // One notification doc per target — the per-user dispatch path
+      // (resolveRecipients reads `recipientId`) keeps the prefs gate
+      // honest. Same pattern as `joinRequest` / `inviteToGame`.
+      const ops: Promise<unknown>[] = [];
+      for (const uid of targets) {
+        ops.push(
+          db.collection('notifications').add({
+            type: 'gameRsvpNudge',
+            recipientId: uid,
+            payload: {
+              gameId: doc.id,
+              gameTitle: g.title || 'המשחק',
+              startsAt: g.startsAt,
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            delivered: false,
+          }),
+        );
+      }
+      ops.push(doc.ref.update({ rsvpNudgeSent: true }));
+      await Promise.all(ops);
+      nudged += targets.length;
+    }
+
+    console.log(`[sendRsvpNudges] nudged ${nudged} member(s)`);
+  },
 );
 
 // ─── Scheduled: deferred-open flip for recurring games ──────────────────

@@ -610,6 +610,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       reminderSent: g.reminderSent ?? false,
       rateReminderSent: g.rateReminderSent ?? false,
       capacityNoticeSent: g.capacityNoticeSent ?? false,
+      rsvpNudgeSent: g.rsvpNudgeSent ?? false,
       arrivals: g.arrivals ?? null,
       cancellations: g.cancellations ?? null,
       autoTeamGenerationMinutesBeforeStart:
@@ -758,6 +759,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,
+      rsvpNudgeSent: d.rsvpNudgeSent === true,
       arrivals: readArrivals(d.arrivals),
       cancellations: readCancellations(d.cancellations),
       autoTeamGenerationMinutesBeforeStart:

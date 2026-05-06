@@ -1188,6 +1188,8 @@ export const he = {
   notifRateReminderSub: 'אחרי משחק שסיימת — שעה אחרי הסיום',
   notifGameFillingUp: 'מקום אחרון במשחק קרוב',
   notifGameFillingUpSub: 'משחקים בקבוצה שלך שכמעט מלאים',
+  notifGameRsvpNudge: 'תזכורת להירשם למשחק',
+  notifGameRsvpNudgeSub: 'נשלחת 5 שעות לפני המשחק אם עדיין לא ענית',
   notifPlayerCancelled: 'שחקן ביטל השתתפות',
   notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמשחק שאני מארגן',
   notifGroupDeleted: 'קהילה נסגרה',

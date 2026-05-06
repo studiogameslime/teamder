@@ -138,6 +138,7 @@ export function navigateForPush(
     case 'inviteToGame':
     case 'rateReminder':
     case 'gameFillingUp':
+    case 'gameRsvpNudge':
     case 'playerCancelled':
       // Account-deletion variant: no specific gameId in the payload
       // (the user dropped from multiple games at once). Send the

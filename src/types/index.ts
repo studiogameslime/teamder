@@ -226,6 +226,8 @@ export interface NotificationPrefs {
   rateReminder: boolean;
   /** Player: a game in my community is almost full — last spots. */
   gameFillingUp: boolean;
+  /** Player: gentle nudge 5h before a game I haven't RSVP'd to. */
+  gameRsvpNudge: boolean;
   /** Organizer: a registered player just cancelled their participation. */
   playerCancelled: boolean;
   /** Member: a community I belong to was deleted by its admin. */
@@ -244,6 +246,7 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   inviteToGame: true,
   rateReminder: true,
   gameFillingUp: true,
+  gameRsvpNudge: true,
   playerCancelled: true,
   groupDeleted: true,
 };
@@ -261,6 +264,14 @@ export type NotificationType =
   | 'inviteToGame'
   | 'rateReminder'
   | 'gameFillingUp'
+  /**
+   * 5h-before-kickoff "did you forget to RSVP?" push. Targeted at
+   * community members who are NOT yet in players/waitlist/pending
+   * for the game and haven't explicitly cancelled. Carries the
+   * same `GAME_REMINDER` category as `gameReminder` so the user
+   * can join/decline straight from the notification buttons.
+   */
+  | 'gameRsvpNudge'
   /**
    * Sent to the game admin (createdBy) every time a registered player
    * cancels their participation. The admin needs visibility into who
@@ -763,6 +774,14 @@ export interface Game {
    * the notice once — additional joins shouldn't re-trigger.
    */
   capacityNoticeSent?: boolean;
+
+  /**
+   * Flipped to true by `sendRsvpNudges` once the 5h-before-kickoff
+   * "did you forget to RSVP?" push has fanned out to community
+   * members who hadn't joined or cancelled yet. Latches to one
+   * dispatch per game.
+   */
+  rsvpNudgeSent?: boolean;
 
   /**
    * Per-player arrival status, keyed by user id. Missing keys are
