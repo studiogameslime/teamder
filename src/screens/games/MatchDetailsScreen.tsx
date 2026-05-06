@@ -2373,7 +2373,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: 999,
@@ -2692,7 +2692,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.pill,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.primaryLight,
   },
   wazeText: {
     color: colors.primary,

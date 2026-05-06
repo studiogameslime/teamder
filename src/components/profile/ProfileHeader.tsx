@@ -25,7 +25,7 @@ export function ProfileHeader({ jersey, name, style }: Props) {
   return (
     <View style={[styles.wrap, style]}>
       <LinearGradient
-        colors={['#16A34A', '#15803D', '#0F5F2C']}
+        colors={['#1E40AF', '#1E3A8A', '#0F172A']}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.content}>

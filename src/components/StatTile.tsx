@@ -26,7 +26,9 @@ interface Props {
 }
 
 const TONE_COLOR: Record<Tone, string> = {
-  primary: '#16A34A',
+  // Brand-blue (was the legacy #16A34A green). The "primary" tone is
+  // shared with the rest of the redesigned chrome — keep it aligned.
+  primary: '#1E40AF',
   info: '#2563EB',
   warning: '#EA580C',
   danger: '#DC2626',

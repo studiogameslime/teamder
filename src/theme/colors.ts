@@ -52,9 +52,18 @@ interface Palette {
 }
 
 const lightPalette: Palette = {
-  primary: '#16A34A',
-  primaryDark: '#15803D',
-  primaryLight: '#DCFCE7',
+  // Brand was green for v1 but the redesigned heroes / onboarding /
+  // sign-in surfaces all use blue, and mixing the two felt off. We
+  // flip the primary triplet to blue here so every legacy
+  // `colors.primary` usage (Button variant=primary, outline border,
+  // checkmark accents, etc.) lights up the new brand without
+  // chasing 100+ call sites individually.
+  // `success`, `field*`, `gkGlove`, and `team3` deliberately stay
+  // green — those carry semantic green meaning ("approved", the
+  // pitch chrome, one of the rotating team tints).
+  primary: '#1E40AF',
+  primaryDark: '#1E3A8A',
+  primaryLight: '#DBEAFE',
 
   bg: '#F9FAFB',
   surface: '#FFFFFF',
@@ -87,10 +96,10 @@ const lightPalette: Palette = {
 };
 
 const darkPalette: Palette = {
-  // Slightly lighter green so it pops on dark surfaces.
-  primary: '#22C55E',
-  primaryDark: '#16A34A',
-  primaryLight: '#064E3B',
+  // Lighter blue tones so the primary CTA pops on dark surfaces.
+  primary: '#3B82F6',
+  primaryDark: '#1E40AF',
+  primaryLight: '#1E3A8A',
 
   bg: '#0B0F14',          // app background
   surface: '#11161D',     // cards
