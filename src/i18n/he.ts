@@ -1185,6 +1185,8 @@ export const he = {
   notifGameFillingUpSub: 'משחקים בקבוצה שלך שכמעט מלאים',
   notifPlayerCancelled: 'שחקן ביטל השתתפות',
   notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמשחק שאני מארגן',
+  notifGroupDeleted: 'קהילה נסגרה',
+  notifGroupDeletedSub: 'כשמנהל מוחק קהילה שאני חבר בה',
   notifSave: 'שמור',
   notifSaved: 'נשמר',
 

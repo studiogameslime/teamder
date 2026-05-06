@@ -336,6 +336,13 @@ export const groupService = {
       if (!g.playerIds.includes(userId)) g.playerIds = [...g.playerIds, userId];
       g.updatedAt = Date.now();
       syncMockPublic(g);
+      // Symmetric to rejectMember — the requester gets a push the
+      // moment their request is decided.
+      notificationsService.dispatch({
+        type: 'approved',
+        recipientId: userId,
+        payload: { groupId, groupName: g.name },
+      });
       return g;
     }
     // Capacity recheck — race-safe via a transaction so two admins
@@ -399,6 +406,14 @@ export const groupService = {
     } catch (err) {
       if (__DEV__) console.warn('[groupService] failed to sync public memberCount', err);
     }
+    // Symmetric to rejectMember — push the requester a "your
+    // community-join request was approved" notification so they see
+    // confirmation without having to refresh the app.
+    notificationsService.dispatch({
+      type: 'approved',
+      recipientId: userId,
+      payload: { groupId, groupName: g.name },
+    });
     return g;
   },
 
@@ -751,10 +766,48 @@ export const groupService = {
       if (!g.adminIds.includes(callerId)) {
         throw new Error('deleteGroup: caller is not an admin');
       }
+      // Notify every member that the community is gone — distinct
+      // from the per-game pushes below, since members not registered
+      // to a current game wouldn't otherwise know.
+      const memberRecipients = new Set<string>([
+        ...(g.playerIds ?? []),
+        ...(g.adminIds ?? []),
+      ]);
+      memberRecipients.delete(callerId);
+      for (const uid of memberRecipients) {
+        notificationsService.dispatch({
+          type: 'groupDeleted',
+          recipientId: uid,
+          payload: { groupId, groupName: g.name },
+        });
+      }
       delete groupsById[groupId];
       const idx = mockPublicGroups.findIndex((p) => p.id === groupId);
       if (idx >= 0) mockPublicGroups.splice(idx, 1);
       return;
+    }
+    // 0) Read the canonical group doc to capture the member list +
+    // name BEFORE we start cascading. After step 3 the doc is gone
+    // and we can't fetch members anymore. Best-effort: if the read
+    // fails (rules denial, etc.) we proceed without the per-member
+    // groupDeleted push.
+    let memberRecipients: string[] = [];
+    let groupName = '';
+    try {
+      const gSnap = await getDoc(docs.group(groupId));
+      if (gSnap.exists()) {
+        const g = gSnap.data();
+        groupName = g.name || '';
+        const set = new Set<string>([
+          ...(g.playerIds ?? []),
+          ...(g.adminIds ?? []),
+        ]);
+        set.delete(callerId);
+        memberRecipients = Array.from(set);
+      }
+    } catch (err) {
+      if (__DEV__)
+        console.warn('[groupService] preflight read for member list failed', err);
     }
     // 1) Find all games in this community. We notify each affected
     // user (player / waitlist / pending) and then delete the game doc
@@ -845,6 +898,17 @@ export const groupService = {
         groupId,
         '— discovery feed will filter at read time',
       );
+    }
+    // 5) Notify every former member that the community is gone.
+    // Done last so the dispatch doesn't fire if the cascade itself
+    // throws — if we get here, the canonical doc is reliably deleted
+    // and the push reflects truth on the server.
+    for (const uid of memberRecipients) {
+      notificationsService.dispatch({
+        type: 'groupDeleted',
+        recipientId: uid,
+        payload: { groupId, groupName },
+      });
     }
   },
 

@@ -346,6 +346,26 @@ service cloud.firestore {
               resource.data.players.size() - 1 &&
             request.resource.data.players.size() <=
               resource.data.players.size() + 1
+          ) &&
+          // Denormalised-union invariant. `participantIds` is the
+          // disjoint union of players + waitlist + pending. Without
+          // this guard a client could write arbitrary uids into the
+          // union and pollute the `getMyGames` query (which uses
+          // `participantIds array-contains`).
+          (
+            request.resource.data.participantIds.size() ==
+              request.resource.data.players.size() +
+              request.resource.data.waitlist.size() +
+              request.resource.data.pending.size() &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.players
+            ) &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.waitlist
+            ) &&
+            request.resource.data.participantIds.hasAll(
+              request.resource.data.pending
+            )
           )
         )
       );
@@ -441,6 +461,14 @@ service cloud.firestore {
         request.auth.uid == resource.data.recipientId
       );
       allow update, delete: if false;
+    }
+
+    // ── /gameUpdateLatches/{gameId} — server-side dedup latches ────────
+    // Internal state used by the onNotificationCreated CF to dedup
+    // game-update pushes within a 60s window. Admin SDK writes only;
+    // clients have no business reading or writing this collection.
+    match /gameUpdateLatches/{gameId} {
+      allow read, write: if false;
     }
 
     // ── /appConfig/{platform} — public version-gate config ─────────────

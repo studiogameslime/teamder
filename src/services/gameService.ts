@@ -868,7 +868,16 @@ export const gameService = {
       format: input.format ?? '',
       visibility: input.visibility,
       requiresApproval: String(!!input.requiresApproval),
+      isRecurring: isDeferred,
     });
+    if (isDeferred) {
+      logEvent(AnalyticsEvent.RecurringGameCreated, {
+        gameId: createdId,
+        groupId: input.groupId,
+        registrationOpensAt: input.registrationOpensAt ?? 0,
+        startsAt: input.startsAt,
+      });
+    }
 
     return { ...base, id: createdId };
   },
@@ -1347,6 +1356,14 @@ export const gameService = {
       // with a typed error so the UI can show a friendly message).
       if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
       if (data.startsAt && data.startsAt < Date.now()) {
+        // Track the rare-but-interesting case of a stale UI letting
+        // a user attempt to join after kickoff — usually a deep link
+        // or stale list cache.
+        logEvent(AnalyticsEvent.GameStartedJoinAttempt, {
+          gameId,
+          startsAt: data.startsAt,
+          status: data.status,
+        });
         throw new Error('GAME_STARTED');
       }
       if (data.liveMatch?.phase === 'live') throw new Error('GAME_LIVE');
@@ -1460,7 +1477,17 @@ export const gameService = {
         recipientId: userId,
         payload: { gameId, gameTitle: g.title, bucket },
       });
-      logEvent(AnalyticsEvent.GameJoined, { gameId, bucket, viaApproval: true });
+      logEvent(AnalyticsEvent.GameApprovalDecided, {
+        gameId,
+        decision: 'approved',
+        bucket,
+      });
+      logEvent(AnalyticsEvent.GameJoined, {
+        gameId,
+        groupId: g.groupId,
+        bucket,
+        viaApproval: true,
+      });
       return { bucket };
     }
     const ref = docs.game(gameId);
@@ -1499,7 +1526,11 @@ export const gameService = {
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, updates as any);
-      return { bucket, title: data.title ?? '' };
+      return {
+        bucket,
+        title: data.title ?? '',
+        groupId: typeof data.groupId === 'string' ? data.groupId : '',
+      };
     });
 
     if (result.bucket === 'noop') return { bucket: 'noop' };
@@ -1513,8 +1544,14 @@ export const gameService = {
         bucket: result.bucket,
       },
     });
+    logEvent(AnalyticsEvent.GameApprovalDecided, {
+      gameId,
+      decision: 'approved',
+      bucket: result.bucket,
+    });
     logEvent(AnalyticsEvent.GameJoined, {
       gameId,
+      groupId: result.groupId,
       bucket: result.bucket,
       viaApproval: true,
     });
@@ -1541,6 +1578,10 @@ export const gameService = {
         type: 'rejected',
         recipientId: userId,
         payload: { gameId, gameTitle: g.title },
+      });
+      logEvent(AnalyticsEvent.GameApprovalDecided, {
+        gameId,
+        decision: 'rejected',
       });
       return;
     }
@@ -1585,6 +1626,10 @@ export const gameService = {
       recipientId: userId,
       payload: { gameId, gameTitle: result.title },
     });
+    logEvent(AnalyticsEvent.GameApprovalDecided, {
+      gameId,
+      decision: 'rejected',
+    });
   },
 
   /**
@@ -1599,6 +1644,11 @@ export const gameService = {
       // Past-deadline cancellation is allowed (the UI shows a red
       // confirmation prompt before getting here) — discipline still
       // tracks the late timestamp via the `cancellations` map below.
+      const isLate =
+        typeof g.cancelDeadlineHours === 'number' &&
+        g.cancelDeadlineHours > 0 &&
+        typeof g.startsAt === 'number' &&
+        Date.now() > g.startsAt - g.cancelDeadlineHours * 60 * 60 * 1000;
       const wasInPlayers = g.players.includes(userId);
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
@@ -1640,6 +1690,20 @@ export const gameService = {
         });
       }
       logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
+      if (isLate && wasInPlayers) {
+        const hoursToKickoff = (g.startsAt - Date.now()) / (60 * 60 * 1000);
+        logEvent(AnalyticsEvent.LateCancel, {
+          gameId,
+          hoursToKickoff,
+          deadlineHours: g.cancelDeadlineHours ?? 0,
+        });
+      }
+      if (promotedUid) {
+        logEvent(AnalyticsEvent.WaitlistPromoted, {
+          gameId,
+          promotedUserId: promotedUid,
+        });
+      }
       return;
     }
     // Atomic cancel via runTransaction. Fixes the lost-update bug
@@ -1704,11 +1768,23 @@ export const gameService = {
         cancellations,
         updatedAt: Date.now(),
       });
+      const isLate =
+        typeof data.cancelDeadlineHours === 'number' &&
+        data.cancelDeadlineHours > 0 &&
+        typeof data.startsAt === 'number' &&
+        Date.now() >
+          data.startsAt - data.cancelDeadlineHours * 60 * 60 * 1000;
       return {
         promotedUid,
         title: data.title ?? '',
         createdBy: typeof data.createdBy === 'string' ? data.createdBy : '',
         wasInPlayers,
+        isLate,
+        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
+        deadlineHours:
+          typeof data.cancelDeadlineHours === 'number'
+            ? data.cancelDeadlineHours
+            : 0,
       };
     });
 
@@ -1735,6 +1811,20 @@ export const gameService = {
       gameId,
       promoted: !!result.promotedUid,
     });
+    if (result.isLate && result.wasInPlayers) {
+      const hoursToKickoff = (result.startsAt - Date.now()) / (60 * 60 * 1000);
+      logEvent(AnalyticsEvent.LateCancel, {
+        gameId,
+        hoursToKickoff,
+        deadlineHours: result.deadlineHours,
+      });
+    }
+    if (result.promotedUid) {
+      logEvent(AnalyticsEvent.WaitlistPromoted, {
+        gameId,
+        promotedUserId: result.promotedUid,
+      });
+    }
   },
 
   /**

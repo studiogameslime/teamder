@@ -33,6 +33,7 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
 import { storage } from './storage';
+import { AnalyticsEvent, logEvent } from './analyticsService';
 
 /** Minutes past kickoff at which a yellow becomes a red. */
 export const RED_THRESHOLD_MIN = 60;
@@ -105,6 +106,12 @@ export const disciplineService = {
       } else {
         await applyFirebase(input.userId, event, +1);
       }
+      logEvent(AnalyticsEvent.DisciplineCardIssued, {
+        cardType: input.type,
+        reason: input.reason,
+        gameId: input.gameId,
+        manual: !!input.issuedBy,
+      });
       return event;
     } catch (err) {
       if (__DEV__) {

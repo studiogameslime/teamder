@@ -228,6 +228,8 @@ export interface NotificationPrefs {
   gameFillingUp: boolean;
   /** Organizer: a registered player just cancelled their participation. */
   playerCancelled: boolean;
+  /** Member: a community I belong to was deleted by its admin. */
+  groupDeleted: boolean;
 }
 
 /** Defaults applied when `User.notificationPrefs` is missing or partial. */
@@ -243,6 +245,7 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   rateReminder: true,
   gameFillingUp: true,
   playerCancelled: true,
+  groupDeleted: true,
 };
 
 /** Discriminated union of dispatch payloads stored under /notifications. */
@@ -263,7 +266,15 @@ export type NotificationType =
    * cancels their participation. The admin needs visibility into who
    * dropped out so they can chase replacements before the deadline.
    */
-  | 'playerCancelled';
+  | 'playerCancelled'
+  /**
+   * Sent to every member + admin of a community whose admin just
+   * deleted the entire community. Distinct from `gameCanceledOrUpdated`
+   * (which fans out to participants of the deleted games) — a member
+   * who wasn't registered to any current game still wants to know
+   * the community itself is gone.
+   */
+  | 'groupDeleted';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on

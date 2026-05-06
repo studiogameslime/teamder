@@ -51,6 +51,7 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
 import { storage } from '@/services/storage';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 export interface AchievementListItem {
   def: AchievementDef;
@@ -401,6 +402,7 @@ async function persistMock(
   const prev = readState(cur);
   const { next, changed } = diffUnlocks(prev.unlocked, counters);
   if (!changed) return;
+  logNewlyUnlocked(prev.unlocked, next);
   const nextUser: User = {
     ...cur,
     achievements: { ...prev, unlocked: next },
@@ -420,10 +422,25 @@ async function persistFirebase(
   const prev = readState(fresh);
   const { next, changed } = diffUnlocks(prev.unlocked, counters);
   if (!changed) return;
+  logNewlyUnlocked(prev.unlocked, next);
   // Whole-array overwrite — `arrayUnion` would only add, never
   // remove, and removing stale unlocks is the whole point.
   await updateDoc(docs.user(uid), {
     'achievements.unlocked': next,
     updatedAt: Date.now(),
   });
+}
+
+/** Fire one analytics event per newly-unlocked achievement id. */
+function logNewlyUnlocked(
+  prev: UnlockedAchievement[],
+  next: UnlockedAchievement[],
+): void {
+  const had = new Set(prev.map((u) => u.id));
+  for (const u of next) {
+    if (had.has(u.id)) continue;
+    logEvent(AnalyticsEvent.AchievementUnlocked, {
+      achievementId: u.id,
+    });
+  }
 }

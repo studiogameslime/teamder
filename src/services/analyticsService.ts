@@ -57,6 +57,27 @@ export const AnalyticsEvent = {
   ArrivalMarked: 'arrival_marked',
   GuestAdded: 'guest_added',
   GuestRemoved: 'guest_removed',
+  /** Admin decided on a pending /games/{id} join request — distinct
+   *  from `GameJoined` so we can measure approval latency. */
+  GameApprovalDecided: 'game_approval_decided',
+  /** A registered user cancelled a game while inside the
+   *  cancel-deadline window. Non-blocking — the discipline tracker
+   *  also stamps the timestamp. */
+  LateCancel: 'late_cancel',
+  /** A user attempted to join/cancel a game that had already started
+   *  (status='active' or kickoff time passed). Captures bad
+   *  deep-link / stale-cache scenarios. */
+  GameStartedJoinAttempt: 'game_started_join_attempt',
+  /** A recurring game (deferred-open registration) was created. Lets
+   *  us measure adoption of the recurring-game feature distinct from
+   *  one-shot creation. */
+  RecurringGameCreated: 'recurring_game_created',
+  /** Promoted from waitlist into players when an earlier registrant
+   *  cancelled. Useful for measuring waitlist health. */
+  WaitlistPromoted: 'waitlist_promoted',
+
+  // Discipline
+  DisciplineCardIssued: 'discipline_card_issued',
 
   // Live match
   LiveMatchOpened: 'live_match_opened',
@@ -64,10 +85,25 @@ export const AnalyticsEvent = {
   TeamScoreChanged: 'team_score_changed',
   MatchRoundCompleted: 'match_round_completed',
   MatchCompleted: 'match_completed',
+  /** Phase transitions on the live match (organizing → roundReady →
+   *  roundRunning → roundEnded → finished). Lets us measure how
+   *  long the typical match spends in each phase. */
+  LiveMatchPhaseTransition: 'live_match_phase_transition',
 
   // Ratings
   PlayerRated: 'player_rated',
   RatingCleared: 'rating_cleared',
+
+  // Achievements
+  /** A user crossed an achievement threshold and the badge unlocked.
+   *  Already tracked indirectly via `achievementsService.bump`; this
+   *  surfaces it to GA so we can analyse engagement-by-badge. */
+  AchievementUnlocked: 'achievement_unlocked',
+
+  // Settings / preferences
+  /** A specific notification toggle was flipped (vs. the existing
+   *  `NotificationsToggled` which only counts how many are on). */
+  NotificationPrefChanged: 'notification_pref_changed',
 
   // Settings
   ReportBugClicked: 'report_bug_clicked',

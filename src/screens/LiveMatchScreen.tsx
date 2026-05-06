@@ -480,6 +480,17 @@ export function LiveMatchScreen() {
         }
         setHasUndo(true);
       }
+      // Phase transition analytics — fired whenever the live phase
+      // actually changes between commits. Lets us measure how long
+      // each phase typically lasts (organizing → roundReady →
+      // roundRunning → roundEnded → finished).
+      if (live && live.phase !== next.phase) {
+        logEvent(AnalyticsEvent.LiveMatchPhaseTransition, {
+          gameId,
+          fromPhase: live.phase,
+          toPhase: next.phase,
+        });
+      }
       setLive(next);
       gameService
         .setLiveMatch(gameId, next, {

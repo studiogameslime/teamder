@@ -49,7 +49,8 @@ type NotificationType =
   | 'inviteToGame'
   | 'rateReminder'
   | 'gameFillingUp'
-  | 'playerCancelled';
+  | 'playerCancelled'
+  | 'groupDeleted';
 
 interface NotificationDoc {
   type: NotificationType;
@@ -179,6 +180,17 @@ function buildMessage(
         body: when
           ? `${head} — המשחק ${when}, הירשם לפני שייסגר.`
           : `${head} — הירשם לפני שייסגר.`,
+      };
+    }
+    case 'groupDeleted': {
+      // Sent to every former member when an admin deletes the
+      // community. Per-game cancellations fan out separately via
+      // `gameCanceledOrUpdated` — this push specifically tells
+      // members the COMMUNITY itself is gone.
+      const name = (payload.groupName as string) || groupName;
+      return {
+        title: 'הקהילה נסגרה',
+        body: `הקהילה ${name} נמחקה על ידי המנהל.`,
       };
     }
     case 'playerCancelled': {
@@ -428,6 +440,19 @@ async function deliverBatch(
 
 // ─── onCreate trigger ──────────────────────────────────────────────────
 
+/**
+ * Dedup window for game-update fan-outs. An admin who edits a game
+ * 3 times in 30 seconds should not fire 3 separate pushes to every
+ * registered player — that's spam. We collapse repeat 'updated'
+ * events for the same gameId within this window into a single
+ * delivered push (the FIRST one wins; subsequent ones are marked
+ * delivered with `skipped: 'duplicate'`).
+ *
+ * Cancellations / deletions are NOT deduped — those are terminal
+ * one-shots and the user needs to know.
+ */
+const GAME_UPDATE_DEDUP_WINDOW_MS = 60 * 1000;
+
 export const onNotificationCreated = onDocumentCreated(
   'notifications/{id}',
   async (event) => {
@@ -435,6 +460,42 @@ export const onNotificationCreated = onDocumentCreated(
     if (!snap) return;
     const notif = snap.data() as NotificationDoc;
     if (notif.delivered) return;
+
+    // Game-update dedup: an admin editing a game 3 times in 30s
+    // should not fan out 3 separate pushes to every registered
+    // player. We use a per-gameId latch doc with `lastDispatchedAt`;
+    // if the latch is fresh, skip this push. Updating the latch is
+    // best-effort — if it fails the worst case is one duplicate
+    // push, which is fine.
+    if (
+      notif.type === 'gameCanceledOrUpdated' &&
+      notif.payload?.action === 'updated' &&
+      typeof notif.payload?.gameId === 'string'
+    ) {
+      const gameId = notif.payload.gameId as string;
+      const latchRef = db.collection('gameUpdateLatches').doc(gameId);
+      const latch = await latchRef.get();
+      const now = Date.now();
+      const lastAt = latch.exists
+        ? Number(latch.data()?.lastDispatchedAt) || 0
+        : 0;
+      if (lastAt > 0 && now - lastAt < GAME_UPDATE_DEDUP_WINDOW_MS) {
+        await snap.ref.update({
+          delivered: true,
+          deliveredAt: now,
+          skipped: 'duplicate',
+        });
+        return;
+      }
+      try {
+        await latchRef.set(
+          { lastDispatchedAt: now, gameId },
+          { merge: true },
+        );
+      } catch (err) {
+        console.warn('[onNotificationCreated] latch write failed', err);
+      }
+    }
 
     const message = buildMessage(notif.type, notif.payload || {});
     if (!message) {

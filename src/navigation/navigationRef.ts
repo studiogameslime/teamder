@@ -153,6 +153,13 @@ export function navigateForPush(
       });
       return true;
 
+    case 'groupDeleted':
+      // The community is gone — there's no destination doc to deep-
+      // link into. Drop the user on the communities feed where they
+      // can find a different community to join.
+      nav.navigate('CommunitiesTab', { screen: 'CommunitiesFeed' });
+      return true;
+
     case 'growthMilestone':
       // Achievements page surfaces all unlocked badges; the inner
       // detail popover keys off the optional `badgeId` payload field.

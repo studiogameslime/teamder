@@ -92,6 +92,11 @@ const ROWS: Row[] = [
     sub: he.notifPlayerCancelledSub,
   },
   {
+    key: 'groupDeleted',
+    label: he.notifGroupDeleted,
+    sub: he.notifGroupDeletedSub,
+  },
+  {
     key: 'growthMilestone',
     label: he.notifGrowthMilestone,
     sub: he.notifGrowthMilestoneSub,
@@ -113,7 +118,17 @@ export function NotificationsSettingsScreen() {
   if (!user) return null;
 
   const toggle = (k: keyof NotificationPrefs) =>
-    setPrefs((p) => ({ ...p, [k]: !p[k] }));
+    setPrefs((p) => {
+      const nextVal = !p[k];
+      // Per-toggle analytics — finer-grained than the aggregate
+      // `NotificationsToggled` event fired on save. Lets us see
+      // which specific notifications users actually disable.
+      logEvent(AnalyticsEvent.NotificationPrefChanged, {
+        pref: String(k),
+        enabled: nextVal,
+      });
+      return { ...p, [k]: nextVal };
+    });
 
   const save = async () => {
     setBusy(true);
