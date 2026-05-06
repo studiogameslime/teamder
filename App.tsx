@@ -58,6 +58,31 @@ try {
       shouldSetBadge: false,
     }),
   });
+  // Register the GAME_REMINDER category — when a `gameReminder`
+  // push arrives with `categoryIdentifier: 'GAME_REMINDER'` in its
+  // payload, iOS / Android render these two action buttons under
+  // the notification body. Tapping a button fires the response
+  // listener with `actionIdentifier === 'JOIN_GAME' | 'CANCEL_GAME'`.
+  // `opensAppToForeground: false` asks the OS to run the action
+  // handler without bringing the app forward when supported (most
+  // Android, iOS background); on iOS-after-force-quit the app does
+  // launch foreground briefly.
+  Notifications.setNotificationCategoryAsync('GAME_REMINDER', [
+    {
+      identifier: 'JOIN_GAME',
+      buttonTitle: 'אני בא',
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: 'CANCEL_GAME',
+      buttonTitle: 'לא בא',
+      options: { opensAppToForeground: false, isDestructive: true },
+    },
+  ]).catch(() => {
+    // Best-effort — older expo-notifications versions throw; the
+    // worst case is the buttons don't render and the user taps
+    // through to the app, which is the existing behaviour.
+  });
 } catch {
   // expo-notifications native module not available — no-op.
 }
@@ -416,11 +441,27 @@ export default function App() {
     if (!Notifications) return;
 
     const handleResponse = async (response: {
+      actionIdentifier?: string;
       notification: { request: { content: { data?: Record<string, unknown> } } };
     }) => {
       const data = response.notification.request.content.data ?? {};
       const type = typeof data.type === 'string' ? data.type : '';
       if (!type) return;
+      // Action button taps from the notification (e.g. "אני בא" /
+      // "לא בא") arrive with `actionIdentifier` set to the button id
+      // we registered. Plain notification taps (the user tapped the
+      // body itself) carry `actionIdentifier === 'expo.modules.notifications.actions.DEFAULT'`
+      // — fall through to the navigation flow for those.
+      const action = response.actionIdentifier ?? '';
+      if (action === 'JOIN_GAME' || action === 'CANCEL_GAME') {
+        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+        if (!gameId) return;
+        const { handleGameReminderAction } = await import(
+          '@/services/notificationActionService'
+        );
+        await handleGameReminderAction(action, gameId);
+        return;
+      }
       // Wait briefly for the navigator to be ready (cold-start case);
       // give up after ~3s so a permanently broken nav doesn't stall.
       for (let i = 0; i < 30; i++) {

@@ -378,6 +378,12 @@ async function deliverBatch(type, recipients, message, data) {
     if (tokens.size === 0) {
         return { ok: 0, failed: 0, skippedPref, skippedNoToken };
     }
+    // Notifications that should render with action buttons advertise
+    // a category id; expo-notifications matches it against the
+    // categories the client registered at boot (see App.tsx) and the
+    // OS draws the buttons. `gameReminder` is the only category right
+    // now ("אני בא" / "לא בא") — adding more is a one-line append.
+    const categoryIdentifier = type === 'gameReminder' ? 'GAME_REMINDER' : undefined;
     // sendEachForMulticast is capped at 500 tokens per call.
     const all = Array.from(tokens);
     let ok = 0;
@@ -387,9 +393,22 @@ async function deliverBatch(type, recipients, message, data) {
         const res = await messaging.sendEachForMulticast({
             tokens: chunk,
             notification: { title: message.title, body: message.body },
-            data,
+            // The client looks at `data.categoryIdentifier` to know which
+            // category buttons to render on Android — iOS reads it off
+            // `apns.payload.aps.category` below. Sending in both places is
+            // belt-and-suspenders but cheap.
+            data: categoryIdentifier
+                ? { ...data, categoryIdentifier }
+                : data,
             android: { priority: 'high', notification: { sound: 'default' } },
-            apns: { payload: { aps: { sound: 'default' } } },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        ...(categoryIdentifier ? { category: categoryIdentifier } : {}),
+                    },
+                },
+            },
         });
         ok += res.successCount;
         failed += res.failureCount;
