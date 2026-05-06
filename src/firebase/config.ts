@@ -17,6 +17,7 @@ import {
   getReactNativePersistence,
   Auth,
 } from 'firebase/auth';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function val(v: string | undefined): string {
@@ -59,12 +60,18 @@ export const USE_MOCK_DATA: boolean = !FIREBASE_CONFIGURED;
 let _app: FirebaseApp | null = null;
 let _db: Firestore | null = null;
 let _auth: Auth | null = null;
+let _storage: FirebaseStorage | null = null;
 
 /**
  * Lazy initializer. Throws if called while USE_MOCK_DATA is true so we never
  * accidentally hit the network in mock mode.
  */
-export function getFirebase(): { app: FirebaseApp; db: Firestore; auth: Auth } {
+export function getFirebase(): {
+  app: FirebaseApp;
+  db: Firestore;
+  auth: Auth;
+  storage: FirebaseStorage;
+} {
   if (USE_MOCK_DATA) {
     throw new Error(
       'getFirebase() called while USE_MOCK_DATA is true. ' +
@@ -74,6 +81,7 @@ export function getFirebase(): { app: FirebaseApp; db: Firestore; auth: Auth } {
   if (!_app) {
     _app = getApps()[0] ?? initializeApp(firebaseConfig);
     _db = getFirestore(_app);
+    _storage = getStorage(_app);
     try {
       _auth = initializeAuth(_app, {
         persistence: getReactNativePersistence(AsyncStorage),
@@ -83,6 +91,7 @@ export function getFirebase(): { app: FirebaseApp; db: Firestore; auth: Auth } {
       _auth = getAuth(_app);
     }
   }
-  return { app: _app!, db: _db!, auth: _auth! };
+  if (!_storage) _storage = getStorage(_app);
+  return { app: _app!, db: _db!, auth: _auth!, storage: _storage! };
 }
 

@@ -24,16 +24,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Jersey as JerseyView } from '@/components/Jersey';
-import type { Jersey } from '@/types';
+import { UserAvatar } from '@/components/UserAvatar';
+import type { User } from '@/types';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
-  jersey: Jersey;
+  user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
   name: string;
   subtitle?: string;
-  onEditJersey?: () => void;
+  /** Pencil-overlay button — taps go to ProfileEdit. */
+  onEditProfile?: () => void;
   onMenuPress: () => void;
   onNotificationsPress?: () => void;
   hasUnreadNotifications?: boolean;
@@ -42,10 +43,10 @@ interface Props {
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
 
 export function ProfileHeroCard({
-  jersey,
+  user,
   name,
   subtitle,
-  onEditJersey,
+  onEditProfile,
   onMenuPress,
   onNotificationsPress,
   hasUnreadNotifications,
@@ -106,17 +107,17 @@ export function ProfileHeroCard({
 
           <View style={styles.center}>
             <View style={styles.jerseyRing}>
-              <JerseyView jersey={jersey} size={96} />
-              {onEditJersey ? (
+              <UserAvatar user={user} size={96} />
+              {onEditProfile ? (
                 <Pressable
-                  onPress={onEditJersey}
+                  onPress={onEditProfile}
                   hitSlop={6}
                   style={({ pressed }) => [
                     styles.editBtn,
                     pressed && { opacity: 0.8 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={he.jerseyOpenPicker}
+                  accessibilityLabel={he.profileEdit}
                 >
                   <Ionicons name="pencil" size={14} color="#FFFFFF" />
                 </Pressable>

@@ -19,7 +19,7 @@ interface UserStore {
   signOut: () => Promise<void>;
   deleteOwnAccount: () => Promise<void>;
   updateProfile: (
-    patch: Partial<Pick<User, 'name' | 'avatarId'>>
+    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl'>>,
   ) => Promise<void>;
 
   // Profile completion: true once name is set (covers the case where Google
@@ -29,7 +29,7 @@ interface UserStore {
   // Post-sign-in onboarding: true once /users/{uid}.onboardingCompleted is true.
   hasCompletedOnboarding: () => boolean;
   completePostSignInOnboarding: (
-    patch: { name: string; avatarId?: string; jersey?: import('@/types').Jersey }
+    patch: { name: string; avatarId?: string; photoUrl?: string },
   ) => Promise<void>;
 }
 

@@ -23,7 +23,7 @@ import {
   type ListRenderItem,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Jersey } from '@/components/Jersey';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { User } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -92,7 +92,7 @@ export function PlayersPreview({
           accessibilityRole="button"
           accessibilityLabel={u.name}
         >
-          <Jersey jersey={u.jersey} user={u} size={SHIRT_SIZE} />
+          <UserAvatar user={u} size={SHIRT_SIZE} />
           <Text style={styles.name} numberOfLines={1}>
             {u.name}
           </Text>

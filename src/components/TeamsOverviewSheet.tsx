@@ -201,11 +201,15 @@ function TeamCard({
               : undefined;
             const u = playersMap[pid];
             const name = guest?.name ?? u?.displayName ?? '—';
-            const jersey = guest ? undefined : u?.jersey;
             return (
               <View key={pid} style={styles.playerRow}>
                 <PlayerIdentity
-                  user={{ id: pid, name, jersey }}
+                  user={{
+                    id: pid,
+                    name,
+                    avatarId: u?.avatarId,
+                    photoUrl: u?.photoUrl,
+                  }}
                   size={28}
                 />
                 <Text style={styles.playerName} numberOfLines={1}>

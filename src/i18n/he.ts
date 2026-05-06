@@ -750,24 +750,8 @@ export const he = {
   achievementCategoryCoaching: 'ניהול',
   achievementUnlockedAt: (d: string) => `נפתח ב-${d}`,
 
-  // Jersey picker
-  jerseyTitle: 'הגופייה שלי',
-  jerseyIntro: 'איך הגופייה שלך תיראה במשחקים, בכרטיסי שחקן וברשימות.',
-  jerseySectionColor: 'צבע',
-  jerseySectionPattern: 'גזרה',
-  jerseySectionNumber: 'מספר',
-  jerseyNumberHint: 'מ-1 עד 99',
-  jerseySectionDisplayName: 'כינוי על הגב',
-  jerseyDisplayNameHint: 'עד 10 תווים. אפשר להשאיר ריק וייקח את השם הפרטי.',
-  jerseyDisplayNamePlaceholder: 'הכינוי שלך',
-  jerseyPreview: 'תצוגה מקדימה',
-  jerseySave: 'שמור גופייה',
-  jerseySaved: 'נשמר',
-  jerseyOpenPicker: 'ערוך גופייה',
-  jerseyPatternSolid: 'חלק',
-  jerseyPatternStripes: 'פסים',
-  jerseyPatternSplit: 'חצוי',
-  jerseyPatternDots: 'נקודות',
+  // (Jersey picker strings retired — replaced by profile photo /
+  // avatar picker in profilePhoto* / profileAvatar* keys above.)
 
   // Availability editor
   availabilityTitle: 'זמינות שלי',
@@ -801,6 +785,13 @@ export const he = {
   // single-screen layout.
   psoWelcomeBody:
     'מארגנים כדורגל שכונתי בלי בלגן — הרשמה, ספסל, קבוצות, שוערים וטיימר.',
+  profilePhotoLabel: 'תמונת פרופיל',
+  profilePhotoUpload: 'העלאה מהגלריה',
+  profilePhotoChange: 'החלף תמונה',
+  profileAvatarLabel: 'או בחר אווטאר',
+  profilePhotoPermissionDenied:
+    'אין הרשאה לגישה לגלריה. אפשר לאשר בהגדרות הטלפון.',
+  profilePhotoUploadFailed: 'העלאת התמונה נכשלה. נסה שוב.',
   psoProfileTitle: 'בוא נכיר',
   psoProfileSave: 'המשך',
   psoProfileNickname: 'כינוי על החולצה (אופציונלי)',

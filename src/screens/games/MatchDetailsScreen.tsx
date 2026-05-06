@@ -1936,7 +1936,10 @@ function TeamsBlock({
 }: {
   game: Game;
   assignments: Record<UserId, LiveMatchZone>;
-  playersMap: Record<string, { displayName: string; jersey?: import('@/types').Jersey }>;
+  playersMap: Record<
+    string,
+    { displayName: string; avatarId?: string; photoUrl?: string }
+  >;
 }) {
   const teamCount = Math.min(Math.max(game.numberOfTeams ?? 2, 2), 5);
   const letters: Array<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
@@ -1979,7 +1982,8 @@ function TeamsBlock({
                     user={{
                       id: uid,
                       name: p?.displayName ?? '',
-                      jersey: p?.jersey,
+                      avatarId: p?.avatarId,
+                      photoUrl: p?.photoUrl,
                     }}
                     size={26}
                   />

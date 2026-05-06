@@ -65,10 +65,10 @@ export interface User {
   newGameSubscriptions?: GroupId[];
 
   /**
-   * Visual identity. Replaces the old avatar surface across cards / lists
-   * / live match. Optional so legacy users round-trip; the Jersey
-   * component falls back to a deterministic auto-jersey derived from
-   * `id`+`name` when this is missing.
+   * @deprecated Legacy from the jersey-as-avatar era. Round-tripped
+   * by the converter so old user docs don't fail validation, but
+   * never written for new accounts — visual identity is now driven
+   * by `photoUrl` / `avatarId`.
    */
   jersey?: Jersey;
 
@@ -533,9 +533,12 @@ export interface Player {
   id: PlayerId;
   displayName: string;
   avatarUrl?: string;
-  /** Hydrated from /users/{id}.jersey when available — drives the on-field
-   *  Jersey component. Missing on legacy/mock data; the component falls
-   *  back to a deterministic auto-jersey from id+displayName. */
+  /** Built-in avatar id chosen by the user (one of /data/avatars). */
+  avatarId?: string;
+  /** Uploaded profile photo URL — Firebase Storage download URL. */
+  photoUrl?: string;
+  /** @deprecated Legacy from the jersey-as-avatar era. Round-tripped
+   *  for old docs; never written for new accounts. */
   jersey?: Jersey;
   stats?: PlayerStats; // denormalized for quick reads; recomputed server-side
 }

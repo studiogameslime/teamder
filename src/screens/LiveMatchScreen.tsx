@@ -2429,7 +2429,8 @@ function DraggablePlayer({
   const guest = guestId ? guests?.find((g) => g.id === guestId) : undefined;
   const p = playersMap[uid];
   const name = guest ? guest.name : (p?.displayName ?? '');
-  const jersey = guest ? undefined : p?.jersey;
+  const avatarId = guest ? undefined : p?.avatarId;
+  const photoUrl = guest ? undefined : p?.photoUrl;
   const cornerBadge = guest ? null : badge;
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -2480,7 +2481,7 @@ function DraggablePlayer({
           ]}
         >
           <PlayerIdentity
-            user={{ id: uid, name: name || '?', jersey }}
+            user={{ id: uid, name: name || '?', avatarId, photoUrl }}
             size={size}
           />
           {cornerBadge ? (

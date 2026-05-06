@@ -50,7 +50,6 @@ import type { UserAchievementState } from '@/types';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { deepLinkService } from '@/services/deepLinkService';
-import { autoJersey } from '@/data/jerseys';
 import {
   colors,
   radius,
@@ -264,12 +263,6 @@ export function ProfileScreen() {
           icon: 'create-outline',
           onPress: () => nav.navigate('ProfileEdit'),
         },
-        {
-          id: 'jersey',
-          label: he.jerseyOpenPicker,
-          icon: 'shirt-outline',
-          onPress: () => nav.navigate('JerseyPicker'),
-        },
       ],
     },
     {
@@ -374,11 +367,6 @@ export function ProfileScreen() {
     },
   ];
 
-  // Effective jersey for the header — falls back to the deterministic
-  // auto-jersey so brand-new users see a real visual instead of a
-  // blank shirt.
-  const headerJersey = user.jersey ?? autoJersey(user.id, user.name);
-
   return (
     <View style={styles.root}>
       <ScrollView
@@ -398,11 +386,11 @@ export function ProfileScreen() {
             top-bar buttons. Hamburger lives inside the hero so the
             background image fills behind it. */}
         <ProfileHeroCard
-          jersey={headerJersey}
+          user={user}
           name={user.name}
           subtitle={he.profileSubtitlePlayer}
           onMenuPress={() => setMenuOpen(true)}
-          onEditJersey={() => nav.navigate('JerseyPicker')}
+          onEditProfile={() => nav.navigate('ProfileEdit')}
           onNotificationsPress={() => nav.navigate('NotificationsSettings')}
         />
 

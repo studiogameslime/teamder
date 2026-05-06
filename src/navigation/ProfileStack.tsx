@@ -16,7 +16,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
 import { ProfileEditScreen } from '@/screens/tabs/ProfileEditScreen';
 import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
-import { JerseyPickerScreen } from '@/screens/profile/JerseyPickerScreen';
 import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
 import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
@@ -35,7 +34,6 @@ export type ProfileStackParamList = {
   Profile: undefined;
   ProfileEdit: undefined;
   AvailabilityEdit: undefined;
-  JerseyPicker: undefined;
   NotificationsSettings: undefined;
   PlayerCard: { userId: string; groupId?: string };
   AdminApproval: undefined;
@@ -69,7 +67,6 @@ export function ProfileStack() {
         name="AvailabilityEdit"
         component={AvailabilityEditScreen}
       />
-      <Stack.Screen name="JerseyPicker" component={JerseyPickerScreen} />
       <Stack.Screen
         name="NotificationsSettings"
         component={NotificationsSettingsScreen}

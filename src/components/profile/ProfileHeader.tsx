@@ -1,27 +1,21 @@
 // ProfileHeader — compact identity band at the top of the redesigned
-// player card. Replaces the old full-bleed hero that took ~50% of the
-// screen.
-//
-// Visual: green gradient with rounded bottom corners; jersey + name
-// only. The role badge + community name were intentionally removed
-// per design — both repeat info already implied by the screen
-// context (you're on YOUR profile in YOUR active community).
+// player card. Renders the user's profile photo (or chosen avatar)
+// over a brand-blue gradient.
 
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Jersey as JerseyView } from '@/components/Jersey';
-import type { Jersey, JerseyPattern } from '@/types';
+import { UserAvatar } from '@/components/UserAvatar';
+import type { User } from '@/types';
 import { spacing } from '@/theme';
 
 interface Props {
-  jersey: Jersey;
+  user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
   name: string;
-  /** Optional override for the outer container style. */
   style?: ViewStyle;
 }
 
-export function ProfileHeader({ jersey, name, style }: Props) {
+export function ProfileHeader({ user, name, style }: Props) {
   return (
     <View style={[styles.wrap, style]}>
       <LinearGradient
@@ -29,16 +23,8 @@ export function ProfileHeader({ jersey, name, style }: Props) {
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.content}>
-        <View style={styles.jerseyWrap}>
-          <JerseyView
-            jersey={{
-              color: jersey.color,
-              pattern: jersey.pattern as JerseyPattern,
-              number: jersey.number,
-              displayName: jersey.displayName,
-            }}
-            size={92}
-          />
+        <View style={styles.avatarWrap}>
+          <UserAvatar user={user} size={92} ring />
         </View>
         <Text style={styles.name} numberOfLines={1}>
           {name}
@@ -53,8 +39,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-    // Mild shadow lifts the band off the page bg without competing
-    // with the cards below.
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -68,7 +52,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },
-  jerseyWrap: {
+  avatarWrap: {
     marginBottom: spacing.xs,
   },
   name: {

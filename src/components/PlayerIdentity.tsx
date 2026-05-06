@@ -1,14 +1,14 @@
 // PlayerIdentity — the single user-facing identity surface.
 //
 // Every screen that renders a user (profile header, player card, game
-// row, community member row, live match jersey, search result, etc.)
-// uses this component. Currently identity = jersey + optional name.
-// If we later swap to a different visual (avatar mosaic, photo, …) we
-// only update this file.
+// row, community member row, search result, etc.) uses this
+// component. Identity is now a profile photo or a chosen avatar
+// (with deterministic fallback) — the legacy jersey layer was
+// retired in favour of real profile pictures.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { Jersey } from './Jersey';
+import { UserAvatar } from './UserAvatar';
 import type { User } from '@/types';
 import { colors, typography } from '@/theme';
 
@@ -19,14 +19,17 @@ interface Props {
    * Source for the identity. Pass the full User when you have it; if
    * you only have the id+name (e.g., in-game players), pass a partial.
    */
-  user: Pick<User, 'id' | 'name' | 'jersey'> | null | undefined;
+  user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'> | null | undefined;
   /** Preset visual size — the most common cases mapped to dp. */
   size?: PlayerIdentitySize | number;
-  /** Show the user name under the jersey. Default: false. */
+  /** Show the user name under the avatar. Default: false. */
   showName?: boolean;
-  /** Show display-name-on-shirt caption (delegates to Jersey). */
+  /**
+   * @deprecated Legacy prop from the jersey era — name-on-shirt is
+   * gone. Kept readable so older call sites compile while we migrate.
+   */
   showShirtName?: boolean;
-  /** Highlight ring around the jersey (used for picker preview). */
+  /** White ring around the avatar (used for picker preview). */
   highlight?: boolean;
   /**
    * When set, the entire identity becomes tappable. Callers typically
@@ -44,15 +47,14 @@ const SIZE_MAP: Record<PlayerIdentitySize, number> = {
 };
 
 /**
- * Reusable identity. Supports a full `User` or a partial — the Jersey
- * component handles fallback to a deterministic auto-jersey when
- * `user.jersey` is missing.
+ * Reusable identity. Renders a circular avatar (photo > chosen
+ * avatarId > deterministic auto-fallback) plus an optional name
+ * underneath.
  */
 export function PlayerIdentity({
   user,
   size = 'md',
   showName = false,
-  showShirtName = false,
   highlight = false,
   onPress,
   style,
@@ -62,13 +64,7 @@ export function PlayerIdentity({
 
   const content = (
     <>
-      <Jersey
-        jersey={user?.jersey}
-        user={user ? { id: user.id, name } : null}
-        size={px}
-        showName={showShirtName}
-        showRing={highlight}
-      />
+      <UserAvatar user={user ?? null} size={px} ring={highlight} />
       {showName && name ? (
         <Text
           numberOfLines={1}

@@ -129,7 +129,7 @@ export const userService = {
   async completeOnboarding(patch: {
     name: string;
     avatarId?: string;
-    jersey?: import('@/types').Jersey;
+    photoUrl?: string;
   }): Promise<User> {
     const trimmedName = patch.name.trim();
     if (!trimmedName) throw new Error('completeOnboarding: name is required');
@@ -140,7 +140,7 @@ export const userService = {
         ...cur,
         name: trimmedName,
         ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
-        ...(patch.jersey ? { jersey: patch.jersey } : {}),
+        ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
         onboardingCompleted: true,
         updatedAt: Date.now(),
       };
@@ -157,13 +157,13 @@ export const userService = {
       updatedAt,
     };
     if (patch.avatarId) updates.avatarId = patch.avatarId;
-    if (patch.jersey) updates.jersey = patch.jersey;
+    if (patch.photoUrl) updates.photoUrl = patch.photoUrl;
     await updateDoc(ref, updates);
     return {
       ...cur,
       name: trimmedName,
       ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
-      ...(patch.jersey ? { jersey: patch.jersey } : {}),
+      ...(patch.photoUrl ? { photoUrl: patch.photoUrl } : {}),
       onboardingCompleted: true,
       updatedAt,
     };
@@ -412,7 +412,7 @@ export const userService = {
   },
 
   async updateProfile(
-    patch: Partial<Pick<User, 'name' | 'avatarId' | 'jersey'>>
+    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl'>>,
   ): Promise<User> {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
@@ -428,7 +428,7 @@ export const userService = {
     const updates: Partial<User> = {};
     if (patch.name !== undefined) updates.name = patch.name;
     if (patch.avatarId !== undefined) updates.avatarId = patch.avatarId;
-    if (patch.jersey !== undefined) updates.jersey = patch.jersey;
+    if (patch.photoUrl !== undefined) updates.photoUrl = patch.photoUrl;
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = Date.now();
       await updateDoc(ref, updates);

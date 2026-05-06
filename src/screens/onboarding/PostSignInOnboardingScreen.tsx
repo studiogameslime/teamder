@@ -2,11 +2,12 @@
 // The previous flow had three intermediate screens (welcome → how
 // → profile) but the user already saw the value pitch on the
 // pre-sign-in slides; repeating it here just adds taps before the
-// app actually starts working. Now it's one screen: jersey preview
-// at the top, name + customisation below, save → main app.
+// app actually starts working. Now it's one screen: name + a
+// profile picture (photo upload OR built-in avatar), save → main app.
 
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -18,17 +19,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Jersey } from '@/components/Jersey';
 import { InputField } from '@/components/InputField';
-import { JerseyNumberInput } from '@/components/JerseyNumberInput';
 import { Card } from '@/components/Card';
-import { JERSEY_COLORS, JERSEY_PATTERNS, autoJersey } from '@/data/jerseys';
+import { UserAvatar } from '@/components/UserAvatar';
+import { AVATARS, pickRandomAvatarId } from '@/data/avatars';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
-import type { Jersey as JerseyType, JerseyPattern } from '@/types';
+import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
 
-// Same blue palette as the pre-sign-in slides + heroes elsewhere.
 const HERO_GRADIENT = ['#1E3A8A', '#1E40AF', '#3B82F6'] as const;
 const ACCENT = '#1E40AF';
 const ACCENT_SOFT = '#DBEAFE';
@@ -39,26 +38,64 @@ export function PostSignInOnboardingScreen() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  // Jersey state — seeded from the user's existing jersey, or from a
-  // deterministic auto-jersey based on uid+name when nothing's saved.
-  const initialJersey: JerseyType =
-    user?.jersey ??
-    (user
-      ? autoJersey(user.id, user.name || '')
-      : { color: JERSEY_COLORS[2].hex, pattern: 'solid', number: 10, displayName: '' });
-  const [jersey, setJersey] = useState<JerseyType>(initialJersey);
+  // Photo / avatar state. We track them independently — picking an
+  // avatar clears the photo (and vice versa) so the on-screen
+  // preview always reflects exactly one choice.
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(user?.photoUrl);
+  const [avatarId, setAvatarId] = useState<string | undefined>(
+    user?.avatarId ?? (user ? pickRandomAvatarId() : undefined),
+  );
 
-  const canSave = name.trim().length > 0 && !busy;
+  const previewUser = user
+    ? {
+        id: user.id,
+        name: name.trim() || user.name,
+        photoUrl,
+        avatarId,
+      }
+    : null;
+
+  const canSave = name.trim().length > 0 && !busy && !uploading;
+
+  const handlePickPhoto = async () => {
+    if (!user) return;
+    setUploading(true);
+    const res = await pickAndUploadAvatar(user.id);
+    setUploading(false);
+    if (!res.ok) {
+      if (res.reason === 'permission') {
+        Alert.alert(he.error, he.profilePhotoPermissionDenied);
+      } else if (res.reason === 'network') {
+        Alert.alert(he.error, he.profilePhotoUploadFailed);
+      }
+      return;
+    }
+    setPhotoUrl(res.url);
+    // The user just picked a photo — drop the previously-picked
+    // avatar selection so the preview / save reflect the photo.
+    setAvatarId(undefined);
+  };
+
+  const handlePickAvatar = (id: string) => {
+    // Picking a built-in avatar drops the photo. We also delete the
+    // uploaded file from Storage best-effort so we don't leave it
+    // orphaned (the user explicitly opted for an avatar instead).
+    if (photoUrl && user) {
+      deleteUserPhoto(user.id);
+    }
+    setPhotoUrl(undefined);
+    setAvatarId(id);
+  };
+
   const handleSave = async () => {
     setBusy(true);
     try {
       await complete({
         name: name.trim(),
-        jersey: {
-          ...jersey,
-          displayName: jersey.displayName.trim().slice(0, 10),
-        },
+        avatarId: photoUrl ? undefined : avatarId,
+        photoUrl,
       });
     } catch (err) {
       if (__DEV__) console.warn('[onboarding] complete failed', err);
@@ -70,9 +107,6 @@ export function PostSignInOnboardingScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Blue hero on top with the live jersey preview floating into
-          its bottom edge — same visual language as the Communities /
-          Matches tab heroes. */}
       <LinearGradient
         colors={HERO_GRADIENT}
         start={{ x: 0.1, y: 0 }}
@@ -89,22 +123,16 @@ export function PostSignInOnboardingScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Live jersey preview — pulled up onto the hero's curved
-            bottom so the page reads as ONE composition. */}
+        {/* Live preview — pulled up onto the curved hero bottom. */}
         <View style={styles.previewWrap}>
-          <Jersey
-            jersey={jersey}
-            user={
-              user
-                ? {
-                    id: user.id,
-                    name: jersey.displayName.trim() || name.trim() || user.name,
-                  }
-                : null
-            }
-            size={140}
-            showName
-          />
+          <View style={styles.previewRing}>
+            <UserAvatar user={previewUser} size={132} ring />
+            {uploading ? (
+              <View style={styles.previewSpinner}>
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <Card style={styles.formCard}>
@@ -118,88 +146,47 @@ export function PostSignInOnboardingScreen() {
             required
           />
 
-          <InputField
-            label={he.psoProfileNickname}
-            value={jersey.displayName}
-            onChangeText={(t) =>
-              setJersey((j) => ({ ...j, displayName: t.slice(0, 10) }))
-            }
-            placeholder={he.psoProfileNicknamePlaceholder}
-            maxLength={10}
-          />
+          <Text style={styles.label}>{he.profilePhotoLabel}</Text>
+          <Pressable
+            onPress={handlePickPhoto}
+            disabled={uploading || busy}
+            style={({ pressed }) => [
+              styles.uploadBtn,
+              pressed && { opacity: 0.92 },
+              (uploading || busy) && { opacity: 0.6 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.profilePhotoUpload}
+          >
+            <Ionicons name="image-outline" size={18} color={ACCENT} />
+            <Text style={styles.uploadBtnText}>
+              {photoUrl ? he.profilePhotoChange : he.profilePhotoUpload}
+            </Text>
+          </Pressable>
 
-          <View style={styles.numberRow}>
-            <Text style={styles.label}>{he.psoProfileNumber}</Text>
-            <JerseyNumberInput
-              value={jersey.number > 0 ? String(jersey.number) : ''}
-              onChangeText={(t) => {
-                const n = parseInt(t, 10);
-                setJersey((j) => ({
-                  ...j,
-                  number:
-                    Number.isFinite(n) && n >= 1 && n <= 99 ? n : j.number,
-                }));
-              }}
-            />
-          </View>
-
-          <View>
-            <Text style={styles.label}>{he.psoProfileColor}</Text>
-            <View style={styles.swatchRow}>
-              {JERSEY_COLORS.map((c) => (
-                <Pressable
-                  key={c.id}
-                  onPress={() => setJersey((j) => ({ ...j, color: c.hex }))}
+          <Text style={styles.label}>{he.profileAvatarLabel}</Text>
+          <View style={styles.avatarGrid}>
+            {AVATARS.map((a) => (
+              <Pressable
+                key={a.id}
+                onPress={() => handlePickAvatar(a.id)}
+                style={[
+                  styles.avatarCell,
+                  avatarId === a.id && !photoUrl && styles.avatarCellActive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`avatar-${a.id}`}
+              >
+                <View
                   style={[
-                    styles.swatch,
-                    { backgroundColor: c.hex },
-                    jersey.color === c.hex && styles.swatchActive,
+                    styles.avatarDot,
+                    { backgroundColor: a.bg },
                   ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={c.id}
                 >
-                  {jersey.color === c.hex ? (
-                    <Ionicons
-                      name="checkmark"
-                      size={18}
-                      color={c.hex === '#F8FAFC' ? colors.text : '#fff'}
-                    />
-                  ) : null}
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View>
-            <Text style={styles.label}>{he.psoProfilePattern}</Text>
-            <View style={styles.patternRow}>
-              {JERSEY_PATTERNS.map((p) => (
-                <Pressable
-                  key={p.id}
-                  onPress={() =>
-                    setJersey((j) => ({
-                      ...j,
-                      pattern: p.id as JerseyPattern,
-                    }))
-                  }
-                  style={[
-                    styles.patternPill,
-                    jersey.pattern === p.id && styles.patternPillActive,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={p.nameHe}
-                >
-                  <Text
-                    style={[
-                      styles.patternText,
-                      jersey.pattern === p.id && styles.patternTextActive,
-                    ]}
-                  >
-                    {p.nameHe}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+                  <Text style={styles.avatarGlyph}>{a.glyph}</Text>
+                </View>
+              </Pressable>
+            ))}
           </View>
 
           {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
@@ -227,9 +214,6 @@ export function PostSignInOnboardingScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-
-  // Hero: same shape language as the redesigned tab heroes — curved
-  // bottom corners + soft shadow lifting the surface.
   hero: {
     overflow: 'hidden',
     borderBottomLeftRadius: 32,
@@ -264,11 +248,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl + spacing.lg,
   },
 
-  // Jersey preview floats up onto the hero — pulls into the curved
-  // bottom for the same visual rhyme as the screen heroes.
   previewWrap: {
     alignItems: 'center',
     marginTop: -spacing.xxl,
+  },
+  previewRing: {
+    padding: spacing.xs,
+    backgroundColor: 'transparent',
+  },
+  previewSpinner: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    borderRadius: 80,
   },
 
   formCard: {
@@ -283,53 +276,52 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
     marginBottom: spacing.xs,
-  },
-  numberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-    gap: spacing.md,
+    marginTop: spacing.xs,
   },
 
-  swatchRow: {
+  uploadBtn: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  swatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  swatchActive: {
-    borderColor: ACCENT,
-    transform: [{ scale: 1.1 }],
-  },
-
-  patternRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  patternPill: {
-    flex: 1,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-  },
-  patternPillActive: {
+    borderWidth: 1.5,
     borderColor: ACCENT,
     backgroundColor: ACCENT_SOFT,
   },
-  patternText: { ...typography.body, color: colors.textMuted },
-  patternTextActive: { color: ACCENT, fontWeight: '700' },
+  uploadBtnText: {
+    color: ACCENT,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'flex-start',
+  },
+  avatarCell: {
+    padding: 3,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  avatarCellActive: {
+    borderColor: ACCENT,
+  },
+  avatarDot: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarGlyph: {
+    fontSize: 26,
+    textAlign: 'center',
+  },
 
   email: {
     ...typography.caption,
@@ -338,8 +330,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Pinned CTA bar — blue pill, full-width, matches the rest of
-  // the redesigned action bars.
   ctaBar: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,

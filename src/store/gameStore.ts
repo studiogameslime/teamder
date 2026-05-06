@@ -84,7 +84,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
             id: u.id,
             displayName: u.name,
             avatarUrl: u.photoUrl,
-            jersey: u.jersey,
+            avatarId: u.avatarId,
+            photoUrl: u.photoUrl,
           };
         }
         return { players: next };
