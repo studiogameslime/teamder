@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/Button';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+
+// Brand-blue palette — same tones as the redesigned onboarding /
+// hero blocks. Hardcoded here (not via colors.primary, which is
+// still the legacy green) so this surface matches the rest of the
+// blue-redesigned app without ripple-changing the theme token.
+const ACCENT = '#1E40AF';
+const ACCENT_SOFT = '#DBEAFE';
 
 export function SignInScreen() {
   const signIn = useUserStore((s) => s.signInWithGoogle);
@@ -40,22 +53,37 @@ export function SignInScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Ionicons name="football-outline" size={72} color={colors.primary} />
+          <Ionicons name="football-outline" size={72} color={ACCENT} />
         </View>
         <Text style={styles.title}>{he.signInTitle}</Text>
         <Text style={styles.subtitle}>{he.signInSubtitle}</Text>
       </View>
 
       <View style={styles.bottom}>
-        <Button
-          title={he.signInGoogle}
-          iconLeft="logo-google"
-          variant="outline"
-          size="lg"
-          fullWidth
-          loading={busy}
+        {/* Custom Pressable instead of <Button variant="outline" /> —
+            the Button component bakes in the legacy green palette,
+            and we want the CTA to match the blue brand language used
+            on the onboarding slides + tab heroes. */}
+        <Pressable
           onPress={handlePress}
-        />
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.ctaBtn,
+            pressed && { opacity: 0.92 },
+            busy && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.signInGoogle}
+        >
+          {busy ? (
+            <ActivityIndicator color={ACCENT} />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={20} color={ACCENT} />
+              <Text style={styles.ctaText}>{he.signInGoogle}</Text>
+            </>
+          )}
+        </Pressable>
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>
     </SafeAreaView>
@@ -69,7 +97,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: ACCENT_SOFT,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -83,5 +111,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   bottom: { paddingBottom: spacing.lg, gap: spacing.md },
+  ctaBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: ACCENT,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  ctaText: {
+    color: ACCENT,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   privacy: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
 });
