@@ -109,7 +109,13 @@ export function PlayersPreview({
           {he.communityPlayersActiveTitle}{' '}
           <Text style={styles.count}>({total})</Text>
         </Text>
-        <Pressable onPress={onSeeAll} hitSlop={8} style={styles.seeAllBtn}>
+        <Pressable
+          onPress={onSeeAll}
+          hitSlop={8}
+          style={styles.seeAllBtn}
+          accessibilityRole="button"
+          accessibilityLabel={he.communityPlayersSeeAll}
+        >
           <Text style={styles.seeAllText}>{he.communityPlayersSeeAll}</Text>
           <Ionicons name="chevron-back" size={14} color={ACCENT} />
         </Pressable>

@@ -1458,6 +1458,17 @@ export const gameService = {
       const wasPending = (g.pending ?? []).includes(userId);
       if (!wasPending) return { bucket: 'noop' };
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
+      // Defensive: a concurrent cancel-promote could have already
+      // landed the user on players/waitlist; don't push them in
+      // twice.
+      if (g.players.includes(userId)) {
+        g.updatedAt = Date.now();
+        return { bucket: 'players' };
+      }
+      if (g.waitlist.includes(userId)) {
+        g.updatedAt = Date.now();
+        return { bucket: 'waitlist' };
+      }
       const occupancy = g.players.length + (g.guests?.length ?? 0);
       let bucket: 'players' | 'waitlist';
       if (occupancy < g.maxPlayers) {
@@ -1509,6 +1520,20 @@ export const gameService = {
         pending: nextPending,
         updatedAt: Date.now(),
       };
+      // Defensive: in a rare race (admin approves while a different
+      // player's cancellation is mid-transaction promoting waitlist
+      // head), the user could already be on players or waitlist.
+      // Skip the duplicate push.
+      if (players.includes(userId)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tx.update(ref, updates as any);
+        return { bucket: 'players' as const, title: data.title ?? '', groupId: typeof data.groupId === 'string' ? data.groupId : '' };
+      }
+      if (waitlist.includes(userId)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tx.update(ref, updates as any);
+        return { bucket: 'waitlist' as const, title: data.title ?? '', groupId: typeof data.groupId === 'string' ? data.groupId : '' };
+      }
       if (occupancy < (data.maxPlayers ?? 15)) {
         updates.players = [...players, userId];
         bucket = 'players';

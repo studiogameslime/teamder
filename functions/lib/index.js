@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.cleanupStaleGames = exports.flipScheduledGames = exports.sendGameReminders = exports.onNotificationCreated = void 0;
+exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.dailyCleanup = exports.cleanupStaleGames = exports.flipScheduledGames = exports.sendGameReminders = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -697,6 +697,119 @@ exports.cleanupStaleGames = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`);
+});
+// ─── Scheduled: prune accumulating server-side state ───────────────────
+/**
+ * Daily housekeeping. Three independent sweeps in one CF so we pay
+ * for one cron tick instead of three. Each sweep wraps its own
+ * try/catch so a failure in one doesn't block the others.
+ *
+ * 1. /notifications older than 30 days → delete. The dispatch was
+ *    already delivered (the CF marks `delivered=true` immediately);
+ *    keeping the doc forever just bloats the collection. 30 days is
+ *    enough for any debugging / audit needs.
+ *
+ * 2. /gameUpdateLatches whose target game is finished/cancelled or
+ *    no longer exists → delete. The latch was used to dedup pushes
+ *    within a 60-second window; once the game is terminal it's
+ *    irrelevant.
+ *
+ * 3. /groupJoinRequests resolved (approved/rejected) more than 90
+ *    days ago → delete. Audit trail beyond 90 days adds zero value
+ *    and accumulates linearly with community activity.
+ *
+ * Batching: each sweep deletes in chunks of 400 (Firestore's per-
+ * batch cap is 500). We don't paginate within a single CF run;
+ * if a sweep produces >400 docs the leftovers wait for the next
+ * day's run. That keeps the function bounded.
+ */
+exports.dailyCleanup = (0, scheduler_1.onSchedule)({
+    schedule: 'every 24 hours',
+    timeZone: 'Asia/Jerusalem',
+}, async () => {
+    const BATCH_LIMIT = 400;
+    const NOTIFICATIONS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+    const JOIN_REQUESTS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    // 1) Old /notifications.
+    let notifsDeleted = 0;
+    try {
+        const cutoff = now - NOTIFICATIONS_TTL_MS;
+        const snap = await db
+            .collection('notifications')
+            .where('createdAt', '<', cutoff)
+            .limit(BATCH_LIMIT)
+            .get();
+        if (!snap.empty) {
+            const batch = db.batch();
+            snap.docs.forEach((d) => batch.delete(d.ref));
+            await batch.commit();
+            notifsDeleted = snap.size;
+        }
+    }
+    catch (err) {
+        console.error('[dailyCleanup] notifications sweep failed', err);
+    }
+    // 2) Stale /gameUpdateLatches. We can't query "where target game
+    // is terminal" directly (no cross-collection joins), so we read
+    // the latch's gameId and check the game doc one-by-one. Cheap
+    // because the latch collection is small (one per active game).
+    let latchesDeleted = 0;
+    try {
+        const snap = await db
+            .collection('gameUpdateLatches')
+            .limit(BATCH_LIMIT)
+            .get();
+        const candidates = [];
+        for (const latch of snap.docs) {
+            const gameId = String(latch.data()?.gameId ?? latch.id);
+            try {
+                const gameSnap = await db.collection('games').doc(gameId).get();
+                const status = gameSnap.exists
+                    ? gameSnap.data()?.status
+                    : undefined;
+                if (!gameSnap.exists ||
+                    status === 'finished' ||
+                    status === 'cancelled') {
+                    candidates.push(latch.id);
+                }
+            }
+            catch (err) {
+                console.warn('[dailyCleanup] latch game lookup failed', latch.id, err);
+            }
+        }
+        if (candidates.length > 0) {
+            const batch = db.batch();
+            candidates.forEach((id) => batch.delete(db.collection('gameUpdateLatches').doc(id)));
+            await batch.commit();
+            latchesDeleted = candidates.length;
+        }
+    }
+    catch (err) {
+        console.error('[dailyCleanup] latches sweep failed', err);
+    }
+    // 3) Old /groupJoinRequests (approved or rejected, decidedAt
+    // older than 90 days). Pending requests are NEVER deleted —
+    // that's an active state.
+    let requestsDeleted = 0;
+    try {
+        const cutoff = now - JOIN_REQUESTS_TTL_MS;
+        const snap = await db
+            .collection('groupJoinRequests')
+            .where('decidedAt', '<', cutoff)
+            .limit(BATCH_LIMIT)
+            .get();
+        if (!snap.empty) {
+            const batch = db.batch();
+            snap.docs.forEach((d) => batch.delete(d.ref));
+            await batch.commit();
+            requestsDeleted = snap.size;
+        }
+    }
+    catch (err) {
+        console.error('[dailyCleanup] joinRequests sweep failed', err);
+    }
+    console.log(`[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}`);
 });
 // ─── Scheduled: post-game "rate teammates" reminder ────────────────────
 /**

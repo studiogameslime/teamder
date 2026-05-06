@@ -30,6 +30,8 @@ import {
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { Ionicons } from '@expo/vector-icons';
+import { Button } from '@/components/Button';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -253,11 +255,37 @@ export function CommunityDetailsScreen() {
   }
 
   if (!group) {
+    // Group genuinely doesn't exist (deleted by admin or never
+    // existed). Show a friendly fallback with an explicit way back
+    // to the main communities feed — a deep-link entry has no
+    // back-stack, so silent goBack would leave the user stranded.
     return (
       <View style={styles.root}>
         <ScreenHeader title={he.loading} />
         <View style={styles.center}>
-          <Text style={styles.emptyText}>{he.communitiesEmpty}</Text>
+          <Ionicons
+            name="trash-outline"
+            size={48}
+            color={colors.textMuted}
+          />
+          <Text style={styles.emptyText}>
+            {he.communityDetailsDeletedTitle}
+          </Text>
+          <Text style={[styles.emptyText, { marginTop: spacing.sm }]}>
+            {he.communityDetailsDeletedBody}
+          </Text>
+          <Button
+            title={he.deletedTargetBackToMain}
+            variant="primary"
+            size="lg"
+            style={{ marginTop: spacing.lg }}
+            onPress={() => {
+              const navAny = nav as { navigate: (s: string, p?: unknown) => void };
+              navAny.navigate('CommunitiesTab', {
+                screen: 'CommunitiesFeed',
+              });
+            }}
+          />
         </View>
       </View>
     );

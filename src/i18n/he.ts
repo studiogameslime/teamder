@@ -16,6 +16,7 @@ export const he = {
   gameFiltersVisibility: 'נראות',
   gameFiltersOnlyAvailable: 'רק משחקים עם מקומות פנויים',
   gameFiltersButton: 'סינון',
+  matchesCreateFab: 'יצירת משחק חדש',
   gameFiltersActive: (n: number) =>
     n === 1 ? 'פילטר אחד פעיל' : `${n} פילטרים פעילים`,
   communityFiltersTitle: 'סינון קבוצות',
@@ -374,6 +375,13 @@ export const he = {
   editGameAlreadyStartedTitle: 'המשחק כבר התחיל',
   editGameAlreadyStartedBody:
     'לא ניתן לערוך פרטי משחק לאחר שזמן ההתחלה הגיע.',
+  matchDetailsDeletedTitle: 'המשחק כבר לא קיים',
+  matchDetailsDeletedBody:
+    'המשחק נמחק או הוסר. אפשר לחזור לרשימת המשחקים ולמצוא משחק אחר.',
+  communityDetailsDeletedTitle: 'הקהילה כבר לא קיימת',
+  communityDetailsDeletedBody:
+    'הקהילה נמחקה על ידי המנהל. אפשר לחזור לרשימת הקהילות ולחפש קהילה אחרת.',
+  deletedTargetBackToMain: 'חזרה לדף הראשי',
   matchDetailsEdit: 'עריכה',
   // Wizard
   wizardStep1: 'פרטים',

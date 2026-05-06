@@ -353,7 +353,8 @@ export function GamesListScreen() {
           styles.fab,
           pressed && { transform: [{ scale: 0.95 }] },
         ]}
-        accessibilityLabel="create-match"
+        accessibilityRole="button"
+        accessibilityLabel={he.matchesCreateFab}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </Pressable>

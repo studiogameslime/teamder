@@ -7,6 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -111,15 +112,26 @@ export function CommunityPlayersScreen() {
           <Text style={styles.empty}>{he.communityPlayersEmpty}</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.headline}>
-            {he.communityPlayersTitle}{' '}
-            <Text style={styles.headlineCount}>({ordered.length})</Text>
-          </Text>
-          <Card style={styles.listCard}>
-            {ordered.map((u, i) => (
+        // FlatList virtualises the row list so a 200-member community
+        // renders only the visible window. We keep the single
+        // wrapping Card by spreading FlatList contents through
+        // ListHeaderComponent + the renderItem; the visual matches
+        // the old ScrollView + map.
+        <FlatList
+          data={ordered}
+          keyExtractor={(u) => u.id}
+          contentContainerStyle={styles.content}
+          ListHeaderComponent={
+            <Text style={styles.headline}>
+              {he.communityPlayersTitle}{' '}
+              <Text style={styles.headlineCount}>({ordered.length})</Text>
+            </Text>
+          }
+          renderItem={({ item: u, index: i }) => (
+            <View
+              style={i === 0 ? styles.listCard : null}
+            >
               <PlayerRow
-                key={u.id}
                 user={u}
                 isAdmin={group.adminIds.includes(u.id)}
                 stats={stats?.[u.id]}
@@ -131,9 +143,11 @@ export function CommunityPlayersScreen() {
                   )
                 }
               />
-            ))}
-          </Card>
-        </ScrollView>
+            </View>
+          )}
+          initialNumToRender={20}
+          windowSize={10}
+        />
       )}
     </SafeAreaView>
   );

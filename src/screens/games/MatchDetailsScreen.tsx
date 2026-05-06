@@ -471,6 +471,10 @@ export function MatchDetailsScreen() {
   // screen (NOT the normal MatchDetails layout) to guarantee no
   // private info is rendered for that user.
   const [accessBlocked, setAccessBlocked] = useState(false);
+  // Distinct from `accessBlocked` — the doc DOESN'T EXIST (deleted
+  // or never was) vs. exists-but-rules-deny. Drives the "המשחק לא
+  // נמצא" fallback screen with a button back to the main tab.
+  const [notFound, setNotFound] = useState(false);
   // Conflict modal — set when joinGameV2 throws REGISTRATION_CONFLICT,
   // OR when the user taps "join" while preCheckConflict is already set.
   // Either way the same modal renders.
@@ -516,14 +520,18 @@ export function MatchDetailsScreen() {
       // ACCESS_BLOCKED was thrown above and is handled in the catch
       // — it never reaches this branch, so null here is unambiguous.
       if (g === null) {
+        // Game was deleted or never existed. Don't auto-goBack —
+        // a deep-link entry has no back stack, and silently bouncing
+        // out feels broken. Render the dedicated fallback screen
+        // instead.
         setGame(null);
         setAccessBlocked(false);
-        toast.error(he.matchDetailsNotFound);
-        if (nav.canGoBack()) nav.goBack();
+        setNotFound(true);
         return;
       }
       setGame(g);
       setAccessBlocked(false);
+      setNotFound(false);
       logEvent(AnalyticsEvent.GameViewed, { gameId: g.id, status: g.status });
       const uids = Array.from(
         new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
@@ -886,6 +894,42 @@ export function MatchDetailsScreen() {
       setCancelOtherBusy(false);
     }
   };
+
+  // Not-found state — the game doc doesn't exist (deleted or never
+  // was). Distinct from access-blocked: there's no privacy concern
+  // here, just a friendly "this game is gone" + a button to leave
+  // the dead screen for somewhere meaningful.
+  if (notFound) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.matchDetailsTitle} />
+        <View style={styles.center}>
+          <Ionicons
+            name="trash-outline"
+            size={48}
+            color={colors.textMuted}
+          />
+          <Text style={styles.blockedTitle}>
+            {he.matchDetailsDeletedTitle}
+          </Text>
+          <Text style={styles.blockedSub}>
+            {he.matchDetailsDeletedBody}
+          </Text>
+          <Button
+            title={he.deletedTargetBackToMain}
+            variant="primary"
+            size="lg"
+            onPress={() => {
+              // Reset to the games list — no back stack relies on
+              // this screen, so we navigate fresh.
+              const navAny = nav as { navigate: (s: string, p?: unknown) => void };
+              navAny.navigate('GameTab', { screen: 'GamesList' });
+            }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Blocked-state render — non-member opened a community-only game
   // (rules denied the read). Render a self-contained "no access"
