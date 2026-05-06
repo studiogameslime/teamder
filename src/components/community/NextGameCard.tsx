@@ -27,6 +27,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import {
+  formatDateShort,
+  formatDayDate,
+  formatTime,
+} from '@/utils/format';
 
 interface Props {
   /** ms epoch — undefined when there is no upcoming game. */
@@ -38,16 +43,6 @@ interface Props {
   registrationOpensAt?: number;
   onPress?: () => void;
 }
-
-const DAYS = [
-  'יום ראשון',
-  'יום שני',
-  'יום שלישי',
-  'יום רביעי',
-  'יום חמישי',
-  'יום שישי',
-  'שבת',
-];
 
 export function NextGameCard({
   startsAt,
@@ -156,22 +151,15 @@ export function NextGameCard({
   );
 }
 
+// Local composite — "DD.MM HH:MM" — only used for the lock badge.
 function formatLockTime(ms: number): string {
-  const d = new Date(ms);
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${formatDateShort(ms)} ${formatTime(ms)}`;
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
+// Local composite — "{day-long} · DD.MM" — same as the canonical
+// formatDayDate's defaults, kept named for in-JSX readability.
 function formatDateLine(ms: number): string {
-  const d = new Date(ms);
-  return `${DAYS[d.getDay()]} · ${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
-}
-function formatTime(ms: number): string {
-  const d = new Date(ms);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return formatDayDate(ms);
 }
 
 const styles = StyleSheet.create({

@@ -24,6 +24,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Game, GameFormat, FieldType, UserId } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { formatDateShort, formatTime } from '@/utils/format';
 
 export type MatchCardCta =
   | 'join'
@@ -80,17 +81,6 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-function formatDateOnly(ms: number): string {
-  const d = new Date(ms);
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
-}
-function formatTimeOnly(ms: number): string {
-  const d = new Date(ms);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 // ─── Component ─────────────────────────────────────────────────────────
 
@@ -170,9 +160,9 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
         <View style={styles.dateLine}>
           <InfoRow
             icon="calendar"
-            text={formatDateOnly(game.startsAt)}
+            text={formatDateShort(game.startsAt)}
           />
-          <InfoRow icon="time" text={formatTimeOnly(game.startsAt)} />
+          <InfoRow icon="time" text={formatTime(game.startsAt)} />
         </View>
 
         {tags.length > 0 ? (

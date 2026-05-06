@@ -794,16 +794,13 @@ export const he = {
   availabilityInvitableHint: 'כשמכובה — שום שחקן לא יוכל לראות אותך כמועמד הזמנה',
   availabilitySave: 'שמור זמינות',
 
-  // Post sign-in onboarding (welcome → how it works → profile confirm)
-  psoWelcomeTitle: 'ברוך הבא ל־Teamder',
+  // Post sign-in onboarding — single profile-customisation step.
+  // The welcome + "how it works" intermediate screens were removed
+  // (the user already saw the value pitch in the pre-sign-in flow);
+  // psoWelcomeBody is still used as the hero subtitle on the new
+  // single-screen layout.
   psoWelcomeBody:
     'מארגנים כדורגל שכונתי בלי בלגן — הרשמה, ספסל, קבוצות, שוערים וטיימר.',
-  psoWelcomeCta: 'בוא נתחיל',
-  psoHowTitle: 'איך זה עובד',
-  psoHow1: 'מצטרפים לקבוצה',
-  psoHow2: 'נרשמים למשחק',
-  psoHow3: 'משחקים בלי להתעסק בטלפון',
-  psoHowCta: 'המשך',
   psoProfileTitle: 'בוא נכיר',
   psoProfileSave: 'המשך',
   psoProfileNickname: 'כינוי על החולצה (אופציונלי)',

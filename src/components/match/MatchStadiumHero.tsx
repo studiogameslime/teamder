@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
+import { formatDayDate, formatTime } from '@/utils/format';
 
 interface Props {
   startsAt?: number;
@@ -111,7 +112,10 @@ export function MatchStadiumHero({
                     color="rgba(255,255,255,0.85)"
                   />
                   <Text style={styles.floatingDate}>
-                    {formatDate(startsAt)}
+                    {formatDayDate(startsAt, {
+                      separator: ' | ',
+                      withYear: true,
+                    })}
                   </Text>
                 </View>
               ) : null}
@@ -124,30 +128,6 @@ export function MatchStadiumHero({
       </ImageBackground>
     </View>
   );
-}
-
-const DAYS = [
-  'יום ראשון',
-  'יום שני',
-  'יום שלישי',
-  'יום רביעי',
-  'יום חמישי',
-  'יום שישי',
-  'שבת',
-];
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function formatTime(ms: number): string {
-  const d = new Date(ms);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function formatDate(ms: number): string {
-  const d = new Date(ms);
-  return `${DAYS[d.getDay()]} | ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(2)}`;
 }
 
 const styles = StyleSheet.create({

@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { formatDateFull, formatDateTimeFull } from '@/utils/format';
 
 const HEBREW_DAY_HEADERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 const HEBREW_MONTHS = [
@@ -159,7 +160,7 @@ export function AppDateField({
           size={18}
           color={colors.textMuted}
         />
-        <Text style={styles.value}>{formatDate(value)}</Text>
+        <Text style={styles.value}>{formatDateFull(value)}</Text>
       </Pressable>
       <DatePickerModal
         visible={open}
@@ -216,7 +217,7 @@ export function AppDateTimeField({
           size={18}
           color={colors.textMuted}
         />
-        <Text style={styles.value}>{formatDateTime(value)}</Text>
+        <Text style={styles.value}>{formatDateTimeFull(value)}</Text>
       </Pressable>
       <DateTimePickerModal
         visible={open}
@@ -669,14 +670,6 @@ function applyTime(ts: number, h: number, m: number): number {
 function applyTimeFromTs(dateTs: number, fromTs: number): number {
   const f = new Date(fromTs);
   return applyTime(dateTs, f.getHours(), f.getMinutes());
-}
-function formatDate(ts: number): string {
-  const d = new Date(ts);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
-function formatDateTime(ts: number): string {
-  const d = new Date(ts);
-  return `${formatDate(ts)} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 // ─── Styles ────────────────────────────────────────────────────────────

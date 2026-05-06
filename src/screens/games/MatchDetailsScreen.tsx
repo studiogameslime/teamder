@@ -91,6 +91,7 @@ import {
 } from '@/types';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { formatDateShortYear, formatDayDate } from '@/utils/format';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
@@ -108,34 +109,18 @@ function statusForUser(g: Game, uid: UserId): CardStatus {
   return 'none';
 }
 
+// Conflict-modal display: "{day-long} · DD/MM · HH:MM". Slashes
+// give the right rhythm against the surrounding modal copy.
 function formatDateLong(ms: number): string {
-  const d = new Date(ms);
-  const days = [
-    'יום ראשון',
-    'יום שני',
-    'יום שלישי',
-    'יום רביעי',
-    'יום חמישי',
-    'יום שישי',
-    'שבת',
-  ];
-  const day = days[d.getDay()];
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mn = String(d.getMinutes()).padStart(2, '0');
-  return `${day} · ${dd}/${mm} · ${hh}:${mn}`;
+  return formatDayDate(ms, {
+    dateSeparator: '/',
+    withTime: true,
+  });
 }
 
-/** "DD.MM.YY" — used for the static "נוצר בתאריך" cell in the
- *  details grid. Compact enough to share a row with a label. */
-function formatShortDate(ms: number): string {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(2);
-  return `${dd}.${mm}.${yy}`;
-}
+// "DD.MM.YY" — used for the static "נוצר בתאריך" cell in the
+// details grid. Compact enough to share a row with a label.
+const formatShortDate = formatDateShortYear;
 
 function formatLabel(f: GameFormat | undefined): string | null {
   if (f === '5v5') return he.gameFormat5;

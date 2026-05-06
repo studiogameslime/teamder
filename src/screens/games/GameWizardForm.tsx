@@ -35,6 +35,7 @@ import { searchCities } from '@/services/israelLocationService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { formatDayDate } from '@/utils/format';
 
 const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
 const TEAM_COUNTS = [2, 3, 4, 5] as const;
@@ -620,14 +621,17 @@ function SummaryRow({
   );
 }
 
+// Compact preview in the wizard — "יום א׳ DD/MM HH:MM". Slashes
+// + short day letters keep the line tight on small screens.
 function formatDateLong(ms: number): string {
-  const d = new Date(ms);
-  const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `יום ${days[d.getDay()]} ${dd}/${mm} ${hh}:${mi}`;
+  return formatDayDate(ms, {
+    day: 'short',
+    dayPrefix: true,
+    separator: ' ',
+    dateSeparator: '/',
+    withTime: true,
+    timeSeparator: ' ',
+  });
 }
 
 // ─── Sub-controls ────────────────────────────────────────────────────────
