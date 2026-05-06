@@ -487,6 +487,22 @@ export function MatchDetailsScreen() {
   // same signals regardless of who triggered the change.
   useGameEvents(gameId);
 
+  // Clear stale state the instant `gameId` flips. React Navigation
+  // doesn't unmount MatchDetails when navigating to a different
+  // gameId via `nav.replace` (or even `nav.navigate` from a deep
+  // link in the same stack) — the same component just receives new
+  // params. Without this reset the previous game's data (community
+  // name, players, organizer) bleeds through for the few hundred ms
+  // it takes the next reload to land. The user-reported symptom
+  // "match details shows the wrong community" walks straight back to
+  // this race.
+  useEffect(() => {
+    setGame(null);
+    setAccessBlocked(false);
+    setNotFound(false);
+    setLoading(true);
+  }, [gameId]);
+
   const reload = React.useCallback(async () => {
     // Defensive: if a navigation path mounts MatchDetails without
     // params (e.g. a tab-reset action that lands the user on the
