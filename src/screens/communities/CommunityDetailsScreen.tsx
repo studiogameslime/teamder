@@ -62,7 +62,7 @@ import {
   User,
   WeekdayIndex,
 } from '@/types';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -86,44 +86,48 @@ export function CommunityDetailsScreen() {
   const [upcoming, setUpcoming] = useState<Game[]>([]);
   const [history, setHistory] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  // Pull-to-refresh has its own state so the native RefreshControl
+  // spinner doesn't fire at the same time as our SoccerBallLoader.
+  const [refreshing, setRefreshing] = useState(false);
   const [busyLeave, setBusyLeave] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const g = await groupService.get(groupId);
-      setGroup(g);
-      if (!g) {
-        setMembers([]);
-        setUpcoming([]);
-        setHistory([]);
-        return;
+  const reload = useCallback(
+    async (opts: { pullToRefresh?: boolean } = {}) => {
+      if (opts.pullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-      logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
-      const memberIds = Array.from(
-        new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds]),
-      );
-      const [users, games, hist] = await Promise.all([
-        groupService.hydrateUsers(memberIds),
-        // ALL upcoming open games of THIS community (regardless of
-        // whether the current user is registered) — this is the
-        // correct read for the "next game" card. The discovery
-        // helper `getCommunityGames` is wrong here because it
-        // excludes games the user is already in, so admins/members
-        // who'd already RSVP'd would either see no card or worse,
-        // a card from a different community.
-        gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
-        gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
-      ]);
-      setMembers(users);
-      setUpcoming(games);
-      setHistory(hist);
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId, me]);
+      try {
+        const g = await groupService.get(groupId);
+        setGroup(g);
+        if (!g) {
+          setMembers([]);
+          setUpcoming([]);
+          setHistory([]);
+          return;
+        }
+        logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
+        const memberIds = Array.from(
+          new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds]),
+        );
+        const [users, games, hist] = await Promise.all([
+          groupService.hydrateUsers(memberIds),
+          gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
+          gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
+        ]);
+        setMembers(users);
+        setUpcoming(games);
+        setHistory(hist);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [groupId, me],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -395,8 +399,8 @@ export function CommunityDetailsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={reload}
+            refreshing={refreshing}
+            onRefresh={() => reload({ pullToRefresh: true })}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
@@ -506,6 +510,11 @@ export function CommunityDetailsScreen() {
             }
           />
 
+          {/* Community-level aggregate stats. Loaded lazily — read
+              cost is bounded to ~200 finished/cancelled game docs. */}
+          <CommunityStatsSection groupId={group.id} />
+
+
           {/* ⑥ Share-invite CTA — members & admins only */}
           {isMember || isAdmin ? (
             <CommunityShareInviteCta onPress={handleInvite} />
@@ -546,6 +555,125 @@ export function CommunityDetailsScreen() {
     </View>
   );
 }
+
+// ─── Community stats section ────────────────────────────────────────────
+
+function CommunityStatsSection({ groupId }: { groupId: string }) {
+  const [stats, setStats] = useState<{
+    totalFinished: number;
+    totalCancelled: number;
+    organizationRate: number;
+    avgAttendance: number;
+    thisMonthFinished: number;
+    activeThisMonth: number;
+    activeThisYear: number;
+    topPlayers: Array<{ uid: string; attended: number }>;
+  } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    gameService
+      .getCommunityStats(groupId)
+      .then((s) => {
+        if (alive) setStats(s);
+      })
+      .catch(() => {
+        if (alive) setStats(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [groupId]);
+
+  if (!stats) return null;
+  if (stats.totalFinished === 0 && stats.totalCancelled === 0) return null;
+
+  const orgPct = Math.round(stats.organizationRate * 100);
+  const avg = stats.avgAttendance.toFixed(1);
+
+  return (
+    <View style={statsSectionStyles.wrap}>
+      <Text style={statsSectionStyles.title}>{he.communityStatsTitle}</Text>
+      <View style={statsSectionStyles.grid}>
+        <StatCell
+          label={he.communityStatsTotalFinished}
+          value={String(stats.totalFinished)}
+        />
+        <StatCell
+          label={he.communityStatsThisMonth}
+          value={String(stats.thisMonthFinished)}
+        />
+        <StatCell
+          label={he.communityStatsOrgRate}
+          value={`${orgPct}%`}
+        />
+        <StatCell
+          label={he.communityStatsAvgAttendance}
+          value={avg}
+        />
+      </View>
+
+      <Text
+        style={[statsSectionStyles.title, { marginTop: spacing.md }]}
+      >
+        {he.communityStatsVitalityTitle}
+      </Text>
+      <View style={statsSectionStyles.grid}>
+        <StatCell
+          label={he.communityStatsActiveMonth}
+          value={String(stats.activeThisMonth)}
+        />
+        <StatCell
+          label={he.communityStatsActiveYear}
+          value={String(stats.activeThisYear)}
+        />
+      </View>
+    </View>
+  );
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={statsSectionStyles.cell}>
+      <Text style={statsSectionStyles.value}>{value}</Text>
+      <Text style={statsSectionStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const statsSectionStyles = StyleSheet.create({
+  wrap: { gap: spacing.sm, marginTop: spacing.md },
+  title: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  cell: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  value: {
+    ...typography.h2,
+    color: colors.text,
+    fontWeight: '800',
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+});
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 

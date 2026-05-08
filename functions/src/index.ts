@@ -27,6 +27,9 @@ import {
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
+import * as fs from 'fs';
+import * as path from 'path';
 import { setGlobalOptions } from 'firebase-functions/v2';
 
 admin.initializeApp();
@@ -45,11 +48,13 @@ type NotificationType =
   | 'gameReminder'
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
+  | 'spotOffered'
   | 'growthMilestone'
   | 'inviteToGame'
   | 'rateReminder'
   | 'gameFillingUp'
   | 'gameRsvpNudge'
+  | 'gamePlayersJoined'
   | 'playerCancelled'
   | 'groupDeleted';
 
@@ -166,6 +171,18 @@ function buildMessage(
         title: 'נפתח לך מקום במשחק!',
         body: `מישהו ביטל ב${gameTitle} — אתה רשום כעת.`,
       };
+    case 'spotOffered':
+      // Confirmation-required variant of spotOpened. The user is the
+      // head of the waitlist and a slot just opened — they have to
+      // explicitly tap "אישור" to claim it. The push carries
+      // CONFIRM_SPOT / PASS_SPOT action buttons (registered in
+      // App.tsx under the `SPOT_OFFER` category).
+      return {
+        title: 'התפנה לך מקום!',
+        body: when
+          ? `${gameTitle} (${when}) — מאשר/ת הגעה?`
+          : `${gameTitle} — מאשר/ת הגעה?`,
+      };
     case 'inviteToGame': {
       const inviter = (payload.inviterName as string) || 'מנהל המשחק';
       return {
@@ -188,6 +205,28 @@ function buildMessage(
         body: when
           ? `${head} — המשחק ${when}, הירשם לפני שייסגר.`
           : `${head} — הירשם לפני שייסגר.`,
+      };
+    }
+    case 'gamePlayersJoined': {
+      // Batched admin push — N joiners in the recent window are
+      // consolidated into ONE notification. The flushPendingJoinerNotifs
+      // cron is what assembles `joinerNames` (CSV) and `count`.
+      const namesCsv = typeof payload.joinerNames === 'string'
+        ? (payload.joinerNames as string)
+        : '';
+      const names = namesCsv ? namesCsv.split(',').filter(Boolean) : [];
+      const count = (payload.count as number | undefined) ?? names.length;
+      const head =
+        names.length === 0
+          ? `${count} שחקנים אישרו הגעה`
+          : names.length === 1
+            ? `${names[0]} אישר הגעה`
+            : names.length === 2
+              ? `${names[0]} ו-${names[1]} אישרו הגעה`
+              : `${names[0]}, ${names[1]} ועוד ${count - 2} אישרו הגעה`;
+      return {
+        title: head,
+        body: `ל${gameTitle}`,
       };
     }
     case 'groupDeleted': {
@@ -349,6 +388,27 @@ async function resolveRecipients(
     return loadUsers(ids);
   }
 
+  if (notif.type === 'gamePlayersJoined') {
+    // Fan out to community admins so they know who locked in. The
+    // flush cron stamps `joinerIds` on the payload (CSV) so we can
+    // self-exclude — an admin who joined their own game shouldn't
+    // get a "you joined" push.
+    const groupId = (payload.groupId as string) || '';
+    if (!groupId) return [];
+    const grpSnap = await db.collection('groups').doc(groupId).get();
+    if (!grpSnap.exists) return [];
+    const grp = grpSnap.data() as { adminIds?: string[] };
+    const joinerCsv =
+      typeof payload.joinerIds === 'string'
+        ? (payload.joinerIds as string)
+        : '';
+    const joinerSet = new Set(joinerCsv.split(',').filter(Boolean));
+    const recipients = (grp.adminIds || []).filter(
+      (uid) => !joinerSet.has(uid),
+    );
+    return loadUsers(recipients);
+  }
+
   if (notif.type === 'gameFillingUp') {
     // Fan out to community members who could still join — exclude
     // anyone already on the roster (players, waitlist, pending). The
@@ -430,13 +490,15 @@ async function deliverBatch(
   // Notifications that should render with action buttons advertise
   // a category id; expo-notifications matches it against the
   // categories the client registered at boot (see App.tsx) and the
-  // OS draws the buttons. `gameReminder` and `gameRsvpNudge` both
-  // use the same "אני בא / לא בא" pair — they differ only in
-  // recipient list and timing.
-  const categoryIdentifier =
-    type === 'gameReminder' || type === 'gameRsvpNudge'
-      ? 'GAME_REMINDER'
-      : undefined;
+  // OS draws the buttons. `gameReminder` and `gameRsvpNudge` share
+  // the "אני בא / לא בא" pair; `spotOffered` uses its own
+  // "אישור הגעה / ויתור" pair.
+  let categoryIdentifier: string | undefined;
+  if (type === 'gameReminder' || type === 'gameRsvpNudge') {
+    categoryIdentifier = 'GAME_REMINDER';
+  } else if (type === 'spotOffered') {
+    categoryIdentifier = 'SPOT_OFFER';
+  }
 
   // sendEachForMulticast is capped at 500 tokens per call.
   const all = Array.from(tokens);
@@ -725,20 +787,39 @@ export const sendRsvpNudges = onSchedule(
       if (g.createdBy) exclude.add(g.createdBy);
 
       const targets = Array.from(members).filter((uid) => !exclude.has(uid));
-      if (targets.length === 0) {
-        // Still flip the latch so we don't re-query this game every
-        // 15 min until kickoff.
-        await doc.ref.update({ rsvpNudgeSent: true });
+
+      // Flip the latch transactionally BEFORE dispatching, with a
+      // re-read guard. This protects against:
+      //   • two cron instances racing (CF can occasionally double-fire)
+      //   • partial dispatch + retry → duplicate sends
+      // Trade-off accepted: if the function crashes mid-loop below,
+      // at most a handful of users miss the nudge for this one game.
+      // A missed nudge is recoverable; a duplicate one is annoying.
+      let claimed = false;
+      try {
+        await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return;
+          if ((fresh.data() as { rsvpNudgeSent?: boolean }).rsvpNudgeSent) {
+            return;
+          }
+          tx.update(doc.ref, { rsvpNudgeSent: true });
+          claimed = true;
+        });
+      } catch (e) {
+        console.error('[sendRsvpNudges] latch txn failed', doc.id, e);
         continue;
       }
+      if (!claimed) continue;
+      if (targets.length === 0) continue;
 
-      // One notification doc per target — the per-user dispatch path
-      // (resolveRecipients reads `recipientId`) keeps the prefs gate
-      // honest. Same pattern as `joinRequest` / `inviteToGame`.
-      const ops: Promise<unknown>[] = [];
+      // One notification doc per target — wrapped individually so a
+      // single failure (e.g. quota blip on one add) doesn't strand
+      // the rest. The latch is already set, so we won't retry from
+      // a re-fire either way.
       for (const uid of targets) {
-        ops.push(
-          db.collection('notifications').add({
+        try {
+          await db.collection('notifications').add({
             type: 'gameRsvpNudge',
             recipientId: uid,
             payload: {
@@ -748,15 +829,132 @@ export const sendRsvpNudges = onSchedule(
             },
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             delivered: false,
-          }),
-        );
+          });
+          nudged += 1;
+        } catch (e) {
+          console.error('[sendRsvpNudges] add failed', doc.id, uid, e);
+        }
       }
-      ops.push(doc.ref.update({ rsvpNudgeSent: true }));
-      await Promise.all(ops);
-      nudged += targets.length;
     }
 
     console.log(`[sendRsvpNudges] nudged ${nudged} member(s)`);
+  },
+);
+
+// ─── Scheduled: flush batched join notifications to admins ──────────────
+
+/**
+ * Consumes the `pendingJoinerIds[]` / `pendingJoinFlushAt` buffer
+ * that `onGameRosterChanged` builds up on every join. When the
+ * window expires (default 3 min from the first joiner), we send a
+ * SINGLE consolidated push to the community admins instead of N
+ * separate "X joined" pings — so a 10-player rush after a community
+ * blast becomes one notification, not ten.
+ *
+ * Runs every minute → max latency for the admin push is `window + 1m`.
+ *
+ * Idempotency: the buffer is cleared inside a transaction that also
+ * captures the joiner list, so two concurrent cron runs can't
+ * dispatch the same batch twice.
+ */
+export const flushPendingJoinerNotifs = onSchedule(
+  {
+    schedule: 'every 1 minutes',
+    timeZone: 'Asia/Jerusalem',
+  },
+  async () => {
+    const now = Date.now();
+    const snap = await db
+      .collection('games')
+      .where('pendingJoinFlushAt', '<=', now)
+      .get();
+
+    if (snap.empty) return;
+
+    let dispatched = 0;
+    for (const doc of snap.docs) {
+      const g = doc.data() as {
+        title?: string;
+        groupId?: string;
+        startsAt?: number;
+        pendingJoinerIds?: string[];
+        pendingJoinFlushAt?: number;
+      };
+
+      // Claim transactionally — the tx captures the joiner list AND
+      // clears the buffer atomically. Race between two cron runs:
+      // only the first sees the unexpired flushAt and a non-empty
+      // list; the second gets nothing and skips.
+      let claimedJoiners: string[] = [];
+      try {
+        await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return;
+          const d = fresh.data() as {
+            pendingJoinerIds?: string[];
+            pendingJoinFlushAt?: number;
+          };
+          if (!d.pendingJoinFlushAt || d.pendingJoinFlushAt > Date.now()) {
+            return;
+          }
+          claimedJoiners = (d.pendingJoinerIds ?? []).slice();
+          tx.update(doc.ref, {
+            pendingJoinerIds: admin.firestore.FieldValue.delete(),
+            pendingJoinFlushAt: admin.firestore.FieldValue.delete(),
+          });
+        });
+      } catch (err) {
+        console.error('[flushPendingJoinerNotifs] claim failed', doc.id, err);
+        continue;
+      }
+
+      if (claimedJoiners.length === 0 || !g.groupId) continue;
+
+      // Resolve display names for the message body. Best-effort: a
+      // missing user just gets dropped from the names list, but
+      // `count` still reflects the true total.
+      let names: string[] = [];
+      try {
+        const userRefs = claimedJoiners.map((uid) =>
+          db.collection('users').doc(uid),
+        );
+        const userSnaps = await db.getAll(...userRefs);
+        names = userSnaps
+          .map((s) => {
+            if (!s.exists) return '';
+            const data = s.data() as { displayName?: string };
+            return (data.displayName || '').trim();
+          })
+          .filter((n) => n.length > 0);
+      } catch (err) {
+        console.error('[flushPendingJoinerNotifs] name lookup failed', err);
+      }
+
+      try {
+        await db.collection('notifications').add({
+          type: 'gamePlayersJoined',
+          recipientId: g.groupId,
+          payload: {
+            gameId: doc.id,
+            groupId: g.groupId,
+            gameTitle: g.title || 'המשחק',
+            startsAt: g.startsAt ?? null,
+            joinerIds: claimedJoiners.join(','),
+            joinerNames: names.join(','),
+            count: claimedJoiners.length,
+          },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          delivered: false,
+        });
+        dispatched += 1;
+      } catch (err) {
+        console.error('[flushPendingJoinerNotifs] dispatch failed', doc.id, err);
+      }
+    }
+
+    if (dispatched > 0) {
+      console.log(`[flushPendingJoinerNotifs] dispatched ${dispatched} batch(es)`);
+    }
   },
 );
 
@@ -1238,6 +1436,71 @@ export const onGroupPendingChanged = onDocumentWritten(
     }
 
     if (!after) return;
+
+    // Sync the denormalised /groupsPublic.memberCount whenever
+    // playerIds changes. Client-side join paths can't write to the
+    // public doc (rule requires admin), so the feed's count would
+    // otherwise drift every time someone direct-joins an open
+    // community. Best-effort — failure logs but doesn't throw.
+    const beforePlayers = (before as { playerIds?: string[] } | undefined)
+      ?.playerIds;
+    const afterPlayers = (after as { playerIds?: string[] } | undefined)
+      ?.playerIds;
+    const playerCountChanged =
+      Array.isArray(afterPlayers) &&
+      (afterPlayers.length !== (beforePlayers?.length ?? 0) ||
+        JSON.stringify(beforePlayers ?? []) !==
+          JSON.stringify(afterPlayers));
+
+    // Also bump teamsJoined for newcomers — the client's hardened
+    // /users rules block this cross-user write. Server-side keeps
+    // counters honest regardless of which path admitted the user
+    // (admin approve vs open-group direct-join vs cancel-promote).
+    if (Array.isArray(afterPlayers)) {
+      const prevSet = new Set(beforePlayers ?? []);
+      const newJoiners = afterPlayers.filter((uid) => !prevSet.has(uid));
+      for (const uid of newJoiners) {
+        try {
+          await db.collection('users').doc(uid).set(
+            {
+              achievements: {
+                teamsJoined: admin.firestore.FieldValue.increment(1),
+              },
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          );
+        } catch (err) {
+          console.warn(
+            '[onGroupPendingChanged] teamsJoined bump failed',
+            uid,
+            err,
+          );
+        }
+      }
+    }
+
+    if (playerCountChanged) {
+      try {
+        await db
+          .collection('groupsPublic')
+          .doc(event.params.groupId)
+          .set(
+            {
+              memberCount: afterPlayers!.length,
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          );
+      } catch (err) {
+        console.warn(
+          '[onGroupWritten] groupsPublic memberCount sync failed',
+          event.params.groupId,
+          err,
+        );
+      }
+    }
+
     const beforeIds = new Set(before?.pendingPlayerIds ?? []);
     const afterIds = after.pendingPlayerIds ?? [];
     const newcomers = afterIds.filter((id) => !beforeIds.has(id));
@@ -1306,6 +1569,7 @@ export const onGameRosterChanged = onDocumentWritten(
           maxPlayers?: number;
           status?: string;
           capacityNoticeSent?: boolean;
+          arrivals?: Record<string, string>;
         }
       | undefined;
     const after = event.data?.after?.data() as
@@ -1318,10 +1582,144 @@ export const onGameRosterChanged = onDocumentWritten(
           title?: string;
           startsAt?: number;
           groupId?: string;
+          createdBy?: string;
+          pendingJoinerIds?: string[];
+          pendingJoinFlushAt?: number;
+          arrivals?: Record<string, string>;
         }
       | undefined;
 
     if (!after) return; // doc deleted
+
+    const ref = event.data!.after.ref;
+
+    // ── Discipline cards on arrival changes. The admin's setArrival()
+    // writes /games/{id}.arrivals[uid] = 'late' | 'no_show'. The
+    // client used to ALSO write /users/{uid}.discipline directly,
+    // but the hardened rules block that cross-user write. We mirror
+    // the issue/revoke logic here with the Admin SDK so cards land
+    // regardless of who triggered the arrival mark.
+    //
+    // Transitions handled:
+    //   prev → 'late'     : yellow (≤60min) / red (>60min) card
+    //   prev → 'no_show'  : red card with reason='no_show'
+    //   'late'/'no_show' → other (admin un-marked) : revoke card
+    const beforeArr = before?.arrivals ?? {};
+    const afterArr = after.arrivals ?? {};
+    const allArrUids = new Set<string>([
+      ...Object.keys(beforeArr),
+      ...Object.keys(afterArr),
+    ]);
+    for (const uid of allArrUids) {
+      const prev = beforeArr[uid] ?? 'unknown';
+      const next = afterArr[uid] ?? 'unknown';
+      if (prev === next) continue;
+      try {
+        if (next === 'late') {
+          const startsAt =
+            typeof after.startsAt === 'number' ? after.startsAt : Date.now();
+          const minutesLate = (Date.now() - startsAt) / 60_000;
+          if (minutesLate > 5) {
+            const cardType = minutesLate > 60 ? 'red' : 'yellow';
+            await issueDisciplineCard(uid, {
+              type: cardType,
+              reason: 'late',
+              gameId: event.params.gameId,
+            });
+          }
+        } else if (next === 'no_show') {
+          await issueDisciplineCard(uid, {
+            type: 'red',
+            reason: 'no_show',
+            gameId: event.params.gameId,
+          });
+        } else if (
+          (prev === 'late' || prev === 'no_show') &&
+          next !== 'late' &&
+          next !== 'no_show'
+        ) {
+          // Admin un-marked — revoke any card we issued for this game.
+          await revokeDisciplineCardsFor(uid, event.params.gameId);
+        }
+      } catch (err) {
+        console.warn(
+          '[onGameRosterChanged] discipline write failed',
+          uid,
+          err,
+        );
+      }
+    }
+
+    // ── Server-side achievement bumps for the joiners. The hardened
+    // /users rules block cross-user writes from the client, so this
+    // is the canonical place to keep gamesJoined in sync. Best-effort
+    // — a failure here doesn't impact the join itself.
+    if (after.status === 'open' && after.groupId) {
+      const beforePlayersSet = new Set(before?.players ?? []);
+      const freshJoiners = (after.players ?? []).filter(
+        (uid) => !beforePlayersSet.has(uid),
+      );
+      for (const uid of freshJoiners) {
+        try {
+          await db.collection('users').doc(uid).set(
+            {
+              achievements: {
+                gamesJoined: admin.firestore.FieldValue.increment(1),
+              },
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          );
+        } catch (err) {
+          console.warn(
+            '[onGameRosterChanged] gamesJoined bump failed',
+            uid,
+            err,
+          );
+        }
+      }
+    }
+
+    // ── Buffer new joiners for the consolidated admin push. We do this
+    // BEFORE the gameFillingUp early-returns so it runs on every
+    // join, regardless of capacity threshold or game status changes.
+    // The cron `flushPendingJoinerNotifs` reads the buffer when it
+    // expires and dispatches a single batched notification.
+    if (after.status === 'open' && after.groupId) {
+      const beforePlayers = new Set(before?.players ?? []);
+      const newJoiners = (after.players ?? []).filter(
+        (uid) => !beforePlayers.has(uid),
+      );
+      if (newJoiners.length > 0) {
+        const JOIN_BATCH_WINDOW_MS = 3 * 60 * 1000;
+        try {
+          await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(ref);
+            if (!fresh.exists) return;
+            const data = fresh.data() as {
+              pendingJoinerIds?: string[];
+              pendingJoinFlushAt?: number;
+            };
+            const merged = Array.from(
+              new Set([...(data.pendingJoinerIds ?? []), ...newJoiners]),
+            );
+            // First joiner in the window sets flushAt; subsequent
+            // joiners append without extending — bounded latency.
+            const flushAt =
+              data.pendingJoinFlushAt && data.pendingJoinFlushAt > Date.now()
+                ? data.pendingJoinFlushAt
+                : Date.now() + JOIN_BATCH_WINDOW_MS;
+            tx.update(ref, {
+              pendingJoinerIds: merged,
+              pendingJoinFlushAt: flushAt,
+            });
+          });
+        } catch (err) {
+          console.error('[onGameRosterChanged] joiner buffer txn failed', err);
+        }
+      }
+    }
+
     if (after.capacityNoticeSent) return;
     if (after.status !== 'open') return;
 
@@ -1350,7 +1748,6 @@ export const onGameRosterChanged = onDocumentWritten(
     // observe `capacityNoticeSent=false` and each write a duplicate
     // notification. The transaction reads the doc fresh and aborts if
     // the latch is already set; only the winner proceeds to dispatch.
-    const ref = event.data!.after.ref;
     let claimed = false;
     try {
       await db.runTransaction(async (tx) => {
@@ -1780,4 +2177,947 @@ async function generateForGame(
   } catch (err) {
     console.error('[autoBalance] generateForGame failed', ref.id, err);
   }
+}
+
+// ─── Callable: bump /appConfig/{platform} (admin-gated) ────────────────
+//
+// One-shot maintenance hook. Bumping `latestVersion` triggers the
+// optional-update modal across every install on next cold start; bumping
+// `minimumSupportedVersion` triggers the force-update modal. Open from
+// `firebase functions:shell` or via a httpsCallable invocation:
+//
+//   const fn = httpsCallable(functions, 'updateAppConfig');
+//   await fn({ platform: 'android', latestVersion: '0.2.5' });
+//
+// Gated to a single hard-coded admin uid so only the project owner can
+// call it — App Check + auth are layered on top in production.
+export const updateAppConfig = onCall(async (request) => {
+  const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
+  if (request.auth?.uid !== ALLOWED_UID) {
+    throw new HttpsError('permission-denied', 'admin only');
+  }
+  const data = (request.data ?? {}) as {
+    platform?: string;
+    latestVersion?: string;
+    minimumSupportedVersion?: string;
+  };
+  const platform = data.platform === 'ios' ? 'ios' : 'android';
+  const patch: Record<string, unknown> = { updatedAt: Date.now() };
+  if (typeof data.latestVersion === 'string') {
+    patch.latestVersion = data.latestVersion;
+  }
+  if (typeof data.minimumSupportedVersion === 'string') {
+    patch.minimumSupportedVersion = data.minimumSupportedVersion;
+  }
+  await db.collection('appConfig').doc(platform).set(patch, { merge: true });
+  return { ok: true, platform, patch };
+});
+
+// ─── Callable: send game invite (server-trusted) ────────────────────────
+//
+// Replaces the legacy client-side `addDoc('/notifications', { type:
+// 'inviteToGame', payload: { inviterName, gameTitle, ... } })` flow.
+// That path let any signed-in client write a notification with an
+// arbitrary `inviterName` — i.e. impersonate "מנהל הקבוצה" or any
+// other display name in a phishing-style push.
+//
+// This callable is the only legitimate way to dispatch an invite. It:
+//   1. requires `request.auth` (Firestore rule no longer allows
+//      `inviteToGame` from clients, so the legacy path is dead);
+//   2. enforces a server-side per-uid rate limit (30/hour) using a
+//      `/rateLimits/{uid}_inviteToGame` doc that the client cannot
+//      tamper with through the function — the function reads & writes
+//      via Admin SDK and is the only writer trusted by the count;
+//   3. validates IDs only (recipientId, gameId) — caller cannot
+//      smuggle inviterName / gameTitle / etc.;
+//   4. loads the sender + game server-side and constructs the payload
+//      from canonical state (sender name from /users/{auth.uid}.name,
+//      game title from /games/{gameId}.title);
+//   5. checks permission: caller must be a member or admin of the
+//      game's parent community;
+//   6. blocks self-invite, blocks invites to a game the recipient is
+//      already in, blocks invites to terminal-state games.
+//
+// Errors propagate as `HttpsError` codes the client can branch on:
+//   • `unauthenticated` — caller has no auth
+//   • `invalid-argument` — missing / oversized IDs
+//   • `permission-denied` — caller can't see this game / not a member
+//   • `failed-precondition` — recipient already in game / game closed
+//   • `resource-exhausted` — server-side rate limit exceeded
+const INVITE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const INVITE_RATE_LIMIT_CAP = 30;
+
+export const sendGameInvite = onCall(async (request) => {
+  // 1) Auth
+  const auth = request.auth;
+  if (!auth?.uid) {
+    throw new HttpsError(
+      'unauthenticated',
+      'sign-in required to send invites',
+    );
+  }
+  const senderUid = auth.uid;
+
+  // 2) Input shape — IDs only. Anything textual the function loads
+  //    server-side from canonical state.
+  const data = (request.data ?? {}) as {
+    recipientId?: unknown;
+    gameId?: unknown;
+  };
+  const recipientId = typeof data.recipientId === 'string' ? data.recipientId : '';
+  const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+  if (
+    recipientId.length === 0 ||
+    recipientId.length > 128 ||
+    gameId.length === 0 ||
+    gameId.length > 128
+  ) {
+    throw new HttpsError('invalid-argument', 'invalid recipientId or gameId');
+  }
+  if (recipientId === senderUid) {
+    throw new HttpsError('invalid-argument', 'cannot invite yourself');
+  }
+
+  // 3) Server-side rate limit. Single transactional read+write so two
+  //    fast invocations can't both pass under the cap.
+  const limitRef = db
+    .collection('rateLimits')
+    .doc(`${senderUid}_inviteToGame_v2`); // distinct id from client counter
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(limitRef);
+    const now = Date.now();
+    if (!snap.exists) {
+      tx.set(limitRef, {
+        uid: senderUid,
+        op: 'inviteToGame',
+        windowStart: now,
+        count: 1,
+        updatedAt: now,
+      });
+      return;
+    }
+    const cur = snap.data() as {
+      windowStart?: number;
+      count?: number;
+    };
+    const expired =
+      typeof cur.windowStart !== 'number' ||
+      now - cur.windowStart > INVITE_RATE_LIMIT_WINDOW_MS;
+    if (expired) {
+      tx.set(limitRef, {
+        uid: senderUid,
+        op: 'inviteToGame',
+        windowStart: now,
+        count: 1,
+        updatedAt: now,
+      });
+      return;
+    }
+    const nextCount = (cur.count ?? 0) + 1;
+    if (nextCount > INVITE_RATE_LIMIT_CAP) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'too many invites — try again later',
+      );
+    }
+    tx.update(limitRef, { count: nextCount, updatedAt: now });
+  });
+
+  // 4) Load sender, game, and recipient — all canonical, all server-side.
+  const [senderSnap, gameSnap, recipientSnap] = await Promise.all([
+    db.collection('users').doc(senderUid).get(),
+    db.collection('games').doc(gameId).get(),
+    db.collection('users').doc(recipientId).get(),
+  ]);
+  if (!senderSnap.exists) {
+    throw new HttpsError('failed-precondition', 'sender profile missing');
+  }
+  if (!gameSnap.exists) {
+    throw new HttpsError('failed-precondition', 'game not found');
+  }
+  if (!recipientSnap.exists) {
+    throw new HttpsError('failed-precondition', 'recipient not found');
+  }
+  const sender = senderSnap.data() as { name?: string };
+  const game = gameSnap.data() as {
+    title?: string;
+    groupId?: string;
+    startsAt?: number;
+    status?: string;
+    visibility?: string;
+    players?: string[];
+    waitlist?: string[];
+    pending?: string[];
+  };
+
+  // 5) Permission: caller must be allowed to see + invite to the game.
+  //    For community games we require that they're a group member or
+  //    admin (matching the read rule for /games). For public games any
+  //    signed-in user can already read, so we accept them as inviters.
+  if (game.visibility !== 'public') {
+    if (!game.groupId) {
+      throw new HttpsError('permission-denied', 'game has no community');
+    }
+    const groupSnap = await db
+      .collection('groups')
+      .doc(game.groupId)
+      .get();
+    if (!groupSnap.exists) {
+      throw new HttpsError('permission-denied', 'community missing');
+    }
+    const grp = groupSnap.data() as {
+      playerIds?: string[];
+      adminIds?: string[];
+    };
+    const ids = new Set<string>([
+      ...(grp.playerIds ?? []),
+      ...(grp.adminIds ?? []),
+    ]);
+    if (!ids.has(senderUid)) {
+      throw new HttpsError(
+        'permission-denied',
+        'not a member of this community',
+      );
+    }
+  }
+
+  // 6) Lifecycle: don't invite to a terminal or in-progress game.
+  if (game.status === 'finished' || game.status === 'cancelled') {
+    throw new HttpsError(
+      'failed-precondition',
+      'game is no longer accepting invites',
+    );
+  }
+
+  // 7) Recipient already in roster? Don't spam them.
+  const inRoster = new Set<string>([
+    ...(game.players ?? []),
+    ...(game.waitlist ?? []),
+    ...(game.pending ?? []),
+  ]);
+  if (inRoster.has(recipientId)) {
+    throw new HttpsError(
+      'failed-precondition',
+      'recipient is already registered',
+    );
+  }
+
+  // 8) Construct payload server-side ONLY. inviterName / gameTitle /
+  //    startsAt all come from canonical state — the client cannot
+  //    influence what the recipient sees.
+  await db.collection('notifications').add({
+    type: 'inviteToGame',
+    recipientId,
+    payload: {
+      gameId,
+      gameTitle: typeof game.title === 'string' ? game.title : 'המשחק',
+      inviterName: typeof sender.name === 'string' ? sender.name : '',
+      inviterId: senderUid,
+      startsAt: typeof game.startsAt === 'number' ? game.startsAt : 0,
+    },
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    delivered: false,
+  });
+
+  // 9) Fire-and-forget telemetry counter so analytics keep working
+  //    after the flow moves off the client (the client used to
+  //    `achievementsService.bump('invitesSent')` after this — bump
+  //    server-side instead so even non-app callers see consistent
+  //    counters).
+  try {
+    await db.collection('users').doc(senderUid).set(
+      {
+        achievements: {
+          invitesSent: admin.firestore.FieldValue.increment(1),
+        },
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.warn('[sendGameInvite] invitesSent bump failed', err);
+  }
+
+  return { ok: true };
+});
+
+// ─── Discipline helpers (server-side, Admin SDK) ────────────────────────
+//
+// Mirror of the (now-broken-from-client) `disciplineService.issueCard`
+// + `revokeCard` logic. Called from `onGameRosterChanged` whenever a
+// game's `arrivals[uid]` transitions to 'late' / 'no_show' or back.
+// The hardened /users rules block cross-user writes from the client,
+// so these need to live server-side.
+
+interface DisciplineEventDoc {
+  id: string;
+  userId: string;
+  type: 'yellow' | 'red';
+  reason: 'late' | 'no_show' | 'manual';
+  gameId?: string;
+  createdAt: number;
+}
+
+async function issueDisciplineCard(
+  uid: string,
+  input: {
+    type: 'yellow' | 'red';
+    reason: 'late' | 'no_show' | 'manual';
+    gameId?: string;
+  },
+): Promise<void> {
+  if (!uid) return;
+  const userRef = db.collection('users').doc(uid);
+  const event: DisciplineEventDoc = {
+    id: `disc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    userId: uid,
+    type: input.type,
+    reason: input.reason,
+    gameId: input.gameId,
+    createdAt: Date.now(),
+  };
+  // Append the event + bump the matching counter atomically. Use a
+  // transaction so the events array doesn't race with concurrent
+  // marks (e.g. admin sets late, then immediately bumps to no_show).
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    const data = (snap.exists ? snap.data() : {}) as {
+      discipline?: {
+        yellowCards?: number;
+        redCards?: number;
+        events?: DisciplineEventDoc[];
+      };
+    };
+    const cur = data.discipline ?? {};
+    const events = Array.isArray(cur.events) ? cur.events : [];
+    // Idempotency: don't double-issue for the same (uid, gameId, reason).
+    if (
+      input.gameId &&
+      events.some(
+        (e) => e.gameId === input.gameId && e.reason === input.reason,
+      )
+    ) {
+      return;
+    }
+    const yellowCards = (cur.yellowCards ?? 0) + (input.type === 'yellow' ? 1 : 0);
+    const redCards = (cur.redCards ?? 0) + (input.type === 'red' ? 1 : 0);
+    tx.set(
+      userRef,
+      {
+        discipline: {
+          yellowCards,
+          redCards,
+          events: [...events, event],
+        },
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  });
+}
+
+// ─── Public community showcase: maintain /communityShowcase/{gid} ──────
+//
+// Powers the publicly shareable web page at teamderfc.web.app/c/{gid}.
+// The page is a static client-rendered HTML that reads this doc via the
+// Firestore REST API (no auth — see firestore.rules for /communityShowcase).
+// The doc is a denormalised projection of state already visible in-app:
+// finished/cancelled game tallies, recent games, top attenders, member
+// roster. No private fields (fcmTokens, notif prefs, join requests) are
+// mirrored.
+//
+// Triggers:
+//   • /games/{id} writes — when status flips to finished/cancelled, the
+//     aggregates change. We also recompute on roster/title edits to a
+//     terminal game so historical fixes flow through.
+//   • /groups/{gid} writes — name/description/city/playerIds/adminIds
+//     changes affect the hero + member list.
+//
+// Strategy: a single recompute() function reads the canonical /groups/{gid},
+// queries up to 200 most recent terminal /games for this community, and
+// hydrates user docs for the people referenced in the top-attenders /
+// member list (capped at ~50 hydrations per recompute). Worst-case ~250
+// reads per affected event. With realistic write patterns (a few games
+// per community per week) this is a few hundred reads/community/week —
+// well inside free tier.
+//
+// We DO NOT make this CF responsible for deciding when to re-render —
+// every relevant write triggers a recompute. If two writes land
+// concurrently we may end up with two recomputes; the last-writer-wins
+// outcome on /communityShowcase is fine since both reads see the same
+// canonical state ± a few hundred ms.
+
+interface ShowcaseTopAttender {
+  uid: string;
+  name: string;
+  photoUrl?: string | null;
+  avatarId?: string | null;
+  gamesPlayed: number;
+  attendancePct: number;
+}
+
+interface ShowcaseMember {
+  uid: string;
+  name: string;
+  photoUrl?: string | null;
+  avatarId?: string | null;
+  isAdmin: boolean;
+  joinedAt?: number | null;
+  gamesPlayed: number;
+}
+
+interface ShowcaseRecentGame {
+  id: string;
+  title: string;
+  startsAt: number | null;
+  fieldName?: string | null;
+  status: 'finished' | 'cancelled';
+  attendedCount: number;
+}
+
+interface ShowcaseDoc {
+  groupId: string;
+  name: string;
+  description?: string | null;
+  city?: string | null;
+  fieldName?: string | null;
+  fieldAddress?: string | null;
+  isOpen: boolean;
+  foundedAt: number;
+  totalGamesFinished: number;
+  totalGamesCancelled: number;
+  organizationRatePct: number;
+  thisMonthGames: number;
+  avgAttendance: number;
+  totalMembers: number;
+  activeMembersThisMonth: number;
+  activeMembersThisYear: number;
+  topAttenders: ShowcaseTopAttender[];
+  recentGames: ShowcaseRecentGame[];
+  members: ShowcaseMember[];
+  updatedAt: number;
+}
+
+async function recomputeCommunityShowcase(groupId: string): Promise<void> {
+  if (!groupId) return;
+  // 1) Canonical group doc — if missing, the community has been
+  //    deleted: tear down the showcase mirror.
+  const groupSnap = await db.collection('groups').doc(groupId).get();
+  if (!groupSnap.exists) {
+    try {
+      await db.collection('communityShowcase').doc(groupId).delete();
+    } catch (err) {
+      console.warn(
+        '[updateCommunityShowcase] showcase teardown failed',
+        groupId,
+        err,
+      );
+    }
+    return;
+  }
+  const group = groupSnap.data() as {
+    name?: string;
+    description?: string | null;
+    city?: string | null;
+    fieldName?: string | null;
+    fieldAddress?: string | null;
+    isOpen?: boolean;
+    playerIds?: string[];
+    adminIds?: string[];
+    createdAt?: number;
+  };
+
+  // 2) Terminal games for this community. Mirrors the in-app
+  //    getCommunityStats query (status in [finished, cancelled],
+  //    ordered desc, capped at 200).
+  const gamesSnap = await db
+    .collection('games')
+    .where('groupId', '==', groupId)
+    .where('status', 'in', ['finished', 'cancelled'])
+    .orderBy('startsAt', 'desc')
+    .limit(200)
+    .get();
+
+  const now = Date.now();
+  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const yearAgo = now - 365 * 24 * 60 * 60 * 1000;
+
+  let totalFinished = 0;
+  let totalCancelled = 0;
+  let attendanceSum = 0;
+  let thisMonthGames = 0;
+  const attendedTally: Record<string, number> = {};
+  const activeMonth = new Set<string>();
+  const activeYear = new Set<string>();
+  const recentGamesRaw: Array<{
+    id: string;
+    title: string;
+    startsAt: number | null;
+    fieldName?: string | null;
+    status: 'finished' | 'cancelled';
+    attendedCount: number;
+  }> = [];
+
+  for (const doc of gamesSnap.docs) {
+    const g = doc.data() as {
+      id?: string;
+      title?: string;
+      startsAt?: number;
+      fieldName?: string | null;
+      status?: string;
+      players?: string[];
+      arrivals?: Record<string, string>;
+    };
+    const status = g.status === 'cancelled' ? 'cancelled' : 'finished';
+    if (status === 'cancelled') {
+      totalCancelled += 1;
+    } else {
+      totalFinished += 1;
+    }
+    const startsAt = typeof g.startsAt === 'number' ? g.startsAt : null;
+    if (status === 'finished' && startsAt !== null && startsAt >= monthAgo) {
+      thisMonthGames += 1;
+    }
+    let attendedHere = 0;
+    if (status === 'finished') {
+      const arrivals = g.arrivals ?? {};
+      const players = Array.isArray(g.players) ? g.players : [];
+      const within30 = startsAt !== null && startsAt >= monthAgo;
+      const within365 = startsAt !== null && startsAt >= yearAgo;
+      for (const uid of players) {
+        if (arrivals[uid] === 'no_show') continue;
+        attendedHere += 1;
+        attendedTally[uid] = (attendedTally[uid] ?? 0) + 1;
+        if (within30) activeMonth.add(uid);
+        if (within365) activeYear.add(uid);
+      }
+      attendanceSum += attendedHere;
+    }
+    if (recentGamesRaw.length < 8) {
+      recentGamesRaw.push({
+        id: doc.id,
+        title: g.title ?? '',
+        startsAt,
+        fieldName: g.fieldName ?? null,
+        status,
+        attendedCount: attendedHere,
+      });
+    }
+  }
+
+  const organizationRatePct =
+    totalFinished + totalCancelled > 0
+      ? Math.round(
+          (totalFinished / (totalFinished + totalCancelled)) * 100,
+        )
+      : 0;
+  const avgAttendance =
+    totalFinished > 0
+      ? Math.round((attendanceSum / totalFinished) * 10) / 10
+      : 0;
+
+  // 3) Hydrate users for top attenders + members. We cap the hydration
+  //    set so a community with 500 members doesn't blow up the read
+  //    budget on every recompute — the page renders the first 50
+  //    members alphabetically, plus the top-5 attenders, and that's it.
+  const playerIds = Array.isArray(group.playerIds) ? group.playerIds : [];
+  const adminIds = Array.isArray(group.adminIds) ? group.adminIds : [];
+  const adminSet = new Set(adminIds);
+  const memberIds = Array.from(new Set([...playerIds, ...adminIds]));
+
+  const topUidsRanked = Object.entries(attendedTally)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([uid]) => uid);
+
+  const memberSlice = memberIds.slice(0, 50);
+  const hydrateSet = new Set<string>([...memberSlice, ...topUidsRanked]);
+  const hydrateIds = Array.from(hydrateSet);
+
+  const userByUid: Record<
+    string,
+    {
+      name?: string;
+      photoUrl?: string | null;
+      avatarId?: string | null;
+      createdAt?: number;
+    }
+  > = {};
+  // Firestore `getAll` with up to 500 refs is one round-trip — cheaper
+  // than N separate gets. We chunk to be safe.
+  const chunkSize = 100;
+  for (let i = 0; i < hydrateIds.length; i += chunkSize) {
+    const chunk = hydrateIds.slice(i, i + chunkSize);
+    if (chunk.length === 0) continue;
+    const refs = chunk.map((uid) => db.collection('users').doc(uid));
+    const snaps = await db.getAll(...refs);
+    for (const s of snaps) {
+      if (!s.exists) continue;
+      const d = s.data() as {
+        name?: string;
+        photoUrl?: string | null;
+        avatarId?: string | null;
+        createdAt?: number;
+      };
+      userByUid[s.id] = {
+        name: d.name,
+        photoUrl: d.photoUrl ?? null,
+        avatarId: d.avatarId ?? null,
+        createdAt: typeof d.createdAt === 'number' ? d.createdAt : undefined,
+      };
+    }
+  }
+
+  const topAttenders: ShowcaseTopAttender[] = topUidsRanked.map((uid) => {
+    const u = userByUid[uid] ?? {};
+    const games = attendedTally[uid] ?? 0;
+    const pct =
+      totalFinished > 0 ? Math.round((games / totalFinished) * 100) : 0;
+    return {
+      uid,
+      name: u.name || 'שחקן',
+      photoUrl: u.photoUrl ?? null,
+      avatarId: u.avatarId ?? null,
+      gamesPlayed: games,
+      attendancePct: pct,
+    };
+  });
+
+  const members: ShowcaseMember[] = memberSlice.map((uid) => {
+    const u = userByUid[uid] ?? {};
+    const games = attendedTally[uid] ?? 0;
+    return {
+      uid,
+      name: u.name || 'שחקן',
+      photoUrl: u.photoUrl ?? null,
+      avatarId: u.avatarId ?? null,
+      isAdmin: adminSet.has(uid),
+      joinedAt: u.createdAt ?? null,
+      gamesPlayed: games,
+    };
+  });
+  // Show admins first, then by gamesPlayed desc.
+  members.sort((a, b) => {
+    if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1;
+    return (b.gamesPlayed ?? 0) - (a.gamesPlayed ?? 0);
+  });
+
+  const recentGames: ShowcaseRecentGame[] = recentGamesRaw.slice(0, 5);
+
+  const showcase: ShowcaseDoc = {
+    groupId,
+    name: group.name ?? 'קהילה',
+    description: group.description ?? null,
+    city: group.city ?? null,
+    fieldName: group.fieldName ?? null,
+    fieldAddress: group.fieldAddress ?? null,
+    isOpen: !!group.isOpen,
+    foundedAt: group.createdAt ?? now,
+    totalGamesFinished: totalFinished,
+    totalGamesCancelled: totalCancelled,
+    organizationRatePct,
+    thisMonthGames,
+    avgAttendance,
+    totalMembers: memberIds.length,
+    activeMembersThisMonth: activeMonth.size,
+    activeMembersThisYear: activeYear.size,
+    topAttenders,
+    recentGames,
+    members,
+    updatedAt: now,
+  };
+
+  await db
+    .collection('communityShowcase')
+    .doc(groupId)
+    .set(showcase, { merge: false });
+}
+
+/**
+ * Recompute the public showcase whenever a /groups doc changes.
+ * Every metadata edit (rename, description tweak, city, etc.) and
+ * every membership change affects the rendered page.
+ */
+export const updateShowcaseOnGroupChange = onDocumentWritten(
+  'groups/{groupId}',
+  async (event) => {
+    const groupId = event.params.groupId as string;
+    try {
+      await recomputeCommunityShowcase(groupId);
+    } catch (err) {
+      console.warn(
+        '[updateShowcaseOnGroupChange] recompute failed',
+        groupId,
+        err,
+      );
+    }
+  },
+);
+
+/**
+ * Recompute the public showcase whenever a /games doc changes its
+ * terminal state. We narrow the trigger to writes that flip the game
+ * INTO finished/cancelled, or edit a game that's already terminal —
+ * mid-flow writes (open → locked → active) don't change any showcase
+ * field, so re-running the aggregation on every roster join would be
+ * wasteful (a popular community can see hundreds of joins/cancels per
+ * week per game).
+ */
+export const updateShowcaseOnGameChange = onDocumentWritten(
+  'games/{gameId}',
+  async (event) => {
+    const before = event.data?.before?.data() as
+      | { status?: string; groupId?: string }
+      | undefined;
+    const after = event.data?.after?.data() as
+      | { status?: string; groupId?: string }
+      | undefined;
+    const groupId = (after?.groupId || before?.groupId || '') as string;
+    if (!groupId) return;
+    const beforeTerminal =
+      before?.status === 'finished' || before?.status === 'cancelled';
+    const afterTerminal =
+      after?.status === 'finished' || after?.status === 'cancelled';
+    // Only recompute when the doc is/was terminal — that's the only
+    // shape that contributes to showcase aggregates.
+    if (!beforeTerminal && !afterTerminal) return;
+    try {
+      await recomputeCommunityShowcase(groupId);
+    } catch (err) {
+      console.warn(
+        '[updateShowcaseOnGameChange] recompute failed',
+        groupId,
+        err,
+      );
+    }
+  },
+);
+
+// ─── SSR for community pages — share-preview support ────────────────
+//
+// Open Graph crawlers (WhatsApp, Facebook, Twitter) DO NOT execute
+// JavaScript. They read the raw HTML, grab <title> + the og:* meta
+// tags, and that's it. Without server-side rendering every share
+// preview shows our static fallback ("קהילה ב־Teamder") regardless of
+// which community was shared — defeating the whole point of a
+// shareable link.
+//
+// This function rewrites /c/** at the Hosting layer: it reads the
+// pre-built /functions/templates/community.html (copy of public/c/
+// index.html, kept in sync via predeploy script), fetches the
+// /communityShowcase doc, and injects the community name +
+// description into <title>, og:title, og:description, twitter:title,
+// twitter:description, AND a JSON-LD blob.
+//
+// Cache-Control sends a 5-minute browser cache + 10-minute CDN cache
+// so the function isn't re-invoked on every refresh. Stale share
+// previews are acceptable; the cost of always-fresh rendering is
+// not.
+//
+// The JS in the page itself still runs and overrides document.title /
+// og:title once the showcase loads — this just guarantees crawlers
+// (which never run that JS) see the right values.
+
+const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'community.html');
+let cachedTemplate: string | null = null;
+function loadTemplate(): string {
+  if (cachedTemplate !== null) return cachedTemplate;
+  cachedTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf8');
+  return cachedTemplate;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+interface ShowcaseSummary {
+  name: string;
+  description: string | null;
+  city: string | null;
+  totalGamesFinished: number;
+  totalMembers: number;
+}
+
+async function loadShowcaseSummary(
+  groupId: string,
+): Promise<ShowcaseSummary | null> {
+  try {
+    const snap = await db
+      .collection('communityShowcase')
+      .doc(groupId)
+      .get();
+    if (!snap.exists) return null;
+    const d = snap.data() as Record<string, unknown>;
+    const name = typeof d.name === 'string' ? d.name : '';
+    if (!name) return null;
+    return {
+      name,
+      description:
+        typeof d.description === 'string' ? d.description : null,
+      city: typeof d.city === 'string' ? d.city : null,
+      totalGamesFinished:
+        typeof d.totalGamesFinished === 'number'
+          ? d.totalGamesFinished
+          : 0,
+      totalMembers:
+        typeof d.totalMembers === 'number' ? d.totalMembers : 0,
+    };
+  } catch (err) {
+    console.warn(
+      '[serveCommunityPage] showcase fetch failed',
+      groupId,
+      err,
+    );
+    return null;
+  }
+}
+
+function buildMetaBlock(summary: ShowcaseSummary | null): {
+  title: string;
+  description: string;
+} {
+  if (!summary) {
+    return {
+      title: 'קהילה ב־Teamder',
+      description:
+        'צפו בסטטיסטיקות הקהילה, השחקנים הכי נאמנים, והמשחקים האחרונים.',
+    };
+  }
+  const title = `${summary.name} · Teamder`;
+  let description: string;
+  if (summary.description && summary.description.trim().length > 0) {
+    description = summary.description.trim();
+  } else {
+    const parts: string[] = [];
+    if (summary.city) parts.push(summary.city);
+    parts.push(`${summary.totalGamesFinished} משחקים`);
+    parts.push(`${summary.totalMembers} חברים`);
+    description = `קהילת כדורגל ב־Teamder · ${parts.join(' · ')}`;
+  }
+  return { title, description };
+}
+
+function injectMeta(
+  html: string,
+  title: string,
+  description: string,
+): string {
+  const safeTitle = escapeHtml(title);
+  const safeDesc = escapeHtml(description);
+  let out = html;
+
+  // <title> — a single replacement on the literal default works because
+  // the static template has exactly one <title> tag.
+  out = out.replace(
+    /<title>[^<]*<\/title>/,
+    `<title>${safeTitle}</title>`,
+  );
+  // <meta name="description"> — page-level description (used by Google +
+  // some link-preview crawlers as a fallback when og:description is
+  // missing).
+  out = out.replace(
+    /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/,
+    `<meta name="description" content="${safeDesc}" />`,
+  );
+  // og:title / og:description / twitter:* — replace the static
+  // defaults the crawlers see.
+  out = out.replace(
+    /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/,
+    `<meta property="og:title" content="${safeTitle}" />`,
+  );
+  out = out.replace(
+    /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/,
+    `<meta property="og:description" content="${safeDesc}" />`,
+  );
+
+  return out;
+}
+
+export const serveCommunityPage = onRequest(
+  { region: 'us-central1', memory: '256MiB' },
+  async (req, res) => {
+    try {
+      // Hosting forwards the original path verbatim (req.path is
+      // `/c/{groupId}` or `/c/{groupId}/...`). Strip the leading
+      // `/c/` and take the first remaining segment.
+      const raw = (req.path || '').replace(/^\/+/, '');
+      const parts = raw.split('/').filter(Boolean);
+      const groupId =
+        parts[0] === 'c' ? parts[1] || '' : parts[0] || '';
+
+      const html = loadTemplate();
+
+      let summary: ShowcaseSummary | null = null;
+      if (groupId) {
+        summary = await loadShowcaseSummary(groupId);
+      }
+      const { title, description } = buildMetaBlock(summary);
+      const rendered = injectMeta(html, title, description);
+
+      // 5min browser, 10min edge cache. Hosting-side CDN keys on the
+      // full URL, so each /c/{id} caches independently. When a
+      // community renames itself the CF re-runs after the cache
+      // expires — acceptable lag for share previews.
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set(
+        'Cache-Control',
+        'public, max-age=300, s-maxage=600',
+      );
+      res.status(200).send(rendered);
+    } catch (err) {
+      console.error('[serveCommunityPage] render failed', err);
+      // Best-effort fallback: serve the static template untouched so
+      // the user still sees the page; crawlers fall back to the static
+      // OG tags for this one request.
+      try {
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.status(200).send(loadTemplate());
+      } catch {
+        res.status(500).send('internal error');
+      }
+    }
+  },
+);
+
+async function revokeDisciplineCardsFor(
+  uid: string,
+  gameId: string,
+): Promise<void> {
+  if (!uid || !gameId) return;
+  const userRef = db.collection('users').doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) return;
+    const data = snap.data() as {
+      discipline?: {
+        yellowCards?: number;
+        redCards?: number;
+        events?: DisciplineEventDoc[];
+      };
+    };
+    const cur = data.discipline ?? {};
+    const events = Array.isArray(cur.events) ? cur.events : [];
+    const remaining = events.filter((e) => e.gameId !== gameId);
+    if (remaining.length === events.length) return;
+    const removed = events.filter((e) => e.gameId === gameId);
+    const yellowDelta = removed.filter((e) => e.type === 'yellow').length;
+    const redDelta = removed.filter((e) => e.type === 'red').length;
+    tx.set(
+      userRef,
+      {
+        discipline: {
+          yellowCards: Math.max(0, (cur.yellowCards ?? 0) - yellowDelta),
+          redCards: Math.max(0, (cur.redCards ?? 0) - redDelta),
+          events: remaining,
+        },
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  });
 }

@@ -98,28 +98,35 @@ export const disciplineService = {
       issuedBy: input.issuedBy,
       createdAt: Date.now(),
     };
-    try {
-      if (USE_MOCK_DATA) {
-        await applyMock(input.userId, (cur) =>
-          applyEvent(cur, event, +1),
-        );
-      } else {
-        await applyFirebase(input.userId, event, +1);
+    if (USE_MOCK_DATA) {
+      try {
+        await applyMock(input.userId, (cur) => applyEvent(cur, event, +1));
+        logEvent(AnalyticsEvent.DisciplineCardIssued, {
+          cardType: input.type,
+          reason: input.reason,
+          gameId: input.gameId,
+          manual: !!input.issuedBy,
+        });
+        return event;
+      } catch (err) {
+        if (__DEV__) console.warn('[discipline] issueCard mock failed', err);
+        return null;
       }
-      logEvent(AnalyticsEvent.DisciplineCardIssued, {
-        cardType: input.type,
-        reason: input.reason,
-        gameId: input.gameId,
-        manual: !!input.issuedBy,
-      });
-      return event;
-    } catch (err) {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.warn('[discipline] issueCard failed', err);
-      }
-      return null;
     }
+    // Firebase mode: cards on OTHER users are issued server-side by
+    // the `onGameRosterChanged` Cloud Function trigger (which watches
+    // game.arrivals transitions). The hardened /users rules block
+    // cross-user writes from the client, so issuing from here would
+    // always 403 — we just log analytics and let the server do the
+    // actual write.
+    logEvent(AnalyticsEvent.DisciplineCardIssued, {
+      cardType: input.type,
+      reason: input.reason,
+      gameId: input.gameId,
+      manual: !!input.issuedBy,
+      viaServerTrigger: true,
+    });
+    return event;
   },
 
   /**

@@ -1,16 +1,24 @@
 rules_version = '2';
 
-// v2 rules. Updated to match the renamed collections / fields:
-//   /gameNights → /games   ·   gameNightId → gameId   ·   isOpenForRequests dropped
-//   registeredUserIds → players   ·   waitlistUserIds → waitlist
-//   pendingUserIds → pending   ·   participantIds (denormalized union)
+// Production-hardened rules.
 //
-// Posture: middle-ground. Reads are open to any signed-in user; writes are
-// constrained to "self" patterns where it's cheap to express (own user
-// doc, self-add to community-pending, self-add to game-participant).
-// Anything else is gated behind being a group admin or the game's
-// organizer (createdBy). Production hardening (stricter array diffs,
-// per-field writes) can come on top of this.
+// Posture: deny by default. Every write path is constrained to the
+// fields it must touch, the auth identity that's allowed to touch
+// them, and the types/sizes those fields can hold. Reads are
+// constrained per-collection to the people who legitimately need
+// the data; sensitive fields (fcmTokens, full discipline log) are
+// not readable across users.
+//
+// Cross-cutting policies:
+//   • Self-only writes for /users (no client-driven cross-user bumps).
+//     Achievement / discipline mutations on someone else's doc must
+//     go through a Cloud Function (Admin SDK bypasses these rules).
+//   • Notification creation is whitelisted by `type`: only types a
+//     client is legitimately the source of are accepted; fan-out and
+//     system pushes (gameReminder, gameRsvpNudge, joinRequest, etc.)
+//     are server-only.
+//   • Free-text and array-size limits enforced at the rule layer so
+//     a malicious client can't DoS the UI / Firestore quotas.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -38,28 +46,83 @@ service cloud.firestore {
         request.auth.uid in groupDoc(gid).adminIds
       );
     }
+    // Length / size guards. Catch DoS-shaped writes (huge names that
+    // break the UI, mega-arrays that bloat doc reads) at the perimeter.
+    function isShortString(s, max) {
+      return s is string && s.size() <= max;
+    }
+    // Field MAY be missing OR null OR a short-enough string. The
+    // user converter on the client writes `email: u.email ?? null`
+    // (and similar) for optional fields, so legacy docs have null
+    // values that have to pass this check on every subsequent
+    // update — otherwise an unrelated field write (e.g. avatarId)
+    // gets blocked by an unchanged stale null we never touched.
+    function isOptionalShortString(data, key, max) {
+      return !(key in data) || data[key] == null ||
+        isShortString(data[key], max);
+    }
+
+    // Whitelist of notification `type` values a client is legitimately
+    // the source of. System / fan-out pushes are dispatched via Cloud
+    // Function with Admin SDK, which bypasses these rules.
+    function clientNotifTypeAllowed(t) {
+      return t in [
+        // 'inviteToGame' is intentionally NOT in this list. The
+        // invite path moved to the `sendGameInvite` callable Cloud
+        // Function — the client used to write the notif doc directly,
+        // which let it spoof `inviterName` to phish recipients. The
+        // callable derives sender + game from canonical state.
+        'gameCanceledOrUpdated',// admin / organizer notifies registrants
+        'newGameInCommunity',   // admin notifies subscribers on create
+        'approved',             // admin approves join (group or game)
+        'rejected',             // admin rejects join (group or game)
+        'groupDeleted',         // admin deletes community
+        'spotOpened',           // legacy auto-promote (kept for rollout)
+        'spotOffered',          // waitlist promotion offer
+        'playerCancelled'       // user cancels — notifies game admin
+      ];
+    }
 
     // ── /users/{uid} ────────────────────────────────────────────────────
-    // Self can update most fields on their own doc, EXCEPT invite-
-    // attribution fields: those are first-set-only and the new value
-    // for `invitedBy` must point at someone OTHER than the writer
-    // (no self-attribution). Once `invitedBy` is set it can never be
-    // overwritten or cleared from the client. Other signed-in users
-    // may touch ONLY the `discipline` and `achievements` subfields
-    // (+ updatedAt) — used for cross-user counter bumps.
+    // Reads: signed-in users can read profile basics. Sensitive fields
+    // (fcmTokens, notificationPrefs, newGameSubscriptions) ARE in the
+    // doc but should not be casually exposed — clients should select
+    // only the fields they need. Field-level read rules aren't a
+    // first-class Firestore primitive, so we mitigate by:
+    //   • making writes to those fields self-only (you can't doctor
+    //     someone else's tokens / prefs);
+    //   • having the CF (Admin SDK) be the only consumer of fcmTokens
+    //     for outbound delivery.
+    // A future hardening pass should move fcmTokens to a /private/
+    // subcollection that's read-restricted to self.
+    //
+    // Writes: SELF ONLY. Cross-user bumps (admin-issued discipline
+    // cards, achievement counters when an admin approves another
+    // user's join) must go through a Cloud Function — the previous
+    // permissive `affectedKeys().hasOnly(['discipline','achievements','updatedAt'])`
+    // open clause let any signed-in user inflate / sabotage anyone
+    // else's profile.
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSelf(uid) && (
-        // Brand-new user — no inviter known yet, OR the inviter is
-        // already someone else (the URL/install-referrer attribution
-        // path on first signup).
-        !('invitedBy' in request.resource.data) ||
-        request.resource.data.invitedBy != uid
-      );
-      allow update: if (
-        isSelf(uid) &&
-        // Block clobbering attribution: if `invitedBy` already exists
-        // it must remain unchanged on every subsequent self-update.
+
+      allow create: if isSelf(uid) &&
+        // Brand-new doc: no inviter known yet, OR invitedBy is set to
+        // someone OTHER than self (the URL/install-referrer flow on
+        // first signup).
+        (
+          !('invitedBy' in request.resource.data) ||
+          request.resource.data.invitedBy != uid
+        ) &&
+        // Field validation on the initial write so a malicious client
+        // can't seed the doc with garbage that we then have to clean up.
+        isOptionalShortString(request.resource.data, 'name', 60) &&
+        isOptionalShortString(request.resource.data, 'email', 200) &&
+        isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
+        isOptionalShortString(request.resource.data, 'avatarId', 80);
+
+      allow update: if isSelf(uid) &&
+        // Attribution is first-set-only: once invitedBy exists in the
+        // stored doc, every subsequent write must keep it identical.
         (
           !('invitedBy' in resource.data) ||
           (
@@ -67,8 +130,8 @@ service cloud.firestore {
             request.resource.data.invitedBy == resource.data.invitedBy
           )
         ) &&
-        // First-time attribution write: must be a foreign uid (no
-        // self-invite) and must arrive together with type+target.
+        // First-time attribution write: foreign uid + accompanying
+        // type+target fields. Self-attribution is rejected.
         (
           'invitedBy' in resource.data ||
           !('invitedBy' in request.resource.data) ||
@@ -77,34 +140,65 @@ service cloud.firestore {
             'invitedByType' in request.resource.data &&
             'invitedByTargetId' in request.resource.data
           )
-        )
-      ) || (
-        isSignedIn() &&
-        affectedKeys().hasOnly(['discipline', 'achievements', 'updatedAt'])
-      );
+        ) &&
+        // Field-content guards. We cap free-text fields and the
+        // fcmTokens array so a stuffed write can't blow up doc reads
+        // for everyone querying the user. The numeric `stats` block
+        // is now derived server-side; client writes to it are
+        // blocked entirely.
+        isOptionalShortString(request.resource.data, 'name', 60) &&
+        isOptionalShortString(request.resource.data, 'email', 200) &&
+        isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
+        isOptionalShortString(request.resource.data, 'avatarId', 80) &&
+        (
+          !('fcmTokens' in request.resource.data) ||
+          (
+            request.resource.data.fcmTokens is list &&
+            request.resource.data.fcmTokens.size() <= 20
+          )
+        ) &&
+        (
+          !('newGameSubscriptions' in request.resource.data) ||
+          (
+            request.resource.data.newGameSubscriptions is list &&
+            request.resource.data.newGameSubscriptions.size() <= 200
+          )
+        ) &&
+        // `stats` is server-derived. A client that sets it would be
+        // inflating their public attendance/cancellation %. Block.
+        !affectedKeys().hasAny(['stats']);
+
       allow delete: if false;
     }
 
     // ── /groups/{gid} — private community state ─────────────────────────
-    // Reads: members + admins only (outsiders use /groupsPublic).
-    // Create: the creator becomes the sole admin and only player.
-    // Update: admin may change anything; outsiders may only self-add to
-    //   pendingPlayerIds (community join-request path).
     match /groups/{gid} {
       allow read: if isSignedIn() && (
         request.auth.uid in resource.data.playerIds ||
         request.auth.uid in resource.data.adminIds ||
         request.auth.uid in resource.data.pendingPlayerIds
       );
+
       allow create: if isSignedIn() &&
         request.resource.data.adminIds == [request.auth.uid] &&
         request.resource.data.playerIds.hasOnly([request.auth.uid]) &&
-        request.resource.data.pendingPlayerIds.size() == 0;
+        request.resource.data.pendingPlayerIds.size() == 0 &&
+        // Sanity caps on initial fields.
+        isShortString(request.resource.data.name, 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+
       allow update: if (
+        // Admin branch — can mutate freely BUT a few fields are
+        // immutable across the whole admin team:
+        //   • creatorId (ownership transfer would let an admin
+        //     dispossess the founder)
+        //   • adminIds (only the creator may rotate it; see clause)
+        //   • playerIds size growth beyond maxMembers
+        // Other fields the admin owns end-to-end.
         isGroupAdmin(gid) &&
-        // creatorId is immutable — once set, neither the creator nor
-        // any other admin can rewrite it. Blocks the demote-creator-
-        // then-self-promote escalation we identified in the audit.
         (
           !('creatorId' in resource.data) ||
           (
@@ -112,12 +206,6 @@ service cloud.firestore {
             request.resource.data.creatorId == resource.data.creatorId
           )
         ) &&
-        // adminIds may only be changed by the creator. Note we use
-        // `request.auth.uid == resource.data.creatorId` as the gate
-        // — falling back to adminIds[0] (the legacy heuristic) opened
-        // the door to promotion races. Legacy groups without an
-        // explicit creatorId field can no longer rotate their admin
-        // list from the client; they must be backfilled.
         (
           !affectedKeys().hasAny(['adminIds']) ||
           (
@@ -125,21 +213,34 @@ service cloud.firestore {
             request.auth.uid == resource.data.creatorId
           )
         ) &&
-        // The creator must always remain inside adminIds even when
-        // the creator themselves is editing.
         (
           !affectedKeys().hasAny(['adminIds']) ||
           (
             'creatorId' in resource.data &&
             resource.data.creatorId in request.resource.data.adminIds
           )
+        ) &&
+        // Free-text caps when the admin edits.
+        isOptionalShortString(request.resource.data, 'name', 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        // Array caps so an admin (or a compromised admin account)
+        // can't blow the doc up to MB-size.
+        request.resource.data.playerIds is list &&
+        request.resource.data.playerIds.size() <= 500 &&
+        request.resource.data.adminIds is list &&
+        request.resource.data.adminIds.size() <= 20 &&
+        (
+          !('pendingPlayerIds' in request.resource.data) ||
+          (
+            request.resource.data.pendingPlayerIds is list &&
+            request.resource.data.pendingPlayerIds.size() <= 200
+          )
         )
       ) || (
-        // self-add to pendingPlayerIds (community join request — closed group).
-        // Capacity gate: refuse when playerIds is already at maxMembers
-        // — the request could never be approved anyway, and silently
-        // accepting it leaves a permanently-stuck "pending" badge in
-        // the user's UI. The client surfaces this as `GROUP_FULL`.
+        // Self-add to pendingPlayerIds (community join request — closed group).
         isSignedIn() &&
         !(request.auth.uid in resource.data.playerIds) &&
         !(request.auth.uid in resource.data.adminIds) &&
@@ -147,20 +248,14 @@ service cloud.firestore {
         request.resource.data.pendingPlayerIds.size() ==
           resource.data.pendingPlayerIds.size() + 1 &&
         request.auth.uid in request.resource.data.pendingPlayerIds &&
+        // Capacity gate.
         (
           !('maxMembers' in resource.data) ||
           resource.data.maxMembers <= 0 ||
           resource.data.playerIds.size() < resource.data.maxMembers
         )
       ) || (
-        // self-add to playerIds (auto-join — open group). The flag
-        // resource.data.isOpen == true gates this; otherwise the path
-        // above (pendingPlayerIds) is the only legal self-write.
-        // Capacity gate enforced server-side too — the public
-        // projection's memberCount that the client checks lags by
-        // up to ~minutes after admin approvals, so two simultaneous
-        // joins to a near-full group could otherwise sneak past
-        // both the client check AND the previous "size + 1" rule.
+        // Self-add to playerIds (auto-join — open group).
         isSignedIn() &&
         resource.data.isOpen == true &&
         !(request.auth.uid in resource.data.playerIds) &&
@@ -174,29 +269,106 @@ service cloud.firestore {
           resource.data.maxMembers <= 0 ||
           resource.data.playerIds.size() < resource.data.maxMembers
         )
+      ) || (
+        // Self-leave (player only): remove yourself from playerIds.
+        isSignedIn() &&
+        request.auth.uid in resource.data.playerIds &&
+        !(request.auth.uid in request.resource.data.playerIds) &&
+        affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
+        request.resource.data.playerIds.size() ==
+          resource.data.playerIds.size() - 1
+      ) || (
+        // Self-leave (admin who is also a player): a co-admin who
+        // wants to walk away. Removes self from BOTH adminIds and
+        // playerIds in one write. The creator is blocked from this
+        // path — leaving the creator-less would orphan ownership;
+        // the LAST_ADMIN guard in groupService blocks the same on
+        // the client. Note: this does NOT permit removing OTHER
+        // users from adminIds (only the creator can do that via
+        // the admin branch above).
+        isSignedIn() &&
+        request.auth.uid in resource.data.adminIds &&
+        !(request.auth.uid in request.resource.data.adminIds) &&
+        (
+          !('creatorId' in resource.data) ||
+          request.auth.uid != resource.data.creatorId
+        ) &&
+        affectedKeys().hasOnly(['adminIds', 'playerIds', 'updatedAt']) &&
+        // adminIds shrank by exactly 1, and the missing entry is the
+        // caller — i.e. nobody else got booted in the same write.
+        request.resource.data.adminIds.size() ==
+          resource.data.adminIds.size() - 1 &&
+        request.resource.data.adminIds.hasAll(
+          resource.data.adminIds.removeAll([request.auth.uid])
+        ) &&
+        // playerIds may shrink by 0 or 1 (and only the caller).
+        request.resource.data.playerIds.size() >=
+          resource.data.playerIds.size() - 1 &&
+        request.resource.data.playerIds.size() <=
+          resource.data.playerIds.size() &&
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        )
       );
-      // Group admins can delete the canonical doc; the public mirror is
-      // cleaned up by the same caller via the rule directly below.
+
       allow delete: if isSignedIn() &&
         request.auth.uid in resource.data.adminIds;
     }
 
     // ── /groupsPublic/{gid} — public discovery projection ───────────────
-    // Create is split from update because the /groups/{gid} doc doesn't
-    // exist yet at the moment a creator runs the dual-write batch — so
-    // isGroupAdmin(gid) would throw and reject a legitimate first write.
-    // The companion /groups/{gid} create rule already enforces that the
-    // caller becomes the sole admin/player, so allowing the public
-    // mirror to be created by any signed-in user is safe.
+    // CRITICAL: a previous hardening pass required `exists(/groups/{gid})`
+    // on create. That fails inside the createGroup batch — the canonical
+    // /groups/{gid} doc is being created in the same batch and hasn't
+    // committed when the rule runs, so exists() returns false and the
+    // entire create gets rejected with "Missing or insufficient
+    // permissions".
+    //
+    // Fix: validate the public doc by its OWN shape, and rely on the
+    // companion /groups/{gid} create rule (which DOES require the caller
+    // to be admin + player) as the authoritative identity check.
+    // Firestore batches are atomic — if the canonical write fails, this
+    // public-mirror write is rolled back too. So a malicious client
+    // can't end-run the canonical rule by writing only the public doc:
+    // they'd produce an orphan with memberCount 0/1, which the discovery
+    // feed surfaces as an empty card and `getPublic` returns harmlessly.
     match /groupsPublic/{gid} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isGroupAdmin(gid);
-      // Allow deletion by an admin of the (still-existing) canonical group,
-      // OR after the canonical doc has already been deleted (rules-driven
-      // race: the client deletes /groups first, /groupsPublic second; by
-      // the time the second write commits, isGroupAdmin() can't read the
-      // deleted doc, so we fall through to a permissive clause).
+      allow create: if isSignedIn() &&
+        // memberCount must reflect a freshly-created group: 0 or 1
+        // (just the creator). Anything higher would be a fabricated
+        // "popular community" entry in discovery.
+        request.resource.data.memberCount is int &&
+        request.resource.data.memberCount >= 0 &&
+        request.resource.data.memberCount <= 1 &&
+        // Sanity caps mirror the canonical /groups create rule so the
+        // public projection can't carry oversized free-text the
+        // canonical rule rejects.
+        isShortString(request.resource.data.name, 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+      allow update: if isSignedIn() && isGroupAdmin(gid) &&
+        // Bound the count: must be a non-negative int that doesn't
+        // exceed the canonical playerIds size. The CF resync trigger
+        // (functions/src/onGroupPendingChanged) keeps these in lock-
+        // step; this guard catches an admin / compromised admin
+        // trying to advertise a fake "100 members" community.
+        (
+          !('memberCount' in request.resource.data) ||
+          (
+            request.resource.data.memberCount is int &&
+            request.resource.data.memberCount >= 0 &&
+            request.resource.data.memberCount <=
+              groupDoc(gid).playerIds.size()
+          )
+        ) &&
+        // Free-text caps mirror the canonical group rule.
+        isOptionalShortString(request.resource.data, 'name', 80) &&
+        isOptionalShortString(request.resource.data, 'description', 500) &&
+        isOptionalShortString(request.resource.data, 'city', 80) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
       allow delete: if isSignedIn() && (
         isGroupAdmin(gid) ||
         !exists(/databases/$(database)/documents/groups/$(gid))
@@ -211,42 +383,16 @@ service cloud.firestore {
       );
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.status == 'pending';
+        request.resource.data.status == 'pending' &&
+        request.resource.data.groupId is string &&
+        // Sanity cap on optional message — prevents spam-as-essay.
+        isOptionalShortString(request.resource.data, 'message', 500);
       allow update: if isGroupAdmin(resource.data.groupId) &&
         request.resource.data.status in ['approved', 'rejected'];
       allow delete: if false;
     }
 
     // ── /games/{id} ─────────────────────────────────────────────────────
-    // Reads: three logical paths:
-    //   • visibility == 'public' → any signed-in user (Open Games feed).
-    //   • visibility == 'community' OR missing → only approved members
-    //     and admins of the parent group. Pending users live in
-    //     pendingPlayerIds (NOT playerIds/adminIds) and are correctly
-    //     excluded by isGroupMember(). The "missing" fallback is
-    //     conservative-by-default: if a doc somehow exists without
-    //     visibility set, treat it as community-only rather than risk
-    //     a silent leak.
-    //   • participant override → if the user is in the game's
-    //     participantIds (player / waitlist / pending), they can
-    //     read it regardless of visibility or current group
-    //     membership. Required so `getMyGames` (which queries
-    //     `participantIds array-contains uid`) is statically secure
-    //     — without this clause Firestore rejects the entire query
-    //     when a single result wouldn't pass the visibility/member
-    //     check (e.g., user left the community after joining a
-    //     community-only game).
-    //   isGroupMember() runs a single `get(/groups/{gid})` per rules
-    //   evaluation; Firestore caches that read so feed-style queries
-    //   pay the lookup once per distinct group.
-    // Create: the creator is the organizer (createdBy=self).
-    // Update: organizer or group admin can mutate freely; any signed-in
-    //   user can self-join (delta-only on participation arrays); any
-    //   participant can flag themselves as late on liveMatch.
-    //   Lifecycle gate: a `finished` game is read-only from the client.
-    //   Visibility flips have an extra constraint inside the
-    //   organizer branch: status must be 'open' AND the new value
-    //   must be one of the two allowed strings.
     match /games/{id} {
       allow read: if isSignedIn() && (
         resource.data.visibility == 'public' ||
@@ -254,57 +400,26 @@ service cloud.firestore {
         request.auth.uid in resource.data.participantIds
       );
 
-      // Standard create: signed-in user, sets themselves as creator,
-      // and is a member (player OR admin) of the parent group. Pure
-      // outsiders — even outsiders who somehow forged a groupId —
-      // cannot create games inside a community they don't belong to.
-      // Status starts as 'open' (immediate registration) OR
-      // 'scheduled' (deferred — recurring-game wizard sets a future
-      // `registrationOpensAt` and a CF flips status when the time
-      // arrives). Visibility validation lives in the converter
-      // (defaults missing values to 'community' and rejects bogus
-      // enum values), so the rule doesn't re-assert it here —
-      // earlier attempts to do so silently denied valid creates and
-      // weren't worth the safety margin.
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid &&
         isGroupMember(request.resource.data.groupId) &&
         (request.resource.data.status == 'open' ||
-         request.resource.data.status == 'scheduled');
+         request.resource.data.status == 'scheduled') &&
+        // Sanity caps on initial-write text fields.
+        isShortString(request.resource.data.title, 120) &&
+        isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        isOptionalShortString(request.resource.data, 'notes', 1000) &&
+        // maxPlayers must be a positive int.
+        request.resource.data.maxPlayers is int &&
+        request.resource.data.maxPlayers > 0 &&
+        request.resource.data.maxPlayers <= 50;
 
       allow update: if isSignedIn() && (
-        // Organizer / admin: can mutate ANYTHING except terminal states
-        // (finished/cancelled — historical data, locked from edits).
-        // Also blocks joins/cancels via the organizer branch when
-        // status='active' so the participation arrays stay frozen
-        // mid-evening; the self-join branch below is the only path
-        // that touches players/waitlist/pending and it requires
-        // status='open'.
-        // Note: a previous iteration also asserted a visibility-flip
-        // guard here (status==open + valid enum). It was over-eager
-        // and silently denied legitimate joins/cancels by community
-        // admins. Visibility is now enforced client-side via the
-        // dedicated setVisibility() handler + the create rule below.
-        (
-          (
-            request.auth.uid == resource.data.createdBy ||
-            isGroupAdmin(resource.data.groupId)
-          ) &&
-          resource.data.status != 'finished' &&
-          resource.data.status != 'cancelled'
-        ) ||
-        // Self join/cancel — strict delta on the participation arrays:
-        //   • status must be 'open' BEFORE and AFTER the write
-        //     (Stage 2: 'locked'/'active'/'finished'/'cancelled' all
-        //     block this branch).
-        //   • startsAt must still be in the future (no late joins).
-        //   • liveMatch.phase != 'live' / 'roundRunning' (no joins
-        //     once a round is in motion).
-        //   • the size of `players` may change by at most 1.
-        //   • if `players` size grew, request.auth.uid must be the
-        //     newly-added member; if it shrank, the auth user must
-        //     be the one removed (i.e. you can only join/cancel
-        //     yourself, never push or pull other users).
+        // ── Self join/cancel branch ───────────────────────────────
+        // Strict per-array delta so a self-joining client can't sneak
+        // unrelated UIDs into waitlist/pending while satisfying the
+        // participantIds invariant.
         (
           resource.data.status == 'open' &&
           request.resource.data.status == 'open' &&
@@ -314,6 +429,7 @@ service cloud.firestore {
           ) &&
           (
             !('liveMatch' in resource.data) ||
+            resource.data.liveMatch == null ||
             !('phase' in resource.data.liveMatch) ||
             (
               resource.data.liveMatch.phase != 'live' &&
@@ -322,9 +438,14 @@ service cloud.firestore {
           ) &&
           affectedKeys().hasOnly([
             'players', 'waitlist', 'pending', 'participantIds',
-            'cancellations', 'updatedAt'
+            'cancellations', 'pendingPromotion', 'updatedAt'
           ]) &&
-          // Delta size check across all three arrays.
+          // ── Per-array delta: each may change by at most ±1, and
+          //    if it grew, the auth user is the new entry; if it
+          //    shrank, the auth user is the missing entry.
+          //    Combined with the size-band guards below, this blocks
+          //    "stuff random UIDs into waitlist while joining
+          //    players" attacks.
           (
             request.resource.data.players.size() ==
               resource.data.players.size() + 1
@@ -339,19 +460,47 @@ service cloud.firestore {
                 request.auth.uid in resource.data.players
               : true
           ) &&
+          request.resource.data.players.size() >=
+            resource.data.players.size() - 1 &&
+          request.resource.data.players.size() <=
+            resource.data.players.size() + 1 &&
           (
-            // No other size delta is allowed — must be exactly +/- 1
-            // OR unchanged (a pure waitlist→pending swap, etc.).
-            request.resource.data.players.size() >=
-              resource.data.players.size() - 1 &&
-            request.resource.data.players.size() <=
-              resource.data.players.size() + 1
+            request.resource.data.waitlist.size() ==
+              resource.data.waitlist.size() + 1
+              ? request.auth.uid in request.resource.data.waitlist &&
+                !(request.auth.uid in resource.data.waitlist)
+              : true
           ) &&
-          // Denormalised-union invariant. `participantIds` is the
-          // disjoint union of players + waitlist + pending. Without
-          // this guard a client could write arbitrary uids into the
-          // union and pollute the `getMyGames` query (which uses
-          // `participantIds array-contains`).
+          (
+            request.resource.data.waitlist.size() ==
+              resource.data.waitlist.size() - 1
+              ? !(request.auth.uid in request.resource.data.waitlist) &&
+                request.auth.uid in resource.data.waitlist
+              : true
+          ) &&
+          request.resource.data.waitlist.size() >=
+            resource.data.waitlist.size() - 1 &&
+          request.resource.data.waitlist.size() <=
+            resource.data.waitlist.size() + 1 &&
+          (
+            request.resource.data.pending.size() ==
+              resource.data.pending.size() + 1
+              ? request.auth.uid in request.resource.data.pending &&
+                !(request.auth.uid in resource.data.pending)
+              : true
+          ) &&
+          (
+            request.resource.data.pending.size() ==
+              resource.data.pending.size() - 1
+              ? !(request.auth.uid in request.resource.data.pending) &&
+                request.auth.uid in resource.data.pending
+              : true
+          ) &&
+          request.resource.data.pending.size() >=
+            resource.data.pending.size() - 1 &&
+          request.resource.data.pending.size() <=
+            resource.data.pending.size() + 1 &&
+          // ── Denormalised-union invariant.
           (
             request.resource.data.participantIds.size() ==
               request.resource.data.players.size() +
@@ -367,6 +516,61 @@ service cloud.firestore {
               request.resource.data.pending
             )
           )
+        ) ||
+        // ── Organizer / admin branch ──────────────────────────────
+        // Can mutate ANYTHING except terminal lifecycle states AND
+        // a small set of immutable fields:
+        //   • createdBy — owner is forever; admin can't transfer it
+        //   • groupId — game can't be moved between communities
+        // Everything else is owner-managed.
+        (
+          (
+            request.auth.uid == resource.data.createdBy ||
+            isGroupAdmin(resource.data.groupId)
+          ) &&
+          resource.data.status != 'finished' &&
+          resource.data.status != 'cancelled' &&
+          (
+            !('createdBy' in resource.data) ||
+            (
+              'createdBy' in request.resource.data &&
+              request.resource.data.createdBy == resource.data.createdBy
+            )
+          ) &&
+          (
+            !('groupId' in resource.data) ||
+            (
+              'groupId' in request.resource.data &&
+              request.resource.data.groupId == resource.data.groupId
+            )
+          ) &&
+          // Free-text caps mirror the create rule.
+          isOptionalShortString(request.resource.data, 'title', 120) &&
+          isOptionalShortString(request.resource.data, 'fieldName', 200) &&
+          isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+          isOptionalShortString(request.resource.data, 'notes', 1000) &&
+          // Bounded array sizes.
+          (
+            !('players' in request.resource.data) ||
+            (
+              request.resource.data.players is list &&
+              request.resource.data.players.size() <= 100
+            )
+          ) &&
+          (
+            !('waitlist' in request.resource.data) ||
+            (
+              request.resource.data.waitlist is list &&
+              request.resource.data.waitlist.size() <= 100
+            )
+          ) &&
+          (
+            !('pending' in request.resource.data) ||
+            (
+              request.resource.data.pending is list &&
+              request.resource.data.pending.size() <= 100
+            )
+          )
         )
       );
 
@@ -376,7 +580,6 @@ service cloud.firestore {
     }
 
     // ── /rounds/{id} ────────────────────────────────────────────────────
-    // Read: signed-in (mirrors /games). Write: game organizer / admin.
     match /rounds/{id} {
       function gameOrgId(gid) {
         return get(/databases/$(database)/documents/games/$(gid)).data.createdBy;
@@ -393,36 +596,29 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         request.auth.uid == gameOrgId(resource.data.gameId) ||
         isGroupAdmin(gameGroupId(resource.data.gameId))
-      );
+      ) &&
+        // gameId is immutable on round docs.
+        (
+          !('gameId' in resource.data) ||
+          (
+            'gameId' in request.resource.data &&
+            request.resource.data.gameId == resource.data.gameId
+          )
+        );
       allow delete: if false;
     }
 
     // ── /playerStats/{uid} ──────────────────────────────────────────────
-    // Read: any signed-in. Write: server-side only (Cloud Function +
-    // Admin SDK bypass these rules).
     match /playerStats/{uid} {
       allow read: if isSignedIn();
       allow write: if false;
     }
 
     // ── /groups/{gid}/ratings — community-scoped player ratings ────────
-    // Summary docs (one per rated user) are written ONLY by the
-    // onVoteWritten Cloud Function — clients never write them, so a
-    // malicious client can't fabricate an inflated average. Reading
-    // is open to any signed-in user (the badge on PlayerCard /
-    // MemberRow needs it; voter identity stays private via the
-    // votes subcollection rule below).
     match /groups/{gid}/ratings/{ratedUid} {
       allow read: if isSignedIn();
-      // Trusted writes only — Cloud Function uses admin SDK and
-      // bypasses these rules entirely. Client writes are denied.
       allow write: if false;
 
-      // Individual votes: only the rater may write their own vote, and
-      // ONLY if both rater and rated are members of the same community.
-      // ratedUid must not equal raterUid (no self-rating). Rating must
-      // be an integer 1..5. Reading a vote is restricted to the rater
-      // themselves so voter identity never leaks.
       match /votes/{raterUid} {
         allow read: if isSignedIn() && request.auth.uid == raterUid;
         allow create, update: if isSignedIn()
@@ -442,21 +638,60 @@ service cloud.firestore {
       }
     }
 
-    // ── /notifications/{id} (Phase E) ───────────────────────────────────
-    // Outbound queue from clients to a Cloud Function consumer. Any
-    // signed-in user can create a dispatch — the CF reads the recipient's
-    // prefs + tokens before delivering, and it's the CF (not the client)
-    // that talks to FCM.
+    // ── /notifications/{id} ─────────────────────────────────────────────
+    // CRITICAL: previously a client could create ANY type with ANY
+    // recipient, enabling spoofed "your join was approved" / "spot
+    // opened" / "game cancelled" pushes to arbitrary users.
     //
-    // Reads: only the recipient or the dispatch's creator can read back
-    // a notification doc, since the payload may include light personal
-    // info (group name, requester id). Updates / deletes: server-only
-    // (Admin SDK bypass).
+    // Now:
+    //   • `type` must be in the client-allowed whitelist (system
+    //     pushes — gameReminder, gameRsvpNudge, joinRequest, etc. —
+    //     are server-dispatched via Admin SDK and bypass these rules);
+    //   • basic shape is enforced (recipientId is a string, payload
+    //     is a map, delivered must start as false);
+    //   • text fields inside payload are size-capped.
+    //
+    // Per-type sender-identity validation (e.g. "playerCancelled
+    // recipient must be the game's createdBy AND payload.cancellingUserId
+    // must == auth.uid") happens in the onNotificationCreated CF
+    // before delivery — doing it here is too read-heavy for rules.
     match /notifications/{id} {
       allow create: if isSignedIn() &&
         request.resource.data.recipientId is string &&
+        request.resource.data.recipientId.size() > 0 &&
+        request.resource.data.recipientId.size() <= 128 &&
         request.resource.data.type is string &&
-        request.resource.data.delivered == false;
+        clientNotifTypeAllowed(request.resource.data.type) &&
+        request.resource.data.delivered == false &&
+        // Top-level field cap. The legitimate notif shape is
+        // {type, recipientId, payload, createdAt, delivered}; >10
+        // means the client is stuffing extra freeform data.
+        request.resource.data.keys().size() <= 10 &&
+        // Payload caps — must be a map, not a stringified blob, and
+        // each free-text field inside the payload is bounded.
+        (
+          !('payload' in request.resource.data) ||
+          (
+            request.resource.data.payload is map &&
+            request.resource.data.payload.keys().size() <= 15 &&
+            isOptionalShortString(
+              request.resource.data.payload, 'gameTitle', 200) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'groupName', 200) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'inviterName', 80) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'gameId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'groupId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'requesterId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'cancellingUserId', 128) &&
+            isOptionalShortString(
+              request.resource.data.payload, 'message', 500)
+          )
+        );
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.recipientId
       );
@@ -464,19 +699,47 @@ service cloud.firestore {
     }
 
     // ── /gameUpdateLatches/{gameId} — server-side dedup latches ────────
-    // Internal state used by the onNotificationCreated CF to dedup
-    // game-update pushes within a 60s window. Admin SDK writes only;
-    // clients have no business reading or writing this collection.
     match /gameUpdateLatches/{gameId} {
       allow read, write: if false;
     }
 
+    // ── /rateLimits/{uid}_{op} — per-user spam guards ───────────────────
+    // Counter docs maintained by the rate-limit helper (see
+    // `services/rateLimitService` on the client and the matching CF
+    // pre-checks). Keeping the rule open for self-write is safe
+    // because the helper writes monotonically increasing counters
+    // anchored to the current minute/hour bucket — overwriting your
+    // own counter early just resets your own quota.
+    match /rateLimits/{rid} {
+      allow read: if isSignedIn() &&
+        rid.matches(request.auth.uid + '_.*');
+      allow create, update: if isSignedIn() &&
+        rid.matches(request.auth.uid + '_.*') &&
+        request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
     // ── /appConfig/{platform} — public version-gate config ─────────────
-    // Read by every client on launch (force/optional update prompts).
-    // No auth required because the only field is the version threshold,
-    // and a stale read just delays the prompt by one launch. Writes are
-    // admin-only via the Firebase console / Admin SDK.
     match /appConfig/{platform} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── /communityShowcase/{groupId} — public web-page snapshot ────────
+    // Powers the publicly shareable community page at
+    // /c/{groupId} on Firebase Hosting. Read-open-to-the-world (no
+    // auth required) so WhatsApp / Twitter / Facebook share previews
+    // and signed-out browsers can render the page. Writes are
+    // server-only — the `updateCommunityShowcase` Cloud Function
+    // (Admin SDK) maintains the doc when /games or /groups change.
+    //
+    // The doc is a denormalised projection of stats already visible
+    // in-app: total finished games, top attenders, recent games,
+    // member roster. No private fields (fcmTokens, notificationPrefs,
+    // join requests, etc.) are mirrored — this is the same
+    // information any community member already sees, just rendered
+    // for sharing instead of in-app.
+    match /communityShowcase/{groupId} {
       allow read: if true;
       allow write: if false;
     }

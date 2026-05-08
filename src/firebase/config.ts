@@ -18,6 +18,7 @@ import {
   Auth,
 } from 'firebase/auth';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getFunctions, Functions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function val(v: string | undefined): string {
@@ -61,6 +62,7 @@ let _app: FirebaseApp | null = null;
 let _db: Firestore | null = null;
 let _auth: Auth | null = null;
 let _storage: FirebaseStorage | null = null;
+let _functions: Functions | null = null;
 
 /**
  * Lazy initializer. Throws if called while USE_MOCK_DATA is true so we never
@@ -71,6 +73,7 @@ export function getFirebase(): {
   db: Firestore;
   auth: Auth;
   storage: FirebaseStorage;
+  functions: Functions;
 } {
   if (USE_MOCK_DATA) {
     throw new Error(
@@ -82,6 +85,11 @@ export function getFirebase(): {
     _app = getApps()[0] ?? initializeApp(firebaseConfig);
     _db = getFirestore(_app);
     _storage = getStorage(_app);
+    // The CF region must match `setGlobalOptions({ region })` in
+    // functions/src/index.ts — otherwise the SDK calls the default
+    // us-central1 endpoint and we'd get 404 / unauthenticated errors
+    // for any callable that lives elsewhere.
+    _functions = getFunctions(_app, 'us-central1');
     try {
       _auth = initializeAuth(_app, {
         persistence: getReactNativePersistence(AsyncStorage),
@@ -90,8 +98,33 @@ export function getFirebase(): {
       // initializeAuth throws if already called (HMR / fast refresh path)
       _auth = getAuth(_app);
     }
+    // App Check must be initialised BEFORE any outbound Firestore /
+    // Storage / Functions request so the very first call carries an
+    // App Check token. Doing it here (right after the app instance
+    // is created and before _db/_storage are returned to callers)
+    // is the only synchronous-enough hook. The init itself is async
+    // but the token fetch is lazy — the JS SDKs queue requests until
+    // the first token resolves.
+    //
+    // Lazy-required so a missing native module doesn't break the
+    // existing config import chain.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { initAppCheck } = require('./appCheck');
+      void initAppCheck(_app);
+    } catch {
+      // appCheck.ts itself swallows missing-module errors; this catch
+      // is just for any unexpected import-level explosion.
+    }
   }
   if (!_storage) _storage = getStorage(_app);
-  return { app: _app!, db: _db!, auth: _auth!, storage: _storage! };
+  if (!_functions) _functions = getFunctions(_app, 'us-central1');
+  return {
+    app: _app!,
+    db: _db!,
+    auth: _auth!,
+    storage: _storage!,
+    functions: _functions!,
+  };
 }
 

@@ -415,12 +415,3 @@ export function AdDebugOverlay(): React.ReactElement | null {
     ),
   );
 }
-
-// Test helper
-export function __resetAdsForTests() {
-  initialized = false;
-  appOpenShownThisSession = false;
-  appOpenAdHandle = null;
-  loadAttempted = false;
-  adsMod = null;
-}

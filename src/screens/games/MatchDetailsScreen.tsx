@@ -437,6 +437,10 @@ export function MatchDetailsScreen() {
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
+  // Pull-to-refresh state — kept separate from `loading` so the
+  // native RefreshControl spinner doesn't fire on top of our
+  // SoccerBallLoader during initial load.
+  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -504,7 +508,7 @@ export function MatchDetailsScreen() {
     setLoading(true);
   }, [gameId]);
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (opts: { pullToRefresh?: boolean } = {}) => {
     // Defensive: if a navigation path mounts MatchDetails without
     // params (e.g. a tab-reset action that lands the user on the
     // stack root), bail out cleanly instead of crashing on a missing
@@ -515,7 +519,11 @@ export function MatchDetailsScreen() {
       if (nav.canGoBack()) nav.goBack();
       return;
     }
-    setLoading(true);
+    if (opts.pullToRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const g = await gameService.getGameById(gameId);
       // null === doc genuinely doesn't exist (deleted / never was).
@@ -557,6 +565,7 @@ export function MatchDetailsScreen() {
       if (__DEV__) console.warn('[matchDetails] reload failed', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [gameId, hydratePlayers, nav]);
 
@@ -776,7 +785,14 @@ export function MatchDetailsScreen() {
         });
       }
     } catch (err) {
-      if (__DEV__) console.warn('[matchDetails] primary failed', err);
+      if (__DEV__) {
+        const e = err as { code?: string; message?: string; original?: unknown };
+        console.warn(
+          `[matchDetails] primary failed code=${e.code ?? 'n/a'} ` +
+            `msg=${e.message ?? ''}`,
+          err,
+        );
+      }
       // Surface the typed error from the transaction.
       const msg = String((err as Error)?.message ?? '');
       const code =
@@ -1387,7 +1403,8 @@ export function MatchDetailsScreen() {
       return {
         id: uid,
         name: p?.displayName ?? '...',
-        jersey: p?.jersey,
+        avatarId: p?.avatarId,
+        photoUrl: p?.photoUrl,
         isAdmin: groupAdminIds.has(uid),
         isOrganizer: game.createdBy === uid,
         arrival: game.arrivals?.[uid],
@@ -1420,8 +1437,8 @@ export function MatchDetailsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={reload}
+            refreshing={refreshing}
+            onRefresh={() => reload({ pullToRefresh: true })}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />

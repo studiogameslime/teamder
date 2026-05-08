@@ -82,6 +82,12 @@ export const ratingsService = {
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       throw new Error('ratePlayerInGroup: rating must be 1–5');
     }
+    // Spam guard: 60 votes / hour / rater. Caps an attempt to dump
+    // mass-ratings against opponents (or to inflate a friend's
+    // average) without breaking a community admin running through
+    // the post-game rate-everyone flow.
+    const { enforceRateLimit } = await import('./rateLimitService');
+    await enforceRateLimit(raterUserId, 'rateVote');
     if (USE_MOCK_DATA) {
       const k = mockKey(groupId, ratedUserId, raterUserId);
       const existing = mockVotes.get(k);

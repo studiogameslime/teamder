@@ -15,6 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
 import { useGameStore } from '@/store/gameStore';
 import { useGroupStore } from '@/store/groupStore';
+import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { ArrivalStatus, Game, GameGuest, User, UserId } from '@/types';
@@ -47,7 +49,7 @@ type Nav = NativeStackNavigationProp<GameStackParamList, 'MatchPlayers'>;
 type Params = RouteProp<GameStackParamList, 'MatchPlayers'>;
 
 interface RosterEntry {
-  user: Pick<User, 'id' | 'name' | 'jersey'>;
+  user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
   isAdmin: boolean;
   arrival?: ArrivalStatus;
 }
@@ -59,9 +61,11 @@ export function MatchPlayersScreen() {
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const groups = useGroupStore((s) => s.groups);
+  const currentUser = useUserStore((s) => s.currentUser);
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busyOffer, setBusyOffer] = useState(false);
 
   const reload = useCallback(async () => {
     if (!gameId) {
@@ -108,7 +112,12 @@ export function MatchPlayersScreen() {
       return uids.map((uid) => {
         const p = playersMap[uid];
         return {
-          user: { id: uid, name: p?.displayName ?? '...', jersey: p?.jersey },
+          user: {
+            id: uid,
+            name: p?.displayName ?? '...',
+            avatarId: p?.avatarId,
+            photoUrl: p?.photoUrl,
+          },
           isAdmin: adminIds.has(uid),
           arrival: game?.arrivals?.[uid],
         };
@@ -142,6 +151,20 @@ export function MatchPlayersScreen() {
   const waitlistEntries = buildEntries(game.waitlist ?? []);
   const pendingEntries = buildEntries(game.pending ?? []);
   const guests = game.guests ?? [];
+  // Anyone who joined and then cancelled. Sort newest-first so the
+  // admin sees fresh drop-outs at the top of the section.
+  const cancelledEntries = (() => {
+    const map = game.cancellations ?? {};
+    const uids = Object.keys(map).sort((a, b) => (map[b] ?? 0) - (map[a] ?? 0));
+    return buildEntries(uids).map((e) => ({
+      ...e,
+      cancelledAt: map[e.user.id] ?? 0,
+    }));
+  })();
+  const lateCancelThresholdMs =
+    typeof game.cancelDeadlineHours === 'number' && game.cancelDeadlineHours > 0
+      ? game.startsAt - game.cancelDeadlineHours * 60 * 60 * 1000
+      : 0;
 
   const goToCard = (uid: string) =>
     (nav as { navigate: (s: string, p: unknown) => void }).navigate(
@@ -179,15 +202,97 @@ export function MatchPlayersScreen() {
             count={String(waitlistEntries.length)}
           >
             <Card style={styles.listCard}>
-              {waitlistEntries.map((e, i) => (
-                <PlayerRow
-                  key={e.user.id}
-                  entry={e}
-                  showDivider={i > 0}
-                  onPress={() => goToCard(e.user.id)}
-                  toneRight={he.matchPlayersWaitlistTag}
-                />
-              ))}
+              {waitlistEntries.map((e, i) => {
+                const isOffered = game.pendingPromotion?.uid === e.user.id;
+                const isMyOffer =
+                  isOffered && currentUser?.id === e.user.id;
+                const isAdminViewer = adminIds.has(currentUser?.id ?? '');
+                return (
+                  <PlayerRow
+                    key={e.user.id}
+                    entry={e}
+                    showDivider={i > 0}
+                    onPress={() => goToCard(e.user.id)}
+                    toneRight={
+                      isOffered ? he.matchPlayersOfferPendingTag : he.matchPlayersWaitlistTag
+                    }
+                    offerHint={
+                      isOffered && game.pendingPromotion
+                        ? he.matchPlayersOfferOfferedAgo(
+                            Math.floor(
+                              (Date.now() - game.pendingPromotion.offeredAt) / 60000,
+                            ),
+                          )
+                        : undefined
+                    }
+                    onConfirmOffer={
+                      isMyOffer && !busyOffer
+                        ? async () => {
+                            setBusyOffer(true);
+                            try {
+                              await gameService.confirmSpotOffer(
+                                game.id,
+                                currentUser!.id,
+                              );
+                              await reload();
+                            } catch {
+                              // stale offer / network — silent
+                            } finally {
+                              setBusyOffer(false);
+                            }
+                          }
+                        : undefined
+                    }
+                    onPassOffer={
+                      isMyOffer && !busyOffer
+                        ? async () => {
+                            setBusyOffer(true);
+                            try {
+                              await gameService.passSpotOffer(
+                                game.id,
+                                currentUser!.id,
+                              );
+                              await reload();
+                            } catch {
+                              // ignore
+                            } finally {
+                              setBusyOffer(false);
+                            }
+                          }
+                        : undefined
+                    }
+                    onAdminAdvance={
+                      isOffered && !isMyOffer && isAdminViewer && !busyOffer
+                        ? () => {
+                            Alert.alert(
+                              he.matchPlayersOfferAdvanceCta,
+                              he.matchPlayersOfferAdvanceConfirm,
+                              [
+                                { text: 'ביטול', style: 'cancel' },
+                                {
+                                  text: he.matchPlayersOfferAdvanceCta,
+                                  onPress: async () => {
+                                    setBusyOffer(true);
+                                    try {
+                                      await gameService.adminAdvanceOffer(
+                                        game.id,
+                                      );
+                                      await reload();
+                                    } catch {
+                                      // ignore
+                                    } finally {
+                                      setBusyOffer(false);
+                                    }
+                                  },
+                                },
+                              ],
+                            );
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </Card>
           </Section>
         ) : null}
@@ -223,9 +328,53 @@ export function MatchPlayersScreen() {
             </Card>
           </Section>
         ) : null}
+
+        {cancelledEntries.length > 0 ? (
+          <Section
+            title={he.matchPlayersSectionCancelled}
+            count={String(cancelledEntries.length)}
+          >
+            <Card style={styles.listCard}>
+              {cancelledEntries.map((e, i) => {
+                const isLate =
+                  lateCancelThresholdMs > 0 &&
+                  e.cancelledAt > lateCancelThresholdMs;
+                return (
+                  <PlayerRow
+                    key={e.user.id}
+                    entry={e}
+                    showDivider={i > 0}
+                    onPress={() => goToCard(e.user.id)}
+                    toneRight={
+                      isLate
+                        ? he.matchPlayersCancelledLateTag
+                        : he.matchPlayersCancelledTag
+                    }
+                    offerHint={he.matchPlayersCancelledAgo(
+                      formatRelative(e.cancelledAt),
+                    )}
+                  />
+                );
+              })}
+            </Card>
+          </Section>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/** Hebrew "ago" string — terse so it fits next to the row. */
+function formatRelative(ts: number): string {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'עכשיו';
+  if (mins < 60) return `לפני ${mins} דק׳`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `לפני ${hours} שע׳`;
+  const days = Math.floor(hours / 24);
+  return `לפני ${days} ימים`;
 }
 
 function Section({
@@ -257,45 +406,111 @@ function PlayerRow({
   showDivider,
   onPress,
   toneRight,
+  offerHint,
+  onConfirmOffer,
+  onPassOffer,
+  onAdminAdvance,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
   onPress: () => void;
   toneRight?: string;
+  offerHint?: string;
+  onConfirmOffer?: () => void;
+  onPassOffer?: () => void;
+  onAdminAdvance?: () => void;
 }) {
   const { user, isAdmin, arrival } = entry;
+  const showOfferActions = !!(onConfirmOffer || onPassOffer || onAdminAdvance);
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.row,
         showDivider && styles.rowDivider,
-        pressed && { backgroundColor: colors.surfaceMuted },
+        showOfferActions && styles.rowOffered,
       ]}
-      accessibilityRole="button"
-      accessibilityLabel={user.name}
     >
-      <PlayerIdentity user={user} size="sm" />
-      <View style={styles.rowBody}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {user.name}
-          </Text>
-          {isAdmin ? <Tag label={he.matchPlayersAdminTag} tone="primary" /> : null}
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.rowBodyPressable,
+          pressed && { opacity: 0.6 },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={user.name}
+      >
+        <PlayerIdentity user={user} size="sm" />
+        <View style={styles.rowBody}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={1}>
+              {user.name}
+            </Text>
+            {isAdmin ? (
+              <Tag label={he.matchPlayersAdminTag} tone="primary" />
+            ) : null}
+          </View>
+          {offerHint ? (
+            <Text style={styles.offerHint}>{offerHint}</Text>
+          ) : arrival === 'late' ? (
+            <Tag label={he.matchPlayersLateTag} tone="warning" inline />
+          ) : arrival === 'no_show' ? (
+            <Tag label={he.matchPlayersNoShowTag} tone="danger" inline />
+          ) : null}
         </View>
-        {arrival === 'late' ? (
-          <Tag label={he.matchPlayersLateTag} tone="warning" inline />
-        ) : arrival === 'no_show' ? (
-          <Tag label={he.matchPlayersNoShowTag} tone="danger" inline />
+        {toneRight ? (
+          <Text style={styles.toneRight} numberOfLines={1}>
+            {toneRight}
+          </Text>
         ) : null}
-      </View>
-      {toneRight ? (
-        <Text style={styles.toneRight} numberOfLines={1}>
-          {toneRight}
-        </Text>
+        <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+      </Pressable>
+      {showOfferActions ? (
+        <View style={styles.offerActions}>
+          {onConfirmOffer ? (
+            <Pressable
+              onPress={onConfirmOffer}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaPrimary,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={styles.offerCtaPrimaryText}>
+                {he.matchPlayersOfferConfirmCta}
+              </Text>
+            </Pressable>
+          ) : null}
+          {onPassOffer ? (
+            <Pressable
+              onPress={onPassOffer}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaGhost,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Text style={styles.offerCtaGhostText}>
+                {he.matchPlayersOfferPassCta}
+              </Text>
+            </Pressable>
+          ) : null}
+          {onAdminAdvance ? (
+            <Pressable
+              onPress={onAdminAdvance}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaGhost,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Text style={styles.offerCtaGhostText}>
+                {he.matchPlayersOfferAdvanceCta}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
-      <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -371,11 +586,62 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
+  rowOffered: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    paddingBottom: spacing.sm,
+    backgroundColor: 'rgba(59,130,246,0.06)',
+  },
+  rowBodyPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.divider,
   },
   rowBody: { flex: 1, gap: 4 },
+  offerHint: {
+    ...typography.caption,
+    color: '#3B82F6',
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  offerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  offerCta: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offerCtaPrimary: {
+    backgroundColor: '#3B82F6',
+    flex: 1,
+    minWidth: 100,
+  },
+  offerCtaPrimaryText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  offerCtaGhost: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    flex: 1,
+    minWidth: 100,
+  },
+  offerCtaGhostText: {
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',

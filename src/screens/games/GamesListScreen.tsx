@@ -83,6 +83,13 @@ export function GamesListScreen() {
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
+  // Tracks pull-to-refresh ONLY. The native RefreshControl spinner
+  // and our SoccerBallLoader used to share `loading`, which made
+  // both show simultaneously on initial load (the screenshot bug).
+  // Splitting the two states keeps them mutually exclusive: native
+  // spinner only when the user pulls down, custom loader only on
+  // first load / re-load with empty list.
+  const [refreshing, setRefreshing] = useState(false);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
   // Soft-confirm for cancellations past the cancel-deadline window.
   // Holds the target game so onConfirm knows what to cancel.
@@ -104,35 +111,43 @@ export function GamesListScreen() {
     storage.setHintCreateGameSeen();
   };
 
-  const reload = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const myCommunityIds = myCommunities.map((g) => g.id);
-      const [a, b, c] = await Promise.all([
-        gameService.getMyGames(user.id),
-        gameService.getCommunityGames(user.id, myCommunityIds),
-        gameService.getOpenGames(user.id, myCommunityIds),
-      ]);
-      setMyGames(a);
-      setCommunityGames(b);
-      setOpenGames(c);
-      const uids = Array.from(
-        new Set(
-          [...a, ...b, ...c].flatMap((g) => [
-            ...g.players,
-            ...g.waitlist,
-            ...(g.pending ?? []),
-          ]),
-        ),
-      );
-      if (uids.length > 0) hydratePlayers(uids);
-    } catch (err) {
-      if (__DEV__) console.warn('[gamesList] reload failed', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, myCommunities, hydratePlayers]);
+  const reload = useCallback(
+    async (opts: { pullToRefresh?: boolean } = {}) => {
+      if (!user) return;
+      if (opts.pullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      try {
+        const myCommunityIds = myCommunities.map((g) => g.id);
+        const [a, b, c] = await Promise.all([
+          gameService.getMyGames(user.id),
+          gameService.getCommunityGames(user.id, myCommunityIds),
+          gameService.getOpenGames(user.id, myCommunityIds),
+        ]);
+        setMyGames(a);
+        setCommunityGames(b);
+        setOpenGames(c);
+        const uids = Array.from(
+          new Set(
+            [...a, ...b, ...c].flatMap((g) => [
+              ...g.players,
+              ...g.waitlist,
+              ...(g.pending ?? []),
+            ]),
+          ),
+        );
+        if (uids.length > 0) hydratePlayers(uids);
+      } catch (err) {
+        if (__DEV__) console.warn('[gamesList] reload failed', err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [user, myCommunities, hydratePlayers],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -290,8 +305,8 @@ export function GamesListScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={reload}
+            refreshing={refreshing}
+            onRefresh={() => reload({ pullToRefresh: true })}
             tintColor="#3B82F6"
             colors={['#3B82F6']}
           />
@@ -520,7 +535,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingWrap: {
-    paddingVertical: spacing.xxl,
+    // Push the loader well down the screen so it lands roughly in
+    // the visible empty area (below the hero + tabs + section title).
+    // Full vertical centering is hard inside a ScrollView with a
+    // sticky header above; this fixed offset gets us "looks
+    // centered" on phones in the 6"–6.5" range.
+    minHeight: 360,
     alignItems: 'center',
     justifyContent: 'center',
   },

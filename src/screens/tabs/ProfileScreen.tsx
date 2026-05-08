@@ -78,6 +78,23 @@ export function ProfileScreen() {
   // Pull a fresher copy of /users so stats stay current — the local
   // store only holds the auth/profile-edit slice and may be stale.
   const [user, setUser] = useState<User | null>(localUser);
+
+  // Mirror profile-edit changes (name / avatarId / photoUrl) back
+  // into our local copy. Without this, ProfileEdit → goBack would
+  // show the previous photo until the next server refetch landed:
+  // the useEffect below only re-fetches on `id` change, which
+  // doesn't fire for an edit of the same user.
+  useEffect(() => {
+    if (!localUser) return;
+    setUser((prev) =>
+      prev && prev.id === localUser.id ? { ...prev, ...localUser } : localUser,
+    );
+  }, [
+    localUser,
+    localUser?.name,
+    localUser?.avatarId,
+    localUser?.photoUrl,
+  ]);
   const [refreshing, setRefreshing] = useState(false);
   const [referralCount, setReferralCount] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);

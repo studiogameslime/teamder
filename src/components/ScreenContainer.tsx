@@ -28,6 +28,14 @@ interface Props {
   /** When false, drops the standard horizontal padding on the body. */
   padded?: boolean;
   contentStyle?: ViewStyle;
+  /**
+   * Sticky bottom area rendered OUTSIDE the scrollable body. Use this
+   * for primary CTAs ("שמור", "שלח") that must stay visible no matter
+   * how far the user has scrolled. Without this, a tall form pushes
+   * the save button below the fold and users hit "back" thinking
+   * they saved.
+   */
+  footer?: React.ReactNode;
 }
 
 export function ScreenContainer({
@@ -37,6 +45,7 @@ export function ScreenContainer({
   noScroll,
   padded = true,
   contentStyle,
+  footer,
 }: Props) {
   const bodyPad = padded ? styles.bodyPadded : null;
 
@@ -57,6 +66,7 @@ export function ScreenContainer({
         <ScreenHeader title={title} showBack={!hideBack} />
       ) : null}
       {body}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
@@ -76,5 +86,20 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xxxl,
     gap: spacing.lg,
+  },
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.bg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(15,23,42,0.08)',
+    // Elevation/shadow so the footer reads as floating over the scroll
+    // content even when there's a hairline above it.
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

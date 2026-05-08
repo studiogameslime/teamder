@@ -16,14 +16,15 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
-import type { Jersey, ArrivalStatus } from '@/types';
+import type { ArrivalStatus } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 export interface ParticipantEntry {
   id: string;
   name: string;
-  jersey?: Jersey;
+  avatarId?: string;
+  photoUrl?: string;
   isAdmin: boolean;
   /** Did this user create the game? Drives the "ארגון" role
    *  badge — distinct from a community admin (which would render

@@ -28,6 +28,7 @@ export const AnalyticsEvent = {
   ProfileCreated: 'profile_created',
   ProfileEdited: 'profile_edited',
   AvatarChanged: 'avatar_changed',
+  PhotoUploaded: 'photo_uploaded',
   AvailabilitySet: 'availability_set',
   NotificationsToggled: 'notifications_toggled',
 

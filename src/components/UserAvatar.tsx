@@ -11,7 +11,7 @@
 //
 // All shapes are circular by virtue of `borderRadius: size / 2`.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -38,15 +38,29 @@ export function UserAvatar({ user, size, style, ring }: Props) {
     ? { borderWidth: Math.max(2, size / 28), borderColor: '#FFFFFF' }
     : null;
 
-  // 1) Uploaded photo wins. We trust the URL — Storage rules already
-  // guard who can write to it.
-  if (user?.photoUrl) {
+  // Reset photo-error latch when the URL itself changes — a new
+  // upload should re-attempt loading even if the previous URL 404'd.
+  const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [user?.photoUrl]);
+
+  // 1) Uploaded photo wins. If it fails to load (Storage object
+  // missing/blocked/offline), fall through to the avatar branch so
+  // the user still sees something — never a blank circle.
+  if (user?.photoUrl && !photoFailed) {
     const imageStyle: StyleProp<ImageStyle> = [
       { width: size, height: size, borderRadius: radius },
       ringStyle,
       style as StyleProp<ImageStyle>,
     ];
-    return <Image source={{ uri: user.photoUrl }} style={imageStyle} />;
+    return (
+      <Image
+        source={{ uri: user.photoUrl }}
+        style={imageStyle}
+        onError={() => setPhotoFailed(true)}
+      />
+    );
   }
 
   // 2) Picked built-in avatar.

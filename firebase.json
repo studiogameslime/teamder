@@ -18,7 +18,11 @@
     "trailingSlash": false,
     "rewrites": [
       { "source": "/session/**", "destination": "/invite.html" },
-      { "source": "/team/**", "destination": "/invite.html" }
+      { "source": "/team/**", "destination": "/invite.html" },
+      {
+        "source": "/c/**",
+        "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+      }
     ]
   },
   "functions": [
@@ -36,5 +40,12 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "auth": { "port": 9099 },
+    "storage": { "port": 9199 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
+  }
 }

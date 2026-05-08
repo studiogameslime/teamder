@@ -51,6 +51,8 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
+import { optionalString, requireInt, requireString } from '@/utils/validate';
+import { enforceRateLimit } from '@/services/rateLimitService';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
 import { disciplineService } from './disciplineService';
@@ -417,6 +419,202 @@ export const gameService = {
     return acc;
   },
 
+  /**
+   * "אתה ו-X" stats for the player-card screen. Returns:
+   *   • registeredTogether — finished games where both uids appear in `players[]`
+   *   • attendedTogether   — registeredTogether minus games where either was a no-show
+   *   • sameTeamGames      — attendedTogether games where both are in the same `teams[]` color (final-state team after rotations)
+   *   • sameTeamRounds     — sum of MatchRound entries where both uids are in `teamAPlayerIds` OR both in `teamBPlayerIds`. Only counts rounds saved AFTER the round-snapshot field was added — older games contribute 0.
+   *
+   * Bounded query: scans the most recent 50 finished games where the
+   * viewer (uidA) was a participant. `array-contains` keeps it cheap.
+   */
+  async getPairStats(
+    uidA: UserId,
+    uidB: UserId,
+    groupId?: GroupId,
+  ): Promise<{
+    registeredTogether: number;
+    attendedTogether: number;
+    sameTeamGames: number;
+    sameTeamRounds: number;
+    firstSharedAt: number | null;
+    lastSharedAt: number | null;
+  }> {
+    const zero = {
+      registeredTogether: 0,
+      attendedTogether: 0,
+      sameTeamGames: 0,
+      sameTeamRounds: 0,
+      firstSharedAt: null as number | null,
+      lastSharedAt: null as number | null,
+    };
+    if (USE_MOCK_DATA || !uidA || !uidB || uidA === uidB) return zero;
+    // Single `array-contains` query — Firestore auto-indexes that
+    // field with no composite index needed. We then filter status /
+    // group / second-uid client-side. Earlier version added an
+    // equality-on-status + orderBy on top, which silently failed
+    // without a composite index → the UI dropped the whole pair-
+    // stats card.
+    const q = query(
+      col.games(),
+      where('participantIds', 'array-contains', uidA),
+    );
+    const snap = await getDocs(q);
+    const acc = { ...zero };
+    for (const doc of snap.docs) {
+      const g = doc.data();
+      if (g.status !== 'finished') continue;
+      if (groupId && g.groupId !== groupId) continue;
+      const players = (g.players ?? []) as UserId[];
+      if (!players.includes(uidA) || !players.includes(uidB)) continue;
+      acc.registeredTogether += 1;
+      const arrivals = (g.arrivals ?? {}) as Record<UserId, ArrivalStatus>;
+      const aShowed = arrivals[uidA] !== 'no_show';
+      const bShowed = arrivals[uidB] !== 'no_show';
+      if (!aShowed || !bShowed) continue;
+      acc.attendedTogether += 1;
+      // Track time bounds — first / last evening they actually
+      // shared a pitch. Useful for the "playing together since X"
+      // line in the player-card UI.
+      const ts = typeof g.startsAt === 'number' ? g.startsAt : 0;
+      if (ts > 0) {
+        if (acc.firstSharedAt == null || ts < acc.firstSharedAt) {
+          acc.firstSharedAt = ts;
+        }
+        if (acc.lastSharedAt == null || ts > acc.lastSharedAt) {
+          acc.lastSharedAt = ts;
+        }
+      }
+      // Final-state team membership (game.teams reflects last assignment).
+      const teams = (g.teams ?? []) as Array<{
+        color?: string;
+        playerIds?: UserId[];
+      }>;
+      const teamA = teams.find((t) => (t.playerIds ?? []).includes(uidA));
+      if (teamA && (teamA.playerIds ?? []).includes(uidB)) {
+        acc.sameTeamGames += 1;
+      }
+      // Per-round overlap from the snapshot field. Pre-existing rounds
+      // without the field contribute 0 and don't break the call.
+      try {
+        const rounds = await loadRoundsFor(g.id);
+        for (const r of rounds) {
+          const aIn = r.teamAPlayerIds ?? [];
+          const bIn = r.teamBPlayerIds ?? [];
+          if (aIn.includes(uidA) && aIn.includes(uidB)) {
+            acc.sameTeamRounds += 1;
+          } else if (bIn.includes(uidA) && bIn.includes(uidB)) {
+            acc.sameTeamRounds += 1;
+          }
+        }
+      } catch {
+        // ignore — round read failure isn't fatal
+      }
+    }
+    return acc;
+  },
+
+  /**
+   * Community-level aggregate stats for the CommunityDetails screen.
+   *   • totalFinished      — finished games all-time (capped at 200 reads)
+   *   • totalCancelled     — cancelled games all-time
+   *   • organizationRate   — finished / (finished + cancelled). Captures
+   *     "what % of attempts actually happened?".
+   *   • avgAttendance      — average # of arrived players per finished game
+   *   • thisMonthFinished  — games finished in the last 30 days
+   *   • topPlayers         — uid + attended count, sorted desc, top 5
+   */
+  async getCommunityStats(groupId: GroupId): Promise<{
+    totalFinished: number;
+    totalCancelled: number;
+    organizationRate: number;
+    avgAttendance: number;
+    thisMonthFinished: number;
+    activeThisMonth: number;
+    activeThisYear: number;
+    topPlayers: Array<{ uid: UserId; attended: number }>;
+  }> {
+    const empty = {
+      totalFinished: 0,
+      totalCancelled: 0,
+      organizationRate: 0,
+      avgAttendance: 0,
+      thisMonthFinished: 0,
+      activeThisMonth: 0,
+      activeThisYear: 0,
+      topPlayers: [] as Array<{ uid: UserId; attended: number }>,
+    };
+    if (USE_MOCK_DATA || !groupId) return empty;
+    const q = query(
+      col.games(),
+      where('groupId', '==', groupId),
+      where('status', 'in', ['finished', 'cancelled']),
+      orderBy('startsAt', 'desc'),
+      limit(200),
+    );
+    const snap = await getDocs(q);
+    let totalFinished = 0;
+    let totalCancelled = 0;
+    let attendanceSum = 0;
+    const now = Date.now();
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const yearAgo = now - 365 * 24 * 60 * 60 * 1000;
+    let thisMonthFinished = 0;
+    const attendedTally: Record<UserId, number> = {};
+    // Distinct uids who actually showed up to a game in each window.
+    // The "vitality" signal — a group with 50 members where only 4
+    // attended this month is on its way out, regardless of size.
+    const activeMonth = new Set<UserId>();
+    const activeYear = new Set<UserId>();
+    for (const doc of snap.docs) {
+      const g = doc.data();
+      if (g.status === 'cancelled') {
+        totalCancelled += 1;
+        continue;
+      }
+      totalFinished += 1;
+      if (typeof g.startsAt === 'number' && g.startsAt >= monthAgo) {
+        thisMonthFinished += 1;
+      }
+      const arrivals = (g.arrivals ?? {}) as Record<UserId, ArrivalStatus>;
+      const players = (g.players ?? []) as UserId[];
+      let attendedHere = 0;
+      const within30 =
+        typeof g.startsAt === 'number' && g.startsAt >= monthAgo;
+      const within365 =
+        typeof g.startsAt === 'number' && g.startsAt >= yearAgo;
+      for (const uid of players) {
+        if (arrivals[uid] === 'no_show') continue;
+        attendedHere += 1;
+        attendedTally[uid] = (attendedTally[uid] ?? 0) + 1;
+        if (within30) activeMonth.add(uid);
+        if (within365) activeYear.add(uid);
+      }
+      attendanceSum += attendedHere;
+    }
+    const organizationRate =
+      totalFinished + totalCancelled > 0
+        ? totalFinished / (totalFinished + totalCancelled)
+        : 0;
+    const avgAttendance =
+      totalFinished > 0 ? attendanceSum / totalFinished : 0;
+    const topPlayers = Object.entries(attendedTally)
+      .map(([uid, attended]) => ({ uid, attended }))
+      .sort((a, b) => b.attended - a.attended)
+      .slice(0, 5);
+    return {
+      totalFinished,
+      totalCancelled,
+      organizationRate,
+      avgAttendance,
+      thisMonthFinished,
+      activeThisMonth: activeMonth.size,
+      activeThisYear: activeYear.size,
+      topPlayers,
+    };
+  },
+
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {
     if (USE_MOCK_DATA) return mockHistory;
 
@@ -487,6 +685,10 @@ export const gameService = {
         startedAt: m.startedAt,
         endedAt: m.endedAt,
         winner: m.winner,
+        teamAPlayerIds: m.teamAPlayerIds,
+        teamBPlayerIds: m.teamBPlayerIds,
+        scoreA: m.scoreA,
+        scoreB: m.scoreB,
       });
     });
 
@@ -720,6 +922,41 @@ export const gameService = {
     if (input.visibility !== 'public' && input.visibility !== 'community') {
       throw new Error('createGameV2: invalid visibility');
     }
+    // Spam guard: 10 games / hour / user. Tight enough to stop
+    // automated abuse; loose enough that an admin running a busy
+    // weekend can still create morning + evening games.
+    await enforceRateLimit(input.createdBy, 'createGame');
+    // Pre-flight validation — surfaces a clear Hebrew error before
+    // we hit Firestore (rules will block the same shapes anyway,
+    // but a "permission denied" toast is useless to the user).
+    const title = requireString('title', input.title, {
+      max: 120,
+      label: 'שם המשחק',
+    });
+    const fieldName = requireString('fieldName', input.fieldName, {
+      max: 200,
+      label: 'שם המגרש',
+    });
+    const fieldAddress = optionalString('fieldAddress', input.fieldAddress, {
+      max: 300,
+      label: 'כתובת המגרש',
+    });
+    const notes = optionalString('notes', input.notes, {
+      max: 1000,
+      label: 'הערות',
+    });
+    const maxPlayers = requireInt('maxPlayers', input.maxPlayers, {
+      min: 2,
+      max: 50,
+      label: 'מספר שחקנים',
+    });
+    // Mutate the input view so the rest of the function sees the
+    // sanitized values without sprinkling them through every assignment.
+    input.title = title;
+    input.fieldName = fieldName;
+    input.fieldAddress = fieldAddress;
+    input.notes = notes;
+    input.maxPlayers = maxPlayers;
     const now = Date.now();
 
     // Invariant: when both fields are set, registration must open
@@ -1347,6 +1584,8 @@ export const gameService = {
         );
       }
     }
+    let lastDebugSnapshot: Record<string, unknown> | null = null;
+    let lastUpdates: Record<string, unknown> | null = null;
     const result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('joinGameV2: game not found');
@@ -1386,8 +1625,25 @@ export const gameService = {
 
       // Guests count toward capacity. A coach who pre-fills the roster
       // with two guests on a 12-cap game leaves 10 slots for real users.
-      const occupancy = players.length + (data.guests ?? []).length;
+      // A pending promotion offer also reserves a slot — the offered
+      // user hasn't confirmed yet, but the spot is held for them.
+      const pendingOffer = data.pendingPromotion as
+        | { uid?: string }
+        | null
+        | undefined;
+      const offerReservation = pendingOffer && pendingOffer.uid ? 1 : 0;
+      const occupancy =
+        players.length + (data.guests ?? []).length + offerReservation;
+      // The rules engine reads
+      // `request.resource.data.{players,waitlist,pending}.size()` for
+      // the participantIds invariant. On a legacy doc where one of
+      // those is undefined, `.size()` errors and Firestore reports
+      // "Missing or insufficient permissions". Backfill any missing
+      // array with [] so the rule has well-defined fields to read.
       const updates: Record<string, unknown> = { updatedAt: Date.now() };
+      if (!Array.isArray(data.players)) updates.players = [];
+      if (!Array.isArray(data.waitlist)) updates.waitlist = [];
+      if (!Array.isArray(data.pending)) updates.pending = [];
       let bucket: 'players' | 'waitlist' | 'pending';
       if (data.requiresApproval) {
         updates.pending = [...pending, userId];
@@ -1399,13 +1655,18 @@ export const gameService = {
         updates.waitlist = [...waitlist, userId];
         bucket = 'waitlist';
       }
-      const existingParticipants: string[] = Array.isArray(
-        data.participantIds,
-      )
-        ? data.participantIds
-        : [];
+      // Rules enforce participantIds.size == players + waitlist +
+      // pending. Rebuild the union from POST-update arrays — falling
+      // back to the locally-read array when this bucket isn't being
+      // touched (otherwise `updates[bucket]` would be undefined and
+      // we'd spread `undefined`).
+      const nextPlayers = (updates.players as string[] | undefined) ?? players;
+      const nextWaitlist =
+        (updates.waitlist as string[] | undefined) ?? waitlist;
+      const nextPending =
+        (updates.pending as string[] | undefined) ?? pending;
       updates.participantIds = Array.from(
-        new Set([...existingParticipants, userId]),
+        new Set([...nextPlayers, ...nextWaitlist, ...nextPending]),
       );
       // Clear any prior cancellation timestamp on re-join — see the
       // mock branch comment for the rationale (stale timestamps
@@ -1418,6 +1679,62 @@ export const gameService = {
         const { [userId]: _drop, ...rest } = existingCancellations;
         updates.cancellations = Object.keys(rest).length > 0 ? rest : null;
       }
+      const nextP = (updates.players as string[] | undefined) ?? players;
+      const nextW = (updates.waitlist as string[] | undefined) ?? waitlist;
+      const nextPe = (updates.pending as string[] | undefined) ?? pending;
+      const pids = updates.participantIds as string[];
+      // Capture the pre-commit snapshot so the catch below can include
+      // it in the warning surfaced to the redbox. Firestore itself
+      // never tells us which rule clause denied; the snapshot lets us
+      // recompute what would have failed.
+      lastDebugSnapshot = {
+        gameId,
+        userId,
+        bucket,
+        status: data.status,
+        visibility: data.visibility,
+        groupId: data.groupId,
+        requiresApproval: data.requiresApproval,
+        startsAt: data.startsAt,
+        startsAtFuture:
+          typeof data.startsAt === 'number'
+            ? data.startsAt > Date.now()
+            : 'no-startsAt',
+        // Direct reflection of liveMatch state — null vs undefined vs
+        // map matters for the rule's null-deref guard.
+        liveMatchType: data.liveMatch === null
+          ? 'null'
+          : data.liveMatch === undefined
+            ? 'undefined'
+            : typeof data.liveMatch,
+        liveMatchHasPhase:
+          data.liveMatch && typeof data.liveMatch === 'object'
+            ? 'phase' in data.liveMatch
+            : false,
+        livePhase: (data.liveMatch as { phase?: string } | undefined | null)
+          ?.phase,
+        oldPlayersSize: players.length,
+        oldWaitlistSize: waitlist.length,
+        oldPendingSize: pending.length,
+        newPlayersSize: nextP.length,
+        newWaitlistSize: nextW.length,
+        newPendingSize: nextPe.length,
+        newParticipantIdsSize: pids.length,
+        sumOfArrays: nextP.length + nextW.length + nextPe.length,
+        invariantHolds:
+          pids.length === nextP.length + nextW.length + nextPe.length,
+        dataPlayersIsArray: Array.isArray(data.players),
+        dataWaitlistIsArray: Array.isArray(data.waitlist),
+        dataPendingIsArray: Array.isArray(data.pending),
+        dataParticipantIdsIsArray: Array.isArray(data.participantIds),
+        dataPendingPromotion: data.pendingPromotion ?? null,
+        dataMaxPlayers: data.maxPlayers,
+        userInOldPlayers: players.includes(userId),
+        userInOldWaitlist: waitlist.includes(userId),
+        userInOldPending: pending.includes(userId),
+        allDocKeys: Object.keys(data),
+      };
+      lastUpdates = { ...updates, fields: Object.keys(updates) };
       // tx.update bypasses the converter so only the keys we changed
       // land in affectedKeys() — critical for the self-join rule which
       // whitelists ['players','waitlist','pending','participantIds',
@@ -1425,6 +1742,21 @@ export const gameService = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, updates as any);
       return { bucket };
+    }).catch((err) => {
+      // Re-throw with full debug context attached. The catch in
+      // MatchDetailsScreen logs the message; this guarantees the
+      // user sees actionable detail in the redbox.
+      const e = err as { code?: string; name?: string; message?: string };
+      const enriched = new Error(
+        `joinGameV2 failed: code=${e.code ?? 'n/a'} name=${e.name ?? 'n/a'} ` +
+          `msg="${e.message ?? ''}" snapshot=${JSON.stringify(lastDebugSnapshot)} ` +
+          `updates=${JSON.stringify(lastUpdates)}`,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (enriched as any).code = e.code;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (enriched as any).original = err;
+      throw enriched;
     });
 
     if (result.bucket !== 'pending') {
@@ -1541,13 +1873,14 @@ export const gameService = {
         updates.waitlist = [...waitlist, userId];
         bucket = 'waitlist';
       }
-      const existingParticipants: string[] = Array.isArray(
-        data.participantIds,
-      )
-        ? data.participantIds
-        : [];
+      // Rules require participantIds.size == players + waitlist +
+      // pending. Rebuild from POST-update arrays so a stale union
+      // doesn't trip the invariant. (See joinGameV2 for the same.)
+      const nextPlayers = (updates.players as string[] | undefined) ?? players;
+      const nextWaitlist =
+        (updates.waitlist as string[] | undefined) ?? waitlist;
       updates.participantIds = Array.from(
-        new Set([...existingParticipants, userId]),
+        new Set([...nextPlayers, ...nextWaitlist, ...nextPending]),
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, updates as any);
@@ -1595,8 +1928,11 @@ export const gameService = {
       const before = (g.pending ?? []).length;
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
       if (g.pending.length === before) return;
-      g.participantIds = (g.participantIds ?? []).filter(
-        (id) => id !== userId || g.players.includes(id) || g.waitlist.includes(id),
+      // Rebuild from post-update arrays — same shape as the Firebase
+      // path. Keeps mock state consistent with what the rules-checked
+      // production write would produce.
+      g.participantIds = Array.from(
+        new Set([...(g.players ?? []), ...(g.waitlist ?? []), ...g.pending]),
       );
       g.updatedAt = Date.now();
       notificationsService.dispatch({
@@ -1624,18 +1960,13 @@ export const gameService = {
       }
       const players = (data.players ?? []) as string[];
       const waitlist = (data.waitlist ?? []) as string[];
-      // Recompute participantIds: drop the rejected user only if they
-      // aren't still on players/waitlist (defensive — they shouldn't be).
-      const stillIn =
-        players.includes(userId) || waitlist.includes(userId);
-      const existingParticipants: string[] = Array.isArray(
-        data.participantIds,
-      )
-        ? data.participantIds
-        : [];
-      const participantIds = stillIn
-        ? existingParticipants
-        : existingParticipants.filter((id) => id !== userId);
+      // Rebuild from post-update arrays — same reason as joinGameV2:
+      // an empty/stale `participantIds` would trip the rule's
+      // `participantIds.size == players + waitlist + pending`
+      // invariant.
+      const participantIds = Array.from(
+        new Set([...players, ...waitlist, ...pending]),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, {
         pending,
@@ -1658,17 +1989,17 @@ export const gameService = {
   },
 
   /**
-   * Remove the current user from any of the three buckets. If they were
-   * in `players[]` and the waitlist has anyone, promote the head of the
-   * waitlist into the freed slot.
+   * Remove the current user from any of the three buckets. If they
+   * were in `players[]` and the waitlist has anyone (and no offer is
+   * already pending), generate a `pendingPromotion` offer to the head
+   * of the waitlist — they have to explicitly tap "מאשר" via the
+   * push (or in-app) before the slot is theirs. Until they do, the
+   * slot is reserved-but-empty.
    */
   async cancelGameV2(gameId: string, userId: UserId): Promise<void> {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
-      // Past-deadline cancellation is allowed (the UI shows a red
-      // confirmation prompt before getting here) — discipline still
-      // tracks the late timestamp via the `cancellations` map below.
       const isLate =
         typeof g.cancelDeadlineHours === 'number' &&
         g.cancelDeadlineHours > 0 &&
@@ -1678,30 +2009,41 @@ export const gameService = {
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
-      let promotedUid: string | null = null;
-      if (wasInPlayers && g.waitlist.length > 0 && g.players.length < g.maxPlayers) {
-        promotedUid = g.waitlist[0];
-        g.waitlist = g.waitlist.slice(1);
-        g.players = [...g.players, promotedUid];
+      // If the cancelling user happened to be the one we'd offered,
+      // clear the offer so we can generate a fresh one for someone
+      // else.
+      if (g.pendingPromotion?.uid === userId) {
+        g.pendingPromotion = null;
       }
-      // Re-derive the union: cancelling user is gone; promoted user is still
-      // a participant so we just drop the cancelled one.
+      // Generate a new offer when:
+      //   • a real player slot opened (wasInPlayers)
+      //   • no offer is currently pending
+      //   • there's at least one waitlist user
+      //   • capacity (after the cancel) actually has room
+      const occupancy =
+        g.players.length +
+        (g.guests?.length ?? 0) +
+        (g.pendingPromotion ? 1 : 0);
+      let offeredUid: string | null = null;
+      if (
+        wasInPlayers &&
+        !g.pendingPromotion &&
+        g.waitlist.length > 0 &&
+        occupancy < g.maxPlayers
+      ) {
+        offeredUid = g.waitlist[0];
+        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+      }
       g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
-      // Stamp the cancellation time. Discipline derivation reads this
-      // to compare against the game's `cancelDeadlineHours` and decide
-      // whether the cancel was on time or after the deadline.
       g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
-      if (promotedUid) {
+      if (offeredUid) {
         notificationsService.dispatch({
-          type: 'spotOpened',
-          recipientId: promotedUid,
-          payload: { gameId, gameTitle: g.title },
+          type: 'spotOffered',
+          recipientId: offeredUid,
+          payload: { gameId, gameTitle: g.title, startsAt: g.startsAt },
         });
       }
-      // Notify the game admin on every player cancel (not waitlist
-      // drop-out — admins don't care about those). Skip when the
-      // canceller IS the admin (don't push to yourself).
       if (wasInPlayers && g.createdBy && g.createdBy !== userId) {
         notificationsService.dispatch({
           type: 'playerCancelled',
@@ -1710,23 +2052,23 @@ export const gameService = {
             gameId,
             gameTitle: g.title,
             cancellingUserId: userId,
-            promotedUserId: promotedUid ?? null,
+            // No auto-promotion in the new flow — admin sees the offer
+            // pending state via the UI instead.
+            promotedUserId: null,
           },
         });
       }
-      logEvent(AnalyticsEvent.GameCancelled, { gameId, promoted: !!promotedUid });
+      logEvent(AnalyticsEvent.GameCancelled, {
+        gameId,
+        promoted: false,
+        offered: !!offeredUid,
+      });
       if (isLate && wasInPlayers) {
         const hoursToKickoff = (g.startsAt - Date.now()) / (60 * 60 * 1000);
         logEvent(AnalyticsEvent.LateCancel, {
           gameId,
           hoursToKickoff,
           deadlineHours: g.cancelDeadlineHours ?? 0,
-        });
-      }
-      if (promotedUid) {
-        logEvent(AnalyticsEvent.WaitlistPromoted, {
-          gameId,
-          promotedUserId: promotedUid,
         });
       }
       return;
@@ -1743,56 +2085,77 @@ export const gameService = {
       const snap = await tx.get(ref);
       if (!snap.exists())
         return {
-          promotedUid: null as string | null,
+          offeredUid: null as string | null,
           title: '',
+          startsAt: 0,
           createdBy: '',
           wasInPlayers: false,
         };
       const data = snap.data();
-      // Past-deadline cancellation is allowed. The UI shows a red
-      // confirmation modal first; the discipline derivation reads
-      // `cancellations[userId]` against `cancelDeadlineHours` later
-      // to flag late cancellers.
       const wasInPlayers = (data.players ?? []).includes(userId);
-      let players = (data.players ?? []).filter(
+      const players = (data.players ?? []).filter(
         (id: string) => id !== userId,
       );
-      let waitlist = (data.waitlist ?? []).filter(
+      const waitlist = (data.waitlist ?? []).filter(
         (id: string) => id !== userId,
       );
       const pending = (data.pending ?? []).filter(
         (id: string) => id !== userId,
       );
-      let promotedUid: string | null = null;
+      // Clear an offer that named the cancelling user (rare but
+      // possible: head-of-waitlist cancels while their own offer is
+      // pending). The next pendingPromotion compute below will pick
+      // a new head if there's still capacity.
+      let pendingPromotion =
+        data.pendingPromotion &&
+        typeof data.pendingPromotion === 'object' &&
+        (data.pendingPromotion as { uid?: string }).uid === userId
+          ? null
+          : (data.pendingPromotion ?? null);
+
+      const guests = Array.isArray(data.guests) ? data.guests : [];
+      const occupancy = players.length + guests.length + (pendingPromotion ? 1 : 0);
+      let offeredUid: string | null = null;
       if (
         wasInPlayers &&
+        !pendingPromotion &&
         waitlist.length > 0 &&
-        players.length < (data.maxPlayers ?? 15)
+        occupancy < (data.maxPlayers ?? 15)
       ) {
-        promotedUid = waitlist[0];
-        waitlist = waitlist.slice(1);
-        players = [...players, promotedUid];
+        offeredUid = waitlist[0];
+        pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
       }
-      const participantIds = Array.isArray(data.participantIds)
-        ? data.participantIds.filter((id: string) => id !== userId)
-        : Array.from(new Set([...players, ...waitlist, ...pending]));
-      // Stamp the cancellation timestamp (set-and-overwrite) so the
-      // discipline snapshot can compare it against the game's
-      // cancelDeadlineHours later. We merge into the existing map
-      // rather than replacing it — other users' cancellations on the
-      // same game must not be wiped.
+
+      // Rebuild from post-cancel arrays so the rule invariant holds
+      // even when the stored union was stale (a stale union can happen
+      // after a legacy doc, an admin edit, or a half-applied write).
+      const participantIds = Array.from(
+        new Set([...players, ...waitlist, ...pending]),
+      );
       const cancellations = {
         ...((data.cancellations as Record<string, number> | undefined) ?? {}),
         [userId]: Date.now(),
       };
-      tx.update(ref, {
+      // Only include pendingPromotion in the diff if it actually
+      // changed — Firestore rules whitelist `affectedKeys()` and a
+      // no-op `null → null` write would still register as a change
+      // and trip the rule until the new whitelist is deployed.
+      const update: Record<string, unknown> = {
         players,
         waitlist,
         pending,
         participantIds,
         cancellations,
         updatedAt: Date.now(),
-      });
+      };
+      const offerChanged =
+        JSON.stringify(data.pendingPromotion ?? null) !==
+        JSON.stringify(pendingPromotion ?? null);
+      if (offerChanged) {
+        update.pendingPromotion = pendingPromotion;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, update as any);
       const isLate =
         typeof data.cancelDeadlineHours === 'number' &&
         data.cancelDeadlineHours > 0 &&
@@ -1800,7 +2163,7 @@ export const gameService = {
         Date.now() >
           data.startsAt - data.cancelDeadlineHours * 60 * 60 * 1000;
       return {
-        promotedUid,
+        offeredUid,
         title: data.title ?? '',
         createdBy: typeof data.createdBy === 'string' ? data.createdBy : '',
         wasInPlayers,
@@ -1813,11 +2176,15 @@ export const gameService = {
       };
     });
 
-    if (result.promotedUid) {
+    if (result.offeredUid) {
       notificationsService.dispatch({
-        type: 'spotOpened',
-        recipientId: result.promotedUid,
-        payload: { gameId, gameTitle: result.title },
+        type: 'spotOffered',
+        recipientId: result.offeredUid,
+        payload: {
+          gameId,
+          gameTitle: result.title,
+          startsAt: result.startsAt,
+        },
       });
     }
     if (result.wasInPlayers && result.createdBy && result.createdBy !== userId) {
@@ -1828,13 +2195,16 @@ export const gameService = {
           gameId,
           gameTitle: result.title,
           cancellingUserId: userId,
-          promotedUserId: result.promotedUid ?? null,
+          // Auto-promotion is gone — head of waitlist must explicitly
+          // confirm. Admin sees the "ממתין לאישור" state in the UI.
+          promotedUserId: null,
         },
       });
     }
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
-      promoted: !!result.promotedUid,
+      promoted: false,
+      offered: !!result.offeredUid,
     });
     if (result.isLate && result.wasInPlayers) {
       const hoursToKickoff = (result.startsAt - Date.now()) / (60 * 60 * 1000);
@@ -1844,10 +2214,220 @@ export const gameService = {
         deadlineHours: result.deadlineHours,
       });
     }
-    if (result.promotedUid) {
-      logEvent(AnalyticsEvent.WaitlistPromoted, {
-        gameId,
-        promotedUserId: result.promotedUid,
+  },
+
+  /**
+   * Head of waitlist taps "אישור" on the spotOffered push (or the
+   * in-app row). Validates the offer is still theirs (an admin may
+   * have advanced past them), moves them from waitlist → players,
+   * clears the offer, and chains a fresh offer to the new head if
+   * there's still capacity and people waiting.
+   */
+  async confirmSpotOffer(gameId: string, userId: UserId): Promise<void> {
+    const { db } = getFirebase();
+    const ref = docs.game(gameId);
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return { ok: false as const };
+      const data = snap.data();
+      const offer = data.pendingPromotion as
+        | { uid?: string; offeredAt?: number }
+        | null
+        | undefined;
+      // Idempotency: if the user is already in players, treat as ok.
+      if ((data.players ?? []).includes(userId)) {
+        return { ok: true as const, alreadyIn: true };
+      }
+      if (!offer || offer.uid !== userId) {
+        return { ok: false as const, reason: 'STALE_OFFER' as const };
+      }
+      if (data.status !== 'open' && data.status !== 'locked') {
+        return { ok: false as const, reason: 'GAME_NOT_OPEN' as const };
+      }
+      const players = [...(data.players ?? []), userId];
+      const waitlist = (data.waitlist ?? []).filter(
+        (id: string) => id !== userId,
+      );
+      // Chain: if more capacity AND waitlist still has people, offer
+      // the next head — keeps the queue moving without admin work.
+      const guests = Array.isArray(data.guests) ? data.guests : [];
+      let nextOffer: { uid: string; offeredAt: number } | null = null;
+      if (
+        waitlist.length > 0 &&
+        players.length + guests.length < (data.maxPlayers ?? 15)
+      ) {
+        nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
+      }
+      // Rebuild union from post-update arrays so the rule invariant
+      // holds even if the stored participantIds was stale.
+      const pendingArr = (data.pending ?? []) as string[];
+      const participantIds = Array.from(
+        new Set([...players, ...waitlist, ...pendingArr]),
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, {
+        players,
+        waitlist,
+        participantIds,
+        pendingPromotion: nextOffer,
+        updatedAt: Date.now(),
+      } as any);
+      return {
+        ok: true as const,
+        title: typeof data.title === 'string' ? data.title : '',
+        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
+        nextOfferUid: nextOffer?.uid ?? null,
+      };
+    });
+    if (!result.ok) {
+      throw new Error(result.reason ?? 'CONFIRM_FAILED');
+    }
+    if ('alreadyIn' in result && result.alreadyIn) return;
+    if (result.nextOfferUid) {
+      notificationsService.dispatch({
+        type: 'spotOffered',
+        recipientId: result.nextOfferUid,
+        payload: {
+          gameId,
+          gameTitle: result.title ?? '',
+          startsAt: result.startsAt ?? 0,
+        },
+      });
+    }
+    logEvent(AnalyticsEvent.WaitlistPromoted, {
+      gameId,
+      promotedUserId: userId,
+      viaOfferConfirm: true,
+    });
+  },
+
+  /**
+   * Head of waitlist taps "ויתור". Removes them from the waitlist
+   * entirely (they explicitly opted out — re-joining means tapping
+   * "אני בא" again), clears the offer, and chains the next offer to
+   * whoever is now at the head.
+   */
+  async passSpotOffer(gameId: string, userId: UserId): Promise<void> {
+    const { db } = getFirebase();
+    const ref = docs.game(gameId);
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return { ok: false as const };
+      const data = snap.data();
+      const offer = data.pendingPromotion as
+        | { uid?: string }
+        | null
+        | undefined;
+      // Idempotency: if there's no offer for this user, just no-op.
+      if (!offer || offer.uid !== userId) {
+        return { ok: true as const, alreadyResolved: true };
+      }
+      const waitlist = (data.waitlist ?? []).filter(
+        (id: string) => id !== userId,
+      );
+      const guests = Array.isArray(data.guests) ? data.guests : [];
+      const players = (data.players ?? []) as string[];
+      let nextOffer: { uid: string; offeredAt: number } | null = null;
+      if (
+        waitlist.length > 0 &&
+        players.length + guests.length < (data.maxPlayers ?? 15)
+      ) {
+        nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
+      }
+      const pendingArr = (data.pending ?? []) as string[];
+      const participantIds = Array.from(
+        new Set([...players, ...waitlist, ...pendingArr]),
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tx.update(ref, {
+        waitlist,
+        participantIds,
+        pendingPromotion: nextOffer,
+        updatedAt: Date.now(),
+      } as any);
+      return {
+        ok: true as const,
+        title: typeof data.title === 'string' ? data.title : '',
+        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
+        nextOfferUid: nextOffer?.uid ?? null,
+      };
+    });
+    if (!result.ok) return;
+    if ('alreadyResolved' in result && result.alreadyResolved) return;
+    if (result.nextOfferUid) {
+      notificationsService.dispatch({
+        type: 'spotOffered',
+        recipientId: result.nextOfferUid,
+        payload: {
+          gameId,
+          gameTitle: result.title ?? '',
+          startsAt: result.startsAt ?? 0,
+        },
+      });
+    }
+  },
+
+  /**
+   * Admin variant of pass — used when an offered user hasn't
+   * responded for a long time and the admin wants to skip them. The
+   * offered user is moved to the BACK of the waitlist (not removed)
+   * so they don't permanently lose their place; they just lose the
+   * priority claim on the current open spot.
+   */
+  async adminAdvanceOffer(gameId: string): Promise<void> {
+    const { db } = getFirebase();
+    const ref = docs.game(gameId);
+    const result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return { ok: false as const };
+      const data = snap.data();
+      const offer = data.pendingPromotion as
+        | { uid?: string }
+        | null
+        | undefined;
+      if (!offer?.uid) return { ok: false as const, reason: 'NO_OFFER' as const };
+      const offeredUid = offer.uid;
+      // Move offered uid to back of waitlist (preserve their place
+      // overall, just drop priority on this round).
+      const waitlist = (data.waitlist ?? []).filter(
+        (id: string) => id !== offeredUid,
+      );
+      waitlist.push(offeredUid);
+      const guests = Array.isArray(data.guests) ? data.guests : [];
+      const players = (data.players ?? []) as string[];
+      let nextOffer: { uid: string; offeredAt: number } | null = null;
+      // The new head is whoever is now at index 0 (the previous
+      // index 1, if any). Skip if it's the same person we just
+      // pushed back (i.e., they were the only one in waitlist).
+      if (
+        waitlist.length > 0 &&
+        waitlist[0] !== offeredUid &&
+        players.length + guests.length < (data.maxPlayers ?? 15)
+      ) {
+        nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
+      }
+      tx.update(ref, {
+        waitlist,
+        pendingPromotion: nextOffer,
+        updatedAt: Date.now(),
+      });
+      return {
+        ok: true as const,
+        title: typeof data.title === 'string' ? data.title : '',
+        startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
+        nextOfferUid: nextOffer?.uid ?? null,
+      };
+    });
+    if (!result.ok) return; // no-op when there's nothing to advance
+    if (result.nextOfferUid) {
+      notificationsService.dispatch({
+        type: 'spotOffered',
+        recipientId: result.nextOfferUid,
+        payload: {
+          gameId,
+          gameTitle: result.title ?? '',
+          startsAt: result.startsAt ?? 0,
+        },
       });
     }
   },
@@ -1986,13 +2566,16 @@ export const gameService = {
             waitlist = waitlist.slice(1);
             players = [...players, promotedUid];
           }
-          const participantIds = Array.isArray(d.participantIds)
-            ? d.participantIds.filter((id: string) => id !== userId)
-            : Array.from(new Set([...players, ...waitlist, ...pending]));
+          // Rebuild from post-update arrays — see joinGameV2 / cancel
+          // for the same invariant rationale.
+          const participantIds = Array.from(
+            new Set([...players, ...waitlist, ...pending]),
+          );
           const cancellations = {
             ...((d.cancellations as Record<string, number> | undefined) ?? {}),
             [userId]: Date.now(),
           };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           tx.update(ref, {
             players,
             waitlist,
@@ -2000,7 +2583,7 @@ export const gameService = {
             participantIds,
             cancellations,
             updatedAt: Date.now(),
-          });
+          } as any);
           return {
             promotedUid,
             title: d.title ?? '',
@@ -2717,20 +3300,6 @@ export function shuffle<T>(arr: T[]): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
-}
-
-export function buildTeamsFrom(registered: string[]): Team[] {
-  const shuffled = shuffle(registered).slice(0, 15);
-  const colors: TeamColor[] = ['team1', 'team2', 'team3'];
-  return colors.map((color, i) => {
-    const playerIds = shuffled.slice(i * 5, i * 5 + 5);
-    return {
-      color,
-      playerIds,
-      goalkeeperOrder: shuffle(playerIds),
-      isWaiting: color === 'team3',
-    };
-  });
 }
 
 function nextThursdayAt(hour: number, minute: number): number {

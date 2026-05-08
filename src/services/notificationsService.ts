@@ -239,27 +239,78 @@ export const notificationsService = {
   },
 
   /**
-   * Phase E.2.2 — single-shot invite of a user to a specific game.
-   * Thin wrapper around dispatch so screens have a typed helper instead
-   * of building the payload inline.
+   * Send a game invite via the trusted `sendGameInvite` Cloud Function.
+   *
+   * This used to write the notification doc directly from the client
+   * with `inviterName` / `gameTitle` etc. supplied by the UI — which
+   * let any signed-in client phish "מנהל הקבוצה" by writing whatever
+   * display name they wanted.
+   *
+   * Now: client passes IDs only. The CF loads the sender + game
+   * server-side, verifies permission, applies the server-side rate
+   * limit, constructs the payload, and writes the notification.
+   *
+   * Throws a typed Error with a `code` matching the Firebase HttpsError
+   * codes the function returns:
+   *   • 'unauthenticated' / 'permission-denied'
+   *   • 'invalid-argument'
+   *   • 'failed-precondition'  (already registered, finished game)
+   *   • 'resource-exhausted'   (rate limit hit)
+   * Callers should branch on `err.code` to surface a useful message.
    */
   async inviteToGame(input: {
     recipientId: UserId;
     gameId: string;
-    gameTitle: string;
-    inviterName: string;
-    startsAt: number;
+    /** @deprecated kept for backwards-compat with old call sites. Server ignores. */
+    gameTitle?: string;
+    /** @deprecated kept for backwards-compat with old call sites. Server ignores. */
+    inviterName?: string;
+    /** @deprecated kept for backwards-compat with old call sites. Server ignores. */
+    startsAt?: number;
+    /** @deprecated kept for backwards-compat with old call sites. Server ignores. */
+    inviterId?: UserId;
   }): Promise<void> {
-    return this.dispatch({
-      type: 'inviteToGame',
-      recipientId: input.recipientId,
-      payload: {
+    if (!input?.recipientId || !input?.gameId) {
+      throw new Error('inviteToGame: missing recipientId or gameId');
+    }
+    if (USE_MOCK_DATA) {
+      // Keep the dev/inspector flow working in mock mode.
+      mockNotifications.push({
+        id: `mn-${Date.now()}`,
+        type: 'inviteToGame',
+        recipientId: input.recipientId,
+        payload: {
+          gameId: input.gameId,
+          gameTitle: input.gameTitle ?? '',
+          inviterName: input.inviterName ?? '',
+          startsAt: input.startsAt ?? 0,
+        },
+        createdAt: Date.now(),
+        delivered: false,
+      });
+      return;
+    }
+    // Lazy-import the callable infra so the bundle stays lean for
+    // mock-mode users.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'sendGameInvite');
+    try {
+      await fn({
+        recipientId: input.recipientId,
         gameId: input.gameId,
-        gameTitle: input.gameTitle,
-        inviterName: input.inviterName,
-        startsAt: input.startsAt,
-      },
-    });
+      });
+    } catch (err) {
+      // Re-throw with the Firebase error code preserved so the UI can
+      // distinguish rate-limit from permission from invalid-target.
+      const e = err as { code?: string; message?: string; details?: unknown };
+      const wrapped = new Error(e.message ?? 'inviteToGame failed') as Error & {
+        code: string;
+      };
+      wrapped.code = (e.code ?? 'unknown').replace(/^functions\//, '');
+      throw wrapped;
+    }
   },
 
   /** Useful to inspect mock dispatches in dev — no-op in Firebase mode. */

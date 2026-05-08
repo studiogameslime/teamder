@@ -32,6 +32,8 @@ import {
 import { mockGroup, mockOtherGroup, mockPublicGroups } from '@/data/mockUsers';
 import { mockPlayers } from '@/data/mockData';
 import { storage } from './storage';
+import { optionalString, requireString } from '@/utils/validate';
+import { enforceRateLimit } from '@/services/rateLimitService';
 import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
@@ -96,6 +98,55 @@ export const groupService = {
   },
 
   /**
+   * Communities both users are approved members of. Used by the
+   * player-card "אתה ו-X" stats section. One `array-contains` query
+   * + a client-side intersect — cheap regardless of how many groups
+   * either user belongs to.
+   */
+  async findSharedCommunities(
+    uidA: UserId,
+    uidB: UserId,
+  ): Promise<Group[]> {
+    if (!uidA || !uidB || uidA === uidB) return [];
+    if (USE_MOCK_DATA) {
+      return Object.values(groupsById).filter((g) => {
+        const ids = new Set([
+          ...(Array.isArray(g.playerIds) ? g.playerIds : []),
+          ...(Array.isArray(g.adminIds) ? g.adminIds : []),
+        ]);
+        return ids.has(uidA) && ids.has(uidB);
+      });
+    }
+    // Two queries — the viewer might be a community admin who isn't
+    // listed in `playerIds` (admin-only memberships exist on legacy
+    // docs and on groups where the creator opted out of being a
+    // player). A single `array-contains` would miss those. Merge
+    // results by id.
+    const [byPlayer, byAdmin] = await Promise.all([
+      getDocs(
+        query(col.groups(), where('playerIds', 'array-contains', uidA)),
+      ),
+      getDocs(
+        query(col.groups(), where('adminIds', 'array-contains', uidA)),
+      ),
+    ]);
+    const seen = new Set<string>();
+    const groups: Group[] = [];
+    for (const doc of [...byPlayer.docs, ...byAdmin.docs]) {
+      if (seen.has(doc.id)) continue;
+      seen.add(doc.id);
+      groups.push(doc.data());
+    }
+    return groups.filter((g) => {
+      const ids = new Set([
+        ...(Array.isArray(g.playerIds) ? g.playerIds : []),
+        ...(Array.isArray(g.adminIds) ? g.adminIds : []),
+      ]);
+      return ids.has(uidB);
+    });
+  },
+
+  /**
    * Search groups by case-insensitive name prefix. Returns lightweight
    * GroupSearchHit projections suitable for listing in a search screen.
    *
@@ -155,16 +206,43 @@ export const groupService = {
     recurringGameEnabled?: boolean;
     creator: User;
   }): Promise<Group> {
+    // Spam guard: 5 community creates per user per day. The
+    // /rateLimits doc backing this is per-user so it doesn't
+    // bottleneck globally.
+    await enforceRateLimit(input.creator.id, 'createGroup');
+    // Client-side validation gives a friendly Hebrew error before
+    // we hit the wire. The Firestore rule layer enforces the same
+    // caps authoritatively — this is just the user-facing pre-flight.
+    const name = requireString('name', input.name, {
+      max: 80,
+      label: 'שם הקהילה',
+    });
+    const fieldName = requireString('fieldName', input.fieldName, {
+      max: 200,
+      label: 'שם המגרש',
+    });
+    const description = optionalString('description', input.description, {
+      max: 500,
+      label: 'תיאור',
+    });
+    const city = optionalString('city', input.city, {
+      max: 80,
+      label: 'עיר',
+    });
+    const fieldAddress = optionalString('fieldAddress', input.fieldAddress, {
+      max: 300,
+      label: 'כתובת המגרש',
+    });
     const now = Date.now();
     const baseGroup = {
-      name: input.name,
-      normalizedName: normalize(input.name),
-      fieldName: input.fieldName,
-      fieldAddress: input.fieldAddress,
-      city: input.city,
+      name,
+      normalizedName: normalize(name),
+      fieldName,
+      fieldAddress,
+      city,
       street: input.street,
       addressNote: input.addressNote,
-      description: input.description,
+      description,
       defaultMaxPlayers: input.defaultMaxPlayers ?? 15,
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
@@ -300,6 +378,8 @@ export const groupService = {
     group: Group;
     status: 'pending' | 'joined' | 'already_member' | 'not_found';
   }> {
+    // Spam guard: cap join requests per user per hour.
+    await enforceRateLimit(userId, 'joinRequest');
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
       if (!g) return { group: { ...mockGroup, id: '' }, status: 'not_found' };
@@ -725,20 +805,18 @@ export const groupService = {
     if (isLastAdmin) {
       throw new Error('LAST_ADMIN');
     }
-    const { db } = getFirebase();
-    const batch = writeBatch(db);
-    batch.update(ref, {
+    // Single-doc write only. The /groupsPublic.memberCount mirror
+    // used to be bumped here in a batch, but the hardened Storage /
+    // /groupsPublic rules require admin to write the public doc —
+    // which would deny a leaving NON-admin player. The
+    // `onGroupPendingChanged` Cloud Function (Admin SDK) syncs the
+    // public count when playerIds changes, so the client doesn't
+    // need to (and shouldn't) write it.
+    await updateDoc(ref, {
       adminIds: arrayRemove(userId),
       playerIds: arrayRemove(userId),
       updatedAt: Date.now(),
     });
-    // Public projection is denormalized — refresh memberCount lazily.
-    const nextPlayerCount = Math.max(0, (g.playerIds?.length ?? 1) - 1);
-    batch.update(docs.groupPublic(groupId), {
-      memberCount: nextPlayerCount,
-      updatedAt: Date.now(),
-    });
-    await batch.commit();
   },
 
   /**

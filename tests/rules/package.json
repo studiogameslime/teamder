@@ -1,0 +1,13 @@
+{
+  "name": "soccer-rules-tests",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Firestore Rules emulator tests for the soccer app.",
+  "scripts": {
+    "test": "node --test --test-reporter=spec firestore.test.mjs"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^10.13.0"
+  }
+}

@@ -132,6 +132,11 @@ export function RatingModal({
       toast.info(he.ratingCleared);
       onChanged?.();
       onClose();
+    } catch (err) {
+      // Without this catch, a failed delete would silently close the
+      // modal and the user would think the rating was cleared while
+      // the doc still lives in Firestore.
+      toast.error(String((err as Error).message ?? err));
     } finally {
       setBusy(false);
     }

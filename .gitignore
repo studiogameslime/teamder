@@ -26,3 +26,13 @@ android/
 # Claude Code session data + Firebase CLI cache (machine-local)
 .claude/
 .firebase/
+
+# Build artefacts — never commit binaries.
+*.aab
+*.apk
+public/downloads/
+
+# Generated at functions build time by scripts/copy-template.js. Kept
+# out of source control so the function-side copy never drifts from
+# public/c/index.html — the predeploy script regenerates it.
+functions/templates/

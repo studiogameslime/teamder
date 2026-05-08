@@ -83,6 +83,22 @@ try {
     // worst case is the buttons don't render and the user taps
     // through to the app, which is the existing behaviour.
   });
+  // Waitlist promotion offer: someone cancelled, head of waitlist
+  // gets a chance to claim the spot. CONFIRM_SPOT moves them into
+  // players[]; PASS_SPOT removes them from waitlist entirely (so
+  // the next person in line can be offered).
+  Notifications.setNotificationCategoryAsync('SPOT_OFFER', [
+    {
+      identifier: 'CONFIRM_SPOT',
+      buttonTitle: 'מאשר/ת',
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: 'PASS_SPOT',
+      buttonTitle: 'ויתור',
+      options: { opensAppToForeground: false, isDestructive: true },
+    },
+  ]).catch(() => {});
 } catch {
   // expo-notifications native module not available — no-op.
 }
@@ -460,6 +476,15 @@ export default function App() {
           '@/services/notificationActionService'
         );
         await handleGameReminderAction(action, gameId);
+        return;
+      }
+      if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
+        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+        if (!gameId) return;
+        const { handleSpotOfferAction } = await import(
+          '@/services/notificationActionService'
+        );
+        await handleSpotOfferAction(action, gameId);
         return;
       }
       // Wait briefly for the navigator to be ready (cold-start case);

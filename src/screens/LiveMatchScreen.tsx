@@ -415,7 +415,7 @@ export function LiveMatchScreen() {
     return [...game.players, ...guestRoster];
   }, [game?.players, game?.guests]);
 
-  // Hydrate user → display name / jersey lookup.
+  // Hydrate user → display name / avatar lookup.
   useEffect(() => {
     if (!game) return;
     hydratePlayers(game.players);
@@ -2522,10 +2522,9 @@ function usePlayerName(
 }
 
 /**
- * Dashed jersey-shaped placeholder. Mirrors the geometry the `Jersey`
- * component uses (sleeves + body), so when a player is placed at the
- * slot their colored jersey overlays this outline at the same shape
- * and size — the placeholder visually "frames" the player.
+ * Dashed circular placeholder. Frames the round avatar overlaid on
+ * top so the slot remains visible (and the team tint readable) even
+ * when occupied — empty slot shows the dashed ring + "פנוי" label.
  */
 function JerseyPlaceholder({
   size,
@@ -2534,68 +2533,18 @@ function JerseyPlaceholder({
   size: number;
   tint: string;
 }) {
-  // Geometry copied verbatim from the Jersey component so the colored
-  // jersey rendered on top fits exactly inside the dashed outline.
-  const bodyW = Math.round(size * 0.7);
-  const bodyH = Math.round(size * 0.86);
-  const bodyTop = Math.round(size * 0.07);
-  const bodyLeft = Math.round((size - bodyW) / 2);
-  const bodyRadius = Math.round(size * 0.14);
-
-  const sleeveW = Math.round(size * 0.24);
-  const sleeveH = Math.round(size * 0.22);
-  const sleeveTop = Math.round(size * 0.1);
-  const sleeveR = Math.round(sleeveH * 0.6);
-  const sleeveSm = Math.round(sleeveH * 0.18);
-
-  const sleeveCommon = {
-    position: 'absolute' as const,
-    top: sleeveTop,
-    width: sleeveW,
-    height: sleeveH,
-    borderWidth: 1.5,
-    borderStyle: 'dashed' as const,
-    borderColor: tint,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  };
-
   return (
-    <View style={{ width: size, height: size }}>
-      <View
-        style={{
-          ...sleeveCommon,
-          left: 0,
-          borderTopLeftRadius: sleeveR,
-          borderTopRightRadius: sleeveSm,
-          borderBottomLeftRadius: sleeveSm,
-          borderBottomRightRadius: 0,
-        }}
-      />
-      <View
-        style={{
-          ...sleeveCommon,
-          right: 0,
-          borderTopLeftRadius: sleeveSm,
-          borderTopRightRadius: sleeveR,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: sleeveSm,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          top: bodyTop,
-          left: bodyLeft,
-          width: bodyW,
-          height: bodyH,
-          borderRadius: bodyRadius,
-          borderWidth: 2,
-          borderStyle: 'dashed',
-          borderColor: tint,
-          backgroundColor: 'rgba(255,255,255,0.06)',
-        }}
-      />
-    </View>
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: tint,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+      }}
+    />
   );
 }
 
@@ -2850,8 +2799,10 @@ function CurrentMatchPanel({
       }
       const u = userMap[uid];
       return {
+        // Jersey numbers retired with the jersey concept; the row
+        // index is what gets rendered as the badge now.
         name: u?.displayName ?? 'שחקן',
-        number: u?.jersey?.number ?? null,
+        number: null,
       };
     },
     [guestsById, userMap],

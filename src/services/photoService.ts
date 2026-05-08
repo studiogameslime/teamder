@@ -11,9 +11,13 @@
 //   • max dimension 512 px — kills 5 MB camera shots before upload
 //   • JPEG @ 0.8 — visually identical to higher quality at this size
 // Storage rules enforce a 5 MB hard cap as a server-side safety net.
+//
+// Native-module loading: expo-image-picker / expo-image-manipulator
+// are required lazily so a dev client built before they were added
+// to package.json doesn't crash on import. Missing module → the
+// caller gets `{ ok: false, reason: 'unavailable' }` and can show
+// a friendly message rather than a redbox.
 
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import {
   ref as storageRef,
   uploadBytes,
@@ -22,6 +26,46 @@ import {
 } from 'firebase/storage';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 
+type ImagePickerModule = typeof import('expo-image-picker');
+type ImageManipulatorModule = typeof import('expo-image-manipulator');
+
+function loadNativePickers():
+  | { ok: true; ImagePicker: ImagePickerModule; ImageManipulator: ImageManipulatorModule }
+  | { ok: false } {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ImagePicker: ImagePickerModule = require('expo-image-picker');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ImageManipulator: ImageManipulatorModule = require('expo-image-manipulator');
+    // The JS module loads even when the native side isn't linked,
+    // but the methods themselves come back undefined. Check the
+    // entry points we actually call so we fail BEFORE hitting an
+    // unhandled "Cannot read property X of undefined" deep in the
+    // upload pipeline.
+    if (
+      typeof ImagePicker?.requestMediaLibraryPermissionsAsync !== 'function' ||
+      typeof ImagePicker?.launchImageLibraryAsync !== 'function' ||
+      typeof ImageManipulator?.manipulateAsync !== 'function'
+    ) {
+      if (__DEV__) {
+        console.warn(
+          '[photoService] native picker JS loaded but native bindings missing — rebuild the dev client',
+        );
+      }
+      return { ok: false };
+    }
+    return { ok: true, ImagePicker, ImageManipulator };
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(
+        '[photoService] native picker module not linked — rebuild the dev client',
+        err,
+      );
+    }
+    return { ok: false };
+  }
+}
+
 const AVATAR_PATH = (uid: string) => `users/${uid}/avatar.jpg`;
 const TARGET_SIZE = 512;
 const JPEG_QUALITY = 0.8;
@@ -29,7 +73,11 @@ const JPEG_QUALITY = 0.8;
 /** Generic outcome wrapper so callers don't have to try/catch each step. */
 export type PhotoUploadResult =
   | { ok: true; url: string }
-  | { ok: false; reason: 'cancelled' | 'permission' | 'network' | 'unknown'; err?: unknown };
+  | {
+      ok: false;
+      reason: 'cancelled' | 'permission' | 'network' | 'unavailable' | 'unknown';
+      err?: unknown;
+    };
 
 /**
  * Show the OS picker, let the user crop, then upload + return the
@@ -45,6 +93,12 @@ export async function pickAndUploadAvatar(
     // value never round-trips to a real backend.
     return { ok: false, reason: 'unknown' };
   }
+
+  const native = loadNativePickers();
+  if (!native.ok) {
+    return { ok: false, reason: 'unavailable' };
+  }
+  const { ImagePicker, ImageManipulator } = native;
 
   // 1) Permission. iOS / Android both prompt the user the first
   //    time; subsequent calls return the cached decision.

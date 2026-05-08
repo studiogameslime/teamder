@@ -7,7 +7,7 @@
     "node": "20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/copy-template.js && tsc",
     "build:watch": "tsc --watch",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",

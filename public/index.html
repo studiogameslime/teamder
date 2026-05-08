@@ -14,9 +14,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --green-dark: #16a34a;
-      --green: #22c55e;
-      --green-light: #84cc16;
+      --blue-dark: #1D4ED8;
+      --blue: #3B82F6;
+      --blue-light: #60A5FA;
       --bg: #ffffff;
       --bg-soft: #f8fafc;
       --text: #0f172a;
@@ -24,7 +24,7 @@
       --border: #e2e8f0;
       --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
       --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
-      --shadow-lg: 0 24px 48px rgba(22, 163, 74, 0.18);
+      --shadow-lg: 0 24px 48px rgba(29, 78, 216, 0.22);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -37,7 +37,7 @@
       -webkit-font-smoothing: antialiased;
     }
     img { max-width: 100%; display: block; }
-    a { color: var(--green-dark); text-decoration: none; }
+    a { color: var(--blue-dark); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     /* Page container */
@@ -82,7 +82,7 @@
     /* Hero */
     section.hero {
       padding: 80px 0 60px;
-      background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+      background: linear-gradient(180deg, #EFF6FF 0%, #ffffff 100%);
       text-align: center;
     }
     .hero-logo {
@@ -102,7 +102,7 @@
       display: block;
     }
     .hero h1 .accent {
-      background: linear-gradient(120deg, var(--green-dark), var(--green-light));
+      background: linear-gradient(120deg, var(--blue-dark), var(--blue-light));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -126,11 +126,11 @@
       margin-top: 24px;
       padding: 8px 16px;
       border-radius: 999px;
-      background: #dcfce7;
-      color: var(--green-dark);
+      background: #DBEAFE;
+      color: var(--blue-dark);
       font-size: 14px;
       font-weight: 600;
-      border: 1px solid #bbf7d0;
+      border: 1px solid #BFDBFE;
     }
     .hero-free svg { width: 16px; height: 16px; }
 
@@ -150,18 +150,18 @@
     }
     .btn:hover { text-decoration: none; transform: translateY(-1px); }
     .btn-primary {
-      background: linear-gradient(135deg, var(--green-dark), var(--green));
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
       color: #fff;
       box-shadow: var(--shadow-lg);
     }
-    .btn-primary:hover { box-shadow: 0 28px 56px rgba(22, 163, 74, 0.28); }
+    .btn-primary:hover { box-shadow: 0 28px 56px rgba(29, 78, 216, 0.32); }
     .btn-secondary {
       background: #fff;
       color: var(--text);
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
     }
-    .btn-secondary:hover { border-color: var(--green); color: var(--green-dark); }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue-dark); }
     .btn .icon { width: 20px; height: 20px; }
 
     /* Features grid */
@@ -169,7 +169,7 @@
       padding: 80px 0;
     }
     .section-eyebrow {
-      color: var(--green-dark);
+      color: var(--blue-dark);
       font-weight: 700;
       font-size: 14px;
       letter-spacing: 0.05em;
@@ -209,11 +209,11 @@
       width: 48px;
       height: 48px;
       border-radius: 14px;
-      background: linear-gradient(135deg, #dcfce7, #ecfccb);
+      background: linear-gradient(135deg, #DBEAFE, #E0E7FF);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--green-dark);
+      color: var(--blue-dark);
       margin-bottom: 18px;
     }
     .feature-icon svg { width: 26px; height: 26px; }
@@ -254,7 +254,7 @@
       width: 40px;
       height: 40px;
       border-radius: 12px;
-      background: linear-gradient(135deg, var(--green-dark), var(--green-light));
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue-light));
       color: #fff;
       display: flex;
       align-items: center;
@@ -279,7 +279,7 @@
       padding: 80px 0;
     }
     .beta-card {
-      background: linear-gradient(135deg, #052e16 0%, #166534 50%, #16a34a 100%);
+      background: linear-gradient(135deg, #0F172A 0%, #1E40AF 50%, #3B82F6 100%);
       color: #fff;
       border-radius: 28px;
       padding: 56px 40px;
@@ -292,8 +292,8 @@
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(circle at 20% 20%, rgba(132, 204, 22, 0.25), transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.25), transparent 50%);
+        radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.30), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.28), transparent 50%);
       pointer-events: none;
     }
     .beta-card > * { position: relative; z-index: 1; }
@@ -321,7 +321,7 @@
     }
     .beta-card .btn-primary {
       background: #fff;
-      color: var(--green-dark);
+      color: var(--blue-dark);
       box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
     }
     .beta-card .btn-primary:hover {

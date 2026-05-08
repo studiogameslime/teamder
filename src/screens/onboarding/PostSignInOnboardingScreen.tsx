@@ -27,6 +27,7 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 const HERO_GRADIENT = ['#1E3A8A', '#1E40AF', '#3B82F6'] as const;
 const ACCENT = '#1E40AF';
@@ -69,6 +70,8 @@ export function PostSignInOnboardingScreen() {
         Alert.alert(he.error, he.profilePhotoPermissionDenied);
       } else if (res.reason === 'network') {
         Alert.alert(he.error, he.profilePhotoUploadFailed);
+      } else if (res.reason === 'unavailable') {
+        Alert.alert(he.error, he.profilePhotoUnavailable);
       }
       return;
     }
@@ -76,6 +79,7 @@ export function PostSignInOnboardingScreen() {
     // The user just picked a photo — drop the previously-picked
     // avatar selection so the preview / save reflect the photo.
     setAvatarId(undefined);
+    logEvent(AnalyticsEvent.PhotoUploaded, { source: 'onboarding' });
   };
 
   const handlePickAvatar = (id: string) => {
@@ -87,6 +91,10 @@ export function PostSignInOnboardingScreen() {
     }
     setPhotoUrl(undefined);
     setAvatarId(id);
+    logEvent(AnalyticsEvent.AvatarChanged, {
+      source: 'onboarding',
+      avatarId: id,
+    });
   };
 
   const handleSave = async () => {

@@ -107,17 +107,24 @@ export function AvailablePlayersScreen() {
       await notificationsService.inviteToGame({
         recipientId: target.id,
         gameId: game.id,
-        gameTitle: game.title,
-        inviterName: me.name,
-        startsAt: game.startsAt,
       });
-      achievementsService.bump(me.id, 'invitesSent', 1);
+      // CF bumps invitesSent server-side; we just update the local
+      // "invited X" state so the row immediately disables.
       setInvitedIds((s) => new Set([...s, target.id]));
       toast.success(
         he.playerCardInviteSentToast.replace('{name}', target.name),
       );
-    } catch (e) {
-      toast.error(String((e as Error).message ?? e));
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? '';
+      if (code === 'resource-exhausted') {
+        toast.error(he.inviteRateLimited);
+      } else if (code === 'failed-precondition') {
+        toast.error(he.inviteAlreadyJoined);
+      } else if (code === 'permission-denied') {
+        toast.error(he.inviteNotAllowed);
+      } else {
+        toast.error(String((err as Error).message ?? err));
+      }
     } finally {
       setInvitingId(null);
     }

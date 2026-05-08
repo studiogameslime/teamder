@@ -36,6 +36,7 @@ import { ratingsService } from '@/services/ratingsService';
 import type { GroupRatingSummary } from '@/types';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
+import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
 import { disciplineService } from '@/services/disciplineService';
@@ -235,6 +236,15 @@ export function PlayerCardScreen() {
     : null;
   const canInvite = !blockedReason && !!nextGame && !inviteSent && !!me;
 
+  // Distinct viewing modes — looking at YOUR own card vs another
+  // player's card. The "other" view is interpersonal: shared games,
+  // shared communities, the option to invite. It deliberately drops
+  // referral count, the in-line "rate this player" widget (rating
+  // belongs in the post-match flow), achievements, and discipline
+  // cards — all of which read as "your private profile bits" when
+  // shown in someone else's context.
+  const isSelfView = !!me && me.id === user.id;
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={user.name} />
@@ -242,9 +252,19 @@ export function PlayerCardScreen() {
         <View style={styles.header}>
           <PlayerIdentity user={user} size="xl" showShirtName />
           <Text style={styles.name}>{user.name}</Text>
-          {user.email ? <Text style={styles.email}>{user.email}</Text> : null}
+          {/* Email is intentionally only shown on YOUR own card. It's
+              PII and there's no use case for surfacing it on
+              someone else's profile. */}
+          {isSelfView && user.email ? (
+            <Text style={styles.email}>{user.email}</Text>
+          ) : null}
         </View>
 
+        {/* Dry facts about the player. Shown for both self and other
+            views — they're factual ("how reliable is this person?")
+            and don't read as private. The "other" view skips the
+            sections that are inherently personal: rating widget,
+            achievements, discipline cards. */}
         <View style={styles.statsRow}>
           <StatTile label={he.playerCardTotalGames} value={String(total)} />
           <StatTile
@@ -259,34 +279,43 @@ export function PlayerCardScreen() {
           />
         </View>
 
-        {/* Referrals — hidden until the count is loaded so we never
-            flash a misleading 0. The helper text under the value
-            disambiguates this from "joined my game" / "joined my
-            community" stats which exist elsewhere. */}
-        {referralCount !== null ? (
+        {referralCount !== null && referralCount > 0 ? (
           <View style={styles.referralRow}>
             <StatTile
               label={he.playerCardReferrals}
               value={String(referralCount)}
-              tint={referralCount > 0 ? colors.primary : colors.textMuted}
+              tint={colors.primary}
             />
             <Text style={styles.referralHelper}>
-              {he.playerCardReferralsHelper}
+              {isSelfView
+                ? he.playerCardReferralsHelper
+                : he.playerCardReferralsHelperOther}
             </Text>
           </View>
         ) : null}
 
-        {effectiveRatingGroupId ? (
-          <RatingSection
+        {isSelfView ? (
+          <>
+            {effectiveRatingGroupId ? (
+              <RatingSection
+                groupId={effectiveRatingGroupId}
+                viewerId={me?.id ?? null}
+                ratedUser={user}
+              />
+            ) : null}
+
+            <DisciplineSection user={user} />
+
+            <AchievementsSection user={user} />
+          </>
+        ) : me ? (
+          <PairStatsSection
+            viewerId={me.id}
+            otherId={user.id}
+            otherName={user.name}
             groupId={effectiveRatingGroupId}
-            viewerId={me?.id ?? null}
-            ratedUser={user}
           />
         ) : null}
-
-        <DisciplineSection user={user} />
-
-        <AchievementsSection user={user} />
 
         <Card style={styles.ctaCard}>
           <Button
@@ -309,23 +338,26 @@ export function PlayerCardScreen() {
                 await notificationsService.inviteToGame({
                   recipientId: user.id,
                   gameId: nextGame.id,
-                  gameTitle: nextGame.title,
-                  inviterName: me.name,
-                  startsAt: nextGame.startsAt,
                 });
-                // Best-effort: bump the inviter's invite counter so the
-                // "Invited X" achievements unlock on threshold. Failure
-                // here doesn't roll back the user-visible invite send.
-                achievementsService.bump(me.id, 'invitesSent', 1);
-                // Lock the button so a second tap can't dispatch a
-                // duplicate invite for the same game/recipient pair.
+                // Note: the CF (`sendGameInvite`) bumps the inviter's
+                // achievements counter server-side on success, so we
+                // no longer call `achievementsService.bump` here.
                 setInviteSent(true);
                 toast.success(
                   he.playerCardInviteSentToast.replace('{name}', user.name),
                 );
               } catch (err) {
                 if (__DEV__) console.warn('[PlayerCard] invite failed', err);
-                toast.error(he.playerCardInviteFailed);
+                const code = (err as { code?: string })?.code ?? '';
+                if (code === 'resource-exhausted') {
+                  toast.error(he.inviteRateLimited);
+                } else if (code === 'failed-precondition') {
+                  toast.error(he.inviteAlreadyJoined);
+                } else if (code === 'permission-denied') {
+                  toast.error(he.inviteNotAllowed);
+                } else {
+                  toast.error(he.playerCardInviteFailed);
+                }
               } finally {
                 setBusyInvite(false);
               }
@@ -361,6 +393,146 @@ function StatTile({
       <Text style={styles.statLabel}>{label}</Text>
     </Card>
   );
+}
+
+function PairStatsSection({
+  viewerId,
+  otherId,
+  otherName,
+  groupId,
+}: {
+  viewerId: string;
+  otherId: string;
+  otherName: string;
+  groupId?: string;
+}) {
+  // Default to the zero shape so the section always renders — even
+  // if the stats query is still in flight or it failed silently
+  // (missing index, network blip). Without this fallback the whole
+  // "אתה ו-X" card would disappear and the user would think the
+  // feature is broken.
+  const ZERO = {
+    registeredTogether: 0,
+    attendedTogether: 0,
+    sameTeamGames: 0,
+    sameTeamRounds: 0,
+    firstSharedAt: null as number | null,
+    lastSharedAt: null as number | null,
+  };
+  const [stats, setStats] = useState<typeof ZERO>(ZERO);
+  const [sharedNames, setSharedNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    setStats(ZERO);
+    setSharedNames([]);
+    gameService
+      .getPairStats(viewerId, otherId, groupId)
+      .then((s) => {
+        if (alive) setStats(s);
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[pairStats] query failed', err);
+        // keep ZERO so the empty-state still renders
+      });
+    groupService
+      .findSharedCommunities(viewerId, otherId)
+      .then((groups) => {
+        if (alive) setSharedNames(groups.map((g) => g.name).filter(Boolean));
+      })
+      .catch((err) => {
+        if (__DEV__) console.warn('[pairStats] shared-communities failed', err);
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerId, otherId, groupId]);
+
+  const hasSharedGames =
+    stats.registeredTogether > 0 ||
+    stats.attendedTogether > 0 ||
+    stats.sameTeamGames > 0 ||
+    stats.sameTeamRounds > 0;
+  return (
+    <View style={styles.pairWrap}>
+      <Text style={styles.pairTitle}>{he.pairStatsTitle(otherName)}</Text>
+
+      {/* Shared communities up top — that's the most concrete
+          "we know each other from..." signal. */}
+      {sharedNames.length > 0 ? (
+        <Card style={styles.pairSharedCard}>
+          <Text style={styles.pairSharedHeader}>
+            {he.pairStatsSharedCommunitiesPlural(sharedNames.length)}
+          </Text>
+          <Text style={styles.pairSharedList} numberOfLines={3}>
+            {sharedNames.join(' · ')}
+          </Text>
+        </Card>
+      ) : null}
+
+      {hasSharedGames ? (
+        <>
+          <View style={styles.pairGrid}>
+            <StatTile
+              label={he.pairStatsAttended}
+              value={String(stats.attendedTogether)}
+            />
+            <StatTile
+              label={he.pairStatsRegistered}
+              value={String(stats.registeredTogether)}
+            />
+            <StatTile
+              label={he.pairStatsSameTeamGames}
+              value={String(stats.sameTeamGames)}
+            />
+            <StatTile
+              label={he.pairStatsSameTeamRounds}
+              value={String(stats.sameTeamRounds)}
+            />
+          </View>
+          {(stats.firstSharedAt || stats.lastSharedAt) ? (
+            <Card style={styles.pairTimelineCard}>
+              {stats.firstSharedAt ? (
+                <View style={styles.pairTimelineRow}>
+                  <Text style={styles.pairTimelineLabel}>
+                    {he.pairStatsFirstShared}
+                  </Text>
+                  <Text style={styles.pairTimelineValue}>
+                    {formatPairDate(stats.firstSharedAt)}
+                  </Text>
+                </View>
+              ) : null}
+              {stats.lastSharedAt &&
+              stats.lastSharedAt !== stats.firstSharedAt ? (
+                <View style={styles.pairTimelineRow}>
+                  <Text style={styles.pairTimelineLabel}>
+                    {he.pairStatsLastShared}
+                  </Text>
+                  <Text style={styles.pairTimelineValue}>
+                    {formatPairDate(stats.lastSharedAt)}
+                  </Text>
+                </View>
+              ) : null}
+            </Card>
+          ) : null}
+        </>
+      ) : (
+        <Card style={styles.pairEmptyCard}>
+          <Text style={styles.pairEmpty}>{he.pairStatsNoSharedHistory}</Text>
+        </Card>
+      )}
+    </View>
+  );
+}
+
+function formatPairDate(ms: number): string {
+  const d = new Date(ms);
+  return d.toLocaleDateString('he-IL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function RatingSection({
@@ -695,6 +867,63 @@ const styles = StyleSheet.create({
   },
   ctaCard: {
     gap: spacing.sm,
+  },
+  pairWrap: {
+    gap: spacing.sm,
+  },
+  pairTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  pairGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  pairEmptyCard: {
+    padding: spacing.lg,
+  },
+  pairEmpty: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  pairSharedCard: {
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  pairSharedHeader: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  pairSharedList: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  pairTimelineCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  pairTimelineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pairTimelineLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
+  pairTimelineValue: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
   },
   ratingSection: {
     gap: spacing.sm,

@@ -1,19 +1,50 @@
 rules_version = '2';
 
 // Firebase Storage rules.
-// We only use Storage for user avatars right now. Each user can write
-// their own avatar; everyone signed-in can read avatars (so the Communities
-// feed and profile screens can display them).
+//
+// Posture: deny by default. The only legitimate write path today is
+// the per-user avatar slot. Everything else is closed.
+//
+// Hardening done in this audit:
+//   • Filename pinned to `avatar.jpg` (was `{fileName}` — the wildcard
+//     let an attacker turn their own /users/{uid}/ folder into free
+//     image hosting by uploading hundreds of files).
+//   • Size cap dropped from 5 MB → 1 MB. The client pipeline emits
+//     a 512×512 JPEG @ 80% which lands at ≈150 KB; the 1 MB ceiling
+//     leaves headroom while killing abusive uploads at the perimeter.
+//   • Content-type check kept (image/*) — note this is client-supplied
+//     so it's a perimeter signal, not authoritative malware screening.
+//     Combined with the size cap and image extension it's good enough
+//     for a profile avatar.
+//   • Reads require auth (no public bucket browsing).
 service firebase.storage {
   match /b/{bucket}/o {
-    match /users/{userId}/{fileName} {
+    // Per-user avatar — the ONLY write path. Anyone signed-in can
+    // read so feeds / player cards can display the photo.
+    match /users/{userId}/avatar.jpg {
       allow read: if request.auth != null;
       allow write: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024  // 5 MB cap
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.size < 1 * 1024 * 1024
+        // Allow only raster image formats. `image/.*` would also
+        // match `image/svg+xml`, which can carry executable JS in
+        // <script> tags — harmless inside RN's <Image>, but if a
+        // share-preview ever renders the avatar in a WebView the
+        // SVG would execute. Tightening to JPEG/PNG/WEBP closes
+        // that vector with no UX cost (the upload pipeline emits
+        // JPEG anyway).
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
     }
 
+    // Anything else under /users/{userId}/ is closed. Defends against
+    // the legacy "use my avatar folder as free image hosting" abuse
+    // and pre-empts any future feature accidentally writing the wrong
+    // path.
+    match /users/{userId}/{rest=**} {
+      allow read, write: if false;
+    }
+
+    // Catch-all: every other path is denied for both reads and writes.
     match /{allPaths=**} {
       allow read, write: if false;
     }

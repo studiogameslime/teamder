@@ -71,6 +71,28 @@ export const achievementsService = {
     by = 1,
   ): Promise<void> {
     if (!uid || by <= 0) return;
+    // Self-only client write. The hardened /users/{uid} rule blocks
+    // any signed-in user from writing to a different user's doc, so
+    // cross-user bumps (admin approving a join → bump the joiner)
+    // would fail silently. Server-side triggers handle those cases:
+    //   • game roster grew → onGameRosterChanged (functions/src) bumps
+    //   • group playerIds grew → onGroupPendingChanged bumps
+    if (!USE_MOCK_DATA) {
+      // Lazy-import to keep mock branch lean.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getFirebase } = require('@/firebase/config');
+      const auth = getFirebase().auth.currentUser;
+      if (!auth || auth.uid !== uid) {
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.log(
+            '[achievements] cross-user bump skipped (server-side trigger handles it)',
+            { metric, target: uid },
+          );
+        }
+        return;
+      }
+    }
     try {
       if (USE_MOCK_DATA) {
         await bumpMock(uid, metric, by);

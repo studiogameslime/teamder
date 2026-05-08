@@ -218,6 +218,10 @@ export interface NotificationPrefs {
   gameCanceledOrUpdated: boolean;
   /** Player: a registered player canceled and the waitlist promoted me. */
   spotOpened: boolean;
+  /** Player (head of waitlist): a slot opened — confirm or pass. */
+  spotOffered: boolean;
+  /** Admin: a previously-batched group of players just confirmed attendance. */
+  gamePlayersJoined: boolean;
   /** Admin: my community hit a member-count milestone. */
   growthMilestone: boolean;
   /** Player: someone invited me directly to a game. */
@@ -242,6 +246,8 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   gameReminder: true,
   gameCanceledOrUpdated: true,
   spotOpened: true,
+  spotOffered: true,
+  gamePlayersJoined: true,
   growthMilestone: false,
   inviteToGame: true,
   rateReminder: true,
@@ -260,6 +266,19 @@ export type NotificationType =
   | 'gameReminder'
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
+  /**
+   * Confirmation-required variant of spotOpened. Sent to the head of
+   * the waitlist when a player slot opens — they must explicitly tap
+   * "אישור" via the push action buttons (or in-app) to claim it. If
+   * they pass / time out, the admin can advance to the next person.
+   */
+  | 'spotOffered'
+  /**
+   * Batched admin notification — N players who locked in attendance
+   * within a short window are consolidated into one push. See
+   * `flushPendingJoinerNotifs` in functions/src/index.ts.
+   */
+  | 'gamePlayersJoined'
   | 'growthMilestone'
   | 'inviteToGame'
   | 'rateReminder'
@@ -573,6 +592,21 @@ export interface MatchRound {
   startedAt?: number;
   endedAt?: number;
   winner?: TeamColor | 'tie';
+  /**
+   * Snapshot of who was on each team when the round ENDED. Captured
+   * by `LiveMatchScreen.endRound` so historical "who played with
+   * whom" stats can be reconstructed later — `liveMatch.assignments`
+   * itself only reflects the current/last round, not history.
+   *
+   * Optional because legacy rounds (saved before this field was
+   * introduced) have no snapshot. Stats services treat the absence
+   * as "no team data — exclude from same-team tallies".
+   */
+  teamAPlayerIds?: PlayerId[];
+  teamBPlayerIds?: PlayerId[];
+  /** Score recorded at end-of-round, useful for highlight reels. */
+  scoreA?: number;
+  scoreB?: number;
 }
 
 // ─── Game (one game night) ───────────────────────────────────────────────
@@ -805,6 +839,16 @@ export interface Game {
    * can't haunt a player who corrected their plan.
    */
   cancellations?: Record<UserId, number>;
+
+  /**
+   * Pending waitlist promotion offer. Set by `cancelGameV2` when a
+   * player slot opens and the waitlist isn't empty — the head of the
+   * waitlist is "offered" the spot via a `spotOffered` push (with
+   * confirm/pass action buttons). The slot is reserved (counted
+   * toward capacity) until the user confirms / passes / the admin
+   * advances. Cleared on confirm/pass/advance.
+   */
+  pendingPromotion?: { uid: UserId; offeredAt: number } | null;
 
   /**
    * Guests attached to this game only. Default `[]` for legacy docs.

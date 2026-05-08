@@ -20,10 +20,44 @@
 // log a `StoreReviewPrompted` analytics event so we can at least
 // see how often we managed to surface it.
 
-import * as StoreReview from 'expo-store-review';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage } from '@/services/storage';
 import { USE_MOCK_DATA } from '@/firebase/config';
+
+// Native-module loading: expo-store-review's native side may be
+// missing from older dev clients. Lazy-require so a missing module
+// degrades to a no-op instead of crashing the app at top-level
+// import (the same pattern photoService uses for expo-image-picker).
+type StoreReviewModule = typeof import('expo-store-review');
+
+function loadStoreReview(): StoreReviewModule | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('expo-store-review') as StoreReviewModule;
+    // Same trap as photoService — JS loads but native bindings are
+    // undefined when the native module isn't in the dev client.
+    if (
+      typeof mod?.isAvailableAsync !== 'function' ||
+      typeof mod?.requestReview !== 'function'
+    ) {
+      if (__DEV__) {
+        console.warn(
+          '[storeReview] native bindings missing — rebuild the dev client',
+        );
+      }
+      return null;
+    }
+    return mod;
+  } catch (err) {
+    if (__DEV__) {
+      console.warn(
+        '[storeReview] native module not linked — rebuild the dev client to enable',
+        err,
+      );
+    }
+    return null;
+  }
+}
 
 const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -65,6 +99,8 @@ export async function maybeRequestStoreReview(
   sessionShown.add(key);
 
   try {
+    const StoreReview = loadStoreReview();
+    if (!StoreReview) return false;
     const lastAt = await storage.getStoreReviewLastShownAt();
     if (lastAt > 0 && Date.now() - lastAt < COOLDOWN_MS) {
       return false;

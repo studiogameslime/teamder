@@ -284,12 +284,19 @@ export function PublicGroupsFeedScreen() {
     const locationLine = [g.city, g.fieldName, g.fieldAddress]
       .filter((s) => s && s.trim().length > 0)
       .join(' · ');
+    // The denormalised public count can drift behind /groups.playerIds
+    // (client-side direct-joins on open communities can't write to the
+    // public doc — rules forbid). For groups the viewer is a member
+    // of, prefer the canonical playerIds.length so the card matches
+    // the count shown on the details screen.
+    const localGroup = memberGroups.find((mg) => mg.id === g.id);
+    const memberCount = localGroup?.playerIds?.length ?? g.memberCount;
     return (
       <CommunityCard
         key={g.id}
         name={g.name}
         locationLine={locationLine}
-        memberCount={g.memberCount}
+        memberCount={memberCount}
         status={status}
         onPress={() => {
           // Members enter the full community page; non-members
