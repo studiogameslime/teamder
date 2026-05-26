@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -24,6 +25,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -37,10 +40,12 @@ import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.Colors
+import androidx.wear.compose.material.LocalContentColor
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.material.TimeTextDefaults
 import com.studiogameslime.soccerapp.wear.R
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
@@ -49,18 +54,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Teamder brand on the watch: black background (battery-friendly, the
-// Wear OS standard) with the brand blue as the accent. #1E40AF is too dark
-// to read on black, so accents use a brightened brand blue; chip text sits
-// on that blue so onPrimary is a deep navy.
-private val TeamderBlue = Color(0xFF5B9BFF)
+// Teamder brand on the watch: WHITE background with the brand blue
+// (#1E40AF, highly readable on white) for the timer + accents, and dark
+// ink for primary text — matching the phone's blue-on-light look.
+private val TeamderBlue = Color(0xFF1E40AF)
+private val TeamderInk = Color(0xFF1F2A44)
 private val TeamderWearColors = Colors(
     primary = TeamderBlue,
-    onPrimary = Color(0xFF06122B),
-    background = Color.Black,
-    onBackground = Color.White,
-    surface = Color(0xFF11182B),
-    onSurface = Color.White,
+    onPrimary = Color.White,
+    background = Color(0xFFF9FAFB),
+    onBackground = TeamderInk,
+    surface = Color.White,
+    onSurface = TeamderInk,
 )
 
 /**
@@ -73,15 +78,31 @@ fun WearApp(
     onCreateOnPhone: () -> Unit,
 ) {
     MaterialTheme(colors = TeamderWearColors) {
-        Scaffold(timeText = { TimeText() }) {
-            when (state) {
-                is WearGameState.Loading -> CenteredMessage(loading = true, text = "טוען…")
-                is WearGameState.Disconnected ->
-                    CenteredMessage(text = "פתח את האפליקציה בטלפון כדי לראות את המשחקים שלך")
-                is WearGameState.Live -> StopwatchScreen(state)
-                is WearGameState.Upcoming -> NextGameScreen(state)
-                is WearGameState.NotRegistered -> NotRegisteredScreen(onCreateOnPhone)
+        // Wear's Scaffold doesn't paint the theme background, so the window
+        // stays black by default. Draw the white brand background ourselves.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colors.background),
+        ) {
+        Scaffold(
+            timeText = {
+                TimeText(
+                    timeTextStyle = TimeTextDefaults.timeTextStyle(color = TeamderInk),
+                )
+            },
+        ) {
+            CompositionLocalProvider(LocalContentColor provides TeamderInk) {
+                when (state) {
+                    is WearGameState.Loading -> CenteredMessage(loading = true, text = "טוען…")
+                    is WearGameState.Disconnected ->
+                        CenteredMessage(text = "פתח את האפליקציה בטלפון כדי לראות את המשחקים שלך")
+                    is WearGameState.Live -> StopwatchScreen(state)
+                    is WearGameState.Upcoming -> NextGameScreen(state)
+                    is WearGameState.NotRegistered -> NotRegisteredScreen(onCreateOnPhone)
+                }
             }
+        }
         }
     }
 }
