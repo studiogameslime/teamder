@@ -17,6 +17,13 @@
     "production": {
       "autoIncrement": true,
       "environment": "preview"
+    },
+    "production-wear": {
+      "extends": "production",
+      "android": {
+        "gradleCommand": ":wear:bundleRelease",
+        "applicationArchivePath": "android/wear/build/outputs/bundle/release/wear-release.aab"
+      }
     }
   },
   "submit": {

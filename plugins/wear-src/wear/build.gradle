@@ -39,8 +39,11 @@ android {
     applicationId "com.studiogameslime.soccerapp"
     minSdk 30        // Wear OS 3 — Galaxy Watch 4 and up
     targetSdk 34
-    versionCode 1
-    versionName "1.0"
+    // Wear uses its own high versionCode range so it never collides with
+    // the phone app (phone is ~45 and auto-increments). Bump +1 each
+    // new watch release.
+    versionCode 1001
+    versionName "0.2.21"
   }
 
   buildFeatures {
