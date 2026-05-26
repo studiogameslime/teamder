@@ -145,6 +145,7 @@ import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { checkForUpdate, type UpdateKind } from '@/services/updateService';
+import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
@@ -259,6 +260,11 @@ export default function App() {
   // the splash. A single big-ball state covers the whole boot.
   const userHydrated = useUserStore((s) => s.hydrated);
   const groupHydrated = useGroupStore((s) => s.hydrated);
+
+  // Keep the paired Wear OS watch in sync with the user's current game
+  // state (live stopwatch / next game / not-registered). Android-only,
+  // best-effort — no-ops everywhere else.
+  useWatchSync(currentUserId);
 
   useEffect(() => {
     // NOTE: ExpoSplash.hideAsync() is intentionally NOT called here.

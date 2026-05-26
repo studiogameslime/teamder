@@ -1,0 +1,84 @@
+// Wear OS companion app for Teamder.
+//
+// Pure native (Kotlin + Compose for Wear OS). Shares the phone app's
+// applicationId (com.studiogameslime.soccerapp) so Google Play treats it
+// as the watch variant of the SAME app (multi-APK). It is NOT a React
+// Native module — it does not apply the com.facebook.react plugin, so it
+// has zero effect on the phone build.
+//
+// Versions are pinned to match the project: AGP 8.8.2 + Kotlin 2.0.21
+// come from the root buildscript classpath (managed by expo-root-project);
+// the Compose compiler plugin is added to THIS module's classpath only.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    // Kotlin 2.0 ships the Compose compiler as a separate plugin. Pin it
+    // to the project's Kotlin version. Scoped to this module so the phone
+    // build is untouched.
+    classpath(
+      "org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.0.21"
+    )
+  }
+}
+
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "org.jetbrains.kotlin.plugin.compose"
+
+android {
+  // Distinct namespace (R / BuildConfig package) but SAME applicationId
+  // as the phone — that's what makes it the "watch version" in Play.
+  namespace "com.studiogameslime.soccerapp.wear"
+  compileSdk 35
+
+  defaultConfig {
+    applicationId "com.studiogameslime.soccerapp"
+    minSdk 30        // Wear OS 3 — Galaxy Watch 4 and up
+    targetSdk 34
+    versionCode 1
+    versionName "1.0"
+  }
+
+  buildFeatures {
+    compose true
+    buildConfig true
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+
+  buildTypes {
+    debug {}
+    release {
+      minifyEnabled false
+    }
+  }
+}
+
+dependencies {
+  implementation platform("androidx.compose:compose-bom:2024.09.00")
+  implementation "androidx.compose.ui:ui"
+  implementation "androidx.compose.ui:ui-tooling-preview"
+  debugImplementation "androidx.compose.ui:ui-tooling"
+  implementation "androidx.activity:activity-compose:1.9.2"
+  implementation "androidx.core:core-ktx:1.13.1"
+
+  // Compose for Wear OS
+  implementation "androidx.wear.compose:compose-material:1.4.0"
+  implementation "androidx.wear.compose:compose-foundation:1.4.0"
+
+  // Wearable Data Layer — receives state relayed from the phone.
+  implementation "com.google.android.gms:play-services-wearable:18.2.0"
+  // RemoteActivityHelper — opens the phone app from the watch ("create
+  // from phone").
+  implementation "androidx.wear:wear-remote-interactions:1.0.0"
+}
