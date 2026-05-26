@@ -52,6 +52,7 @@ interface RosterEntry {
   user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
   isAdmin: boolean;
   arrival?: ArrivalStatus;
+  isBringingBall?: boolean;
 }
 
 export function MatchPlayersScreen() {
@@ -107,8 +108,16 @@ export function MatchPlayersScreen() {
     return new Set<string>(g?.adminIds ?? []);
   }, [game, groups]);
 
+  // Set of uids stamped as "I'm bringing a ball" on this game. Only
+  // meaningful for users in `players[]` — waitlist / pending / cancelled
+  // entries never carry the badge (matches the MatchDetails preview).
+  const ballBringers = useMemo(
+    () => new Set(game?.ballBringerIds ?? []),
+    [game?.ballBringerIds],
+  );
+
   const buildEntries = useCallback(
-    (uids: string[]): RosterEntry[] => {
+    (uids: string[], opts?: { withBall?: boolean }): RosterEntry[] => {
       return uids.map((uid) => {
         const p = playersMap[uid];
         return {
@@ -120,10 +129,11 @@ export function MatchPlayersScreen() {
           },
           isAdmin: adminIds.has(uid),
           arrival: game?.arrivals?.[uid],
+          isBringingBall: opts?.withBall ? ballBringers.has(uid) : false,
         };
       });
     },
-    [playersMap, adminIds, game?.arrivals],
+    [playersMap, adminIds, game?.arrivals, ballBringers],
   );
 
   if (loading && !game) {
@@ -147,7 +157,7 @@ export function MatchPlayersScreen() {
     );
   }
 
-  const playerEntries = buildEntries(game.players ?? []);
+  const playerEntries = buildEntries(game.players ?? [], { withBall: true });
   const waitlistEntries = buildEntries(game.waitlist ?? []);
   const pendingEntries = buildEntries(game.pending ?? []);
   const guests = game.guests ?? [];
@@ -176,11 +186,17 @@ export function MatchPlayersScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.matchPlayersScreenTitle} />
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Unified registered list: real players first, then guests
+            tagged "אורח" — earlier we split them into two distinct
+            sections, which made it harder to gauge total roster
+            capacity at a glance. The total count in the header now
+            includes guests so the "N/maxPlayers" badge matches what
+            the live capacity counter reads. */}
         <Section
           title={he.matchPlayersSectionRegistered}
-          count={`${playerEntries.length}/${game.maxPlayers}`}
+          count={`${playerEntries.length + guests.length}/${game.maxPlayers}`}
         >
-          {playerEntries.length === 0 ? (
+          {playerEntries.length === 0 && guests.length === 0 ? (
             <Empty />
           ) : (
             <Card style={styles.listCard}>
@@ -190,6 +206,13 @@ export function MatchPlayersScreen() {
                   entry={e}
                   showDivider={i > 0}
                   onPress={() => goToCard(e.user.id)}
+                />
+              ))}
+              {guests.map((g, i) => (
+                <GuestRow
+                  key={g.id}
+                  guest={g}
+                  showDivider={i + playerEntries.length > 0}
                 />
               ))}
             </Card>
@@ -316,18 +339,8 @@ export function MatchPlayersScreen() {
           </Section>
         ) : null}
 
-        {guests.length > 0 ? (
-          <Section
-            title={he.matchPlayersSectionGuests}
-            count={String(guests.length)}
-          >
-            <Card style={styles.listCard}>
-              {guests.map((g, i) => (
-                <GuestRow key={g.id} guest={g} showDivider={i > 0} />
-              ))}
-            </Card>
-          </Section>
-        ) : null}
+        {/* Guests-only section retired — guests now render inline
+            within the "registered" section above. */}
 
         {cancelledEntries.length > 0 ? (
           <Section
@@ -420,7 +433,7 @@ function PlayerRow({
   onPassOffer?: () => void;
   onAdminAdvance?: () => void;
 }) {
-  const { user, isAdmin, arrival } = entry;
+  const { user, isAdmin, arrival, isBringingBall } = entry;
   const showOfferActions = !!(onConfirmOffer || onPassOffer || onAdminAdvance);
   return (
     <View
@@ -457,6 +470,11 @@ function PlayerRow({
             <Tag label={he.matchPlayersNoShowTag} tone="danger" inline />
           ) : null}
         </View>
+        {isBringingBall ? (
+          <View style={styles.ballBadge}>
+            <Ionicons name="football" size={14} color="#1D4ED8" />
+          </View>
+        ) : null}
         {toneRight ? (
           <Text style={styles.toneRight} numberOfLines={1}>
             {toneRight}
@@ -676,6 +694,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
+  },
+  ballBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tagText: {
     ...typography.caption,

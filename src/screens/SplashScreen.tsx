@@ -1,163 +1,182 @@
-// SplashScreen — kickoff moment (~1.15s).
+// SplashScreen — Teamder kickoff.
 //
-// Animation flow:
-//   ① 0–420ms  — ball rolls in from off-screen right with rotation
-//   ② 420–600ms — brief settle at centre (slight scale-overshoot)
-//   ③ 600–950ms — KICK: scale shoots toward the camera, ball fades
-//   ④ 700–1050ms — white flash overlay (peak then fade)
-//   ⑤ 950–1150ms — root fades, calls onFinish
+// Single visible loading state across the entire boot. The big ball +
+// wordmark show from the very first paint and stay up until BOTH:
+//   1. a minimum 1.6s "hold" has elapsed (so the user always sees the
+//      brand for a beat, not a flicker), AND
+//   2. the parent says we're `ready` (auth + groups hydrated).
+// Then a 350ms root-fade ends the splash and the app takes over.
 //
-// All motion runs on the UI thread via Reanimated 3. Layout uses
-// flex-centring (no `top:'50%'`/percent offsets) so the centred
-// position is robust across devices.
+// We also export `SplashVisual` for callers that need the same look
+// WITHOUT the kickoff/exit logic — e.g. RootNavigator's "still hydrating"
+// state. Keeping both behind the same component guarantees the user
+// never sees two different loaders.
 
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import * as ExpoSplash from 'expo-splash-screen';
 import Animated, {
   Easing,
   cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
+  withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SoccerBall } from '@/components/SoccerBall';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 // 2× the previous size — the ball is the entire visual identity here.
 const BALL_SIZE = 280;
-// Start the ball just past the right edge of the device.
-const BALL_START_X = SCREEN_W / 2 + BALL_SIZE / 2 + 40;
+const MIN_HOLD_MS = 1600;
+const FADE_MS = 350;
 
-interface Props {
-  onFinish: () => void;
-}
-
-export function SplashScreen({ onFinish }: Props) {
-  const ballX = useSharedValue(BALL_START_X);
-  const ballRotation = useSharedValue(0);
-  const ballScale = useSharedValue(0.9);
-  const ballOpacity = useSharedValue(0);
-
-  const flashOpacity = useSharedValue(0);
-  const rootOpacity = useSharedValue(1);
+// ─── Pure visual ─────────────────────────────────────────────────────────
+// Blue background, big white ball, "Teamder" wordmark. The ball
+// gets a continuous subtle pulse so it reads as "loading" no matter
+// how long the parent keeps the splash up.
+export function SplashVisual() {
+  const ballScale = useSharedValue(1);
 
   useEffect(() => {
-    // ① Ball rolls in from the right (0–420ms).
-    ballOpacity.value = withTiming(1, { duration: 120 });
-    ballX.value = withTiming(0, {
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-    });
-    // 540° of rotation while crossing the screen reads as a real roll.
-    ballRotation.value = withTiming(540, {
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-    });
-
-    // ② Settle — slight scale overshoot then back to 1 (no spring
-    // physics, just two timings — keeps the curve predictable).
-    ballScale.value = withSequence(
-      withTiming(1.05, { duration: 420, easing: Easing.out(Easing.cubic) }),
-      withTiming(1.0, { duration: 160, easing: Easing.out(Easing.quad) }),
-    );
-
-    // ③ KICK — ball rushes the camera. Sharp ease-in so it accelerates.
-    ballScale.value = withDelay(
-      600,
-      withTiming(7, { duration: 350, easing: Easing.in(Easing.cubic) }),
-    );
-    ballOpacity.value = withDelay(
-      820,
-      withTiming(0, { duration: 160, easing: Easing.in(Easing.cubic) }),
-    );
-
-    // ④ White flash overlay.
-    flashOpacity.value = withDelay(
-      700,
+    // Forever pulse — 500 ms up, 500 ms down, repeated. Cheap (one
+    // shared value driving a transform) and reads as "alive" even
+    // if hydration takes 10 s.
+    ballScale.value = withRepeat(
       withSequence(
-        withTiming(0.9, { duration: 120 }),
-        withTiming(0, { duration: 280 }),
+        withTiming(1.08, { duration: 500, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1.0, { duration: 500, easing: Easing.inOut(Easing.quad) }),
       ),
+      -1,
+      false,
     );
+    return () => cancelAnimation(ballScale);
+  }, [ballScale]);
 
-    // ⑤ Hand-off.
-    rootOpacity.value = withDelay(
-      950,
-      withTiming(0, { duration: 200 }, (finished) => {
-        if (finished) runOnJS(onFinish)();
-      }),
-    );
-
-    return () => {
-      [
-        ballX,
-        ballRotation,
-        ballScale,
-        ballOpacity,
-        flashOpacity,
-        rootOpacity,
-      ].forEach((sv) => cancelAnimation(sv));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const rootStyle = useAnimatedStyle(() => ({ opacity: rootOpacity.value }));
   const ballStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: ballX.value },
-      { rotate: `${ballRotation.value}deg` },
-      { scale: ballScale.value },
-    ],
-    opacity: ballOpacity.value,
+    transform: [{ scale: ballScale.value }],
   }));
-  const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
 
   return (
-    <Animated.View style={[styles.root, rootStyle]} pointerEvents="none">
-      {/* Background — vertical gradient from a brighter pitch green at
-          the top to near-black at the bottom. */}
-      <LinearGradient
-        colors={['#0F3D24', '#06180D', '#020604']}
-        locations={[0, 0.55, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Ball — single centred element. White against the dark green
-          gradient gives the strongest read. */}
+    <View style={styles.root} pointerEvents="none">
       <View style={styles.center}>
         <Animated.View
           style={[
             { width: BALL_SIZE, height: BALL_SIZE },
+            styles.ballWrap,
             ballStyle,
           ]}
         >
           <SoccerBall size={BALL_SIZE} color="#FFFFFF" />
         </Animated.View>
+        <View style={styles.wordmarkWrap}>
+          <Text style={styles.wordmark} allowFontScaling={false}>
+            Teamder
+          </Text>
+        </View>
       </View>
+    </View>
+  );
+}
 
-      {/* Final white flash → blends into the app behind. */}
-      <Animated.View style={[styles.flash, flashStyle]} pointerEvents="none" />
+// ─── Kickoff / hold / fade-out wrapper ───────────────────────────────────
+
+interface Props {
+  /** Becomes true once the app is hydrated (auth + groups). The splash
+   *  waits for this before fading out so the user never sees a second
+   *  "loading" indicator after us. */
+  ready: boolean;
+  onFinish: () => void;
+}
+
+export function SplashScreen({ ready, onFinish }: Props) {
+  const rootOpacity = useSharedValue(1);
+  const heldEnoughRef = useRef(false);
+  // Mount timestamp — the brand needs at least MIN_HOLD_MS of stage
+  // time even when hydration finishes early (cold start with cached
+  // session: hydration completes in <200 ms and the user would
+  // otherwise see the splash for one frame).
+  const mountTsRef = useRef(Date.now());
+
+  // Hide the native OS splash the moment this React layer paints.
+  useEffect(() => {
+    ExpoSplash.hideAsync().catch(() => {});
+  }, []);
+
+  // Run the exit animation only after BOTH conditions are met:
+  // (a) the minimum-hold timer has elapsed, (b) the parent says ready.
+  useEffect(() => {
+    const elapsed = Date.now() - mountTsRef.current;
+    const remaining = Math.max(0, MIN_HOLD_MS - elapsed);
+    if (!ready) {
+      // Mark that we DID accumulate hold time, but don't exit yet.
+      // When ready flips we'll re-enter this effect and run the fade.
+      if (remaining === 0) heldEnoughRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      heldEnoughRef.current = true;
+      rootOpacity.value = withTiming(
+        0,
+        { duration: FADE_MS, easing: Easing.in(Easing.cubic) },
+        (finished) => {
+          if (finished) runOnJS(onFinish)();
+        },
+      );
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [ready, rootOpacity, onFinish]);
+
+  useEffect(() => {
+    return () => {
+      cancelAnimation(rootOpacity);
+    };
+  }, [rootOpacity]);
+
+  const rootStyle = useAnimatedStyle(() => ({ opacity: rootOpacity.value }));
+
+  return (
+    <Animated.View style={[styles.absolute, rootStyle]} pointerEvents="none">
+      <SplashVisual />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  absolute: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
     elevation: 9999,
+  },
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    // Solid blue matches the native splash backgroundColor in
+    // app.json — the handoff between native and React layers is
+    // invisible because the colours align. (App brand is blue.)
+    backgroundColor: '#1E40AF',
   },
   center: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF',
+  ballWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordmarkWrap: {
+    position: 'absolute',
+    bottom: '22%',
+    alignItems: 'center',
+  },
+  wordmark: {
+    color: '#FFFFFF',
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
 });

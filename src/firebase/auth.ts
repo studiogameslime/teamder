@@ -37,10 +37,12 @@ function ensureGoogleConfigured() {
     );
   }
   if (!googleOAuth.webClientId.startsWith(EXPECTED_PROJECT_NUMBER)) {
-    console.warn(
-      `[auth] webClientId does not start with project number ${EXPECTED_PROJECT_NUMBER} — ` +
-        `Firebase will reject id_tokens with a different audience. Got: ${googleOAuth.webClientId}`
-    );
+    if (__DEV__) {
+      console.warn(
+        `[auth] webClientId does not start with project number ${EXPECTED_PROJECT_NUMBER} — ` +
+          `Firebase will reject id_tokens with a different audience. Got: ${googleOAuth.webClientId}`
+      );
+    }
   }
   GoogleSignin.configure({
     webClientId: googleOAuth.webClientId,
@@ -87,12 +89,14 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     return cred.user;
   } catch (err) {
     const e = err as { name?: string; code?: string; message?: string; customData?: unknown };
-    console.error('[auth] Firebase signInWithCredential FAILED', {
-      name: e.name,
-      code: e.code,
-      message: e.message,
-      customData: e.customData,
-    });
+    if (__DEV__) {
+      console.error('[auth] Firebase signInWithCredential FAILED', {
+        name: e.name,
+        code: e.code,
+        message: e.message,
+        customData: e.customData,
+      });
+    }
     const code = e.code ?? 'unknown';
     throw new Error(`ההתחברות ל-Firebase נכשלה (${code})`);
   }

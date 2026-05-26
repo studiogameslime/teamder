@@ -18,6 +18,11 @@ import type { Game, LiveMatchPhase } from '@/types';
 interface ActorFlags {
   /** true if the user is the game's `createdBy` OR an admin of the parent group. */
   isOrganizerOrAdmin: boolean;
+  /** true if the user appears in players[] or waitlist[] of the game.
+   *  Used by `canEnterLive` to gate access to the live-match screen —
+   *  non-participants have nothing to watch and historically caused
+   *  random viewers to wander into a match they aren't part of. */
+  isParticipant?: boolean;
 }
 
 // ─── Status normalization (backward-compat) ─────────────────────────────
@@ -217,9 +222,14 @@ export function canStartEvening(
   return true;
 }
 
-/** Re-enter an already-started evening (admin or participant). */
-export function canEnterLive(game: Game): boolean {
-  return isActive(game);
+/** Re-enter an already-started evening. Only the game admin (creator
+ *  or group admin) and registered participants (players[] / waitlist[])
+ *  can enter — random viewers and non-members are blocked. The game
+ *  must be in the active runtime state for anyone to enter at all. */
+export function canEnterLive(game: Game, actor: ActorFlags): boolean {
+  if (!isActive(game)) return false;
+  if (actor.isOrganizerOrAdmin) return true;
+  return actor.isParticipant === true;
 }
 
 /** Wrap up the evening → flip to 'finished' + lock everything. */

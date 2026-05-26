@@ -25,60 +25,69 @@ type Nav = NativeStackNavigationProp<GameStackParamList, 'GameEdit'>;
 type Route = RouteProp<GameStackParamList, 'GameEdit'>;
 
 function gameToValues(g: Game): GameFormValues {
+  // Hydrate the new GameFormValues shape from the persisted Game.
+  // Recurring is no longer a top-level wizard mode — it's a step-3
+  // toggle. We pre-set it ON for any game that was originally created
+  // with a deferred-open time (status='scheduled' or
+  // `registrationOpensAt > 0`) so the picker shows by default; the
+  // admin can flip it OFF to convert the game to immediate-open.
+  const isRecurringEdit =
+    g.status === 'scheduled' ||
+    (typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > 0);
+  // City is the matcher key. Pre-fill from the saved value and trust
+  // it as canonical (it was picked from the same autocomplete in the
+  // create / previous edit flow). Previously we forced the admin to
+  // re-tap every time the screen opened, which was pure friction; the
+  // wizard's onChange handler still flips `cityFromList` back to
+  // false the moment the admin manually edits, so the matcher
+  // guarantee survives.
+  const presetCity = (g.city ?? '').trim();
   return {
     title: g.title,
     startsAt: g.startsAt,
     fieldName: g.fieldName ?? '',
-    location: g.fieldAddress ?? g.city ?? '',
-    // Strict: never infer "selected from list" from a pre-filled
-    // string. The flag flips to true only when the user actively
-    // taps a city in the autocomplete dropdown. On edit this means
-    // the user must re-pick the city from the list before submit
-    // — guarantees the saved fieldAddress always corresponds to a
-    // real city pick (no free-typed leftovers).
-    locationFromList: false,
+    city: presetCity,
+    cityFromList: presetCity.length > 0,
+    fieldAddress: g.fieldAddress ?? '',
+    fieldType: g.fieldType,
     format: g.format ?? '5v5',
     numberOfTeams: g.numberOfTeams ?? 2,
     matchDurationMinutes: g.matchDurationMinutes
       ? String(g.matchDurationMinutes)
       : '',
-    extraTimeMinutes: g.extraTimeMinutes
-      ? String(g.extraTimeMinutes)
-      : '',
-    hasReferee: !!g.hasReferee,
-    hasPenalties: !!g.hasPenalties,
-    hasHalfTime: !!g.hasHalfTime,
+    // Tag-based rule chips. Prefer the new `ruleTags` array; if a
+    // legacy doc only has the old hasReferee/Penalties/HalfTime
+    // booleans (or `extraTimeMinutes`), synthesize the equivalent
+    // chips so the editor sees what the game actually carries — they
+    // can keep, remove, or rename freely. Saving will write the new
+    // tag array; the legacy booleans stay untouched on the doc.
+    ruleTags:
+      Array.isArray(g.ruleTags) && g.ruleTags.length > 0
+        ? g.ruleTags
+        : [
+            g.hasReferee ? 'שופט' : '',
+            g.hasHalfTime ? 'משחקים עם חוצים' : '',
+            g.hasPenalties ? 'פנדלים בסיום' : '',
+            typeof g.extraTimeMinutes === 'number' && g.extraTimeMinutes > 0
+              ? `זמן נוסף ${g.extraTimeMinutes}'`
+              : '',
+          ].filter((s) => s.length > 0),
     visibility: g.visibility ?? 'community',
-    fieldType: g.fieldType,
-    cancelDeadlineHours: g.cancelDeadlineHours,
     requiresApproval: !!g.requiresApproval,
+    recurringGameEnabled: isRecurringEdit,
+    registrationOpensAt: g.registrationOpensAt ?? 0,
+    cancelDeadlineHours: g.cancelDeadlineHours,
+    // For legacy games (saved before the filler fields existed):
+    // default `acceptsFillers` to false (admin must opt in
+    // explicitly, even after the field is added), and use 70 as the
+    // sensible default trust floor.
+    acceptsFillers: g.acceptsFillers === true,
+    fillerMinTrust:
+      typeof g.fillerMinTrust === 'number' ? g.fillerMinTrust : 70,
     notes: g.notes ?? '',
     bringBall: g.bringBall ?? true,
     bringShirts: g.bringShirts ?? true,
-    minPlayers: g.minPlayers ? String(g.minPlayers) : '',
-    // Surfaced by the wizard ONLY when this game was originally
-    // created with a deferred-open time (`registrationOpensAt > 0`
-    // OR `status='scheduled'`). The edit screen passes
-    // `mode='recurring'` in that case so the picker renders.
-    registrationOpensAt: g.registrationOpensAt ?? 0,
   };
-}
-
-/**
- * Decides whether the wizard should run in recurring mode for this
- * edit. We surface the `registrationOpensAt` picker in two cases:
- *   • the game still has a future open-time (status='scheduled'), so
- *     the admin can adjust the schedule before the CF flips it.
- *   • the game already opened but was originally a recurring create
- *     (`registrationOpensAt > 0`). Editing here is mostly inert —
- *     the CF's `openedNotificationSent` latch prevents a second push
- *     — but exposing the field keeps the form symmetric with create.
- */
-function shouldEditAsRecurring(g: Game): boolean {
-  return (
-    g.status === 'scheduled' ||
-    (typeof g.registrationOpensAt === 'number' && g.registrationOpensAt > 0)
-  );
 }
 
 export function GameEditScreen() {
@@ -141,27 +150,40 @@ export function GameEditScreen() {
     );
   }
 
-  const isRecurringEdit = shouldEditAsRecurring(game);
-
   const submit = async (v: GameFormValues) => {
-    const parsedMin = parseInt(v.minPlayers, 10);
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
-    const parsedExtra = parseInt(v.extraTimeMinutes, 10);
     const playersPerTeam =
       v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
+    const newMaxPlayers = playersPerTeam * v.numberOfTeams;
+    // Block lowering capacity below what's already registered. Counts
+    // players + guests + pending (anyone currently holding a slot or
+    // about to). Waitlist is excluded — it's overflow by definition.
+    const registeredCount =
+      (game.players?.length ?? 0) +
+      (game.guests?.length ?? 0) +
+      (game.pending?.length ?? 0);
+    if (newMaxPlayers < registeredCount) {
+      Alert.alert(
+        he.editGameCapacityTooLowTitle,
+        he.editGameCapacityTooLowBody(registeredCount, newMaxPlayers),
+      );
+      return;
+    }
     // Visibility is access-control: routed through the dedicated
     // setVisibility handler so its admin/status/enum guards run, not
     // through the generic patch path (which now rejects `visibility`).
     if (v.visibility !== game.visibility) {
       await gameService.setVisibility(game.id, v.visibility);
     }
-    // `registrationOpensAt` is patched only for recurring edits,
-    // and only while the game is still in 'scheduled' state — once
-    // the CF has flipped it to 'open' the field is moot. The CF's
+    // `registrationOpensAt` is patched only when the recurring toggle
+    // is ON and the game is still in 'scheduled' state — once the CF
+    // has flipped it to 'open' the field is moot. The CF's
     // `openedNotificationSent` flag prevents a re-flip from
     // dispatching a second push.
     const regOpensPatch =
-      isRecurringEdit && game.status === 'scheduled' && v.registrationOpensAt > 0
+      v.recurringGameEnabled &&
+      game.status === 'scheduled' &&
+      v.registrationOpensAt > 0
         ? { registrationOpensAt: v.registrationOpensAt }
         : {};
     try {
@@ -169,9 +191,7 @@ export function GameEditScreen() {
         title: v.title.trim() || game.title,
         startsAt: v.startsAt,
         fieldName: v.fieldName.trim(),
-        maxPlayers: playersPerTeam * v.numberOfTeams,
-        minPlayers:
-          Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
+        maxPlayers: newMaxPlayers,
         format: v.format,
         numberOfTeams: v.numberOfTeams,
         cancelDeadlineHours: v.cancelDeadlineHours,
@@ -184,14 +204,11 @@ export function GameEditScreen() {
         bringBall: v.bringBall,
         bringShirts: v.bringShirts,
         notes: v.notes.trim() || undefined,
-        fieldAddress: v.location.trim() || undefined,
-        hasReferee: v.hasReferee,
-        hasPenalties: v.hasPenalties,
-        hasHalfTime: v.hasHalfTime,
-        extraTimeMinutes:
-          Number.isFinite(parsedExtra) && parsedExtra > 0
-            ? parsedExtra
-            : 0,
+        city: v.city.trim() || undefined,
+        fieldAddress: v.fieldAddress.trim() || undefined,
+        ruleTags: v.ruleTags,
+        acceptsFillers: v.acceptsFillers,
+        fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         ...regOpensPatch,
       });
     } catch (err) {
@@ -231,7 +248,6 @@ export function GameEditScreen() {
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}
       onSubmit={submit}
-      mode={isRecurringEdit ? 'recurring' : 'standard'}
     />
   );
 }

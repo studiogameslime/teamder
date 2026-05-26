@@ -1,13 +1,18 @@
 // 3-step wizard shared by Create / Edit Game.
 //
-// Step 1 (פרטים)   — required: date/time + format + fieldName + location.
-//                    Title is optional.
-// Step 2 (חוקים)   — optional defaults: match duration, throw-ins,
-//                    referee, bring ball/shirts.
-// Step 3 (מתקדם)   — optional: visibility, field type, numberOfTeams,
-//                    cancel deadline (predefined options), requires
-//                    approval, min players, notes — followed by a
-//                    confirmation-style summary card.
+// Responsibility split: a Game is the specific event. Everything
+// match-related — when, where, format, who needs to know — lives
+// here. The Community no longer carries field/format/schedule/
+// recurring defaults; users supply them per game.
+//
+// Step 1 (מתי ואיפה) — date/time, field name, city/address, field type.
+// Step 2 (פורמט)     — format, # teams (computed max players),
+//                      match duration, extra time, half / penalties /
+//                      referee toggles.
+// Step 3 (ניהול)     — visibility, requires-approval, recurring game
+//                      (drives registrationOpensAt), cancellation
+//                      deadline, notes, bring ball / shirts. Ends with
+//                      a confirmation-style summary card.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -28,9 +33,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
+import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
+import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { searchCities } from '@/services/israelLocationService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -47,6 +54,10 @@ const CANCEL_DEADLINE_OPTIONS: Array<number | undefined> = [
   12,
   24,
 ];
+/** Minimum trust score required for a candidate filler to receive
+ *  the push. 0 = "everyone" (still excludes "new" users since their
+ *  score is null and never passes any minimum). */
+const FILLER_MIN_TRUST_OPTIONS = [0, 50, 70, 80, 90] as const;
 
 function formatLabel(f: GameFormat): string {
   if (f === '5v5') return he.gameFormat5;
@@ -64,6 +75,10 @@ function playersPerTeam(f: GameFormat): number {
 function cancelOptionLabel(h: number | undefined): string {
   return h === undefined ? he.wizardCancelOptionNone : he.wizardCancelOption(h);
 }
+function fillerMinTrustLabel(n: number): string {
+  if (n === 0) return he.gameFillerMinTrustOptionAll;
+  return he.gameFillerMinTrustOption(n);
+}
 
 /**
  * Default "registration opens" timestamp shown in the picker BEFORE
@@ -79,37 +94,63 @@ function defaultRegOpensAt(startsAt: number): number {
 }
 
 export interface GameFormValues {
+  /** Title is set from the parent screen (defaults to community name)
+   *  and not edited via this form. Kept on the type so callers can
+   *  hand it through round-trip without losing it. */
   title: string;
+
+  // Step 1 — When & Where
   startsAt: number;
   fieldName: string;
-  /** Single combined location string — saved into Game.fieldAddress.
-   *  Must be picked from the autocomplete (Israeli cities list) —
-   *  free-typed values are blocked at submit by the wizard. */
-  location: string;
-  /** Internal flag — true once the user picked a city from the
-   *  autocomplete dropdown. Reset to false on any free-text edit
-   *  so a typed-then-cleared field doesn't pass validation. */
-  locationFromList: boolean;
+  /** Israeli city — REQUIRED, must be picked from the autocomplete
+   *  list. Used by the cross-community filler matcher to match
+   *  candidates by location, so free-typed values are blocked
+   *  (otherwise "תל אביב" / "תל-אביב" / "ת"א" would never match
+   *  a candidate whose home city was picked from the list). The
+   *  `cityFromList` flag flips to true only when the user actively
+   *  taps a suggestion in the dropdown. */
+  city: string;
+  cityFromList: boolean;
+  /** Free-text address detail (street, gate, landmark) — optional.
+   *  Saved into Game.fieldAddress. Players use it to find the
+   *  exact spot; the matcher does not consume this field. */
+  fieldAddress: string;
+  fieldType: FieldType | undefined;
+
+  // Step 2 — Match Setup
   format: GameFormat;
   numberOfTeams: number;
   matchDurationMinutes: string;
-  extraTimeMinutes: string;
-  hasReferee: boolean;
-  hasPenalties: boolean;
-  hasHalfTime: boolean;
+  /** Free-text rule chips — replaces the legacy hasReferee/Penalties/
+   *  HalfTime/extraTime toggles. Cap: 12 entries, each ≤30 chars. */
+  ruleTags: string[];
+
+  // Step 3 — Game Management
   visibility: 'public' | 'community';
-  fieldType: FieldType | undefined;
+  requiresApproval: boolean;
+  /** When true, the wizard surfaces the registrationOpensAt picker
+   *  and the game is created in 'scheduled' state; a Cloud Function
+   *  flips it to 'open' at the picked time and pushes
+   *  `newGameInCommunity`. When false, the game opens immediately. */
+  recurringGameEnabled: boolean;
+  /** ms epoch — only consulted when `recurringGameEnabled` is true.
+   *  Stored on Game as `registrationOpensAt`. 0 means "not set". */
+  registrationOpensAt: number;
   /** Hours (number) or undefined for "no limit". */
   cancelDeadlineHours: number | undefined;
-  requiresApproval: boolean;
+  /** When true, the game's roster is open to filler push to non-members
+   *  in the same city. Defaults true for community.isOpen, false otherwise. */
+  acceptsFillers: boolean;
+  /** Minimum trust score required for a candidate filler to receive
+   *  the push. 0 = no minimum. Common values: 0/50/70/80/90. */
+  fillerMinTrust: number;
   notes: string;
   bringBall: boolean;
   bringShirts: boolean;
-  minPlayers: string;
-  /** ms epoch — only used in `mode='recurring'`. Stored on Game as
-   *  `registrationOpensAt`. 0 means "not set" (the field is required
-   *  in recurring mode, so submit blocks until the user picks a time). */
-  registrationOpensAt: number;
+  /** Quick-game only: friend ids to invite the moment the game is created
+   *  (each gets an `inviteToGame` push). Optional so the community flow and
+   *  existing initial-value builders round-trip without it. */
+  inviteFriendIds?: string[];
 }
 
 interface Props {
@@ -118,18 +159,30 @@ interface Props {
   initial: GameFormValues;
   onSubmit: (values: GameFormValues) => Promise<void>;
   /**
+   * Quick-game mode (no community). Mode-gates the step-3 surface:
+   * relabels visibility as "פרטי / פומבי", hides the recurring schedule
+   * (a community concept), requires the location fields, and shows the
+   * "הזמן חברים" picker. Defaults false → the community flow is byte-for-
+   * byte unchanged.
+   */
+  quick?: boolean;
+  /**
    * Extra content rendered ABOVE the step indicator (e.g. a community
    * picker on the create screen). Lives inside the same scroll container
    * as the steps so the whole page scrolls together.
    */
   extraTopSlot?: React.ReactNode;
+  // The legacy `mode` prop ('standard' | 'recurring') was removed —
+  // recurring is now an in-form toggle on step 3 driven by
+  // `initial.recurringGameEnabled`. Callers pre-set the flag on the
+  // initial values when they want the toggle to start ON; the user
+  // can then flip it inside the wizard.
   /**
-   * 'recurring' surfaces the required `registrationOpensAt` field at
-   * step 3 (used by CommunityDetails' "צור משחק קבוע" entry). Default
-   * 'standard' hides the field entirely — registration opens
-   * immediately on creation, mirroring legacy behaviour.
+   * Render the "הזמן חברים" picker in step 3. True for game CREATION
+   * (quick + community); the edit flow leaves it false since invites
+   * fire only at creation time.
    */
-  mode?: 'standard' | 'recurring';
+  showInviteFriends?: boolean;
 }
 
 export function GameWizardForm({
@@ -138,7 +191,8 @@ export function GameWizardForm({
   initial,
   onSubmit,
   extraTopSlot,
-  mode = 'standard',
+  quick = false,
+  showInviteFriends = false,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
@@ -165,28 +219,38 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
-  // The location field is a free-text autocomplete: the user can pick
-  // a city from the dropdown or just type their own. We no longer
-  // gate step-nav / submit on `locationFromList` — the autocomplete
-  // is a convenience, not a hard requirement. The flag is still
-  // tracked for analytics / future use but doesn't block flow.
+  // Step 1 hard gate: the city MUST be picked from the autocomplete
+  // dropdown. The matcher writes/reads the EXACT string, so a
+  // free-typed value would fragment the data. We don't enforce
+  // `fieldName` here — it's required visually but the wizard accepts
+  // an empty submit (legacy behaviour preserved).
+  // EVERY game — quick or community — REQUIRES a full location (city +
+  // field name + address) so invited players know exactly when, where and
+  // why to show up. City must additionally be picked from the autocomplete
+  // (the filler matcher reads the exact string).
+  const step1Valid =
+    values.city.trim().length > 0 &&
+    values.cityFromList === true &&
+    values.fieldName.trim().length > 0 &&
+    values.fieldAddress.trim().length > 0;
   const goNext = () => {
+    if (step === 1 && !step1Valid) return;
     if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
   };
   const goBack = () => {
     if (step > 1) setStep(((step - 1) as 1 | 2 | 3));
   };
-  // Recurring mode requires the user to pick a "registration opens
-  // at" time. The only hard constraints are:
+
+  // Recurring-game mode (driven by the step-3 toggle) requires the
+  // user to pick a "registration opens at" time. Hard constraints:
   //   1. value must be set (not 0)
   //   2. value must be strictly before kickoff (`startsAt`)
-  // Past values are ALLOWED — the field accepts them and the create
-  // path treats them as "open immediately". A submit-time confirm
-  // dialog warns the admin when they pick a past value or a value
-  // less than 4h before kickoff (recommended-not-required guardrail).
+  // Past values are ALLOWED — the create path treats them as "open
+  // immediately". A submit-time confirm dialog warns the admin when
+  // they pick a past value or one less than 4h before kickoff.
   const SHORT_OPEN_WINDOW_MS = 4 * 60 * 60 * 1000;
   const validateRegistrationOpensAt = (): boolean => {
-    if (mode !== 'recurring') return true;
+    if (!values.recurringGameEnabled) return true;
     const v = values.registrationOpensAt;
     if (!v) {
       Alert.alert(he.error, he.wizardRegOpensRequired);
@@ -212,7 +276,7 @@ export function GameWizardForm({
 
   const submit = async () => {
     if (!validateRegistrationOpensAt()) return;
-    if (mode === 'recurring' && values.registrationOpensAt > 0) {
+    if (values.recurringGameEnabled && values.registrationOpensAt > 0) {
       const now = Date.now();
       const delta = values.startsAt - values.registrationOpensAt;
       const isPast = values.registrationOpensAt <= now;
@@ -267,16 +331,17 @@ export function GameWizardForm({
             <View style={styles.extraSlot}>{extraTopSlot}</View>
           ) : null}
           <Animated.View style={[styles.body, { opacity: fade }]}>
-            {step === 1 ? (
-              <Step1 values={values} maxPlayers={maxPlayers} set={set} />
+            {step === 1 ? <Step1 values={values} set={set} /> : null}
+            {step === 2 ? (
+              <Step2 values={values} maxPlayers={maxPlayers} set={set} />
             ) : null}
-            {step === 2 ? <Step2 values={values} set={set} /> : null}
             {step === 3 ? (
               <Step3
                 values={values}
                 set={set}
                 maxPlayers={maxPlayers}
-                mode={mode}
+                quick={quick}
+                showInviteFriends={showInviteFriends}
               />
             ) : null}
           </Animated.View>
@@ -300,7 +365,7 @@ export function GameWizardForm({
                 size="lg"
                 fullWidth
                 onPress={goNext}
-                disabled={busy}
+                disabled={busy || (step === 1 && !step1Valid)}
               />
             ) : (
               <Button
@@ -328,13 +393,15 @@ type SetFn = <K extends keyof GameFormValues>(
 
 function Step1({
   values,
-  maxPlayers,
   set,
 }: {
   values: GameFormValues;
-  maxPlayers: number;
   set: SetFn;
 }) {
+  // Step 1 — "מתי ואיפה". Identity of the event in physical space:
+  // when, field name, CITY (strict — picked from list, used by the
+  // filler matcher), free-text address detail, surface type.
+  const cityInvalid = values.city.trim().length > 0 && !values.cityFromList;
   return (
     <View style={styles.stack}>
       <AppDateTimeField
@@ -344,29 +411,83 @@ function Step1({
         required
       />
 
-      {/* Location — autocomplete-only city picker. Typing free text
-          flips `locationFromList` to false; the wizard's submit
-          handler uses that flag to block free-typed values with a
-          toast prompt. */}
-      <AutocompleteInput
-        label={he.wizardLocation}
-        value={values.location}
-        onChange={(t) => {
-          // ANY manual edit invalidates the prior selection — even if
-          // the resulting string happens to match a real city, the
-          // user must re-select from the dropdown so the flag truly
-          // tracks "user explicitly picked this".
-          set('location', t);
-          set('locationFromList', false);
-        }}
-        onSelect={(v) => {
-          set('location', v);
-          set('locationFromList', true);
-        }}
-        placeholder={he.wizardLocationPlaceholder}
-        fetchSuggestions={(q) => searchCities(q)}
+      <InputField
+        label={he.createGameField}
+        value={values.fieldName}
+        onChangeText={(t) => set('fieldName', t)}
+        required
       />
 
+      {/* City — MUST be picked from the autocomplete suggestions.
+          Any manual edit flips `cityFromList` back to false; the
+          step-nav guard at the wizard level blocks Next until the
+          flag is true. This guarantees the saved city string can be
+          matched against user availability without normalisation
+          ambiguity. */}
+      <View>
+        <AutocompleteInput
+          label={`${he.createGameCity} *`}
+          value={values.city}
+          onChange={(t) => {
+            set('city', t);
+            set('cityFromList', false);
+          }}
+          onSelect={(v) => {
+            set('city', v);
+            set('cityFromList', true);
+          }}
+          placeholder={he.createGameCityPlaceholder}
+          fetchSuggestions={(q) => searchCities(q)}
+        />
+        {cityInvalid ? (
+          <Text style={styles.hintError}>{he.createGameCityMustPick}</Text>
+        ) : null}
+      </View>
+
+      {/* Address detail — free text, optional. Players read this on
+          the day; matcher ignores it. */}
+      <InputField
+        label={he.createGameAddressRequired}
+        value={values.fieldAddress}
+        onChangeText={(t) => set('fieldAddress', t)}
+        placeholder={he.createGameAddressPlaceholder}
+        required
+      />
+
+      <View style={styles.section}>
+        <Text style={styles.label}>{he.createGameFieldType}</Text>
+        <View style={styles.pillRow}>
+          {FIELD_TYPES.map((f) => (
+            <Pill
+              key={f}
+              active={values.fieldType === f}
+              label={fieldTypeLabel(f)}
+              onPress={() =>
+                set('fieldType', values.fieldType === f ? undefined : f)
+              }
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function Step2({
+  values,
+  maxPlayers,
+  set,
+}: {
+  values: GameFormValues;
+  maxPlayers: number;
+  set: SetFn;
+}) {
+  // Step 2 — "פורמט". Match shape: format + team count → derived max
+  // players, plus duration + game-rule toggles (penalties / referee /
+  // halves). Bring-ball / bring-shirts moved to step 3 — they're a
+  // logistics concern, not a match rule.
+  return (
+    <View style={styles.stack}>
       <PillRow
         label={he.createGameFormat}
         options={FORMATS.map((f) => ({ value: f, label: formatLabel(f) }))}
@@ -388,67 +509,28 @@ function Step1({
         </Text>
       </View>
 
-      <InputField
-        label={he.createGameField}
-        value={values.fieldName}
-        onChangeText={(t) => set('fieldName', t)}
-        required
-      />
-    </View>
-  );
-}
-
-function Step2({ values, set }: { values: GameFormValues; set: SetFn }) {
-  return (
-    <View style={styles.stack}>
-      <View style={styles.durationRow}>
-        <View style={styles.durationCell}>
-          <InputField
-            label={he.createGameMatchDuration}
-            value={values.matchDurationMinutes}
-            onChangeText={(t) => set('matchDurationMinutes', t)}
-            keyboardType="number-pad"
-          />
-        </View>
-        <View style={styles.durationCell}>
-          <InputField
-            label={he.createGameExtraTime}
-            value={values.extraTimeMinutes}
-            onChangeText={(t) => set('extraTimeMinutes', t)}
-            keyboardType="number-pad"
-          />
-        </View>
+      <View style={styles.section}>
+        <InputField
+          label={he.createGameMatchDuration}
+          value={values.matchDurationMinutes}
+          onChangeText={(t) => set('matchDurationMinutes', t)}
+          keyboardType="number-pad"
+        />
+        <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
       </View>
-      <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
 
-      <ToggleRow
-        label={he.wizardHasReferee}
-        hint={he.wizardHasRefereeHint}
-        value={values.hasReferee}
-        onChange={(v) => set('hasReferee', v)}
-      />
-      <ToggleRow
-        label={he.wizardHasPenalties}
-        hint={he.wizardHasPenaltiesHint}
-        value={values.hasPenalties}
-        onChange={(v) => set('hasPenalties', v)}
-      />
-      <ToggleRow
-        label={he.wizardHasHalfTime}
-        hint={he.wizardHasHalfTimeHint}
-        value={values.hasHalfTime}
-        onChange={(v) => set('hasHalfTime', v)}
-      />
-      <ToggleRow
-        label={he.createGameBringBall}
-        value={values.bringBall}
-        onChange={(v) => set('bringBall', v)}
-      />
-      <ToggleRow
-        label={he.createGameBringShirts}
-        value={values.bringShirts}
-        onChange={(v) => set('bringShirts', v)}
-      />
+      {/* Free-text rule chips — replaces the old fixed toggles
+          (שופט / עבירות / חוצים / זמן נוסף). The organiser types
+          whatever rule they want to surface and it shows up as a
+          chip on MatchDetails. */}
+      <View style={styles.section}>
+        <RuleTagsInput
+          label={he.ruleTagsLabel}
+          value={values.ruleTags}
+          onChange={(next) => set('ruleTags', next)}
+        />
+        <Text style={styles.hint}>{he.ruleTagsHint}</Text>
+      </View>
     </View>
   );
 }
@@ -457,68 +539,93 @@ function Step3({
   values,
   set,
   maxPlayers,
-  mode,
+  quick,
+  showInviteFriends,
 }: {
   values: GameFormValues;
   set: SetFn;
   maxPlayers: number;
-  mode: 'standard' | 'recurring';
+  quick: boolean;
+  showInviteFriends: boolean;
 }) {
+  // Step 3 — "ניהול". Visibility, approval, recurring schedule,
+  // cancellation deadline, plus the logistics toggles (bring ball /
+  // shirts) and free-text notes. Ends with the summary card.
   return (
     <View style={styles.stack}>
-      {/* Recurring-only field — when set, the new game stays hidden +
-          unjoinable until this exact moment, then a CF flips it open
-          and notifies subscribed community members. Past values are
-          accepted (with an inline hint) and treated as immediate-open
-          on submit. */}
-      {mode === 'recurring' ? (
-        <View style={styles.section}>
-          <AppDateTimeField
-            label={he.wizardRegOpensLabel}
-            value={values.registrationOpensAt || defaultRegOpensAt(values.startsAt)}
-            onChange={(ms) => set('registrationOpensAt', ms)}
-            required
-          />
-          <Text style={styles.hint}>
-            {values.registrationOpensAt > 0 &&
-            values.registrationOpensAt <= Date.now()
-              ? he.wizardRegOpensHintPast
-              : he.wizardRegOpensHint}
-          </Text>
-        </View>
-      ) : null}
-
       <View style={styles.section}>
         <Text style={styles.label}>{he.wizardSectionVisibility}</Text>
         <View style={styles.pillRow}>
           <Pill
             active={values.visibility === 'community'}
-            label={he.wizardVisibilityCommunity}
+            label={quick ? he.wizardVisibilityPrivate : he.wizardVisibilityCommunity}
             onPress={() => set('visibility', 'community')}
           />
           <Pill
             active={values.visibility === 'public'}
-            label={he.wizardVisibilityPublic}
+            label={quick ? he.wizardVisibilityPublicOpen : he.wizardVisibilityPublic}
             onPress={() => set('visibility', 'public')}
           />
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>{he.createGameFieldType}</Text>
-        <View style={styles.pillRow}>
-          {FIELD_TYPES.map((f) => (
-            <Pill
-              key={f}
-              active={values.fieldType === f}
-              label={fieldTypeLabel(f)}
-              onPress={() =>
-                set('fieldType', values.fieldType === f ? undefined : f)
-              }
-            />
-          ))}
-        </View>
-      </View>
+      {/* Invite friends directly — they get an `inviteToGame` push the
+          moment the game is created. Shown on creation for both quick
+          and community games. */}
+      {showInviteFriends ? (
+        <FriendsInvitePicker
+          selected={values.inviteFriendIds ?? []}
+          onChange={(ids) => set('inviteFriendIds', ids)}
+        />
+      ) : null}
+
+      <ToggleRow
+        label={he.createGameRequiresApproval}
+        hint={he.createGameRequiresApprovalHint}
+        value={values.requiresApproval}
+        onChange={(v) => set('requiresApproval', v)}
+      />
+
+      {/* Recurring game — a COMMUNITY concept (a regular weekly game),
+          hidden for quick one-offs. When on, the wizard surfaces a
+          "registration opens at" picker; the game is created in
+          'scheduled' state and a Cloud Function flips it to 'open' at
+          the picked time. */}
+      {!quick ? (
+        <>
+          <ToggleRow
+            label={he.communityEditRecurringEnabled}
+            hint={he.communityEditRecurringHint}
+            value={values.recurringGameEnabled}
+            onChange={(v) => {
+              set('recurringGameEnabled', v);
+              // Reset the picker value when turning the toggle off so a
+              // stale registrationOpensAt from a prior on/off cycle
+              // doesn't survive into submit.
+              if (!v) set('registrationOpensAt', 0);
+            }}
+          />
+          {values.recurringGameEnabled ? (
+            <View style={styles.section}>
+              <AppDateTimeField
+                label={he.wizardRegOpensLabel}
+                value={
+                  values.registrationOpensAt ||
+                  defaultRegOpensAt(values.startsAt)
+                }
+                onChange={(ms) => set('registrationOpensAt', ms)}
+                required
+              />
+              <Text style={styles.hint}>
+                {values.registrationOpensAt > 0 &&
+                values.registrationOpensAt <= Date.now()
+                  ? he.wizardRegOpensHintPast
+                  : he.wizardRegOpensHint}
+              </Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.label}>{he.wizardCancelDeadline}</Text>
@@ -534,22 +641,35 @@ function Step3({
         </View>
       </View>
 
+      {/* Filler matching — opt-in per game. When ON, the scheduled
+          CF will scan users from outside the community whose
+          available cities include this game's city, and push them an
+          interest invitation when the roster falls below the
+          shortage threshold. The minTrust pill row sets the floor:
+          a candidate must have a trust score ≥ this to receive the
+          push. */}
       <ToggleRow
-        label={he.createGameRequiresApproval}
-        hint={he.createGameRequiresApprovalHint}
-        value={values.requiresApproval}
-        onChange={(v) => set('requiresApproval', v)}
+        label={he.gameFillerAcceptToggle}
+        hint={he.gameFillerAcceptToggleHint}
+        value={values.acceptsFillers}
+        onChange={(v) => set('acceptsFillers', v)}
       />
-
-      <View>
-        <InputField
-          label={he.createGameMinPlayers}
-          value={values.minPlayers}
-          onChangeText={(t) => set('minPlayers', t)}
-          keyboardType="number-pad"
-        />
-        <Text style={styles.hint}>{he.createGameMinPlayersHint}</Text>
-      </View>
+      {values.acceptsFillers ? (
+        <View style={styles.section}>
+          <Text style={styles.label}>{he.gameFillerMinTrust}</Text>
+          <View style={styles.pillRow}>
+            {FILLER_MIN_TRUST_OPTIONS.map((opt, i) => (
+              <Pill
+                key={i}
+                active={values.fillerMinTrust === opt}
+                label={fillerMinTrustLabel(opt)}
+                onPress={() => set('fillerMinTrust', opt)}
+              />
+            ))}
+          </View>
+          <Text style={styles.hint}>{he.gameFillerMinTrustHint}</Text>
+        </View>
+      ) : null}
 
       <InputField
         label={he.createGameNotes}
@@ -558,6 +678,14 @@ function Step3({
         placeholder="לדוגמה: שער דרומי, חניה ברחוב"
         multiline
       />
+
+      {/* The "מי יביא כדור/גופיות" toggles used to live here but were
+          removed per product decision — the question is settled at
+          the community level and surfaces inline on the match details
+          screen for the actual game-day signal. The two underlying
+          `bringBall` / `bringShirts` values still default to true so
+          downstream consumers (the match details flagged badges)
+          don't suddenly see undefined. */}
 
       <SummaryCard values={values} maxPlayers={maxPlayers} />
     </View>
@@ -575,7 +703,8 @@ function SummaryCard({
 }) {
   const dateLabel = formatDateLong(values.startsAt);
   const placeLabel =
-    [values.fieldName, values.location].filter((s) => s.trim().length > 0)
+    [values.fieldName, values.city, values.fieldAddress]
+      .filter((s) => s.trim().length > 0)
       .join(' · ') || '—';
   const formatStr = `${formatLabel(values.format)} · ${maxPlayers} שחקנים`;
   const visibilityStr =
@@ -759,6 +888,14 @@ const styles = StyleSheet.create({
   hint: {
     ...typography.caption,
     color: colors.textMuted,
+    marginTop: spacing.xs,
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  hintError: {
+    ...typography.caption,
+    color: colors.danger,
     marginTop: spacing.xs,
     textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',

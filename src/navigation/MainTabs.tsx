@@ -5,12 +5,14 @@ import {
   BottomTabBarProps,
   createBottomTabNavigator,
 } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { GameStack } from './GameStack';
 import { ProfileStack } from './ProfileStack';
 import { CommunitiesStack } from './CommunitiesStack';
 import { BannerAd } from '@/services/adsService';
+import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -65,7 +67,7 @@ export function MainTabs() {
           backgroundColor: colors.surface,
           borderTopColor: colors.divider,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size, focused }) => {
           const icon: keyof typeof Ionicons.glyphMap = (() => {
             switch (route.name) {
               case 'ProfileTab':      return 'person-outline';
@@ -73,7 +75,14 @@ export function MainTabs() {
               case 'GameTab':         return 'football-outline';
             }
           })();
-          return <Ionicons name={icon} size={size} color={color} />;
+          return (
+            <AnimatedTabIcon
+              name={icon}
+              focused={focused}
+              color={color}
+              size={size}
+            />
+          );
         },
       })}
     >
@@ -111,13 +120,16 @@ export function MainTabs() {
 }
 
 // Every tab press — whether the tab is currently focused or not —
-// pops the nested stack back to its root screen ("the feed"). The
-// previous logic only reset on a re-press of the focused tab, which
-// meant switching to a tab from elsewhere kept whatever nested route
-// the user had last been on. The user expects "tap tab = go to that
-// tab's feed", so we reset every time. We still skip the dispatch
-// when the user is already at the root to avoid an unnecessary
-// re-mount / flicker.
+// resets the nested stack so the user lands on that tab's root
+// screen ("the feed"). Previously we used `navigate(tabName, {
+// screen: rootName })`, which navigates-or-pushes inside the stack
+// but doesn't guarantee the stack ends up as exactly `[root]` — when
+// a stack arrives via a deep-linked notification with `initial: false`
+// or via a multi-screen drill-down, the nested screens can survive
+// the tab tap. The explicit `state: { routes: [{ name: root }] }`
+// payload replaces the nested state outright, so taps on the
+// Communities / Games tabs land on the feed every time, never on
+// MatchDetails or CommunityDetails.
 function resetTabToRoot(
   e: { defaultPrevented: boolean; preventDefault: () => void },
   navigation: { isFocused: () => boolean; getState: () => unknown; dispatch: (a: unknown) => void },
@@ -143,6 +155,14 @@ function resetTabToRoot(
     stackIndex === 0 && stackRoutes && stackRoutes.length === 1;
   if (alreadyAtRoot && navigation.isFocused()) return;
   e.preventDefault();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (navigation as any).navigate(tabName, { screen: rootName });
+  navigation.dispatch(
+    CommonActions.navigate({
+      name: tabName,
+      params: {
+        // Force the nested stack to exactly `[root]` — drops any
+        // deep route the tab had been on (MatchDetails, etc.).
+        state: { routes: [{ name: rootName }] },
+      },
+    }),
+  );
 }

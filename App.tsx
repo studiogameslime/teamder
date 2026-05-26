@@ -63,20 +63,25 @@ try {
   // payload, iOS / Android render these two action buttons under
   // the notification body. Tapping a button fires the response
   // listener with `actionIdentifier === 'JOIN_GAME' | 'CANCEL_GAME'`.
-  // `opensAppToForeground: false` asks the OS to run the action
-  // handler without bringing the app forward when supported (most
-  // Android, iOS background); on iOS-after-force-quit the app does
-  // launch foreground briefly.
+  // `opensAppToForeground: true` runs the action in background
+  // without launching the app — the broadcast fires the response
+  // listener directly while JS is alive (foreground / recent
+  // background). On a fully-killed app the broadcast still reaches
+  // the native `NotificationsService` receiver and the response is
+  // queued; it's then dispatched via `getLastNotificationResponseAsync`
+  // on the next app launch. The handler below dismisses the
+  // notification explicitly so the user doesn't see a stale card
+  // after the RSVP has been recorded.
   Notifications.setNotificationCategoryAsync('GAME_REMINDER', [
     {
       identifier: 'JOIN_GAME',
       buttonTitle: 'אני בא',
-      options: { opensAppToForeground: false },
+      options: { opensAppToForeground: true },
     },
     {
       identifier: 'CANCEL_GAME',
       buttonTitle: 'לא בא',
-      options: { opensAppToForeground: false, isDestructive: true },
+      options: { opensAppToForeground: true, isDestructive: true },
     },
   ]).catch(() => {
     // Best-effort — older expo-notifications versions throw; the
@@ -91,12 +96,28 @@ try {
     {
       identifier: 'CONFIRM_SPOT',
       buttonTitle: 'מאשר/ת',
-      options: { opensAppToForeground: false },
+      options: { opensAppToForeground: true },
     },
     {
       identifier: 'PASS_SPOT',
       buttonTitle: 'ויתור',
-      options: { opensAppToForeground: false, isDestructive: true },
+      options: { opensAppToForeground: true, isDestructive: true },
+    },
+  ]).catch(() => {});
+  // Cross-community filler opportunity. Tapping "מעוניין" submits
+  // the candidate's interest via `submitFillerInterest` — admin
+  // gets a push from the on-create trigger and reviews the profile
+  // before approving. Tapping "לא הפעם" is a silent dismiss.
+  Notifications.setNotificationCategoryAsync('FILLER_OPPORTUNITY', [
+    {
+      identifier: 'EXPRESS_FILLER_INTEREST',
+      buttonTitle: 'מעוניין',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: 'DISMISS_FILLER',
+      buttonTitle: 'לא הפעם',
+      options: { opensAppToForeground: true, isDestructive: true },
     },
   ]).catch(() => {});
 } catch {
@@ -106,6 +127,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
 import { useUserStore } from '@/store/userStore';
@@ -180,6 +202,20 @@ export default function App() {
   // stores in parallel — the splash fades out at the end and the user
   // lands on a ready UI without an extra spinner step.
   const [splashDone, setSplashDone] = useState(false);
+  // Load the Ionicons font at runtime. Expo SDK 53 removed
+  // @expo/vector-icons autolinking — without this hook the font
+  // family `ionicons` isn't registered with the RN font registry,
+  // every `<Ionicons />` glyph renders as a blank box. We don't
+  // gate the UI on `fontsLoaded`: a one-frame fallback to empty
+  // glyphs is preferable to a blocked render, and the loader
+  // resolves within ~50 ms on real devices.
+  // Ionicons.ttf is shipped as `android/app/src/main/assets/fonts/ionicons.ttf`
+  // (lowercase, matching the fontFamily `@expo/vector-icons` registers via
+  // `createIconSet(glyphMap, 'ionicons', font)`). Android RN auto-registers
+  // any TTF in that folder under its filename, so no JS-side `useFonts`
+  // dance is needed — and `useFonts` would actually fail on SDK 53 because
+  // expo-asset's `downloadAsync` requires the legacy `AppDirectoriesModule`
+  // interface, which expo-file-system 18.x dropped.
   const currentScreenRef = useRef<string | null>(null);
 
   // App-update prompt. Single source of truth: a plain enum kept
@@ -217,14 +253,19 @@ export default function App() {
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const profileComplete = useUserStore((s) => s.isProfileComplete());
   const onboardingComplete = useUserStore((s) => s.hasCompletedOnboarding());
+  // Hydration signals from the stores. When both flip true the splash
+  // is allowed to fade out — that way the user never sees the small
+  // "still loading" spinner that RootNavigator used to render under
+  // the splash. A single big-ball state covers the whole boot.
+  const userHydrated = useUserStore((s) => s.hydrated);
+  const groupHydrated = useGroupStore((s) => s.hydrated);
 
   useEffect(() => {
-    // Hand the screen over from the OS splash to our React layer the
-    // moment App mounts. The custom SplashScreen component is already
-    // in the tree, so there's no flicker.
-    ExpoSplash.hideAsync().catch(() => {
-      // already hidden — non-fatal
-    });
+    // NOTE: ExpoSplash.hideAsync() is intentionally NOT called here.
+    // It's now called from inside SplashScreen on its first effect, so
+    // the native splash dismisses only AFTER the React layer has painted
+    // its first frame. Hiding here would create a brief black flash
+    // between native dismiss and React first paint.
     // Place for one-time bootstraps: analytics init, FCM token registration, etc.
   }, []);
 
@@ -455,20 +496,51 @@ export default function App() {
       return; // native module not linked (Expo Go) — no-op
     }
     if (!Notifications) return;
+    // Capture once for use inside the closure below — TS can't carry
+    // the null-narrow from the early-return through async callbacks.
+    const Notif = Notifications;
+
+    const dismissNotificationSafely = async (
+      notifId: string | undefined,
+    ): Promise<void> => {
+      if (!notifId) return;
+      try {
+        await Notif.dismissNotificationAsync(notifId);
+      } catch {
+        // Best-effort — older expo-notifications versions / iOS
+        // foreground-not-shown cases throw. The OS will dismiss the
+        // notification itself when the user taps it anyway.
+      }
+    };
 
     const handleResponse = async (response: {
       actionIdentifier?: string;
-      notification: { request: { content: { data?: Record<string, unknown> } } };
+      notification: {
+        request: { identifier?: string; content: { data?: Record<string, unknown> } };
+      };
     }) => {
       const data = response.notification.request.content.data ?? {};
       const type = typeof data.type === 'string' ? data.type : '';
       if (!type) return;
+      // Identifier of the source notification — needed to dismiss it
+      // explicitly after an action button runs. Without an explicit
+      // dismiss the notification card lingers in the tray even though
+      // its action ("אני בא" / "לא בא" / etc.) has already taken
+      // effect, which confuses users into tapping it again.
+      const notifId = response.notification.request.identifier;
       // Action button taps from the notification (e.g. "אני בא" /
       // "לא בא") arrive with `actionIdentifier` set to the button id
       // we registered. Plain notification taps (the user tapped the
       // body itself) carry `actionIdentifier === 'expo.modules.notifications.actions.DEFAULT'`
       // — fall through to the navigation flow for those.
       const action = response.actionIdentifier ?? '';
+      // For JOIN/CANCEL and SPOT actions: run the side-effect, dismiss
+      // the notification, then FALL THROUGH to the navigation block
+      // below so the app lands on MatchDetails for the affected game.
+      // Without that fall-through the user taps "אני בא", the app
+      // launches because of `opensAppToForeground: true`, and they're
+      // dropped on the home screen with no visible confirmation of
+      // what just happened.
       if (action === 'JOIN_GAME' || action === 'CANCEL_GAME') {
         const gameId = typeof data.gameId === 'string' ? data.gameId : '';
         if (!gameId) return;
@@ -476,15 +548,27 @@ export default function App() {
           '@/services/notificationActionService'
         );
         await handleGameReminderAction(action, gameId);
-        return;
-      }
-      if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
+        await dismissNotificationSafely(notifId);
+      } else if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
         const gameId = typeof data.gameId === 'string' ? data.gameId : '';
         if (!gameId) return;
         const { handleSpotOfferAction } = await import(
           '@/services/notificationActionService'
         );
         await handleSpotOfferAction(action, gameId);
+        await dismissNotificationSafely(notifId);
+      }
+      if (
+        action === 'EXPRESS_FILLER_INTEREST' ||
+        action === 'DISMISS_FILLER'
+      ) {
+        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+        if (!gameId) return;
+        const { handleFillerOpportunityAction } = await import(
+          '@/services/notificationActionService'
+        );
+        await handleFillerOpportunityAction(action, gameId);
+        await dismissNotificationSafely(notifId);
         return;
       }
       // Wait briefly for the navigator to be ready (cold-start case);
@@ -540,6 +624,13 @@ export default function App() {
   };
 
   return (
+    // ErrorBoundary wraps everything below so an uncaught render-time
+    // error inside the navigator, the splash, the toasts, or any
+    // mounted screen falls through to a single Hebrew RTL fallback UI
+    // instead of leaving the user with a frozen white screen. The
+    // boundary lives OUTSIDE NavigationContainer on purpose — a crash
+    // inside the navigator itself still surfaces here.
+    <ErrorBoundary>
     <SafeAreaProvider>
       <StatusBar
         barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
@@ -594,10 +685,28 @@ export default function App() {
       </NavigationContainer>
 
       {/* Splash sits ABOVE everything. RootNavigator keeps mounting +
-          hydrating behind it; when the animation finishes we hand off
-          to the ad flow → once that resolves (or no-ops) we unmount the
-          splash and the navigator is already live. */}
-      {!splashDone ? <SplashScreen onFinish={handleSplashFinish} /> : null}
+          hydrating behind it. We pass `ready` so the splash stays up
+          until the minimum hold elapsed AND we know where to route —
+          guaranteeing the user only ever sees the big-ball loader,
+          never the small spinner that RootNavigator used to show as a
+          "still loading" fallback.
+
+          "Know where to route" differs by auth state:
+            • signed OUT — once the user store is hydrated we already
+              know to show SignIn / Onboarding. Group state is never
+              hydrated while signed out (hydrateGroup only runs once a
+              currentUser exists, see RootNavigator), so waiting on
+              groupHydrated here would pin the splash FOREVER for every
+              signed-out / fresh-install user. Hence the `!currentUserId`
+              short-circuit.
+            • signed IN — wait for groupHydrated too so membership state
+              is real before MainTabs paints. */}
+      {!splashDone ? (
+        <SplashScreen
+          ready={userHydrated && (!currentUserId || groupHydrated)}
+          onFinish={handleSplashFinish}
+        />
+      ) : null}
 
       <AdDebugOverlay />
 
@@ -614,5 +723,6 @@ export default function App() {
         />
       ) : null}
     </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

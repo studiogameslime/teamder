@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "0.2.5",
+    "version": "0.2.20",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -12,9 +12,9 @@
     ],
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./Logo.png",
+      "image": "./splash-blank.png",
       "resizeMode": "contain",
-      "backgroundColor": "#16A34A"
+      "backgroundColor": "#1E40AF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -26,10 +26,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./Logo.png",
-        "backgroundColor": "#16A34A"
+        "backgroundColor": "#1E40AF"
       },
       "package": "com.studiogameslime.soccerapp",
-      "versionCode": 17,
+      "versionCode": 27,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
@@ -43,7 +43,7 @@
         "expo-notifications",
         {
           "icon": "./Logo.png",
-          "color": "#16A34A"
+          "color": "#1E40AF"
         }
       ],
       [
@@ -73,7 +73,10 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset",
+      "./plugins/withIoniconsAsset.js"
     ],
     "experiments": {
       "typedRoutes": false

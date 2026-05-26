@@ -9,14 +9,19 @@
 //
 // Mount <ToastHost /> exactly once at the top of the React tree (App.tsx).
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import {
-  Animated,
   Pressable,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -68,49 +73,54 @@ export const toast = {
   hide: () => useToastStore.getState().hide(),
 };
 
-const TOAST_OFFSCREEN_Y = -40;
+const TOAST_OFFSCREEN_Y = -60;
 
 export function ToastHost() {
   const { seq, visible, message, type, duration, hide } = useToastStore();
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(TOAST_OFFSCREEN_Y)).current;
+  // Reanimated shared values — animation runs on the UI thread so a
+  // busy JS thread (heavy nav transitions, list renders) can't stutter
+  // the toast.
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(TOAST_OFFSCREEN_Y);
+  const scale = useSharedValue(0.96);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!visible) {
-      // Slide back up + fade out.
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: TOAST_OFFSCREEN_Y,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Snap back up + fade out — slightly faster than entry so a
+      // queued back-to-back toast appears responsive.
+      opacity.value = withTiming(0, { duration: 160 });
+      translateY.value = withTiming(TOAST_OFFSCREEN_Y, {
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+      });
+      scale.value = withTiming(0.96, { duration: 160 });
       return;
     }
-    // Slide down + fade in.
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Spring-in: travels past zero slightly and bounces back. The
+    // overshoot reads as "arrived emphatically" without feeling toy-
+    // like (damping high enough that it settles in <300 ms).
+    opacity.value = withTiming(1, { duration: 200 });
+    translateY.value = withSpring(0, {
+      damping: 14,
+      stiffness: 220,
+      mass: 0.8,
+    });
+    scale.value = withSpring(1, {
+      damping: 12,
+      stiffness: 260,
+      mass: 0.6,
+    });
     const timer = setTimeout(hide, duration);
     return () => clearTimeout(timer);
     // `seq` is included so a back-to-back show() restarts the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, seq, duration]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
 
   const tint =
     type === 'success'
@@ -130,11 +140,8 @@ export function ToastHost() {
       pointerEvents={visible ? 'box-none' : 'none'}
       style={[
         styles.host,
-        {
-          top: insets.top + 8,
-          opacity,
-          transform: [{ translateY }],
-        },
+        { top: insets.top + 8 },
+        animStyle,
       ]}
     >
       <Pressable onPress={hide} style={[styles.toast, { borderColor: tint }]}>

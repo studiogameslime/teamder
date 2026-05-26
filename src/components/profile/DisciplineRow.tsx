@@ -1,105 +1,77 @@
-// DisciplineRow — compact horizontal display of yellow/red counts
-// from the last-10-games snapshot. Replaces the old card-stack-with-
-// helper-text block on the profile.
+// DisciplineRow — compact trust-meter row on the profile screen.
+// Replaces the old yellow/red counter pair: shows a single 0-100
+// reliability meter on the leading edge plus a title + caption with
+// the breakdown (or "lacking history" message for new users).
 //
-// Visual: title on the right, the two counters on the left (RTL flips
-// flexDirection so the cards land at the leading edge of the row).
 // Tristate handling matches the player card:
-//   • loading → small loader, no numbers
+//   • loading → small loader, no values
 //   • error   → "אין נתונים זמינים"
-//   • ready   → DisciplineCards + small caption underneath
+//   • ready   → TrustMeter + caption
+//
+// Filename + export name kept for diff stability with existing call
+// sites; conceptually this is the trust row.
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { DisciplineCards } from '@/components/DisciplineCards';
+import { TrustMeter } from '@/components/TrustMeter';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { disciplineService } from '@/services/disciplineService';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { trustService, type TrustSummary } from '@/services/trustService';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
   userId: string;
 }
 
-type SnapshotState =
+type State =
   | { kind: 'loading' }
   | { kind: 'error' }
-  | {
-      kind: 'ready';
-      yellow: number;
-      red: number;
-      gamesCounted: number;
-    };
+  | { kind: 'ready'; summary: TrustSummary };
 
 export function DisciplineRow({ userId }: Props) {
-  const [snapshot, setSnapshot] = useState<SnapshotState>({ kind: 'loading' });
+  const [state, setState] = useState<State>({ kind: 'loading' });
   useEffect(() => {
     let alive = true;
-    setSnapshot({ kind: 'loading' });
-    disciplineService
-      .getPlayerDisciplineSnapshot(userId)
-      .then((s) => {
-        if (alive) {
-          setSnapshot({
-            kind: 'ready',
-            yellow: s.yellowCardsLast10,
-            red: s.redCardsLast10,
-            gamesCounted: s.gamesCounted,
-          });
-        }
+    setState({ kind: 'loading' });
+    trustService
+      .getSummary(userId)
+      .then((summary) => {
+        if (alive) setState({ kind: 'ready', summary });
       })
       .catch(() => {
-        if (alive) setSnapshot({ kind: 'error' });
+        if (alive) setState({ kind: 'error' });
       });
     return () => {
       alive = false;
     };
   }, [userId]);
 
-  // New layout: prominent red+yellow square indicators on the
-  // leading edge (RTL: visually left), title + small caption to the
-  // right, chevron on the trailing side. Mirrors the social/info
-  // cards on the same screen so the profile reads as one set of
-  // matched rows.
-  const captionText =
-    snapshot.kind === 'ready'
-      ? snapshot.gamesCounted >= 10
-        ? he.disciplineSnapshotCaptionFull
-        : snapshot.gamesCounted === 0
-          ? he.disciplineSnapshotEmpty
-          : he.disciplineSnapshotCaptionPartial(snapshot.gamesCounted)
-      : null;
   return (
     <View style={styles.card}>
-      {snapshot.kind === 'loading' ? (
-        <View style={styles.loadingWrap}>
+      <View style={styles.meterWrap}>
+        {state.kind === 'loading' ? (
           <SoccerBallLoader size={20} />
-        </View>
-      ) : (
-        <View style={styles.indicatorWrap}>
-          <View style={[styles.indicator, styles.indicatorRed]}>
-            <Text style={styles.indicatorText}>
-              {snapshot.kind === 'ready' ? snapshot.red : '—'}
-            </Text>
-          </View>
-          <View style={[styles.indicator, styles.indicatorYellow]}>
-            <Text style={styles.indicatorText}>
-              {snapshot.kind === 'ready' ? snapshot.yellow : '—'}
-            </Text>
-          </View>
-        </View>
-      )}
+        ) : state.kind === 'ready' ? (
+          <TrustMeter
+            score={state.summary.score}
+            tier={state.summary.tier}
+            size="sm"
+          />
+        ) : null}
+      </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>
-          {he.disciplineSnapshotTitle}
+          {he.trustMeterTitle}
         </Text>
-        {snapshot.kind === 'error' ? (
+        {state.kind === 'error' ? (
           <Text style={styles.unavailable} numberOfLines={1}>
-            {he.disciplineSnapshotUnavailable}
+            {he.trustMeterUnavailable}
           </Text>
-        ) : captionText ? (
+        ) : state.kind === 'ready' ? (
           <Text style={styles.caption} numberOfLines={1}>
-            {captionText}
+            {state.summary.score === null
+              ? he.trustMeterCaptionEmpty
+              : he.trustMeterCaption(state.summary.breakdown.gamesEvaluated)}
           </Text>
         ) : null}
       </View>
@@ -122,30 +94,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  // Two prominent square indicators on the leading edge — red over
-  // yellow, each showing its current count. Sized like the icon
-  // circle on the sibling cards so the row aligns vertically.
-  indicatorWrap: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  indicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  indicatorRed: { backgroundColor: '#EF4444' },
-  indicatorYellow: { backgroundColor: '#F59E0B' },
-  indicatorText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 15,
-  },
-  loadingWrap: {
-    width: 78,
-    height: 36,
+  meterWrap: {
+    width: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -170,20 +120,4 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: RTL_LABEL_ALIGN,
   },
-  chevron: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chevronInner: {
-    width: 8,
-    height: 8,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: colors.textMuted,
-    transform: [{ rotate: '-45deg' }],
-  },
-  // Reserved alias (kept so prior radius/border-radius refs still
-  // resolve if used by tests/snapshots).
-  _r: { borderRadius: radius.lg },
 });

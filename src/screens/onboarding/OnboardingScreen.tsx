@@ -5,7 +5,7 @@
 // 3 highest-signal pitches and uses the same brand tones as the
 // rest of the redesigned surfaces.
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -18,6 +18,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -105,11 +114,9 @@ export function OnboardingScreen() {
           inverted
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index: i }) => (
             <View style={[styles.slide, { width }]}>
-              <View style={styles.iconDisc}>
-                <Ionicons name={item.icon} size={92} color="#FFFFFF" />
-              </View>
+              <BreathingIconDisc icon={item.icon} active={i === index} />
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.body}>{item.body}</Text>
             </View>
@@ -118,13 +125,7 @@ export function OnboardingScreen() {
 
         <View style={styles.dots}>
           {SLIDES.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === index && styles.dotActive,
-              ]}
-            />
+            <Dot key={i} active={i === index} />
           ))}
         </View>
 
@@ -164,6 +165,87 @@ export function OnboardingScreen() {
         </View>
       </SafeAreaView>
     </View>
+  );
+}
+
+// Breathing icon disc — the active slide's disc pulses gently
+// (scale 1 ↔ 1.04) so the user's eye lands on it instead of darting
+// around. Inactive slides hold a static smaller scale (0.94) so the
+// transition between slides reads as "this one wakes up". Animation
+// is cancelled when the slide goes inactive to avoid wasted UI-thread
+// work on the off-screen slides.
+function BreathingIconDisc({
+  icon,
+  active,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+}) {
+  const scale = useSharedValue(active ? 1 : 0.94);
+
+  useEffect(() => {
+    cancelAnimation(scale);
+    if (active) {
+      scale.value = withSequence(
+        withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }),
+        withRepeat(
+          withSequence(
+            withTiming(1.04, {
+              duration: 1400,
+              easing: Easing.inOut(Easing.quad),
+            }),
+            withTiming(1.0, {
+              duration: 1400,
+              easing: Easing.inOut(Easing.quad),
+            }),
+          ),
+          -1,
+          false,
+        ),
+      );
+    } else {
+      scale.value = withTiming(0.94, { duration: 220 });
+    }
+    return () => cancelAnimation(scale);
+  }, [active, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.iconDisc, animStyle]}>
+      <Ionicons name={icon} size={92} color="#FFFFFF" />
+    </Animated.View>
+  );
+}
+
+// Pagination dot. Width + opacity smoothly interpolate when the
+// active flag flips, so swiping between slides feels continuous
+// instead of jumping between hard-coded styles.
+function Dot({ active }: { active: boolean }) {
+  const progress = useSharedValue(active ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, {
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [active, progress]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: 8 + progress.value * 16,
+    opacity: 0.32 + progress.value * 0.68,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.dot,
+        { backgroundColor: DOT_ACTIVE },
+        animStyle,
+      ]}
+    />
   );
 }
 

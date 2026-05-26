@@ -8,18 +8,31 @@
 // ============================================================
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  Firestore,
+} from 'firebase/firestore';
 import {
   initializeAuth,
   getAuth,
-  // @ts-ignore — getReactNativePersistence is exported but missing from
-  // firebase's TypeScript bundle in some versions; safe to ignore.
-  getReactNativePersistence,
   Auth,
+  type Persistence,
 } from 'firebase/auth';
+// `getReactNativePersistence` was dropped from the umbrella `firebase/auth`
+// bundle in v12 but still lives in the inner `@firebase/auth` package's
+// React Native build (`dist/rn/index.js`), which Metro resolves via the
+// package's `"react-native"` exports condition. TypeScript resolves the
+// default condition (which doesn't expose the symbol), so we require the
+// runtime module dynamically here — Metro picks the RN entry, types stay
+// clean. AsyncStorage-backed persistence restores cross-launch sign-in.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { getReactNativePersistence } = require('@firebase/auth') as {
+  getReactNativePersistence: (storage: unknown) => Persistence;
+};
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function val(v: string | undefined): string {
   return (v ?? '').trim();
@@ -83,7 +96,23 @@ export function getFirebase(): {
   }
   if (!_app) {
     _app = getApps()[0] ?? initializeApp(firebaseConfig);
-    _db = getFirestore(_app);
+    // Initialize Firestore with auto-detect long polling. The default
+    // WebChannel transport stalls under some networks / Android
+    // emulators, causing every read to time out after 10s with
+    // "Could not reach Cloud Firestore backend" — even though the
+    // device has working internet. Auto-detect falls back to HTTP
+    // long-polling when WebChannel fails, fixing offline-loops on
+    // restored sessions where the user is signed in via persisted
+    // Auth but the /users/{uid} read silently fails.
+    try {
+      _db = initializeFirestore(_app, {
+        experimentalAutoDetectLongPolling: true,
+      });
+    } catch {
+      // Already initialised (HMR / fast refresh) — fall back to the
+      // existing instance.
+      _db = getFirestore(_app);
+    }
     _storage = getStorage(_app);
     // The CF region must match `setGlobalOptions({ region })` in
     // functions/src/index.ts — otherwise the SDK calls the default
@@ -91,6 +120,11 @@ export function getFirebase(): {
     // for any callable that lives elsewhere.
     _functions = getFunctions(_app, 'us-central1');
     try {
+      // AsyncStorage-backed persistence — the user stays signed in
+      // across cold starts. `getReactNativePersistence` is sourced
+      // from `@firebase/auth` directly (see import note above) because
+      // the umbrella `firebase/auth` package stopped re-exporting it
+      // in v12.
       _auth = initializeAuth(_app, {
         persistence: getReactNativePersistence(AsyncStorage),
       });

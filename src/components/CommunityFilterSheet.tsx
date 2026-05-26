@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { SpringSheet } from '@/components/anim/SpringSheet';
 import { GroupPublic, WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -97,10 +98,10 @@ export function CommunityFilterSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <SpringSheet visible={visible} onBackdropPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <View style={styles.header}>
@@ -115,6 +116,16 @@ export function CommunityFilterSheet({
             contentContainerStyle={styles.bodyContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* Three filters that match real fields on every group:
+                  • autoJoinOnly  → maps to Group.isOpen
+                  • hasRoom        → maps to Group.maxMembers vs roster
+                  • nearby         → maps to Group.city + viewer city
+                The earlier sheet also exposed "free only" (costPerGame
+                is never set today) and "preferred days" (also unset
+                on every group). They cluttered the UI without
+                actually filtering anything, so they're hidden here.
+                The fields stay on the GroupFilters interface for
+                backward-compat with stored prefs / legacy callers. */}
             <SwitchRow
               label={he.communityFiltersOnlyOpen}
               value={filters.autoJoinOnly}
@@ -126,50 +137,11 @@ export function CommunityFilterSheet({
               onChange={(v) => onChange({ ...filters, hasRoom: v })}
             />
             <SwitchRow
-              label={he.communityFiltersFreeOnly}
-              value={filters.freeOnly}
-              onChange={(v) => onChange({ ...filters, freeOnly: v })}
-            />
-            <SwitchRow
               label={he.filterNearby}
               caption={nearbyCaption}
               value={filters.nearby}
               onChange={(v) => onChange({ ...filters, nearby: v })}
             />
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {he.createGroupPreferredDays}
-              </Text>
-              <View style={styles.pillRow}>
-                {ALL_DAYS.map((d) => {
-                  const active = filters.preferredDays.includes(d);
-                  return (
-                    <Pressable
-                      key={d}
-                      onPress={() => toggleDay(d)}
-                      style={({ pressed }) => [
-                        styles.dayPill,
-                        active && styles.pillActive,
-                        pressed && { opacity: 0.85 },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.pillText,
-                          active && {
-                            color: colors.primary,
-                            fontWeight: '700',
-                          },
-                        ]}
-                      >
-                        {he.availabilityDayShort[d]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
           </ScrollView>
 
           <View style={styles.footer}>
@@ -190,7 +162,7 @@ export function CommunityFilterSheet({
             </View>
           </View>
         </Pressable>
-      </Pressable>
+      </SpringSheet>
     </Modal>
   );
 }
@@ -278,10 +250,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    // Fixed height (not maxHeight) — without an explicit height the
-    // body's ScrollView `flex:1` collapses to 0 because there's no
-    // defined parent height for it to share.
-    height: '85%',
+    // Sheet now takes the full space SpringSheet allows (90% of
+    // screen). minHeight: 70% keeps the body large enough on tall
+    // screens so the action row doesn't float just below the title.
+    minHeight: '70%',
+    maxHeight: '100%',
     paddingBottom: spacing.xl,
   },
   handle: {

@@ -27,6 +27,8 @@ import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
+import { BouncingBall } from '@/components/anim/BouncingBall';
+import { AppearItem } from '@/components/anim/AppearItem';
 import { toast } from '@/components/Toast';
 import {
   CommunityFilterSheet,
@@ -106,7 +108,7 @@ export function PublicGroupsFeedScreen() {
   const setCurrentGroup = useGroupStore((s) => s.setCurrentGroup);
 
   const scrollRef = useRef<ScrollView>(null);
-  useScrollToTop(scrollRef);
+  useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
   const [text, setText] = useState('');
   const [items, setItems] = useState<GroupPublic[] | null>(null);
@@ -279,10 +281,23 @@ export function PublicGroupsFeedScreen() {
     }
   };
 
-  const renderCard = (g: GroupPublic) => {
+  const renderCard = (g: GroupPublic, idx: number) => {
     const status = statusFor(g);
-    const locationLine = [g.city, g.fieldName, g.fieldAddress]
-      .filter((s) => s && s.trim().length > 0)
+    // Build "city · field · address" but drop the standalone city when
+    // the free-text address already mentions it (admins commonly write
+    // "הרב קלישר, פתח תקווה" — listing the city twice on a community
+    // card looks like a bug).
+    const city = (g.city ?? '').trim();
+    const fieldName = (g.fieldName ?? '').trim();
+    const fieldAddress = (g.fieldAddress ?? '').trim();
+    const cityInAddress =
+      city.length > 0 && fieldAddress.toLowerCase().includes(city.toLowerCase());
+    const locationLine = [
+      cityInAddress ? '' : city,
+      fieldName,
+      fieldAddress,
+    ]
+      .filter((s) => s.length > 0)
       .join(' · ');
     // The denormalised public count can drift behind /groups.playerIds
     // (client-side direct-joins on open communities can't write to the
@@ -292,22 +307,23 @@ export function PublicGroupsFeedScreen() {
     const localGroup = memberGroups.find((mg) => mg.id === g.id);
     const memberCount = localGroup?.playerIds?.length ?? g.memberCount;
     return (
-      <CommunityCard
-        key={g.id}
-        name={g.name}
-        locationLine={locationLine}
-        memberCount={memberCount}
-        status={status}
-        onPress={() => {
-          // Members enter the full community page; non-members
-          // open the public preview where they can act on a join.
-          if (status === 'admin' || status === 'member') {
-            handleEnter(g);
-          } else {
-            handleOpenDetails(g);
-          }
-        }}
-      />
+      <AppearItem key={g.id} index={idx}>
+        <CommunityCard
+          name={g.name}
+          locationLine={locationLine}
+          memberCount={memberCount}
+          status={status}
+          onPress={() => {
+            // Members enter the full community page; non-members
+            // open the public preview where they can act on a join.
+            if (status === 'admin' || status === 'member') {
+              handleEnter(g);
+            } else {
+              handleOpenDetails(g);
+            }
+          }}
+        />
+      </AppearItem>
     );
   };
 
@@ -374,7 +390,9 @@ export function PublicGroupsFeedScreen() {
       </View>
       {totalKnown === 0 && !isSearching ? (
         <View style={styles.emptyAll}>
-          <Ionicons name="globe-outline" size={64} color={colors.textMuted} />
+          {/* Bouncing ball mascot — same energy as the football icon
+              but reads as "the app is alive, just nothing here yet". */}
+          <BouncingBall size={64} color="#3B82F6" />
           <Text style={styles.emptyAllTitle}>{he.communitiesEmptyAll}</Text>
           <Text style={styles.emptyAllSub}>{he.communitiesEmptyAllSub}</Text>
           <Button

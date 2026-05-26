@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   body: {
     ...typography.body,
@@ -107,7 +106,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: spacing.sm,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   actions: {
     flexDirection: 'row',

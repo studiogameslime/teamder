@@ -14,7 +14,7 @@
 // — the component renders a Pressable label that opens whatever modal
 // the caller provides via `onPress`.
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -24,6 +24,13 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  Easing,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
@@ -53,9 +60,38 @@ export function InputField({
   containerStyle,
   value,
   required,
+  onFocus,
+  onBlur,
   ...textInputProps
 }: Props) {
   const hasValue = typeof value === 'string' && value.length > 0;
+
+  // Focus state drives a soft border + tint sweep on the surrounding
+  // pill so the user sees which field is active. Animation is JS-thread
+  // -free (worklet-only) so a long keyboard mount doesn't stutter it.
+  const focus = useSharedValue(0);
+  const [focused, setFocused] = useState(false);
+
+  const fieldAnimStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      focus.value,
+      [0, 1],
+      ['#F5F5F5', colors.primary],
+    ),
+    backgroundColor: interpolateColor(
+      focus.value,
+      [0, 1],
+      ['#F5F5F5', '#FFFFFF'],
+    ),
+  }));
+
+  const setFocus = (next: boolean) => {
+    setFocused(next);
+    focus.value = withTiming(next ? 1 : 0, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  };
 
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -66,51 +102,56 @@ export function InputField({
         </Text>
       ) : null}
       {onPress ? (
-        // Tap-to-pick variant — non-editable text + icon, opens a modal
-        // when tapped. We deliberately render a `<Text>` so the
-        // placeholder-vs-value styling can diverge cleanly.
         <Pressable
           onPress={onPress}
-          style={({ pressed }) => [styles.field, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [pressed && { opacity: 0.85 }]}
         >
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.input,
-              !hasValue && { color: colors.textMuted },
-            ]}
-          >
-            {hasValue ? value : (placeholder ?? '')}
-          </Text>
-          {icon ? (
-            <Ionicons
-              name={icon}
-              size={20}
-              color={colors.textMuted}
-              style={styles.iconRight}
-            />
-          ) : null}
+          <Animated.View style={[styles.field, fieldAnimStyle]}>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.input,
+                !hasValue && { color: colors.textMuted },
+              ]}
+            >
+              {hasValue ? value : (placeholder ?? '')}
+            </Text>
+            {icon ? (
+              <Ionicons
+                name={icon}
+                size={20}
+                color={colors.textMuted}
+                style={styles.iconRight}
+              />
+            ) : null}
+          </Animated.View>
         </Pressable>
       ) : (
-        <View style={styles.field}>
+        <Animated.View style={[styles.field, fieldAnimStyle]}>
           <TextInput
             {...textInputProps}
             value={value}
             placeholder={placeholder}
-            // Lighter than `colors.textMuted` so an empty input visibly
-            // reads as a hint, not as a pre-filled value.
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            onFocus={(e) => {
+              setFocus(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocus(false);
+              onBlur?.(e);
+            }}
           />
           {icon ? (
             <Ionicons
               name={icon}
               size={20}
-              color={colors.textMuted}
+              color={focused ? colors.primary : colors.textMuted}
               style={styles.iconRight}
             />
           ) : null}
-        </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -144,6 +185,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
     minHeight: 52,
+    // Border is invisible at rest (same colour as the fill). When the
+    // field gains focus the Reanimated style interpolates the colour to
+    // colors.primary, drawing a subtle blue outline without shifting
+    // any pixels (constant border width = no layout reflow).
+    borderWidth: 1.5,
+    borderColor: '#F5F5F5',
   },
   input: {
     ...typography.body,

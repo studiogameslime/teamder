@@ -31,6 +31,9 @@ export function navigateInvite(args: {
   if (args.type === 'session') {
     nav.navigate('GameTab', {
       screen: 'MatchDetails',
+      // Keep GamesList below MatchDetails in the stack — see the
+      // navigateForPush calls below for the same rationale.
+      initial: false,
       params: { gameId: args.id },
     });
     return true;
@@ -41,6 +44,7 @@ export function navigateInvite(args: {
   // user, so it's the safe fallback for not-yet-members.
   nav.navigate('CommunitiesTab', {
     screen: args.isMember ? 'CommunityDetails' : 'CommunityDetailsPublic',
+    initial: false,
     params: { groupId: args.id },
   });
   return true;
@@ -106,6 +110,7 @@ export function navigateForPush(
       if (groupId) {
         nav.navigate('CommunitiesTab', {
           screen: 'CommunityDetails',
+          initial: false,
           params: { groupId },
         });
         return true;
@@ -126,6 +131,7 @@ export function navigateForPush(
       if (groupId) {
         nav.navigate('CommunitiesTab', {
           screen: 'CommunityDetails',
+          initial: false,
           params: { groupId },
         });
         return true;
@@ -135,11 +141,23 @@ export function navigateForPush(
     case 'gameReminder':
     case 'gameCanceledOrUpdated':
     case 'spotOpened':
+    case 'spotOffered':
     case 'inviteToGame':
     case 'rateReminder':
     case 'gameFillingUp':
     case 'gameRsvpNudge':
+    case 'gamePlayersJoined':
     case 'playerCancelled':
+    // Cross-community filler flow — admin-side pushes ("someone
+    // applied to fill", "no matching fillers right now") and the
+    // candidate-side "fillerOpportunity" all carry a `gameId` in
+    // the payload. Land the user on MatchDetails for that game so
+    // they can see the filler section / approve / lower the trust
+    // threshold without hunting through tabs.
+    case 'fillerNoCandidates':
+    case 'fillerInterestReceived':
+    case 'fillerOpportunity':
+    case 'gameShortageWarning':
       // Account-deletion variant: no specific gameId in the payload
       // (the user dropped from multiple games at once). Send the
       // admin to the Communities tab so they can pick which of
@@ -150,6 +168,11 @@ export function navigateForPush(
       }
       nav.navigate('GameTab', {
         screen: 'MatchDetails',
+        // `initial: false` ensures the tab's root screen (GamesList)
+        // sits BELOW MatchDetails in the stack, so the in-screen
+        // back arrow pops to GamesList instead of dumping the user
+        // back on whichever tab was active before the push tap.
+        initial: false,
         params: { gameId },
       });
       return true;
@@ -166,6 +189,33 @@ export function navigateForPush(
       // detail popover keys off the optional `badgeId` payload field.
       nav.navigate('ProfileTab', { screen: 'Achievements' });
       return true;
+
+    case 'promotePrompt':
+      // Post-orphan-game push to the creator. Open the promote screen
+      // pre-filled with the personal group + the source game.
+      if (gameId && groupId) {
+        nav.navigate('GameTab', {
+          screen: 'PromoteOrphan',
+          params: { groupId, gameId },
+        });
+        return true;
+      }
+      return false;
+
+    case 'groupInvitation':
+      // A user the orphan-game creator just promoted into a real
+      // community has been invited. Land them on the community page —
+      // they're in `pendingPlayerIds` and will see the "המתנה לאישור"
+      // banner there.
+      if (groupId) {
+        nav.navigate('CommunitiesTab', {
+          screen: 'CommunityDetails',
+          initial: false,
+          params: { groupId },
+        });
+        return true;
+      }
+      return false;
 
     default:
       return false;

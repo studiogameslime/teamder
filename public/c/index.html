@@ -1021,6 +1021,41 @@
     var emptyCta = document.getElementById('emptyCta');
     if (emptyCta) emptyCta.addEventListener('click', function (e) { e.preventDefault(); openInApp(); });
 
+    // ── Try-app-then-show-showcase ─────────────────────────────────
+    // On mobile, attempt to open the installed app immediately so
+    // users who already have Teamder skip this page entirely. We
+    // intentionally DO NOT auto-redirect to the Play Store as a
+    // fallback here (unlike /invite.html, which has no content of
+    // its own) — if the app isn't installed, the showcase renders
+    // normally and the user reads about the community before
+    // deciding to install.
+    var ua = navigator.userAgent || '';
+    var isAndroid = /Android/i.test(ua);
+    var isIOS = /iPhone|iPad|iPod/i.test(ua);
+    if ((isAndroid || isIOS) && groupId) {
+      var isChrome =
+        /Chrome\/[0-9]/.test(ua) &&
+        !/EdgA|EdgiOS|OPR|SamsungBrowser/.test(ua);
+      if (isAndroid && isChrome) {
+        // Chrome's intent:// resolves the scheme without falling
+        // back to a 404 when the app isn't there — `S.browser_fallback_url`
+        // points back to THIS page (effectively a no-op) so the
+        // showcase still renders if the app isn't installed.
+        var sameUrl = location.href.split('#')[0];
+        var intentUrl =
+          'intent://team/' + encodeURIComponent(groupId) +
+          '#Intent;scheme=footy;package=com.studiogameslime.soccerapp' +
+          ';S.browser_fallback_url=' + encodeURIComponent(sameUrl) +
+          ';end';
+        location.replace(intentUrl);
+      } else {
+        // Other browsers: assign the custom scheme. If the app is
+        // there the OS hijacks navigation; otherwise the assign is
+        // a silent no-op and the user sees the showcase.
+        location.href = deepLink();
+      }
+    }
+
     // Append referrer to the Play Store link so a fresh install
     // lands on the community page after first launch (mirrors the
     // pattern used in /invite.html).

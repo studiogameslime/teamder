@@ -29,39 +29,43 @@ export function CreateGroupScreen() {
   const submit = async (v: GroupFormValues) => {
     if (!user) return;
     const cityVal = v.city.trim();
-    const streetVal = v.street.trim();
-    const note = v.addressNote.trim();
     const phone = v.contactPhone.trim();
-    const composedAddress =
-      [streetVal, cityVal].filter(Boolean).join(', ') +
-      (note ? ` — ${note}` : '');
-    const parsedMax = parseInt(v.maxPlayers, 10);
     const parsedMaxMembers = parseInt(v.maxMembers, 10);
     try {
       const group = await createGroup({
         name: v.name.trim(),
-        fieldName: v.fieldName.trim(),
-        fieldAddress: composedAddress.length > 0 ? composedAddress : undefined,
-        city: cityVal || undefined,
-        street: streetVal || undefined,
-        addressNote: note || undefined,
         description: v.description.trim() || undefined,
-        defaultMaxPlayers: Number.isFinite(parsedMax) ? parsedMax : 15,
+        isOpen: v.isOpen,
+        rules: v.rules.trim() || undefined,
+        contactPhone: phone || undefined,
+        city: cityVal || undefined,
         maxMembers: Number.isFinite(parsedMaxMembers)
           ? parsedMaxMembers
           : undefined,
-        isOpen: v.isOpen,
-        contactPhone: phone || undefined,
-        preferredDays: v.preferredDays,
-        preferredHour: v.preferredHour || undefined,
-        rules: v.rules.trim() || undefined,
-        recurringGameEnabled: v.recurringGameEnabled,
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
       nav.replace('CommunityDetails', { groupId: group.id });
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      // Surface a human-readable Hebrew message instead of dumping the
+      // raw error text. The two practical failure modes:
+      //   1. `unauthenticated` — the server-side App Check / Play
+      //      Integrity gate rejected the request. Common when running
+      //      on an emulator or before the production keystore's
+      //      SHA-256 has been registered in Firebase App Check.
+      //   2. `resource-exhausted` — daily rate limit (5/day) hit.
+      // Anything else falls back to a generic create-failed toast.
+      const err = e as { code?: string; message?: string };
+      const code = String(err.code ?? '').replace(/^functions\//, '');
+      let msg: string = he.createGroupGenericError;
+      if (code === 'unauthenticated') {
+        msg = he.createGroupAuthError;
+      } else if (code === 'resource-exhausted') {
+        msg = err.message || he.createGroupRateLimitError;
+      } else if (err.message) {
+        msg = err.message;
+      }
+      Alert.alert(he.error, msg);
     }
   };
 

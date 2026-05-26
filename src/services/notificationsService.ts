@@ -23,11 +23,18 @@
 // (prefs screen, per-community toggle) works regardless.
 
 import {
-  addDoc,
   arrayRemove,
   arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
   serverTimestamp,
+  setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
   GroupId,
@@ -38,11 +45,30 @@ import {
   defaultNotificationPrefs,
 } from '@/types';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
-import { col, docs } from '@/firebase/firestore';
+import { docs } from '@/firebase/firestore';
+import {
+  cooldownMsFor,
+  dedupeIdFor,
+  dedupeKeyFor,
+  inferEntityFromPayload,
+} from '@/services/notificationDedup';
 
 // Mock-mode collection so the Settings screen and dispatch hooks work
 // without a Firestore round-trip during development.
 const mockNotifications: NotificationDoc[] = [];
+
+// Notification doc schema version. Bumped each time the dedupe /
+// payload contract changes incompatibly. Server-side bumps
+// independently — keep them in lockstep.
+const NOTIFICATION_SCHEMA_VERSION = 2;
+const STALE_UNREAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Types that should query for ANY unread doc with the same dedupeKey
+// (across cooldown buckets) and skip the dispatch if found. Mirrors
+// the server-side STRICT_UNREAD_DEDUP map.
+const STRICT_UNREAD_DEDUP: Partial<Record<NotificationType, true>> = {
+  gameCanceledOrUpdated: true,
+};
 
 export const notificationsService = {
   /**
@@ -59,6 +85,12 @@ export const notificationsService = {
     type: NotificationType;
     recipientId: UserId;
     payload: Record<string, unknown>;
+    /** Optional override. Defaults are inferred from `(type, payload)`
+     *  via `inferEntityFromPayload` — most callers don't need to set
+     *  these explicitly. */
+    entityType?: 'game' | 'group' | 'user';
+    entityId?: string;
+    reason?: string;
   }): Promise<void> {
     if (!input?.type || !input?.recipientId) {
       if (__DEV__) {
@@ -81,13 +113,99 @@ export const notificationsService = {
       }
       return;
     }
+    // Deterministic-ID dedupe. Without this, every `dispatch` write
+    // produced a new doc id → fired `onDocumentCreated` → produced a
+    // new push, even if the same logical event was fired ten times in
+    // a row (admin spamming "edit", race between groupStore +
+    // groupService dispatching the same approval, retries on flaky
+    // network). Now we compute a stable id; the second write inside
+    // the cooldown bucket is just an UPDATE of the same doc, which
+    // does NOT re-fire the trigger.
+    //
+    // We still BAIL OUT entirely if the doc already exists & is unread
+    // (avoid even the silent overwrite — keeps the original payload
+    // truthful for any consumers reading the doc directly, e.g. an
+    // in-app inbox screen). If the previous notification was already
+    // read, we delete & recreate so the trigger re-fires for the
+    // fresh logical event.
+    const inferred = inferEntityFromPayload(
+      input.type,
+      input.recipientId,
+      input.payload || {},
+    );
+    const dedupeInput = {
+      type: input.type,
+      recipientId: input.recipientId,
+      entityType: input.entityType ?? inferred.entityType,
+      entityId: input.entityId ?? inferred.entityId,
+      reason: input.reason ?? inferred.reason,
+    };
+    const id = dedupeIdFor(dedupeInput);
+    const dedupeKey = dedupeKeyFor(dedupeInput);
+    const now = Date.now();
+    const { db: firestoreDb } = getFirebase();
+    const ref = doc(firestoreDb, 'notifications', id);
+
+    // PRIMARY (strict-unread types): if any unread doc already exists
+    // for this dedupeKey, suppress. The user already has an unread
+    // ping for this logical event — pushing a second one would just
+    // multiply the badge count. Reading the first push unlocks the
+    // next one. Stale unread docs (older than the TTL) are ignored.
+    if (STRICT_UNREAD_DEDUP[input.type]) {
+      try {
+        const dup = await getDocs(
+          query(
+            collection(firestoreDb, 'notifications'),
+            where('dedupeKey', '==', dedupeKey),
+            where('read', '==', false),
+            limit(1),
+          ),
+        );
+        if (!dup.empty) {
+          const dupData = dup.docs[0].data() as
+            | { createdAtMs?: number }
+            | undefined;
+          const createdAtMs = Number(dupData?.createdAtMs) || 0;
+          if (now - createdAtMs < STALE_UNREAD_TTL_MS) {
+            return; // unread exists, not stale → suppress
+          }
+        }
+      } catch (err) {
+        // Index missing / permission blip — log and fall through.
+        // The bucket-id check below still gives retry safety.
+        if (__DEV__) {
+          console.warn('[notifications] strict-unread query failed', err);
+        }
+      }
+    }
+
     try {
-      await addDoc(col.notifications(), {
+      const existing = await getDoc(ref);
+      if (existing.exists()) {
+        const data = existing.data() as { read?: boolean } | undefined;
+        if (!data?.read) {
+          // Same logical event already pushed and not yet read — drop.
+          return;
+        }
+        // Read previously; bucket rotation will produce a fresh id
+        // once the cooldown elapses. Server-side does
+        // delete-and-recreate; the client stays conservative.
+        return;
+      }
+      await setDoc(ref, {
         type: input.type,
         recipientId: input.recipientId,
+        entityType: dedupeInput.entityType,
+        entityId: dedupeInput.entityId,
+        reason: dedupeInput.reason,
+        dedupeKey,
         payload: input.payload,
         createdAt: serverTimestamp(),
+        createdAtMs: now,
+        cooldownMs: cooldownMsFor(input.type),
+        read: false,
         delivered: false,
+        schemaVersion: NOTIFICATION_SCHEMA_VERSION,
       });
     } catch (err) {
       if (__DEV__) console.warn('[notifications] dispatch failed', err);
@@ -95,8 +213,62 @@ export const notificationsService = {
   },
 
   /**
-   * Save the user's per-type prefs. Merges into /users/{uid} via a
-   * partial update so other user fields stay untouched.
+   * Notify the game admin that a player just cancelled. Routed through
+   * a callable Cloud Function (instead of a direct /notifications
+   * write) so the server can aggregate multiple cancellations into a
+   * single unread notification, canonicalise the cancelling player's
+   * name from /users, and dedupe identically against retries.
+   *
+   * Best-effort — failures log a warning but never throw, so a
+   * notification miss won't block the actual cancel transaction
+   * the caller is in the middle of.
+   */
+  async notifyPlayerCancelled(input: {
+    gameId: string;
+    reason?: string;
+  }): Promise<void> {
+    if (USE_MOCK_DATA || !input?.gameId) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { httpsCallable } = require('firebase/functions');
+      const { functions } = getFirebase();
+      const fn = httpsCallable(functions, 'notifyPlayerCancelled');
+      await fn({ gameId: input.gameId, reason: input.reason ?? '' });
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[notifications] notifyPlayerCancelled failed', err);
+      }
+    }
+  },
+
+  /**
+   * Mark a notification as read. Used by the inbox screen + the
+   * deeplink handler when the user taps a push to open the app.
+   * Read state allows future dispatches with the SAME dedupeKey to
+   * re-fire the trigger — without it, repeat events would be
+   * suppressed for the full cooldown window even after the user has
+   * already engaged.
+   */
+  async markRead(notificationId: string): Promise<void> {
+    if (USE_MOCK_DATA || !notificationId) return;
+    try {
+      const { db: firestoreDb } = getFirebase();
+      await updateDoc(doc(firestoreDb, 'notifications', notificationId), {
+        read: true,
+        readAt: Date.now(),
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('[notifications] markRead failed', err);
+    }
+  },
+
+  /**
+   * Save the user's per-type prefs. Writes to the SELF-ONLY private
+   * subdoc /users/{uid}/private/push so other signed-in users can't
+   * read which notification types this user has muted (they used to
+   * be readable via the public /users/{uid} doc — Security Audit
+   * Finding #1). The CF reads via Admin SDK and merges with the
+   * legacy root-doc copy for users who haven't migrated yet.
    */
   async savePreferences(uid: UserId, prefs: NotificationPrefs): Promise<void> {
     if (USE_MOCK_DATA) {
@@ -107,10 +279,14 @@ export const notificationsService = {
       return;
     }
     try {
-      await updateDoc(docs.user(uid), {
-        notificationPrefs: prefs,
-        updatedAt: Date.now(),
-      });
+      await setDoc(
+        docs.userPrivatePush(uid),
+        {
+          notificationPrefs: prefs,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
     } catch (err) {
       if (__DEV__) console.warn('[notifications] savePreferences failed', err);
     }
@@ -143,17 +319,30 @@ export const notificationsService = {
   },
 
   /**
-   * Persist a push token under /users/{uid}.fcmTokens. Multi-device:
-   * `arrayUnion` is idempotent so re-running this on app boot won't
-   * accumulate duplicates of the same token. Mock mode: no-op.
+   * Persist a push token under /users/{uid}/private/push.fcmTokens.
+   * Multi-device: `arrayUnion` is idempotent so re-running this on app
+   * boot won't accumulate duplicates of the same token.
+   *
+   * The token used to live on the public /users/{uid}.fcmTokens, where
+   * any signed-in user could read it (Security Audit Finding #1).
+   * Moved here behind self-only rules. The Cloud Function still reads
+   * it via Admin SDK and falls back to the legacy public field for
+   * users who haven't migrated yet — see `loadUsers` in
+   * functions/src/index.ts.
+   *
+   * Mock mode: no-op.
    */
   async registerDeviceToken(uid: UserId, token: string): Promise<void> {
     if (USE_MOCK_DATA || !token) return;
     try {
-      await updateDoc(docs.user(uid), {
-        fcmTokens: arrayUnion(token),
-        updatedAt: Date.now(),
-      });
+      await setDoc(
+        docs.userPrivatePush(uid),
+        {
+          fcmTokens: arrayUnion(token),
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
     } catch (err) {
       if (__DEV__) console.warn('[notifications] registerDeviceToken', err);
     }

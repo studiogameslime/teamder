@@ -16,6 +16,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { ArrivalStatus } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -33,7 +34,15 @@ export interface ParticipantEntry {
   /** Per-game arrival, if recorded. */
   arrival?: ArrivalStatus;
   /** Bucket — drives the trailing status badge. */
-  bucket: 'players' | 'waitlist' | 'pending';
+  bucket: 'players' | 'waitlist' | 'pending' | 'guest';
+  /** Self-marked "אני מביא כדור". Surfaced as a small football
+   *  icon on the trailing (visual-left under RTL) edge of the row. */
+  isBringingBall?: boolean;
+  /** Flag the auth user's own row. When true, the ball indicator
+   *  becomes a tappable toggle so the user can flip their own
+   *  bring-ball state inline (no extra section needed below the
+   *  fold). Other rows render the read-only badge as before. */
+  isCurrentUser?: boolean;
 }
 
 interface Props {
@@ -44,6 +53,19 @@ interface Props {
   members: ParticipantEntry[];
   onSeeAll: () => void;
   onPressMember: (uid: string) => void;
+  /** Fires when the auth user taps the inline ball toggle on their
+   *  own row. Caller is expected to optimistically flip local state
+   *  and persist the change. */
+  onToggleBringingBall?: (uid: string) => void;
+  /** Admin-only entry to the add-guest flow. When provided, a small
+   *  text link renders next to "הצג הכל" in the header. Hidden when
+   *  omitted — non-admins / terminal games shouldn't see it. */
+  onAddGuest?: () => void;
+  /** True when the current viewer is a game/community admin. Drives
+   *  the inline ball-bringer toggle on guest rows (guests can't sign
+   *  in to toggle themselves, so the admin manages it on their
+   *  behalf). Read-only otherwise. */
+  isAdminViewer?: boolean;
 }
 
 export function MatchParticipantsSection({
@@ -53,6 +75,9 @@ export function MatchParticipantsSection({
   members,
   onSeeAll,
   onPressMember,
+  onToggleBringingBall,
+  onAddGuest,
+  isAdminViewer = false,
 }: Props) {
   const visible = members.slice(0, maxRows);
   return (
@@ -64,9 +89,16 @@ export function MatchParticipantsSection({
             ({total}/{capacity})
           </Text>
         </Text>
-        <Pressable onPress={onSeeAll} hitSlop={8}>
-          <Text style={styles.seeAll}>{he.achievementsSeeAll}</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          {onAddGuest ? (
+            <Pressable onPress={onAddGuest} hitSlop={8}>
+              <Text style={styles.seeAll}>{he.guestAddButton}</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={onSeeAll} hitSlop={8}>
+            <Text style={styles.seeAll}>{he.achievementsSeeAll}</Text>
+          </Pressable>
+        </View>
       </View>
       {visible.length === 0 ? (
         <Card style={styles.emptyCard}>
@@ -80,6 +112,8 @@ export function MatchParticipantsSection({
               entry={m}
               showDivider={i > 0}
               onPress={() => onPressMember(m.id)}
+              onToggleBringingBall={onToggleBringingBall}
+              isAdminViewer={isAdminViewer}
             />
           ))}
         </Card>
@@ -92,11 +126,32 @@ function ParticipantRow({
   entry,
   showDivider,
   onPress,
+  onToggleBringingBall,
+  isAdminViewer,
 }: {
   entry: ParticipantEntry;
   showDivider: boolean;
   onPress: () => void;
+  onToggleBringingBall?: (uid: string) => void;
+  isAdminViewer?: boolean;
 }) {
+  // Ball indicator. Toggle is enabled for:
+  //   • The auth user's own row (any registered player toggles
+  //     their own bring-ball state inline).
+  //   • Guest rows when viewer is an admin — guests can't sign in,
+  //     so the admin manages their state on their behalf.
+  // Other rows render a read-only badge ONLY when they're carrying
+  // a ball.
+  const isMine =
+    entry.isCurrentUser === true &&
+    entry.bucket === 'players' &&
+    !!onToggleBringingBall;
+  const canToggleGuest =
+    entry.bucket === 'guest' &&
+    !!isAdminViewer &&
+    !!onToggleBringingBall;
+  const canToggle = isMine || canToggleGuest;
+
   return (
     <Pressable
       onPress={onPress}
@@ -108,14 +163,21 @@ function ParticipantRow({
       accessibilityRole="button"
       accessibilityLabel={entry.name}
     >
-      {/* Avatar — generic blue circle with a person silhouette.
-          Matches the reference design (round avatar, not jersey).
-          The jersey-style identity lives in the achievements /
-          profile screens; this list is about "who's coming" and a
-          neutral avatar reads better at the row scale. */}
-      <View style={styles.avatar}>
-        <Ionicons name="person" size={20} color="#3B82F6" />
-      </View>
+      {/* Real avatar — uploaded photo first, then chosen avatarId,
+          then deterministic colourful fallback (UserAvatar handles
+          the priority chain + fallback). Replaces an earlier static
+          "person silhouette" Ionicons placeholder that ignored the
+          user's actual identity even when avatarId/photoUrl were
+          available. */}
+      <UserAvatar
+        user={{
+          id: entry.id,
+          name: entry.name,
+          avatarId: entry.avatarId,
+          photoUrl: entry.photoUrl,
+        }}
+        size={44}
+      />
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
           {entry.name}
@@ -127,8 +189,47 @@ function ParticipantRow({
             </Text>
           </View>
         ) : null}
+        {entry.bucket === 'guest' ? (
+          <View style={[styles.roleBadge, styles.guestBadge]}>
+            <Text style={[styles.roleBadgeText, styles.guestBadgeText]}>
+              {he.matchPlayersGuestTag}
+            </Text>
+          </View>
+        ) : null}
       </View>
-      <StatusBadge bucket={entry.bucket} arrival={entry.arrival} />
+      {canToggle ? (
+        <Pressable
+          onPress={(e) => {
+            // Inner press shouldn't bubble to the row's navigate-to-
+            // PlayerCard handler. RN doesn't auto-stop bubbling for
+            // Pressable so call the helper explicitly.
+            e.stopPropagation?.();
+            onToggleBringingBall?.(entry.id);
+          }}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.ballBadge,
+            !entry.isBringingBall && styles.ballBadgeInactive,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.matchBringBallToggle}
+          accessibilityState={{ selected: !!entry.isBringingBall }}
+        >
+          <Ionicons
+            name={entry.isBringingBall ? 'football' : 'football-outline'}
+            size={14}
+            color={entry.isBringingBall ? '#1D4ED8' : colors.textMuted}
+          />
+        </Pressable>
+      ) : entry.isBringingBall ? (
+        <View style={styles.ballBadge}>
+          <Ionicons name="football" size={14} color="#1D4ED8" />
+        </View>
+      ) : null}
+      {entry.bucket === 'guest' ? null : (
+        <StatusBadge bucket={entry.bucket} arrival={entry.arrival} />
+      )}
       <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
     </Pressable>
   );
@@ -138,9 +239,12 @@ function StatusBadge({
   bucket,
   arrival,
 }: {
-  bucket: 'players' | 'waitlist' | 'pending';
+  bucket: 'players' | 'waitlist' | 'pending' | 'guest';
   arrival?: ArrivalStatus;
 }) {
+  // Guests are tagged inline next to their name (mirroring the
+  // "מנהל" badge), so we never render a trailing guest tag here.
+  if (bucket === 'guest') return null;
   // Arrival overrides bucket when present (post-game accuracy).
   if (arrival === 'arrived') {
     return (
@@ -163,13 +267,11 @@ function StatusBadge({
   if (bucket === 'pending') {
     return <Tag label={he.matchPlayersPendingTag} tone="muted" />;
   }
-  return (
-    <Tag
-      label={he.matchParticipantStatusComing}
-      tone="success"
-      icon="checkmark-circle"
-    />
-  );
+  // Registered players (default 'players' bucket) — the row already
+  // implies "coming", so the green "מגיע" tag was visual noise on
+  // every line. Only render a badge when there's something the row
+  // alone doesn't convey (waitlist/pending/late/no-show/arrived).
+  return null;
 }
 
 function Tag({
@@ -212,6 +314,14 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   count: { color: '#64748B', fontWeight: '500' },
+  // Trailing-edge action group. Sits between the title and the row
+  // edge with a small gap so multiple text-link CTAs (e.g. "הוסף
+  // אורח" + "הצג הכל") don't crowd each other when both are visible.
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
   seeAll: {
     ...typography.caption,
     color: '#3B82F6',
@@ -251,14 +361,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(15,23,42,0.06)',
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   body: {
     flex: 1,
     flexDirection: 'row',
@@ -284,6 +386,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#1D4ED8',
   },
+  // Guest variant — same shape as the organizer badge, neutral tint
+  // so the visual hierarchy reads "organizer > guest > player".
+  guestBadge: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  guestBadgeText: {
+    color: colors.textMuted,
+  },
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -295,5 +405,22 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  ballBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // "Off" state of the inline ball toggle on the auth user's own
+  // row — neutral surface + dashed-feeling outline so the toggle
+  // reads as "tap to flip" rather than a filled badge.
+  ballBadgeInactive: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.divider,
   },
 });

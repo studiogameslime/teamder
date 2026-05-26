@@ -2,8 +2,9 @@ rules_version = '2';
 
 // Firebase Storage rules.
 //
-// Posture: deny by default. The only legitimate write path today is
-// the per-user avatar slot. Everything else is closed.
+// Posture: deny by default. The only legitimate write paths are the
+// per-user avatar slot and the per-community cover photo (coach-only).
+// Everything else is closed.
 //
 // Hardening done in this audit:
 //   • Filename pinned to `avatar.jpg` (was `{fileName}` — the wildcard
@@ -41,6 +42,30 @@ service firebase.storage {
     // and pre-empts any future feature accidentally writing the wrong
     // path.
     match /users/{userId}/{rest=**} {
+      allow read, write: if false;
+    }
+
+    // Community cover photo — full-bleed hero on the community details
+    // screen. Anyone signed-in can read (the cover is shown to members,
+    // visitors, and the public showcase). Only a COACH of the group may
+    // write, verified by reading the canonical /groups/{groupId} doc
+    // and checking adminIds — Storage rules can query Firestore via
+    // firestore.get(). Filename pinned to cover.jpg (no wildcard) so a
+    // compromised admin can't turn the folder into free image hosting.
+    // 2 MB cap: the client pipeline emits a 1280×720 JPEG (~250 KB), so
+    // this is generous headroom while still killing abusive uploads.
+    match /groups/{groupId}/cover.jpg {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid in firestore.get(
+             /databases/(default)/documents/groups/$(groupId)
+           ).data.adminIds
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    // Everything else under /groups/{groupId}/ is closed.
+    match /groups/{groupId}/{rest=**} {
       allow read, write: if false;
     }
 

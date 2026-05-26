@@ -4,7 +4,10 @@ import { Group, GroupId, User, UserId } from '@/types';
 import { groupService } from '@/services';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { notificationsService } from '@/services/notificationsService';
+// notificationsService used to be imported here for `approved` /
+// `rejected` dispatches in approve / reject — that was a duplicate
+// of the same dispatch inside groupService and produced double pushes.
+// The store no longer dispatches; the service is the single source.
 import { achievementsService } from '@/services/achievementsService';
 import { useUserStore } from '@/store/userStore';
 
@@ -31,23 +34,15 @@ interface GroupStore {
 
   // Operations
   createGroup: (input: {
+    // Identity
     name: string;
-    fieldName: string;
-    fieldAddress?: string;
-    city?: string;
-    street?: string;
-    addressNote?: string;
     description?: string;
-    defaultMaxPlayers?: number;
-    maxMembers?: number;
     isOpen?: boolean;
-    contactPhone?: string;
-    preferredDays?: number[];
-    preferredHour?: string;
-    costPerGame?: number;
-    notes?: string;
+    // Info
     rules?: string;
-    recurringGameEnabled?: boolean;
+    contactPhone?: string;
+    city?: string;
+    maxMembers?: number;
     creator: User;
   }) => Promise<Group>;
   requestJoin: (
@@ -188,16 +183,15 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   approve: async (userId) => {
     const g = get().getCurrentGroup();
     if (!g) return;
+    // groupService.approveMember dispatches the `approved` push
+    // itself (mock + Firebase branches both call notificationsService.
+    // dispatch) — DO NOT add a second dispatch here, the requester
+    // would receive the same notification twice. Same for reject.
     const next = await groupService.approveMember(g.id, userId);
     set((s) => ({
       groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
     }));
     logEvent(AnalyticsEvent.GroupJoinApproved, { groupId: g.id, userId });
-    notificationsService.dispatch({
-      type: 'approved',
-      recipientId: userId,
-      payload: { groupId: g.id, groupName: g.name },
-    });
     // Phase 3: the approved player gains "teamsJoined++"; the admin who
     // pressed approve gains "playersCoached++". Both are best-effort and
     // never block the approval flow.
@@ -209,20 +203,18 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   reject: async (userId) => {
     const g = get().getCurrentGroup();
     if (!g) return;
+    // No dispatch here — groupService.rejectMember already pushes
+    // the `rejected` notification. See comment on `approve` above.
     const next = await groupService.rejectMember(g.id, userId);
     set((s) => ({
       groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
     }));
-    notificationsService.dispatch({
-      type: 'rejected',
-      recipientId: userId,
-      payload: { groupId: g.id, groupName: g.name },
-    });
   },
 
   approveMember: async (groupId, userId) => {
     const g = get().groups.find((x) => x.id === groupId);
     if (!g) return;
+    // No duplicate dispatch — groupService.approveMember handles it.
     const next = await groupService.approveMember(groupId, userId);
     // Mirror the freshest copy into the local cache so any UI that
     // reads `pendingPlayerIds` (badges, lists) flips immediately —
@@ -231,11 +223,6 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
     }));
     logEvent(AnalyticsEvent.GroupJoinApproved, { groupId, userId });
-    notificationsService.dispatch({
-      type: 'approved',
-      recipientId: userId,
-      payload: { groupId, groupName: g.name },
-    });
     achievementsService.bump(userId, 'teamsJoined', 1);
     const me = useUserStore.getState().currentUser;
     if (me?.id) achievementsService.bump(me.id, 'playersCoached', 1);
@@ -244,15 +231,11 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
   rejectMember: async (groupId, userId) => {
     const g = get().groups.find((x) => x.id === groupId);
     if (!g) return;
+    // No duplicate dispatch — groupService.rejectMember handles it.
     const next = await groupService.rejectMember(groupId, userId);
     set((s) => ({
       groups: s.groups.map((x) => (x.id === next.id ? { ...next } : x)),
     }));
-    notificationsService.dispatch({
-      type: 'rejected',
-      recipientId: userId,
-      payload: { groupId, groupName: g.name },
-    });
   },
 
   leaveGroup: async (groupId, userId) => {

@@ -43,13 +43,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   action: {
     ...typography.label,
     color: colors.primary,
     fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
 });

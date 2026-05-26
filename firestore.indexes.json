@@ -75,6 +75,14 @@
         { "fieldPath": "gameId", "order": "ASCENDING" },
         { "fieldPath": "index",  "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dedupeKey", "order": "ASCENDING" },
+        { "fieldPath": "read",      "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

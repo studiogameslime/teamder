@@ -344,7 +344,14 @@ export const gameService = {
       createdAt: Date.now(),
     } as GameDoc);
     const fresh = await getDoc(ref);
-    const data = fresh.data()!;
+    // Defensive: a freshly-written doc *should* be readable on the same
+    // region, but transient replication lag or a concurrent rule
+    // rejection can return an empty snapshot. Fail with a clear error
+    // instead of crashing on `.data()!`.
+    if (!fresh.exists()) {
+      throw new Error('createGame: freshly-created game not found');
+    }
+    const data = fresh.data();
     return { ...data, matches: [] };
   },
 
@@ -800,6 +807,47 @@ export const gameService = {
    * Distinct from `getCommunityGames` (discovery) which deliberately
    * excludes games the user is already in.
    */
+  /**
+   * Public-only variant of `getUpcomingGamesForGroup` for the
+   * non-member-facing community page. Filters server-side by
+   * `visibility === 'public'` so the read rule never trips on a
+   * community-only game (which non-members can't read), and at the
+   * same time keeps the result useful for deriving the community's
+   * day/hour pattern from real upcoming activity instead of from the
+   * legacy `preferredDays`/`preferredHour` fields on the group doc.
+   */
+  async getUpcomingPublicGamesForGroup(groupId: GroupId): Promise<Game[]> {
+    const now = Date.now();
+    const isUpcomingStatus = (s: string | undefined) =>
+      s === 'open' || s === 'scheduled';
+    if (USE_MOCK_DATA) {
+      return mockGamesV2
+        .filter(
+          (g) =>
+            g.groupId === groupId &&
+            g.visibility === 'public' &&
+            isUpcomingStatus(g.status) &&
+            g.startsAt > now,
+        )
+        .sort((a, b) => a.startsAt - b.startsAt);
+    }
+    const snap = await getDocs(
+      query(
+        col.games(),
+        where('groupId', '==', groupId),
+        where('visibility', '==', 'public'),
+      ),
+    );
+    const out: Game[] = [];
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (!isUpcomingStatus(data.status)) return;
+      if (data.startsAt <= now) return;
+      out.push({ ...data, matches: [] });
+    });
+    return out.sort((a, b) => a.startsAt - b.startsAt);
+  },
+
   async getUpcomingGamesForGroup(groupId: GroupId): Promise<Game[]> {
     const now = Date.now();
     const isUpcomingStatus = (s: string | undefined) =>
@@ -902,10 +950,17 @@ export const gameService = {
     notes?: string;
     city?: string;
     fieldAddress?: string;
+    /** @deprecated See `ruleTags`. Kept for legacy callers. */
     hasReferee?: boolean;
+    /** @deprecated See `ruleTags`. */
     hasPenalties?: boolean;
+    /** @deprecated See `ruleTags`. */
     hasHalfTime?: boolean;
+    /** @deprecated See `ruleTags`. */
     extraTimeMinutes?: number;
+    /** Free-text rule chips. Replaces the old hasReferee/Penalties/
+     *  HalfTime/extraTime fields. */
+    ruleTags?: string[];
     /**
      * Optional ms-epoch deferred-open timestamp. When present and in
      * the future, the game is created with `status: 'scheduled'` and
@@ -914,7 +969,23 @@ export const gameService = {
      * wizard. Past / undefined → game opens immediately.
      */
     registrationOpensAt?: number;
+    /** When true, this game is open to receiving filler push to
+     *  non-members. Default: false (admin must opt in). */
+    acceptsFillers?: boolean;
+    /** Minimum trust score (0-100) for a filler candidate to receive
+     *  the push. Ignored when `acceptsFillers !== true`. */
+    fillerMinTrust?: number;
     createdBy: UserId;
+    /**
+     * Set when the game was created via the "ללא קהילה — משחק
+     * חד־פעמי" wizard path. The game still belongs to a real group
+     * (the user's hidden personal community) but the UI renders it
+     * as orphan-context: title shown as "משחק חד־פעמי", no
+     * community link. After the game finishes the
+     * `sendPromotePrompts` cron picks it up and pushes the creator
+     * with the "צור קהילה" CTA.
+     */
+    isOrphanContext?: boolean;
   }): Promise<Game> {
     // Defensive: callers come from a TS-typed wizard but the field is
     // user-controlled, so reject anything that isn't one of the two
@@ -1046,7 +1117,20 @@ export const gameService = {
       hasPenalties: input.hasPenalties,
       hasHalfTime: input.hasHalfTime,
       extraTimeMinutes: input.extraTimeMinutes,
+      ruleTags: Array.isArray(input.ruleTags)
+        ? input.ruleTags
+            .filter((t) => typeof t === 'string' && t.trim().length > 0)
+            .map((t) => t.trim().slice(0, 30))
+            .slice(0, 12)
+        : undefined,
       registrationOpensAt: input.registrationOpensAt,
+      acceptsFillers: input.acceptsFillers === true,
+      fillerMinTrust:
+        input.acceptsFillers === true &&
+        typeof input.fillerMinTrust === 'number'
+          ? input.fillerMinTrust
+          : undefined,
+      isOrphanContext: input.isOrphanContext === true ? true : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -1152,11 +1236,17 @@ export const gameService = {
       hasPenalties: boolean;
       hasHalfTime: boolean;
       extraTimeMinutes: number;
+      ruleTags: string[];
       /** Editable on a `status:'scheduled'` game so an admin can
        *  shift the open-time before the CF flips it. The CF's
        *  `openedNotificationSent` latch ensures this never fires a
        *  second push if the original time already passed. */
       registrationOpensAt: number;
+      /** Toggle whether this game receives cross-community filler
+       *  matching. Editable any time before the game starts. */
+      acceptsFillers: boolean;
+      /** Minimum trust score required for filler push. */
+      fillerMinTrust: number;
     }>,
   ): Promise<void> {
     // Visibility is access-control. Don't accept it through the
@@ -1278,11 +1368,83 @@ export const gameService = {
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
       recipientId: gameId,
-      payload: { gameId, action: 'updated' },
+      // editorUid lets the CF self-exclude the admin from the fan-out
+      // (organisers usually also play, and they don't need a "המשחק
+      // עודכן" push for an action they themselves just took).
+      payload: {
+        gameId,
+        action: 'updated',
+        editorUid: USE_MOCK_DATA
+          ? ''
+          : getFirebase().auth.currentUser?.uid ?? '',
+      },
     });
     logEvent(AnalyticsEvent.GameEdited, {
       gameId,
       fields: Object.keys(patch).join(','),
+    });
+  },
+
+  /**
+   * Set or clear the admin-pinned announcement on a game. Empty string
+   * clears the message (renders nothing for non-admins). Capped at 280
+   * chars on the rules side; we trim here so a stray newline at the
+   * end doesn't write a stale-looking value.
+   *
+   * Deliberately does NOT dispatch a `gameCanceledOrUpdated` push —
+   * the pinned message is shown in-app on the next time the user
+   * opens the game. We don't want every typo correction by the admin
+   * to fire a fan-out push.
+   */
+  async setPinnedMessage(
+    gameId: string,
+    message: string,
+  ): Promise<void> {
+    if (!gameId) return;
+    const trimmed = (message || '').trim().slice(0, 280);
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) m.pinnedMessage = trimmed.length > 0 ? trimmed : undefined;
+      return;
+    }
+    await updateGameDoc(gameId, {
+      pinnedMessage: trimmed.length > 0 ? trimmed : null,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Self-toggle "אני מביא כדור" — adds/removes the caller's uid to
+   * `ballBringerIds`. Multiple bringers allowed. Side-effect-free
+   * by design: no push, no notification dispatched. The MatchDetails
+   * roster row reads the array and renders a ball icon next to
+   * names that appear in it.
+   */
+  async setBringingBall(
+    gameId: string,
+    userId: UserId,
+    bringing: boolean,
+  ): Promise<void> {
+    if (!gameId || !userId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (!m) return;
+      const cur = new Set(m.ballBringerIds ?? []);
+      if (bringing) cur.add(userId);
+      else cur.delete(userId);
+      m.ballBringerIds = Array.from(cur);
+      return;
+    }
+    // Atomic add/remove via Firestore array transforms — keeps the
+    // write small and avoids a read-modify-write race when two
+    // players toggle simultaneously.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { arrayUnion, arrayRemove } = require('firebase/firestore');
+    await updateGameDoc(gameId, {
+      ballBringerIds: bringing
+        ? arrayUnion(userId)
+        : arrayRemove(userId),
+      updatedAt: Date.now(),
     });
   },
 
@@ -1302,7 +1464,13 @@ export const gameService = {
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
       recipientId: gameId,
-      payload: { gameId, action: 'deleted' },
+      payload: {
+        gameId,
+        action: 'deleted',
+        editorUid: USE_MOCK_DATA
+          ? ''
+          : getFirebase().auth.currentUser?.uid ?? '',
+      },
     });
     logEvent(AnalyticsEvent.GameFinished, { gameId, deleted: true });
   },
@@ -2045,18 +2213,10 @@ export const gameService = {
         });
       }
       if (wasInPlayers && g.createdBy && g.createdBy !== userId) {
-        notificationsService.dispatch({
-          type: 'playerCancelled',
-          recipientId: g.createdBy,
-          payload: {
-            gameId,
-            gameTitle: g.title,
-            cancellingUserId: userId,
-            // No auto-promotion in the new flow — admin sees the offer
-            // pending state via the UI instead.
-            promotedUserId: null,
-          },
-        });
+        // Routed through the server callable so multiple cancellations
+        // on the same game aggregate into one unread admin
+        // notification (count + names) instead of producing N pushes.
+        notificationsService.notifyPlayerCancelled({ gameId });
       }
       logEvent(AnalyticsEvent.GameCancelled, {
         gameId,
@@ -2188,18 +2348,7 @@ export const gameService = {
       });
     }
     if (result.wasInPlayers && result.createdBy && result.createdBy !== userId) {
-      notificationsService.dispatch({
-        type: 'playerCancelled',
-        recipientId: result.createdBy,
-        payload: {
-          gameId,
-          gameTitle: result.title,
-          cancellingUserId: userId,
-          // Auto-promotion is gone — head of waitlist must explicitly
-          // confirm. Admin sees the "ממתין לאישור" state in the UI.
-          promotedUserId: null,
-        },
-      });
+      notificationsService.notifyPlayerCancelled({ gameId });
     }
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
@@ -2656,7 +2805,13 @@ export const gameService = {
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
       recipientId: gameId, // fan-out marker — CF resolves participants
-      payload: { gameId, action: 'cancelled' },
+      payload: {
+        gameId,
+        action: 'cancelled',
+        editorUid: USE_MOCK_DATA
+          ? ''
+          : getFirebase().auth.currentUser?.uid ?? '',
+      },
     });
     logEvent(AnalyticsEvent.GameFinished, { gameId, byAdmin: true });
   },
@@ -2801,6 +2956,230 @@ export const gameService = {
       status: 'active',
       liveMatch,
       updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Mark a game as "actually played" by stamping `liveMatch.startedAt`.
+   * Called from the LiveMatch screen the first time the admin taps
+   * the timer's play button (after the teams-valid gate passes).
+   *
+   * Single source of truth for "this game happened": the cleanup CF,
+   * stats pipelines, trust scoring and the achievements roll-up all
+   * read this field. A game whose roster registered but whose timer
+   * never fired stays out of every count and is eligible for deletion
+   * by `cleanupStaleGames`.
+   *
+   * Idempotent. A second call after pause/resume leaves `startedAt`
+   * pinned to its original value and only nudges the phase if the
+   * caller wants it moved.
+   */
+  async markGameStarted(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      if (g.status === 'finished' || g.status === 'cancelled') return;
+      const prev = g.liveMatch ?? {
+        phase: 'organizing' as const,
+        assignments: {},
+        benchOrder: [],
+        scoreA: 0,
+        scoreB: 0,
+      };
+      g.status = 'active';
+      g.liveMatch = {
+        ...prev,
+        phase: 'roundRunning',
+        startedAt: prev.startedAt ?? Date.now(),
+      };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (data.status === 'finished' || data.status === 'cancelled') return;
+    const prev = data.liveMatch ?? {
+      phase: 'organizing' as const,
+      assignments: {},
+      benchOrder: [],
+      scoreA: 0,
+      scoreB: 0,
+    };
+    const liveMatch = {
+      ...prev,
+      phase: 'roundRunning' as const,
+      startedAt: prev.startedAt ?? Date.now(),
+    };
+    await updateDoc(ref, {
+      status: 'active',
+      liveMatch,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Start (or resume) the shared match timer. Atomic via Firestore
+   * transaction so two admins pressing "play" at the exact same
+   * instant can't corrupt the clock — both transactions read the
+   * same prior state, the first commits, the second's pre-condition
+   * fails and it retries against the new state (which is "already
+   * running") and becomes a safe no-op.
+   *
+   * `userId` / `userName` are denormalised onto `timerControlledBy*`
+   * so other devices can render "הטיימר מופעל על ידי דני".
+   */
+  async startTimer(
+    gameId: string,
+    userId: string,
+    userName: string,
+  ): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g || g.status === 'finished' || g.status === 'cancelled') return;
+      const prev = g.liveMatch;
+      if (!prev || prev.timerRunning) return;
+      g.liveMatch = {
+        ...prev,
+        timerRunning: true,
+        timerLastStartedAt: Date.now(),
+        timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    await runTransaction(getFirebase().db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === 'finished' || data.status === 'cancelled') return;
+      const prev = data.liveMatch;
+      if (!prev) return;
+      // Already running — second admin pressing play is a no-op.
+      if (prev.timerRunning) return;
+      const next = {
+        ...prev,
+        timerRunning: true,
+        timerLastStartedAt: Date.now(),
+        timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      tx.update(ref, {
+        liveMatch: next,
+        updatedAt: Date.now(),
+      });
+    });
+  },
+
+  /**
+   * Pause the shared match timer. Captures elapsed-ms-since-start
+   * into the running accumulator so a subsequent resume continues
+   * from the right place. Idempotent: if already paused, no-op.
+   */
+  async pauseTimer(
+    gameId: string,
+    userId: string,
+    userName: string,
+  ): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g || g.status === 'finished' || g.status === 'cancelled') return;
+      const prev = g.liveMatch;
+      if (!prev || !prev.timerRunning || !prev.timerLastStartedAt) return;
+      const extra = Date.now() - prev.timerLastStartedAt;
+      g.liveMatch = {
+        ...prev,
+        timerRunning: false,
+        timerLastStartedAt: null,
+        timerAccumulatedMs: (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    await runTransaction(getFirebase().db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === 'finished' || data.status === 'cancelled') return;
+      const prev = data.liveMatch;
+      if (!prev) return;
+      // Already paused — second admin pressing pause is a no-op.
+      if (!prev.timerRunning || !prev.timerLastStartedAt) return;
+      const extra = Date.now() - prev.timerLastStartedAt;
+      const next = {
+        ...prev,
+        timerRunning: false,
+        timerLastStartedAt: null,
+        timerAccumulatedMs: (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      tx.update(ref, {
+        liveMatch: next,
+        updatedAt: Date.now(),
+      });
+    });
+  },
+
+  /**
+   * Reset the timer back to 00:00 (paused). Used between rounds
+   * — admin presses "סיים סיבוב" → the parent flow already updates
+   * scores + assignments, then calls this to zero the clock so the
+   * next round starts fresh.
+   */
+  async resetTimer(
+    gameId: string,
+    userId: string,
+    userName: string,
+  ): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g || g.status === 'finished' || g.status === 'cancelled') return;
+      const prev = g.liveMatch;
+      if (!prev) return;
+      g.liveMatch = {
+        ...prev,
+        timerRunning: false,
+        timerLastStartedAt: null,
+        timerAccumulatedMs: 0,
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    await runTransaction(getFirebase().db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === 'finished' || data.status === 'cancelled') return;
+      const prev = data.liveMatch;
+      if (!prev) return;
+      const next = {
+        ...prev,
+        timerRunning: false,
+        timerLastStartedAt: null,
+        timerAccumulatedMs: 0,
+        timerControlledBy: userId,
+        timerControlledByName: userName,
+      };
+      tx.update(ref, {
+        liveMatch: next,
+        updatedAt: Date.now(),
+      });
     });
   },
 

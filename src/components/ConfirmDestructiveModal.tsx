@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
+import { SpringSheet } from '@/components/anim/SpringSheet';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -61,10 +62,18 @@ export function ConfirmDestructiveModal({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      // Reanimated SpringSheet drives the entry; the native Modal
+      // animation would race it.
+      animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={busy ? undefined : onClose}>
+      <SpringSheet
+        visible={visible}
+        onBackdropPress={busy ? undefined : onClose}
+        position="center"
+        fromOffsetY={60}
+        panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
+      >
         <Pressable
           style={styles.card}
           onPress={(e) => e.stopPropagation()}
@@ -119,18 +128,14 @@ export function ConfirmDestructiveModal({
             />
           </View>
         </Pressable>
-      </Pressable>
+      </SpringSheet>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
+  // backdrop style retired — SpringSheet now owns the dimmed
+  // background and the centred panel positioning.
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,

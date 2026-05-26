@@ -31,6 +31,14 @@ import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import * as fs from 'fs';
 import * as path from 'path';
 import { setGlobalOptions } from 'firebase-functions/v2';
+import {
+  NotificationKind as DedupeKind,
+  NotificationEntity,
+  cooldownMsFor,
+  dedupeIdFor,
+  dedupeKeyFor,
+  inferEntityFromPayload,
+} from './notificationDedup';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -56,7 +64,18 @@ type NotificationType =
   | 'gameRsvpNudge'
   | 'gamePlayersJoined'
   | 'playerCancelled'
-  | 'groupDeleted';
+  | 'groupDeleted'
+  // Cross-community filler matching (Phase 1)
+  | 'fillerOpportunity'      // → candidate: "קהילה X זקוקה לשחקנים"
+  | 'fillerInterestReceived' // → admin: "X מעוניין למלא"
+  | 'fillerNoCandidates'     // → admin: "לא נמצאו fillers, רוצה להוריד את הסף?"
+  | 'gameShortageWarning'    // → admin: "אין מספיק שחקנים — תחליט אם לבטל"
+  // Orphan-game → community promote flow
+  | 'promotePrompt'          // → creator: "צור קהילה מהמשחק שלך"
+  | 'groupInvitation'        // → participant: "X יצר קהילה ומזמין אותך"
+  // Mutual friendships
+  | 'friendRequest'          // → recipient: "X רוצה להתחבר אליך"
+  | 'friendRequestAccepted'; // → sender: "X אישר את בקשת החברות"
 
 interface NotificationDoc {
   type: NotificationType;
@@ -69,6 +88,306 @@ interface UserDoc {
   fcmTokens?: string[];
   notificationPrefs?: Partial<Record<NotificationType, boolean>>;
   newGameSubscriptions?: string[];
+}
+
+// ─── Growth milestone dispatcher ────────────────────────────────────────
+//
+// Push admins exactly once when a community crosses a member-count
+// threshold. The list is intentionally short — sparse enough to feel
+// like a meaningful event, dense enough at small scale to give early
+// communities a few wins.
+const GROWTH_MILESTONES = [10, 25, 50, 100, 250, 500] as const;
+
+async function dispatchGrowthMilestoneIfNeeded(
+  groupId: string,
+  memberCount: number,
+  adminIds: string[],
+  groupName: string,
+): Promise<void> {
+  if (!groupId || adminIds.length === 0) return;
+  // The largest milestone we've now reached. Note: a community that
+  // jumps from 8 → 60 (e.g. CSV import) should announce 50, not all
+  // intermediate milestones — chatty admins find that annoying.
+  const reached = GROWTH_MILESTONES.filter((m) => memberCount >= m);
+  if (reached.length === 0) return;
+  const target = reached[reached.length - 1];
+
+  // Persist via transaction so concurrent writes can't double-fire
+  // the same milestone (e.g. two admins approving at the same instant
+  // pushing the count from 49 → 50 → 51 in two events). The txn
+  // claims the milestone first, THEN we dispatch — if the dispatch
+  // throws, the milestone stays claimed and won't re-fire on the
+  // next write either, which is the conservative behaviour we want
+  // for retry safety.
+  const groupRef = db.collection('groups').doc(groupId);
+  const claimed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(groupRef);
+    if (!snap.exists) return false;
+    const data = snap.data() as { notifiedMilestones?: number[] };
+    const already = Array.isArray(data.notifiedMilestones)
+      ? data.notifiedMilestones
+      : [];
+    if (already.includes(target)) return false;
+    tx.update(groupRef, {
+      notifiedMilestones: admin.firestore.FieldValue.arrayUnion(target),
+      updatedAt: Date.now(),
+    });
+    return true;
+  });
+  if (!claimed) return;
+
+  await Promise.allSettled(
+    adminIds.map((adminUid) =>
+      createNotificationOnce({
+        type: 'growthMilestone',
+        recipientId: adminUid,
+        payload: {
+          groupId,
+          groupName,
+          milestone: target,
+          memberCount,
+        },
+      }),
+    ),
+  );
+}
+
+// ─── createNotificationOnce — single source for writing /notifications ───
+//
+// Notification doc schema. Bumped from v1 (no dedupe metadata) to v2
+// (dedupeKey + entity + read tracking) when this helper rolled out.
+// Future migrations should bump again so consumers can branch on the
+// version explicitly.
+const NOTIFICATION_SCHEMA_VERSION = 2;
+
+// Unread notifications older than this are considered abandoned —
+// any new event for the same dedupeKey should NOT be suppressed by
+// them. Without this, an admin who edited a game once 3 weeks ago
+// could permanently silence all future "game updated" pushes for
+// recipients who never opened the original.
+const STALE_UNREAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Types that opt into "primary unread suppression": before writing,
+// query the collection for ANY unread doc with the same dedupeKey
+// (across all cooldown buckets, not just the current one). If found
+// and not stale, skip the write entirely. Reading the existing doc
+// is what unlocks the next push — bucket rotation is then only the
+// SECONDARY protection, mainly against retry duplicates within ms.
+//
+// We opt in `gameCanceledOrUpdated` because that's the headline
+// spam vector: an admin can edit a game 30+ times before kickoff,
+// and recipients shouldn't drown in push noise. The unread query
+// requires a `(dedupeKey, read)` composite index — see
+// firestore.indexes.json.
+const STRICT_UNREAD_DEDUP: Partial<Record<DedupeKind, true>> = {
+  gameCanceledOrUpdated: true,
+};
+
+// Types where a duplicate write inside the cooldown bucket should
+// AGGREGATE the payload (count + appended id/name lists) into the
+// existing unread doc instead of being dropped silently. The
+// `onDocumentCreated` trigger only fires on the FIRST create, so the
+// recipient still gets exactly ONE push for the cluster — but if
+// they tap through to the in-app inbox, the doc reflects the latest
+// aggregated state ("3 שחקנים ביטלו" instead of just the first one).
+const AGGREGATE_ON_DUPLICATE: Partial<Record<DedupeKind, true>> = {
+  playerCancelled: true,
+};
+
+// Build the aggregation update for a duplicate write of an
+// AGGREGATE_ON_DUPLICATE type. The fields we touch are bounded
+// (capped at 50 entries to stop runaway growth even if a cron loops);
+// everything else on the doc is left intact, including the
+// already-fired `delivered: true / false` and `createdAt`.
+function buildAggregateUpdate(
+  type: DedupeKind,
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  if (type === 'playerCancelled') {
+    const update: Record<string, unknown> = {
+      'payload.count': admin.firestore.FieldValue.increment(1),
+      updatedAtMs: Date.now(),
+    };
+    if (typeof payload.cancellingUserId === 'string') {
+      update['payload.cancellingUserIds'] =
+        admin.firestore.FieldValue.arrayUnion(payload.cancellingUserId);
+    }
+    if (typeof payload.cancellingUserName === 'string') {
+      update['payload.cancellingUserNames'] =
+        admin.firestore.FieldValue.arrayUnion(payload.cancellingUserName);
+    }
+    return update;
+  }
+  return {};
+}
+
+/**
+ * All server-side notification writes funnel through here.
+ *
+ * Two layers of dedupe:
+ *   1. PRIMARY (for STRICT_UNREAD_DEDUP types): query for any unread
+ *      doc with the same dedupeKey. If found and not stale, skip.
+ *      Reading unlocks future pushes.
+ *   2. SECONDARY (always): atomic `ref.create()` against the
+ *      bucket-id'd doc — fails on AlreadyExists, which we treat as
+ *      a duplicate (or, for AGGREGATE_ON_DUPLICATE types, as a
+ *      signal to merge into the existing doc).
+ *
+ * Concurrency: `ref.create()` is atomic — two parallel callers
+ * inside the same bucket race; one wins, the other gets
+ * AlreadyExists. The loser then either skips or aggregates. No
+ * `set()` overwrite, so the original payload (and trigger fire) is
+ * never lost.
+ *
+ * Failure mode: any throw is logged and swallowed —
+ * `{ wrote: false, skipped: 'error' }`. The originating user action
+ * (approve, edit, cancel, etc.) MUST NOT be blocked by a
+ * notification failure.
+ */
+async function createNotificationOnce(input: {
+  type: DedupeKind;
+  recipientId: string;
+  entityType?: NotificationEntity;
+  entityId?: string;
+  reason?: string;
+  payload?: Record<string, unknown>;
+  /** Caller uid for audit + per-type abuse checks. Server callers pass
+   *  the empty string (system-originated). */
+  createdByUid?: string;
+  /** Override the bucket time. Tests / cron-style flushes that want
+   *  deterministic ids can pass a fixed value. */
+  nowMs?: number;
+}): Promise<{ wrote: boolean; id: string; skipped?: string }> {
+  if (!input.recipientId || !input.type) {
+    return { wrote: false, id: '', skipped: 'invalid-input' };
+  }
+  const payload = input.payload ?? {};
+  const inferred = inferEntityFromPayload(
+    input.type,
+    input.recipientId,
+    payload,
+  );
+  const dedupeInput = {
+    type: input.type,
+    recipientId: input.recipientId,
+    entityType: input.entityType ?? inferred.entityType,
+    entityId: input.entityId ?? inferred.entityId,
+    reason: input.reason ?? inferred.reason,
+  };
+  const now = input.nowMs ?? Date.now();
+  const id = dedupeIdFor(dedupeInput, now);
+  const dedupeKey = dedupeKeyFor(dedupeInput);
+  const ref = db.collection('notifications').doc(id);
+
+  // ── PRIMARY (strict-unread types) ─────────────────────────────────
+  if (STRICT_UNREAD_DEDUP[input.type]) {
+    try {
+      const dup = await db
+        .collection('notifications')
+        .where('dedupeKey', '==', dedupeKey)
+        .where('read', '==', false)
+        .limit(1)
+        .get();
+      if (!dup.empty) {
+        const dupData = dup.docs[0].data() as { createdAtMs?: number };
+        const createdAtMs = Number(dupData.createdAtMs) || 0;
+        if (now - createdAtMs < STALE_UNREAD_TTL_MS) {
+          console.log(
+            '[createNotificationOnce] suppressed by unread',
+            { type: input.type, recipientId: input.recipientId, dedupeKey },
+          );
+          return { wrote: false, id, skipped: 'unread-exists' };
+        }
+        // Stale unread — fall through. The bucket-create below is
+        // ALSO protected, so even if a stale doc exists with the
+        // same id, we'll handle it via AlreadyExists.
+      }
+    } catch (err) {
+      // Index missing / network blip — log but don't block. The
+      // bucket-id create below still provides retry safety.
+      console.warn(
+        '[createNotificationOnce] strict-unread query failed',
+        { type: input.type, recipientId: input.recipientId },
+        err,
+      );
+    }
+  }
+
+  // ── SECONDARY (always): atomic create against bucket-id ───────────
+  const docBody = {
+    type: input.type,
+    recipientId: input.recipientId,
+    entityType: dedupeInput.entityType,
+    entityId: dedupeInput.entityId,
+    reason: dedupeInput.reason,
+    dedupeKey,
+    payload,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAtMs: now,
+    cooldownMs: cooldownMsFor(input.type),
+    read: false,
+    delivered: false,
+    createdByUid: input.createdByUid ?? '',
+    schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+  };
+
+  try {
+    await ref.create(docBody);
+    console.log(
+      '[createNotificationOnce] wrote',
+      {
+        type: input.type,
+        recipientId: input.recipientId,
+        id,
+        entityId: dedupeInput.entityId,
+        reason: dedupeInput.reason,
+      },
+    );
+    return { wrote: true, id };
+  } catch (err) {
+    // Firestore Admin throws AlreadyExists (gRPC code 6) when the
+    // doc already exists. Any other code is a real failure.
+    const code = (err as { code?: number | string }).code;
+    const isAlreadyExists = code === 6 || code === 'already-exists';
+    if (!isAlreadyExists) {
+      console.error(
+        '[createNotificationOnce] create failed',
+        { type: input.type, recipientId: input.recipientId, id },
+        err,
+      );
+      return { wrote: false, id, skipped: 'error' };
+    }
+
+    // Doc exists. If aggregation is allowed for this type, fold the
+    // new event into the existing doc — but only if it's still
+    // unread (otherwise the previous push has already been seen and
+    // we should let bucket rotation produce a fresh doc). The
+    // existence/read read here is racy with a parallel update; that
+    // race is benign because both racers want to merge into the
+    // same doc.
+    if (AGGREGATE_ON_DUPLICATE[input.type]) {
+      try {
+        const snap = await ref.get();
+        const data = snap.data() as
+          | { read?: boolean; createdAtMs?: number }
+          | undefined;
+        const createdAtMs = Number(data?.createdAtMs) || 0;
+        const stale =
+          createdAtMs > 0 && now - createdAtMs >= STALE_UNREAD_TTL_MS;
+        if (data && !data.read && !stale) {
+          await ref.update(buildAggregateUpdate(input.type, payload));
+          return { wrote: false, id, skipped: 'aggregated' };
+        }
+      } catch (mergeErr) {
+        console.warn(
+          '[createNotificationOnce] aggregation merge failed',
+          { type: input.type, recipientId: input.recipientId, id },
+          mergeErr,
+        );
+      }
+    }
+    return { wrote: false, id, skipped: 'duplicate-bucket' };
+  }
 }
 
 // ─── Default Hebrew messages per type ──────────────────────────────────
@@ -147,23 +466,22 @@ function buildMessage(
           : `${gameTitle} מתחיל היום. אתה מצטרף?`,
       };
     case 'gameCanceledOrUpdated': {
-      // The dispatch site sends `action: 'cancelled' | 'deleted' |
-      // 'updated'`. A plain edit (e.g. admin tweaks the time / field)
-      // should NOT produce a "המשחק בוטל" banner — that misleads
-      // players into thinking the game is gone. Branch on the action
-      // so updates and cancellations get distinct copy.
+      // Dispatch sites pass `action: 'cancelled' | 'deleted' | 'updated'`.
+      // ONLY 'cancelled' / 'deleted' should produce the "המשחק בוטל"
+      // copy — those are explicit admin actions that end the game. Any
+      // other action (including unknown / legacy values) gets the
+      // softer "המשחק עודכן" wording so a stray dispatch never tells
+      // players the game was cancelled when it wasn't.
       const action = typeof payload.action === 'string' ? payload.action : '';
-      if (action === 'updated') {
+      if (action === 'cancelled' || action === 'deleted') {
         return {
-          title: 'המשחק עודכן',
-          body: `${gameTitle} עודכן. בדוק את הפרטים בלשונית המשחקים.`,
+          title: 'המשחק בוטל',
+          body: `${gameTitle} בוטל. בדוק את לשונית המשחקים.`,
         };
       }
-      // 'cancelled' / 'deleted' (or unknown — old payloads default to
-      // the cancellation copy as a safe fallback).
       return {
-        title: 'המשחק בוטל',
-        body: `${gameTitle} בוטל. בדוק את לשונית המשחקים.`,
+        title: 'המשחק עודכן',
+        body: `${gameTitle} עודכן. בדוק את הפרטים בלשונית המשחקים.`,
       };
     }
     case 'spotOpened':
@@ -208,9 +526,14 @@ function buildMessage(
       };
     }
     case 'gamePlayersJoined': {
-      // Batched admin push — N joiners in the recent window are
+      // Batched admin push — N joiners in the LATEST window are
       // consolidated into ONE notification. The flushPendingJoinerNotifs
-      // cron is what assembles `joinerNames` (CSV) and `count`.
+      // cron assembles `joinerNames` (CSV) + `count`. The count is
+      // BATCH-SCOPED (joiners since the last flush) — NOT total game
+      // roster — so the copy uses "נוספים" / "חדשים" to set that
+      // expectation. Earlier copy ("6 שחקנים אישרו הגעה") read like a
+      // total, which confused admins whose game already had more
+      // registrants from previous batches.
       const namesCsv = typeof payload.joinerNames === 'string'
         ? (payload.joinerNames as string)
         : '';
@@ -218,12 +541,12 @@ function buildMessage(
       const count = (payload.count as number | undefined) ?? names.length;
       const head =
         names.length === 0
-          ? `${count} שחקנים אישרו הגעה`
+          ? `${count} שחקנים סימנו שיגיעו`
           : names.length === 1
-            ? `${names[0]} אישר הגעה`
-            : names.length === 2
-              ? `${names[0]} ו-${names[1]} אישרו הגעה`
-              : `${names[0]}, ${names[1]} ועוד ${count - 2} אישרו הגעה`;
+            ? `${names[0]} סימן שיגיע`
+            : count <= 2
+              ? `${names[0]} ו-${names[1]} סימנו שיגיעו`
+              : `${names[0]} ועוד ${count - 1} סימנו שיגיעו`;
       return {
         title: head,
         body: `ל${gameTitle}`,
@@ -238,6 +561,20 @@ function buildMessage(
       return {
         title: 'הקהילה נסגרה',
         body: `הקהילה ${name} נמחקה על ידי המנהל.`,
+      };
+    }
+    case 'gameShortageWarning': {
+      // Admin-only T-2h nudge: roster can't fill two teams. Body
+      // tells the admin the current count and required minimum so
+      // they can decide whether to cancel manually, push for more
+      // players, or run the game short-handed.
+      const registered =
+        typeof payload.registered === 'number' ? payload.registered : 0;
+      const required =
+        typeof payload.required === 'number' ? payload.required : 0;
+      return {
+        title: 'אין מספיק שחקנים למשחק',
+        body: `ל${gameTitle} (עוד שעתיים) רשומים ${registered}/${required} שחקנים — לא מספיק ל-2 קבוצות. תחליט/י אם לבטל או להמשיך.`,
       };
     }
     case 'playerCancelled': {
@@ -276,8 +613,98 @@ function buildMessage(
           : `שחקן ביטל ב${gameTitle}. כדאי לחפש מחליף.`,
       };
     }
-    case 'growthMilestone':
-      return null; // not yet implemented client-side
+    case 'growthMilestone': {
+      // Per-admin push when a community crosses a member-count
+      // threshold (10 / 25 / 50 / 100 / 250 / 500). The dispatcher
+      // (`dispatchGrowthMilestoneIfNeeded`) records the crossed
+      // value on `groups.notifiedMilestones[]` so the same milestone
+      // is never re-fired even if a member leaves and re-joins.
+      const milestone = Number(payload.milestone) || 0;
+      return {
+        title: `${groupName} חצתה ${milestone} חברים 🎉`,
+        body: `הקהילה גדלה — תודה שתרמתם לבנייתה.`,
+      };
+    }
+    case 'fillerOpportunity': {
+      // → candidate. Discreet copy: NOT framed as "the community
+      // approved you" — they only expressed interest. The admin
+      // still has to approve via the receiveing side.
+      const city =
+        typeof payload.city === 'string' && payload.city.length > 0
+          ? ` ב${payload.city}`
+          : '';
+      const shortBy =
+        typeof payload.shortBy === 'number' && payload.shortBy > 0
+          ? ` חסרים ${payload.shortBy} שחקנים.`
+          : '';
+      return {
+        title: 'הזדמנות למילוי משחק',
+        body: `הקהילה ${groupName}${city} צריכה שחקנים${
+          when ? ` — ${when}` : ''
+        }.${shortBy} רוצה להגיש מועמדות?`,
+      };
+    }
+    case 'fillerInterestReceived': {
+      // → game admin. Doesn't reveal the candidate's name in the
+      // body (admin clicks through to see profile + trust meter
+      // before approving).
+      return {
+        title: 'מישהו מעוניין למלא',
+        body: `שחקן הגיש מועמדות למלא ב${gameTitle}. עיין בפרופיל לפני אישור.`,
+      };
+    }
+    case 'fillerNoCandidates': {
+      // → game admin, fallback after the matcher couldn't find
+      // anyone meeting the configured min-trust filter.
+      return {
+        title: 'אין כרגע fillers מתאימים',
+        body: `לא נמצאו שחקנים שעומדים בסף האמינות שהוגדר ל${gameTitle}. רוצה להוריד את הסף ולנסות שוב?`,
+      };
+    }
+    case 'promotePrompt': {
+      // → creator of an orphan game whose evening just ended. The
+      // CTA opens the promote screen pre-filled with the roster.
+      return {
+        title: 'שיחקתם נחמד 🤝',
+        body: `רוצה לשמור את החברים מ${gameTitle}? צור קהילה בלחיצה ותקבע משחק שבועי.`,
+      };
+    }
+    case 'groupInvitation': {
+      // → participant of an orphan game whose creator just
+      // promoted the personal group to a real community.
+      const inviter =
+        typeof payload.inviterName === 'string'
+          ? (payload.inviterName as string)
+          : 'מארגן המשחק';
+      const name = (payload.groupName as string) || groupName;
+      return {
+        title: 'הזמנה לקהילה',
+        body: `${inviter} מזמין אותך להצטרף ל"${name}". להיכנס ולאשר?`,
+      };
+    }
+    case 'friendRequest': {
+      // → recipient of a friend request. fromName is written
+      // server-side from the canonical sender doc (no spoofing).
+      const fromName =
+        typeof payload.fromName === 'string' && payload.fromName.length > 0
+          ? (payload.fromName as string)
+          : 'שחקן';
+      return {
+        title: 'בקשת חברות חדשה',
+        body: `${fromName} רוצה להתחבר אליך כחבר. אשר או דחה בפרופיל.`,
+      };
+    }
+    case 'friendRequestAccepted': {
+      // → original sender, once the recipient accepted.
+      const fromName =
+        typeof payload.fromName === 'string' && payload.fromName.length > 0
+          ? (payload.fromName as string)
+          : 'שחקן';
+      return {
+        title: 'בקשת החברות אושרה 🤝',
+        body: `${fromName} אישר/ה את בקשת החברות שלך — אתם חברים עכשיו.`,
+      };
+    }
     default:
       return null;
   }
@@ -312,16 +739,50 @@ function formatHebrewWhen(ms: number): string {
 
 // ─── Recipient resolution ──────────────────────────────────────────────
 
+// Loads users for outbound notification delivery, MERGING the
+// public /users/{uid} doc with the private
+// /users/{uid}/private/push doc that holds fcmTokens +
+// notificationPrefs. Sensitive fields used to live on the public
+// user doc, which any signed-in client could read — see Security
+// Audit Finding #1. We moved them to a self-only subcollection;
+// the CF (Admin SDK) bypasses rules and reads both.
+//
+// Backward compatibility: legacy users that haven't yet written a
+// private/push doc still have fcmTokens / notificationPrefs on the
+// root /users/{uid} doc. The merge prefers private values when
+// present and falls back to root values otherwise — so delivery
+// works for both migrated and legacy users without a forced
+// migration.
 async function loadUsers(uids: string[]): Promise<UserDoc[]> {
   if (uids.length === 0) return [];
-  // De-dupe (game arrays can drift) and use db.getAll for a single
-  // batched read instead of an `in` query that's capped at 30.
   const unique = Array.from(new Set(uids));
-  const refs = unique.map((u) => db.collection('users').doc(u));
-  const snaps = await db.getAll(...refs);
+  const userRefs = unique.map((u) => db.collection('users').doc(u));
+  const privateRefs = unique.map((u) =>
+    db.collection('users').doc(u).collection('private').doc('push'),
+  );
+  // One getAll call for both sets — cheaper than two round-trips.
+  const all = await db.getAll(...userRefs, ...privateRefs);
+  const half = unique.length;
   const out: UserDoc[] = [];
-  for (const snap of snaps) {
-    if (snap.exists) out.push(snap.data() as UserDoc);
+  for (let i = 0; i < half; i++) {
+    const userSnap = all[i];
+    const privSnap = all[i + half];
+    if (!userSnap.exists) continue;
+    const root = userSnap.data() as UserDoc;
+    if (privSnap.exists) {
+      const priv = privSnap.data() as {
+        fcmTokens?: string[];
+        notificationPrefs?: UserDoc['notificationPrefs'];
+      };
+      out.push({
+        ...root,
+        fcmTokens: priv.fcmTokens ?? root.fcmTokens,
+        notificationPrefs:
+          priv.notificationPrefs ?? root.notificationPrefs,
+      });
+    } else {
+      out.push(root);
+    }
   }
   return out;
 }
@@ -356,9 +817,14 @@ async function resolveRecipients(
       .collection('users')
       .where('newGameSubscriptions', 'array-contains', groupId)
       .get();
-    return snap.docs
-      .filter((d) => d.id !== createdBy)
-      .map((d) => d.data() as UserDoc);
+    // Re-route through `loadUsers` so the per-user private/push
+    // subcollection (fcmTokens + notificationPrefs) is merged in.
+    // The query returns only the root user doc, which post-migration
+    // has empty / stale fcmTokens.
+    const uids = snap.docs
+      .map((d) => d.id)
+      .filter((uid) => uid !== createdBy);
+    return loadUsers(uids);
   }
 
   if (
@@ -385,6 +851,22 @@ async function resolveRecipients(
             ])
           )
         : g.players || []; // gameReminder + rateReminder → players only
+    // Self-exclusion: the admin who edited / cancelled the game is
+    // typically also a player (organisers usually play). They DON'T
+    // need a "המשחק עודכן" push for an action they themselves just
+    // took — that's the most common spam complaint. The dispatch
+    // sites stamp the editor uid on the payload; absence of the
+    // field falls back to the no-op behaviour from before.
+    if (notif.type === 'gameCanceledOrUpdated') {
+      const editorUid =
+        typeof payload.editorUid === 'string'
+          ? (payload.editorUid as string)
+          : '';
+      const filtered = editorUid
+        ? ids.filter((u) => u !== editorUid)
+        : ids;
+      return loadUsers(filtered);
+    }
     return loadUsers(ids);
   }
 
@@ -436,10 +918,10 @@ async function resolveRecipients(
     return loadUsers(candidates);
   }
 
-  // Single recipient.
-  const snap = await db.collection('users').doc(notif.recipientId).get();
-  if (!snap.exists) return [];
-  return [snap.data() as UserDoc];
+  // Single recipient. Re-route through loadUsers so the private/push
+  // subcollection is merged in; otherwise post-migration users would
+  // have no fcmTokens visible from the root doc.
+  return loadUsers([notif.recipientId]);
 }
 
 // ─── Delivery ──────────────────────────────────────────────────────────
@@ -494,41 +976,92 @@ async function deliverBatch(
   // the "אני בא / לא בא" pair; `spotOffered` uses its own
   // "אישור הגעה / ויתור" pair.
   let categoryIdentifier: string | undefined;
-  if (type === 'gameReminder' || type === 'gameRsvpNudge') {
+  if (
+    type === 'gameReminder' ||
+    type === 'gameRsvpNudge' ||
+    type === 'newGameInCommunity'
+  ) {
     categoryIdentifier = 'GAME_REMINDER';
   } else if (type === 'spotOffered') {
     categoryIdentifier = 'SPOT_OFFER';
+  } else if (type === 'fillerOpportunity') {
+    categoryIdentifier = 'FILLER_OPPORTUNITY';
   }
 
+  // When a categoryIdentifier is set, action buttons must render on
+  // both platforms. Android requires special handling: if the FCM
+  // message has a top-level `notification` block, the OS auto-renders
+  // the notification in background and bypasses expo-notifications
+  // entirely — so the registered category's buttons are never
+  // attached. The only reliable path is a *data-only* FCM message,
+  // which forces expo-notifications' FirebaseMessagingService to
+  // build the notification itself and read `data.categoryId` (note:
+  // Android reads `categoryId`, not `categoryIdentifier` — that's
+  // the iOS spelling). For iOS we keep the alert payload under
+  // `apns.payload.aps.alert` since dropping the top-level
+  // `notification` removes its visible content otherwise.
   // sendEachForMulticast is capped at 500 tokens per call.
   const all = Array.from(tokens);
   let ok = 0;
   let failed = 0;
   for (let i = 0; i < all.length; i += 500) {
     const chunk = all.slice(i, i + 500);
+    const baseData: Record<string, string> = categoryIdentifier
+      ? {
+          ...data,
+          // Android side of expo-notifications reads `categoryId`.
+          categoryId: categoryIdentifier,
+          // Kept for any JS-side handler that still keys off the
+          // iOS spelling (and as a forward-compat hint).
+          categoryIdentifier,
+          // expo-notifications builds the visible notification from
+          // data["title"] / data["message"] when there's no
+          // top-level notification block.
+          title: message.title,
+          message: message.body,
+        }
+      : data;
     const res = await messaging.sendEachForMulticast({
       tokens: chunk,
-      notification: { title: message.title, body: message.body },
-      // The client looks at `data.categoryIdentifier` to know which
-      // category buttons to render on Android — iOS reads it off
-      // `apns.payload.aps.category` below. Sending in both places is
-      // belt-and-suspenders but cheap.
-      data: categoryIdentifier
-        ? { ...data, categoryIdentifier }
-        : data,
-      android: { priority: 'high', notification: { sound: 'default' } },
+      // Drop the top-level `notification` block when we have a
+      // category — see comment above. Without buttons we keep the
+      // existing dual-payload shape so nothing else changes.
+      ...(categoryIdentifier
+        ? {}
+        : { notification: { title: message.title, body: message.body } }),
+      data: baseData,
+      android: categoryIdentifier
+        ? { priority: 'high' }
+        : { priority: 'high', notification: { sound: 'default' } },
       apns: {
         payload: {
-          aps: {
-            sound: 'default',
-            ...(categoryIdentifier ? { category: categoryIdentifier } : {}),
-          },
+          aps: categoryIdentifier
+            ? {
+                alert: { title: message.title, body: message.body },
+                sound: 'default',
+                category: categoryIdentifier,
+              }
+            : {
+                sound: 'default',
+              },
         },
       },
     });
     ok += res.successCount;
     failed += res.failureCount;
+    if (res.failureCount > 0) {
+      const failures = res.responses
+        .map((r, idx) => (r.success ? null : { token: chunk[idx]?.slice(0, 12) + '…', err: r.error?.message, code: r.error?.code }))
+        .filter((x) => x !== null);
+      console.warn(
+        `[notifications] ${type}: ${res.failureCount} FCM failure(s) of ${chunk.length}`,
+        JSON.stringify(failures.slice(0, 5)),
+      );
+    }
   }
+  console.log(
+    `[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} categoryIdentifier=${categoryIdentifier ?? 'none'}`,
+  );
   return { ok, failed, skippedPref, skippedNoToken };
 }
 
@@ -547,6 +1080,73 @@ async function deliverBatch(
  */
 const GAME_UPDATE_DEDUP_WINDOW_MS = 60 * 1000;
 
+/**
+ * Re-fetch user-visible textual fields from canonical /games and
+ * /groups docs so a client cannot spoof them via the notification
+ * payload. We touch ONLY:
+ *   • payload.gameTitle  ←  /games/{gameId}.title
+ *   • payload.groupName  ←  /groups/{groupId}.name
+ *   • payload.startsAt   ←  /games/{gameId}.startsAt
+ *
+ * Other payload fields (IDs, action discriminators, counters) are
+ * either internal IDs the client can't usefully spoof or already
+ * server-generated upstream (e.g. `inviterName` is set by the
+ * `sendGameInvite` callable, never by the client directly). We
+ * leave those untouched.
+ *
+ * The helper is best-effort: if a fetch fails (deleted game, network
+ * blip), the original payload value passes through. This keeps
+ * notifications flowing during transient outages instead of dropping
+ * pushes silently.
+ */
+async function canonicaliseNotificationPayload(
+  raw: Record<string, unknown> | undefined,
+): Promise<Record<string, unknown>> {
+  const payload: Record<string, unknown> = { ...(raw || {}) };
+  const gameId =
+    typeof payload.gameId === 'string' ? (payload.gameId as string) : '';
+  const groupId =
+    typeof payload.groupId === 'string'
+      ? (payload.groupId as string)
+      : '';
+  const fetches: Promise<unknown>[] = [];
+  if (gameId) {
+    fetches.push(
+      db
+        .collection('games')
+        .doc(gameId)
+        .get()
+        .then((snap) => {
+          if (!snap.exists) return;
+          const g = snap.data() as { title?: string; startsAt?: number };
+          if (typeof g.title === 'string') payload.gameTitle = g.title;
+          if (typeof g.startsAt === 'number') payload.startsAt = g.startsAt;
+        })
+        .catch(() => {
+          /* best-effort */
+        }),
+    );
+  }
+  if (groupId) {
+    fetches.push(
+      db
+        .collection('groups')
+        .doc(groupId)
+        .get()
+        .then((snap) => {
+          if (!snap.exists) return;
+          const g = snap.data() as { name?: string };
+          if (typeof g.name === 'string') payload.groupName = g.name;
+        })
+        .catch(() => {
+          /* best-effort */
+        }),
+    );
+  }
+  await Promise.all(fetches);
+  return payload;
+}
+
 export const onNotificationCreated = onDocumentCreated(
   'notifications/{id}',
   async (event) => {
@@ -555,15 +1155,20 @@ export const onNotificationCreated = onDocumentCreated(
     const notif = snap.data() as NotificationDoc;
     if (notif.delivered) return;
 
-    // Game-update dedup: an admin editing a game 3 times in 30s
-    // should not fan out 3 separate pushes to every registered
-    // player. We use a per-gameId latch doc with `lastDispatchedAt`;
-    // if the latch is fresh, skip this push. Updating the latch is
-    // best-effort — if it fails the worst case is one duplicate
-    // push, which is fine.
+    // Game-update / cancel / delete dedup: any of these actions
+    // shouldn't fan out twice within the dedup window. We use a
+    // per-gameId latch doc with `lastDispatchedAt`; if fresh, skip
+    // this push. Defense against:
+    //   • admin editing a game 3 times in 30s (`updated`)
+    //   • multiple cascade dispatches accidentally hitting the
+    //     same game (`cancelled` / `deleted`)
+    // Updating the latch is best-effort — if it fails the worst
+    // case is one duplicate push, which is fine.
     if (
       notif.type === 'gameCanceledOrUpdated' &&
-      notif.payload?.action === 'updated' &&
+      (notif.payload?.action === 'updated' ||
+        notif.payload?.action === 'cancelled' ||
+        notif.payload?.action === 'deleted') &&
       typeof notif.payload?.gameId === 'string'
     ) {
       const gameId = notif.payload.gameId as string;
@@ -591,7 +1196,19 @@ export const onNotificationCreated = onDocumentCreated(
       }
     }
 
-    const message = buildMessage(notif.type, notif.payload || {});
+    // Canonicalise message-bearing payload fields BEFORE building the
+    // notification text. Previously `buildMessage()` consumed
+    // `payload.gameTitle` / `payload.groupName` directly from the
+    // notification doc — fields any signed-in client could spoof to
+    // phish recipients ("המשחק בוטל - דמי גבוהים מ־2000"). The
+    // Firestore rule caps their length but cannot validate truthfulness.
+    //
+    // Fix: re-derive them server-side from the canonical /games and
+    // /groups docs by ID. The IDs themselves come from the payload
+    // but they're unguessable opaque strings, and authorisation to
+    // create the notification is enforced separately.
+    const canonical = await canonicaliseNotificationPayload(notif.payload);
+    const message = buildMessage(notif.type, canonical);
     if (!message) {
       await snap.ref.update({
         delivered: true,
@@ -607,10 +1224,14 @@ export const onNotificationCreated = onDocumentCreated(
     let skippedNoToken = 0;
     try {
       const recipients = await resolveRecipients(notif);
+      // The data payload that ships with the FCM message is built from
+      // the CANONICAL values too — so a client that introspects the
+      // raw push (Notifee / Notifications API) can't see spoofed
+      // strings either.
       const data: Record<string, string> = {
         type: notif.type,
         ...Object.fromEntries(
-          Object.entries(notif.payload || {}).map(([k, v]) => [k, String(v)])
+          Object.entries(canonical).map(([k, v]) => [k, String(v)])
         ),
       };
       const res = await deliverBatch(notif.type, recipients, message, data);
@@ -677,7 +1298,7 @@ export const sendGameReminders = onSchedule(
       // Write the notification + flip reminderSent atomically. A failure
       // mid-write at worst skips the reminder for this game; not double.
       ops.push(
-        db.collection('notifications').add({
+        createNotificationOnce({
           type: 'gameReminder',
           recipientId: doc.id, // fan-out marker
           payload: {
@@ -685,9 +1306,7 @@ export const sendGameReminders = onSchedule(
             gameTitle: g.title || 'המשחק',
             startsAt: g.startsAt,
           },
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          delivered: false,
-        })
+        }),
       );
       ops.push(doc.ref.update({ reminderSent: true }));
     }
@@ -819,7 +1438,7 @@ export const sendRsvpNudges = onSchedule(
       // a re-fire either way.
       for (const uid of targets) {
         try {
-          await db.collection('notifications').add({
+          await createNotificationOnce({
             type: 'gameRsvpNudge',
             recipientId: uid,
             payload: {
@@ -827,8 +1446,6 @@ export const sendRsvpNudges = onSchedule(
               gameTitle: g.title || 'המשחק',
               startsAt: g.startsAt,
             },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            delivered: false,
           });
           nudged += 1;
         } catch (e) {
@@ -912,7 +1529,11 @@ export const flushPendingJoinerNotifs = onSchedule(
 
       // Resolve display names for the message body. Best-effort: a
       // missing user just gets dropped from the names list, but
-      // `count` still reflects the true total.
+      // `count` still reflects the true total. NOTE: the canonical
+      // user-name field on /users/{uid} is `name` (not `displayName`)
+      // — `displayName` is the in-app `Player` projection only. The
+      // earlier code read `displayName` and always got empty, so the
+      // push fell back to "N שחקנים אישרו הגעה" with no names.
       let names: string[] = [];
       try {
         const userRefs = claimedJoiners.map((uid) =>
@@ -922,8 +1543,8 @@ export const flushPendingJoinerNotifs = onSchedule(
         names = userSnaps
           .map((s) => {
             if (!s.exists) return '';
-            const data = s.data() as { displayName?: string };
-            return (data.displayName || '').trim();
+            const data = s.data() as { name?: string; displayName?: string };
+            return (data.name || data.displayName || '').trim();
           })
           .filter((n) => n.length > 0);
       } catch (err) {
@@ -931,7 +1552,7 @@ export const flushPendingJoinerNotifs = onSchedule(
       }
 
       try {
-        await db.collection('notifications').add({
+        await createNotificationOnce({
           type: 'gamePlayersJoined',
           recipientId: g.groupId,
           payload: {
@@ -943,8 +1564,6 @@ export const flushPendingJoinerNotifs = onSchedule(
             joinerNames: names.join(','),
             count: claimedJoiners.length,
           },
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          delivered: false,
         });
         dispatched += 1;
       } catch (err) {
@@ -1022,7 +1641,7 @@ export const flipScheduledGames = onSchedule(
       // write below makes that impossible.
       if (!g.openedNotificationSent) {
         try {
-          await db.collection('notifications').add({
+          await createNotificationOnce({
             type: 'newGameInCommunity',
             recipientId: g.groupId ?? doc.id,
             payload: {
@@ -1033,8 +1652,6 @@ export const flipScheduledGames = onSchedule(
               fieldName: g.fieldName,
               createdBy: g.createdBy,
             },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            delivered: false,
           });
           // Step 2 — flag the game so a future run won't re-notify.
           // Done as a separate write because if step 1 throws we
@@ -1127,12 +1744,32 @@ export const cleanupStaleGames = onSchedule(
         id?: string;
         players?: string[];
         guests?: unknown[];
+        liveMatch?: {
+          phase?: string;
+          startedAt?: number;
+        };
       };
       const playerCount = (g.players ?? []).length;
       const guestCount = (g.guests ?? []).length;
       const isZombie = playerCount === 0 && guestCount === 0;
 
-      if (isZombie) {
+      // "Did this game actually get played?" Single source of truth:
+      // `liveMatch.startedAt` is stamped the first time the admin
+      // taps the timer's play button (after the teams-full gate). As
+      // a safety net for games written before that field existed, we
+      // also accept any phase value that implies the round actually
+      // ran. Without either signal the game was created and forgotten
+      // — it shouldn't count toward stats, trust, or history.
+      const phase = g.liveMatch?.phase;
+      const wasActuallyPlayed =
+        typeof g.liveMatch?.startedAt === 'number' ||
+        phase === 'roundRunning' ||
+        phase === 'roundEnded' ||
+        phase === 'live';
+
+      const shouldDelete = isZombie || !wasActuallyPlayed;
+
+      if (shouldDelete) {
         // Nuke the game and any /rounds it owns. We use a chunked delete
         // because a single batch caps at 500 ops — round counts here are
         // tiny (≤ ~10), but the pattern is safe regardless.
@@ -1287,8 +1924,60 @@ export const dailyCleanup = onSchedule(
       console.error('[dailyCleanup] joinRequests sweep failed', err);
     }
 
+    // 4) Orphaned /games/{gameId}/fillerInterests/{uid} docs. A filler
+    // candidate's interest is meaningful only while the game is still
+    // recruiting. Once the parent game is `finished` or `cancelled`,
+    // the subcollection just bloats Firestore and surfaces in admin
+    // queries that target active recruitment screens. We can't issue
+    // a direct collectionGroup query that joins against the parent
+    // game status, so we iterate terminal games and clear their
+    // subcollections one by one. Same BATCH_LIMIT cap as the other
+    // sweeps; leftovers carry over to the next day.
+    let fillerInterestsDeleted = 0;
+    try {
+      // Pull a bounded page of terminal games. The query is split into
+      // two single-status reads so we can rely on the existing
+      // composite index used elsewhere (status + startsAt) instead of
+      // adding a new "status in" index just for cleanup.
+      const terminalStatuses = ['finished', 'cancelled'] as const;
+      const terminalGameIds: string[] = [];
+      for (const status of terminalStatuses) {
+        if (terminalGameIds.length >= BATCH_LIMIT) break;
+        const remaining = BATCH_LIMIT - terminalGameIds.length;
+        const gamesSnap = await db
+          .collection('games')
+          .where('status', '==', status)
+          .limit(remaining)
+          .get();
+        for (const g of gamesSnap.docs) terminalGameIds.push(g.id);
+      }
+      for (const gameId of terminalGameIds) {
+        try {
+          const interests = await db
+            .collection('games')
+            .doc(gameId)
+            .collection('fillerInterests')
+            .limit(BATCH_LIMIT)
+            .get();
+          if (interests.empty) continue;
+          const batch = db.batch();
+          interests.docs.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+          fillerInterestsDeleted += interests.size;
+        } catch (err) {
+          console.warn(
+            '[dailyCleanup] fillerInterests sweep failed for',
+            gameId,
+            err,
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[dailyCleanup] fillerInterests outer sweep failed', err);
+    }
+
     console.log(
-      `[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}`,
+      `[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}, fillerInterests=${fillerInterestsDeleted}`,
     );
   },
 );
@@ -1363,16 +2052,14 @@ export const sendRateReminders = onSchedule(
       // to game.players. recipientId carries the gameId, mirroring the
       // pattern used by `gameReminder`.
       ops.push(
-        db.collection('notifications').add({
+        createNotificationOnce({
           type: 'rateReminder',
           recipientId: gameDoc.id,
           payload: {
             gameId: gameDoc.id,
             gameTitle: g.title || 'המשחק',
           },
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          delivered: false,
-        })
+        }),
       );
       ops.push(gameDoc.ref.update({ rateReminderSent: true }));
       dispatched++;
@@ -1456,9 +2143,23 @@ export const onGroupPendingChanged = onDocumentWritten(
     // /users rules block this cross-user write. Server-side keeps
     // counters honest regardless of which path admitted the user
     // (admin approve vs open-group direct-join vs cancel-promote).
+    //
+    // While we're at it, default the new member into the community's
+    // new-game push subscription (`newGameSubscriptions` array-contains
+    // groupId). The bell on `CommunityDetailsScreen` flips this same
+    // value, so a member can opt out at any time — but the default
+    // is ON because brand-new joiners typically WANT to hear about
+    // the next game; an opt-in default left most pushes silenced.
+    // `arrayUnion` is a no-op when the groupId is already present,
+    // so the rare "join → opt-out → leave → rejoin" flow doesn't
+    // re-enable behind the user's back ON THE SAME WRITE — but a
+    // genuine fresh rejoin (groupId absent from the array) does
+    // restore the default, which matches the "treat rejoin like a
+    // fresh join" semantics elsewhere.
     if (Array.isArray(afterPlayers)) {
       const prevSet = new Set(beforePlayers ?? []);
       const newJoiners = afterPlayers.filter((uid) => !prevSet.has(uid));
+      const groupId = event.params.groupId;
       for (const uid of newJoiners) {
         try {
           await db.collection('users').doc(uid).set(
@@ -1466,6 +2167,8 @@ export const onGroupPendingChanged = onDocumentWritten(
               achievements: {
                 teamsJoined: admin.firestore.FieldValue.increment(1),
               },
+              newGameSubscriptions:
+                admin.firestore.FieldValue.arrayUnion(groupId),
               updatedAt: Date.now(),
             },
             { merge: true },
@@ -1499,6 +2202,26 @@ export const onGroupPendingChanged = onDocumentWritten(
           err,
         );
       }
+
+      // Growth milestone push: when memberCount crosses a threshold
+      // we haven't already announced. Wired here (instead of in the
+      // `newJoiners` loop above) so it fires once per write — and
+      // the persistence on `notifiedMilestones[]` makes retries /
+      // membership churn idempotent.
+      try {
+        await dispatchGrowthMilestoneIfNeeded(
+          event.params.groupId,
+          afterPlayers!.length,
+          (after as { adminIds?: string[] }).adminIds ?? [],
+          (after as { name?: string }).name || '',
+        );
+      } catch (err) {
+        console.warn(
+          '[onGroupPendingChanged] milestone dispatch failed',
+          event.params.groupId,
+          err,
+        );
+      }
     }
 
     const beforeIds = new Set(before?.pendingPlayerIds ?? []);
@@ -1512,11 +2235,16 @@ export const onGroupPendingChanged = onDocumentWritten(
     const groupId = event.params.groupId;
     const groupName = after.name || 'הקבוצה';
 
+    // Use allSettled so a single quota / network failure on one push
+    // doesn't drop the rest. Previously Promise.all rejected on the
+    // first failure — leaving the requester in pendingPlayerIds with
+    // NO admin notified, an effectively-silent loss of the join
+    // request. Per-failure warnings are logged for monitoring.
     const ops: Promise<unknown>[] = [];
     for (const requesterId of newcomers) {
       for (const adminId of admins) {
         ops.push(
-          db.collection('notifications').add({
+          createNotificationOnce({
             type: 'joinRequest',
             recipientId: adminId,
             payload: {
@@ -1524,15 +2252,25 @@ export const onGroupPendingChanged = onDocumentWritten(
               groupName,
               requesterId,
             },
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            delivered: false,
-          })
+          }),
         );
       }
     }
-    await Promise.all(ops);
+    const results = await Promise.allSettled(ops);
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    if (failed > 0) {
+      console.warn(
+        `[onGroupPendingChanged] ${failed}/${results.length} joinRequest dispatch(es) failed for group ${groupId}`,
+      );
+      for (const r of results) {
+        if (r.status === 'rejected') {
+          console.warn('[onGroupPendingChanged] reason:', r.reason);
+        }
+      }
+    }
+    const ok = results.length - failed;
     console.log(
-      `[onGroupPendingChanged] dispatched ${ops.length} joinRequest push(es) for group ${groupId}`
+      `[onGroupPendingChanged] dispatched ${ok}/${results.length} joinRequest push(es) for group ${groupId}`
     );
   }
 );
@@ -1764,7 +2502,7 @@ export const onGameRosterChanged = onDocumentWritten(
     }
     if (!claimed) return;
 
-    await db.collection('notifications').add({
+    await createNotificationOnce({
       type: 'gameFillingUp',
       recipientId: gameId,
       payload: {
@@ -1774,8 +2512,6 @@ export const onGameRosterChanged = onDocumentWritten(
         startsAt: after.startsAt ?? null,
         remaining,
       },
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      delivered: false,
     });
 
     console.log(
@@ -1916,13 +2652,21 @@ function shuffleInPlace<T>(arr: T[]): void {
  *   player who can't fit lands on the bench in shuffled order.
  * - Tie-breaker order: lowest team total → fewest players → random.
  */
+type BalanceZone =
+  | 'teamA'
+  | 'teamB'
+  | 'teamC'
+  | 'teamD'
+  | 'teamE'
+  | 'bench';
+
 function balanceTeamsV1(
   playerIds: string[],
   ratings: Record<string, number>,
   numberOfTeams: number,
   perTeam: number,
 ): {
-  assignments: Record<string, 'teamA' | 'teamB' | 'bench'>;
+  assignments: Record<string, BalanceZone>;
   benchOrder: string[];
   teamRatings: number[];
   unratedCount: number;
@@ -1947,7 +2691,7 @@ function balanceTeamsV1(
     () => ({ ids: [], total: 0 }),
   );
   const capacity = perTeam;
-  const assignments: Record<string, 'teamA' | 'teamB' | 'bench'> = {};
+  const assignments: Record<string, BalanceZone> = {};
   const benchOrder: string[] = [];
 
   for (const p of scored) {
@@ -1970,12 +2714,14 @@ function balanceTeamsV1(
     target.total += p.rating;
   }
 
-  // Map team[0] / team[1] → 'teamA' / 'teamB'. Live-match state model
-  // only handles 2 teams natively today; any extra team's roster
-  // spills onto the bench so we never drop registered players.
+  // Map team index → live-match zone. The live screen renders A/B as
+  // the on-field matchup and C/D/E as the waiting queue — we assign
+  // each balanced team to its corresponding zone instead of dumping
+  // overflow on the bench (which left "team 3" visually empty even
+  // though enough players were registered).
+  const ZONES: BalanceZone[] = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
   teams.forEach((t, i) => {
-    const zone: 'teamA' | 'teamB' | null =
-      i === 0 ? 'teamA' : i === 1 ? 'teamB' : null;
+    const zone = ZONES[i];
     if (!zone) {
       benchOrder.push(...t.ids);
       return;
@@ -2165,14 +2911,15 @@ async function generateForGame(
       return true;
     });
 
+    // Auto-balance is a silent server action — the next time anyone
+    // opens the match they'll see the arranged teams. We deliberately
+    // do NOT dispatch a push here. The previous `gameCanceledOrUpdated`
+    // notification with action='teams_generated' fell through the body
+    // resolver's switch to the cancellation copy ("המשחק בוטל"), so
+    // every player got a misleading "game cancelled" push when in fact
+    // teams had just been seeded.
     if (wrote) {
-      await db.collection('notifications').add({
-        type: 'gameCanceledOrUpdated',
-        recipientId: ref.id, // fan-out marker
-        payload: { gameId: ref.id, action: 'teams_generated' },
-        createdAt: Date.now(),
-        delivered: false,
-      });
+      console.log(`[autoBalance] generated teams for ${ref.id}`);
     }
   } catch (err) {
     console.error('[autoBalance] generateForGame failed', ref.id, err);
@@ -2191,7 +2938,7 @@ async function generateForGame(
 //
 // Gated to a single hard-coded admin uid so only the project owner can
 // call it — App Check + auth are layered on top in production.
-export const updateAppConfig = onCall(async (request) => {
+export const updateAppConfig = onCall({ enforceAppCheck: true }, async (request) => {
   const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
   if (request.auth?.uid !== ALLOWED_UID) {
     throw new HttpsError('permission-denied', 'admin only');
@@ -2247,7 +2994,7 @@ export const updateAppConfig = onCall(async (request) => {
 const INVITE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const INVITE_RATE_LIMIT_CAP = 30;
 
-export const sendGameInvite = onCall(async (request) => {
+export const sendGameInvite = onCall({ enforceAppCheck: true }, async (request) => {
   // 1) Auth
   const auth = request.auth;
   if (!auth?.uid) {
@@ -2405,7 +3152,7 @@ export const sendGameInvite = onCall(async (request) => {
   // 8) Construct payload server-side ONLY. inviterName / gameTitle /
   //    startsAt all come from canonical state — the client cannot
   //    influence what the recipient sees.
-  await db.collection('notifications').add({
+  await createNotificationOnce({
     type: 'inviteToGame',
     recipientId,
     payload: {
@@ -2415,8 +3162,7 @@ export const sendGameInvite = onCall(async (request) => {
       inviterId: senderUid,
       startsAt: typeof game.startsAt === 'number' ? game.startsAt : 0,
     },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    delivered: false,
+    createdByUid: senderUid,
   });
 
   // 9) Fire-and-forget telemetry counter so analytics keep working
@@ -2440,6 +3186,661 @@ export const sendGameInvite = onCall(async (request) => {
 
   return { ok: true };
 });
+
+// ─── Callable: notify game admin of player cancellation ────────────────
+//
+// Moved off the client write path so we can:
+//   • aggregate multiple cancellations on the same game into ONE
+//     unread notification (count + names appended via the
+//     server-side AGGREGATE_ON_DUPLICATE branch in
+//     `createNotificationOnce`);
+//   • canonicalise the cancelling player's name from the /users doc
+//     instead of trusting whatever the client posts;
+//   • keep the dedupeKey free of per-user discriminators so
+//     successive cancels collide on the same doc id.
+//
+// Auth: the cancelling user must be signed in AND must currently be
+// the user identified in the input (no proxy cancellations). The
+// game's createdBy is the recipient; if the canceller IS the game
+// creator (organiser cancelling themselves out of their own game)
+// we skip — they don't need a push about their own action.
+export const notifyPlayerCancelled = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const callerUid = request.auth.uid;
+    const data = request.data as
+      | { gameId?: unknown; reason?: unknown }
+      | undefined;
+    const gameId = typeof data?.gameId === 'string' ? data.gameId : '';
+    if (!gameId || gameId.length > 128) {
+      throw new HttpsError('invalid-argument', 'invalid gameId');
+    }
+    const reason = typeof data?.reason === 'string' ? data.reason : '';
+    if (reason.length > 60) {
+      throw new HttpsError('invalid-argument', 'reason too long');
+    }
+
+    const [gameSnap, userSnap] = await Promise.all([
+      db.collection('games').doc(gameId).get(),
+      db.collection('users').doc(callerUid).get(),
+    ]);
+    if (!gameSnap.exists) {
+      throw new HttpsError('not-found', 'game does not exist');
+    }
+    const game = gameSnap.data() as {
+      createdBy?: string;
+      title?: string;
+      startsAt?: number;
+    };
+    const adminUid = game.createdBy;
+    if (!adminUid) {
+      // No admin to notify (legacy game). Silently succeed —
+      // suppressing the push is the right behaviour.
+      return { ok: true, skipped: 'no-admin' };
+    }
+    if (adminUid === callerUid) {
+      return { ok: true, skipped: 'self-cancel' };
+    }
+    const cancellingUserName =
+      (userSnap.exists &&
+        typeof userSnap.data()?.name === 'string' &&
+        (userSnap.data()!.name as string).slice(0, 60)) ||
+      '';
+
+    const result = await createNotificationOnce({
+      type: 'playerCancelled',
+      recipientId: adminUid,
+      payload: {
+        gameId,
+        gameTitle: typeof game.title === 'string' ? game.title : '',
+        cancellingUserId: callerUid,
+        cancellingUserName,
+        // Initial count = 1 — the AGGREGATE_ON_DUPLICATE branch will
+        // increment this on subsequent cancellations within the bucket.
+        count: 1,
+        cancellingUserIds: [callerUid],
+        cancellingUserNames: cancellingUserName ? [cancellingUserName] : [],
+      },
+      createdByUid: callerUid,
+    });
+    return { ok: true, result };
+  },
+);
+
+// ─── Callable: ensure personal (hidden) community for orphan games ─────
+//
+// Returns the caller's `personalGroupId`, creating it lazily if missing.
+// All games created via the "ללא קהילה" wizard path land in this group
+// so the rest of the app (rules, queries, CFs) keeps working unchanged.
+// The group is `isPersonal: true, hidden: true` so it never surfaces in
+// feeds, search, or discovery.
+export const ensurePersonalGroup = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      throw new HttpsError('not-found', 'user doc missing');
+    }
+    const userData = userSnap.data() as {
+      personalGroupId?: string;
+      name?: string;
+    };
+
+    // Fast path: already provisioned. Verify the group still exists —
+    // if it was deleted we re-provision rather than handing back a
+    // stale id that would 404 on the next read.
+    if (
+      typeof userData.personalGroupId === 'string' &&
+      userData.personalGroupId.length > 0
+    ) {
+      const existing = await db
+        .collection('groups')
+        .doc(userData.personalGroupId)
+        .get();
+      if (existing.exists) {
+        return { groupId: userData.personalGroupId, created: false };
+      }
+    }
+
+    // Create a fresh hidden group. We don't write a /groupsPublic
+    // mirror — `hidden: true` keeps it out of every feed.
+    const groupRef = db.collection('groups').doc();
+    const now = Date.now();
+    const inviteCode = randomInviteCode();
+    const userName =
+      typeof userData.name === 'string' && userData.name.length > 0
+        ? userData.name
+        : 'משתמש';
+    await groupRef.set({
+      name: `המשחקים של ${userName}`,
+      normalizedName: `המשחקים של ${userName}`.toLowerCase().trim(),
+      adminIds: [uid],
+      playerIds: [uid],
+      pendingPlayerIds: [],
+      creatorId: uid,
+      inviteCode,
+      isOpen: false,
+      isPersonal: true,
+      hidden: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await userRef.set(
+      { personalGroupId: groupRef.id, updatedAt: now },
+      { merge: true },
+    );
+    return { groupId: groupRef.id, created: true };
+  },
+);
+
+// ─── Callable: promote a personal/orphan group to a real community ─────
+//
+// Flips `isPersonal` and `hidden` to false, applies the user-chosen
+// name/description/city, writes the /groupsPublic mirror, and adds the
+// invited participants to `pendingPlayerIds` (each receives a
+// `groupInvitation` push with confirm/decline actions).
+//
+// Auth: caller must be admin of the group AND the group must currently
+// be a personal group. We don't allow this callable to be used to
+// promote a regular group — that path stays via the standard groupEdit
+// flow.
+export const promoteOrphanToGroup = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const callerUid = request.auth.uid;
+    const data = request.data as {
+      groupId?: unknown;
+      name?: unknown;
+      description?: unknown;
+      city?: unknown;
+      inviteUserIds?: unknown;
+    };
+    const groupId = typeof data.groupId === 'string' ? data.groupId : '';
+    const name =
+      typeof data.name === 'string' ? data.name.trim().slice(0, 60) : '';
+    const description =
+      typeof data.description === 'string'
+        ? data.description.trim().slice(0, 500)
+        : '';
+    const city =
+      typeof data.city === 'string' ? data.city.trim().slice(0, 80) : '';
+    const inviteUserIds = Array.isArray(data.inviteUserIds)
+      ? (data.inviteUserIds as unknown[])
+          .filter((u): u is string => typeof u === 'string' && u.length > 0)
+          .slice(0, 100)
+      : [];
+
+    if (!groupId || groupId.length > 128) {
+      throw new HttpsError('invalid-argument', 'invalid groupId');
+    }
+    if (name.length < 2) {
+      throw new HttpsError('invalid-argument', 'name too short');
+    }
+
+    const groupRef = db.collection('groups').doc(groupId);
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      throw new HttpsError('not-found', 'group does not exist');
+    }
+    const group = groupSnap.data() as {
+      adminIds?: string[];
+      isPersonal?: boolean;
+      hidden?: boolean;
+      playerIds?: string[];
+    };
+    if (!Array.isArray(group.adminIds) || !group.adminIds.includes(callerUid)) {
+      throw new HttpsError('permission-denied', 'admin only');
+    }
+    if (group.isPersonal !== true) {
+      throw new HttpsError(
+        'failed-precondition',
+        'group is not a personal group',
+      );
+    }
+
+    const now = Date.now();
+    // The participants we invite go into `pendingPlayerIds` — we never
+    // auto-accept them into `playerIds`. Each user gets a push that
+    // links into the community-details "המתנה לאישור" flow on tap.
+    const dedupedInvitees = Array.from(
+      new Set(inviteUserIds.filter((u) => u !== callerUid)),
+    );
+    await groupRef.update({
+      name,
+      normalizedName: name.toLowerCase().trim(),
+      description: description.length > 0 ? description : null,
+      city: city.length > 0 ? city : null,
+      isPersonal: false,
+      hidden: false,
+      pendingPlayerIds: dedupedInvitees,
+      updatedAt: now,
+    });
+
+    // Write the /groupsPublic mirror so the new community shows up in
+    // discovery. Mirror the same shape the createGroup callable uses.
+    await db
+      .collection('groupsPublic')
+      .doc(groupId)
+      .set(
+        {
+          name,
+          normalizedName: name.toLowerCase().trim(),
+          description: description.length > 0 ? description : null,
+          city: city.length > 0 ? city : null,
+          memberCount: Array.isArray(group.playerIds)
+            ? group.playerIds.length
+            : 1,
+          isOpen: false,
+          updatedAt: now,
+          createdAt: now,
+        },
+        { merge: true },
+      );
+
+    // Send a per-recipient `groupInvitation` push. The CF helper
+    // ensures dedupe and aggregation; failures don't block the
+    // promotion.
+    const inviter = await db.collection('users').doc(callerUid).get();
+    const inviterName =
+      (inviter.exists &&
+        typeof inviter.data()?.name === 'string' &&
+        (inviter.data()!.name as string).slice(0, 60)) ||
+      '';
+    await Promise.allSettled(
+      dedupedInvitees.map((recipientUid) =>
+        createNotificationOnce({
+          type: 'groupInvitation',
+          recipientId: recipientUid,
+          payload: {
+            groupId,
+            groupName: name,
+            inviterName,
+            inviterId: callerUid,
+          },
+          createdByUid: callerUid,
+        }),
+      ),
+    );
+
+    return { ok: true, invited: dedupedInvitees.length };
+  },
+);
+
+// ─── Scheduled: promote-prompt cron ─────────────────────────────────────
+//
+// Once an hour, scan for finished games hosted in a personal group
+// whose creator hasn't yet been prompted to promote. The push is
+// fire-and-forget — if the creator dismisses, the latch keeps it from
+// re-firing. If the personal group has already been promoted (no
+// longer `isPersonal: true`), we skip.
+export const sendPromotePrompts = onSchedule(
+  {
+    schedule: 'every 60 minutes',
+    timeZone: 'Asia/Jerusalem',
+  },
+  async () => {
+    const now = Date.now();
+    const lower = now - 6 * 60 * 60 * 1000; // 6h window — catch slow cron
+    const upper = now - 30 * 60 * 1000;     // wait 30m post-game so the
+                                            // user isn't pinged mid-shower
+
+    const snap = await db
+      .collection('games')
+      .where('status', '==', 'finished')
+      .where('startsAt', '>=', lower)
+      .where('startsAt', '<=', upper)
+      .get();
+
+    if (snap.empty) {
+      console.log('[sendPromotePrompts] no candidates');
+      return;
+    }
+
+    let dispatched = 0;
+    for (const doc of snap.docs) {
+      const g = doc.data() as {
+        groupId?: string;
+        createdBy?: string;
+        promotePromptSent?: boolean;
+        title?: string;
+        isOrphanContext?: boolean;
+      };
+      if (g.promotePromptSent) continue;
+      if (!g.groupId || !g.createdBy) continue;
+      if (g.isOrphanContext !== true) continue;
+
+      // Verify the host group is still a personal one. If the user
+      // already promoted it manually (or via this same cron racing
+      // against itself), skip.
+      const gSnap = await db.collection('groups').doc(g.groupId).get();
+      if (!gSnap.exists) continue;
+      const grp = gSnap.data() as { isPersonal?: boolean };
+      if (grp.isPersonal !== true) continue;
+
+      try {
+        await createNotificationOnce({
+          type: 'promotePrompt',
+          recipientId: g.createdBy,
+          payload: {
+            gameId: doc.id,
+            groupId: g.groupId,
+            gameTitle: g.title || 'המשחק',
+          },
+        });
+        await doc.ref.update({ promotePromptSent: true, updatedAt: now });
+        dispatched += 1;
+      } catch (err) {
+        console.error('[sendPromotePrompts] dispatch failed', doc.id, err);
+      }
+    }
+
+    console.log(`[sendPromotePrompts] dispatched ${dispatched}`);
+  },
+);
+
+// Random 6-char alphanumeric invite code. Mirror of the helper used by
+// `createGroup` — duplicated locally to keep this section self-contained.
+function randomInviteCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // skip ambiguous chars
+  let out = '';
+  for (let i = 0; i < 6; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
+
+// ─── Callable: create community (server-trusted rate limit) ─────────────
+//
+// Replaces the legacy client-side `groupService.createGroup` flow.
+// The previous design enforced "5 community creates per user per day"
+// via /rateLimits/{uid}_createGroup, but that doc was client-writable
+// — a malicious client could overwrite the counter to bypass the cap
+// (Security Audit Finding #3). This callable moves the entire flow to
+// the server: rate-limit doc lives in /serverRateLimits/{rid}, which
+// no client can read or write (rule denies all client access).
+//
+// The function:
+//   1. Requires App Check + auth.
+//   2. Rate-limits via Admin SDK transaction on /serverRateLimits.
+//   3. Validates input shape + size caps.
+//   4. Generates id + invite code server-side.
+//   5. Writes /groups/{id} + /groupsPublic/{id} in a single batch.
+//   6. Bumps the creator's `teamsCreated` achievement (cross-user-safe
+//      via Admin SDK; client can't do this under hardened /users rules).
+//
+// Old clients still hit /groups directly — the rule keeps that path
+// alive for backward compatibility. Once min-supported version
+// includes the new client, lock down the rule and delete the legacy
+// path.
+const CREATE_GROUP_RATE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+const CREATE_GROUP_RATE_CAP = 5;
+
+// Slim input shape — matches the new wizard's responsibility split:
+// the community owns identity + membership + general info; field /
+// schedule / format / recurring are per-Game concerns and were
+// removed. Old clients that still send the legacy fields will have
+// them silently ignored (the validator only reads what it needs).
+interface CreateGroupInput {
+  // Identity
+  name: string;
+  description?: string;
+  isOpen?: boolean;
+  // Info
+  rules?: string;
+  contactPhone?: string;
+  city?: string;
+  maxMembers?: number;
+}
+
+function genInviteCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function normaliseGroupName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function pickShortString(
+  v: unknown,
+  max: number,
+  field: string,
+  required: boolean,
+): string | undefined {
+  if (v == null) {
+    if (required) {
+      throw new HttpsError('invalid-argument', `${field} is required`);
+    }
+    return undefined;
+  }
+  if (typeof v !== 'string') {
+    throw new HttpsError('invalid-argument', `${field} must be a string`);
+  }
+  const trimmed = v.trim();
+  if (required && trimmed.length === 0) {
+    throw new HttpsError('invalid-argument', `${field} is required`);
+  }
+  if (trimmed.length > max) {
+    throw new HttpsError(
+      'invalid-argument',
+      `${field} too long (max ${max})`,
+    );
+  }
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export const createGroupCallable = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const uid = auth.uid;
+
+    // 1) Server-side rate limit. The doc lives in /serverRateLimits
+    //    (deny-all from client) so a malicious client cannot reset
+    //    the counter the way it could for /rateLimits.
+    const rateRef = db
+      .collection('serverRateLimits')
+      .doc(`${uid}_createGroup`);
+    const now = Date.now();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(rateRef);
+      const cur = snap.exists
+        ? (snap.data() as {
+            windowStart?: number;
+            count?: number;
+          })
+        : {};
+      const windowStart = cur.windowStart ?? 0;
+      const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
+      const count = inWindow ? (cur.count ?? 0) : 0;
+      if (count >= CREATE_GROUP_RATE_CAP) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'יצירת קהילות מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.',
+        );
+      }
+      tx.set(rateRef, {
+        uid,
+        op: 'createGroup',
+        windowStart: inWindow ? windowStart : now,
+        count: count + 1,
+        updatedAt: now,
+      });
+    });
+
+    // 2) Input validation. Server is the source of truth — client-side
+    //    checks are nice-to-have but rules can't enforce length on the
+    //    callable path. Slim shape per the new responsibility split.
+    const input = (request.data ?? {}) as Partial<CreateGroupInput>;
+    const name = pickShortString(input.name, 80, 'name', true)!;
+    const description = pickShortString(
+      input.description,
+      500,
+      'description',
+      false,
+    );
+    const city = pickShortString(input.city, 80, 'city', false);
+    const contactPhone = pickShortString(
+      input.contactPhone,
+      40,
+      'contactPhone',
+      false,
+    );
+    const rulesText = pickShortString(input.rules, 2000, 'rules', false);
+
+    const maxMembers =
+      typeof input.maxMembers === 'number' && input.maxMembers > 0
+        ? Math.min(input.maxMembers, 1000)
+        : undefined;
+    const isOpen = input.isOpen === true;
+
+    // 3) Generate id + invite code. Server-controlled to prevent
+    //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
+    const groupRef = db.collection('groups').doc();
+    const groupId = groupRef.id;
+    const createdAt = now;
+
+    const groupDoc: Record<string, unknown> = {
+      id: groupId,
+      name,
+      normalizedName: normaliseGroupName(name),
+      creatorId: uid,
+      adminIds: [uid],
+      playerIds: [uid],
+      pendingPlayerIds: [],
+      inviteCode: genInviteCode(),
+      isOpen,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    if (description !== undefined) groupDoc.description = description;
+    if (city !== undefined) groupDoc.city = city;
+    if (contactPhone !== undefined) groupDoc.contactPhone = contactPhone;
+    if (rulesText !== undefined) groupDoc.rules = rulesText;
+    if (maxMembers !== undefined) groupDoc.maxMembers = maxMembers;
+
+    const publicDoc: Record<string, unknown> = {
+      id: groupId,
+      name,
+      normalizedName: normaliseGroupName(name),
+      memberCount: 1,
+      isOpen,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    if (description !== undefined) publicDoc.description = description;
+    if (city !== undefined) publicDoc.city = city;
+    if (contactPhone !== undefined) publicDoc.contactPhone = contactPhone;
+    if (maxMembers !== undefined) publicDoc.maxMembers = maxMembers;
+
+    // 4) Atomic dual-write of canonical + public projection.
+    const batch = db.batch();
+    batch.set(groupRef, groupDoc);
+    batch.set(db.collection('groupsPublic').doc(groupId), publicDoc);
+    await batch.commit();
+
+    // 5) Bump teamsCreated achievement (server-only path; the
+    //    hardened /users rules block this from the client when it
+    //    would target someone other than self, so doing it here keeps
+    //    counters honest no matter how the user reached this code
+    //    path).
+    try {
+      await db.collection('users').doc(uid).set(
+        {
+          achievements: {
+            teamsCreated: admin.firestore.FieldValue.increment(1),
+          },
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.warn('[createGroupCallable] teamsCreated bump failed', err);
+    }
+
+    return { ok: true, groupId };
+  },
+);
+
+// ─── One-shot migration: backfill creatorId on legacy /groups ──────────
+//
+// The hardened /groups update rule (Security Audit Finding #16) now
+// REQUIRES creatorId in resource.data on every admin update. Legacy
+// groups created before the field existed would be locked out of all
+// admin operations until creatorId is filled in.
+//
+// This callable is admin-gated (matan only) and idempotent: it scans
+// every /groups doc and, for any that's missing creatorId, sets it to
+// the first entry of adminIds. Safe to re-run.
+//
+// Run once (post-deploy) by invoking via httpsCallable from a trusted
+// client, then leave deployed for emergency re-runs.
+export const backfillGroupCreatorIdsOnce = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
+    if (request.auth?.uid !== ALLOWED_UID) {
+      throw new HttpsError('permission-denied', 'admin only');
+    }
+    const snap = await db.collection('groups').get();
+    let touched = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const doc of snap.docs) {
+      const data = doc.data() as {
+        creatorId?: string;
+        adminIds?: string[];
+      };
+      if (typeof data.creatorId === 'string' && data.creatorId.length > 0) {
+        skipped += 1;
+        continue;
+      }
+      const fallback =
+        Array.isArray(data.adminIds) && data.adminIds.length > 0
+          ? data.adminIds[0]
+          : null;
+      if (!fallback) {
+        // No adminIds either — orphan doc, nothing safe to set.
+        failed += 1;
+        continue;
+      }
+      try {
+        await doc.ref.update({
+          creatorId: fallback,
+          updatedAt: Date.now(),
+        });
+        touched += 1;
+      } catch (err) {
+        console.warn(
+          '[backfillGroupCreatorIdsOnce] update failed',
+          doc.id,
+          err,
+        );
+        failed += 1;
+      }
+    }
+    return {
+      ok: true,
+      total: snap.size,
+      touched,
+      skipped,
+      failed,
+    };
+  },
+);
 
 // ─── Discipline helpers (server-side, Admin SDK) ────────────────────────
 //
@@ -3121,3 +4522,1237 @@ async function revokeDisciplineCardsFor(
     );
   });
 }
+
+// ─── Cross-community filler matching (Phase 1) ─────────────────────────
+//
+// Three Cloud Functions implement the flow:
+//
+//   1. `findFillerCandidates` — scheduled, every 30 min. Scans games
+//      whose `acceptsFillers === true` and roster is below the
+//      shortage threshold (minPlayers OR 80% of maxPlayers). Pushes
+//      `fillerOpportunity` notifications to up to 10 candidate users
+//      who match the game's city, opted into filler push, and clear
+//      the configured min trust score. Tracks who got pushed in
+//      `game.fillerPushHistory` to avoid duplicates. If 0 candidates
+//      pass the filter, falls back to a `fillerNoCandidates` push to
+//      the admin (latched at 6h to avoid spam).
+//
+//   2. `onFillerInterestCreated` — trigger on
+//      `/games/{id}/fillerInterests/{uid}` doc creation. The
+//      candidate tapped "מעוניין" on the opportunity push; this CF
+//      pushes `fillerInterestReceived` to the game admin so they can
+//      open the candidate's profile and approve / reject manually.
+//
+//   3. `computeTrustScoreServerSide` — Admin-SDK-side mirror of the
+//      client's `trustService.getSummary`. Reads the user's recent
+//      games + applies the same formula. Internal helper, not
+//      exported.
+
+const FILLER_HOUR_MS = 60 * 60 * 1000;
+const FILLER_DAY_MS = 24 * FILLER_HOUR_MS;
+/** Window the matcher considers: kickoff is 3-12h away. */
+const FILLER_WINDOW_EARLIEST_HOURS = 3;
+const FILLER_WINDOW_LATEST_HOURS = 12;
+/** Max candidates pushed per game per matcher run. */
+const FILLER_PUSH_LIMIT_PER_GAME = 10;
+/** Latch on the "no candidates" fallback push so we don't spam the
+ *  admin every 30 minutes. */
+const FILLER_NO_CANDIDATES_COOLDOWN_MS = 6 * FILLER_HOUR_MS;
+
+const TRUST_WINDOW_MS = 90 * FILLER_DAY_MS;
+const TRUST_MIN_GAMES = 3;
+const TRUST_SOFT_PENALTY = 3;
+const TRUST_HARD_PENALTY = 10;
+
+/**
+ * Server-side mirror of `trustService.computeTrustFromGames`. Loads
+ * the user's last-90-days games and computes the 0-100 score (or
+ * `null` if the user has too few games to be meaningful). The
+ * formula MUST stay aligned with the client implementation —
+ * otherwise users see a different number on their own profile vs
+ * what the matcher uses to filter them.
+ */
+async function computeTrustScoreServerSide(
+  uid: string,
+): Promise<number | null> {
+  if (!uid) return null;
+  const now = Date.now();
+  const cutoff = now - TRUST_WINDOW_MS;
+  const snap = await db
+    .collection('games')
+    .where('participantIds', 'array-contains', uid)
+    .where('startsAt', '>=', cutoff)
+    .get();
+
+  let registered = 0;
+  let attended = 0;
+  let softCancels = 0;
+  let hardCancels = 0;
+
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      status?: string;
+      startsAt?: number;
+      cancelDeadlineHours?: number;
+      cancellations?: Record<string, number>;
+      players?: string[];
+      arrivals?: Record<string, string>;
+    };
+    if (g.status !== 'finished' && g.status !== 'cancelled') continue;
+    const startsAt = typeof g.startsAt === 'number' ? g.startsAt : 0;
+    if (startsAt >= now) continue;
+
+    const cancelTs = g.cancellations?.[uid];
+    if (typeof cancelTs === 'number') {
+      const deadline =
+        typeof g.cancelDeadlineHours === 'number'
+          ? startsAt - g.cancelDeadlineHours * FILLER_HOUR_MS
+          : null;
+      if (deadline !== null && cancelTs > deadline) {
+        hardCancels += 1;
+      } else {
+        softCancels += 1;
+      }
+      continue;
+    }
+    if (g.status !== 'finished') continue;
+    if (!(g.players ?? []).includes(uid)) continue;
+    registered += 1;
+    if (g.arrivals?.[uid] !== 'no_show') attended += 1;
+  }
+
+  if (registered < TRUST_MIN_GAMES) return null;
+  const rate = attended / registered;
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(rate * 100) -
+        softCancels * TRUST_SOFT_PENALTY -
+        hardCancels * TRUST_HARD_PENALTY,
+    ),
+  );
+}
+
+// ── Geocoding helpers ─────────────────────────────────────────────
+//
+// Server-side equivalent of the client's geocodeService — used by
+// the matcher to resolve a game's city to lat/lng. Cached in
+// /cityGeocode/{normName} so we hit Nominatim at most once per
+// distinct city across all matcher runs (~250 Israeli cities, so
+// the cache fills fast and stays small).
+//
+// `null` propagates when Nominatim has no hit; matcher then falls
+// back to an exact-name comparison for that game.
+
+const NOMINATIM_BASE =
+  'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_USER_AGENT =
+  'Teamder/1.0 (studiogameslime@gmail.com)';
+
+function normaliseCityKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s ]+/g, '-') // collapse all whitespace into '-'
+    .replace(/-+/g, '-'); // collapse runs of '-'
+}
+
+async function getCityCoords(
+  city: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const trimmed = city.trim();
+  if (!trimmed) return null;
+  const key = normaliseCityKey(trimmed);
+  if (!key) return null;
+  // Cache hit: read fast path.
+  try {
+    const cacheRef = db.collection('cityGeocode').doc(key);
+    const snap = await cacheRef.get();
+    if (snap.exists) {
+      const d = snap.data() as {
+        lat?: number;
+        lng?: number;
+        notFound?: boolean;
+      };
+      if (d.notFound) return null;
+      if (typeof d.lat === 'number' && typeof d.lng === 'number') {
+        return { lat: d.lat, lng: d.lng };
+      }
+    }
+  } catch (err) {
+    console.warn('[getCityCoords] cache read failed', city, err);
+  }
+  // Cache miss → Nominatim.
+  let coords: { lat: number; lng: number } | null = null;
+  try {
+    const url =
+      `${NOMINATIM_BASE}` +
+      `?q=${encodeURIComponent(trimmed)}` +
+      `&format=json&limit=1&countrycodes=il`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': NOMINATIM_USER_AGENT,
+        Accept: 'application/json',
+      },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as Array<{
+        lat?: string;
+        lon?: string;
+      }>;
+      const hit = Array.isArray(data) ? data[0] : null;
+      const lat = hit?.lat ? parseFloat(hit.lat) : NaN;
+      const lng = hit?.lon ? parseFloat(hit.lon) : NaN;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        coords = { lat, lng };
+      }
+    }
+  } catch (err) {
+    console.warn('[getCityCoords] Nominatim fetch failed', city, err);
+  }
+  // Persist outcome (positive AND negative) so we don't re-query
+  // unknown names on every run.
+  try {
+    await db
+      .collection('cityGeocode')
+      .doc(key)
+      .set(
+        coords
+          ? {
+              originalName: trimmed,
+              lat: coords.lat,
+              lng: coords.lng,
+              fetchedAt: Date.now(),
+            }
+          : {
+              originalName: trimmed,
+              notFound: true,
+              fetchedAt: Date.now(),
+            },
+        { merge: true },
+      );
+  } catch (err) {
+    console.warn('[getCityCoords] cache write failed', city, err);
+  }
+  return coords;
+}
+
+/**
+ * Great-circle distance between two lat/lng points on Earth, in
+ * kilometres. Standard Haversine — accurate to ~0.5% for distances
+ * under a few thousand km, which covers any conceivable
+ * football-radius use case in Israel.
+ */
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371; // Earth radius (km)
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+
+interface FillerGameDoc {
+  id?: string;
+  title?: string;
+  status?: string;
+  startsAt?: number;
+  groupId?: string;
+  createdBy?: string;
+  city?: string;
+  fieldAddress?: string;
+  acceptsFillers?: boolean;
+  fillerMinTrust?: number;
+  players?: string[];
+  waitlist?: string[];
+  pending?: string[];
+  maxPlayers?: number;
+  minPlayers?: number;
+  fillerPushHistory?: Record<string, number>;
+  fillerNoCandidatesAt?: number;
+}
+
+export const findFillerCandidates = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    region: 'us-central1',
+    timeoutSeconds: 540,
+    memory: '512MiB',
+  },
+  async () => {
+    const now = Date.now();
+    const earliest = now + FILLER_WINDOW_EARLIEST_HOURS * FILLER_HOUR_MS;
+    const latest = now + FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS;
+
+    // Pull all `open` games whose kickoff falls in the matcher
+    // window. Filter `acceptsFillers` in code (Firestore can't
+    // combine inequality on startsAt with equality on
+    // acceptsFillers without a composite index — keeping the query
+    // simple and filtering client-side avoids index pressure for
+    // the MVP).
+    const snap = await db
+      .collection('games')
+      .where('status', '==', 'open')
+      .where('startsAt', '>=', earliest)
+      .where('startsAt', '<=', latest)
+      .get();
+
+    let processed = 0;
+    let pushed = 0;
+    let fallbackPushed = 0;
+
+    for (const doc of snap.docs) {
+      const game = doc.data() as FillerGameDoc;
+      if (game.acceptsFillers !== true) continue;
+      const players = game.players ?? [];
+      const maxPlayers = game.maxPlayers ?? 0;
+      if (maxPlayers <= 0) continue;
+      if (players.length >= maxPlayers) continue; // already full
+
+      // Shortage threshold:
+      //  • if `minPlayers` set: shortage when players < minPlayers
+      //  • else: shortage when players < 80% of maxPlayers
+      const threshold =
+        typeof game.minPlayers === 'number' && game.minPlayers > 0
+          ? game.minPlayers
+          : Math.floor(maxPlayers * 0.8);
+      if (players.length >= threshold) continue;
+
+      processed += 1;
+
+      // Matcher key is the STRICT `game.city` field (picked from
+      // autocomplete in the wizard). The free-text `game.fieldAddress`
+      // is street/landmark detail and would feed garbage to the
+      // distance computation, so we deliberately don't fall back to it.
+      // Legacy games without `city` are skipped — admin should re-edit
+      // through the wizard to populate the strict field.
+      const city =
+        typeof game.city === 'string' ? game.city.trim() : '';
+      if (!city) continue;
+
+      // Geocode the game's city ONCE per matcher run (cached in
+      // /cityGeocode/{normName}). Without coords we can't compute
+      // distance to candidates — fall back to a name-equality match
+      // so the user still gets some coverage.
+      const gameCoords = await getCityCoords(city);
+
+      // Candidate query: opted-in users only. The pool is small (only
+      // users who toggled on `acceptsFillerPush`), so loading them all
+      // and filtering by distance in code is cheaper than maintaining
+      // a geo index. Adding a geohash bucket index is a future
+      // optimisation if the pool ever grows.
+      const candSnap = await db
+        .collection('users')
+        .where('availability.acceptsFillerPush', '==', true)
+        .get();
+
+      // Exclude users already in the community or game.
+      let memberSet = new Set<string>();
+      if (game.groupId) {
+        const gSnap = await db
+          .collection('groups')
+          .doc(game.groupId)
+          .get();
+        if (gSnap.exists) {
+          const grp = gSnap.data() as {
+            playerIds?: string[];
+            adminIds?: string[];
+            pendingPlayerIds?: string[];
+          };
+          memberSet = new Set([
+            ...(grp.playerIds ?? []),
+            ...(grp.adminIds ?? []),
+            ...(grp.pendingPlayerIds ?? []),
+          ]);
+        }
+      }
+      const inGame = new Set([
+        ...(game.players ?? []),
+        ...(game.waitlist ?? []),
+        ...(game.pending ?? []),
+      ]);
+      const alreadyPushed = game.fillerPushHistory ?? {};
+      const minTrust =
+        typeof game.fillerMinTrust === 'number' ? game.fillerMinTrust : 70;
+
+      const newlyPushed: Record<string, number> = {};
+      let pushesThisGame = 0;
+
+      for (const userDoc of candSnap.docs) {
+        if (pushesThisGame >= FILLER_PUSH_LIMIT_PER_GAME) break;
+        const uid = userDoc.id;
+        if (memberSet.has(uid)) continue;
+        if (inGame.has(uid)) continue;
+        if (alreadyPushed[uid]) continue;
+
+        // Geographic gate — distance from user's home city to the
+        // game's city must be within the user's chosen radius.
+        // Strict graceful-degradation policy:
+        //   • both have coords → Haversine, compare to radius
+        //   • either is missing coords → fall back to name match
+        //     (user.homeCity === game.city). This covers the period
+        //     before geocoding has populated, and unknown cities.
+        const userData = userDoc.data() as {
+          availability?: {
+            homeCity?: string;
+            homeCityLat?: number;
+            homeCityLng?: number;
+            availabilityRadiusKm?: number;
+            cities?: string[];
+            preferredCity?: string;
+          };
+        };
+        const av = userData.availability ?? {};
+        const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
+        if (!userCity) continue;
+        const radiusKm =
+          typeof av.availabilityRadiusKm === 'number' &&
+          av.availabilityRadiusKm > 0
+            ? av.availabilityRadiusKm
+            : 20;
+        let withinRange = false;
+        if (
+          gameCoords &&
+          typeof av.homeCityLat === 'number' &&
+          typeof av.homeCityLng === 'number'
+        ) {
+          const distKm = haversineKm(
+            { lat: av.homeCityLat, lng: av.homeCityLng },
+            gameCoords,
+          );
+          withinRange = distKm <= radiusKm;
+        } else {
+          // Fallback: treat exact city-name equality as "in range".
+          withinRange =
+            normaliseCityKey(userCity) === normaliseCityKey(city);
+        }
+        if (!withinRange) continue;
+
+        // Trust gate. `null` (user has too little history) NEVER
+        // passes any minimum — they need to play 3+ games before
+        // entering the filler pool.
+        const score = await computeTrustScoreServerSide(uid);
+        if (score === null) continue;
+        if (score < minTrust) continue;
+
+        // Dispatch the opportunity notification. Recipient = uid,
+        // single-recipient delivery via the existing
+        // onNotificationCreated pipeline.
+        await createNotificationOnce({
+          type: 'fillerOpportunity',
+          recipientId: uid,
+          payload: {
+            gameId: doc.id,
+            groupId: game.groupId,
+            gameTitle: game.title,
+            startsAt: game.startsAt,
+            city,
+            shortBy: threshold - players.length,
+          },
+        });
+        newlyPushed[uid] = now;
+        pushesThisGame += 1;
+        pushed += 1;
+      }
+
+      if (pushesThisGame > 0) {
+        // Persist the dedup history so the next run doesn't re-push
+        // the same candidate. Merge with the existing map.
+        await doc.ref.set(
+          {
+            fillerPushHistory: { ...alreadyPushed, ...newlyPushed },
+            updatedAt: now,
+          },
+          { merge: true },
+        );
+      } else {
+        // 0 matches on this run. Tell the admin (latched so we don't
+        // spam) so they can lower the threshold or wait.
+        const lastFallbackAt = game.fillerNoCandidatesAt ?? 0;
+        if (
+          now - lastFallbackAt >= FILLER_NO_CANDIDATES_COOLDOWN_MS &&
+          game.createdBy
+        ) {
+          await createNotificationOnce({
+            type: 'fillerNoCandidates',
+            recipientId: game.createdBy,
+            payload: {
+              gameId: doc.id,
+              groupId: game.groupId,
+              gameTitle: game.title,
+              minTrust,
+            },
+          });
+          await doc.ref.set(
+            { fillerNoCandidatesAt: now, updatedAt: now },
+            { merge: true },
+          );
+          fallbackPushed += 1;
+        }
+      }
+    }
+
+    console.log(
+      `[findFillerCandidates] scanned ${snap.size} games, processed ${processed} shortage games, pushed ${pushed} opportunities, ${fallbackPushed} fallback admin pushes`,
+    );
+  },
+);
+
+// ─── Scheduled: admin shortage warning (T-2h) ──────────────────────────
+//
+// Fires once per game at roughly 2 hours before kickoff, when the
+// registered roster can't even fill TWO teams in the chosen format
+// (5v5 → < 10, 6v6 → < 12, 7v7 → < 14). The admin gets a single push
+// and decides whether to cancel, hunt for more players, or run the
+// game short-handed. Replaces the previous auto-cancel + fan-out flow
+// which surfaced as a misleading "המשחק בוטל" push to every player.
+//
+// Gate:
+//   • game.status === 'open'
+//   • startsAt within [now+T-2h-window-low, now+T-2h-window-high]
+//   • players + guests < 2 × playersPerTeam(format)
+//   • !game.shortageWarningSentAt  (per-game latch)
+//
+// Recipient: game.createdBy (the organizer). Community admins don't
+// get this — only the person who scheduled the game has the context
+// to decide. The 12h cooldown in COOLDOWN_MS plus the per-game latch
+// makes a re-fire impossible within the same kickoff window even if
+// the function retries.
+//
+// Cadence: every 15 minutes. Window is [T-130min, T-110min] so the
+// cron is guaranteed to catch each game exactly once across the
+// 15-minute schedule (≥ 20-min window absorbs scheduler drift).
+
+const SHORTAGE_WINDOW_EARLIEST_MIN = 110;
+const SHORTAGE_WINDOW_LATEST_MIN = 130;
+
+interface ShortageGameDoc {
+  title?: string;
+  status?: string;
+  startsAt?: number;
+  maxPlayers?: number;
+  minPlayers?: number;
+  format?: '5v5' | '6v6' | '7v7';
+  numberOfTeams?: number;
+  players?: string[];
+  guests?: unknown[];
+  groupId?: string;
+  createdBy?: string;
+  shortageWarningSentAt?: number;
+}
+
+function playersPerTeamForFormat(format: string | undefined): number {
+  if (format === '6v6') return 6;
+  if (format === '7v7') return 7;
+  return 5;
+}
+
+export const sendShortageWarnings = onSchedule(
+  {
+    schedule: 'every 15 minutes',
+    timeZone: 'Asia/Jerusalem',
+  },
+  async () => {
+    const now = Date.now();
+    const earliest = now + SHORTAGE_WINDOW_EARLIEST_MIN * 60 * 1000;
+    const latest = now + SHORTAGE_WINDOW_LATEST_MIN * 60 * 1000;
+    const snap = await db
+      .collection('games')
+      .where('status', '==', 'open')
+      .where('startsAt', '>=', earliest)
+      .where('startsAt', '<=', latest)
+      .get();
+    if (snap.empty) {
+      console.log('[shortageWarnings] no candidate games');
+      return;
+    }
+    let pushed = 0;
+    for (const doc of snap.docs) {
+      const g = doc.data() as ShortageGameDoc;
+      if (!g.createdBy) continue;
+      if (g.shortageWarningSentAt) continue;
+      const registered = (g.players?.length ?? 0) + (g.guests?.length ?? 0);
+      // Shortage threshold: can't fill TWO teams in the configured
+      // format. That's the minimum to actually play a match; below
+      // it the admin almost certainly wants to cancel.
+      const perTeam = playersPerTeamForFormat(g.format);
+      const required = perTeam * 2;
+      if (registered >= required) continue;
+      try {
+        await createNotificationOnce({
+          type: 'gameShortageWarning',
+          recipientId: g.createdBy,
+          payload: {
+            gameId: doc.id,
+            groupId: g.groupId,
+            gameTitle: g.title || 'המשחק',
+            startsAt: g.startsAt ?? null,
+            registered,
+            required,
+            hoursToKickoff: 2,
+          },
+        });
+        await doc.ref.set(
+          { shortageWarningSentAt: now, updatedAt: now },
+          { merge: true },
+        );
+        pushed += 1;
+      } catch (err) {
+        console.error(
+          '[shortageWarnings] dispatch failed',
+          doc.id,
+          err,
+        );
+      }
+    }
+    console.log(
+      `[shortageWarnings] scanned ${snap.size} games, pushed ${pushed}`,
+    );
+  },
+);
+
+export const onFillerInterestCreated = onDocumentCreated(
+  'games/{gameId}/fillerInterests/{uid}',
+  async (event) => {
+    const data = event.data?.data() as
+      | { status?: string; userId?: string }
+      | undefined;
+    if (!data) return;
+    if (data.status !== 'pending') return;
+
+    const gameId = event.params.gameId;
+    const candidateUid = event.params.uid;
+
+    const gameSnap = await db.collection('games').doc(gameId).get();
+    if (!gameSnap.exists) return;
+    const game = gameSnap.data() as {
+      createdBy?: string;
+      title?: string;
+      groupId?: string;
+    };
+    const adminUid = game.createdBy;
+    if (!adminUid) return;
+
+    await createNotificationOnce({
+      type: 'fillerInterestReceived',
+      recipientId: adminUid,
+      payload: {
+        gameId,
+        groupId: game.groupId,
+        gameTitle: game.title,
+        candidateUid,
+        requesterId: candidateUid,
+      },
+    });
+  },
+);
+
+// ─── Filler approval flow — callables ──────────────────────────────────
+//
+// Three onCall functions complete the filler matching loop:
+//
+//   1. `submitFillerInterest`  — candidate taps "מעוניין" on the
+//      filler push. Creates `/games/{gameId}/fillerInterests/{uid}`
+//      with status='pending'. The existing `onFillerInterestCreated`
+//      trigger then pushes the admin.
+//
+//   2. `approveFiller` — admin reviewed the candidate's profile
+//      (trust meter, history) and approved. Adds the candidate to
+//      game.players[] (or waitlist[] if full) and marks the
+//      interest status='approved'. The candidate gets a push that
+//      they're in.
+//
+//   3. `declineFiller` — admin rejected. Marks interest
+//      status='rejected'. No notification to the candidate (low-key
+//      rejection — the slot may have been filled by someone else).
+//
+// All three: enforceAppCheck + auth required. Authorization checks
+// are CF-level (rules can't validate "caller is admin of the game's
+// community" on a sub-collection write that doesn't touch the
+// game doc).
+
+export const submitFillerInterest = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const uid = auth.uid;
+    const data = (request.data ?? {}) as { gameId?: string };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    if (!gameId) {
+      throw new HttpsError('invalid-argument', 'gameId required');
+    }
+
+    // Validate game state. The candidate may have taken minutes /
+    // hours to tap the push — meanwhile the game might have filled
+    // up, been cancelled, or the admin disabled fillers.
+    const gameSnap = await db.collection('games').doc(gameId).get();
+    if (!gameSnap.exists) {
+      throw new HttpsError('not-found', 'game not found');
+    }
+    const game = gameSnap.data() as {
+      status?: string;
+      acceptsFillers?: boolean;
+      players?: string[];
+      waitlist?: string[];
+      pending?: string[];
+      groupId?: string;
+      maxPlayers?: number;
+      startsAt?: number;
+    };
+    if (game.acceptsFillers !== true) {
+      throw new HttpsError(
+        'failed-precondition',
+        'game is not accepting fillers',
+      );
+    }
+    if (game.status !== 'open') {
+      throw new HttpsError(
+        'failed-precondition',
+        'game is no longer open',
+      );
+    }
+    if (
+      typeof game.startsAt === 'number' &&
+      game.startsAt < Date.now()
+    ) {
+      throw new HttpsError(
+        'failed-precondition',
+        'game already started',
+      );
+    }
+    // Reject if the candidate is already a community member or
+    // already in the game roster — they should use the regular join
+    // flow, not the filler path.
+    if (game.groupId) {
+      const grpSnap = await db
+        .collection('groups')
+        .doc(game.groupId)
+        .get();
+      if (grpSnap.exists) {
+        const grp = grpSnap.data() as {
+          playerIds?: string[];
+          adminIds?: string[];
+        };
+        if (
+          (grp.playerIds ?? []).includes(uid) ||
+          (grp.adminIds ?? []).includes(uid)
+        ) {
+          throw new HttpsError(
+            'failed-precondition',
+            'community members should join the regular way',
+          );
+        }
+      }
+    }
+    const inGame =
+      (game.players ?? []).includes(uid) ||
+      (game.waitlist ?? []).includes(uid) ||
+      (game.pending ?? []).includes(uid);
+    if (inGame) {
+      throw new HttpsError('already-exists', 'already in this game');
+    }
+
+    // Idempotent write: if the candidate already submitted an
+    // interest (and didn't withdraw it), don't dispatch a duplicate
+    // admin push. We still update `updatedAt` so the admin sees
+    // freshness.
+    const interestRef = db
+      .collection('games')
+      .doc(gameId)
+      .collection('fillerInterests')
+      .doc(uid);
+    const existing = await interestRef.get();
+    if (
+      existing.exists &&
+      (existing.data() as { status?: string }).status === 'pending'
+    ) {
+      await interestRef.set(
+        { updatedAt: Date.now() },
+        { merge: true },
+      );
+      return { ok: true, alreadyPending: true };
+    }
+
+    await interestRef.set({
+      userId: uid,
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return { ok: true };
+  },
+);
+
+export const approveFiller = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const callerUid = auth.uid;
+    const data = (request.data ?? {}) as {
+      gameId?: string;
+      candidateUid?: string;
+    };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const candidateUid =
+      typeof data.candidateUid === 'string' ? data.candidateUid : '';
+    if (!gameId || !candidateUid) {
+      throw new HttpsError(
+        'invalid-argument',
+        'gameId and candidateUid required',
+      );
+    }
+
+    // Run the entire roster mutation inside a transaction so two
+    // concurrent admin approvals can't both push the roster past
+    // maxPlayers, and the interest doc + game doc stay in sync.
+    await db.runTransaction(async (tx) => {
+      const gameRef = db.collection('games').doc(gameId);
+      const interestRef = gameRef
+        .collection('fillerInterests')
+        .doc(candidateUid);
+
+      const gameSnap = await tx.get(gameRef);
+      if (!gameSnap.exists) {
+        throw new HttpsError('not-found', 'game not found');
+      }
+      const game = gameSnap.data() as {
+        status?: string;
+        groupId?: string;
+        createdBy?: string;
+        players?: string[];
+        waitlist?: string[];
+        pending?: string[];
+        participantIds?: string[];
+        maxPlayers?: number;
+      };
+
+      // Authorization: caller must be the game's creator OR an
+      // admin of the parent community. We need to read the group
+      // doc to check adminIds — outside the per-game transaction
+      // scope is fine since adminIds rarely changes during a
+      // single write.
+      let isAuthorized = game.createdBy === callerUid;
+      if (!isAuthorized && game.groupId) {
+        const grpSnap = await tx.get(
+          db.collection('groups').doc(game.groupId),
+        );
+        if (grpSnap.exists) {
+          const grp = grpSnap.data() as { adminIds?: string[] };
+          if ((grp.adminIds ?? []).includes(callerUid)) {
+            isAuthorized = true;
+          }
+        }
+      }
+      if (!isAuthorized) {
+        throw new HttpsError(
+          'permission-denied',
+          'caller is not the game admin',
+        );
+      }
+
+      if (game.status !== 'open') {
+        throw new HttpsError(
+          'failed-precondition',
+          'game is no longer open',
+        );
+      }
+
+      const players = game.players ?? [];
+      const waitlist = game.waitlist ?? [];
+      const maxPlayers = game.maxPlayers ?? 0;
+      // Idempotency: if the candidate is already in players, just
+      // make sure the interest is marked approved and exit.
+      if (players.includes(candidateUid)) {
+        tx.set(
+          interestRef,
+          { status: 'approved', updatedAt: Date.now() },
+          { merge: true },
+        );
+        return;
+      }
+      if (waitlist.includes(candidateUid)) {
+        tx.set(
+          interestRef,
+          { status: 'approved', updatedAt: Date.now() },
+          { merge: true },
+        );
+        return;
+      }
+
+      // Decide bucket: players if there's room, otherwise waitlist.
+      const goesToPlayers =
+        maxPlayers > 0 && players.length < maxPlayers;
+      const newPlayers = goesToPlayers
+        ? [...players, candidateUid]
+        : players;
+      const newWaitlist = goesToPlayers
+        ? waitlist
+        : [...waitlist, candidateUid];
+      // Maintain the participantIds invariant (denormalised union
+      // of all three rosters) so the existing rule guards still
+      // hold on subsequent self-cancel writes by this candidate.
+      const newParticipants = Array.from(
+        new Set([
+          ...newPlayers,
+          ...newWaitlist,
+          ...(game.pending ?? []),
+        ]),
+      );
+
+      tx.update(gameRef, {
+        players: newPlayers,
+        waitlist: newWaitlist,
+        participantIds: newParticipants,
+        updatedAt: Date.now(),
+      });
+      tx.set(
+        interestRef,
+        {
+          status: 'approved',
+          bucket: goesToPlayers ? 'players' : 'waitlist',
+          approvedAt: Date.now(),
+          approvedBy: callerUid,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+    });
+
+    // Push the candidate so they know they're in. Fire-and-forget
+    // outside the transaction.
+    try {
+      await createNotificationOnce({
+        type: 'approved',
+        recipientId: candidateUid,
+        payload: {
+          gameId,
+          // The approved-handler in `buildMessage` reads `bucket`
+          // and renders a different body for waitlist vs players.
+          // We fetch the latest interest doc to get the bucket
+          // we just wrote — keeps the push payload truthful even
+          // if the interest moves to waitlist by capacity.
+          bucket: 'players',
+        },
+        createdByUid: callerUid,
+      });
+    } catch (err) {
+      console.warn('[approveFiller] notif dispatch failed', err);
+    }
+
+    return { ok: true };
+  },
+);
+
+export const declineFiller = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const callerUid = auth.uid;
+    const data = (request.data ?? {}) as {
+      gameId?: string;
+      candidateUid?: string;
+    };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const candidateUid =
+      typeof data.candidateUid === 'string' ? data.candidateUid : '';
+    if (!gameId || !candidateUid) {
+      throw new HttpsError(
+        'invalid-argument',
+        'gameId and candidateUid required',
+      );
+    }
+
+    // Auth check: same as approveFiller.
+    const gameSnap = await db.collection('games').doc(gameId).get();
+    if (!gameSnap.exists) {
+      throw new HttpsError('not-found', 'game not found');
+    }
+    const game = gameSnap.data() as {
+      groupId?: string;
+      createdBy?: string;
+    };
+    let isAuthorized = game.createdBy === callerUid;
+    if (!isAuthorized && game.groupId) {
+      const grpSnap = await db
+        .collection('groups')
+        .doc(game.groupId)
+        .get();
+      if (grpSnap.exists) {
+        const grp = grpSnap.data() as { adminIds?: string[] };
+        if ((grp.adminIds ?? []).includes(callerUid)) {
+          isAuthorized = true;
+        }
+      }
+    }
+    if (!isAuthorized) {
+      throw new HttpsError(
+        'permission-denied',
+        'caller is not the game admin',
+      );
+    }
+
+    await db
+      .collection('games')
+      .doc(gameId)
+      .collection('fillerInterests')
+      .doc(candidateUid)
+      .set(
+        {
+          status: 'rejected',
+          rejectedAt: Date.now(),
+          rejectedBy: callerUid,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+    // No push to the candidate — quiet rejection.
+    return { ok: true };
+  },
+);
+
+// ─── Friendships: request push + accept / remove callables ─────────────
+//
+// Model:
+//   /friendRequests/{fromId__toId}  (pending|accepted|declined)
+//   /users/{uid}.friends: string[]  mutual, written ONLY here (Admin SDK)
+//
+// • onFriendRequestCreated → pushes the recipient that a request arrived.
+// • acceptFriendRequest    → recipient accepts; writes BOTH friends
+//   arrays and pushes the original sender. No push on decline (that's a
+//   plain client-side status flip, gated by firestore.rules).
+// • removeFriendship       → either party removes the mutual link.
+
+export const onFriendRequestCreated = onDocumentCreated(
+  'friendRequests/{rid}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const req = snap.data() as {
+      fromUserId?: string;
+      toUserId?: string;
+      status?: string;
+    };
+    if (!req?.fromUserId || !req?.toUserId || req.status !== 'pending') return;
+    // Canonical sender name read server-side — the recipient's push can
+    // never carry a spoofed display name.
+    let fromName = 'שחקן';
+    try {
+      const u = await db.collection('users').doc(req.fromUserId).get();
+      const n = u.exists ? (u.data() as { name?: string }).name : '';
+      if (typeof n === 'string' && n.length > 0) fromName = n;
+    } catch {
+      /* best-effort */
+    }
+    await createNotificationOnce({
+      type: 'friendRequest',
+      recipientId: req.toUserId,
+      payload: { fromUserId: req.fromUserId, fromName },
+      createdByUid: req.fromUserId,
+    });
+  },
+);
+
+export const acceptFriendRequest = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid; // the accepter (= request.toUserId)
+    const fromUserId = String(
+      (request.data as { fromUserId?: string })?.fromUserId || '',
+    );
+    if (!fromUserId || fromUserId === uid) {
+      throw new HttpsError('invalid-argument', 'bad fromUserId');
+    }
+    const reqRef = db.collection('friendRequests').doc(`${fromUserId}__${uid}`);
+    const reqSnap = await reqRef.get();
+    if (!reqSnap.exists) {
+      throw new HttpsError('not-found', 'request not found');
+    }
+    const req = reqSnap.data() as { toUserId?: string; status?: string };
+    if (req.toUserId !== uid) {
+      throw new HttpsError('permission-denied', 'not your request');
+    }
+    if (req.status === 'declined') {
+      throw new HttpsError('failed-precondition', 'request was declined');
+    }
+    const now = Date.now();
+    const batch = db.batch();
+    batch.set(reqRef, { status: 'accepted', updatedAt: now }, { merge: true });
+    batch.set(
+      db.collection('users').doc(uid),
+      {
+        friends: admin.firestore.FieldValue.arrayUnion(fromUserId),
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    batch.set(
+      db.collection('users').doc(fromUserId),
+      {
+        friends: admin.firestore.FieldValue.arrayUnion(uid),
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    await batch.commit();
+    // Push the original sender that their request was accepted.
+    let accepterName = 'שחקן';
+    try {
+      const u = await db.collection('users').doc(uid).get();
+      const n = u.exists ? (u.data() as { name?: string }).name : '';
+      if (typeof n === 'string' && n.length > 0) accepterName = n;
+    } catch {
+      /* best-effort */
+    }
+    await createNotificationOnce({
+      type: 'friendRequestAccepted',
+      recipientId: fromUserId,
+      payload: { fromUserId: uid, fromName: accepterName },
+      createdByUid: uid,
+    });
+    return { ok: true };
+  },
+);
+
+export const removeFriendship = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const otherUserId = String(
+      (request.data as { otherUserId?: string })?.otherUserId || '',
+    );
+    if (!otherUserId || otherUserId === uid) {
+      throw new HttpsError('invalid-argument', 'bad otherUserId');
+    }
+    const now = Date.now();
+    const batch = db.batch();
+    batch.set(
+      db.collection('users').doc(uid),
+      {
+        friends: admin.firestore.FieldValue.arrayRemove(otherUserId),
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    batch.set(
+      db.collection('users').doc(otherUserId),
+      {
+        friends: admin.firestore.FieldValue.arrayRemove(uid),
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    // Clear any lingering request docs in either direction so a future
+    // re-friend starts clean. Deleting a missing doc is a no-op.
+    batch.delete(db.collection('friendRequests').doc(`${uid}__${otherUserId}`));
+    batch.delete(db.collection('friendRequests').doc(`${otherUserId}__${uid}`));
+    await batch.commit();
+    return { ok: true };
+  },
+);
+
+// ─── Callable: invite app-friends to an existing community ─────────────
+//
+// The caller (a member or admin of the group) picks friends from their
+// friends list; each is added to `pendingPlayerIds` and receives a
+// `groupInvitation` push. Server-side guards: caller must belong to the
+// group, and only the caller's actual friends who aren't already in the
+// group are invited (so this can't be used to spam strangers).
+export const inviteFriendsToGroup = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const data = request.data as { groupId?: string; friendIds?: string[] };
+    const groupId = String(data?.groupId || '');
+    const friendIds = Array.isArray(data?.friendIds)
+      ? data.friendIds.filter((x): x is string => typeof x === 'string')
+      : [];
+    if (!groupId || friendIds.length === 0) {
+      throw new HttpsError('invalid-argument', 'groupId + friendIds required');
+    }
+    const groupRef = db.collection('groups').doc(groupId);
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      throw new HttpsError('not-found', 'group not found');
+    }
+    const g = groupSnap.data() as {
+      name?: string;
+      adminIds?: string[];
+      playerIds?: string[];
+      pendingPlayerIds?: string[];
+    };
+    const members = new Set([
+      ...(g.adminIds || []),
+      ...(g.playerIds || []),
+      ...(g.pendingPlayerIds || []),
+    ]);
+    if (!members.has(uid)) {
+      throw new HttpsError('permission-denied', 'not a member of this group');
+    }
+    const inviterSnap = await db.collection('users').doc(uid).get();
+    const inviterData = inviterSnap.data() as {
+      friends?: string[];
+      name?: string;
+    } | undefined;
+    const inviterFriends = new Set(inviterData?.friends || []);
+    const inviterName =
+      typeof inviterData?.name === 'string' && inviterData.name.length > 0
+        ? inviterData.name
+        : 'חבר';
+    // Only real friends who aren't already in the group.
+    const toInvite = friendIds.filter(
+      (fid) => inviterFriends.has(fid) && !members.has(fid),
+    );
+    const room = Math.max(0, 200 - (g.pendingPlayerIds?.length || 0));
+    const accepted = toInvite.slice(0, room);
+    if (accepted.length === 0) return { invited: 0 };
+    await groupRef.set(
+      {
+        pendingPlayerIds: admin.firestore.FieldValue.arrayUnion(...accepted),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+    await Promise.all(
+      accepted.map((fid) =>
+        createNotificationOnce({
+          type: 'groupInvitation',
+          recipientId: fid,
+          payload: {
+            groupId,
+            groupName: g.name || '',
+            inviterName,
+            inviterId: uid,
+          },
+          createdByUid: uid,
+        }),
+      ),
+    );
+    return { invited: accepted.length };
+  },
+);

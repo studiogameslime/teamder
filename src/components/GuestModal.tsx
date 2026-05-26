@@ -8,7 +8,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -112,6 +114,17 @@ export function GuestModal({
       animationType="fade"
       onRequestClose={onClose}
     >
+      {/* KeyboardAvoidingView pushes the card above the on-screen
+          keyboard so the guest-name input never falls behind it. iOS
+          uses `padding` (the system shrinks the available area from
+          the bottom); Android handles keyboard insets via the
+          window's softInputMode, so we use `height` as a safe noop
+          there — without this wrapper, opening the keyboard on a
+          short device hid the input + Save button. */}
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>
@@ -182,6 +195,7 @@ export function GuestModal({
           </View>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -65,6 +65,32 @@ export interface User {
   newGameSubscriptions?: GroupId[];
 
   /**
+   * Accepted friends — a mutual, denormalized list of user ids kept in
+   * sync on BOTH users' docs by a trusted callable when a friend
+   * request is accepted. Powers the "הזמן חברים" picker in game
+   * creation. Written ONLY server-side (Admin SDK) via
+   * `acceptFriendRequest` / `removeFriendship` so a client can't fake a
+   * friendship — see [[FriendRequestDoc]]. The converter reads it but
+   * never writes it, so a profile save can't clobber the array.
+   */
+  friends?: UserId[];
+
+  /**
+   * The user's hidden "personal" community — created lazily on first
+   * use of the "ללא קהילה — משחק חד־פעמי" flow in GameCreate. All
+   * orphan games this user creates land inside it so the rest of the
+   * data model (game.groupId is non-null, rules expect a group, etc.)
+   * keeps working unchanged. Once the user accepts the post-game
+   * "צור קהילה" prompt, this same group is promoted to a real
+   * community via `promoteOrphanToGroup` and the field continues
+   * pointing at the now-public group.
+   *
+   * Optional so legacy users round-trip; the callable creates it on
+   * demand and writes it back here.
+   */
+  personalGroupId?: GroupId;
+
+  /**
    * @deprecated Legacy from the jersey-as-avatar era. Round-tripped
    * by the converter so old user docs don't fail validation, but
    * never written for new accounts — visual identity is now driven
@@ -236,6 +262,11 @@ export interface NotificationPrefs {
   playerCancelled: boolean;
   /** Member: a community I belong to was deleted by its admin. */
   groupDeleted: boolean;
+  /** Organizer: not enough players have joined as the kickoff approaches. */
+  gameShortageWarning: boolean;
+  /** Player: someone sent me a friend request / accepted mine. Optional
+   *  so existing pref objects round-trip without this key. */
+  friendRequest?: boolean;
 }
 
 /** Defaults applied when `User.notificationPrefs` is missing or partial. */
@@ -255,7 +286,33 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   gameRsvpNudge: true,
   playerCancelled: true,
   groupDeleted: true,
+  gameShortageWarning: true,
+  friendRequest: true,
 };
+
+// ─── Friends ───────────────────────────────────────────────────────────
+
+export type FriendRequestStatus = 'pending' | 'accepted' | 'declined';
+
+/**
+ * One friendship request. Stored at /friendRequests/{fromUserId__toUserId}
+ * — the deterministic id stops a sender from queuing duplicate pending
+ * requests at the same target, and lets us detect a reverse request.
+ *
+ * Friendship is MUTUAL: the two users are friends only once `status`
+ * flips to 'accepted'. The accept is performed by a trusted callable
+ * (Admin SDK) which also writes each user into the other's
+ * `User.friends` array and pushes a `friendRequestAccepted` to the
+ * sender. A decline just sets the status — no push is sent.
+ */
+export interface FriendRequestDoc {
+  id: string;
+  fromUserId: UserId;
+  toUserId: UserId;
+  status: FriendRequestStatus;
+  createdAt: number;
+  updatedAt?: number;
+}
 
 /** Discriminated union of dispatch payloads stored under /notifications. */
 export type NotificationType =
@@ -304,7 +361,38 @@ export type NotificationType =
    * who wasn't registered to any current game still wants to know
    * the community itself is gone.
    */
-  | 'groupDeleted';
+  | 'groupDeleted'
+  /**
+   * Post-orphan-game prompt to the creator: "שיחקתם נחמד 🤝 רוצה
+   * לשמור את החברים? צור קהילה בלחיצה". Fires from the
+   * `promotePromptCron` after a game finishes inside a personal
+   * (`isPersonal: true`) group. Single-shot per game (latched by
+   * `game.promotePromptSent`).
+   */
+  | 'promotePrompt'
+  /**
+   * Push to participants of a freshly-promoted group: "{name} יצר
+   * קהילה ומזמין אותך". Fires from `promoteOrphanToGroup` to every
+   * inviteUserId, asking them to confirm joining the new community.
+   */
+  | 'groupInvitation'
+  /**
+   * Admin-only nudge fired when a game is approaching kickoff but the
+   * registered roster is below the configured min (or 80% of max).
+   * Lets the organizer decide whether to cancel or wait it out —
+   * replaces the previous auto-cancel behaviour.
+   */
+  | 'gameShortageWarning'
+  /**
+   * Recipient: someone sent you a friend request. Carries the sender's
+   * id so the app can deep-link to the friends screen to accept/decline.
+   */
+  | 'friendRequest'
+  /**
+   * Requester: the person you asked accepted your friend request. No
+   * push is ever sent for a declined request (by design).
+   */
+  | 'friendRequestAccepted';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on
@@ -335,10 +423,45 @@ export interface UserAvailability {
   timeFrom?: string;
   /** "HH:mm" 24h, inclusive. */
   timeTo?: string;
-  /** Free-text city for "near me" match. No geo here. */
+  /**
+   * @deprecated Pre-radius single-city field. Reads still work; new
+   * writes go to `homeCity` + `availabilityRadiusKm`. The matcher
+   * uses the home city + radius to filter games by distance.
+   */
   preferredCity?: string;
+  /**
+   * @deprecated Multi-cities (Phase 1A). Replaced by the home-city
+   * + radius pair below.
+   */
+  cities?: string[];
+  /**
+   * Home city (single, MUST be picked from autocomplete). Used by
+   * the filler matcher together with `availabilityRadiusKm` to find
+   * games near the user. Free-typed values are blocked at save by
+   * the editor (see AvailabilityEditScreen).
+   */
+  homeCity?: string;
+  /** Geocoded coords of `homeCity` — populated when the user picks
+   *  the city from the dropdown. Used by the matcher's distance
+   *  computation; clients only set them, never read. */
+  homeCityLat?: number;
+  homeCityLng?: number;
+  /**
+   * Radius (km) the user is willing to travel for a filler match.
+   * Default 20. Matcher computes Haversine distance from
+   * `homeCity` to the game's city; if greater than this, the user
+   * is excluded from candidates regardless of `acceptsFillerPush`.
+   */
+  availabilityRadiusKm?: number;
   /** When false, the user is hidden from "Invite to Game" suggestions. */
   isAvailableForInvites: boolean;
+  /**
+   * Master opt-in for the cross-community filler push system. When
+   * true AND `homeCity` is set, the user enters the candidate pool
+   * that the scheduled CF scans when a community game in their
+   * radius is short on players. Default: false (must opt in).
+   */
+  acceptsFillerPush?: boolean;
 }
 
 /**
@@ -377,12 +500,25 @@ export interface Group {
   name: string;
   /** Lowercase + trimmed form of `name`, used for case-insensitive prefix search. */
   normalizedName: string;
-  fieldName: string;
+  /**
+   * @deprecated A community is no longer tied to a single field. Field
+   * info now lives on each Game. Kept optional for backward compat
+   * with legacy /groups docs that pre-date the wizard split.
+   * New groups created after the wizard refactor do NOT write this.
+   */
+  fieldName?: string;
+  /** @deprecated Field info moved to Game. See `fieldName` above. */
   fieldAddress?: string;
   city?: string;
-  /** Street name selected from the Israeli streets dataset autocomplete. */
+  /**
+   * @deprecated Street belongs to per-game location, not the
+   * community. Kept optional for legacy reads.
+   */
   street?: string;
-  /** Free-text hint refining where exactly the field is (gate, landmark, etc.). */
+  /**
+   * @deprecated Per-game address detail moved to Game.notes /
+   * Game.fieldAddress. Kept optional for legacy reads.
+   */
   addressNote?: string;
   description?: string;
   lat?: number;
@@ -403,7 +539,11 @@ export interface Group {
   playerIds: UserId[];          // approved community members
   pendingPlayerIds: UserId[];   // waiting for admin approval to join the COMMUNITY
   inviteCode: string;           // short token for code-based join
-  /** Default cap for game nights spawned from this group; usually 15. */
+  /**
+   * @deprecated Per-game roster cap moved to Game.maxPlayers. The
+   * community no longer dictates a default for all its games.
+   * Kept optional for legacy reads.
+   */
   defaultMaxPlayers?: number;
   /**
    * If true, joining the community is auto-approved (no admin gate).
@@ -420,29 +560,72 @@ export interface Group {
    */
   contactPhone?: string;
 
-  /** Days the community usually plays on (e.g., [4] = Thursday). */
+  /**
+   * @deprecated Recurring schedule moved to per-Game configuration.
+   * A "recurring game" is now created via the Game wizard with a
+   * `registrationOpensAt` set; the community no longer carries a
+   * default day/time. Kept optional for legacy reads.
+   */
   preferredDays?: WeekdayIndex[];
-  /** "HH:mm" — typical kick-off time of a regular game. */
+  /** @deprecated See `preferredDays`. */
   preferredHour?: string;
   /** Per-player cost in NIS (free if undefined or 0). */
   costPerGame?: number;
-  /** Free-text notes shown on the community details screen. */
+  /** @deprecated Use `description` or `rules`. Legacy free-text. */
   notes?: string;
   /**
-   * Phase 7: free-text "team rules" surfaced on the community details
-   * screen. Distinct from `notes` (which is everyday housekeeping) — this
-   * is the explicit code-of-conduct.
+   * Free-text "community rules" surfaced on the community details
+   * screen. Distinct from `description` — this is the explicit
+   * code-of-conduct.
    */
   rules?: string;
 
-  /** Phase 7: recurring-game configuration. All optional. */
+  /**
+   * Admin-uploaded cover photo shown as the full-bleed hero on the
+   * community details screen. A Firebase Storage download URL pointing
+   * at /groups/{id}/cover.jpg. When absent, the UI falls back to the
+   * bundled default stadium image. Only coaches can set it (enforced
+   * in storage.rules via a Firestore admin lookup).
+   */
+  coverPhotoUrl?: string;
+
+  /**
+   * @deprecated Recurring-game configuration moved to per-Game
+   * settings. The Game wizard now exposes a "recurring game" toggle
+   * that drives `registrationOpensAt`. The community no longer
+   * holds a default. All five fields are kept optional purely for
+   * legacy reads — never written by new code paths.
+   */
   recurringGameEnabled?: boolean;
-  /** 0..6, ISO weekday. */
+  /** @deprecated See `recurringGameEnabled`. */
   recurringDayOfWeek?: WeekdayIndex;
-  /** "HH:mm" 24h. */
+  /** @deprecated See `recurringGameEnabled`. */
   recurringTime?: string;
+  /** @deprecated See `recurringGameEnabled`. */
   recurringDefaultFormat?: GameFormat;
+  /** @deprecated See `recurringGameEnabled`. */
   recurringNumberOfTeams?: number;
+
+  /**
+   * "Personal" / hidden community used to host one-shot games created
+   * by users who didn't want to formally set up a community first.
+   * The community exists in /groups so the rest of the app (rules,
+   * notifications, fillers, balance) keeps working with no special
+   * cases — but the UI never surfaces it as a real community: it's
+   * filtered out of feeds, not searchable, and the games inside it
+   * render with the "משחק חד־פעמי" label instead of the (empty)
+   * community name.
+   *
+   * `isPersonal=true` is set on creation by the `ensurePersonalGroup`
+   * callable. It flips to `false` when the user accepts the
+   * post-game "צור קהילה" prompt — at which point this group is
+   * promoted to a real community via `promoteOrphanToGroup`.
+   * `hidden=true` is the same lifecycle flag, kept as a separate
+   * field for future use (e.g. an admin manually hiding a real
+   * community).
+   */
+  isPersonal?: boolean;
+  hidden?: boolean;
 
   createdAt: number;
   updatedAt?: number;
@@ -494,7 +677,9 @@ export interface GroupRatingSummary {
 export interface GroupSearchHit {
   id: GroupId;
   name: string;
-  fieldName: string;
+  /** @deprecated Communities are no longer tied to a single field. */
+  fieldName?: string;
+  /** @deprecated See `fieldName`. */
   fieldAddress?: string;
   memberCount: number;
 }
@@ -509,10 +694,14 @@ export interface GroupPublic {
   id: GroupId;
   name: string;
   normalizedName: string;
-  fieldName: string;
+  /** @deprecated Mirrored from Group; communities no longer own a field. */
+  fieldName?: string;
+  /** @deprecated See `fieldName`. */
   fieldAddress?: string;
   city?: string;
+  /** @deprecated See `fieldName`. */
   street?: string;
+  /** @deprecated See `fieldName`. */
   addressNote?: string;
   description?: string;
   memberCount: number;
@@ -520,7 +709,11 @@ export interface GroupPublic {
   isOpen?: boolean;
   maxMembers?: number;
   contactPhone?: string;
+  /** Mirrored from Group. Lets the public showcase/feed render the cover. */
+  coverPhotoUrl?: string;
+  /** @deprecated Recurring schedule moved to per-Game. Legacy reads only. */
   preferredDays?: WeekdayIndex[];
+  /** @deprecated See `preferredDays`. */
   preferredHour?: string;
   costPerGame?: number;
   createdAt: number;
@@ -682,6 +875,14 @@ export interface Game {
   /** Single user holding the ball / jerseys this night, or undefined. */
   ballHolderUserId?: UserId;
   jerseysHolderUserId?: UserId;
+  /**
+   * Players who self-marked "אני מביא כדור" via the in-game toggle.
+   * Multiple bringers are allowed (often a backup is welcome). The
+   * row in MatchParticipantsSection shows a ball icon next to their
+   * name when they're in this list. Self-toggle only — see
+   * `gameService.setBringingBall`.
+   */
+  ballBringerIds?: UserId[];
 
   teams?: Team[];               // populated once "Start Game" is pressed
   matches: MatchRound[];        // hydrated from /rounds in Firebase mode
@@ -748,13 +949,26 @@ export interface Game {
   city?: string;
   /** Per-game full address override (defaults to the parent group's address). */
   fieldAddress?: string;
-  /** Game-rule flag: there's a referee on the night. */
+  /**
+   * Free-text rule chips set by the organiser at create/edit time.
+   * Each entry is a short label ("שופט", "משחקים עם חוצים", "ללא
+   * החלקות"…) — no taxonomy, no preset list. Replaces the earlier
+   * fixed booleans (`hasReferee`/`hasPenalties`/`hasHalfTime`) which
+   * were too rigid: organisers wanted to surface their own rules,
+   * not pick from a closed set.
+   *
+   * Display: rendered as a row of chips on MatchDetails when set.
+   * Cap: 12 tags, each ≤30 chars (enforced in firestore.rules).
+   */
+  ruleTags?: string[];
+  /** @deprecated See `ruleTags`. Kept readable so legacy game docs
+   *  round-trip cleanly; never written by new code paths. */
   hasReferee?: boolean;
-  /** Game-rule flag: penalty shootout decides ties. */
+  /** @deprecated See `ruleTags`. */
   hasPenalties?: boolean;
-  /** Game-rule flag: matches play with halves (חוצים) instead of one straight period. */
+  /** @deprecated See `ruleTags`. */
   hasHalfTime?: boolean;
-  /** Optional extra time minutes added to the match duration. */
+  /** @deprecated See `ruleTags`. */
   extraTimeMinutes?: number;
 
   /**
@@ -829,6 +1043,35 @@ export interface Game {
   arrivals?: Record<UserId, ArrivalStatus>;
 
   /**
+   * Admin-pinned announcement shown at the top of the game-details
+   * screen. One short message (e.g. "המגרש החליף לדשא 2", "תביאו
+   * חולצות שחורות") that broadcasts to everyone who can see the
+   * game. Empty / missing → nothing rendered. Editable by admin via
+   * the inline pencil on the pinned card. Capped at 280 chars in
+   * the rules so it stays glanceable, not a full chat.
+   */
+  pinnedMessage?: string;
+
+  /**
+   * Set on games created via the "ללא קהילה — משחק חד־פעמי" flow.
+   * The game still belongs to a group (the creator's personal /
+   * hidden community) — this flag tells the UI to render the game
+   * as orphan-context: title shown as "משחק חד־פעמי", no community
+   * link, no "פרטי קהילה" CTA.
+   *
+   * Cleared (or stays untouched) on a regular community game.
+   */
+  isOrphanContext?: boolean;
+
+  /**
+   * Idempotency latch flipped by the `promotePromptCron` Cloud
+   * Function once the post-game "rוצה לשמור את החברים?" push has
+   * been dispatched to the creator. Prevents the cron from
+   * re-firing on subsequent runs.
+   */
+  promotePromptSent?: boolean;
+
+  /**
    * Per-player cancellation timestamp (ms epoch), keyed by user id.
    * Written by `cancelGameV2` whenever a registered user cancels;
    * used by the discipline-snapshot logic to distinguish "cancelled
@@ -880,6 +1123,23 @@ export interface Game {
     unratedCount: number;
     teamRatings: number[];
   };
+
+  // ── Cross-community filler matching (per-game opt-in) ─────────
+  /**
+   * When true, the game is open to receiving filler push notifications
+   * for users outside the community whose `availability.cities`
+   * includes the game's city. Default behaviour for new games is set
+   * by the wizard (true for open communities, false for closed).
+   */
+  acceptsFillers?: boolean;
+  /**
+   * Minimum trust score (0-100) a filler must have to receive the
+   * push for this game. `null` / undefined = no filter; players with
+   * insufficient history (`score=null`) are NEVER pushed regardless
+   * of this value (the `new` tier doesn't pass any minimum). Default
+   * set by the wizard at 70.
+   */
+  fillerMinTrust?: number;
 
   createdAt: number;
   updatedAt?: number;
@@ -963,6 +1223,17 @@ export type LiveMatchZone =
 export interface LiveMatchState {
   phase: LiveMatchPhase;
   /**
+   * Wall-clock timestamp the FIRST time the timer was pressed — the
+   * single signal that "this game actually happened". Used by
+   * cleanupStaleGames to decide between deleting an unplayed roster
+   * and finalising a played one, and by stats/trust pipelines to
+   * skip games that were created and forgotten. Set once and never
+   * cleared — pause/resume don't reset it. Absent on legacy games
+   * written before this field existed (treated as "not started" for
+   * cleanup purposes).
+   */
+  startedAt?: number;
+  /**
    * Where each player currently sits. Stored as a flat object so it
    * round-trips through Firestore without special-casing Map.
    */
@@ -1013,6 +1284,40 @@ export interface LiveMatchState {
     D?: number;
     E?: number;
   };
+
+  // ─── Synced timer fields ─────────────────────────────────────────────
+  // The shared, real-time-synced match clock. Every device looking at
+  // the live match reads these three primitives and computes the
+  // displayed time locally — no server ticking required. Admin
+  // actions (start / pause / resume / reset) are wrapped in
+  // Firestore transactions so two admins pressing the button at
+  // exactly the same instant can't corrupt the math.
+  //
+  // Math:
+  //   displayMs = timerAccumulatedMs +
+  //     (timerRunning ? Date.now() - timerLastStartedAt : 0)
+  //
+  // Start :  running was false → set running=true, lastStartedAt=now
+  // Pause :  running was true  → set accumulated += now - lastStartedAt,
+  //                              running=false, lastStartedAt=null
+  // Reset :  accumulated=0, running=false, lastStartedAt=null
+
+  /** True while the timer is currently ticking. */
+  timerRunning?: boolean;
+  /** Wall-clock epoch of the most recent "start" press. Null while
+   *  paused or never started. */
+  timerLastStartedAt?: number | null;
+  /** Total elapsed ms across all completed "running" segments —
+   *  used to resume from where the previous pause left off. */
+  timerAccumulatedMs?: number;
+  /** User id of the admin who last touched a timer control. Renders
+   *  as a "controlled by …" hint so other admins know who is driving. */
+  timerControlledBy?: UserId | null;
+  /** Denormalised display name of `timerControlledBy` so the hint UI
+   *  doesn't have to look the user up. Optional — legacy state has
+   *  neither field. */
+  timerControlledByName?: string | null;
+
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */
   updatedAt?: number;
 }

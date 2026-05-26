@@ -32,6 +32,11 @@ interface Props {
   startsAt?: number;
   onMenuPress: () => void;
   onBackPress: () => void;
+  /** Optional share entry-point. When passed, a small share icon
+   *  renders next to the overflow menu so the share affordance has
+   *  a permanent home in the header — even when the sticky CTA at
+   *  the bottom is showing a different action (cancel, start, etc.). */
+  onSharePress?: () => void;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -40,6 +45,7 @@ export function MatchStadiumHero({
   startsAt,
   onMenuPress,
   onBackPress,
+  onSharePress,
 }: Props) {
   return (
     <View style={styles.wrap}>
@@ -80,22 +86,42 @@ export function MatchStadiumHero({
             <Text style={styles.titleInline} numberOfLines={1}>
               {he.matchHeroTitle}
             </Text>
-            <Pressable
-              onPress={onMenuPress}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.profileMenuOpen}
-            >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={22}
-                color="#FFFFFF"
-              />
-            </Pressable>
+            <View style={styles.topBarTrailing}>
+              {onSharePress ? (
+                <Pressable
+                  onPress={onSharePress}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.profileInviteFriendsCta}
+                >
+                  <Ionicons
+                    name="share-social-outline"
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={onMenuPress}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  pressed && { opacity: 0.7 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={he.profileMenuOpen}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={22}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+            </View>
           </View>
 
           {/* Floating dark card — date row + huge time. Location
@@ -159,6 +185,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  // Trailing-edge group for the overflow menu (and the optional
+  // share icon when provided). flex-direction:row + small gap so the
+  // two icons sit together without crowding the title.
+  topBarTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   // Inline title sandwiched between the two icon buttons.
   titleInline: {

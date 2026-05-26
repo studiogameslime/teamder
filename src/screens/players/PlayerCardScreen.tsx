@@ -25,11 +25,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { FriendActionButton } from '@/components/profile/FriendActionButton';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
-import { DisciplineCards } from '@/components/DisciplineCards';
+import { TrustMeter } from '@/components/TrustMeter';
 import { RatingModal } from '@/components/RatingModal';
 import { toast } from '@/components/Toast';
 import { ratingsService } from '@/services/ratingsService';
@@ -39,7 +40,7 @@ import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
-import { disciplineService } from '@/services/disciplineService';
+import { trustService, type TrustSummary } from '@/services/trustService';
 import { useCurrentGroup } from '@/store/groupStore';
 import {
   Game,
@@ -257,6 +258,9 @@ export function PlayerCardScreen() {
               someone else's profile. */}
           {isSelfView && user.email ? (
             <Text style={styles.email}>{user.email}</Text>
+          ) : null}
+          {!isSelfView && me ? (
+            <FriendActionButton meId={me.id} otherUserId={user.id} />
           ) : null}
         </View>
 
@@ -635,132 +639,75 @@ function RatingSection({
 }
 
 function DisciplineSection({ user }: { user: User }) {
-  // Read-only: snapshot from last 10 PAST games + last 5 events log.
-  // Issue/revoke are post-game admin flows and intentionally do not
-  // appear on the public Player Card.
-  //
-  // The DISPLAYED yellow/red counts come from
-  // `getPlayerDisciplineSnapshot` — a windowed view over the user's
-  // 10 most recent terminal games. Lifetime counters on
-  // `user.discipline` are kept for backward compat but are NOT what
-  // the card surfaces.
-  //
-  // Tri-state UI:
-  //   • 'loading' — first fetch in flight; render a small spinner,
-  //     never numbers (a 0 here would lie: "clean player" vs
-  //     "unknown" must look different).
-  //   • 'error'   — fetch failed; render "אין נתונים זמינים".
-  //   • Snapshot  — render the actual numbers + caption.
-  const state = disciplineService.state(user);
-  type SnapshotState =
-    | { kind: 'loading' }
-    | { kind: 'error' }
-    | {
-        kind: 'ready';
-        yellowCardsLast10: number;
-        redCardsLast10: number;
-        gamesCounted: number;
-      };
-  const [snapshot, setSnapshot] = useState<SnapshotState>({ kind: 'loading' });
+  // Renamed conceptually to "Trust" — the old yellow/red counters
+  // were replaced with a single 0-100 reliability score (see
+  // `trustService`). The function name stays as `DisciplineSection`
+  // to keep call-site diffs minimal; the underlying data still comes
+  // from past terminal games + cancellations.
+  const [trust, setTrust] = useState<TrustSummary | null>(null);
+  const [trustError, setTrustError] = useState(false);
   useEffect(() => {
     let alive = true;
-    setSnapshot({ kind: 'loading' });
-    disciplineService
-      .getPlayerDisciplineSnapshot(user.id)
+    setTrust(null);
+    setTrustError(false);
+    trustService
+      .getSummary(user.id)
       .then((s) => {
-        if (alive) {
-          setSnapshot({
-            kind: 'ready',
-            yellowCardsLast10: s.yellowCardsLast10,
-            redCardsLast10: s.redCardsLast10,
-            gamesCounted: s.gamesCounted,
-          });
-        }
+        if (alive) setTrust(s);
       })
       .catch((err) => {
         if (__DEV__) {
-          console.warn('[playerCard] discipline snapshot failed', err);
+          console.warn('[playerCard] trust summary failed', err);
         }
-        if (alive) setSnapshot({ kind: 'error' });
+        if (alive) setTrustError(true);
       });
     return () => {
       alive = false;
     };
   }, [user.id]);
-  const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
-  const hasRecentRed = state.events.some(
-    (e) => e.type === 'red' && Date.now() - e.createdAt < RECENT_MS,
-  );
-
-  const captionText =
-    snapshot.kind === 'ready'
-      ? snapshot.gamesCounted === 0
-        ? he.disciplineSnapshotEmpty
-        : snapshot.gamesCounted >= 10
-          ? he.disciplineSnapshotCaptionFull
-          : he.disciplineSnapshotCaptionPartial(snapshot.gamesCounted)
-      : null;
 
   return (
     <View style={styles.disciplineSection}>
       <View style={styles.disciplineHeader}>
-        <Text style={styles.achievementsTitle}>{he.disciplineTitle}</Text>
-        {snapshot.kind === 'loading' ? (
-          <SoccerBallLoader size={20} />
-        ) : snapshot.kind === 'error' ? (
-          <Text style={styles.disciplineUnavailable}>
-            {he.disciplineSnapshotUnavailable}
-          </Text>
-        ) : (
-          <DisciplineCards
-            yellowCards={snapshot.yellowCardsLast10}
-            redCards={snapshot.redCardsLast10}
-            size={32}
-          />
-        )}
+        <Text style={styles.achievementsTitle}>{he.trustMeterTitle}</Text>
       </View>
-      {captionText ? (
-        <Text style={styles.disciplineCaption}>{captionText}</Text>
-      ) : null}
-      {hasRecentRed ? (
-        <View style={styles.warningPill}>
-          <Text style={styles.warningPillText}>
-            {he.disciplineWarningRecentRed}
-          </Text>
-        </View>
-      ) : null}
-
-      {state.events.length === 0 ? (
-        <Text style={styles.emptyHint}>{he.disciplineNoCards}</Text>
+      {trustError ? (
+        <Text style={styles.disciplineUnavailable}>
+          {he.trustMeterUnavailable}
+        </Text>
+      ) : !trust ? (
+        <SoccerBallLoader size={20} />
       ) : (
-        <Card style={styles.disciplineEventsCard}>
-          <Text style={styles.eventListLabel}>{he.disciplineRecent}</Text>
-          {state.events.slice(0, 5).map((e) => (
-            <View key={e.id} style={styles.eventRow}>
-              <DisciplineCards
-                yellowCards={e.type === 'yellow' ? 1 : 0}
-                redCards={e.type === 'red' ? 1 : 0}
-                size={22}
-                hideEmpty
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.eventReason}>{reasonLabel(e.reason)}</Text>
-                <Text style={styles.eventDate}>
-                  {formatHebrewDate(e.createdAt)}
+        <View style={styles.trustWrap}>
+          <TrustMeter score={trust.score} tier={trust.tier} size="md" />
+          {trust.score === null ? (
+            <Text style={styles.disciplineCaption}>
+              {he.trustMeterCaptionEmpty}
+            </Text>
+          ) : (
+            <View style={styles.trustBreakdown}>
+              <Text style={styles.disciplineCaption}>
+                {he.trustBreakdownAttended(
+                  trust.breakdown.attended,
+                  trust.breakdown.registered,
+                )}
+              </Text>
+              {trust.breakdown.softCancels > 0 ? (
+                <Text style={styles.disciplineCaption}>
+                  {he.trustBreakdownSoftCancels(trust.breakdown.softCancels)}
                 </Text>
-              </View>
+              ) : null}
+              {trust.breakdown.hardCancels > 0 ? (
+                <Text style={styles.disciplineCaption}>
+                  {he.trustBreakdownHardCancels(trust.breakdown.hardCancels)}
+                </Text>
+              ) : null}
             </View>
-          ))}
-        </Card>
+          )}
+        </View>
       )}
     </View>
   );
-}
-
-function reasonLabel(r: 'late' | 'no_show' | 'manual'): string {
-  if (r === 'late') return he.disciplineReasonLate;
-  if (r === 'no_show') return he.disciplineReasonNoShow;
-  return he.disciplineReasonManual;
 }
 
 function AchievementsSection({ user }: { user: User }) {
@@ -947,6 +894,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   disciplineSection: { gap: spacing.sm },
+  trustWrap: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  trustBreakdown: {
+    alignItems: 'center',
+    gap: 2,
+    marginTop: spacing.xs,
+  },
   disciplineHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -66,12 +66,17 @@ export const groupService = {
   async listForUser(userId: UserId): Promise<Group[]> {
     if (USE_MOCK_DATA) {
       return Object.values(groupsById).filter(
-        (g) => g.adminIds.includes(userId) || g.playerIds.includes(userId)
+        (g) =>
+          g.isPersonal !== true &&
+          (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
       );
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data());
+    // Hide personal/orphan-host groups from the user's "my communities"
+    // list — they're an implementation detail of the orphan-game flow,
+    // never surfaced as real communities until the user promotes.
+    return snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true);
   },
 
   /**
@@ -181,45 +186,42 @@ export const groupService = {
   },
 
   async createGroup(input: {
+    // ── Identity (Step 1 of the wizard) ───────────────────────────
     name: string;
-    fieldName: string;
-    fieldAddress?: string;
-    city?: string;
-    street?: string;
-    addressNote?: string;
     description?: string;
-    defaultMaxPlayers?: number;
-    /** v2: total community size cap. */
-    maxMembers?: number;
-    /** v2: when true, joining is auto-approved. */
+    /** When true, joining is auto-approved (no admin gate). */
     isOpen?: boolean;
-    /** v2: phone for WhatsApp contact button (Israeli format, validated by caller). */
-    contactPhone?: string;
-    /** Phase B: schedule + cost + extended notes. */
-    preferredDays?: number[];
-    preferredHour?: string;
-    costPerGame?: number;
-    notes?: string;
+    // ── Info (Step 2 of the wizard) ───────────────────────────────
     /** Code-of-conduct text shown on the community page. */
     rules?: string;
-    /** When true, the wizard's recurring-game configuration is active. */
-    recurringGameEnabled?: boolean;
+    /** Phone for WhatsApp contact button (Israeli format, caller validated). */
+    contactPhone?: string;
+    /** General city the community is based in. NOT a fixed field. */
+    city?: string;
+    /** Total community size cap. */
+    maxMembers?: number;
     creator: User;
+    // ── Removed (now per-Game) ────────────────────────────────────
+    // fieldName / fieldAddress / street / addressNote / preferredDays /
+    // preferredHour / recurringGameEnabled / defaultMaxPlayers /
+    // costPerGame / notes — all moved to per-Game settings or dropped.
+    // Old /groups docs that still carry these are read with optional
+    // typing; the wizard simply doesn't expose them anymore.
   }): Promise<Group> {
-    // Spam guard: 5 community creates per user per day. The
-    // /rateLimits doc backing this is per-user so it doesn't
-    // bottleneck globally.
-    await enforceRateLimit(input.creator.id, 'createGroup');
+    // The 5-per-day createGroup rate limit USED to live here as
+    // `enforceRateLimit('createGroup')` writing /rateLimits/{uid}_…
+    // — but that doc was client-writable, letting a malicious client
+    // reset its own counter (Security Audit Finding #3). Enforcement
+    // moved to `createGroupCallable` server-side, against the
+    // /serverRateLimits collection (deny-all from client). The
+    // callable returns `resource-exhausted` if the cap is hit; the
+    // catch block below re-throws with that code preserved.
+    //
     // Client-side validation gives a friendly Hebrew error before
-    // we hit the wire. The Firestore rule layer enforces the same
-    // caps authoritatively — this is just the user-facing pre-flight.
+    // we hit the wire. The CF re-validates authoritatively.
     const name = requireString('name', input.name, {
       max: 80,
       label: 'שם הקהילה',
-    });
-    const fieldName = requireString('fieldName', input.fieldName, {
-      max: 200,
-      label: 'שם המגרש',
     });
     const description = optionalString('description', input.description, {
       max: 500,
@@ -229,30 +231,18 @@ export const groupService = {
       max: 80,
       label: 'עיר',
     });
-    const fieldAddress = optionalString('fieldAddress', input.fieldAddress, {
-      max: 300,
-      label: 'כתובת המגרש',
-    });
     const now = Date.now();
+    // Slim Group shape — only the surviving identity + membership
+    // + info fields. Game-specific fields no longer get written.
     const baseGroup = {
       name,
       normalizedName: normalize(name),
-      fieldName,
-      fieldAddress,
       city,
-      street: input.street,
-      addressNote: input.addressNote,
       description,
-      defaultMaxPlayers: input.defaultMaxPlayers ?? 15,
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
       contactPhone: input.contactPhone,
-      preferredDays: input.preferredDays as Group['preferredDays'],
-      preferredHour: input.preferredHour,
-      costPerGame: input.costPerGame,
-      notes: input.notes,
       rules: input.rules,
-      recurringGameEnabled: input.recurringGameEnabled,
       creatorId: input.creator.id,
       adminIds: [input.creator.id],
       playerIds: [input.creator.id],
@@ -272,17 +262,151 @@ export const groupService = {
       achievementsService.bump(input.creator.id, 'teamsCreated', 1);
       return g;
     }
-    // Firebase: dual-write private + public in a single batch.
-    const privRef = doc(col.groups());
-    const g: Group = { id: privRef.id, ...baseGroup };
-    const { db } = getFirebase();
-    const batch = writeBatch(db);
-    batch.set(privRef, g);
-    batch.set(docs.groupPublic(g.id), toPublic(g));
-    await batch.commit();
+    // Firebase: route through the `createGroupCallable` Cloud Function.
+    // Previously the client did a dual-write of /groups + /groupsPublic
+    // and bumped /rateLimits client-side — but the rate-limit doc was
+    // client-writable, so a malicious client could reset its own
+    // counter and spam-create communities (Security Audit Finding #3).
+    // The callable enforces the 5-per-day cap server-side via
+    // /serverRateLimits (deny-all from client) and writes the docs
+    // with Admin SDK.
+    //
+    // The callable returns { ok, groupId }. We then fetch the freshly
+    // written canonical doc so the caller gets a fully-populated Group
+    // (matching the legacy contract). The achievement bump runs
+    // server-side too — kept on the client only for mock mode.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'createGroupCallable');
+    let groupId: string;
+    try {
+      const res = (await fn({
+        name: baseGroup.name,
+        description: baseGroup.description,
+        isOpen: baseGroup.isOpen,
+        rules: baseGroup.rules,
+        contactPhone: baseGroup.contactPhone,
+        city: baseGroup.city,
+        maxMembers: baseGroup.maxMembers,
+      })) as { data?: { ok?: boolean; groupId?: string } };
+      groupId = res?.data?.groupId ?? '';
+      if (!groupId) {
+        throw new Error('createGroupCallable: no groupId returned');
+      }
+    } catch (err) {
+      // Re-throw with the Firebase error code preserved so the UI can
+      // distinguish rate-limit (`resource-exhausted`) from validation
+      // (`invalid-argument`) from auth (`unauthenticated`).
+      const e = err as { code?: string; message?: string };
+      const wrapped = new Error(e.message ?? 'createGroup failed') as Error & {
+        code: string;
+      };
+      wrapped.code = (e.code ?? 'unknown').replace(/^functions\//, '');
+      throw wrapped;
+    }
+    // Read the freshly-written canonical doc.
+    const fresh = await getDoc(docs.group(groupId));
+    if (!fresh.exists()) {
+      throw new Error('createGroup: callable wrote no doc');
+    }
+    const g = fresh.data() as Group;
     await storage.setCurrentGroupId(g.id);
-    achievementsService.bump(input.creator.id, 'teamsCreated', 1);
     return g;
+  },
+
+  /**
+   * Provision (or fetch) the caller's hidden "personal community" used
+   * to host orphan / one-shot games. Returned id MUST be used as
+   * `groupId` on the new game — the rest of the data model expects a
+   * non-null group. After the game finishes, the user gets a
+   * `promotePrompt` push that can flip this group into a real
+   * community via `promoteOrphanGroup` below.
+   *
+   * Throws on auth / network failure so the wizard can surface the
+   * error inline rather than silently writing a community-bound game.
+   */
+  async ensurePersonalGroupId(): Promise<GroupId> {
+    if (USE_MOCK_DATA) {
+      // Mock mode: synthesize a stable id keyed off the active user.
+      // Matches the pattern used by other callables in mock mode.
+      return 'mock-personal-group';
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'ensurePersonalGroup');
+    const res = (await fn({})) as { data?: { groupId?: string } };
+    const id = res?.data?.groupId ?? '';
+    if (!id) throw new Error('ensurePersonalGroup: no groupId returned');
+    return id;
+  },
+
+  /**
+   * Flip the caller's personal group into a real community: applies
+   * name/description/city, writes the public mirror, and queues
+   * `groupInvitation` pushes to every uid in `inviteUserIds`.
+   * Returns the count of invitees actually queued (deduped, self
+   * removed).
+   */
+  async promoteOrphanGroup(input: {
+    groupId: GroupId;
+    name: string;
+    description?: string;
+    city?: string;
+    inviteUserIds: UserId[];
+  }): Promise<{ invited: number }> {
+    if (USE_MOCK_DATA) {
+      return { invited: input.inviteUserIds.length };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'promoteOrphanToGroup');
+    const res = (await fn({
+      groupId: input.groupId,
+      name: input.name,
+      description: input.description ?? '',
+      city: input.city ?? '',
+      inviteUserIds: input.inviteUserIds,
+    })) as { data?: { ok?: boolean; invited?: number } };
+    return { invited: res?.data?.invited ?? 0 };
+  },
+
+  /**
+   * Invite app-friends to an existing community. Each invitee lands in
+   * `pendingPlayerIds` and gets a `groupInvitation` push. Server-side the
+   * caller must belong to the group and the targets must be their actual
+   * friends — see the `inviteFriendsToGroup` callable.
+   */
+  async inviteFriendsToGroup(
+    groupId: GroupId,
+    friendIds: UserId[],
+  ): Promise<{ invited: number }> {
+    if (!groupId || friendIds.length === 0) return { invited: 0 };
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (g) {
+        const existing = new Set([
+          ...(g.adminIds ?? []),
+          ...(g.playerIds ?? []),
+          ...(g.pendingPlayerIds ?? []),
+        ]);
+        const add = friendIds.filter((f) => !existing.has(f));
+        g.pendingPlayerIds = [...(g.pendingPlayerIds ?? []), ...add];
+        g.updatedAt = Date.now();
+        return { invited: add.length };
+      }
+      return { invited: 0 };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'inviteFriendsToGroup');
+    const res = (await fn({ groupId, friendIds })) as {
+      data?: { invited?: number };
+    };
+    return { invited: res?.data?.invited ?? 0 };
   },
 
   // ─── Public groups feed ────────────────────────────────────────────────
@@ -312,18 +436,36 @@ export const groupService = {
   async searchPublicGroups(qstr: string): Promise<GroupPublic[]> {
     const norm = normalize(qstr);
     if (norm.length === 0) return this.listPublicGroups();
-    // Mock mode: full-text-ish match across name / city / pitch.
+    // Mock + Firestore both score each group on FOUR fields (name,
+    // city, field, address) and prioritise CITY matches because users
+    // typically search by city (e.g. "\u05ea\u05dc \u05d0\u05d1\u05d9\u05d1"). The previous
+    // implementation only matched name + city + fieldName, missing
+    // groups whose address contained the city but whose city field
+    // was empty.
+    const scoreMatch = (g: GroupPublic): number => {
+      const name = g.normalizedName.includes(norm) ? 1 : 0;
+      const city = (g.city ?? '').toLowerCase().includes(norm) ? 1 : 0;
+      const field = (g.fieldName ?? '').toLowerCase().includes(norm) ? 1 : 0;
+      const address = (g.fieldAddress ?? '').toLowerCase().includes(norm) ? 1 : 0;
+      // City + name carry the most weight; address/field are
+      // tie-breakers (the user is usually looking for a city, not
+      // a specific field).
+      return city * 4 + name * 3 + field * 1 + address * 1;
+    };
+
     if (USE_MOCK_DATA) {
-      return mockPublicGroups.filter(
-        (g) =>
-          g.normalizedName.includes(norm) ||
-          (g.city ?? '').toLowerCase().includes(norm) ||
-          (g.fieldName ?? '').toLowerCase().includes(norm)
-      );
+      return mockPublicGroups
+        .map((g) => ({ g, score: scoreMatch(g) }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map((x) => x.g);
     }
-    // Firestore: still uses the normalizedName prefix index. We then do a
-    // local pass to broaden matches to city/pitch within the loaded slice.
-    // A real cross-field search would need typesense/algolia.
+
+    // Firestore: prefix-index on normalizedName for the cheap hit,
+    // then a local pass over the full directory for the broader
+    // signals. A real cross-field search would need a third-party
+    // search service (Typesense / Algolia / Elastic) \u2014 for the
+    // current data volume the in-memory sweep is plenty fast.
     const q = query(
       col.groupsPublic(),
       where('normalizedName', '>=', norm),
@@ -332,17 +474,23 @@ export const groupService = {
     );
     const nameSnap = await getDocs(q);
     const byName = nameSnap.docs.map((d) => d.data());
-    if (byName.length >= 30) return byName.slice(0, 30);
-    // Broaden with a local pass on the directory for city/pitch matches.
     const all = await this.listPublicGroups();
     const seen = new Set(byName.map((g) => g.id));
-    const extras = all.filter(
-      (g) =>
-        !seen.has(g.id) &&
-        ((g.city ?? '').toLowerCase().includes(norm) ||
-          (g.fieldName ?? '').toLowerCase().includes(norm))
+    const extras = all
+      .filter((g) => !seen.has(g.id) && scoreMatch(g) > 0)
+      .map((g) => ({ g, score: scoreMatch(g) }))
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.g);
+    // City matches go FIRST even if normalizedName-prefix matches
+    // exist \u2014 the user typed a city, surface those before "groups
+    // whose name happens to start with the same string".
+    const cityExtras = extras.filter((g) =>
+      (g.city ?? '').toLowerCase().includes(norm),
     );
-    return byName.concat(extras).slice(0, 30);
+    const otherExtras = extras.filter(
+      (g) => !(g.city ?? '').toLowerCase().includes(norm),
+    );
+    return cityExtras.concat(byName).concat(otherExtras).slice(0, 30);
   },
 
   /**
@@ -368,6 +516,20 @@ export const groupService = {
     const q = query(col.groups(), where('inviteCode', '==', code.toUpperCase()));
     const snap = await getDocs(q);
     if (snap.empty) return { group: { id: '' } as Group, status: 'not_found' };
+    // Defensive: invite codes are intended to be unique, but no rule
+    // enforces that. If two groups somehow share a code (data
+    // corruption / race on creation) we'd silently join the first one
+    // and the user would land in the wrong community. Refuse instead.
+    if (snap.size > 1) {
+      if (__DEV__) {
+        console.warn(
+          '[groupService] invite-code collision — refusing join',
+          code,
+          snap.size,
+        );
+      }
+      return { group: { id: '' } as Group, status: 'not_found' };
+    }
     return submitJoin(snap.docs[0].data(), userId);
   },
 
@@ -557,27 +719,20 @@ export const groupService = {
     patch: Partial<
       Pick<
         Group,
+        // Identity + info — the only fields the new community wizard
+        // exposes. Removed (now per-Game): fieldName, fieldAddress,
+        // street, addressNote, preferredDays, preferredHour,
+        // recurringGameEnabled, recurringDayOfWeek, recurringTime,
+        // recurringDefaultFormat, recurringNumberOfTeams,
+        // defaultMaxPlayers, costPerGame, notes.
         | 'name'
-        | 'city'
-        | 'street'
-        | 'fieldName'
-        | 'fieldAddress'
-        | 'addressNote'
-        | 'contactPhone'
         | 'description'
-        | 'rules'
-        | 'preferredDays'
-        | 'preferredHour'
-        | 'costPerGame'
-        | 'defaultMaxPlayers'
-        | 'maxMembers'
         | 'isOpen'
-        | 'notes'
-        | 'recurringGameEnabled'
-        | 'recurringDayOfWeek'
-        | 'recurringTime'
-        | 'recurringDefaultFormat'
-        | 'recurringNumberOfTeams'
+        | 'rules'
+        | 'contactPhone'
+        | 'city'
+        | 'maxMembers'
+        | 'coverPhotoUrl'
       >
     >,
   ): Promise<Group> {
@@ -604,33 +759,23 @@ export const groupService = {
       }
     };
     // Whitelist the fields we accept so a bad caller can't smuggle in
-    // a `creatorId` override via this surface.
+    // a `creatorId` override via this surface. The whitelist matches
+    // the new responsibility split — community owns identity +
+    // membership behaviour + general info; everything game-related
+    // (field, schedule, recurring, format) was removed.
     const cleaned: Partial<Group> = {};
     if (patch.name !== undefined) {
       cleaned.name = patch.name;
       cleaned.normalizedName = normalize(patch.name);
     }
     for (const k of [
-      'city',
-      'street',
-      'fieldName',
-      'fieldAddress',
-      'addressNote',
-      'contactPhone',
       'description',
-      'rules',
-      'preferredDays',
-      'preferredHour',
-      'costPerGame',
-      'defaultMaxPlayers',
-      'maxMembers',
       'isOpen',
-      'notes',
-      'recurringGameEnabled',
-      'recurringDayOfWeek',
-      'recurringTime',
-      'recurringDefaultFormat',
-      'recurringNumberOfTeams',
+      'rules',
+      'contactPhone',
+      'city',
+      'maxMembers',
+      'coverPhotoUrl',
     ] as const) {
       if (k in patch) (cleaned as Record<string, unknown>)[k] = patch[k];
     }
@@ -660,20 +805,20 @@ export const groupService = {
         updatedAt: Date.now(),
       }),
     );
+    // Public mirror — only the surviving fields. fieldName /
+    // fieldAddress / preferredDays / preferredHour / costPerGame
+    // are no longer mirrored on update; legacy values stay on the
+    // doc but won't be refreshed through this surface.
     const publicPatch: Record<string, unknown> = {
       ...(cleaned.name !== undefined
         ? { name: cleaned.name, normalizedName: cleaned.normalizedName }
         : {}),
       ...(cleaned.city !== undefined ? { city: cleaned.city } : {}),
-      ...(cleaned.fieldName !== undefined ? { fieldName: cleaned.fieldName } : {}),
-      ...(cleaned.fieldAddress !== undefined ? { fieldAddress: cleaned.fieldAddress } : {}),
       ...(cleaned.description !== undefined ? { description: cleaned.description } : {}),
-      ...(cleaned.preferredDays !== undefined ? { preferredDays: cleaned.preferredDays } : {}),
-      ...(cleaned.preferredHour !== undefined ? { preferredHour: cleaned.preferredHour } : {}),
-      ...(cleaned.costPerGame !== undefined ? { costPerGame: cleaned.costPerGame } : {}),
       ...(cleaned.maxMembers !== undefined ? { maxMembers: cleaned.maxMembers } : {}),
       ...(cleaned.isOpen !== undefined ? { isOpen: cleaned.isOpen } : {}),
       ...(cleaned.contactPhone !== undefined ? { contactPhone: cleaned.contactPhone } : {}),
+      ...(cleaned.coverPhotoUrl !== undefined ? { coverPhotoUrl: cleaned.coverPhotoUrl } : {}),
       updatedAt: Date.now(),
     };
     // Only fire the public-projection update if there's something to
@@ -792,6 +937,9 @@ export const groupService = {
       }
       g.adminIds = g.adminIds.filter((id) => id !== userId);
       g.playerIds = g.playerIds.filter((id) => id !== userId);
+      g.pendingPlayerIds = (g.pendingPlayerIds ?? []).filter(
+        (id) => id !== userId,
+      );
       g.updatedAt = Date.now();
       syncMockPublic(g);
       return;
@@ -812,11 +960,57 @@ export const groupService = {
     // `onGroupPendingChanged` Cloud Function (Admin SDK) syncs the
     // public count when playerIds changes, so the client doesn't
     // need to (and shouldn't) write it.
+    //
+    // `pendingPlayerIds` is also cleared. Without it, a user who
+    // ALSO had an in-flight pending join request (e.g. they tapped
+    // "leave" while a previous re-join request was still pending)
+    // would leave a stuck "pending" badge on the community card,
+    // and the admin would see a request from someone who is no
+    // longer interested.
     await updateDoc(ref, {
       adminIds: arrayRemove(userId),
       playerIds: arrayRemove(userId),
+      pendingPlayerIds: arrayRemove(userId),
       updatedAt: Date.now(),
     });
+    // Reject any still-pending audit-trail doc for this (user, group)
+    // pair so a future re-join doesn't get blocked by the existing
+    // "you already requested" check on the client. Best-effort —
+    // failure here doesn't roll back the leave (the user IS out of
+    // the group at this point); the dailyCleanup CF eventually
+    // sweeps resolved requests by age anyway.
+    try {
+      const reqSnap = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('userId', '==', userId),
+          where('status', '==', 'pending'),
+        ),
+      );
+      for (const rd of reqSnap.docs) {
+        try {
+          await updateDoc(docs.joinRequest(rd.id), {
+            status: 'rejected',
+            decidedAt: Date.now(),
+            decidedBy: userId,
+          });
+        } catch (err) {
+          if (__DEV__)
+            console.warn(
+              '[groupService] leaveGroup: joinRequest reject failed',
+              rd.id,
+              err,
+            );
+        }
+      }
+    } catch (err) {
+      if (__DEV__)
+        console.warn(
+          '[groupService] leaveGroup: pending joinRequests query failed',
+          err,
+        );
+    }
   },
 
   /**
@@ -898,22 +1092,14 @@ export const groupService = {
       );
       for (const gd of gamesSnap.docs) {
         const game = gd.data();
-        const recipients = new Set<string>();
-        (game.players ?? []).forEach((u) => recipients.add(u));
-        (game.waitlist ?? []).forEach((u) => recipients.add(u));
-        (game.pending ?? []).forEach((u) => recipients.add(u));
-        recipients.delete(callerId); // don't notify the admin themselves
-        for (const uid of recipients) {
-          notificationsService.dispatch({
-            type: 'gameCanceledOrUpdated',
-            recipientId: uid,
-            payload: {
-              gameId: game.id,
-              action: 'cancelled',
-              reason: 'communityDeleted',
-            },
-          });
-        }
+        // We deliberately DO NOT fan out a `gameCanceledOrUpdated`
+        // push per game here. The single `groupDeleted` push at the
+        // bottom of this function tells members the entire community
+        // is gone — adding per-game cancel pushes on top would
+        // produce N² spam (the CF interprets the type as a
+        // fan-out marker and would push every participant once per
+        // notification doc we created). One "community closed"
+        // message per member is the right UX.
         try {
           await deleteDoc(docs.game(game.id));
         } catch (err) {
@@ -1015,6 +1201,10 @@ export const groupService = {
 // ─── Internal helpers ─────────────────────────────────────────────────────
 
 function toHit(g: Group): GroupSearchHit {
+  // fieldName lingers on legacy docs; we still pass it through so the
+  // search hit's "where they play" sub-line keeps working for groups
+  // that pre-date the wizard split. New groups simply leave it
+  // undefined and the consumer renders city / nothing instead.
   return {
     id: g.id,
     name: g.name,
@@ -1025,23 +1215,32 @@ function toHit(g: Group): GroupSearchHit {
 }
 
 function toPublic(g: Group): GroupPublic {
-  return {
+  // The public projection now mirrors only the surviving community
+  // fields. Legacy fieldName / fieldAddress / preferredDays etc.
+  // remain on the canonical /groups doc for backward-compat reads
+  // but are no longer surfaced to /groupsPublic. The
+  // CommunityDetailsPublicScreen renders them conditionally — if a
+  // legacy group still carries them, it renders; new groups don't.
+  const out: GroupPublic = {
     id: g.id,
     name: g.name,
     normalizedName: g.normalizedName,
-    fieldName: g.fieldName,
-    fieldAddress: g.fieldAddress,
-    city: g.city,
-    street: g.street,
-    addressNote: g.addressNote,
     description: g.description,
     memberCount: g.playerIds.length,
     isOpen: g.isOpen,
     maxMembers: g.maxMembers,
     contactPhone: g.contactPhone,
+    city: g.city,
     createdAt: g.createdAt,
     updatedAt: g.updatedAt ?? g.createdAt,
   };
+  // Pass through legacy fields if present so re-publishing a
+  // pre-refactor group via this helper doesn't blank them out.
+  if (g.fieldName) out.fieldName = g.fieldName;
+  if (g.fieldAddress) out.fieldAddress = g.fieldAddress;
+  if (g.street) out.street = g.street;
+  if (g.addressNote) out.addressNote = g.addressNote;
+  return out;
 }
 
 function syncMockPublic(g: Group): void {

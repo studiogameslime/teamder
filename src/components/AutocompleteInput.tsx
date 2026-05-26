@@ -79,7 +79,25 @@ export function AutocompleteInput({
     const t = setTimeout(async () => {
       try {
         const results = await fetchSuggestions(q);
-        if (alive) setSuggestions(results);
+        if (!alive) return;
+        // Auto-accept exact match: if what the user typed matches one
+        // of the suggestions verbatim (case-insensitive, trimmed),
+        // treat it as a deliberate pick — fire onSelect, mark as
+        // selected, and hide the dropdown. Stops the "you typed it
+        // right but still have to tap the suggestion" friction (and
+        // the awkward duplicate display of the same string in both the
+        // input and the dropdown card).
+        const exact = results.find(
+          (r) => r.trim().toLowerCase() === q.toLowerCase(),
+        );
+        if (exact) {
+          lastSelected.current = exact;
+          onSelect(exact);
+          setSuggestions([]);
+          setOpen(false);
+        } else {
+          setSuggestions(results);
+        }
       } catch {
         if (alive) setSuggestions([]);
       } finally {
@@ -91,7 +109,7 @@ export function AutocompleteInput({
       alive = false;
       clearTimeout(t);
     };
-  }, [value, open, disabled, fetchSuggestions, minChars, debounceMs]);
+  }, [value, open, disabled, fetchSuggestions, minChars, debounceMs, onSelect]);
 
   const handleSelect = (s: string) => {
     lastSelected.current = s;

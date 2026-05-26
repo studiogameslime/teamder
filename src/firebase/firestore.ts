@@ -27,6 +27,8 @@ import {
 
 import {
   ArrivalStatus,
+  FriendRequestDoc,
+  FriendRequestStatus,
   Game,
   Group,
   GroupId,
@@ -84,7 +86,25 @@ function readAvailability(d: DocumentData): UserAvailability | undefined {
     timeTo: typeof a.timeTo === 'string' ? a.timeTo : undefined,
     preferredCity:
       typeof a.preferredCity === 'string' ? a.preferredCity : undefined,
+    cities: Array.isArray(a.cities)
+      ? a.cities.filter(
+          (c: unknown): c is string => typeof c === 'string' && c.length > 0,
+        )
+      : undefined,
+    homeCity: typeof a.homeCity === 'string' ? a.homeCity : undefined,
+    homeCityLat:
+      typeof a.homeCityLat === 'number' ? a.homeCityLat : undefined,
+    homeCityLng:
+      typeof a.homeCityLng === 'number' ? a.homeCityLng : undefined,
+    availabilityRadiusKm:
+      typeof a.availabilityRadiusKm === 'number'
+        ? a.availabilityRadiusKm
+        : undefined,
     isAvailableForInvites: a.isAvailableForInvites !== false,
+    acceptsFillerPush:
+      typeof a.acceptsFillerPush === 'boolean'
+        ? a.acceptsFillerPush
+        : undefined,
   };
 }
 
@@ -113,7 +133,24 @@ const userConverter: FirestoreDataConverter<User> = {
             timeFrom: u.availability.timeFrom ?? null,
             timeTo: u.availability.timeTo ?? null,
             preferredCity: u.availability.preferredCity ?? null,
+            cities: Array.isArray(u.availability.cities)
+              ? u.availability.cities
+              : [],
+            homeCity: u.availability.homeCity ?? null,
+            homeCityLat:
+              typeof u.availability.homeCityLat === 'number'
+                ? u.availability.homeCityLat
+                : null,
+            homeCityLng:
+              typeof u.availability.homeCityLng === 'number'
+                ? u.availability.homeCityLng
+                : null,
+            availabilityRadiusKm:
+              typeof u.availability.availabilityRadiusKm === 'number'
+                ? u.availability.availabilityRadiusKm
+                : null,
             isAvailableForInvites: u.availability.isAvailableForInvites !== false,
+            acceptsFillerPush: u.availability.acceptsFillerPush === true,
           }
         : null,
       stats: u.stats
@@ -126,6 +163,7 @@ const userConverter: FirestoreDataConverter<User> = {
       fcmTokens: u.fcmTokens ?? [],
       notificationPrefs: u.notificationPrefs ?? null,
       newGameSubscriptions: u.newGameSubscriptions ?? [],
+      personalGroupId: u.personalGroupId ?? null,
       jersey: u.jersey ?? null,
       achievements: u.achievements ?? null,
       discipline: u.discipline ?? null,
@@ -161,6 +199,18 @@ const userConverter: FirestoreDataConverter<User> = {
             (s: unknown): s is string => typeof s === 'string'
           )
         : undefined,
+      // friends is read here but NEVER written in toFirestore — the
+      // mutual array is owned by the trusted accept/remove callables
+      // (Admin SDK). Writing it on every profile save would risk
+      // clobbering a concurrent server-side arrayUnion. Same rationale
+      // as invitedAt below.
+      friends: Array.isArray(d.friends)
+        ? d.friends.filter((s: unknown): s is string => typeof s === 'string')
+        : undefined,
+      personalGroupId:
+        typeof d.personalGroupId === 'string' && d.personalGroupId.length > 0
+          ? d.personalGroupId
+          : undefined,
       jersey: readJersey(d.jersey),
       achievements: readAchievements(d.achievements),
       discipline: readDiscipline(d.discipline),
@@ -333,6 +383,8 @@ const groupConverter: FirestoreDataConverter<Group> = {
         typeof g.recurringNumberOfTeams === 'number'
           ? g.recurringNumberOfTeams
           : null,
+      isPersonal: g.isPersonal === true,
+      hidden: g.hidden === true,
       createdAt: g.createdAt,
       updatedAt: g.updatedAt ?? Date.now(),
     };
@@ -383,6 +435,8 @@ const groupConverter: FirestoreDataConverter<Group> = {
         d.recurringNumberOfTeams >= 2
           ? d.recurringNumberOfTeams
           : undefined,
+      isPersonal: d.isPersonal === true,
+      hidden: d.hidden === true,
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };
@@ -451,6 +505,35 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
     return Object.keys(out).length ? out : undefined;
   };
 
+  // Round counter — increments after every "סיים סיבוב" press.
+  // Without explicit handling here the field was being stripped on
+  // read, so the header rendered "סיבוב 1" forever even though the
+  // value was being incremented in memory and persisted to Firestore
+  // each time the admin started a new round. The next listener tick
+  // wiped it back to undefined → display fell back to 1.
+  const roundNumber =
+    typeof o.roundNumber === 'number' && o.roundNumber > 0
+      ? o.roundNumber
+      : undefined;
+
+  // Win tally per team. Reads each letter independently; any
+  // non-number gets dropped (so legacy state without the field still
+  // works). Same silent-strip bug as roundNumber — without this the
+  // header team-scoreboard read `winsByTeam?.A ?? 0` and always saw
+  // undefined.
+  const readWins = (raw: unknown):
+    | LiveMatchState['winsByTeam']
+    | undefined => {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const r = raw as Record<string, unknown>;
+    const out: { A?: number; B?: number; C?: number; D?: number; E?: number } = {};
+    for (const letter of ['A', 'B', 'C', 'D', 'E'] as const) {
+      const v = r[letter];
+      if (typeof v === 'number' && v >= 0) out[letter] = v;
+    }
+    return Object.keys(out).length ? out : undefined;
+  };
+
   return {
     phase,
     assignments,
@@ -462,7 +545,29 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
     scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,
     teamASlots: readSlots(o.teamASlots),
     teamBSlots: readSlots(o.teamBSlots),
+    roundNumber,
+    winsByTeam: readWins(o.winsByTeam),
+    // Synced match clock — three primitives every device uses to
+    // reconstruct the displayed time. Same strip-on-read bug as the
+    // round counter above; without these passes the timer would
+    // appear to "reset" on every Firestore listener tick.
+    timerRunning: typeof o.timerRunning === 'boolean' ? o.timerRunning : undefined,
+    timerLastStartedAt:
+      typeof o.timerLastStartedAt === 'number'
+        ? o.timerLastStartedAt
+        : o.timerLastStartedAt === null
+          ? null
+          : undefined,
+    timerAccumulatedMs:
+      typeof o.timerAccumulatedMs === 'number' ? o.timerAccumulatedMs : undefined,
+    timerControlledBy:
+      typeof o.timerControlledBy === 'string' ? o.timerControlledBy : undefined,
+    timerControlledByName:
+      typeof o.timerControlledByName === 'string'
+        ? o.timerControlledByName
+        : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
+    startedAt: typeof o.startedAt === 'number' ? o.startedAt : undefined,
   };
 }
 
@@ -573,6 +678,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         ),
       ballHolderUserId: g.ballHolderUserId ?? null,
       jerseysHolderUserId: g.jerseysHolderUserId ?? null,
+      ballBringerIds: Array.isArray(g.ballBringerIds)
+        ? g.ballBringerIds
+        : null,
       teams: g.teams ?? null,
       status: g.status,
       currentMatchIndex: g.currentMatchIndex,
@@ -602,6 +710,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       hasReferee: g.hasReferee ?? false,
       hasPenalties: g.hasPenalties ?? false,
       hasHalfTime: g.hasHalfTime ?? false,
+      ruleTags: Array.isArray(g.ruleTags) ? g.ruleTags : null,
       extraTimeMinutes:
         typeof g.extraTimeMinutes === 'number' && g.extraTimeMinutes > 0
           ? g.extraTimeMinutes
@@ -613,6 +722,12 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rsvpNudgeSent: g.rsvpNudgeSent ?? false,
       arrivals: g.arrivals ?? null,
       cancellations: g.cancellations ?? null,
+      pinnedMessage:
+        typeof g.pinnedMessage === 'string' && g.pinnedMessage.length > 0
+          ? g.pinnedMessage
+          : null,
+      isOrphanContext: g.isOrphanContext === true,
+      promotePromptSent: g.promotePromptSent === true,
       autoTeamGenerationMinutesBeforeStart:
         g.autoTeamGenerationMinutesBeforeStart ?? null,
       autoTeamsGeneratedAt: g.autoTeamsGeneratedAt ?? null,
@@ -631,6 +746,14 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? g.registrationOpensAt
           : null,
       openedNotificationSent: g.openedNotificationSent ?? false,
+      // Cross-community filler matching opt-in. Both fields round-
+      // trip through the converter so the wizard's settings persist.
+      // Default `acceptsFillers` to false for legacy game docs that
+      // pre-date the field, so they don't accidentally enter the
+      // matcher's pool until the admin opts in via GameEdit.
+      acceptsFillers: g.acceptsFillers === true,
+      fillerMinTrust:
+        typeof g.fillerMinTrust === 'number' ? g.fillerMinTrust : null,
       guests: Array.isArray(g.guests)
         ? (g.guests as import('@/types').GameGuest[]).map((x) => ({
             id: x.id,
@@ -712,6 +835,11 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ),
       ballHolderUserId: d.ballHolderUserId ?? undefined,
       jerseysHolderUserId: d.jerseysHolderUserId ?? undefined,
+      ballBringerIds: Array.isArray(d.ballBringerIds)
+        ? (d.ballBringerIds as unknown[]).filter(
+            (u): u is string => typeof u === 'string',
+          )
+        : undefined,
       teams: d.teams ?? undefined,
       status,
       locked: status !== 'open',
@@ -751,6 +879,14 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       hasReferee: d.hasReferee === true,
       hasPenalties: d.hasPenalties === true,
       hasHalfTime: d.hasHalfTime === true,
+      ruleTags: Array.isArray(d.ruleTags)
+        ? (d.ruleTags as unknown[])
+            .filter(
+              (t): t is string => typeof t === 'string' && t.trim().length > 0,
+            )
+            .map((t) => t.trim().slice(0, 30))
+            .slice(0, 12)
+        : undefined,
       extraTimeMinutes:
         typeof d.extraTimeMinutes === 'number' && d.extraTimeMinutes > 0
           ? d.extraTimeMinutes
@@ -762,6 +898,12 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rsvpNudgeSent: d.rsvpNudgeSent === true,
       arrivals: readArrivals(d.arrivals),
       cancellations: readCancellations(d.cancellations),
+      pinnedMessage:
+        typeof d.pinnedMessage === 'string' && d.pinnedMessage.length > 0
+          ? d.pinnedMessage
+          : undefined,
+      isOrphanContext: d.isOrphanContext === true,
+      promotePromptSent: d.promotePromptSent === true,
       autoTeamGenerationMinutesBeforeStart:
         typeof d.autoTeamGenerationMinutesBeforeStart === 'number' &&
         d.autoTeamGenerationMinutesBeforeStart > 0
@@ -781,6 +923,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? d.registrationOpensAt
           : undefined,
       openedNotificationSent: d.openedNotificationSent === true,
+      acceptsFillers: d.acceptsFillers === true,
+      fillerMinTrust:
+        typeof d.fillerMinTrust === 'number' ? d.fillerMinTrust : undefined,
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };
@@ -926,6 +1071,29 @@ const playerStatsConverter: FirestoreDataConverter<PlayerStats & { id: string }>
 // ─── Collection accessors ──────────────────────────────────────────────────
 // These throw if called while USE_MOCK_DATA is true via getFirebase().
 
+const friendRequestConverter: FirestoreDataConverter<FriendRequestDoc> = {
+  toFirestore(r: FriendRequestDoc) {
+    return {
+      fromUserId: r.fromUserId,
+      toUserId: r.toUserId,
+      status: r.status,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt ?? Date.now(),
+    };
+  },
+  fromFirestore(snap: QueryDocumentSnapshot<DocumentData>): FriendRequestDoc {
+    const d = snap.data();
+    return {
+      id: snap.id,
+      fromUserId: typeof d.fromUserId === 'string' ? d.fromUserId : '',
+      toUserId: typeof d.toUserId === 'string' ? d.toUserId : '',
+      status: (d.status as FriendRequestStatus) ?? 'pending',
+      createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+      updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : undefined,
+    };
+  },
+};
+
 export const col = {
   users(): CollectionReference<User> {
     return collection(getFirebase().db, 'users').withConverter(userConverter);
@@ -953,6 +1121,12 @@ export const col = {
   /** Phase E: outbound queue of FCM dispatches (consumed by Cloud Function). */
   notifications() {
     return collection(getFirebase().db, 'notifications');
+  },
+  /** Pending/accepted/declined friendship requests. */
+  friendRequests(): CollectionReference<FriendRequestDoc> {
+    return collection(getFirebase().db, 'friendRequests').withConverter(
+      friendRequestConverter,
+    );
   },
   /** Per-community rating summaries: /groups/{gid}/ratings/{uid}. */
   ratings(groupId: GroupId) {
@@ -984,6 +1158,9 @@ export const docs = {
   joinRequest(rid: string): DocumentReference<GroupJoinRequestDoc> {
     return doc(col.joinRequests(), rid);
   },
+  friendRequest(rid: string): DocumentReference<FriendRequestDoc> {
+    return doc(col.friendRequests(), rid);
+  },
   game(id: string): DocumentReference<GameDoc> {
     return doc(col.games(), id);
   },
@@ -998,6 +1175,25 @@ export const docs = {
   },
   ratingVote(groupId: GroupId, ratedUserId: UserId, raterUserId: UserId) {
     return doc(col.ratingVotes(groupId, ratedUserId), raterUserId);
+  },
+  // Self-only sub-doc for sensitive per-user state. fcmTokens +
+  // notificationPrefs live here so other authenticated users can't
+  // read them via the public /users/{uid} doc. The Cloud Function
+  // reads via Admin SDK (rules bypass).
+  userPrivatePush(uid: UserId) {
+    // CRITICAL: build the path without inheriting the User converter.
+    // `col.users()` carries `withConverter(userConverter)` which then
+    // propagates to every descendant ref. `doc(col.users(), uid,
+    // 'private', 'push')` would return a DocumentReference<User>, and
+    // any `setDoc` on it would invoke `userConverter.toFirestore`,
+    // which expects a User and explodes on `u.name = undefined` for
+    // the push-only payload we're actually trying to write
+    // (`{ fcmTokens, updatedAt }`). The end result was a silent
+    // failure: every device-token registration since this converter
+    // was added has been throwing "Unsupported field value:
+    // undefined". Using the raw Firestore instance avoids the
+    // converter inheritance.
+    return doc(getFirebase().db, 'users', uid, 'private', 'push');
   },
 };
 

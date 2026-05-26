@@ -62,7 +62,7 @@ import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { getAttendanceRate, type User } from '@/types';
 
-const SUPPORT_EMAIL = 'support@hippocampus.me';
+const SUPPORT_EMAIL = 'studiogameslime@gmail.com';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
 const APP_STORE_URL = 'https://apps.apple.com/app/id000000000';
@@ -107,7 +107,7 @@ export function ProfileScreen() {
 
   // Scroll-to-top: react-navigation hook listens for tab re-press.
   const scrollRef = useRef<ScrollView>(null);
-  useScrollToTop(scrollRef);
+  useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
   const refreshUser = React.useCallback(async () => {
     if (!localUser) return;
@@ -279,6 +279,12 @@ export function ProfileScreen() {
           label: he.profileEdit,
           icon: 'create-outline',
           onPress: () => nav.navigate('ProfileEdit'),
+        },
+        {
+          id: 'friends',
+          label: he.friendsTitle,
+          icon: 'people-outline',
+          onPress: () => nav.navigate('Friends'),
         },
       ],
     },

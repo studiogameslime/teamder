@@ -97,6 +97,11 @@ const ROWS: Row[] = [
     sub: he.notifPlayerCancelledSub,
   },
   {
+    key: 'gameShortageWarning',
+    label: he.notifGameShortageWarning,
+    sub: he.notifGameShortageWarningSub,
+  },
+  {
     key: 'groupDeleted',
     label: he.notifGroupDeleted,
     sub: he.notifGroupDeletedSub,

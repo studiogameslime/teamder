@@ -2,7 +2,7 @@
 // community selection (when the user belongs to more than one) and
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { gameService } from '@/services/gameService';
+import { groupService } from '@/services/groupService';
+import { notificationsService } from '@/services/notificationsService';
 import { Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -39,42 +41,57 @@ function buildInitial(
     startsAt?: number;
     format?: GameFormValues['format'];
     numberOfTeams?: number;
+    recurring?: boolean;
   },
 ): GameFormValues {
-  // Pre-fill location from the community's address+city when available.
-  const baseLocation = [g.fieldAddress, g.city].filter((s) => !!s).join(', ');
+  // Pre-fill the city from the community's general city. NO field /
+  // schedule pre-fill anymore — the community no longer carries
+  // those (refactored ownership), so the wizard starts blank for
+  // those fields and the user fills them per game.
+  //
+  // City: copy the community's saved `city` into the strict field. If
+  // the community ALREADY has a non-empty city saved, trust it as
+  // canonical (it was set via the same autocomplete in
+  // CreateGroup/EditGroup → `cityFromList: true`). Previously we
+  // forced the admin to re-tap the suggestion every time which was
+  // pure friction with no payoff — the saved value is, by
+  // construction, already canonical.
+  const presetCity = (g.city ?? '').trim();
   return {
     title: g.name,
     startsAt: overrides?.startsAt ?? nextThursday20(),
-    fieldName: g.fieldName ?? '',
-    location: baseLocation,
-    // Strict: never infer "selected from list" from a pre-filled
-    // string. The flag flips to true only when the user actively
-    // taps a city in the autocomplete dropdown. This guarantees the
-    // saved fieldAddress always corresponds to a real city pick.
-    locationFromList: false,
+    fieldName: '',
+    city: presetCity,
+    cityFromList: presetCity.length > 0,
+    fieldAddress: '',
+    fieldType: undefined,
     format: overrides?.format ?? '5v5',
     numberOfTeams: overrides?.numberOfTeams ?? 2,
     matchDurationMinutes: '8',
-    extraTimeMinutes: '',
-    hasReferee: false,
-    hasPenalties: false,
-    hasHalfTime: false,
+    ruleTags: [],
     // Open communities default to public games (anyone can discover
     // and join). Closed/private communities default to community-only
     // — matches user expectation that a private group's games stay
     // inside the group unless the admin explicitly opens them.
     visibility: g.isOpen === true ? 'public' : 'community',
-    fieldType: undefined,
-    cancelDeadlineHours: undefined,
     requiresApproval: false,
+    // Recurring is now an in-form toggle. Pre-set it ON when the
+    // route param flagged a recurring entry; otherwise default OFF
+    // and the registrationOpensAt picker stays hidden.
+    recurringGameEnabled: overrides?.recurring === true,
+    registrationOpensAt: 0,
+    cancelDeadlineHours: undefined,
+    // Cross-community fillers: ON by default for OPEN communities
+    // (anyone can join the community already, so accepting fillers is
+    // consistent), OFF for closed communities (admins of private
+    // communities should opt in explicitly). Default minimum trust
+    // is 70 — filters out low-reliability candidates without being
+    // too strict.
+    acceptsFillers: g.isOpen === true,
+    fillerMinTrust: 70,
     notes: '',
     bringBall: true,
     bringShirts: true,
-    minPlayers: '',
-    // 0 = unset. The wizard surfaces a default when it renders the
-    // recurring-only picker; standard mode never reads this field.
-    registrationOpensAt: 0,
   };
 }
 
@@ -83,31 +100,139 @@ export function GameCreateScreen() {
   const route = useRoute<Params>();
   const params = route.params ?? {};
   const user = useUserStore((s) => s.currentUser);
-  const myCommunities = useGroupStore((s) => s.groups);
+  const allMyCommunities = useGroupStore((s) => s.groups);
+  // Game creation is admin-only — non-admin members must ask the
+  // community's admin to create a game on their behalf. We filter
+  // here at the UI layer so the picker, the auto-selection of the
+  // first community, and the empty state all agree. The Firestore
+  // rule for /games create independently enforces `isGroupMember`
+  // (which includes admin), but the create rule itself doesn't
+  // require admin — that's an in-app product decision.
+  const myCommunities = useMemo(() => {
+    if (!user) return [];
+    return allMyCommunities.filter((g) => g.adminIds.includes(user.id));
+  }, [allMyCommunities, user]);
 
-  if (myCommunities.length === 0) {
+  // Orphan / "no-community" mode. When set, the wizard renders with a
+  // synthesized Group built from the caller's hidden personal group;
+  // submit stamps `isOrphanContext: true` on the new game so MatchDetails
+  // labels it "משחק חד־פעמי" instead of showing the (placeholder)
+  // community name. The group id itself is real (Firestore rules expect
+  // a non-null group), it just stays hidden until the post-game
+  // promote prompt converts it into a real community.
+  const [orphanGroup, setOrphanGroup] = useState<Group | null>(null);
+  const [orphanLoading, setOrphanLoading] = useState(false);
+
+  const startOrphanFlow = async () => {
+    if (!user) return;
+    setOrphanLoading(true);
+    try {
+      const groupId = await groupService.ensurePersonalGroupId();
+      // Synthesize a minimal Group object — the wizard only reads
+      // name/city/isOpen and we want all of those to be neutral
+      // defaults for orphan mode (blank title, blank city, public
+      // visibility, fillers ON).
+      const synthesized: Group = {
+        id: groupId,
+        name: '',
+        normalizedName: '',
+        adminIds: [user.id],
+        playerIds: [user.id],
+        pendingPlayerIds: [],
+        inviteCode: '',
+        // Quick games default to PRIVATE (invite-only): isOpen:false →
+        // buildInitial seeds visibility='community' (relabelled "פרטי"
+        // in quick mode) and acceptsFillers=false. The organizer can
+        // flip to public in step 3 to enable fillers.
+        isOpen: false,
+        isPersonal: true,
+        hidden: true,
+        createdAt: Date.now(),
+      };
+      setOrphanGroup(synthesized);
+    } catch (err) {
+      Alert.alert(
+        he.createGameOrphanErrorTitle,
+        he.createGameOrphanErrorBody,
+      );
+      if (__DEV__) console.warn('[gameCreate] orphan flow failed', err);
+    } finally {
+      setOrphanLoading(false);
+    }
+  };
+
+  // Quick-game entry from the "+" chooser: provision the hidden
+  // personal group immediately so the wizard opens straight into quick
+  // mode (no community picker). Runs once — params.quick is stable.
+  useEffect(() => {
+    if (params.quick && !orphanGroup && !orphanLoading) {
+      startOrphanFlow();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.quick]);
+
+  // NOTE: we deliberately do NOT early-return a loading spinner for the
+  // quick path here. GameCreateScreen calls several hooks (useState /
+  // useMemo) AFTER the empty-state early-returns below, so adding a
+  // conditional early-return that toggles between renders would change
+  // the hook count and crash with "rendered more hooks than during the
+  // previous render". The auto-start effect above provisions the orphan
+  // group; the wizard's `key` remounts it into quick mode the moment
+  // `orphanGroup` lands (a sub-200ms transition).
+
+  // Empty states with an "ללא קהילה" CTA. Both render the same primary
+  // CTA ("צור משחק חד־פעמי") since the answer for "no community to
+  // create in" is now: just create one without a community.
+  if (!orphanGroup && allMyCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.createGameTitle} />
         <View style={styles.emptyAll}>
           <Ionicons name="people-outline" size={64} color={colors.textMuted} />
           <Text style={styles.emptyText}>{he.createGameNoCommunities}</Text>
+          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (!orphanGroup && myCommunities.length === 0) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          <Ionicons name="shield-outline" size={64} color={colors.textMuted} />
+          <Text style={styles.emptyText}>{he.createGameNoAdmin}</Text>
+          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
         </View>
       </SafeAreaView>
     );
   }
 
   const isRecurring = params.recurring === true;
+  const isOrphan = orphanGroup !== null;
   // In recurring mode the route locks us to the originating community
   // (passed via params). In standard mode the user can pick from a
-  // dropdown across all their communities.
-  const lockedGroupId = isRecurring && params.groupId ? params.groupId : null;
-  const initialGroupId = lockedGroupId ?? myCommunities[0].id;
+  // dropdown across the communities they admin. If the route asks for
+  // a community the user no longer admins, fall through to the first
+  // admin-eligible one rather than crashing.
+  const paramGroupIsAdmin =
+    isRecurring &&
+    params.groupId &&
+    myCommunities.some((g) => g.id === params.groupId);
+  const lockedGroupId = paramGroupIsAdmin ? params.groupId! : null;
+  // Orphan mode locks us to the synthesized personal group; admin
+  // mode uses the dropdown / locked param. Keep the unconditional
+  // first-community fallback so `myCommunities[]` stays accessed even
+  // in orphan branch (non-empty by precondition above when reached
+  // without orphanGroup).
+  const initialGroupId =
+    orphanGroup?.id ?? lockedGroupId ?? myCommunities[0]?.id ?? '';
 
   const [groupId, setGroupId] = useState<string>(initialGroupId);
   const selectedGroup = useMemo<Group | undefined>(
-    () => myCommunities.find((g) => g.id === groupId),
-    [myCommunities, groupId],
+    () =>
+      orphanGroup ?? myCommunities.find((g) => g.id === groupId),
+    [orphanGroup, myCommunities, groupId],
   );
 
   // Reset the form whenever the user picks a different community so the
@@ -119,9 +244,10 @@ export function GameCreateScreen() {
         startsAt: params.startsAt,
         format: params.format,
         numberOfTeams: params.numberOfTeams,
+        recurring: isRecurring,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedGroup?.id, initialKey],
+    [selectedGroup?.id, initialKey, isRecurring],
   );
 
   const handleGroupChange = (id: string) => {
@@ -131,29 +257,26 @@ export function GameCreateScreen() {
 
   const submit = async (v: GameFormValues) => {
     if (!user || !selectedGroup) return;
-    const parsedMin = parseInt(v.minPlayers, 10);
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
-    const parsedExtra = parseInt(v.extraTimeMinutes, 10);
     const playersPerTeam =
       v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
-    // In recurring mode the wizard exposes a `registrationOpensAt`
-    // picker. Past values are allowed (they fall through to immediate
-    // open below) — the inline hint warns the admin that the push
-    // will fire right away. Standard mode has no field, so the value
-    // stays at 0 and we simply omit it from the create payload.
+    // Recurring is now an in-form toggle (step 3). When enabled with
+    // a real timestamp, persist `registrationOpensAt`; otherwise omit
+    // and the game opens immediately. Past values are allowed and
+    // fall through to immediate-open behaviour server-side.
     const regOpensAt =
-      isRecurring && v.registrationOpensAt > 0
+      v.recurringGameEnabled && v.registrationOpensAt > 0
         ? v.registrationOpensAt
         : undefined;
     try {
       const created = await gameService.createGameV2({
         groupId: selectedGroup.id,
-        title: v.title.trim() || selectedGroup.name,
+        // Orphan flow: the synthesized group has no name, so don't
+        // fall back to it for the title.
+        title: v.title.trim() || (isOrphan ? 'משחק חד־פעמי' : selectedGroup.name),
         startsAt: v.startsAt,
         fieldName: v.fieldName.trim(),
         maxPlayers: playersPerTeam * v.numberOfTeams,
-        minPlayers:
-          Number.isFinite(parsedMin) && parsedMin > 0 ? parsedMin : undefined,
         format: v.format,
         numberOfTeams: v.numberOfTeams,
         cancelDeadlineHours: v.cancelDeadlineHours,
@@ -168,17 +291,30 @@ export function GameCreateScreen() {
         bringBall: v.bringBall,
         bringShirts: v.bringShirts,
         notes: v.notes.trim() || undefined,
-        fieldAddress: v.location.trim() || undefined,
-        hasReferee: v.hasReferee || undefined,
-        hasPenalties: v.hasPenalties || undefined,
-        hasHalfTime: v.hasHalfTime || undefined,
-        extraTimeMinutes:
-          Number.isFinite(parsedExtra) && parsedExtra > 0
-            ? parsedExtra
-            : undefined,
+        city: v.city.trim() || undefined,
+        fieldAddress: v.fieldAddress.trim() || undefined,
+        ruleTags: v.ruleTags,
         registrationOpensAt: regOpensAt,
+        acceptsFillers: v.acceptsFillers,
+        fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         createdBy: user.id,
+        isOrphanContext: isOrphan,
       });
+      // Quick-game: fire off the friend invites the organizer picked in
+      // step 3. Best-effort — a failed invite never blocks landing on
+      // the match. Each goes through the trusted sendGameInvite path.
+      const inviteIds = v.inviteFriendIds ?? [];
+      if (inviteIds.length > 0) {
+        await Promise.all(
+          inviteIds.map((rid) =>
+            notificationsService
+              .inviteToGame({ recipientId: rid, gameId: created.id })
+              .catch(() => {
+                /* best-effort per-invite */
+              }),
+          ),
+        );
+      }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
         { gameId: created.id },
@@ -218,12 +354,19 @@ export function GameCreateScreen() {
   // Recurring mode hides the picker entirely — the route param locks
   // the community.
   const extraTopSlot =
-    !lockedGroupId && myCommunities.length > 1 ? (
+    !lockedGroupId && !isOrphan && myCommunities.length > 1 ? (
       <CommunityDropdown
         options={myCommunities}
         selected={selectedGroup}
         onSelect={handleGroupChange}
       />
+    ) : isOrphan ? (
+      <View style={styles.orphanBanner}>
+        <Ionicons name="flash" size={16} color="#1D4ED8" />
+        <Text style={styles.orphanBannerText}>
+          {he.createGameOrphanBanner}
+        </Text>
+      </View>
     ) : null;
 
   return (
@@ -233,9 +376,7 @@ export function GameCreateScreen() {
       // `useState(initial)` only seeds on first mount and never re-
       // syncs when `initial` changes — so the form fields kept showing
       // the FIRST community's pre-fill (title/fieldName/address) even
-      // after the user picked a different community. Visually this
-      // looked like "I picked X but it created a game on Y", because
-      // the title displayed was Y's name (the original community's).
+      // after the user picked a different community.
       key={`${selectedGroup?.id ?? 'none'}-${initialKey}`}
       headerTitle={
         isRecurring ? he.createGameRecurringTitle : he.createGameTitle
@@ -244,8 +385,40 @@ export function GameCreateScreen() {
       initial={initial}
       onSubmit={submit}
       extraTopSlot={extraTopSlot}
-      mode={isRecurring ? 'recurring' : 'standard'}
+      quick={isOrphan}
+      showInviteFriends
     />
+  );
+}
+
+function OrphanCta({
+  loading,
+  onPress,
+}: {
+  loading: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      style={({ pressed }) => [
+        styles.orphanCta,
+        loading && { opacity: 0.6 },
+        pressed && !loading && { opacity: 0.88 },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={he.createGameOrphanCta}
+    >
+      <Ionicons name="flash" size={20} color="#FFFFFF" />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.orphanCtaTitle}>{he.createGameOrphanCta}</Text>
+        <Text style={styles.orphanCtaSub}>
+          {he.createGameOrphanCtaSub}
+        </Text>
+      </View>
+      <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+    </Pressable>
   );
 }
 
@@ -344,6 +517,52 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  orphanCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#1D4ED8',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 16,
+    marginTop: spacing.md,
+    alignSelf: 'stretch',
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  orphanCtaTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  orphanCtaSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 2,
+  },
+  orphanBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  orphanBannerText: {
+    color: '#1D4ED8',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
   },
   communityPickerWrap: {
     gap: spacing.xs,

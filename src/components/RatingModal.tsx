@@ -11,7 +11,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -149,6 +151,14 @@ export function RatingModal({
       animationType="fade"
       onRequestClose={onClose}
     >
+      {/* KeyboardAvoidingView shifts the centred card above the
+          keyboard once the user taps the comment field. Without it
+          the rating stars + Send button hide behind the keyboard
+          on short devices. */}
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           {isSelf ? (
@@ -227,6 +237,7 @@ export function RatingModal({
           )}
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 export interface HeaderAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -124,21 +124,25 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.sm,
   },
-  // Header titles are visually centered, but the text inside still
-  // reads RTL (Hebrew flows right→left within its centered box).
+  // Titles read from the visual start of an RTL line. Use
+  // `RTL_LABEL_ALIGN` (which maps to 'left' on Android because
+  // I18nManager.forceRTL flips 'right' to mean paragraph END → visual
+  // left, and 'right' on iOS where the flip doesn't happen). Hardcoded
+  // 'right' + writingDirection here used to break Android RTL.
   title: {
     ...typography.h3,
     color: colors.text,
-    textAlign: 'center',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
   },
   subtitle: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: 2,
-    textAlign: 'center',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
   },
 });

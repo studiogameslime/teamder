@@ -48,6 +48,13 @@ export const he = {
   loading: 'טוען...',
   error: 'שגיאה',
 
+  // Global error boundary — fallback UI when a React tree crashes.
+  errorBoundaryTitle: 'משהו השתבש',
+  errorBoundaryBody:
+    'נתקלנו בתקלה לא צפויה. אנחנו מצטערים על אי הנוחות. נסה שוב, או הפעל מחדש את האפליקציה.',
+  errorBoundaryReload: 'נסה שוב',
+  errorBoundaryReportHint: 'אם זה ממשיך להופיע, עדכן אותנו דרך "דווח על באג" בפרופיל.',
+
   // Community ratings
   ratingTitle: 'דרג את {name} בקבוצה הזו',
   ratingNoSelf: 'אי אפשר לדרג את עצמך',
@@ -189,12 +196,35 @@ export const he = {
   liveTeamLabel: (i: number) => `קבוצה ${i + 1}`,
   liveRoundLabel: (n: number) => `משחקון ${n}`,
   liveStartRound: 'הפעל משחקון',
+  // Shown when the admin taps "Start round" but fewer than two teams
+  // are at the format's required size (e.g. 5v5 with one team holding
+  // only 4 players). Blocks the timer from starting — and therefore
+  // blocks the game from being marked as actually played.
+  liveTimerNeedsTwoFullTeams: 'לפחות שתי קבוצות חייבות להיות מלאות לפי הפורמט כדי להפעיל את השעון',
+  // Fill-team modal — shown after a round-end rotation when the
+  // incoming team is short of the format's player count. Admin must
+  // pick players from the OTHER waiting teams to fill the spots.
+  liveFillTeamTitle: 'השלם את הקבוצה הנכנסת',
+  liveFillTeamRemaining: (n: number) =>
+    n === 1 ? 'נשאר שחקן אחד לבחור' : `נשארו ${n} שחקנים לבחור`,
+  liveFillTeamReady: 'בחרת מספיק שחקנים — לחץ אישור',
+  liveFillTeamConfirm: 'אישור',
+  liveFillTeamEmptyTeam: 'אין שחקנים פנויים בקבוצה הזו',
   liveStartNextRound: 'התחל משחקון הבא',
   liveEndRound: 'סיים משחקון',
   liveEndRoundTitle: 'סיום משחקון',
   liveEndRoundQuestion: 'מי ניצח?',
   liveEndRoundConfirm: 'סיים וקבע סבב הבא',
   liveDrawLabel: 'תיקו',
+  // End-of-evening confirmation (admin-only) — flips the game to
+  // 'finished' and locks it. Reversible only via admin cancel.
+  liveEndEvening: 'סיים ערב',
+  liveEndEveningTitle: 'לסיים את הערב?',
+  liveEndEveningBody:
+    'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
+  liveEndEveningConfirm: 'כן, סיים את הערב',
+  liveEndEveningReminder:
+    'נראה שהערב כבר התארך. רוצה לסיים? יש כפתור "סיים ערב" למעלה.',
   // Session state banners (top of Live screen)
   liveStatusScheduled: 'הערב עדיין לא התחיל',
   liveStatusReady: (n: number) => `משחקון ${n} מוכן להתחלה`,
@@ -303,7 +333,7 @@ export const he = {
   gameCardPrivate: 'קבוצה',
   gameCardPlayersMore: (n: number) => `+${n}`,
   gameStatusJoined: 'נרשמת',
-  gameStatusWaitlist: 'בספסל',
+  gameStatusWaitlist: 'הצטרף לרשימת המתנה',
   gameStatusPending: 'ממתין לאישור',
   gameFormat5: '5 × 5',
   gameFormat6: '6 × 6',
@@ -335,6 +365,12 @@ export const he = {
   createGameCommunityHint: 'בחר קבוצה שאתה משחק בה',
   createGameDateTime: 'תאריך ושעה',
   createGameField: 'שם המגרש',
+  createGameCity: 'עיר',
+  createGameCityPlaceholder: 'בחר עיר מהרשימה',
+  createGameCityMustPick: 'חובה לבחור עיר מהרשימה (לא טקסט חופשי)',
+  createGameAddress: 'כתובת מדויקת (אופציונלי)',
+  createGameAddressRequired: 'כתובת מדויקת',
+  createGameAddressPlaceholder: 'רחוב, מספר, נקודת ציון',
   createGameMaxPlayers: 'מקסימום שחקנים',
   createGameMinPlayers: 'מינימום שחקנים (לא חובה)',
   createGameMinPlayersHint: 'מתחת למספר הזה המשחק עלול להתבטל',
@@ -374,6 +410,9 @@ export const he = {
   editGameAlreadyStartedTitle: 'המשחק כבר התחיל',
   editGameAlreadyStartedBody:
     'לא ניתן לערוך פרטי משחק לאחר שזמן ההתחלה הגיע.',
+  editGameCapacityTooLowTitle: 'יותר מדי שחקנים רשומים',
+  editGameCapacityTooLowBody: (registered: number, max: number) =>
+    `כרגע רשומים ${registered} שחקנים. לא ניתן להוריד את הקיבולת ל-${max}. הסר/י קודם שחקנים מהמשחק.`,
   matchDetailsDeletedTitle: 'המשחק כבר לא קיים',
   matchDetailsDeletedBody:
     'המשחק נמחק או הוסר. אפשר לחזור לרשימת המשחקים ולמצוא משחק אחר.',
@@ -419,10 +458,57 @@ export const he = {
     'מעבר לזמן הזה, ביטול ייחשב כאי־הגעה. השאר ריק לחוסר הגבלה.',
   wizardSummaryTitle: 'תקציר המשחק',
   wizardSummaryDate: 'מתי',
-  wizardSummaryWhere: 'איפה',
+  wizardSummaryWhere: 'מיקום',
   wizardSummaryFormat: 'פורמט',
   wizardSummaryVisibility: 'נראות',
   createGameNoCommunities: 'לפני שתוכל ליצור משחק, צריך להצטרף לקבוצה',
+  createGameNoAdmin:
+    'רק מנהלי קהילה יכולים ליצור משחקים. בקש מהמנהל של הקהילה ליצור עבורך משחק.',
+  // Orphan / "no community" flow — fast path for creating a one-off
+  // game without setting up a community first. The game lives in a
+  // hidden personal group; after it ends, the user gets a push
+  // offering to promote that group to a real community.
+  matchDetailsCommunityOrphan: 'משחק חד־פעמי',
+  // Game rules — free-text chip input. Replaces the old
+  // hasReferee/hasPenalties/hasHalfTime toggles.
+  ruleTagsLabel: 'חוקי המשחק',
+  ruleTagsHint: 'הקלידו והוסיפו תגית עם Enter, פסיק או הכפתור +.',
+  ruleTagsPlaceholder: 'שופט, משחקים עם חוצים…',
+  ruleTagsAdd: 'הוסף חוק',
+  ruleTagsRemove: (tag: string) => `הסר את "${tag}"`,
+  ruleTagsAtCap: (n: number) => `הגעת למקסימום ${n} חוקים. הסר אחד כדי להוסיף עוד.`,
+  // Per-player "אני מביא כדור" toggle on MatchDetails (visible only
+  // to registered users). Self-toggle, no push fired.
+  matchBringBallToggle: 'אני מביא כדור',
+  matchBringBallTagOn: 'מביא כדור',
+  // Promote-orphan-to-community screen
+  promoteOrphanTitle: 'צור קהילה מהמשחק',
+  promoteOrphanBanner:
+    'תני שם, סמן את מי להזמין — ובלחיצה כל החברים מהמשחק יקבלו הזמנה.',
+  promoteOrphanNameLabel: 'שם הקהילה',
+  promoteOrphanNamePlaceholder: 'הכדורגלנים של חמישי',
+  promoteOrphanCityLabel: 'עיר (אופציונלי)',
+  promoteOrphanCityPlaceholder: 'תל אביב',
+  promoteOrphanInviteHeader: (selected: number, total: number) =>
+    `מי להזמין? (${selected}/${total} מסומנים)`,
+  promoteOrphanNoOthers: 'לא היו עוד שחקנים במשחק להזמין.',
+  promoteOrphanSubmit: (n: number) =>
+    n === 0 ? 'צור קהילה' : `צור והזמן ${n} שחקנים`,
+  promoteOrphanNameTooShortTitle: 'שם קצר מדי',
+  promoteOrphanNameTooShortBody: 'תנו לקהילה שם של 2 תווים לפחות.',
+  promoteOrphanSuccessTitle: '🎉 הקהילה נוצרה',
+  promoteOrphanSuccessBody: (n: number) =>
+    n === 0
+      ? 'הקהילה מוכנה. תוכל להזמין שחקנים מהמסך של הקהילה.'
+      : `הקהילה מוכנה. ${n} שחקנים קיבלו הזמנה.`,
+  promoteOrphanGoToCommunity: 'פתח את הקהילה',
+  promoteOrphanErrorTitle: 'תקלה ביצירת הקהילה',
+  promoteOrphanErrorBody: 'נסה שוב בעוד רגע.',
+  createGameOrphanCta: 'צור משחק חד־פעמי',
+  createGameOrphanCtaSub: 'בלי קהילה — מהיר, רק עבור הערב',
+  createGameOrphanBanner: 'משחק חד־פעמי — תוכל לקבע קהילה אחרי שתשחקו',
+  createGameOrphanErrorTitle: 'תקלה ביצירה',
+  createGameOrphanErrorBody: 'לא הצלחנו להכין את הסביבה. נסה שוב בעוד רגע.',
 
   // Admin gating
   startEveningAdminOnly: 'רק מנהל יכול להתחיל את המשחק',
@@ -548,6 +634,20 @@ export const he = {
   guestAddButton: 'הוסף אורח',
   guestAddTitle: 'הוסף אורח למשחק',
   guestEditTitle: 'ערוך אורח',
+  guestRowActionTitle: (name: string) => `הסרת ${name} מהמשחק?`,
+  guestRowActionRemove: 'הסר אורח',
+  guestRowRemoveSuccess: 'האורח הוסר מהמשחק',
+  guestRowRemoveError: 'הסרת האורח נכשלה',
+  createGroupGenericError: 'יצירת הקבוצה נכשלה. נסה שוב.',
+  createGroupAuthError:
+    'יצירת הקבוצה נחסמה. ייתכן ושירותי גוגל פליי לא זמינים על המכשיר, או שצריך לעדכן את האפליקציה לגרסה האחרונה.',
+  createGroupRateLimitError:
+    'יצירת קבוצות מוגבלת לחמש ביום. נסה שוב מחר.',
+  communityDescriptionTitle: 'על הקבוצה',
+  communityRulesTitle: 'חוקי הקבוצה',
+  matchDetailsWaitlistTitle: 'רשימת המתנה',
+  matchDetailsAvgRatingLabel: (count: number) =>
+    `דירוג ממוצע של ${count} שחקנים רשומים`,
   guestNameLabel: 'שם האורח',
   guestNamePlaceholder: 'שם פרטי או כינוי',
   guestRatingLabel: 'דירוג משוער (לא חובה)',
@@ -607,6 +707,24 @@ export const he = {
   communityNextGameLocked: 'ההרשמה תיפתח בקרוב',
   communityNextGameLockedBody: (when: string) =>
     `המשחק יופיע בפיד וההרשמה תיפתח ב-${when}.`,
+  communityNextGameCreateRecurring: 'יצירת משחק קבוע',
+  // Secondary "more upcoming" row shown under the primary NextGameCard
+  // when the community has additional scheduled games queued up.
+  communityUpcomingMoreLabel: 'גם בקרוב',
+  communityUpcomingMoreOverflow: (n: number) =>
+    n === 1 ? '+ עוד 1' : `+ עוד ${n}`,
+  // Pinned admin message on game details — broadcast-style note from
+  // the admin (e.g. "המגרש החליף לדשא 2", "תביאו חולצות שחורות").
+  // Visible to everyone when set; admin sees a + tile to add when not.
+  pinnedMessageEmptyAdminCta: 'הוסף הודעה לשחקנים',
+  pinnedMessageEmptyAdminHint: 'רק אתה רואה את הריבוע הזה',
+  pinnedMessageHeader: 'הודעת מנהל',
+  pinnedMessageEditTitle: 'הודעת מנהל',
+  pinnedMessageEditPlaceholder:
+    'משהו ששווה שכל הנרשמים יראו… (עד 280 תווים)',
+  pinnedMessageEditSave: 'שמור',
+  pinnedMessageEditClear: 'מחק הודעה',
+  pinnedMessageEditCancel: 'ביטול',
   communityPlayersTitle: 'שחקנים',
   communityPlayersSeeAll: 'לצפייה בכל השחקנים',
   communityPlayersEmpty: 'אין עדיין שחקנים בקהילה',
@@ -623,6 +741,44 @@ export const he = {
   // Community redesign — stadium-style premium UI
   communityHeroLabel: 'קהילה',
   communityHeroDetailsTitle: 'פרטי קהילה',
+  communityCoverChange: 'החלף תמונת רקע',
+  communityCoverUploading: 'מעלה…',
+  communityCoverUploadFailed: 'העלאת תמונת הרקע נכשלה. נסה שוב.',
+  communityCoverUpdated: 'תמונת הרקע עודכנה',
+  // ── Friends ──────────────────────────────────────────────────────
+  friendsTitle: 'חברים',
+  friendsRequestsTitle: 'בקשות חברות',
+  friendsMineTitle: (n: number) => `החברים שלי (${n})`,
+  friendsEmpty: 'עדיין אין לך חברים. שלח בקשת חברות לשחקנים שפגשת במשחקים.',
+  friendsAccept: 'אשר',
+  friendsDecline: 'דחה',
+  friendsAccepted: 'נוספתם כחברים',
+  friendsRemove: 'הסר חבר',
+  friendsRemoveTitle: 'להסיר חבר?',
+  friendsRemoveBody: (name: string) => `להסיר את ${name} מרשימת החברים שלך?`,
+  friendsUnknownUser: 'שחקן',
+  // Player-card friend actions
+  friendsAdd: 'הוסף לחברים',
+  friendsPendingOutgoing: 'בקשת חברות נשלחה',
+  friendsRespondIncoming: 'אשר בקשת חברות',
+  friendsAlready: 'אתם חברים',
+  friendsRequestSent: 'בקשת חברות נשלחה',
+  // ── Quick-game wizard ────────────────────────────────────────────
+  wizardVisibilityPrivate: 'פרטי (בהזמנה בלבד)',
+  wizardVisibilityPublicOpen: 'פתוח לכולם',
+  wizardInviteFriends: 'הזמן חברים',
+  wizardInviteFriendsEmpty:
+    'אין לך עדיין חברים להזמין. אפשר לשתף קישור למשחק אחרי היצירה, ולהוסיף חברים מהפרופיל.',
+  // Quick-vs-community chooser on the "+" button
+  createGameChooseTitle: 'איזה משחק ליצור?',
+  createGameChooseQuick: 'משחק מהיר',
+  createGameChooseCommunity: 'משחק לקהילה',
+  // Invite friends to an existing community
+  communityMenuInviteFriends: 'הזמן חברים לקהילה',
+  communityInviteFriendsSend: (n: number) =>
+    n > 0 ? `שלח ${n} הזמנות` : 'בחר חברים להזמנה',
+  communityInviteFriendsSent: (n: number) =>
+    n > 0 ? `נשלחו ${n} הזמנות` : 'אין חברים חדשים להזמין',
   communityStatsCreatedAt: 'תאריך הקמה',
   communityStatsMembers: 'חברים בקהילה',
   communityStatsField: 'מגרש קבוע',
@@ -739,6 +895,50 @@ export const he = {
       ? `איחור של ${mins} דק׳ — נרשם כרטיס אדום`
       : `איחור של ${mins} דק׳ — נרשם כרטיס צהוב`,
 
+  // Trust meter (replaces the old yellow/red discipline UI). Shown
+  // on the Player Card + Profile + filler-approval screens. Five
+  // tiers map a 0-100 score (or `null` for new users) to a label.
+  trustMeterTitle: 'מד אמינות',
+  trustMeterCaption: (n: number) => `על בסיס ${n} משחקים אחרונים`,
+  trustMeterCaptionEmpty: 'אין עדיין מספיק משחקים להצגה',
+  trustMeterUnavailable: 'אין נתונים זמינים',
+  trustTierExcellent: 'מצוין',
+  trustTierGood: 'טוב',
+  trustTierBasic: 'בסיסי',
+  trustTierLow: 'נמוך',
+  trustTierNew: 'חדש',
+  trustBreakdownAttended: (att: number, reg: number) =>
+    `הופיע ב־${att} מתוך ${reg} משחקים`,
+  trustBreakdownSoftCancels: (n: number) =>
+    n === 1 ? 'ביטול אחד לפני ה־deadline' : `${n} ביטולים לפני ה־deadline`,
+  trustBreakdownHardCancels: (n: number) =>
+    n === 1 ? 'ביטול אחד אחרי ה־deadline' : `${n} ביטולים אחרי ה־deadline`,
+
+  // Game wizard step 3 — cross-community filler matching.
+  gameFillerAcceptToggle: 'פתוח לזרים אם חסרים שחקנים',
+  gameFillerAcceptToggleHint:
+    'אם חסרים שחקנים, ישלחו push למשתמשי האפליקציה באזור שמעוניינים למלא. אתה תאשר ידנית מי מצטרף.',
+  gameFillerMinTrust: 'מינימום מד אמינות',
+  gameFillerMinTrustOption: (n: number) => `${n}+`,
+  gameFillerMinTrustOptionAll: 'כולם',
+  gameFillerMinTrustHint:
+    'משתמשים חדשים בלי היסטוריה לא נכנסים לפול בכל מקרה.',
+
+  // Admin filler approval section (MatchDetailsScreen).
+  fillerSectionTitle: 'מועמדים למילוי',
+  fillerSectionSubtitle:
+    'שחקנים מחוץ לקהילה שמעוניינים למלא את החסר. אישור יכניס אותם לרוסטר.',
+  fillerApprove: 'אישור',
+  fillerDecline: 'דחייה',
+  fillerApproveSuccess: 'השחקן נוסף למשחק',
+  fillerApproveStale:
+    'המקום כבר התמלא או שהמשחק נסגר',
+  fillerDeclineConfirmTitle: 'דחיית מועמדות',
+  fillerDeclineConfirmBody: (name: string) =>
+    `לדחות את ${name}? לא תוכל לבחור בו שוב למילוי המשחק הזה.`,
+  fillerDeclineConfirm: 'דחה',
+  fillerDefaultName: 'שחקן',
+
   // Achievements (תארים)
   achievementsTitle: 'תארים אישיים',
   achievementsSeeAll: 'הצג הכל',
@@ -774,8 +974,24 @@ export const he = {
   availabilityTimeTo: 'עד שעה',
   availabilityCity: 'אזור / עיר מועדפים',
   availabilityCityHint: 'נשמש לאיתור קבוצות וזימוני משחקים קרובים',
+  availabilityCities: 'ערים שאני מוכן לשחק בהן',
+  availabilityCitiesPlaceholder: 'הוסף עיר',
+  availabilityCitiesHint: 'בחר עיר מהרשימה והקש כדי להוסיף. ניתן להוסיף כמה.',
+  availabilityCityRemove: 'הסר',
+  availabilityHomeCity: 'עיר המגורים',
+  availabilityHomeCityPlaceholder: 'בחר עיר מהרשימה',
+  availabilityHomeCityHint:
+    'נשתמש בה יחד עם הרדיוס למצוא משחקים קרובים אליך.',
+  availabilityHomeCityMustPick:
+    'חובה לבחור את העיר מהרשימה (לא טקסט חופשי).',
+  availabilityRadius: (km: number) => `רדיוס למשחקים: עד ${km} ק"מ`,
+  availabilityRadiusHint:
+    'הרחק מעיר המגורים, נציע לך משחקים בקהילות אחרות.',
   availabilityInvitable: 'זמין להזמנות לקבוצות אחרות',
   availabilityInvitableHint: 'כשמכובה — שום שחקן לא יוכל לראות אותך כמועמד הזמנה',
+  availabilityFillerPush: 'קבל הזמנות מילוי לקהילות אחרות',
+  availabilityFillerPushHint:
+    'נשלח לך push כשקהילה באזורך זקוקה לשחקנים. תוכל לבחור אם להגיש מועמדות.',
   availabilitySave: 'שמור זמינות',
 
   // Post sign-in onboarding — single profile-customisation step.
@@ -928,8 +1144,8 @@ export const he = {
   matchStatusPending: 'ממתין לאישור',
 
   // Matches tab header / segmented tabs
-  matchesTabMine: 'שלי',
-  matchesTabOpen: 'פתוחים',
+  matchesTabMine: 'המשחקים שלי',
+  matchesTabOpen: 'גלה משחקים',
   // Matches screen redesign — hero / sections / empty card
   matchesHeroSubtitle: 'הצטרף למשחקים או צור משחק חדש',
   matchesSectionOpen: 'משחקים פתוחים',
@@ -972,7 +1188,11 @@ export const he = {
   // These fire from the realtime game-doc listener, so they describe
   // events that may be triggered by other users on other devices.
   bannerPlayerJoined: 'שחקן הצטרף למשחק',
+  bannerPlayerJoinedNamed: (firstName: string) => `${firstName} נרשם למשחק`,
+  bannerPlayersJoinedCount: (n: number) => `${n} שחקנים נרשמו למשחק`,
   bannerPlayerLeft: 'שחקן יצא מהמשחק',
+  bannerPlayerLeftNamed: (firstName: string) => `${firstName} יצא מהמשחק`,
+  bannerPlayersLeftCount: (n: number) => `${n} שחקנים יצאו מהמשחק`,
   bannerGuestAdded: 'אורח נוסף למשחק',
   bannerTeamsReady: 'הכוחות מוכנים',
   bannerGoalRecorded: 'גול נרשם',
@@ -1021,19 +1241,22 @@ export const he = {
   matchStatsCommunity: 'קהילה',
   matchStatsWeather: 'מזג אוויר',
   matchStatsMinutesShort: 'דק׳',
-  matchParticipantsTitle: 'רשימת משתתפים',
+  matchParticipantsTitle: 'רשימת שחקנים',
   matchParticipantStatusComing: 'מגיע',
   matchParticipantStatusArrived: 'הגיע',
-  matchParticipantRoleOrganizer: 'ארגון',
+  matchParticipantRoleOrganizer: 'מנהל',
   matchDetailsCardTitle: 'פרטי המשחק',
   matchDetailsLabelField: 'מגרש',
+  matchDetailsLabelCity: 'עיר',
   matchDetailsLabelAddress: 'כתובת',
+  matchDetailsLabelLocation: 'מיקום',
+  matchDetailsNavigateButton: 'נווט למגרש ב-Waze',
   matchDetailsLabelFieldType: 'סוג מגרש',
   matchDetailsLabelNotes: 'הערות',
   matchDetailsLabelOrganizer: 'יוצר המשחק',
   matchDetailsLabelCreatedAt: 'נוצר בתאריך',
   matchDetailsLabelMeetingTime: 'שעה התכנסות',
-  matchDetailsLabelCommunity: 'קהילה',
+  matchDetailsLabelCommunity: 'קבוצה',
   matchDetailsLabelFormat: 'הרכב',
   matchHeroPlayers: (now: number, max: number) => `${now}/${max} שחקנים`,
   matchPlayersTitle: 'שחקנים',
@@ -1107,10 +1330,12 @@ export const he = {
   matchMenuEdit: 'ערוך משחק',
   matchMenuPlayers: 'ניהול שחקנים',
   matchMenuShare: 'שתף משחק',
-  // Visibility-toggle labels — flip dynamically with current state.
-  matchMenuMakePublic: 'הפוך למשחק פתוח',
-  matchMenuMakeCommunity: 'הפוך למשחק לקהילה בלבד',
+  // Visibility-toggle labels — describe the CURRENT state, not the
+  // action. The toggle next to the label flips public ↔ community.
+  matchMenuMakePublic: 'משחק פתוח לכולם',
+  matchMenuMakeCommunity: 'משחק לקהילה בלבד',
   matchMenuManage: 'ניהול משחק',
+  matchMenuWatchLive: 'צפייה במשחק חי',
   matchManageScreenTitle: 'ניהול משחק',
   matchManageSectionAccess: 'גישה למשחק',
   matchManageSectionDanger: 'פעולות מסוכנות',
@@ -1224,6 +1449,9 @@ export const he = {
   notifGameRsvpNudgeSub: 'נשלחת 5 שעות לפני המשחק אם עדיין לא ענית',
   notifPlayerCancelled: 'שחקן ביטל השתתפות',
   notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמשחק שאני מארגן',
+  notifGameShortageWarning: 'מחסור בשחקנים',
+  notifGameShortageWarningSub:
+    'התראה למארגן כשמתקרבים לקיק־אוף ויש פחות שחקנים מהמינימום',
   notifGroupDeleted: 'קהילה נסגרה',
   notifGroupDeletedSub: 'כשמנהל מוחק קהילה שאני חבר בה',
   notifSave: 'שמור',

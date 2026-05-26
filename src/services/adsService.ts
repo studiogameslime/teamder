@@ -16,6 +16,14 @@
 
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+
+// Google's official AdMob TEST app ID. Anyone building the iOS target
+// against this value gets test responses (or none) in production —
+// real revenue is impossible until the AdMob console issues a real
+// app ID and app.json's `iosAppId` is updated. We compare against
+// this constant at runtime to surface a loud DEV warning.
+const ADMOB_IOS_TEST_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
 
 // Toggle to inspect ad lifecycle in a non-DEV build (e.g. internal-testing
 // release). Off in production.
@@ -84,6 +92,18 @@ function adErrorLabel(code: number | string | null): string {
 // error if a literal string require() can't be resolved at bundle time, and
 // that error escapes ordinary try/catch. The flag avoids the require entirely.
 const ADS_ENABLED = (process.env.EXPO_PUBLIC_ADMOB_ENABLED ?? '').trim() === '1';
+
+// ─── Screenshot mode ──────────────────────────────────────────────────────
+// Hides BannerAd + AppOpenAd so the Play Store screenshot capture passes
+// don't ship images with stray ad content. Driven by EXPO_PUBLIC_SCREENSHOT_MODE
+// env var, but ONLY honoured in __DEV__ builds — production builds (release
+// to Play Store / TestFlight) ignore the flag and always render ads,
+// guaranteeing a misconfigured .env can't accidentally disable revenue.
+// The previous implementation was a hardcoded `const SCREENSHOT_MODE = false`
+// at module scope, which was easy to flip and forget.
+const SCREENSHOT_MODE =
+  __DEV__ &&
+  (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1';
 /**
  * Internal-testing escape hatch. When set to '1', the banner + app-open
  * ad unit IDs ALWAYS resolve to AdMob's test IDs even in release
@@ -188,6 +208,28 @@ export const adsService = {
   async initializeAds(): Promise<void> {
     if (initialized) return;
     initialized = true;
+    // Loud DEV warning if the iOS build was bundled against AdMob's
+    // public TEST app ID. Real iOS revenue requires registering the
+    // app in AdMob console and swapping `iosAppId` in app.json. Fires
+    // only on iOS DEV builds — release builds suppress console.warn.
+    if (__DEV__ && Platform.OS === 'ios') {
+      const iosAppId = (
+        (Constants.expoConfig?.plugins as unknown[] | undefined) || []
+      )
+        .map((p) => (Array.isArray(p) ? p : null))
+        .find((p) => p && p[0] === 'react-native-google-mobile-ads');
+      const id =
+        iosAppId && typeof iosAppId[1] === 'object' && iosAppId[1] !== null
+          ? (iosAppId[1] as { iosAppId?: string }).iosAppId
+          : undefined;
+      if (id === ADMOB_IOS_TEST_APP_ID) {
+        console.warn(
+          '[ads] iosAppId in app.json is the AdMob TEST id. ' +
+            'Replace it with a real ID from AdMob console before iOS App Store release — ' +
+            'otherwise the production iOS build serves no real ads.',
+        );
+      }
+    }
     // Whichever branch we exit through, unblock any BannerAd that's
     // already mounted. `initResolve()` is one-shot (the Promise resolves
     // exactly once), so calling it on every path is safe.
@@ -255,11 +297,6 @@ export const adsService = {
 // no unit id is configured, or the underlying ad fails to load. Callers can
 // render this unconditionally without worrying about feature detection.
 // Built with React.createElement so this file can stay .ts (no JSX).
-
-// ⚠️ SCREENSHOT MODE — flip SCREENSHOT_MODE back to false when
-// finished capturing for the Play Store. Hides both BannerAd and
-// the App Open ad.
-const SCREENSHOT_MODE = false;
 
 export function BannerAd(): React.ReactElement | null {
   const [failed, setFailed] = React.useState(false);

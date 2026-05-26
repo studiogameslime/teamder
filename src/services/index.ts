@@ -1,4 +1,5 @@
 export { userService } from './userService';
+export { friendsService } from './friendsService';
 export { groupService } from './groupService';
 export { gameService, shuffle } from './gameService';
 export { storage } from './storage';

@@ -18,6 +18,14 @@ interface Props {
   format?: GameFormat;
   fieldType?: FieldType;
   matchDurationMinutes?: number;
+  /** Free-text rule chips set by the organiser. Replaces the old
+   *  hasReferee/Penalties/HalfTime booleans — those still appear as
+   *  tags via the legacy fallback in `gameToValues` on edit, so the
+   *  rendered chip set stays consistent across schema versions. */
+  ruleTags?: string[];
+  /** @deprecated Legacy fallback. Kept so a not-yet-edited legacy
+   *  game still renders chips even when ruleTags hasn't been
+   *  populated yet. New writes only set `ruleTags`. */
   hasReferee?: boolean;
   hasPenalties?: boolean;
   hasHalfTime?: boolean;
@@ -54,27 +62,21 @@ export function MatchFactsRow(props: Props) {
       label: `${props.matchDurationMinutes}'`,
     });
   }
-  if (props.hasReferee) {
+
+  // Tags are the new path. If absent, fall back to legacy booleans —
+  // ensures pre-migration games still render their rules without
+  // requiring an edit-then-save round trip.
+  const tags =
+    Array.isArray(props.ruleTags) && props.ruleTags.length > 0
+      ? props.ruleTags
+      : legacyTagsFromBooleans(props);
+  tags.forEach((tag, idx) =>
     chips.push({
-      key: 'ref',
-      icon: 'flag-outline',
-      label: he.wizardHasReferee,
-    });
-  }
-  if (props.hasHalfTime) {
-    chips.push({
-      key: 'halves',
-      icon: 'pause-circle-outline',
-      label: he.wizardHasHalfTime,
-    });
-  }
-  if (props.hasPenalties) {
-    chips.push({
-      key: 'pks',
-      icon: 'radio-button-on-outline',
-      label: he.wizardHasPenalties,
-    });
-  }
+      key: `tag-${idx}`,
+      icon: 'pricetag-outline',
+      label: tag,
+    }),
+  );
 
   if (chips.length === 0) return null;
   return (
@@ -99,6 +101,14 @@ function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
   if (f === 'synthetic') return he.fieldTypeSynthetic;
   return he.fieldTypeGrass;
+}
+
+function legacyTagsFromBooleans(p: Props): string[] {
+  const out: string[] = [];
+  if (p.hasReferee) out.push('שופט');
+  if (p.hasHalfTime) out.push('משחקים עם חוצים');
+  if (p.hasPenalties) out.push('פנדלים בסיום');
+  return out;
 }
 
 const styles = StyleSheet.create({

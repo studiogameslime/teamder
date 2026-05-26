@@ -1,10 +1,12 @@
 // 2-step wizard shared by Create / Edit Community.
 //
-// Step 1 (פרטים)   — basics: name, location autocomplete + simple field
-//                    name, plus the open-join toggle.
-// Step 2 (מתקדם)  — schedule (preferred days + hour, recurring toggle),
-//                    capacities, address note, contact phone, free-text
-//                    description + rules.
+// Responsibility split (post-refactor):
+//   • Community owns identity + membership behaviour ONLY. It is NOT
+//     tied to a fixed field, format, schedule, or recurring config.
+//     All those are per-Game settings now.
+//
+// Step 1 (זהות)   — name, description, open/private toggle.
+// Step 2 (מידע)   — rules, contact phone, general city, max members.
 //
 // All free fields are optional; only `name` is enforced. The wizard
 // is rendered identically in create and edit — the host screen wraps
@@ -30,54 +32,36 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
-import { AppTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
-import {
-  searchCities,
-  searchStreets,
-} from '@/services/israelLocationService';
+import { searchCities } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
-import { WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 
-const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 const ACCENT = '#3B82F6';
 
 export interface GroupFormValues {
+  // Step 1 — Identity
   name: string;
-  fieldName: string;
-  city: string;
-  street: string;
-  addressNote: string;
+  description: string;
   isOpen: boolean;
-  preferredDays: WeekdayIndex[];
-  preferredHour: string; // 'HH:mm' — empty string when unset.
-  recurringGameEnabled: boolean;
-  /** Per-game player cap. Stored as Group.defaultMaxPlayers. */
-  maxPlayers: string;
+
+  // Step 2 — Info
+  rules: string;
+  contactPhone: string;
+  city: string;
   /** Community-wide member cap. Stored as Group.maxMembers. */
   maxMembers: string;
-  contactPhone: string;
-  description: string;
-  rules: string;
 }
 
 export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   name: '',
-  fieldName: '',
-  city: '',
-  street: '',
-  addressNote: '',
-  isOpen: false,
-  preferredDays: [],
-  preferredHour: '',
-  recurringGameEnabled: false,
-  maxPlayers: '15',
-  maxMembers: '40',
-  contactPhone: '',
   description: '',
+  isOpen: false,
   rules: '',
+  contactPhone: '',
+  city: '',
+  maxMembers: '40',
 };
 
 interface Props {
@@ -141,22 +125,7 @@ export function GroupWizardForm({
     val: GroupFormValues[K],
   ) => setValues((s) => ({ ...s, [key]: val }));
 
-  // Resetting the dependent street whenever the city changes prevents
-  // a stale street from one city sticking around when the user picks
-  // another.
-  const handleCityChange = (next: string) => {
-    setValues((s) => ({
-      ...s,
-      city: next,
-      street: s.street.length > 0 ? '' : s.street,
-    }));
-  };
-
   const fetchCities = useCallback((q: string) => searchCities(q), []);
-  const fetchStreets = useCallback(
-    (q: string) => searchStreets(values.city, q),
-    [values.city],
-  );
 
   const phoneEntered = values.contactPhone.trim().length > 0;
   const phoneValid = !phoneEntered || isValidIsraeliPhone(values.contactPhone);
@@ -195,17 +164,6 @@ export function GroupWizardForm({
     }
   };
 
-  const cityChosen = values.city.trim().length > 0;
-
-  const toggleDay = (d: WeekdayIndex) => {
-    setValues((s) => ({
-      ...s,
-      preferredDays: s.preferredDays.includes(d)
-        ? s.preferredDays.filter((x) => x !== d)
-        : [...s.preferredDays, d].sort(),
-    }));
-  };
-
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={headerTitle} />
@@ -235,41 +193,16 @@ export function GroupWizardForm({
                   required
                 />
                 <InputField
-                  label={he.groupCreateField}
-                  value={values.fieldName}
-                  onChangeText={(v) => set('fieldName', v)}
-                />
-                <AutocompleteInput
-                  label={he.createGroupCity}
-                  value={values.city}
-                  onChange={handleCityChange}
-                  onSelect={(v) => {
-                    setValues((s) => ({
-                      ...s,
-                      city: v,
-                      street: s.street.length > 0 ? '' : s.street,
-                    }));
-                  }}
-                  placeholder={he.createGroupCityPlaceholder}
-                  fetchSuggestions={fetchCities}
-                />
-                <AutocompleteInput
-                  label={he.createGroupStreet}
-                  value={values.street}
-                  onChange={(v) => set('street', v)}
-                  onSelect={(v) => set('street', v)}
-                  placeholder={
-                    cityChosen
-                      ? he.createGroupStreetPlaceholder
-                      : he.createGroupStreetDisabledHint
-                  }
-                  disabled={!cityChosen}
-                  fetchSuggestions={fetchStreets}
+                  label={he.createGroupDescription}
+                  value={values.description}
+                  onChangeText={(v) => set('description', v)}
+                  multiline
                 />
 
-                {/* The open-join toggle is consequential at create time
-                    (decides whether new players need approval) so it
-                    lives in step 1 right after the location identity. */}
+                {/* The open-join toggle defines membership behaviour
+                    (auto-approve vs admin gate). It belongs to identity
+                    and is the single most consequential decision at
+                    create time, so it lives in step 1. */}
                 <ToggleCard
                   label={he.createGroupIsOpen}
                   hint={he.createGroupIsOpenHint}
@@ -281,58 +214,15 @@ export function GroupWizardForm({
 
             {step === 2 ? (
               <View style={styles.stack}>
-                {/* ─── Schedule ───────────────────────────── */}
-                <View>
-                  <Text style={styles.fieldLabel}>
-                    {he.communityEditPreferredDaysLabel}
-                  </Text>
-                  <View style={styles.pillRow}>
-                    {ALL_DAYS.map((d) => (
-                      <DayChip
-                        key={d}
-                        label={he.availabilityDayShort[d]}
-                        active={values.preferredDays.includes(d)}
-                        onPress={() => toggleDay(d)}
-                      />
-                    ))}
-                  </View>
-                </View>
-                <AppTimeField
-                  label={`${he.communityEditPreferredHourLabel}  (${he.communityEditOptional})`}
-                  value={values.preferredHour}
-                  onChange={(v) => set('preferredHour', v)}
-                  placeholder={
-                    values.preferredHour ? '' : he.communityEditTimeUnset
-                  }
+                {/* Code-of-conduct, contact + general city. All
+                    optional. NO field/format/schedule fields here —
+                    those are per-Game now. */}
+                <InputField
+                  label={he.communityDetailsRules}
+                  value={values.rules}
+                  onChangeText={(v) => set('rules', v)}
+                  multiline
                 />
-                <ToggleCard
-                  label={he.communityEditRecurringEnabled}
-                  hint={he.communityEditRecurringHint}
-                  value={values.recurringGameEnabled}
-                  onValueChange={(v) => set('recurringGameEnabled', v)}
-                />
-
-                {/* ─── Capacities ─────────────────────────── */}
-                <View style={styles.numberRow}>
-                  <View style={styles.numberCell}>
-                    <InputField
-                      label={he.createGroupMaxPlayers}
-                      value={values.maxPlayers}
-                      onChangeText={(v) => set('maxPlayers', v)}
-                      keyboardType="number-pad"
-                    />
-                  </View>
-                  <View style={styles.numberCell}>
-                    <InputField
-                      label={he.createGroupMaxMembers}
-                      value={values.maxMembers}
-                      onChangeText={(v) => set('maxMembers', v)}
-                      keyboardType="number-pad"
-                    />
-                  </View>
-                </View>
-
-                {/* ─── Contact + free-text ────────────────── */}
                 <View>
                   <InputField
                     label={he.createGroupContactPhone}
@@ -351,23 +241,19 @@ export function GroupWizardForm({
                     </Text>
                   ) : null}
                 </View>
-                <InputField
-                  label={he.createGroupAddressNote}
-                  value={values.addressNote}
-                  onChangeText={(v) => set('addressNote', v)}
-                  placeholder={he.createGroupAddressNotePlaceholder}
+                <AutocompleteInput
+                  label={he.createGroupCity}
+                  value={values.city}
+                  onChange={(v) => set('city', v)}
+                  onSelect={(v) => set('city', v)}
+                  placeholder={he.createGroupCityPlaceholder}
+                  fetchSuggestions={fetchCities}
                 />
                 <InputField
-                  label={he.createGroupDescription}
-                  value={values.description}
-                  onChangeText={(v) => set('description', v)}
-                  multiline
-                />
-                <InputField
-                  label={he.communityDetailsRules}
-                  value={values.rules}
-                  onChangeText={(v) => set('rules', v)}
-                  multiline
+                  label={he.createGroupMaxMembers}
+                  value={values.maxMembers}
+                  onChangeText={(v) => set('maxMembers', v)}
+                  keyboardType="number-pad"
                 />
               </View>
             ) : null}
@@ -413,31 +299,6 @@ export function GroupWizardForm({
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────
-
-function DayChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.dayPill,
-        active && styles.dayPillActive,
-        pressed && { opacity: 0.85 },
-      ]}
-    >
-      <Text style={[styles.dayPillText, active && styles.dayPillTextActive]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 function ToggleCard({
   label,
@@ -488,14 +349,6 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.md },
   stack: { gap: spacing.md },
 
-  fieldLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    marginBottom: spacing.xs,
-    textAlign: RTL_LABEL_ALIGN,
-    alignSelf: 'stretch',
-    width: '100%',
-  },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
@@ -511,44 +364,6 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
     width: '100%',
-  },
-
-  // Day-letter chip — fixed square so all 7 letters line up evenly.
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  dayPill: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayPillActive: {
-    backgroundColor: 'rgba(59,130,246,0.12)',
-    borderColor: ACCENT,
-  },
-  dayPillText: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  dayPillTextActive: {
-    color: ACCENT,
-    fontWeight: '700',
-  },
-
-  numberRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  numberCell: {
-    flex: 1,
   },
 
   toggleCard: {

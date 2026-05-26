@@ -6,6 +6,9 @@
       }
     },
     "owner": "studiogameslimes-organization",
-    "slug": "soccer-game"
+    "slug": "soccer-game",
+    "android": {
+      "package": "com.studiogameslime.soccergame"
+    }
   }
 }

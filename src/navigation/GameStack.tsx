@@ -27,6 +27,7 @@ import { MatchManageScreen } from '@/screens/games/MatchManageScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
+import { PromoteOrphanScreen } from '@/screens/games/PromoteOrphanScreen';
 
 export type GameStackParamList = {
   GamesList: undefined;
@@ -41,6 +42,10 @@ export type GameStackParamList = {
          *  required `registrationOpensAt` field at step 3. Triggered
          *  from CommunityDetails' "צור משחק קבוע" entry. */
         recurring?: boolean;
+        /** When true, skip the community picker and start a quick
+         *  (no-community) game — the screen auto-provisions the hidden
+         *  personal group. Triggered from the "+" quick-game choice. */
+        quick?: boolean;
       };
   /** Edit metadata of an existing game. Only the organizer should reach this. */
   GameEdit: { gameId: string };
@@ -61,6 +66,11 @@ export type GameStackParamList = {
   /** Reachable from MatchDetails' overflow menu. Pushed in-stack so
    *  back returns to the match. */
   History: undefined;
+  /** Post-orphan-game "צור קהילה" prompt — opens with the personal
+   *  group + game preselected. Reachable from the `promotePrompt`
+   *  notification tap and from a CTA on the finished orphan game's
+   *  details screen. */
+  PromoteOrphan: { groupId: string; gameId: string };
 };
 
 const Stack = createNativeStackNavigator<GameStackParamList>();
@@ -85,6 +95,7 @@ export function GameStack() {
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="PromoteOrphan" component={PromoteOrphanScreen} />
     </Stack.Navigator>
   );
 }

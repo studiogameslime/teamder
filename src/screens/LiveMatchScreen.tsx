@@ -47,6 +47,7 @@ import {
   Gesture,
 } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   cancelAnimation,
   runOnJS,
   useAnimatedStyle,
@@ -66,6 +67,9 @@ import {
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { TeamsOverviewSheet, TeamSlot } from '@/components/TeamsOverviewSheet';
 import { toast } from '@/components/Toast';
+import { PulseOnChange } from '@/components/anim/PulseOnChange';
+import { ConfettiBurst } from '@/components/anim/ConfettiBurst';
+import { AppearItem } from '@/components/anim/AppearItem';
 import { gameService } from '@/services/gameService';
 import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import {
@@ -74,6 +78,7 @@ import {
   isFinished as isFinishedHelper,
 } from '@/services/gameLifecycle';
 import { useGameEvents } from '@/services/useGameEvents';
+import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   Game,
@@ -85,7 +90,7 @@ import {
   toGuestRosterId,
   UserId,
 } from '@/types';
-import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
@@ -260,6 +265,7 @@ export function LiveMatchScreen() {
   const me = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const playersMap = useGameStore((s) => s.players);
 
   // Realtime banners for live events — goals, status changes, late
   // joins/leaves, etc. Listener is shared with MatchDetailsScreen so
@@ -269,21 +275,36 @@ export function LiveMatchScreen() {
   const [game, setGame] = useState<Game | null>(null);
   const [live, setLive] = useState<LiveMatchState | null>(null);
 
-  // Local timer (not persisted).
-  const [timerMs, setTimerMs] = useState(0);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerStarted, setTimerStarted] = useState(false);
+  // Synced match clock. Reads the three primitives persisted under
+  // `liveMatch.timer*` and produces a ticking display value every
+  // device sees in lockstep. Pure derivation — no local state to
+  // diverge from the canonical Firestore copy.
+  const timerView = useSyncedTimer(live);
+  const timerMs = timerView.displayMs;
+  const timerRunning = timerView.running;
+  const timerStarted = timerView.started;
 
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [endRoundOpen, setEndRoundOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [scoreEditOpen, setScoreEditOpen] = useState(false);
+  const [endEveningOpen, setEndEveningOpen] = useState(false);
+  const [endingEvening, setEndingEvening] = useState(false);
+  // When the incoming team after a round-end rotation is short of the
+  // format's player count, this holds the metadata to drive the
+  // FillTeamModal. The admin picks players from the waiting teams to
+  // fill the on-field side before the timer can re-enable. Stays
+  // null when the incoming team came up intact.
+  const [fillRequest, setFillRequest] = useState<{
+    target: 'A' | 'B';
+    missing: number;
+  } | null>(null);
 
   // Round-finished summary (transient — captured at end-round, cleared
   // when the next round kicks off). When non-null, the screen is in the
   // `round_finished` state.
   const [lastSummary, setLastSummary] = useState<{
-    winner: 'A' | 'B' | 'draw';
+    winner: 'A' | 'B';
     scoreA: number;
     scoreB: number;
     roundNumber: number;
@@ -292,11 +313,15 @@ export function LiveMatchScreen() {
   // Tick once a minute so the `scheduled → ready_to_start` transition
   // becomes visible without a manual refresh once the session time
   // arrives. Cheap; doesn't drive any other re-renders.
-  const [, setNowTick] = useState(0);
+  const [nowTick, setNowTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setNowTick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  // Auto-end reminder ref — used by an effect below `isAdmin` is
+  // computed. Kept here so the hook order stays stable across renders.
+  const remindedRef = useRef(false);
 
   // 1-step undo for drag/shuffle.
   const undoStackRef = useRef<LiveMatchState[]>([]);
@@ -393,10 +418,24 @@ export function LiveMatchScreen() {
               myCommunities.some(
                 (c) => c.id === g.groupId && c.adminIds.includes(me.id),
               ));
+          // Only registered participants (players[] / waitlist[]) may
+          // enter — random viewers were historically able to walk into
+          // any active live screen and see / change state. Admins
+          // bypass this check via `adminHere`.
+          const isParticipant =
+            !!me &&
+            ((g.players ?? []).includes(me.id) ||
+              (g.waitlist ?? []).includes(me.id));
           if (terminal) {
             toast.info(he.matchDetailsAlreadyFinished);
             if (nav.canGoBack()) nav.goBack();
-          } else if (!canEnterLive(g) && !adminHere) {
+          } else if (
+            !canEnterLive(g, {
+              isOrganizerOrAdmin: adminHere,
+              isParticipant,
+            }) &&
+            !adminHere
+          ) {
             toast.info(he.liveMatchNotActiveYet);
             if (nav.canGoBack()) nav.goBack();
           }
@@ -431,12 +470,41 @@ export function LiveMatchScreen() {
     return unsub;
   }, [gameId, game, rosterIds]);
 
-  // Local timer tick.
+  // Timer ticking is now driven by useSyncedTimer above — every
+  // device reconstructs the displayed value from the same three
+  // primitives on the game doc. No local interval needed.
+
+  // Toast when another admin touches the timer. We track the
+  // (controlledById, running) tuple across renders: when controlledById
+  // changes AND it's not me, surface a short hint so the user
+  // understands the timer state didn't change "by itself".
+  const lastTimerControllerRef = useRef<string | null>(null);
+  const lastTimerRunningRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (!timerRunning) return;
-    const id = setInterval(() => setTimerMs((t) => t + 1000), 1000);
-    return () => clearInterval(id);
-  }, [timerRunning]);
+    const ctrlId = timerView.controlledById;
+    const ctrlName = timerView.controlledByName;
+    const running = timerView.running;
+    const prevCtrl = lastTimerControllerRef.current;
+    const prevRunning = lastTimerRunningRef.current;
+    // First snapshot — just record, don't toast.
+    if (prevCtrl === null && prevRunning === null) {
+      lastTimerControllerRef.current = ctrlId;
+      lastTimerRunningRef.current = running;
+      return;
+    }
+    // Only toast when a DIFFERENT admin changed the running state.
+    // Mutations from me (the local user) don't need a hint — I just
+    // pressed the button and know what I did.
+    if (ctrlId && ctrlId !== me?.id && running !== prevRunning) {
+      const who = ctrlName || 'אדמין אחר';
+      toast.info(
+        running ? `${who} הפעיל את הטיימר` : `${who} עצר את הטיימר`,
+        1800,
+      );
+    }
+    lastTimerControllerRef.current = ctrlId;
+    lastTimerRunningRef.current = running;
+  }, [timerView.controlledById, timerView.controlledByName, timerView.running, me?.id]);
 
   // ─── Role detection ────────────────────────────────────────────────────
   const isAdmin = useMemo(() => {
@@ -445,6 +513,24 @@ export function LiveMatchScreen() {
     const grp = myCommunities.find((g) => g.id === game.groupId);
     return !!grp && grp.adminIds.includes(me.id);
   }, [me, game, myCommunities]);
+
+  // Auto-end reminder: when the game has been running well past its
+  // expected total runtime (kickoff + matchDuration × numberOfTeams ×
+  // 1.5 rounds, plus a 30-min grace), nudge the admin once with a
+  // toast suggesting they end the evening. Triggers at most once per
+  // session.
+  useEffect(() => {
+    if (!game || !isAdmin || remindedRef.current) return;
+    const dur = game.matchDurationMinutes ?? DEFAULT_DURATION_MIN;
+    const teams = game.numberOfTeams ?? 2;
+    const expectedRuntimeMin = dur * teams * 1.5 + 30;
+    const expectedEndMs =
+      (game.startsAt ?? 0) + expectedRuntimeMin * 60 * 1000;
+    if (Date.now() > expectedEndMs && !isFinishedHelper(game)) {
+      remindedRef.current = true;
+      toast.info(he.liveEndEveningReminder);
+    }
+  }, [game, isAdmin, nowTick]);
 
   // Clamp game.numberOfTeams to {2,3,4,5}. A reading of `1` (legacy
   // single-team mock data) and anything above 5 collapse to the
@@ -814,7 +900,7 @@ export function LiveMatchScreen() {
    * are cleared so the auto-placer fills the formation cleanly.
    */
   const handleEndRound = useCallback(
-    (winner: 'A' | 'B' | 'draw') => {
+    (winner: 'A' | 'B') => {
       if (!live || !isAdmin || !gameId) return;
       if (sessionState === 'scheduled' || sessionState === 'round_finished') {
         return; // can't end a round that hasn't started or already ended
@@ -837,18 +923,18 @@ export function LiveMatchScreen() {
         scoreE: 0,
       };
 
-      // Persist a +1 to the winning team's position. A draw doesn't
-      // count for either side. The loser's position keeps its tally
-      // as long as the same players stay there; if rotation happens
-      // below the loser's slot is wiped (new team starts fresh).
+      // Persist a +1 to the winning team's position. The loser's
+      // position keeps its tally as long as the same players stay
+      // there; if rotation happens below, the loser's slot is wiped
+      // (new team starts fresh).
       const prevWins = live.winsByTeam ?? {};
-      const winnerWins =
-        winner === 'draw'
-          ? prevWins
-          : { ...prevWins, [winner]: (prevWins[winner] ?? 0) + 1 };
+      const winnerWins = {
+        ...prevWins,
+        [winner]: (prevWins[winner] ?? 0) + 1,
+      };
 
       let next: LiveMatchState;
-      if (winner === 'draw' || waitingLetters.length === 0) {
+      if (waitingLetters.length === 0) {
         // No rotation — same matchup will play again next round. The
         // winner (if any) carries its updated tally forward.
         next = { ...live, ...resetScores, winsByTeam: winnerWins };
@@ -909,10 +995,45 @@ export function LiveMatchScreen() {
         };
       }
 
-      commit(next, { undoable: false, markEdited: true });
+      // Zero the timer IN THE SAME COMMIT as the round-end mutation.
+      // Splitting these into two writes (commit + separate
+      // resetTimer transaction) introduced a race: if the
+      // transaction landed first, the subsequent commit would
+      // overwrite the timer reset with the still-running timer
+      // fields from the unchanged `live` snapshot. By including the
+      // reset inline we get a single atomic write — timer is
+      // guaranteed paused once the round-end commit lands.
+      const nextWithTimerReset: LiveMatchState = {
+        ...next,
+        timerRunning: false,
+        timerLastStartedAt: null,
+        timerAccumulatedMs: 0,
+        timerControlledBy: me?.id ?? next.timerControlledBy ?? null,
+        timerControlledByName: me?.name ?? next.timerControlledByName ?? null,
+      };
+      commit(nextWithTimerReset, { undoable: false, markEdited: true });
       setEndRoundOpen(false);
-      // Pause and freeze local timer until the next round is started.
-      setTimerRunning(false);
+      // After rotation, check whether the incoming team is short of
+      // the format's required player count. If so, open the fill
+      // modal so the admin picks players from the OTHER waiting
+      // teams to top up the on-field side BEFORE the next timer
+      // press is allowed. The check runs on the rotated state so
+      // C → B's slot has already moved players into `teamB`/`gkB`
+      // zones; we count them per side and compare to playersPerTeam.
+      if (winner === 'A' || winner === 'B') {
+        const loser: 'A' | 'B' = winner === 'A' ? 'B' : 'A';
+        const playersPerTeam = outfieldCountForFormat(game?.format) + 1;
+        const loserTeamZ: Zone = `team${loser}` as Zone;
+        const loserGkZ: Zone = `gk${loser}` as Zone;
+        let onFieldCount = 0;
+        for (const z of Object.values(next.assignments)) {
+          if (z === loserTeamZ || z === loserGkZ) onFieldCount++;
+        }
+        const missing = playersPerTeam - onFieldCount;
+        if (missing > 0) {
+          setFillRequest({ target: loser, missing });
+        }
+      }
       logEvent(AnalyticsEvent.MatchRoundCompleted, {
         gameId,
         roundNumber: currentRoundNumber,
@@ -927,7 +1048,7 @@ export function LiveMatchScreen() {
         void maybeRequestStoreReview('matchFinished', gameId);
       }
     },
-    [live, isAdmin, gameId, waitingLetters, commit, sessionState],
+    [live, isAdmin, gameId, waitingLetters, commit, sessionState, game?.format],
   );
 
   /**
@@ -936,17 +1057,27 @@ export function LiveMatchScreen() {
    * timer for the new round.
    */
   const handleStartNextRound = useCallback(() => {
-    if (!live || !isAdmin) return;
+    if (!live || !isAdmin || !gameId || !me) return;
     const nextRoundNumber = (live.roundNumber ?? 1) + 1;
+    // Zero accumulator + set running + bump round number in ONE
+    // commit. Splitting reset and start into two transactions could
+    // race against the commit and leave the timer in a stale state.
+    // Doing everything inline writes the canonical post-start state
+    // atomically.
     commit(
-      { ...live, roundNumber: nextRoundNumber },
+      {
+        ...live,
+        roundNumber: nextRoundNumber,
+        timerRunning: true,
+        timerLastStartedAt: Date.now(),
+        timerAccumulatedMs: 0,
+        timerControlledBy: me.id,
+        timerControlledByName: me.name ?? null,
+      },
       { undoable: false, markEdited: false },
     );
     setLastSummary(null);
-    setTimerMs(0);
-    setTimerStarted(true);
-    setTimerRunning(true);
-  }, [live, isAdmin, commit]);
+  }, [live, isAdmin, gameId, me, commit]);
 
   /**
    * Apply a goal — credits the team's score by 1. Used by the goal-log
@@ -977,16 +1108,87 @@ export function LiveMatchScreen() {
   );
 
   // ─── Timer controls ────────────────────────────────────────────────────
-  const onTimerStart = () => {
-    setTimerStarted(true);
-    setTimerRunning(true);
+  // A team counts as "full" when its on-field roster equals
+  // `playersPerTeam(format)`. For team A / B, on-field = `teamA`+`gkA`
+  // (and `teamB`+`gkB` respectively) — the goalkeeper lives in a
+  // dedicated zone but is still part of that side's count. For waiting
+  // teams (C..E) all members sit under `teamC|D|E` with no separate
+  // GK zone.
+  //
+  // The product rule (set by the user): the timer may only be started
+  // when at least two of the configured teams are full per the format.
+  // This blocks the "we have 7 players in a 5v5 game" no-op kickoff
+  // that previously got swept into the `finished` bucket by the
+  // cleanup CF and polluted community stats.
+  const validTeamCount = useMemo(() => {
+    if (!live || !game) return 0;
+    const playersPerTeam = outfieldCountForFormat(game.format) + 1;
+    let full = 0;
+    for (const L of teamLetters) {
+      const teamZ: Zone = teamZoneFor(L);
+      const gkZ: Zone | null =
+        L === 'A' ? gkZoneFor('A') : L === 'B' ? gkZoneFor('B') : null;
+      let n = 0;
+      for (const z of Object.values(live.assignments)) {
+        if (z === teamZ || (gkZ && z === gkZ)) n++;
+      }
+      if (n === playersPerTeam) full++;
+    }
+    return full;
+  }, [live, game, teamLetters]);
+
+  const canStartTimer = validTeamCount >= 2;
+
+  // Timer controls now flow through Firestore transactions so two
+  // admins pressing the same button in the same instant can't
+  // corrupt the clock. The local UI doesn't flip optimistically —
+  // we wait for the real-time listener to reflect the new server
+  // state, which lands within ~150 ms over a normal connection.
+  const onTimerStart = async () => {
+    if (!gameId || !me) return;
+    if (!canStartTimer) {
+      toast.error(he.liveTimerNeedsTwoFullTeams);
+      return;
+    }
+    try {
+      // First press of the entire game also flips Game.status to
+      // 'active' and stamps liveMatch.startedAt — the existing
+      // service helper handles both. Subsequent presses (resume
+      // after pause) find startedAt already set and only adjust
+      // status/phase.
+      await gameService.markGameStarted(gameId);
+      await gameService.startTimer(gameId, me.id, me.name ?? '');
+    } catch (err) {
+      if (__DEV__) console.warn('[live] startTimer failed', err);
+    }
   };
-  const onTimerPause = () => setTimerRunning(false);
-  const onTimerResume = () => setTimerRunning(true);
-  const onTimerReset = () => {
-    setTimerRunning(false);
-    setTimerStarted(false);
-    setTimerMs(0);
+  const onTimerPause = async () => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.pauseTimer(gameId, me.id, me.name ?? '');
+    } catch (err) {
+      if (__DEV__) console.warn('[live] pauseTimer failed', err);
+    }
+  };
+  const onTimerResume = async () => {
+    if (!gameId || !me) return;
+    if (!canStartTimer) {
+      toast.error(he.liveTimerNeedsTwoFullTeams);
+      return;
+    }
+    try {
+      await gameService.startTimer(gameId, me.id, me.name ?? '');
+    } catch (err) {
+      if (__DEV__) console.warn('[live] resumeTimer failed', err);
+    }
+  };
+  const onTimerReset = async () => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.resetTimer(gameId, me.id, me.name ?? '');
+    } catch (err) {
+      if (__DEV__) console.warn('[live] resetTimer failed', err);
+    }
   };
 
   // ─── Derived rosters per zone ──────────────────────────────────────────
@@ -1138,14 +1340,50 @@ export function LiveMatchScreen() {
       const za = live.assignments[a];
       const zb = live.assignments[b];
       if (!za || !zb) return;
-      // Guard: only allow cross-team swaps between teamA and teamB
-      // (the two playing teams). Same-team taps just clear selection.
+      // Determine which "side" each player is on. A side is one of:
+      //   - 'A' (teamA + gkA)
+      //   - 'B' (teamB + gkB)
+      //   - 'wait:C' | 'wait:D' | 'wait:E' (off-field waiting teams)
+      //   - 'bench' (unassigned)
+      // Swap is allowed when the two players are on DIFFERENT sides.
+      // Same-side tap clears selection (handled by the caller).
+      const sideOf = (z: Zone): string => {
+        if (z === 'teamA' || z === 'gkA') return 'A';
+        if (z === 'teamB' || z === 'gkB') return 'B';
+        return z; // teamC/D/E or bench — already distinct strings
+      };
+      if (sideOf(za) === sideOf(zb)) return;
       const isTeamAZone = (z: Zone) => z === 'teamA' || z === 'gkA';
       const isTeamBZone = (z: Zone) => z === 'teamB' || z === 'gkB';
-      const oneAndTwo =
-        (isTeamAZone(za) && isTeamBZone(zb)) ||
-        (isTeamBZone(za) && isTeamAZone(zb));
-      if (!oneAndTwo) return;
+      // Preserve formation slots across the swap. Each on-field player
+      // carries its slot index (from the *source* team's slot map) so
+      // the swapped peer lands in the SAME visual position. Waiting
+      // teams (C/D/E) don't have a slot map — their members never had
+      // a positional index. Earlier we wiped both A/B maps wholesale,
+      // which broke the visual continuity the coach expected.
+      const slotsA = { ...(live.teamASlots ?? {}) };
+      const slotsB = { ...(live.teamBSlots ?? {}) };
+      const slotOfA = slotsA[a] ?? slotsB[a];
+      const slotOfB = slotsA[b] ?? slotsB[b];
+      delete slotsA[a];
+      delete slotsA[b];
+      delete slotsB[a];
+      delete slotsB[b];
+      // Re-assign each uid to its destination team's slot map at the
+      // peer's old index. Skip when:
+      //   - destination is teamC/D/E or bench (no slot map exists)
+      //   - peer was a GK (no formation slot — GK lives in gk{A,B}
+      //     via `assignments`, not the slot map)
+      if (isTeamAZone(zb)) {
+        if (typeof slotOfB === 'number') slotsA[a] = slotOfB;
+      } else if (isTeamBZone(zb)) {
+        if (typeof slotOfB === 'number') slotsB[a] = slotOfB;
+      }
+      if (isTeamAZone(za)) {
+        if (typeof slotOfA === 'number') slotsA[b] = slotOfA;
+      } else if (isTeamBZone(za)) {
+        if (typeof slotOfA === 'number') slotsB[b] = slotOfA;
+      }
       const next: LiveMatchState = {
         ...live,
         assignments: {
@@ -1153,10 +1391,8 @@ export function LiveMatchScreen() {
           [a]: zb,
           [b]: za,
         },
-        // Slot maps are tied to specific uids — clear them so the new
-        // formation auto-fills cleanly after the swap.
-        teamASlots: {},
-        teamBSlots: {},
+        teamASlots: slotsA,
+        teamBSlots: slotsB,
       };
       commit(next, { undoable: false, markEdited: true });
     },
@@ -1198,6 +1434,22 @@ export function LiveMatchScreen() {
     });
   }, [live]);
 
+  // Off-field rosters (waiting teams C/D/E). Keyed by letter so the
+  // queue panel can render compact tappable chips per team — the coach
+  // can swap an on-field player with anyone waiting without first
+  // rotating them onto the pitch.
+  const waitingRosters: Record<TeamLetter, UserId[]> = useMemo(() => {
+    const map: Record<string, UserId[]> = { C: [], D: [], E: [] };
+    if (!live) return map as Record<TeamLetter, UserId[]>;
+    for (const uid of Object.keys(live.assignments) as UserId[]) {
+      const z = live.assignments[uid];
+      if (z === 'teamC') map.C.push(uid);
+      else if (z === 'teamD') map.D.push(uid);
+      else if (z === 'teamE') map.E.push(uid);
+    }
+    return map as Record<TeamLetter, UserId[]>;
+  }, [live]);
+
   // ─── Render ───────────────────────────────────────────────────────────
   if (!gameId || !game || !live) {
     return (
@@ -1211,12 +1463,22 @@ export function LiveMatchScreen() {
 
   // Decide what the bottom-right primary CTA should do, based on the
   // current session state. `null` → no primary action available.
+  //
+  // Goal entry is intentionally NOT part of the current flow — the
+  // round_active primary CTA pauses the timer instead, and the
+  // separate "סיים משחקון" button in the action bar is the way to
+  // close the round and pick a winner. The goal-log modal still
+  // exists in the codebase for the eventual reintroduction.
   const primaryAction = (() => {
     if (!canManageRound) return null;
     if (sessionState === 'ready_to_start')
       return { label: he.liveStartRound, icon: 'play' as const, onPress: onTimerStart };
     if (sessionState === 'round_active')
-      return { label: he.liveLogGoal, icon: 'football' as const, onPress: () => setGoalModalOpen(true) };
+      return {
+        label: he.liveTimerPause,
+        icon: 'pause' as const,
+        onPress: onTimerPause,
+      };
     if (sessionState === 'round_paused')
       return {
         label: he.liveTimerResume,
@@ -1251,7 +1513,27 @@ export function LiveMatchScreen() {
             sessionState,
             live.roundNumber ?? 1,
           )}
+          // Show the hint only when a DIFFERENT admin most recently
+          // pressed a control. Suppressing it on the controller's
+          // own device avoids the weird "the timer is controlled by
+          // you" line.
+          controlledByName={
+            timerView.controlledById && timerView.controlledById !== me?.id
+              ? timerView.controlledByName
+              : null
+          }
           onBack={() => nav.goBack()}
+          // "סיום ערב" was historically exposed any time an admin was
+          // on the screen — including BEFORE the evening had actually
+          // started. Admins clicking through to preview the formation
+          // could accidentally end a game that hadn't begun yet.
+          // Gate the button on the timer having been started at least
+          // once (sessionState !== 'ready_to_start').
+          onEndEvening={
+            isAdmin && sessionState !== 'ready_to_start'
+              ? () => setEndEveningOpen(true)
+              : undefined
+          }
         />
 
         <View style={styles.body}>
@@ -1261,10 +1543,12 @@ export function LiveMatchScreen() {
               tint: TEAM_TINTS[0],
               softTint: TEAM_TINTS_SOFT[0],
               name: he.liveTeamLabel(0),
-              // The number under the team name is cumulative round
-              // wins (not the in-round goal count). The big scoreboard
-              // above the panel renders the live goal score.
+              // Two numbers per team: the small wins tally under the
+              // team name + the big live goal count in the central
+              // scoreboard. Wins persist across rotations; goals reset
+              // every round.
               score: live.winsByTeam?.A ?? 0,
+              goals: live.scoreA,
               players: teamAOnField,
             }}
             teamB={{
@@ -1272,12 +1556,14 @@ export function LiveMatchScreen() {
               softTint: TEAM_TINTS_SOFT[1],
               name: he.liveTeamLabel(1),
               score: live.winsByTeam?.B ?? 0,
+              goals: live.scoreB,
               players: teamBOnField,
             }}
             guests={game.guests ?? []}
             isAdmin={isAdmin}
             selectedUid={selectedUid}
             onPlayerTap={handlePlayerTap}
+            onEditScore={canEditScore ? () => setScoreEditOpen(true) : undefined}
           />
 
           {waitingLetters.length > 0 ? (
@@ -1296,8 +1582,13 @@ export function LiveMatchScreen() {
                     (live.winsByTeam as Record<string, number> | undefined)?.[
                       letter
                     ] ?? 0,
+                  players: waitingRosters[letter] ?? [],
                 };
               })}
+              isAdmin={isAdmin}
+              selectedUid={selectedUid}
+              onPlayerTap={handlePlayerTap}
+              guests={game.guests ?? []}
             />
           ) : null}
 
@@ -1309,6 +1600,24 @@ export function LiveMatchScreen() {
 
       <SafeAreaView edges={['bottom']} style={styles.actionBarSafe}>
         <View style={styles.actionBar}>
+          {/* Teams-overview is always reachable (used to be hidden the
+              moment a round started — admins needed it most exactly
+              then to confirm rotations). End-round is added as a
+              SECOND secondary button while a round is active. */}
+          <Pressable
+            onPress={() => setOverviewOpen(true)}
+            style={({ pressed }) => [
+              styles.endMatchBtn,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.liveTeamsOverview}
+          >
+            <Ionicons name="people-outline" size={18} color="#475569" />
+            <Text style={[styles.endMatchText, { color: '#475569' }]}>
+              {he.liveTeamsOverview}
+            </Text>
+          </Pressable>
           {showEndRound ? (
             <Pressable
               onPress={() => setEndRoundOpen(true)}
@@ -1322,22 +1631,7 @@ export function LiveMatchScreen() {
               <Ionicons name="flag" size={18} color="#EF4444" />
               <Text style={styles.endMatchText}>{he.liveEndRound}</Text>
             </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => setOverviewOpen(true)}
-              style={({ pressed }) => [
-                styles.endMatchBtn,
-                pressed && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.liveTeamsOverview}
-            >
-              <Ionicons name="people-outline" size={18} color="#475569" />
-              <Text style={[styles.endMatchText, { color: '#475569' }]}>
-                {he.liveTeamsOverview}
-              </Text>
-            </Pressable>
-          )}
+          ) : null}
 
           {primaryAction ? (
             <Pressable
@@ -1352,7 +1646,7 @@ export function LiveMatchScreen() {
               <Text style={styles.startMatchText}>{primaryAction.label}</Text>
               <Ionicons name={primaryAction.icon} size={20} color="#FFFFFF" />
             </Pressable>
-          ) : (
+          ) : isAdmin ? (
             <View style={styles.startMatchBtn} pointerEvents="none">
               <Text style={[styles.startMatchText, { opacity: 0.5 }]}>
                 {sessionState === 'scheduled'
@@ -1360,7 +1654,7 @@ export function LiveMatchScreen() {
                   : he.liveStartRound}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
       </SafeAreaView>
 
@@ -1377,8 +1671,6 @@ export function LiveMatchScreen() {
         roundNumber={live.roundNumber ?? 1}
         teamATint={TEAM_TINTS[0]}
         teamBTint={TEAM_TINTS[1]}
-        teamAScore={live.scoreA}
-        teamBScore={live.scoreB}
         onCancel={() => setEndRoundOpen(false)}
         onSelect={handleEndRound}
       />
@@ -1415,9 +1707,181 @@ export function LiveMatchScreen() {
           }
         }}
       />
+
+      {/* Fill-team modal — fires after end-round rotation when the
+          incoming team is short. Modal is dismiss-locked (no
+          backdrop tap, no cancel button) so the admin can't leave
+          the on-field side under-filled and then accidentally press
+          play. */}
+      <FillTeamModal
+        visible={!!fillRequest}
+        missing={fillRequest?.missing ?? 0}
+        waitingTeams={waitingLetters.map((L) => {
+          const teamZ: Zone = teamZoneFor(L);
+          const uids = live
+            ? (Object.keys(live.assignments) as UserId[]).filter(
+                (uid) => live.assignments[uid] === teamZ,
+              )
+            : [];
+          return { letter: L, playerIds: uids };
+        })}
+        playersMap={playersMap}
+        guests={game.guests ?? []}
+        onConfirm={(picked) => {
+          if (!live || !fillRequest) return;
+          // Move each picked player from their current waiting team
+          // zone into the on-field target zone. The first picked
+          // player goes to the GK zone if it's currently empty —
+          // matches the "first in roster becomes GK" rule and keeps
+          // the formation legal. Subsequent picks go to the outfield
+          // team zone.
+          const targetTeam: Zone = teamZoneFor(fillRequest.target);
+          const targetGk: Zone = (
+            fillRequest.target === 'A' || fillRequest.target === 'B'
+              ? gkZoneFor(fillRequest.target)
+              : teamZoneFor(fillRequest.target)
+          ) as Zone;
+          const hasGk = Object.values(live.assignments).some(
+            (z) => z === targetGk,
+          );
+          const newAssignments: Record<UserId, Zone> = {
+            ...live.assignments,
+          };
+          let placedGk = hasGk;
+          for (const uid of picked) {
+            if (!placedGk) {
+              newAssignments[uid] = targetGk;
+              placedGk = true;
+            } else {
+              newAssignments[uid] = targetTeam;
+            }
+          }
+          commit(
+            { ...live, assignments: newAssignments },
+            { undoable: false, markEdited: true },
+          );
+          setFillRequest(null);
+        }}
+      />
+
+      <Modal
+        visible={endEveningOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEndEveningOpen(false)}
+      >
+        <Pressable
+          style={endEveningStyles.backdrop}
+          onPress={() => !endingEvening && setEndEveningOpen(false)}
+        >
+          <Pressable style={endEveningStyles.card} onPress={() => undefined}>
+            <Ionicons name="stop-circle" size={36} color="#EF4444" />
+            <Text style={endEveningStyles.title}>{he.liveEndEveningTitle}</Text>
+            <Text style={endEveningStyles.body}>{he.liveEndEveningBody}</Text>
+            <View style={endEveningStyles.actions}>
+              <Pressable
+                onPress={() => setEndEveningOpen(false)}
+                disabled={endingEvening}
+                style={({ pressed }) => [
+                  endEveningStyles.btn,
+                  endEveningStyles.btnCancel,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={endEveningStyles.btnCancelText}>
+                  {he.cancel}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  if (!gameId || endingEvening) return;
+                  setEndingEvening(true);
+                  try {
+                    await gameService.endEvening(gameId);
+                    setEndEveningOpen(false);
+                    if (nav.canGoBack()) nav.goBack();
+                  } catch (err) {
+                    if (__DEV__) console.warn('[live] endEvening failed', err);
+                    toast.error(he.error);
+                  } finally {
+                    setEndingEvening(false);
+                  }
+                }}
+                disabled={endingEvening}
+                style={({ pressed }) => [
+                  endEveningStyles.btn,
+                  endEveningStyles.btnConfirm,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={endEveningStyles.btnConfirmText}>
+                  {endingEvening ? he.gameLoading : he.liveEndEveningConfirm}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+const endEveningStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: spacing.xl,
+    gap: spacing.md,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+  },
+  title: {
+    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  body: {
+    color: '#475569',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+    marginTop: spacing.sm,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  btnCancel: {
+    backgroundColor: '#F1F5F9',
+  },
+  btnCancelText: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  btnConfirm: {
+    backgroundColor: '#EF4444',
+  },
+  btnConfirmText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+});
 
 // ─── Sub-components ───────────────────────────────────────────────────────
 
@@ -1458,8 +1922,6 @@ function EndRoundModal({
   roundNumber,
   teamATint,
   teamBTint,
-  teamAScore,
-  teamBScore,
   onCancel,
   onSelect,
 }: {
@@ -1467,11 +1929,13 @@ function EndRoundModal({
   roundNumber: number;
   teamATint: string;
   teamBTint: string;
-  teamAScore: number;
-  teamBScore: number;
   onCancel: () => void;
-  onSelect: (winner: 'A' | 'B' | 'draw') => void;
+  onSelect: (winner: 'A' | 'B') => void;
 }) {
+  // No draw option — ties on the pitch are resolved by penalties, the
+  // app always records a single winner. No score display either: goal
+  // entry is intentionally not part of the current flow, so showing
+  // a score next to each side just clutters the choice.
   return (
     <Modal
       visible={visible}
@@ -1501,7 +1965,6 @@ function EndRoundModal({
             <Text style={styles.endRoundOptionLabel}>
               {he.liveTeamLabel(0)}
             </Text>
-            <Text style={styles.endRoundScore}>{teamAScore}</Text>
           </Pressable>
 
           <Pressable
@@ -1515,19 +1978,6 @@ function EndRoundModal({
             <Text style={styles.endRoundOptionLabel}>
               {he.liveTeamLabel(1)}
             </Text>
-            <Text style={styles.endRoundScore}>{teamBScore}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => onSelect('draw')}
-            style={({ pressed }) => [
-              styles.endRoundOption,
-              styles.endRoundOptionDraw,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Ionicons name="git-compare-outline" size={20} color={colors.textMuted} />
-            <Text style={styles.endRoundOptionLabel}>{he.liveDrawLabel}</Text>
           </Pressable>
 
           <Pressable
@@ -1541,6 +1991,145 @@ function EndRoundModal({
           </Pressable>
         </Pressable>
       </Pressable>
+    </Modal>
+  );
+}
+
+/**
+ * Modal that fills in an under-sized incoming team after a round-end
+ * rotation. Renders one row per waiting team showing its current
+ * roster; admin taps players (cross-team) until `missing` selected,
+ * then confirms. Selected players' assignments shift to the on-field
+ * `team{target}` zone, leaving their old waiting team smaller until
+ * IT comes up next time.
+ */
+function FillTeamModal({
+  visible,
+  missing,
+  waitingTeams,
+  playersMap,
+  guests,
+  onConfirm,
+}: {
+  visible: boolean;
+  missing: number;
+  waitingTeams: Array<{ letter: TeamLetter; playerIds: UserId[] }>;
+  playersMap: Record<UserId, { displayName: string }>;
+  guests: GameGuest[];
+  onConfirm: (uids: UserId[]) => void;
+}) {
+  // Resolve a display name for both registered uids (playersMap) and
+  // guests (rosterId starts with `guest:` — guests aren't in playersMap
+  // so we look them up by id in the guests array).
+  const resolveName = useCallback(
+    (uid: UserId): string => {
+      const gid = parseGuestRosterId(uid);
+      if (gid) return guests.find((g) => g.id === gid)?.name ?? 'אורח';
+      return playersMap[uid]?.displayName ?? '...';
+    },
+    [playersMap, guests],
+  );
+  const [selected, setSelected] = useState<Set<UserId>>(new Set());
+  // Reset selection every time the modal re-opens for a new request,
+  // otherwise stale ticks from a previous round carry over.
+  useEffect(() => {
+    if (visible) setSelected(new Set());
+  }, [visible]);
+
+  const toggle = (uid: UserId): void => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) {
+        next.delete(uid);
+      } else {
+        if (next.size >= missing) return prev; // cap at missing count
+        next.add(uid);
+      }
+      return next;
+    });
+  };
+
+  const remaining = missing - selected.size;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      // No onRequestClose handler: the admin must complete the
+      // selection. Hardware-back will be intercepted by the modal's
+      // default behavior and stay open until confirmed.
+    >
+      <View style={styles.endRoundBackdrop}>
+        <View style={[styles.endRoundCard, { maxHeight: '85%' }]}>
+          <Text style={styles.endRoundTitle}>{he.liveFillTeamTitle}</Text>
+          <Text style={styles.endRoundQuestion}>
+            {remaining > 0
+              ? he.liveFillTeamRemaining(remaining)
+              : he.liveFillTeamReady}
+          </Text>
+          <ScrollView style={{ alignSelf: 'stretch' }}>
+            {waitingTeams.map((t) => (
+              <View key={t.letter} style={{ marginTop: spacing.md }}>
+                <Text style={styles.endRoundEyebrow}>
+                  {he.liveTeamLabel(TEAM_LETTERS.indexOf(t.letter))}
+                </Text>
+                {t.playerIds.length === 0 ? (
+                  <Text style={styles.endRoundCancelText}>
+                    {he.liveFillTeamEmptyTeam}
+                  </Text>
+                ) : (
+                  t.playerIds.map((uid) => {
+                    const isSel = selected.has(uid);
+                    return (
+                      <Pressable
+                        key={uid}
+                        onPress={() => toggle(uid)}
+                        style={({ pressed }) => [
+                          styles.endRoundOption,
+                          isSel && { backgroundColor: '#DBEAFE' },
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Ionicons
+                          name={isSel ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={20}
+                          color={isSel ? '#1D4ED8' : colors.textMuted}
+                        />
+                        <Text style={styles.endRoundOptionLabel}>
+                          {resolveName(uid)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })
+                )}
+              </View>
+            ))}
+          </ScrollView>
+          <Pressable
+            onPress={() => onConfirm(Array.from(selected))}
+            disabled={remaining > 0}
+            style={({ pressed }) => [
+              styles.endRoundOption,
+              {
+                justifyContent: 'center',
+                backgroundColor:
+                  remaining > 0 ? colors.surfaceMuted : '#1D4ED8',
+              },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text
+              style={[
+                styles.endRoundOptionLabel,
+                { color: remaining > 0 ? colors.textMuted : '#FFFFFF' },
+              ]}
+            >
+              {he.liveFillTeamConfirm}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -1824,14 +2413,22 @@ function EditableScoreRow({
   );
 }
 
-/** Banner shown while the screen is in `round_finished` state. */
+/** Banner shown while the screen is in `round_finished` state.
+ *
+ *  Animated entry: card slides up + scales in with a soft bounce, and
+ *  one-shot confetti fires the moment a new winner is announced (we
+ *  key off summary.roundNumber so a fresh round-end replays the burst
+ *  without stalling on equal-value diffs). The whole thing feels like
+ *  a mini-celebration screen without taking control away from the
+ *  admin's pacing.
+ */
 function RoundFinishedSummary({
   summary,
   teamATint,
   teamBTint,
 }: {
   summary: {
-    winner: 'A' | 'B' | 'draw';
+    winner: 'A' | 'B';
     scoreA: number;
     scoreB: number;
     roundNumber: number;
@@ -1839,34 +2436,50 @@ function RoundFinishedSummary({
   teamATint: string;
   teamBTint: string;
 }) {
-  const winnerTint =
-    summary.winner === 'A'
-      ? teamATint
-      : summary.winner === 'B'
-        ? teamBTint
-        : colors.textMuted;
-  const winnerLabel =
-    summary.winner === 'draw'
-      ? he.liveRoundFinishedDraw
-      : he.liveRoundFinishedWinner(
-          he.liveTeamLabel(summary.winner === 'A' ? 0 : 1),
-        );
+  const winnerTint = summary.winner === 'A' ? teamATint : teamBTint;
+  const winnerLabel = he.liveRoundFinishedWinner(
+    he.liveTeamLabel(summary.winner === 'A' ? 0 : 1),
+  );
+  const enter = useSharedValue(0);
+  useEffect(() => {
+    enter.value = 0;
+    enter.value = withTiming(1, {
+      duration: 360,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [enter, summary.roundNumber]);
+  const enterStyle = useAnimatedStyle(() => ({
+    opacity: enter.value,
+    transform: [
+      { translateY: (1 - enter.value) * 24 },
+      { scale: 0.92 + enter.value * 0.08 },
+    ],
+  }));
   return (
-    <View style={[styles.summaryCard, { borderColor: winnerTint }]}>
+    <Animated.View
+      style={[styles.summaryCard, { borderColor: winnerTint }, enterStyle]}
+    >
       <View style={styles.summaryHeader}>
         <View style={[styles.summaryDot, { backgroundColor: winnerTint }]} />
         <Text style={styles.summaryTitle}>{winnerLabel}</Text>
       </View>
       <View style={styles.summaryScoreRow}>
-        <Text style={[styles.summaryScore, { color: teamATint }]}>
-          {summary.scoreA}
-        </Text>
+        <PulseOnChange triggerKey={summary.scoreA} skipInitial={false}>
+          <Text style={[styles.summaryScore, { color: teamATint }]}>
+            {summary.scoreA}
+          </Text>
+        </PulseOnChange>
         <Text style={styles.summaryDivider}>–</Text>
-        <Text style={[styles.summaryScore, { color: teamBTint }]}>
-          {summary.scoreB}
-        </Text>
+        <PulseOnChange triggerKey={summary.scoreB} skipInitial={false}>
+          <Text style={[styles.summaryScore, { color: teamBTint }]}>
+            {summary.scoreB}
+          </Text>
+        </PulseOnChange>
       </View>
-    </View>
+      {/* Confetti burst keyed off the round number so each new round
+          finale replays the celebration. */}
+      <ConfettiBurst key={summary.roundNumber} count={36} spread={200} />
+    </Animated.View>
   );
 }
 
@@ -2577,14 +3190,20 @@ function LiveStadiumHero({
   isLastTen,
   isLastMinute,
   sessionStateLabel,
+  controlledByName,
   onBack,
+  onEndEvening,
 }: {
   timerMs: number;
   totalMs: number;
   isLastTen: boolean;
   isLastMinute: boolean;
   sessionStateLabel: string;
+  /** Display name of the admin who last touched a timer control.
+   *  Null suppresses the hint (initial state / legacy data). */
+  controlledByName: string | null;
   onBack: () => void;
+  onEndEvening?: () => void;
 }) {
   const remainingMs = Math.max(0, totalMs - timerMs);
   return (
@@ -2610,9 +3229,28 @@ function LiveStadiumHero({
             <Text style={liveHeroStyles.backText}>{he.liveBackToDetails}</Text>
             <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
           </Pressable>
-          <View style={liveHeroStyles.livePill}>
-            <View style={liveHeroStyles.liveDot} />
-            <Text style={liveHeroStyles.liveText}>LIVE</Text>
+          <View style={liveHeroStyles.topRowEnd}>
+            {onEndEvening ? (
+              <Pressable
+                onPress={onEndEvening}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  liveHeroStyles.endEveningBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={he.liveEndEvening}
+              >
+                <Ionicons name="stop-circle-outline" size={16} color="#FFFFFF" />
+                <Text style={liveHeroStyles.endEveningText}>
+                  {he.liveEndEvening}
+                </Text>
+              </Pressable>
+            ) : null}
+            <View style={liveHeroStyles.livePill}>
+              <View style={liveHeroStyles.liveDot} />
+              <Text style={liveHeroStyles.liveText}>LIVE</Text>
+            </View>
           </View>
         </View>
 
@@ -2633,6 +3271,11 @@ function LiveStadiumHero({
             {`${formatTime(remainingMs)} נותר`}
           </Text>
           <Text style={liveHeroStyles.statusLabel}>{sessionStateLabel}</Text>
+          {controlledByName ? (
+            <Text style={liveHeroStyles.controlledByLabel}>
+              {`הטיימר נשלט על ידי ${controlledByName}`}
+            </Text>
+          ) : null}
         </View>
 
         <Ionicons
@@ -2667,12 +3310,33 @@ const liveHeroStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.sm,
   },
+  topRowEnd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingVertical: 6,
     paddingHorizontal: 10,
+  },
+  endEveningBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  endEveningText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   backText: {
     color: '#FFFFFF',
@@ -2723,6 +3387,16 @@ const liveHeroStyles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 4,
   },
+  // Small line beneath the timer that names the admin who last
+  // pressed a control. Helps a second admin understand who's
+  // driving and avoid stepping on each other's buttons.
+  controlledByLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+    textAlign: 'center',
+  },
   bgIcon: {
     position: 'absolute',
     top: 70,
@@ -2742,7 +3416,10 @@ interface MatchTeam {
   tint: string;
   softTint: string;
   name: string;
+  /** Cumulative wins (small number under team name). */
   score: number;
+  /** Live in-round goal count — shown in the central scoreboard. */
+  goals: number;
   players: UserId[];
 }
 
@@ -2754,6 +3431,7 @@ function CurrentMatchPanel({
   isAdmin,
   selectedUid,
   onPlayerTap,
+  onEditScore,
 }: {
   sessionState: string;
   teamA: MatchTeam;
@@ -2762,6 +3440,7 @@ function CurrentMatchPanel({
   isAdmin: boolean;
   selectedUid: UserId | null;
   onPlayerTap: (uid: UserId) => void;
+  onEditScore?: () => void;
 }) {
   const guestsById = useMemo(() => {
     const map: Record<string, GameGuest> = {};
@@ -2808,15 +3487,55 @@ function CurrentMatchPanel({
     [guestsById, userMap],
   );
 
+  // Goal-detection state — when EITHER team's score increases we fire
+  // a one-shot confetti burst over the scoreboard. We track the
+  // previous scores via a ref so we don't reset on every render.
+  const prevScoresRef = React.useRef({ a: teamA.goals, b: teamB.goals });
+  const [confettiKey, setConfettiKey] = React.useState(0);
+  useEffect(() => {
+    const prev = prevScoresRef.current;
+    if (teamA.goals > prev.a || teamB.goals > prev.b) {
+      // Re-keying remounts the ConfettiBurst so its useEffect re-runs
+      // and the particles replay from origin. Cheap and lets multiple
+      // goals in quick succession each get their own burst.
+      setConfettiKey((k) => k + 1);
+    }
+    prevScoresRef.current = { a: teamA.goals, b: teamB.goals };
+  }, [teamA.goals, teamB.goals]);
+
   return (
     <View style={currentMatchStyles.card}>
       <Text style={currentMatchStyles.title}>{he.liveCurrentMatchTitle}</Text>
 
       <View style={currentMatchStyles.headerRow}>
         <TeamHeader team={teamA} />
-        <View style={currentMatchStyles.vsBadge}>
-          <Text style={currentMatchStyles.vsText}>VS</Text>
-        </View>
+        <Pressable
+          onPress={onEditScore}
+          disabled={!onEditScore}
+          style={currentMatchStyles.scoreBoard}
+          accessibilityRole="button"
+          accessibilityLabel={he.liveEditScoreTitle}
+        >
+          <PulseOnChange triggerKey={teamA.goals}>
+            <Text
+              style={[currentMatchStyles.scoreNum, { color: teamA.tint }]}
+            >
+              {teamA.goals}
+            </Text>
+          </PulseOnChange>
+          <Text style={currentMatchStyles.scoreColon}>:</Text>
+          <PulseOnChange triggerKey={teamB.goals}>
+            <Text
+              style={[currentMatchStyles.scoreNum, { color: teamB.tint }]}
+            >
+              {teamB.goals}
+            </Text>
+          </PulseOnChange>
+          {/* Goal celebration — keyed so each goal remounts the burst. */}
+          {confettiKey > 0 ? (
+            <ConfettiBurst key={confettiKey} count={32} spread={180} />
+          ) : null}
+        </Pressable>
         <TeamHeader team={teamB} />
       </View>
 
@@ -2828,33 +3547,39 @@ function CurrentMatchPanel({
         <View style={currentMatchStyles.columnsRow}>
           <View style={currentMatchStyles.column}>
             {teamAPadded.map((uid, i) => (
-              <PlayerRow
-                key={`A-${i}-${uid ?? 'empty'}`}
-                uid={uid}
-                index={i + 1}
-                tint={teamA.tint}
-                softTint={teamA.softTint}
-                selected={!!uid && uid === selectedUid}
-                onTap={onPlayerTap}
-                resolveDisplay={resolveDisplay}
-                isAdmin={isAdmin}
-              />
+              // Each row staggers in on mount. The PlayerRow key is
+              // composed from team+slot+uid so a fresh balance (new
+              // uids) remounts AppearItem and replays the entrance —
+              // existing rows whose uid didn't change stay put.
+              <AppearItem key={`A-${i}-${uid ?? 'empty'}`} index={i}>
+                <PlayerRow
+                  uid={uid}
+                  index={i + 1}
+                  tint={teamA.tint}
+                  softTint={teamA.softTint}
+                  selected={!!uid && uid === selectedUid}
+                  onTap={onPlayerTap}
+                  resolveDisplay={resolveDisplay}
+                  isAdmin={isAdmin}
+                />
+              </AppearItem>
             ))}
           </View>
           <View style={currentMatchStyles.divider} />
           <View style={currentMatchStyles.column}>
             {teamBPadded.map((uid, i) => (
-              <PlayerRow
-                key={`B-${i}-${uid ?? 'empty'}`}
-                uid={uid}
-                index={i + 1}
-                tint={teamB.tint}
-                softTint={teamB.softTint}
-                selected={!!uid && uid === selectedUid}
-                onTap={onPlayerTap}
-                resolveDisplay={resolveDisplay}
-                isAdmin={isAdmin}
-              />
+              <AppearItem key={`B-${i}-${uid ?? 'empty'}`} index={i}>
+                <PlayerRow
+                  uid={uid}
+                  index={i + 1}
+                  tint={teamB.tint}
+                  softTint={teamB.softTint}
+                  selected={!!uid && uid === selectedUid}
+                  onTap={onPlayerTap}
+                  resolveDisplay={resolveDisplay}
+                  isAdmin={isAdmin}
+                />
+              </AppearItem>
             ))}
           </View>
         </View>
@@ -2910,11 +3635,28 @@ function PlayerRow({
   resolveDisplay: (uid: UserId) => { name: string; number: number | null };
   isAdmin: boolean;
 }) {
+  // Brief pulse whenever the player occupying this row changes. Gives
+  // the coach a clear "this slot just got a new player" cue after a
+  // tap-to-swap, without animating positions (which don't move — the
+  // slot is fixed; only its uid changes).
+  const swapPulse = useSharedValue(1);
+  useEffect(() => {
+    if (!uid) return;
+    swapPulse.value = 0.85;
+    swapPulse.value = withSequence(
+      withTiming(1.05, { duration: 140 }),
+      withTiming(1, { duration: 160 }),
+    );
+  }, [uid, swapPulse]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: swapPulse.value }],
+  }));
   if (!uid) {
     return <View style={[currentMatchStyles.row, currentMatchStyles.rowEmpty]} />;
   }
   const { name, number } = resolveDisplay(uid);
   return (
+    <Animated.View style={pulseStyle}>
     <Pressable
       onPress={() => onTap(uid)}
       disabled={!isAdmin}
@@ -2945,6 +3687,7 @@ function PlayerRow({
         />
       ) : null}
     </Pressable>
+    </Animated.View>
   );
 }
 
@@ -3008,6 +3751,29 @@ const currentMatchStyles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  scoreBoard: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minWidth: 76,
+    justifyContent: 'center',
+  },
+  scoreNum: {
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 30,
+  },
+  scoreColon: {
+    color: '#94A3B8',
+    fontSize: 22,
+    fontWeight: '800',
+  },
   columnsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -3052,7 +3818,7 @@ const currentMatchStyles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   emptyHint: {
     color: '#94A3B8',
@@ -3082,9 +3848,31 @@ interface QueueTeam {
   tint: string;
   softTint: string;
   score: number;
+  players: UserId[];
 }
 
-function TeamQueuePanel({ teams }: { teams: QueueTeam[] }) {
+function TeamQueuePanel({
+  teams,
+  isAdmin,
+  selectedUid,
+  onPlayerTap,
+  guests,
+}: {
+  teams: QueueTeam[];
+  isAdmin: boolean;
+  selectedUid: UserId | null;
+  onPlayerTap: (uid: UserId) => void;
+  guests: GameGuest[];
+}) {
+  const userMap = useGameStore((s) => s.players);
+  const resolveName = useCallback(
+    (uid: UserId): string => {
+      const gid = parseGuestRosterId(uid);
+      if (gid) return guests.find((g) => g.id === gid)?.name ?? 'אורח';
+      return userMap[uid]?.displayName ?? 'שחקן';
+    },
+    [guests, userMap],
+  );
   return (
     <View style={queueStyles.wrap}>
       <Text style={queueStyles.title}>{he.liveQueueTitle}</Text>
@@ -3110,6 +3898,38 @@ function TeamQueuePanel({ teams }: { teams: QueueTeam[] }) {
               <Text style={queueStyles.wins}>
                 {he.liveTeamWinsLabel(t.score)}
               </Text>
+              {t.players.length > 0 ? (
+                <View style={queueStyles.playersWrap}>
+                  {t.players.map((uid) => {
+                    const selected = uid === selectedUid;
+                    return (
+                      <Pressable
+                        key={uid}
+                        onPress={() => onPlayerTap(uid)}
+                        disabled={!isAdmin}
+                        style={({ pressed }) => [
+                          queueStyles.playerChip,
+                          { borderColor: t.tint },
+                          selected && {
+                            backgroundColor: t.tint,
+                          },
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            queueStyles.playerChipText,
+                            selected && { color: '#FFFFFF' },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {resolveName(uid)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
             {i < teams.length - 1 ? (
               <Ionicons
@@ -3132,7 +3952,7 @@ const queueStyles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 16,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   row: {
     flexDirection: 'row',
@@ -3180,6 +4000,27 @@ const queueStyles = StyleSheet.create({
     color: '#64748B',
     fontSize: 11,
     fontWeight: '600',
+  },
+  playersWrap: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  playerChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    maxWidth: '100%',
+  },
+  playerChipText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

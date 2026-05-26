@@ -14,6 +14,7 @@
 
 import React from 'react';
 import {
+  ActivityIndicator,
   ImageBackground,
   Pressable,
   StyleSheet,
@@ -31,8 +32,19 @@ interface Props {
   name: string;
   /** Number of approved community members. Drives the pill badge. */
   memberCount: number;
+  /**
+   * Admin-uploaded cover photo (Storage download URL). When present it
+   * replaces the bundled default stadium image. Falls back to the
+   * default when undefined/empty.
+   */
+  coverUrl?: string;
+  /** Show the camera edit affordance (coaches only). */
+  canEditCover?: boolean;
+  /** Spinner over the edit button while an upload is in flight. */
+  uploadingCover?: boolean;
   onBackPress: () => void;
   onMenuPress: () => void;
+  onEditCoverPress?: () => void;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -40,13 +52,20 @@ const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.
 export function CommunityStadiumHero({
   name,
   memberCount,
+  coverUrl,
+  canEditCover = false,
+  uploadingCover = false,
   onBackPress,
   onMenuPress,
+  onEditCoverPress,
 }: Props) {
+  const source: ImageSourcePropType = coverUrl
+    ? { uri: coverUrl }
+    : STADIUM_BG;
   return (
     <View style={styles.wrap}>
       <ImageBackground
-        source={STADIUM_BG}
+        source={source}
         style={styles.bg}
         resizeMode="cover"
       >
@@ -103,6 +122,31 @@ export function CommunityStadiumHero({
                 {he.communityMembersCount(memberCount)}
               </Text>
             </View>
+
+            {canEditCover ? (
+              <Pressable
+                onPress={onEditCoverPress}
+                disabled={uploadingCover}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.coverEditPill,
+                  (pressed || uploadingCover) && { opacity: 0.7 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={he.communityCoverChange}
+              >
+                {uploadingCover ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="camera" size={15} color="#FFFFFF" />
+                )}
+                <Text style={styles.coverEditText}>
+                  {uploadingCover
+                    ? he.communityCoverUploading
+                    : he.communityCoverChange}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </SafeAreaView>
       </ImageBackground>
@@ -180,6 +224,25 @@ const styles = StyleSheet.create({
   memberPillText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  // Admin-only "change cover photo" affordance. Slightly stronger fill
+  // than the member pill so it reads as a tappable action, not a badge.
+  coverEditPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  coverEditText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.2,
   },

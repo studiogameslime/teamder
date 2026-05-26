@@ -42,6 +42,11 @@ interface Props {
    *  "לפרטי משחק" CTA for a muted "ההרשמה תיפתח ב..." badge. */
   registrationOpensAt?: number;
   onPress?: () => void;
+  /** Admin-only: when set AND there's no upcoming game, the empty
+   *  state shows a primary CTA that opens the Game wizard in
+   *  recurring mode. Lets admins establish the weekly cadence
+   *  without hunting for the option in the hamburger menu. */
+  onCreateRecurring?: () => void;
 }
 
 export function NextGameCard({
@@ -49,6 +54,7 @@ export function NextGameCard({
   fieldName,
   registrationOpensAt,
   onPress,
+  onCreateRecurring,
 }: Props) {
   const hasGame = typeof startsAt === 'number';
   // Deferred-open mode: registration hasn't started yet. The card
@@ -107,7 +113,25 @@ export function NextGameCard({
             ) : null}
           </>
         ) : (
-          <Text style={styles.emptyLine}>{he.communityNextGameNone}</Text>
+          <>
+            <Text style={styles.emptyLine}>{he.communityNextGameNone}</Text>
+            {onCreateRecurring ? (
+              <Pressable
+                onPress={onCreateRecurring}
+                style={({ pressed }) => [
+                  styles.createCta,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={he.communityNextGameCreateRecurring}
+              >
+                <Ionicons name="repeat" size={18} color="#FFFFFF" />
+                <Text style={styles.createCtaText}>
+                  {he.communityNextGameCreateRecurring}
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
         )}
       </View>
     </View>
@@ -257,5 +281,23 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: RTL_LABEL_ALIGN,
     marginTop: 6,
+  },
+  createCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginTop: 12,
+    alignSelf: 'flex-end',
+  },
+  createCtaText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

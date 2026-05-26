@@ -15,6 +15,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   Share,
@@ -41,12 +43,15 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
+import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
+import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
 import { PlayersPreview } from '@/components/community/PlayersPreview';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
 import { groupService } from '@/services';
+import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { deepLinkService } from '@/services/deepLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -62,7 +67,7 @@ import {
   User,
   WeekdayIndex,
 } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -92,6 +97,10 @@ export function CommunityDetailsScreen() {
   const [busyLeave, setBusyLeave] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteIds, setInviteIds] = useState<string[]>([]);
+  const [invitingBusy, setInvitingBusy] = useState(false);
 
   const reload = useCallback(
     async (opts: { pullToRefresh?: boolean } = {}) => {
@@ -151,6 +160,55 @@ export function CommunityDetailsScreen() {
 
   // ─── Action handlers ────────────────────────────────────────────────────
 
+  const handleEditCover = async () => {
+    if (!group || !me || uploadingCover) return;
+    setUploadingCover(true);
+    const res = await pickAndUploadGroupCover(group.id);
+    if (!res.ok) {
+      setUploadingCover(false);
+      // 'cancelled' is a no-op — the user backed out of the picker.
+      if (res.reason === 'permission') {
+        Alert.alert(he.error, he.profilePhotoPermissionDenied);
+      } else if (res.reason === 'unavailable') {
+        Alert.alert(he.error, he.profilePhotoUnavailable);
+      } else if (res.reason === 'network') {
+        Alert.alert(he.error, he.communityCoverUploadFailed);
+      }
+      return;
+    }
+    try {
+      const fresh = await groupService.updateGroupMetadata(group.id, me.id, {
+        coverPhotoUrl: res.url,
+      });
+      setGroup(fresh);
+      logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_cover' });
+      toast.success(he.communityCoverUpdated);
+    } catch (e) {
+      Alert.alert(he.error, String((e as Error).message ?? e));
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handleSendInvites = async () => {
+    if (!group || inviteIds.length === 0) return;
+    setInvitingBusy(true);
+    try {
+      const { invited } = await groupService.inviteFriendsToGroup(
+        group.id,
+        inviteIds,
+      );
+      setInviteOpen(false);
+      setInviteIds([]);
+      toast.success(he.communityInviteFriendsSent(invited));
+      reload();
+    } catch (e) {
+      Alert.alert(he.error, String((e as Error).message ?? e));
+    } finally {
+      setInvitingBusy(false);
+    }
+  };
+
   const handleLeave = () => {
     if (!group || !me) return;
     if (group.adminIds.includes(me.id) && group.adminIds.length === 1) {
@@ -208,23 +266,22 @@ export function CommunityDetailsScreen() {
 
   const handleCreateRecurring = () => {
     if (!group || !me) return;
+    // Recurring is now a step-3 toggle inside the Game wizard itself
+    // — the community no longer owns recurring defaults (preferred
+    // day / time / format / # teams). For legacy groups that DO have
+    // those fields, we still derive the next occurrence to pre-fill
+    // `startsAt`; new groups will simply land on the wizard's default
+    // (next Thursday 20:00) and the admin can edit it.
     const ts = nextOccurrence(group);
-    if (!ts) {
-      Alert.alert(he.error, he.communityDetailsRecurringNoConfig);
-      return;
-    }
-    // Open the create-game wizard pre-filled with the community's
-    // recurring config. The wizard's recurring mode adds a required
-    // "registrationOpensAt" picker at step 3 — the new game stays
-    // hidden + closed for joins until that time. The previous
-    // implementation called `createGameV2` directly with no UI step,
-    // bypassing the wizard.
     (nav as { navigate: (s: string, p: unknown) => void }).navigate(
       'GameCreate',
       {
         recurring: true,
         groupId: group.id,
-        startsAt: ts,
+        startsAt: ts ?? undefined,
+        // Legacy recurring presets are kept here as a hint when the
+        // community has them; new groups won't carry these fields and
+        // the wizard falls back to its own defaults (5v5, 2 teams).
         format: group.recurringDefaultFormat,
         numberOfTeams: group.recurringNumberOfTeams,
       },
@@ -319,7 +376,7 @@ export function CommunityDetailsScreen() {
               },
             ]
           : []),
-        ...(isAdmin && hasRecurringInfo(group)
+        ...(isAdmin
           ? [
               {
                 id: 'recurring',
@@ -354,6 +411,20 @@ export function CommunityDetailsScreen() {
               { groupId: group.id },
             ),
         },
+        ...(isMember || isAdmin
+          ? [
+              {
+                id: 'inviteFriends',
+                label: he.communityMenuInviteFriends,
+                icon: 'person-add-outline' as const,
+                onPress: () => {
+                  setMenuOpen(false);
+                  setInviteIds([]);
+                  setInviteOpen(true);
+                },
+              },
+            ]
+          : []),
         ...(phoneValid && !isAdmin
           ? [
               {
@@ -410,8 +481,12 @@ export function CommunityDetailsScreen() {
         <CommunityStadiumHero
           name={group.name}
           memberCount={group.playerIds?.length ?? 0}
+          coverUrl={group.coverPhotoUrl}
+          canEditCover={isAdmin}
+          uploadingCover={uploadingCover}
           onBackPress={() => nav.goBack()}
           onMenuPress={openMenu}
+          onEditCoverPress={handleEditCover}
         />
 
         {/* ② Floating stats grid — pulled UP via negative margin so it
@@ -439,6 +514,40 @@ export function CommunityDetailsScreen() {
         </View>
 
         <View style={styles.body}>
+          {/* Group description — free-text "about this group" copy
+              the admin set in the create / edit wizard. Rendered
+              prominently right after the stats so visitors see the
+              group's character before scrolling into the operational
+              details. Hidden when empty so new groups don't show an
+              empty card. Note: `rules` is a separate (newer) field
+              that the existing edit screen surfaces in the menu;
+              this card is the "what is this group about" copy. */}
+          {group.description?.trim() ? (
+            <View style={styles.descriptionCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityDescriptionTitle}
+              </Text>
+              <Text style={styles.descriptionBody}>
+                {group.description.trim()}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Group rules — distinct from `description`. The wizard
+              captures explicit do/don't copy here (no kickers, no
+              smoking, "show up 5 min early", etc.) so it deserves
+              its own card. Hidden when empty. */}
+          {group.rules?.trim() ? (
+            <View style={styles.rulesCard}>
+              <Text style={styles.descriptionTitle}>
+                {he.communityRulesTitle}
+              </Text>
+              <Text style={styles.descriptionBody}>
+                {group.rules.trim()}
+              </Text>
+            </View>
+          ) : null}
+
           {/* ③ Notification toggle — members only */}
           {isMember && me ? (
             <CommunityNotifyToggle
@@ -460,18 +569,28 @@ export function CommunityDetailsScreen() {
                included) sees the same lock UI on the card. */}
           <NextGameCard
             startsAt={nextGame?.startsAt}
-            fieldName={nextGame?.fieldName ?? group.fieldName}
+            fieldName={nextGame?.fieldName ?? group.fieldName ?? ''}
             registrationOpensAt={
               nextGame?.status === 'scheduled'
                 ? nextGame.registrationOpensAt
                 : undefined
             }
+            // Admin-only CTA shown when the empty state renders. Lets
+            // the admin open the Game wizard in recurring mode without
+            // hunting through the hamburger menu.
+            onCreateRecurring={isAdmin ? handleCreateRecurring : undefined}
             onPress={
               nextGame
                 ? () => {
+                    // Admin path: always allow tap-through. A scheduled
+                    // (deferred-open) recurring game has no public way
+                    // to reach its MatchDetails for editing — without
+                    // this branch admins were stuck on the lock alert
+                    // and couldn't change the game time / cancel it.
                     if (
                       nextGame.status === 'scheduled' &&
-                      typeof nextGame.registrationOpensAt === 'number'
+                      typeof nextGame.registrationOpensAt === 'number' &&
+                      !isAdmin
                     ) {
                       const d = new Date(nextGame.registrationOpensAt);
                       const dd = String(d.getDate()).padStart(2, '0');
@@ -490,6 +609,15 @@ export function CommunityDetailsScreen() {
                   }
                 : undefined
             }
+          />
+
+          {/* Additional scheduled games — admin sets up a few weeks
+              of recurring games in advance and previously had no way
+              to see/edit anything except the very next one. The row
+              renders nothing when there's only one upcoming game. */}
+          <UpcomingMoreRow
+            upcoming={upcoming}
+            onPress={(gid) => nav.navigate('MatchDetails', { gameId: gid })}
           />
 
           {/* ⑤ Players preview */}
@@ -514,6 +642,23 @@ export function CommunityDetailsScreen() {
               cost is bounded to ~200 finished/cancelled game docs. */}
           <CommunityStatsSection groupId={group.id} />
 
+
+          {/* WhatsApp contact CTA — visible to non-admin members (and
+              non-members on this private view) when the community has
+              a valid phone on file. Mirrors the public-showcase page,
+              which always exposed this button. The hamburger menu also
+              has the same action, but the inline button keeps it
+              reachable without opening the overflow. */}
+          {phoneValid && !isAdmin ? (
+            <Button
+              title={he.communityDetailsContactAdmin}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconLeft="logo-whatsapp"
+              onPress={() => openWhatsApp(group.contactPhone)}
+            />
+          ) : null}
 
           {/* ⑥ Share-invite CTA — members & admins only */}
           {isMember || isAdmin ? (
@@ -546,6 +691,34 @@ export function CommunityDetailsScreen() {
           }
         }}
       />
+
+      {/* Invite app-friends to this community. They land in the
+          approval queue and get a groupInvitation push. */}
+      <Modal
+        visible={inviteOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setInviteOpen(false)}
+      >
+        <Pressable
+          style={styles.inviteBackdrop}
+          onPress={() => setInviteOpen(false)}
+        >
+          <Pressable style={styles.inviteSheet} onPress={() => {}}>
+            <Text style={styles.inviteSheetTitle}>
+              {he.communityMenuInviteFriends}
+            </Text>
+            <FriendsInvitePicker selected={inviteIds} onChange={setInviteIds} />
+            <Button
+              title={he.communityInviteFriendsSend(inviteIds.length)}
+              onPress={handleSendInvites}
+              disabled={inviteIds.length === 0 || invitingBusy}
+              loading={invitingBusy}
+              size="lg"
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {busyLeave ? (
         <View style={styles.busyOverlay} pointerEvents="none">
@@ -695,9 +868,6 @@ function effectiveRecurringDay(g: Group): WeekdayIndex | undefined {
 function effectiveRecurringTime(g: Group): string | undefined {
   return g.recurringTime || g.preferredHour;
 }
-function hasRecurringInfo(g: Group): boolean {
-  return !!effectiveRecurringDay(g) && !!effectiveRecurringTime(g);
-}
 function nextOccurrence(g: Group): number | null {
   const dayIdx = effectiveRecurringDay(g);
   const time = effectiveRecurringTime(g);
@@ -733,6 +903,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: -42,
   },
+  // "About this group" copy. Sits between the stats grid and the
+  // operational section. Uses primaryLight as the accent so it reads
+  // as a "first impression" surface — different from the white cards
+  // below which feel transactional.
+  descriptionCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  // Rules use a softer warning tone (amber tint) so the two cards
+  // don't read as the same thing — description is identity ("who we
+  // are"), rules is behaviour ("what we expect").
+  rulesCard: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  descriptionTitle: {
+    ...typography.label,
+    color: colors.primary,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  descriptionBody: {
+    ...typography.body,
+    color: colors.text,
+    lineHeight: 22,
+  },
   body: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -743,5 +945,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  inviteBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(7,12,32,0.45)',
+    justifyContent: 'flex-end',
+  },
+  inviteSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
+  },
+  inviteSheetTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
   },
 });

@@ -23,6 +23,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { PlayerIdentity } from './PlayerIdentity';
+import { SpringSheet } from '@/components/anim/SpringSheet';
 import { ratingsService } from '@/services/ratingsService';
 import {
   GameGuest,
@@ -66,37 +67,36 @@ export function TeamsOverviewSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={styles.sheet}>
-        {/* Drag handle (visual only — close happens via backdrop / X button). */}
-        <View style={styles.grabber} />
+      <SpringSheet visible={visible} onBackdropPress={onClose}>
+        <View style={styles.sheet}>
+          <View style={styles.grabber} />
+          <View style={styles.header}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityLabel={he.liveTeamsModalClose}
+              style={styles.closeBtn}
+            >
+              <Ionicons name="close" size={20} color={colors.text} />
+            </Pressable>
+            <Text style={styles.title}>{he.liveTeamsModalTitle}</Text>
+          </View>
 
-        <View style={styles.header}>
-          <Pressable
-            onPress={onClose}
-            hitSlop={8}
-            accessibilityLabel={he.liveTeamsModalClose}
-            style={styles.closeBtn}
-          >
-            <Ionicons name="close" size={20} color={colors.text} />
-          </Pressable>
-          <Text style={styles.title}>{he.liveTeamsModalTitle}</Text>
+          <ScrollView contentContainerStyle={styles.scrollBody}>
+            {teams.map((t) => (
+              <TeamCard
+                key={t.index}
+                slot={t}
+                groupId={groupId}
+                guests={guests}
+              />
+            ))}
+          </ScrollView>
         </View>
-
-        <ScrollView contentContainerStyle={styles.scrollBody}>
-          {teams.map((t) => (
-            <TeamCard
-              key={t.index}
-              slot={t}
-              groupId={groupId}
-              guests={guests}
-            />
-          ))}
-        </ScrollView>
-      </View>
+      </SpringSheet>
     </Modal>
   );
 }

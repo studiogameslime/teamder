@@ -16,6 +16,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -32,7 +33,9 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
+import { AppearItem } from '@/components/anim/AppearItem';
+import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import {
@@ -74,11 +77,20 @@ export function GamesListScreen() {
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
 
   const scrollRef = useRef<ScrollView>(null);
-  useScrollToTop(scrollRef);
+  // React 19's useRef returns RefObject<T|null>; useScrollToTop's older
+  // type signature expects non-null. Safe to cast — the hook itself
+  // null-checks before calling .scrollTo(). Drops when React Navigation
+  // updates its types for React 19.
+  useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
-  // Default to "open" so a freshly-opened app shows discovery first —
-  // the spec marks פתוחים as the active tab.
+  // Default tab: "פתוחים" so a fresh user lands on discovery and is
+  // nudged to register. The first successful reload below flips this
+  // to "שלי" if the user already has at least one upcoming game —
+  // returning users care most about what they're already in. The flip
+  // is one-shot (gated by `initialTabSetRef`) so manually switching
+  // tabs always sticks afterwards.
   const [tab, setTab] = useState<Tab>('open');
+  const initialTabSetRef = useRef(false);
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
@@ -129,6 +141,13 @@ export function GamesListScreen() {
         setMyGames(a);
         setCommunityGames(b);
         setOpenGames(c);
+        // First-load tab default: if the user is already registered to
+        // anything, surface "שלי" instead of "פתוחים". One-shot — once
+        // we've decided, the user's manual selection wins.
+        if (!initialTabSetRef.current) {
+          initialTabSetRef.current = true;
+          if (a.length > 0) setTab('mine');
+        }
         const uids = Array.from(
           new Set(
             [...a, ...b, ...c].flatMap((g) => [
@@ -158,7 +177,22 @@ export function GamesListScreen() {
     reload();
   }, [reload]);
 
-  const handleCreate = () => nav.navigate('GameCreate');
+  // The "+" offers a quick (no-community) game as the primary path, with
+  // the community game as the secondary choice. Quick is the headline:
+  // create + play without setting up a community.
+  const handleCreate = () => {
+    Alert.alert(he.createGameChooseTitle, undefined, [
+      {
+        text: he.createGameChooseQuick,
+        onPress: () => nav.navigate('GameCreate', { quick: true }),
+      },
+      {
+        text: he.createGameChooseCommunity,
+        onPress: () => nav.navigate('GameCreate'),
+      },
+      { text: he.cancel, style: 'cancel' },
+    ]);
+  };
 
   // Returns true if "now" is inside the cancel-deadline danger
   // window (e.g. < 12h before kickoff with a 12h deadline). The
@@ -324,9 +358,10 @@ export function GamesListScreen() {
           </View>
 
           {loading && visible.length === 0 ? (
-            <View style={styles.loadingWrap}>
-              <SoccerBallLoader size={40} />
-            </View>
+            // Skeleton placeholder cards — shape-accurate so the
+            // layout doesn't shove when the real cards land. Reads as
+            // "loading", not as "empty / broken".
+            <MatchCardSkeleton count={3} />
           ) : isEmpty ? (
             <FullEmptyState
               tab={tab}
@@ -338,19 +373,25 @@ export function GamesListScreen() {
             />
           ) : (
             <View style={styles.cardsList}>
-              {visible.map((g) => (
-                <MatchListCard
-                  key={g.id}
-                  game={g}
-                  userId={user?.id ?? ''}
-                  busy={busyGameId === g.id}
-                  onPrimary={(cta) => handleCardPrimary(g, cta)}
-                />
+              {visible.map((g, idx) => (
+                <AppearItem key={g.id} index={idx}>
+                  <MatchListCard
+                    game={g}
+                    userId={user?.id ?? ''}
+                    busy={busyGameId === g.id}
+                    onPrimary={(cta) => handleCardPrimary(g, cta)}
+                  />
+                </AppearItem>
               ))}
-              {/* Inviting CTA card after the list — only shown when
-                  there are visible cards already. The full empty
-                  state above replaces the list entirely. */}
-              <MatchEmptyHintCard onPress={handleCreate} />
+              {/* Inviting "create your own" CTA — only meaningful in
+                  the "פתוחים" tab where the user is browsing for
+                  something to join. In the "שלי" tab they're already
+                  registered to what they wanted, so the prompt to
+                  "create one because you didn't find a fit" is just
+                  noise. */}
+              {tab === 'open' ? (
+                <MatchEmptyHintCard onPress={handleCreate} />
+              ) : null}
             </View>
           )}
         </View>
@@ -420,7 +461,9 @@ function FullEmptyState({
   return (
     <View style={emptyStyles.wrap}>
       <View style={emptyStyles.icon}>
-        <Ionicons name="football-outline" size={56} color="#3B82F6" />
+        {/* Bouncing ball reads as "the app is alive, just nothing
+            here yet" — much better than a static football icon. */}
+        <BouncingBall size={64} color="#3B82F6" />
       </View>
       <Text style={emptyStyles.body}>
         {hasGamesInOtherTab

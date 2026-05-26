@@ -40,32 +40,25 @@ export function CommunityEditScreen() {
   // rejected number).
   const [revertSignal, setRevertSignal] = useState(0);
 
-  // Pre-fill the wizard from the live group. Memoized so swapping
-  // between the create wizard and this one doesn't reset the form
-  // mid-edit.
+  // Pre-fill the wizard from the live group. Only the fields the
+  // refactored wizard exposes are hydrated. Legacy fields on the
+  // existing doc (fieldName, recurringTime, etc.) are left untouched
+  // — they stay on the stored doc but are no longer editable through
+  // this surface, matching the new responsibility split (community
+  // owns identity + membership; per-event details live on each Game).
   const initial = useMemo<GroupFormValues>(() => {
     if (!original) return EMPTY_GROUP_FORM_VALUES;
     return {
       name: original.name ?? '',
-      fieldName: original.fieldName ?? '',
-      city: original.city ?? '',
-      street: original.street ?? '',
-      addressNote: original.addressNote ?? '',
+      description: original.description ?? '',
       isOpen: original.isOpen ?? false,
-      preferredDays: original.preferredDays ?? [],
-      preferredHour: original.preferredHour ?? '',
-      recurringGameEnabled: original.recurringGameEnabled ?? false,
-      maxPlayers:
-        typeof original.defaultMaxPlayers === 'number'
-          ? String(original.defaultMaxPlayers)
-          : '15',
+      rules: original.rules ?? '',
+      contactPhone: original.contactPhone ?? '',
+      city: original.city ?? '',
       maxMembers:
         typeof original.maxMembers === 'number'
           ? String(original.maxMembers)
           : '40',
-      contactPhone: original.contactPhone ?? '',
-      description: original.description ?? '',
-      rules: original.rules ?? '',
     };
   }, [original]);
 
@@ -92,28 +85,18 @@ export function CommunityEditScreen() {
   }
 
   const submit = async (v: GroupFormValues) => {
-    const parsedMax = parseInt(v.maxPlayers, 10);
     const parsedMembers = parseInt(v.maxMembers, 10);
     try {
       await groupService.updateGroupMetadata(original.id, me.id, {
         name: v.name.trim(),
-        fieldName: v.fieldName.trim(),
-        city: v.city.trim() || undefined,
-        street: v.street.trim() || undefined,
-        addressNote: v.addressNote.trim() || undefined,
-        contactPhone: v.contactPhone.trim() || undefined,
         description: v.description.trim() || undefined,
+        isOpen: v.isOpen,
         rules: v.rules.trim() || undefined,
-        preferredDays: v.preferredDays,
-        preferredHour: v.preferredHour || undefined,
-        defaultMaxPlayers: Number.isFinite(parsedMax) && parsedMax > 0
-          ? parsedMax
-          : undefined,
+        contactPhone: v.contactPhone.trim() || undefined,
+        city: v.city.trim() || undefined,
         maxMembers: Number.isFinite(parsedMembers) && parsedMembers > 0
           ? parsedMembers
           : undefined,
-        isOpen: v.isOpen,
-        recurringGameEnabled: v.recurringGameEnabled,
       });
       logEvent(AnalyticsEvent.GroupSettingsEdited, { groupId: original.id });
       await reloadGroups(me.id);

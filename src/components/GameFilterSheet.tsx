@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { SpringSheet } from '@/components/anim/SpringSheet';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -117,10 +118,10 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <SpringSheet visible={visible} onBackdropPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <View style={styles.header}>
@@ -263,7 +264,7 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
             </View>
           </View>
         </Pressable>
-      </Pressable>
+      </SpringSheet>
     </Modal>
   );
 }
@@ -441,10 +442,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    // Fixed height (not maxHeight) — without an explicit height the
-    // body's ScrollView `flex:1` collapses to 0 because there's no
-    // defined parent height for it to share.
-    height: '85%',
+    // Take the full height the SpringSheet wrapper allows (it clamps
+    // to 90% of screen with maxHeight). The body ScrollView below
+    // uses `flex:1` to absorb any leftover space — without an
+    // explicit minHeight the sheet would shrink to its content,
+    // leaving the action footer floating mid-screen instead of
+    // pinned to the bottom.
+    minHeight: '70%',
+    maxHeight: '100%',
     paddingBottom: spacing.xl,
   },
   handle: {

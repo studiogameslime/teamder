@@ -8,7 +8,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { SplashVisual } from '@/screens/SplashScreen';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { OnboardingScreen } from '@/screens/onboarding/OnboardingScreen';
@@ -226,17 +226,11 @@ export function RootNavigator() {
   return <MainTabs />;
 }
 
+// Fallback splash for the rare case where RootNavigator re-renders
+// with !groupHydrated AFTER the parent SplashScreen has already faded
+// out (e.g. signing out + back in mid-session). Reuses the same
+// visual as the boot splash so the user never sees a different
+// loader — one big ball, end to end.
 function Splash() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.bg,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <SoccerBallLoader size={56} />
-    </View>
-  );
+  return <SplashVisual />;
 }

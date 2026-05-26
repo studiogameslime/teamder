@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teamder · זרימות משתמש</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue-darker: #1E3A8A;
+      --blue-dark: #1D4ED8;
+      --blue: #3B82F6;
+      --blue-light: #60A5FA;
+      --blue-soft: #DBEAFE;
+      --blue-bg: #EFF6FF;
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --text-soft: #1E293B;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --green: #10B981;
+      --orange: #F59E0B;
+      --pink: #EC4899;
+      --purple: #8B5CF6;
+      --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Heebo", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    .hero {
+      background: linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-dark) 50%, var(--blue) 100%);
+      color: #fff;
+      padding: 56px 32px 64px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.30), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.30), transparent 50%);
+      pointer-events: none;
+    }
+    .hero > * { position: relative; z-index: 1; }
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 44px);
+      font-weight: 900;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+    .hero p {
+      font-size: 17px;
+      color: rgba(255, 255, 255, 0.85);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+    .toc {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 24px 28px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+    .toc h2 {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0 0 16px;
+      color: var(--text);
+    }
+    .toc ol {
+      margin: 0; padding: 0;
+      list-style: none;
+      counter-reset: toc;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 8px;
+    }
+    .toc li {
+      counter-increment: toc;
+      padding: 8px 0;
+    }
+    .toc li::before {
+      content: counter(toc, decimal-leading-zero);
+      display: inline-block;
+      width: 32px;
+      color: var(--blue-dark);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+    }
+    .toc a {
+      color: var(--text-soft);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .toc a:hover { color: var(--blue-dark); }
+
+    .flow {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+    .flow header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--blue-soft);
+    }
+    .flow .who {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      letter-spacing: 0.03em;
+    }
+    .who.player { background: var(--blue-soft); color: var(--blue-dark); }
+    .who.admin { background: #FEF3C7; color: #92400E; }
+    .who.filler { background: #DCFCE7; color: #166534; }
+    .flow h2 {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    .flow .summary {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0;
+    }
+
+    /* Steps as a connected vertical timeline */
+    .steps {
+      position: relative;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .step {
+      position: relative;
+      padding-right: 56px;
+      padding-bottom: 24px;
+    }
+    .step:last-child { padding-bottom: 0; }
+    .step::before {
+      content: counter(step);
+      counter-increment: step;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+      color: #fff;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(29, 78, 216, 0.25);
+      z-index: 1;
+    }
+    .step::after {
+      content: "";
+      position: absolute;
+      right: 18px;
+      top: 38px;
+      bottom: 0;
+      width: 2px;
+      background: var(--blue-soft);
+    }
+    .step:last-child::after { display: none; }
+    .step h3 {
+      margin: 6px 0 6px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .step p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 15.5px;
+      line-height: 1.7;
+    }
+    .steps {
+      counter-reset: step;
+    }
+
+    /* Branching boxes — when there are multiple outcomes */
+    .branches {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .branch {
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: var(--blue-bg);
+      border-right: 4px solid var(--blue);
+    }
+    .branch.success {
+      background: #ECFDF5;
+      border-right-color: var(--green);
+    }
+    .branch.alt {
+      background: #FEF3C7;
+      border-right-color: var(--orange);
+    }
+    .branch strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .branch.success strong { color: #047857; }
+    .branch.alt strong { color: #92400E; }
+
+    .endbadge {
+      display: inline-block;
+      margin-top: 24px;
+      padding: 10px 20px;
+      background: var(--green);
+      color: #fff;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .endbadge.warning {
+      background: var(--orange);
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 32px 16px;
+    }
+    @media print {
+      body { background: #fff; }
+      .flow { page-break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Teamder · זרימות משתמש</h1>
+  <p>מה המשתמש עושה צעד-אחר-צעד באפליקציה. בלי טכנולוגיה, רק פעולות.</p>
+</header>
+
+<main class="container">
+
+  <nav class="toc">
+    <h2>תוכן עניינים</h2>
+    <ol>
+      <li><a href="#flow-1">הרשמה ראשונה לאפליקציה</a></li>
+      <li><a href="#flow-2">פתיחת קהילה חדשה (אדמין)</a></li>
+      <li><a href="#flow-3">הצטרפות לקהילה קיימת</a></li>
+      <li><a href="#flow-4">פתיחת משחק חדש (אדמין)</a></li>
+      <li><a href="#flow-5">הרשמה למשחק (שחקן)</a></li>
+      <li><a href="#flow-6">קבלת תזכורת לפני משחק</a></li>
+      <li><a href="#flow-7">הזמנת שחקן ספציפי למשחק</a></li>
+      <li><a href="#flow-8">מילוי משחק ע"י שחקן זר (Filler)</a></li>
+      <li><a href="#flow-9">דירוג שחקנים אחרי משחק</a></li>
+      <li><a href="#flow-10">ערב המשחק על המגרש</a></li>
+      <li><a href="#flow-11">שיתוף קהילה בוואטסאפ</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="flow" id="flow-1">
+    <header>
+      <span class="who player">כל משתמש חדש</span>
+      <h2>1. הרשמה ראשונה לאפליקציה</h2>
+      <p class="summary">מה המשתמש עובר בפעם הראשונה שהוא פותח את Teamder.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>פותח את האפליקציה</h3>
+        <p>המשתמש לוחץ על האייקון של Teamder בטלפון. מסך פתיחה (splash) עם הלוגו מוצג כשנייה.</p>
+      </li>
+      <li class="step">
+        <h3>רואה מסך התחברות</h3>
+        <p>מוצג כפתור "התחבר עם Google" יחד עם תקציר קצר של מה האפליקציה עושה.</p>
+      </li>
+      <li class="step">
+        <h3>בוחר חשבון Google</h3>
+        <p>הטלפון פותח חלון בחירת חשבון Google. המשתמש בוחר את החשבון שלו.</p>
+      </li>
+      <li class="step">
+        <h3>ממלא שם ובוחר תמונה</h3>
+        <p>המשתמש כותב את השם שלו (השם מ־Google מופיע אוטומטית, אפשר לשנות) ובוחר אווטר מוכן או מעלה תמונה אישית מהגלריה.</p>
+      </li>
+      <li class="step">
+        <h3>נכנס למסך הראשי</h3>
+        <p>המשתמש רואה את 4 הטאבים: משחקים / קהילות / סטטיסטיקות / פרופיל. כרגע הוא עוד לא חבר באף קהילה ולא רשום לאף משחק.</p>
+        <span class="endbadge">סיים הרשמה ✓</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 2 -->
+  <section class="flow" id="flow-2">
+    <header>
+      <span class="who admin">אדמין (קואצ')</span>
+      <h2>2. פתיחת קהילה חדשה</h2>
+      <p class="summary">משתמש שרוצה לארגן קבוצת חברים לכדורגל קבוע.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>לוחץ על טאב "קהילות"</h3>
+        <p>בלשונית הקהילות יש כפתור גדול "+ צור קהילה חדשה".</p>
+      </li>
+      <li class="step">
+        <h3>שלב ראשון: זהות הקהילה</h3>
+        <p>ממלא:
+          <br/>· שם הקהילה (חובה. לדוגמה: "חמישי כדורגל")
+          <br/>· תיאור קצר (אופציונלי)
+          <br/>· האם הקהילה פתוחה או סגורה — האם כל אחד יכול להצטרף, או שצריך אישור?
+        </p>
+      </li>
+      <li class="step">
+        <h3>שלב שני: מידע נוסף</h3>
+        <p>ממלא:
+          <br/>· חוקי הקהילה (אופציונלי. לדוגמה: "אסור איחורים, בוטל = שילם")
+          <br/>· מספר טלפון (לוואטסאפ)
+          <br/>· עיר כללית
+          <br/>· מקסימום חברים (ברירת מחדל 40)
+        </p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "צור והיכנס"</h3>
+        <p>הקהילה נוצרת, האדמין הופך אוטומטית למנהל וגם לחבר הראשון. המסך מתחלף לדף הקהילה.</p>
+        <span class="endbadge">קהילה חדשה ✓</span>
+      </li>
+      <li class="step">
+        <h3>(אופציונלי) משתף קישור</h3>
+        <p>בדף הקהילה יש כפתור "שתף בוואטסאפ" שיוצר הודעה אוטומטית עם קישור הזמנה. שולח לחברים שלו.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 3 -->
+  <section class="flow" id="flow-3">
+    <header>
+      <span class="who player">שחקן</span>
+      <h2>3. הצטרפות לקהילה קיימת</h2>
+      <p class="summary">משתמש שמקבל הזמנה מחבר, או מחפש קהילה בעצמו.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>מגיע לדף הקהילה</h3>
+        <p>שלוש דרכים אפשריות:
+          <br/>· לוחץ על קישור הזמנה שקיבל בוואטסאפ
+          <br/>· מחפש בטאב "קהילות" → דפדוף ברשימה
+          <br/>· מקבל קוד הזמנה ומקליד אותו בכפתור "הצטרף עם קוד"
+        </p>
+      </li>
+      <li class="step">
+        <h3>רואה את פרטי הקהילה</h3>
+        <p>מוצג: שם, עיר, תמונה, מספר חברים, האם פתוחה או סגורה.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "הצטרף לקהילה"</h3>
+        <div class="branches">
+          <div class="branch success">
+            <strong>אם הקהילה פתוחה</strong>
+            הצטרפות אוטומטית. מיד הופך לחבר ויכול לראות את כל המשחקים.
+          </div>
+          <div class="branch">
+            <strong>אם הקהילה סגורה</strong>
+            הבקשה נשלחת לאדמין. השחקן רואה הודעה: "הבקשה נשלחה. תקבל הודעה כשאדמין יחליט".
+          </div>
+        </div>
+      </li>
+      <li class="step">
+        <h3>מחכה לאישור (אם סגורה)</h3>
+        <p>האדמין מקבל הודעת push: "[שם משתמש] מבקש להצטרף לקהילה". האדמין נכנס למסך אישורים ובוחר אישור או דחייה.</p>
+      </li>
+      <li class="step">
+        <h3>מקבל תוצאה</h3>
+        <p>השחקן מקבל push:
+          <br/>· "הבקשה אושרה — ברוך הבא לקהילה" → נכנס לקהילה
+          <br/>· "הבקשה נדחתה" → נשאר מחוץ לקהילה
+        </p>
+        <span class="endbadge">חבר קהילה ✓</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 4 -->
+  <section class="flow" id="flow-4">
+    <header>
+      <span class="who admin">אדמין</span>
+      <h2>4. פתיחת משחק חדש</h2>
+      <p class="summary">אדמין שרוצה לארגן משחק לערב הקרוב או לשבוע הבא.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>נכנס לדף הקהילה</h3>
+        <p>במסך הקהילה רואה את החברים, המשחקים האחרונים, וכפתור גדול "+ צור משחק חדש".</p>
+      </li>
+      <li class="step">
+        <h3>שלב ראשון: מתי ואיפה</h3>
+        <p>ממלא:
+          <br/>· תאריך ושעה (חובה)
+          <br/>· שם המגרש (חובה. לדוגמה: "מגרש מכשירלנד")
+          <br/>· עיר — חובה לבחור מהרשימה (לא טקסט חופשי!)
+          <br/>· כתובת מדויקת (אופציונלי. רחוב, כניסה, נקודת ציון)
+          <br/>· סוג מגרש: דשא / סינטטי / אספלט
+        </p>
+      </li>
+      <li class="step">
+        <h3>שלב שני: פורמט המשחק</h3>
+        <p>ממלא:
+          <br/>· פורמט: 5v5 / 6v6 / 7v7
+          <br/>· מספר קבוצות: 2 / 3 / 4 / 5
+          <br/>· משך משחקון בדקות
+          <br/>· האם יש שופט / פנדלים בסוף / חצאים
+        </p>
+      </li>
+      <li class="step">
+        <h3>שלב שלישי: ניהול המשחק</h3>
+        <p>ממלא:
+          <br/>· גלוי לכל / רק לחברי הקהילה
+          <br/>· האם נדרש אישור אדמין להרשמה
+          <br/>· האם זה משחק קבוע (אם כן — בוחר מתי הרישום נפתח)
+          <br/>· מתי אסור לבטל (deadline ביטול)
+          <br/>· האם פתוח לזרים אם חסרים שחקנים? (Filler)
+          <br/>· הערות, מי מביא כדור, מי מביא חולצות
+        </p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "צור משחק"</h3>
+        <p>המשחק נוצר. כל חברי הקהילה שמסומנים לקבל "התראות על משחקים חדשים" מקבלים push: "משחק חדש בקהילה — יום ה' 20:00".</p>
+        <span class="endbadge">משחק חדש פתוח להרשמה ✓</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 5 -->
+  <section class="flow" id="flow-5">
+    <header>
+      <span class="who player">שחקן</span>
+      <h2>5. הרשמה למשחק</h2>
+      <p class="summary">חבר קהילה שרוצה להצטרף למשחק קרוב.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>רואה משחק חדש</h3>
+        <p>שלוש דרכים:
+          <br/>· מקבל push "משחק חדש בקהילה"
+          <br/>· פותח את האפליקציה ורואה את המשחק בטאב "המשחקים שלי"
+          <br/>· נכנס לדף הקהילה ורואה משחק קרוב
+        </p>
+      </li>
+      <li class="step">
+        <h3>נכנס לדף המשחק</h3>
+        <p>רואה את כל הפרטים: תאריך, מגרש, פורמט, מי כבר נרשם, כמה מקומות יש.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "הצטרף למשחק"</h3>
+        <div class="branches">
+          <div class="branch success">
+            <strong>אם יש מקום פנוי</strong>
+            נרשם ישירות לרשימת השחקנים. רואה את עצמו ברשימה.
+          </div>
+          <div class="branch alt">
+            <strong>אם המשחק מלא</strong>
+            נכנס לרשימת המתנה (waitlist). יקבל push אם מישהו יבטל.
+          </div>
+          <div class="branch">
+            <strong>אם נדרש אישור</strong>
+            מבקש להצטרף, ממתין שאדמין יאשר.
+          </div>
+        </div>
+      </li>
+      <li class="step">
+        <h3>(תרחיש מיוחד) מישהו ביטל לפני המשחק</h3>
+        <p>אם השחקן ברשימת המתנה והשחקן הראשון ביטל, השחקן מקבל push:
+          <br/>"התפנה לך מקום במשחק! יש לך X דקות לאשר."
+          <br/>לוחץ "מאשר/ת" → נכנס לרשימת השחקנים. לוחץ "ויתור" → המקום עובר לבא בתור.
+        </p>
+      </li>
+      <li class="step">
+        <h3>(אופציונלי) רוצה לבטל</h3>
+        <p>נכנס לדף המשחק → לוחץ "בטל השתתפות". אם זה לפני ה־deadline שהאדמין הגדיר — הביטול חלק. אם אחרי — נחשב לביטול מאוחר ומוריד למשתמש את מד האמינות.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 6 -->
+  <section class="flow" id="flow-6">
+    <header>
+      <span class="who player">שחקן</span>
+      <h2>6. קבלת תזכורת לפני משחק</h2>
+      <p class="summary">תזכורת push שעה לפני kickoff עם כפתורי פעולה מהירה.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>שעה לפני המשחק</h3>
+        <p>השחקן מקבל הודעת push:
+          <br/>"חמישי כדורגל מתחיל בעוד שעה במגרש מכשירלנד"
+          <br/>על ההודעה יש 2 כפתורים: <strong>"אני בא"</strong> ו<strong>"לא בא"</strong>.
+        </p>
+      </li>
+      <li class="step">
+        <h3>לוחץ על "אני בא"</h3>
+        <p>אישור שקט — לא צריך לפתוח את האפליקציה. הסטטוס שלו במשחק נשאר רשום.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ על "לא בא"</h3>
+        <p>הביטול מתבצע אוטומטית ברקע. אם הוא ברשימת השחקנים והוא ביטל אחרי ה־deadline, המערכת רושמת לו ביטול מאוחר.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ על גוף ההודעה</h3>
+        <p>האפליקציה נפתחת ישירות לדף המשחק.</p>
+      </li>
+      <li class="step">
+        <h3>תזכורות נוספות</h3>
+        <p>· 5 שעות לפני: אם עוד לא נרשם → "המשחק היום, רוצה לבוא?"
+        <br/>· אם המשחק כמעט מלא: "המשחק כמעט מלא — נשארו 2 מקומות"
+        <br/>· אחרי המשחק: "דרגו את חברי הקבוצה"</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 7 -->
+  <section class="flow" id="flow-7">
+    <header>
+      <span class="who admin">אדמין</span>
+      <h2>7. הזמנת שחקן ספציפי למשחק</h2>
+      <p class="summary">אדמין רואה שחסר שחקן ורוצה להזמין מישהו ספציפי שהוא מכיר.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>נכנס לדף המשחק</h3>
+        <p>בתחתית המסך יש כפתור "הזמן שחקנים".</p>
+      </li>
+      <li class="step">
+        <h3>בוחר שחקן מתוך הרשימה</h3>
+        <p>נפתח מסך עם כל השחקנים מהקהילה שעדיין לא רשומים. אפשר לראות מי מהם זמין/לא זמין באופן כללי.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "שלח הזמנה"</h3>
+        <p>השחקן הספציפי מקבל push: "[שם האדמין] הזמין אותך למשחק יום ה' 20:00".</p>
+      </li>
+      <li class="step">
+        <h3>השחקן המוזמן מגיב</h3>
+        <p>פותח את האפליקציה → נכנס לדף המשחק → יכול להירשם ישירות (לא צריך לעבור אישור גם אם המשחק עם requiresApproval).</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 8 ⭐ -->
+  <section class="flow" id="flow-8">
+    <header>
+      <span class="who filler">שחקן זר (Filler)</span>
+      <h2>8. מילוי משחק ע"י שחקן זר</h2>
+      <p class="summary">פיצ'ר חדש: שחקן שלא חבר בקהילה מקבל הזדמנות למלא מקום חסר במשחק קרוב.</p>
+    </header>
+
+    <h3 style="color: var(--blue-dark); margin-top: 32px;">חלק א' — הכנה (חד פעמית)</h3>
+    <ol class="steps">
+      <li class="step">
+        <h3>השחקן נכנס לפרופיל</h3>
+        <p>בטאב "פרופיל" יש כפתור "זמינות".</p>
+      </li>
+      <li class="step">
+        <h3>מגדיר עיר מגורים + רדיוס</h3>
+        <p>· בוחר את עיר המגורים מתוך רשימה (חייב מהרשימה!)
+        <br/>· בוחר רדיוס שהוא מוכן לנסוע: 10 / 20 / 30 / 50 / 100 ק"מ (ברירת מחדל 20)
+        </p>
+      </li>
+      <li class="step">
+        <h3>מסמן את הטוגל "קבל הזמנות מילוי"</h3>
+        <p>המשתמש מאשר שהוא רוצה לקבל push כשקהילה באזור שלו זקוקה לשחקנים.</p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "שמור"</h3>
+        <p>סיים. עכשיו הוא בפול של filler-ים פוטנציאליים.</p>
+        <span class="endbadge">מוכן לקבל הזדמנויות ✓</span>
+      </li>
+    </ol>
+
+    <h3 style="color: var(--blue-dark); margin-top: 32px;">חלק ב' — קבלת הזדמנות</h3>
+    <ol class="steps">
+      <li class="step">
+        <h3>מקבל push "הזדמנות למילוי"</h3>
+        <p>"קהילת המתנים באור-יהודה צריכה 2 שחקנים הערב 20:00. רוצה להגיש מועמדות?"
+        <br/>על ההודעה 2 כפתורים: <strong>"מעוניין"</strong> ו<strong>"לא הפעם"</strong>.
+        </p>
+      </li>
+      <li class="step">
+        <h3>לוחץ "מעוניין"</h3>
+        <p>המועמדות נשלחת ברקע — לא צריך לפתוח את האפליקציה. השחקן רואה הודעה קטנה: "המועמדות נשלחה, ממתין לאישור".</p>
+      </li>
+    </ol>
+
+    <h3 style="color: var(--blue-dark); margin-top: 32px;">חלק ג' — אישור האדמין</h3>
+    <ol class="steps">
+      <li class="step">
+        <h3>האדמין מקבל push</h3>
+        <p>"שחקן הגיש מועמדות למלא ב[שם המשחק]. עיין בפרופיל לפני אישור."</p>
+      </li>
+      <li class="step">
+        <h3>נכנס לדף המשחק</h3>
+        <p>רואה סקציה חדשה "מועמדים למילוי" עם רשימה של כל מי שהביע עניין.</p>
+      </li>
+      <li class="step">
+        <h3>בוחן את הפרופיל של כל מועמד</h3>
+        <p>לכל מועמד מוצג:
+          <br/>· שם ותמונה
+          <br/>· <strong>מד אמינות</strong> — מספר 0-100 שמראה כמה השחקן אמין (כמה פעמים הופיע למשחקים שנרשם, כמה ביטל בזמן, כמה לא הופיע)
+          <br/>· למשתמשים חדשים: צ'יפ "🆕 חדש" במקום מספר
+        </p>
+      </li>
+      <li class="step">
+        <h3>מחליט אישור או דחייה</h3>
+        <div class="branches">
+          <div class="branch success">
+            <strong>אישור</strong>
+            השחקן נכנס מיד לרשימת השחקנים. מקבל push: "אישרו את ההצטרפות שלך למשחק!"
+          </div>
+          <div class="branch alt">
+            <strong>דחייה</strong>
+            השחקן לא מקבל הודעה — דחייה שקטה. האדמין יכול לבחור מועמד אחר.
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <h3 style="color: var(--blue-dark); margin-top: 32px;">תרחיש מיוחד</h3>
+    <ol class="steps">
+      <li class="step">
+        <h3>אם אף מועמד לא עומד בקריטריונים</h3>
+        <p>האדמין מקבל push: "לא נמצאו fillers מתאימים למשחק שלך הערב. רוצה להוריד את הסף לאמינות נמוכה יותר ולנסות שוב?"</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 9 -->
+  <section class="flow" id="flow-9">
+    <header>
+      <span class="who player">שחקן</span>
+      <h2>9. דירוג שחקנים אחרי משחק</h2>
+      <p class="summary">דירוג אנונימי של חברי הקבוצה כדי לעזור לאזן קבוצות בעתיד.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>שעה אחרי המשחק</h3>
+        <p>השחקן מקבל push: "איך היה המשחק? תן דירוג לחברי הקבוצה".</p>
+      </li>
+      <li class="step">
+        <h3>פותח את האפליקציה</h3>
+        <p>נפתח חלון דירוג שמראה את כל השחקנים שהיו במשחק.</p>
+      </li>
+      <li class="step">
+        <h3>נותן דירוג מ־1 עד 5 כוכבים לכל שחקן</h3>
+        <p>· הדירוג <strong>אנונימי</strong> — אף אחד לא רואה מי דירג מי.
+        <br/>· אפשר לדלג על שחקן ולא לדרג.
+        <br/>· אפשר לעדכן דירוג בעתיד.
+        </p>
+      </li>
+      <li class="step">
+        <h3>הדירוגים מתחברים לממוצע קהילתי</h3>
+        <p>הממוצע לכל שחקן בקהילה משמש כקלט לחלוקת קבוצות אוטומטית במשחק הבא — קבוצות מאוזנות יותר.</p>
+        <span class="endbadge">דירוג נשמר ✓</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 10 -->
+  <section class="flow" id="flow-10">
+    <header>
+      <span class="who admin">אדמין</span>
+      <h2>10. ערב המשחק על המגרש</h2>
+      <p class="summary">מהפעלת הערב ועד סיום, כולל ניהול משחקונים על המגרש.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>30 דקות לפני המשחק</h3>
+        <p>האדמין נכנס לדף המשחק ולוחץ על "התחל ערב".</p>
+      </li>
+      <li class="step">
+        <h3>קבוצות מאוזנות נוצרות אוטומטית</h3>
+        <p>המערכת לוקחת את הדירוגים האנונימיים של החברים ומחלקת אותם לקבוצות מאוזנות. גם בוחרת שוערים.</p>
+      </li>
+      <li class="step">
+        <h3>בודק את החלוקה</h3>
+        <p>אם רוצה לשנות, אפשר לגרור שחקנים בין קבוצות בעזרת drag &amp; drop. אפשר גם ללחוץ "ערבב מחדש".</p>
+      </li>
+      <li class="step">
+        <h3>מתחיל משחקון</h3>
+        <p>לוחץ "התחל משחקון". טיימר רץ על המסך. מי שמוסיף לעצמו גול לוחץ "+1" לקבוצה שלו.</p>
+      </li>
+      <li class="step">
+        <h3>מסיים משחקון</h3>
+        <p>בסוף הזמן (או כשהמשחק נגמר באופן טבעי) האדמין לוחץ "סיים משחקון". התוצאה נשמרת. הקבוצה המנצחת נשארת, המפסידה יוצאת ונכנסת קבוצה ממתינה (אם יש 3+ קבוצות).</p>
+      </li>
+      <li class="step">
+        <h3>חוזרים על משחקונים</h3>
+        <p>ממשיכים עוד משחקון ועוד משחקון עד סוף הערב.</p>
+      </li>
+      <li class="step">
+        <h3>סיים ערב</h3>
+        <p>בסוף הכל — כפתור "סיים ערב". המשחק נסגר ועובר להיסטוריה.</p>
+        <span class="endbadge">משחק הושלם ✓</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 11 -->
+  <section class="flow" id="flow-11">
+    <header>
+      <span class="who admin">אדמין</span>
+      <h2>11. שיתוף קהילה בוואטסאפ</h2>
+      <p class="summary">אדמין שרוצה להזמין חברים חדשים לקהילה.</p>
+    </header>
+    <ol class="steps">
+      <li class="step">
+        <h3>נכנס לדף הקהילה</h3>
+        <p>בדף הקהילה יש כפתור "שתף את הקהילה".</p>
+      </li>
+      <li class="step">
+        <h3>בוחר וואטסאפ</h3>
+        <p>נפתחת אפליקציית וואטסאפ עם הודעה מוכנה: שם הקהילה + קישור ייעודי.</p>
+      </li>
+      <li class="step">
+        <h3>החבר שמקבל את ההודעה</h3>
+        <p>לוחץ על הקישור. נפתח דף אינטרנט יפה עם:
+          <br/>· שם הקהילה ועיר
+          <br/>· סטטיסטיקות (מספר משחקים, חברים, אחוז הצלחה)
+          <br/>· אלופי הנוכחות
+          <br/>· משחקים אחרונים
+          <br/>· כפתור "פתח באפליקציה"
+        </p>
+      </li>
+      <li class="step">
+        <h3>החבר לוחץ "פתח באפליקציה"</h3>
+        <div class="branches">
+          <div class="branch success">
+            <strong>אם האפליקציה מותקנת</strong>
+            נפתחת ישירות בדף הקהילה — הוא יכול ללחוץ "הצטרף".
+          </div>
+          <div class="branch">
+            <strong>אם האפליקציה לא מותקנת</strong>
+            נשלח ל־Play Store. אחרי ההורדה ופתיחה ראשונה האפליקציה מזהה את ההזמנה ולוקחת אותו ישר לדף הקהילה.
+          </div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+</main>
+
+<footer class="footer">
+  © Teamder · זרימות משתמש לקריאה
+</footer>
+
+</body>
+</html>

@@ -12,7 +12,7 @@
 // PublicGroupsFeedScreen will navigate to the private CommunityDetails
 // instead, which has the full member roster.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -35,11 +35,12 @@ import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
+import { gameService } from '@/services/gameService';
 import {
   isValidIsraeliPhone,
   openWhatsApp,
 } from '@/services/whatsappService';
-import { GroupPublic, WeekdayIndex } from '@/types';
+import { Game, GroupPublic, WeekdayIndex } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -71,14 +72,25 @@ export function CommunityDetailsPublicScreen() {
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
 
   const [group, setGroup] = useState<GroupPublic | null>(null);
+  // Upcoming public games drive the dynamic "ימי משחק" / "שעת משחק"
+  // derivation below — replacing the legacy `group.preferredDays` /
+  // `group.preferredHour` MetaRows that no longer exist on the
+  // create/edit form.
+  const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyJoin, setBusyJoin] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const g = await groupService.getPublic(groupId);
+      const [g, games] = await Promise.all([
+        groupService.getPublic(groupId),
+        gameService
+          .getUpcomingPublicGamesForGroup(groupId)
+          .catch(() => [] as Game[]),
+      ]);
       setGroup(g);
+      setUpcomingGames(games);
     } finally {
       setLoading(false);
     }
@@ -157,7 +169,43 @@ export function CommunityDetailsPublicScreen() {
     }
   };
 
-  const days = formatDays(group.preferredDays);
+  // Derive the community's day/hour pattern from its actual upcoming
+  // games rather than the legacy `preferredDays` / `preferredHour`
+  // fields on /groupsPublic. New groups stop writing those, so the
+  // derivation here keeps the public preview honest as long as the
+  // admin schedules at least one upcoming public game.
+  const derivedDaysList = useMemo<WeekdayIndex[]>(() => {
+    if (upcomingGames.length === 0) return [];
+    const set = new Set<WeekdayIndex>();
+    upcomingGames.forEach((g) => {
+      const d = new Date(g.startsAt);
+      set.add(d.getDay() as WeekdayIndex);
+    });
+    return Array.from(set).sort();
+  }, [upcomingGames]);
+  const derivedDays = formatDays(derivedDaysList);
+  const derivedHour = useMemo<string>(() => {
+    if (upcomingGames.length === 0) return '';
+    // Most-common HH:MM among upcoming games. Ties resolved by
+    // earliest game's hour (which the sort by startsAt above gave us).
+    const counts = new Map<string, number>();
+    upcomingGames.forEach((g) => {
+      const d = new Date(g.startsAt);
+      const k = `${String(d.getHours()).padStart(2, '0')}:${String(
+        d.getMinutes(),
+      ).padStart(2, '0')}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    let best = '';
+    let bestN = 0;
+    counts.forEach((n, k) => {
+      if (n > bestN) {
+        best = k;
+        bestN = n;
+      }
+    });
+    return best;
+  }, [upcomingGames]);
   // CTA label depends on `isOpen` — auto-join vs admin approval.
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
   const ctaDisabled = isPending || busyJoin;
@@ -176,23 +224,25 @@ export function CommunityDetailsPublicScreen() {
             label={he.communityDetailsCity}
             value={[group.city, group.fieldAddress].filter(Boolean).join(', ')}
           />
-          <MetaRow
-            icon="football-outline"
-            label={he.communityDetailsField}
-            value={group.fieldName}
-          />
-          {days ? (
+          {group.fieldName ? (
+            <MetaRow
+              icon="football-outline"
+              label={he.communityDetailsField}
+              value={group.fieldName}
+            />
+          ) : null}
+          {derivedDays ? (
             <MetaRow
               icon="calendar-outline"
               label={he.communityDetailsPreferredDays}
-              value={days}
+              value={derivedDays}
             />
           ) : null}
-          {group.preferredHour ? (
+          {derivedHour ? (
             <MetaRow
               icon="time-outline"
               label={he.communityDetailsPreferredHour}
-              value={group.preferredHour}
+              value={derivedHour}
             />
           ) : null}
           <MetaRow
@@ -262,7 +312,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   metaRow: {
     flexDirection: 'row',
@@ -274,14 +323,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   metaValue: {
     ...typography.caption,
     color: colors.text,
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
-    writingDirection: 'rtl',
   },
   empty: {
     flex: 1,
@@ -293,6 +340,5 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
-    writingDirection: 'rtl',
   },
 });

@@ -70,6 +70,15 @@ const AVATAR_PATH = (uid: string) => `users/${uid}/avatar.jpg`;
 const TARGET_SIZE = 512;
 const JPEG_QUALITY = 0.8;
 
+// Community cover: landscape hero behind the title on the community
+// details screen. Stored at /groups/{groupId}/cover.jpg. Wider + a
+// touch lower quality than the avatar since it's a background, not a
+// focal photo — 1280×720 @ 0.7 lands ≈250 KB.
+const GROUP_COVER_PATH = (groupId: string) => `groups/${groupId}/cover.jpg`;
+const COVER_WIDTH = 1280;
+const COVER_HEIGHT = 720;
+const COVER_QUALITY = 0.7;
+
 /** Generic outcome wrapper so callers don't have to try/catch each step. */
 export type PhotoUploadResult =
   | { ok: true; url: string }
@@ -144,6 +153,69 @@ export async function pickAndUploadAvatar(
     const { storage } = getFirebase();
     const path = AVATAR_PATH(uid);
     const objectRef = storageRef(storage, path);
+    await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(objectRef);
+    return { ok: true, url };
+  } catch (err) {
+    return { ok: false, reason: 'network', err };
+  }
+}
+
+/**
+ * Show the OS picker (cropped to 16:9), then upload the result as the
+ * community cover and return the download URL. Caller writes it to
+ * /groups/{groupId}.coverPhotoUrl via groupService.updateGroupMetadata.
+ * The storage rule only lets coaches of {groupId} write, so a
+ * non-admin upload fails with reason 'network'.
+ */
+export async function pickAndUploadGroupCover(
+  groupId: string,
+): Promise<PhotoUploadResult> {
+  if (!groupId) return { ok: false, reason: 'unknown' };
+  if (USE_MOCK_DATA) {
+    return { ok: false, reason: 'unknown' };
+  }
+
+  const native = loadNativePickers();
+  if (!native.ok) {
+    return { ok: false, reason: 'unavailable' };
+  }
+  const { ImagePicker, ImageManipulator } = native;
+
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (perm.status !== 'granted') {
+    return { ok: false, reason: 'permission' };
+  }
+
+  // 16:9 crop matches the hero's landscape framing.
+  const picked = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [16, 9],
+    quality: 1,
+  });
+  if (picked.canceled || !picked.assets?.[0]) {
+    return { ok: false, reason: 'cancelled' };
+  }
+  const sourceUri = picked.assets[0].uri;
+
+  const resized = await ImageManipulator.manipulateAsync(
+    sourceUri,
+    [{ resize: { width: COVER_WIDTH, height: COVER_HEIGHT } }],
+    { compress: COVER_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
+  );
+
+  let blob: Blob;
+  try {
+    const res = await fetch(resized.uri);
+    blob = await res.blob();
+  } catch (err) {
+    return { ok: false, reason: 'network', err };
+  }
+
+  try {
+    const { storage } = getFirebase();
+    const objectRef = storageRef(storage, GROUP_COVER_PATH(groupId));
     await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
     const url = await getDownloadURL(objectRef);
     return { ok: true, url };

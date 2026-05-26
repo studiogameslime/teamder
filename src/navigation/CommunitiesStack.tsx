@@ -69,6 +69,7 @@ export type CommunitiesStackParamList = {
         format?: import('@/types').GameFormat;
         numberOfTeams?: number;
         recurring?: boolean;
+        quick?: boolean;
       };
 };
 

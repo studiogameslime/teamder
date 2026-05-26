@@ -91,3 +91,68 @@ export async function handleSpotOfferAction(
     }
   }
 }
+
+// ─── Filler opportunity action ──────────────────────────────────────
+// Handles "מעוניין" (EXPRESS_FILLER_INTEREST) and "לא הפעם"
+// (DISMISS_FILLER) buttons on the cross-community filler push.
+//
+// EXPRESS_FILLER_INTEREST: calls the `submitFillerInterest` callable
+// which writes /games/{gid}/fillerInterests/{uid} with status='pending'.
+// The on-create CF then pushes the game admin to review the
+// candidate's profile.
+//
+// DISMISS_FILLER: silent no-op locally. We log analytics so we know
+// how many candidates dismiss, but write nothing — the candidate
+// can still tap a future opportunity in the app if they change
+// their mind.
+
+type FillerAction = 'EXPRESS_FILLER_INTEREST' | 'DISMISS_FILLER';
+
+export async function handleFillerOpportunityAction(
+  action: FillerAction,
+  gameId: string,
+): Promise<void> {
+  if (!gameId) return;
+  if (action === 'DISMISS_FILLER') {
+    logEvent(AnalyticsEvent.GameViewed, {
+      gameId,
+      viaNotificationAction: true,
+      fillerDismissed: true,
+    });
+    return;
+  }
+  try {
+    const authUser = await waitForAuthRestore();
+    if (!authUser) {
+      if (__DEV__) {
+        console.warn('[notifAction] no auth user; skipping', action, gameId);
+      }
+      return;
+    }
+    // Lazy-import the callable infra so the bundle stays lean.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { getFirebase } = await import('@/firebase/config');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'submitFillerInterest');
+    await fn({ gameId });
+    logEvent(AnalyticsEvent.GameJoined, {
+      gameId,
+      viaNotificationAction: true,
+      asFillerInterest: true,
+    });
+  } catch (err) {
+    // Common failure modes: game already filled, admin disabled
+    // fillers, candidate already submitted interest. All resolved
+    // by the CF returning a typed HttpsError; we swallow because
+    // the candidate can still see status in-app on next open.
+    if (__DEV__) {
+      console.warn(
+        '[notifAction] filler interest failed',
+        action,
+        gameId,
+        err,
+      );
+    }
+  }
+}
