@@ -17,22 +17,51 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
+import androidx.wear.compose.material.Colors
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
+import com.studiogameslime.soccerapp.wear.R
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// Teamder brand on the watch: black background (battery-friendly, the
+// Wear OS standard) with the brand blue as the accent. #1E40AF is too dark
+// to read on black, so accents use a brightened brand blue; chip text sits
+// on that blue so onPrimary is a deep navy.
+private val TeamderBlue = Color(0xFF5B9BFF)
+private val TeamderWearColors = Colors(
+    primary = TeamderBlue,
+    onPrimary = Color(0xFF06122B),
+    background = Color.Black,
+    onBackground = Color.White,
+    surface = Color(0xFF11182B),
+    onSurface = Color.White,
+)
 
 /**
  * Root of the watch UI. Wraps every state in a Wear [Scaffold] (so the
@@ -43,7 +72,7 @@ fun WearApp(
     state: WearGameState,
     onCreateOnPhone: () -> Unit,
 ) {
-    MaterialTheme {
+    MaterialTheme(colors = TeamderWearColors) {
         Scaffold(timeText = { TimeText() }) {
             when (state) {
                 is WearGameState.Loading -> CenteredMessage(loading = true, text = "טוען…")
@@ -62,6 +91,7 @@ fun WearApp(
 private fun StopwatchScreen(state: WearGameState.Live) {
     val elapsed = rememberElapsedMs(state.timer)
     ScreenColumn {
+        BrandLogo()
         Text(
             text = state.title,
             textAlign = TextAlign.Center,
@@ -74,6 +104,7 @@ private fun StopwatchScreen(state: WearGameState.Live) {
             textAlign = TextAlign.Center,
             fontSize = 44.sp,
             style = MaterialTheme.typography.display1,
+            color = MaterialTheme.colors.primary,
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -89,6 +120,7 @@ private fun StopwatchScreen(state: WearGameState.Live) {
 @Composable
 private fun NextGameScreen(state: WearGameState.Upcoming) {
     ScreenColumn {
+        BrandLogo()
         Text(
             text = "המשחק הקרוב",
             textAlign = TextAlign.Center,
@@ -124,6 +156,7 @@ private fun DetailLine(label: String, value: String) {
 @Composable
 private fun NotRegisteredScreen(onCreateOnPhone: () -> Unit) {
     ScreenColumn {
+        BrandLogo()
         Text(
             text = "עדיין לא נרשמת למשחק",
             textAlign = TextAlign.Center,
@@ -147,6 +180,31 @@ private fun NotRegisteredScreen(onCreateOnPhone: () -> Unit) {
 }
 
 // ─── Shared building blocks ────────────────────────────────────────────
+/** The Teamder logo, gently pulsing — shown at the top of every screen
+ *  (the same "breathing" feel as the phone splash). */
+@Composable
+private fun BrandLogo() {
+    val transition = rememberInfiniteTransition(label = "logo")
+    val scale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.07f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "logoScale",
+    )
+    Image(
+        painter = painterResource(R.drawable.teamder_logo),
+        contentDescription = "Teamder",
+        modifier = Modifier
+            .size(34.dp)
+            .scale(scale)
+            .clip(CircleShape),
+    )
+    Spacer(Modifier.height(8.dp))
+}
+
 @Composable
 private fun ScreenColumn(content: @Composable () -> Unit) {
     Column(
@@ -166,6 +224,7 @@ private fun CenteredMessage(text: String, loading: Boolean = false) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        BrandLogo()
         if (loading) {
             CircularProgressIndicator()
             Spacer(Modifier.height(10.dp))

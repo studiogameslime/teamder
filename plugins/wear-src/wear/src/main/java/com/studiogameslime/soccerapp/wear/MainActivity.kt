@@ -87,7 +87,8 @@ private fun demoStates(): List<WearGameState> = listOf(
         title = "חמישי כדורגל",
         timer = TimerState(
             running = true,
-            lastStartedAt = System.currentTimeMillis() - 65_000L,
+            // ~12 minutes in — a clear elapsed time for the store screenshot.
+            lastStartedAt = System.currentTimeMillis() - 728_000L,
             accumulatedMs = 0L,
         ),
     ),
