@@ -117,6 +117,178 @@ export const AnalyticsEvent = {
   ReportBugClicked: 'report_bug_clicked',
   SuggestFeatureClicked: 'suggest_feature_clicked',
   RateAppClicked: 'rate_app_clicked',
+
+  // ─── Friends ───────────────────────────────────────────────────────────
+  /** A friend request was sent from one user to another. */
+  FriendRequestSent: 'friend_request_sent',
+  /** A friend request the user received was accepted. */
+  FriendRequestAccepted: 'friend_request_accepted',
+  /** A friend request the user received was declined. */
+  FriendRequestDeclined: 'friend_request_declined',
+  /** The user cancelled an outgoing friend request they had sent. */
+  FriendRequestCancelled: 'friend_request_cancelled',
+  /** A confirmed friendship was removed (either side initiated). */
+  FriendRemoved: 'friend_removed',
+  /** Friends screen / list was opened. */
+  FriendsScreenOpened: 'friends_screen_opened',
+  /** The "invite friends to game" picker inside the create-game wizard
+   *  was opened (Step 3). Lets us count adoption of the new flow. */
+  FriendPickerOpened: 'friend_picker_opened',
+  /** Friends were attached to a freshly-created game as personal invitees. */
+  FriendsInvitedToGame: 'friends_invited_to_game',
+
+  // ─── Quick (no-community) games ────────────────────────────────────────
+  /** The "ללא קהילה / משחק חד־פעמי" CTA was tapped (entry to orphan flow). */
+  QuickGameFlowStarted: 'quick_game_flow_started',
+  /** A quick (orphan-context) game was successfully created. Distinct
+   *  from `GameCreated` so adoption can be measured separately. */
+  QuickGameCreated: 'quick_game_created',
+  /** Post-game "צור קהילה" prompt was accepted — the hidden personal
+   *  group was promoted into a real community. */
+  OrphanPromotedToCommunity: 'orphan_promoted_to_community',
+
+  // ─── Approval flow (community membership) ──────────────────────────────
+  /** Admin approved a pending community-join request. */
+  GroupJoinApprovedByAdmin: 'group_join_approved_by_admin',
+  /** Admin declined a pending community-join request. */
+  GroupJoinDeclinedByAdmin: 'group_join_declined_by_admin',
+
+  // ─── Wear OS companion ────────────────────────────────────────────────
+  /** The watch sent a tap-action back to the phone via the Data Layer
+   *  bridge. `action` distinguishes RSVP / open-on-phone / timer
+   *  control. Phone-side counter — independent of any watch-side
+   *  logging. */
+  WatchActionReceived: 'watch_action_received',
+  /** Phone-side: we pushed a state snapshot to the paired watch. Lets
+   *  us measure sync throughput and detect regressions when the
+   *  payload shape changes. */
+  WatchSyncPushed: 'watch_sync_pushed',
+  /** The watch app is detected as installed at session start (via
+   *  the Wear capability API). Fires once per app launch. */
+  WatchDetected: 'watch_detected',
+
+  // ─── Phone home-screen widget ─────────────────────────────────────────
+  /** The user tapped one of the widget's timer buttons (play / pause
+   *  / reset). Captured via the deep link the widget fires on the
+   *  Firestore round-trip; lets us measure widget engagement. */
+  WidgetTimerAction: 'widget_timer_action',
+  /** The user tapped the widget body to open the live match. */
+  WidgetOpened: 'widget_opened',
+  /** Phone-side: cached widget snapshot was refreshed in SharedPreferences. */
+  WidgetSyncPushed: 'widget_sync_pushed',
+
+  // ─── Discovery & filtering ─────────────────────────────────────────────
+  /** A filter on the games-list screen was applied (date / city / format). */
+  GameFilterApplied: 'game_filter_applied',
+  /** All filters were cleared at once via the "נקה" button. */
+  GameFilterCleared: 'game_filter_cleared',
+  /** The filter sheet itself was opened. */
+  GameFilterSheetOpened: 'game_filter_sheet_opened',
+  /** The user switched between "פתוחים" and "שלי" tabs. */
+  GamesTabSwitched: 'games_tab_switched',
+  /** The Public Communities feed was opened (discovery surface). */
+  PublicCommunitiesFeedOpened: 'public_communities_feed_opened',
+  /** A community search was performed (typed query, ≥1 char). */
+  CommunitySearchPerformed: 'community_search_performed',
+
+  // ─── Cover photo & community media ─────────────────────────────────────
+  /** Admin uploaded a new cover photo for a community. */
+  CommunityCoverUploaded: 'community_cover_uploaded',
+  /** Admin removed the cover photo (reverted to default). */
+  CommunityCoverRemoved: 'community_cover_removed',
+
+  // ─── Notifications — interactions ─────────────────────────────────────
+  /** The user tapped on a push notification (any type). The `type`
+   *  parameter mirrors the notification doc's type field. */
+  NotificationOpened: 'notification_opened',
+  /** An in-notification action button was tapped (join / cancel /
+   *  view). Distinct from `NotificationOpened` (which is the body
+   *  tap). */
+  NotificationActionTapped: 'notification_action_tapped',
+  /** The user explicitly tapped the in-app banner that announces an
+   *  upcoming game (the "5 hours before" RSVP nudge surface). */
+  RsvpNudgeOpened: 'rsvp_nudge_opened',
+
+  // ─── Profile sub-screens ──────────────────────────────────────────────
+  /** A specific profile sub-screen was opened (stats / achievements /
+   *  history / friends / notifications-settings). */
+  ProfileSectionOpened: 'profile_section_opened',
+  /** The history / past games tab was opened. */
+  HistoryOpened: 'history_opened',
+  /** The stats screen was opened. */
+  StatsOpened: 'stats_opened',
+  /** Achievements screen was opened. */
+  AchievementsOpened: 'achievements_opened',
+  /** A single achievement card was tapped (drill-in). */
+  AchievementCardTapped: 'achievement_card_tapped',
+
+  // ─── Player card ──────────────────────────────────────────────────────
+  /** The user opened another user's player card (drill-in from a
+   *  game roster, community member list, or friend list). */
+  PlayerCardOpened: 'player_card_opened',
+
+  // ─── Sharing — granular surfaces ──────────────────────────────────────
+  /** An invite share was completed (the system share sheet's
+   *  `dismissedAction` is `false`). Better signal than `InviteShared`
+   *  (which fires when the sheet opens). */
+  InviteShareCompleted: 'invite_share_completed',
+  /** A WhatsApp-specific share intent was launched (deep link). */
+  WhatsappShareLaunched: 'whatsapp_share_launched',
+  /** Deep-link arrival: the app was opened via an invite URL. */
+  InviteLinkOpened: 'invite_link_opened',
+
+  // ─── App lifecycle & launch ───────────────────────────────────────────
+  /** App moved to foreground (cold start or resume). Distinguished
+   *  by the `type` parameter: 'cold' | 'warm'. */
+  AppForegrounded: 'app_foregrounded',
+  /** App moved to background. */
+  AppBackgrounded: 'app_backgrounded',
+  /** The splash screen finished its initial hydration and routed to
+   *  the first screen (sign-in / onboarding / home). */
+  SplashCompleted: 'splash_completed',
+
+  // ─── Onboarding granular ──────────────────────────────────────────────
+  /** A specific step inside post-sign-in onboarding completed
+   *  (welcome / how-it-works / profile / done). */
+  OnboardingStepCompleted: 'onboarding_step_completed',
+  /** Onboarding was skipped (the user used the "דלג" link). */
+  OnboardingSkipped: 'onboarding_skipped',
+
+  // ─── Geo / city ───────────────────────────────────────────────────────
+  /** A city was picked from the autocomplete list during create
+   *  game / create community. */
+  CityPicked: 'city_picked',
+  /** The user typed a query into the city autocomplete (≥2 chars). */
+  CitySearchPerformed: 'city_search_performed',
+  /** Weather forecast was successfully fetched for a game's location. */
+  WeatherFetched: 'weather_fetched',
+
+  // ─── Filler / cross-community matching ────────────────────────────────
+  /** A user accepted a cross-community filler invitation push and
+   *  joined a game outside their communities. */
+  FillerInvitationAccepted: 'filler_invitation_accepted',
+  /** A user expressed interest in being a filler for a specific
+   *  short-handed game. */
+  FillerInterestExpressed: 'filler_interest_expressed',
+  /** Admin toggled "accepts fillers" on a game (opt-in to the
+   *  cross-community matcher). */
+  AcceptsFillersToggled: 'accepts_fillers_toggled',
+
+  // ─── Errors ───────────────────────────────────────────────────────────
+  /** An unhandled exception was caught by the global error boundary
+   *  (caught before reaching Crashlytics). Helps correlate caught
+   *  errors with the screen they happened on. */
+  ErrorBoundaryTriggered: 'error_boundary_triggered',
+  /** A user-visible error toast was shown. The `reason` parameter
+   *  carries the short error code. */
+  ErrorToastShown: 'error_toast_shown',
+  /** A network call failed (no connectivity / 5xx). */
+  NetworkFailure: 'network_failure',
+
+  // ─── Public community page (web → app) ────────────────────────────────
+  /** The public community page (web) "פתח באפליקציה" CTA was tapped
+   *  and the user landed inside the app on the community details. */
+  PublicPageDeepLinkOpened: 'public_page_deep_link_opened',
 } as const;
 
 export type AnalyticsEventName =

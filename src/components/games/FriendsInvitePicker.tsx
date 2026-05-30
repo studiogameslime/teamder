@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { friendsService } from '@/services/friendsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -34,6 +35,7 @@ export function FriendsInvitePicker({ selected, onChange }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    logEvent(AnalyticsEvent.FriendPickerOpened);
     let alive = true;
     (async () => {
       if (!me) {

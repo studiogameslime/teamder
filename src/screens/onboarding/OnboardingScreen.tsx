@@ -254,15 +254,26 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   skipRow: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    minHeight: 28,
+    minHeight: 40,
   },
+  // Bigger + slightly more padded tap target. The original `דלג`
+  // pill was 28dp tall and the text size matched `typography.label`
+  // (~13sp), which made it feel cramped and easy to mis-tap. Bumping
+  // to 40dp tall + label-bold + 14sp gives it visual weight without
+  // pulling focus from the slide content.
   skip: {
     ...typography.label,
-    color: 'rgba(255,255,255,0.78)',
-    fontWeight: '600',
+    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '700',
+    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    overflow: 'hidden',
   },
   slide: {
     paddingHorizontal: spacing.xl,

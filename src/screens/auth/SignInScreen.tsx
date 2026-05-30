@@ -129,5 +129,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  privacy: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
+  // Privacy footer now uses a slightly darker grey (slate-500) to
+  // hit a comfortable contrast ratio on the white sign-in card; the
+  // muted-text token (#94A3B8) was too light against the bg under
+  // outdoor lighting and failed WCAG AA against white.
+  privacy: { ...typography.caption, color: '#5A6478', textAlign: 'center' },
 });

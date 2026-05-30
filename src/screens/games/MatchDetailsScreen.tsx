@@ -715,6 +715,58 @@ export function MatchDetailsScreen() {
     return ids;
   }, [game, myCommunities]);
 
+  // Average community rating of the REGISTERED non-organizer players.
+  // Hosts (createdBy + group admins, i.e. `adminUids`) are excluded —
+  // organizers shouldn't count in the "what's the rating of the people
+  // I'd play with" signal. Surfaces a single avg + count instead of
+  // per-player stars. Hidden when fewer than 2 rated players to avoid
+  // spotlighting one user. MUST live here, above the loading/notFound
+  // early returns, so the hook order never changes between renders.
+  const [registeredRatingAvg, setRegisteredRatingAvg] = useState<{
+    average: number;
+    ratedCount: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!game) {
+      setRegisteredRatingAvg(null);
+      return;
+    }
+    let alive = true;
+    const eligible = (game.players ?? []).filter((uid) => !adminUids.has(uid));
+    if (eligible.length === 0) {
+      setRegisteredRatingAvg(null);
+      return;
+    }
+    const groupId = game.groupId;
+    (async () => {
+      try {
+        const summaries = await Promise.all(
+          eligible.map((uid) =>
+            ratingsService.getSummary(groupId, uid).catch(() => null),
+          ),
+        );
+        if (!alive) return;
+        const rated = summaries.filter(
+          (s): s is NonNullable<typeof s> => !!s && s.count > 0,
+        );
+        if (rated.length < 2) {
+          setRegisteredRatingAvg(null);
+          return;
+        }
+        const sumOfAverages = rated.reduce((acc, s) => acc + s.average, 0);
+        setRegisteredRatingAvg({
+          average: sumOfAverages / rated.length,
+          ratedCount: rated.length,
+        });
+      } catch {
+        if (alive) setRegisteredRatingAvg(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [game, adminUids]);
+
   const handlePrimary = async () => {
     if (!user || !game) return;
     const status = statusForUser(game, user.id);
@@ -1142,61 +1194,6 @@ export function MatchDetailsScreen() {
     myCommunities.find((g) => g.id === game.groupId)?.adminIds ?? [],
   );
 
-  // Average community rating of the REGISTERED non-organizer players.
-  // Hosts (createdBy + group admins) are excluded — the user said
-  // organizers shouldn't count in the "what's the rating of the
-  // people I'd play with" signal. Surfaces a single avg + count
-  // instead of per-player stars (which already live on PlayerCard).
-  // Rating summaries fetch in parallel; if a player has 0 votes we
-  // skip them. Hidden when fewer than 2 rated players to avoid
-  // spotlighting one user.
-  const [registeredRatingAvg, setRegisteredRatingAvg] = useState<{
-    average: number;
-    ratedCount: number;
-  } | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const eligible = (game.players ?? []).filter(
-      (uid) => !groupAdminIds.has(uid) && uid !== game.createdBy,
-    );
-    if (eligible.length === 0) {
-      if (alive) setRegisteredRatingAvg(null);
-      return;
-    }
-    (async () => {
-      try {
-        const summaries = await Promise.all(
-          eligible.map((uid) =>
-            ratingsService
-              .getSummary(game.groupId, uid)
-              .catch(() => null),
-          ),
-        );
-        if (!alive) return;
-        const rated = summaries.filter(
-          (s): s is NonNullable<typeof s> => !!s && s.count > 0,
-        );
-        if (rated.length < 2) {
-          setRegisteredRatingAvg(null);
-          return;
-        }
-        const sumOfAverages = rated.reduce((acc, s) => acc + s.average, 0);
-        setRegisteredRatingAvg({
-          average: sumOfAverages / rated.length,
-          ratedCount: rated.length,
-        });
-      } catch {
-        if (alive) setRegisteredRatingAvg(null);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-    // groupAdminIds is derived inside the same render — using
-    // game.players + game.createdBy + game.groupId is the canonical
-    // set of inputs that should retrigger this calculation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.players, game.createdBy, game.groupId]);
 
   // Compose the location string used by the hero strip + Waze link.
   const locationStr =
@@ -1341,9 +1338,15 @@ export function MatchDetailsScreen() {
     // this lived only as a buried menu entry, so participants had to
     // hunt for it. Only registered (players/waitlist) can enter
     // because the LiveMatchScreen now gates non-participants too.
+    // NOTE: do NOT gate this on `!primaryDestructive`. A registered
+    // participant is always `primaryDestructive` (status==='joined'),
+    // so requiring `!primaryDestructive` here made the branch dead
+    // code — participants got no "enter live" button at all once the
+    // game went active (and cancel is closed by then, so the sticky
+    // fell through to null). The players/waitlist check below is the
+    // real "is registered" gate.
     if (
       sessionStatus === 'active' &&
-      !primaryDestructive &&
       user &&
       (game.players.includes(user.id) || game.waitlist.includes(user.id))
     ) {
@@ -1409,6 +1412,20 @@ export function MatchDetailsScreen() {
                 label: isAdmin ? he.matchMenuManage : he.matchMenuWatchLive,
                 icon: 'settings-outline' as const,
                 onPress: () => nav.navigate('LiveMatch', { gameId: game.id }),
+              },
+            ]
+          : []),
+        // Quick entry to the full players screen — surfaces pending
+        // approvals + waitlist for admins without having to scroll
+        // back to the inline "הצג הכל" link.
+        ...(isAdmin
+          ? [
+              {
+                id: 'players',
+                label: he.matchMenuManagePlayers,
+                icon: 'people-outline' as const,
+                onPress: () =>
+                  nav.navigate('MatchPlayers', { gameId: game.id }),
               },
             ]
           : []),
@@ -1559,6 +1576,24 @@ export function MatchDetailsScreen() {
         tone: 'blocked',
       };
     }
+    // The admin's positive session action (צור כוחות / עבור ללייב) takes
+    // the sticky even when the admin is ALSO registered to their own
+    // game — otherwise it was buried behind the red "בטל הרשמה" and the
+    // admin had no on-screen way to start the game. Cancel stays
+    // reachable via the ☰ menu ("עזוב משחק").
+    if (
+      isAdmin &&
+      primary &&
+      primary.onPress !== handleShare &&
+      primary.onPress !== handlePrimary
+    ) {
+      return {
+        label: primary.title,
+        icon: primary.icon ?? 'arrow-forward',
+        onPress: primary.onPress,
+        tone: 'primary',
+      };
+    }
     if (
       primaryDestructive &&
       canCancelRegistration(game) &&
@@ -1695,6 +1730,7 @@ export function MatchDetailsScreen() {
             maxRows={3}
             members={[...participantEntries].reverse().slice(0, 3)}
             isAdminViewer={isAdmin}
+            pendingCount={game.pending?.length ?? 0}
             onSeeAll={() => nav.navigate('MatchPlayers', { gameId: game.id })}
             // "הוסף אורח" lives as an inline text link next to the
             // section header — only for admins, and only while the

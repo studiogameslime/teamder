@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AppWidgetProviderInfo for the Teamder home-screen widget.
+
+  • updatePeriodMillis = 30 min: a fallback only. State transitions are
+    pushed by WatchBridgeModule via APPWIDGET_UPDATE broadcasts within
+    a couple seconds of every start/pause/resume — no need for tight
+    polling here. (Anything under 30 min would be silently clamped by
+    the system anyway.)
+  • resizeMode allows the user to stretch the widget on the home grid.
+  • previewLayout reuses the runtime layout — no separate preview asset.
+  • configure is omitted because the widget is read-only with no per-
+    instance settings.
+-->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="100dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_teamder"
+    android:previewLayout="@layout/widget_teamder_preview"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

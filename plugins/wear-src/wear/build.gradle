@@ -29,6 +29,8 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "org.jetbrains.kotlin.plugin.compose"
 
+import java.nio.file.Paths
+
 android {
   // Distinct namespace (R / BuildConfig package) but SAME applicationId
   // as the phone — that's what makes it the "watch version" in Play.
@@ -42,8 +44,8 @@ android {
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
-    versionCode 1004
-    versionName "0.2.21"
+    versionCode 1012
+    versionName "0.2.32"
   }
 
   buildFeatures {
@@ -59,10 +61,42 @@ android {
     jvmTarget = "17"
   }
 
+  // ── Release signing ─────────────────────────────────────────────────
+  // EAS prepares `credentials.json` at the build's working dir + injects
+  // a signing config into android/app/build.gradle. It does NOT touch
+  // the wear module — so a default `:wear:bundleRelease` ends up signed
+  // with the debug key and Play Console rejects it ("חבילות חייבות
+  // להיות חתומות"). Mirror the EAS template here, gated on the env var
+  // so manual local debug builds (no EAS) still work without crashing.
+  if (System.getenv("EAS_BUILD_WORKINGDIR")) {
+    signingConfigs {
+      release {
+        def credentialsJson = Paths.get(System.getenv("EAS_BUILD_WORKINGDIR")).resolve("credentials.json").toFile()
+        def credentials = new groovy.json.JsonSlurper().parse(credentialsJson)
+        def keystorePath = Paths.get(credentials.android.keystore.keystorePath)
+
+        storeFile keystorePath.toFile()
+        storePassword credentials.android.keystore.keystorePassword
+        keyAlias credentials.android.keystore.keyAlias
+        if (credentials.android.keystore.containsKey("keyPassword")) {
+          keyPassword credentials.android.keystore.keyPassword
+        } else {
+          // PKCS keystores don't have a key password; reuse the store
+          // password to satisfy Gradle's requirement (same trick the
+          // EAS template uses for the phone app).
+          keyPassword credentials.android.keystore.keystorePassword
+        }
+      }
+    }
+  }
+
   buildTypes {
     debug {}
     release {
       minifyEnabled false
+      if (System.getenv("EAS_BUILD_WORKINGDIR")) {
+        signingConfig signingConfigs.release
+      }
     }
   }
 }
@@ -84,4 +118,15 @@ dependencies {
   // RemoteActivityHelper — opens the phone app from the watch ("create
   // from phone").
   implementation "androidx.wear:wear-remote-interactions:1.0.0"
+  // Coil — loads player photos in the players list.
+  implementation "io.coil-kt:coil-compose:2.7.0"
+
+  // Wear Tile — adaptive swipe-away surface (TeamderTileService).
+  // Tile API + ProtoLayout primitives (Compose can't be used in tiles).
+  implementation "androidx.wear.tiles:tiles:1.4.0"
+  implementation "androidx.wear.protolayout:protolayout:1.2.0"
+  implementation "androidx.wear.protolayout:protolayout-expression:1.2.0"
+  implementation "androidx.wear.protolayout:protolayout-material:1.2.0"
+  // Guava ListenableFuture — Tile request callbacks return it.
+  implementation "com.google.guava:guava:33.0.0-android"
 }

@@ -153,12 +153,20 @@ export function GroupWizardForm({
   };
 
   const submit = async () => {
+    // If the only thing missing is the step-1 name, don't sit on a
+    // silently-disabled button — send the user back to step 1 so they
+    // see and fix the required field.
+    if (!step1Valid) {
+      setStep(1);
+      return;
+    }
     if (!canSubmit) return;
     setBusy(true);
     try {
       await onSubmit(values);
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[groupWizard] submit failed', e);
+      Alert.alert(he.error, he.groupWizardSubmitFailed);
     } finally {
       setBusy(false);
     }
@@ -288,7 +296,10 @@ export function GroupWizardForm({
                 fullWidth
                 onPress={submit}
                 loading={busy}
-                disabled={!canSubmit}
+                // Stay tappable when only the step-1 name is missing so
+                // the tap can route back to step 1 (see `submit`). Only a
+                // bad phone / busy actually blocks the tap.
+                disabled={busy || !phoneValid}
               />
             )}
           </View>

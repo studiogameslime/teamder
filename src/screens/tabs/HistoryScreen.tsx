@@ -11,6 +11,7 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { GameSummary, TeamColor } from '@/types';
 import { gameService } from '@/services';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useCurrentGroup } from '@/store/groupStore';
 
 const TEAM_LABEL: Record<TeamColor, string> = {
@@ -28,6 +29,10 @@ export function HistoryScreen() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
+
+  useEffect(() => {
+    logEvent(AnalyticsEvent.HistoryOpened);
+  }, []);
 
   useEffect(() => {
     if (!group) return;
@@ -117,6 +122,26 @@ function HistoryRow({
               tone={isCancelled ? 'danger' : 'neutral'}
             />
           </View>
+          {/* Title + field name + format chip — give the user enough
+              detail to tell games apart without drilling in. Each
+              line is optional and the layout collapses when missing. */}
+          {item.title ? (
+            <Text style={styles.gameTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+          ) : null}
+          <View style={styles.metaRow}>
+            {item.fieldName ? (
+              <Text style={styles.metaText} numberOfLines={1}>
+                {item.fieldName}
+              </Text>
+            ) : null}
+            {item.format ? (
+              <View style={styles.formatChip}>
+                <Text style={styles.formatChipText}>{item.format}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.matches}>{he.historyMatches(item.matchCount)}</Text>
         </View>
         {resultText ? (
@@ -184,6 +209,40 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  // Title — game's headline, e.g. "חמישי כדורגל". Named gameTitle
+  // (not title) so it doesn't collide with the screen-header `title`
+  // style above.
+  gameTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Field name + format chip row — secondary info row, kept compact.
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  metaText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  formatChip: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  formatChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1E40AF',
   },
   result: { ...typography.bodyBold },
 });

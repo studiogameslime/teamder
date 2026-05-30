@@ -182,9 +182,11 @@ export function CommunityDetailsScreen() {
       });
       setGroup(fresh);
       logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_cover' });
+      logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[community] cover meta save failed', e);
+      Alert.alert(he.error, he.communityCoverUploadFailed);
     } finally {
       setUploadingCover(false);
     }
@@ -203,7 +205,8 @@ export function CommunityDetailsScreen() {
       toast.success(he.communityInviteFriendsSent(invited));
       reload();
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[community] invite friends failed', e);
+      Alert.alert(he.error, he.communityInviteFriendsFailed);
     } finally {
       setInvitingBusy(false);
     }
@@ -254,7 +257,15 @@ export function CommunityDetailsScreen() {
       });
       const result = await Share.share({
         title: he.inviteShareSubject,
-        message: he.communityInviteShareBody(link),
+        // Body carries the community name + (when set) description so
+        // recipients see what the group is about even before tapping
+        // the link. Cover image + name + description are ALSO in the
+        // WhatsApp link-preview card via the SSR /team/{id} og: tags.
+        message: he.communityInviteShareBody({
+          link,
+          name: group.name,
+          description: group.description,
+        }),
       });
       if (result.action !== 'dismissedAction') {
         logEvent(AnalyticsEvent.InviteShared, { groupId: group.id });
@@ -935,10 +946,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 22,
   },
+  // Tighter gap between secondary sections so the page reads as
+  // one community profile rather than a stack of independent cards.
+  // The hero still gets the larger lg outer paddings.
   body: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    gap: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.md,
   },
   busyOverlay: {
     ...StyleSheet.absoluteFillObject,

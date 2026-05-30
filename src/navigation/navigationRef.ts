@@ -89,9 +89,18 @@ export function navigateForPush(
 
   switch (type) {
     case 'joinRequest':
-      // Group-bound: always goes to the admin approval queue. Living
-      // in ProfileTab keeps a single home for "things waiting on me",
-      // independent of which community sent the request.
+      // Game-bound requests carry a gameId → open the game so the admin
+      // approves/rejects right there (the pending section lives on
+      // MatchDetails). Community requests have no gameId and go to the
+      // admin approval queue in ProfileTab — a single home for "things
+      // waiting on me", independent of which community sent it.
+      if (gameId) {
+        nav.navigate('GameTab', {
+          screen: 'MatchDetails',
+          params: { gameId },
+        });
+        return true;
+      }
       nav.navigate('ProfileTab', { screen: 'AdminApproval' });
       return true;
 

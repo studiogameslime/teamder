@@ -31,6 +31,10 @@ interface Props {
   disabled?: boolean;
   style?: ViewStyle;
   fullWidth?: boolean;
+  /** Override the screen-reader label. Defaults to `title` — set this
+   *  only when the visible title is iconic / abbreviated and the
+   *  spoken label should be more descriptive. */
+  accessibilityLabel?: string;
 }
 
 export function Button({
@@ -44,6 +48,7 @@ export function Button({
   disabled,
   style,
   fullWidth,
+  accessibilityLabel,
 }: Props) {
   const palette = variantPalette(variant);
   const padV = size === 'sm' ? spacing.sm : size === 'lg' ? spacing.lg : spacing.md;
@@ -53,6 +58,13 @@ export function Button({
     <PressableScale
       onPress={onPress}
       disabled={disabled || loading}
+      // Default a11y label to the visible title — fixes FV-06 where the
+      // game-edit save button had no spoken label when reached via
+      // screen reader (the title is rendered inside <Text> nested under
+      // PressableScale, but the wrapping Pressable's role+label takes
+      // precedence). Callers can override for iconic buttons.
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
       // PressableScale provides scale-on-press; we still pin the
       // disabled-opacity here so the visual contrast is consistent.
       style={[

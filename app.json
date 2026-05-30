@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "0.2.21",
+    "version": "0.2.32",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -29,7 +29,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.studiogameslime.soccerapp",
-      "versionCode": 27,
+      "versionCode": 32,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"

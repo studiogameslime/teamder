@@ -41,6 +41,7 @@ import { useGameStore } from '@/store/gameStore';
 import { useGroupStore } from '@/store/groupStore';
 import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { toast } from '@/components/Toast';
 import { he } from '@/i18n/he';
 import type { ArrivalStatus, Game, GameGuest, User, UserId } from '@/types';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -326,15 +327,67 @@ export function MatchPlayersScreen() {
             count={String(pendingEntries.length)}
           >
             <Card style={styles.listCard}>
-              {pendingEntries.map((e, i) => (
-                <PlayerRow
-                  key={e.user.id}
-                  entry={e}
-                  showDivider={i > 0}
-                  onPress={() => goToCard(e.user.id)}
-                  toneRight={he.matchPlayersPendingTag}
-                />
-              ))}
+              {pendingEntries.map((e, i) => {
+                const isAdminViewer = adminIds.has(currentUser?.id ?? '');
+                return (
+                  <PlayerRow
+                    key={e.user.id}
+                    entry={e}
+                    showDivider={i > 0}
+                    onPress={() => goToCard(e.user.id)}
+                    toneRight={he.matchPlayersPendingTag}
+                    // Admin-only: approve moves the requester into
+                    // players[] (or waitlist if full) and pushes them an
+                    // `approved`; reject drops them from pending[] and
+                    // pushes `rejected`. Both reload the roster.
+                    onApprove={
+                      isAdminViewer
+                        ? async () => {
+                            try {
+                              await gameService.approveGameJoin(
+                                game.id,
+                                e.user.id,
+                              );
+                              toast.success(he.matchPlayersApproveDone);
+                              await reload();
+                            } catch (err) {
+                              toast.error(String((err as Error)?.message ?? err));
+                            }
+                          }
+                        : undefined
+                    }
+                    onReject={
+                      isAdminViewer
+                        ? () =>
+                            Alert.alert(
+                              he.matchPlayersRejectTitle,
+                              he.matchPlayersRejectBody(e.user.name),
+                              [
+                                { text: he.cancel, style: 'cancel' },
+                                {
+                                  text: he.matchPlayersRejectCta,
+                                  style: 'destructive',
+                                  onPress: async () => {
+                                    try {
+                                      await gameService.rejectGameJoin(
+                                        game.id,
+                                        e.user.id,
+                                      );
+                                      await reload();
+                                    } catch (err) {
+                                      toast.error(
+                                        String((err as Error)?.message ?? err),
+                                      );
+                                    }
+                                  },
+                                },
+                              ],
+                            )
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </Card>
           </Section>
         ) : null}
@@ -423,6 +476,8 @@ function PlayerRow({
   onConfirmOffer,
   onPassOffer,
   onAdminAdvance,
+  onApprove,
+  onReject,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
@@ -432,9 +487,17 @@ function PlayerRow({
   onConfirmOffer?: () => void;
   onPassOffer?: () => void;
   onAdminAdvance?: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
 }) {
   const { user, isAdmin, arrival, isBringingBall } = entry;
-  const showOfferActions = !!(onConfirmOffer || onPassOffer || onAdminAdvance);
+  const showOfferActions = !!(
+    onConfirmOffer ||
+    onPassOffer ||
+    onAdminAdvance ||
+    onApprove ||
+    onReject
+  );
   return (
     <View
       style={[
@@ -523,6 +586,36 @@ function PlayerRow({
             >
               <Text style={styles.offerCtaGhostText}>
                 {he.matchPlayersOfferAdvanceCta}
+              </Text>
+            </Pressable>
+          ) : null}
+          {onApprove ? (
+            <Pressable
+              onPress={onApprove}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaPrimary,
+                pressed && { opacity: 0.8 },
+              ]}
+              accessibilityLabel={he.matchPlayersApproveCta}
+            >
+              <Text style={styles.offerCtaPrimaryText}>
+                {he.matchPlayersApproveCta}
+              </Text>
+            </Pressable>
+          ) : null}
+          {onReject ? (
+            <Pressable
+              onPress={onReject}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaGhost,
+                pressed && { opacity: 0.6 },
+              ]}
+              accessibilityLabel={he.matchPlayersRejectCta}
+            >
+              <Text style={styles.offerCtaGhostText}>
+                {he.matchPlayersRejectCta}
               </Text>
             </Pressable>
           ) : null}

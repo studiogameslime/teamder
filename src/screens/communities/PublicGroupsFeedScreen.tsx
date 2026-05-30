@@ -365,7 +365,22 @@ export function PublicGroupsFeedScreen() {
             returnKeyType="search"
             style={styles.searchInput}
           />
-          <Ionicons name="search" size={18} color="#94A3B8" />
+          {/* Clear button appears as soon as there's typed text — one
+              tap empties the field instead of forcing the user to
+              delete character-by-character. Visually replaces the
+              search icon while a query is present. */}
+          {text.length > 0 ? (
+            <Pressable
+              onPress={() => setText('')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="נקה חיפוש"
+            >
+              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+            </Pressable>
+          ) : (
+            <Ionicons name="search" size={18} color="#94A3B8" />
+          )}
         </View>
         <Pressable
           onPress={() => setFilterOpen(true)}

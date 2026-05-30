@@ -194,6 +194,20 @@ export function ProfileScreen() {
       .reduce((acc, g) => acc + g.pendingPlayerIds.length, 0);
   }, [myCommunities, user]);
 
+  const onSignOut = () => {
+    // Confirm before signing out — matches the delete-account guard and
+    // prevents a stray tap from logging the user out.
+    Alert.alert(
+      he.profileSignOutConfirmTitle,
+      he.profileSignOutConfirmBody,
+      [
+        { text: he.cancel, style: 'cancel' },
+        { text: he.profileSignOut, style: 'destructive', onPress: signOut },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const onDeleteAccount = () => {
     Alert.alert(
       he.profileDeleteAccountTitle,
@@ -377,7 +391,7 @@ export function ProfileScreen() {
           id: 'signout',
           label: he.profileSignOut,
           icon: 'log-out-outline',
-          onPress: signOut,
+          onPress: onSignOut,
         },
         {
           id: 'delete',
@@ -422,7 +436,6 @@ export function ProfileScreen() {
           <HeroStatsCard
             totalGames={totalGames}
             attended={attendedCount}
-            goals={user.stats?.goals ?? 0}
             attendancePct={attendance}
           />
         </View>
@@ -490,17 +503,40 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   logEvent(
     isBug ? AnalyticsEvent.ReportBugClicked : AnalyticsEvent.SuggestFeatureClicked,
   );
-  const url =
-    `mailto:${SUPPORT_EMAIL}` +
-    `?subject=${encodeURIComponent(subject)}` +
-    `&body=${encodeURIComponent(debugInfoBlock(uid))}`;
+  const subjectEnc = encodeURIComponent(subject);
+  const bodyEnc = encodeURIComponent(debugInfoBlock(uid));
+
+  // 1) Native mail composer. We deliberately do NOT gate on
+  //    Linking.canOpenURL('mailto:…') — on Android 11+ it returns false
+  //    unless the `mailto` scheme is declared in the manifest <queries>,
+  //    which produced a false "no mail app" even on phones with Gmail
+  //    installed. Firing the intent and catching the rejection is the
+  //    reliable check.
+  const mailto = `mailto:${SUPPORT_EMAIL}?subject=${subjectEnc}&body=${bodyEnc}`;
   try {
-    const ok = await Linking.canOpenURL(url);
-    if (ok) await Linking.openURL(url);
-    else Alert.alert(he.error, he.settingsEmailUnavailable);
+    await Linking.openURL(mailto);
+    return;
   } catch {
-    Alert.alert(he.error, he.settingsEmailUnavailable);
+    /* no app handled the mailto intent — fall through to web */
   }
+
+  // 2) Gmail web composer in the browser — works with no configured
+  //    mail client (a browser is effectively always present).
+  const gmailWeb =
+    `https://mail.google.com/mail/?view=cm&fs=1` +
+    `&to=${encodeURIComponent(SUPPORT_EMAIL)}&su=${subjectEnc}&body=${bodyEnc}`;
+  try {
+    await Linking.openURL(gmailWeb);
+    return;
+  } catch {
+    /* extremely unlikely — fall through to showing the address */
+  }
+
+  // 3) Last resort: surface the address so the user can still reach us.
+  Alert.alert(
+    he.settingsEmailUnavailable,
+    `${he.settingsEmailUnavailableHint}\n\n${SUPPORT_EMAIL}`,
+  );
 }
 
 async function openStore(): Promise<void> {
@@ -526,10 +562,13 @@ const styles = StyleSheet.create({
   // Floating stats card — pulled UP via negative margin to overlap
   // the bottom edge of the hero gradient, then padded so its
   // shadow doesn't get clipped by the next section.
+  // Hero ↔ stats overlap tightened (-28 → -36) and bottom gap
+  // bumped a touch so the card sits closer to the hero (more "lifted
+  // and connected") and breathes more towards the next section.
   statsWrap: {
-    marginTop: -28,
+    marginTop: -36,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   body: {
     paddingHorizontal: spacing.lg,

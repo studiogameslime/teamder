@@ -12,6 +12,13 @@ data class TimerState(
     val accumulatedMs: Long,
 )
 
+/** One registered player, for the players-list drill-down. */
+data class WearPlayer(
+    val name: String,
+    val photoUrl: String, // "" when the player has no photo → show initial
+    val role: String,     // "admin" | "guest" | "member"
+)
+
 /**
  * What the watch shows, driven by the user's status (relayed from the
  * phone). Three "real" states map to the product spec, plus Loading and
@@ -30,7 +37,8 @@ sealed interface WearGameState {
         val timer: TimerState,
     ) : WearGameState
 
-    /** Registered to an UPCOMING game → next-game card + details. */
+    /** Registered to an UPCOMING game → next-game card + details, with a
+     *  drill-down to the registered players. */
     data class Upcoming(
         val title: String,
         val startsAtMs: Long,
@@ -38,6 +46,19 @@ sealed interface WearGameState {
         val city: String,
         val playersCount: Int,
         val maxPlayers: Int,
+        val players: List<WearPlayer>,
+    ) : WearGameState
+
+    /** Game visible to the viewer but registration hasn't opened yet
+     *  (Game.status == 'scheduled'). UI shows
+     *  "המשחק יפתח להרשמה ב{date}" — same message on Tile + phone widgets
+     *  + watch app screen. */
+    data class Scheduled(
+        val title: String,
+        val registrationOpensAtMs: Long,
+        val startsAtMs: Long,
+        val fieldName: String,
+        val city: String,
     ) : WearGameState
 
     /** Not registered to any game → prompt + "create from phone". */

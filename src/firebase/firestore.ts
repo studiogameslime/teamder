@@ -355,6 +355,7 @@ const groupConverter: FirestoreDataConverter<Group> = {
       street: g.street ?? null,
       addressNote: g.addressNote ?? null,
       description: g.description ?? null,
+      coverPhotoUrl: g.coverPhotoUrl ?? null,
       defaultMaxPlayers:
         typeof g.defaultMaxPlayers === 'number' ? g.defaultMaxPlayers : null,
       lat: g.lat ?? null,
@@ -410,6 +411,11 @@ const groupConverter: FirestoreDataConverter<Group> = {
       lng: d.lng ?? undefined,
       creatorId:
         typeof d.creatorId === 'string' ? d.creatorId : undefined,
+      // Without this passthrough the cover was stored (via
+      // updateGroupMetadata) but dropped on every read, so the hero
+      // never showed it and the WhatsApp invite couldn't attach it.
+      coverPhotoUrl:
+        typeof d.coverPhotoUrl === 'string' ? d.coverPhotoUrl : undefined,
       adminIds: d.adminIds ?? [],
       playerIds: d.playerIds ?? [],
       pendingPlayerIds: d.pendingPlayerIds ?? [],

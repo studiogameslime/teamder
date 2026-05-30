@@ -7,11 +7,13 @@
 // wires the Gradle/MainApplication hooks so the watch survives prebuild.
 //
 // It:
-//   1. copies plugins/wear-src/wear  → android/wear            (the module)
-//   2. copies plugins/wear-src/watch → android/app/.../watch   (the bridge)
-//   3. adds `include ':wear'` to settings.gradle
-//   4. adds play-services-wearable to app/build.gradle
-//   5. registers WatchBridgePackage in MainApplication
+//   1. copies plugins/wear-src/wear   → android/wear           (the watch module)
+//   2. copies plugins/wear-src/watch  → android/app/.../watch  (the bridge module)
+//   3. copies plugins/wear-src/widget → android/app/...        (phone widget kotlin + res)
+//   4. adds `include ':wear'` to settings.gradle
+//   5. adds play-services-wearable to app/build.gradle
+//   6. registers WatchBridgePackage in MainApplication
+//   7. registers TeamderWidgetProvider <receiver> in the phone AndroidManifest
 //
 // All steps are idempotent.
 
@@ -20,12 +22,20 @@ const {
   withSettingsGradle,
   withAppBuildGradle,
   withMainApplication,
+  withAndroidManifest,
 } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
 const WEAR_DEP = 'com.google.android.gms:play-services-wearable:18.2.0';
 const WATCH_PKG = 'com.studiogameslime.soccerapp.watch.WatchBridgePackage()';
+const WIDGET_RECEIVER = 'com.studiogameslime.soccerapp.widget.TeamderWidgetProvider';
+const PLAYERS_WIDGET_RECEIVER =
+  'com.studiogameslime.soccerapp.widget.TeamderPlayersWidgetProvider';
+const TIMER_ACTION_RECEIVER =
+  'com.studiogameslime.soccerapp.widget.TimerActionReceiver';
+const PLAYERS_REMOTE_VIEWS_SERVICE =
+  'com.studiogameslime.soccerapp.widget.PlayersRemoteViewsService';
 
 function copyWearSources(config) {
   return withDangerousMod(config, [
@@ -50,6 +60,45 @@ function copyWearSources(config) {
         fs.copyFileSync(path.join(watchSrc, file), path.join(watchDest, file));
       }
 
+      // 3) Phone widget — Kotlin into .../widget/, res into res/{layout,xml,drawable}/.
+      //    Tracked in plugins/wear-src/widget/ as {kotlin, res/}; copy each
+      //    bucket to its final home in android/app/.
+      const widgetSrc = path.join(srcRoot, 'widget');
+      if (fs.existsSync(widgetSrc)) {
+        // Kotlin
+        const widgetKtSrc = path.join(widgetSrc, 'kotlin');
+        if (fs.existsSync(widgetKtSrc)) {
+          const widgetKtDest = path.join(
+            androidRoot,
+            'app/src/main/java/com/studiogameslime/soccerapp/widget',
+          );
+          fs.mkdirSync(widgetKtDest, { recursive: true });
+          for (const file of fs.readdirSync(widgetKtSrc)) {
+            fs.copyFileSync(
+              path.join(widgetKtSrc, file),
+              path.join(widgetKtDest, file),
+            );
+          }
+        }
+        // Resources (layout/, xml/, drawable/ — each merged into the
+        // app's res/ subfolders).
+        const widgetResSrc = path.join(widgetSrc, 'res');
+        if (fs.existsSync(widgetResSrc)) {
+          const appResDest = path.join(androidRoot, 'app/src/main/res');
+          for (const bucket of fs.readdirSync(widgetResSrc)) {
+            const fromBucket = path.join(widgetResSrc, bucket);
+            const toBucket = path.join(appResDest, bucket);
+            fs.mkdirSync(toBucket, { recursive: true });
+            for (const file of fs.readdirSync(fromBucket)) {
+              fs.copyFileSync(
+                path.join(fromBucket, file),
+                path.join(toBucket, file),
+              );
+            }
+          }
+        }
+      }
+
       return cfg;
     },
   ]);
@@ -69,12 +118,36 @@ function addWearToSettings(config) {
 
 function addWearableDep(config) {
   return withAppBuildGradle(config, (cfg) => {
-    if (!cfg.modResults.contents.includes('play-services-wearable')) {
-      cfg.modResults.contents = cfg.modResults.contents.replace(
+    let contents = cfg.modResults.contents;
+
+    // Wearable Data Layer (existing).
+    if (!contents.includes('play-services-wearable')) {
+      contents = contents.replace(
         /^dependencies\s*\{/m,
         `dependencies {\n    implementation("${WEAR_DEP}")`,
       );
     }
+
+    // Firebase Auth + Firestore — needed by TimerActionReceiver to mutate
+    // the timer natively from the widget button taps. RN Firebase brings
+    // them in transitively with `implementation` scope, which means they're
+    // available at runtime but NOT exposed to `:app`'s compile classpath.
+    // Declare them explicitly here so our Kotlin imports resolve. Version
+    // resolution rides on the BoM that RN Firebase already pins.
+    if (!contents.includes('com.google.firebase:firebase-firestore')) {
+      contents = contents.replace(
+        /^dependencies\s*\{/m,
+        'dependencies {\n    implementation("com.google.firebase:firebase-firestore")',
+      );
+    }
+    if (!contents.includes('com.google.firebase:firebase-auth')) {
+      contents = contents.replace(
+        /^dependencies\s*\{/m,
+        'dependencies {\n    implementation("com.google.firebase:firebase-auth")',
+      );
+    }
+
+    cfg.modResults.contents = contents;
     return cfg;
   });
 }
@@ -91,10 +164,112 @@ function registerWatchPackage(config) {
   });
 }
 
+/**
+ * Register every widget-side receiver + the RemoteViewsService in the
+ * phone app's AndroidManifest. Idempotent — each entry is skipped if
+ * already present. Uses withAndroidManifest's typed editing (vs blind
+ * string replace) so prebuild diffs stay clean.
+ *
+ * Registers:
+ *   • TeamderWidgetProvider          — timer widget (AppWidgetProvider)
+ *   • TeamderPlayersWidgetProvider   — players-list widget (AppWidgetProvider)
+ *   • TimerActionReceiver            — handles play/pause/reset button taps
+ *   • PlayersRemoteViewsService      — backs the players widget's ListView
+ */
+function registerWidgetReceiver(config) {
+  return withAndroidManifest(config, (cfg) => {
+    const app = cfg.modResults.manifest.application?.[0];
+    if (!app) return cfg;
+    app.receiver = app.receiver ?? [];
+    app.service = app.service ?? [];
+
+    const hasReceiver = (name) =>
+      app.receiver.some((r) => r.$?.['android:name'] === name);
+    const hasService = (name) =>
+      app.service.some((s) => s.$?.['android:name'] === name);
+
+    // Timer widget receiver.
+    if (!hasReceiver(WIDGET_RECEIVER)) {
+      app.receiver.push({
+        $: {
+          'android:name': WIDGET_RECEIVER,
+          'android:exported': 'true',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } },
+            ],
+          },
+        ],
+        'meta-data': [
+          {
+            $: {
+              'android:name': 'android.appwidget.provider',
+              'android:resource': '@xml/widget_teamder_info',
+            },
+          },
+        ],
+      });
+    }
+
+    // Players-list widget receiver.
+    if (!hasReceiver(PLAYERS_WIDGET_RECEIVER)) {
+      app.receiver.push({
+        $: {
+          'android:name': PLAYERS_WIDGET_RECEIVER,
+          'android:exported': 'true',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } },
+            ],
+          },
+        ],
+        'meta-data': [
+          {
+            $: {
+              'android:name': 'android.appwidget.provider',
+              'android:resource': '@xml/widget_players_info',
+            },
+          },
+        ],
+      });
+    }
+
+    // Button action receiver — explicit intents only, no intent-filter.
+    // Exported=false: only our own widget's PendingIntents target it.
+    if (!hasReceiver(TIMER_ACTION_RECEIVER)) {
+      app.receiver.push({
+        $: {
+          'android:name': TIMER_ACTION_RECEIVER,
+          'android:exported': 'false',
+        },
+      });
+    }
+
+    // RemoteViewsService for the players widget's scrolling ListView.
+    // Permission BIND_REMOTEVIEWS is required by the launcher to call us.
+    if (!hasService(PLAYERS_REMOTE_VIEWS_SERVICE)) {
+      app.service.push({
+        $: {
+          'android:name': PLAYERS_REMOTE_VIEWS_SERVICE,
+          'android:exported': 'false',
+          'android:permission': 'android.permission.BIND_REMOTEVIEWS',
+        },
+      });
+    }
+
+    return cfg;
+  });
+}
+
 module.exports = function withWearApp(config) {
   config = copyWearSources(config);
   config = addWearToSettings(config);
   config = addWearableDep(config);
   config = registerWatchPackage(config);
+  config = registerWidgetReceiver(config);
   return config;
 };

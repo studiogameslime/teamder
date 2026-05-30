@@ -1014,6 +1014,99 @@ export const groupService = {
   },
 
   /**
+   * Admin removes another user from the community. Mirrors `leaveGroup`
+   * but with an admin-check on the caller and a creator-protection on
+   * the target. Closes TU-22.
+   *
+   * Rules:
+   *   • Caller must be in adminIds of the group.
+   *   • Target ≠ caller (use `leaveGroup` to remove yourself).
+   *   • Target ≠ creator (the creator can't be kicked, even by another
+   *     admin — they have to step down explicitly).
+   *   • Removes target from adminIds, playerIds, and pendingPlayerIds in
+   *     a single doc write. Public /groupsPublic mirror is synced by
+   *     the `onGroupPendingChanged` CF, same as the leave path.
+   *   • Best-effort: rejects any still-pending join request from this
+   *     user so they don't see a phantom "pending" badge after the kick.
+   */
+  async removeMember(
+    groupId: GroupId,
+    callerId: UserId,
+    targetUserId: UserId,
+  ): Promise<void> {
+    if (callerId === targetUserId) {
+      throw new Error('removeMember: use leaveGroup to remove yourself');
+    }
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (!g) throw new Error('removeMember: group not found');
+      if (!g.adminIds.includes(callerId)) {
+        throw new Error('removeMember: caller is not an admin');
+      }
+      if (g.creatorId === targetUserId) {
+        throw new Error('CANNOT_REMOVE_CREATOR');
+      }
+      g.adminIds = g.adminIds.filter((id) => id !== targetUserId);
+      g.playerIds = g.playerIds.filter((id) => id !== targetUserId);
+      g.pendingPlayerIds = (g.pendingPlayerIds ?? []).filter(
+        (id) => id !== targetUserId,
+      );
+      g.updatedAt = Date.now();
+      syncMockPublic(g);
+      return;
+    }
+    const ref = docs.group(groupId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('removeMember: group not found');
+    const g = snap.data();
+    if (!g.adminIds.includes(callerId)) {
+      throw new Error('removeMember: caller is not an admin');
+    }
+    if (g.creatorId === targetUserId) {
+      throw new Error('CANNOT_REMOVE_CREATOR');
+    }
+    await updateDoc(ref, {
+      adminIds: arrayRemove(targetUserId),
+      playerIds: arrayRemove(targetUserId),
+      pendingPlayerIds: arrayRemove(targetUserId),
+      updatedAt: Date.now(),
+    });
+    // Sweep stale join requests so a future re-invite or re-request
+    // isn't blocked by a stuck "pending" row.
+    try {
+      const reqSnap = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('userId', '==', targetUserId),
+          where('status', '==', 'pending'),
+        ),
+      );
+      for (const rd of reqSnap.docs) {
+        try {
+          await updateDoc(docs.joinRequest(rd.id), {
+            status: 'rejected',
+            decidedAt: Date.now(),
+            decidedBy: callerId,
+          });
+        } catch (err) {
+          if (__DEV__) {
+            console.warn(
+              '[groupService] removeMember: joinRequest reject failed',
+              rd.id,
+              err,
+            );
+          }
+        }
+      }
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[groupService] removeMember: join-request sweep failed', err);
+      }
+    }
+  },
+
+  /**
    * Permanently delete a community. Caller must be a group admin —
    * Firestore rules enforce this. Cleans up cascading state in this
    * order:

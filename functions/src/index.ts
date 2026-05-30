@@ -30,6 +30,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import {
   NotificationKind as DedupeKind,
@@ -403,6 +404,15 @@ function buildMessage(
 
   switch (type) {
     case 'joinRequest':
+      // Same type covers community and game join requests. A game
+      // request carries `gameId` — phrase it for the game so the admin
+      // knows which surface to open and approve.
+      if (typeof payload.gameId === 'string') {
+        return {
+          title: 'בקשת הצטרפות למשחק',
+          body: `מישהו מבקש להצטרף למשחק ${gameTitle}. אשר או דחה בפרטי המשחק.`,
+        };
+      }
       return {
         title: 'בקשת הצטרפות חדשה',
         body: `מישהו מבקש להצטרף ל${groupName}`,
@@ -835,12 +845,18 @@ async function resolveRecipients(
     const gameId = (payload.gameId as string) || notif.recipientId;
     if (!gameId) return [];
     const gSnap = await db.collection('games').doc(gameId).get();
-    if (!gSnap.exists) return [];
-    const g = gSnap.data() as {
-      players?: string[];
-      waitlist?: string[];
-      pending?: string[];
-    };
+    // When the game doc is gone (gameCanceledOrUpdated action='deleted'
+    // hard-deletes it), fall back to the roster the client captured on
+    // the payload before deleting — otherwise NO registered player would
+    // be notified that the game was cancelled.
+    const g:
+      | { players?: string[]; waitlist?: string[]; pending?: string[] }
+      | null = gSnap.exists
+      ? (gSnap.data() as { players?: string[]; waitlist?: string[]; pending?: string[] })
+      : Array.isArray(payload.recipientUids)
+        ? { players: payload.recipientUids as string[] }
+        : null;
+    if (!g) return [];
     const ids =
       notif.type === 'gameCanceledOrUpdated'
         ? Array.from(
@@ -2308,6 +2324,7 @@ export const onGameRosterChanged = onDocumentWritten(
           status?: string;
           capacityNoticeSent?: boolean;
           arrivals?: Record<string, string>;
+          pending?: string[];
         }
       | undefined;
     const after = event.data?.after?.data() as
@@ -2324,12 +2341,86 @@ export const onGameRosterChanged = onDocumentWritten(
           pendingJoinerIds?: string[];
           pendingJoinFlushAt?: number;
           arrivals?: Record<string, string>;
+          pending?: string[];
         }
       | undefined;
 
     if (!after) return; // doc deleted
 
     const ref = event.data!.after.ref;
+
+    // ── Game join-request → notify the organizer (+ community admins).
+    // A user requesting to join an approval-required game lands in
+    // `pending[]`. The requester can't write a notification for the
+    // admin (hardened /notifications rules), so — exactly like the
+    // community flow in `onGroupPendingChanged` — we fan out the
+    // `joinRequest` push server-side. Without this the admin never
+    // learns someone is waiting, and the approval feature is a dead end.
+    {
+      const beforePending = new Set<string>(
+        Array.isArray(before?.pending) ? before!.pending! : [],
+      );
+      const afterPending = Array.isArray(after.pending) ? after.pending : [];
+      const newRequesters = afterPending.filter((id) => !beforePending.has(id));
+      if (newRequesters.length > 0) {
+        // Recipients: the game creator plus any admins of the parent
+        // community — both can approve from MatchDetails.
+        const recipients = new Set<string>();
+        if (typeof after.createdBy === 'string' && after.createdBy) {
+          recipients.add(after.createdBy);
+        }
+        if (typeof after.groupId === 'string' && after.groupId) {
+          try {
+            const gSnap = await db.collection('groups').doc(after.groupId).get();
+            const gAdmins =
+              (gSnap.data()?.adminIds as string[] | undefined) ?? [];
+            for (const a of gAdmins) recipients.add(a);
+          } catch (err) {
+            console.warn(
+              '[onGameRosterChanged] group admins read failed',
+              after.groupId,
+              err,
+            );
+          }
+        }
+        const gameTitle = after.title || 'המשחק';
+        const ops: Promise<unknown>[] = [];
+        for (const requesterId of newRequesters) {
+          for (const adminId of recipients) {
+            if (adminId === requesterId) continue; // never ping the requester
+            ops.push(
+              createNotificationOnce({
+                type: 'joinRequest',
+                recipientId: adminId,
+                // Dedupe per (admin, game) so a game request never
+                // collides with a community joinRequest for the same
+                // group, and re-requests to different games stay
+                // distinct.
+                entityType: 'game',
+                entityId: event.params.gameId,
+                reason: 'game-join-request',
+                payload: {
+                  gameId: event.params.gameId,
+                  groupId: after.groupId,
+                  // buildMessage interpolates `groupName`; pass the game
+                  // title so the copy reads naturally for game requests.
+                  groupName: gameTitle,
+                  gameTitle,
+                  requesterId,
+                },
+              }),
+            );
+          }
+        }
+        const results = await Promise.allSettled(ops);
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+          console.warn(
+            `[onGameRosterChanged] ${failed}/${results.length} game joinRequest dispatch(es) failed for game ${event.params.gameId}`,
+          );
+        }
+      }
+    }
 
     // ── Discipline cards on arrival changes. The admin's setArrival()
     // writes /games/{id}.arrivals[uid] = 'late' | 'no_show'. The
@@ -3639,6 +3730,85 @@ function pickShortString(
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/**
+ * Upload a community cover photo on behalf of a group admin.
+ *
+ * Why a callable instead of a direct client Storage upload: the Storage
+ * rule for `groups/{id}/cover.jpg` gated writes on
+ * `firestore.get(...).adminIds`, but a cross-service read from a Storage
+ * rule carries no App Check token — and this project enforces App Check
+ * on Firestore — so the get() failed and even legitimate admins got
+ * `storage/unauthorized`. Here we verify the admin with the Admin SDK
+ * (which bypasses App Check) and write with the Admin SDK (which bypasses
+ * Storage rules), then mint the standard Firebase download URL.
+ *
+ * Client sends the already-resized JPEG as base64 (~250 KB → ~340 KB
+ * base64, well within the callable payload limit).
+ */
+export const uploadGroupCover = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const data = (request.data ?? {}) as {
+      groupId?: string;
+      imageBase64?: string;
+      contentType?: string;
+    };
+    const groupId = typeof data.groupId === 'string' ? data.groupId : '';
+    const imageBase64 =
+      typeof data.imageBase64 === 'string' ? data.imageBase64 : '';
+    const contentType =
+      typeof data.contentType === 'string' ? data.contentType : 'image/jpeg';
+    if (!groupId || !imageBase64) {
+      throw new HttpsError('invalid-argument', 'groupId + imageBase64 required');
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(contentType)) {
+      throw new HttpsError('invalid-argument', 'unsupported content type');
+    }
+
+    // Admin gate — Admin SDK read is not subject to App Check.
+    const gSnap = await db.collection('groups').doc(groupId).get();
+    if (!gSnap.exists) {
+      throw new HttpsError('not-found', 'group not found');
+    }
+    const adminIds = (gSnap.data()?.adminIds as string[] | undefined) ?? [];
+    if (!adminIds.includes(uid)) {
+      throw new HttpsError('permission-denied', 'group admins only');
+    }
+
+    const buffer = Buffer.from(imageBase64, 'base64');
+    if (buffer.length === 0 || buffer.length > 2 * 1024 * 1024) {
+      throw new HttpsError('invalid-argument', 'image missing or too large');
+    }
+
+    const token = randomUUID();
+    const bucket = admin.storage().bucket();
+    const objectPath = `groups/${groupId}/cover.jpg`;
+    const file = bucket.file(objectPath);
+    try {
+      await file.save(buffer, {
+        contentType,
+        resumable: false,
+        metadata: {
+          // This token is what makes the public download URL below work,
+          // matching the format the client `getDownloadURL()` returns.
+          metadata: { firebaseStorageDownloadTokens: token },
+        },
+      });
+    } catch (err) {
+      console.error('[uploadGroupCover] save failed', groupId, err);
+      throw new HttpsError('internal', 'upload failed');
+    }
+    const url =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+    return { url };
+  },
+);
+
 export const createGroupCallable = onCall(
   { enforceAppCheck: true },
   async (request) => {
@@ -4319,12 +4489,23 @@ export const updateShowcaseOnGameChange = onDocumentWritten(
 // og:title once the showcase loads — this just guarantees crawlers
 // (which never run that JS) see the right values.
 
-const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'community.html');
-let cachedTemplate: string | null = null;
-function loadTemplate(): string {
-  if (cachedTemplate !== null) return cachedTemplate;
-  cachedTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf8');
-  return cachedTemplate;
+const COMMUNITY_TEMPLATE_PATH = path.join(
+  __dirname,
+  '..',
+  'templates',
+  'community.html',
+);
+const INVITE_TEMPLATE_PATH = path.join(
+  __dirname,
+  '..',
+  'templates',
+  'invite.html',
+);
+const templateCache: Record<string, string> = {};
+function loadTemplate(filePath: string): string {
+  if (templateCache[filePath]) return templateCache[filePath];
+  templateCache[filePath] = fs.readFileSync(filePath, 'utf8');
+  return templateCache[filePath];
 }
 
 function escapeHtml(s: string): string {
@@ -4342,20 +4523,35 @@ interface ShowcaseSummary {
   city: string | null;
   totalGamesFinished: number;
   totalMembers: number;
+  /** Group cover image URL — surfaced for `og:image` so WhatsApp /
+   *  Telegram / Facebook show the community's cover in the share
+   *  preview. Read from /groups/{id} since communityShowcase doesn't
+   *  carry it; one extra Firestore read per uncached page hit. */
+  coverPhotoUrl: string | null;
 }
 
 async function loadShowcaseSummary(
   groupId: string,
 ): Promise<ShowcaseSummary | null> {
   try {
-    const snap = await db
-      .collection('communityShowcase')
-      .doc(groupId)
-      .get();
-    if (!snap.exists) return null;
-    const d = snap.data() as Record<string, unknown>;
+    // Two parallel reads — showcase (name/desc/city/counts) + the raw
+    // group doc (cover). Both cached for 5-10min downstream so this
+    // doesn't run on every share-link click.
+    const [showSnap, groupSnap] = await Promise.all([
+      db.collection('communityShowcase').doc(groupId).get(),
+      db.collection('groups').doc(groupId).get(),
+    ]);
+    if (!showSnap.exists) return null;
+    const d = showSnap.data() as Record<string, unknown>;
     const name = typeof d.name === 'string' ? d.name : '';
     if (!name) return null;
+    const groupData = groupSnap.exists
+      ? (groupSnap.data() as Record<string, unknown>)
+      : {};
+    const cover =
+      typeof groupData.coverPhotoUrl === 'string'
+        ? groupData.coverPhotoUrl
+        : null;
     return {
       name,
       description:
@@ -4367,6 +4563,7 @@ async function loadShowcaseSummary(
           : 0,
       totalMembers:
         typeof d.totalMembers === 'number' ? d.totalMembers : 0,
+      coverPhotoUrl: cover,
     };
   } catch (err) {
     console.warn(
@@ -4407,9 +4604,11 @@ function injectMeta(
   html: string,
   title: string,
   description: string,
+  imageUrl: string | null,
 ): string {
   const safeTitle = escapeHtml(title);
   const safeDesc = escapeHtml(description);
+  const safeImage = imageUrl ? escapeHtml(imageUrl) : null;
   let out = html;
 
   // <title> — a single replacement on the literal default works because
@@ -4435,6 +4634,31 @@ function injectMeta(
     /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/,
     `<meta property="og:description" content="${safeDesc}" />`,
   );
+  // og:image / twitter:image — the community's cover photo so the
+  // WhatsApp / Telegram preview card shows the actual group image
+  // instead of the generic Teamder logo. Only rewritten when we
+  // have a URL — the static fallback to /logo.png stays for groups
+  // without a cover.
+  if (safeImage) {
+    out = out.replace(
+      /<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/,
+      `<meta property="og:image" content="${safeImage}" />`,
+    );
+    out = out.replace(
+      /<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/,
+      `<meta name="twitter:image" content="${safeImage}" />`,
+    );
+  }
+  // twitter:title / twitter:description if present (invite.html has
+  // them; community.html relies on og:* fallback).
+  out = out.replace(
+    /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/,
+    `<meta name="twitter:title" content="${safeTitle}" />`,
+  );
+  out = out.replace(
+    /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/,
+    `<meta name="twitter:description" content="${safeDesc}" />`,
+  );
 
   return out;
 }
@@ -4443,22 +4667,34 @@ export const serveCommunityPage = onRequest(
   { region: 'us-central1', memory: '256MiB' },
   async (req, res) => {
     try {
-      // Hosting forwards the original path verbatim (req.path is
-      // `/c/{groupId}` or `/c/{groupId}/...`). Strip the leading
-      // `/c/` and take the first remaining segment.
+      // Hosting forwards the original path verbatim. We support TWO
+      // route families that both need SSR OG injection:
+      //   /c/{groupId}    → community showcase (full stats page)
+      //   /team/{groupId} → invite landing (open-in-app / install card)
+      // The template differs, the OG injection logic is shared.
       const raw = (req.path || '').replace(/^\/+/, '');
       const parts = raw.split('/').filter(Boolean);
+      const isInvite = parts[0] === 'team';
       const groupId =
-        parts[0] === 'c' ? parts[1] || '' : parts[0] || '';
+        parts[0] === 'c' || parts[0] === 'team'
+          ? parts[1] || ''
+          : parts[0] || '';
 
-      const html = loadTemplate();
+      const html = loadTemplate(
+        isInvite ? INVITE_TEMPLATE_PATH : COMMUNITY_TEMPLATE_PATH,
+      );
 
       let summary: ShowcaseSummary | null = null;
       if (groupId) {
         summary = await loadShowcaseSummary(groupId);
       }
       const { title, description } = buildMetaBlock(summary);
-      const rendered = injectMeta(html, title, description);
+      const rendered = injectMeta(
+        html,
+        title,
+        description,
+        summary?.coverPhotoUrl ?? null,
+      );
 
       // 5min browser, 10min edge cache. Hosting-side CDN keys on the
       // full URL, so each /c/{id} caches independently. When a
@@ -4477,7 +4713,10 @@ export const serveCommunityPage = onRequest(
       // OG tags for this one request.
       try {
         res.set('Content-Type', 'text/html; charset=utf-8');
-        res.status(200).send(loadTemplate());
+        const fallbackPath = (req.path || '').startsWith('/team')
+          ? INVITE_TEMPLATE_PATH
+          : COMMUNITY_TEMPLATE_PATH;
+        res.status(200).send(loadTemplate(fallbackPath));
       } catch {
         res.status(500).send('internal error');
       }

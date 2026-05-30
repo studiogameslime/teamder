@@ -190,10 +190,16 @@ export const achievementsService = {
     }
     const playersCoached = playersCoachedSet.size;
 
-    // ── gamesJoined — past terminal games where the user was in the
-    //    final players[] AND appeared in any team. Mirrors the
-    //    discipline derivation: if you were in a team, you actually
-    //    played.
+    // ── gamesJoined — past finished games where the user was in the
+    //    final players[] AND actually arrived (arrival != 'no_show').
+    //
+    //    Pre-2026-05-29 this also required the user to appear in
+    //    `teams[]`. After the live-match pivot to timer-only,
+    //    `teams[]` is never populated — so the achievement counters
+    //    silently froze at 0 (every "5/10/25 משחקים" tag stayed
+    //    locked even for active players). The fix: drop the teams[]
+    //    requirement and use arrival status, which is what the trust
+    //    service already uses for "attended a game".
     let gamesJoined = 0;
     try {
       const candidates = await loadParticipatedGames(userId);
@@ -202,12 +208,12 @@ export const achievementsService = {
         if (g.status !== 'finished') continue;
         if (typeof g.startsAt === 'number' && g.startsAt >= now) continue;
         if (!(g.players ?? []).includes(userId)) continue;
-        const teams = g.teams;
-        if (!Array.isArray(teams) || teams.length === 0) continue;
-        const inSomeTeam = teams.some((t) =>
-          (t.playerIds ?? []).includes(userId),
-        );
-        if (inSomeTeam) gamesJoined += 1;
+        const arrivals = (g.arrivals ?? {}) as Record<string, string>;
+        // Default to "attended" — if no arrival entry exists, assume
+        // the player showed up (the no_show marker is opt-in by the
+        // admin). Only an explicit no_show excludes the game.
+        if (arrivals[userId] === 'no_show') continue;
+        gamesJoined += 1;
       }
     } catch {
       // Silent — leave gamesJoined at 0 on transient failures.

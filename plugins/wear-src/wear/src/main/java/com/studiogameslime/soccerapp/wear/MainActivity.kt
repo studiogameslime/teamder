@@ -17,6 +17,7 @@ import androidx.wear.remote.interactions.RemoteActivityHelper
 import com.studiogameslime.soccerapp.wear.data.WearStateRepository
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
+import com.studiogameslime.soccerapp.wear.model.WearPlayer
 import com.studiogameslime.soccerapp.wear.ui.WearApp
 
 /**
@@ -83,6 +84,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private fun demoStates(): List<WearGameState> = listOf(
+    // 1. Live — game running, big stopwatch.
     WearGameState.Live(
         title = "חמישי כדורגל",
         timer = TimerState(
@@ -92,6 +94,17 @@ private fun demoStates(): List<WearGameState> = listOf(
             accumulatedMs = 0L,
         ),
     ),
+    // 2. Live — paused (e.g. half-time). Same elapsed, but frozen.
+    WearGameState.Live(
+        title = "חמישי כדורגל",
+        timer = TimerState(
+            running = false,
+            lastStartedAt = 0L,
+            // 45 minutes locked in.
+            accumulatedMs = 2_700_000L,
+        ),
+    ),
+    // 3. Upcoming — registered, game ahead. Drill-down to players.
     WearGameState.Upcoming(
         title = "חמישי כדורגל",
         startsAtMs = System.currentTimeMillis() + 3 * 3_600_000L,
@@ -99,6 +112,26 @@ private fun demoStates(): List<WearGameState> = listOf(
         city = "תל אביב",
         playersCount = 8,
         maxPlayers = 10,
+        players = listOf(
+            WearPlayer("דניאל", "https://i.pravatar.cc/150?img=12", "admin"),
+            WearPlayer("יוסי", "https://i.pravatar.cc/150?img=33", "member"),
+            WearPlayer("אורי", "", "member"),
+            WearPlayer("נועם", "https://i.pravatar.cc/150?img=51", "member"),
+            WearPlayer("איתי", "", "guest"),
+            WearPlayer("רון", "https://i.pravatar.cc/150?img=68", "member"),
+            WearPlayer("גיא", "", "member"),
+            WearPlayer("עומר", "https://i.pravatar.cc/150?img=14", "guest"),
+        ),
     ),
+    // 4. Scheduled — registration opens later. Date string.
+    WearGameState.Scheduled(
+        title = "חמישי כדורגל",
+        // Opens tomorrow noon.
+        registrationOpensAtMs = System.currentTimeMillis() + 24 * 3_600_000L,
+        startsAtMs = System.currentTimeMillis() + 7 * 24 * 3_600_000L,
+        fieldName = "המגרש הקבוע",
+        city = "תל אביב",
+    ),
+    // 5. NotRegistered — empty state + "create on phone".
     WearGameState.NotRegistered,
 )

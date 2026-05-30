@@ -32,12 +32,23 @@ import { he } from '@/i18n/he';
 const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
 const FIELD_TYPES: FieldType[] = ['asphalt', 'synthetic', 'grass'];
 
+/** Date window — leads the filter sheet because "מתי" is the question
+ *  most users have first. */
+export type GameTimeWindow = 'any' | 'today' | 'thisWeek' | 'weekend';
+/** Cost slice — surfaced near the top so a paid game never surprises. */
+export type GameCostFilter = 'any' | 'free' | 'paid';
+
 export interface GameFilters {
+  /** Time window — primary question, surfaces at the top of the sheet. */
+  when: GameTimeWindow;
   formats: GameFormat[];
   fieldTypes: FieldType[];
   /** "public" = must be open to the whole app, "community" = members-only,
    *  null = any. */
   visibility: 'public' | 'community' | null;
+  /** Cost slice — most local games are free; this is rare to set but
+   *  worth surfacing. */
+  cost: GameCostFilter;
   hasReferee: boolean | null;
   hasPenalties: boolean | null;
   hasHalfTime: boolean | null;
@@ -49,9 +60,11 @@ export interface GameFilters {
 }
 
 export const EMPTY_GAME_FILTERS: GameFilters = {
+  when: 'any',
   formats: [],
   fieldTypes: [],
   visibility: null,
+  cost: 'any',
   hasReferee: null,
   hasPenalties: null,
   hasHalfTime: null,
@@ -63,9 +76,11 @@ export const EMPTY_GAME_FILTERS: GameFilters = {
 
 export function isFiltersEmpty(f: GameFilters): boolean {
   return (
+    f.when === 'any' &&
     f.formats.length === 0 &&
     f.fieldTypes.length === 0 &&
     f.visibility === null &&
+    f.cost === 'any' &&
     f.hasReferee === null &&
     f.hasPenalties === null &&
     f.hasHalfTime === null &&
@@ -78,9 +93,11 @@ export function isFiltersEmpty(f: GameFilters): boolean {
 
 export function activeFiltersCount(f: GameFilters): number {
   let n = 0;
+  if (f.when !== 'any') n += 1;
   if (f.formats.length) n += 1;
   if (f.fieldTypes.length) n += 1;
   if (f.visibility !== null) n += 1;
+  if (f.cost !== 'any') n += 1;
   if (f.hasReferee !== null) n += 1;
   if (f.hasPenalties !== null) n += 1;
   if (f.hasHalfTime !== null) n += 1;
@@ -91,14 +108,62 @@ export function activeFiltersCount(f: GameFilters): number {
   return n;
 }
 
+/** Apply the time window to a startsAt timestamp. */
+export function gameMatchesWhen(
+  startsAt: number,
+  when: GameTimeWindow,
+  now = Date.now(),
+): boolean {
+  if (when === 'any') return true;
+  if (startsAt < now) return false;
+  const d = new Date(now);
+  const todayEnd = new Date(d);
+  todayEnd.setHours(23, 59, 59, 999);
+  if (when === 'today') return startsAt <= todayEnd.getTime();
+  if (when === 'thisWeek') {
+    // ISO week, Sun → Sat in Israel
+    const day = d.getDay();
+    const daysUntilSat = (6 - day + 7) % 7;
+    const weekEnd = new Date(d);
+    weekEnd.setDate(d.getDate() + daysUntilSat);
+    weekEnd.setHours(23, 59, 59, 999);
+    return startsAt <= weekEnd.getTime();
+  }
+  if (when === 'weekend') {
+    // "סופ״ש" in Israel = Fri + Sat
+    const day = d.getDay();
+    const daysUntilFri = (5 - day + 7) % 7;
+    const friStart = new Date(d);
+    friStart.setDate(d.getDate() + daysUntilFri);
+    friStart.setHours(0, 0, 0, 0);
+    const satEnd = new Date(friStart);
+    satEnd.setDate(friStart.getDate() + 1);
+    satEnd.setHours(23, 59, 59, 999);
+    return startsAt >= friStart.getTime() && startsAt <= satEnd.getTime();
+  }
+  return true;
+}
+
 interface Props {
   visible: boolean;
   filters: GameFilters;
   onChange: (next: GameFilters) => void;
   onClose: () => void;
+  /**
+   * Live count of games that match the *current* filter draft. When
+   * provided, the Apply button shows "החל (N)" so the user can see
+   * the effect of each toggle without closing the sheet.
+   */
+  matchCount?: number;
 }
 
-export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) {
+export function GameFilterSheet({
+  visible,
+  filters,
+  onChange,
+  onClose,
+  matchCount,
+}: Props) {
   const toggleFormat = (f: GameFormat) =>
     onChange({
       ...filters,
@@ -136,6 +201,28 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
             contentContainerStyle={styles.bodyContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* When — primary filter, surfaces first. */}
+            <Section title={he.gameFiltersWhen}>
+              <PillRow>
+                {(['any', 'today', 'thisWeek', 'weekend'] as const).map((w) => (
+                  <Pill
+                    key={w}
+                    active={filters.when === w}
+                    label={
+                      w === 'any'
+                        ? he.gameFiltersWhenAny
+                        : w === 'today'
+                          ? he.gameFiltersWhenToday
+                          : w === 'thisWeek'
+                            ? he.gameFiltersWhenThisWeek
+                            : he.gameFiltersWhenWeekend
+                    }
+                    onPress={() => onChange({ ...filters, when: w })}
+                  />
+                ))}
+              </PillRow>
+            </Section>
+
             {/* Format multi-select */}
             <Section title={he.createGameFormat}>
               <PillRow>
@@ -159,6 +246,26 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
                     active={filters.fieldTypes.includes(f)}
                     label={fieldTypeLabel(f)}
                     onPress={() => toggleFieldType(f)}
+                  />
+                ))}
+              </PillRow>
+            </Section>
+
+            {/* Cost slice */}
+            <Section title={he.gameFiltersCost}>
+              <PillRow>
+                {(['any', 'free', 'paid'] as const).map((c) => (
+                  <Pill
+                    key={c}
+                    active={filters.cost === c}
+                    label={
+                      c === 'any'
+                        ? he.gameFiltersWhenAny
+                        : c === 'free'
+                          ? he.gameFiltersCostFree
+                          : he.gameFiltersCostPaid
+                    }
+                    onPress={() => onChange({ ...filters, cost: c })}
                   />
                 ))}
               </PillRow>
@@ -255,7 +362,11 @@ export function GameFilterSheet({ visible, filters, onChange, onClose }: Props) 
             />
             <View style={{ flex: 1 }}>
               <Button
-                title={he.gameFiltersApply}
+                title={
+                  typeof matchCount === 'number'
+                    ? `${he.gameFiltersApply} (${matchCount})`
+                    : he.gameFiltersApply
+                }
                 variant="primary"
                 size="lg"
                 fullWidth
@@ -383,9 +494,11 @@ function fieldTypeLabel(f: FieldType): string {
 // ─── Filter application — pure function consumed by the list screen ────
 
 export function applyGameFilters<T extends {
+  startsAt: number;
   format?: GameFormat;
   fieldType?: FieldType;
   visibility?: 'public' | 'community';
+  costPerGame?: number;
   hasReferee?: boolean;
   hasPenalties?: boolean;
   hasHalfTime?: boolean;
@@ -396,6 +509,7 @@ export function applyGameFilters<T extends {
   players: string[];
 }>(games: T[], f: GameFilters): T[] {
   return games.filter((g) => {
+    if (!gameMatchesWhen(g.startsAt, f.when)) return false;
     if (f.formats.length > 0 && (!g.format || !f.formats.includes(g.format))) {
       return false;
     }
@@ -407,6 +521,11 @@ export function applyGameFilters<T extends {
     }
     if (f.visibility !== null && (g.visibility ?? 'community') !== f.visibility) {
       return false;
+    }
+    if (f.cost !== 'any') {
+      const isFree = !g.costPerGame || g.costPerGame === 0;
+      if (f.cost === 'free' && !isFree) return false;
+      if (f.cost === 'paid' && isFree) return false;
     }
     if (f.hasReferee !== null && !!g.hasReferee !== f.hasReferee) return false;
     if (f.hasPenalties !== null && !!g.hasPenalties !== f.hasPenalties) {

@@ -23,11 +23,15 @@
             android:name="com.google.android.wearable"
             android:required="true" />
 
-        <!-- This watch app depends on the paired phone app (auth is handed
-             over from the phone). Not a standalone Wear app. -->
+        <!-- Marked standalone so testers can install it directly from the
+             Play Store ON THE WATCH (a dependent app is only auto-delivered
+             with the phone app, which is unreliable during testing). It is
+             still a thin client at runtime: it pulls live data from the
+             paired phone via the Data Layer and shows a "open the app on
+             your phone" state until that data arrives. -->
         <meta-data
             android:name="com.google.android.wearable.standalone"
-            android:value="false" />
+            android:value="true" />
 
         <activity
             android:name=".MainActivity"
@@ -38,5 +42,40 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Adaptive Wear Tile — live timer / next game / no-game placeholder.
+             Reads from the same /teamder/state DataItem the watch app
+             consumes, so it stays in lockstep with the in-app state. -->
+        <service
+            android:name=".tile.TeamderTileService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:icon="@drawable/ic_wear_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <!-- Tile-picker preview. Re-using the brand logo here keeps
+                 the wear module from needing a separate preview asset. -->
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/teamder_logo" />
+        </service>
+
+        <!-- Listens for /teamder/state changes and pushes a tile refresh.
+             Without it the tile would only refresh on its declared
+             freshness interval (~60s), and a start/pause on the phone
+             would look frozen on the tile. -->
+        <service
+            android:name=".tile.TileUpdateListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/teamder/state" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

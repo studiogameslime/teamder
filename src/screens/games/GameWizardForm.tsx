@@ -205,9 +205,6 @@ export function GameWizardForm({
 
   const maxPlayers = playersPerTeam(values.format) * values.numberOfTeams;
 
-  // No required fields — every input on every step is optional. The
-  // organizer can submit a minimal game and edit details later.
-
   // Subtle fade-in when transitioning between steps.
   const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -219,20 +216,25 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
-  // Step 1 hard gate: the city MUST be picked from the autocomplete
-  // dropdown. The matcher writes/reads the EXACT string, so a
-  // free-typed value would fragment the data. We don't enforce
-  // `fieldName` here — it's required visually but the wizard accepts
-  // an empty submit (legacy behaviour preserved).
-  // EVERY game — quick or community — REQUIRES a full location (city +
-  // field name + address) so invited players know exactly when, where and
-  // why to show up. City must additionally be picked from the autocomplete
-  // (the filler matcher reads the exact string).
+  // Step 1 hard gate: EVERY game — quick or community — REQUIRES a full
+  // location (field name + city + address) so invited players know
+  // exactly when, where and why to show up. City must additionally be
+  // picked from the autocomplete dropdown (the filler matcher reads the
+  // EXACT string, so a free-typed value would fragment the data).
   const step1Valid =
     values.city.trim().length > 0 &&
     values.cityFromList === true &&
     values.fieldName.trim().length > 0 &&
     values.fieldAddress.trim().length > 0;
+  // Human-readable list of what's still missing — surfaced under the
+  // disabled "המשך" button so the user isn't left guessing why it's grey.
+  const step1Missing: string[] = [];
+  if (values.fieldName.trim().length === 0)
+    step1Missing.push(he.createGameField);
+  if (values.city.trim().length === 0 || values.cityFromList !== true)
+    step1Missing.push(he.createGameCity);
+  if (values.fieldAddress.trim().length === 0)
+    step1Missing.push(he.createGameAddressRequired);
   const goNext = () => {
     if (step === 1 && !step1Valid) return;
     if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
@@ -268,7 +270,8 @@ export function GameWizardForm({
     try {
       await onSubmit(values);
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[gameWizard] submit failed', e);
+      Alert.alert(he.error, he.gameWizardSubmitFailed);
     } finally {
       setBusy(false);
     }
@@ -346,6 +349,14 @@ export function GameWizardForm({
             ) : null}
           </Animated.View>
         </ScrollView>
+
+        {/* Tell the user WHY "המשך" is disabled — otherwise the grey
+            button just silently does nothing on tap. */}
+        {step === 1 && !step1Valid && step1Missing.length > 0 ? (
+          <Text style={styles.missingHint}>
+            {he.gameWizardMissingFields(step1Missing.join(', '))}
+          </Text>
+        ) : null}
 
         <View style={styles.footer}>
           {step > 1 ? (
@@ -999,13 +1010,31 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
 
+  // Footer carries the next/back buttons. Earlier the bottom ad
+  // banner sat flush against the buttons (no margin), which created
+  // a visual tug between the CTA and the ad. Extra bottom padding +
+  // a subtle inner shadow lift the footer off the ad strip so the
+  // CTA stays unambiguously the next action.
   footer: {
     flexDirection: 'row',
     gap: spacing.sm,
     padding: spacing.lg,
+    paddingBottom: spacing.lg + spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
     backgroundColor: colors.bg,
     alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  missingHint: {
+    ...typography.caption,
+    color: colors.danger,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
 });

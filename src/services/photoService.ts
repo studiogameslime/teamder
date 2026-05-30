@@ -71,10 +71,10 @@ const TARGET_SIZE = 512;
 const JPEG_QUALITY = 0.8;
 
 // Community cover: landscape hero behind the title on the community
-// details screen. Stored at /groups/{groupId}/cover.jpg. Wider + a
+// details screen. Stored at /groups/{groupId}/cover.jpg by the
+// `uploadGroupCover` callable (server-side Admin SDK write). Wider + a
 // touch lower quality than the avatar since it's a background, not a
 // focal photo — 1280×720 @ 0.7 lands ≈250 KB.
-const GROUP_COVER_PATH = (groupId: string) => `groups/${groupId}/cover.jpg`;
 const COVER_WIDTH = 1280;
 const COVER_HEIGHT = 720;
 const COVER_QUALITY = 0.7;
@@ -202,22 +202,35 @@ export async function pickAndUploadGroupCover(
   const resized = await ImageManipulator.manipulateAsync(
     sourceUri,
     [{ resize: { width: COVER_WIDTH, height: COVER_HEIGHT } }],
-    { compress: COVER_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
+    {
+      compress: COVER_QUALITY,
+      format: ImageManipulator.SaveFormat.JPEG,
+      base64: true,
+    },
   );
-
-  let blob: Blob;
-  try {
-    const res = await fetch(resized.uri);
-    blob = await res.blob();
-  } catch (err) {
-    return { ok: false, reason: 'network', err };
+  const imageBase64 = resized.base64;
+  if (!imageBase64) {
+    return { ok: false, reason: 'unknown' };
   }
 
+  // Upload through the `uploadGroupCover` callable rather than a direct
+  // client Storage write. The Storage rule for this path admin-gated via
+  // `firestore.get(...).adminIds`, but that cross-service read carries no
+  // App Check token and the project enforces App Check on Firestore — so
+  // direct writes failed with `storage/unauthorized` for everyone. The
+  // callable verifies the admin and writes with the Admin SDK.
   try {
-    const { storage } = getFirebase();
-    const objectRef = storageRef(storage, GROUP_COVER_PATH(groupId));
-    await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
-    const url = await getDownloadURL(objectRef);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'uploadGroupCover');
+    const res = (await fn({
+      groupId,
+      imageBase64,
+      contentType: 'image/jpeg',
+    })) as { data?: { url?: string } };
+    const url = res?.data?.url;
+    if (!url) return { ok: false, reason: 'network' };
     return { ok: true, url };
   } catch (err) {
     return { ok: false, reason: 'network', err };

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Teamder players-list widget — shows the roster of the user's next
+  upcoming game. Bound to a RemoteViewsService (PlayersRemoteViewsService)
+  so the list scrolls and updates whenever the upstream payload changes.
+
+  Hidden states:
+    • placeholder when there's no upcoming game (kind != "upcoming")
+    • whole layout still renders the same root chrome so transitions
+      between "has roster" and "no game" don't reflow the widget bounds.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/players_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_bg">
+
+    <!-- Header row: logo (right under RTL) + title + count chip (left).
+         The Teamder logo anchors the brand the same way the timer widget
+         and the Wear Tile do — one mark across all three surfaces. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/players_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#1E40AF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/btn_reset_bg" />
+
+        <TextView
+            android:id="@+id/players_title"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="#1F2A44"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textAlignment="viewEnd"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <ImageView
+            android:id="@+id/players_logo"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="Teamder"
+            android:src="@drawable/teamder_logo" />
+    </LinearLayout>
+
+    <!-- Subtitle: "בעוד 2 שעות · מגרש QA" -->
+    <TextView
+        android:id="@+id/players_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="#64748B"
+        android:textSize="11sp"
+        android:textAlignment="viewEnd"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- Scrollable roster. The RemoteAdapter is bound at runtime by the
+         provider to PlayersRemoteViewsService. -->
+    <ListView
+        android:id="@+id/players_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:divider="@null"
+        android:dividerHeight="0dp" />
+
+    <!-- Shown only when there's no upcoming game (kind != upcoming). -->
+    <TextView
+        android:id="@+id/players_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:textColor="#64748B"
+        android:textSize="13sp"
+        android:visibility="gone" />
+</LinearLayout>

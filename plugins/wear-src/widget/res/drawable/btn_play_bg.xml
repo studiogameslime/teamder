@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Round green pill for the widget's PLAY button — matches the
+  "התחל משחק" CTA on LiveMatchScreen so the visual language is consistent
+  across the app and widget. Used for both "start" (first press) and
+  "resume" (after pause).
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#16A34A" />
+</shape>

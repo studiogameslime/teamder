@@ -263,11 +263,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textAlign: RTL_LABEL_ALIGN,
   },
+  // Slightly larger + medium weight so the announcement reads
+  // differently from regular field text below it. Italic feels right
+  // for a "quoted-from-the-admin" voice.
   cardBody: {
     ...typography.body,
     color: '#0F172A',
+    fontStyle: 'italic',
+    fontWeight: '500',
+    fontSize: 15,
     textAlign: RTL_LABEL_ALIGN,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   editHint: {
     position: 'absolute',

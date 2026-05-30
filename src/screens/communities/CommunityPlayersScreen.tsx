@@ -3,10 +3,11 @@
 // PlayersPreview tap, and from the hamburger menu.
 //
 // Visual: identity-row card per player (jersey + name + admin badge
-// + games / wins). Sorted admins-first, then by games-played desc.
+// + games played). Sorted admins-first, then by games-played desc.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -27,8 +28,10 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
+import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { Group, User, UserId } from '@/types';
@@ -42,12 +45,12 @@ type Params = RouteProp<CommunitiesStackParamList, 'CommunityPlayers'>;
 
 interface PlayerStats {
   gamesPlayed: number;
-  wins: number;
 }
 
 export function CommunityPlayersScreen() {
   const nav = useNavigation<Nav>();
   const { groupId } = useRoute<Params>().params;
+  const me = useUserStore((s) => s.currentUser);
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [stats, setStats] = useState<Record<UserId, PlayerStats> | null>(null);
@@ -78,6 +81,46 @@ export function CommunityPlayersScreen() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // Viewer-is-admin gate. Only group admins see the "remove member"
+  // affordance, and only on rows that aren't the creator / aren't
+  // themselves. Closes TU-22 — kicking a member used to be impossible
+  // without manual Firestore edits.
+  const iAmAdmin = !!me && !!group && group.adminIds.includes(me.id);
+
+  const handleRemoveMember = useCallback(
+    (target: User) => {
+      if (!group || !me) return;
+      Alert.alert(
+        he.communityRemoveMemberConfirmTitle,
+        he.communityRemoveMemberConfirmBody(target.name),
+        [
+          { text: he.cancel, style: 'cancel' },
+          {
+            text: he.communityRemoveMember,
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await groupService.removeMember(group.id, me.id, target.id);
+                toast.success(he.communityRemoveMemberDone);
+                await reload();
+              } catch (e) {
+                if (__DEV__) console.warn('[removeMember] failed', e);
+                const code = (e as Error)?.message;
+                Alert.alert(
+                  he.error,
+                  code === 'CANNOT_REMOVE_CREATOR'
+                    ? he.communityRemoveMemberCreatorBlocked
+                    : he.friendsActionFailed,
+                );
+              }
+            },
+          },
+        ],
+      );
+    },
+    [group, me, reload],
+  );
 
   // Sort: admins first (by name), then players by games-played desc,
   // tie-broken by name. Ensures the top of the list is the most
@@ -127,24 +170,31 @@ export function CommunityPlayersScreen() {
               <Text style={styles.headlineCount}>({ordered.length})</Text>
             </Text>
           }
-          renderItem={({ item: u, index: i }) => (
-            <View
-              style={i === 0 ? styles.listCard : null}
-            >
-              <PlayerRow
-                user={u}
-                isAdmin={group.adminIds.includes(u.id)}
-                stats={stats?.[u.id]}
-                showDivider={i > 0}
-                onPress={() =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'PlayerCard',
-                    { userId: u.id, groupId: group.id },
-                  )
-                }
-              />
-            </View>
-          )}
+          renderItem={({ item: u, index: i }) => {
+            // Removable iff: viewer is admin, target isn't self, target
+            // isn't the creator. The service double-checks all three.
+            const removable =
+              iAmAdmin && me?.id !== u.id && group.creatorId !== u.id;
+            return (
+              <View style={i === 0 ? styles.listCard : null}>
+                <PlayerRow
+                  user={u}
+                  isAdmin={group.adminIds.includes(u.id)}
+                  stats={stats?.[u.id]}
+                  showDivider={i > 0}
+                  onPress={() =>
+                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                      'PlayerCard',
+                      { userId: u.id, groupId: group.id },
+                    )
+                  }
+                  onLongPress={
+                    removable ? () => handleRemoveMember(u) : undefined
+                  }
+                />
+              </View>
+            );
+          }}
           initialNumToRender={20}
           windowSize={10}
         />
@@ -159,18 +209,24 @@ function PlayerRow({
   stats,
   showDivider,
   onPress,
+  onLongPress,
 }: {
   user: User;
   isAdmin: boolean;
   stats?: PlayerStats;
   showDivider: boolean;
   onPress: () => void;
+  /** Optional admin action — long-press opens the remove-confirm
+   *  dialog. Undefined for non-removable rows (self / creator /
+   *  viewer-not-admin). */
+  onLongPress?: () => void;
 }) {
   const games = stats?.gamesPlayed ?? 0;
-  const wins = stats?.wins ?? 0;
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
       style={({ pressed }) => [
         styles.row,
         showDivider && styles.rowDivider,
@@ -178,6 +234,7 @@ function PlayerRow({
       ]}
       accessibilityRole="button"
       accessibilityLabel={user.name}
+      accessibilityHint={onLongPress ? he.communityRemoveMember : undefined}
     >
       <PlayerIdentity user={user} size="sm" />
       <View style={styles.rowBody}>
@@ -197,11 +254,6 @@ function PlayerRow({
           <StatChip
             icon="football-outline"
             text={he.communityPlayerGames(games)}
-          />
-          <StatChip
-            icon="trophy-outline"
-            text={he.communityPlayerWins(wins)}
-            tint={wins > 0 ? colors.primary : colors.textMuted}
           />
         </View>
       </View>

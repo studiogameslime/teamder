@@ -25,6 +25,7 @@ import { Game, GameFormat, FieldType, UserId } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDateShort, formatTime } from '@/utils/format';
+import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
   | 'join'
@@ -105,7 +106,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // optional descriptors (field type, requires-approval). Format used
   // to live in a wide vertical strip on the left; folding it into the
   // tags row reclaims that horizontal real-estate.
-  const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' }> = [
+  const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = [
     { label: fmt, tone: 'accent' },
   ];
   if (game.fieldType) {
@@ -114,6 +115,15 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   if (game.requiresApproval) {
     tags.push({ label: he.matchStatusPending, tone: 'warning' });
   }
+  // Capacity urgency — shown EVEN IF the user is registered, because
+  // scarcity is useful info ("invite a friend before it locks") not
+  // just a join cue. Red when full, orange when ≤3 spots remain.
+  const spotsLeft = Math.max(0, game.maxPlayers - occupancy);
+  if (isFull) {
+    tags.push({ label: he.matchStatusFull, tone: 'danger' });
+  } else if (spotsLeft > 0 && spotsLeft <= 3) {
+    tags.push({ label: he.matchStatusLastSpots(spotsLeft), tone: 'warning' });
+  }
 
   // Hide the cancel CTA on the list — it's a destructive action and
   // belongs only on MatchDetails where the consequence is more
@@ -121,12 +131,9 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const showCta = cta === 'join' || cta === 'waitlist';
 
   return (
-    <Pressable
+    <PressableScale
       onPress={openDetails}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && { opacity: 0.95, transform: [{ scale: 0.997 }] },
-      ]}
+      style={styles.card}
       accessibilityRole="button"
       accessibilityLabel={game.title}
     >
@@ -207,7 +214,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
         </View>
       </View>
 
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -239,14 +246,16 @@ function Tag({
   tone,
 }: {
   label: string;
-  tone: 'accent' | 'neutral' | 'warning';
+  tone: 'accent' | 'neutral' | 'warning' | 'danger';
 }) {
   const palette =
-    tone === 'warning'
-      ? { bg: '#FEF3C7', fg: '#B45309' }
-      : tone === 'accent'
-        ? { bg: 'rgba(59,130,246,0.12)', fg: '#1D4ED8' }
-        : { bg: '#F1F5F9', fg: '#475569' };
+    tone === 'danger'
+      ? { bg: '#FEE2E2', fg: '#B91C1C' }
+      : tone === 'warning'
+        ? { bg: '#FEF3C7', fg: '#B45309' }
+        : tone === 'accent'
+          ? { bg: 'rgba(59,130,246,0.12)', fg: '#1D4ED8' }
+          : { bg: '#F1F5F9', fg: '#475569' };
   return (
     <View style={[styles.tag, { backgroundColor: palette.bg }]}>
       <Text style={[styles.tagText, { color: palette.fg }]}>{label}</Text>
@@ -258,6 +267,10 @@ function renderStatusPill(
   status: ReturnType<typeof statusForUser>,
   isFull: boolean,
 ): React.ReactNode {
+  // Status pill = USER'S relationship to the game (joined / waitlist /
+  // pending). Capacity ("מלא" / "מקומות אחרונים") lives in the tags row
+  // instead, so a registered user still sees the room/scarcity signal
+  // without it stealing the status slot.
   if (status === 'joined') {
     return (
       <PillBadge label={he.matchStatusJoined} bg="#DCFCE7" fg="#166534" icon="checkmark-circle" />
@@ -273,6 +286,8 @@ function renderStatusPill(
       <PillBadge label={he.matchStatusPending} bg="#E2E8F0" fg="#475569" icon="time" />
     );
   }
+  // Not-related user: still show one pill so the card never looks bare.
+  // Full is the louder of the two; open is the default.
   if (isFull) {
     return (
       <PillBadge label={he.matchStatusFull} bg="#FEE2E2" fg="#B91C1C" icon="people" />

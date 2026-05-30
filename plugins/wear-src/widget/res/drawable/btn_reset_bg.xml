@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Round muted-blue pill for the widget's RESET button — secondary,
+  less attention-grabbing than play/pause. Mirrors the soft-blue
+  "אפס" button on LiveMatchScreen.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#E0E7FF" />
+</shape>

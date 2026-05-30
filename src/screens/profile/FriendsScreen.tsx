@@ -15,10 +15,12 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { deepLinkService } from '@/services/deepLinkService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +29,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
 import { friendsService, type FriendRequestWithUser } from '@/services/friendsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -37,6 +40,7 @@ export function FriendsScreen() {
   const me = useUserStore((s) => s.currentUser);
   const [friends, setFriends] = useState<User[]>([]);
   const [incoming, setIncoming] = useState<FriendRequestWithUser[]>([]);
+  const [outgoing, setOutgoing] = useState<FriendRequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -47,12 +51,14 @@ export function FriendsScreen() {
       if (opts.pull) setRefreshing(true);
       else setLoading(true);
       try {
-        const [f, inc] = await Promise.all([
+        const [f, inc, out] = await Promise.all([
           friendsService.listFriends(me.id),
           friendsService.listIncomingRequests(me.id),
+          friendsService.listOutgoingRequests(me.id),
         ]);
         setFriends(f);
         setIncoming(inc);
+        setOutgoing(out);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -63,6 +69,7 @@ export function FriendsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      logEvent(AnalyticsEvent.FriendsScreenOpened);
       load();
     }, [load]),
   );
@@ -75,7 +82,8 @@ export function FriendsScreen() {
       toast.success(he.friendsAccepted);
       await load();
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[friends] accept failed', e);
+      Alert.alert(he.error, he.friendsActionFailed);
     } finally {
       setBusyId(null);
     }
@@ -88,7 +96,26 @@ export function FriendsScreen() {
       await friendsService.declineRequest(fromUserId, me.id);
       await load();
     } catch (e) {
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      if (__DEV__) console.warn('[friends] decline failed', e);
+      Alert.alert(he.error, he.friendsActionFailed);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Withdraw a friend request I sent but that hasn't been answered yet.
+  const handleCancelOutgoing = async (toUserId: string) => {
+    if (!me) return;
+    setBusyId(toUserId);
+    try {
+      await friendsService.cancelRequest(me.id, toUserId);
+      // Optimistically drop it so the row disappears even before the
+      // re-fetch settles (read-after-write latency on the request docs).
+      setOutgoing((prev) => prev.filter((o) => o.request.toUserId !== toUserId));
+      await load();
+    } catch (e) {
+      if (__DEV__) console.warn('[friends] cancel request failed', e);
+      Alert.alert(he.error, he.friendsActionFailed);
     } finally {
       setBusyId(null);
     }
@@ -105,9 +132,16 @@ export function FriendsScreen() {
           setBusyId(friend.id);
           try {
             await friendsService.removeFriend(me.id, friend.id);
+            // Optimistically drop the friend from the local list. The
+            // trusted callable mutates /users docs, but a re-fetch right
+            // after can still read the stale friends array (read-after-
+            // write latency), leaving the removed friend visible until the
+            // next focus. Update local state now so the UI is correct.
+            setFriends((prev) => prev.filter((f) => f.id !== friend.id));
             await load();
           } catch (e) {
-            Alert.alert(he.error, String((e as Error).message ?? e));
+            if (__DEV__) console.warn('[friends] remove failed', e);
+            Alert.alert(he.error, he.friendsActionFailed);
           } finally {
             setBusyId(null);
           }
@@ -183,19 +217,97 @@ export function FriendsScreen() {
             </View>
           ) : null}
 
-          {/* ② Friends */}
+          {/* ② Outgoing requests — pending requests I sent, with a way
+              to withdraw them (previously these were invisible). */}
+          {outgoing.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{he.friendsSentTitle}</Text>
+              {outgoing.map(({ request, user }) => (
+                <View key={request.id} style={styles.row}>
+                  <Pressable
+                    style={styles.rowMain}
+                    onPress={() => openCard(request.toUserId)}
+                  >
+                    <Avatar
+                      avatarId={user?.avatarId}
+                      uri={user?.photoUrl}
+                      name={user?.name ?? '?'}
+                      size={44}
+                    />
+                    <Text style={styles.name} numberOfLines={1}>
+                      {user?.name ?? he.friendsUnknownUser}
+                    </Text>
+                  </Pressable>
+                  {busyId === request.toUserId ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : (
+                    <Pressable
+                      onPress={() => handleCancelOutgoing(request.toUserId)}
+                      hitSlop={8}
+                      style={styles.cancelOutgoingBtn}
+                      accessibilityLabel={he.friendsCancelRequest}
+                    >
+                      <Text style={styles.cancelOutgoingText}>
+                        {he.friendsCancelRequest}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {/* ③ Friends */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               {he.friendsMineTitle(friends.length)}
             </Text>
             {friends.length === 0 ? (
-              <View style={styles.empty}>
-                <Ionicons
-                  name="people-outline"
-                  size={40}
-                  color={colors.textMuted}
-                />
-                <Text style={styles.emptyText}>{he.friendsEmpty}</Text>
+              // Empty state was just text + icon — felt unfinished.
+              // Card with title + body + invite CTA gives the screen
+              // a real "do something" affordance.
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons
+                    name="people-outline"
+                    size={28}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={styles.emptyCardTitle}>
+                  {he.friendsEmptyCtaTitle}
+                </Text>
+                <Text style={styles.emptyCardBody}>
+                  {he.friendsEmptyCtaBody}
+                </Text>
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      const link = 'https://teamder.app';
+                      await Share.share({
+                        title: he.inviteShareSubject,
+                        message: he.profileInviteShareBody(link),
+                      });
+                    } catch {
+                      /* user dismissed share sheet */
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.emptyCtaBtn,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.friendsEmptyCtaButton}
+                >
+                  <Ionicons
+                    name="person-add-outline"
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.emptyCtaBtnText}>
+                    {he.friendsEmptyCtaButton}
+                  </Text>
+                </Pressable>
               </View>
             ) : (
               friends.map((friend) => (
@@ -284,10 +396,73 @@ const styles = StyleSheet.create({
   acceptBtn: { backgroundColor: colors.primary },
   declineBtn: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
   removeBtn: { padding: spacing.sm },
+  cancelOutgoingBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelOutgoingText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
   empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.sm },
   emptyText: {
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  // Empty-state CTA card — replaces the bare icon+text empty state
+  // so the screen has a clear next action when no friends are yet
+  // attached. Mirrors the "outline-card + filled-button" pattern used
+  // on the games tab's empty state.
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(59,130,246,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCardTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  emptyCardBody: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    marginTop: spacing.sm,
+    alignSelf: 'stretch',
+  },
+  emptyCtaBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

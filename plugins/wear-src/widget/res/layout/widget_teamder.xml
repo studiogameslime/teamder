@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Teamder home-screen widget — three adaptive states share this single
+  layout, with TeamderWidgetProvider toggling VISIBILITY of state-specific
+  views.
+
+  Live state shows real, tappable play/pause/reset buttons. Each button
+  fires a PendingIntent to TimerActionReceiver, which mutates Firestore
+  directly from native Kotlin — no app-launch round-trip. The widget
+  refreshes within ~1s of the transaction via the bridge fan-out.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:gravity="center"
+    android:background="@drawable/widget_bg">
+
+    <!-- Brand logo — visible in every state. Same teamder_logo.png the
+         Wear app + Tile use, kept small so it never crowds the timer.
+         contentDescription is set in code (RemoteViews) for a11y. -->
+    <ImageView
+        android:id="@+id/widget_logo"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginBottom="4dp"
+        android:contentDescription="Teamder"
+        android:src="@drawable/teamder_logo" />
+
+    <!-- Title — visible in every state. -->
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#1F2A44"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- LIVE: ticking Chronometer (set by the provider with a
+         SystemClock-relative base). -->
+    <Chronometer
+        android:id="@+id/widget_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#1E40AF"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:fontFeatureSettings="tnum"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- LIVE: shown only when the timer is being controlled by ANOTHER
+         user (controlledBy != viewer). One source of communication
+         vs the user accidentally thinking the widget itself acted. -->
+    <TextView
+        android:id="@+id/widget_controller"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#64748B"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- UPCOMING: "בעוד 2 שעות" / "מחר 19:00". -->
+    <TextView
+        android:id="@+id/widget_relative_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#1E40AF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
+    <!-- UPCOMING: field name. -->
+    <TextView
+        android:id="@+id/widget_sub1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#64748B"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- UPCOMING: players count. -->
+    <TextView
+        android:id="@+id/widget_sub2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#64748B"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- LIVE: control buttons. The provider toggles visibility per
+         running/paused state (running → pause only; paused → play +
+         reset; first-time live → play only). 44dp circular buttons,
+         clearly tappable, color-coded. -->
+    <LinearLayout
+        android:id="@+id/widget_buttons"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_btn_play"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/btn_play_bg"
+            android:gravity="center"
+            android:text="▶"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginEnd="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/widget_btn_pause"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/btn_pause_bg"
+            android:gravity="center"
+            android:text="⏸"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:layout_marginEnd="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/widget_btn_reset"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/btn_reset_bg"
+            android:gravity="center"
+            android:text="↻"
+            android:textColor="#1E40AF"
+            android:textSize="20sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- PLACEHOLDER: "אין משחק רשום". -->
+    <TextView
+        android:id="@+id/widget_placeholder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#64748B"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:maxLines="2"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+</LinearLayout>

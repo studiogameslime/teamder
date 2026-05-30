@@ -1,20 +1,30 @@
 package com.studiogameslime.soccerapp.watch
 
+import android.content.Context
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import com.studiogameslime.soccerapp.widget.TeamderPlayersWidgetProvider
+import com.studiogameslime.soccerapp.widget.TeamderWidgetProvider
 
 /**
- * Bridges the React Native side to the Wearable Data Layer so the phone can
- * publish the current game state to the paired Teamder watch app.
+ * Bridges the React Native side to TWO native surfaces that mirror the
+ * current game state:
+ *   1. Wearable Data Layer (`/teamder/state`)  → paired watch app + Wear Tile
+ *   2. SharedPreferences (`TeamderWidgetState`) → phone home-screen widget
  *
- * JS calls `WatchBridge.publishState(jsonString)`; we write it to the
- * DataItem at `/teamder/state`. The watch's WearStateRepository listens to
- * that path and renders the matching screen. A timestamp is included so an
- * unchanged JSON payload still produces a TYPE_CHANGED event on the watch.
+ * JS calls `WatchBridge.publishState(jsonString)` once; we fan it out to
+ * both. Same JSON shape (computed by `watchSyncService.computeWatchPayload`),
+ * so adding a new state means changing the JS payload once and every
+ * surface picks it up.
+ *
+ * Watch publish: a timestamp is included so an unchanged JSON payload
+ * still produces a TYPE_CHANGED event on the watch (Data Layer dedups by
+ * content otherwise). Widget publish: prefs write + APPWIDGET_UPDATE
+ * broadcast — no-op if no widget is currently placed.
  */
 class WatchBridgeModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -23,6 +33,22 @@ class WatchBridgeModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun publishState(json: String, promise: Promise) {
+        // 1) Phone home-screen widgets (timer + players-list). Both read
+        //    the same SharedPreferences payload — one write, two refreshes.
+        //    Best-effort — never blocks the watch publish or fails the
+        //    promise.
+        try {
+            reactContext.getSharedPreferences(
+                TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+            ).edit().putString(TeamderWidgetProvider.KEY_JSON, json).apply()
+            TeamderWidgetProvider.requestRefresh(reactContext)
+            TeamderPlayersWidgetProvider.requestRefresh(reactContext)
+        } catch (_: Exception) {
+            // Widget refresh failing should not affect the watch path —
+            // swallow and continue.
+        }
+
+        // 2) Paired watch (existing path).
         try {
             val request = PutDataMapRequest.create(STATE_PATH).apply {
                 dataMap.putString(KEY_JSON, json)

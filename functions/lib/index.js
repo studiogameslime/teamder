@@ -55,13 +55,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.sendShortageWarnings = exports.findFillerCandidates = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.sendPromotePrompts = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.dailyCleanup = exports.cleanupStaleGames = exports.flipScheduledGames = exports.flushPendingJoinerNotifs = exports.sendRsvpNudges = exports.sendGameReminders = exports.onNotificationCreated = void 0;
+exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.sendShortageWarnings = exports.findFillerCandidates = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.sendPromotePrompts = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.dailyCleanup = exports.cleanupStaleGames = exports.flipScheduledGames = exports.flushPendingJoinerNotifs = exports.sendRsvpNudges = exports.sendGameReminders = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const crypto_1 = require("crypto");
 const v2_1 = require("firebase-functions/v2");
 const notificationDedup_1 = require("./notificationDedup");
 admin.initializeApp();
@@ -320,6 +321,15 @@ function buildMessage(type, payload) {
     const when = startsAt ? formatHebrewWhen(startsAt) : '';
     switch (type) {
         case 'joinRequest':
+            // Same type covers community and game join requests. A game
+            // request carries `gameId` — phrase it for the game so the admin
+            // knows which surface to open and approve.
+            if (typeof payload.gameId === 'string') {
+                return {
+                    title: 'בקשת הצטרפות למשחק',
+                    body: `מישהו מבקש להצטרף למשחק ${gameTitle}. אשר או דחה בפרטי המשחק.`,
+                };
+            }
             return {
                 title: 'בקשת הצטרפות חדשה',
                 body: `מישהו מבקש להצטרף ל${groupName}`,
@@ -727,9 +737,17 @@ async function resolveRecipients(notif) {
         if (!gameId)
             return [];
         const gSnap = await db.collection('games').doc(gameId).get();
-        if (!gSnap.exists)
+        // When the game doc is gone (gameCanceledOrUpdated action='deleted'
+        // hard-deletes it), fall back to the roster the client captured on
+        // the payload before deleting — otherwise NO registered player would
+        // be notified that the game was cancelled.
+        const g = gSnap.exists
+            ? gSnap.data()
+            : Array.isArray(payload.recipientUids)
+                ? { players: payload.recipientUids }
+                : null;
+        if (!g)
             return [];
-        const g = gSnap.data();
         const ids = notif.type === 'gameCanceledOrUpdated'
             ? Array.from(new Set([
                 ...(g.players || []),
@@ -1962,6 +1980,70 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
     if (!after)
         return; // doc deleted
     const ref = event.data.after.ref;
+    // ── Game join-request → notify the organizer (+ community admins).
+    // A user requesting to join an approval-required game lands in
+    // `pending[]`. The requester can't write a notification for the
+    // admin (hardened /notifications rules), so — exactly like the
+    // community flow in `onGroupPendingChanged` — we fan out the
+    // `joinRequest` push server-side. Without this the admin never
+    // learns someone is waiting, and the approval feature is a dead end.
+    {
+        const beforePending = new Set(Array.isArray(before?.pending) ? before.pending : []);
+        const afterPending = Array.isArray(after.pending) ? after.pending : [];
+        const newRequesters = afterPending.filter((id) => !beforePending.has(id));
+        if (newRequesters.length > 0) {
+            // Recipients: the game creator plus any admins of the parent
+            // community — both can approve from MatchDetails.
+            const recipients = new Set();
+            if (typeof after.createdBy === 'string' && after.createdBy) {
+                recipients.add(after.createdBy);
+            }
+            if (typeof after.groupId === 'string' && after.groupId) {
+                try {
+                    const gSnap = await db.collection('groups').doc(after.groupId).get();
+                    const gAdmins = gSnap.data()?.adminIds ?? [];
+                    for (const a of gAdmins)
+                        recipients.add(a);
+                }
+                catch (err) {
+                    console.warn('[onGameRosterChanged] group admins read failed', after.groupId, err);
+                }
+            }
+            const gameTitle = after.title || 'המשחק';
+            const ops = [];
+            for (const requesterId of newRequesters) {
+                for (const adminId of recipients) {
+                    if (adminId === requesterId)
+                        continue; // never ping the requester
+                    ops.push(createNotificationOnce({
+                        type: 'joinRequest',
+                        recipientId: adminId,
+                        // Dedupe per (admin, game) so a game request never
+                        // collides with a community joinRequest for the same
+                        // group, and re-requests to different games stay
+                        // distinct.
+                        entityType: 'game',
+                        entityId: event.params.gameId,
+                        reason: 'game-join-request',
+                        payload: {
+                            gameId: event.params.gameId,
+                            groupId: after.groupId,
+                            // buildMessage interpolates `groupName`; pass the game
+                            // title so the copy reads naturally for game requests.
+                            groupName: gameTitle,
+                            gameTitle,
+                            requesterId,
+                        },
+                    }));
+                }
+            }
+            const results = await Promise.allSettled(ops);
+            const failed = results.filter((r) => r.status === 'rejected').length;
+            if (failed > 0) {
+                console.warn(`[onGameRosterChanged] ${failed}/${results.length} game joinRequest dispatch(es) failed for game ${event.params.gameId}`);
+            }
+        }
+    }
     // ── Discipline cards on arrival changes. The admin's setArrival()
     // writes /games/{id}.arrivals[uid] = 'late' | 'no_show'. The
     // client used to ALSO write /users/{uid}.discipline directly,
@@ -2983,6 +3065,72 @@ function pickShortString(v, max, field, required) {
     }
     return trimmed.length > 0 ? trimmed : undefined;
 }
+/**
+ * Upload a community cover photo on behalf of a group admin.
+ *
+ * Why a callable instead of a direct client Storage upload: the Storage
+ * rule for `groups/{id}/cover.jpg` gated writes on
+ * `firestore.get(...).adminIds`, but a cross-service read from a Storage
+ * rule carries no App Check token — and this project enforces App Check
+ * on Firestore — so the get() failed and even legitimate admins got
+ * `storage/unauthorized`. Here we verify the admin with the Admin SDK
+ * (which bypasses App Check) and write with the Admin SDK (which bypasses
+ * Storage rules), then mint the standard Firebase download URL.
+ *
+ * Client sends the already-resized JPEG as base64 (~250 KB → ~340 KB
+ * base64, well within the callable payload limit).
+ */
+exports.uploadGroupCover = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+    if (!request.auth?.uid) {
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    }
+    const uid = request.auth.uid;
+    const data = (request.data ?? {});
+    const groupId = typeof data.groupId === 'string' ? data.groupId : '';
+    const imageBase64 = typeof data.imageBase64 === 'string' ? data.imageBase64 : '';
+    const contentType = typeof data.contentType === 'string' ? data.contentType : 'image/jpeg';
+    if (!groupId || !imageBase64) {
+        throw new https_1.HttpsError('invalid-argument', 'groupId + imageBase64 required');
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(contentType)) {
+        throw new https_1.HttpsError('invalid-argument', 'unsupported content type');
+    }
+    // Admin gate — Admin SDK read is not subject to App Check.
+    const gSnap = await db.collection('groups').doc(groupId).get();
+    if (!gSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'group not found');
+    }
+    const adminIds = gSnap.data()?.adminIds ?? [];
+    if (!adminIds.includes(uid)) {
+        throw new https_1.HttpsError('permission-denied', 'group admins only');
+    }
+    const buffer = Buffer.from(imageBase64, 'base64');
+    if (buffer.length === 0 || buffer.length > 2 * 1024 * 1024) {
+        throw new https_1.HttpsError('invalid-argument', 'image missing or too large');
+    }
+    const token = (0, crypto_1.randomUUID)();
+    const bucket = admin.storage().bucket();
+    const objectPath = `groups/${groupId}/cover.jpg`;
+    const file = bucket.file(objectPath);
+    try {
+        await file.save(buffer, {
+            contentType,
+            resumable: false,
+            metadata: {
+                // This token is what makes the public download URL below work,
+                // matching the format the client `getDownloadURL()` returns.
+                metadata: { firebaseStorageDownloadTokens: token },
+            },
+        });
+    }
+    catch (err) {
+        console.error('[uploadGroupCover] save failed', groupId, err);
+        throw new https_1.HttpsError('internal', 'upload failed');
+    }
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+        `${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+    return { url };
+});
 exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
@@ -3437,13 +3585,14 @@ exports.updateShowcaseOnGameChange = (0, firestore_1.onDocumentWritten)('games/{
 // The JS in the page itself still runs and overrides document.title /
 // og:title once the showcase loads — this just guarantees crawlers
 // (which never run that JS) see the right values.
-const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'community.html');
-let cachedTemplate = null;
-function loadTemplate() {
-    if (cachedTemplate !== null)
-        return cachedTemplate;
-    cachedTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf8');
-    return cachedTemplate;
+const COMMUNITY_TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'community.html');
+const INVITE_TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'invite.html');
+const templateCache = {};
+function loadTemplate(filePath) {
+    if (templateCache[filePath])
+        return templateCache[filePath];
+    templateCache[filePath] = fs.readFileSync(filePath, 'utf8');
+    return templateCache[filePath];
 }
 function escapeHtml(s) {
     return s
@@ -3455,16 +3604,25 @@ function escapeHtml(s) {
 }
 async function loadShowcaseSummary(groupId) {
     try {
-        const snap = await db
-            .collection('communityShowcase')
-            .doc(groupId)
-            .get();
-        if (!snap.exists)
+        // Two parallel reads — showcase (name/desc/city/counts) + the raw
+        // group doc (cover). Both cached for 5-10min downstream so this
+        // doesn't run on every share-link click.
+        const [showSnap, groupSnap] = await Promise.all([
+            db.collection('communityShowcase').doc(groupId).get(),
+            db.collection('groups').doc(groupId).get(),
+        ]);
+        if (!showSnap.exists)
             return null;
-        const d = snap.data();
+        const d = showSnap.data();
         const name = typeof d.name === 'string' ? d.name : '';
         if (!name)
             return null;
+        const groupData = groupSnap.exists
+            ? groupSnap.data()
+            : {};
+        const cover = typeof groupData.coverPhotoUrl === 'string'
+            ? groupData.coverPhotoUrl
+            : null;
         return {
             name,
             description: typeof d.description === 'string' ? d.description : null,
@@ -3473,6 +3631,7 @@ async function loadShowcaseSummary(groupId) {
                 ? d.totalGamesFinished
                 : 0,
             totalMembers: typeof d.totalMembers === 'number' ? d.totalMembers : 0,
+            coverPhotoUrl: cover,
         };
     }
     catch (err) {
@@ -3502,9 +3661,10 @@ function buildMetaBlock(summary) {
     }
     return { title, description };
 }
-function injectMeta(html, title, description) {
+function injectMeta(html, title, description, imageUrl) {
     const safeTitle = escapeHtml(title);
     const safeDesc = escapeHtml(description);
+    const safeImage = imageUrl ? escapeHtml(imageUrl) : null;
     let out = html;
     // <title> — a single replacement on the literal default works because
     // the static template has exactly one <title> tag.
@@ -3517,23 +3677,41 @@ function injectMeta(html, title, description) {
     // defaults the crawlers see.
     out = out.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${safeTitle}" />`);
     out = out.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${safeDesc}" />`);
+    // og:image / twitter:image — the community's cover photo so the
+    // WhatsApp / Telegram preview card shows the actual group image
+    // instead of the generic Teamder logo. Only rewritten when we
+    // have a URL — the static fallback to /logo.png stays for groups
+    // without a cover.
+    if (safeImage) {
+        out = out.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${safeImage}" />`);
+        out = out.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${safeImage}" />`);
+    }
+    // twitter:title / twitter:description if present (invite.html has
+    // them; community.html relies on og:* fallback).
+    out = out.replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${safeTitle}" />`);
+    out = out.replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${safeDesc}" />`);
     return out;
 }
 exports.serveCommunityPage = (0, https_1.onRequest)({ region: 'us-central1', memory: '256MiB' }, async (req, res) => {
     try {
-        // Hosting forwards the original path verbatim (req.path is
-        // `/c/{groupId}` or `/c/{groupId}/...`). Strip the leading
-        // `/c/` and take the first remaining segment.
+        // Hosting forwards the original path verbatim. We support TWO
+        // route families that both need SSR OG injection:
+        //   /c/{groupId}    → community showcase (full stats page)
+        //   /team/{groupId} → invite landing (open-in-app / install card)
+        // The template differs, the OG injection logic is shared.
         const raw = (req.path || '').replace(/^\/+/, '');
         const parts = raw.split('/').filter(Boolean);
-        const groupId = parts[0] === 'c' ? parts[1] || '' : parts[0] || '';
-        const html = loadTemplate();
+        const isInvite = parts[0] === 'team';
+        const groupId = parts[0] === 'c' || parts[0] === 'team'
+            ? parts[1] || ''
+            : parts[0] || '';
+        const html = loadTemplate(isInvite ? INVITE_TEMPLATE_PATH : COMMUNITY_TEMPLATE_PATH);
         let summary = null;
         if (groupId) {
             summary = await loadShowcaseSummary(groupId);
         }
         const { title, description } = buildMetaBlock(summary);
-        const rendered = injectMeta(html, title, description);
+        const rendered = injectMeta(html, title, description, summary?.coverPhotoUrl ?? null);
         // 5min browser, 10min edge cache. Hosting-side CDN keys on the
         // full URL, so each /c/{id} caches independently. When a
         // community renames itself the CF re-runs after the cache
@@ -3549,7 +3727,10 @@ exports.serveCommunityPage = (0, https_1.onRequest)({ region: 'us-central1', mem
         // OG tags for this one request.
         try {
             res.set('Content-Type', 'text/html; charset=utf-8');
-            res.status(200).send(loadTemplate());
+            const fallbackPath = (req.path || '').startsWith('/team')
+                ? INVITE_TEMPLATE_PATH
+                : COMMUNITY_TEMPLATE_PATH;
+            res.status(200).send(loadTemplate(fallbackPath));
         }
         catch {
             res.status(500).send('internal error');

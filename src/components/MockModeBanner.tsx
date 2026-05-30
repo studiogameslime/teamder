@@ -8,10 +8,12 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
-// ⚠️ SCREENSHOT MODE — flip SCREENSHOT_MODE back to false when finished
-// capturing for the Play Store. While true, the orange "demo data"
-// strip is suppressed.
-const SCREENSHOT_MODE = false;
+// Suppress the orange "demo data" strip while capturing store
+// screenshots. Driven by the same EXPO_PUBLIC_SCREENSHOT_MODE env var
+// the ads layer uses, so a single flag cleans up all dev chrome — no
+// hardcoded bool to remember to flip back.
+const SCREENSHOT_MODE =
+  (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1';
 
 export function MockModeBanner(): React.ReactElement | null {
   if (SCREENSHOT_MODE) return null;

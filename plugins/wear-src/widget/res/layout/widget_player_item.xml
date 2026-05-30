@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Single row in the players-list widget. Lean — name + optional role
+  badge (מנהל / אורח). Avatars are intentionally skipped for v1:
+  loading photos into RemoteViews requires bitmap pipelines and would
+  bloat the widget process. Adding them later is straightforward.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingVertical="6dp"
+    android:gravity="center_vertical">
+
+    <!-- Role badge — only visible when role is admin or guest. -->
+    <TextView
+        android:id="@+id/player_role"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#1E40AF"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="1dp"
+        android:background="@drawable/btn_reset_bg"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/player_name"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="#1F2A44"
+        android:textSize="13sp"
+        android:textAlignment="viewEnd"
+        android:maxLines="1"
+        android:ellipsize="end" />
+</LinearLayout>

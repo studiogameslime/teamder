@@ -735,6 +735,14 @@ export interface GameSummary {
    * mock seed data which predates the field.
    */
   status?: 'finished' | 'cancelled';
+  /**
+   * Surface a couple of extra facets on the history row so the user
+   * can tell games apart at a glance. Both optional — older summaries
+   * skip them and the row degrades gracefully.
+   */
+  title?: string;
+  fieldName?: string;
+  format?: GameFormat;
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -126,6 +127,7 @@ export function GameCreateScreen() {
   const startOrphanFlow = async () => {
     if (!user) return;
     setOrphanLoading(true);
+    logEvent(AnalyticsEvent.QuickGameFlowStarted);
     try {
       const groupId = await groupService.ensurePersonalGroupId();
       // Synthesize a minimal Group object — the wizard only reads
@@ -257,6 +259,23 @@ export function GameCreateScreen() {
 
   const submit = async (v: GameFormValues) => {
     if (!user || !selectedGroup) return;
+    // Past-date guard: if kickoff is already behind us, confirm before
+    // creating (the picker happily allows past times). Recurring games
+    // legitimately open in the past, so skip the check for those.
+    if (!v.recurringGameEnabled && v.startsAt < Date.now()) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          he.createGamePastDateTitle,
+          he.createGamePastDateBody,
+          [
+            { text: he.cancel, style: 'cancel', onPress: () => resolve(false) },
+            { text: he.createGamePastDateConfirm, onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        );
+      });
+      if (!proceed) return;
+    }
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
     const playersPerTeam =
       v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
@@ -314,6 +333,16 @@ export function GameCreateScreen() {
               }),
           ),
         );
+        logEvent(AnalyticsEvent.FriendsInvitedToGame, {
+          gameId: created.id,
+          count: inviteIds.length,
+        });
+      }
+      // Distinguish quick (orphan) creates from regular community
+      // creates — adoption of the no-community path is one of the
+      // signals we want to chart.
+      if (isOrphan) {
+        logEvent(AnalyticsEvent.QuickGameCreated, { gameId: created.id });
       }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',

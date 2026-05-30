@@ -114,6 +114,47 @@ export function CommunityDetailsPublicScreen() {
     }
   }, [memberGroups, groupId, nav]);
 
+  // Derive the community's day/hour pattern from its actual upcoming
+  // games rather than the legacy `preferredDays` / `preferredHour`
+  // fields on /groupsPublic. New groups stop writing those, so the
+  // derivation here keeps the public preview honest as long as the
+  // admin schedules at least one upcoming public game.
+  // MUST sit above the loading/!group early returns — otherwise the
+  // hook order changes between the first (loading) render and the
+  // loaded render, crashing with "rendered more hooks".
+  const derivedDaysList = useMemo<WeekdayIndex[]>(() => {
+    if (upcomingGames.length === 0) return [];
+    const set = new Set<WeekdayIndex>();
+    upcomingGames.forEach((g) => {
+      const d = new Date(g.startsAt);
+      set.add(d.getDay() as WeekdayIndex);
+    });
+    return Array.from(set).sort();
+  }, [upcomingGames]);
+  const derivedDays = formatDays(derivedDaysList);
+  const derivedHour = useMemo<string>(() => {
+    if (upcomingGames.length === 0) return '';
+    // Most-common HH:MM among upcoming games. Ties resolved by
+    // earliest game's hour (which the sort by startsAt above gave us).
+    const counts = new Map<string, number>();
+    upcomingGames.forEach((g) => {
+      const d = new Date(g.startsAt);
+      const k = `${String(d.getHours()).padStart(2, '0')}:${String(
+        d.getMinutes(),
+      ).padStart(2, '0')}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    let best = '';
+    let bestN = 0;
+    counts.forEach((n, k) => {
+      if (n > bestN) {
+        best = k;
+        bestN = n;
+      }
+    });
+    return best;
+  }, [upcomingGames]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -169,43 +210,6 @@ export function CommunityDetailsPublicScreen() {
     }
   };
 
-  // Derive the community's day/hour pattern from its actual upcoming
-  // games rather than the legacy `preferredDays` / `preferredHour`
-  // fields on /groupsPublic. New groups stop writing those, so the
-  // derivation here keeps the public preview honest as long as the
-  // admin schedules at least one upcoming public game.
-  const derivedDaysList = useMemo<WeekdayIndex[]>(() => {
-    if (upcomingGames.length === 0) return [];
-    const set = new Set<WeekdayIndex>();
-    upcomingGames.forEach((g) => {
-      const d = new Date(g.startsAt);
-      set.add(d.getDay() as WeekdayIndex);
-    });
-    return Array.from(set).sort();
-  }, [upcomingGames]);
-  const derivedDays = formatDays(derivedDaysList);
-  const derivedHour = useMemo<string>(() => {
-    if (upcomingGames.length === 0) return '';
-    // Most-common HH:MM among upcoming games. Ties resolved by
-    // earliest game's hour (which the sort by startsAt above gave us).
-    const counts = new Map<string, number>();
-    upcomingGames.forEach((g) => {
-      const d = new Date(g.startsAt);
-      const k = `${String(d.getHours()).padStart(2, '0')}:${String(
-        d.getMinutes(),
-      ).padStart(2, '0')}`;
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    });
-    let best = '';
-    let bestN = 0;
-    counts.forEach((n, k) => {
-      if (n > bestN) {
-        best = k;
-        bestN = n;
-      }
-    });
-    return best;
-  }, [upcomingGames]);
   // CTA label depends on `isOpen` — auto-join vs admin approval.
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
   const ctaDisabled = isPending || busyJoin;

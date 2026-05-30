@@ -18,7 +18,10 @@
     "trailingSlash": false,
     "rewrites": [
       { "source": "/session/**", "destination": "/invite.html" },
-      { "source": "/team/**", "destination": "/invite.html" },
+      {
+        "source": "/team/**",
+        "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+      },
       {
         "source": "/c/**",
         "function": { "functionId": "serveCommunityPage", "region": "us-central1" }

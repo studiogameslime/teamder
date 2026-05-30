@@ -33,6 +33,7 @@ import {
   Game,
   GameFormat,
   GameGuest,
+  GameStatus,
   GameSummary,
   GroupId,
   GUEST_ID_PREFIX,
@@ -366,23 +367,25 @@ export const gameService = {
   /**
    * Per-community player stats. For every uid in `userIds` returns:
    *   • gamesPlayed — finished games in this community where the user
-   *     was assigned to ANY team (mirrors the discipline / achievement
-   *     definition: "actually showed up").
-   *   • wins — match rounds across those games where the user's team
-   *     was the winner (rounds with `winner === 'tie'` are excluded).
+   *     was in `players[]` (just registered + reached terminal state).
+   *     Post timer-pivot the "team-assignment" gate is gone, so this
+   *     is now the simpler "showed up to a finished game" count.
    *
-   * Bounded by `getHistory`'s recent window (20 most recent terminal
-   * games), so the read cost is `~20 game docs + 20 round subqueries`
-   * regardless of how many users we score.
+   * Bounded by the most recent 50 terminal games in the community —
+   * read cost is one query, no round subqueries.
    *
-   * Mock-mode returns zeros — there's no rounds backing in mock data.
+   * `wins` lived here originally; removed 2026-05-30 along with the
+   * round-snapshot reads, since the live pivot to timer-only stopped
+   * producing winners.
+   *
+   * Mock-mode returns zeros — no realistic stats backing in mock data.
    */
   async getCommunityPlayerStats(
     groupId: GroupId,
     userIds: UserId[],
-  ): Promise<Record<UserId, { gamesPlayed: number; wins: number }>> {
-    const acc: Record<UserId, { gamesPlayed: number; wins: number }> = {};
-    for (const uid of userIds) acc[uid] = { gamesPlayed: 0, wins: 0 };
+  ): Promise<Record<UserId, { gamesPlayed: number }>> {
+    const acc: Record<UserId, { gamesPlayed: number }> = {};
+    for (const uid of userIds) acc[uid] = { gamesPlayed: 0 };
     if (USE_MOCK_DATA || userIds.length === 0) return acc;
 
     const q = query(
@@ -390,37 +393,15 @@ export const gameService = {
       where('groupId', '==', groupId),
       where('status', '==', 'finished'),
       orderBy('startsAt', 'desc'),
-      limit(20),
+      limit(50),
     );
     const snap = await getDocs(q);
-    // Sequential fetch of rounds — Firestore SDK throttles parallel
-    // subqueries anyway, and history rarely exceeds 20 games per
-    // community. If this becomes hot we can promise-all chunks of 5.
+    const requestedSet = new Set(userIds);
     for (const doc of snap.docs) {
       const g = doc.data();
-      const teams = g.teams ?? [];
-      if (teams.length === 0) continue;
-      // Per-uid: which team color was this user on (if any)?
-      const colorByUid: Record<UserId, string> = {};
-      for (const t of teams) {
-        for (const pid of t.playerIds ?? []) {
-          colorByUid[pid] = t.color;
-        }
-      }
-      // Count gamesPlayed once per uid that appears in any team.
-      const requestedSet = new Set(userIds);
-      for (const uid of Object.keys(colorByUid)) {
-        if (!requestedSet.has(uid)) continue;
-        acc[uid].gamesPlayed += 1;
-      }
-      // Tally wins from this game's rounds.
-      const rounds = await loadRoundsFor(g.id);
-      for (const r of rounds) {
-        if (!r.winner || r.winner === 'tie') continue;
-        for (const uid of Object.keys(colorByUid)) {
-          if (!requestedSet.has(uid)) continue;
-          if (colorByUid[uid] === r.winner) acc[uid].wins += 1;
-        }
+      const players: UserId[] = Array.isArray(g.players) ? g.players : [];
+      for (const uid of players) {
+        if (requestedSet.has(uid)) acc[uid].gamesPlayed += 1;
       }
     }
     return acc;
@@ -430,11 +411,17 @@ export const gameService = {
    * "אתה ו-X" stats for the player-card screen. Returns:
    *   • registeredTogether — finished games where both uids appear in `players[]`
    *   • attendedTogether   — registeredTogether minus games where either was a no-show
-   *   • sameTeamGames      — attendedTogether games where both are in the same `teams[]` color (final-state team after rotations)
-   *   • sameTeamRounds     — sum of MatchRound entries where both uids are in `teamAPlayerIds` OR both in `teamBPlayerIds`. Only counts rounds saved AFTER the round-snapshot field was added — older games contribute 0.
+   *   • firstSharedAt / lastSharedAt — bounds of the games they actually shared
    *
-   * Bounded query: scans the most recent 50 finished games where the
-   * viewer (uidA) was a participant. `array-contains` keeps it cheap.
+   * Bounded query: scans finished games where the viewer (uidA) was a
+   * participant. `array-contains` keeps it cheap.
+   *
+   * `sameTeamGames` / `sameTeamRounds` lived here originally — both
+   * depended on `teams[]` and round snapshots, which the live-match
+   * pivot to timer-only stopped producing (2026-05-27). Removed
+   * 2026-05-29; the social signal that survives is "you played in the
+   * same game N times". Future "regular teammate" stats (see audit doc
+   * §5.1) can replace the dead "same team" metric.
    */
   async getPairStats(
     uidA: UserId,
@@ -443,16 +430,12 @@ export const gameService = {
   ): Promise<{
     registeredTogether: number;
     attendedTogether: number;
-    sameTeamGames: number;
-    sameTeamRounds: number;
     firstSharedAt: number | null;
     lastSharedAt: number | null;
   }> {
     const zero = {
       registeredTogether: 0,
       attendedTogether: 0,
-      sameTeamGames: 0,
-      sameTeamRounds: 0,
       firstSharedAt: null as number | null,
       lastSharedAt: null as number | null,
     };
@@ -492,31 +475,6 @@ export const gameService = {
         if (acc.lastSharedAt == null || ts > acc.lastSharedAt) {
           acc.lastSharedAt = ts;
         }
-      }
-      // Final-state team membership (game.teams reflects last assignment).
-      const teams = (g.teams ?? []) as Array<{
-        color?: string;
-        playerIds?: UserId[];
-      }>;
-      const teamA = teams.find((t) => (t.playerIds ?? []).includes(uidA));
-      if (teamA && (teamA.playerIds ?? []).includes(uidB)) {
-        acc.sameTeamGames += 1;
-      }
-      // Per-round overlap from the snapshot field. Pre-existing rounds
-      // without the field contribute 0 and don't break the call.
-      try {
-        const rounds = await loadRoundsFor(g.id);
-        for (const r of rounds) {
-          const aIn = r.teamAPlayerIds ?? [];
-          const bIn = r.teamBPlayerIds ?? [];
-          if (aIn.includes(uidA) && aIn.includes(uidB)) {
-            acc.sameTeamRounds += 1;
-          } else if (bIn.includes(uidA) && bIn.includes(uidB)) {
-            acc.sameTeamRounds += 1;
-          }
-        }
-      } catch {
-        // ignore — round read failure isn't fatal
       }
     }
     return acc;
@@ -648,6 +606,11 @@ export const gameService = {
           date: g.startsAt,
           matchCount: rounds.length,
           status: g.status === 'cancelled' ? 'cancelled' : 'finished',
+          // Hand the title + field + format up to History so the row
+          // can show what the game was without a second fetch.
+          title: g.title,
+          fieldName: g.fieldName,
+          format: g.format,
           lastResult:
             last && last.winner
               ? { teamA: last.teamA, teamB: last.teamB, winner: last.winner }
@@ -723,18 +686,223 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    // Firebase: single-field array-contains against the denormalized
-    // union. Status filter + sort run client-side so the query needs
-    // ONLY the auto-index on `participantIds` — no composite index.
-    // Trade-off: pulls finished/locked games too (bounded by games-per-user).
-    const snap = await getDocs(
-      query(col.games(), where('participantIds', 'array-contains', userId)),
-    );
-    return snap.docs
-      .map((d) => ({ ...d.data(), matches: [] }))
+    // Firebase: two parallel queries — games I'm a participant in
+    // (`participantIds` array-contains me) AND games I created
+    // (`createdBy == me`). Both auto-indexed, no composite index
+    // needed. The creator union closes G-09 — admin who creates a
+    // game without registering themselves used to have the game
+    // disappear from "המשחקים שלי", which made it orphaned in the
+    // app (only reachable via the community feed). Now creators see
+    // their games whether they registered or not.
+    //
+    // `allSettled` (not `all`) on purpose: if ONE query trips a rules
+    // edge case (e.g. a stale created-by row in a community the user
+    // was removed from), we still want the other half to land. With
+    // `all`, a single PERMISSION_DENIED would blank the entire list.
+    const [participatingResult, createdResult] = await Promise.allSettled([
+      getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      ),
+      getDocs(query(col.games(), where('createdBy', '==', userId))),
+    ]);
+    const seen = new Set<string>();
+    const all: Game[] = [];
+    if (participatingResult.status === 'fulfilled') {
+      for (const d of participatingResult.value.docs) {
+        if (seen.has(d.id)) continue;
+        seen.add(d.id);
+        all.push({ ...d.data(), matches: [] });
+      }
+    } else if (__DEV__) {
+      console.warn(
+        '[gameService] getMyGames: participantIds query failed',
+        participatingResult.reason,
+      );
+    }
+    if (createdResult.status === 'fulfilled') {
+      for (const d of createdResult.value.docs) {
+        if (seen.has(d.id)) continue;
+        seen.add(d.id);
+        all.push({ ...d.data(), matches: [] });
+      }
+    } else if (__DEV__) {
+      console.warn(
+        '[gameService] getMyGames: createdBy query failed',
+        createdResult.reason,
+      );
+    }
+    return all
       .filter((g) => g.status === 'open')
       .filter((g) => !isStaleAfterStart(g))
       .sort((a, b) => a.startsAt - b.startsAt);
+  },
+
+  /**
+   * Like getMyGames, but keeps games at every non-terminal lifecycle
+   * point — `scheduled | open | locked | active`. The watch relay /
+   * phone widgets need ALL of these:
+   *   • scheduled → "המשחק יפתח להרשמה ב…" (pre-registration UI)
+   *   • open/locked → upcoming-game card
+   *   • active → live stopwatch
+   * The `open`-only getMyGames dropped live games (status flipped to
+   * 'active'), and didn't surface scheduled games at all. Terminal /
+   * stale games are still excluded.
+   */
+  async getMyLiveOrUpcomingGames(userId: UserId): Promise<Game[]> {
+    const LIVE_STATUSES: readonly GameStatus[] = [
+      'scheduled',
+      'open',
+      'locked',
+      'active',
+    ];
+    if (USE_MOCK_DATA) {
+      return mockGamesV2
+        .filter(
+          (g) =>
+            LIVE_STATUSES.includes(g.status) &&
+            ((g.participantIds ?? [
+              ...g.players,
+              ...g.waitlist,
+              ...(g.pending ?? []),
+            ]).includes(userId) ||
+              g.createdBy === userId),
+        )
+        .sort((a, b) => a.startsAt - b.startsAt);
+    }
+    // Two-query union (participating + created) — same G-09 rationale
+    // as getMyGames above. Creators see their games whether they
+    // registered or not. `allSettled` mirrors getMyGames — a single
+    // failing query never blanks the entire result.
+    const [participatingResult, createdResult] = await Promise.allSettled([
+      getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      ),
+      getDocs(query(col.games(), where('createdBy', '==', userId))),
+    ]);
+    const seen = new Set<string>();
+    const all: Game[] = [];
+    if (participatingResult.status === 'fulfilled') {
+      for (const d of participatingResult.value.docs) {
+        if (seen.has(d.id)) continue;
+        seen.add(d.id);
+        all.push({ ...d.data(), matches: [] });
+      }
+    } else if (__DEV__) {
+      console.warn(
+        '[gameService] getMyLiveOrUpcomingGames: participantIds query failed',
+        participatingResult.reason,
+      );
+    }
+    if (createdResult.status === 'fulfilled') {
+      for (const d of createdResult.value.docs) {
+        if (seen.has(d.id)) continue;
+        seen.add(d.id);
+        all.push({ ...d.data(), matches: [] });
+      }
+    } else if (__DEV__) {
+      console.warn(
+        '[gameService] getMyLiveOrUpcomingGames: createdBy query failed',
+        createdResult.reason,
+      );
+    }
+    return all
+      .filter((g) => LIVE_STATUSES.includes(g.status))
+      .filter((g) => !isStaleAfterStart(g))
+      .sort((a, b) => a.startsAt - b.startsAt);
+  },
+
+  /**
+   * Realtime subscription variant of [getMyLiveOrUpcomingGames] — fires
+   * `cb` on the initial snapshot AND on every subsequent change to ANY
+   * game the user participates in (`participantIds array-contains uid`).
+   * Used by the watch/widget sync to push updates within ~1s when other
+   * users register, cancel, or start the timer — instead of polling
+   * every 20s. Returns an unsubscribe handle.
+   */
+  subscribeMyLiveOrUpcomingGames(
+    userId: UserId,
+    cb: (games: Game[]) => void,
+  ): () => void {
+    const LIVE_STATUSES: readonly GameStatus[] = [
+      'scheduled',
+      'open',
+      'locked',
+      'active',
+    ];
+    if (USE_MOCK_DATA) {
+      // Mock mode has no live subscription — fire once with current
+      // filtered data and return a no-op unsubscribe.
+      const games = mockGamesV2
+        .filter(
+          (g) =>
+            LIVE_STATUSES.includes(g.status) &&
+            ((g.participantIds ?? [
+              ...g.players,
+              ...g.waitlist,
+              ...(g.pending ?? []),
+            ]).includes(userId) ||
+              g.createdBy === userId),
+        )
+        .sort((a, b) => a.startsAt - b.startsAt);
+      cb(games);
+      return () => undefined;
+    }
+    // Two parallel onSnapshot listeners — participating + created.
+    // Merged client-side on every emission. Closes G-09 for the
+    // realtime path (widget / watch / live-screen banners) too: a
+    // creator-only game shows up in widgets and syncs on changes.
+    let participatingDocs = new Map<string, Game>();
+    let createdDocs = new Map<string, Game>();
+    const emit = () => {
+      const merged: Game[] = [];
+      const seen = new Set<string>();
+      for (const g of [
+        ...participatingDocs.values(),
+        ...createdDocs.values(),
+      ]) {
+        if (seen.has(g.id)) continue;
+        seen.add(g.id);
+        merged.push(g);
+      }
+      cb(
+        merged
+          .filter((g) => LIVE_STATUSES.includes(g.status))
+          .filter((g) => !isStaleAfterStart(g))
+          .sort((a, b) => a.startsAt - b.startsAt),
+      );
+    };
+    const onErr = (err: unknown) => {
+      if (__DEV__) {
+        console.warn(
+          '[gameService] subscribeMyLiveOrUpcomingGames error',
+          err,
+        );
+      }
+    };
+    const unsubA = onSnapshot(
+      query(col.games(), where('participantIds', 'array-contains', userId)),
+      (snap) => {
+        participatingDocs = new Map(
+          snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
+        );
+        emit();
+      },
+      onErr,
+    );
+    const unsubB = onSnapshot(
+      query(col.games(), where('createdBy', '==', userId)),
+      (snap) => {
+        createdDocs = new Map(
+          snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
+        );
+        emit();
+      },
+      onErr,
+    );
+    return () => {
+      unsubA();
+      unsubB();
+    };
   },
 
   /**
@@ -1455,10 +1623,41 @@ export const gameService = {
    */
   async deleteGame(gameId: string): Promise<void> {
     if (!gameId) return;
+    // Capture the roster + title BEFORE deleting. The Cloud Function fans
+    // the "המשחק בוטל" push out by reading the game doc — which no longer
+    // exists once we delete it (so previously NO registered player was
+    // notified). We stash the roster + title on the notification payload;
+    // the function falls back to them when the game is already gone.
+    let recipientUids: string[] = [];
+    let gameTitle = '';
+    const captureRoster = (g?: {
+      players?: string[];
+      waitlist?: string[];
+      pending?: string[];
+      title?: string;
+    }) => {
+      if (!g) return;
+      recipientUids = Array.from(
+        new Set([
+          ...(g.players ?? []),
+          ...(g.waitlist ?? []),
+          ...(g.pending ?? []),
+        ]),
+      );
+      gameTitle = g.title ?? '';
+    };
     if (USE_MOCK_DATA) {
       const idx = mockGamesV2.findIndex((x) => x.id === gameId);
-      if (idx >= 0) mockGamesV2.splice(idx, 1);
+      if (idx >= 0) {
+        captureRoster(mockGamesV2[idx]);
+        mockGamesV2.splice(idx, 1);
+      }
     } else {
+      try {
+        captureRoster((await getDoc(docs.game(gameId))).data());
+      } catch {
+        /* best-effort — still delete + dispatch with whatever we captured */
+      }
       await deleteDoc(docs.game(gameId));
     }
     notificationsService.dispatch({
@@ -1467,6 +1666,8 @@ export const gameService = {
       payload: {
         gameId,
         action: 'deleted',
+        gameTitle,
+        recipientUids,
         editorUid: USE_MOCK_DATA
           ? ''
           : getFirebase().auth.currentUser?.uid ?? '',

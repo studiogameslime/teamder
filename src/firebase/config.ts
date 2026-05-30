@@ -107,6 +107,17 @@ export function getFirebase(): {
     try {
       _db = initializeFirestore(_app, {
         experimentalAutoDetectLongPolling: true,
+        // Drop `undefined` fields on write instead of throwing. The
+        // liveMatch deserializer (firestore.ts) deliberately RE-EMITS
+        // absent optionals as `undefined` keys (roundNumber, winsByTeam,
+        // scoreC/D/E, timer*…) so listener ticks don't strip them. When
+        // a writer spreads that object back through `updateDoc` — e.g.
+        // markGameStarted/startTimer on the first kickoff of a freshly
+        // created game — the JS SDK otherwise rejects the whole write
+        // with "Unsupported field value: undefined", and the live timer
+        // silently never starts. Ignoring undefined makes writes match
+        // the converter's read-side contract.
+        ignoreUndefinedProperties: true,
       });
     } catch {
       // Already initialised (HMR / fast refresh) — fall back to the

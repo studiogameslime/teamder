@@ -41,6 +41,7 @@ import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
 import { trustService, type TrustSummary } from '@/services/trustService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useCurrentGroup } from '@/store/groupStore';
 import {
   Game,
@@ -101,6 +102,7 @@ export function PlayerCardScreen() {
   const [referralCount, setReferralCount] = useState<number | null>(null);
 
   useEffect(() => {
+    if (userId) logEvent(AnalyticsEvent.PlayerCardOpened, { userId });
     let alive = true;
     setLoading(true);
     userService
@@ -269,12 +271,18 @@ export function PlayerCardScreen() {
             and don't read as private. The "other" view skips the
             sections that are inherently personal: rating widget,
             achievements, discipline cards. */}
+        {/* 0% on attendance previously rendered green — read as a
+            "good" stat when in fact it just means no data. Now: tile
+            stays muted-grey when total games is zero, and only turns
+            green once there's a real signal. Same logic on cancel
+            rate (it stays grey at 0 and goes red only once it
+            crosses the danger threshold). */}
         <View style={styles.statsRow}>
           <StatTile label={he.playerCardTotalGames} value={String(total)} />
           <StatTile
             label={he.playerCardAttendance}
             value={`${attendance}%`}
-            tint={colors.success}
+            tint={total > 0 ? colors.success : colors.textMuted}
           />
           <StatTile
             label={he.playerCardCancelRate}
@@ -313,12 +321,25 @@ export function PlayerCardScreen() {
             <AchievementsSection user={user} />
           </>
         ) : me ? (
-          <PairStatsSection
-            viewerId={me.id}
-            otherId={user.id}
-            otherName={user.name}
-            groupId={effectiveRatingGroupId}
-          />
+          <>
+            {/* Rate-this-player section is the WHOLE POINT of opening
+                someone else's card from the rateBanner — without it
+                the rate flow ended in a dead-end. Renders only when
+                we have a groupId to scope the rating to. */}
+            {effectiveRatingGroupId ? (
+              <RatingSection
+                groupId={effectiveRatingGroupId}
+                viewerId={me.id}
+                ratedUser={user}
+              />
+            ) : null}
+            <PairStatsSection
+              viewerId={me.id}
+              otherId={user.id}
+              otherName={user.name}
+              groupId={effectiveRatingGroupId}
+            />
+          </>
         ) : null}
 
         <Card style={styles.ctaCard}>
@@ -371,6 +392,32 @@ export function PlayerCardScreen() {
             <Text style={styles.success}>
               {he.playerCardInviteSentToast.replace('{name}', user.name)}
             </Text>
+          ) : blockedReason === he.playerCardNoGameToInvite ? (
+            /* The "no game yet" branch turns the latter half of the
+               sentence into a tappable shortcut to the wizard — the
+               user wanted to act on the hint immediately. The other
+               blocked-reason variants stay as plain text. */
+            <Text style={styles.unavailable}>
+              {'אין לך משחק פעיל להזמנה. '}
+              <Text
+                style={styles.unavailableLink}
+                onPress={() =>
+                  // Cross-stack navigation — we're inside a stack but
+                  // want to jump to the GameTab's GameCreate screen.
+                  // Cast through `unknown` because typed navigation
+                  // can't statically express "go to any tab's
+                  // nested route" without re-typing the root.
+                  (nav as unknown as {
+                    navigate: (s: string, p?: unknown) => void;
+                  }).navigate('GameTab', {
+                    screen: 'GameCreate',
+                    params: { quick: true },
+                  })
+                }
+              >
+                צור משחק חדש
+              </Text>
+            </Text>
           ) : blockedReason ? (
             <Text style={styles.unavailable}>{blockedReason}</Text>
           ) : null}
@@ -418,8 +465,6 @@ function PairStatsSection({
   const ZERO = {
     registeredTogether: 0,
     attendedTogether: 0,
-    sameTeamGames: 0,
-    sameTeamRounds: 0,
     firstSharedAt: null as number | null,
     lastSharedAt: null as number | null,
   };
@@ -454,10 +499,7 @@ function PairStatsSection({
   }, [viewerId, otherId, groupId]);
 
   const hasSharedGames =
-    stats.registeredTogether > 0 ||
-    stats.attendedTogether > 0 ||
-    stats.sameTeamGames > 0 ||
-    stats.sameTeamRounds > 0;
+    stats.registeredTogether > 0 || stats.attendedTogether > 0;
   return (
     <View style={styles.pairWrap}>
       <Text style={styles.pairTitle}>{he.pairStatsTitle(otherName)}</Text>
@@ -477,22 +519,16 @@ function PairStatsSection({
 
       {hasSharedGames ? (
         <>
+          {/* Registration → attendance order: matches the natural
+              chronology and reads better in Hebrew. */}
           <View style={styles.pairGrid}>
-            <StatTile
-              label={he.pairStatsAttended}
-              value={String(stats.attendedTogether)}
-            />
             <StatTile
               label={he.pairStatsRegistered}
               value={String(stats.registeredTogether)}
             />
             <StatTile
-              label={he.pairStatsSameTeamGames}
-              value={String(stats.sameTeamGames)}
-            />
-            <StatTile
-              label={he.pairStatsSameTeamRounds}
-              value={String(stats.sameTeamRounds)}
+              label={he.pairStatsAttended}
+              value={String(stats.attendedTogether)}
             />
           </View>
           {(stats.firstSharedAt || stats.lastSharedAt) ? (
@@ -500,7 +536,14 @@ function PairStatsSection({
               {stats.firstSharedAt ? (
                 <View style={styles.pairTimelineRow}>
                   <Text style={styles.pairTimelineLabel}>
-                    {he.pairStatsFirstShared}
+                    {/* When the pair only ever shared one game, the
+                        "first" / "last" pair would read as duplicates
+                        with the same date. Collapse to a single
+                        neutral label in that case. */}
+                    {stats.lastSharedAt &&
+                    stats.lastSharedAt !== stats.firstSharedAt
+                      ? he.pairStatsFirstShared
+                      : he.pairStatsOnlyShared}
                   </Text>
                   <Text style={styles.pairTimelineValue}>
                     {formatPairDate(stats.firstSharedAt)}
@@ -773,8 +816,25 @@ function formatHebrewDate(ms: number): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  // Content gap stays roomy between sections, but the header and
+  // stats row need to feel like one "identity card" — they're
+  // bridged via headerWrap/statsRow marginTop instead.
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  header: { alignItems: 'center', gap: spacing.xs },
+  header: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    // Subtle surface band — anchors avatar+name visually and lets
+    // the stats row sit just below as a continuation rather than
+    // a disconnected row of tiles on a bare background.
+    marginHorizontal: -spacing.lg,
+    marginTop: -spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: '#F4F6FB',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   name: {
     ...typography.h2,
     color: colors.text,
@@ -1015,6 +1075,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  unavailableLink: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   success: {
     ...typography.caption,

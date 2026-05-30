@@ -58,6 +58,10 @@ function TabBarWithBanner(props: BottomTabBarProps) {
 export function MainTabs() {
   return (
     <Tab.Navigator
+      // Land on Games (the core "what's happening / join a game" surface)
+      // instead of the Communities list, which read as a directory rather
+      // than a home. Tab order in the bar is unchanged.
+      initialRouteName="GameTab"
       tabBar={(props) => <TabBarWithBanner {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,

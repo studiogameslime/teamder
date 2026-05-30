@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static preview for the players-list widget picker. Shows a sample
+  3-name roster so the user sees the shape of what they'll get, not an
+  empty white box.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12/15"
+            android:textColor="#1E40AF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/btn_reset_bg" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="חמישי כדורגל"
+            android:textColor="#1F2A44"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textAlignment="viewEnd" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="Teamder"
+            android:src="@drawable/teamder_logo" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="בעוד 2 שעות · מגדל המים"
+        android:textColor="#64748B"
+        android:textSize="11sp"
+        android:textAlignment="viewEnd" />
+
+    <!-- Sample player rows. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="מנהל"
+            android:textColor="#1E40AF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="1dp"
+            android:background="@drawable/btn_reset_bg" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="מתן לוי"
+            android:textColor="#1F2A44"
+            android:textSize="13sp"
+            android:textAlignment="viewEnd" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="איציק כהן"
+        android:textColor="#1F2A44"
+        android:textSize="13sp"
+        android:textAlignment="viewEnd"
+        android:paddingVertical="6dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="אלירן צברי"
+        android:textColor="#1F2A44"
+        android:textSize="13sp"
+        android:textAlignment="viewEnd"
+        android:paddingVertical="6dp" />
+</LinearLayout>

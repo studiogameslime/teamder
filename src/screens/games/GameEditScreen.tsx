@@ -169,6 +169,46 @@ export function GameEditScreen() {
       );
       return;
     }
+    // Warn before moving kickoff into the past (FV-03).
+    if (!v.recurringGameEnabled && v.startsAt < Date.now()) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          he.createGamePastDateTitle,
+          he.createGamePastDateBody,
+          [
+            { text: he.cancel, style: 'cancel', onPress: () => resolve(false) },
+            { text: he.createGamePastDateConfirm, onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        );
+      });
+      if (!proceed) return;
+    }
+    // Notify-on-edit confirm: changing the time / field / format of a
+    // game that already has registered players (players + waitlist)
+    // sends them an update push (NT-05). Tell the admin before it goes
+    // out (FV-04/06/07). Format change matters because the capacity
+    // derives from format × numberOfTeams — a 5v5→7v7 flip can change
+    // who fits.
+    const notifiableCount =
+      (game.players?.length ?? 0) + (game.waitlist?.length ?? 0);
+    const timeChanged = v.startsAt !== game.startsAt;
+    const fieldChanged = v.fieldName.trim() !== (game.fieldName ?? '');
+    const formatChanged = v.format !== game.format;
+    if (notifiableCount > 0 && (timeChanged || fieldChanged || formatChanged)) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          he.editGameNotifyTitle,
+          he.editGameNotifyBody(notifiableCount),
+          [
+            { text: he.cancel, style: 'cancel', onPress: () => resolve(false) },
+            { text: he.editGameNotifyConfirm, onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        );
+      });
+      if (!proceed) return;
+    }
     // Visibility is access-control: routed through the dedicated
     // setVisibility handler so its admin/status/enum guards run, not
     // through the generic patch path (which now rejects `visibility`).

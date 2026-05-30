@@ -29,34 +29,101 @@ import { SoccerBall } from '@/components/SoccerBall';
 
 // 2× the previous size — the ball is the entire visual identity here.
 const BALL_SIZE = 280;
-const MIN_HOLD_MS = 1600;
-const FADE_MS = 350;
+// Shortened from 1600 → 1000: still long enough to register the brand,
+// but snappier into the app. (Production cold-start hydration usually
+// finishes within this window, so the splash rarely exceeds it.)
+const MIN_HOLD_MS = 1000;
+const FADE_MS = 320;
 
 // ─── Pure visual ─────────────────────────────────────────────────────────
-// Blue background, big white ball, "Teamder" wordmark. The ball
-// gets a continuous subtle pulse so it reads as "loading" no matter
-// how long the parent keeps the splash up.
+// Blue background, big white ball, "Teamder" wordmark + tagline + three
+// pulsing dots. The ball does a soft drop-in then continuous spin+pulse
+// so it reads as "alive" no matter how long the parent keeps it up.
 export function SplashVisual() {
-  const ballScale = useSharedValue(1);
+  const ballScale = useSharedValue(0.7);
+  const ballSpin = useSharedValue(0);
+  const ballOpacity = useSharedValue(0);
+  const wordmarkOpacity = useSharedValue(0);
+  const wordmarkY = useSharedValue(12);
+  const dot0 = useSharedValue(0.3);
+  const dot1 = useSharedValue(0.3);
+  const dot2 = useSharedValue(0.3);
 
   useEffect(() => {
-    // Forever pulse — 500 ms up, 500 ms down, repeated. Cheap (one
-    // shared value driving a transform) and reads as "alive" even
-    // if hydration takes 10 s.
-    ballScale.value = withRepeat(
-      withSequence(
-        withTiming(1.08, { duration: 500, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1.0, { duration: 500, easing: Easing.inOut(Easing.quad) }),
+    // Ball entrance — fade + slight overshoot, then settle into the
+    // forever pulse + spin. The overshoot gives the brand a "kick"
+    // feel right from frame one.
+    ballOpacity.value = withTiming(1, { duration: 360, easing: Easing.out(Easing.quad) });
+    ballScale.value = withSequence(
+      withTiming(1.06, { duration: 360, easing: Easing.out(Easing.back(1.4)) }),
+      withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
+      withRepeat(
+        withSequence(
+          withTiming(1.06, { duration: 520, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1.0, { duration: 520, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
       ),
+    );
+    // Spin — one full turn / 3.2 s, linear. Reads as a rolling football.
+    ballSpin.value = withRepeat(
+      withTiming(360, { duration: 3200, easing: Easing.linear }),
       -1,
       false,
     );
-    return () => cancelAnimation(ballScale);
-  }, [ballScale]);
+    // Wordmark + tagline rise-up after the ball lands.
+    wordmarkOpacity.value = withTiming(1, {
+      duration: 380,
+      easing: Easing.out(Easing.quad),
+    });
+    wordmarkY.value = withTiming(0, {
+      duration: 460,
+      easing: Easing.out(Easing.cubic),
+    });
+    // Three loading dots — staggered pulse so the row reads as
+    // "thinking", not three independent blinks.
+    const dotSeq = (delay: number) =>
+      withSequence(
+        withTiming(0.3, { duration: delay }),
+        withRepeat(
+          withSequence(
+            withTiming(1.0, { duration: 420, easing: Easing.inOut(Easing.quad) }),
+            withTiming(0.3, { duration: 420, easing: Easing.inOut(Easing.quad) }),
+          ),
+          -1,
+          false,
+        ),
+      );
+    dot0.value = dotSeq(0);
+    dot1.value = dotSeq(140);
+    dot2.value = dotSeq(280);
+    return () => {
+      cancelAnimation(ballScale);
+      cancelAnimation(ballSpin);
+      cancelAnimation(ballOpacity);
+      cancelAnimation(wordmarkOpacity);
+      cancelAnimation(wordmarkY);
+      cancelAnimation(dot0);
+      cancelAnimation(dot1);
+      cancelAnimation(dot2);
+    };
+  }, [ballScale, ballSpin, ballOpacity, wordmarkOpacity, wordmarkY, dot0, dot1, dot2]);
 
   const ballStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ballScale.value }],
+    opacity: ballOpacity.value,
+    transform: [
+      { scale: ballScale.value },
+      { rotate: `${ballSpin.value}deg` },
+    ],
   }));
+  const wordmarkStyle = useAnimatedStyle(() => ({
+    opacity: wordmarkOpacity.value,
+    transform: [{ translateY: wordmarkY.value }],
+  }));
+  const dot0Style = useAnimatedStyle(() => ({ opacity: dot0.value, transform: [{ scale: dot0.value }] }));
+  const dot1Style = useAnimatedStyle(() => ({ opacity: dot1.value, transform: [{ scale: dot1.value }] }));
+  const dot2Style = useAnimatedStyle(() => ({ opacity: dot2.value, transform: [{ scale: dot2.value }] }));
 
   return (
     <View style={styles.root} pointerEvents="none">
@@ -70,11 +137,19 @@ export function SplashVisual() {
         >
           <SoccerBall size={BALL_SIZE} color="#FFFFFF" />
         </Animated.View>
-        <View style={styles.wordmarkWrap}>
+        <Animated.View style={[styles.wordmarkWrap, wordmarkStyle]}>
           <Text style={styles.wordmark} allowFontScaling={false}>
             Teamder
           </Text>
-        </View>
+          <Text style={styles.tagline} allowFontScaling={false}>
+            המשחק הבא שלך מתחיל כאן
+          </Text>
+          <View style={styles.dotsRow}>
+            <Animated.View style={[styles.dot, dot0Style]} />
+            <Animated.View style={[styles.dot, dot1Style]} />
+            <Animated.View style={[styles.dot, dot2Style]} />
+          </View>
+        </Animated.View>
       </View>
     </View>
   );
@@ -92,6 +167,7 @@ interface Props {
 
 export function SplashScreen({ ready, onFinish }: Props) {
   const rootOpacity = useSharedValue(1);
+  const rootScale = useSharedValue(1);
   const heldEnoughRef = useRef(false);
   // Mount timestamp — the brand needs at least MIN_HOLD_MS of stage
   // time even when hydration finishes early (cold start with cached
@@ -117,6 +193,12 @@ export function SplashScreen({ ready, onFinish }: Props) {
     }
     const timer = setTimeout(() => {
       heldEnoughRef.current = true;
+      // Exit "kick" — a quick zoom-in as the splash fades, so the app
+      // feels like it's being launched into rather than cross-fading.
+      rootScale.value = withTiming(1.12, {
+        duration: FADE_MS,
+        easing: Easing.out(Easing.quad),
+      });
       rootOpacity.value = withTiming(
         0,
         { duration: FADE_MS, easing: Easing.in(Easing.cubic) },
@@ -126,7 +208,7 @@ export function SplashScreen({ ready, onFinish }: Props) {
       );
     }, remaining);
     return () => clearTimeout(timer);
-  }, [ready, rootOpacity, onFinish]);
+  }, [ready, rootOpacity, rootScale, onFinish]);
 
   useEffect(() => {
     return () => {
@@ -134,7 +216,10 @@ export function SplashScreen({ ready, onFinish }: Props) {
     };
   }, [rootOpacity]);
 
-  const rootStyle = useAnimatedStyle(() => ({ opacity: rootOpacity.value }));
+  const rootStyle = useAnimatedStyle(() => ({
+    opacity: rootOpacity.value,
+    transform: [{ scale: rootScale.value }],
+  }));
 
   return (
     <Animated.View style={[styles.absolute, rootStyle]} pointerEvents="none">
@@ -167,7 +252,7 @@ const styles = StyleSheet.create({
   },
   wordmarkWrap: {
     position: 'absolute',
-    bottom: '22%',
+    bottom: '20%',
     alignItems: 'center',
   },
   wordmark: {
@@ -178,5 +263,28 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  // Tagline under the wordmark — softer, lighter weight, sells the
+  // product promise in one line. Hebrew so it reads naturally.
+  tagline: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
 });

@@ -8,9 +8,8 @@ import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
-import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
-import org.json.JSONObject
+import com.studiogameslime.soccerapp.wear.model.parseWearState
 
 /** Data Layer path the phone publishes the current state to. */
 private const val STATE_PATH = "/teamder/state"
@@ -67,32 +66,5 @@ class WearStateRepository(private val appContext: Context) :
         }
     }
 
-    private fun parse(json: String): WearGameState = try {
-        val o = JSONObject(json)
-        when (o.optString("kind")) {
-            "live" -> {
-                val t = o.getJSONObject("timer")
-                WearGameState.Live(
-                    title = o.optString("title"),
-                    timer = TimerState(
-                        running = t.optBoolean("running"),
-                        lastStartedAt = t.optLong("lastStartedAt"),
-                        accumulatedMs = t.optLong("accumulatedMs"),
-                    ),
-                )
-            }
-            "upcoming" -> WearGameState.Upcoming(
-                title = o.optString("title"),
-                startsAtMs = o.optLong("startsAt"),
-                fieldName = o.optString("fieldName"),
-                city = o.optString("city"),
-                playersCount = o.optInt("players"),
-                maxPlayers = o.optInt("maxPlayers"),
-            )
-            "notRegistered" -> WearGameState.NotRegistered
-            else -> WearGameState.Disconnected
-        }
-    } catch (e: Exception) {
-        WearGameState.Disconnected
-    }
+    private fun parse(json: String): WearGameState = parseWearState(json)
 }

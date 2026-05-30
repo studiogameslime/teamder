@@ -202,12 +202,9 @@ export function ProfileEditScreen() {
       // did nothing. Surface the error and don't navigate away;
       // the dirty state stays so the form is recoverable.
       if (__DEV__) console.warn('[profileEdit] save failed', err);
-      const code = (err as { code?: string })?.code ?? '';
-      const msg = (err as { message?: string })?.message ?? '';
-      Alert.alert(
-        he.error,
-        `${he.profilePhotoUploadFailed}\n${code || msg}`.trim(),
-      );
+      // Friendly Hebrew only — the technical code/message stays in the
+      // __DEV__ warn above and never reaches the user.
+      Alert.alert(he.error, he.profilePhotoUploadFailed);
       // Bail out so the finally still resets busy/saving but goBack
       // never runs.
     } finally {
@@ -252,6 +249,9 @@ export function ProfileEditScreen() {
           icon="person-outline"
           required
         />
+        {name.trim().length === 0 ? (
+          <Text style={styles.fieldError}>{he.profileNameRequired}</Text>
+        ) : null}
 
         <Text style={styles.label}>{he.profilePhotoLabel}</Text>
         <Pressable
@@ -271,7 +271,16 @@ export function ProfileEditScreen() {
           </Text>
         </Pressable>
 
-        <Text style={styles.label}>{he.profileAvatarLabel}</Text>
+        {/* Visual "OR" divider: a thin line through the row with the
+            word "או" floating in the middle. Previously the label sat
+            on its own line and read like a regular field label, which
+            made it unclear that the avatars below are an alternative
+            to the upload above. */}
+        <View style={styles.orDivider}>
+          <View style={styles.orDividerLine} />
+          <Text style={styles.orDividerText}>{he.profileAvatarLabel}</Text>
+          <View style={styles.orDividerLine} />
+        </View>
         <View style={styles.avatarGrid}>
           {AVATARS.map((a) => (
             <Pressable
@@ -317,6 +326,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     marginTop: spacing.xs,
   },
+  fieldError: {
+    ...typography.caption,
+    color: colors.danger,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.xs,
+  },
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -332,6 +348,26 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 15,
     fontWeight: '700',
+  },
+  // "OR" divider — two horizontal lines flanking the centred label.
+  // Used to break the "upload from gallery" CTA above the avatar
+  // grid so the user reads them as alternatives, not a sequence.
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  orDividerText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
   },
   avatarGrid: {
     flexDirection: 'row',

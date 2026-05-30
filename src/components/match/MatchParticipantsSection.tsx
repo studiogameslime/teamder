@@ -17,6 +17,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
+import { PulseOnChange } from '@/components/anim/PulseOnChange';
 import type { ArrivalStatus } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -66,6 +67,12 @@ interface Props {
    *  in to toggle themselves, so the admin manages it on their
    *  behalf). Read-only otherwise. */
   isAdminViewer?: boolean;
+  /** Number of players awaiting the admin's approval. When > 0 a
+   *  tappable "ממתינים לאישור (N)" badge shows under the header so the
+   *  admin has an on-screen signal (previously reachable only via
+   *  "הצג הכל"). Tapping reuses `onSeeAll` → the full players screen
+   *  where approve/reject lives. */
+  pendingCount?: number;
 }
 
 export function MatchParticipantsSection({
@@ -78,6 +85,7 @@ export function MatchParticipantsSection({
   onToggleBringingBall,
   onAddGuest,
   isAdminViewer = false,
+  pendingCount = 0,
 }: Props) {
   const visible = members.slice(0, maxRows);
   return (
@@ -100,6 +108,19 @@ export function MatchParticipantsSection({
           </Pressable>
         </View>
       </View>
+      {isAdminViewer && pendingCount > 0 ? (
+        <PulseOnChange
+          triggerKey={pendingCount}
+          skipInitial={false}
+          style={styles.pendingBadgeWrap}
+        >
+          <Pressable onPress={onSeeAll} style={styles.pendingBadge} hitSlop={6}>
+            <Text style={styles.pendingBadgeText}>
+              {he.matchParticipantsPendingBadge(pendingCount)}
+            </Text>
+          </Pressable>
+        </PulseOnChange>
+      ) : null}
       {visible.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.empty}>{he.matchPlayersEmpty}</Text>
@@ -325,6 +346,22 @@ const styles = StyleSheet.create({
   seeAll: {
     ...typography.caption,
     color: '#3B82F6',
+    fontWeight: '700',
+  },
+  pendingBadgeWrap: {
+    alignSelf: 'flex-start',
+  },
+  pendingBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 8,
+  },
+  pendingBadgeText: {
+    ...typography.caption,
+    color: '#8a6d00',
     fontWeight: '700',
   },
   listCard: {

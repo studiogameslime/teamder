@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -53,6 +54,7 @@ import {
   type GameFilters,
 } from '@/components/GameFilterSheet';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   isVisibleInMyGames,
   isVisibleInOpenGames,
@@ -180,19 +182,14 @@ export function GamesListScreen() {
   // The "+" offers a quick (no-community) game as the primary path, with
   // the community game as the secondary choice. Quick is the headline:
   // create + play without setting up a community.
-  const handleCreate = () => {
-    Alert.alert(he.createGameChooseTitle, undefined, [
-      {
-        text: he.createGameChooseQuick,
-        onPress: () => nav.navigate('GameCreate', { quick: true }),
-      },
-      {
-        text: he.createGameChooseCommunity,
-        onPress: () => nav.navigate('GameCreate'),
-      },
-      { text: he.cancel, style: 'cancel' },
-    ]);
-  };
+  //
+  // We used to open Alert.alert here, but that surfaced as a native
+  // OS dialog with three flat buttons — felt like an error / off-
+  // brand. The replacement is a centred modal with two big tappable
+  // cards that double as the choice + the explanation, matching the
+  // visual language of the onboarding cards.
+  const [createSheetVisible, setCreateSheetVisible] = useState(false);
+  const handleCreate = () => setCreateSheetVisible(true);
 
   // Returns true if "now" is inside the cancel-deadline danger
   // window (e.g. < 12h before kickoff with a 12h deadline). The
@@ -296,7 +293,12 @@ export function GamesListScreen() {
         <View style={{ flex: 1 }}>
           <MatchSegmentControl
             value={tab}
-            onChange={setTab}
+            onChange={(next) => {
+              if (next !== tab) {
+                logEvent(AnalyticsEvent.GamesTabSwitched, { tab: next });
+              }
+              setTab(next);
+            }}
             options={[
               {
                 value: 'open',
@@ -312,7 +314,10 @@ export function GamesListScreen() {
           />
         </View>
         <Pressable
-          onPress={() => setFilterOpen(true)}
+          onPress={() => {
+            logEvent(AnalyticsEvent.GameFilterSheetOpened);
+            setFilterOpen(true);
+          }}
           style={({ pressed }) => [
             styles.filterBtn,
             filterCount > 0 && styles.filterBtnActive,
@@ -425,7 +430,19 @@ export function GamesListScreen() {
       <GameFilterSheet
         visible={filterOpen}
         filters={filters}
-        onChange={setFilters}
+        matchCount={visible.length}
+        onChange={(next) => {
+          // Compare before/after counts so we can differentiate
+          // applying a filter from clearing one.
+          const before = activeFiltersCount(filters);
+          const after = activeFiltersCount(next);
+          if (after > before) {
+            logEvent(AnalyticsEvent.GameFilterApplied, { count: after });
+          } else if (after === 0 && before > 0) {
+            logEvent(AnalyticsEvent.GameFilterCleared);
+          }
+          setFilters(next);
+        }}
         onClose={() => setFilterOpen(false)}
       />
 
@@ -441,9 +458,147 @@ export function GamesListScreen() {
           if (target) await runCancel(target);
         }}
       />
+
+      {/* Custom create-game chooser. Replaces the native Alert with
+          two big tappable cards — each describes its mode so the user
+          picks confidently without dismissing the chooser to read the
+          wizard. Same z-stack & dismiss semantics as a Modal. */}
+      <Modal
+        visible={createSheetVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setCreateSheetVisible(false)}
+      >
+        <Pressable
+          style={createSheetStyles.backdrop}
+          onPress={() => setCreateSheetVisible(false)}
+        >
+          <Pressable style={createSheetStyles.card} onPress={() => undefined}>
+            <Text style={createSheetStyles.title}>
+              {he.createGameChooseTitle}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                createSheetStyles.choice,
+                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+              ]}
+              onPress={() => {
+                setCreateSheetVisible(false);
+                nav.navigate('GameCreate', { quick: true });
+              }}
+            >
+              <View style={createSheetStyles.choiceIcon}>
+                <Ionicons name="flash" size={22} color="#1E40AF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={createSheetStyles.choiceTitle}>
+                  {he.createGameChooseQuickTitle}
+                </Text>
+                <Text style={createSheetStyles.choiceBody}>
+                  {he.createGameChooseQuickBody}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                createSheetStyles.choice,
+                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+              ]}
+              onPress={() => {
+                setCreateSheetVisible(false);
+                nav.navigate('GameCreate');
+              }}
+            >
+              <View style={createSheetStyles.choiceIcon}>
+                <Ionicons name="people" size={22} color="#1E40AF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={createSheetStyles.choiceTitle}>
+                  {he.createGameChooseCommunityTitle}
+                </Text>
+                <Text style={createSheetStyles.choiceBody}>
+                  {he.createGameChooseCommunityBody}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                createSheetStyles.cancelBtn,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => setCreateSheetVisible(false)}
+            >
+              <Text style={createSheetStyles.cancelText}>{he.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+const createSheetStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  title: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  choiceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(59,130,246,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: RTL_LABEL_ALIGN,
+    marginBottom: 2,
+  },
+  choiceBody: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  cancelBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  cancelText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});
 
 // ─── Empty state (no cards in the active tab) ───────────────────────────
 

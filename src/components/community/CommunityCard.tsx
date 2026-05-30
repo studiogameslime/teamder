@@ -22,10 +22,11 @@
 // physical LEFT regardless of writing direction.
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { PressableScale } from '@/components/PressableScale';
 
 export type CommunityCardStatus =
   | 'admin'
@@ -53,12 +54,9 @@ export function CommunityCard({
   const palette = paletteFor(status);
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && { opacity: 0.92, transform: [{ scale: 0.995 }] },
-      ]}
+      style={styles.card}
       accessibilityRole="button"
       accessibilityLabel={name}
     >
@@ -77,22 +75,28 @@ export function CommunityCard({
         {name}
       </Text>
 
-      {locationLine ? (
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText} numberOfLines={1}>
-            {locationLine}
+      {/* Meta row — location + players chip share ONE row to tighten
+          the card vertically and put both bits of info at the same
+          glance. Under forceRTL `row-reverse` lays them right→left:
+          location first (visual right), then a centered dot, then
+          the players chip on the visual left. */}
+      <View style={styles.infoRow}>
+        {locationLine ? (
+          <View style={styles.metaInline}>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {locationLine}
+            </Text>
+            <Ionicons name="location" size={13} color="#94A3B8" />
+          </View>
+        ) : null}
+        <View style={styles.playersChip}>
+          <Text style={styles.playersText}>
+            {he.groupsSearchMembers(memberCount)}
           </Text>
-          <Ionicons name="location" size={13} color="#94A3B8" />
+          <Ionicons name="people" size={12} color="#3B82F6" />
         </View>
-      ) : null}
-
-      <View style={styles.playersChip}>
-        <Text style={styles.playersText}>
-          {he.groupsSearchMembers(memberCount)}
-        </Text>
-        <Ionicons name="people" size={13} color="#3B82F6" />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -181,15 +185,21 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     marginEnd: 110,
   },
-  metaRow: {
-    // `row-reverse` so the natural RTL Hebrew layout — text first
-    // (right), icon hugging it on the left — comes out the same on
-    // any platform regardless of whether row auto-flips.
+  // Combined location + players row — `row-reverse` keeps the location
+  // (with its leading-icon) on the visual right and the players chip
+  // tucked on the visual left edge of the card.
+  infoRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
+    alignSelf: 'stretch',
+    marginTop: 2,
+  },
+  metaInline: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 4,
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
+    flexShrink: 1,
   },
   metaText: {
     color: '#64748B',
@@ -198,19 +208,16 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
-  // Players chip — its own row, pinned to the visual RIGHT edge of
-  // the card via alignSelf:flex-start (which is the leading edge under
-  // RTL).
+  // Players chip — compact, sits inline on the visual LEFT of the row.
   playersChip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: 'rgba(59,130,246,0.10)',
-    alignSelf: 'flex-start',
-    marginTop: 4,
+    marginStart: 'auto',
   },
   playersText: {
     color: '#1D4ED8',

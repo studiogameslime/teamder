@@ -24,6 +24,7 @@ import { AchievementBadge } from '@/components/AchievementBadge';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { achievementsService } from '@/services/achievementsService';
 import { userService } from '@/services';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -41,6 +42,12 @@ export function AchievementsScreen() {
   // counters for the unlock check. The persisted unlocked-id list
   // still wins, so a badge already earned stays earned.
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+
+  // Screen-level mount log so we can chart how often the achievements
+  // page is opened (separate from the generic ScreenView signal).
+  useEffect(() => {
+    logEvent(AnalyticsEvent.AchievementsOpened);
+  }, []);
 
   useEffect(() => {
     if (!localUser) return;
@@ -211,10 +218,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
   },
+  // space-between distributes the cells evenly across each row,
+  // so a lone tile in the bottom row sits flush to the start (the
+  // right side under RTL) instead of getting visually orphaned in
+  // the centre. The unlocked badge stays on the right where the
+  // user's eye lands first.
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     rowGap: spacing.lg,
+    justifyContent: 'flex-start',
+    columnGap: spacing.md,
   },
   cell: {
     width: CELL_BASIS,

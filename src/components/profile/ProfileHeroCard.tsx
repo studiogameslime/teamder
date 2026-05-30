@@ -127,9 +127,14 @@ export function ProfileHeroCard({
               {name}
             </Text>
             {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
+              // Role pill — translucent capsule so the word reads as
+              // a deliberate label even on a busy stadium frame,
+              // not free-floating text under the name.
+              <View style={styles.subtitlePill}>
+                <Text style={styles.subtitle} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              </View>
             ) : null}
           </View>
         </SafeAreaView>
@@ -216,9 +221,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
+  subtitlePill: {
+    alignSelf: 'center',
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
   subtitle: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });

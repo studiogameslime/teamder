@@ -56,12 +56,15 @@ service firebase.storage {
     // this is generous headroom while still killing abusive uploads.
     match /groups/{groupId}/cover.jpg {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && request.auth.uid in firestore.get(
-             /databases/(default)/documents/groups/$(groupId)
-           ).data.adminIds
-        && request.resource.size < 2 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      // Client writes are disabled: the admin-check rule below used
+      // `firestore.get(...).adminIds`, but a cross-service read from a
+      // Storage rule carries no App Check token, and this project
+      // enforces App Check on Firestore — so the get() failed and even
+      // legitimate admins got `storage/unauthorized`. Cover uploads now
+      // go through the `uploadGroupCover` callable, which verifies the
+      // admin and writes via the Admin SDK (bypasses rules). Direct
+      // client writes are therefore closed.
+      allow write: if false;
     }
 
     // Everything else under /groups/{groupId}/ is closed.

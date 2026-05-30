@@ -147,6 +147,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { checkForUpdate, type UpdateKind } from '@/services/updateService';
 import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 
@@ -196,6 +197,12 @@ if (!I18nManager.isRTL) {
     style: [RTL_TEXT_DEFAULTS, (baseInput as { style?: unknown }).style],
   };
 }
+
+// Optional ("later"-dismissable) update prompts snooze for 24h after a
+// dismissal so they don't reappear on every cold start. Force updates
+// ignore this entirely.
+const OPTIONAL_UPDATE_SNOOZE_KEY = 'optionalUpdateSnoozeUntil';
+const OPTIONAL_UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000;
 
 export default function App() {
   // The kickoff splash plays once per app launch. We render it OVER the
@@ -467,18 +474,47 @@ export default function App() {
 
   // Run the version check only after the splash animation has
   // finished. Guarded by `updateCheckedRef` so we never fire twice.
+  // Before checking, restore any recent "later" dismissal so an
+  // OPTIONAL prompt doesn't nag on every cold start — it stays hidden
+  // for OPTIONAL_UPDATE_SNOOZE_MS after the user taps "אולי אחר כך".
+  // (Force updates ignore this and always show.)
   useEffect(() => {
     if (!splashDone || updateCheckedRef.current) return;
     updateCheckedRef.current = true;
-    checkForUpdate().then(applyUpdateResult);
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(OPTIONAL_UPDATE_SNOOZE_KEY);
+        const until = raw ? Number(raw) : 0;
+        if (until && Date.now() < until) {
+          optionalUpdateDismissedRef.current = true;
+        }
+      } catch {
+        // ignore — worst case the prompt shows once
+      }
+      const kind = await checkForUpdate();
+      applyUpdateResult(kind);
+    })();
   }, [splashDone, applyUpdateResult]);
 
   // Re-check when the app returns from background → active. Catches
   // the "user updated from the store and came back" case so the
   // modal disappears on its own. Force results re-appear regardless
   // of any prior optional dismissal.
+  //
+  // The same listener doubles as our app-lifecycle analytics signal:
+  // every active/background transition fires one AppForegrounded /
+  // AppBackgrounded event. `type: 'warm'` because cold starts are
+  // logged separately at boot. Useful for measuring session length
+  // and "abandons after N minutes" funnels.
   useEffect(() => {
+    let lastState: string = AppState.currentState;
     const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && lastState !== 'active') {
+        logEvent(AnalyticsEvent.AppForegrounded, { type: 'warm' });
+      } else if (next === 'background' && lastState === 'active') {
+        logEvent(AnalyticsEvent.AppBackgrounded);
+      }
+      lastState = next;
       if (next !== 'active' || !updateCheckedRef.current) return;
       checkForUpdate().then(applyUpdateResult);
     });
@@ -724,6 +760,12 @@ export default function App() {
           type="optional"
           onClose={() => {
             optionalUpdateDismissedRef.current = true;
+            // Persist the snooze so the optional prompt doesn't reappear
+            // on the next cold start (it used to show every launch).
+            void AsyncStorage.setItem(
+              OPTIONAL_UPDATE_SNOOZE_KEY,
+              String(Date.now() + OPTIONAL_UPDATE_SNOOZE_MS),
+            );
             setUpdateKind('none');
           }}
         />

@@ -185,7 +185,7 @@ export function AvailabilityEditScreen() {
                   <Text
                     style={[
                       styles.dayPillText,
-                      active && { color: colors.primary, fontWeight: '700' },
+                      active && { color: '#FFFFFF', fontWeight: '700' },
                     ]}
                   >
                     {he.availabilityDayShort[d]}
@@ -426,8 +426,11 @@ const styles = StyleSheet.create({
     minWidth: 44,
     alignItems: 'center',
   },
+  // Active = strong fill + white text. The previous design used
+  // primaryLight + primary text which was hard to tell apart from
+  // unselected pills (low contrast). Bold fill makes selection obvious.
   dayPillActive: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   dayPillText: { ...typography.body, color: colors.textMuted },

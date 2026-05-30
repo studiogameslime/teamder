@@ -46,14 +46,23 @@ export function MatchSegmentControl<T extends string>({
             >
               {opt.label}
             </Text>
-            {opt.badge !== undefined && opt.badge > 0 ? (
+            {/* Always render the badge — even at 0 — so the user
+                reads it as "this tab is empty" rather than "this tab
+                is still loading". A 0 badge gets a muted grey palette
+                so it doesn't compete with the active count. */}
+            {opt.badge !== undefined ? (
               <View
-                style={[styles.badge, active && styles.badgeActive]}
+                style={[
+                  styles.badge,
+                  active && styles.badgeActive,
+                  opt.badge === 0 && styles.badgeZero,
+                ]}
               >
                 <Text
                   style={[
                     styles.badgeText,
                     active && styles.badgeTextActive,
+                    opt.badge === 0 && styles.badgeTextZero,
                   ]}
                 >
                   {opt.badge}
@@ -123,5 +132,12 @@ const styles = StyleSheet.create({
   },
   badgeTextActive: {
     color: '#FFFFFF',
+  },
+  badgeZero: {
+    backgroundColor: '#F1F5F9',
+    opacity: 0.85,
+  },
+  badgeTextZero: {
+    color: '#94A3B8',
   },
 });

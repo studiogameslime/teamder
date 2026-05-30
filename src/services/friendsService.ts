@@ -31,6 +31,7 @@ import {
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { userService } from './userService';
+import { AnalyticsEvent, logEvent } from './analyticsService';
 import { FriendRequestDoc, User, UserId } from '@/types';
 
 /** Deterministic request id — blocks duplicate pending requests and lets
@@ -120,6 +121,7 @@ export const friendsService = {
       status: 'pending',
       createdAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.FriendRequestSent, { toUserId });
   },
 
   /**
@@ -139,6 +141,7 @@ export const friendsService = {
       return;
     }
     await callable('acceptFriendRequest', { fromUserId });
+    logEvent(AnalyticsEvent.FriendRequestAccepted, { fromUserId });
   },
 
   /** Decline an incoming request. No push is sent. */
@@ -150,12 +153,14 @@ export const friendsService = {
         r.status = 'declined';
         r.updatedAt = Date.now();
       }
+      logEvent(AnalyticsEvent.FriendRequestDeclined, { fromUserId });
       return;
     }
     await updateDoc(docs.friendRequest(id), {
       status: 'declined',
       updatedAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.FriendRequestDeclined, { fromUserId });
   },
 
   /** Withdraw an outgoing request I sent (deletes the doc). */
@@ -164,9 +169,11 @@ export const friendsService = {
     if (USE_MOCK_DATA) {
       const i = mockRequests.findIndex((x) => x.id === id);
       if (i >= 0) mockRequests.splice(i, 1);
+      logEvent(AnalyticsEvent.FriendRequestCancelled, { toUserId });
       return;
     }
     await deleteDoc(docs.friendRequest(id));
+    logEvent(AnalyticsEvent.FriendRequestCancelled, { toUserId });
   },
 
   /** Remove an existing friendship (mutual). Firebase delegates to the
@@ -174,9 +181,11 @@ export const friendsService = {
   async removeFriend(meId: UserId, otherId: UserId): Promise<void> {
     if (USE_MOCK_DATA) {
       mockUnlink(meId, otherId);
+      logEvent(AnalyticsEvent.FriendRemoved, { otherUserId: otherId });
       return;
     }
     await callable('removeFriendship', { otherUserId: otherId });
+    logEvent(AnalyticsEvent.FriendRemoved, { otherUserId: otherId });
   },
 
   /** Accepted-friend ids for a user. */
@@ -244,10 +253,23 @@ export const friendsService = {
       }
       return 'none';
     }
-    const outSnap = await getDoc(docs.friendRequest(friendRequestId(uid, otherId)));
-    if (outSnap.exists() && outSnap.data().status === 'pending') return 'outgoing';
-    const inSnap = await getDoc(docs.friendRequest(friendRequestId(otherId, uid)));
-    if (inSnap.exists() && inSnap.data().status === 'pending') return 'incoming';
+    try {
+      const outSnap = await getDoc(
+        docs.friendRequest(friendRequestId(uid, otherId)),
+      );
+      if (outSnap.exists() && outSnap.data().status === 'pending') return 'outgoing';
+      const inSnap = await getDoc(
+        docs.friendRequest(friendRequestId(otherId, uid)),
+      );
+      if (inSnap.exists() && inSnap.data().status === 'pending') return 'incoming';
+    } catch (e) {
+      // Reading the request docs can fail (rules / transient). Treat as
+      // "no pending request" so the card still offers "add friend"
+      // rather than throwing and hiding the button entirely.
+      if (__DEV__) {
+        console.warn('[friends] getRelationship request read failed', e);
+      }
+    }
     return 'none';
   },
 

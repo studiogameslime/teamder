@@ -28,7 +28,11 @@ const ADMOB_IOS_TEST_APP_ID = 'ca-app-pub-3940256099942544~1458002511';
 // Toggle to inspect ad lifecycle in a non-DEV build (e.g. internal-testing
 // release). Off in production.
 const SHOW_AD_DEBUG = false;
-const DEBUG_VISIBLE = __DEV__ || SHOW_AD_DEBUG;
+// The dev-only "— ad: idle —" status strip. Suppressed during screenshot
+// capture so Play Store images don't ship with debug chrome.
+const DEBUG_VISIBLE =
+  (__DEV__ || SHOW_AD_DEBUG) &&
+  (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() !== '1';
 
 type AdDebugStatus =
   | { kind: 'idle' }

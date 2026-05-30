@@ -1,28 +1,31 @@
 // HeroStatsCard — dark navy floating stats strip that overlaps the
-// bottom of the stadium hero. Five fixed columns:
-//   משחקים · הופעות · שערים · ביטולים · הגעה %
+// bottom of the stadium hero. Three fixed columns:
+//   משחקים · הופעות · הגעה %
 //
 // Each column = icon + bold number + small label. The dark
 // background reads against the gradient finale of the hero, then
 // gives way to the lighter content below.
+//
+// "שערים" was here historically but no flow ever wrote `stats.goals`
+// after the live-match pivot to timer-only — it always rendered 0,
+// which was misleading. Removed (2026-05-29).
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
+import { CountUp } from '@/components/anim/CountUp';
 
 interface Props {
   totalGames: number;
   attended: number;
-  goals: number;
   attendancePct: number;
 }
 
 export function HeroStatsCard({
   totalGames,
   attended,
-  goals,
   attendancePct,
 }: Props) {
   return (
@@ -30,28 +33,22 @@ export function HeroStatsCard({
       <Cell
         icon="calendar-outline"
         iconColor="#FFFFFF"
-        value={String(totalGames)}
+        countTo={totalGames}
         label={he.profileStatTotalGames}
       />
       <Divider />
       <Cell
         icon="trophy-outline"
         iconColor="#FFFFFF"
-        value={String(attended)}
+        countTo={attended}
         label={he.profileStatAttended}
-      />
-      <Divider />
-      <Cell
-        icon="football-outline"
-        iconColor="#FFFFFF"
-        value={String(goals)}
-        label={he.profileStatGoals}
       />
       <Divider />
       <Cell
         icon="checkmark-circle-outline"
         iconColor="#22C55E"
-        value={`${attendancePct}%`}
+        countTo={attendancePct}
+        suffix="%"
         valueColor="#22C55E"
         label={he.profileStatAttendance}
       />
@@ -63,24 +60,34 @@ function Cell({
   icon,
   iconColor,
   value,
+  countTo,
+  suffix,
   valueColor,
   label,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
-  value: string;
+  value?: string;
+  // When provided, the number animates up from 0 on mount (CountUp)
+  // instead of rendering a static string.
+  countTo?: number;
+  suffix?: string;
   valueColor?: string;
   label: string;
 }) {
+  const valueStyle = valueColor
+    ? [styles.value, { color: valueColor }]
+    : [styles.value];
   return (
     <View style={styles.cell}>
       <Ionicons name={icon} size={20} color={iconColor} />
-      <Text
-        style={[styles.value, valueColor ? { color: valueColor } : null]}
-        numberOfLines={1}
-      >
-        {value}
-      </Text>
+      {typeof countTo === 'number' ? (
+        <CountUp to={countTo} suffix={suffix} style={valueStyle} />
+      ) : (
+        <Text style={valueStyle} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
