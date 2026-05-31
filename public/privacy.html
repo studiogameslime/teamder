@@ -271,8 +271,8 @@
         <li><strong>מקור ההזמנה:</strong> אם נרשמתם דרך קישור הזמנה של משתמש אחר, נשמרים אצלכם הפרטים: מזהה המזמין, סוג ההזמנה (משחק / קהילה), חותמת הזמן. משמש לחישוב "השחקנים שהבאת" בכרטיס ההפניות שלכם.</li>
         <li><strong>פעילות באפליקציה:</strong> אילו מסכים נצפו, פעולות מרכזיות (הצטרפות לקהילה, רישום למשחק, פעולת חבר, פעולה מוויג'ט, פעולה משעון) — דרך Firebase Analytics.</li>
         <li><strong>דוחות קריסה:</strong> מידע טכני אנונימי על שגיאות וקריסות.</li>
-        <li><strong>נתוני מכשיר ומפרסם:</strong> סוג מכשיר, גרסת מערכת הפעלה, מזהה מפרסם (Android Advertising ID), כתובת IP — לצורך הצגת מודעות והגנה מפני שימוש לרעה.</li>
-        <li><strong>אסימוני אבטחה (App Check):</strong> טוקן שמופק על ידי Google Play Integrity לוודא שהבקשה מגיעה מבילד אמיתי של האפליקציה ולא מסקריפט/בוט. לא מכיל מידע אישי.</li>
+        <li><strong>נתוני מכשיר ומפרסם:</strong> סוג מכשיר, גרסת מערכת הפעלה, כתובת IP, ומזהה מפרסם — Android Advertising ID במכשירי אנדרואיד או IDFA (Identifier for Advertisers) ב־iPhone/iPad. ב־iOS נבקש את האישור הזה דרך חלון App Tracking Transparency (ATT) של אפל בעת ההפעלה הראשונה; אם תסרבו לא נשתף את ה־IDFA עם רשתות פרסום.</li>
+        <li><strong>אסימוני אבטחה (App Check):</strong> טוקן שמופק על ידי Google Play Integrity במכשירי אנדרואיד או על ידי Apple DeviceCheck/App Attest ב־iOS, כדי לוודא שהבקשה מגיעה מבילד אמיתי של האפליקציה ולא מסקריפט/בוט. לא מכיל מידע אישי.</li>
       </ul>
 
       <h3>2.3 שעון Wear OS וווידג'ט הטלפון</h3>
@@ -329,8 +329,10 @@
       <ul>
         <li><strong>Google Firebase</strong> (Authentication, Firestore, Cloud Storage, Cloud Functions, Analytics, Crashlytics, App Check) — כספק תשתית הענן. כל הנתונים מאוחסנים בתשתית של Google.</li>
         <li><strong>Firebase Cloud Messaging (FCM)</strong> — לשליחת התראות push למכשיר שלכם.</li>
-        <li><strong>Google Play Integrity</strong> — מאמת שהבילד שלכם הוא אמיתי (ב-Android בלבד).</li>
-        <li><strong>Google AdMob</strong> — להצגת מודעות בתוך האפליקציה. AdMob עשוי להשתמש במזהה המפרסם להתאמה אישית. אפשר לאפס/לבטל את המזהה בהגדרות המכשיר ← Google ← מודעות.</li>
+        <li><strong>Google Play Integrity</strong> — מאמת שהבילד שלכם הוא אמיתי (ב־Android בלבד).</li>
+        <li><strong>Apple DeviceCheck / App Attest</strong> — מאמת שהבילד שלכם הוא אמיתי (ב־iOS בלבד). אפל מספקים את השירות; לא נשלח אליהם מידע אישי.</li>
+        <li><strong>Apple Push Notification Service (APNs)</strong> — שירות אפל המעביר את ההתראות שלכם למכשירי iPhone/iPad.</li>
+        <li><strong>Google AdMob</strong> — להצגת מודעות בתוך האפליקציה. AdMob עשוי להשתמש במזהה המפרסם (Android Advertising ID או iOS IDFA) להתאמה אישית. ב־Android אפשר לאפס/לבטל את המזהה בהגדרות ← Google ← מודעות. ב־iOS אפשר לסרב באמצעות הגדרות ← פרטיות ואבטחה ← מעקב, או באמצעות חלון ה־ATT שמופיע בהפעלה הראשונה.</li>
         <li><strong>Wear OS Data Layer</strong> — שכבת תקשורת מקומית של גוגל בין הטלפון לשעון משויך. הנתונים שמוזרמים בה לא עוברים בענן שלנו; הם נשארים בין שני המכשירים.</li>
         <li><strong>שירותי גיאו-קוד</strong> — בעת בחירת עיר ביצירת משחק או קהילה, השם נשלח ל-Nominatim (OpenStreetMap) לשם המרה לקואורדינטות. בעת חיפוש תחזית מזג אוויר למשחק, הקואורדינטות נשלחות ל-Open-Meteo. שני השירותים ציבוריים וחינמיים; לא נשלח שם משתמש או מזהה אישי.</li>
         <li><strong>חברי הקהילות שלכם</strong> — חברים אחרים בקהילה רואים את שמכם, תמונת הפרופיל / האווטאר שלכם, ממוצע הדירוג שלכם, וסטטיסטיקות בסיסיות (אחוז הופעה, מספר משחקים, ביטולים, זמינות). הם <em>לא</em> רואים את האימייל, אירועי משמעת מפורטים, היסטוריית התראות, רשימת החברים שלכם, או טוקני התראות.</li>
