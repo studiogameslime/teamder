@@ -27,11 +27,27 @@
 //     admins / pending see the card as a navigation tile.
 
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { PressableScale } from '@/components/PressableScale';
+
+// Default stadium photo — same asset CommunityStadiumHero uses on the
+// details screen. Keeping one source of truth means the card preview
+// and the full-page hero never disagree on what an "unbranded
+// community" looks like.
+const STADIUM_BG: ImageSourcePropType =
+  require('../../assets/images/stadium-bg.png');
 
 export type CommunityCardStatus =
   | 'admin'
@@ -80,22 +96,23 @@ export function CommunityCard({
       accessibilityRole="button"
       accessibilityLabel={name}
     >
-      {/* Cover — image when we have one, brand gradient otherwise.
-          Both surfaces host the status badge so it never overlaps the
-          title text underneath. */}
-      <View style={styles.cover}>
-        {coverPhotoUrl ? (
-          <Image
-            source={{ uri: coverPhotoUrl }}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.coverFallback}>
-            <Ionicons name="football" size={64} color="rgba(255,255,255,0.30)" />
-            <View style={styles.coverGloss} />
-          </View>
-        )}
+      {/* Cover — uses the admin-uploaded cover when present, otherwise
+          the bundled stadium photo (same image the details-screen hero
+          falls back to). A dark gradient overlay keeps badge contrast
+          high regardless of which photo surfaces. */}
+      <ImageBackground
+        source={coverPhotoUrl ? { uri: coverPhotoUrl } : STADIUM_BG}
+        style={styles.cover}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={[
+            'rgba(7,12,32,0.20)',
+            'rgba(7,12,32,0.55)',
+            'rgba(7,12,32,0.78)',
+          ]}
+          style={StyleSheet.absoluteFillObject}
+        />
         {palette ? (
           <View style={[styles.badge, { backgroundColor: palette.badgeBg }]}>
             <Ionicons name={palette.icon} size={12} color={palette.badgeFg} />
@@ -104,7 +121,7 @@ export function CommunityCard({
             </Text>
           </View>
         ) : null}
-      </View>
+      </ImageBackground>
 
       {/* Body — title, description, info row, optional CTA. */}
       <View style={styles.body}>
@@ -216,26 +233,10 @@ const styles = StyleSheet.create({
   },
   cover: {
     height: COVER_HEIGHT,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#0F172A',   // dark fallback while image loads
     position: 'relative',
-  },
-  coverFallback: {
-    flex: 1,
-    backgroundColor: '#1D4ED8',
-    alignItems: 'flex-end',
+    overflow: 'hidden',
     justifyContent: 'flex-end',
-    paddingEnd: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  // A subtle diagonal sheen on the gradient fallback — adds depth so
-  // the cover doesn't read as a flat blue rectangle.
-  coverGloss: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 50,
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   badge: {
     position: 'absolute',

@@ -135,16 +135,11 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
       accessibilityLabel={game.title}
     >
       <View style={styles.content}>
-        {/* Title row — under RTL, JSX-first lands on the visual RIGHT.
-            We want the status pill ("נרשמת" / "בהמתנה") on the visual
-            RIGHT edge so Hebrew reading lands on it first, with the
-            title trailing on the LEFT. The previous layout had them
-            reversed; this swap addresses the user's "תחליף מיקומים"
-            request. */}
+        {/* Title row — title (+ chevron) anchors the visual RIGHT
+            edge of the card (Hebrew reading starts there). Status
+            pill anchors the visual LEFT. JSX-first lands on the
+            visual RIGHT under our RTL flow, so title comes first. */}
         <View style={styles.titleRow}>
-          {statusPill ? (
-            <View style={styles.titleStatusPill}>{statusPill}</View>
-          ) : null}
           <View style={styles.titleTextWrap}>
             <Text style={styles.title} numberOfLines={1}>
               {game.title}
@@ -156,6 +151,9 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
               style={styles.titleChevron}
             />
           </View>
+          {statusPill ? (
+            <View style={styles.titleStatusPill}>{statusPill}</View>
+          ) : null}
         </View>
 
         {game.fieldName ? (
