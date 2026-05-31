@@ -262,6 +262,14 @@ export function canDeleteGame(
 
 /** Future + active games the user is involved in. Excludes terminal. */
 export function isVisibleInMyGames(game: Game): boolean {
+  // Defensive guard: a partial / corrupt /games doc (missing title,
+  // groupId, or startsAt) would otherwise show up as a blank row in
+  // 'המשחקים שלי'. The user can't act on a ghost like that — filter
+  // it out at the list layer. Cleanup of the actual broken docs is a
+  // separate maintenance pass on the DB.
+  if (!game.title || !game.groupId || typeof game.startsAt !== 'number') {
+    return false;
+  }
   return !isTerminal(game);
 }
 
