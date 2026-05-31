@@ -1342,6 +1342,14 @@ function toPublic(g: Group): GroupPublic {
   // and the filter falls back to city-name match for them.
   if (typeof g.lat === 'number') out.lat = g.lat;
   if (typeof g.lng === 'number') out.lng = g.lng;
+  // Mirror the admin-uploaded cover photo URL. The previous omission
+  // meant every syncMockPublic re-build (and any production read that
+  // round-trips through toPublic) silently wiped the cover, so the
+  // feed card kept showing the bundled stadium fallback even after
+  // the admin had set a real photo.
+  if (typeof g.coverPhotoUrl === 'string' && g.coverPhotoUrl.length > 0) {
+    out.coverPhotoUrl = g.coverPhotoUrl;
+  }
   // Pass through legacy fields if present so re-publishing a
   // pre-refactor group via this helper doesn't blank them out.
   if (g.fieldName) out.fieldName = g.fieldName;

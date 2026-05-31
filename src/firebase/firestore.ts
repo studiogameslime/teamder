@@ -585,6 +585,12 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       fieldName: g.fieldName,
       fieldAddress: g.fieldAddress ?? null,
       city: g.city ?? null,
+      // Geo coords — needed by the radius-based "nearby" filter. Were
+      // missing from the converter and so silently dropped on every
+      // public-mirror write/read; without them the filter degraded
+      // to the city-name fallback path forever.
+      lat: typeof g.lat === 'number' ? g.lat : null,
+      lng: typeof g.lng === 'number' ? g.lng : null,
       street: g.street ?? null,
       addressNote: g.addressNote ?? null,
       description: g.description ?? null,
@@ -592,6 +598,11 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       isOpen: g.isOpen ?? null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
+      // Cover photo — admin upload from the details screen lands here.
+      // Was missing from the converter, so the public mirror kept
+      // returning the default stadium fallback even after the admin
+      // changed the cover. That's the bug surfaced today.
+      coverPhotoUrl: g.coverPhotoUrl ?? null,
       preferredDays: g.preferredDays ?? [],
       preferredHour: g.preferredHour ?? null,
       costPerGame: g.costPerGame ?? null,
@@ -608,6 +619,8 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       fieldName: d.fieldName ?? '',
       fieldAddress: d.fieldAddress ?? undefined,
       city: d.city ?? undefined,
+      lat: typeof d.lat === 'number' ? d.lat : undefined,
+      lng: typeof d.lng === 'number' ? d.lng : undefined,
       street: d.street ?? undefined,
       addressNote: d.addressNote ?? undefined,
       description: d.description ?? undefined,
@@ -616,6 +629,10 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,
+      coverPhotoUrl:
+        typeof d.coverPhotoUrl === 'string' && d.coverPhotoUrl.length > 0
+          ? d.coverPhotoUrl
+          : undefined,
       preferredDays: readWeekdays(d.preferredDays),
       preferredHour:
         typeof d.preferredHour === 'string' ? d.preferredHour : undefined,
