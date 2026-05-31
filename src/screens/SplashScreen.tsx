@@ -1,19 +1,24 @@
 // SplashScreen — Teamder kickoff.
 //
-// Single visible loading state across the entire boot. The big ball +
-// wordmark show from the very first paint and stay up until BOTH:
-//   1. a minimum 1.6s "hold" has elapsed (so the user always sees the
-//      brand for a beat, not a flicker), AND
-//   2. the parent says we're `ready` (auth + groups hydrated).
-// Then a 350ms root-fade ends the splash and the app takes over.
+// Sequence (~1.3s before the parent's `ready` gate releases the fade):
+//   1. (0–80ms)    fade-in dark-blue stage
+//   2. (80–900ms)  white pitch lines DRAW ON via strokeDashoffset
+//                  (centre circle + halfway line + centre spot)
+//   3. (700–1200ms) ball drops from above with a 2× squash-stretch
+//                  bounce, settling on the centre spot.
+//   4. (1100ms+)   wordmark "Teamder" + tagline + 3 pulsing dots
+//                  rise into view under the pitch.
+//   5. (forever)   ball slowly rotates + breathes (subtle pulse) so
+//                  it reads as "alive" if the parent keeps us up.
+//   6. (on ready)  full root fades + scales out (existing logic).
 //
 // We also export `SplashVisual` for callers that need the same look
-// WITHOUT the kickoff/exit logic — e.g. RootNavigator's "still hydrating"
-// state. Keeping both behind the same component guarantees the user
-// never sees two different loaders.
+// WITHOUT the kickoff/exit logic — e.g. RootNavigator's "still
+// hydrating" state. Keeping both behind the same component guarantees
+// the user never sees two different loaders.
 
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import * as ExpoSplash from 'expo-splash-screen';
 import Animated, {
   Easing,
@@ -21,68 +26,158 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Circle, Line } from 'react-native-svg';
 import { SoccerBall } from '@/components/SoccerBall';
 
-// 2× the previous size — the ball is the entire visual identity here.
-const BALL_SIZE = 280;
-// Shortened from 1600 → 1000: still long enough to register the brand,
-// but snappier into the app. (Production cold-start hydration usually
-// finishes within this window, so the splash rarely exceeds it.)
-const MIN_HOLD_MS = 1000;
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedLine = Animated.createAnimatedComponent(Line);
+
+const BALL_SIZE = 200;
+const MIN_HOLD_MS = 1400;     // give the new sequence time to read
 const FADE_MS = 320;
 
+// Pitch geometry — the "centre circle" + the halfway line. Sized as a
+// fraction of the screen so it scales on small/large devices.
+const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
+const PITCH_CIRCLE_R = Math.min(SCREEN_W * 0.36, 170);
+const PITCH_CIRCLE_C = 2 * Math.PI * PITCH_CIRCLE_R;
+const HALFWAY_LEN = Math.min(SCREEN_W * 0.9, 380);
+const PITCH_STROKE = 2;
+const PITCH_COLOR = 'rgba(255,255,255,0.55)';
+const PITCH_BRIGHT = '#FFFFFF';
+
 // ─── Pure visual ─────────────────────────────────────────────────────────
-// Blue background, big white ball, "Teamder" wordmark + tagline + three
-// pulsing dots. The ball does a soft drop-in then continuous spin+pulse
-// so it reads as "alive" no matter how long the parent keeps it up.
+
 export function SplashVisual() {
-  const ballScale = useSharedValue(0.7);
-  const ballSpin = useSharedValue(0);
+  // PITCH — circle + halfway line draw on by interpolating
+  // strokeDashoffset from full → 0. The dash array equals the path
+  // length, so offset=length means "fully hidden", offset=0 means
+  // "fully drawn".
+  const circleOffset = useSharedValue(PITCH_CIRCLE_C);
+  const lineOffset = useSharedValue(HALFWAY_LEN);
+  const spotOpacity = useSharedValue(0);
+
+  // BALL — drops from above the stage, bounces on the spot, then
+  // keeps a slow rotation + breathing.
+  const ballY = useSharedValue(-SCREEN_H * 0.6);
+  const ballScaleY = useSharedValue(1);
+  const ballScaleX = useSharedValue(1);
+  const ballRotate = useSharedValue(0);
   const ballOpacity = useSharedValue(0);
+  const ballBreath = useSharedValue(1);
+  const shadowScale = useSharedValue(0.6);
+  const shadowOpacity = useSharedValue(0);
+
+  // WORDMARK + TAGLINE + DOTS — rise in after the bounce settles.
   const wordmarkOpacity = useSharedValue(0);
-  const wordmarkY = useSharedValue(12);
+  const wordmarkY = useSharedValue(14);
   const dot0 = useSharedValue(0.3);
   const dot1 = useSharedValue(0.3);
   const dot2 = useSharedValue(0.3);
 
   useEffect(() => {
-    // Ball entrance — fade + slight overshoot, then settle into the
-    // forever pulse + spin. The overshoot gives the brand a "kick"
-    // feel right from frame one.
-    ballOpacity.value = withTiming(1, { duration: 360, easing: Easing.out(Easing.quad) });
-    ballScale.value = withSequence(
-      withTiming(1.06, { duration: 360, easing: Easing.out(Easing.back(1.4)) }),
-      withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
+    // 1. Pitch draws on (halfway line first, then centre circle, then
+    //    the centre spot pops). Quick + decisive — feels like a coach
+    //    laying chalk lines on the field.
+    lineOffset.value = withTiming(0, {
+      duration: 480,
+      easing: Easing.out(Easing.cubic),
+    });
+    circleOffset.value = withDelay(
+      120,
+      withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) }),
+    );
+    spotOpacity.value = withDelay(
+      700,
+      withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
+    );
+
+    // 2. Ball drops, hits the spot, bounces. The squash-stretch on
+    //    impact is what sells "real ball" vs "flat icon".
+    ballOpacity.value = withDelay(
+      560,
+      withTiming(1, { duration: 120, easing: Easing.out(Easing.quad) }),
+    );
+    // Shadow grows + darkens as the ball falls toward it.
+    shadowOpacity.value = withDelay(
+      560,
+      withTiming(0.5, { duration: 320, easing: Easing.out(Easing.quad) }),
+    );
+    shadowScale.value = withDelay(
+      560,
+      withTiming(1, { duration: 320, easing: Easing.out(Easing.quad) }),
+    );
+    // Drop + bounce: -screen → 0 (impact) → -28 (bounce 1) → 0 → -10 → 0.
+    ballY.value = withDelay(
+      560,
+      withSequence(
+        withTiming(0, { duration: 360, easing: Easing.in(Easing.quad) }),
+        // Bounce 1
+        withTiming(-32, { duration: 220, easing: Easing.out(Easing.cubic) }),
+        withTiming(0, { duration: 220, easing: Easing.in(Easing.cubic) }),
+        // Bounce 2 (smaller)
+        withTiming(-10, { duration: 160, easing: Easing.out(Easing.cubic) }),
+        withTiming(0, { duration: 160, easing: Easing.in(Easing.cubic) }),
+      ),
+    );
+    // Squash on impact, then bounce back round. We don't repeat the
+    // squash on the second bounce — it'd over-animate.
+    ballScaleY.value = withDelay(
+      560 + 320,    // just before impact frame
+      withSequence(
+        withTiming(0.7, { duration: 90, easing: Easing.out(Easing.cubic) }),
+        withTiming(1.1, { duration: 110, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
+      ),
+    );
+    ballScaleX.value = withDelay(
+      560 + 320,
+      withSequence(
+        withTiming(1.25, { duration: 90, easing: Easing.out(Easing.cubic) }),
+        withTiming(0.92, { duration: 110, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
+      ),
+    );
+
+    // 3. Once the ball has settled, start a slow rotation + tiny
+    //    breathing scale that runs forever until the splash exits.
+    ballRotate.value = withDelay(
+      1400,
+      withRepeat(
+        withTiming(360, { duration: 4000, easing: Easing.linear }),
+        -1,
+        false,
+      ),
+    );
+    ballBreath.value = withDelay(
+      1400,
       withRepeat(
         withSequence(
-          withTiming(1.06, { duration: 520, easing: Easing.inOut(Easing.quad) }),
-          withTiming(1.0, { duration: 520, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1.04, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1.0, { duration: 700, easing: Easing.inOut(Easing.quad) }),
         ),
         -1,
         false,
       ),
     );
-    // Spin — one full turn / 3.2 s, linear. Reads as a rolling football.
-    ballSpin.value = withRepeat(
-      withTiming(360, { duration: 3200, easing: Easing.linear }),
-      -1,
-      false,
+
+    // 4. Wordmark rises into view after the ball lands.
+    wordmarkOpacity.value = withDelay(
+      1100,
+      withTiming(1, { duration: 380, easing: Easing.out(Easing.quad) }),
     );
-    // Wordmark + tagline rise-up after the ball lands.
-    wordmarkOpacity.value = withTiming(1, {
-      duration: 380,
-      easing: Easing.out(Easing.quad),
-    });
-    wordmarkY.value = withTiming(0, {
-      duration: 460,
-      easing: Easing.out(Easing.cubic),
-    });
-    // Three loading dots — staggered pulse so the row reads as
-    // "thinking", not three independent blinks.
+    wordmarkY.value = withDelay(
+      1100,
+      withTiming(0, { duration: 460, easing: Easing.out(Easing.cubic) }),
+    );
+
+    // 5. Three loading dots — staggered pulse.
     const dotSeq = (delay: number) =>
       withSequence(
         withTiming(0.3, { duration: delay }),
@@ -95,39 +190,97 @@ export function SplashVisual() {
           false,
         ),
       );
-    dot0.value = dotSeq(0);
-    dot1.value = dotSeq(140);
-    dot2.value = dotSeq(280);
-    return () => {
-      cancelAnimation(ballScale);
-      cancelAnimation(ballSpin);
-      cancelAnimation(ballOpacity);
-      cancelAnimation(wordmarkOpacity);
-      cancelAnimation(wordmarkY);
-      cancelAnimation(dot0);
-      cancelAnimation(dot1);
-      cancelAnimation(dot2);
-    };
-  }, [ballScale, ballSpin, ballOpacity, wordmarkOpacity, wordmarkY, dot0, dot1, dot2]);
+    dot0.value = withDelay(1200, dotSeq(0));
+    dot1.value = withDelay(1200, dotSeq(140));
+    dot2.value = withDelay(1200, dotSeq(280));
 
+    return () => {
+      [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
+       ballRotate, ballOpacity, ballBreath, shadowScale, shadowOpacity,
+       wordmarkOpacity, wordmarkY, dot0, dot1, dot2]
+        .forEach(cancelAnimation);
+    };
+  }, [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
+      ballRotate, ballOpacity, ballBreath, shadowScale, shadowOpacity,
+      wordmarkOpacity, wordmarkY, dot0, dot1, dot2]);
+
+  // SVG animated props — strokeDashoffset can't go through a normal
+  // animated style, so we feed them via animatedProps on the SVG node.
+  const circleAnim = useAnimatedStyle(() => ({}));
+  const lineAnim = useAnimatedStyle(() => ({}));
+  void circleAnim;
+  void lineAnim;
+  const circleProps = useAnimatedStyle(() => ({
+    // unused — we feed via inline props below
+  }));
+  void circleProps;
+
+  // For react-native-svg, animated props work via the `useAnimatedProps`
+  // hook, but to keep imports lean we inline-set via a re-render on
+  // shared value change using a tiny adapter component.
   const ballStyle = useAnimatedStyle(() => ({
     opacity: ballOpacity.value,
     transform: [
-      { scale: ballScale.value },
-      { rotate: `${ballSpin.value}deg` },
+      { translateY: ballY.value },
+      { scaleX: ballScaleX.value * ballBreath.value },
+      { scaleY: ballScaleY.value * ballBreath.value },
+      { rotate: `${ballRotate.value}deg` },
     ],
+  }));
+  const shadowStyle = useAnimatedStyle(() => ({
+    opacity: shadowOpacity.value,
+    transform: [{ scale: shadowScale.value }],
+  }));
+  const spotStyle = useAnimatedStyle(() => ({
+    opacity: spotOpacity.value,
   }));
   const wordmarkStyle = useAnimatedStyle(() => ({
     opacity: wordmarkOpacity.value,
     transform: [{ translateY: wordmarkY.value }],
   }));
-  const dot0Style = useAnimatedStyle(() => ({ opacity: dot0.value, transform: [{ scale: dot0.value }] }));
-  const dot1Style = useAnimatedStyle(() => ({ opacity: dot1.value, transform: [{ scale: dot1.value }] }));
-  const dot2Style = useAnimatedStyle(() => ({ opacity: dot2.value, transform: [{ scale: dot2.value }] }));
+  const dot0Style = useAnimatedStyle(() => ({
+    opacity: dot0.value, transform: [{ scale: dot0.value }],
+  }));
+  const dot1Style = useAnimatedStyle(() => ({
+    opacity: dot1.value, transform: [{ scale: dot1.value }],
+  }));
+  const dot2Style = useAnimatedStyle(() => ({
+    opacity: dot2.value, transform: [{ scale: dot2.value }],
+  }));
 
   return (
     <View style={styles.root} pointerEvents="none">
-      <View style={styles.center}>
+      {/* Pitch SVG — anchored behind the ball, centered on the screen.
+          The center circle has its dash array = its full circumference,
+          and we animate strokeDashoffset from full→0 to "draw it on". */}
+      <View style={styles.pitchWrap}>
+        <Svg width={SCREEN_W} height={SCREEN_H}>
+          {/* Halfway line — horizontal stroke through the centre. */}
+          <PitchLine
+            x1={(SCREEN_W - HALFWAY_LEN) / 2}
+            y1={SCREEN_H / 2}
+            x2={(SCREEN_W + HALFWAY_LEN) / 2}
+            y2={SCREEN_H / 2}
+            offset={lineOffset}
+            length={HALFWAY_LEN}
+          />
+          {/* Center circle */}
+          <PitchCircle
+            cx={SCREEN_W / 2}
+            cy={SCREEN_H / 2}
+            r={PITCH_CIRCLE_R}
+            offset={circleOffset}
+            circumference={PITCH_CIRCLE_C}
+          />
+        </Svg>
+        {/* Center spot — a tiny dot at the exact centre, fades in last. */}
+        <Animated.View style={[styles.spot, spotStyle]} />
+      </View>
+
+      {/* Ball + soft shadow under it. The shadow grows + darkens as
+          the ball approaches, then both share the bounce. */}
+      <View style={styles.ballArea} pointerEvents="none">
+        <Animated.View style={[styles.shadow, shadowStyle]} />
         <Animated.View
           style={[
             { width: BALL_SIZE, height: BALL_SIZE },
@@ -135,32 +288,90 @@ export function SplashVisual() {
             ballStyle,
           ]}
         >
-          <SoccerBall size={BALL_SIZE} color="#FFFFFF" />
-        </Animated.View>
-        <Animated.View style={[styles.wordmarkWrap, wordmarkStyle]}>
-          <Text style={styles.wordmark} allowFontScaling={false}>
-            Teamder
-          </Text>
-          <Text style={styles.tagline} allowFontScaling={false}>
-            המשחק הבא שלך מתחיל כאן
-          </Text>
-          <View style={styles.dotsRow}>
-            <Animated.View style={[styles.dot, dot0Style]} />
-            <Animated.View style={[styles.dot, dot1Style]} />
-            <Animated.View style={[styles.dot, dot2Style]} />
-          </View>
+          <SoccerBall size={BALL_SIZE} />
         </Animated.View>
       </View>
+
+      {/* Wordmark + tagline + dots */}
+      <Animated.View style={[styles.wordmarkWrap, wordmarkStyle]}>
+        <Text style={styles.wordmark} allowFontScaling={false}>
+          Teamder
+        </Text>
+        <Text style={styles.tagline} allowFontScaling={false}>
+          המשחק הבא שלך מתחיל כאן
+        </Text>
+        <View style={styles.dotsRow}>
+          <Animated.View style={[styles.dot, dot0Style]} />
+          <Animated.View style={[styles.dot, dot1Style]} />
+          <Animated.View style={[styles.dot, dot2Style]} />
+        </View>
+      </Animated.View>
     </View>
   );
+}
+
+/** Tiny wrapper that animates strokeDashoffset on a Line via
+ *  useAnimatedProps. Keeps the giant SplashVisual file readable. */
+function PitchLine({
+  x1, y1, x2, y2, offset, length,
+}: {
+  x1: number; y1: number; x2: number; y2: number;
+  offset: Animated.SharedValue<number>;
+  length: number;
+}) {
+  // We can't use useAnimatedProps cleanly with the typed Line, so we
+  // mount a fresh Line whose strokeDashoffset binds to the shared
+  // value via the AnimatedLine wrapper.
+  const animatedProps = useAnimatedDashProps(offset);
+  return (
+    <AnimatedLine
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      stroke={PITCH_COLOR}
+      strokeWidth={PITCH_STROKE}
+      strokeLinecap="round"
+      strokeDasharray={`${length}, ${length}`}
+      animatedProps={animatedProps}
+    />
+  );
+}
+
+function PitchCircle({
+  cx, cy, r, offset, circumference,
+}: {
+  cx: number; cy: number; r: number;
+  offset: Animated.SharedValue<number>;
+  circumference: number;
+}) {
+  const animatedProps = useAnimatedDashProps(offset);
+  return (
+    <AnimatedCircle
+      cx={cx}
+      cy={cy}
+      r={r}
+      stroke={PITCH_COLOR}
+      strokeWidth={PITCH_STROKE}
+      fill="none"
+      strokeDasharray={`${circumference}, ${circumference}`}
+      animatedProps={animatedProps}
+    />
+  );
+}
+
+/** Bind a shared value to an SVG element's `strokeDashoffset` prop. */
+function useAnimatedDashProps(offset: Animated.SharedValue<number>) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { useAnimatedProps } = require('react-native-reanimated');
+  return useAnimatedProps(() => ({
+    strokeDashoffset: offset.value,
+  }));
 }
 
 // ─── Kickoff / hold / fade-out wrapper ───────────────────────────────────
 
 interface Props {
-  /** Becomes true once the app is hydrated (auth + groups). The splash
-   *  waits for this before fading out so the user never sees a second
-   *  "loading" indicator after us. */
   ready: boolean;
   onFinish: () => void;
 }
@@ -169,32 +380,21 @@ export function SplashScreen({ ready, onFinish }: Props) {
   const rootOpacity = useSharedValue(1);
   const rootScale = useSharedValue(1);
   const heldEnoughRef = useRef(false);
-  // Mount timestamp — the brand needs at least MIN_HOLD_MS of stage
-  // time even when hydration finishes early (cold start with cached
-  // session: hydration completes in <200 ms and the user would
-  // otherwise see the splash for one frame).
   const mountTsRef = useRef(Date.now());
 
-  // Hide the native OS splash the moment this React layer paints.
   useEffect(() => {
     ExpoSplash.hideAsync().catch(() => {});
   }, []);
 
-  // Run the exit animation only after BOTH conditions are met:
-  // (a) the minimum-hold timer has elapsed, (b) the parent says ready.
   useEffect(() => {
     const elapsed = Date.now() - mountTsRef.current;
     const remaining = Math.max(0, MIN_HOLD_MS - elapsed);
     if (!ready) {
-      // Mark that we DID accumulate hold time, but don't exit yet.
-      // When ready flips we'll re-enter this effect and run the fade.
       if (remaining === 0) heldEnoughRef.current = true;
       return;
     }
     const timer = setTimeout(() => {
       heldEnoughRef.current = true;
-      // Exit "kick" — a quick zoom-in as the splash fades, so the app
-      // feels like it's being launched into rather than cross-fading.
       rootScale.value = withTiming(1.12, {
         duration: FADE_MS,
         easing: Easing.out(Easing.quad),
@@ -236,12 +436,24 @@ const styles = StyleSheet.create({
   },
   root: {
     ...StyleSheet.absoluteFillObject,
-    // Solid blue matches the native splash backgroundColor in
-    // app.json — the handoff between native and React layers is
-    // invisible because the colours align. (App brand is blue.)
-    backgroundColor: '#1E40AF',
+    backgroundColor: '#0E2B6E',  // deep brand blue — feels like a night-game pitch
   },
-  center: {
+  pitchWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Centre spot — tiny white dot at the exact centre of the pitch.
+  spot: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: PITCH_BRIGHT,
+    top: SCREEN_H / 2 - 4,
+    left: SCREEN_W / 2 - 4,
+  },
+  ballArea: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
@@ -250,22 +462,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Soft elliptical shadow under the ball — grows as the ball nears
+  // ground, then shares the bounce.
+  shadow: {
+    position: 'absolute',
+    width: BALL_SIZE * 0.9,
+    height: BALL_SIZE * 0.18,
+    borderRadius: BALL_SIZE * 0.45,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    top: SCREEN_H / 2 + BALL_SIZE * 0.42,
+  },
   wordmarkWrap: {
     position: 'absolute',
-    bottom: '20%',
+    bottom: '15%',
+    alignSelf: 'center',
     alignItems: 'center',
   },
   wordmark: {
     color: '#FFFFFF',
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '900',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(0,0,0,0.35)',
+    letterSpacing: 2.2,
+    textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    textShadowRadius: 8,
   },
-  // Tagline under the wordmark — softer, lighter weight, sells the
-  // product promise in one line. Hebrew so it reads naturally.
   tagline: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 14,
