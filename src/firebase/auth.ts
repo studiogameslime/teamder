@@ -1,12 +1,12 @@
 // Real Google Sign-In.
 //
-// Android: native Google account picker via
+// Android + iOS: native Google account picker via
 //   @react-native-google-signin/google-signin. Configured with the Web Client
-//   ID (the audience Firebase Auth expects on the id_token). Requires a dev
-//   build — Expo Go can't load native modules.
+//   ID (the audience Firebase Auth expects on the id_token); on iOS we also
+//   pass iosClientId so the SDK can hand off to the system picker. Requires
+//   a dev/production build — Expo Go can't load native modules.
 //
-// iOS / web: not yet wired. expo-auth-session would be the path here when
-//   needed.
+// Web: not yet wired. expo-auth-session would be the path here when needed.
 
 import { Platform } from 'react-native';
 import {
@@ -46,6 +46,12 @@ function ensureGoogleConfigured() {
   }
   GoogleSignin.configure({
     webClientId: googleOAuth.webClientId,
+    // iOS requires its own client ID — the Web ID alone isn't enough
+    // for the GoogleSignIn SDK to drive the native picker. The value
+    // comes from GoogleService-Info.plist (CLIENT_ID, NOT the
+    // ANDROID_CLIENT_ID). When the env var is missing the SDK falls
+    // back gracefully on Android.
+    iosClientId: googleOAuth.iosClientId || undefined,
     offlineAccess: false,
   });
   _googleConfigured = true;
@@ -62,7 +68,7 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
   if (USE_MOCK_DATA) {
     throw new Error('signInWithGoogle: USE_MOCK_DATA is true');
   }
-  if (Platform.OS !== 'android') {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     throw new Error(
       `Google Sign-In not yet wired for platform=${Platform.OS}.`
     );
@@ -70,7 +76,11 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
   const { auth } = getFirebase();
 
   ensureGoogleConfigured();
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // hasPlayServices is an Android-only gate. The SDK no-ops on iOS but
+  // the call still throws spurious warnings — skip it cleanly.
+  if (Platform.OS === 'android') {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  }
 
   const result = await GoogleSignin.signIn();
   if (!isSuccessResponse(result)) {
@@ -148,10 +158,12 @@ export async function deleteCurrentFirebaseUser(): Promise<void> {
     await deleteUser(user);
   } catch (e: any) {
     if (e?.code !== 'auth/requires-recent-login') throw e;
-    if (Platform.OS !== 'android') throw e;
+    if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw e;
     ensureGoogleConfigured();
     await GoogleSignin.signOut().catch(() => {});
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
     const res = await GoogleSignin.signIn();
     if (!isSuccessResponse(res)) {
       throw new Error('reauth: cancelled');
