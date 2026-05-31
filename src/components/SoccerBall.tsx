@@ -1,16 +1,22 @@
-// SoccerBall — SVG with a real panel pattern (centre black pentagon
-// + 5 surrounding pentagons + connecting wedges + radial highlight),
-// not the flat Ionicons glyph the splash used before. Reads as a 3D
-// ball at any size from 16 → 280.
+// SoccerBall — clean SVG soccer ball.
 //
-// We render plain SVG primitives so the existing `react-native-svg`
-// dependency is enough — no extra native module, no asset to bundle.
+// Renders the recognisable "football" silhouette without trying to be
+// a photorealistic truncated icosahedron:
+//   • shaded white sphere (radial gradient for 3D feel)
+//   • central black pentagon (point UP)
+//   • 5 small black caps near the rim, each sitting on a pentagon
+//     edge's outward normal — that's the visual cue that says "panels"
+//   • specular highlight in the upper-left for a glossy finish
+//
+// Earlier revisions overlaid extra connector wedges to "suggest" the
+// hexagon edges, which read as visual noise. Removing them and
+// keeping the geometry symmetric is what makes the ball read clean
+// at any size.
 
 import React, { useMemo } from 'react';
 import {
   Circle,
   Defs,
-  G,
   Polygon,
   RadialGradient,
   Stop,
@@ -19,47 +25,51 @@ import {
 
 interface Props {
   size?: number;
-  /** Highlight tint. Kept for API compatibility — the SVG ball ignores
-   *  it (its colour comes from the embedded gradient + pentagons) but
-   *  the prop stays so callers can swap freely. */
+  /** Kept for API compatibility — the SVG palette is fixed. */
   color?: string;
 }
 
-/** Build the 5 vertex points of a regular pentagon centred at (cx, cy),
- *  radius r, with rotation offset in degrees. SVG y-axis points DOWN,
- *  so a 0° rotation means the first vertex points UP visually (we use
- *  `-Math.sin` to flip y back to standard math convention). */
-function pentagon(cx: number, cy: number, r: number, rotDeg = 0): string {
-  const points: string[] = [];
+/** Regular pentagon centred at (cx, cy), radius r, top vertex up. */
+function pentagonPoints(cx: number, cy: number, r: number, rotDeg = 0): string {
+  const pts: string[] = [];
   for (let i = 0; i < 5; i++) {
     const a = ((rotDeg - 90 + i * 72) * Math.PI) / 180;
     const x = cx + Math.cos(a) * r;
     const y = cy + Math.sin(a) * r;
-    points.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
   }
-  return points.join(' ');
+  return pts.join(' ');
+}
+
+/** Regular hexagon centred at (cx, cy), radius r (centre→vertex). */
+function hexagonPoints(cx: number, cy: number, r: number, rotDeg = 0): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = ((rotDeg + i * 60) * Math.PI) / 180;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return pts.join(' ');
 }
 
 export function SoccerBall({ size = 64 }: Props) {
-  // Pre-compute the 5 satellite pentagons. Each one sits on the outer
-  // ring at a multiple of 72°, oriented so one vertex points toward the
-  // centre — that's what gives the ball its woven look.
-  const satellites = useMemo(() => {
+  // The 5 "panel caps" sit on the angle bisectors of the central
+  // pentagon — i.e. at 36° offset from each pentagon vertex — so the
+  // result is rotationally symmetric and reads as the classic
+  // alternating black/white panel pattern from a distance.
+  const caps = useMemo(() => {
     const out: { cx: number; cy: number; rot: number }[] = [];
-    const ringR = 56;          // distance from centre to satellite centre
-    const localR = 20;         // satellite pentagon radius
+    const ringR = 62;
     for (let i = 0; i < 5; i++) {
-      const a = ((-90 + i * 72) * Math.PI) / 180;
+      // 36° offset puts caps between pentagon vertices (on edge bisectors).
+      const a = ((-90 + i * 72 + 36) * Math.PI) / 180;
       out.push({
         cx: Math.cos(a) * ringR,
         cy: Math.sin(a) * ringR,
-        // Rotate the satellite so a vertex points back toward the centre.
-        // (Adding 180° to "i*72" flips the orientation.)
-        rot: 180 + i * 72,
-        // localR kept above for clarity / future tweaks
+        // Rotate the hexagon so one flat edge faces the central pentagon.
+        rot: (i * 72 + 36) - 90,
       });
-      // satisfy unused-var lint via underscore destructure
-      void localR;
     }
     return out;
   }, []);
@@ -67,22 +77,20 @@ export function SoccerBall({ size = 64 }: Props) {
   return (
     <Svg width={size} height={size} viewBox="-100 -100 200 200">
       <Defs>
-        {/* Soft 3D shading — light hits the upper-left, falls off to a
-            neutral mid-grey toward the bottom-right. */}
         <RadialGradient
           id="ballShade"
           cx="35%"
           cy="28%"
-          rx="75%"
-          ry="75%"
+          rx="78%"
+          ry="78%"
         >
           <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={1} />
-          <Stop offset="55%" stopColor="#F8FAFC" stopOpacity={1} />
+          <Stop offset="55%" stopColor="#F1F5F9" stopOpacity={1} />
           <Stop offset="100%" stopColor="#94A3B8" stopOpacity={1} />
         </RadialGradient>
       </Defs>
 
-      {/* Ball body — radial-shaded white circle with a thin outline. */}
+      {/* Ball body */}
       <Circle
         cx={0}
         cy={0}
@@ -92,40 +100,21 @@ export function SoccerBall({ size = 64 }: Props) {
         strokeWidth={3}
       />
 
-      {/* Connecting wedges — thin lines from each satellite pentagon
-          edge inward to the centre pentagon, suggesting the woven
-          hexagon edges without drawing them out fully. */}
-      <G>
-        {satellites.map((s, i) => {
-          const a = ((-90 + i * 72) * Math.PI) / 180;
-          const innerX = Math.cos(a) * 30;
-          const innerY = Math.sin(a) * 30;
-          return (
-            <Polygon
-              key={`wedge-${i}`}
-              points={`${innerX.toFixed(2)},${innerY.toFixed(2)} ${(s.cx).toFixed(2)},${(s.cy).toFixed(2)} ${(s.cx + Math.cos(a + Math.PI / 2) * 6).toFixed(2)},${(s.cy + Math.sin(a + Math.PI / 2) * 6).toFixed(2)} ${(innerX + Math.cos(a + Math.PI / 2) * 4).toFixed(2)},${(innerY + Math.sin(a + Math.PI / 2) * 4).toFixed(2)}`}
-              fill="#0F172A"
-              opacity={0.85}
-            />
-          );
-        })}
-      </G>
-
-      {/* Central pentagon — the heart of the panel pattern. */}
-      <Polygon points={pentagon(0, 0, 28)} fill="#0F172A" />
-
-      {/* Satellite pentagons — 5 around the centre. */}
-      {satellites.map((s, i) => (
+      {/* 5 hexagonal panel caps near the rim */}
+      {caps.map((c, i) => (
         <Polygon
-          key={`sat-${i}`}
-          points={pentagon(s.cx, s.cy, 20, s.rot)}
+          key={`cap-${i}`}
+          points={hexagonPoints(c.cx, c.cy, 22, c.rot)}
           fill="#0F172A"
         />
       ))}
 
-      {/* Top-left specular highlight — sells the 3D illusion. */}
+      {/* Central pentagon — slightly larger so it reads at small sizes */}
+      <Polygon points={pentagonPoints(0, 0, 26)} fill="#0F172A" />
+
+      {/* Specular highlight — gives the ball a glossy 3D finish. */}
       <Circle cx={-38} cy={-44} r={18} fill="#FFFFFF" opacity={0.45} />
-      <Circle cx={-44} cy={-50} r={9} fill="#FFFFFF" opacity={0.7} />
+      <Circle cx={-44} cy={-50} r={9} fill="#FFFFFF" opacity={0.75} />
     </Svg>
   );
 }
