@@ -123,18 +123,31 @@ export function CommunityCard({
         ) : null}
       </ImageBackground>
 
-      {/* Body — title, description, info row, optional CTA. */}
+      {/* Body — title (+ player chip), description, location, CTA. */}
       <View style={styles.body}>
+        {/* Title row — title + chevron anchor the visual RIGHT (Hebrew
+            reads RTL, so the title belongs where the eye lands first);
+            the player-count chip anchors the LEFT edge as a secondary
+            facet. JSX-first lands on the visual RIGHT under our RTL
+            flow, so the title group comes first. */}
         <View style={styles.titleRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {name}
-          </Text>
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color="#94A3B8"
-            style={styles.titleChevron}
-          />
+          <View style={styles.titleTextWrap}>
+            <Text style={styles.name} numberOfLines={1}>
+              {name}
+            </Text>
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color="#94A3B8"
+              style={styles.titleChevron}
+            />
+          </View>
+          <View style={styles.playersChip}>
+            <Ionicons name="people" size={12} color="#3B82F6" />
+            <Text style={styles.playersText}>
+              {he.groupsSearchMembers(memberCount)}
+            </Text>
+          </View>
         </View>
 
         {description ? (
@@ -143,22 +156,14 @@ export function CommunityCard({
           </Text>
         ) : null}
 
-        <View style={styles.infoRow}>
-          {locationLine ? (
-            <View style={styles.metaInline}>
-              <Ionicons name="location" size={13} color="#94A3B8" />
-              <Text style={styles.metaText} numberOfLines={1}>
-                {locationLine}
-              </Text>
-            </View>
-          ) : null}
-          <View style={styles.playersChip}>
-            <Ionicons name="people" size={12} color="#3B82F6" />
-            <Text style={styles.playersText}>
-              {he.groupsSearchMembers(memberCount)}
+        {locationLine ? (
+          <View style={styles.locationRow}>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {locationLine}
             </Text>
+            <Ionicons name="location" size={13} color="#94A3B8" />
           </View>
-        </View>
+        ) : null}
 
         {showJoin ? (
           <Pressable
@@ -260,12 +265,21 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: 6,
   },
+  // Title row — title-group on the visual RIGHT (JSX-first), player
+  // chip on the visual LEFT. space-between resolves the two ends so
+  // we don't need an absolute anchor.
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     alignSelf: 'stretch',
-    justifyContent: 'flex-start',
+    gap: spacing.sm,
+  },
+  titleTextWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
   },
   name: {
     color: '#0F172A',
@@ -285,18 +299,16 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
   },
-  infoRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.sm,
-    alignSelf: 'stretch',
-    marginTop: 2,
-  },
-  metaInline: {
-    flexDirection: 'row-reverse',
+  // Location lives on its own row UNDER the description so the title
+  // row stays uncluttered. Text comes first in JSX so it lands on the
+  // visual RIGHT (Hebrew start), icon trails to its visual left.
+  locationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    flexShrink: 1,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    marginTop: 2,
   },
   metaText: {
     color: '#64748B',
@@ -305,6 +317,7 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
+  // Player chip — compact pill on the visual LEFT of the title row.
   playersChip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -313,7 +326,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: 'rgba(59,130,246,0.10)',
-    marginStart: 'auto',
+    flexShrink: 0,
   },
   playersText: {
     color: '#1D4ED8',
