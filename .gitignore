@@ -19,7 +19,6 @@ LOCAL-SECRETS.md
 # only carry public client identifiers + API keys. Firestore Rules + the
 # SHA-1 fingerprint registered in Firebase Console are the real security
 # boundary. Committing them lets EAS Build pick them up via git.
-GoogleService-Info.plist
 ios/
 android/
 
