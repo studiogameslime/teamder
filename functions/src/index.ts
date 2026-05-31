@@ -2533,7 +2533,7 @@ export const onGameRosterChanged = onDocumentWritten(
         (uid) => !beforePlayers.has(uid),
       );
       if (newJoiners.length > 0) {
-        const JOIN_BATCH_WINDOW_MS = 3 * 60 * 1000;
+        const JOIN_BATCH_WINDOW_MS = 1 * 60 * 1000;
         let needsTaskEnqueue = false;
         let flushAtForTask = 0;
         try {
