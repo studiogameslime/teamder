@@ -360,6 +360,8 @@ export function PublicGroupsFeedScreen() {
         <CommunityCard
           name={g.name}
           locationLine={locationLine}
+          description={g.description}
+          coverPhotoUrl={g.coverPhotoUrl}
           memberCount={memberCount}
           status={status}
           onPress={() => {
@@ -371,6 +373,7 @@ export function PublicGroupsFeedScreen() {
               handleOpenDetails(g);
             }
           }}
+          onJoinPress={() => handleRequest(g)}
         />
       </AppearItem>
     );

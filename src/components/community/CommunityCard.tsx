@@ -3,26 +3,31 @@
 // Layout under forceRTL (visual):
 //
 //   ┌──────────────────────────────────────────────┐
-//   │ [badge]                       שם הקבוצה      │
-//   │                              עיר · מגרש 📍    │
-//   │                            👥 12 שחקנים       │
+//   │ ╔══════════════════════════════════════════╗ │
+//   │ ║  [cover photo or brand gradient]         ║ │
+//   │ ║                              [⭐ מנהל]    ║ │  ← status badge
+//   │ ╚══════════════════════════════════════════╝ │     overlays cover
+//   │                              שם הקבוצה  ›   │
+//   │  תיאור קצר של הקהילה — שורת tagline           │
+//   │  📍 מגרש · עיר          👥 23 שחקנים          │
+//   │  ┌────────────────────────────────────────┐  │
+//   │  │              הצטרף לקבוצה              │  │  ← only when status='none'
+//   │  └────────────────────────────────────────┘  │
 //   └──────────────────────────────────────────────┘
-//   ↑                                              ↑
-//   absolute top-LEFT pin                      content column
-//   (physical left, never                      right-aligned via
-//    flips under RTL)                           alignSelf:flex-start
-//                                              (which under forceRTL
-//                                              maps to the visual RIGHT
-//                                              edge of the card)
 //
-// We deliberately avoid `justifyContent: 'space-between'` for the
-// header — testing showed inconsistent RTL flipping for that property
-// vs the column-cross-axis `alignSelf` (which DOES flip reliably).
-// Pinning the badge with absolute `left:` removes any ambiguity:
-// physical LEFT regardless of writing direction.
+// Design notes:
+//   • The status badge no longer competes with the title text — it sits
+//     on the cover photo overlay so a long title can use the full row
+//     width without an absolute child clipping into it.
+//   • Cover photo falls back to a brand-blue gradient with a faded
+//     soccer ball so empty communities still feel inviting.
+//   • Description is bounded to 2 lines and falls away gracefully when
+//     missing so the card height adapts.
+//   • Join CTA appears only for non-members ('none' status); members /
+//     admins / pending see the card as a navigation tile.
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -38,20 +43,35 @@ interface Props {
   name: string;
   /** "עיר · מגרש" — pre-joined by the caller, falsy → hidden line. */
   locationLine: string;
+  /** Short tagline / community description. Falsy → line hidden. */
+  description?: string;
+  /** Optional remote URL for the community cover photo. When absent we
+   *  render a brand-blue gradient with a faded ball icon. */
+  coverPhotoUrl?: string;
   memberCount: number;
   status: CommunityCardStatus;
   /** Tap whole card → details. */
   onPress: () => void;
+  /** Tap the "הצטרף" CTA (only rendered when status='none'). When
+   *  omitted the CTA is hidden — caller hasn't wired the action. */
+  onJoinPress?: () => void;
+  /** Disable the join CTA while a network request is in flight. */
+  joinBusy?: boolean;
 }
 
 export function CommunityCard({
   name,
   locationLine,
+  description,
+  coverPhotoUrl,
   memberCount,
   status,
   onPress,
+  onJoinPress,
+  joinBusy,
 }: Props) {
   const palette = paletteFor(status);
+  const showJoin = status === 'none' && !!onJoinPress;
 
   return (
     <PressableScale
@@ -60,41 +80,87 @@ export function CommunityCard({
       accessibilityRole="button"
       accessibilityLabel={name}
     >
-      {/* Status pin — absolute top-LEFT. `left:` is physical so it
-          stays put regardless of writing direction. */}
-      {palette ? (
-        <View style={[styles.badge, { backgroundColor: palette.badgeBg }]}>
-          <Ionicons name={palette.icon} size={12} color={palette.badgeFg} />
-          <Text style={[styles.badgeText, { color: palette.badgeFg }]}>
-            {palette.label}
-          </Text>
-        </View>
-      ) : null}
-
-      <Text style={styles.name} numberOfLines={1}>
-        {name}
-      </Text>
-
-      {/* Meta row — location + players chip share ONE row to tighten
-          the card vertically and put both bits of info at the same
-          glance. Under forceRTL `row-reverse` lays them right→left:
-          location first (visual right), then a centered dot, then
-          the players chip on the visual left. */}
-      <View style={styles.infoRow}>
-        {locationLine ? (
-          <View style={styles.metaInline}>
-            <Text style={styles.metaText} numberOfLines={1}>
-              {locationLine}
+      {/* Cover — image when we have one, brand gradient otherwise.
+          Both surfaces host the status badge so it never overlaps the
+          title text underneath. */}
+      <View style={styles.cover}>
+        {coverPhotoUrl ? (
+          <Image
+            source={{ uri: coverPhotoUrl }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.coverFallback}>
+            <Ionicons name="football" size={64} color="rgba(255,255,255,0.30)" />
+            <View style={styles.coverGloss} />
+          </View>
+        )}
+        {palette ? (
+          <View style={[styles.badge, { backgroundColor: palette.badgeBg }]}>
+            <Ionicons name={palette.icon} size={12} color={palette.badgeFg} />
+            <Text style={[styles.badgeText, { color: palette.badgeFg }]}>
+              {palette.label}
             </Text>
-            <Ionicons name="location" size={13} color="#94A3B8" />
           </View>
         ) : null}
-        <View style={styles.playersChip}>
-          <Text style={styles.playersText}>
-            {he.groupsSearchMembers(memberCount)}
+      </View>
+
+      {/* Body — title, description, info row, optional CTA. */}
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
           </Text>
-          <Ionicons name="people" size={12} color="#3B82F6" />
+          <Ionicons
+            name="chevron-back"
+            size={18}
+            color="#94A3B8"
+            style={styles.titleChevron}
+          />
         </View>
+
+        {description ? (
+          <Text style={styles.description} numberOfLines={2}>
+            {description}
+          </Text>
+        ) : null}
+
+        <View style={styles.infoRow}>
+          {locationLine ? (
+            <View style={styles.metaInline}>
+              <Ionicons name="location" size={13} color="#94A3B8" />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {locationLine}
+              </Text>
+            </View>
+          ) : null}
+          <View style={styles.playersChip}>
+            <Ionicons name="people" size={12} color="#3B82F6" />
+            <Text style={styles.playersText}>
+              {he.groupsSearchMembers(memberCount)}
+            </Text>
+          </View>
+        </View>
+
+        {showJoin ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              onJoinPress!();
+            }}
+            disabled={joinBusy}
+            style={({ pressed }) => [
+              styles.joinBtn,
+              (pressed || joinBusy) && { opacity: 0.85 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.communitiesCardJoin}
+          >
+            <Text style={styles.joinText}>{he.communitiesCardJoin}</Text>
+            <Ionicons name="add-circle" size={16} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
       </View>
     </PressableScale>
   );
@@ -135,31 +201,47 @@ function paletteFor(status: CommunityCardStatus): Palette | null {
   return null;
 }
 
+const COVER_HEIGHT = 110;
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    gap: 6,
-    position: 'relative',
+    overflow: 'hidden',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
     elevation: 3,
   },
-  // Pin to the LEFT physical edge under forceRTL. RN's default
-  // `swapLeftAndRightInRTL` flips physical `left:` to the trailing
-  // edge under RTL, so we use the RTL-aware `end:` instead — `end`
-  // under forceRTL resolves to the visual LEFT edge, which is what we
-  // want here. `top` is aligned with the name's first text line so
-  // the badge sits in the same horizontal band as the title.
+  cover: {
+    height: COVER_HEIGHT,
+    backgroundColor: '#1D4ED8',
+    position: 'relative',
+  },
+  coverFallback: {
+    flex: 1,
+    backgroundColor: '#1D4ED8',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    paddingEnd: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  // A subtle diagonal sheen on the gradient fallback — adds depth so
+  // the cover doesn't read as a flat blue rectangle.
+  coverGloss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
   badge: {
     position: 'absolute',
-    top: spacing.md,
-    end: spacing.lg,
-    flexDirection: 'row',
+    bottom: spacing.sm,
+    end: spacing.sm,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 10,
@@ -171,23 +253,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  // Name lives on the SAME row as the (absolute) badge. We need a
-  // gutter on the badge's side so the right-aligned Hebrew text
-  // never bleeds into the badge area. Use `marginEnd` (RTL-aware)
-  // because under forceRTL `marginLeft` is swapped to the trailing
-  // edge — `marginEnd` always lands on the badge's side (the visual
-  // LEFT under RTL).
+  body: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: 6,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'stretch',
+    justifyContent: 'flex-start',
+  },
   name: {
     color: '#0F172A',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    alignSelf: 'stretch',
-    marginEnd: 110,
+    flexShrink: 1,
   },
-  // Combined location + players row — `row-reverse` keeps the location
-  // (with its leading-icon) on the visual right and the players chip
-  // tucked on the visual left edge of the card.
+  titleChevron: {
+    opacity: 0.6,
+  },
+  description: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    textAlign: RTL_LABEL_ALIGN,
+    alignSelf: 'stretch',
+  },
   infoRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -208,7 +304,6 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     flexShrink: 1,
   },
-  // Players chip — compact, sits inline on the visual LEFT of the row.
   playersChip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -223,5 +318,22 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontSize: 12,
     fontWeight: '700',
+  },
+  joinBtn: {
+    marginTop: spacing.sm,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1D4ED8',
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignSelf: 'stretch',
+  },
+  joinText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

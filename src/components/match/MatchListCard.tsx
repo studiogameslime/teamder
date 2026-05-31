@@ -102,27 +102,24 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // default so the user sees their personal state first.
   const statusPill = renderStatusPill(status, isFull);
 
-  // Tag row — leads with the format chip (5×5 / 6×6 / 7×7), then any
-  // optional descriptors (field type, requires-approval). Format used
-  // to live in a wide vertical strip on the left; folding it into the
-  // tags row reclaims that horizontal real-estate.
-  const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = [
-    { label: fmt, tone: 'accent' },
-  ];
-  if (game.fieldType) {
-    tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
-  }
-  if (game.requiresApproval) {
-    tags.push({ label: he.matchStatusPending, tone: 'warning' });
-  }
-  // Capacity urgency — shown EVEN IF the user is registered, because
-  // scarcity is useful info ("invite a friend before it locks") not
-  // just a join cue. Red when full, orange when ≤3 spots remain.
+  // Tag row — the capacity chip (מלא / מקומות אחרונים) leads so it
+  // ends up on the visual LEFT EDGE of the row under RTL flip, where
+  // a red/orange swatch reads as a scarcity alarm separated from the
+  // descriptor cluster. Format + field type + approval follow on the
+  // right, reading right-to-left as the primary facets.
+  const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = [];
   const spotsLeft = Math.max(0, game.maxPlayers - occupancy);
   if (isFull) {
     tags.push({ label: he.matchStatusFull, tone: 'danger' });
   } else if (spotsLeft > 0 && spotsLeft <= 3) {
     tags.push({ label: he.matchStatusLastSpots(spotsLeft), tone: 'warning' });
+  }
+  tags.push({ label: fmt, tone: 'accent' });
+  if (game.fieldType) {
+    tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
+  }
+  if (game.requiresApproval) {
+    tags.push({ label: he.matchStatusPending, tone: 'warning' });
   }
 
   // Hide the cancel CTA on the list — it's a destructive action and
@@ -137,27 +134,28 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
       accessibilityRole="button"
       accessibilityLabel={game.title}
     >
-      {/* Status pill — absolute on the visual LEFT edge of the
-          title's row, mirroring the community card pattern. `end:`
-          under forceRTL maps to physical LEFT, so the pill always
-          lands left-of-name regardless of any RTL flip in surrounding
-          layout. The title gets a `marginEnd` clearance below so the
-          right-aligned Hebrew text never bleeds into the pill area. */}
-      {statusPill ? (
-        <View style={styles.statusPillWrap}>{statusPill}</View>
-      ) : null}
-
       <View style={styles.content}>
+        {/* Title row — under RTL, JSX-first lands on the visual RIGHT.
+            We want the status pill ("נרשמת" / "בהמתנה") on the visual
+            RIGHT edge so Hebrew reading lands on it first, with the
+            title trailing on the LEFT. The previous layout had them
+            reversed; this swap addresses the user's "תחליף מיקומים"
+            request. */}
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
-            {game.title}
-          </Text>
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color="#94A3B8"
-            style={styles.titleChevron}
-          />
+          {statusPill ? (
+            <View style={styles.titleStatusPill}>{statusPill}</View>
+          ) : null}
+          <View style={styles.titleTextWrap}>
+            <Text style={styles.title} numberOfLines={1}>
+              {game.title}
+            </Text>
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color="#94A3B8"
+              style={styles.titleChevron}
+            />
+          </View>
         </View>
 
         {game.fieldName ? (
@@ -172,19 +170,23 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
           <InfoRow icon="time" text={formatTime(game.startsAt)} />
         </View>
 
-        {tags.length > 0 ? (
-          <View style={styles.tagsRow}>
-            {tags.map((t, i) => (
-              <Tag key={`${t.label}-${i}`} label={t.label} tone={t.tone} />
-            ))}
-          </View>
-        ) : null}
-
-        <View style={styles.bottomRow}>
-          <Text style={styles.players} numberOfLines={1}>
+        {/* Combined facts row — the per-game chips (capacity, format,
+            field type) AND the player count share one row now. The
+            count anchors the RIGHT edge so it lines up with the
+            heaviest piece of info (where the eye lands first reading
+            RTL); the chips spill from there toward the visual LEFT,
+            capacity-first under the new ordering. */}
+        <View style={styles.tagsRow}>
+          {tags.map((t, i) => (
+            <Tag key={`${t.label}-${i}`} label={t.label} tone={t.tone} />
+          ))}
+          <Text style={styles.playersInline} numberOfLines={1}>
             {he.matchCardPlayersOf(occupancy, game.maxPlayers)}
           </Text>
-          {showCta ? (
+        </View>
+
+        {showCta ? (
+          <View style={styles.bottomRow}>
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
@@ -210,8 +212,8 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
                   : he.matchCardJoinFull}
               </Text>
             </Pressable>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
       </View>
 
     </PressableScale>
@@ -333,27 +335,30 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3,
   },
-  // Status pill — pinned to the visual LEFT (end under RTL) edge of
-  // the card, aligned with the title's first line so the pill sits
-  // on the SAME ROW as the title.
-  statusPillWrap: {
-    position: 'absolute',
-    top: spacing.md,
-    end: spacing.md,
-  },
   content: {
     gap: 6,
   },
-  // Title shares the row with the absolute status pill. `marginEnd`
-  // (RTL-aware) reserves a gutter on the badge's side so the right-
-  // aligned Hebrew title never bleeds into the pill area.
+  // Title row — title (+ chevron) on the visual RIGHT, status pill on
+  // the visual LEFT. `space-between` resolves automatically under RTL
+  // so we don't need an absolute child to anchor the pill.
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     alignSelf: 'stretch',
-    justifyContent: 'flex-start',
-    marginEnd: 110,
+    gap: spacing.sm,
+  },
+  // Title + chevron move as a single unit on the visual RIGHT side of
+  // the row. `flexShrink: 1` lets a long title elide rather than push
+  // the pill off the card.
+  titleTextWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  titleStatusPill: {
+    flexShrink: 0,
   },
   title: {
     color: '#0F172A',
@@ -391,10 +396,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
     marginTop: 2,
     flexWrap: 'wrap',
-    maxWidth: '100%',
+  },
+  // Player count rides the chips row now. `marginEnd: auto` (RTL-aware
+  // 'start' under forceRTL) pushes the count to the visual RIGHT edge,
+  // which is where the eye lands first reading Hebrew. The chips
+  // gather on its left.
+  playersInline: {
+    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '700',
+    marginEnd: 'auto',
+    textAlign: RTL_LABEL_ALIGN,
   },
   tag: {
     paddingHorizontal: 10,

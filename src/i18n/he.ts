@@ -609,6 +609,10 @@ export const he = {
   communitiesSectionOpen: 'קבוצות פתוחות',
   communitiesHeroSubtitle: 'כל הקבוצות במקום אחד',
   communitiesCardMemberBadge: 'אתה חבר',
+  // Inline CTA on the community card — surfaced only when the viewer
+  // is NOT a member / admin / pending. Maps to the same requestJoin
+  // call the details screen uses.
+  communitiesCardJoin: 'הצטרף לקבוצה',
   communitiesCardSearchPlaceholder: 'חיפוש קבוצה או עיר',
   communitiesEmptyAdmin: 'אינך מנהל אף קבוצה',
   communitiesEmptyMember: 'עדיין לא הצטרפת לאף קבוצה',
