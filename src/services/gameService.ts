@@ -1251,6 +1251,17 @@ export const gameService = {
       typeof input.registrationOpensAt === 'number' &&
       input.registrationOpensAt > now;
     const initialStatus: Game['status'] = isDeferred ? 'scheduled' : 'open';
+    // Quick games ('orphan context') are created by a user who wants to
+    // PLAY them — the wizard never asks whether to self-register, because
+    // it's implicit. Auto-add the creator to players + participantIds so
+    // the game shows up as a real registered match instead of a ghost
+    // with 0 players sitting in 'המשחקים שלי'. For community games we
+    // keep the previous behaviour (creator may want to set things up
+    // without joining themselves, e.g. an admin scheduling on behalf
+    // of the group).
+    const autoSelfRegister = input.isOrphanContext === true && !isDeferred;
+    const initialPlayers = autoSelfRegister ? [input.createdBy] : [];
+    const initialParticipantIds = autoSelfRegister ? [input.createdBy] : [];
     const base: Omit<Game, 'id'> = {
       groupId: input.groupId,
       title: input.title,
@@ -1258,10 +1269,10 @@ export const gameService = {
       fieldName: input.fieldName,
       maxPlayers: input.maxPlayers,
       minPlayers: input.minPlayers,
-      players: [],
+      players: initialPlayers,
       waitlist: [],
       pending: [],
-      participantIds: [],
+      participantIds: initialParticipantIds,
       status: initialStatus,
       locked: false,
       currentMatchIndex: 0,
