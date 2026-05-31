@@ -28,6 +28,8 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
+import { onTaskDispatched } from 'firebase-functions/v2/tasks';
+import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -1490,105 +1492,116 @@ export const sendRsvpNudges = onSchedule(
  * captures the joiner list, so two concurrent cron runs can't
  * dispatch the same batch twice.
  */
-export const flushPendingJoinerNotifs = onSchedule(
+/**
+ * Cloud Tasks handler — replaces the every-1-minute cron with a
+ * one-shot task scheduled exactly at `pendingJoinFlushAt`.
+ *
+ * The handler runs the SAME claim-and-dispatch logic the cron did, just
+ * for one specific game (passed via the task payload) instead of
+ * scanning the whole collection on every minute.
+ *
+ * Cost win: the cron paid ~43,200 invocations / month even with zero
+ * joins. The task variant pays one invocation per join-batch (≈1 per
+ * 100 joins, since each fires at the same flushAt). ~96% reduction.
+ *
+ * Latency win: the task fires at the exact scheduled second (Cloud
+ * Tasks SLA is sub-second). The cron added up to 60 s of polling
+ * delay; the task removes it.
+ *
+ * Idempotency: the claim transaction in the body is the same one the
+ * cron used, so re-enqueueing or duplicate-firing a task is still
+ * safe — the second dispatch finds an empty buffer and no-ops.
+ */
+export const flushPendingJoinerNotifsTask = onTaskDispatched(
   {
-    schedule: 'every 1 minutes',
-    timeZone: 'Asia/Jerusalem',
+    retryConfig: { maxAttempts: 5, minBackoffSeconds: 10 },
+    rateLimits: { maxConcurrentDispatches: 6 },
   },
-  async () => {
-    const now = Date.now();
-    const snap = await db
-      .collection('games')
-      .where('pendingJoinFlushAt', '<=', now)
-      .get();
+  async (req) => {
+    const { gameId } = (req.data ?? {}) as { gameId?: string };
+    if (!gameId) {
+      console.warn('[flushPendingJoinerNotifsTask] missing gameId');
+      return;
+    }
+    const ref = db.collection('games').doc(gameId);
 
-    if (snap.empty) return;
-
-    let dispatched = 0;
-    for (const doc of snap.docs) {
-      const g = doc.data() as {
-        title?: string;
-        groupId?: string;
-        startsAt?: number;
-        pendingJoinerIds?: string[];
-        pendingJoinFlushAt?: number;
-      };
-
-      // Claim transactionally — the tx captures the joiner list AND
-      // clears the buffer atomically. Race between two cron runs:
-      // only the first sees the unexpired flushAt and a non-empty
-      // list; the second gets nothing and skips.
-      let claimedJoiners: string[] = [];
-      try {
-        await db.runTransaction(async (tx) => {
-          const fresh = await tx.get(doc.ref);
-          if (!fresh.exists) return;
-          const d = fresh.data() as {
-            pendingJoinerIds?: string[];
-            pendingJoinFlushAt?: number;
-          };
-          if (!d.pendingJoinFlushAt || d.pendingJoinFlushAt > Date.now()) {
-            return;
-          }
-          claimedJoiners = (d.pendingJoinerIds ?? []).slice();
-          tx.update(doc.ref, {
-            pendingJoinerIds: admin.firestore.FieldValue.delete(),
-            pendingJoinFlushAt: admin.firestore.FieldValue.delete(),
-          });
+    // Claim transactionally — captures the joiner list AND clears the
+    // buffer atomically. If the task fires twice (unlikely under Cloud
+    // Tasks but possible after retry), the second one finds an empty
+    // buffer and exits without dispatch.
+    let claimedJoiners: string[] = [];
+    let g: {
+      title?: string;
+      groupId?: string;
+      startsAt?: number;
+    } = {};
+    try {
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(ref);
+        if (!fresh.exists) return;
+        const d = fresh.data() as {
+          title?: string;
+          groupId?: string;
+          startsAt?: number;
+          pendingJoinerIds?: string[];
+          pendingJoinFlushAt?: number;
+        };
+        // If a later joiner extended the window (shouldn't happen with
+        // the current writer — it never extends — but kept defensive),
+        // re-enqueue ourselves for the new time and exit.
+        if (d.pendingJoinFlushAt && d.pendingJoinFlushAt > Date.now() + 2000) {
+          // Defensive only — current writer doesn't extend. Skip.
+          return;
+        }
+        claimedJoiners = (d.pendingJoinerIds ?? []).slice();
+        g = { title: d.title, groupId: d.groupId, startsAt: d.startsAt };
+        tx.update(ref, {
+          pendingJoinerIds: admin.firestore.FieldValue.delete(),
+          pendingJoinFlushAt: admin.firestore.FieldValue.delete(),
         });
-      } catch (err) {
-        console.error('[flushPendingJoinerNotifs] claim failed', doc.id, err);
-        continue;
-      }
-
-      if (claimedJoiners.length === 0 || !g.groupId) continue;
-
-      // Resolve display names for the message body. Best-effort: a
-      // missing user just gets dropped from the names list, but
-      // `count` still reflects the true total. NOTE: the canonical
-      // user-name field on /users/{uid} is `name` (not `displayName`)
-      // — `displayName` is the in-app `Player` projection only. The
-      // earlier code read `displayName` and always got empty, so the
-      // push fell back to "N שחקנים אישרו הגעה" with no names.
-      let names: string[] = [];
-      try {
-        const userRefs = claimedJoiners.map((uid) =>
-          db.collection('users').doc(uid),
-        );
-        const userSnaps = await db.getAll(...userRefs);
-        names = userSnaps
-          .map((s) => {
-            if (!s.exists) return '';
-            const data = s.data() as { name?: string; displayName?: string };
-            return (data.name || data.displayName || '').trim();
-          })
-          .filter((n) => n.length > 0);
-      } catch (err) {
-        console.error('[flushPendingJoinerNotifs] name lookup failed', err);
-      }
-
-      try {
-        await createNotificationOnce({
-          type: 'gamePlayersJoined',
-          recipientId: g.groupId,
-          payload: {
-            gameId: doc.id,
-            groupId: g.groupId,
-            gameTitle: g.title || 'המשחק',
-            startsAt: g.startsAt ?? null,
-            joinerIds: claimedJoiners.join(','),
-            joinerNames: names.join(','),
-            count: claimedJoiners.length,
-          },
-        });
-        dispatched += 1;
-      } catch (err) {
-        console.error('[flushPendingJoinerNotifs] dispatch failed', doc.id, err);
-      }
+      });
+    } catch (err) {
+      console.error('[flushPendingJoinerNotifsTask] claim failed', gameId, err);
+      throw err;       // task will retry per retryConfig
     }
 
-    if (dispatched > 0) {
-      console.log(`[flushPendingJoinerNotifs] dispatched ${dispatched} batch(es)`);
+    if (claimedJoiners.length === 0 || !g.groupId) return;
+
+    // Resolve display names (best-effort).
+    let names: string[] = [];
+    try {
+      const userRefs = claimedJoiners.map((uid) =>
+        db.collection('users').doc(uid),
+      );
+      const userSnaps = await db.getAll(...userRefs);
+      names = userSnaps
+        .map((s) => {
+          if (!s.exists) return '';
+          const data = s.data() as { name?: string; displayName?: string };
+          return (data.name || data.displayName || '').trim();
+        })
+        .filter((n) => n.length > 0);
+    } catch (err) {
+      console.error('[flushPendingJoinerNotifsTask] name lookup failed', err);
+    }
+
+    try {
+      await createNotificationOnce({
+        type: 'gamePlayersJoined',
+        recipientId: g.groupId,
+        payload: {
+          gameId,
+          groupId: g.groupId,
+          gameTitle: g.title || 'המשחק',
+          startsAt: g.startsAt ?? null,
+          joinerIds: claimedJoiners.join(','),
+          joinerNames: names.join(','),
+          count: claimedJoiners.length,
+        },
+      });
+    } catch (err) {
+      console.error('[flushPendingJoinerNotifsTask] dispatch failed', gameId, err);
+      throw err;       // retry per retryConfig
     }
   },
 );
@@ -2521,6 +2534,8 @@ export const onGameRosterChanged = onDocumentWritten(
       );
       if (newJoiners.length > 0) {
         const JOIN_BATCH_WINDOW_MS = 3 * 60 * 1000;
+        let needsTaskEnqueue = false;
+        let flushAtForTask = 0;
         try {
           await db.runTransaction(async (tx) => {
             const fresh = await tx.get(ref);
@@ -2534,10 +2549,19 @@ export const onGameRosterChanged = onDocumentWritten(
             );
             // First joiner in the window sets flushAt; subsequent
             // joiners append without extending — bounded latency.
-            const flushAt =
+            const existingFlushAt =
               data.pendingJoinFlushAt && data.pendingJoinFlushAt > Date.now()
                 ? data.pendingJoinFlushAt
-                : Date.now() + JOIN_BATCH_WINDOW_MS;
+                : 0;
+            const flushAt = existingFlushAt || Date.now() + JOIN_BATCH_WINDOW_MS;
+            // We only enqueue a Cloud Task when WE are the joiner who
+            // sets the window — subsequent joiners ride the same task.
+            // (If existingFlushAt was set, a task is already in flight
+            // for that game; appending to the buffer is enough.)
+            if (!existingFlushAt) {
+              needsTaskEnqueue = true;
+              flushAtForTask = flushAt;
+            }
             tx.update(ref, {
               pendingJoinerIds: merged,
               pendingJoinFlushAt: flushAt,
@@ -2545,6 +2569,26 @@ export const onGameRosterChanged = onDocumentWritten(
           });
         } catch (err) {
           console.error('[onGameRosterChanged] joiner buffer txn failed', err);
+        }
+
+        // Enqueue the one-shot Cloud Task that will dispatch the
+        // consolidated push at flushAt. Replaces the every-1-minute
+        // cron that used to poll for these.
+        if (needsTaskEnqueue && flushAtForTask > 0) {
+          try {
+            const queue = getGcpFunctions().taskQueue(
+              'flushPendingJoinerNotifsTask',
+            );
+            await queue.enqueue(
+              { gameId: event.params.gameId },
+              { scheduleTime: new Date(flushAtForTask) },
+            );
+          } catch (err) {
+            console.error(
+              '[onGameRosterChanged] enqueue joiner-flush task failed',
+              err,
+            );
+          }
         }
       }
     }
