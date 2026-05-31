@@ -1,12 +1,24 @@
 // GameFilterSheet — modal sheet for filtering the matches list.
 //
 // Filter dimensions (in display order):
+//   • When              — any / today / thisWeek / weekend
 //   • Format            — 5×5 / 6×6 / 7×7 (multi-select pills)
 //   • Field type        — asphalt / synthetic / grass (multi-select)
-//   • Visibility        — public / community-only (multi-select)
-//   • Match rules       — hasReferee / hasPenalties / hasHalfTime
-//   • Logistics         — bringBall / bringShirts / requiresApproval
+//   • Cost              — any / free / paid
+//   • Visibility        — public / community-only (tri-state)
+//   • Approval          — requiresApproval tri-state
 //   • Availability      — only show games with open spots
+//
+// Removed dimensions (product decision — filters that no longer match
+// what the wizard sets):
+//   • hasReferee/hasPenalties/hasHalfTime — superseded by free-text
+//     `ruleTags` chips at the game level; legacy fields kept on Game
+//     for backward-compat with old documents but never set by the
+//     wizard, so filtering by them was always empty in practice.
+//   • bringBall/bringShirts — removed from the wizard per product
+//     decision (community-level setting, surfaced inline on match
+//     details rather than per game). Defaults to true on every game
+//     so a yes/no filter has nothing to do.
 //
 // A null value on any tri-state means "don't filter on this dimension".
 // The list screen owns the GameFilters state; this component is purely
@@ -49,11 +61,6 @@ export interface GameFilters {
   /** Cost slice — most local games are free; this is rare to set but
    *  worth surfacing. */
   cost: GameCostFilter;
-  hasReferee: boolean | null;
-  hasPenalties: boolean | null;
-  hasHalfTime: boolean | null;
-  bringBall: boolean | null;
-  bringShirts: boolean | null;
   requiresApproval: boolean | null;
   /** When true, hide games that are full (no spots in players + waitlist). */
   onlyAvailable: boolean;
@@ -65,11 +72,6 @@ export const EMPTY_GAME_FILTERS: GameFilters = {
   fieldTypes: [],
   visibility: null,
   cost: 'any',
-  hasReferee: null,
-  hasPenalties: null,
-  hasHalfTime: null,
-  bringBall: null,
-  bringShirts: null,
   requiresApproval: null,
   onlyAvailable: false,
 };
@@ -81,11 +83,6 @@ export function isFiltersEmpty(f: GameFilters): boolean {
     f.fieldTypes.length === 0 &&
     f.visibility === null &&
     f.cost === 'any' &&
-    f.hasReferee === null &&
-    f.hasPenalties === null &&
-    f.hasHalfTime === null &&
-    f.bringBall === null &&
-    f.bringShirts === null &&
     f.requiresApproval === null &&
     !f.onlyAvailable
   );
@@ -98,11 +95,6 @@ export function activeFiltersCount(f: GameFilters): number {
   if (f.fieldTypes.length) n += 1;
   if (f.visibility !== null) n += 1;
   if (f.cost !== 'any') n += 1;
-  if (f.hasReferee !== null) n += 1;
-  if (f.hasPenalties !== null) n += 1;
-  if (f.hasHalfTime !== null) n += 1;
-  if (f.bringBall !== null) n += 1;
-  if (f.bringShirts !== null) n += 1;
   if (f.requiresApproval !== null) n += 1;
   if (f.onlyAvailable) n += 1;
   return n;
@@ -295,34 +287,10 @@ export function GameFilterSheet({
               />
             </Section>
 
-            {/* Match rules */}
-            <ToggleRow
-              label={he.wizardHasReferee}
-              value={filters.hasReferee}
-              onChange={(v) => onChange({ ...filters, hasReferee: v })}
-            />
-            <ToggleRow
-              label={he.wizardHasPenalties}
-              value={filters.hasPenalties}
-              onChange={(v) => onChange({ ...filters, hasPenalties: v })}
-            />
-            <ToggleRow
-              label={he.wizardHasHalfTime}
-              value={filters.hasHalfTime}
-              onChange={(v) => onChange({ ...filters, hasHalfTime: v })}
-            />
-
-            {/* Logistics */}
-            <ToggleRow
-              label={he.createGameBringBall}
-              value={filters.bringBall}
-              onChange={(v) => onChange({ ...filters, bringBall: v })}
-            />
-            <ToggleRow
-              label={he.createGameBringShirts}
-              value={filters.bringShirts}
-              onChange={(v) => onChange({ ...filters, bringShirts: v })}
-            />
+            {/* Approval requirement — the only logistics dimension that
+                remains gated by the wizard. (bringBall/bringShirts and
+                hasReferee/hasPenalties/hasHalfTime were removed; see
+                top-of-file note.) */}
             <ToggleRow
               label={he.createGameRequiresApproval}
               value={filters.requiresApproval}
@@ -499,11 +467,6 @@ export function applyGameFilters<T extends {
   fieldType?: FieldType;
   visibility?: 'public' | 'community';
   costPerGame?: number;
-  hasReferee?: boolean;
-  hasPenalties?: boolean;
-  hasHalfTime?: boolean;
-  bringBall?: boolean;
-  bringShirts?: boolean;
   requiresApproval?: boolean;
   maxPlayers: number;
   players: string[];
@@ -526,17 +489,6 @@ export function applyGameFilters<T extends {
       const isFree = !g.costPerGame || g.costPerGame === 0;
       if (f.cost === 'free' && !isFree) return false;
       if (f.cost === 'paid' && isFree) return false;
-    }
-    if (f.hasReferee !== null && !!g.hasReferee !== f.hasReferee) return false;
-    if (f.hasPenalties !== null && !!g.hasPenalties !== f.hasPenalties) {
-      return false;
-    }
-    if (f.hasHalfTime !== null && !!g.hasHalfTime !== f.hasHalfTime) {
-      return false;
-    }
-    if (f.bringBall !== null && !!g.bringBall !== f.bringBall) return false;
-    if (f.bringShirts !== null && !!g.bringShirts !== f.bringShirts) {
-      return false;
     }
     if (
       f.requiresApproval !== null &&
