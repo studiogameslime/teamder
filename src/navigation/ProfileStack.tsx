@@ -30,6 +30,7 @@ import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { ReferralsListScreen } from '@/screens/profile/ReferralsListScreen';
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -42,6 +43,7 @@ export type ProfileStackParamList = {
   History: undefined;
   Achievements: undefined;
   Friends: undefined;
+  Referrals: undefined;
   // Match-detail chain — same routes as GameStack/CommunitiesStack,
   // duplicated so back returns to the screen the user came from
   // (typically History).
@@ -79,6 +81,7 @@ export function ProfileStack() {
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="Referrals" component={ReferralsListScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="MatchManage" component={MatchManageScreen} />

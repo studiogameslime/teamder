@@ -2,9 +2,15 @@
 // app via this player's invite link. Visual layout mirrors the
 // other profile cards: icon circle on the leading edge, label +
 // helper in the middle, big value + chevron on the trailing side.
+//
+// The whole row is now tappable (when there's at least one referral).
+// Tap → ReferralsListScreen, which shows the actual people who joined
+// and when. We render a chevron at the trailing edge so the row
+// announces itself as navigable; rows with count=0 stay static (no
+// chevron, no onPress) so we don't navigate to an empty list.
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -13,11 +19,24 @@ import { he } from '@/i18n/he';
 interface Props {
   /** Null while loading; number once resolved. */
   count: number | null;
+  /** Optional tap handler — when present (and count > 0), the row
+   *  becomes a navigable button to the referrals list. */
+  onPress?: () => void;
 }
 
-export function ReferralCard({ count }: Props) {
+export function ReferralCard({ count, onPress }: Props) {
+  const tappable = typeof onPress === 'function' && (count ?? 0) > 0;
+  const Container = tappable ? Pressable : View;
   return (
-    <View style={styles.card}>
+    <Container
+      style={({ pressed }: { pressed?: boolean } = {}) => [
+        styles.card,
+        tappable && pressed && { opacity: 0.85 },
+      ]}
+      onPress={tappable ? onPress : undefined}
+      accessibilityRole={tappable ? 'button' : undefined}
+      accessibilityLabel={tappable ? he.profileStatInvited : undefined}
+    >
       <View style={styles.iconWrap}>
         <Ionicons name="people" size={22} color="#3B82F6" />
       </View>
@@ -43,7 +62,15 @@ export function ReferralCard({ count }: Props) {
           </Text>
         )}
       </View>
-    </View>
+      {tappable ? (
+        <Ionicons
+          name="chevron-back"
+          size={18}
+          color={colors.textMuted}
+          style={styles.chevronIcon}
+        />
+      ) : null}
+    </Container>
   );
 }
 
@@ -96,17 +123,7 @@ const styles = StyleSheet.create({
   },
   valuePositive: { color: '#3B82F6' },
   valueZero: { color: colors.text },
-  chevron: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chevronInner: {
-    width: 8,
-    height: 8,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: colors.textMuted,
-    transform: [{ rotate: '-45deg' }],
+  chevronIcon: {
+    opacity: 0.6,
   },
 });

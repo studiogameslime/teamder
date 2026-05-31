@@ -1193,6 +1193,25 @@ export const he = {
   profileStatGoals: 'שערים',
   profileSubtitlePlayer: 'שחקן',
   profileStatInvited: 'שחקנים שהצטרפו דרכי',
+  // Referrals list screen — opens when the user taps the referrals tile
+  // on the Profile screen.
+  referralsScreenTitle: 'שחקנים שהזמנתי',
+  referralsScreenSummary: (n: number) =>
+    n === 1 ? 'שחקן אחד הצטרף דרכך' : `${n} שחקנים הצטרפו דרכך`,
+  referralsScreenAnonymous: 'משתמש ללא שם',
+  referralsScreenJustNow: 'הצטרף ממש עכשיו',
+  referralsScreenAnHourAgo: 'הצטרף לפני שעה',
+  referralsScreenHoursAgo: (h: number) => `הצטרף לפני ${h} שעות`,
+  referralsScreenYesterday: 'הצטרף אתמול',
+  referralsScreenDaysAgo: (d: number) => `הצטרף לפני ${d} ימים`,
+  referralsScreenJoinedAt: (when: string) => when,
+  referralsScreenJoinedUnknownTime: 'הצטרף',
+  referralsScreenViaLink: 'דרך הזמנה',
+  referralsScreenViaCommunity: 'דרך קבוצה',
+  referralsScreenViaGame: 'דרך משחק',
+  referralsScreenEmptyTitle: 'עוד לא הזמנת אף אחד',
+  referralsScreenEmptyBody:
+    'שלח לחבר קישור הזמנה מהפרופיל שלך — וכשהוא יתחבר תראה אותו פה.',
   // Always-visible nudge under the invited-count tile. Even when the
   // count is 0 we want the user to see the metric AND have a one-tap
   // path to grow it — hiding both the number and the CTA together is

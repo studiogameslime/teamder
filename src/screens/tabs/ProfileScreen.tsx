@@ -441,8 +441,11 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.body}>
-          {/* ③ Referral row */}
-          <ReferralCard count={referralCount} />
+          {/* ③ Referral row — tap → list of who joined through you */}
+          <ReferralCard
+            count={referralCount}
+            onPress={() => nav.navigate('Referrals')}
+          />
 
           {/* ④ Discipline row (red/yellow indicators on leading edge) */}
           <DisciplineRow userId={user.id} />

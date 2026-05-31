@@ -7,6 +7,7 @@ import {
   deleteField,
   getCountFromServer,
   getDoc,
+  getDocs,
   query,
   serverTimestamp,
   setDoc,
@@ -456,6 +457,66 @@ export const userService = {
     } catch (err) {
       if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
       return 0;
+    }
+  },
+
+  /**
+   * Returns the actual list of users the given user invited — name,
+   * avatar, when they joined, and where the invite landed. Used by the
+   * tappable referrals tile on Profile so the user can see WHO they
+   * brought (not just a count).
+   *
+   * Sorted newest-first (most recent joiner at the top). Best-effort:
+   * returns [] on failure so the consumer can render an empty state
+   * instead of crashing.
+   */
+  async listInvitedUsers(userId: string): Promise<{
+    id: string;
+    name: string;
+    avatarId?: string;
+    photoUrl?: string;
+    invitedAt?: number;
+    invitedByType?: 'session' | 'team';
+    invitedByTargetId?: string;
+  }[]> {
+    if (USE_MOCK_DATA) return [];
+    if (!userId) return [];
+    try {
+      const q = query(col.users(), where('invitedBy', '==', userId));
+      const snap = await getDocs(q);
+      const rows = snap.docs.map((d) => {
+        const data = d.data() as unknown as Record<string, unknown>;
+        const at = data.invitedAt;
+        const invitedAtMs =
+          at && typeof (at as { toMillis?: () => number }).toMillis === 'function'
+            ? (at as { toMillis: () => number }).toMillis()
+            : typeof at === 'number'
+              ? at
+              : undefined;
+        const invitedByType: 'session' | 'team' | undefined =
+          data.invitedByType === 'session' || data.invitedByType === 'team'
+            ? data.invitedByType
+            : undefined;
+        return {
+          id: d.id,
+          name: typeof data.name === 'string' ? data.name : '',
+          avatarId: typeof data.avatarId === 'string' ? data.avatarId : undefined,
+          photoUrl:
+            typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
+          invitedAt: invitedAtMs,
+          invitedByType,
+          invitedByTargetId:
+            typeof data.invitedByTargetId === 'string'
+              ? data.invitedByTargetId
+              : undefined,
+        };
+      });
+      // Newest first. Users without invitedAt sink to the bottom.
+      rows.sort((a, b) => (b.invitedAt ?? 0) - (a.invitedAt ?? 0));
+      return rows;
+    } catch (err) {
+      if (__DEV__) console.warn('[users] listInvitedUsers failed', err);
+      return [];
     }
   },
 };
