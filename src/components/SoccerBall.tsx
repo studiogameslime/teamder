@@ -1,23 +1,18 @@
-// SoccerBall — clean SVG soccer ball.
+// SoccerBall — based on the public-domain Wikimedia Commons SVG
+// "Soccerball.svg" (https://commons.wikimedia.org/wiki/File:Soccerball.svg).
 //
-// Renders the recognisable "football" silhouette without trying to be
-// a photorealistic truncated icosahedron:
-//   • shaded white sphere (radial gradient for 3D feel)
-//   • central black pentagon (point UP)
-//   • 5 small black caps near the rim, each sitting on a pentagon
-//     edge's outward normal — that's the visual cue that says "panels"
-//   • specular highlight in the upper-left for a glossy finish
-//
-// Earlier revisions overlaid extra connector wedges to "suggest" the
-// hexagon edges, which read as visual noise. Removing them and
-// keeping the geometry symmetric is what makes the ball read clean
-// at any size.
+// We embed the SVG's actual paths verbatim (one path for the seams
+// drawn as strokes, one path for the black pentagon panels filled).
+// This gets us a real truncated-icosahedron projection without
+// hand-rolling the geometry. A radial gradient + a single soft
+// highlight on top sells the 3D finish.
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Circle,
   Defs,
-  Polygon,
+  G,
+  Path,
   RadialGradient,
   Stop,
   Svg,
@@ -25,61 +20,33 @@ import {
 
 interface Props {
   size?: number;
-  /** Kept for API compatibility — the SVG palette is fixed. */
+  /** Kept for API compatibility — palette is fixed. */
   color?: string;
 }
 
-/** Regular pentagon centred at (cx, cy), radius r, top vertex up. */
-function pentagonPoints(cx: number, cy: number, r: number, rotDeg = 0): string {
-  const pts: string[] = [];
-  for (let i = 0; i < 5; i++) {
-    const a = ((rotDeg - 90 + i * 72) * Math.PI) / 180;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
-  }
-  return pts.join(' ');
-}
+// Seam strokes (the curved lines tracing the hexagon edges around
+// the pentagons). Verbatim from Wikimedia Commons.
+const SEAM_PATH =
+  'm-1643-1716 155 158m-550 2364c231 231 538 195 826 202m-524-2040c-491 351-610 1064-592 1060m1216-1008c-51 373 84 783 364 1220m-107-2289c157-157 466-267 873-329m-528 4112c-50 132-37 315-8 510m62-3883c282 32 792 74 1196 303m-404 2644c310 173 649 247 1060 180m-340-2008c-242 334-534 645-872 936m1109-2119c-111-207-296-375-499-534m1146 1281c100 3 197 44 290 141m-438 495c158 297 181 718 204 1140';
 
-/** Regular hexagon centred at (cx, cy), radius r (centre→vertex). */
-function hexagonPoints(cx: number, cy: number, r: number, rotDeg = 0): string {
-  const pts: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = ((rotDeg + i * 60) * Math.PI) / 180;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
-  }
-  return pts.join(' ');
-}
+// Black pentagon panels filled. Each `M…z` sub-path is a single pentagon.
+const PANELS_PATH =
+  'm-1624-1700c243-153 498-303 856-424 141 117 253 307 372 492-288 275-562 544-724 756-274-25-410-2-740-60 3-244 84-499 236-764zm2904-40c271 248 537 498 724 788-55 262-105 553-180 704-234-35-536-125-820-200-138-357-231-625-340-924 210-156 417-296 616-368zm-3273 3033a2376 2376 0 0 1-378-1392l59-7c54 342 124 674 311 928-36 179-2 323 51 458zm1197-1125c365 60 717 120 1060 180 106 333 120 667 156 1000-263 218-625 287-944 420-372-240-523-508-736-768 122-281 257-561 464-832zm3013 678a2376 2376 0 0 1-925 1147l-116-5c84-127 114-297 118-488 232-111 464-463 696-772 86 30 159 72 227 118zm-2287 1527a2376 2376 0 0 1-993-251c199 74 367 143 542 83 53 75 176 134 451 168z';
 
 export function SoccerBall({ size = 64 }: Props) {
-  // The 5 satellite PENTAGONS sit on the angle bisectors of the
-  // central pentagon (36° offset from each vertex). Real soccer
-  // balls show PENTAGONS as the black panels — the hexagons in
-  // between are white and don't get drawn. Smaller-radius satellites
-  // with a bit of breathing room read as the classic icon look.
-  const caps = useMemo(() => {
-    const out: { cx: number; cy: number; rot: number }[] = [];
-    const ringR = 55;      // closer in than before → fits inside ball cleanly
-    for (let i = 0; i < 5; i++) {
-      const a = ((-90 + i * 72 + 36) * Math.PI) / 180;
-      out.push({
-        cx: Math.cos(a) * ringR,
-        cy: Math.sin(a) * ringR,
-        // Rotate so a vertex points OUTWARD (away from the ball
-        // centre) — that's the natural rosette pose. The previous
-        // +180 inverted this and made satellites point inward,
-        // which looked off.
-        rot: i * 72 + 36,
-      });
-    }
-    return out;
-  }, []);
-
   return (
-    <Svg width={size} height={size} viewBox="-100 -100 200 200">
+    <Svg
+      width={size}
+      height={size}
+      // Verbatim Wikimedia viewBox so the embedded path coordinates land
+      // at the right offsets without rescaling them by hand.
+      viewBox="-2500 -2500 5000 5000"
+    >
       <Defs>
+        {/* Soft 3D shading — light hits the upper-left, falls off to a
+            neutral mid-grey toward the bottom-right. Pure white at the
+            specular point would blow out the panel pattern, so we keep
+            the brightest stop slightly off-white. */}
         <RadialGradient
           id="ballShade"
           cx="35%"
@@ -93,35 +60,36 @@ export function SoccerBall({ size = 64 }: Props) {
         </RadialGradient>
       </Defs>
 
-      {/* Ball body */}
+      {/* Seam group — stroke=black at width 24 (matches Wikimedia source). */}
+      <G stroke="#0F172A" strokeWidth={24}>
+        {/* Ball body fills the gradient so we get 3D depth instead of
+            a flat white circle. */}
+        <Circle fill="url(#ballShade)" r={2376} />
+        {/* Hexagon edge seams. */}
+        <Path fill="none" d={SEAM_PATH} />
+      </G>
+
+      {/* Black pentagon panels. */}
+      <Path fill="#0F172A" d={PANELS_PATH} />
+
+      {/* Specular highlight — a single soft white circle in the upper
+          area gives the ball a glossy finish without obliterating the
+          panel pattern under it. Positioned in the "white space" near
+          the top of the ball. */}
       <Circle
-        cx={0}
-        cy={0}
-        r={95}
-        fill="url(#ballShade)"
-        stroke="#0F172A"
-        strokeWidth={3}
+        cx={-400}
+        cy={-1500}
+        r={300}
+        fill="#FFFFFF"
+        opacity={0.45}
       />
-
-      {/* 5 satellite pentagons — keep them smaller so they breathe */}
-      {caps.map((c, i) => (
-        <Polygon
-          key={`cap-${i}`}
-          points={pentagonPoints(c.cx, c.cy, 15, c.rot)}
-          fill="#0F172A"
-        />
-      ))}
-
-      {/* Central pentagon */}
-      <Polygon points={pentagonPoints(0, 0, 22)} fill="#0F172A" />
-
-      {/* Specular highlight — placed at the very TOP of the ball, in
-          the gap between the upper-left and upper-right satellites
-          (which sit at -54° / -126°). Earlier the highlight was at
-          (-38, -44) which overlapped satellite #4 and made it look
-          chewed. */}
-      <Circle cx={0} cy={-70} r={14} fill="#FFFFFF" opacity={0.55} />
-      <Circle cx={-3} cy={-72} r={6} fill="#FFFFFF" opacity={0.85} />
+      <Circle
+        cx={-440}
+        cy={-1560}
+        r={130}
+        fill="#FFFFFF"
+        opacity={0.85}
+      />
     </Svg>
   );
 }
