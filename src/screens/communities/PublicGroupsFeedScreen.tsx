@@ -61,9 +61,27 @@ type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed
  *   2. Saved `availability.preferredCity` from the profile
  *   3. null (filter excludes everything until something resolves)
  */
-async function resolveNearbyCity(
+/**
+ * Resolve the viewer's location for the "nearby" filter.
+ *
+ * Returns:
+ *   - `latLng` — preferred path. Used for true radius-based matching
+ *     via Haversine, robust to city-name spelling variants.
+ *   - `city`   — fallback. For legacy groups that lack lat/lng we still
+ *     fall back to the old exact-name match.
+ *
+ * Order of attempts:
+ *   1. GPS (`Location.getCurrentPositionAsync`) → both latLng and a
+ *      reverse-geocoded city for fallback.
+ *   2. Saved `availability.preferredCity` from the profile — city only,
+ *      no coords (we don't geocode here to avoid an extra network hop
+ *      on every filter open).
+ *   3. `{ latLng: null, city: null }` — filter then returns nothing,
+ *      caller surfaces an empty-state.
+ */
+async function resolveNearbyLocation(
   fallbackCity: string | undefined,
-): Promise<string | null> {
+): Promise<{ latLng: { lat: number; lng: number } | null; city: string | null }> {
   let Location:
     | typeof import('expo-location')
     | null = null;
@@ -80,14 +98,25 @@ async function resolveNearbyCity(
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        const places = await Location.reverseGeocodeAsync({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        });
-        const place = places[0];
-        const city =
-          place?.city || place?.subregion || place?.region || null;
-        if (city && city.trim().length > 0) return city.trim();
+        const latLng = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+        // Best-effort reverse-geocode for the fallback city — failures
+        // are non-fatal because latLng alone is enough for the radius
+        // check on geocoded groups.
+        let city: string | null = null;
+        try {
+          const places = await Location.reverseGeocodeAsync({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+          const place = places[0];
+          city = (place?.city || place?.subregion || place?.region || '').trim() || null;
+        } catch {
+          // ignore
+        }
+        return { latLng, city: city ?? fallbackCity?.trim() ?? null };
       }
     } catch (err) {
       if (__DEV__) {
@@ -96,7 +125,9 @@ async function resolveNearbyCity(
       }
     }
   }
-  return fallbackCity?.trim() || null;
+  // GPS unavailable / denied → city-only fallback (no radius matching
+  // possible without coords).
+  return { latLng: null, city: fallbackCity?.trim() ?? null };
 }
 
 export function PublicGroupsFeedScreen() {
@@ -117,22 +148,29 @@ export function PublicGroupsFeedScreen() {
 
   const [filters, setFilters] = useState<GroupFilters>(EMPTY_GROUP_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [nearbyCity, setNearbyCity] = useState<string | null>(null);
+  // `nearbyLoc` carries BOTH a lat/lng (preferred — used for radius)
+  // and a city fallback (used for legacy un-geocoded groups). When
+  // `nearby` is off we hold null so re-toggling triggers a fresh
+  // permission request.
+  const [nearbyLoc, setNearbyLoc] = useState<{
+    latLng: { lat: number; lng: number } | null;
+    city: string | null;
+  } | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   useEffect(() => {
     if (!filters.nearby) {
-      setNearbyCity(null);
+      setNearbyLoc(null);
       return;
     }
     let alive = true;
     (async () => {
       setNearbyLoading(true);
-      const city = await resolveNearbyCity(
+      const loc = await resolveNearbyLocation(
         user?.availability?.preferredCity,
       );
       if (alive) {
-        setNearbyCity(city);
+        setNearbyLoc(loc);
         setNearbyLoading(false);
       }
     })();
@@ -191,10 +229,21 @@ export function PublicGroupsFeedScreen() {
   }
 
   function passesDiscoveryFilters(g: GroupPublic): boolean {
-    if (filters.nearby && (nearbyLoading || !nearbyCity)) return false;
+    // While the nearby toggle is on, wait for permission + first GPS
+    // fix before showing ANY group — otherwise we'd flicker the full
+    // list for a frame then collapse to nearby, which reads as a bug.
+    if (filters.nearby && (nearbyLoading || !nearbyLoc)) return false;
+    if (filters.nearby && nearbyLoc &&
+        !nearbyLoc.latLng && !nearbyLoc.city) {
+      // Permission denied AND no profile fallback → can't possibly
+      // resolve "nearby". The empty-state explains this to the user.
+      return false;
+    }
     return (
-      applyGroupFilters([g], filters, { nearbyCity: nearbyCity ?? undefined })
-        .length > 0
+      applyGroupFilters([g], filters, {
+        nearbyLatLng: nearbyLoc?.latLng ?? undefined,
+        nearbyCityFallback: nearbyLoc?.city ?? undefined,
+      }).length > 0
     );
   }
 
@@ -233,7 +282,7 @@ export function PublicGroupsFeedScreen() {
           passesDiscoveryFilters(g)
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, memberIds, adminIds, pendingIds, filters, nearbyCity, nearbyLoading]
+    [items, memberIds, adminIds, pendingIds, filters, nearbyLoc, nearbyLoading]
   );
 
   const isSearching = text.trim().length > 0;
@@ -496,7 +545,14 @@ export function PublicGroupsFeedScreen() {
         onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
-        nearbyCaption={nearbyLoading ? undefined : nearbyCity ?? undefined}
+        nearbyCaption={
+          nearbyLoading
+            ? undefined
+            : nearbyLoc?.latLng
+              ? `${filters.nearbyRadiusKm} ק״מ מהמיקום שלך` +
+                (nearbyLoc.city ? ` (${nearbyLoc.city})` : '')
+              : nearbyLoc?.city ?? undefined
+        }
       />
     </View>
   );

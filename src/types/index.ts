@@ -709,6 +709,12 @@ export interface GroupPublic {
   isOpen?: boolean;
   maxMembers?: number;
   contactPhone?: string;
+  /** Geo coords (WGS-84) — mirrored from `Group.lat`/`Group.lng`. Lets
+   *  the "nearby" filter use radius-based matching instead of brittle
+   *  city-name comparison. Optional for backward compat with older
+   *  documents that predate this field. */
+  lat?: number;
+  lng?: number;
   /** Mirrored from Group. Lets the public showcase/feed render the cover. */
   coverPhotoUrl?: string;
   /** @deprecated Recurring schedule moved to per-Game. Legacy reads only. */

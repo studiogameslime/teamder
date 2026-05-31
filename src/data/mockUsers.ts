@@ -60,6 +60,8 @@ export const mockOtherGroup: Group = {
   fieldName: 'בית ספר אורט',
   fieldAddress: 'רמת גן',
   city: 'רמת גן',
+  lat: 32.0820,             // Ramat Gan — ~3km from TLV centre
+  lng: 34.8146,
   adminIds: ['someone-else'],
   playerIds: Array.from({ length: 18 }, (_, i) => `external_${i}`),
   pendingPlayerIds: [],
@@ -76,6 +78,9 @@ export const mockOtherGroup: Group = {
 // mock current user (already-member / pending / open-for-request).
 // `mockPublicGroups` is mutable on purpose: createGroup pushes to it so the
 // feed reflects newly-created groups during the same session.
+// Coordinates here are the city centroids (good enough for "nearby"
+// radius testing in mock mode; production groups carry the actual
+// field coordinates set during create).
 export const mockPublicGroups: GroupPublic[] = [
   // 0: user is already a member (mirror of mockGroup)
   {
@@ -85,6 +90,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: mockGroup.fieldName,
     fieldAddress: mockGroup.fieldAddress,
     city: mockGroup.city,
+    lat: 32.0853,            // Tel Aviv
+    lng: 34.7818,
     description: mockGroup.description,
     memberCount: mockGroup.playerIds.length,
     createdAt: mockGroup.createdAt,
@@ -98,6 +105,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: 'ספורטק רעננה',
     fieldAddress: 'רעננה',
     city: 'רעננה',
+    lat: 32.1845,            // Ra'anana — ~12km north of TLV
+    lng: 34.8708,
     description: 'משחק רציני, רמה גבוהה',
     memberCount: 32,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 14,
@@ -110,6 +119,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: 'גרין הוקי',
     fieldAddress: 'חיפה',
     city: 'חיפה',
+    lat: 32.7940,            // Haifa — ~95km from TLV
+    lng: 34.9896,
     description: 'מתחילים מ-7 בבוקר, בלי מתחים',
     memberCount: 24,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 100,
@@ -121,6 +132,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: 'מגרש קלרמונט',
     fieldAddress: 'ירושלים',
     city: 'ירושלים',
+    lat: 31.7683,            // Jerusalem — ~55km from TLV
+    lng: 35.2137,
     description: 'מגרש מקורה, גם בחורף',
     memberCount: 28,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 220,
@@ -132,6 +145,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: 'אצטדיון רוגוזין',
     fieldAddress: 'באר שבע',
     city: 'באר שבע',
+    lat: 31.2530,            // Be'er Sheva — ~110km from TLV
+    lng: 34.7915,
     memberCount: 19,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 50,
   },
@@ -143,6 +158,8 @@ export const mockPublicGroups: GroupPublic[] = [
     fieldName: mockOtherGroup.fieldName,
     fieldAddress: mockOtherGroup.fieldAddress,
     city: mockOtherGroup.city,
+    lat: mockOtherGroup.lat,
+    lng: mockOtherGroup.lng,
     memberCount: mockOtherGroup.playerIds.length,
     createdAt: mockOtherGroup.createdAt,
   },

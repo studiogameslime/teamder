@@ -42,6 +42,9 @@ interface GroupStore {
     rules?: string;
     contactPhone?: string;
     city?: string;
+    /** Optional geocoded city coords for the "nearby" radius filter. */
+    lat?: number;
+    lng?: number;
     maxMembers?: number;
     creator: User;
   }) => Promise<Group>;

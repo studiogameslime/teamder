@@ -31,6 +31,24 @@ export function CreateGroupScreen() {
     const cityVal = v.city.trim();
     const phone = v.contactPhone.trim();
     const parsedMaxMembers = parseInt(v.maxMembers, 10);
+    // Geocode the city the moment the group is created so the new
+    // "nearby" radius filter sees this group with coords from day 1.
+    // Failure is non-fatal — the filter degrades to city-name match
+    // for any row that lacks lat/lng. We don't block submit on the
+    // network call; it's a quick one but a slow link shouldn't gate
+    // group creation.
+    let coords: { lat: number; lng: number } | null = null;
+    if (cityVal) {
+      try {
+        const { geocodeCity } = await import('@/services/geocodeService');
+        coords = await Promise.race([
+          geocodeCity(cityVal),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+        ]);
+      } catch {
+        coords = null;
+      }
+    }
     try {
       const group = await createGroup({
         name: v.name.trim(),
@@ -39,6 +57,8 @@ export function CreateGroupScreen() {
         rules: v.rules.trim() || undefined,
         contactPhone: phone || undefined,
         city: cityVal || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
         maxMembers: Number.isFinite(parsedMaxMembers)
           ? parsedMaxMembers
           : undefined,

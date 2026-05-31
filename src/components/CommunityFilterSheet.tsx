@@ -29,6 +29,12 @@ import { he } from '@/i18n/he';
 
 const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
+/** Default search radius for the "nearby" filter. 25 km comfortably
+ *  covers a metro-area cluster (e.g. Tel Aviv + Ramat Gan + Givatayim
+ *  + Bnei Brak + Ramat Hasharon) without bleeding into the next
+ *  region entirely. Configurable per-user later. */
+export const DEFAULT_NEARBY_RADIUS_KM = 25;
+
 export interface GroupFilters {
   /** Hide groups that hit their maxMembers cap. */
   hasRoom: boolean;
@@ -38,8 +44,11 @@ export interface GroupFilters {
   freeOnly: boolean;
   /** Subset of the week the group plays on; empty = no day filter. */
   preferredDays: WeekdayIndex[];
-  /** Match group's `city` against the viewer's `city` — caller resolves. */
+  /** Match group within `nearbyRadiusKm` of the viewer's GPS location.
+   *  Caller resolves the viewer's `LatLng` and passes it as `nearbyLatLng`. */
   nearby: boolean;
+  /** Radius in km — only consulted when `nearby` is true. */
+  nearbyRadiusKm: number;
 }
 
 export const EMPTY_GROUP_FILTERS: GroupFilters = {
@@ -48,6 +57,7 @@ export const EMPTY_GROUP_FILTERS: GroupFilters = {
   freeOnly: false,
   preferredDays: [],
   nearby: false,
+  nearbyRadiusKm: DEFAULT_NEARBY_RADIUS_KM,
 };
 
 export function isGroupFiltersEmpty(f: GroupFilters): boolean {
@@ -200,13 +210,21 @@ function SwitchRow({
 // ─── Filter application ─────────────────────────────────────────────────
 
 interface ApplyContext {
-  /** Resolved viewer city for the "nearby" toggle. Pass undefined when
-   *  the toggle is off or the city is still resolving — those rows are
-   *  treated as "doesn't match" so the list stays predictable. */
-  nearbyCity?: string;
+  /** Resolved viewer GPS coords for the "nearby" toggle. Pass undefined
+   *  when the toggle is off or location is still resolving — those rows
+   *  are treated as "doesn't match" so the list stays predictable. */
+  nearbyLatLng?: { lat: number; lng: number };
+  /** Optional viewer city — used as a graceful fallback when the viewer
+   *  granted location but groups in the DB still lack lat/lng (legacy
+   *  rows). Matches case-insensitively on the trimmed city name. */
+  nearbyCityFallback?: string;
 }
 
-/** Pure filter application — used by PublicGroupsFeedScreen. */
+/** Pure filter application — used by PublicGroupsFeedScreen.
+ *  Imports haversineKm lazily via direct call site so the filter file
+ *  stays cheap to load. */
+import { haversineKm } from '@/utils/geo';
+
 export function applyGroupFilters(
   groups: GroupPublic[],
   f: GroupFilters,
@@ -226,13 +244,27 @@ export function applyGroupFilters(
       if (!f.preferredDays.some((d) => days.includes(d))) return false;
     }
     if (f.nearby) {
-      if (!ctx.nearbyCity) return false;
-      if (
-        !g.city ||
-        g.city.trim().toLowerCase() !== ctx.nearbyCity.trim().toLowerCase()
-      ) {
-        return false;
+      // Preferred path — radius via GPS. Works regardless of city-name
+      // spelling, language, or municipal boundaries.
+      if (ctx.nearbyLatLng &&
+          typeof g.lat === 'number' &&
+          typeof g.lng === 'number') {
+        const km = haversineKm(ctx.nearbyLatLng, { lat: g.lat, lng: g.lng });
+        if (km > f.nearbyRadiusKm) return false;
+        return true;
       }
+      // Fallback — for legacy groups that lack lat/lng, accept an
+      // exact city-name match against the viewer's resolved city.
+      // This preserves the old behaviour for unmigrated rows; once
+      // every group is geocoded the branch goes dead.
+      if (ctx.nearbyCityFallback && g.city) {
+        const sameCity = g.city.trim().toLowerCase() ===
+                         ctx.nearbyCityFallback.trim().toLowerCase();
+        if (!sameCity) return false;
+        return true;
+      }
+      // Neither path can verify — exclude the row.
+      return false;
     }
     return true;
   });

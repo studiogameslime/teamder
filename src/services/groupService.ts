@@ -198,6 +198,13 @@ export const groupService = {
     contactPhone?: string;
     /** General city the community is based in. NOT a fixed field. */
     city?: string;
+    /** Geocoded city coords — when present, the public "nearby" filter
+     *  uses true radius matching via Haversine instead of brittle
+     *  city-name comparison. Caller (CreateGroupScreen) geocodes
+     *  before submit; failures are tolerated and the field stays
+     *  undefined. */
+    lat?: number;
+    lng?: number;
     /** Total community size cap. */
     maxMembers?: number;
     creator: User;
@@ -238,6 +245,8 @@ export const groupService = {
       name,
       normalizedName: normalize(name),
       city,
+      lat: input.lat,
+      lng: input.lng,
       description,
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
@@ -1327,6 +1336,12 @@ function toPublic(g: Group): GroupPublic {
     createdAt: g.createdAt,
     updatedAt: g.updatedAt ?? g.createdAt,
   };
+  // Mirror the geo coords so the public feed's radius-based "nearby"
+  // filter can do real distance math without an extra read of the
+  // private /groups doc. Older groups without coords stay undefined
+  // and the filter falls back to city-name match for them.
+  if (typeof g.lat === 'number') out.lat = g.lat;
+  if (typeof g.lng === 'number') out.lng = g.lng;
   // Pass through legacy fields if present so re-publishing a
   // pre-refactor group via this helper doesn't blank them out.
   if (g.fieldName) out.fieldName = g.fieldName;
