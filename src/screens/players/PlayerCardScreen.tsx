@@ -774,7 +774,7 @@ function AchievementsSection({ user }: { user: User }) {
       <View style={styles.achievementsHeader}>
         <Text style={styles.achievementsTitle}>{he.achievementsTitle}</Text>
         <Text style={styles.achievementsCount}>
-          {unlockedCount} / {items.length}
+          {he.achievementsCount(unlockedCount, items.length)}
         </Text>
       </View>
       <View style={styles.achievementsGrid}>

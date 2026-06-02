@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.sendShortageWarnings = exports.findFillerCandidates = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.sendPromotePrompts = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.scheduledAutoGenerateTeams = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.sendRateReminders = exports.dailyCleanup = exports.cleanupStaleGames = exports.flipScheduledGames = exports.flushPendingJoinerNotifsTask = exports.sendRsvpNudges = exports.sendGameReminders = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -1116,10 +1116,7 @@ exports.onNotificationCreated = (0, firestore_1.onDocumentCreated)('notification
     });
 });
 // ─── Scheduled: 1h-before reminders ────────────────────────────────────
-exports.sendGameReminders = (0, scheduler_1.onSchedule)({
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runSendGameReminders() {
     // Look for games starting in [now+50, now+70] minutes that haven't
     // had a reminder dispatched yet. The 20-minute window covers slack
     // around our 15-minute cadence — a game is found in exactly one run.
@@ -1159,7 +1156,7 @@ exports.sendGameReminders = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
-});
+}
 // ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
 /**
  * Per-user push to community members who are still on the fence
@@ -1182,10 +1179,7 @@ exports.sendGameReminders = (0, scheduler_1.onSchedule)({
  *   • MINUS the game's createdBy (don't ping the organiser about
  *     their own game)
  */
-exports.sendRsvpNudges = (0, scheduler_1.onSchedule)({
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runSendRsvpNudges() {
     const now = Date.now();
     const lower = now + 4 * 60 * 60 * 1000 + 50 * 60 * 1000;
     const upper = now + 5 * 60 * 60 * 1000 + 10 * 60 * 1000;
@@ -1282,7 +1276,7 @@ exports.sendRsvpNudges = (0, scheduler_1.onSchedule)({
         }
     }
     console.log(`[sendRsvpNudges] nudged ${nudged} member(s)`);
-});
+}
 // ─── Scheduled: flush batched join notifications to admins ──────────────
 /**
  * Consumes the `pendingJoinerIds[]` / `pendingJoinFlushAt` buffer
@@ -1417,10 +1411,7 @@ exports.flushPendingJoinerNotifsTask = (0, tasks_1.onTaskDispatched)({
 // `openedNotificationSent` is also the guard that prevents an admin's
 // post-creation edit of `registrationOpensAt` from firing a second
 // push: once the flag is true we never dispatch again for this game.
-exports.flipScheduledGames = (0, scheduler_1.onSchedule)({
-    schedule: 'every 5 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runFlipScheduledGames() {
     const now = Date.now();
     // Equality query — auto-indexed, no composite needed. The
     // registrationOpensAt + openedNotificationSent filters run
@@ -1490,7 +1481,7 @@ exports.flipScheduledGames = (0, scheduler_1.onSchedule)({
         }
     }
     console.log(`[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`);
-});
+}
 // ─── Scheduled: stale-game cleanup ─────────────────────────────────────
 /**
  * Hourly sweep that retires games whose kickoff was more than 6h ago
@@ -1511,10 +1502,7 @@ exports.flipScheduledGames = (0, scheduler_1.onSchedule)({
  * CF makes the change durable in Firestore so writes from older
  * clients (or admins reaching the doc via direct nav) can't resurrect.
  */
-exports.cleanupStaleGames = (0, scheduler_1.onSchedule)({
-    schedule: 'every 60 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runCleanupStaleGames() {
     const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
     const cutoff = Date.now() - STALE_AFTER_MS;
     // We only care about games that haven't reached a terminal state.
@@ -1573,7 +1561,7 @@ exports.cleanupStaleGames = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`);
-});
+}
 // ─── Scheduled: prune accumulating server-side state ───────────────────
 /**
  * Daily housekeeping. Three independent sweeps in one CF so we pay
@@ -1599,10 +1587,7 @@ exports.cleanupStaleGames = (0, scheduler_1.onSchedule)({
  * if a sweep produces >400 docs the leftovers wait for the next
  * day's run. That keeps the function bounded.
  */
-exports.dailyCleanup = (0, scheduler_1.onSchedule)({
-    schedule: 'every 24 hours',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runDailyCleanup() {
     const BATCH_LIMIT = 400;
     const NOTIFICATIONS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const JOIN_REQUESTS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -1738,7 +1723,7 @@ exports.dailyCleanup = (0, scheduler_1.onSchedule)({
         console.error('[dailyCleanup] fillerInterests outer sweep failed', err);
     }
     console.log(`[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}, fillerInterests=${fillerInterestsDeleted}`);
-});
+}
 // ─── Scheduled: post-game "rate teammates" reminder ────────────────────
 /**
  * Wake players up to rate their teammates after the evening ends.
@@ -1760,10 +1745,7 @@ exports.dailyCleanup = (0, scheduler_1.onSchedule)({
  * zombies anyway, so we'd never fire on them in practice — the guard
  * is belt-and-suspenders.
  */
-exports.sendRateReminders = (0, scheduler_1.onSchedule)({
-    schedule: 'every 30 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runSendRateReminders() {
     const now = Date.now();
     // Window: 1h..6h after kickoff. Aligns with the 6h cleanup-CF
     // boundary — past that point the cleanup flips the game to
@@ -1812,7 +1794,7 @@ exports.sendRateReminders = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[sendRateReminders] dispatched ${dispatched} rate reminder(s)`);
-});
+}
 // ─── Realtime trigger: community join request → admin push ─────────────
 /**
  * Watches community docs for additions to `pendingPlayerIds` and fans
@@ -2417,10 +2399,7 @@ async function loadGroupRatings(groupId, uids) {
  * NEVER overwrite either a previous auto-generation or a coach's
  * manual edit (transaction aborts if either flag is now set).
  */
-exports.scheduledAutoGenerateTeams = (0, scheduler_1.onSchedule)({
-    schedule: 'every 5 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runScheduledAutoGenerateTeams() {
     const now = Date.now();
     // Tight window: only games starting in the next 65 minutes are
     // candidates. The per-game check below filters further by the
@@ -2465,7 +2444,7 @@ exports.scheduledAutoGenerateTeams = (0, scheduler_1.onSchedule)({
     }
     await Promise.all(ops);
     console.log(`[autoBalance] generated for ${ops.length} game(s)`);
-});
+}
 async function generateForGame(ref, g) {
     try {
         // Load ratings BEFORE the transaction so the transaction body
@@ -2987,10 +2966,7 @@ exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: true }, as
 // fire-and-forget — if the creator dismisses, the latch keeps it from
 // re-firing. If the personal group has already been promoted (no
 // longer `isPersonal: true`), we skip.
-exports.sendPromotePrompts = (0, scheduler_1.onSchedule)({
-    schedule: 'every 60 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runSendPromotePrompts() {
     const now = Date.now();
     const lower = now - 6 * 60 * 60 * 1000; // 6h window — catch slow cron
     const upper = now - 30 * 60 * 1000; // wait 30m post-game so the
@@ -3041,7 +3017,7 @@ exports.sendPromotePrompts = (0, scheduler_1.onSchedule)({
         }
     }
     console.log(`[sendPromotePrompts] dispatched ${dispatched}`);
-});
+}
 // Random 6-char alphanumeric invite code. Mirror of the helper used by
 // `createGroup` — duplicated locally to keep this section self-contained.
 function randomInviteCode() {
@@ -4004,12 +3980,7 @@ function haversineKm(a, b) {
         Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
 }
-exports.findFillerCandidates = (0, scheduler_1.onSchedule)({
-    schedule: 'every 30 minutes',
-    region: 'us-central1',
-    timeoutSeconds: 540,
-    memory: '512MiB',
-}, async () => {
+async function runFindFillerCandidates() {
     const now = Date.now();
     const earliest = now + FILLER_WINDOW_EARLIEST_HOURS * FILLER_HOUR_MS;
     const latest = now + FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS;
@@ -4192,7 +4163,7 @@ exports.findFillerCandidates = (0, scheduler_1.onSchedule)({
         }
     }
     console.log(`[findFillerCandidates] scanned ${snap.size} games, processed ${processed} shortage games, pushed ${pushed} opportunities, ${fallbackPushed} fallback admin pushes`);
-});
+}
 // ─── Scheduled: admin shortage warning (T-2h) ──────────────────────────
 //
 // Fires once per game at roughly 2 hours before kickoff, when the
@@ -4226,10 +4197,7 @@ function playersPerTeamForFormat(format) {
         return 7;
     return 5;
 }
-exports.sendShortageWarnings = (0, scheduler_1.onSchedule)({
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-}, async () => {
+async function runSendShortageWarnings() {
     const now = Date.now();
     const earliest = now + SHORTAGE_WINDOW_EARLIEST_MIN * 60 * 1000;
     const latest = now + SHORTAGE_WINDOW_LATEST_MIN * 60 * 1000;
@@ -4280,7 +4248,7 @@ exports.sendShortageWarnings = (0, scheduler_1.onSchedule)({
         }
     }
     console.log(`[shortageWarnings] scanned ${snap.size} games, pushed ${pushed}`);
-});
+}
 exports.onFillerInterestCreated = (0, firestore_1.onDocumentCreated)('games/{gameId}/fillerInterests/{uid}', async (event) => {
     const data = event.data?.data();
     if (!data)
@@ -4742,4 +4710,62 @@ exports.inviteFriendsToGroup = (0, https_1.onCall)({ enforceAppCheck: true }, as
         createdByUid: uid,
     })));
     return { invited: accepted.length };
+});
+// ---------------------------------------------------------------------------
+// Consolidated schedulers (cost optimisation)
+//
+// The 10 individual `onSchedule` jobs that used to live above were merged
+// into the THREE dispatchers below. Cloud Scheduler bills per job beyond the
+// 3 free, and most of those jobs fired with zero users — so 10 jobs meant a
+// standing monthly cost for nothing. Each former job's logic now lives in a
+// `run*` helper (declarations above, hoisted); the dispatchers invoke them
+// in sequence, each wrapped in `runSweep` so one sweep failing never aborts
+// the rest of the tick.
+// ---------------------------------------------------------------------------
+async function runSweep(label, fn) {
+    try {
+        await fn();
+    }
+    catch (err) {
+        console.error(`[cron] sweep "${label}" failed`, err);
+    }
+}
+// dailyCleanup was its own `every 24 hours` job. Folded into the hourly
+// dispatcher but gated by a Firestore marker so the (delete-heavy) sweep
+// still fires at most once per ~23h instead of every hour.
+async function runDailyCleanupIfDue() {
+    const ref = db.collection('cronMeta').doc('dailyCleanup');
+    const snap = await ref.get();
+    const lastRunAt = (snap.exists ? snap.data()?.lastRunAt : 0) ?? 0;
+    const DUE_AFTER_MS = 23 * 60 * 60 * 1000;
+    if (Date.now() - lastRunAt < DUE_AFTER_MS)
+        return;
+    await runDailyCleanup();
+    await ref.set({ lastRunAt: Date.now() }, { merge: true });
+}
+// Every 5 minutes — latency-sensitive game-state transitions.
+exports.cronEvery5Min = (0, scheduler_1.onSchedule)({ schedule: 'every 5 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
+    await runSweep('flipScheduledGames', runFlipScheduledGames);
+    await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
+});
+// Every 15 minutes — reminders, nudges, shortage + filler matching.
+// Carries findFillerCandidates' heavier runtime budget (was 512MiB / 540s).
+exports.cronEvery15Min = (0, scheduler_1.onSchedule)({
+    schedule: 'every 15 minutes',
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    timeoutSeconds: 540,
+    memory: '512MiB',
+}, async () => {
+    await runSweep('sendGameReminders', runSendGameReminders);
+    await runSweep('sendRsvpNudges', runSendRsvpNudges);
+    await runSweep('sendShortageWarnings', runSendShortageWarnings);
+    await runSweep('sendRateReminders', runSendRateReminders);
+    await runSweep('findFillerCandidates', runFindFillerCandidates);
+});
+// Every 60 minutes — cleanup, promote prompts, and the gated daily sweep.
+exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
+    await runSweep('cleanupStaleGames', runCleanupStaleGames);
+    await runSweep('sendPromotePrompts', runSendPromotePrompts);
+    await runSweep('dailyCleanup', runDailyCleanupIfDue);
 });

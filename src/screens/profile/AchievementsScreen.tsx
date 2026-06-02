@@ -124,7 +124,7 @@ export function AchievementsScreen() {
         <View style={styles.headerRow}>
           <Text style={styles.title}>{he.achievementsTitle}</Text>
           <Text style={styles.count}>
-            {unlockedCount} / {items.length}
+            {he.achievementsCount(unlockedCount, items.length)}
           </Text>
         </View>
 

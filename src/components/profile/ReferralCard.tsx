@@ -26,17 +26,13 @@ interface Props {
 
 export function ReferralCard({ count, onPress }: Props) {
   const tappable = typeof onPress === 'function' && (count ?? 0) > 0;
-  const Container = tappable ? Pressable : View;
-  return (
-    <Container
-      style={({ pressed }: { pressed?: boolean } = {}) => [
-        styles.card,
-        tappable && pressed && { opacity: 0.85 },
-      ]}
-      onPress={tappable ? onPress : undefined}
-      accessibilityRole={tappable ? 'button' : undefined}
-      accessibilityLabel={tappable ? he.profileStatInvited : undefined}
-    >
+
+  // Shared inner content. Kept separate so the non-tappable case renders
+  // inside a plain <View> — passing a *function* style (which only
+  // <Pressable> understands) to a <View> silently dropped ALL the card
+  // styling, so the count=0 card lost its row layout + surface.
+  const inner = (
+    <>
       <View style={styles.iconWrap}>
         <Ionicons name="people" size={22} color="#3B82F6" />
       </View>
@@ -70,8 +66,22 @@ export function ReferralCard({ count, onPress }: Props) {
           style={styles.chevronIcon}
         />
       ) : null}
-    </Container>
+    </>
   );
+
+  if (tappable) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={he.profileStatInvited}
+      >
+        {inner}
+      </Pressable>
+    );
+  }
+  return <View style={styles.card}>{inner}</View>;
 }
 
 const styles = StyleSheet.create({

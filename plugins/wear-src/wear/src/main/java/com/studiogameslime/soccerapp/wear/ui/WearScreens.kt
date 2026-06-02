@@ -47,9 +47,18 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
+import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.Colors
 import androidx.wear.compose.material.LocalContentColor
 import androidx.wear.compose.material.MaterialTheme
@@ -108,6 +117,7 @@ private val TeamderWearColors = Colors(
 fun WearApp(
     state: WearGameState,
     onCreateOnPhone: () -> Unit,
+    onTimerCommand: (action: String, gameId: String) -> Unit = { _, _ -> },
 ) {
     MaterialTheme(colors = TeamderWearColors) {
         // Wear's Scaffold doesn't paint the theme background, so the window
@@ -131,7 +141,7 @@ fun WearApp(
                                 text = "פתח את האפליקציה בטלפון כדי לראות את המשחקים שלך",
                             )
                         }
-                    is WearGameState.Live -> StopwatchScreen(state)
+                    is WearGameState.Live -> StopwatchScreen(state, onTimerCommand)
                     is WearGameState.Upcoming -> NextGameScreen(state)
                     is WearGameState.Scheduled ->
                         CenteredScaffold {
@@ -150,7 +160,10 @@ fun WearApp(
 
 // ─── State 1: live stopwatch (fits on screen → centered, no scroll) ─────
 @Composable
-private fun StopwatchScreen(state: WearGameState.Live) {
+private fun StopwatchScreen(
+    state: WearGameState.Live,
+    onTimerCommand: (action: String, gameId: String) -> Unit,
+) {
     val elapsed = rememberElapsedMs(state.timer)
     CenteredScaffold {
         BrandLogo()
@@ -175,6 +188,74 @@ private fun StopwatchScreen(state: WearGameState.Live) {
             style = MaterialTheme.typography.caption1,
             color = MaterialTheme.colors.primary,
         )
+        // Control row — mirrors the phone widget's button logic exactly:
+        //   running        → [Pause]
+        //   paused w/ time  → [Play] [Reset]
+        //   never started   → [Play]
+        // Each tap sends a MessageClient command to the phone, which runs
+        // the same Firestore mutation as the widget / in-app controls.
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (state.timer.running) {
+                TimerButton(PauseIcon, "השהה") {
+                    onTimerCommand("pause", state.gameId)
+                }
+            } else {
+                TimerButton(Icons.Filled.PlayArrow, "הפעל") {
+                    onTimerCommand("start", state.gameId)
+                }
+                if (elapsed > 0L) {
+                    TimerButton(Icons.Filled.Refresh, "אפס") {
+                        onTimerCommand("reset", state.gameId)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Material's "Pause" glyph lives only in material-icons-EXTENDED (a huge
+// dependency we don't want on a watch). PlayArrow + Refresh ship in
+// material-icons-core, so we hand-roll just the two-bar pause here to keep
+// the icon set consistent without the bloat.
+private val PauseIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Pause",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.White)) {
+            // Left bar.
+            moveTo(6f, 5f)
+            horizontalLineToRelative(4f)
+            verticalLineToRelative(14f)
+            horizontalLineToRelative(-4f)
+            close()
+            // Right bar.
+            moveTo(14f, 5f)
+            horizontalLineToRelative(4f)
+            verticalLineToRelative(14f)
+            horizontalLineToRelative(-4f)
+            close()
+        }
+    }.build()
+}
+
+/** Round control button for the watch stopwatch (play / pause / reset). */
+@Composable
+private fun TimerButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp),
+        colors = ButtonDefaults.primaryButtonColors(),
+    ) {
+        Icon(imageVector = icon, contentDescription = label)
     }
 }
 

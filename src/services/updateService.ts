@@ -6,9 +6,9 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 export type UpdateKind = 'none' | 'optional' | 'force';
 
 const ANDROID_PACKAGE = 'com.studiogameslime.soccerapp';
-// TODO: replace with the real App Store numeric id once published.
-// Empty string skips iOS deep-link entirely (no-op fallback).
-const IOS_APP_STORE_ID = '';
+// App Store Connect numeric app id (same value as `ascAppId` in eas.json).
+// Drives the iOS update deep-link itms-apps://…/app/id<ID>.
+const IOS_APP_STORE_ID = '6775178022';
 
 const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
 const IOS_APP_STORE_URL = IOS_APP_STORE_ID

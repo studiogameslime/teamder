@@ -185,7 +185,7 @@ export function PinnedAdminMessageCard({ message, isAdmin, onSave }: Props) {
               maxLength={MAX_LEN}
             />
             <Text style={styles.counter}>
-              {draft.length} / {MAX_LEN}
+              {draft.length}/{MAX_LEN}
             </Text>
 
             <View style={styles.modalActionsRow}>

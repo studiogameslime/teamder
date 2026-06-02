@@ -56,7 +56,6 @@ const DOT_ACTIVE = '#FFFFFF';
 
 export function OnboardingScreen() {
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
-  const signInWithGoogle = useUserStore((s) => s.signInWithGoogle);
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const ref = useRef<FlatList<Slide>>(null);
@@ -75,13 +74,17 @@ export function OnboardingScreen() {
     }
   };
 
-  const handleSignIn = async () => {
+  // The onboarding slides are purely informational — sign-in lives on a
+  // single dedicated screen (SignInScreen). Finishing onboarding flips
+  // `onboardingDone`, and RootNavigator then shows that one sign-in
+  // screen (Google + Apple). This avoids the old duplication where both
+  // the last slide AND the sign-in screen carried login buttons.
+  const handleStart = async () => {
     setBusy(true);
     try {
       await completeOnboarding();
-      await signInWithGoogle();
     } catch {
-      // sign-in failure is surfaced by the existing flow further up
+      // no-op
     } finally {
       setBusy(false);
     }
@@ -130,13 +133,11 @@ export function OnboardingScreen() {
         </View>
 
         <View style={styles.cta}>
-          {/* White CTAs on a blue gradient — high contrast and
-              brand-agnostic so the Google "G" reads cleanly. The
-              <Button> component bakes in the legacy green palette,
-              so we render a thin Pressable here directly. */}
+          {/* White CTA on the blue gradient. The last slide leads to the
+              dedicated sign-in screen (one place for Google + Apple). */}
           {isLast ? (
             <Pressable
-              onPress={handleSignIn}
+              onPress={handleStart}
               disabled={busy}
               style={({ pressed }) => [
                 styles.ctaBtn,
@@ -144,12 +145,12 @@ export function OnboardingScreen() {
                 busy && { opacity: 0.6 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={he.onbCtaSignIn}
+              accessibilityLabel={he.onbCtaStart}
             >
-              <Ionicons name="logo-google" size={20} color="#1E40AF" />
-              <Text style={styles.ctaBtnText}>{he.onbCtaSignIn}</Text>
+              <Text style={styles.ctaBtnText}>{he.onbCtaStart}</Text>
             </Pressable>
-          ) : (
+          ) : null}
+          {!isLast ? (
             <Pressable
               onPress={advance}
               style={({ pressed }) => [
@@ -161,7 +162,7 @@ export function OnboardingScreen() {
             >
               <Text style={styles.ctaBtnText}>{he.onbNext}</Text>
             </Pressable>
-          )}
+          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -328,6 +329,7 @@ const styles = StyleSheet.create({
   cta: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
+    gap: spacing.sm,
   },
   ctaBtn: {
     backgroundColor: '#FFFFFF',

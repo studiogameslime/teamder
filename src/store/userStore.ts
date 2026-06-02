@@ -16,6 +16,7 @@ interface UserStore {
   // Auth
   currentUser: User | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteOwnAccount: () => Promise<void>;
   updateProfile: (
@@ -61,6 +62,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
   signInWithGoogle: async () => {
     const user = await userService.signInWithGoogle();
+    set({ currentUser: user });
+    logEvent(AnalyticsEvent.SignInSuccess);
+  },
+
+  signInWithApple: async () => {
+    const user = await userService.signInWithApple();
     set({ currentUser: user });
     logEvent(AnalyticsEvent.SignInSuccess);
   },

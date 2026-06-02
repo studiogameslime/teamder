@@ -36,7 +36,14 @@ interface Row {
 }
 
 export function ReferralsListScreen() {
-  const nav = useNavigation<{ goBack: () => void }>();
+  const nav = useNavigation<{
+    goBack: () => void;
+    navigate: (screen: string, params?: object) => void;
+  }>();
+  const openCard = useCallback(
+    (userId: string) => nav.navigate('PlayerCard', { userId }),
+    [nav],
+  );
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,8 +53,16 @@ export function ReferralsListScreen() {
       setRows([]);
       return;
     }
-    const list = await userService.listInvitedUsers(currentUserId);
-    setRows(list);
+    try {
+      const list = await userService.listInvitedUsers(currentUserId);
+      setRows(list);
+    } catch (err) {
+      // Never leave `rows` as null — that drives the perpetual spinner
+      // (loading is derived from `rows === null`). On failure fall back to
+      // an empty list so the user sees the empty state, not a frozen load.
+      if (__DEV__) console.warn('[referrals] load failed', err);
+      setRows([]);
+    }
   }, [currentUserId]);
 
   // Refresh on every focus — the user may have arrived here after
@@ -119,7 +134,7 @@ export function ReferralsListScreen() {
             {he.referralsScreenSummary(rows.length)}
           </Text>
           {rows.map((row) => (
-            <Row key={row.id} row={row} />
+            <Row key={row.id} row={row} onOpen={openCard} />
           ))}
         </ScrollView>
       )}
@@ -127,42 +142,39 @@ export function ReferralsListScreen() {
   );
 }
 
-function Row({ row }: { row: Row }) {
+function Row({ row, onOpen }: { row: Row; onOpen: (id: string) => void }) {
+  const when = row.invitedAt
+    ? formatRelativeOrDate(row.invitedAt)
+    : he.referralsScreenJoinedUnknownTime;
   return (
-    <View style={styles.row}>
-      <View style={styles.avatarWrap}>
-        <Avatar
-          name={row.name}
-          avatarId={row.avatarId}
-          uri={row.photoUrl}
-          size={48}
-        />
-      </View>
-      <View style={styles.rowBody}>
-        <Text style={styles.rowName} numberOfLines={1}>
-          {row.name || he.referralsScreenAnonymous}
-        </Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>
-          {row.invitedAt
-            ? he.referralsScreenJoinedAt(formatRelativeOrDate(row.invitedAt))
-            : he.referralsScreenJoinedUnknownTime}
-        </Text>
-      </View>
-      <View
-        style={[
-          styles.badge,
-          row.invitedByType === 'session' && styles.badgeSession,
-        ]}
-      >
-        <Text style={styles.badgeText}>
-          {row.invitedByType === 'session'
-            ? he.referralsScreenViaGame
-            : row.invitedByType === 'team'
-              ? he.referralsScreenViaCommunity
-              : he.referralsScreenViaLink}
-        </Text>
-      </View>
-    </View>
+    <Pressable
+      onPress={() => onOpen(row.id)}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+      accessibilityRole="button"
+      accessibilityLabel={row.name || he.referralsScreenAnonymous}
+    >
+      <Avatar
+        name={row.name}
+        avatarId={row.avatarId}
+        uri={row.photoUrl}
+        size={48}
+      />
+      <Text style={styles.rowName} numberOfLines={1}>
+        {row.name || he.referralsScreenAnonymous}
+      </Text>
+      <Text style={styles.rowDate} numberOfLines={2}>
+        {when}
+      </Text>
+      {/* Chevron — announces the row as navigable (tap → PlayerCard).
+          Without it the row read as static text and users didn't
+          realise they could open the invited player's profile. */}
+      <Ionicons
+        name="chevron-back"
+        size={18}
+        color={colors.textMuted}
+        style={styles.rowChevron}
+      />
+    </Pressable>
   );
 }
 
@@ -253,7 +265,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   row: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: 14,
@@ -265,37 +277,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  avatarWrap: {
-    width: 48,
-    height: 48,
-  },
-  rowBody: {
-    flex: 1,
-    gap: 4,
-  },
   rowName: {
+    flex: 1,
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
   },
-  rowMeta: {
+  rowDate: {
     ...typography.caption,
     color: colors.textMuted,
+    maxWidth: 104,
     textAlign: RTL_LABEL_ALIGN,
   },
-  badge: {
-    backgroundColor: 'rgba(59,130,246,0.12)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeSession: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#1D4ED8',
+  rowChevron: {
+    opacity: 0.6,
   },
 });

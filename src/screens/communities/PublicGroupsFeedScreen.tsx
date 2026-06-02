@@ -276,6 +276,11 @@ export function PublicGroupsFeedScreen() {
     () =>
       (items ?? []).filter(
         (g) =>
+          // Skip incomplete public projections that have no name — these
+          // are partial /groupsPublic docs (e.g. a hidden personal group
+          // whose public doc was lazily created by the memberCount-sync
+          // CF with no name/city). A nameless discovery card is broken.
+          (g.name ?? '').trim().length > 0 &&
           !memberIds.has(g.id) &&
           !adminIds.has(g.id) &&
           !pendingIds.has(g.id) &&
@@ -358,7 +363,7 @@ export function PublicGroupsFeedScreen() {
     return (
       <AppearItem key={g.id} index={idx}>
         <CommunityCard
-          name={g.name}
+          name={localGroup?.name ?? g.name}
           locationLine={locationLine}
           description={g.description}
           coverPhotoUrl={g.coverPhotoUrl}

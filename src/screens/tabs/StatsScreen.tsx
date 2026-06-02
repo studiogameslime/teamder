@@ -38,7 +38,7 @@ export function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title={he.statsGames} />
+      <ScreenHeader title={he.statsTitle} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <PlayerIdentity user={user} size={72} />

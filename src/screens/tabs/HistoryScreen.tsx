@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -29,17 +29,32 @@ export function HistoryScreen() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     logEvent(AnalyticsEvent.HistoryOpened);
   }, []);
 
   useEffect(() => {
-    if (!group) return;
+    if (!group) {
+      setLoading(false);
+      return;
+    }
     let alive = true;
-    gameService.getHistory(group.id).then((list) => {
-      if (alive) setItems(list.sort((a, b) => b.date - a.date));
-    });
+    setLoading(true);
+    gameService
+      .getHistory(group.id)
+      .then((list) => {
+        if (alive) setItems(list.sort((a, b) => b.date - a.date));
+      })
+      .catch((err) => {
+        // Without this, a failed fetch silently shows the empty state
+        // ("no history") — indistinguishable from genuinely having none.
+        if (__DEV__) console.warn('[history] load failed', err);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -55,7 +70,11 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.historyTitle} />
-      {items.length === 0 ? (
+      {loading ? (
+        <View style={styles.emptyWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyTitle}>{he.historyEmptyReal}</Text>
           <Text style={styles.emptyHint}>{he.historyEmptyHint}</Text>

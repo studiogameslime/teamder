@@ -31,10 +31,14 @@ sealed interface WearGameState {
     /** Phone unreachable / app not running — nothing to show. */
     object Disconnected : WearGameState
 
-    /** Registered to a game happening NOW → big stopwatch. */
+    /** Registered to a game happening NOW → big stopwatch.
+     *  `gameId` lets the watch send timer commands back to the phone (the
+     *  watch is a control surface now, not just a mirror). Defaults to ""
+     *  for demo/preview states, where commands are a no-op. */
     data class Live(
         val title: String,
         val timer: TimerState,
+        val gameId: String = "",
     ) : WearGameState
 
     /** Registered to an UPCOMING game → next-game card + details, with a

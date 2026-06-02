@@ -61,6 +61,8 @@ export const he = {
   done: 'בוצע',
   loading: 'טוען...',
   error: 'שגיאה',
+  profileSaveError: 'לא הצלחנו לשמור את הפרטים. בדוק את החיבור ונסה שוב.',
+  liveMatchNotFound: 'המשחק לא נמצא או הוסר.',
 
   // Global error boundary — fallback UI when a React tree crashes.
   errorBoundaryTitle: 'משהו השתבש',
@@ -150,17 +152,12 @@ export const he = {
   sessionStatusActive: 'משחק פעיל',
   sessionStatusTeamsInvalid: 'צריך ליצור כוחות מחדש',
   sessionInvalidHelper: 'הכוחות מתייחסים לשחקנים שכבר לא רשומים. צרו אותם מחדש.',
-  sessionActionRecreateTeams: 'צור כוחות מחדש',
   sessionWaitingHelper: (min: number) =>
     `תצטרכו לפחות ${min} שחקנים כדי ליצור כוחות ולהתחיל`,
   sessionActionInvitePlayers: 'הזמן שחקנים',
   sessionActionShareLink: 'שיתוף קישור',
-  sessionActionCreateTeams: 'צור כוחות',
   sessionActionStart: 'התחל ערב משחקים',
   sessionActionGoLive: 'עבור ללייב',
-  sessionTeamsHeading: 'כוחות',
-  sessionTeamsPlaceholder:
-    'אין עדיין כוחות — יווצרו אוטומטית כשיהיו מספיק שחקנים',
   sessionInviteShareBody: (link: string) =>
     `הוזמנת למשחק ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
   numWaiting: 'ספסל',
@@ -183,110 +180,17 @@ export const he = {
   dragToReorder: 'גרור לשינוי סדר',
 
   // Live match — v2 portrait layout
-  liveStateOrganizing: 'מתארגנים',
-  liveStateLive: 'משחק חי',
-  liveStateFinished: 'הסתיים',
-  liveTeamA: 'קבוצה עליונה',
-  liveTeamB: 'קבוצה תחתונה',
-  liveBench: 'ספסל',
-  liveGkSlot: 'שוער',
-  liveCreateTeams: 'צור קבוצות',
-  liveCreateRandom: 'אקראי',
-  liveCreateBalanced: 'מאוזן (בקרוב)',
   liveStartMatch: 'התחל משחק',
-  liveFinishMatch: 'סיים משחק',
-  liveTimerStart: 'הפעל שעון',
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',
-  liveBackToDetails: 'חזור לפרטי משחק',
-  liveCurrentMatchTitle: 'המשחק הנוכחי',
-  liveCurrentMatchEmpty: 'אין שחקנים על המגרש כרגע',
-  liveSwapHint: 'לחיצה על שחקן בוחרת אותו, לחיצה על שחקן בקבוצה השנייה תחליף ביניהם',
-  liveTeamWinsLabel: (n: number) => (n === 1 ? 'ניצחון אחד' : `${n} ניצחונות`),
-  liveQueueTitle: 'התור למשחק',
-  liveTeamsOverview: 'צפייה בקבוצות',
-  liveShuffleTeams: 'ערבב קבוצות',
-  liveTeamLabel: (i: number) => `קבוצה ${i + 1}`,
-  liveRoundLabel: (n: number) => `משחקון ${n}`,
-  liveStartRound: 'הפעל משחקון',
-  // Shown when the admin taps "Start round" but fewer than two teams
-  // are at the format's required size (e.g. 5v5 with one team holding
-  // only 4 players). Blocks the timer from starting — and therefore
-  // blocks the game from being marked as actually played.
-  liveTimerNeedsTwoFullTeams: 'לפחות שתי קבוצות חייבות להיות מלאות לפי הפורמט כדי להפעיל את השעון',
-  // Fill-team modal — shown after a round-end rotation when the
-  // incoming team is short of the format's player count. Admin must
-  // pick players from the OTHER waiting teams to fill the spots.
-  liveFillTeamTitle: 'השלם את הקבוצה הנכנסת',
-  liveFillTeamRemaining: (n: number) =>
-    n === 1 ? 'נשאר שחקן אחד לבחור' : `נשארו ${n} שחקנים לבחור`,
-  liveFillTeamReady: 'בחרת מספיק שחקנים — לחץ אישור',
-  liveFillTeamConfirm: 'אישור',
-  liveFillTeamEmptyTeam: 'אין שחקנים פנויים בקבוצה הזו',
-  liveStartNextRound: 'התחל משחקון הבא',
-  liveEndRound: 'סיים משחקון',
-  liveEndRoundTitle: 'סיום משחקון',
-  liveEndRoundQuestion: 'מי ניצח?',
-  liveEndRoundConfirm: 'סיים וקבע סבב הבא',
-  liveDrawLabel: 'תיקו',
-  // End-of-evening confirmation (admin-only) — flips the game to
-  // 'finished' and locks it. Reversible only via admin cancel.
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
     'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
   liveEndEveningConfirm: 'כן, סיים את הערב',
-  liveEndEveningReminder:
-    'נראה שהערב כבר התארך. רוצה לסיים? יש כפתור "סיים ערב" למעלה.',
-  // Session state banners (top of Live screen)
-  liveStatusScheduled: 'הערב עדיין לא התחיל',
-  liveStatusReady: (n: number) => `משחקון ${n} מוכן להתחלה`,
-  liveStatusActive: (n: number) => `משחקון ${n} פעיל`,
-  liveStatusPaused: (n: number) => `משחקון ${n} מושהה`,
-  liveStatusFinished: (n: number) => `משחקון ${n} הסתיים`,
-  // Goal logging
-  liveLogGoal: 'תעד גול',
-  liveLogGoalTitle: 'מי הבקיע?',
-  liveLogGoalOwn: 'גול עצמי',
-  liveLogGoalOwnHint: 'בחירת שחקן תזכה את הקבוצה היריבה',
-  liveGoalRecorded: 'גול נרשם',
-  // Score correction (admin-only, hidden as a tertiary action)
-  liveEditScore: 'עריכת תוצאה',
-  liveEditScoreTitle: 'עריכת תוצאה ידנית',
-  // Round-finished summary
-  liveRoundFinishedWinner: (label: string) => `מנצחת: ${label}`,
-  liveRoundFinishedDraw: 'הסבב הסתיים בתיקו',
-  liveTeamScoreLabel: (i: number) => `קבוצה ${i + 1}`,
-  liveTeamWaiting: 'ממתינה',
-  liveAvgRating: 'דירוג ממוצע',
-  liveAvgRatingNone: '— ',
-  liveTeamsModalTitle: 'הקבוצות',
-  liveTeamsModalClose: 'סגור',
-  liveTeamRosterEmpty: 'אין שחקנים',
-  liveSlotEmpty: 'פנוי',
-  liveSwapMatchup: 'החלף מתחרים',
-  liveOnFieldTeamA: 'מתחרה עליון',
-  liveOnFieldTeamB: 'מתחרה תחתון',
-  liveScoreboardTitle: 'תוצאה',
-  liveScore: 'תוצאה',
-  liveDragHint: 'גרור שחקן בין הקבוצות לשינוי',
-  liveTeamFull: 'מלאה',
-  liveEmptyGk: 'ריק',
-  liveResetTeams: 'איפוס קבוצות',
-  liveUndo: 'בטל פעולה',
-  liveViewerOnly: 'רק מנהל המשחק יכול לבצע שינויים',
-  liveManageGame: 'ניהול משחק',
-  liveCancelGame: 'בטל משחק',
-  liveFindAvailable: 'חפש שחקנים פנויים',
   availablePlayersTitle: 'שחקנים פנויים',
   availablePlayersEmpty: 'לא נמצאו שחקנים פנויים שמתאימים למשחק הזה',
-  liveCancelConfirmTitle: 'לבטל את המשחק?',
-  liveCancelConfirmBody:
-    'כל השחקנים בסגל ובספסל יקבלו התראה. לא ניתן לבטל את הפעולה.',
-
-  // Live match — legacy
-  liveField: 'דשא חי',
   vs: 'VS',
   startTimer: 'התחל טיימר',
   pauseTimer: 'השהה',
@@ -530,6 +434,7 @@ export const he = {
   createGameOrphanCta: 'צור משחק חד־פעמי',
   createGameOrphanCtaSub: 'בלי קהילה — מהיר, רק עבור הערב',
   createGameOrphanBanner: 'משחק חד־פעמי — תוכל לקבע קהילה אחרי שתשחקו',
+  createGameQuickLoading: 'מכינים משחק מהיר…',
   createGameOrphanErrorTitle: 'תקלה ביצירה',
   createGameOrphanErrorBody: 'לא הצלחנו להכין את הסביבה. נסה שוב בעוד רגע.',
 
@@ -883,6 +788,8 @@ export const he = {
   onbNext: 'הבא',
   onbStart: 'בוא נתחיל',
   onbCtaSignIn: 'התחבר עם Google',
+  onbCtaSignInApple: 'התחבר עם Apple',
+  onbCtaStart: 'המשך',
   onb1Title: 'מצא משחק כדורגל בקלות',
   onb1Body: 'הצטרף למשחקים קרובים או צור אחד משלך',
   onb2Title: 'צור משחק תוך שניות',
@@ -898,6 +805,7 @@ export const he = {
   signInTitle: 'בואו נתחיל',
   signInSubtitle: 'התחבר כדי להירשם, להצטרף לקבוצה ולעקוב אחרי הסטטיסטיקות שלך.',
   signInGoogle: 'המשך עם Google',
+  signInApple: 'המשך עם Apple',
   signInPrivacy: 'באמצעות התחברות אתה מסכים לתנאי השימוש',
 
   // Profile setup
@@ -979,9 +887,9 @@ export const he = {
   trustBreakdownAttended: (att: number, reg: number) =>
     `הופיע ב־${att} מתוך ${reg} משחקים`,
   trustBreakdownSoftCancels: (n: number) =>
-    n === 1 ? 'ביטול אחד לפני ה־deadline' : `${n} ביטולים לפני ה־deadline`,
+    n === 1 ? 'ביטול אחד לפני המועד האחרון' : `${n} ביטולים לפני המועד האחרון`,
   trustBreakdownHardCancels: (n: number) =>
-    n === 1 ? 'ביטול אחד אחרי ה־deadline' : `${n} ביטולים אחרי ה־deadline`,
+    n === 1 ? 'ביטול אחד אחרי המועד האחרון' : `${n} ביטולים אחרי המועד האחרון`,
 
   // Game wizard step 3 — cross-community filler matching.
   gameFillerAcceptToggle: 'פתוח לזרים אם חסרים שחקנים',
@@ -1010,6 +918,8 @@ export const he = {
 
   // Achievements (תארים)
   achievementsTitle: 'תארים אישיים',
+  achievementsCount: (unlocked: number, total: number) =>
+    `${unlocked} מתוך ${total}`,
   achievementsSeeAll: 'הצג הכל',
   achievementsEmpty: 'עוד לא נפתחו תארים. תתחיל לשחק!',
   achievementsLockedHint: 'נפתח אחרי שתעבור את היעד',
@@ -1271,14 +1181,6 @@ export const he = {
   matchDetailsTerminalSub: 'לא ניתן לבצע פעולות על המשחק הזה',
   matchDetailsNotFound: 'המשחק לא קיים יותר',
   // Stage 2 lifecycle CTAs / banners
-  lifecycleCtaJoin: 'הירשם למשחק',
-  lifecycleCtaCancelRegistration: 'בטל הרשמה',
-  lifecycleCtaStartEvening: 'התחל ערב',
-  lifecycleCtaGoLive: 'עבור ללייב',
-  lifecycleCtaStartRound: 'התחל משחקון',
-  lifecycleCtaRecordGoal: 'תעד גול',
-  lifecycleCtaEndRound: 'סיים משחקון',
-  lifecycleCtaEndEvening: 'סיים ערב',
   lifecycleCannotJoin: 'אין אפשרות להצטרף למשחק הזה',
   liveMatchNotActiveYet: 'המשחק עדיין לא פעיל',
   // Top in-app banners (event signals, distinct from system toasts).
@@ -1291,8 +1193,6 @@ export const he = {
   bannerPlayerLeftNamed: (firstName: string) => `${firstName} יצא מהמשחק`,
   bannerPlayersLeftCount: (n: number) => `${n} שחקנים יצאו מהמשחק`,
   bannerGuestAdded: 'אורח נוסף למשחק',
-  bannerTeamsReady: 'הכוחות מוכנים',
-  bannerGoalRecorded: 'גול נרשם',
   bannerEveningEnded: 'הערב הסתיים',
   bannerGameCancelled: 'המשחק בוטל',
   // Inline soft prompt at the top of MatchDetails for finished games
@@ -1461,7 +1361,6 @@ export const he = {
   matchStatusWaitingTitle: 'מחכים לשחקנים',
   matchStatusWaitingHelper: (n: number) => `חסרים עוד ${n} שחקנים`,
   matchStatusReadyToCreate: 'אפשר להרכיב קבוצות',
-  matchStatusTeamsReady: 'הקבוצות מוכנות — אפשר להתחיל',
   matchStatusTeamsInvalid: 'יש לעדכן את הקבוצות לפני התחלה',
   // Conflict CTA copy
   matchPrimaryConflict: 'יש לך משחק אחר בזמן הזה',
@@ -1523,11 +1422,6 @@ export const he = {
   statusWaitingTitle: 'מחכים לשחקנים',
   statusWaitingSub: (n: number) =>
     n === 1 ? 'חסר עוד שחקן אחד כדי להתחיל' : `חסרים עוד ${n} שחקנים כדי להתחיל`,
-  statusReadyTitle: 'מוכנים להתחלה',
-  statusReadySub: 'אפשר ליצור כוחות ולהתחיל',
-  statusTeamsInvalidTitle: 'הכוחות לא מסונכרנים',
-  statusTeamsInvalidSub: 'צריך לבנות מחדש לפני שמתחילים',
-  // Empty-state inside the players card.
   playersEmptyMissing: (n: number) =>
     n === 1 ? 'חסר עוד שחקן אחד' : `חסרים עוד ${n} שחקנים`,
   // Admin "manage game" section at the bottom.
@@ -1575,6 +1469,7 @@ export const he = {
   communityNotifyNewGames: 'הודיעו לי על משחקים חדשים בקבוצה',
 
   // Stats tab
+  statsTitle: 'סטטיסטיקה',
   statsGames: 'משחקים',
   statsWins: 'ניצחונות',
   statsLosses: 'הפסדים',

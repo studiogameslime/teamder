@@ -1276,63 +1276,57 @@ export const onNotificationCreated = onDocumentCreated(
 
 // ─── Scheduled: 1h-before reminders ────────────────────────────────────
 
-export const sendGameReminders = onSchedule(
-  {
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    // Look for games starting in [now+50, now+70] minutes that haven't
-    // had a reminder dispatched yet. The 20-minute window covers slack
-    // around our 15-minute cadence — a game is found in exactly one run.
-    const now = Date.now();
-    const lower = now + 50 * 60 * 1000;
-    const upper = now + 70 * 60 * 1000;
+async function runSendGameReminders(): Promise<void> {
+  // Look for games starting in [now+50, now+70] minutes that haven't
+  // had a reminder dispatched yet. The 20-minute window covers slack
+  // around our 15-minute cadence — a game is found in exactly one run.
+  const now = Date.now();
+  const lower = now + 50 * 60 * 1000;
+  const upper = now + 70 * 60 * 1000;
 
-    const snap = await db
-      .collection('games')
-      .where('startsAt', '>=', lower)
-      .where('startsAt', '<', upper)
-      .get();
+  const snap = await db
+    .collection('games')
+    .where('startsAt', '>=', lower)
+    .where('startsAt', '<', upper)
+    .get();
 
-    if (snap.empty) {
-      console.log('[sendGameReminders] no candidate games');
-      return;
-    }
-
-    const ops: Promise<unknown>[] = [];
-    for (const doc of snap.docs) {
-      const g = doc.data() as {
-        title?: string;
-        startsAt?: number;
-        status?: string;
-        reminderSent?: boolean;
-        players?: string[];
-      };
-      if (g.reminderSent) continue;
-      if (g.status && g.status !== 'open' && g.status !== 'locked') continue;
-      if (!g.players || g.players.length === 0) continue;
-
-      // Write the notification + flip reminderSent atomically. A failure
-      // mid-write at worst skips the reminder for this game; not double.
-      ops.push(
-        createNotificationOnce({
-          type: 'gameReminder',
-          recipientId: doc.id, // fan-out marker
-          payload: {
-            gameId: doc.id,
-            gameTitle: g.title || 'המשחק',
-            startsAt: g.startsAt,
-          },
-        }),
-      );
-      ops.push(doc.ref.update({ reminderSent: true }));
-    }
-
-    await Promise.all(ops);
-    console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
+  if (snap.empty) {
+    console.log('[sendGameReminders] no candidate games');
+    return;
   }
-);
+
+  const ops: Promise<unknown>[] = [];
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      title?: string;
+      startsAt?: number;
+      status?: string;
+      reminderSent?: boolean;
+      players?: string[];
+    };
+    if (g.reminderSent) continue;
+    if (g.status && g.status !== 'open' && g.status !== 'locked') continue;
+    if (!g.players || g.players.length === 0) continue;
+
+    // Write the notification + flip reminderSent atomically. A failure
+    // mid-write at worst skips the reminder for this game; not double.
+    ops.push(
+      createNotificationOnce({
+        type: 'gameReminder',
+        recipientId: doc.id, // fan-out marker
+        payload: {
+          gameId: doc.id,
+          gameTitle: g.title || 'המשחק',
+          startsAt: g.startsAt,
+        },
+      }),
+    );
+    ops.push(doc.ref.update({ reminderSent: true }));
+  }
+
+  await Promise.all(ops);
+  console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
+}
 
 // ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
 
@@ -1357,124 +1351,118 @@ export const sendGameReminders = onSchedule(
  *   • MINUS the game's createdBy (don't ping the organiser about
  *     their own game)
  */
-export const sendRsvpNudges = onSchedule(
-  {
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    const lower = now + 4 * 60 * 60 * 1000 + 50 * 60 * 1000;
-    const upper = now + 5 * 60 * 60 * 1000 + 10 * 60 * 1000;
+async function runSendRsvpNudges(): Promise<void> {
+  const now = Date.now();
+  const lower = now + 4 * 60 * 60 * 1000 + 50 * 60 * 1000;
+  const upper = now + 5 * 60 * 60 * 1000 + 10 * 60 * 1000;
 
-    const snap = await db
-      .collection('games')
-      .where('startsAt', '>=', lower)
-      .where('startsAt', '<', upper)
-      .get();
+  const snap = await db
+    .collection('games')
+    .where('startsAt', '>=', lower)
+    .where('startsAt', '<', upper)
+    .get();
 
-    if (snap.empty) {
-      console.log('[sendRsvpNudges] no candidate games');
-      return;
-    }
+  if (snap.empty) {
+    console.log('[sendRsvpNudges] no candidate games');
+    return;
+  }
 
-    let nudged = 0;
-    for (const doc of snap.docs) {
-      const g = doc.data() as {
-        title?: string;
-        startsAt?: number;
-        status?: string;
-        rsvpNudgeSent?: boolean;
-        groupId?: string;
-        createdBy?: string;
-        players?: string[];
-        waitlist?: string[];
-        pending?: string[];
-        cancellations?: Record<string, number>;
-        guests?: unknown[];
-        maxPlayers?: number;
-      };
-      if (g.rsvpNudgeSent) continue;
-      if (g.status !== 'open') continue;
-      if (!g.groupId) continue;
-      const playersCount = g.players?.length ?? 0;
-      const guestsCount = g.guests?.length ?? 0;
-      if (g.maxPlayers && playersCount + guestsCount >= g.maxPlayers) continue;
+  let nudged = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      title?: string;
+      startsAt?: number;
+      status?: string;
+      rsvpNudgeSent?: boolean;
+      groupId?: string;
+      createdBy?: string;
+      players?: string[];
+      waitlist?: string[];
+      pending?: string[];
+      cancellations?: Record<string, number>;
+      guests?: unknown[];
+      maxPlayers?: number;
+    };
+    if (g.rsvpNudgeSent) continue;
+    if (g.status !== 'open') continue;
+    if (!g.groupId) continue;
+    const playersCount = g.players?.length ?? 0;
+    const guestsCount = g.guests?.length ?? 0;
+    if (g.maxPlayers && playersCount + guestsCount >= g.maxPlayers) continue;
 
-      // Pull the parent group to enumerate its members.
-      const groupSnap = await db.collection('groups').doc(g.groupId).get();
-      if (!groupSnap.exists) continue;
-      const grp = groupSnap.data() as {
-        playerIds?: string[];
-        adminIds?: string[];
-      };
-      const members = new Set<string>([
-        ...(grp.playerIds ?? []),
-        ...(grp.adminIds ?? []),
-      ]);
+    // Pull the parent group to enumerate its members.
+    const groupSnap = await db.collection('groups').doc(g.groupId).get();
+    if (!groupSnap.exists) continue;
+    const grp = groupSnap.data() as {
+      playerIds?: string[];
+      adminIds?: string[];
+    };
+    const members = new Set<string>([
+      ...(grp.playerIds ?? []),
+      ...(grp.adminIds ?? []),
+    ]);
 
-      // Exclusions: anyone already in any roster bucket, anyone who
-      // already cancelled (they opted out), the organiser themselves.
-      const exclude = new Set<string>([
-        ...(g.players ?? []),
-        ...(g.waitlist ?? []),
-        ...(g.pending ?? []),
-        ...Object.keys(g.cancellations ?? {}),
-      ]);
-      if (g.createdBy) exclude.add(g.createdBy);
+    // Exclusions: anyone already in any roster bucket, anyone who
+    // already cancelled (they opted out), the organiser themselves.
+    const exclude = new Set<string>([
+      ...(g.players ?? []),
+      ...(g.waitlist ?? []),
+      ...(g.pending ?? []),
+      ...Object.keys(g.cancellations ?? {}),
+    ]);
+    if (g.createdBy) exclude.add(g.createdBy);
 
-      const targets = Array.from(members).filter((uid) => !exclude.has(uid));
+    const targets = Array.from(members).filter((uid) => !exclude.has(uid));
 
-      // Flip the latch transactionally BEFORE dispatching, with a
-      // re-read guard. This protects against:
-      //   • two cron instances racing (CF can occasionally double-fire)
-      //   • partial dispatch + retry → duplicate sends
-      // Trade-off accepted: if the function crashes mid-loop below,
-      // at most a handful of users miss the nudge for this one game.
-      // A missed nudge is recoverable; a duplicate one is annoying.
-      let claimed = false;
-      try {
-        await db.runTransaction(async (tx) => {
-          const fresh = await tx.get(doc.ref);
-          if (!fresh.exists) return;
-          if ((fresh.data() as { rsvpNudgeSent?: boolean }).rsvpNudgeSent) {
-            return;
-          }
-          tx.update(doc.ref, { rsvpNudgeSent: true });
-          claimed = true;
-        });
-      } catch (e) {
-        console.error('[sendRsvpNudges] latch txn failed', doc.id, e);
-        continue;
-      }
-      if (!claimed) continue;
-      if (targets.length === 0) continue;
-
-      // One notification doc per target — wrapped individually so a
-      // single failure (e.g. quota blip on one add) doesn't strand
-      // the rest. The latch is already set, so we won't retry from
-      // a re-fire either way.
-      for (const uid of targets) {
-        try {
-          await createNotificationOnce({
-            type: 'gameRsvpNudge',
-            recipientId: uid,
-            payload: {
-              gameId: doc.id,
-              gameTitle: g.title || 'המשחק',
-              startsAt: g.startsAt,
-            },
-          });
-          nudged += 1;
-        } catch (e) {
-          console.error('[sendRsvpNudges] add failed', doc.id, uid, e);
+    // Flip the latch transactionally BEFORE dispatching, with a
+    // re-read guard. This protects against:
+    //   • two cron instances racing (CF can occasionally double-fire)
+    //   • partial dispatch + retry → duplicate sends
+    // Trade-off accepted: if the function crashes mid-loop below,
+    // at most a handful of users miss the nudge for this one game.
+    // A missed nudge is recoverable; a duplicate one is annoying.
+    let claimed = false;
+    try {
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(doc.ref);
+        if (!fresh.exists) return;
+        if ((fresh.data() as { rsvpNudgeSent?: boolean }).rsvpNudgeSent) {
+          return;
         }
+        tx.update(doc.ref, { rsvpNudgeSent: true });
+        claimed = true;
+      });
+    } catch (e) {
+      console.error('[sendRsvpNudges] latch txn failed', doc.id, e);
+      continue;
+    }
+    if (!claimed) continue;
+    if (targets.length === 0) continue;
+
+    // One notification doc per target — wrapped individually so a
+    // single failure (e.g. quota blip on one add) doesn't strand
+    // the rest. The latch is already set, so we won't retry from
+    // a re-fire either way.
+    for (const uid of targets) {
+      try {
+        await createNotificationOnce({
+          type: 'gameRsvpNudge',
+          recipientId: uid,
+          payload: {
+            gameId: doc.id,
+            gameTitle: g.title || 'המשחק',
+            startsAt: g.startsAt,
+          },
+        });
+        nudged += 1;
+      } catch (e) {
+        console.error('[sendRsvpNudges] add failed', doc.id, uid, e);
       }
     }
+  }
 
-    console.log(`[sendRsvpNudges] nudged ${nudged} member(s)`);
-  },
-);
+  console.log(`[sendRsvpNudges] nudged ${nudged} member(s)`);
+}
 
 // ─── Scheduled: flush batched join notifications to admins ──────────────
 
@@ -1625,101 +1613,95 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
 // `openedNotificationSent` is also the guard that prevents an admin's
 // post-creation edit of `registrationOpensAt` from firing a second
 // push: once the flag is true we never dispatch again for this game.
-export const flipScheduledGames = onSchedule(
-  {
-    schedule: 'every 5 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    // Equality query — auto-indexed, no composite needed. The
-    // registrationOpensAt + openedNotificationSent filters run
-    // client-side.
-    const snap = await db
-      .collection('games')
-      .where('status', '==', 'scheduled')
-      .get();
+async function runFlipScheduledGames(): Promise<void> {
+  const now = Date.now();
+  // Equality query — auto-indexed, no composite needed. The
+  // registrationOpensAt + openedNotificationSent filters run
+  // client-side.
+  const snap = await db
+    .collection('games')
+    .where('status', '==', 'scheduled')
+    .get();
 
-    if (snap.empty) {
-      console.log('[flipScheduledGames] no scheduled games');
-      return;
+  if (snap.empty) {
+    console.log('[flipScheduledGames] no scheduled games');
+    return;
+  }
+
+  let flipped = 0;
+  let notifiedOnly = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      title?: string;
+      startsAt?: number;
+      fieldName?: string;
+      groupId?: string;
+      createdBy?: string;
+      registrationOpensAt?: number;
+      openedNotificationSent?: boolean;
+    };
+    if (
+      typeof g.registrationOpensAt !== 'number' ||
+      g.registrationOpensAt > now
+    ) {
+      continue;
     }
 
-    let flipped = 0;
-    let notifiedOnly = 0;
-    for (const doc of snap.docs) {
-      const g = doc.data() as {
-        title?: string;
-        startsAt?: number;
-        fieldName?: string;
-        groupId?: string;
-        createdBy?: string;
-        registrationOpensAt?: number;
-        openedNotificationSent?: boolean;
-      };
-      if (
-        typeof g.registrationOpensAt !== 'number' ||
-        g.registrationOpensAt > now
-      ) {
-        continue;
-      }
-
-      // Step 1 — dispatch notification (only if not already sent).
-      // The notification doc → CF fan-out → FCM, so a second cron run
-      // that re-enters this branch would double-notify. The flag
-      // write below makes that impossible.
-      if (!g.openedNotificationSent) {
-        try {
-          await createNotificationOnce({
-            type: 'newGameInCommunity',
-            recipientId: g.groupId ?? doc.id,
-            payload: {
-              groupId: g.groupId,
-              gameId: doc.id,
-              title: g.title || 'המשחק',
-              startsAt: g.startsAt,
-              fieldName: g.fieldName,
-              createdBy: g.createdBy,
-            },
-          });
-          // Step 2 — flag the game so a future run won't re-notify.
-          // Done as a separate write because if step 1 throws we
-          // should NOT mark the flag — the next cron run must retry.
-          await doc.ref.update({
-            openedNotificationSent: true,
-            updatedAt: now,
-          });
-          notifiedOnly++;
-        } catch (err) {
-          console.error(
-            `[flipScheduledGames] notify failed for ${doc.id}`,
-            err,
-          );
-          // Skip the status flip too — we'll come back next run.
-          continue;
-        }
-      }
-
-      // Step 3 — flip status. Once this lands the game leaves the
-      // 'scheduled' query window forever. Failure here is recoverable
-      // because next run will still see status='scheduled' AND
-      // openedNotificationSent=true → skip step 1, retry step 3.
+    // Step 1 — dispatch notification (only if not already sent).
+    // The notification doc → CF fan-out → FCM, so a second cron run
+    // that re-enters this branch would double-notify. The flag
+    // write below makes that impossible.
+    if (!g.openedNotificationSent) {
       try {
+        await createNotificationOnce({
+          type: 'newGameInCommunity',
+          recipientId: g.groupId ?? doc.id,
+          payload: {
+            groupId: g.groupId,
+            gameId: doc.id,
+            title: g.title || 'המשחק',
+            startsAt: g.startsAt,
+            fieldName: g.fieldName,
+            createdBy: g.createdBy,
+          },
+        });
+        // Step 2 — flag the game so a future run won't re-notify.
+        // Done as a separate write because if step 1 throws we
+        // should NOT mark the flag — the next cron run must retry.
         await doc.ref.update({
-          status: 'open',
+          openedNotificationSent: true,
           updatedAt: now,
         });
-        flipped++;
+        notifiedOnly++;
       } catch (err) {
-        console.error(`[flipScheduledGames] flip failed for ${doc.id}`, err);
+        console.error(
+          `[flipScheduledGames] notify failed for ${doc.id}`,
+          err,
+        );
+        // Skip the status flip too — we'll come back next run.
+        continue;
       }
     }
 
-    console.log(
-      `[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`,
-    );
-  },
-);
+    // Step 3 — flip status. Once this lands the game leaves the
+    // 'scheduled' query window forever. Failure here is recoverable
+    // because next run will still see status='scheduled' AND
+    // openedNotificationSent=true → skip step 1, retry step 3.
+    try {
+      await doc.ref.update({
+        status: 'open',
+        updatedAt: now,
+      });
+      flipped++;
+    } catch (err) {
+      console.error(`[flipScheduledGames] flip failed for ${doc.id}`, err);
+    }
+  }
+
+  console.log(
+    `[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`,
+  );
+}
 
 // ─── Scheduled: stale-game cleanup ─────────────────────────────────────
 
@@ -1742,94 +1724,88 @@ export const flipScheduledGames = onSchedule(
  * CF makes the change durable in Firestore so writes from older
  * clients (or admins reaching the doc via direct nav) can't resurrect.
  */
-export const cleanupStaleGames = onSchedule(
-  {
-    schedule: 'every 60 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
-    const cutoff = Date.now() - STALE_AFTER_MS;
+async function runCleanupStaleGames(): Promise<void> {
+  const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
+  const cutoff = Date.now() - STALE_AFTER_MS;
 
-    // We only care about games that haven't reached a terminal state.
-    // 'in' supports up to 30 values so three buckets fit fine.
-    const snap = await db
-      .collection('games')
-      .where('status', 'in', ['open', 'locked', 'active'])
-      .where('startsAt', '<', cutoff)
-      .get();
+  // We only care about games that haven't reached a terminal state.
+  // 'in' supports up to 30 values so three buckets fit fine.
+  const snap = await db
+    .collection('games')
+    .where('status', 'in', ['open', 'locked', 'active'])
+    .where('startsAt', '<', cutoff)
+    .get();
 
-    if (snap.empty) {
-      console.log('[cleanupStaleGames] no stale games');
-      return;
-    }
-
-    let deleted = 0;
-    let finished = 0;
-    const ops: Promise<unknown>[] = [];
-
-    for (const gameDoc of snap.docs) {
-      const g = gameDoc.data() as {
-        id?: string;
-        players?: string[];
-        guests?: unknown[];
-        liveMatch?: {
-          phase?: string;
-          startedAt?: number;
-        };
-      };
-      const playerCount = (g.players ?? []).length;
-      const guestCount = (g.guests ?? []).length;
-      const isZombie = playerCount === 0 && guestCount === 0;
-
-      // "Did this game actually get played?" Single source of truth:
-      // `liveMatch.startedAt` is stamped the first time the admin
-      // taps the timer's play button (after the teams-full gate). As
-      // a safety net for games written before that field existed, we
-      // also accept any phase value that implies the round actually
-      // ran. Without either signal the game was created and forgotten
-      // — it shouldn't count toward stats, trust, or history.
-      const phase = g.liveMatch?.phase;
-      const wasActuallyPlayed =
-        typeof g.liveMatch?.startedAt === 'number' ||
-        phase === 'roundRunning' ||
-        phase === 'roundEnded' ||
-        phase === 'live';
-
-      const shouldDelete = isZombie || !wasActuallyPlayed;
-
-      if (shouldDelete) {
-        // Nuke the game and any /rounds it owns. We use a chunked delete
-        // because a single batch caps at 500 ops — round counts here are
-        // tiny (≤ ~10), but the pattern is safe regardless.
-        ops.push(
-          (async () => {
-            const rounds = await db
-              .collection('rounds')
-              .where('gameId', '==', gameDoc.id)
-              .get();
-            const batch = db.batch();
-            rounds.docs.forEach((r) => batch.delete(r.ref));
-            batch.delete(gameDoc.ref);
-            await batch.commit();
-            deleted++;
-          })()
-        );
-      } else {
-        ops.push(
-          gameDoc.ref.update({ status: 'finished', locked: true }).then(() => {
-            finished++;
-          })
-        );
-      }
-    }
-
-    await Promise.all(ops);
-    console.log(
-      `[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`
-    );
+  if (snap.empty) {
+    console.log('[cleanupStaleGames] no stale games');
+    return;
   }
-);
+
+  let deleted = 0;
+  let finished = 0;
+  const ops: Promise<unknown>[] = [];
+
+  for (const gameDoc of snap.docs) {
+    const g = gameDoc.data() as {
+      id?: string;
+      players?: string[];
+      guests?: unknown[];
+      liveMatch?: {
+        phase?: string;
+        startedAt?: number;
+      };
+    };
+    const playerCount = (g.players ?? []).length;
+    const guestCount = (g.guests ?? []).length;
+    const isZombie = playerCount === 0 && guestCount === 0;
+
+    // "Did this game actually get played?" Single source of truth:
+    // `liveMatch.startedAt` is stamped the first time the admin
+    // taps the timer's play button (after the teams-full gate). As
+    // a safety net for games written before that field existed, we
+    // also accept any phase value that implies the round actually
+    // ran. Without either signal the game was created and forgotten
+    // — it shouldn't count toward stats, trust, or history.
+    const phase = g.liveMatch?.phase;
+    const wasActuallyPlayed =
+      typeof g.liveMatch?.startedAt === 'number' ||
+      phase === 'roundRunning' ||
+      phase === 'roundEnded' ||
+      phase === 'live';
+
+    const shouldDelete = isZombie || !wasActuallyPlayed;
+
+    if (shouldDelete) {
+      // Nuke the game and any /rounds it owns. We use a chunked delete
+      // because a single batch caps at 500 ops — round counts here are
+      // tiny (≤ ~10), but the pattern is safe regardless.
+      ops.push(
+        (async () => {
+          const rounds = await db
+            .collection('rounds')
+            .where('gameId', '==', gameDoc.id)
+            .get();
+          const batch = db.batch();
+          rounds.docs.forEach((r) => batch.delete(r.ref));
+          batch.delete(gameDoc.ref);
+          await batch.commit();
+          deleted++;
+        })()
+      );
+    } else {
+      ops.push(
+        gameDoc.ref.update({ status: 'finished', locked: true }).then(() => {
+          finished++;
+        })
+      );
+    }
+  }
+
+  await Promise.all(ops);
+  console.log(
+    `[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`
+  );
+}
 
 // ─── Scheduled: prune accumulating server-side state ───────────────────
 
@@ -1857,159 +1833,153 @@ export const cleanupStaleGames = onSchedule(
  * if a sweep produces >400 docs the leftovers wait for the next
  * day's run. That keeps the function bounded.
  */
-export const dailyCleanup = onSchedule(
-  {
-    schedule: 'every 24 hours',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const BATCH_LIMIT = 400;
-    const NOTIFICATIONS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-    const JOIN_REQUESTS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-    const now = Date.now();
+async function runDailyCleanup(): Promise<void> {
+  const BATCH_LIMIT = 400;
+  const NOTIFICATIONS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  const JOIN_REQUESTS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
 
-    // 1) Old /notifications.
-    let notifsDeleted = 0;
-    try {
-      const cutoff = now - NOTIFICATIONS_TTL_MS;
-      const snap = await db
-        .collection('notifications')
-        .where('createdAt', '<', cutoff)
-        .limit(BATCH_LIMIT)
-        .get();
-      if (!snap.empty) {
-        const batch = db.batch();
-        snap.docs.forEach((d) => batch.delete(d.ref));
-        await batch.commit();
-        notifsDeleted = snap.size;
-      }
-    } catch (err) {
-      console.error('[dailyCleanup] notifications sweep failed', err);
+  // 1) Old /notifications.
+  let notifsDeleted = 0;
+  try {
+    const cutoff = now - NOTIFICATIONS_TTL_MS;
+    const snap = await db
+      .collection('notifications')
+      .where('createdAt', '<', cutoff)
+      .limit(BATCH_LIMIT)
+      .get();
+    if (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      notifsDeleted = snap.size;
     }
+  } catch (err) {
+    console.error('[dailyCleanup] notifications sweep failed', err);
+  }
 
-    // 2) Stale /gameUpdateLatches. We can't query "where target game
-    // is terminal" directly (no cross-collection joins), so we read
-    // the latch's gameId and check the game doc one-by-one. Cheap
-    // because the latch collection is small (one per active game).
-    let latchesDeleted = 0;
-    try {
-      const snap = await db
-        .collection('gameUpdateLatches')
-        .limit(BATCH_LIMIT)
-        .get();
-      const candidates: string[] = [];
-      for (const latch of snap.docs) {
-        const gameId = String(latch.data()?.gameId ?? latch.id);
-        try {
-          const gameSnap = await db.collection('games').doc(gameId).get();
-          const status = gameSnap.exists
-            ? gameSnap.data()?.status
-            : undefined;
-          if (
-            !gameSnap.exists ||
-            status === 'finished' ||
-            status === 'cancelled'
-          ) {
-            candidates.push(latch.id);
-          }
-        } catch (err) {
-          console.warn(
-            '[dailyCleanup] latch game lookup failed',
-            latch.id,
-            err,
-          );
+  // 2) Stale /gameUpdateLatches. We can't query "where target game
+  // is terminal" directly (no cross-collection joins), so we read
+  // the latch's gameId and check the game doc one-by-one. Cheap
+  // because the latch collection is small (one per active game).
+  let latchesDeleted = 0;
+  try {
+    const snap = await db
+      .collection('gameUpdateLatches')
+      .limit(BATCH_LIMIT)
+      .get();
+    const candidates: string[] = [];
+    for (const latch of snap.docs) {
+      const gameId = String(latch.data()?.gameId ?? latch.id);
+      try {
+        const gameSnap = await db.collection('games').doc(gameId).get();
+        const status = gameSnap.exists
+          ? gameSnap.data()?.status
+          : undefined;
+        if (
+          !gameSnap.exists ||
+          status === 'finished' ||
+          status === 'cancelled'
+        ) {
+          candidates.push(latch.id);
         }
-      }
-      if (candidates.length > 0) {
-        const batch = db.batch();
-        candidates.forEach((id) =>
-          batch.delete(db.collection('gameUpdateLatches').doc(id)),
+      } catch (err) {
+        console.warn(
+          '[dailyCleanup] latch game lookup failed',
+          latch.id,
+          err,
         );
-        await batch.commit();
-        latchesDeleted = candidates.length;
       }
-    } catch (err) {
-      console.error('[dailyCleanup] latches sweep failed', err);
     }
+    if (candidates.length > 0) {
+      const batch = db.batch();
+      candidates.forEach((id) =>
+        batch.delete(db.collection('gameUpdateLatches').doc(id)),
+      );
+      await batch.commit();
+      latchesDeleted = candidates.length;
+    }
+  } catch (err) {
+    console.error('[dailyCleanup] latches sweep failed', err);
+  }
 
-    // 3) Old /groupJoinRequests (approved or rejected, decidedAt
-    // older than 90 days). Pending requests are NEVER deleted —
-    // that's an active state.
-    let requestsDeleted = 0;
-    try {
-      const cutoff = now - JOIN_REQUESTS_TTL_MS;
-      const snap = await db
-        .collection('groupJoinRequests')
-        .where('decidedAt', '<', cutoff)
-        .limit(BATCH_LIMIT)
+  // 3) Old /groupJoinRequests (approved or rejected, decidedAt
+  // older than 90 days). Pending requests are NEVER deleted —
+  // that's an active state.
+  let requestsDeleted = 0;
+  try {
+    const cutoff = now - JOIN_REQUESTS_TTL_MS;
+    const snap = await db
+      .collection('groupJoinRequests')
+      .where('decidedAt', '<', cutoff)
+      .limit(BATCH_LIMIT)
+      .get();
+    if (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      requestsDeleted = snap.size;
+    }
+  } catch (err) {
+    console.error('[dailyCleanup] joinRequests sweep failed', err);
+  }
+
+  // 4) Orphaned /games/{gameId}/fillerInterests/{uid} docs. A filler
+  // candidate's interest is meaningful only while the game is still
+  // recruiting. Once the parent game is `finished` or `cancelled`,
+  // the subcollection just bloats Firestore and surfaces in admin
+  // queries that target active recruitment screens. We can't issue
+  // a direct collectionGroup query that joins against the parent
+  // game status, so we iterate terminal games and clear their
+  // subcollections one by one. Same BATCH_LIMIT cap as the other
+  // sweeps; leftovers carry over to the next day.
+  let fillerInterestsDeleted = 0;
+  try {
+    // Pull a bounded page of terminal games. The query is split into
+    // two single-status reads so we can rely on the existing
+    // composite index used elsewhere (status + startsAt) instead of
+    // adding a new "status in" index just for cleanup.
+    const terminalStatuses = ['finished', 'cancelled'] as const;
+    const terminalGameIds: string[] = [];
+    for (const status of terminalStatuses) {
+      if (terminalGameIds.length >= BATCH_LIMIT) break;
+      const remaining = BATCH_LIMIT - terminalGameIds.length;
+      const gamesSnap = await db
+        .collection('games')
+        .where('status', '==', status)
+        .limit(remaining)
         .get();
-      if (!snap.empty) {
-        const batch = db.batch();
-        snap.docs.forEach((d) => batch.delete(d.ref));
-        await batch.commit();
-        requestsDeleted = snap.size;
-      }
-    } catch (err) {
-      console.error('[dailyCleanup] joinRequests sweep failed', err);
+      for (const g of gamesSnap.docs) terminalGameIds.push(g.id);
     }
-
-    // 4) Orphaned /games/{gameId}/fillerInterests/{uid} docs. A filler
-    // candidate's interest is meaningful only while the game is still
-    // recruiting. Once the parent game is `finished` or `cancelled`,
-    // the subcollection just bloats Firestore and surfaces in admin
-    // queries that target active recruitment screens. We can't issue
-    // a direct collectionGroup query that joins against the parent
-    // game status, so we iterate terminal games and clear their
-    // subcollections one by one. Same BATCH_LIMIT cap as the other
-    // sweeps; leftovers carry over to the next day.
-    let fillerInterestsDeleted = 0;
-    try {
-      // Pull a bounded page of terminal games. The query is split into
-      // two single-status reads so we can rely on the existing
-      // composite index used elsewhere (status + startsAt) instead of
-      // adding a new "status in" index just for cleanup.
-      const terminalStatuses = ['finished', 'cancelled'] as const;
-      const terminalGameIds: string[] = [];
-      for (const status of terminalStatuses) {
-        if (terminalGameIds.length >= BATCH_LIMIT) break;
-        const remaining = BATCH_LIMIT - terminalGameIds.length;
-        const gamesSnap = await db
+    for (const gameId of terminalGameIds) {
+      try {
+        const interests = await db
           .collection('games')
-          .where('status', '==', status)
-          .limit(remaining)
+          .doc(gameId)
+          .collection('fillerInterests')
+          .limit(BATCH_LIMIT)
           .get();
-        for (const g of gamesSnap.docs) terminalGameIds.push(g.id);
+        if (interests.empty) continue;
+        const batch = db.batch();
+        interests.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+        fillerInterestsDeleted += interests.size;
+      } catch (err) {
+        console.warn(
+          '[dailyCleanup] fillerInterests sweep failed for',
+          gameId,
+          err,
+        );
       }
-      for (const gameId of terminalGameIds) {
-        try {
-          const interests = await db
-            .collection('games')
-            .doc(gameId)
-            .collection('fillerInterests')
-            .limit(BATCH_LIMIT)
-            .get();
-          if (interests.empty) continue;
-          const batch = db.batch();
-          interests.docs.forEach((d) => batch.delete(d.ref));
-          await batch.commit();
-          fillerInterestsDeleted += interests.size;
-        } catch (err) {
-          console.warn(
-            '[dailyCleanup] fillerInterests sweep failed for',
-            gameId,
-            err,
-          );
-        }
-      }
-    } catch (err) {
-      console.error('[dailyCleanup] fillerInterests outer sweep failed', err);
     }
+  } catch (err) {
+    console.error('[dailyCleanup] fillerInterests outer sweep failed', err);
+  }
 
-    console.log(
-      `[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}, fillerInterests=${fillerInterestsDeleted}`,
-    );
-  },
-);
+  console.log(
+    `[dailyCleanup] notifications=${notifsDeleted}, latches=${latchesDeleted}, joinRequests=${requestsDeleted}, fillerInterests=${fillerInterestsDeleted}`,
+  );
+}
 
 // ─── Scheduled: post-game "rate teammates" reminder ────────────────────
 
@@ -2033,71 +2003,65 @@ export const dailyCleanup = onSchedule(
  * zombies anyway, so we'd never fire on them in practice — the guard
  * is belt-and-suspenders.
  */
-export const sendRateReminders = onSchedule(
-  {
-    schedule: 'every 30 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    // Window: 1h..6h after kickoff. Aligns with the 6h cleanup-CF
-    // boundary — past that point the cleanup flips the game to
-    // 'finished' and we'd skip it anyway. Wider than strictly
-    // necessary so we never miss a game between scheduler runs.
-    const lower = now - 6 * 60 * 60 * 1000;
-    const upper = now - 60 * 60 * 1000;
+async function runSendRateReminders(): Promise<void> {
+  const now = Date.now();
+  // Window: 1h..6h after kickoff. Aligns with the 6h cleanup-CF
+  // boundary — past that point the cleanup flips the game to
+  // 'finished' and we'd skip it anyway. Wider than strictly
+  // necessary so we never miss a game between scheduler runs.
+  const lower = now - 6 * 60 * 60 * 1000;
+  const upper = now - 60 * 60 * 1000;
 
-    const snap = await db
-      .collection('games')
-      .where('startsAt', '>=', lower)
-      .where('startsAt', '<', upper)
-      .get();
+  const snap = await db
+    .collection('games')
+    .where('startsAt', '>=', lower)
+    .where('startsAt', '<', upper)
+    .get();
 
-    if (snap.empty) {
-      console.log('[sendRateReminders] no candidate games');
-      return;
-    }
-
-    const ops: Promise<unknown>[] = [];
-    let dispatched = 0;
-
-    for (const gameDoc of snap.docs) {
-      const g = gameDoc.data() as {
-        title?: string;
-        status?: string;
-        rateReminderSent?: boolean;
-        players?: string[];
-      };
-      if (g.rateReminderSent) continue;
-      // Skip cancellations explicitly. We also skip 'open' games — a
-      // game still 'open' 1h+ after kickoff with players means nothing
-      // happened (no admin pressed start). Asking those players to
-      // rate is meaningless. The cleanup CF will eventually retire it.
-      if (g.status === 'cancelled') continue;
-      if (g.status === 'open') continue;
-      if (!g.players || g.players.length === 0) continue;
-
-      // One fan-out notification doc per game; the resolver expands it
-      // to game.players. recipientId carries the gameId, mirroring the
-      // pattern used by `gameReminder`.
-      ops.push(
-        createNotificationOnce({
-          type: 'rateReminder',
-          recipientId: gameDoc.id,
-          payload: {
-            gameId: gameDoc.id,
-            gameTitle: g.title || 'המשחק',
-          },
-        }),
-      );
-      ops.push(gameDoc.ref.update({ rateReminderSent: true }));
-      dispatched++;
-    }
-
-    await Promise.all(ops);
-    console.log(`[sendRateReminders] dispatched ${dispatched} rate reminder(s)`);
+  if (snap.empty) {
+    console.log('[sendRateReminders] no candidate games');
+    return;
   }
-);
+
+  const ops: Promise<unknown>[] = [];
+  let dispatched = 0;
+
+  for (const gameDoc of snap.docs) {
+    const g = gameDoc.data() as {
+      title?: string;
+      status?: string;
+      rateReminderSent?: boolean;
+      players?: string[];
+    };
+    if (g.rateReminderSent) continue;
+    // Skip cancellations explicitly. We also skip 'open' games — a
+    // game still 'open' 1h+ after kickoff with players means nothing
+    // happened (no admin pressed start). Asking those players to
+    // rate is meaningless. The cleanup CF will eventually retire it.
+    if (g.status === 'cancelled') continue;
+    if (g.status === 'open') continue;
+    if (!g.players || g.players.length === 0) continue;
+
+    // One fan-out notification doc per game; the resolver expands it
+    // to game.players. recipientId carries the gameId, mirroring the
+    // pattern used by `gameReminder`.
+    ops.push(
+      createNotificationOnce({
+        type: 'rateReminder',
+        recipientId: gameDoc.id,
+        payload: {
+          gameId: gameDoc.id,
+          gameTitle: g.title || 'המשחק',
+        },
+      }),
+    );
+    ops.push(gameDoc.ref.update({ rateReminderSent: true }));
+    dispatched++;
+  }
+
+  await Promise.all(ops);
+  console.log(`[sendRateReminders] dispatched ${dispatched} rate reminder(s)`);
+}
 
 // ─── Realtime trigger: community join request → admin push ─────────────
 
@@ -2915,56 +2879,50 @@ async function loadGroupRatings(
  * NEVER overwrite either a previous auto-generation or a coach's
  * manual edit (transaction aborts if either flag is now set).
  */
-export const scheduledAutoGenerateTeams = onSchedule(
-  {
-    schedule: 'every 5 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    // Tight window: only games starting in the next 65 minutes are
-    // candidates. The per-game check below filters further by the
-    // configured minutesBeforeStart.
-    const upper = now + 65 * 60 * 1000;
-    const snap = await db
-      .collection('games')
-      .where('status', '==', 'open')
-      .where('startsAt', '>=', now)
-      .where('startsAt', '<=', upper)
-      .get();
+async function runScheduledAutoGenerateTeams(): Promise<void> {
+  const now = Date.now();
+  // Tight window: only games starting in the next 65 minutes are
+  // candidates. The per-game check below filters further by the
+  // configured minutesBeforeStart.
+  const upper = now + 65 * 60 * 1000;
+  const snap = await db
+    .collection('games')
+    .where('status', '==', 'open')
+    .where('startsAt', '>=', now)
+    .where('startsAt', '<=', upper)
+    .get();
 
-    if (snap.empty) {
-      console.log('[autoBalance] no candidate games');
-      return;
-    }
+  if (snap.empty) {
+    console.log('[autoBalance] no candidate games');
+    return;
+  }
 
-    const ops: Promise<unknown>[] = [];
-    for (const doc of snap.docs) {
-      const g = doc.data() as BalanceGameDoc;
-      g.id = doc.id;
-      // Quick filters before paying for the transaction round-trip.
-      if (g.autoTeamsGeneratedAt) continue;
-      if (g.teamsEditedManually) continue;
-      if (!g.groupId) continue;
-      const players = g.players ?? [];
-      if (players.length === 0) continue;
-      const startsAt = g.startsAt ?? 0;
-      const minutesBefore =
-        g.autoTeamGenerationMinutesBeforeStart ??
-        DEFAULT_AUTO_BALANCE_MINUTES;
-      const triggerAt = startsAt - minutesBefore * 60 * 1000;
-      // Per-game trigger: only fire when we've crossed the
-      // configured window. Games whose minutesBefore is 120 (i.e.
-      // they want generation 2h before kickoff) only trigger once
-      // they're inside the 65-min query window — that's a documented
-      // trade-off for the simpler tight-window query.
-      if (now < triggerAt) continue;
-      ops.push(generateForGame(doc.ref, g));
-    }
-    await Promise.all(ops);
-    console.log(`[autoBalance] generated for ${ops.length} game(s)`);
-  },
-);
+  const ops: Promise<unknown>[] = [];
+  for (const doc of snap.docs) {
+    const g = doc.data() as BalanceGameDoc;
+    g.id = doc.id;
+    // Quick filters before paying for the transaction round-trip.
+    if (g.autoTeamsGeneratedAt) continue;
+    if (g.teamsEditedManually) continue;
+    if (!g.groupId) continue;
+    const players = g.players ?? [];
+    if (players.length === 0) continue;
+    const startsAt = g.startsAt ?? 0;
+    const minutesBefore =
+      g.autoTeamGenerationMinutesBeforeStart ??
+      DEFAULT_AUTO_BALANCE_MINUTES;
+    const triggerAt = startsAt - minutesBefore * 60 * 1000;
+    // Per-game trigger: only fire when we've crossed the
+    // configured window. Games whose minutesBefore is 120 (i.e.
+    // they want generation 2h before kickoff) only trigger once
+    // they're inside the 65-min query window — that's a documented
+    // trade-off for the simpler tight-window query.
+    if (now < triggerAt) continue;
+    ops.push(generateForGame(doc.ref, g));
+  }
+  await Promise.all(ops);
+  console.log(`[autoBalance] generated for ${ops.length} game(s)`);
+}
 
 async function generateForGame(
   ref: FirebaseFirestore.DocumentReference,
@@ -3619,70 +3577,64 @@ export const promoteOrphanToGroup = onCall(
 // fire-and-forget — if the creator dismisses, the latch keeps it from
 // re-firing. If the personal group has already been promoted (no
 // longer `isPersonal: true`), we skip.
-export const sendPromotePrompts = onSchedule(
-  {
-    schedule: 'every 60 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    const lower = now - 6 * 60 * 60 * 1000; // 6h window — catch slow cron
-    const upper = now - 30 * 60 * 1000;     // wait 30m post-game so the
-                                            // user isn't pinged mid-shower
+async function runSendPromotePrompts(): Promise<void> {
+  const now = Date.now();
+  const lower = now - 6 * 60 * 60 * 1000; // 6h window — catch slow cron
+  const upper = now - 30 * 60 * 1000;     // wait 30m post-game so the
+                                          // user isn't pinged mid-shower
 
-    const snap = await db
-      .collection('games')
-      .where('status', '==', 'finished')
-      .where('startsAt', '>=', lower)
-      .where('startsAt', '<=', upper)
-      .get();
+  const snap = await db
+    .collection('games')
+    .where('status', '==', 'finished')
+    .where('startsAt', '>=', lower)
+    .where('startsAt', '<=', upper)
+    .get();
 
-    if (snap.empty) {
-      console.log('[sendPromotePrompts] no candidates');
-      return;
+  if (snap.empty) {
+    console.log('[sendPromotePrompts] no candidates');
+    return;
+  }
+
+  let dispatched = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      groupId?: string;
+      createdBy?: string;
+      promotePromptSent?: boolean;
+      title?: string;
+      isOrphanContext?: boolean;
+    };
+    if (g.promotePromptSent) continue;
+    if (!g.groupId || !g.createdBy) continue;
+    if (g.isOrphanContext !== true) continue;
+
+    // Verify the host group is still a personal one. If the user
+    // already promoted it manually (or via this same cron racing
+    // against itself), skip.
+    const gSnap = await db.collection('groups').doc(g.groupId).get();
+    if (!gSnap.exists) continue;
+    const grp = gSnap.data() as { isPersonal?: boolean };
+    if (grp.isPersonal !== true) continue;
+
+    try {
+      await createNotificationOnce({
+        type: 'promotePrompt',
+        recipientId: g.createdBy,
+        payload: {
+          gameId: doc.id,
+          groupId: g.groupId,
+          gameTitle: g.title || 'המשחק',
+        },
+      });
+      await doc.ref.update({ promotePromptSent: true, updatedAt: now });
+      dispatched += 1;
+    } catch (err) {
+      console.error('[sendPromotePrompts] dispatch failed', doc.id, err);
     }
+  }
 
-    let dispatched = 0;
-    for (const doc of snap.docs) {
-      const g = doc.data() as {
-        groupId?: string;
-        createdBy?: string;
-        promotePromptSent?: boolean;
-        title?: string;
-        isOrphanContext?: boolean;
-      };
-      if (g.promotePromptSent) continue;
-      if (!g.groupId || !g.createdBy) continue;
-      if (g.isOrphanContext !== true) continue;
-
-      // Verify the host group is still a personal one. If the user
-      // already promoted it manually (or via this same cron racing
-      // against itself), skip.
-      const gSnap = await db.collection('groups').doc(g.groupId).get();
-      if (!gSnap.exists) continue;
-      const grp = gSnap.data() as { isPersonal?: boolean };
-      if (grp.isPersonal !== true) continue;
-
-      try {
-        await createNotificationOnce({
-          type: 'promotePrompt',
-          recipientId: g.createdBy,
-          payload: {
-            gameId: doc.id,
-            groupId: g.groupId,
-            gameTitle: g.title || 'המשחק',
-          },
-        });
-        await doc.ref.update({ promotePromptSent: true, updatedAt: now });
-        dispatched += 1;
-      } catch (err) {
-        console.error('[sendPromotePrompts] dispatch failed', doc.id, err);
-      }
-    }
-
-    console.log(`[sendPromotePrompts] dispatched ${dispatched}`);
-  },
-);
+  console.log(`[sendPromotePrompts] dispatched ${dispatched}`);
+}
 
 // Random 6-char alphanumeric invite code. Mirror of the helper used by
 // `createGroup` — duplicated locally to keep this section self-contained.
@@ -5063,231 +5015,223 @@ interface FillerGameDoc {
   fillerNoCandidatesAt?: number;
 }
 
-export const findFillerCandidates = onSchedule(
-  {
-    schedule: 'every 30 minutes',
-    region: 'us-central1',
-    timeoutSeconds: 540,
-    memory: '512MiB',
-  },
-  async () => {
-    const now = Date.now();
-    const earliest = now + FILLER_WINDOW_EARLIEST_HOURS * FILLER_HOUR_MS;
-    const latest = now + FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS;
+async function runFindFillerCandidates(): Promise<void> {
+  const now = Date.now();
+  const earliest = now + FILLER_WINDOW_EARLIEST_HOURS * FILLER_HOUR_MS;
+  const latest = now + FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS;
 
-    // Pull all `open` games whose kickoff falls in the matcher
-    // window. Filter `acceptsFillers` in code (Firestore can't
-    // combine inequality on startsAt with equality on
-    // acceptsFillers without a composite index — keeping the query
-    // simple and filtering client-side avoids index pressure for
-    // the MVP).
-    const snap = await db
-      .collection('games')
-      .where('status', '==', 'open')
-      .where('startsAt', '>=', earliest)
-      .where('startsAt', '<=', latest)
+  // Pull all `open` games whose kickoff falls in the matcher
+  // window. Filter `acceptsFillers` in code (Firestore can't
+  // combine inequality on startsAt with equality on
+  // acceptsFillers without a composite index — keeping the query
+  // simple and filtering client-side avoids index pressure for
+  // the MVP).
+  const snap = await db
+    .collection('games')
+    .where('status', '==', 'open')
+    .where('startsAt', '>=', earliest)
+    .where('startsAt', '<=', latest)
+    .get();
+
+  let processed = 0;
+  let pushed = 0;
+  let fallbackPushed = 0;
+
+  for (const doc of snap.docs) {
+    const game = doc.data() as FillerGameDoc;
+    if (game.acceptsFillers !== true) continue;
+    const players = game.players ?? [];
+    const maxPlayers = game.maxPlayers ?? 0;
+    if (maxPlayers <= 0) continue;
+    if (players.length >= maxPlayers) continue; // already full
+
+    // Shortage threshold:
+    //  • if `minPlayers` set: shortage when players < minPlayers
+    //  • else: shortage when players < 80% of maxPlayers
+    const threshold =
+      typeof game.minPlayers === 'number' && game.minPlayers > 0
+        ? game.minPlayers
+        : Math.floor(maxPlayers * 0.8);
+    if (players.length >= threshold) continue;
+
+    processed += 1;
+
+    // Matcher key is the STRICT `game.city` field (picked from
+    // autocomplete in the wizard). The free-text `game.fieldAddress`
+    // is street/landmark detail and would feed garbage to the
+    // distance computation, so we deliberately don't fall back to it.
+    // Legacy games without `city` are skipped — admin should re-edit
+    // through the wizard to populate the strict field.
+    const city =
+      typeof game.city === 'string' ? game.city.trim() : '';
+    if (!city) continue;
+
+    // Geocode the game's city ONCE per matcher run (cached in
+    // /cityGeocode/{normName}). Without coords we can't compute
+    // distance to candidates — fall back to a name-equality match
+    // so the user still gets some coverage.
+    const gameCoords = await getCityCoords(city);
+
+    // Candidate query: opted-in users only. The pool is small (only
+    // users who toggled on `acceptsFillerPush`), so loading them all
+    // and filtering by distance in code is cheaper than maintaining
+    // a geo index. Adding a geohash bucket index is a future
+    // optimisation if the pool ever grows.
+    const candSnap = await db
+      .collection('users')
+      .where('availability.acceptsFillerPush', '==', true)
       .get();
 
-    let processed = 0;
-    let pushed = 0;
-    let fallbackPushed = 0;
-
-    for (const doc of snap.docs) {
-      const game = doc.data() as FillerGameDoc;
-      if (game.acceptsFillers !== true) continue;
-      const players = game.players ?? [];
-      const maxPlayers = game.maxPlayers ?? 0;
-      if (maxPlayers <= 0) continue;
-      if (players.length >= maxPlayers) continue; // already full
-
-      // Shortage threshold:
-      //  • if `minPlayers` set: shortage when players < minPlayers
-      //  • else: shortage when players < 80% of maxPlayers
-      const threshold =
-        typeof game.minPlayers === 'number' && game.minPlayers > 0
-          ? game.minPlayers
-          : Math.floor(maxPlayers * 0.8);
-      if (players.length >= threshold) continue;
-
-      processed += 1;
-
-      // Matcher key is the STRICT `game.city` field (picked from
-      // autocomplete in the wizard). The free-text `game.fieldAddress`
-      // is street/landmark detail and would feed garbage to the
-      // distance computation, so we deliberately don't fall back to it.
-      // Legacy games without `city` are skipped — admin should re-edit
-      // through the wizard to populate the strict field.
-      const city =
-        typeof game.city === 'string' ? game.city.trim() : '';
-      if (!city) continue;
-
-      // Geocode the game's city ONCE per matcher run (cached in
-      // /cityGeocode/{normName}). Without coords we can't compute
-      // distance to candidates — fall back to a name-equality match
-      // so the user still gets some coverage.
-      const gameCoords = await getCityCoords(city);
-
-      // Candidate query: opted-in users only. The pool is small (only
-      // users who toggled on `acceptsFillerPush`), so loading them all
-      // and filtering by distance in code is cheaper than maintaining
-      // a geo index. Adding a geohash bucket index is a future
-      // optimisation if the pool ever grows.
-      const candSnap = await db
-        .collection('users')
-        .where('availability.acceptsFillerPush', '==', true)
+    // Exclude users already in the community or game.
+    let memberSet = new Set<string>();
+    if (game.groupId) {
+      const gSnap = await db
+        .collection('groups')
+        .doc(game.groupId)
         .get();
-
-      // Exclude users already in the community or game.
-      let memberSet = new Set<string>();
-      if (game.groupId) {
-        const gSnap = await db
-          .collection('groups')
-          .doc(game.groupId)
-          .get();
-        if (gSnap.exists) {
-          const grp = gSnap.data() as {
-            playerIds?: string[];
-            adminIds?: string[];
-            pendingPlayerIds?: string[];
-          };
-          memberSet = new Set([
-            ...(grp.playerIds ?? []),
-            ...(grp.adminIds ?? []),
-            ...(grp.pendingPlayerIds ?? []),
-          ]);
-        }
-      }
-      const inGame = new Set([
-        ...(game.players ?? []),
-        ...(game.waitlist ?? []),
-        ...(game.pending ?? []),
-      ]);
-      const alreadyPushed = game.fillerPushHistory ?? {};
-      const minTrust =
-        typeof game.fillerMinTrust === 'number' ? game.fillerMinTrust : 70;
-
-      const newlyPushed: Record<string, number> = {};
-      let pushesThisGame = 0;
-
-      for (const userDoc of candSnap.docs) {
-        if (pushesThisGame >= FILLER_PUSH_LIMIT_PER_GAME) break;
-        const uid = userDoc.id;
-        if (memberSet.has(uid)) continue;
-        if (inGame.has(uid)) continue;
-        if (alreadyPushed[uid]) continue;
-
-        // Geographic gate — distance from user's home city to the
-        // game's city must be within the user's chosen radius.
-        // Strict graceful-degradation policy:
-        //   • both have coords → Haversine, compare to radius
-        //   • either is missing coords → fall back to name match
-        //     (user.homeCity === game.city). This covers the period
-        //     before geocoding has populated, and unknown cities.
-        const userData = userDoc.data() as {
-          availability?: {
-            homeCity?: string;
-            homeCityLat?: number;
-            homeCityLng?: number;
-            availabilityRadiusKm?: number;
-            cities?: string[];
-            preferredCity?: string;
-          };
+      if (gSnap.exists) {
+        const grp = gSnap.data() as {
+          playerIds?: string[];
+          adminIds?: string[];
+          pendingPlayerIds?: string[];
         };
-        const av = userData.availability ?? {};
-        const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
-        if (!userCity) continue;
-        const radiusKm =
-          typeof av.availabilityRadiusKm === 'number' &&
-          av.availabilityRadiusKm > 0
-            ? av.availabilityRadiusKm
-            : 20;
-        let withinRange = false;
-        if (
-          gameCoords &&
-          typeof av.homeCityLat === 'number' &&
-          typeof av.homeCityLng === 'number'
-        ) {
-          const distKm = haversineKm(
-            { lat: av.homeCityLat, lng: av.homeCityLng },
-            gameCoords,
-          );
-          withinRange = distKm <= radiusKm;
-        } else {
-          // Fallback: treat exact city-name equality as "in range".
-          withinRange =
-            normaliseCityKey(userCity) === normaliseCityKey(city);
-        }
-        if (!withinRange) continue;
+        memberSet = new Set([
+          ...(grp.playerIds ?? []),
+          ...(grp.adminIds ?? []),
+          ...(grp.pendingPlayerIds ?? []),
+        ]);
+      }
+    }
+    const inGame = new Set([
+      ...(game.players ?? []),
+      ...(game.waitlist ?? []),
+      ...(game.pending ?? []),
+    ]);
+    const alreadyPushed = game.fillerPushHistory ?? {};
+    const minTrust =
+      typeof game.fillerMinTrust === 'number' ? game.fillerMinTrust : 70;
 
-        // Trust gate. `null` (user has too little history) NEVER
-        // passes any minimum — they need to play 3+ games before
-        // entering the filler pool.
-        const score = await computeTrustScoreServerSide(uid);
-        if (score === null) continue;
-        if (score < minTrust) continue;
+    const newlyPushed: Record<string, number> = {};
+    let pushesThisGame = 0;
 
-        // Dispatch the opportunity notification. Recipient = uid,
-        // single-recipient delivery via the existing
-        // onNotificationCreated pipeline.
+    for (const userDoc of candSnap.docs) {
+      if (pushesThisGame >= FILLER_PUSH_LIMIT_PER_GAME) break;
+      const uid = userDoc.id;
+      if (memberSet.has(uid)) continue;
+      if (inGame.has(uid)) continue;
+      if (alreadyPushed[uid]) continue;
+
+      // Geographic gate — distance from user's home city to the
+      // game's city must be within the user's chosen radius.
+      // Strict graceful-degradation policy:
+      //   • both have coords → Haversine, compare to radius
+      //   • either is missing coords → fall back to name match
+      //     (user.homeCity === game.city). This covers the period
+      //     before geocoding has populated, and unknown cities.
+      const userData = userDoc.data() as {
+        availability?: {
+          homeCity?: string;
+          homeCityLat?: number;
+          homeCityLng?: number;
+          availabilityRadiusKm?: number;
+          cities?: string[];
+          preferredCity?: string;
+        };
+      };
+      const av = userData.availability ?? {};
+      const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
+      if (!userCity) continue;
+      const radiusKm =
+        typeof av.availabilityRadiusKm === 'number' &&
+        av.availabilityRadiusKm > 0
+          ? av.availabilityRadiusKm
+          : 20;
+      let withinRange = false;
+      if (
+        gameCoords &&
+        typeof av.homeCityLat === 'number' &&
+        typeof av.homeCityLng === 'number'
+      ) {
+        const distKm = haversineKm(
+          { lat: av.homeCityLat, lng: av.homeCityLng },
+          gameCoords,
+        );
+        withinRange = distKm <= radiusKm;
+      } else {
+        // Fallback: treat exact city-name equality as "in range".
+        withinRange =
+          normaliseCityKey(userCity) === normaliseCityKey(city);
+      }
+      if (!withinRange) continue;
+
+      // Trust gate. `null` (user has too little history) NEVER
+      // passes any minimum — they need to play 3+ games before
+      // entering the filler pool.
+      const score = await computeTrustScoreServerSide(uid);
+      if (score === null) continue;
+      if (score < minTrust) continue;
+
+      // Dispatch the opportunity notification. Recipient = uid,
+      // single-recipient delivery via the existing
+      // onNotificationCreated pipeline.
+      await createNotificationOnce({
+        type: 'fillerOpportunity',
+        recipientId: uid,
+        payload: {
+          gameId: doc.id,
+          groupId: game.groupId,
+          gameTitle: game.title,
+          startsAt: game.startsAt,
+          city,
+          shortBy: threshold - players.length,
+        },
+      });
+      newlyPushed[uid] = now;
+      pushesThisGame += 1;
+      pushed += 1;
+    }
+
+    if (pushesThisGame > 0) {
+      // Persist the dedup history so the next run doesn't re-push
+      // the same candidate. Merge with the existing map.
+      await doc.ref.set(
+        {
+          fillerPushHistory: { ...alreadyPushed, ...newlyPushed },
+          updatedAt: now,
+        },
+        { merge: true },
+      );
+    } else {
+      // 0 matches on this run. Tell the admin (latched so we don't
+      // spam) so they can lower the threshold or wait.
+      const lastFallbackAt = game.fillerNoCandidatesAt ?? 0;
+      if (
+        now - lastFallbackAt >= FILLER_NO_CANDIDATES_COOLDOWN_MS &&
+        game.createdBy
+      ) {
         await createNotificationOnce({
-          type: 'fillerOpportunity',
-          recipientId: uid,
+          type: 'fillerNoCandidates',
+          recipientId: game.createdBy,
           payload: {
             gameId: doc.id,
             groupId: game.groupId,
             gameTitle: game.title,
-            startsAt: game.startsAt,
-            city,
-            shortBy: threshold - players.length,
+            minTrust,
           },
         });
-        newlyPushed[uid] = now;
-        pushesThisGame += 1;
-        pushed += 1;
-      }
-
-      if (pushesThisGame > 0) {
-        // Persist the dedup history so the next run doesn't re-push
-        // the same candidate. Merge with the existing map.
         await doc.ref.set(
-          {
-            fillerPushHistory: { ...alreadyPushed, ...newlyPushed },
-            updatedAt: now,
-          },
+          { fillerNoCandidatesAt: now, updatedAt: now },
           { merge: true },
         );
-      } else {
-        // 0 matches on this run. Tell the admin (latched so we don't
-        // spam) so they can lower the threshold or wait.
-        const lastFallbackAt = game.fillerNoCandidatesAt ?? 0;
-        if (
-          now - lastFallbackAt >= FILLER_NO_CANDIDATES_COOLDOWN_MS &&
-          game.createdBy
-        ) {
-          await createNotificationOnce({
-            type: 'fillerNoCandidates',
-            recipientId: game.createdBy,
-            payload: {
-              gameId: doc.id,
-              groupId: game.groupId,
-              gameTitle: game.title,
-              minTrust,
-            },
-          });
-          await doc.ref.set(
-            { fillerNoCandidatesAt: now, updatedAt: now },
-            { merge: true },
-          );
-          fallbackPushed += 1;
-        }
+        fallbackPushed += 1;
       }
     }
+  }
 
-    console.log(
-      `[findFillerCandidates] scanned ${snap.size} games, processed ${processed} shortage games, pushed ${pushed} opportunities, ${fallbackPushed} fallback admin pushes`,
-    );
-  },
-);
+  console.log(
+    `[findFillerCandidates] scanned ${snap.size} games, processed ${processed} shortage games, pushed ${pushed} opportunities, ${fallbackPushed} fallback admin pushes`,
+  );
+}
 
 // ─── Scheduled: admin shortage warning (T-2h) ──────────────────────────
 //
@@ -5338,69 +5282,63 @@ function playersPerTeamForFormat(format: string | undefined): number {
   return 5;
 }
 
-export const sendShortageWarnings = onSchedule(
-  {
-    schedule: 'every 15 minutes',
-    timeZone: 'Asia/Jerusalem',
-  },
-  async () => {
-    const now = Date.now();
-    const earliest = now + SHORTAGE_WINDOW_EARLIEST_MIN * 60 * 1000;
-    const latest = now + SHORTAGE_WINDOW_LATEST_MIN * 60 * 1000;
-    const snap = await db
-      .collection('games')
-      .where('status', '==', 'open')
-      .where('startsAt', '>=', earliest)
-      .where('startsAt', '<=', latest)
-      .get();
-    if (snap.empty) {
-      console.log('[shortageWarnings] no candidate games');
-      return;
+async function runSendShortageWarnings(): Promise<void> {
+  const now = Date.now();
+  const earliest = now + SHORTAGE_WINDOW_EARLIEST_MIN * 60 * 1000;
+  const latest = now + SHORTAGE_WINDOW_LATEST_MIN * 60 * 1000;
+  const snap = await db
+    .collection('games')
+    .where('status', '==', 'open')
+    .where('startsAt', '>=', earliest)
+    .where('startsAt', '<=', latest)
+    .get();
+  if (snap.empty) {
+    console.log('[shortageWarnings] no candidate games');
+    return;
+  }
+  let pushed = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as ShortageGameDoc;
+    if (!g.createdBy) continue;
+    if (g.shortageWarningSentAt) continue;
+    const registered = (g.players?.length ?? 0) + (g.guests?.length ?? 0);
+    // Shortage threshold: can't fill TWO teams in the configured
+    // format. That's the minimum to actually play a match; below
+    // it the admin almost certainly wants to cancel.
+    const perTeam = playersPerTeamForFormat(g.format);
+    const required = perTeam * 2;
+    if (registered >= required) continue;
+    try {
+      await createNotificationOnce({
+        type: 'gameShortageWarning',
+        recipientId: g.createdBy,
+        payload: {
+          gameId: doc.id,
+          groupId: g.groupId,
+          gameTitle: g.title || 'המשחק',
+          startsAt: g.startsAt ?? null,
+          registered,
+          required,
+          hoursToKickoff: 2,
+        },
+      });
+      await doc.ref.set(
+        { shortageWarningSentAt: now, updatedAt: now },
+        { merge: true },
+      );
+      pushed += 1;
+    } catch (err) {
+      console.error(
+        '[shortageWarnings] dispatch failed',
+        doc.id,
+        err,
+      );
     }
-    let pushed = 0;
-    for (const doc of snap.docs) {
-      const g = doc.data() as ShortageGameDoc;
-      if (!g.createdBy) continue;
-      if (g.shortageWarningSentAt) continue;
-      const registered = (g.players?.length ?? 0) + (g.guests?.length ?? 0);
-      // Shortage threshold: can't fill TWO teams in the configured
-      // format. That's the minimum to actually play a match; below
-      // it the admin almost certainly wants to cancel.
-      const perTeam = playersPerTeamForFormat(g.format);
-      const required = perTeam * 2;
-      if (registered >= required) continue;
-      try {
-        await createNotificationOnce({
-          type: 'gameShortageWarning',
-          recipientId: g.createdBy,
-          payload: {
-            gameId: doc.id,
-            groupId: g.groupId,
-            gameTitle: g.title || 'המשחק',
-            startsAt: g.startsAt ?? null,
-            registered,
-            required,
-            hoursToKickoff: 2,
-          },
-        });
-        await doc.ref.set(
-          { shortageWarningSentAt: now, updatedAt: now },
-          { merge: true },
-        );
-        pushed += 1;
-      } catch (err) {
-        console.error(
-          '[shortageWarnings] dispatch failed',
-          doc.id,
-          err,
-        );
-      }
-    }
-    console.log(
-      `[shortageWarnings] scanned ${snap.size} games, pushed ${pushed}`,
-    );
-  },
-);
+  }
+  console.log(
+    `[shortageWarnings] scanned ${snap.size} games, pushed ${pushed}`,
+  );
+}
 
 export const onFillerInterestCreated = onDocumentCreated(
   'games/{gameId}/fillerInterests/{uid}',
@@ -6037,5 +5975,76 @@ export const inviteFriendsToGroup = onCall(
       ),
     );
     return { invited: accepted.length };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Consolidated schedulers (cost optimisation)
+//
+// The 10 individual `onSchedule` jobs that used to live above were merged
+// into the THREE dispatchers below. Cloud Scheduler bills per job beyond the
+// 3 free, and most of those jobs fired with zero users — so 10 jobs meant a
+// standing monthly cost for nothing. Each former job's logic now lives in a
+// `run*` helper (declarations above, hoisted); the dispatchers invoke them
+// in sequence, each wrapped in `runSweep` so one sweep failing never aborts
+// the rest of the tick.
+// ---------------------------------------------------------------------------
+
+async function runSweep(label: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    console.error(`[cron] sweep "${label}" failed`, err);
+  }
+}
+
+// dailyCleanup was its own `every 24 hours` job. Folded into the hourly
+// dispatcher but gated by a Firestore marker so the (delete-heavy) sweep
+// still fires at most once per ~23h instead of every hour.
+async function runDailyCleanupIfDue(): Promise<void> {
+  const ref = db.collection('cronMeta').doc('dailyCleanup');
+  const snap = await ref.get();
+  const lastRunAt = (snap.exists ? (snap.data()?.lastRunAt as number) : 0) ?? 0;
+  const DUE_AFTER_MS = 23 * 60 * 60 * 1000;
+  if (Date.now() - lastRunAt < DUE_AFTER_MS) return;
+  await runDailyCleanup();
+  await ref.set({ lastRunAt: Date.now() }, { merge: true });
+}
+
+// Every 5 minutes — latency-sensitive game-state transitions.
+export const cronEvery5Min = onSchedule(
+  { schedule: 'every 5 minutes', timeZone: 'Asia/Jerusalem' },
+  async () => {
+    await runSweep('flipScheduledGames', runFlipScheduledGames);
+    await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
+  },
+);
+
+// Every 15 minutes — reminders, nudges, shortage + filler matching.
+// Carries findFillerCandidates' heavier runtime budget (was 512MiB / 540s).
+export const cronEvery15Min = onSchedule(
+  {
+    schedule: 'every 15 minutes',
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    timeoutSeconds: 540,
+    memory: '512MiB',
+  },
+  async () => {
+    await runSweep('sendGameReminders', runSendGameReminders);
+    await runSweep('sendRsvpNudges', runSendRsvpNudges);
+    await runSweep('sendShortageWarnings', runSendShortageWarnings);
+    await runSweep('sendRateReminders', runSendRateReminders);
+    await runSweep('findFillerCandidates', runFindFillerCandidates);
+  },
+);
+
+// Every 60 minutes — cleanup, promote prompts, and the gated daily sweep.
+export const cronEvery60Min = onSchedule(
+  { schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' },
+  async () => {
+    await runSweep('cleanupStaleGames', runCleanupStaleGames);
+    await runSweep('sendPromotePrompts', runSendPromotePrompts);
+    await runSweep('dailyCleanup', runDailyCleanupIfDue);
   },
 );

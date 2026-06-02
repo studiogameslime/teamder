@@ -179,16 +179,30 @@ function val(v: string | undefined): string {
   return (v ?? '').trim();
 }
 
+// AdMob ad units are per-app AND per-platform: a unit created under the
+// Android app never fills on iOS (and vice-versa). We therefore keep
+// separate env vars per platform and pick the right one at runtime. If
+// this platform's unit isn't configured yet (e.g. the iOS AdMob app
+// hasn't been created), we fall back to Google's TEST unit rather than
+// shipping an Android unit that just logs "no fill" forever on iOS.
 function bannerUnitId(): string {
   if (!adsMod) return '';
   if (__DEV__ || FORCE_TEST_IDS) return adsMod.TestIds.BANNER ?? '';
-  return val(process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID);
+  const id =
+    Platform.OS === 'ios'
+      ? val(process.env.EXPO_PUBLIC_ADMOB_IOS_BANNER_UNIT_ID)
+      : val(process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID);
+  return id || (adsMod.TestIds.BANNER ?? '');
 }
 
 function appOpenUnitId(): string {
   if (!adsMod) return '';
   if (__DEV__ || FORCE_TEST_IDS) return adsMod.TestIds.APP_OPEN ?? '';
-  return val(process.env.EXPO_PUBLIC_ADMOB_APP_OPEN_UNIT_ID);
+  const id =
+    Platform.OS === 'ios'
+      ? val(process.env.EXPO_PUBLIC_ADMOB_IOS_APP_OPEN_UNIT_ID)
+      : val(process.env.EXPO_PUBLIC_ADMOB_APP_OPEN_UNIT_ID);
+  return id || (adsMod.TestIds.APP_OPEN ?? '');
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
@@ -173,14 +174,14 @@ export function GameCreateScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.quick]);
 
-  // NOTE: we deliberately do NOT early-return a loading spinner for the
-  // quick path here. GameCreateScreen calls several hooks (useState /
-  // useMemo) AFTER the empty-state early-returns below, so adding a
-  // conditional early-return that toggles between renders would change
-  // the hook count and crash with "rendered more hooks than during the
-  // previous render". The auto-start effect above provisions the orphan
-  // group; the wizard's `key` remounts it into quick mode the moment
-  // `orphanGroup` lands (a sub-200ms transition).
+  // NOTE: the quick-path loading spinner is rendered LOWER DOWN, in the
+  // main return after every hook — NOT here. GameCreateScreen calls
+  // several hooks (useState / useMemo) AFTER the empty-state early-
+  // returns below, so a conditional early-return *here* that toggles as
+  // `orphanGroup` lands would change the hook count and crash with
+  // "rendered more hooks than during the previous render". The auto-
+  // start effect above provisions the orphan group; see the
+  // `params.quick && !orphanGroup` guard just before the GameWizardForm.
 
   // Empty states with an "ללא קהילה" CTA. Both render the same primary
   // CTA ("צור משחק חד־פעמי") since the answer for "no community to
@@ -397,6 +398,25 @@ export function GameCreateScreen() {
         </Text>
       </View>
     ) : null;
+
+  // Quick-game provisioning guard: while the hidden personal group is
+  // still being created (params.quick, ~1-2s), do NOT render the wizard.
+  // It would otherwise flash the community-mode form (picker + a
+  // community's pre-filled title/field) for that window before snapping
+  // into quick mode the instant `orphanGroup` lands. Render a centered
+  // loader instead. This sits AFTER every hook above, so the hook count
+  // never changes between renders.
+  if (params.quick && !orphanGroup) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          <SoccerBallLoader size={48} />
+          <Text style={styles.emptyText}>{he.createGameQuickLoading}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <GameWizardForm

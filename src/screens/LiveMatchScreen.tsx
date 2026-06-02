@@ -70,6 +70,7 @@ export function LiveMatchScreen() {
   useGameEvents(gameId ?? undefined);
 
   const [game, setGame] = useState<Game | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -90,7 +91,12 @@ export function LiveMatchScreen() {
       const g = await gameService.getGameById(gameId).catch(() => null);
       if (!alive) return;
       setGame(g);
-      if (!g) return;
+      // Distinguish "still loading" from "game is gone" — otherwise a
+      // deleted/failed game leaves the screen on a perpetual spinner.
+      if (!g) {
+        setNotFound(true);
+        return;
+      }
       logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id });
 
       const terminal = isFinishedHelper(g) || isCancelledHelper(g);
@@ -231,6 +237,26 @@ export function LiveMatchScreen() {
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
   }));
+
+  // ─── Not found ─────────────────────────────────────────────────────────
+  // Game was deleted or failed to load — give the user an explanation and
+  // a way out instead of an endless spinner.
+  if (notFound) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <View style={styles.loading}>
+          <Text style={styles.loadingText}>{he.liveMatchNotFound}</Text>
+          <Pressable
+            onPress={() => nav.canGoBack() && nav.goBack()}
+            style={styles.notFoundBack}
+            accessibilityRole="button"
+          >
+            <Text style={styles.notFoundBackText}>{he.back}</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // ─── Loading ───────────────────────────────────────────────────────────
   if (!game) {
@@ -415,6 +441,18 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 15,
     fontWeight: '600',
+  },
+  notFoundBack: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+    backgroundColor: '#1D4ED8',
+  },
+  notFoundBackText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   header: {
     flexDirection: 'row',

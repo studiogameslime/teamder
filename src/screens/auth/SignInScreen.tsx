@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -23,6 +24,7 @@ const ACCENT_SOFT = '#DBEAFE';
 
 export function SignInScreen() {
   const signIn = useUserStore((s) => s.signInWithGoogle);
+  const signInApple = useUserStore((s) => s.signInWithApple);
   const [busy, setBusy] = useState(false);
 
   const handlePress = async () => {
@@ -33,6 +35,24 @@ export function SignInScreen() {
       // Map known errors to friendly Hebrew. Log raw error to console.
       if (__DEV__) console.warn('[signIn] failed', err);
       Alert.alert(he.error, friendlySignInError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Sign in with Apple — required by App Store Guideline 4.8 alongside
+  // Google. iOS-only; the native button is hidden on Android.
+  const handleApple = async () => {
+    setBusy(true);
+    try {
+      await signInApple();
+    } catch (err) {
+      if (__DEV__) console.warn('[signIn] apple failed', err);
+      const e = err as { message?: string; code?: string };
+      const cancelled =
+        (e?.message ?? '').includes('cancelled') ||
+        (e?.code ?? '').includes('CANCEL');
+      if (!cancelled) Alert.alert(he.error, friendlySignInError(err));
     } finally {
       setBusy(false);
     }
@@ -84,6 +104,26 @@ export function SignInScreen() {
             </>
           )}
         </Pressable>
+        {/* Custom Apple button mirroring the Google one for visual
+            parity (same height, font, palette). Apple permits a custom
+            button as long as it carries the Apple logo + an approved
+            "Continue with Apple" title — which `signInApple` is. */}
+        {Platform.OS === 'ios' && (
+          <Pressable
+            onPress={handleApple}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.ctaBtn,
+              pressed && { opacity: 0.92 },
+              busy && { opacity: 0.6 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.signInApple}
+          >
+            <Ionicons name="logo-apple" size={20} color={ACCENT} />
+            <Text style={styles.ctaText}>{he.signInApple}</Text>
+          </Pressable>
+        )}
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>
     </SafeAreaView>

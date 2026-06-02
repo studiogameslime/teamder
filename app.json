@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "0.2.33",
+    "version": "0.2.35",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -23,11 +23,14 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.studiogameslime.soccerapp",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
       "infoPlist": {
+        "CFBundleDevelopmentRegion": "he",
+        "CFBundleLocalizations": ["he", "en"],
+        "CFBundleAllowMixedLocalizations": true,
         "NSLocationWhenInUseUsageDescription": "Teamder משתמשת במיקום שלך כדי להציג קהילות וכדורגל באזור שלך. אפשר תמיד לסנן ידנית לפי עיר במקום.",
         "NSPhotoLibraryUsageDescription": "Teamder מבקשת גישה לתמונות שלך כדי שתוכל להעלות אווטאר אישי או תמונת קאבר לקהילה שלך.",
         "NSCameraUsageDescription": "Teamder מבקשת גישה למצלמה כדי לצלם אווטאר אישי בלי לעזוב את האפליקציה.",
-        "NSUserTrackingUsageDescription": "האישור הזה עוזר לנו להציג פרסומות רלוונטיות יותר ולשמור על Teamder חינמי לשימוש.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -37,7 +40,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.studiogameslime.soccerapp",
-      "versionCode": 32,
+      "versionCode": 33,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
@@ -45,6 +48,7 @@
     },
     "plugins": [
       "expo-localization",
+      "expo-apple-authentication",
       "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
       [
@@ -57,15 +61,16 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "כדי להציג קבוצות כדורגל בקרבת מקום ולעזור לסנן לפי 'קרוב אליי'."
+          "locationWhenInUsePermission": "כדי להציג קבוצות כדורגל בקרבת מקום ולעזור לסנן לפי 'קרוב אליי'.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-4452511612073107~1968239705",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
-          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
+          "iosAppId": "ca-app-pub-4452511612073107~1657350145",
           "skAdNetworkItems": []
         }
       ],
@@ -85,7 +90,9 @@
       "expo-font",
       "expo-asset",
       "./plugins/withIoniconsAsset.js",
-      "./plugins/withWearApp.js"
+      "./plugins/withWearApp.js",
+      "./plugins/withFmtConstevalFix.js",
+      "./plugins/withRemoveAlwaysLocation.js"
     ],
     "experiments": {
       "typedRoutes": false

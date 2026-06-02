@@ -5,7 +5,7 @@
 // the bottom.
 
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
@@ -27,6 +27,12 @@ export function ProfileSetupScreen() {
     setBusy(true);
     try {
       await updateProfile({ name: name.trim() });
+    } catch (err) {
+      // First-run name capture gates entry to the whole app. A silent
+      // failure here strands the user on this screen with no feedback —
+      // surface the error so they know to retry.
+      if (__DEV__) console.warn('[profileSetup] save failed', err);
+      Alert.alert(he.error, he.profileSaveError);
     } finally {
       setBusy(false);
     }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.wear.remote.interactions.RemoteActivityHelper
+import com.studiogameslime.soccerapp.wear.data.WearCommandSender
 import com.studiogameslime.soccerapp.wear.data.WearStateRepository
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
@@ -50,6 +51,11 @@ class MainActivity : ComponentActivity() {
                 WearApp(
                     state = shown,
                     onCreateOnPhone = ::openCreateOnPhone,
+                    onTimerCommand = { action, gameId ->
+                        WearCommandSender.sendTimerCommand(
+                            applicationContext, action, gameId,
+                        )
+                    },
                 )
             }
         }

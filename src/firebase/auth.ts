@@ -13,8 +13,11 @@ import {
   GoogleSignin,
   isSuccessResponse,
 } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -109,6 +112,94 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     }
     const code = e.code ?? 'unknown';
     throw new Error(`ההתחברות ל-Firebase נכשלה (${code})`);
+  }
+}
+
+/** Whether "Sign in with Apple" is usable on this device (iOS 13+). */
+export async function isAppleSignInAvailable(): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false;
+  try {
+    return await AppleAuthentication.isAvailableAsync();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sign in with Apple → Firebase. Apple is REQUIRED by App Store
+ * Guideline 4.8 as an equivalent option alongside Google. We bridge
+ * Apple's identity token into Firebase via the `apple.com` OAuth
+ * provider, using a hashed nonce to bind the token to this request
+ * (replay protection — Firebase verifies the rawNonce matches the
+ * SHA-256 carried inside the token).
+ *
+ * Apple returns the user's full name ONLY on the very first
+ * authorization, so we surface it to the caller; later sign-ins carry
+ * no name and we fall back to whatever's already on the Firebase user.
+ */
+export async function signInWithApple(): Promise<{
+  user: FirebaseUser;
+  fullName?: string;
+}> {
+  if (USE_MOCK_DATA) {
+    throw new Error('signInWithApple: USE_MOCK_DATA is true');
+  }
+  if (Platform.OS !== 'ios') {
+    throw new Error('Apple Sign-In is only available on iOS.');
+  }
+  const { auth } = getFirebase();
+
+  const rawNonce = Array.from(Crypto.getRandomBytes(32))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce,
+  );
+
+  let appleCred: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    appleCred = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: hashedNonce,
+    });
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? '';
+    if (code === 'ERR_REQUEST_CANCELED' || code === 'ERR_CANCELED') {
+      throw new Error('Sign-in cancelled');
+    }
+    throw err;
+  }
+
+  if (!appleCred.identityToken) {
+    throw new Error('Apple Sign-In succeeded but no identityToken was returned');
+  }
+
+  const provider = new OAuthProvider('apple.com');
+  const credential = provider.credential({
+    idToken: appleCred.identityToken,
+    rawNonce,
+  });
+
+  const fullName = appleCred.fullName
+    ? [appleCred.fullName.givenName, appleCred.fullName.familyName]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    : '';
+
+  try {
+    const cred = await signInWithCredential(auth, credential);
+    return { user: cred.user, fullName: fullName || undefined };
+  } catch (err) {
+    const e = err as { code?: string };
+    if (__DEV__) {
+      console.error('[auth] Firebase Apple signInWithCredential FAILED', e);
+    }
+    throw new Error(`ההתחברות ל-Firebase נכשלה (${e.code ?? 'unknown'})`);
   }
 }
 

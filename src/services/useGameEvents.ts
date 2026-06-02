@@ -79,27 +79,6 @@ function describeLeavers(uids: string[]): string {
   return he.bannerPlayersLeftCount(uids.length);
 }
 
-/** Sum of all team scores — used to detect "any goal anywhere". */
-function totalScore(g: GameDoc | null | undefined): number {
-  const lm = g?.liveMatch;
-  if (!lm) return 0;
-  return (
-    (lm.scoreA ?? 0) +
-    (lm.scoreB ?? 0) +
-    (lm.scoreC ?? 0) +
-    (lm.scoreD ?? 0) +
-    (lm.scoreE ?? 0)
-  );
-}
-
-function hasAnyAssignments(g: GameDoc | null | undefined): boolean {
-  const lm = g?.liveMatch;
-  if (!lm) return false;
-  // Object.keys is enough — even one entry means the coach has placed
-  // a player on a team, i.e. teams are at least partially built.
-  return Object.keys(lm.assignments ?? {}).length > 0;
-}
-
 interface UseGameEventsOptions {
   /** Called with every snapshot (except the very first baseline) so
    *  the caller can mirror remote roster / status changes into its
@@ -258,23 +237,6 @@ export function useGameEvents(
         const currGuests = curr.guests?.length ?? 0;
         if (currGuests > prevGuests) {
           banner.success(he.bannerGuestAdded);
-        }
-
-        // ── Teams-ready transition ───────────────────────────────────
-        // From "no assignments" → "any assignment" once per game (the
-        // first time the coach builds teams). Subsequent edits don't
-        // re-fire because hasAnyAssignments(prev) stays true.
-        if (!hasAnyAssignments(prev) && hasAnyAssignments(curr)) {
-          banner.success(he.bannerTeamsReady);
-        }
-
-        // ── Goal recorded ────────────────────────────────────────────
-        // Strictly increasing total score signals a new goal. A
-        // correction (decrement) is intentionally silent.
-        const prevScore = totalScore(prev);
-        const currScore = totalScore(curr);
-        if (currScore > prevScore) {
-          banner.success(he.bannerGoalRecorded);
         }
 
         // ── Status transitions ───────────────────────────────────────

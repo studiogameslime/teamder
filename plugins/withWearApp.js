@@ -36,6 +36,8 @@ const TIMER_ACTION_RECEIVER =
   'com.studiogameslime.soccerapp.widget.TimerActionReceiver';
 const PLAYERS_REMOTE_VIEWS_SERVICE =
   'com.studiogameslime.soccerapp.widget.PlayersRemoteViewsService';
+const WEAR_COMMAND_SERVICE =
+  'com.studiogameslime.soccerapp.watch.WearTimerCommandService';
 
 function copyWearSources(config) {
   return withDangerousMod(config, [
@@ -175,6 +177,7 @@ function registerWatchPackage(config) {
  *   • TeamderPlayersWidgetProvider   — players-list widget (AppWidgetProvider)
  *   • TimerActionReceiver            — handles play/pause/reset button taps
  *   • PlayersRemoteViewsService      — backs the players widget's ListView
+ *   • WearTimerCommandService        — receives timer commands from the watch
  */
 function registerWidgetReceiver(config) {
   return withAndroidManifest(config, (cfg) => {
@@ -258,6 +261,39 @@ function registerWidgetReceiver(config) {
           'android:exported': 'false',
           'android:permission': 'android.permission.BIND_REMOTEVIEWS',
         },
+      });
+    }
+
+    // WearableListenerService — receives timer commands sent FROM the watch
+    // (play/pause/reset). Must be exported so Google Play Services can bind
+    // to it; the intent-filter scopes it to our own Data Layer message path.
+    if (!hasService(WEAR_COMMAND_SERVICE)) {
+      app.service.push({
+        $: {
+          'android:name': WEAR_COMMAND_SERVICE,
+          'android:exported': 'true',
+        },
+        'intent-filter': [
+          {
+            action: [
+              {
+                $: {
+                  'android:name':
+                    'com.google.android.gms.wearable.MESSAGE_RECEIVED',
+                },
+              },
+            ],
+            data: [
+              {
+                $: {
+                  'android:scheme': 'wear',
+                  'android:host': '*',
+                  'android:pathPrefix': '/teamder/timer-command',
+                },
+              },
+            ],
+          },
+        ],
       });
     }
 

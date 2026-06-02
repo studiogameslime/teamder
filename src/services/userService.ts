@@ -22,6 +22,7 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import {
   deleteCurrentFirebaseUser,
   signInWithGoogle as fbSignInWithGoogle,
+  signInWithApple as fbSignInWithApple,
   signOutFirebase,
   waitForAuthRestore,
 } from '@/firebase/auth';
@@ -111,6 +112,43 @@ export const userService = {
       // Best-effort sign-out — if THAT fails too there's nothing we
       // can do but propagate. Auth restore on next launch will hit
       // `getCurrentUser()` which lazy-creates the doc anyway.
+      try {
+        await signOutFirebase();
+      } catch {
+        /* swallow */
+      }
+      throw err;
+    }
+    await applyInviteAttributionIfFresh(fresh.id);
+    return fresh;
+  },
+
+  async signInWithApple(): Promise<User> {
+    if (USE_MOCK_DATA) {
+      const user = { ...mockCurrentUser };
+      await storage.setAuthUserJson(JSON.stringify(user));
+      return user;
+    }
+    const { user: fbUser, fullName } = await fbSignInWithApple();
+    const ref = docs.user(fbUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data();
+    const fresh: User = {
+      id: fbUser.uid,
+      // Apple hands the name back only on the first authorization
+      // (via `fullName`); Firebase's displayName is usually empty for
+      // Apple, so prefer the one-shot fullName and let onboarding fill
+      // the rest if both are missing.
+      name: fbUser.displayName ?? fullName ?? '',
+      email: fbUser.email ?? undefined,
+      avatarId: pickRandomAvatarId(),
+      createdAt: Date.now(),
+      onboardingCompleted: false,
+    };
+    try {
+      await setDoc(ref, fresh);
+    } catch (err) {
+      if (__DEV__) console.warn('[auth] apple user doc create failed', err);
       try {
         await signOutFirebase();
       } catch {

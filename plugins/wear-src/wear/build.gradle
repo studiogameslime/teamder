@@ -112,6 +112,11 @@ dependencies {
   // Compose for Wear OS
   implementation "androidx.wear.compose:compose-material:1.4.0"
   implementation "androidx.wear.compose:compose-foundation:1.4.0"
+  // Core Material icons (PlayArrow / Pause / Refresh) for the stopwatch
+  // control buttons. BOM-versioned. The "core" set ships these three; we
+  // deliberately avoid material-icons-extended (huge) since we need only
+  // a handful.
+  implementation "androidx.compose.material:material-icons-core"
 
   // Wearable Data Layer — receives state relayed from the phone.
   implementation "com.google.android.gms:play-services-wearable:18.2.0"

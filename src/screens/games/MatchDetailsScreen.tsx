@@ -369,71 +369,6 @@ function buildStatusCardProps(args: {
   };
 }
 
-function buildShuffledLiveMatch(game: Game): LiveMatchState {
-  const ids: UserId[] = [
-    ...game.players,
-    ...(game.guests ?? []).map((g) => toGuestRosterId(g.id)),
-  ];
-  // Fisher-Yates.
-  const shuffled = ids.slice();
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  const slotsPerTeam =
-    game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
-  const buckets = Math.min(Math.max(game.numberOfTeams ?? 2, 2), 5);
-  const letters: Array<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
-
-  const assignments: Record<UserId, LiveMatchZone> = {};
-  const teamASlots: Record<UserId, number> = {};
-  const teamBSlots: Record<UserId, number> = {};
-  const benchOrder: UserId[] = [];
-  let teamACounter = 0;
-  let teamBCounter = 0;
-
-  shuffled.forEach((uid, i) => {
-    const bucketIdx = Math.floor(i / slotsPerTeam);
-    const positionInBucket = i % slotsPerTeam;
-    if (bucketIdx >= buckets) {
-      assignments[uid] = 'bench';
-      benchOrder.push(uid);
-      return;
-    }
-    if (bucketIdx === 0) {
-      if (positionInBucket === 0) {
-        assignments[uid] = 'gkA';
-      } else {
-        assignments[uid] = 'teamA';
-        teamASlots[uid] = teamACounter++;
-      }
-    } else if (bucketIdx === 1) {
-      if (positionInBucket === 0) {
-        assignments[uid] = 'gkB';
-      } else {
-        assignments[uid] = 'teamB';
-        teamBSlots[uid] = teamBCounter++;
-      }
-    } else {
-      const letter = letters[bucketIdx];
-      assignments[uid] = `team${letter}` as LiveMatchZone;
-    }
-  });
-
-  return {
-    phase: 'organizing',
-    assignments,
-    benchOrder,
-    scoreA: 0,
-    scoreB: 0,
-    scoreC: 0,
-    scoreD: 0,
-    scoreE: 0,
-    teamASlots,
-    teamBSlots,
-  };
-}
-
 export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
@@ -1064,6 +999,7 @@ export function MatchDetailsScreen() {
             title={he.communityOnlyGameBack}
             variant="primary"
             size="lg"
+            fullWidth
             onPress={() => {
               if (nav.canGoBack()) nav.goBack();
             }}
@@ -1105,43 +1041,6 @@ export function MatchDetailsScreen() {
   // ─── Session state machine ─────────────────────────────────────────────
   const sessionStatus = deriveSessionStatus(game, totalParticipants);
   const minPlayers = effectiveMinPlayers(game);
-  // Cleaned-on-render assignment map. Used by the teams renderer so a
-  // stale uid (player removed after the team was set) never surfaces.
-  const validity = teamsValidity(game);
-
-  /**
-   * Admin tap on "צור כוחות". Auto-shuffles the registered roster into
-   * teams (using the game's format + numberOfTeams) and persists the
-   * fresh liveMatch. After this the screen flips to `teams_ready`.
-   */
-  const handleCreateTeams = async () => {
-    if (!game || !isAdmin) return;
-    // Allow regenerate from `teams_invalid` so admins can fix stale
-    // rosters in one tap. Other states (already ready / live) shouldn't
-    // wipe the existing arrangement.
-    if (
-      sessionStatus !== 'ready_to_create_teams' &&
-      sessionStatus !== 'teams_invalid'
-    ) {
-      return;
-    }
-    if (game.players.length === 0 && (game.guests ?? []).length === 0) return;
-    setBusy(true);
-    try {
-      const next = buildShuffledLiveMatch(game);
-      await gameService.setLiveMatch(game.id, next, {
-        markTeamsEditedManually: true,
-      });
-      await reload();
-      // Note: the "teams ready" banner is fired by the realtime
-      // useGameEvents listener so it shows on every connected device,
-      // not just the admin's local one.
-    } catch (err) {
-      if (__DEV__) console.warn('[matchDetails] create teams failed', err);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   /**
    * Admin tap on "הזמן שחקנים". Opens the native share sheet with a
@@ -1308,25 +1207,11 @@ export function MatchDetailsScreen() {
           icon: 'share-social-outline' as const,
         };
       }
-      if (sessionStatus === 'ready_to_create_teams') {
-        return {
-          title: he.sessionActionCreateTeams,
-          onPress: handleCreateTeams,
-          icon: 'people-outline' as const,
-        };
-      }
-      if (sessionStatus === 'teams_invalid') {
-        return {
-          title: he.sessionActionRecreateTeams,
-          onPress: handleCreateTeams,
-          icon: 'shuffle-outline' as const,
-        };
-      }
-      // teams_ready and any later live phase both share the same
-      // CTA: just navigate to the LiveMatch screen. "Start evening"
-      // as a separate explicit step was removed — the first timer
-      // press inside LiveMatch is the canonical "game started"
-      // signal now, and it gates on full teams.
+      // Team-building was removed: the admin no longer creates "כוחות"
+      // before going live. Once there are enough players, the single
+      // positive action is "עבור ללייב" → the timer-only LiveMatch
+      // screen. ready_to_create_teams / teams_invalid therefore fall
+      // through to the same CTA as teams_ready below.
       return {
         title: he.sessionActionGoLive,
         onPress: handleGoLive,
@@ -2365,85 +2250,6 @@ function SessionStatusPill({
     <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
       <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
       <Text style={[styles.statusText, { color: cfg.fg }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-/**
- * Compact "teams" block — color dot + name + small player avatars.
- * Renders only the cleaned (stale-filtered) assignment map so a player
- * who was removed from the roster after teams were built doesn't
- * appear as a phantom shirt. The `playersMap` hydration ensures each
- * shirt shows the player's actual saved jersey (number + colors)
- * rather than a deterministic auto-jersey based on uid.
- */
-function TeamsBlock({
-  game,
-  assignments,
-  playersMap,
-}: {
-  game: Game;
-  assignments: Record<UserId, LiveMatchZone>;
-  playersMap: Record<
-    string,
-    { displayName: string; avatarId?: string; photoUrl?: string }
-  >;
-}) {
-  const teamCount = Math.min(Math.max(game.numberOfTeams ?? 2, 2), 5);
-  const letters: Array<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
-  const letterTints = [
-    colors.team1,
-    colors.team2,
-    colors.team3,
-    colors.warning,
-    colors.info,
-  ];
-  const rosterFor = (
-    letter: 'A' | 'B' | 'C' | 'D' | 'E',
-    idx: number,
-  ): UserId[] => {
-    const ids: UserId[] = [];
-    for (const uid of Object.keys(assignments) as UserId[]) {
-      const z = assignments[uid];
-      if (z === `team${letter}`) ids.push(uid);
-      if (idx === 0 && z === 'gkA') ids.push(uid);
-      if (idx === 1 && z === 'gkB') ids.push(uid);
-    }
-    return ids;
-  };
-  return (
-    <View style={styles.teamsBlock}>
-      <Text style={styles.teamsBlockTitle}>{he.sessionTeamsHeading}</Text>
-      {letters.slice(0, teamCount).map((letter, i) => {
-        const tint = letterTints[i];
-        const players = rosterFor(letter, i);
-        return (
-          <View key={letter} style={styles.teamRow}>
-            <View style={[styles.teamDot, { backgroundColor: tint }]} />
-            <Text style={styles.teamName}>{he.liveTeamLabel(i)}</Text>
-            <View style={styles.teamAvatars}>
-              {players.slice(0, 7).map((uid) => {
-                const p = playersMap[uid];
-                return (
-                  <PlayerIdentity
-                    key={uid}
-                    user={{
-                      id: uid,
-                      name: p?.displayName ?? '',
-                      avatarId: p?.avatarId,
-                      photoUrl: p?.photoUrl,
-                    }}
-                    size={26}
-                  />
-                );
-              })}
-              {players.length > 7 ? (
-                <Text style={styles.teamMoreText}>+{players.length - 7}</Text>
-              ) : null}
-            </View>
-          </View>
-        );
-      })}
     </View>
   );
 }

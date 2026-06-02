@@ -34,6 +34,7 @@ import {
   useScrollToTop,
 } from '@react-navigation/native';
 import Constants from 'expo-constants';
+import * as StoreReview from 'expo-store-review';
 
 import { Button } from '@/components/Button';
 import { ProfileHeroCard } from '@/components/profile/ProfileHeroCard';
@@ -65,7 +66,6 @@ import { getAttendanceRate, type User } from '@/types';
 const SUPPORT_EMAIL = 'studiogameslime@gmail.com';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
-const APP_STORE_URL = 'https://apps.apple.com/app/id000000000';
 
 export function ProfileScreen() {
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -544,10 +544,26 @@ async function openMailto(subject: string, uid: string): Promise<void> {
 
 async function openStore(): Promise<void> {
   logEvent(AnalyticsEvent.RateAppClicked);
-  const url = Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL;
+  // iOS: the app has no public App Store listing yet, so there's no
+  // stable `apps.apple.com/app/id…` URL to open. Use the native
+  // in-app review prompt (needs no App Store ID) — it's also the
+  // path Apple prefers over deep-linking to the listing.
+  if (Platform.OS === 'ios') {
+    try {
+      if (await StoreReview.isAvailableAsync()) {
+        await StoreReview.requestReview();
+        return;
+      }
+    } catch {
+      /* fall through to the unavailable notice */
+    }
+    Alert.alert(he.error, he.settingsRateUnavailable);
+    return;
+  }
+  // Android: open the Play Store listing directly.
   try {
-    const ok = await Linking.canOpenURL(url);
-    if (ok) await Linking.openURL(url);
+    const ok = await Linking.canOpenURL(PLAY_STORE_URL);
+    if (ok) await Linking.openURL(PLAY_STORE_URL);
     else Alert.alert(he.error, he.settingsRateUnavailable);
   } catch {
     if (__DEV__) Alert.alert(he.error, he.settingsRateUnavailable);

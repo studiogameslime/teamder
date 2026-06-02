@@ -24,6 +24,7 @@ fun parseWearState(json: String): WearGameState = try {
                     lastStartedAt = t.optLong("lastStartedAt"),
                     accumulatedMs = t.optLong("accumulatedMs"),
                 ),
+                gameId = o.optString("gameId"),
             )
         }
         "upcoming" -> {

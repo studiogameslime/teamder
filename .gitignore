@@ -2,6 +2,9 @@ node_modules/
 .expo/
 dist/
 npm-debug.*
+
+# Local QA run artifacts (screenshots, PDF reports) — not part of the app.
+qa_run_*/
 *.jks
 *.keystore
 *.p8

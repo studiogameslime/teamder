@@ -226,7 +226,9 @@ export function CommunityDetailsPublicScreen() {
           <MetaRow
             icon="location-outline"
             label={he.communityDetailsCity}
-            value={[group.city, group.fieldAddress].filter(Boolean).join(', ')}
+            value={Array.from(
+              new Set([group.city, group.fieldAddress].filter(Boolean)),
+            ).join(', ')}
           />
           {group.fieldName ? (
             <MetaRow
