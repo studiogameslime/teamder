@@ -11,6 +11,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { Game } from '@/types';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -116,8 +117,12 @@ export function GameEditScreen() {
         if (alive && code === 'ACCESS_BLOCKED') {
           setGame(null); // empty state below; nav already restricts
                           // who can hit this route.
-        } else if (__DEV__) {
-          console.warn('[gameEdit] load failed', err);
+        } else {
+          logError('gameEditLoad', err, {
+            screen: 'GameEditScreen',
+            gameId,
+          });
+          if (__DEV__) console.warn('[gameEdit] load failed', err);
         }
       } finally {
         if (alive) setLoading(false);
@@ -213,7 +218,16 @@ export function GameEditScreen() {
     // setVisibility handler so its admin/status/enum guards run, not
     // through the generic patch path (which now rejects `visibility`).
     if (v.visibility !== game.visibility) {
-      await gameService.setVisibility(game.id, v.visibility);
+      try {
+        await gameService.setVisibility(game.id, v.visibility);
+      } catch (err) {
+        logError('setVisibility', err, {
+          screen: 'GameEditScreen',
+          gameId: game.id,
+          visibility: v.visibility,
+        });
+        throw err;
+      }
     }
     // `registrationOpensAt` is patched only when the recurring toggle
     // is ON and the game is still in 'scheduled' state — once the CF
@@ -277,6 +291,10 @@ export function GameEditScreen() {
         nav.replace('MatchDetails', { gameId: game.id });
         return;
       }
+      logError('updateGameV2', err, {
+        screen: 'GameEditScreen',
+        gameId: game.id,
+      });
       throw err;
     }
     nav.replace('MatchDetails', { gameId: game.id });

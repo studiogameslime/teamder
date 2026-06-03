@@ -32,6 +32,7 @@ import {
 } from '@react-navigation/native';
 
 import { MapWebView, type MapMarker } from '@/components/map/MapWebView';
+import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -123,8 +124,10 @@ export function MapScreen() {
           });
         }
       }
-    } catch {
+    } catch (err) {
       // denied / unavailable — leave the view as-is.
+      logError('mapLocateMe', err, { screen: 'MapScreen', mode });
+      if (__DEV__) console.warn('[map] locate me failed', err);
     } finally {
       setLocating(false);
     }

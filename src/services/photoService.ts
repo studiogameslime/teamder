@@ -110,34 +110,46 @@ export async function pickAndUploadAvatar(
   }
   const { ImagePicker, ImageManipulator } = native;
 
-  // 1) Permission. iOS / Android both prompt the user the first
-  //    time; subsequent calls return the cached decision.
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (perm.status !== 'granted') {
-    return { ok: false, reason: 'permission' };
-  }
+  // Steps 1–3 hit native picker/manipulator bindings that can throw
+  // (OS denial races, cancelled crop sessions, OOM on huge sources).
+  // The function is typed to return a PhotoUploadResult — callers never
+  // expect a throw — so guard the native pipeline and surface the
+  // failure as a result instead of an unhandled rejection.
+  let sourceUri: string;
+  let resized: { uri: string };
+  try {
+    // 1) Permission. iOS / Android both prompt the user the first
+    //    time; subsequent calls return the cached decision.
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      return { ok: false, reason: 'permission' };
+    }
 
-  // 2) Pick + crop. allowsEditing=true on iOS surfaces the OS-level
-  //    crop UI; on Android it brings up a system cropper. aspect
-  //    forces square so the circular UI has clean source pixels.
-  const picked = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 1,
-  });
-  if (picked.canceled || !picked.assets?.[0]) {
-    return { ok: false, reason: 'cancelled' };
-  }
-  const sourceUri = picked.assets[0].uri;
+    // 2) Pick + crop. allowsEditing=true on iOS surfaces the OS-level
+    //    crop UI; on Android it brings up a system cropper. aspect
+    //    forces square so the circular UI has clean source pixels.
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (picked.canceled || !picked.assets?.[0]) {
+      return { ok: false, reason: 'cancelled' };
+    }
+    sourceUri = picked.assets[0].uri;
 
-  // 3) Resize + compress. Lands ≤ ~150 KB JPEG even from a 12 MP
-  //    source, which keeps Storage bandwidth bills tiny.
-  const resized = await ImageManipulator.manipulateAsync(
-    sourceUri,
-    [{ resize: { width: TARGET_SIZE, height: TARGET_SIZE } }],
-    { compress: JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
-  );
+    // 3) Resize + compress. Lands ≤ ~150 KB JPEG even from a 12 MP
+    //    source, which keeps Storage bandwidth bills tiny.
+    resized = await ImageManipulator.manipulateAsync(
+      sourceUri,
+      [{ resize: { width: TARGET_SIZE, height: TARGET_SIZE } }],
+      { compress: JPEG_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
+    );
+  } catch (err) {
+    logError('pickAndUploadAvatar', err, { uid });
+    return { ok: false, reason: 'unknown', err };
+  }
 
   // 4) Upload. fetch() the local file URL → Blob → uploadBytes
   //    is the standard RN+Firebase Storage idiom (the SDK doesn't
@@ -185,32 +197,41 @@ export async function pickAndUploadGroupCover(
   }
   const { ImagePicker, ImageManipulator } = native;
 
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (perm.status !== 'granted') {
-    return { ok: false, reason: 'permission' };
-  }
+  // Guard the native picker/manipulator pipeline — same rationale as
+  // pickAndUploadAvatar: this returns a PhotoUploadResult, so a native
+  // throw must become a result, not an unhandled rejection.
+  let resized: { base64?: string };
+  try {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      return { ok: false, reason: 'permission' };
+    }
 
-  // 16:9 crop matches the hero's landscape framing.
-  const picked = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [16, 9],
-    quality: 1,
-  });
-  if (picked.canceled || !picked.assets?.[0]) {
-    return { ok: false, reason: 'cancelled' };
-  }
-  const sourceUri = picked.assets[0].uri;
+    // 16:9 crop matches the hero's landscape framing.
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 1,
+    });
+    if (picked.canceled || !picked.assets?.[0]) {
+      return { ok: false, reason: 'cancelled' };
+    }
+    const sourceUri = picked.assets[0].uri;
 
-  const resized = await ImageManipulator.manipulateAsync(
-    sourceUri,
-    [{ resize: { width: COVER_WIDTH, height: COVER_HEIGHT } }],
-    {
-      compress: COVER_QUALITY,
-      format: ImageManipulator.SaveFormat.JPEG,
-      base64: true,
-    },
-  );
+    resized = await ImageManipulator.manipulateAsync(
+      sourceUri,
+      [{ resize: { width: COVER_WIDTH, height: COVER_HEIGHT } }],
+      {
+        compress: COVER_QUALITY,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      },
+    );
+  } catch (err) {
+    logError('pickAndUploadGroupCover', err, { groupId });
+    return { ok: false, reason: 'unknown', err };
+  }
   const imageBase64 = resized.base64;
   if (!imageBase64) {
     return { ok: false, reason: 'unknown' };
@@ -252,7 +273,8 @@ export async function deleteUserPhoto(uid: string): Promise<void> {
   try {
     const { storage } = getFirebase();
     await deleteObject(storageRef(storage, AVATAR_PATH(uid)));
-  } catch {
+  } catch (err) {
+    logError('deleteUserPhoto', err, { uid });
     // 404 / permission-denied / network — all acceptable.
   }
 }

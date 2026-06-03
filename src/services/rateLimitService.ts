@@ -21,6 +21,7 @@
 
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 export type RateLimitOp =
   | 'createGroup'
@@ -97,6 +98,7 @@ export async function consume(
     );
     return true;
   } catch (err) {
+    logError('rateLimitConsume', err, { uid, op });
     if (__DEV__) {
       console.warn('[rateLimit] consume failed (fail-open)', op, err);
     }

@@ -24,6 +24,7 @@ import { NativeModules, Platform } from 'react-native';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
+import { logError } from '@/services/errorLog';
 import { useUserStore } from '@/store/userStore';
 import type { Game } from '@/types';
 
@@ -189,7 +190,8 @@ export async function publishWatchState(
     await bridge.publishState(
       JSON.stringify(await computeWatchPayload(myGames, viewer)),
     );
-  } catch {
+  } catch (err) {
+    logError('publishWatchState', err, { viewerId: viewer.id });
     // best-effort — a missed relay never affects the phone UX
   }
 }

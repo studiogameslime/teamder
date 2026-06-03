@@ -16,6 +16,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TrustMeter } from '@/components/TrustMeter';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { trustService, type TrustSummary } from '@/services/trustService';
+import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -38,7 +39,11 @@ export function DisciplineRow({ userId }: Props) {
       .then((summary) => {
         if (alive) setState({ kind: 'ready', summary });
       })
-      .catch(() => {
+      .catch((err) => {
+        logError('loadTrustSummary', err, {
+          screen: 'DisciplineRow',
+          userId,
+        });
         if (alive) setState({ kind: 'error' });
       });
     return () => {

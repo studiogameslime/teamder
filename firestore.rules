@@ -1014,7 +1014,12 @@ service cloud.firestore {
     // bypasses these rules via IAM) and the Console read them.
     match /errors/{fp} {
       allow read, delete: if false;
-      allow create, update: if isSignedIn() &&
+      // No isSignedIn() gate ON PURPOSE: the most important errors to capture
+      // are PRE-AUTH failures (sign-in errors) — a signed-out user must be
+      // able to write them. Abuse is bounded: the collection is read/delete
+      // denied to clients, and every field is type+size capped below. Harden
+      // later with App Check (request.app != null) once enforcement is on.
+      allow create, update: if
         request.resource.data.operation is string &&
         request.resource.data.operation.size() <= 80 &&
         isOptionalShortString(request.resource.data, 'lastMessage', 2000) &&
@@ -1023,6 +1028,23 @@ service cloud.firestore {
         isOptionalShortString(request.resource.data, 'lastScreen', 80) &&
         isOptionalShortString(request.resource.data, 'platform', 16) &&
         isOptionalShortString(request.resource.data, 'appVersion', 32);
+    }
+
+    // ── /feedback/{id} — user-authored bug reports / feature suggestions ──
+    // Distinct from /errors (which is automatic, aggregated crash signatures).
+    // The app's FeedbackScreen → feedbackService.submitFeedback() creates one
+    // doc per submission. Clients may only CREATE (with type/message guards +
+    // an owner check); reads, updates (status), and deletes are client-denied
+    // and handled by the admin panel's service account (bypasses these rules).
+    match /feedback/{id} {
+      allow read, delete: if false;           // panel reads via admin SA
+      allow update: if false;                 // status managed by admin SA
+      allow create: if isSignedIn() &&
+        (request.resource.data.type == 'bug' ||
+          request.resource.data.type == 'suggestion') &&
+        isShortString(request.resource.data.message, 2000) &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.userId == request.auth.uid;
     }
   }
 }

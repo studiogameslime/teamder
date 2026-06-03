@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/Avatar';
 import { friendsService } from '@/services/friendsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -42,10 +43,18 @@ export function FriendsInvitePicker({ selected, onChange }: Props) {
         setLoading(false);
         return;
       }
-      const f = await friendsService.listFriends(me.id);
-      if (alive) {
-        setFriends(f);
-        setLoading(false);
+      try {
+        const f = await friendsService.listFriends(me.id);
+        if (alive) {
+          setFriends(f);
+          setLoading(false);
+        }
+      } catch (err) {
+        logError('listFriendsForInvite', err, {
+          screen: 'FriendsInvitePicker',
+          userId: me.id,
+        });
+        if (alive) setLoading(false);
       }
     })();
     return () => {

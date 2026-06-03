@@ -249,6 +249,7 @@ export const userService = {
       const snap = await getDoc(ref);
       return snap.exists() ? snap.data() : null;
     } catch (err) {
+      logError('getUserById', err, { uid });
       if (__DEV__) console.warn('[userService] getUserById failed', err);
       return null;
     }
@@ -317,17 +318,26 @@ export const userService = {
     const { getDocs, query, where, limit: qlimit } = await import(
       'firebase/firestore'
     );
-    const snap = await getDocs(
-      query(
-        col.users(),
-        where('availability.preferredDays', 'array-contains', opts.day),
-        qlimit(Math.max(limit * 2, 50)),
-      ),
-    );
-    return snap.docs
-      .map((d) => d.data())
-      .filter(matches)
-      .slice(0, limit);
+    try {
+      const snap = await getDocs(
+        query(
+          col.users(),
+          where('availability.preferredDays', 'array-contains', opts.day),
+          qlimit(Math.max(limit * 2, 50)),
+        ),
+      );
+      return snap.docs
+        .map((d) => d.data())
+        .filter(matches)
+        .slice(0, limit);
+    } catch (err) {
+      logError('findAvailablePlayers', err, {
+        day: opts.day,
+        city: opts.city,
+        limit,
+      });
+      throw err;
+    }
   },
 
   /**
@@ -392,6 +402,7 @@ export const userService = {
         await storage.setDeleteSweepNotified(cur.id);
       }
     } catch (err) {
+      logError('deleteAccountGameSweep', err, { uid: cur.id });
       if (__DEV__) console.warn('[deleteAccount] game sweep failed', err);
     }
 
@@ -448,6 +459,7 @@ export const userService = {
           updatedAt: Date.now(),
         });
       } catch (restoreErr) {
+        logError('deleteAccountRestore', restoreErr, { uid: cur.id });
         if (__DEV__)
           console.warn('[deleteAccount] restore after auth fail failed', restoreErr);
       }
@@ -520,6 +532,7 @@ export const userService = {
       const snap = await getCountFromServer(q);
       return snap.data().count ?? 0;
     } catch (err) {
+      logError('getInvitedUsersCount', err, { userId });
       if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
       return 0;
     }
@@ -580,6 +593,7 @@ export const userService = {
       rows.sort((a, b) => (b.invitedAt ?? 0) - (a.invitedAt ?? 0));
       return rows;
     } catch (err) {
+      logError('listInvitedUsers', err, { userId });
       if (__DEV__) console.warn('[users] listInvitedUsers failed', err);
       return [];
     }
@@ -628,6 +642,7 @@ async function applyInviteAttributionIfFresh(
       invitedAt: serverTimestamp(),
     });
   } catch (err) {
+    logError('applyInviteAttribution', err, { newUserId });
     if (__DEV__) console.warn('[userService] invite attribution failed', err);
   }
 }

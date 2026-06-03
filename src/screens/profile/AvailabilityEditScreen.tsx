@@ -26,6 +26,7 @@ import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
@@ -155,6 +156,16 @@ export function AvailabilityEditScreen() {
       await reloadUser();
       nav.goBack();
     } catch (e) {
+      logError('saveAvailability', e, {
+        screen: 'AvailabilityEditScreen',
+        userId: user.id,
+        days: days.join(','),
+        invitable,
+        homeCity: homeCity.trim(),
+        radiusKm,
+        acceptsFillerPush,
+      });
+      if (__DEV__) console.warn('[availability] save failed', e);
       Alert.alert(he.error, String((e as Error).message ?? e));
     } finally {
       setBusy(false);

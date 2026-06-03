@@ -2,6 +2,7 @@ import { Linking, Platform } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 export type UpdateKind = 'none' | 'optional' | 'force';
 
@@ -72,6 +73,7 @@ export async function checkForUpdate(): Promise<UpdateKind> {
     }
     return result;
   } catch (err) {
+    logError('checkForUpdate', err, { current, platform: Platform.OS });
     if (__DEV__) console.warn('[update] check failed', err);
     return 'none';
   }
@@ -90,6 +92,7 @@ export async function openStore(): Promise<void> {
       return;
     }
   } catch (err) {
+    logError('openStore', err, { platform: Platform.OS });
     if (__DEV__) console.warn('[update] openStore failed', err);
   }
 }

@@ -25,6 +25,7 @@ import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
+import { logError } from '@/services/errorLog';
 import { toast } from '@/components/Toast';
 import type { Game, User } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -91,6 +92,14 @@ export function AvailablePlayersScreen() {
           excludeIds: exclude,
         });
         if (alive) setCandidates(list);
+      } catch (err) {
+        logError('findAvailablePlayers', err, {
+          screen: 'AvailablePlayersScreen',
+          gameId,
+          userId: me.id,
+          city,
+        });
+        if (__DEV__) console.warn('[availablePlayers] load failed', err);
       } finally {
         if (alive) setLoading(false);
       }
@@ -115,6 +124,12 @@ export function AvailablePlayersScreen() {
         he.playerCardInviteSentToast.replace('{name}', target.name),
       );
     } catch (err) {
+      logError('inviteToGame', err, {
+        screen: 'AvailablePlayersScreen',
+        gameId: game.id,
+        userId: me.id,
+        targetId: target.id,
+      });
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'resource-exhausted') {
         toast.error(he.inviteRateLimited);

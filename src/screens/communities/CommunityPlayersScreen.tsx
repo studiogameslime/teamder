@@ -31,6 +31,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -73,6 +74,12 @@ export function CommunityPlayersScreen() {
       ]);
       setMembers(users);
       setStats(derived);
+    } catch (err) {
+      logError('communityPlayersLoad', err, {
+        screen: 'CommunityPlayersScreen',
+        groupId,
+      });
+      if (__DEV__) console.warn('[communityPlayers] reload failed', err);
     } finally {
       setLoading(false);
     }

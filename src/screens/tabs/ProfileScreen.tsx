@@ -370,13 +370,13 @@ export function ProfileScreen() {
           id: 'bug',
           label: he.settingsReportBug,
           icon: 'bug-outline',
-          onPress: () => openMailto(he.settingsBugSubject, user.id),
+          onPress: () => nav.navigate('Feedback', { type: 'bug' }),
         },
         {
           id: 'feature',
           label: he.settingsSuggestFeature,
           icon: 'bulb-outline',
-          onPress: () => openMailto(he.settingsSuggestSubject, user.id),
+          onPress: () => nav.navigate('Feedback', { type: 'suggestion' }),
         },
         {
           id: 'rate',

@@ -174,6 +174,10 @@ export const notificationsService = {
       } catch (err) {
         // Index missing / permission blip — log and fall through.
         // The bucket-id check below still gives retry safety.
+        logError('dispatchStrictUnreadQuery', err, {
+          type: input.type,
+          recipientId: input.recipientId,
+        });
         if (__DEV__) {
           console.warn('[notifications] strict-unread query failed', err);
         }
@@ -267,6 +271,7 @@ export const notificationsService = {
         readAt: Date.now(),
       });
     } catch (err) {
+      logError('markNotificationRead', err, { notificationId });
       if (__DEV__) console.warn('[notifications] markRead failed', err);
     }
   },
@@ -297,6 +302,7 @@ export const notificationsService = {
         { merge: true },
       );
     } catch (err) {
+      logError('saveNotificationPreferences', err, { uid });
       if (__DEV__) console.warn('[notifications] savePreferences failed', err);
     }
   },
@@ -321,6 +327,7 @@ export const notificationsService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
+      logError('setCommunitySubscription', err, { uid, groupId, on });
       if (__DEV__) {
         console.warn('[notifications] setCommunitySubscription failed', err);
       }
@@ -353,6 +360,7 @@ export const notificationsService = {
         { merge: true },
       );
     } catch (err) {
+      logError('registerDeviceToken', err, { uid });
       if (__DEV__) console.warn('[notifications] registerDeviceToken', err);
     }
   },
@@ -429,6 +437,7 @@ export const notificationsService = {
       await this.registerDeviceToken(uid, token);
       return token;
     } catch (err) {
+      logError('requestAndRegisterPushToken', err, { uid });
       if (__DEV__) {
         console.warn('[notifications] requestAndRegisterPushToken failed', err);
       }
@@ -500,6 +509,10 @@ export const notificationsService = {
         gameId: input.gameId,
       });
     } catch (err) {
+      logError('inviteToGame', err, {
+        recipientId: input.recipientId,
+        gameId: input.gameId,
+      });
       // Re-throw with the Firebase error code preserved so the UI can
       // distinguish rate-limit from permission from invalid-target.
       const e = err as { code?: string; message?: string; details?: unknown };

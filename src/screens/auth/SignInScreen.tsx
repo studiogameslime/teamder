@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { logError } from '@/services/errorLog';
 
 // Brand-blue palette — same tones as the redesigned onboarding /
 // hero blocks. Hardcoded here (not via colors.primary, which is
@@ -32,6 +33,19 @@ export function SignInScreen() {
     try {
       await signIn();
     } catch (err) {
+      const e = err as { message?: string; code?: string };
+      const cancelled =
+        (e?.message ?? '').toLowerCase().includes('cancel') ||
+        (e?.code ?? '').toLowerCase().includes('cancel');
+      // A real (non-cancellation) sign-in failure is critical — a user who
+      // can't get in churns silently. Record it so it surfaces in the panel.
+      if (!cancelled) {
+        logError('signInGoogleScreen', err, {
+          screen: 'SignInScreen',
+          provider: 'google',
+          code: e?.code,
+        });
+      }
       // Map known errors to friendly Hebrew. Log raw error to console.
       if (__DEV__) console.warn('[signIn] failed', err);
       Alert.alert(he.error, friendlySignInError(err));
@@ -52,7 +66,14 @@ export function SignInScreen() {
       const cancelled =
         (e?.message ?? '').includes('cancelled') ||
         (e?.code ?? '').includes('CANCEL');
-      if (!cancelled) Alert.alert(he.error, friendlySignInError(err));
+      if (!cancelled) {
+        logError('signInAppleScreen', err, {
+          screen: 'SignInScreen',
+          provider: 'apple',
+          code: e?.code,
+        });
+        Alert.alert(he.error, friendlySignInError(err));
+      }
     } finally {
       setBusy(false);
     }

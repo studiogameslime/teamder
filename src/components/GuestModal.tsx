@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { toast } from './Toast';
+import { logError } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
 import type { GameGuest } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -98,6 +99,12 @@ export function GuestModal({
       onClose();
     } catch (err) {
       const msg = (err as Error).message ?? '';
+      logError(existing ? 'updateGuest' : 'addGuest', err, {
+        screen: 'GuestModal',
+        gameId,
+        callerId,
+        guestId: existing?.id,
+      });
       if (msg === 'GAME_FULL') toast.error(he.guestErrorGameFull);
       else if (msg === 'PERMISSION_DENIED') toast.error(he.guestErrorPermission);
       else toast.error(he.guestErrorGeneric);

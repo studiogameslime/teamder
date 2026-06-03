@@ -19,6 +19,7 @@ import { he } from '@/i18n/he';
 import { useGroupStore } from '@/store/groupStore';
 import { useUserStore } from '@/store/userStore';
 import { groupService } from '@/services';
+import { logError } from '@/services/errorLog';
 import { Group, User } from '@/types';
 
 interface PendingRow {
@@ -54,18 +55,26 @@ export function AdminApprovalScreen() {
       setRows([]);
       return;
     }
-    groupService.hydrateUsers(pendingUserIds).then((users) => {
-      if (!alive) return;
-      const usersById = new Map(users.map((u) => [u.id, u]));
-      const next: PendingRow[] = [];
-      for (const g of adminGroups) {
-        for (const uid of g.pendingPlayerIds) {
-          const u = usersById.get(uid);
-          if (u) next.push({ group: g, user: u });
+    groupService
+      .hydrateUsers(pendingUserIds)
+      .then((users) => {
+        if (!alive) return;
+        const usersById = new Map(users.map((u) => [u.id, u]));
+        const next: PendingRow[] = [];
+        for (const g of adminGroups) {
+          for (const uid of g.pendingPlayerIds) {
+            const u = usersById.get(uid);
+            if (u) next.push({ group: g, user: u });
+          }
         }
-      }
-      setRows(next);
-    });
+        setRows(next);
+      })
+      .catch((err) => {
+        logError('adminApprovalHydrate', err, {
+          screen: 'AdminApprovalScreen',
+          pendingCount: pendingUserIds.length,
+        });
+      });
     return () => {
       alive = false;
     };

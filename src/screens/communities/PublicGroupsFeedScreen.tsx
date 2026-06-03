@@ -44,6 +44,7 @@ import {
 } from '@/components/community/CommunityCard';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
+import { logError, logUnexpected } from '@/services/errorLog';
 import { GroupPublic } from '@/types';
 import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -192,7 +193,11 @@ export function PublicGroupsFeedScreen() {
             : await groupService.searchPublicGroups(text);
         if (text.trim().length > 0) logEvent(AnalyticsEvent.GroupSearch, { query: text });
         if (alive) setItems(list);
-      } catch {
+      } catch (err) {
+        logError('listPublicGroups', err, {
+          screen: 'PublicGroupsFeedScreen',
+          query: text.trim() || undefined,
+        });
         if (alive) setItems([]);
       } finally {
         if (alive) setLoading(false);
@@ -299,6 +304,26 @@ export function PublicGroupsFeedScreen() {
     if (!user) return;
     try {
       const status = await requestJoinById(item.id, user.id);
+      // Silent-failure guard: requestJoinById updates the group store in
+      // place (pending → adds to pendingGroups; joined → re-hydrates
+      // memberGroups). Read the FRESHLY-SET store snapshot via getState()
+      // — no new Firestore read — and assert the expected membership/
+      // pending state materialised. The reactive store closures captured
+      // at render time are stale at this point.
+      if (status === 'pending' || status === 'joined') {
+        const store = useGroupStore.getState();
+        const reflected =
+          store.groups.some((g) => g.id === item.id) ||
+          store.pendingGroups.some((g) => g.id === item.id);
+        if (!reflected) {
+          logUnexpected('communityJoinNotReflected', {
+            screen: 'PublicGroupsFeedScreen',
+            groupId: item.id,
+            userId: user.id,
+            status,
+          });
+        }
+      }
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: item.id });
         toast.success(he.toastJoinRequestSent);
@@ -316,6 +341,11 @@ export function PublicGroupsFeedScreen() {
       if (code === 'GROUP_FULL') {
         toast.error(he.toastGroupFull);
       } else {
+        logError('requestJoinGroup', err, {
+          screen: 'PublicGroupsFeedScreen',
+          groupId: item.id,
+          userId: user.id,
+        });
         if (__DEV__) console.warn('[publicFeed] join request failed', err);
         toast.error(he.toastRequestFailed);
       }

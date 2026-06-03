@@ -39,6 +39,7 @@ import { ArrivalStatus, Game, UserId } from '@/types';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { col } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
+import { logError } from './errorLog';
 
 // ── Tunables ─────────────────────────────────────────────────────────────
 const WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -198,15 +199,21 @@ export const trustService = {
     const games: Game[] = USE_MOCK_DATA
       ? mockGamesV2.map((g) => ({ ...g, matches: [] }) as Game)
       : await (async () => {
-          const snap = await getDocs(
-            query(
-              col.games(),
-              where('participantIds', 'array-contains', userId),
-            ),
-          );
-          return snap.docs.map(
-            (d) => ({ ...d.data(), matches: [] }) as Game,
-          );
+          try {
+            const snap = await getDocs(
+              query(
+                col.games(),
+                where('participantIds', 'array-contains', userId),
+              ),
+            );
+            return snap.docs.map(
+              (d) => ({ ...d.data(), matches: [] }) as Game,
+            );
+          } catch (err) {
+            logError('getTrustSummary', err, { userId });
+            if (__DEV__) console.warn('[trust] getSummary failed', err);
+            throw err;
+          }
         })();
     return computeTrustFromGames(userId, games);
   },

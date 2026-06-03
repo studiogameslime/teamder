@@ -292,6 +292,7 @@ export const friendsService = {
       // Reading the request docs can fail (rules / transient). Treat as
       // "no pending request" so the card still offers "add friend"
       // rather than throwing and hiding the button entirely.
+      logError('getFriendRelationship', e, { uid, otherId });
       if (__DEV__) {
         console.warn('[friends] getRelationship request read failed', e);
       }

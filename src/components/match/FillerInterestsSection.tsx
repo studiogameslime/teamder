@@ -33,6 +33,7 @@ import { Card } from '@/components/Card';
 import { TrustMeter } from '@/components/TrustMeter';
 import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
+import { logError } from '@/services/errorLog';
 import { trustService, type TrustSummary } from '@/services/trustService';
 import { userService } from '@/services';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
@@ -108,6 +109,10 @@ export function FillerInterestsSection({
       });
       setRows(hydrated);
     } catch (err) {
+      logError('loadFillerInterests', err, {
+        screen: 'FillerInterestsSection',
+        gameId,
+      });
       if (__DEV__) console.warn('[fillerInterests] load failed', err);
       setRows([]);
     }
@@ -149,6 +154,11 @@ export function FillerInterestsSection({
     } catch (err) {
       const e = err as { code?: string; message?: string };
       const msg = (e.code ?? '').replace(/^functions\//, '');
+      logError('approveFiller', err, {
+        screen: 'FillerInterestsSection',
+        gameId,
+        candidateUid,
+      });
       toast.error(
         msg === 'failed-precondition'
           ? he.fillerApproveStale
@@ -179,6 +189,11 @@ export function FillerInterestsSection({
               await fn({ gameId, candidateUid });
               await load();
             } catch (err) {
+              logError('declineFiller', err, {
+                screen: 'FillerInterestsSection',
+                gameId,
+                candidateUid,
+              });
               if (__DEV__)
                 console.warn('[fillerInterests] decline failed', err);
               toast.error(he.error);

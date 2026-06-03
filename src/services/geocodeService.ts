@@ -19,6 +19,8 @@
 //     /cityGeocode/{normName} — no need to share state with the
 //     server.
 
+import { logError } from './errorLog';
+
 const memo = new Map<string, { lat: number; lng: number } | null>();
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org/search';
@@ -90,6 +92,7 @@ export async function geocodeCity(
     memo.set(trimmed, out);
     return out;
   } catch (err) {
+    logError('geocodeCity', err, { name: trimmed });
     if (__DEV__) console.warn('[geocode] failed', err);
     memo.set(trimmed, null);
     return null;

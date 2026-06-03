@@ -35,6 +35,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { groupService } from '@/services/groupService';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { Game, UserId } from '@/types';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
@@ -86,6 +87,11 @@ export function PromoteOrphanScreen() {
           setIncludedIds(init);
         }
       } catch (err) {
+        logError('promoteOrphanLoad', err, {
+          screen: 'PromoteOrphanScreen',
+          gameId,
+          groupId,
+        });
         if (__DEV__) console.warn('[promoteOrphan] load failed', err);
       } finally {
         if (alive) setLoading(false);
@@ -146,6 +152,12 @@ export function PromoteOrphanScreen() {
         ],
       );
     } catch (err) {
+      logError('promoteOrphanGroup', err, {
+        screen: 'PromoteOrphanScreen',
+        groupId,
+        gameId,
+        inviteCount: roster.filter((uid) => includedIds[uid] === true).length,
+      });
       const e = err as { code?: string; message?: string };
       Alert.alert(
         he.promoteOrphanErrorTitle,

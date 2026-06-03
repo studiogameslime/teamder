@@ -39,7 +39,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
-import { logError } from '@/services/errorLog';
+import { logError, logUnexpected } from '@/services/errorLog';
 
 let groupsById: Record<GroupId, Group> = {
   [mockGroup.id]: { ...mockGroup },
@@ -73,7 +73,14 @@ export const groupService = {
       );
     }
     const q = query(col.groups(), where('playerIds', 'array-contains', userId));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('listForUser', err, { userId });
+      if (__DEV__) console.warn('[groupService] listForUser failed', err);
+      throw err;
+    }
     // Hide personal/orphan-host groups from the user's "my communities"
     // list — they're an implementation detail of the orphan-game flow,
     // never surfaced as real communities until the user promotes.
@@ -93,14 +100,27 @@ export const groupService = {
       col.groups(),
       where('pendingPlayerIds', 'array-contains', userId)
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('listPendingForUser', err, { userId });
+      if (__DEV__) console.warn('[groupService] listPendingForUser failed', err);
+      throw err;
+    }
     return snap.docs.map((d) => d.data());
   },
 
   async get(groupId: GroupId): Promise<Group | null> {
     if (USE_MOCK_DATA) return groupsById[groupId] ?? null;
-    const snap = await getDoc(docs.group(groupId));
-    return snap.exists() ? snap.data() : null;
+    try {
+      const snap = await getDoc(docs.group(groupId));
+      return snap.exists() ? snap.data() : null;
+    } catch (err) {
+      logError('getGroup', err, { groupId });
+      if (__DEV__) console.warn('[groupService] get failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -128,14 +148,24 @@ export const groupService = {
     // docs and on groups where the creator opted out of being a
     // player). A single `array-contains` would miss those. Merge
     // results by id.
-    const [byPlayer, byAdmin] = await Promise.all([
-      getDocs(
-        query(col.groups(), where('playerIds', 'array-contains', uidA)),
-      ),
-      getDocs(
-        query(col.groups(), where('adminIds', 'array-contains', uidA)),
-      ),
-    ]);
+    let byPlayer;
+    let byAdmin;
+    try {
+      [byPlayer, byAdmin] = await Promise.all([
+        getDocs(
+          query(col.groups(), where('playerIds', 'array-contains', uidA)),
+        ),
+        getDocs(
+          query(col.groups(), where('adminIds', 'array-contains', uidA)),
+        ),
+      ]);
+    } catch (err) {
+      logError('findSharedCommunities', err, { uidA, uidB });
+      if (__DEV__) {
+        console.warn('[groupService] findSharedCommunities failed', err);
+      }
+      throw err;
+    }
     const seen = new Set<string>();
     const groups: Group[] = [];
     for (const doc of [...byPlayer.docs, ...byAdmin.docs]) {
@@ -182,7 +212,14 @@ export const groupService = {
       // Hard cap so a typo doesn't stream the whole collection
       // (limit() on the query)
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('searchGroups', err, { query: norm });
+      if (__DEV__) console.warn('[groupService] searchGroups failed', err);
+      throw err;
+    }
     return snap.docs.map((d) => toHit(d.data())).slice(0, 30);
   },
 
@@ -369,7 +406,14 @@ export const groupService = {
     const { httpsCallable } = require('firebase/functions');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'ensurePersonalGroup');
-    const res = (await fn({})) as { data?: { groupId?: string } };
+    let res: { data?: { groupId?: string } };
+    try {
+      res = (await fn({})) as { data?: { groupId?: string } };
+    } catch (err) {
+      logError('ensurePersonalGroup', err, {});
+      if (__DEV__) console.warn('[groupService] ensurePersonalGroup failed', err);
+      throw err;
+    }
     const id = res?.data?.groupId ?? '';
     if (!id) throw new Error('ensurePersonalGroup: no groupId returned');
     return id;
@@ -396,13 +440,23 @@ export const groupService = {
     const { httpsCallable } = require('firebase/functions');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'promoteOrphanToGroup');
-    const res = (await fn({
-      groupId: input.groupId,
-      name: input.name,
-      description: input.description ?? '',
-      city: input.city ?? '',
-      inviteUserIds: input.inviteUserIds,
-    })) as { data?: { ok?: boolean; invited?: number } };
+    let res: { data?: { ok?: boolean; invited?: number } };
+    try {
+      res = (await fn({
+        groupId: input.groupId,
+        name: input.name,
+        description: input.description ?? '',
+        city: input.city ?? '',
+        inviteUserIds: input.inviteUserIds,
+      })) as { data?: { ok?: boolean; invited?: number } };
+    } catch (err) {
+      logError('promoteOrphanGroup', err, {
+        groupId: input.groupId,
+        inviteCount: input.inviteUserIds.length,
+      });
+      if (__DEV__) console.warn('[groupService] promoteOrphanGroup failed', err);
+      throw err;
+    }
     return { invited: res?.data?.invited ?? 0 };
   },
 
@@ -436,9 +490,21 @@ export const groupService = {
     const { httpsCallable } = require('firebase/functions');
     const { functions } = getFirebase();
     const fn = httpsCallable(functions, 'inviteFriendsToGroup');
-    const res = (await fn({ groupId, friendIds })) as {
-      data?: { invited?: number };
-    };
+    let res: { data?: { invited?: number } };
+    try {
+      res = (await fn({ groupId, friendIds })) as {
+        data?: { invited?: number };
+      };
+    } catch (err) {
+      logError('inviteFriendsToGroup', err, {
+        groupId,
+        friendCount: friendIds.length,
+      });
+      if (__DEV__) {
+        console.warn('[groupService] inviteFriendsToGroup failed', err);
+      }
+      throw err;
+    }
     return { invited: res?.data?.invited ?? 0 };
   },
 
@@ -454,15 +520,28 @@ export const groupService = {
     if (USE_MOCK_DATA) {
       return mockPublicGroups.find((g) => g.id === groupId) ?? null;
     }
-    const snap = await getDoc(docs.groupPublic(groupId));
-    return snap.exists() ? snap.data() : null;
+    try {
+      const snap = await getDoc(docs.groupPublic(groupId));
+      return snap.exists() ? snap.data() : null;
+    } catch (err) {
+      logError('getPublicGroup', err, { groupId });
+      if (__DEV__) console.warn('[groupService] getPublic failed', err);
+      throw err;
+    }
   },
 
   async listPublicGroups(): Promise<GroupPublic[]> {
     if (USE_MOCK_DATA) {
       return [...mockPublicGroups];
     }
-    const snap = await getDocs(col.groupsPublic());
+    let snap;
+    try {
+      snap = await getDocs(col.groupsPublic());
+    } catch (err) {
+      logError('listPublicGroups', err, {});
+      if (__DEV__) console.warn('[groupService] listPublicGroups failed', err);
+      throw err;
+    }
     return snap.docs.map((d) => d.data());
   },
 
@@ -505,7 +584,14 @@ export const groupService = {
       where('normalizedName', '<=', norm + '\uf8ff'),
       orderBy('normalizedName')
     );
-    const nameSnap = await getDocs(q);
+    let nameSnap;
+    try {
+      nameSnap = await getDocs(q);
+    } catch (err) {
+      logError('searchPublicGroups', err, { query: norm });
+      if (__DEV__) console.warn('[groupService] searchPublicGroups failed', err);
+      throw err;
+    }
     const byName = nameSnap.docs.map((d) => d.data());
     const all = await this.listPublicGroups();
     const seen = new Set(byName.map((g) => g.id));
@@ -667,24 +753,32 @@ export const groupService = {
     }
     // Audit-trail flip happens outside the transaction (different
     // collection); keeping it best-effort is fine — the canonical
-    // membership is already correct.
-    const reqs = await getDocs(
-      query(
-        col.joinRequests(),
-        where('groupId', '==', groupId),
-        where('userId', '==', userId),
-        where('status', '==', 'pending')
-      )
-    );
-    const batch = writeBatch(db);
-    reqs.docs.forEach((r) =>
-      batch.update(r.ref, {
-        status: 'approved',
-        decidedAt: Date.now(),
-        decidedBy: auth.currentUser?.uid ?? null,
-      })
-    );
-    await batch.commit();
+    // membership is already correct, so a failure here is logged and
+    // swallowed rather than thrown (mirrors rejectMember's handling).
+    try {
+      const reqs = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('userId', '==', userId),
+          where('status', '==', 'pending')
+        )
+      );
+      const batch = writeBatch(db);
+      reqs.docs.forEach((r) =>
+        batch.update(r.ref, {
+          status: 'approved',
+          decidedAt: Date.now(),
+          decidedBy: auth.currentUser?.uid ?? null,
+        })
+      );
+      await batch.commit();
+    } catch (err) {
+      logError('approveMember', err, { groupId, userId, phase: 'auditTrail' });
+      if (__DEV__) {
+        console.warn('[groupService] approveMember audit-trail flip failed', err);
+      }
+    }
     const g = await this.get(groupId);
     if (!g) throw new Error('approveMember: group disappeared');
     // Mirror member count to the public doc so the feed stays accurate.
@@ -891,7 +985,19 @@ export const groupService = {
         stripUndefined(publicPatch),
       );
     }
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (err) {
+      logError('updateGroupMetadata', err, {
+        groupId,
+        callerId,
+        fields: Object.keys(cleaned),
+      });
+      if (__DEV__) {
+        console.warn('[groupService] updateGroupMetadata failed', err);
+      }
+      throw err;
+    }
     const fresh = await this.get(groupId);
     return fresh ?? g;
   },
@@ -931,10 +1037,16 @@ export const groupService = {
     if (!g) throw new Error('promoteToCoach: group not found');
     guard(g);
     if (g.adminIds.includes(targetUserId)) return g;
-    await updateDoc(docs.group(groupId), {
-      adminIds: arrayUnion(targetUserId),
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(docs.group(groupId), {
+        adminIds: arrayUnion(targetUserId),
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('promoteToCoach', err, { groupId, callerId, targetUserId });
+      if (__DEV__) console.warn('[groupService] promoteToCoach failed', err);
+      throw err;
+    }
     const fresh = await this.get(groupId);
     return fresh ?? g;
   },
@@ -968,10 +1080,16 @@ export const groupService = {
     const g = await this.get(groupId);
     if (!g) throw new Error('demoteCoach: group not found');
     guard(g);
-    await updateDoc(docs.group(groupId), {
-      adminIds: arrayRemove(targetUserId),
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(docs.group(groupId), {
+        adminIds: arrayRemove(targetUserId),
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('demoteCoach', err, { groupId, callerId, targetUserId });
+      if (__DEV__) console.warn('[groupService] demoteCoach failed', err);
+      throw err;
+    }
     const fresh = await this.get(groupId);
     return fresh ?? g;
   },
@@ -999,11 +1117,21 @@ export const groupService = {
         (id) => id !== userId,
       );
       g.updatedAt = Date.now();
+      // Silent-failure guard: user must be gone from members.
+      if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
+        logUnexpected('leaveGroupDidNotRemoveUser', { groupId, userId });
+      }
       syncMockPublic(g);
       return;
     }
     const ref = docs.group(groupId);
-    const snap = await getDoc(ref);
+    let snap;
+    try {
+      snap = await getDoc(ref);
+    } catch (e) {
+      logError('leaveGroup', e, { groupId, userId, phase: 'preRead' });
+      throw e;
+    }
     if (!snap.exists()) throw new Error('leaveGroup: group not found');
     const g = snap.data();
     const isLastAdmin =
@@ -1035,6 +1163,14 @@ export const groupService = {
     } catch (e) {
       logError('leaveGroup', e, { groupId, userId });
       throw e;
+    }
+    // Silent-failure guard: the arrayRemove write resolved, so the user
+    // must be gone from both member arrays. Verify against the in-memory
+    // next-state computed from the pre-write doc — no extra read.
+    const nextAdminIds = g.adminIds.filter((id) => id !== userId);
+    const nextPlayerIds = g.playerIds.filter((id) => id !== userId);
+    if (nextPlayerIds.includes(userId) || nextAdminIds.includes(userId)) {
+      logUnexpected('leaveGroupDidNotRemoveUser', { groupId, userId });
     }
     // Reject any still-pending audit-trail doc for this (user, group)
     // pair so a future re-join doesn't get blocked by the existing
@@ -1117,6 +1253,16 @@ export const groupService = {
         (id) => id !== targetUserId,
       );
       g.updatedAt = Date.now();
+      // Silent-failure guard: target must be gone from members.
+      if (
+        g.playerIds.includes(targetUserId) ||
+        g.adminIds.includes(targetUserId)
+      ) {
+        logUnexpected('removeMemberDidNotApply', {
+          groupId,
+          userId: targetUserId,
+        });
+      }
       syncMockPublic(g);
       return;
     }
@@ -1146,6 +1292,20 @@ export const groupService = {
     } catch (e) {
       logError('removeMember', e, { groupId, targetUserId });
       throw e;
+    }
+    // Silent-failure guard: the arrayRemove write resolved, so the target
+    // must be gone from both member arrays. Verify against the in-memory
+    // next-state computed from the pre-write doc — no extra read.
+    const nextAdminIds = g.adminIds.filter((id) => id !== targetUserId);
+    const nextPlayerIds = g.playerIds.filter((id) => id !== targetUserId);
+    if (
+      nextPlayerIds.includes(targetUserId) ||
+      nextAdminIds.includes(targetUserId)
+    ) {
+      logUnexpected('removeMemberDidNotApply', {
+        groupId,
+        userId: targetUserId,
+      });
     }
     // Sweep stale join requests so a future re-invite or re-request
     // isn't blocked by a stuck "pending" row.
@@ -1365,12 +1525,19 @@ export const groupService = {
         };
       });
     }
-    const fetched = await Promise.all(
-      userIds.map(async (id) => {
-        const snap = await getDoc(docs.user(id));
-        return snap.exists() ? snap.data() : null;
-      })
-    );
+    let fetched;
+    try {
+      fetched = await Promise.all(
+        userIds.map(async (id) => {
+          const snap = await getDoc(docs.user(id));
+          return snap.exists() ? snap.data() : null;
+        })
+      );
+    } catch (err) {
+      logError('hydrateUsers', err, { userCount: userIds.length });
+      if (__DEV__) console.warn('[groupService] hydrateUsers failed', err);
+      throw err;
+    }
     return fetched.filter((u): u is User => !!u);
   },
 };
@@ -1495,18 +1662,36 @@ async function submitJoin(
     throw err;
   }
   await writeJoin(g.id, userId, !!g.isOpen);
+  // Silent-failure guard: the write resolved, so the user should now be a
+  // member (open group → playerIds) or pending (closed group →
+  // pendingPlayerIds). Verify against the computed in-memory next-state
+  // arrays only — no extra Firestore read.
+  const nextPlayerIds = g.isOpen ? [...g.playerIds, userId] : g.playerIds;
+  const nextPendingPlayerIds =
+    !g.isOpen && !g.pendingPlayerIds.includes(userId)
+      ? [...g.pendingPlayerIds, userId]
+      : g.pendingPlayerIds;
+  if (
+    !nextPlayerIds.includes(userId) &&
+    !g.adminIds.includes(userId) &&
+    !nextPendingPlayerIds.includes(userId)
+  ) {
+    logUnexpected('joinGroupDidNotApply', {
+      groupId: g.id,
+      userId,
+      viaCode: true,
+    });
+  }
   if (g.isOpen) {
     return {
-      group: { ...g, playerIds: [...g.playerIds, userId] },
+      group: { ...g, playerIds: nextPlayerIds },
       status: 'joined',
     };
   }
   return {
     group: {
       ...g,
-      pendingPlayerIds: g.pendingPlayerIds.includes(userId)
-        ? g.pendingPlayerIds
-        : [...g.pendingPlayerIds, userId],
+      pendingPlayerIds: nextPendingPlayerIds,
     },
     status: 'pending',
   };
@@ -1544,6 +1729,20 @@ async function submitJoinByPublic(
     }
   }
   await writeJoin(groupId, userId, isOpen);
+  // Silent-failure guard: post-write the user must be in members (open) or
+  // pending (closed). Computed in-memory next-state — no extra read.
+  const nextPlayerIds = isOpen ? [userId] : [];
+  const nextPendingPlayerIds = isOpen ? [] : [userId];
+  if (
+    !nextPlayerIds.includes(userId) &&
+    !nextPendingPlayerIds.includes(userId)
+  ) {
+    logUnexpected('joinGroupDidNotApply', {
+      groupId,
+      userId,
+      viaCode: false,
+    });
+  }
   return {
     group: {
       id: groupId,

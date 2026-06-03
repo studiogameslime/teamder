@@ -68,6 +68,7 @@ import { FillerInterestsSection } from '@/components/match/FillerInterestsSectio
 import { PinnedAdminMessageCard } from '@/components/match/PinnedAdminMessageCard';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
+import { logError, logUnexpected } from '@/services/errorLog';
 import { ratingsService } from '@/services/ratingsService';
 import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import { useGameEvents } from '@/services/useGameEvents';
@@ -521,6 +522,11 @@ export function MatchDetailsScreen() {
         setAccessBlocked(true);
         return;
       }
+      logError('matchDetailsReload', err, {
+        screen: 'MatchDetailsScreen',
+        gameId,
+        userId: user?.id,
+      });
       if (__DEV__) console.warn('[matchDetails] reload failed', err);
     } finally {
       setLoading(false);
@@ -773,6 +779,11 @@ export function MatchDetailsScreen() {
         });
       } else {
         const result = await gameService.joinGameV2(game.id, user.id);
+        // Capture the post-join game state out of the optimistic-splice
+        // updater so we can assert the silent-failure post-condition
+        // below WITHOUT a second Firestore read. `joined` records the
+        // result of the splice (or null if the game object disappeared).
+        let joined: Game | null = null;
         setGame((prev) => {
           if (!prev) return prev;
           const next = { ...prev };
@@ -792,8 +803,45 @@ export function MatchDetailsScreen() {
           next.participantIds = Array.from(
             new Set([...(prev.participantIds ?? []), user.id]),
           );
+          joined = next;
           return next;
         });
+        // Silent-failure guard: a successful join MUST leave the user in
+        // the roster the UI now holds (players ∪ waitlist ∪ pending ∪
+        // participantIds). If the game object vanished, or the user is in
+        // none of those buckets, nothing threw yet the expected UI state
+        // didn't materialise — record it with full context. `joined` is
+        // set synchronously by the updater above; a null means the game
+        // disappeared (prev was null), which is itself a violation.
+        const j = joined as Game | null;
+        if (!j) {
+          logUnexpected('joinNotReflectedInMatch', {
+            screen: 'MatchDetailsScreen',
+            gameId: game.id,
+            userId: user.id,
+            isOrphanContext: game.isOrphanContext ?? false,
+            visibility: game.visibility,
+            status: game.status,
+            reason: 'gameDisappeared',
+          });
+        } else {
+          const inRoster =
+            j.players.includes(user.id) ||
+            j.waitlist.includes(user.id) ||
+            (j.pending ?? []).includes(user.id) ||
+            (j.participantIds ?? []).includes(user.id);
+          if (!inRoster) {
+            logUnexpected('joinNotReflectedInMatch', {
+              screen: 'MatchDetailsScreen',
+              gameId: game.id,
+              userId: user.id,
+              isOrphanContext: game.isOrphanContext ?? false,
+              visibility: game.visibility,
+              status: game.status,
+              bucket: result.bucket,
+            });
+          }
+        }
       }
     } catch (err) {
       if (__DEV__) {
@@ -1070,6 +1118,10 @@ export function MatchDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
       }
     } catch (err) {
+      logError('matchInviteShare', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
       if (__DEV__) console.warn('[matchDetails] invite share failed', err);
     }
   };
@@ -1135,7 +1187,13 @@ export function MatchDetailsScreen() {
           `https://www.google.com/maps/search/?api=1&query=${q}`,
         ),
       )
-      .catch(() => toast.error(he.matchDetailsCannotOpenNavigation));
+      .catch((err) => {
+        logError('matchOpenNavigation', err, {
+          screen: 'MatchDetailsScreen',
+          gameId: game.id,
+        });
+        toast.error(he.matchDetailsCannotOpenNavigation);
+      });
   };
 
   // Share handler — community-only games still suppress the share
@@ -1161,6 +1219,10 @@ export function MatchDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
       }
     } catch (err) {
+      logError('matchShare', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
       if (__DEV__) console.warn('[matchDetails] share failed', err);
     }
   };
@@ -1175,6 +1237,11 @@ export function MatchDetailsScreen() {
       await gameService.setVisibility(game.id, target);
       await reload();
     } catch (err) {
+      logError('matchSetVisibility', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+        target,
+      });
       if (__DEV__) console.warn('[matchDetails] setVisibility failed', err);
       toast.error(
         target === 'public'
@@ -1565,6 +1632,10 @@ export function MatchDetailsScreen() {
                   prev ? { ...prev, pinnedMessage: text || undefined } : prev,
                 );
               } catch (err) {
+                logError('setPinnedMessage', err, {
+                  screen: 'MatchDetailsScreen',
+                  gameId: game.id,
+                });
                 if (__DEV__) {
                   console.warn('[matchDetails] setPinnedMessage failed', err);
                 }
@@ -1669,6 +1740,11 @@ export function MatchDetailsScreen() {
                           });
                           toast.success(he.guestRowRemoveSuccess);
                         } catch (err) {
+                          logError('removeGuest', err, {
+                            screen: 'MatchDetailsScreen',
+                            gameId: game.id,
+                            guestId,
+                          });
                           if (__DEV__) console.warn('[guests] remove failed', err);
                           toast.error(he.guestRowRemoveError);
                         }

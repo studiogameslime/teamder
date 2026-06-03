@@ -217,7 +217,8 @@ export const achievementsService = {
         if (arrivals[userId] === 'no_show') continue;
         gamesJoined += 1;
       }
-    } catch {
+    } catch (err) {
+      logError('deriveGamesJoined', err, { userId });
       // Silent — leave gamesJoined at 0 on transient failures.
     }
 
@@ -228,7 +229,8 @@ export const achievementsService = {
     try {
       const { userService } = await import('./userService');
       invitesSent = await userService.getInvitedUsersCount(userId);
-    } catch {
+    } catch (err) {
+      logError('deriveInvitesSent', err, { userId });
       // Silent — leave at 0.
     }
 
@@ -298,6 +300,7 @@ export const achievementsService = {
         await persistFirebase(userId, counters);
       }
     } catch (err) {
+      logError('persistDerivedUnlocks', err, { userId });
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[achievements] persistDerivedUnlocks failed', err);

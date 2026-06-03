@@ -34,6 +34,7 @@ import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
 import { storage } from './storage';
 import { AnalyticsEvent, logEvent } from './analyticsService';
+import { logError } from './errorLog';
 
 /** Minutes past kickoff at which a yellow becomes a red. */
 export const RED_THRESHOLD_MIN = 60;
@@ -109,6 +110,12 @@ export const disciplineService = {
         });
         return event;
       } catch (err) {
+        logError('issueCard', err, {
+          userId: input.userId,
+          type: input.type,
+          reason: input.reason,
+          gameId: input.gameId,
+        });
         if (__DEV__) console.warn('[discipline] issueCard mock failed', err);
         return null;
       }
@@ -157,6 +164,7 @@ export const disciplineService = {
       });
       return true;
     } catch (err) {
+      logError('revokeCard', err, { userId, eventId });
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[discipline] revokeCard failed', err);
@@ -230,13 +238,26 @@ export const disciplineService = {
     const candidates: Game[] = USE_MOCK_DATA
       ? mockGamesV2.map((g) => ({ ...g, matches: [] } as Game))
       : await (async () => {
-          const snap = await getDocs(
-            query(
-              col.games(),
-              where('participantIds', 'array-contains', userId),
-            ),
-          );
-          return snap.docs.map((d) => ({ ...d.data(), matches: [] } as Game));
+          try {
+            const snap = await getDocs(
+              query(
+                col.games(),
+                where('participantIds', 'array-contains', userId),
+              ),
+            );
+            return snap.docs.map(
+              (d) => ({ ...d.data(), matches: [] } as Game),
+            );
+          } catch (err) {
+            logError('getPlayerDisciplineSnapshot', err, { userId });
+            if (__DEV__) {
+              console.warn(
+                '[discipline] getPlayerDisciplineSnapshot failed',
+                err,
+              );
+            }
+            throw err;
+          }
         })();
 
     const userInvolved = (g: Game): boolean => {

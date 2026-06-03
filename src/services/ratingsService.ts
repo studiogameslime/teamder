@@ -32,6 +32,7 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { docs } from '@/firebase/firestore';
 import { mockGroup } from '@/data/mockUsers';
 import { AnalyticsEvent, logEvent } from './analyticsService';
+import { logError } from './errorLog';
 
 // ─── Mock store ───────────────────────────────────────────────────────────
 
@@ -103,20 +104,29 @@ export const ratingsService = {
       return;
     }
     const ref = docs.ratingVote(groupId, ratedUserId, raterUserId);
-    const existing = await getDoc(ref).catch(() => null);
+    const existing = await getDoc(ref).catch((err) => {
+      logError('ratePlayerReadVote', err, { groupId, raterUserId, ratedUserId });
+      return null;
+    });
     const now = Date.now();
     const createdAt =
       existing?.exists() &&
       typeof (existing.data() as RatingVote).createdAt === 'number'
         ? (existing.data() as RatingVote).createdAt
         : now;
-    await setDoc(ref, {
-      raterUserId,
-      ratedUserId,
-      rating,
-      createdAt,
-      updatedAt: now,
-    } satisfies RatingVote);
+    try {
+      await setDoc(ref, {
+        raterUserId,
+        ratedUserId,
+        rating,
+        createdAt,
+        updatedAt: now,
+      } satisfies RatingVote);
+    } catch (err) {
+      logError('ratePlayer', err, { groupId, raterUserId, ratedUserId, rating });
+      if (__DEV__) console.warn('[ratings] ratePlayer write failed', err);
+      throw err;
+    }
     logEvent(AnalyticsEvent.PlayerRated, {
       groupId,
       rating,
@@ -138,7 +148,10 @@ export const ratingsService = {
     }
     const snap = await getDoc(
       docs.ratingVote(groupId, ratedUserId, raterUserId),
-    ).catch(() => null);
+    ).catch((err) => {
+      logError('getMyVote', err, { groupId, raterUserId, ratedUserId });
+      return null;
+    });
     if (!snap?.exists()) return null;
     const d = snap.data() as RatingVote;
     return {
@@ -163,7 +176,8 @@ export const ratingsService = {
     }
     await deleteDoc(
       docs.ratingVote(groupId, ratedUserId, raterUserId),
-    ).catch(() => {
+    ).catch((err) => {
+      logError('clearMyVote', err, { groupId, raterUserId, ratedUserId });
       /* swallow — best effort */
     });
     logEvent(AnalyticsEvent.RatingCleared, { groupId });
@@ -182,7 +196,10 @@ export const ratingsService = {
     }
     const snap = await getDoc(
       docs.ratingSummary(groupId, ratedUserId),
-    ).catch(() => null);
+    ).catch((err) => {
+      logError('getRatingSummary', err, { groupId, ratedUserId });
+      return null;
+    });
     if (!snap?.exists()) {
       return {
         userId: ratedUserId,
@@ -235,6 +252,7 @@ export const ratingsService = {
         });
       },
       (err) => {
+        logError('subscribeRatingSummary', err, { groupId, ratedUserId });
         if (__DEV__) {
           // eslint-disable-next-line no-console
           console.warn('[ratings] subscribeSummary failed', err);

@@ -798,6 +798,16 @@ export const he = {
   settingsEmailUnavailable: 'לא נמצאה אפליקציית מייל',
   settingsEmailUnavailableHint: 'אפשר לכתוב לנו ישירות לכתובת:',
 
+  // Feedback (in-app report a problem / suggest a feature)
+  feedbackMenuItem: 'דיווח על תקלה / הצעה 💬',
+  feedbackTitle: 'דיווח ומשוב',
+  feedbackTypeBug: '🐛 דיווח על תקלה',
+  feedbackTypeSuggestion: '💡 הצעה לשיפור',
+  feedbackPlaceholder: 'ספרו לנו מה קרה, או איזה פיצר הייתם רוצים לראות…',
+  feedbackSubmit: 'שליחה',
+  feedbackSuccess: 'תודה! הדיווח התקבל 🙏',
+  feedbackError: 'שליחת הדיווח נכשלה, נסו שוב',
+
   // Invite
   inviteShareTitle: 'הזמן שחקנים',
   inviteShareSubject: 'הצטרף לקבוצת הכדורגל שלנו ⚽',

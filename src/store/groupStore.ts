@@ -10,6 +10,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 // The store no longer dispatches; the service is the single source.
 import { achievementsService } from '@/services/achievementsService';
 import { useUserStore } from '@/store/userStore';
+import { logError } from '@/services/errorLog';
 
 type MembershipStatus =
   | 'none'      // user has no group at all
@@ -90,23 +91,32 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
     // where the queries return empty under odd rules.
     const [groups, pendingGroups, savedId] = await Promise.all([
       groupService.listForUser(userId).catch((err) => {
+        logError('groupHydrateListForUser', err, { userId });
         if (__DEV__) console.warn('[groupStore.hydrate] listForUser', err);
         return [] as Group[];
       }),
       groupService.listPendingForUser(userId).catch((err) => {
+        logError('groupHydrateListPending', err, { userId });
         if (__DEV__) console.warn('[groupStore.hydrate] listPending', err);
         return [] as Group[];
       }),
-      storage.getCurrentGroupId().catch(() => null),
+      storage.getCurrentGroupId().catch((err) => {
+        logError('groupHydrateGetCurrentGroupId', err, { userId });
+        return null;
+      }),
     ]);
     let currentGroupId = savedId;
     if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
       currentGroupId = null;
-      await storage.setCurrentGroupId(null).catch(() => {});
+      await storage.setCurrentGroupId(null).catch((err) => {
+        logError('groupHydrateSetCurrentGroupId', err, { userId });
+      });
     }
     if (!currentGroupId && groups.length > 0) {
       currentGroupId = groups[0].id;
-      await storage.setCurrentGroupId(currentGroupId).catch(() => {});
+      await storage.setCurrentGroupId(currentGroupId).catch((err) => {
+        logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
+      });
     }
     set({ hydrated: true, groups, pendingGroups, currentGroupId });
   },

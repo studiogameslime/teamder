@@ -36,6 +36,7 @@ import { banner } from '@/components/Banner';
 import { he } from '@/i18n/he';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
+import { logError } from '@/services/errorLog';
 import type { GameDoc } from '@/firebase/firestore';
 import type { Game } from '@/types';
 
@@ -190,6 +191,7 @@ export function useGameEvents(
         try {
           onUpdateRef.current?.({ ...curr, matches: [] } as Game);
         } catch (err) {
+          logError('useGameEventsOnUpdate', err, { gameId });
           if (__DEV__) console.warn('[useGameEvents] onUpdate threw', err);
         }
 
@@ -250,6 +252,7 @@ export function useGameEvents(
         prevRef.current = curr;
       },
       (err) => {
+        logError('useGameEventsSnapshot', err, { gameId });
         if (__DEV__) console.warn('[useGameEvents] snapshot error', err);
       }
     );

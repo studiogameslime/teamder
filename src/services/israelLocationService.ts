@@ -12,6 +12,8 @@
 //   - Results are cached in memory keyed by query; cache survives until app
 //     restart. Good enough for a typing session.
 
+import { logError } from './errorLog';
+
 const BASE_URL = 'https://data.gov.il/api/action/datastore_search';
 
 const CITIES_RESOURCE_ID = 'b7cf8f14-64a2-4b33-8d4b-edb286fdbd37';
@@ -126,6 +128,7 @@ export async function searchCities(query: string): Promise<string[]> {
     cityCache.set(q, limited);
     return limited;
   } catch (err) {
+    logError('searchCities', err, { query: q });
     if (__DEV__) console.warn('[israelLocation] searchCities failed', err);
     return [];
   }

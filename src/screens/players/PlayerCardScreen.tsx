@@ -42,6 +42,7 @@ import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
 import { trustService, type TrustSummary } from '@/services/trustService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { useCurrentGroup } from '@/store/groupStore';
 import {
   Game,
@@ -372,6 +373,12 @@ export function PlayerCardScreen() {
                   he.playerCardInviteSentToast.replace('{name}', user.name),
                 );
               } catch (err) {
+                logError('inviteToGame', err, {
+                  screen: 'PlayerCardScreen',
+                  recipientId: user.id,
+                  gameId: nextGame.id,
+                  inviterId: me.id,
+                });
                 if (__DEV__) console.warn('[PlayerCard] invite failed', err);
                 const code = (err as { code?: string })?.code ?? '';
                 if (code === 'resource-exhausted') {

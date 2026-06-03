@@ -3,6 +3,7 @@ import { User } from '@/types';
 import { userService } from '@/services';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 
 interface UserStore {
   // Bootstrap
@@ -46,8 +47,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // the splash on this flag — silent rejections meant a perma-
     // splash that was unrecoverable without a force-close.
     const [onboardingDone, user] = await Promise.all([
-      storage.getOnboardingDone().catch(() => false),
+      storage.getOnboardingDone().catch((err) => {
+        logError('userHydrateGetOnboardingDone', err, {});
+        return false;
+      }),
       userService.getCurrentUser().catch((err) => {
+        logError('userHydrateGetCurrentUser', err, {});
         if (__DEV__) console.warn('[userStore.hydrate] getCurrentUser', err);
         return null;
       }),

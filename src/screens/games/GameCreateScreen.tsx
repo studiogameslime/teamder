@@ -14,6 +14,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
+import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -154,6 +155,10 @@ export function GameCreateScreen() {
       };
       setOrphanGroup(synthesized);
     } catch (err) {
+      logError('ensurePersonalGroupId', err, {
+        screen: 'GameCreateScreen',
+        userId: user.id,
+      });
       Alert.alert(
         he.createGameOrphanErrorTitle,
         he.createGameOrphanErrorBody,

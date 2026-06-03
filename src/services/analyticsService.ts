@@ -13,6 +13,7 @@
 import { Platform } from 'react-native';
 import analytics from '@react-native-firebase/analytics';
 import { USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 export const AnalyticsEvent = {
   // Navigation
@@ -311,6 +312,7 @@ export function logEvent(
   analytics()
     .logEvent(name, cleaned)
     .catch((err) => {
+      logError('analyticsLogEvent', err, { event: name });
       if (__DEV__) console.warn('[analytics] logEvent failed', err);
     });
 }

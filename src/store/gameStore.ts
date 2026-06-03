@@ -19,6 +19,7 @@ import { Game, Player, PlayerId, UserId } from '@/types';
 import { mockGame, mockPlayers } from '@/data/mockData';
 import { groupService } from '@/services';
 import { USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 /**
  * Empty Game placeholder. The redesigned screens query games via
@@ -91,6 +92,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return { players: next };
       });
     } catch (err) {
+      logError('hydratePlayers', err, { count: missing.length });
       if (__DEV__) console.warn('[gameStore] hydratePlayers failed', err);
     }
   },

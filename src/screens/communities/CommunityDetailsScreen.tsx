@@ -51,6 +51,7 @@ import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
 import { PlayersPreview } from '@/components/community/PlayersPreview';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
 import { groupService } from '@/services';
+import { logError } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -130,6 +131,13 @@ export function CommunityDetailsScreen() {
         setMembers(users);
         setUpcoming(games);
         setHistory(hist);
+      } catch (err) {
+        logError('communityDetailsReload', err, {
+          screen: 'CommunityDetailsScreen',
+          groupId,
+          userId: me?.id,
+        });
+        if (__DEV__) console.warn('[community] reload failed', err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -185,6 +193,11 @@ export function CommunityDetailsScreen() {
       logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
     } catch (e) {
+      logError('updateGroupMetadata', e, {
+        screen: 'CommunityDetailsScreen',
+        groupId: group.id,
+        field: 'coverPhotoUrl',
+      });
       if (__DEV__) console.warn('[community] cover meta save failed', e);
       Alert.alert(he.error, he.communityCoverUploadFailed);
     } finally {
@@ -205,6 +218,11 @@ export function CommunityDetailsScreen() {
       toast.success(he.communityInviteFriendsSent(invited));
       reload();
     } catch (e) {
+      logError('inviteFriendsToGroup', e, {
+        screen: 'CommunityDetailsScreen',
+        groupId: group.id,
+        inviteCount: inviteIds.length,
+      });
       if (__DEV__) console.warn('[community] invite friends failed', e);
       Alert.alert(he.error, he.communityInviteFriendsFailed);
     } finally {
@@ -271,6 +289,10 @@ export function CommunityDetailsScreen() {
         logEvent(AnalyticsEvent.InviteShared, { groupId: group.id });
       }
     } catch (err) {
+      logError('communityShare', err, {
+        screen: 'CommunityDetailsScreen',
+        groupId: group.id,
+      });
       if (__DEV__) console.warn('[community] share failed', err);
     }
   };
@@ -761,7 +783,11 @@ function CommunityStatsSection({ groupId }: { groupId: string }) {
       .then((s) => {
         if (alive) setStats(s);
       })
-      .catch(() => {
+      .catch((err) => {
+        logError('getCommunityStats', err, {
+          screen: 'CommunityDetailsScreen',
+          groupId,
+        });
         if (alive) setStats(null);
       });
     return () => {

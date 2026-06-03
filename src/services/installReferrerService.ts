@@ -22,6 +22,7 @@
 
 import { Platform } from 'react-native';
 import { storage, type PendingInvite } from './storage';
+import { logError } from './errorLog';
 
 interface PlayInstallReferrerInfo {
   installReferrer: string;
@@ -123,13 +124,17 @@ export async function consumeInstallReferrerIfFresh(): Promise<void> {
       // install, and we don't want to keep retrying forever.
       storage
         .setInstallReferrerConsumed()
-        .catch(() => undefined)
+        .catch((e) => {
+          logError('setInstallReferrerConsumed', e, {});
+          return undefined;
+        })
         .finally(resolve);
     };
     try {
       mod.getInstallReferrerInfo(async (info, err) => {
         try {
           if (err || !info) {
+            if (err) logError('installReferrerInfo', err, {});
             if (__DEV__) {
               console.info('[installReferrer] no referrer info', { err });
             }
@@ -157,12 +162,14 @@ export async function consumeInstallReferrerIfFresh(): Promise<void> {
             console.info('[installReferrer] stashed pending invite', invite);
           }
         } catch (e) {
+          logError('installReferrerParse', e, {});
           if (__DEV__) console.warn('[installReferrer] parse failed', e);
         } finally {
           finish();
         }
       });
     } catch (e) {
+      logError('installReferrerNativeCall', e, {});
       if (__DEV__) console.warn('[installReferrer] native call threw', e);
       finish();
     }

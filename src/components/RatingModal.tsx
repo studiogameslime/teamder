@@ -25,6 +25,7 @@ import { PlayerIdentity } from './PlayerIdentity';
 import { RatingStars } from './RatingStars';
 import { ratingsService } from '@/services/ratingsService';
 import { userService } from '@/services';
+import { logError } from '@/services/errorLog';
 import type { RatingValue, User } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -118,6 +119,13 @@ export function RatingModal({
       onChanged?.();
       onClose();
     } catch (err) {
+      logError('ratePlayerInGroup', err, {
+        screen: 'RatingModal',
+        groupId,
+        raterUserId,
+        ratedUserId,
+        rating: selected,
+      });
       toast.error(String((err as Error).message ?? err));
     } finally {
       setBusy(false);
@@ -138,6 +146,12 @@ export function RatingModal({
       // Without this catch, a failed delete would silently close the
       // modal and the user would think the rating was cleared while
       // the doc still lives in Firestore.
+      logError('clearMyVote', err, {
+        screen: 'RatingModal',
+        groupId,
+        raterUserId,
+        ratedUserId,
+      });
       toast.error(String((err as Error).message ?? err));
     } finally {
       setBusy(false);

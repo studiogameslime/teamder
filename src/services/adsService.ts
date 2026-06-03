@@ -17,6 +17,7 @@
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import { logError } from '@/services/errorLog';
 
 // Google's official AdMob TEST app ID. Anyone building the iOS target
 // against this value gets test responses (or none) in production —
@@ -167,6 +168,7 @@ function loadAdsMod(): AdsModule | null {
     const mod = require(moduleName);
     adsMod = mod && typeof mod === 'object' ? (mod as AdsModule) : null;
   } catch (err) {
+    logError('adsLoadModule', err, {});
     if (__DEV__) console.warn('[ads] native module not available — ads disabled', err);
     adsMod = null;
   }
@@ -257,6 +259,7 @@ export const adsService = {
       try {
         mod = loadAdsMod();
       } catch (err) {
+        logError('adsInitLoadModule', err, {});
         if (__DEV__) console.warn('[ads] loadAdsMod threw', err);
         return;
       }
@@ -280,6 +283,7 @@ export const adsService = {
           appOpenAdHandle.load();
         }
       } catch (err) {
+        logError('initializeAds', err, {});
         if (__DEV__) console.warn('[ads] initializeAds failed', err);
       }
     } finally {
@@ -305,6 +309,7 @@ export const adsService = {
       appOpenShownThisSession = true;
       await appOpenAdHandle.show();
     } catch (err) {
+      logError('showAppOpenAd', err, {});
       if (__DEV__) console.warn('[ads] showAppOpenAdIfAvailable failed', err);
     }
   },
@@ -389,6 +394,7 @@ export function BannerAd(): React.ReactElement | null {
           },
           onAdFailedToLoad: (err: unknown) => {
             const { code, message } = decodeAdError(err);
+            logError('bannerAdFailedToLoad', err, { code, message });
             if (__DEV__) console.warn('[ads] BANNER FAILED', code, message, err);
             if (DEBUG_VISIBLE)
               setAdDebugStatus({ kind: 'failed', code, message });

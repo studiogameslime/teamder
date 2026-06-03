@@ -36,6 +36,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
+import { logError, logUnexpected } from '@/services/errorLog';
 import {
   isValidIsraeliPhone,
   openWhatsApp,
@@ -91,6 +92,12 @@ export function CommunityDetailsPublicScreen() {
       ]);
       setGroup(g);
       setUpcomingGames(games);
+    } catch (err) {
+      logError('communityPublicReload', err, {
+        screen: 'CommunityDetailsPublicScreen',
+        groupId,
+      });
+      if (__DEV__) console.warn('[communityPublic] reload failed', err);
     } finally {
       setLoading(false);
     }
@@ -184,6 +191,26 @@ export function CommunityDetailsPublicScreen() {
     setBusyJoin(true);
     try {
       const status = await requestJoinById(group.id, me.id);
+      // Silent-failure guard: requestJoinById updates the group store in
+      // place (pending → adds to pendingGroups; joined → re-hydrates
+      // memberGroups). Read the FRESHLY-SET store snapshot via getState()
+      // — no new Firestore read — and assert the expected membership/
+      // pending state materialised. The reactive `pendingGroups`/
+      // `memberGroups` closures captured at render time are stale here.
+      if (status === 'pending' || status === 'joined') {
+        const store = useGroupStore.getState();
+        const reflected =
+          store.groups.some((g) => g.id === group.id) ||
+          store.pendingGroups.some((g) => g.id === group.id);
+        if (!reflected) {
+          logUnexpected('communityJoinNotReflected', {
+            screen: 'CommunityDetailsPublicScreen',
+            groupId: group.id,
+            userId: me.id,
+            status,
+          });
+        }
+      }
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: group.id });
         toast.success(he.toastJoinRequestSent);
@@ -202,6 +229,11 @@ export function CommunityDetailsPublicScreen() {
       if (code === 'GROUP_FULL') {
         toast.error(he.toastGroupFull);
       } else {
+        logError('requestJoinGroup', err, {
+          screen: 'CommunityDetailsPublicScreen',
+          groupId: group.id,
+          userId: me?.id,
+        });
         if (__DEV__) console.warn('[communityPublic] join failed', err);
         toast.error(he.toastRequestFailed);
       }

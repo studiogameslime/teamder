@@ -23,6 +23,7 @@
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage } from '@/services/storage';
 import { USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 // Native-module loading: expo-store-review's native side may be
 // missing from older dev clients. Lazy-require so a missing module
@@ -116,6 +117,7 @@ export async function maybeRequestStoreReview(
     await StoreReview.requestReview();
     return true;
   } catch (err) {
+    logError('maybeRequestStoreReview', err, { trigger, contextId });
     if (__DEV__) console.warn('[storeReview] requestReview failed', err);
     return false;
   }

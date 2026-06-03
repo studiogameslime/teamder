@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -154,6 +155,13 @@ export function NotificationsSettingsScreen() {
       });
       nav.goBack();
     } catch (e) {
+      // savePreferences is a Firestore write with no logging of its own;
+      // a failed save would otherwise only surface as a transient Alert
+      // and vanish. Record it so the dashboard sees the failure.
+      logError('saveNotificationPrefs', e, {
+        screen: 'NotificationsSettingsScreen',
+        userId: user.id,
+      });
       Alert.alert(he.error, String((e as Error).message ?? e));
     } finally {
       setBusy(false);

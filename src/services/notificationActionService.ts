@@ -11,6 +11,7 @@
 import { waitForAuthRestore } from '@/firebase/auth';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 
 type Action = 'JOIN_GAME' | 'CANCEL_GAME';
 type SpotAction = 'CONFIRM_SPOT' | 'PASS_SPOT';
@@ -49,6 +50,7 @@ export async function handleGameReminderAction(
     // already started, capacity full. None should crash the
     // background task — the user will see the up-to-date state on
     // the next app launch.
+    logError('handleGameReminderAction', err, { action, gameId });
     if (__DEV__) {
       console.warn('[notifAction] failed', action, gameId, err);
     }
@@ -86,6 +88,7 @@ export async function handleSpotOfferAction(
     // Stale offer (admin already advanced, game cancelled, etc.):
     // swallow. The user will see the current state next time they
     // open the app.
+    logError('handleSpotOfferAction', err, { action, gameId });
     if (__DEV__) {
       console.warn('[notifAction] spot offer failed', action, gameId, err);
     }
@@ -146,6 +149,7 @@ export async function handleFillerOpportunityAction(
     // fillers, candidate already submitted interest. All resolved
     // by the CF returning a typed HttpsError; we swallow because
     // the candidate can still see status in-app on next open.
+    logError('handleFillerInterestAction', err, { action, gameId });
     if (__DEV__) {
       console.warn(
         '[notifAction] filler interest failed',

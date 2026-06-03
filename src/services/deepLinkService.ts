@@ -25,6 +25,7 @@
 
 import * as Linking from 'expo-linking';
 import { storage, type PendingInvite } from './storage';
+import { logError } from './errorLog';
 
 /** All hostnames + custom-scheme prefixes we treat as our invite links.
  *  The bare "teamder" subdomain was reserved by another Firebase project
@@ -85,7 +86,8 @@ export function parseInviteUrl(url: string): PendingInvite | null {
         ? invitedByRaw
         : undefined;
     return invitedBy ? { type, id, invitedBy } : { type, id };
-  } catch {
+  } catch (err) {
+    logError('parseInviteUrl', err, { url });
     return null;
   }
 }

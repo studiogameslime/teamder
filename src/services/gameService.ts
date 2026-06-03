@@ -55,7 +55,7 @@ import { geocodeAddress } from '@/services/geocodeService';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
-import { logError } from '@/services/errorLog';
+import { logError, logUnexpected } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
 import { disciplineService } from './disciplineService';
@@ -153,8 +153,14 @@ async function updateGameDoc(
   gameId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await updateDoc(docs.game(gameId), stripUndefined(patch) as any);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(docs.game(gameId), stripUndefined(patch) as any);
+  } catch (err) {
+    logError('updateGameDoc', err, { gameId, fields: Object.keys(patch) });
+    if (__DEV__) console.warn('[gameService] updateGameDoc failed', err);
+    throw err;
+  }
 }
 
 function ensureMockGame(): Game {
@@ -173,7 +179,14 @@ async function loadRoundsFor(gameId: string): Promise<MatchRound[]> {
     where('gameId', '==', gameId),
     orderBy('index', 'asc')
   );
-  const snap = await getDocs(q);
+  let snap;
+  try {
+    snap = await getDocs(q);
+  } catch (err) {
+    logError('loadRoundsFor', err, { gameId });
+    if (__DEV__) console.warn('[gameService] loadRoundsFor failed', err);
+    throw err;
+  }
   return snap.docs.map((d) => {
     const r = d.data();
     // Strip the storage-only fields back to MatchRound shape
@@ -205,9 +218,18 @@ async function findOverlappingGameInGroup(
   const upper = startsAt + GAME_OVERLAP_WINDOW_MS;
   // Single equality query on `groupId` (auto-indexed). Status + window
   // filters run client-side so we don't need a composite index.
-  const snap = await getDocs(
-    query(col.games(), where('groupId', '==', groupId)),
-  );
+  let snap;
+  try {
+    snap = await getDocs(
+      query(col.games(), where('groupId', '==', groupId)),
+    );
+  } catch (err) {
+    logError('findOverlappingGameInGroup', err, { groupId, startsAt });
+    if (__DEV__) {
+      console.warn('[gameService] findOverlappingGameInGroup failed', err);
+    }
+    throw err;
+  }
   const candidates = snap.docs
     .map((d) => d.data())
     .filter((g) => {
@@ -305,14 +327,22 @@ export const gameService = {
       orderBy('startsAt', 'desc'),
       limit(3)
     );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const docData = snap.docs
-      .map((d) => d.data())
-      .find((g) => !isStaleAfterStart({ ...g, matches: [] } as Game));
-    if (!docData) return null;
-    const matches = await loadRoundsFor(docData.id);
-    return { ...docData, matches };
+    try {
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+      const docData = snap.docs
+        .map((d) => d.data())
+        .find((g) => !isStaleAfterStart({ ...g, matches: [] } as Game));
+      if (!docData) return null;
+      const matches = await loadRoundsFor(docData.id);
+      return { ...docData, matches };
+    } catch (err) {
+      logError('getActiveGameForGroup', err, { groupId });
+      if (__DEV__) {
+        console.warn('[gameService] getActiveGameForGroup failed', err);
+      }
+      throw err;
+    }
   },
 
   /**
@@ -332,30 +362,36 @@ export const gameService = {
     const { auth } = getFirebase();
     if (!auth.currentUser) throw new Error('createGame: not signed in');
 
-    const ref = await addDoc(col.games(), {
-      id: '', // converter ignores; Firestore generates the real id
-      groupId,
-      title: 'משחק כדורגל',
-      startsAt: nextThursdayAt(20, 0),
-      fieldName,
-      maxPlayers: 15,
-      players: [],
-      waitlist: [],
-      status: 'open',
-      locked: false,
-      currentMatchIndex: 0,
-      createdAt: Date.now(),
-    } as GameDoc);
-    const fresh = await getDoc(ref);
-    // Defensive: a freshly-written doc *should* be readable on the same
-    // region, but transient replication lag or a concurrent rule
-    // rejection can return an empty snapshot. Fail with a clear error
-    // instead of crashing on `.data()!`.
-    if (!fresh.exists()) {
-      throw new Error('createGame: freshly-created game not found');
+    try {
+      const ref = await addDoc(col.games(), {
+        id: '', // converter ignores; Firestore generates the real id
+        groupId,
+        title: 'משחק כדורגל',
+        startsAt: nextThursdayAt(20, 0),
+        fieldName,
+        maxPlayers: 15,
+        players: [],
+        waitlist: [],
+        status: 'open',
+        locked: false,
+        currentMatchIndex: 0,
+        createdAt: Date.now(),
+      } as GameDoc);
+      const fresh = await getDoc(ref);
+      // Defensive: a freshly-written doc *should* be readable on the same
+      // region, but transient replication lag or a concurrent rule
+      // rejection can return an empty snapshot. Fail with a clear error
+      // instead of crashing on `.data()!`.
+      if (!fresh.exists()) {
+        throw new Error('createGame: freshly-created game not found');
+      }
+      const data = fresh.data();
+      return { ...data, matches: [] };
+    } catch (err) {
+      logError('createGameLegacy', err, { groupId, fieldName });
+      if (__DEV__) console.warn('[gameService] createGame failed', err);
+      throw err;
     }
-    const data = fresh.data();
-    return { ...data, matches: [] };
   },
 
   async listPlayers(): Promise<Player[]> {
@@ -397,7 +433,19 @@ export const gameService = {
       orderBy('startsAt', 'desc'),
       limit(50),
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('getCommunityPlayerStats', err, {
+        groupId,
+        userCount: userIds.length,
+      });
+      if (__DEV__) {
+        console.warn('[gameService] getCommunityPlayerStats failed', err);
+      }
+      throw err;
+    }
     const requestedSet = new Set(userIds);
     for (const doc of snap.docs) {
       const g = doc.data();
@@ -452,7 +500,14 @@ export const gameService = {
       col.games(),
       where('participantIds', 'array-contains', uidA),
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('getPairStats', err, { uidA, uidB, groupId });
+      if (__DEV__) console.warn('[gameService] getPairStats failed', err);
+      throw err;
+    }
     const acc = { ...zero };
     for (const doc of snap.docs) {
       const g = doc.data();
@@ -520,7 +575,14 @@ export const gameService = {
       orderBy('startsAt', 'desc'),
       limit(200),
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('getCommunityStats', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getCommunityStats failed', err);
+      throw err;
+    }
     let totalFinished = 0;
     let totalCancelled = 0;
     let attendanceSum = 0;
@@ -596,7 +658,14 @@ export const gameService = {
       orderBy('startsAt', 'desc'),
       limit(20)
     );
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      logError('getHistory', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getHistory failed', err);
+      throw err;
+    }
     return Promise.all(
       snap.docs.map(async (d) => {
         const g = d.data();
@@ -664,7 +733,16 @@ export const gameService = {
       });
     });
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (err) {
+      logError('saveGame', err, {
+        gameId: next.id,
+        roundCount: next.matches.length,
+      });
+      if (__DEV__) console.warn('[gameService] saveGame failed', err);
+      throw err;
+    }
   },
 
   // ── Phase 4: multi-game queries + actions ───────────────────────────────
@@ -715,11 +793,17 @@ export const gameService = {
         seen.add(d.id);
         all.push({ ...d.data(), matches: [] });
       }
-    } else if (__DEV__) {
-      console.warn(
-        '[gameService] getMyGames: participantIds query failed',
-        participatingResult.reason,
-      );
+    } else {
+      logError('getMyGames', participatingResult.reason, {
+        userId,
+        query: 'participantIds',
+      });
+      if (__DEV__) {
+        console.warn(
+          '[gameService] getMyGames: participantIds query failed',
+          participatingResult.reason,
+        );
+      }
     }
     if (createdResult.status === 'fulfilled') {
       for (const d of createdResult.value.docs) {
@@ -727,11 +811,17 @@ export const gameService = {
         seen.add(d.id);
         all.push({ ...d.data(), matches: [] });
       }
-    } else if (__DEV__) {
-      console.warn(
-        '[gameService] getMyGames: createdBy query failed',
-        createdResult.reason,
-      );
+    } else {
+      logError('getMyGames', createdResult.reason, {
+        userId,
+        query: 'createdBy',
+      });
+      if (__DEV__) {
+        console.warn(
+          '[gameService] getMyGames: createdBy query failed',
+          createdResult.reason,
+        );
+      }
     }
     return all
       .filter((g) => g.status === 'open')
@@ -789,11 +879,17 @@ export const gameService = {
         seen.add(d.id);
         all.push({ ...d.data(), matches: [] });
       }
-    } else if (__DEV__) {
-      console.warn(
-        '[gameService] getMyLiveOrUpcomingGames: participantIds query failed',
-        participatingResult.reason,
-      );
+    } else {
+      logError('getMyLiveOrUpcomingGames', participatingResult.reason, {
+        userId,
+        query: 'participantIds',
+      });
+      if (__DEV__) {
+        console.warn(
+          '[gameService] getMyLiveOrUpcomingGames: participantIds query failed',
+          participatingResult.reason,
+        );
+      }
     }
     if (createdResult.status === 'fulfilled') {
       for (const d of createdResult.value.docs) {
@@ -801,11 +897,17 @@ export const gameService = {
         seen.add(d.id);
         all.push({ ...d.data(), matches: [] });
       }
-    } else if (__DEV__) {
-      console.warn(
-        '[gameService] getMyLiveOrUpcomingGames: createdBy query failed',
-        createdResult.reason,
-      );
+    } else {
+      logError('getMyLiveOrUpcomingGames', createdResult.reason, {
+        userId,
+        query: 'createdBy',
+      });
+      if (__DEV__) {
+        console.warn(
+          '[gameService] getMyLiveOrUpcomingGames: createdBy query failed',
+          createdResult.reason,
+        );
+      }
     }
     return all
       .filter((g) => LIVE_STATUSES.includes(g.status))
@@ -874,6 +976,7 @@ export const gameService = {
       );
     };
     const onErr = (err: unknown) => {
+      logError('subscribeMyLiveOrUpcomingGames', err, { userId });
       if (__DEV__) {
         console.warn(
           '[gameService] subscribeMyLiveOrUpcomingGames error',
@@ -936,11 +1039,21 @@ export const gameService = {
     for (let i = 0; i < communityIds.length; i += 30) {
       chunks.push(communityIds.slice(i, i + 30));
     }
-    const snaps = await Promise.all(
-      chunks.map((c) =>
-        getDocs(query(col.games(), where('groupId', 'in', c))),
-      ),
-    );
+    let snaps;
+    try {
+      snaps = await Promise.all(
+        chunks.map((c) =>
+          getDocs(query(col.games(), where('groupId', 'in', c))),
+        ),
+      );
+    } catch (err) {
+      logError('getCommunityGames', err, {
+        userId,
+        communityCount: communityIds.length,
+      });
+      if (__DEV__) console.warn('[gameService] getCommunityGames failed', err);
+      throw err;
+    }
     const out: Game[] = [];
     const seen = new Set<string>();
     snaps.forEach((s) =>
@@ -1001,13 +1114,25 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    const snap = await getDocs(
-      query(
-        col.games(),
-        where('groupId', '==', groupId),
-        where('visibility', '==', 'public'),
-      ),
-    );
+    let snap;
+    try {
+      snap = await getDocs(
+        query(
+          col.games(),
+          where('groupId', '==', groupId),
+          where('visibility', '==', 'public'),
+        ),
+      );
+    } catch (err) {
+      logError('getUpcomingPublicGamesForGroup', err, { groupId });
+      if (__DEV__) {
+        console.warn(
+          '[gameService] getUpcomingPublicGamesForGroup failed',
+          err,
+        );
+      }
+      throw err;
+    }
     const out: Game[] = [];
     snap.docs.forEach((d) => {
       const data = d.data();
@@ -1032,9 +1157,18 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    const snap = await getDocs(
-      query(col.games(), where('groupId', '==', groupId)),
-    );
+    let snap;
+    try {
+      snap = await getDocs(
+        query(col.games(), where('groupId', '==', groupId)),
+      );
+    } catch (err) {
+      logError('getUpcomingGamesForGroup', err, { groupId });
+      if (__DEV__) {
+        console.warn('[gameService] getUpcomingGamesForGroup failed', err);
+      }
+      throw err;
+    }
     const out: Game[] = [];
     snap.docs.forEach((d) => {
       const data = d.data();
@@ -1077,9 +1211,19 @@ export const gameService = {
     // Firebase: equality query on the canonical visibility field
     // (auto-indexed). status / startsAt / participation filters run
     // client-side so we don't need a composite index.
-    const snap = await getDocs(
-      query(col.games(), where('visibility', '==', 'public')),
-    );
+    let snap;
+    try {
+      snap = await getDocs(
+        query(col.games(), where('visibility', '==', 'public')),
+      );
+    } catch (err) {
+      logError('getOpenGames', err, {
+        userId,
+        excludeCount: excludeCommunityIds.length,
+      });
+      if (__DEV__) console.warn('[gameService] getOpenGames failed', err);
+      throw err;
+    }
     return snap.docs
       .map((d) => ({ ...d.data(), matches: [] }))
       .filter(
@@ -1315,6 +1459,23 @@ export const gameService = {
       createdAt: now,
       updatedAt: now,
     };
+    // Silent-failure guard: when the creator is supposed to be
+    // auto-registered (quick / orphan-context games), the in-memory
+    // doc we're about to write MUST list them in both players and
+    // participantIds. If a future refactor of `base` drops that, the
+    // game would be born as a ghost with the creator missing — surface
+    // it in the admin panel rather than letting it pass silently.
+    if (
+      autoSelfRegister &&
+      (!initialPlayers.includes(input.createdBy) ||
+        !initialParticipantIds.includes(input.createdBy))
+    ) {
+      logUnexpected('createGameCreatorNotRegistered', {
+        gameId: '',
+        createdBy: input.createdBy,
+        groupId: input.groupId,
+      });
+    }
     let createdId: string;
     if (USE_MOCK_DATA) {
       const game: Game = { id: `gv2-${now}`, ...base };
@@ -1380,6 +1541,12 @@ export const gameService = {
           return undefined;
         })
         .catch((err) => {
+          logError('createGameGeocode', err, {
+            gameId: createdId,
+            groupId: input.groupId,
+            fieldAddress: input.fieldAddress,
+            city: input.city,
+          });
           if (__DEV__) console.warn('[createGameV2] geocode failed', err);
         });
     }
@@ -1508,7 +1675,14 @@ export const gameService = {
           }
         : null;
     } else {
-      const snap = await getDoc(docs.game(gameId));
+      let snap;
+      try {
+        snap = await getDoc(docs.game(gameId));
+      } catch (err) {
+        logError('updateGameV2', err, { gameId, fields: Object.keys(patch) });
+        if (__DEV__) console.warn('[gameService] updateGameV2 read failed', err);
+        throw err;
+      }
       const d = snap.exists() ? snap.data() : null;
       existing = d
         ? {
@@ -1716,10 +1890,17 @@ export const gameService = {
     } else {
       try {
         captureRoster((await getDoc(docs.game(gameId))).data());
-      } catch {
+      } catch (err) {
+        logError('deleteGameCaptureRoster', err, { gameId });
         /* best-effort — still delete + dispatch with whatever we captured */
       }
-      await deleteDoc(docs.game(gameId));
+      try {
+        await deleteDoc(docs.game(gameId));
+      } catch (err) {
+        logError('deleteGame', err, { gameId });
+        if (__DEV__) console.warn('[gameService] deleteGame failed', err);
+        throw err;
+      }
     }
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
@@ -1813,13 +1994,25 @@ export const gameService = {
       // (`participantIds` auto-index), so this adds zero infra cost.
       // limit() bounds worst-case scan; a typical user is in < 10
       // active games so this rarely truncates real data.
-      const snap = await getDocs(
-        query(
-          col.games(),
-          where('participantIds', 'array-contains', userId),
-          limit(CONFLICT_QUERY_LIMIT),
-        ),
-      );
+      let snap;
+      try {
+        snap = await getDocs(
+          query(
+            col.games(),
+            where('participantIds', 'array-contains', userId),
+            limit(CONFLICT_QUERY_LIMIT),
+          ),
+        );
+      } catch (err) {
+        logError('findRegistrationConflict', err, {
+          userId,
+          targetGameId: targetGame.id,
+        });
+        if (__DEV__) {
+          console.warn('[gameService] findRegistrationConflict failed', err);
+        }
+        throw err;
+      }
       return snap.docs.map((d) => ({ ...d.data(), matches: [] } as Game));
     })();
 
@@ -1951,6 +2144,21 @@ export const gameService = {
         g.cancellations = Object.keys(rest).length > 0 ? rest : undefined;
       }
       g.updatedAt = Date.now();
+      // Silent-failure guard: the join must have placed the user in
+      // exactly one bucket. None → no-op join, surface it.
+      if (
+        !g.players.includes(userId) &&
+        !g.waitlist.includes(userId) &&
+        !(g.pending ?? []).includes(userId)
+      ) {
+        logUnexpected('joinDidNotAddUser', {
+          gameId,
+          userId,
+          requiresApproval: g.requiresApproval,
+          occupancy,
+          maxPlayers: g.maxPlayers,
+        });
+      }
       // Phase 3: count this as a "game joined" for achievements. Pending
       // bucket is excluded — those joins haven't actually been admitted.
       if (bucket !== 'pending') {
@@ -2165,6 +2373,23 @@ export const gameService = {
         allDocKeys: Object.keys(data),
       };
       lastUpdates = { ...updates, fields: Object.keys(updates) };
+      // Silent-failure guard: a join must land the user in exactly one
+      // bucket. If the in-memory post-write arrays contain them in NONE,
+      // the write would be a no-op join — log it (we still commit `updates`
+      // so behaviour is unchanged).
+      if (
+        !nextP.includes(userId) &&
+        !nextW.includes(userId) &&
+        !nextPe.includes(userId)
+      ) {
+        logUnexpected('joinDidNotAddUser', {
+          gameId,
+          userId,
+          requiresApproval: data.requiresApproval,
+          occupancy,
+          maxPlayers: data.maxPlayers,
+        });
+      }
       // tx.update bypasses the converter so only the keys we changed
       // land in affectedKeys() — critical for the self-join rule which
       // whitelists ['players','waitlist','pending','participantIds',
@@ -2536,6 +2761,22 @@ export const gameService = {
       g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
       g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
+      // Silent-failure guard: a cancel must REMOVE the user from every
+      // roster array. If they linger in any, the cancel didn't take.
+      const cancelStillIn = g.players.includes(userId)
+        ? 'players'
+        : g.waitlist.includes(userId)
+          ? 'waitlist'
+          : (g.pending ?? []).includes(userId)
+            ? 'pending'
+            : null;
+      if (cancelStillIn) {
+        logUnexpected('cancelDidNotRemoveUser', {
+          gameId,
+          userId,
+          where: cancelStillIn,
+        });
+      }
       if (offeredUid) {
         notificationsService.dispatch({
           type: 'spotOffered',
@@ -2646,6 +2887,25 @@ export const gameService = {
         JSON.stringify(pendingPromotion ?? null);
       if (offerChanged) {
         update.pendingPromotion = pendingPromotion;
+      }
+      // Silent-failure guard: a cancel must REMOVE the user from every
+      // roster array. `players/waitlist/pending` here are the post-filter
+      // arrays we're about to write; if the user still appears in any,
+      // the cancel didn't take. We still commit `update` (behaviour
+      // unchanged) and surface the anomaly to the admin panel.
+      const cancelStillIn = players.includes(userId)
+        ? 'players'
+        : waitlist.includes(userId)
+          ? 'waitlist'
+          : pending.includes(userId)
+            ? 'pending'
+            : null;
+      if (cancelStillIn) {
+        logUnexpected('cancelDidNotRemoveUser', {
+          gameId,
+          userId,
+          where: cancelStillIn,
+        });
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tx.update(ref, update as any);
@@ -2920,7 +3180,9 @@ export const gameService = {
   async adminAdvanceOffer(gameId: string): Promise<void> {
     const { db } = getFirebase();
     const ref = docs.game(gameId);
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return { ok: false as const };
       const data = snap.data();
@@ -2960,7 +3222,12 @@ export const gameService = {
         startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
         nextOfferUid: nextOffer?.uid ?? null,
       };
-    });
+      });
+    } catch (err) {
+      logError('adminAdvanceOffer', err, { gameId });
+      if (__DEV__) console.warn('[gameService] adminAdvanceOffer failed', err);
+      throw err;
+    }
     if (!result.ok) return; // no-op when there's nothing to advance
     if (result.nextOfferUid) {
       notificationsService.dispatch({
@@ -3034,6 +3301,22 @@ export const gameService = {
           (id) => id !== userId,
         );
         g.updatedAt = Date.now();
+        // Silent-failure guard: this sweep must REMOVE the leaving user
+        // from every roster array. If they linger, the removal didn't take.
+        const leaveStillIn = g.players.includes(userId)
+          ? 'players'
+          : g.waitlist.includes(userId)
+            ? 'waitlist'
+            : (g.pending ?? []).includes(userId)
+              ? 'pending'
+              : null;
+        if (leaveStillIn) {
+          logUnexpected('cancelDidNotRemoveUser', {
+            gameId: g.id,
+            userId,
+            where: leaveStillIn,
+          });
+        }
         if (promotedUid) {
           notificationsService.dispatch({
             type: 'spotOpened',
@@ -3119,6 +3402,25 @@ export const gameService = {
             ...((d.cancellations as Record<string, number> | undefined) ?? {}),
             [userId]: Date.now(),
           };
+          // Silent-failure guard: this sweep must REMOVE the leaving user
+          // from every roster array. `players/waitlist/pending` here are
+          // the post-filter arrays we're about to write (the promoted user
+          // is waitlist[0], never `userId`); if `userId` still appears, the
+          // removal didn't take. We still commit (behaviour unchanged).
+          const leaveStillIn = players.includes(userId)
+            ? 'players'
+            : waitlist.includes(userId)
+              ? 'waitlist'
+              : pending.includes(userId)
+                ? 'pending'
+                : null;
+          if (leaveStillIn) {
+            logUnexpected('cancelDidNotRemoveUser', {
+              gameId: gd.id,
+              userId,
+              where: leaveStillIn,
+            });
+          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           tx.update(ref, {
             players,
@@ -3185,18 +3487,26 @@ export const gameService = {
       g.locked = true;
       g.updatedAt = Date.now();
     } else {
-      const ref = docs.game(gameId);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) return;
-      const status = snap.data().status;
-      // Don't re-dispatch if a terminal state already landed; the
-      // fan-out notification has already been written.
-      if (status === 'cancelled' || status === 'finished') return;
-      // updateDoc bypasses the converter; see `setLiveMatch` note.
-      await updateDoc(ref, {
-        status: 'cancelled',
-        updatedAt: Date.now(),
-      });
+      try {
+        const ref = docs.game(gameId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        const status = snap.data().status;
+        // Don't re-dispatch if a terminal state already landed; the
+        // fan-out notification has already been written.
+        if (status === 'cancelled' || status === 'finished') return;
+        // updateDoc bypasses the converter; see `setLiveMatch` note.
+        await updateDoc(ref, {
+          status: 'cancelled',
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        logError('cancelGameByAdmin', err, { gameId });
+        if (__DEV__) {
+          console.warn('[gameService] cancelGameByAdmin failed', err);
+        }
+        throw err;
+      }
     }
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
@@ -3251,30 +3561,36 @@ export const gameService = {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('setVisibility: not signed in');
 
-    const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) throw new Error('setVisibility: game not found');
-    const game = snap.data();
-    if (game.status !== 'open') {
-      throw new Error('setVisibility: game is not in open status');
-    }
-    // Admin = creator OR group admin. Group lookup pulls the parent
-    // doc once; cheaper than doing it server-side per query.
-    const isCreator = game.createdBy === uid;
-    let isGroupAdmin = false;
-    if (!isCreator) {
-      const groupSnap = await getDoc(docs.group(game.groupId));
-      if (groupSnap.exists()) {
-        isGroupAdmin = (groupSnap.data().adminIds ?? []).includes(uid);
+    try {
+      const ref = docs.game(gameId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) throw new Error('setVisibility: game not found');
+      const game = snap.data();
+      if (game.status !== 'open') {
+        throw new Error('setVisibility: game is not in open status');
       }
+      // Admin = creator OR group admin. Group lookup pulls the parent
+      // doc once; cheaper than doing it server-side per query.
+      const isCreator = game.createdBy === uid;
+      let isGroupAdmin = false;
+      if (!isCreator) {
+        const groupSnap = await getDoc(docs.group(game.groupId));
+        if (groupSnap.exists()) {
+          isGroupAdmin = (groupSnap.data().adminIds ?? []).includes(uid);
+        }
+      }
+      if (!isCreator && !isGroupAdmin) {
+        throw new Error('setVisibility: not authorised');
+      }
+      await updateDoc(ref, {
+        visibility,
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('setVisibility', err, { gameId, visibility, uid });
+      if (__DEV__) console.warn('[gameService] setVisibility failed', err);
+      throw err;
     }
-    if (!isCreator && !isGroupAdmin) {
-      throw new Error('setVisibility: not authorised');
-    }
-    await updateDoc(ref, {
-      visibility,
-      updatedAt: Date.now(),
-    });
   },
 
   /**
@@ -3294,11 +3610,17 @@ export const gameService = {
       g.updatedAt = Date.now();
       return;
     }
-    const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    if (snap.data().status !== 'open') return;
-    await updateDoc(ref, { status: 'locked', updatedAt: Date.now() });
+    try {
+      const ref = docs.game(gameId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      if (snap.data().status !== 'open') return;
+      await updateDoc(ref, { status: 'locked', updatedAt: Date.now() });
+    } catch (err) {
+      logError('lockRegistration', err, { gameId });
+      if (__DEV__) console.warn('[gameService] lockRegistration failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3327,32 +3649,38 @@ export const gameService = {
       g.updatedAt = Date.now();
       return;
     }
-    const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    if (
-      data.status === 'active' ||
-      data.status === 'finished' ||
-      data.status === 'cancelled'
-    ) {
-      return;
+    try {
+      const ref = docs.game(gameId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (
+        data.status === 'active' ||
+        data.status === 'finished' ||
+        data.status === 'cancelled'
+      ) {
+        return;
+      }
+      const liveMatch = {
+        ...(data.liveMatch ?? {
+          phase: 'organizing',
+          assignments: {},
+          benchOrder: [],
+          scoreA: 0,
+          scoreB: 0,
+        }),
+        phase: 'roundReady' as const,
+      };
+      await updateDoc(ref, {
+        status: 'active',
+        liveMatch,
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('startEvening', err, { gameId });
+      if (__DEV__) console.warn('[gameService] startEvening failed', err);
+      throw err;
     }
-    const liveMatch = {
-      ...(data.liveMatch ?? {
-        phase: 'organizing',
-        assignments: {},
-        benchOrder: [],
-        scoreA: 0,
-        scoreB: 0,
-      }),
-      phase: 'roundReady' as const,
-    };
-    await updateDoc(ref, {
-      status: 'active',
-      liveMatch,
-      updatedAt: Date.now(),
-    });
   },
 
   /**
@@ -3392,28 +3720,34 @@ export const gameService = {
       g.updatedAt = Date.now();
       return;
     }
-    const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    if (data.status === 'finished' || data.status === 'cancelled') return;
-    const prev = data.liveMatch ?? {
-      phase: 'organizing' as const,
-      assignments: {},
-      benchOrder: [],
-      scoreA: 0,
-      scoreB: 0,
-    };
-    const liveMatch = {
-      ...prev,
-      phase: 'roundRunning' as const,
-      startedAt: prev.startedAt ?? Date.now(),
-    };
-    await updateDoc(ref, {
-      status: 'active',
-      liveMatch,
-      updatedAt: Date.now(),
-    });
+    try {
+      const ref = docs.game(gameId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === 'finished' || data.status === 'cancelled') return;
+      const prev = data.liveMatch ?? {
+        phase: 'organizing' as const,
+        assignments: {},
+        benchOrder: [],
+        scoreA: 0,
+        scoreB: 0,
+      };
+      const liveMatch = {
+        ...prev,
+        phase: 'roundRunning' as const,
+        startedAt: prev.startedAt ?? Date.now(),
+      };
+      await updateDoc(ref, {
+        status: 'active',
+        liveMatch,
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('markGameStarted', err, { gameId });
+      if (__DEV__) console.warn('[gameService] markGameStarted failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3450,28 +3784,34 @@ export const gameService = {
       return;
     }
     const ref = docs.game(gameId);
-    await runTransaction(getFirebase().db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      if (data.status === 'finished' || data.status === 'cancelled') return;
-      const prev = data.liveMatch;
-      if (!prev) return;
-      // Already running — second admin pressing play is a no-op.
-      if (prev.timerRunning) return;
-      const next = {
-        ...prev,
-        timerRunning: true,
-        timerLastStartedAt: Date.now(),
-        timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
-        timerControlledBy: userId,
-        timerControlledByName: userName,
-      };
-      tx.update(ref, {
-        liveMatch: next,
-        updatedAt: Date.now(),
+    try {
+      await runTransaction(getFirebase().db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.status === 'finished' || data.status === 'cancelled') return;
+        const prev = data.liveMatch;
+        if (!prev) return;
+        // Already running — second admin pressing play is a no-op.
+        if (prev.timerRunning) return;
+        const next = {
+          ...prev,
+          timerRunning: true,
+          timerLastStartedAt: Date.now(),
+          timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
+          timerControlledBy: userId,
+          timerControlledByName: userName,
+        };
+        tx.update(ref, {
+          liveMatch: next,
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (err) {
+      logError('startTimer', err, { gameId, userId });
+      if (__DEV__) console.warn('[gameService] startTimer failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3503,29 +3843,36 @@ export const gameService = {
       return;
     }
     const ref = docs.game(gameId);
-    await runTransaction(getFirebase().db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      if (data.status === 'finished' || data.status === 'cancelled') return;
-      const prev = data.liveMatch;
-      if (!prev) return;
-      // Already paused — second admin pressing pause is a no-op.
-      if (!prev.timerRunning || !prev.timerLastStartedAt) return;
-      const extra = Date.now() - prev.timerLastStartedAt;
-      const next = {
-        ...prev,
-        timerRunning: false,
-        timerLastStartedAt: null,
-        timerAccumulatedMs: (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
-        timerControlledBy: userId,
-        timerControlledByName: userName,
-      };
-      tx.update(ref, {
-        liveMatch: next,
-        updatedAt: Date.now(),
+    try {
+      await runTransaction(getFirebase().db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.status === 'finished' || data.status === 'cancelled') return;
+        const prev = data.liveMatch;
+        if (!prev) return;
+        // Already paused — second admin pressing pause is a no-op.
+        if (!prev.timerRunning || !prev.timerLastStartedAt) return;
+        const extra = Date.now() - prev.timerLastStartedAt;
+        const next = {
+          ...prev,
+          timerRunning: false,
+          timerLastStartedAt: null,
+          timerAccumulatedMs:
+            (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
+          timerControlledBy: userId,
+          timerControlledByName: userName,
+        };
+        tx.update(ref, {
+          liveMatch: next,
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (err) {
+      logError('pauseTimer', err, { gameId, userId });
+      if (__DEV__) console.warn('[gameService] pauseTimer failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3557,26 +3904,32 @@ export const gameService = {
       return;
     }
     const ref = docs.game(gameId);
-    await runTransaction(getFirebase().db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      if (data.status === 'finished' || data.status === 'cancelled') return;
-      const prev = data.liveMatch;
-      if (!prev) return;
-      const next = {
-        ...prev,
-        timerRunning: false,
-        timerLastStartedAt: null,
-        timerAccumulatedMs: 0,
-        timerControlledBy: userId,
-        timerControlledByName: userName,
-      };
-      tx.update(ref, {
-        liveMatch: next,
-        updatedAt: Date.now(),
+    try {
+      await runTransaction(getFirebase().db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.status === 'finished' || data.status === 'cancelled') return;
+        const prev = data.liveMatch;
+        if (!prev) return;
+        const next = {
+          ...prev,
+          timerRunning: false,
+          timerLastStartedAt: null,
+          timerAccumulatedMs: 0,
+          timerControlledBy: userId,
+          timerControlledByName: userName,
+        };
+        tx.update(ref, {
+          liveMatch: next,
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (err) {
+      logError('resetTimer', err, { gameId, userId });
+      if (__DEV__) console.warn('[gameService] resetTimer failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3597,20 +3950,26 @@ export const gameService = {
       g.updatedAt = Date.now();
       return;
     }
-    const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    if (data.status === 'finished' || data.status === 'cancelled') return;
-    const updates: Record<string, unknown> = {
-      status: 'finished',
-      updatedAt: Date.now(),
-    };
-    if (data.liveMatch) {
-      updates.liveMatch = { ...data.liveMatch, phase: 'finished' };
+    try {
+      const ref = docs.game(gameId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === 'finished' || data.status === 'cancelled') return;
+      const updates: Record<string, unknown> = {
+        status: 'finished',
+        updatedAt: Date.now(),
+      };
+      if (data.liveMatch) {
+        updates.liveMatch = { ...data.liveMatch, phase: 'finished' };
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateDoc(ref, updates as any);
+    } catch (err) {
+      logError('endEvening', err, { gameId });
+      if (__DEV__) console.warn('[gameService] endEvening failed', err);
+      throw err;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateDoc(ref, updates as any);
     logEvent(AnalyticsEvent.GameFinished, { gameId, byAdmin: true });
   },
 
@@ -3648,16 +4007,23 @@ export const gameService = {
     }
 
     const ref = docs.game(gameId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return { changed: false };
-    const data = snap.data();
-    const prev = (data.arrivals ?? {})[userId] ?? 'unknown';
-    if (prev === status) return { changed: false };
-    // updateDoc bypasses the converter; see `setLiveMatch` note.
-    await updateDoc(ref, {
-      arrivals: { ...(data.arrivals ?? {}), [userId]: status },
-      updatedAt: Date.now(),
-    });
+    let data;
+    try {
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return { changed: false };
+      data = snap.data();
+      const prev = (data.arrivals ?? {})[userId] ?? 'unknown';
+      if (prev === status) return { changed: false };
+      // updateDoc bypasses the converter; see `setLiveMatch` note.
+      await updateDoc(ref, {
+        arrivals: { ...(data.arrivals ?? {}), [userId]: status },
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      logError('setArrival', err, { gameId, userId, status });
+      if (__DEV__) console.warn('[gameService] setArrival failed', err);
+      throw err;
+    }
     await fireDisciplineForArrival(userId, gameId, data.startsAt, status);
     logEvent(AnalyticsEvent.ArrivalMarked, { gameId, status });
     return { changed: true };
@@ -3742,6 +4108,7 @@ export const gameService = {
         cb(snap.data().liveMatch ?? null);
       },
       (err) => {
+        logError('subscribeLiveMatch', err, { gameId });
         if (__DEV__) console.warn('[gameService] subscribeLiveMatch error', err);
       }
     );
@@ -3812,28 +4179,38 @@ export const gameService = {
     // capacity by racing concurrent guest additions or user joins.
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const snapForPerm = await getDoc(ref);
-    if (!snapForPerm.exists()) throw new Error('addGuest: game not found');
-    const permData = snapForPerm.data();
-    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+    try {
+      const snapForPerm = await getDoc(ref);
+      if (!snapForPerm.exists()) throw new Error('addGuest: game not found');
+      const permData = snapForPerm.data();
+      await assertGuestPermission(
+        permData.createdBy,
+        permData.groupId,
+        callerId,
+      );
 
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) throw new Error('addGuest: game not found');
-      const data = snap.data();
-      // Lifecycle guard mirrors firestore.rules: no guest mutations on
-      // a game that's already finished/locked.
-      if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
-      const playersLen = (data.players ?? []).length;
-      const guestsLen = (data.guests ?? []).length;
-      if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
-        throw new Error('GAME_FULL');
-      }
-      tx.update(ref, {
-        guests: [...(data.guests ?? []), guest],
-        updatedAt: Date.now(),
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('addGuest: game not found');
+        const data = snap.data();
+        // Lifecycle guard mirrors firestore.rules: no guest mutations on
+        // a game that's already finished/locked.
+        if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
+        const playersLen = (data.players ?? []).length;
+        const guestsLen = (data.guests ?? []).length;
+        if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
+          throw new Error('GAME_FULL');
+        }
+        tx.update(ref, {
+          guests: [...(data.guests ?? []), guest],
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (err) {
+      logError('addGuest', err, { gameId, callerId, name });
+      if (__DEV__) console.warn('[gameService] addGuest failed', err);
+      throw err;
+    }
     logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
     return guest;
   },
@@ -3900,30 +4277,40 @@ export const gameService = {
 
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const snapForPerm = await getDoc(ref);
-    if (!snapForPerm.exists()) throw new Error('updateGuest: game not found');
-    const permData = snapForPerm.data();
-    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+    try {
+      const snapForPerm = await getDoc(ref);
+      if (!snapForPerm.exists()) throw new Error('updateGuest: game not found');
+      const permData = snapForPerm.data();
+      await assertGuestPermission(
+        permData.createdBy,
+        permData.groupId,
+        callerId,
+      );
 
-    return await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) throw new Error('updateGuest: game not found');
-      const data = snap.data();
-      const guests = data.guests ?? [];
-      const idx = guests.findIndex((x) => x.id === guestId);
-      if (idx < 0) throw new Error('updateGuest: guest not found');
-      const updated = apply(guests[idx]);
-      const next = [
-        ...guests.slice(0, idx),
-        updated,
-        ...guests.slice(idx + 1),
-      ];
-      tx.update(ref, {
-        guests: next,
-        updatedAt: Date.now(),
+      return await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('updateGuest: game not found');
+        const data = snap.data();
+        const guests = data.guests ?? [];
+        const idx = guests.findIndex((x) => x.id === guestId);
+        if (idx < 0) throw new Error('updateGuest: guest not found');
+        const updated = apply(guests[idx]);
+        const next = [
+          ...guests.slice(0, idx),
+          updated,
+          ...guests.slice(idx + 1),
+        ];
+        tx.update(ref, {
+          guests: next,
+          updatedAt: Date.now(),
+        });
+        return updated;
       });
-      return updated;
-    });
+    } catch (err) {
+      logError('updateGuest', err, { gameId, callerId, guestId });
+      if (__DEV__) console.warn('[gameService] updateGuest failed', err);
+      throw err;
+    }
   },
 
   /**
@@ -3971,23 +4358,33 @@ export const gameService = {
 
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const snapForPerm = await getDoc(ref);
-    if (!snapForPerm.exists()) return;
-    const permData = snapForPerm.data();
-    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+    try {
+      const snapForPerm = await getDoc(ref);
+      if (!snapForPerm.exists()) return;
+      const permData = snapForPerm.data();
+      await assertGuestPermission(
+        permData.createdBy,
+        permData.groupId,
+        callerId,
+      );
 
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
-      const nextLive = stripFromLive(data.liveMatch);
-      tx.update(ref, {
-        guests: nextGuests,
-        ...(nextLive ? { liveMatch: nextLive } : {}),
-        updatedAt: Date.now(),
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const nextGuests = (data.guests ?? []).filter((x) => x.id !== guestId);
+        const nextLive = stripFromLive(data.liveMatch);
+        tx.update(ref, {
+          guests: nextGuests,
+          ...(nextLive ? { liveMatch: nextLive } : {}),
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (err) {
+      logError('removeGuest', err, { gameId, callerId, guestId });
+      if (__DEV__) console.warn('[gameService] removeGuest failed', err);
+      throw err;
+    }
     logEvent(AnalyticsEvent.GuestRemoved, { gameId });
   },
 };

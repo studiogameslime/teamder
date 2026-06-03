@@ -33,6 +33,7 @@ import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { isOpen, isTerminal as isTerminalGame } from '@/services/gameLifecycle';
 import {
   colors,
@@ -70,7 +71,11 @@ export function MatchManageScreen() {
     try {
       const g = await gameService.getGameById(gameId);
       setGame(g);
-    } catch {
+    } catch (err) {
+      logError('matchManageLoad', err, {
+        screen: 'MatchManageScreen',
+        gameId,
+      });
       setGame(null);
     } finally {
       setLoading(false);
@@ -141,6 +146,11 @@ export function MatchManageScreen() {
       await gameService.setVisibility(game.id, target);
       await reload();
     } catch (err) {
+      logError('matchSetVisibility', err, {
+        screen: 'MatchManageScreen',
+        gameId: game.id,
+        target,
+      });
       if (__DEV__) console.warn('[matchManage] setVisibility failed', err);
       toast.error(
         target === 'public'

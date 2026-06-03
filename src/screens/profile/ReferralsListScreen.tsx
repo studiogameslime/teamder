@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useUserStore } from '@/store/userStore';
 import { userService } from '@/services';
+import { logError } from '@/services/errorLog';
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -60,6 +61,12 @@ export function ReferralsListScreen() {
       // Never leave `rows` as null — that drives the perpetual spinner
       // (loading is derived from `rows === null`). On failure fall back to
       // an empty list so the user sees the empty state, not a frozen load.
+      // The empty state is indistinguishable from "genuinely no referrals",
+      // so without this the failed read would vanish — record it.
+      logError('loadReferrals', err, {
+        screen: 'ReferralsListScreen',
+        userId: currentUserId,
+      });
       if (__DEV__) console.warn('[referrals] load failed', err);
       setRows([]);
     }

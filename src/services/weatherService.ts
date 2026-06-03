@@ -7,6 +7,7 @@
 // in the future) resolve to `null` so the UI can hide the chip cleanly.
 
 import { Platform } from 'react-native';
+import { logError } from './errorLog';
 
 export interface WeatherForecast {
   /** Rounded temperature in degrees Celsius. */
@@ -83,6 +84,7 @@ async function geocodeCity(
     geocodeMemo.set(trimmed, out);
     return out;
   } catch (err) {
+    logError('weatherGeocodeCity', err, { name: trimmed });
     if (__DEV__) console.warn('[weather] geocode failed', err);
     geocodeMemo.set(trimmed, null);
     return null;
@@ -179,6 +181,7 @@ export async function getForecastFor(
     memo.set(key, out);
     return out;
   } catch (err) {
+    logError('getForecastFor', err, { lat, lng, startsAt });
     if (__DEV__) console.warn('[weather] fetch failed', err);
     memo.set(key, null);
     return null;

@@ -11,6 +11,7 @@ import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { groupService } from '@/services';
+import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -119,6 +120,10 @@ export function CommunityEditScreen() {
         setRevertSignal((n) => n + 1);
         return;
       }
+      logError('updateGroupMetadata', e, {
+        screen: 'CommunityEditScreen',
+        groupId: original.id,
+      });
       Alert.alert(he.error, String((e as Error).message ?? e));
     }
   };

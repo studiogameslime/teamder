@@ -12,6 +12,7 @@ import { he } from '@/i18n/he';
 import { GameSummary, TeamColor } from '@/types';
 import { gameService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { useCurrentGroup } from '@/store/groupStore';
 
 const TEAM_LABEL: Record<TeamColor, string> = {
@@ -50,6 +51,10 @@ export function HistoryScreen() {
       .catch((err) => {
         // Without this, a failed fetch silently shows the empty state
         // ("no history") — indistinguishable from genuinely having none.
+        logError('loadHistory', err, {
+          screen: 'HistoryScreen',
+          groupId: group.id,
+        });
         if (__DEV__) console.warn('[history] load failed', err);
       })
       .finally(() => {

@@ -37,6 +37,7 @@ import { Card } from '@/components/Card';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import { useGameStore } from '@/store/gameStore';
 import { useGroupStore } from '@/store/groupStore';
 import { useUserStore } from '@/store/userStore';
@@ -85,7 +86,11 @@ export function MatchPlayersScreen() {
         );
         if (uids.length > 0) hydratePlayers(uids);
       }
-    } catch {
+    } catch (err) {
+      logError('matchPlayersLoad', err, {
+        screen: 'MatchPlayersScreen',
+        gameId,
+      });
       setGame(null);
     } finally {
       setLoading(false);

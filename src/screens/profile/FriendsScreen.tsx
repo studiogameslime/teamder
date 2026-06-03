@@ -31,6 +31,7 @@ import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
 import { friendsService, type FriendRequestWithUser } from '@/services/friendsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -60,6 +61,13 @@ export function FriendsScreen() {
         setFriends(f);
         setIncoming(inc);
         setOutgoing(out);
+      } catch (err) {
+        // The list-load has no per-call logging in friendsService (the
+        // mutations do, but the read fan-out does not), so a failed
+        // query here would otherwise vanish — the screen just stays on
+        // whatever it last rendered. Record it.
+        logError('loadFriends', err, { screen: 'FriendsScreen', userId: me.id });
+        if (__DEV__) console.warn('[friends] load failed', err);
       } finally {
         setLoading(false);
         setRefreshing(false);

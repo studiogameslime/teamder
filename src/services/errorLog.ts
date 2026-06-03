@@ -40,7 +40,14 @@ interface Buffered {
 }
 
 const FLUSH_MS = 12000; // coalesce window
+// Hard ceiling on DB writes per unique signature per app session. Coalescing
+// already caps a bug to ~1 write / 12s / device; this additionally bounds a
+// device stuck in a bad state all day so it can't hammer one `errors/{fp}`
+// doc indefinitely. After the cap, occurrences are dropped (count freezes) —
+// 30 writes is plenty to know "this happens a lot" while protecting the DB.
+const SESSION_WRITE_CAP = 30;
 const buffer = new Map<string, Buffered>();
+const flushedPerFp = new Map<string, number>(); // writes done this session, by fp
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlush = false;
 
@@ -100,6 +107,94 @@ function currentUid(): string | undefined {
   }
 }
 
+// ── human-friendly labelling ───────────────────────────────────────
+// A Hebrew title per operation so the raw Firestore doc (and the admin
+// panel) reads clearly — "what the user was trying to do". Unknown ops
+// fall back to a generic phrasing that still carries the raw label.
+const OP_TITLES: Record<string, string> = {
+  // auth
+  signInGoogle: 'התחברות עם Google נכשלה',
+  signInGoogleScreen: 'התחברות עם Google נכשלה',
+  signInApple: 'התחברות עם Apple נכשלה',
+  signInAppleScreen: 'התחברות עם Apple נכשלה',
+  signOut: 'התנתקות נכשלה',
+  deleteAccount: 'מחיקת חשבון נכשלה',
+  createUserDoc: 'יצירת פרופיל משתמש נכשלה',
+  completeOnboarding: 'סיום ההרשמה נכשל',
+  updateProfile: 'עדכון פרופיל נכשל',
+  saveAvailability: 'שמירת זמינות נכשלה',
+  // games
+  createGame: 'יצירת משחק נכשלה',
+  joinGame: 'הצטרפות למשחק נכשלה',
+  cancelGame: 'ביטול הרשמה למשחק נכשל',
+  leaveGame: 'עזיבת משחק נכשלה',
+  approveGameJoin: 'אישור הצטרפות למשחק נכשל',
+  rejectGameJoin: 'דחיית הצטרפות למשחק נכשלה',
+  confirmSpotOffer: 'אישור הצעת מקום נכשל',
+  passSpotOffer: 'העברת הצעת מקום נכשלה',
+  reloadGamesList: 'טעינת רשימת המשחקים נכשלה',
+  gamesListAction: 'פעולה ברשימת המשחקים נכשלה',
+  getMyGames: 'טעינת "המשחקים שלי" נכשלה',
+  getOpenGames: 'טעינת משחקים פתוחים נכשלה',
+  getCommunityGames: 'טעינת משחקי הקהילה נכשלה',
+  addGuest: 'הוספת אורח למשחק נכשלה',
+  inviteToGame: 'הזמנה למשחק נכשלה',
+  // community
+  createGroup: 'יצירת קהילה נכשלה',
+  joinGroup: 'הצטרפות לקהילה נכשלה',
+  leaveGroup: 'עזיבת קהילה נכשלה',
+  removeMember: 'הסרת חבר מהקהילה נכשלה',
+  approveMember: 'אישור חבר בקהילה נכשל',
+  rejectMember: 'דחיית חבר בקהילה נכשלה',
+  inviteFriendsToGroup: 'הזמנת חברים לקהילה נכשלה',
+  updateGroupMetadata: 'עדכון פרטי הקהילה נכשל',
+  // ratings / friends / notifications
+  ratePlayer: 'דירוג שחקן נכשל',
+  registerDeviceToken: 'רישום להתראות נכשל',
+  requestAndRegisterPushToken: 'בקשת הרשאת התראות נכשלה',
+  saveNotificationPreferences: 'שמירת העדפות התראות נכשלה',
+  // silent failures (expectation violated, nothing threw)
+  gameVanishedAfterJoin: 'משחק נעלם אחרי שהמשתמש נרשם אליו',
+  joinNotReflectedInMatch: 'ההרשמה למשחק לא הופיעה במסך',
+  communityJoinNotReflected: 'ההצטרפות לקהילה לא הופיעה',
+  joinDidNotAddUser: 'הרשמה למשחק לא הוסיפה את המשתמש',
+  cancelDidNotRemoveUser: 'ביטול הרשמה לא הסיר את המשתמש',
+  joinGroupDidNotApply: 'הצטרפות לקהילה לא נשמרה',
+  leaveGroupDidNotRemoveUser: 'עזיבת קהילה לא הסירה את המשתמש',
+  removeMemberDidNotApply: 'הסרת חבר לא נשמרה',
+  createGameCreatorNotRegistered: 'יוצר המשחק לא נרשם אוטומטית',
+  // crashes / global
+  uncaught: 'קריסה לא צפויה באפליקציה',
+  uncaughtRender: 'שגיאת תצוגה — מסך קרס',
+  unhandledRejection: 'שגיאה אסינכרונית לא מטופלת',
+};
+
+type ErrorCategory = 'silent' | 'crash' | 'action';
+
+function categoryFor(operation: string, silent: boolean): ErrorCategory {
+  if (silent) return 'silent';
+  if (
+    operation === 'uncaught' ||
+    operation === 'uncaughtRender' ||
+    operation === 'unhandledRejection'
+  ) {
+    return 'crash';
+  }
+  return 'action';
+}
+
+function titleFor(operation: string, category: ErrorCategory): string {
+  const known = OP_TITLES[operation];
+  if (known) return known;
+  const prefix =
+    category === 'silent'
+      ? 'פעולה לא עבדה כצפוי'
+      : category === 'crash'
+        ? 'קריסה'
+        : 'פעולה נכשלה';
+  return `${prefix} · ${operation}`;
+}
+
 // ── public API ─────────────────────────────────────────────────────
 /**
  * Record a failed operation. Fire-and-forget — safe to call anywhere,
@@ -114,6 +209,9 @@ export function logError(
   try {
     const { message, code, stack } = errInfo(error);
     const fp = djb2(`${operation}|${normalize(message)}`);
+    // Runaway guard: once this signature has been written SESSION_WRITE_CAP
+    // times this session, stop buffering it (protects a single hot doc).
+    if ((flushedPerFp.get(fp) ?? 0) >= SESSION_WRITE_CAP) return;
     const screen = context?.screen as string | undefined;
     const existing = buffer.get(fp);
     if (existing) {
@@ -140,6 +238,20 @@ export function logError(
   } catch {
     // logging must never throw
   }
+}
+
+/**
+ * Record a SILENT failure — the user performed an action and the EXPECTED
+ * outcome did not happen, yet nothing threw (e.g. a game the user joined that
+ * then appears in no list). These are post-condition violations, not crashes.
+ *
+ * Call ONLY when an expectation is actually violated (compute the check in
+ * memory first — it's free — and call this only on the rare miss). Buckets by
+ * `operation`; the entry carries `silent: true` so the admin panel can show
+ * "didn't work as expected" separately from thrown errors/crashes.
+ */
+export function logUnexpected(operation: string, context?: ErrorContext): void {
+  logError(operation, new Error(operation), { ...(context ?? {}), silent: true });
 }
 
 function scheduleFlush(): void {
@@ -216,8 +328,13 @@ export async function flush(): Promise<void> {
     const delta = e.pending;
     e.pending = 0;
     const ref = doc(db, 'errors', fp);
+    const silent = e.context?.silent === true;
+    const category = categoryFor(e.operation, silent);
     const common = {
       operation: e.operation,
+      // Self-describing fields so both the raw doc and the panel read well:
+      title: titleFor(e.operation, category), // friendly Hebrew "what happened"
+      category, // 'silent' | 'crash' | 'action' — drives the panel badge
       lastMessage: e.message,
       lastCode: e.code ?? null,
       lastStack: e.stack ?? null,
@@ -232,6 +349,7 @@ export async function flush(): Promise<void> {
     try {
       // Increment an existing signature…
       await updateDoc(ref, { ...common, count: increment(delta) });
+      flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
     } catch {
       // …or create it on first sighting (with create-only fields).
       try {
@@ -246,6 +364,7 @@ export async function flush(): Promise<void> {
           },
           { merge: true },
         );
+        flushedPerFp.set(fp, (flushedPerFp.get(fp) ?? 0) + 1);
       } catch {
         e.pending += delta; // write failed (offline) — retry next flush
       }

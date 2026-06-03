@@ -7,6 +7,7 @@
 // hide / show the WhatsApp button so we don't lead users into a 404.
 
 import { Linking } from 'react-native';
+import { logError } from './errorLog';
 
 /**
  * Returns true for the two formats we accept on input:
@@ -48,7 +49,8 @@ export async function openWhatsApp(phone: string | undefined): Promise<boolean> 
   try {
     await Linking.openURL(url);
     return true;
-  } catch {
+  } catch (err) {
+    logError('openWhatsApp', err, {});
     return false;
   }
 }

@@ -54,6 +54,7 @@ import {
   type GameFilters,
 } from '@/components/GameFilterSheet';
 import { gameService } from '@/services/gameService';
+import { logError, logUnexpected } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   isVisibleInMyGames,
@@ -160,8 +161,15 @@ export function GamesListScreen() {
           ),
         );
         if (uids.length > 0) hydratePlayers(uids);
+        return { mine: a, community: b, open: c };
       } catch (err) {
+        logError('reloadGamesList', err, {
+          screen: 'GamesListScreen',
+          userId: user.id,
+          pullToRefresh: !!opts.pullToRefresh,
+        });
         if (__DEV__) console.warn('[gamesList] reload failed', err);
+        return undefined;
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -229,7 +237,29 @@ export function GamesListScreen() {
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
         await gameService.cancelGameV2(game.id, user.id);
       }
-      await reload();
+      const fresh = await reload();
+      // Silent-failure guard: a successful join MUST leave the game visible
+      // somewhere the user can reach it (it moves into "שלי"). If it's in no
+      // list at all, it silently vanished — the exact orphan/personal-group
+      // case — so record it with full context even though nothing threw.
+      if ((cta === 'join' || cta === 'waitlist') && fresh) {
+        const visible =
+          fresh.mine.some((g) => g.id === game.id) ||
+          fresh.community.some((g) => g.id === game.id) ||
+          fresh.open.some((g) => g.id === game.id);
+        if (!visible) {
+          logUnexpected('gameVanishedAfterJoin', {
+            screen: 'GamesListScreen',
+            gameId: game.id,
+            isOrphanContext: game.isOrphanContext ?? false,
+            visibility: game.visibility,
+            status: game.status,
+            groupId: game.groupId,
+            userId: user.id,
+            cta,
+          });
+        }
+      }
     } catch (err) {
       const code =
         typeof (err as { code?: unknown })?.code === 'string'
@@ -243,8 +273,18 @@ export function GamesListScreen() {
         // surprising; the user just tapped "Join" on a card and
         // didn't ask to leave the list.
         toast.info(he.registrationConflictTitle);
-      } else if (__DEV__) {
-        console.warn('[gamesList] action failed', err);
+      } else {
+        // Non-conflict failure. The underlying service (joinGameV2 /
+        // cancelGameV2) self-logs the op, but capture the SCREEN
+        // context (which card + cta) so the admin panel ties the
+        // failure to this list interaction.
+        logError('gamesListAction', err, {
+          screen: 'GamesListScreen',
+          cta,
+          gameId: game.id,
+          userId: user.id,
+        });
+        if (__DEV__) console.warn('[gamesList] action failed', err);
       }
     } finally {
       setBusyGameId(null);
