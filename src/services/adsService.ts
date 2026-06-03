@@ -394,7 +394,8 @@ export function BannerAd(): React.ReactElement | null {
           },
           onAdFailedToLoad: (err: unknown) => {
             const { code, message } = decodeAdError(err);
-            logError('bannerAdFailedToLoad', err, { code, message });
+            // Ad load failures (no-fill, network) are normal inventory/transient
+            // events — never an actionable bug. Don't log them as errors.
             if (__DEV__) console.warn('[ads] BANNER FAILED', code, message, err);
             if (DEBUG_VISIBLE)
               setAdDebugStatus({ kind: 'failed', code, message });

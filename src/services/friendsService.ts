@@ -289,10 +289,14 @@ export const friendsService = {
       );
       if (inSnap.exists() && inSnap.data().status === 'pending') return 'incoming';
     } catch (e) {
-      // Reading the request docs can fail (rules / transient). Treat as
-      // "no pending request" so the card still offers "add friend"
-      // rather than throwing and hiding the button entirely.
-      logError('getFriendRelationship', e, { uid, otherId });
+      // `get()` on a NON-EXISTENT friendRequest returns 'permission-denied'
+      // (the rule reads resource.data, which is null) — that's just "no
+      // pending request", the normal case. Treat it silently; only surface a
+      // genuinely unexpected failure.
+      const code = (e as { code?: string })?.code;
+      if (code !== 'permission-denied') {
+        logError('getFriendRelationship', e, { uid, otherId });
+      }
       if (__DEV__) {
         console.warn('[friends] getRelationship request read failed', e);
       }

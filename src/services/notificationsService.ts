@@ -172,12 +172,16 @@ export const notificationsService = {
           }
         }
       } catch (err) {
-        // Index missing / permission blip — log and fall through.
-        // The bucket-id check below still gives retry safety.
-        logError('dispatchStrictUnreadQuery', err, {
-          type: input.type,
-          recipientId: input.recipientId,
-        });
+        // Cross-user dispatch can't read the RECIPIENT's notifications (rules
+        // are self-scoped) — that's expected and the bucket-id latch below
+        // still dedups. Only surface genuinely unexpected failures.
+        const code = (err as { code?: string })?.code;
+        if (code !== 'permission-denied') {
+          logError('dispatchStrictUnreadQuery', err, {
+            type: input.type,
+            recipientId: input.recipientId,
+          });
+        }
         if (__DEV__) {
           console.warn('[notifications] strict-unread query failed', err);
         }

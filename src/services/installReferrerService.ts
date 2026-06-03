@@ -134,7 +134,9 @@ export async function consumeInstallReferrerIfFresh(): Promise<void> {
       mod.getInstallReferrerInfo(async (info, err) => {
         try {
           if (err || !info) {
-            if (err) logError('installReferrerInfo', err, {});
+            // Install-referrer errors (SERVICE_UNAVAILABLE / FEATURE_NOT_SUPPORTED
+            // / already-consumed) are all expected & non-actionable — attribution
+            // is best-effort. Don't log them as failures.
             if (__DEV__) {
               console.info('[installReferrer] no referrer info', { err });
             }
