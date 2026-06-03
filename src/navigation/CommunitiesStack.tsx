@@ -35,9 +35,12 @@ import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
+import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type CommunitiesStackParamList = {
   CommunitiesFeed: undefined;
+  /** Full-screen map of open public communities (mode: 'communities'). */
+  CommunitiesMap: MapScreenParams;
   CommunitiesCreate: undefined;
   CommunityDetails: { groupId: string };
   CommunityDetailsPublic: { groupId: string };
@@ -82,6 +85,7 @@ export function CommunitiesStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="CommunitiesFeed" component={PublicGroupsFeedScreen} />
+      <Stack.Screen name="CommunitiesMap" component={MapScreen} />
       <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen

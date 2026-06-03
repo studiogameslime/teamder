@@ -28,9 +28,12 @@ import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { PromoteOrphanScreen } from '@/screens/games/PromoteOrphanScreen';
+import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type GameStackParamList = {
   GamesList: undefined;
+  /** Full-screen map of open public games (mode: 'games'). */
+  GamesMap: MapScreenParams;
   GameCreate:
     | undefined
     | {
@@ -82,6 +85,7 @@ export function GameStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="GamesList" component={GamesListScreen} />
+      <Stack.Screen name="GamesMap" component={MapScreen} />
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />

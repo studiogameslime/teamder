@@ -313,6 +313,79 @@ export function GamesListScreen() {
             ]}
           />
         </View>
+        {/* Map view — hidden for this release (feature not shipped yet). */}
+        {false && (
+        <Pressable
+          onPress={() => {
+            const now = new Date();
+            const sameDay = (a: Date, b: Date) =>
+              a.getFullYear() === b.getFullYear() &&
+              a.getMonth() === b.getMonth() &&
+              a.getDate() === b.getDate();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(now.getDate() + 1);
+            const BUCKET = {
+              today: '#2563EB',
+              tomorrow: '#16A34A',
+              weekend: '#EA580C',
+              other: '#6B7280',
+            } as const;
+            const items = openGames
+              .filter(
+                (g) =>
+                  typeof g.fieldLat === 'number' &&
+                  typeof g.fieldLng === 'number',
+              )
+              .map((g) => {
+                const d = new Date(g.startsAt);
+                const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(
+                  d.getMinutes(),
+                ).padStart(2, '0')}`;
+                const diffDays = (d.getTime() - now.getTime()) / 86_400_000;
+                const dow = d.getDay();
+                let bucket: 'today' | 'tomorrow' | 'weekend' | 'other' =
+                  'other';
+                let dayLabel = `${d.getDate()}.${d.getMonth() + 1}`;
+                if (sameDay(d, now)) {
+                  bucket = 'today';
+                  dayLabel = he.mapLegendToday;
+                } else if (sameDay(d, tomorrow)) {
+                  bucket = 'tomorrow';
+                  dayLabel = he.mapLegendTomorrow;
+                } else if (
+                  (dow === 5 || dow === 6) &&
+                  diffDays >= 0 &&
+                  diffDays <= 7
+                ) {
+                  bucket = 'weekend';
+                }
+                return {
+                  id: g.id,
+                  lat: g.fieldLat as number,
+                  lng: g.fieldLng as number,
+                  color: BUCKET[bucket],
+                  dateBucket: bucket,
+                  timeLabel: `${dayLabel} · ${hhmm}`,
+                  title: g.title,
+                  subtitle: [g.fieldName, g.city].filter(Boolean).join(', '),
+                  badge: g.format
+                    ? g.format.replace('v', '×')
+                    : `${g.players.length}/${g.maxPlayers}`,
+                  open: g.players.length < g.maxPlayers,
+                };
+              });
+            nav.navigate('GamesMap', { mode: 'games', items });
+          }}
+          style={({ pressed }) => [
+            styles.filterBtn,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.mapButtonLabel}
+        >
+          <Ionicons name="map-outline" size={20} color="#1E40AF" />
+        </Pressable>
+        )}
         <Pressable
           onPress={() => {
             logEvent(AnalyticsEvent.GameFilterSheetOpened);

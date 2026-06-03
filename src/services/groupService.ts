@@ -39,6 +39,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
+import { logError } from '@/services/errorLog';
 
 let groupsById: Record<GroupId, Group> = {
   [mockGroup.id]: { ...mockGroup },
@@ -308,20 +309,43 @@ export const groupService = {
       // distinguish rate-limit (`resource-exhausted`) from validation
       // (`invalid-argument`) from auth (`unauthenticated`).
       const e = err as { code?: string; message?: string };
+      const code = (e.code ?? 'unknown').replace(/^functions\//, '');
+      if (
+        ![
+          'GROUP_FULL',
+          'GROUP_MAX_BELOW_CURRENT',
+          'LAST_ADMIN',
+          'resource-exhausted',
+          'unauthenticated',
+        ].includes(code)
+      ) {
+        logError('createGroup', err, {
+          name: baseGroup.name,
+          isOpen: baseGroup.isOpen,
+          city: baseGroup.city,
+          maxMembers: baseGroup.maxMembers,
+          code,
+        });
+      }
       const wrapped = new Error(e.message ?? 'createGroup failed') as Error & {
         code: string;
       };
-      wrapped.code = (e.code ?? 'unknown').replace(/^functions\//, '');
+      wrapped.code = code;
       throw wrapped;
     }
     // Read the freshly-written canonical doc.
-    const fresh = await getDoc(docs.group(groupId));
-    if (!fresh.exists()) {
-      throw new Error('createGroup: callable wrote no doc');
+    try {
+      const fresh = await getDoc(docs.group(groupId));
+      if (!fresh.exists()) {
+        throw new Error('createGroup: callable wrote no doc');
+      }
+      const g = fresh.data() as Group;
+      await storage.setCurrentGroupId(g.id);
+      return g;
+    } catch (e) {
+      logError('createGroup', e, { groupId, phase: 'postCreateRead' });
+      throw e;
     }
-    const g = fresh.data() as Group;
-    await storage.setCurrentGroupId(g.id);
-    return g;
   },
 
   /**
@@ -599,29 +623,48 @@ export const groupService = {
     // Capacity recheck — race-safe via a transaction so two admins
     // approving simultaneously can't push the group past maxMembers.
     const { db, auth } = getFirebase();
-    await runTransaction(db, async (tx) => {
-      const gSnap = await tx.get(docs.group(groupId));
-      if (!gSnap.exists()) {
-        throw new Error('approveMember: group not found');
-      }
-      const g = gSnap.data();
-      const already = (g.playerIds ?? []).includes(userId);
-      if (
-        !already &&
-        typeof g.maxMembers === 'number' &&
-        g.maxMembers > 0 &&
-        (g.playerIds?.length ?? 0) >= g.maxMembers
-      ) {
-        const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
-        err.code = 'GROUP_FULL';
-        throw err;
-      }
-      tx.update(docs.group(groupId), {
-        playerIds: arrayUnion(userId),
-        pendingPlayerIds: arrayRemove(userId),
-        updatedAt: Date.now(),
+    try {
+      await runTransaction(db, async (tx) => {
+        const gSnap = await tx.get(docs.group(groupId));
+        if (!gSnap.exists()) {
+          throw new Error('approveMember: group not found');
+        }
+        const g = gSnap.data();
+        const already = (g.playerIds ?? []).includes(userId);
+        if (
+          !already &&
+          typeof g.maxMembers === 'number' &&
+          g.maxMembers > 0 &&
+          (g.playerIds?.length ?? 0) >= g.maxMembers
+        ) {
+          const err = new Error('GROUP_FULL') as Error & { code: 'GROUP_FULL' };
+          err.code = 'GROUP_FULL';
+          throw err;
+        }
+        tx.update(docs.group(groupId), {
+          playerIds: arrayUnion(userId),
+          pendingPlayerIds: arrayRemove(userId),
+          updatedAt: Date.now(),
+        });
       });
-    });
+    } catch (e) {
+      const code = (e as { code?: string; message?: string })?.code
+        ?? (e as Error)?.message;
+      if (
+        ![
+          'GROUP_FULL',
+          'GROUP_MAX_BELOW_CURRENT',
+          'LAST_ADMIN',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+          'unauthenticated',
+          'functions/unauthenticated',
+        ].includes(code as string)
+      ) {
+        logError('approveMember', e, { groupId, userId });
+      }
+      throw e;
+    }
     // Audit-trail flip happens outside the transaction (different
     // collection); keeping it best-effort is fine — the canonical
     // membership is already correct.
@@ -655,6 +698,7 @@ export const groupService = {
       });
       await pubBatch.commit();
     } catch (err) {
+      logError('approveMember', err, { groupId, phase: 'mirrorSync' });
       if (__DEV__) console.warn('[groupService] failed to sync public memberCount', err);
     }
     // Symmetric to rejectMember — push the requester a "your
@@ -681,28 +725,33 @@ export const groupService = {
       });
       return g;
     }
-    const reqs = await getDocs(
-      query(
-        col.joinRequests(),
-        where('groupId', '==', groupId),
-        where('userId', '==', userId),
-        where('status', '==', 'pending')
-      )
-    );
     const { db, auth } = getFirebase();
-    const batch = writeBatch(db);
-    reqs.docs.forEach((r) =>
-      batch.update(r.ref, {
-        status: 'rejected',
-        decidedAt: Date.now(),
-        decidedBy: auth.currentUser?.uid ?? null,
-      })
-    );
-    batch.update(docs.group(groupId), {
-      pendingPlayerIds: arrayRemove(userId),
-      updatedAt: Date.now(),
-    });
-    await batch.commit();
+    try {
+      const reqs = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('userId', '==', userId),
+          where('status', '==', 'pending')
+        )
+      );
+      const batch = writeBatch(db);
+      reqs.docs.forEach((r) =>
+        batch.update(r.ref, {
+          status: 'rejected',
+          decidedAt: Date.now(),
+          decidedBy: auth.currentUser?.uid ?? null,
+        })
+      );
+      batch.update(docs.group(groupId), {
+        pendingPlayerIds: arrayRemove(userId),
+        updatedAt: Date.now(),
+      });
+      await batch.commit();
+    } catch (e) {
+      logError('rejectMember', e, { groupId, userId });
+      throw e;
+    }
     const g = await this.get(groupId);
     if (!g) throw new Error('rejectMember: group disappeared');
     // Push the rejected user a "your request was declined" notification.
@@ -976,12 +1025,17 @@ export const groupService = {
     // would leave a stuck "pending" badge on the community card,
     // and the admin would see a request from someone who is no
     // longer interested.
-    await updateDoc(ref, {
-      adminIds: arrayRemove(userId),
-      playerIds: arrayRemove(userId),
-      pendingPlayerIds: arrayRemove(userId),
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(ref, {
+        adminIds: arrayRemove(userId),
+        playerIds: arrayRemove(userId),
+        pendingPlayerIds: arrayRemove(userId),
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      logError('leaveGroup', e, { groupId, userId });
+      throw e;
+    }
     // Reject any still-pending audit-trail doc for this (user, group)
     // pair so a future re-join doesn't get blocked by the existing
     // "you already requested" check on the client. Best-effort —
@@ -1005,6 +1059,7 @@ export const groupService = {
             decidedBy: userId,
           });
         } catch (err) {
+          logError('leaveGroup', err, { groupId, phase: 'joinRequestSweep' });
           if (__DEV__)
             console.warn(
               '[groupService] leaveGroup: joinRequest reject failed',
@@ -1014,6 +1069,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+      logError('leaveGroup', err, { groupId, phase: 'joinRequestSweep' });
       if (__DEV__)
         console.warn(
           '[groupService] leaveGroup: pending joinRequests query failed',
@@ -1065,7 +1121,13 @@ export const groupService = {
       return;
     }
     const ref = docs.group(groupId);
-    const snap = await getDoc(ref);
+    let snap;
+    try {
+      snap = await getDoc(ref);
+    } catch (e) {
+      logError('removeMember', e, { groupId, targetUserId });
+      throw e;
+    }
     if (!snap.exists()) throw new Error('removeMember: group not found');
     const g = snap.data();
     if (!g.adminIds.includes(callerId)) {
@@ -1074,12 +1136,17 @@ export const groupService = {
     if (g.creatorId === targetUserId) {
       throw new Error('CANNOT_REMOVE_CREATOR');
     }
-    await updateDoc(ref, {
-      adminIds: arrayRemove(targetUserId),
-      playerIds: arrayRemove(targetUserId),
-      pendingPlayerIds: arrayRemove(targetUserId),
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(ref, {
+        adminIds: arrayRemove(targetUserId),
+        playerIds: arrayRemove(targetUserId),
+        pendingPlayerIds: arrayRemove(targetUserId),
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      logError('removeMember', e, { groupId, targetUserId });
+      throw e;
+    }
     // Sweep stale join requests so a future re-invite or re-request
     // isn't blocked by a stuck "pending" row.
     try {
@@ -1099,6 +1166,7 @@ export const groupService = {
             decidedBy: callerId,
           });
         } catch (err) {
+          logError('removeMember', err, { groupId, phase: 'joinRequestSweep' });
           if (__DEV__) {
             console.warn(
               '[groupService] removeMember: joinRequest reject failed',
@@ -1109,6 +1177,7 @@ export const groupService = {
         }
       }
     } catch (err) {
+      logError('removeMember', err, { groupId, phase: 'joinRequestSweep' });
       if (__DEV__) {
         console.warn('[groupService] removeMember: join-request sweep failed', err);
       }
@@ -1180,6 +1249,7 @@ export const groupService = {
         memberRecipients = Array.from(set);
       }
     } catch (err) {
+      logError('deleteGroup', err, { groupId, phase: 'preflight' });
       if (__DEV__)
         console.warn('[groupService] preflight read for member list failed', err);
     }
@@ -1205,11 +1275,13 @@ export const groupService = {
         try {
           await deleteDoc(docs.game(game.id));
         } catch (err) {
+          logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
           if (__DEV__)
             console.warn('[groupService] game cascade delete failed', game.id, err);
         }
       }
     } catch (err) {
+      logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
       if (__DEV__) console.warn('[groupService] game cascade lookup failed', err);
     }
     // 2) Reject all still-pending join requests so the requester's
@@ -1230,11 +1302,13 @@ export const groupService = {
             decidedBy: callerId,
           });
         } catch (err) {
+          logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
           if (__DEV__)
             console.warn('[groupService] joinRequest reject failed', rd.id, err);
         }
       }
     } catch (err) {
+      logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
       if (__DEV__) console.warn('[groupService] joinRequest cleanup failed', err);
     }
     // 3) Canonical group doc — must precede the public mirror so the
@@ -1250,6 +1324,7 @@ export const groupService = {
         await deleteDoc(docs.groupPublic(groupId));
         publicDeleted = true;
       } catch (err) {
+        logError('deleteGroup', err, { groupId, phase: 'publicMirror' });
         if (__DEV__)
           console.warn(
             '[groupService] groupsPublic cleanup failed, attempt',
@@ -1532,7 +1607,25 @@ async function writeJoin(
       updatedAt: Date.now(),
     });
   }
-  await batch.commit();
+  try {
+    await batch.commit();
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (
+      ![
+        'GROUP_FULL',
+        'GROUP_MAX_BELOW_CURRENT',
+        'LAST_ADMIN',
+        'resource-exhausted',
+        'functions/resource-exhausted',
+        'unauthenticated',
+        'functions/unauthenticated',
+      ].includes(code as string)
+    ) {
+      logError('joinGroup', e, { groupId, isOpen });
+    }
+    throw e;
+  }
 }
 
 export function __resetGroupServiceForTests() {

@@ -439,6 +439,40 @@ export function PublicGroupsFeedScreen() {
             <Ionicons name="search" size={18} color="#94A3B8" />
           )}
         </View>
+        {/* Map view — hidden for this release (feature not shipped yet). */}
+        {false && (
+        <Pressable
+          onPress={() => {
+            const mapItems = (items ?? [])
+              .filter(
+                (g) =>
+                  typeof g.lat === 'number' && typeof g.lng === 'number',
+              )
+              .map((g) => ({
+                id: g.id,
+                lat: g.lat as number,
+                lng: g.lng as number,
+                color: '#2563EB',
+                title: g.name,
+                subtitle: g.fieldName ?? g.city ?? '',
+                badge: `${g.memberCount} שחקנים`,
+                open: g.isOpen ?? true,
+              }));
+            nav.navigate('CommunitiesMap', {
+              mode: 'communities',
+              items: mapItems,
+            });
+          }}
+          style={({ pressed }) => [
+            styles.filterButton,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.mapButtonLabel}
+        >
+          <Ionicons name="map-outline" size={20} color="#1E40AF" />
+        </Pressable>
+        )}
         <Pressable
           onPress={() => setFilterOpen(true)}
           style={({ pressed }) => [

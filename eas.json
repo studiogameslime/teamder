@@ -41,9 +41,11 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "studiogameslime@gmail.com",
         "ascAppId": "6775178022",
-        "appleTeamId": "M7R8M498Z9"
+        "appleTeamId": "M7R8M498Z9",
+        "ascApiKeyPath": "/Users/matan/Downloads/AuthKey_SQBY46Q3DC.p8",
+        "ascApiKeyId": "SQBY46Q3DC",
+        "ascApiKeyIssuerId": "0938f882-34aa-42d5-af5d-cab509cac969"
       }
     }
   }

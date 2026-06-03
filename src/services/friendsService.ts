@@ -32,6 +32,7 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { userService } from './userService';
 import { AnalyticsEvent, logEvent } from './analyticsService';
+import { logError } from '@/services/errorLog';
 import { FriendRequestDoc, User, UserId } from '@/types';
 
 /** Deterministic request id — blocks duplicate pending requests and lets
@@ -114,13 +115,18 @@ export const friendsService = {
       });
       return;
     }
-    await setDoc(docs.friendRequest(id), {
-      id,
-      fromUserId,
-      toUserId,
-      status: 'pending',
-      createdAt: Date.now(),
-    });
+    try {
+      await setDoc(docs.friendRequest(id), {
+        id,
+        fromUserId,
+        toUserId,
+        status: 'pending',
+        createdAt: Date.now(),
+      });
+    } catch (e) {
+      logError('sendFriendRequest', e, { fromUserId, toUserId });
+      throw e;
+    }
     logEvent(AnalyticsEvent.FriendRequestSent, { toUserId });
   },
 
@@ -140,7 +146,12 @@ export const friendsService = {
       mockLink(fromUserId, toUserId);
       return;
     }
-    await callable('acceptFriendRequest', { fromUserId });
+    try {
+      await callable('acceptFriendRequest', { fromUserId });
+    } catch (e) {
+      logError('acceptFriendRequest', e, { fromUserId });
+      throw e;
+    }
     logEvent(AnalyticsEvent.FriendRequestAccepted, { fromUserId });
   },
 
@@ -156,10 +167,15 @@ export const friendsService = {
       logEvent(AnalyticsEvent.FriendRequestDeclined, { fromUserId });
       return;
     }
-    await updateDoc(docs.friendRequest(id), {
-      status: 'declined',
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(docs.friendRequest(id), {
+        status: 'declined',
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      logError('declineFriendRequest', e, { fromUserId, toUserId });
+      throw e;
+    }
     logEvent(AnalyticsEvent.FriendRequestDeclined, { fromUserId });
   },
 
@@ -172,7 +188,12 @@ export const friendsService = {
       logEvent(AnalyticsEvent.FriendRequestCancelled, { toUserId });
       return;
     }
-    await deleteDoc(docs.friendRequest(id));
+    try {
+      await deleteDoc(docs.friendRequest(id));
+    } catch (e) {
+      logError('cancelFriendRequest', e, { fromUserId, toUserId });
+      throw e;
+    }
     logEvent(AnalyticsEvent.FriendRequestCancelled, { toUserId });
   },
 
@@ -184,7 +205,12 @@ export const friendsService = {
       logEvent(AnalyticsEvent.FriendRemoved, { otherUserId: otherId });
       return;
     }
-    await callable('removeFriendship', { otherUserId: otherId });
+    try {
+      await callable('removeFriendship', { otherUserId: otherId });
+    } catch (e) {
+      logError('removeFriend', e, { otherUserId: otherId });
+      throw e;
+    }
     logEvent(AnalyticsEvent.FriendRemoved, { otherUserId: otherId });
   },
 

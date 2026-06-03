@@ -26,6 +26,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { getFirebase, googleOAuth, USE_MOCK_DATA } from './config';
+import { logError } from '@/services/errorLog';
 import { Player } from '@/types';
 
 const EXPECTED_PROJECT_NUMBER = '559368532219';
@@ -102,6 +103,7 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     return cred.user;
   } catch (err) {
     const e = err as { name?: string; code?: string; message?: string; customData?: unknown };
+    logError('signInGoogle', err, { provider: 'google', code: e?.code });
     if (__DEV__) {
       console.error('[auth] Firebase signInWithCredential FAILED', {
         name: e.name,
@@ -196,6 +198,7 @@ export async function signInWithApple(): Promise<{
     return { user: cred.user, fullName: fullName || undefined };
   } catch (err) {
     const e = err as { code?: string };
+    logError('signInApple', err, { provider: 'apple', code: e?.code });
     if (__DEV__) {
       console.error('[auth] Firebase Apple signInWithCredential FAILED', e);
     }
@@ -210,7 +213,8 @@ export async function signOutFirebase(): Promise<void> {
   if (Platform.OS === 'android' && _googleConfigured) {
     try {
       await GoogleSignin.signOut();
-    } catch {
+    } catch (e) {
+      logError('signOut', e, {});
       // best-effort
     }
   }
@@ -248,6 +252,7 @@ export async function deleteCurrentFirebaseUser(): Promise<void> {
   try {
     await deleteUser(user);
   } catch (e: any) {
+    logError('deleteAccount', e, { code: e?.code });
     if (e?.code !== 'auth/requires-recent-login') throw e;
     if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw e;
     ensureGoogleConfigured();

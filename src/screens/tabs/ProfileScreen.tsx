@@ -66,6 +66,9 @@ import { getAttendanceRate, type User } from '@/types';
 const SUPPORT_EMAIL = 'studiogameslime@gmail.com';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+const APP_STORE_URL = 'https://apps.apple.com/app/id6775178022';
+// Device-correct store link for generic invites (no community context).
+const STORE_URL = Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL;
 
 export function ProfileScreen() {
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -255,7 +258,7 @@ export function ProfileScreen() {
           id: firstCommunity.id,
           invitedBy: user.id,
         })
-      : PLAY_STORE_URL;
+      : STORE_URL;
     try {
       const result = await Share.share({
         title: he.inviteShareSubject,

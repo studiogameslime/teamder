@@ -1000,5 +1000,29 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // ── /errors/{fingerprint} — client error/crash reports ─────────────
+    // The app's centralized error logger (services/errorLog.ts) upserts an
+    // aggregated doc per unique failure signature when a user operation
+    // fails (create game/group, sign-in, join, uncaught crash, …). Doc id
+    // is a deterministic fingerprint, so repeated failures coalesce into a
+    // running `count` rather than flooding the collection.
+    //
+    // Writes: any signed-in user may create/increment a report, with size
+    // caps so a malicious client can't bloat docs. Reads/deletes are
+    // client-denied — only the admin dashboard (service account, which
+    // bypasses these rules via IAM) and the Console read them.
+    match /errors/{fp} {
+      allow read, delete: if false;
+      allow create, update: if isSignedIn() &&
+        request.resource.data.operation is string &&
+        request.resource.data.operation.size() <= 80 &&
+        isOptionalShortString(request.resource.data, 'lastMessage', 2000) &&
+        isOptionalShortString(request.resource.data, 'lastStack', 4000) &&
+        isOptionalShortString(request.resource.data, 'lastUserId', 128) &&
+        isOptionalShortString(request.resource.data, 'lastScreen', 80) &&
+        isOptionalShortString(request.resource.data, 'platform', 16) &&
+        isOptionalShortString(request.resource.data, 'appVersion', 32);
+    }
   }
 }

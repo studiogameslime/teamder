@@ -25,6 +25,7 @@ import {
   deleteObject,
 } from 'firebase/storage';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { logError } from '@/services/errorLog';
 
 type ImagePickerModule = typeof import('expo-image-picker');
 type ImageManipulatorModule = typeof import('expo-image-manipulator');
@@ -146,6 +147,7 @@ export async function pickAndUploadAvatar(
     const res = await fetch(resized.uri);
     blob = await res.blob();
   } catch (err) {
+    logError('uploadAvatar', err, { reason: 'network' });
     return { ok: false, reason: 'network', err };
   }
 
@@ -157,6 +159,7 @@ export async function pickAndUploadAvatar(
     const url = await getDownloadURL(objectRef);
     return { ok: true, url };
   } catch (err) {
+    logError('uploadAvatar', err, { reason: 'network' });
     return { ok: false, reason: 'network', err };
   }
 }
@@ -233,6 +236,7 @@ export async function pickAndUploadGroupCover(
     if (!url) return { ok: false, reason: 'network' };
     return { ok: true, url };
   } catch (err) {
+    logError('uploadGroupCover', err, { groupId });
     return { ok: false, reason: 'network', err };
   }
 }

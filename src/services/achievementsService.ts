@@ -52,6 +52,7 @@ import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 
 export interface AchievementListItem {
   def: AchievementDef;
@@ -100,6 +101,7 @@ export const achievementsService = {
         await bumpFirebase(uid, metric, by);
       }
     } catch (err) {
+      logError('bumpAchievement', err, { uid, metric });
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[achievements] bump failed', metric, err);

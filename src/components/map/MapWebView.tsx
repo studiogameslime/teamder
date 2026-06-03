@@ -1,0 +1,196 @@
+// MapWebView — zero-cost interactive map (NO API key, NO billing, NO Google).
+// Leaflet over Carto's free light basemap inside a WebView, tinted blue and
+// locked to Israel, with football pins + numbered clusters. Works identically
+// on iOS and Android with nothing for the app owner to configure.
+
+import React, { useEffect, useMemo, useRef } from 'react';
+import { StyleSheet } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  color?: string;
+}
+
+interface Props {
+  markers: MapMarker[];
+  center: { lat: number; lng: number };
+  zoom?: number;
+  onMarkerPress?: (id: string) => void;
+  /** When set (and changed), fly the map to this point. Used by the
+   *  "focus on my city" button without reloading the whole map. */
+  focusOn?: { lat: number; lng: number; zoom?: number } | null;
+}
+
+export function MapWebView({
+  markers,
+  center,
+  zoom = 11,
+  onMarkerPress,
+  focusOn,
+}: Props) {
+  const ref = useRef<WebView>(null);
+  const html = useMemo(
+    () => buildHtml(markers, center, zoom),
+    [markers, center, zoom],
+  );
+
+  // Smoothly recenter without a full reload when `focusOn` changes.
+  useEffect(() => {
+    if (!focusOn) return;
+    ref.current?.injectJavaScript(
+      `window.tmap && window.tmap.flyTo([${focusOn.lat}, ${focusOn.lng}], ${
+        focusOn.zoom ?? 13
+      }); true;`,
+    );
+  }, [focusOn]);
+
+  const handleMessage = (e: WebViewMessageEvent) => {
+    try {
+      const msg = JSON.parse(e.nativeEvent.data) as {
+        type?: string;
+        id?: string;
+      };
+      if (msg.type === 'markerPress' && msg.id && onMarkerPress) {
+        onMarkerPress(msg.id);
+      }
+    } catch {
+      // Ignore malformed bridge messages.
+    }
+  };
+
+  return (
+    <WebView
+      ref={ref}
+      originWhitelist={['*']}
+      source={{ html }}
+      style={styles.web}
+      onMessage={handleMessage}
+      javaScriptEnabled
+      domStorageEnabled
+      androidLayerType="hardware"
+      setSupportMultipleWindows={false}
+    />
+  );
+}
+
+function buildHtml(
+  markers: MapMarker[],
+  center: { lat: number; lng: number },
+  zoom: number,
+): string {
+  const markersJson = JSON.stringify(
+    markers.map((m) => ({
+      id: m.id,
+      lat: m.lat,
+      lng: m.lng,
+      color: m.color ?? '#2563EB',
+    })),
+  );
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #4f93e0; }
+    .leaflet-control-attribution { font-size: 9px; }
+    /* Lighten the pale Carto tiles a touch before tinting. */
+    .leaflet-tile-pane { filter: brightness(1.05) contrast(1.02); }
+    /* Vivid azure wash (like the product mockup). A blue multiply layer sits
+       ABOVE the tiles (z-index 450) but BELOW the markers (Leaflet markerPane
+       is z-index 600), so the basemap reads saturated blue while pins keep
+       their true colours. Decoupling the colour from the tile filter lets us
+       dial the blue precisely by changing this one rgba alpha. */
+    #tint {
+      position: absolute; inset: 0; z-index: 450;
+      background: rgba(37, 99, 235, 0.42);
+      mix-blend-mode: multiply; pointer-events: none;
+    }
+    .tpin {
+      width: 36px; height: 36px; background: #fff;
+      border-radius: 50%; box-shadow: 0 2px 7px rgba(15,23,42,.32);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; line-height: 1; position: relative;
+    }
+    .tpin .badge {
+      position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px;
+      background: #2563EB; color: #fff; border: 2px solid #fff; border-radius: 9px;
+      font-size: 11px; font-weight: 700; line-height: 14px; text-align: center;
+      padding: 0 3px; font-family: -apple-system, system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"><div id="tint"></div></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    (function () {
+      // Lock the map to Israel — users can't pan/zoom away to other places.
+      var ISRAEL = L.latLngBounds([29.30, 34.10], [33.45, 35.95]);
+      var map = L.map('map', {
+        zoomControl: true,
+        attributionControl: true,
+        maxBounds: ISRAEL,
+        maxBoundsViscosity: 1.0,
+        minZoom: 7,
+        maxZoom: 18
+      }).setView([${center.lat}, ${center.lng}], ${zoom});
+      window.tmap = map; // exposed so RN can fly-to via injectJavaScript
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd', maxZoom: 20, bounds: ISRAEL,
+        attribution: '&copy; OpenStreetMap, &copy; CARTO'
+      }).addTo(map);
+
+      function disc(ring, badge) {
+        var b = badge ? '<span class="badge">' + badge + '</span>' : '';
+        return '<div class="tpin" style="border:3px solid ' + ring + '">⚽' + b + '</div>';
+      }
+      function pinIcon(color) {
+        return L.divIcon({ className: '', html: disc(color), iconSize: [36, 36], iconAnchor: [18, 18] });
+      }
+
+      function send(payload) {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+        }
+      }
+
+      var markers = ${markersJson};
+      var cluster = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 45,
+        iconCreateFunction: function (c) {
+          return L.divIcon({
+            className: '',
+            html: disc('#2563EB', String(c.getChildCount())),
+            iconSize: [36, 36], iconAnchor: [18, 18]
+          });
+        }
+      });
+      var bounds = [];
+      markers.forEach(function (m) {
+        var mk = L.marker([m.lat, m.lng], { icon: pinIcon(m.color) });
+        mk.on('click', function () { send({ type: 'markerPress', id: m.id }); });
+        cluster.addLayer(mk);
+        bounds.push([m.lat, m.lng]);
+      });
+      map.addLayer(cluster);
+      if (bounds.length > 1) {
+        try { map.fitBounds(bounds, { padding: [55, 80], maxZoom: 13 }); } catch (e) {}
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+const styles = StyleSheet.create({
+  web: { flex: 1, backgroundColor: '#bcdcf5' },
+});

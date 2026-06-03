@@ -128,6 +128,10 @@ import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import {
+  installGlobalErrorHandlers,
+  logRenderError,
+} from '@/services/errorLog';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
 import { useUserStore } from '@/store/userStore';
@@ -203,6 +207,10 @@ if (!I18nManager.isRTL) {
 // ignore this entirely.
 const OPTIONAL_UPDATE_SNOOZE_KEY = 'optionalUpdateSnoozeUntil';
 const OPTIONAL_UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000;
+
+// Install global crash + unhandled-rejection catch-alls as early as
+// possible (module load), so failures before/around mount are captured.
+installGlobalErrorHandlers();
 
 export default function App() {
   // The kickoff splash plays once per app launch. We render it OVER the
@@ -672,7 +680,7 @@ export default function App() {
     // instead of leaving the user with a frozen white screen. The
     // boundary lives OUTSIDE NavigationContainer on purpose — a crash
     // inside the navigator itself still surfaces here.
-    <ErrorBoundary>
+    <ErrorBoundary onError={logRenderError}>
     <SafeAreaProvider>
       <StatusBar
         barStyle={isDarkTheme ? 'light-content' : 'dark-content'}

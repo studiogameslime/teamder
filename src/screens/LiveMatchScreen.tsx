@@ -35,6 +35,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { logError } from '@/services/errorLog';
 import {
   canEnterLive,
   isCancelled as isCancelledHelper,
@@ -176,6 +177,7 @@ export function LiveMatchScreen() {
       await gameService.markGameStarted(gameId);
       await gameService.startTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
+      logError('liveTimerStart', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startTimer failed', err);
     }
   };
@@ -184,6 +186,7 @@ export function LiveMatchScreen() {
     try {
       await gameService.pauseTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
+      logError('liveTimerPause', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
     }
   };
@@ -192,6 +195,7 @@ export function LiveMatchScreen() {
     try {
       await gameService.startTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
+      logError('liveTimerResume', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
     }
   };
@@ -200,6 +204,7 @@ export function LiveMatchScreen() {
     try {
       await gameService.resetTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
+      logError('liveTimerReset', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] resetTimer failed', err);
     }
   };
@@ -211,6 +216,7 @@ export function LiveMatchScreen() {
       setEndOpen(false);
       if (nav.canGoBack()) nav.goBack();
     } catch (err) {
+      logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
     } finally {
       setEnding(false);

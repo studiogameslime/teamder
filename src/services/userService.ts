@@ -27,6 +27,7 @@ import {
   waitForAuthRestore,
 } from '@/firebase/auth';
 import { col, docs } from '@/firebase/firestore';
+import { logError } from './errorLog';
 import { gameService } from './gameService';
 
 export const userService = {
@@ -70,6 +71,7 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+      logError('createUserDoc', err, { uid: fresh.id, source: 'getCurrentUser' });
       if (__DEV__) console.warn('[auth] lazy user-doc create failed', err);
       return null;
     }
@@ -108,6 +110,7 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+      logError('createUserDoc', err, { uid: fresh.id, provider: 'google', email: fresh.email });
       if (__DEV__) console.warn('[auth] user doc create failed', err);
       // Best-effort sign-out — if THAT fails too there's nothing we
       // can do but propagate. Auth restore on next launch will hit
@@ -148,6 +151,7 @@ export const userService = {
     try {
       await setDoc(ref, fresh);
     } catch (err) {
+      logError('createUserDoc', err, { uid: fresh.id, provider: 'apple', email: fresh.email });
       if (__DEV__) console.warn('[auth] apple user doc create failed', err);
       try {
         await signOutFirebase();
@@ -197,7 +201,16 @@ export const userService = {
     };
     if (patch.avatarId) updates.avatarId = patch.avatarId;
     if (patch.photoUrl) updates.photoUrl = patch.photoUrl;
-    await updateDoc(ref, updates);
+    try {
+      await updateDoc(ref, updates);
+    } catch (e) {
+      logError('completeOnboarding', e, {
+        uid: cur.id,
+        name: trimmedName,
+        avatarId: patch.avatarId,
+      });
+      throw e;
+    }
     return {
       ...cur,
       name: trimmedName,
@@ -402,22 +415,28 @@ export const userService = {
       restorePayload.newGameSubscriptions = cur.newGameSubscriptions;
 
     const ref = docs.user(cur.id);
-    await updateDoc(ref, {
-      name: 'משתמש שהוסר',
-      email: deleteField(),
-      photoUrl: deleteField(),
-      avatarId: deleteField(),
-      jersey: deleteField(),
-      availability: deleteField(),
-      fcmTokens: deleteField(),
-      notificationPrefs: deleteField(),
-      newGameSubscriptions: deleteField(),
-      onboardingCompleted: false,
-      updatedAt: Date.now(),
-    });
+    try {
+      await updateDoc(ref, {
+        name: 'משתמש שהוסר',
+        email: deleteField(),
+        photoUrl: deleteField(),
+        avatarId: deleteField(),
+        jersey: deleteField(),
+        availability: deleteField(),
+        fcmTokens: deleteField(),
+        notificationPrefs: deleteField(),
+        newGameSubscriptions: deleteField(),
+        onboardingCompleted: false,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      logError('deleteAccount', e, { uid: cur.id });
+      throw e;
+    }
     try {
       await deleteCurrentFirebaseUser();
     } catch (err) {
+      logError('deleteAccount', err, { uid: cur.id });
       // Auth deletion failed — restore the profile so the user
       // isn't stuck in a "anonymised but signed-in" limbo.
       // The user can retry deleteOwnAccount safely. The
@@ -470,7 +489,15 @@ export const userService = {
     if (patch.photoUrl !== undefined) updates.photoUrl = patch.photoUrl;
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = Date.now();
-      await updateDoc(ref, updates);
+      try {
+        await updateDoc(ref, updates);
+      } catch (e) {
+        logError('updateProfile', e, {
+          uid: cur.id,
+          fields: Object.keys(patch || {}),
+        });
+        throw e;
+      }
     }
     return next;
   },

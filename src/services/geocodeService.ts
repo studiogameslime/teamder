@@ -34,6 +34,26 @@ const USER_AGENT = 'Teamder/1.0 (studiogameslime@gmail.com)';
  * Callers should treat `null` as "we don't know, save without
  * coords" — the matcher will gracefully degrade.
  */
+/**
+ * Geocode a specific field/pitch location for the games map. Composes the
+ * address parts into one Nominatim query (`<address>, <city>`) so the pin
+ * lands on the actual pitch rather than the city centre. Falls back to the
+ * city alone when there's no address, and returns `null` (caller saves
+ * without coords) on any miss. Reuses `geocodeCity`'s free-text query +
+ * memo + Israel restriction.
+ */
+export async function geocodeAddress(
+  fieldAddress: string | undefined,
+  city: string | undefined,
+): Promise<{ lat: number; lng: number } | null> {
+  const addr = (fieldAddress ?? '').trim();
+  const town = (city ?? '').trim();
+  const query = [addr, town].filter(Boolean).join(', ');
+  if (!query) return null;
+  // A precise address may not resolve; degrade to the city on a miss.
+  return (await geocodeCity(query)) ?? (town ? geocodeCity(town) : null);
+}
+
 export async function geocodeCity(
   name: string,
 ): Promise<{ lat: number; lng: number } | null> {

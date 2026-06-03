@@ -46,6 +46,7 @@ import {
 } from '@/types';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { docs } from '@/firebase/firestore';
+import { logError } from '@/services/errorLog';
 import {
   cooldownMsFor,
   dedupeIdFor,
@@ -208,6 +209,10 @@ export const notificationsService = {
         schemaVersion: NOTIFICATION_SCHEMA_VERSION,
       });
     } catch (err) {
+      logError('dispatchNotification', err, {
+        type: input.type,
+        recipientId: input.recipientId,
+      });
       if (__DEV__) console.warn('[notifications] dispatch failed', err);
     }
   },
@@ -235,6 +240,10 @@ export const notificationsService = {
       const fn = httpsCallable(functions, 'notifyPlayerCancelled');
       await fn({ gameId: input.gameId, reason: input.reason ?? '' });
     } catch (err) {
+      logError('dispatchNotification', err, {
+        op: 'playerCancelled',
+        gameId: input.gameId,
+      });
       if (__DEV__) {
         console.warn('[notifications] notifyPlayerCancelled failed', err);
       }

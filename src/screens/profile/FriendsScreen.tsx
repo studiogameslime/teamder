@@ -12,6 +12,7 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -283,7 +284,13 @@ export function FriendsScreen() {
                 <Pressable
                   onPress={async () => {
                     try {
-                      const link = 'https://teamder.app';
+                      // Device-correct store link — the old
+                      // https://teamder.app domain isn't connected, so it
+                      // was a dead link on every platform.
+                      const link =
+                        Platform.OS === 'ios'
+                          ? 'https://apps.apple.com/app/id6775178022'
+                          : 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
                       await Share.share({
                         title: he.inviteShareSubject,
                         message: he.profileInviteShareBody(link),

@@ -51,9 +51,11 @@ import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
+import { geocodeAddress } from '@/services/geocodeService';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
+import { logError } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
 import { disciplineService } from './disciplineService';
@@ -1330,8 +1332,56 @@ export const gameService = {
           groupId: base.groupId,
         });
       }
-      const ref = await addDoc(col.games(), { id: '', ...base });
-      createdId = ref.id;
+      try {
+        const ref = await addDoc(col.games(), { id: '', ...base });
+        createdId = ref.id;
+      } catch (e) {
+        const code = (e as { code?: string })?.code;
+        if (
+          ![
+            'GAME_OVERLAP',
+            'REGISTRATION_CONFLICT',
+            'GAME_NOT_OPEN',
+            'GAME_STARTED',
+            'GAME_LIVE',
+            'GROUP_FULL',
+            'STALE_OFFER',
+            'resource-exhausted',
+            'functions/resource-exhausted',
+          ].includes(code as string)
+        ) {
+          logError('createGame', e, {
+            groupId: input.groupId,
+            title: input.title,
+            startsAt: input.startsAt,
+            maxPlayers: input.maxPlayers,
+            format: input.format,
+            code,
+          });
+        }
+        throw e;
+      }
+    }
+
+    // Best-effort geocoding so the new game shows on the games map. Fire-
+    // and-forget: never blocks or fails the create, and runs only in real
+    // mode (mock games already carry fieldLat/fieldLng). The pin lands on
+    // the field address, degrading to the city when the address can't be
+    // resolved.
+    if (!USE_MOCK_DATA && (input.fieldAddress || input.city)) {
+      void geocodeAddress(input.fieldAddress, input.city)
+        .then((coords) => {
+          if (coords) {
+            return updateDoc(docs.game(createdId), {
+              fieldLat: coords.lat,
+              fieldLng: coords.lng,
+            } as Partial<GameDoc>);
+          }
+          return undefined;
+        })
+        .catch((err) => {
+          if (__DEV__) console.warn('[createGameV2] geocode failed', err);
+        });
     }
 
     // Phase E.2: dispatch a "new game in community" notification. We use
@@ -2127,6 +2177,33 @@ export const gameService = {
       // MatchDetailsScreen logs the message; this guarantees the
       // user sees actionable detail in the redbox.
       const e = err as { code?: string; name?: string; message?: string };
+      // Only log UNEXPECTED failures — the lifecycle gates above throw
+      // business codes the UI handles as normal validation results.
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(e.code as string)
+      ) {
+        const snap = (lastDebugSnapshot ?? {}) as Record<string, unknown>;
+        logError('joinGame', err, {
+          gameId,
+          userId,
+          status: snap.status,
+          visibility: snap.visibility,
+          groupId: snap.groupId,
+          requiresApproval: snap.requiresApproval,
+          startsAt: snap.startsAt,
+          code: e.code,
+        });
+      }
       const enriched = new Error(
         `joinGameV2 failed: code=${e.code ?? 'n/a'} name=${e.name ?? 'n/a'} ` +
           `msg="${e.message ?? ''}" snapshot=${JSON.stringify(lastDebugSnapshot)} ` +
@@ -2215,7 +2292,9 @@ export const gameService = {
     }
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('approveGameJoin: game not found');
       const data = snap.data();
@@ -2269,7 +2348,26 @@ export const gameService = {
         title: data.title ?? '',
         groupId: typeof data.groupId === 'string' ? data.groupId : '',
       };
-    });
+      });
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(code as string)
+      ) {
+        logError('approveGameJoin', e, { gameId, userId });
+      }
+      throw e;
+    }
 
     if (result.bucket === 'noop') return { bucket: 'noop' };
     achievementsService.bump(userId, 'gamesJoined', 1);
@@ -2328,7 +2426,9 @@ export const gameService = {
     }
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return { changed: false, title: '' };
       const data = snap.data();
@@ -2354,7 +2454,26 @@ export const gameService = {
         updatedAt: Date.now(),
       } as any);
       return { changed: true, title: data.title ?? '' };
-    });
+      });
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(code as string)
+      ) {
+        logError('rejectGameJoin', e, { gameId, userId });
+      }
+      throw e;
+    }
 
     if (!result.changed) return;
     notificationsService.dispatch({
@@ -2453,7 +2572,9 @@ export const gameService = {
     // gate is evaluated against canonical state, not a stale snapshot.
     const ref = docs.game(gameId);
     const { db } = getFirebase();
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists())
         return {
@@ -2546,7 +2667,26 @@ export const gameService = {
             ? data.cancelDeadlineHours
             : 0,
       };
-    });
+      });
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(code as string)
+      ) {
+        logError('cancelGame', e, { gameId, userId });
+      }
+      throw e;
+    }
 
     if (result.offeredUid) {
       notificationsService.dispatch({
@@ -2587,7 +2727,9 @@ export const gameService = {
   async confirmSpotOffer(gameId: string, userId: UserId): Promise<void> {
     const { db } = getFirebase();
     const ref = docs.game(gameId);
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return { ok: false as const };
       const data = snap.data();
@@ -2639,7 +2781,26 @@ export const gameService = {
         startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
         nextOfferUid: nextOffer?.uid ?? null,
       };
-    });
+      });
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(code as string)
+      ) {
+        logError('confirmSpotOffer', e, { gameId, userId });
+      }
+      throw e;
+    }
     if (!result.ok) {
       throw new Error(result.reason ?? 'CONFIRM_FAILED');
     }
@@ -2671,7 +2832,9 @@ export const gameService = {
   async passSpotOffer(gameId: string, userId: UserId): Promise<void> {
     const { db } = getFirebase();
     const ref = docs.game(gameId);
-    const result = await runTransaction(db, async (tx) => {
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return { ok: false as const };
       const data = snap.data();
@@ -2712,7 +2875,26 @@ export const gameService = {
         startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
         nextOfferUid: nextOffer?.uid ?? null,
       };
-    });
+      });
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (
+        ![
+          'GAME_OVERLAP',
+          'REGISTRATION_CONFLICT',
+          'GAME_NOT_OPEN',
+          'GAME_STARTED',
+          'GAME_LIVE',
+          'GROUP_FULL',
+          'STALE_OFFER',
+          'resource-exhausted',
+          'functions/resource-exhausted',
+        ].includes(code as string)
+      ) {
+        logError('passSpotOffer', e, { gameId, userId });
+      }
+      throw e;
+    }
     if (!result.ok) return;
     if ('alreadyResolved' in result && result.alreadyResolved) return;
     if (result.nextOfferUid) {
@@ -2888,6 +3070,7 @@ export const gameService = {
         query(col.games(), where('participantIds', 'array-contains', userId)),
       );
     } catch (err) {
+      logError('leaveGame', err, { userId });
       if (__DEV__) console.warn('[leaveAll] query failed', err);
       return;
     }
@@ -2961,6 +3144,7 @@ export const gameService = {
         }
         if (result.wasInPlayers) noteAdmin(result.createdBy, result.title);
       } catch (err) {
+        logError('leaveGame', err, { userId });
         if (__DEV__) console.warn('[leaveAll] tx failed', gd.id, err);
       }
     }

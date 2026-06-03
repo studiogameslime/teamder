@@ -175,6 +175,15 @@
       '&referrer=' + encodeURIComponent(ref);
   }
 
+  // iOS has no Play Install Referrer — point the install button at the
+  // App Store instead of Google Play so non-installed users can download.
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+    var iosInstallEl = document.getElementById('installBtn');
+    if (iosInstallEl) {
+      iosInstallEl.href = 'https://apps.apple.com/app/id6775178022';
+    }
+  }
+
   // Manual fallback — also kept as a click handler in case the
   // auto-redirect below doesn't fire (private-mode quirks, no JS in
   // some embedded webviews, etc.). The buttons stay visible during
@@ -199,9 +208,7 @@
   // installed, the OS hijacks navigation and we leave the page.
   // Otherwise we land on a "page not found" non-event in Safari — so
   // we set a short timer and, if the page is still alive after it
-  // fires, force-redirect to the App Store. (No iOS store URL is
-  // shipped today since the app isn't on the App Store yet — when
-  // it is, swap APP_STORE_URL_IOS below for the real one.)
+  // fires, force-redirect to the App Store (APP_STORE_URL_IOS below).
   //
   // Desktop: no auto-redirect. The user might be reading the page
   // on a laptop and a forced store-redirect is hostile there.
@@ -209,7 +216,7 @@
   var isAndroid = /Android/i.test(ua);
   var isIOS = /iPhone|iPad|iPod/i.test(ua);
   var isMobile = isAndroid || isIOS;
-  var APP_STORE_URL_IOS = null; // not on the App Store yet
+  var APP_STORE_URL_IOS = 'https://apps.apple.com/app/id6775178022';
   var PLAY_PACKAGE = 'com.studiogameslime.soccerapp';
 
   function autoRedirect() {

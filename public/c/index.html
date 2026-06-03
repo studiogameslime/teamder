@@ -1032,6 +1032,13 @@
     var ua = navigator.userAgent || '';
     var isAndroid = /Android/i.test(ua);
     var isIOS = /iPhone|iPad|iPod/i.test(ua);
+    // iOS: rewrite every Play Store link on the showcase to the App
+    // Store so iPhone visitors download from the correct store.
+    if (isIOS) {
+      var APP_STORE_URL = 'https://apps.apple.com/app/id6775178022';
+      var playLinks = document.querySelectorAll('a[href*="play.google.com"]');
+      for (var i = 0; i < playLinks.length; i++) { playLinks[i].href = APP_STORE_URL; }
+    }
     if ((isAndroid || isIOS) && groupId) {
       var isChrome =
         /Chrome\/[0-9]/.test(ua) &&
