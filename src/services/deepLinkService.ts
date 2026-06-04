@@ -60,19 +60,38 @@ export function parseInviteUrl(url: string): PendingInvite | null {
         ? invitedByRaw0
         : undefined;
 
+    // Acquisition (UTM) tag — `?s=<source>&c=<campaign>` on any link form,
+    // emitted by the Pulse ad-link builder. Carried through so signup can
+    // record where the install came from. Independent of `invitedBy`.
+    const str = (v: unknown): string | undefined =>
+      typeof v === 'string' && v.length > 0 ? v : undefined;
+    const acq: { source?: string; campaign?: string } = {
+      source: str(parsed.queryParams?.s) ?? str(parsed.queryParams?.utm_source),
+      campaign: str(parsed.queryParams?.c) ?? str(parsed.queryParams?.utm_campaign),
+    };
+    if (!acq.source) delete acq.source;
+    if (!acq.campaign) delete acq.campaign;
+
     // Generic "invite to the app" link (no game/team target) —
-    // teamder://app, footy://app, or https://<host>/app?invitedBy=<uid>.
-    // Carries only the inviter so referral attribution lands; nothing to
-    // navigate to afterwards.
+    // teamder://app, footy://app, https://<host>/app, or the dedicated
+    // acquisition path https://<host>/go. Carries only inviter/source;
+    // nothing to navigate to afterwards.
     const isAppScheme =
       (parsed.scheme === 'teamder' || parsed.scheme === 'footy') &&
-      (parsed.hostname === 'app' || segments[0] === 'app');
+      (parsed.hostname === 'app' || parsed.hostname === 'go' ||
+        segments[0] === 'app' || segments[0] === 'go');
     const isAppHosting =
       parsed.hostname &&
       HOSTING_DOMAINS.has(parsed.hostname) &&
-      segments[0] === 'app';
+      (segments[0] === 'app' || segments[0] === 'go');
     if (isAppScheme || isAppHosting) {
-      return invitedBy0 ? { type: 'app', invitedBy: invitedBy0 } : { type: 'app' };
+      // An acquisition link may target a game via `?g=<gameId>` — deep-link
+      // to it like a session invite while still recording the source.
+      const g = str(parsed.queryParams?.g);
+      if (g) {
+        return { type: 'session', id: g, ...(invitedBy0 ? { invitedBy: invitedBy0 } : {}), ...acq };
+      }
+      return { type: 'app', ...(invitedBy0 ? { invitedBy: invitedBy0 } : {}), ...acq };
     }
 
     let type: 'session' | 'team' | null = null;
@@ -106,7 +125,7 @@ export function parseInviteUrl(url: string): PendingInvite | null {
       typeof invitedByRaw === 'string' && invitedByRaw.length > 0
         ? invitedByRaw
         : undefined;
-    return invitedBy ? { type, id, invitedBy } : { type, id };
+    return { type, id, ...(invitedBy ? { invitedBy } : {}), ...acq };
   } catch (err) {
     logError('parseInviteUrl', err, { url });
     return null;

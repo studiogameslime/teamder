@@ -126,14 +126,23 @@
   var type = parts[0] === 'session' ? 'session'
            : parts[0] === 'team' ? 'team'
            : parts[0] === 'app' ? 'app'
+           : parts[0] === 'go' ? 'go'
            : null;
   var id = parts[1] || '';
-  var invitedBy = (new URLSearchParams(location.search).get('invitedBy') || '').trim();
-  // 'app' = generic "invite to the app" (no game/team target). It still
-  // carries `invitedBy` for referral credit; the app lands on home.
-  var isApp = type === 'app';
+  var qp = new URLSearchParams(location.search);
+  var invitedBy = (qp.get('invitedBy') || '').trim();
+  // UTM acquisition params from the Pulse ad-link builder.
+  var source = (qp.get('s') || qp.get('utm_source') || '').trim();
+  var campaign = (qp.get('c') || qp.get('utm_campaign') || '').trim();
+  var gameTarget = (qp.get('g') || '').trim();
+  // 'app' / 'go' = generic "open the app" (no path target). 'go' is the
+  // dedicated acquisition entry; it may still carry `g=<gameId>` to deep
+  // link into a game. Both carry invitedBy/source for attribution.
+  var isApp = type === 'app' || type === 'go';
   var valid = !!type && (isApp || !!id);
-  var pathPart = isApp ? 'app' : type + '/' + encodeURIComponent(id);
+  var pathPart = type === 'go' ? 'go'
+               : isApp ? 'app'
+               : type + '/' + encodeURIComponent(id);
 
   var titleEl = document.getElementById('title');
   var subEl = document.getElementById('subtitle');
@@ -148,9 +157,20 @@
     subEl.textContent = 'האפליקציה לארגון משחקי כדורגל בלי בלגן. הורד ובוא לשחק.';
   }
 
+  // Build the query string carried into the app (deep link + clipboard),
+  // preserving inviter + UTM source/campaign + optional game target.
+  function appQuery() {
+    var p = [];
+    if (invitedBy) p.push('invitedBy=' + encodeURIComponent(invitedBy));
+    if (source) p.push('s=' + encodeURIComponent(source));
+    if (campaign) p.push('c=' + encodeURIComponent(campaign));
+    if (gameTarget) p.push('g=' + encodeURIComponent(gameTarget));
+    return p.length ? '?' + p.join('&') : '';
+  }
+
   function deepLink() {
     if (!valid) return null;
-    var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
+    var query = appQuery();
     // We use the `footy://` scheme rather than `teamder://` because
     // every shipped build of the app has registered `footy` since
     // launch, while `teamder` was only added later and isn't present
@@ -178,8 +198,20 @@
   // first launch, letting installReferrerService recover the inviter.
   if (valid) {
     var installEl = document.getElementById('installBtn');
-    var ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);
-    if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
+    var ref;
+    if (source) {
+      // Acquisition link → standard UTM referrer the app parses into
+      // `acquisition`. Includes the game target (if any) so the install
+      // can still deep-link into it.
+      var u = ['utm_source=' + encodeURIComponent(source)];
+      if (campaign) u.push('utm_campaign=' + encodeURIComponent(campaign));
+      var gForRef = gameTarget || (type === 'session' ? id : '');
+      if (gForRef) u.push('g=' + encodeURIComponent(gForRef));
+      ref = u.join('&');
+    } else {
+      ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);
+      if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
+    }
     installEl.href =
       'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp' +
       '&referrer=' + encodeURIComponent(ref);

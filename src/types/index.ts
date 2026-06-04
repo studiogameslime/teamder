@@ -130,6 +130,25 @@ export interface User {
    * downstream. Read consumers can call `.toMillis()` to get a number.
    */
   invitedAt?: import('firebase/firestore').Timestamp;
+
+  /**
+   * UTM acquisition — set ONCE on fresh signup if the install arrived via
+   * a tracked Pulse ad/share link (`?s=<source>&c=<campaign>`). Records
+   * the channel so the admin can see which source drove the most
+   * downloads / signups / game-joins. Independent of `invitedBy`.
+   */
+  acquisition?: {
+    source: string;
+    campaign?: string;
+    gameId?: string;
+    at: number;
+  };
+
+  /** Device platform + last-active ping, written on launch (Pulse segments). */
+  platform?: 'ios' | 'android' | string;
+  lastSeenAt?: number;
+  /** Last broadcast-push timestamp — server-managed per-user daily cap. */
+  lastBroadcastAt?: number;
 }
 
 // ─── Achievements ────────────────────────────────────────────────────────

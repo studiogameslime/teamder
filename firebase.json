@@ -20,6 +20,7 @@
       "rewrites": [
         { "source": "/session/**", "destination": "/invite.html" },
         { "source": "/app", "destination": "/invite.html" },
+        { "source": "/go", "destination": "/invite.html" },
         {
           "source": "/team/**",
           "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
@@ -43,6 +44,7 @@
       "rewrites": [
         { "source": "/session/**", "destination": "/invite.html" },
         { "source": "/app", "destination": "/invite.html" },
+        { "source": "/go", "destination": "/invite.html" },
         {
           "source": "/team/**",
           "function": { "functionId": "serveCommunityPage", "region": "us-central1" }

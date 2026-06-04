@@ -82,6 +82,7 @@ export const userService = {
       return null;
     }
     await applyInviteAttributionIfFresh(fresh.id);
+    await applyAcquisitionIfFresh(fresh.id);
     return fresh;
   },
 
@@ -129,6 +130,7 @@ export const userService = {
       throw err;
     }
     await applyInviteAttributionIfFresh(fresh.id);
+    await applyAcquisitionIfFresh(fresh.id);
     return fresh;
   },
 
@@ -167,6 +169,7 @@ export const userService = {
       throw err;
     }
     await applyInviteAttributionIfFresh(fresh.id);
+    await applyAcquisitionIfFresh(fresh.id);
     return fresh;
   },
 
@@ -655,6 +658,43 @@ async function applyInviteAttributionIfFresh(
   } catch (err) {
     logError('applyInviteAttribution', err, { newUserId });
     if (__DEV__) console.warn('[userService] invite attribution failed', err);
+  }
+}
+
+/**
+ * Record where this install came from (UTM acquisition) on a brand-new
+ * user, from the same pending-invite stash the referrer / clipboard /
+ * deep-link paths fill. Set-once: never overwrites an existing
+ * `acquisition`. Independent of invite attribution — a link can carry a
+ * `source` with no inviter, and vice-versa. Best-effort; never throws.
+ */
+async function applyAcquisitionIfFresh(newUserId: string): Promise<void> {
+  try {
+    if (USE_MOCK_DATA) return;
+    const pending = await storage.getPendingInvite();
+    const source = pending?.source;
+    if (!source) return;
+
+    const ref = docs.user(newUserId);
+    const snap = await getDoc(ref);
+    const existing = snap.data() as { acquisition?: unknown } | undefined;
+    if (existing?.acquisition) return; // set-once
+
+    const gameId =
+      pending && (pending.type === 'session' || pending.type === 'team')
+        ? pending.id
+        : undefined;
+    await updateDoc(ref, {
+      acquisition: {
+        source,
+        ...(pending?.campaign ? { campaign: pending.campaign } : {}),
+        ...(gameId ? { gameId } : {}),
+        at: Date.now(),
+      },
+    });
+  } catch (err) {
+    logError('applyAcquisition', err, { newUserId });
+    if (__DEV__) console.warn('[userService] acquisition write failed', err);
   }
 }
 

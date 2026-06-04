@@ -54,13 +54,22 @@ const KEYS = {
  * by other surfaces) won't carry it, and the consumer treats missing
  * as "no inviter to credit".
  */
+// Acquisition (UTM) attribution carried alongside any invite shape: a
+// tracked ad/share link records WHERE the install came from. `source` is
+// the channel label (whatsapp / facebook / …), `campaign` an optional tag.
+// Independent of `invitedBy` (a link can have a source but no inviter).
+export interface AcquisitionTag {
+  source?: string;
+  campaign?: string;
+}
+
 export type PendingInvite =
-  | { type: 'session'; id: string; invitedBy?: string }
-  | { type: 'team'; id: string; invitedBy?: string }
+  | ({ type: 'session'; id: string; invitedBy?: string } & AcquisitionTag)
+  | ({ type: 'team'; id: string; invitedBy?: string } & AcquisitionTag)
   // Generic "invite to the app" — no game/team target. Carries only the
   // inviter so referral attribution still lands; the consumer doesn't
   // navigate anywhere (the user just arrives on the home screen).
-  | { type: 'app'; invitedBy?: string };
+  | ({ type: 'app'; invitedBy?: string } & AcquisitionTag);
 
 export const storage = {
   async getOnboardingDone(): Promise<boolean> {
@@ -137,6 +146,10 @@ export const storage = {
       if (typeof parsed.invitedBy !== 'string' || parsed.invitedBy === '') {
         delete (parsed as { invitedBy?: string }).invitedBy;
       }
+      // Same defensive cleanup for the acquisition tag.
+      const p = parsed as { source?: unknown; campaign?: unknown };
+      if (typeof p.source !== 'string' || p.source === '') delete p.source;
+      if (typeof p.campaign !== 'string' || p.campaign === '') delete p.campaign;
       return parsed;
     } catch {
       await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
