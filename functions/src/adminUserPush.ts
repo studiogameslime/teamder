@@ -209,6 +209,7 @@ interface Campaign {
   sendAt?: number;
   status?: string;
   data?: Record<string, string>;
+  testUserId?: string; // when set, deliver ONLY to this user (a test send)
 }
 
 /** Process one PUSH campaign. Idempotent + rate-limited. */
@@ -228,14 +229,47 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
     // No global rate gate — the per-user cap below is the real guard. We
     // still record the send timestamp for an informational "sent today".
     tx.update(ref, { status: 'sending', processedAt: nowMs });
-    const rateRef = db.collection('adminConfig').doc(RATE_DOC);
-    const sends = (((await tx.get(rateRef)).data()?.sends as number[]) ?? []).filter(
-      (t) => nowMs - t < DAY,
-    );
-    tx.set(rateRef, { sends: [...sends, nowMs] }, { merge: true });
+    // Test sends don't touch the global rate record (they're not broadcasts).
+    if (!c.testUserId) {
+      const rateRef = db.collection('adminConfig').doc(RATE_DOC);
+      const sends = (((await tx.get(rateRef)).data()?.sends as number[]) ?? []).filter(
+        (t) => nowMs - t < DAY,
+      );
+      tx.set(rateRef, { sends: [...sends, nowMs] }, { merge: true });
+    }
     return { go: true as const, c };
   });
   if (!claim.go) return;
+
+  // ── Test send: deliver only to the chosen user, bypass segment + caps. ──
+  if (claim.c.testUserId) {
+    try {
+      const tokens = (await tokensFor(db, claim.c.testUserId)).filter(Boolean);
+      let sent = 0;
+      for (let i = 0; i < tokens.length; i += 500) {
+        const res = await admin.messaging().sendEachForMulticast({
+          tokens: tokens.slice(i, i + 500),
+          notification: { title: claim.c.title || 'Teamder', body: claim.c.body || '' },
+          data: { ...(claim.c.data || {}), type: 'adminBroadcast', campaignId: id, test: '1' },
+          android: { priority: 'high', notification: { sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default' } } },
+        });
+        sent += res.successCount;
+      }
+      await ref.update({
+        status: tokens.length ? 'sent' : 'error',
+        errorMessage: tokens.length ? admin.firestore.FieldValue.delete() : 'למשתמש אין טוקן פוש',
+        recipientUsers: tokens.length ? 1 : 0,
+        recipientTokens: tokens.length,
+        successCount: sent,
+        sentAt: nowMs,
+        'metrics.delivered': sent,
+      });
+    } catch (err) {
+      await ref.update({ status: 'error', errorMessage: String(err).slice(0, 300) });
+    }
+    return;
+  }
 
   try {
     const seg = normalizeSegment(claim.c.segment);

@@ -193,6 +193,10 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
     const candidates = snap.docs
       .map((d) => ({ id: d.id, raw: d.data() as Record<string, unknown> }))
       .filter(({ id, raw }) => {
+        // Test popup: shown ONLY to the targeted user, ignoring window /
+        // segment / frequency cap so the tester can preview it freely.
+        const testUid = typeof raw.testUserId === 'string' ? raw.testUserId : undefined;
+        if (testUid) return testUid === user.id;
         const startAt = Number(raw.startAt ?? 0);
         const endAt = Number(raw.endAt ?? Number.MAX_SAFE_INTEGER);
         if (now < startAt || now > endAt) return false;
