@@ -18,6 +18,7 @@ import { MainTabs } from './MainTabs';
 import { navigateInvite } from './navigationRef';
 import { colors } from '@/theme';
 import { adsService } from '@/services/adsService';
+import { initRemoteConfig } from '@/services/remoteConfigService';
 import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import { gameService } from '@/services/gameService';
@@ -68,6 +69,14 @@ export function RootNavigator() {
         console.info('[invite] consumer — pending before consume', pending);
       }
       if (!pending) return;
+
+      // Generic app invite — no target to open. Attribution already
+      // landed at signup (applyInviteAttributionIfFresh); nothing to
+      // navigate to, so just clear the stash and leave the user on home.
+      if (pending.type === 'app') {
+        await storage.clearPendingInvite();
+        return;
+      }
 
       // Pre-flight existence check. Three explicit outcomes:
       //   • exists=true  → navigate; the target screen renders the
@@ -155,6 +164,10 @@ export function RootNavigator() {
   // Each side service is wrapped so a failure in one doesn't break boot.
   useEffect(() => {
     hydrateUser();
+    // Fetch server-tunable knobs (ad frequency, etc.) early so they're
+    // active before the app-open ad gate runs. Fire-and-forget; getters
+    // fall back to in-code defaults until it resolves.
+    void initRemoteConfig();
     try {
       adsService.initializeAds();
     } catch (err) {
@@ -167,9 +180,12 @@ export function RootNavigator() {
   const gameStatus = useGameStore((s) => s.game.status);
   useEffect(() => {
     if (membership === 'member' && gameStatus !== 'locked') {
-      adsService.showAppOpenAdIfAvailable();
+      // accountCreatedAt drives the new-user ad-free grace inside the service.
+      adsService.showAppOpenAdIfAvailable({
+        accountCreatedAt: currentUser?.createdAt,
+      });
     }
-  }, [membership, gameStatus]);
+  }, [membership, gameStatus, currentUser]);
 
   // After we know who the user is, hydrate their group state and tell
   // gameStore who "self" is (so registerSelf/cancelSelf use the auth uid in

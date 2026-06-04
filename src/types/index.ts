@@ -120,7 +120,8 @@ export interface User {
    * Powers the "שחקנים שהצטרפו דרכי" stat via a count aggregation.
    */
   invitedBy?: UserId;
-  invitedByType?: 'session' | 'team';
+  // 'app' = generic "invite to the app" link (no game/team target).
+  invitedByType?: 'session' | 'team' | 'app';
   invitedByTargetId?: string;
   /**
    * Firestore server time at the moment we recorded the attribution
@@ -1096,6 +1097,15 @@ export interface Game {
    * can't haunt a player who corrected their plan.
    */
   cancellations?: Record<UserId, number>;
+
+  /**
+   * Map of uid → ms epoch of when each player registered for this game.
+   * Written on `joinGameV2` so the admin panel can show an accurate
+   * "joined X ago" instead of falling back to the game's creation time.
+   * Best-effort + client-written; games joined before this shipped have
+   * no entry (consumers fall back to `createdAt`).
+   */
+  joinedAt?: Record<UserId, number>;
 
   /**
    * Pending waitlist promotion offer. Set by `cancelGameV2` when a

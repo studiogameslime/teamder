@@ -39,7 +39,11 @@ function nextThursday20(): number {
 }
 
 function buildInitial(
-  g: Group,
+  // May be undefined during the brief empty-state render (no community
+  // and the orphan group hasn't provisioned yet). All hooks must run
+  // every render — see GameCreateScreen — so this is called even then;
+  // we fall back to blank defaults rather than crash on `g.city`.
+  g: Group | undefined,
   overrides?: {
     startsAt?: number;
     format?: GameFormValues['format'];
@@ -59,9 +63,9 @@ function buildInitial(
   // forced the admin to re-tap the suggestion every time which was
   // pure friction with no payoff — the saved value is, by
   // construction, already canonical.
-  const presetCity = (g.city ?? '').trim();
+  const presetCity = (g?.city ?? '').trim();
   return {
-    title: g.name,
+    title: g?.name ?? '',
     startsAt: overrides?.startsAt ?? nextThursday20(),
     fieldName: '',
     city: presetCity,
@@ -76,7 +80,7 @@ function buildInitial(
     // and join). Closed/private communities default to community-only
     // — matches user expectation that a private group's games stay
     // inside the group unless the admin explicitly opens them.
-    visibility: g.isOpen === true ? 'public' : 'community',
+    visibility: g?.isOpen === true ? 'public' : 'community',
     requiresApproval: false,
     // Recurring is now an in-form toggle. Pre-set it ON when the
     // route param flagged a recurring entry; otherwise default OFF
@@ -90,7 +94,7 @@ function buildInitial(
     // communities should opt in explicitly). Default minimum trust
     // is 70 — filters out low-reliability candidates without being
     // too strict.
-    acceptsFillers: g.isOpen === true,
+    acceptsFillers: g?.isOpen === true,
     fillerMinTrust: 70,
     notes: '',
     bringBall: true,
@@ -188,33 +192,15 @@ export function GameCreateScreen() {
   // start effect above provisions the orphan group; see the
   // `params.quick && !orphanGroup` guard just before the GameWizardForm.
 
-  // Empty states with an "ללא קהילה" CTA. Both render the same primary
-  // CTA ("צור משחק חד־פעמי") since the answer for "no community to
-  // create in" is now: just create one without a community.
-  if (!orphanGroup && allMyCommunities.length === 0) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.createGameTitle} />
-        <View style={styles.emptyAll}>
-          <Ionicons name="people-outline" size={64} color={colors.textMuted} />
-          <Text style={styles.emptyText}>{he.createGameNoCommunities}</Text>
-          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-  if (!orphanGroup && myCommunities.length === 0) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <ScreenHeader title={he.createGameTitle} />
-        <View style={styles.emptyAll}>
-          <Ionicons name="shield-outline" size={64} color={colors.textMuted} />
-          <Text style={styles.emptyText}>{he.createGameNoAdmin}</Text>
-          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // NOTE: the "no community" empty states are rendered LOWER DOWN, after
+  // every hook below — NOT here. They used to early-return at this point,
+  // but that ran BEFORE the useState/useMemo hooks further down, so when
+  // `orphanGroup` provisioned (or communities loaded) the component
+  // flipped between the early-return path (fewer hooks) and the full
+  // render (more hooks) → "rendered more hooks than during the previous
+  // render" crash. This is exactly what bit the quick-game flow for users
+  // with no community. All hooks now run unconditionally; the empty-state
+  // returns happen at the very end.
 
   const isRecurring = params.recurring === true;
   const isOrphan = orphanGroup !== null;
@@ -262,6 +248,35 @@ export function GameCreateScreen() {
     setGroupId(id);
     setInitialKey((n) => n + 1);
   };
+
+  // Empty states with an "ללא קהילה" CTA — rendered AFTER all hooks (see
+  // the note above) so the hook count never changes. Both show the same
+  // primary CTA ("צור משחק חד־פעמי"): the answer for "no community to
+  // create in" is to make a one-off game without one.
+  if (!orphanGroup && allMyCommunities.length === 0) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          <Ionicons name="people-outline" size={64} color={colors.textMuted} />
+          <Text style={styles.emptyText}>{he.createGameNoCommunities}</Text>
+          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (!orphanGroup && myCommunities.length === 0) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          <Ionicons name="shield-outline" size={64} color={colors.textMuted} />
+          <Text style={styles.emptyText}>{he.createGameNoAdmin}</Text>
+          <OrphanCta loading={orphanLoading} onPress={startOrphanFlow} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const submit = async (v: GameFormValues) => {
     if (!user || !selectedGroup) return;

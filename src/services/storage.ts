@@ -27,6 +27,17 @@ const KEYS = {
   // install, and we additionally cache "we've looked" so subsequent
   // launches don't re-attempt the native call.
   INSTALL_REFERRER_CONSUMED: 'footy.installReferrer.consumed',
+  // iOS-only counterpart to INSTALL_REFERRER_CONSUMED. Apple has no
+  // install-referrer API, so the landing page copies the invite URL to
+  // the clipboard and clipboardInviteService reads it once on first
+  // launch. This latch ensures we only ever look (and only ever show
+  // the system paste prompt) a single time per install.
+  CLIPBOARD_INVITE_CONSUMED: 'footy.clipboardInvite.consumed',
+  // App-open ad frequency state — `{ lastShownAt, day, countToday }`.
+  // Powers the cross-session cooldown + daily cap in adsService so a
+  // user who opens the app many times a day isn't hit with an app-open
+  // ad on every launch.
+  APP_OPEN_AD_STATE: 'footy.appOpenAd.state',
 } as const;
 
 /**
@@ -39,7 +50,11 @@ const KEYS = {
  */
 export type PendingInvite =
   | { type: 'session'; id: string; invitedBy?: string }
-  | { type: 'team'; id: string; invitedBy?: string };
+  | { type: 'team'; id: string; invitedBy?: string }
+  // Generic "invite to the app" — no game/team target. Carries only the
+  // inviter so referral attribution still lands; the consumer doesn't
+  // navigate anywhere (the user just arrives on the home screen).
+  | { type: 'app'; invitedBy?: string };
 
 export const storage = {
   async getOnboardingDone(): Promise<boolean> {
@@ -101,11 +116,12 @@ export const storage = {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw) as PendingInvite;
-      if (
-        !parsed ||
-        (parsed.type !== 'session' && parsed.type !== 'team') ||
-        typeof parsed.id !== 'string'
-      ) {
+      const validShape =
+        parsed &&
+        ((parsed.type === 'app') ||
+          ((parsed.type === 'session' || parsed.type === 'team') &&
+            typeof (parsed as { id?: unknown }).id === 'string'));
+      if (!validShape) {
         await AsyncStorage.removeItem(KEYS.PENDING_INVITE);
         return null;
       }
@@ -133,5 +149,43 @@ export const storage = {
   },
   async setInstallReferrerConsumed(): Promise<void> {
     await AsyncStorage.setItem(KEYS.INSTALL_REFERRER_CONSUMED, '1');
+  },
+
+  async getClipboardInviteConsumed(): Promise<boolean> {
+    return (await AsyncStorage.getItem(KEYS.CLIPBOARD_INVITE_CONSUMED)) === '1';
+  },
+  async setClipboardInviteConsumed(): Promise<void> {
+    await AsyncStorage.setItem(KEYS.CLIPBOARD_INVITE_CONSUMED, '1');
+  },
+
+  async getAppOpenAdState(): Promise<{
+    lastShownAt: number;
+    day: string;
+    countToday: number;
+  }> {
+    const raw = await AsyncStorage.getItem(KEYS.APP_OPEN_AD_STATE);
+    const empty = { lastShownAt: 0, day: '', countToday: 0 };
+    if (!raw) return empty;
+    try {
+      const p = JSON.parse(raw) as Partial<{
+        lastShownAt: number;
+        day: string;
+        countToday: number;
+      }>;
+      return {
+        lastShownAt: Number(p.lastShownAt) || 0,
+        day: typeof p.day === 'string' ? p.day : '',
+        countToday: Number(p.countToday) || 0,
+      };
+    } catch {
+      return empty;
+    }
+  },
+  async setAppOpenAdState(state: {
+    lastShownAt: number;
+    day: string;
+    countToday: number;
+  }): Promise<void> {
+    await AsyncStorage.setItem(KEYS.APP_OPEN_AD_STATE, JSON.stringify(state));
   },
 };

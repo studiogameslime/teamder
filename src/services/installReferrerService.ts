@@ -64,6 +64,12 @@ function loadModule(): PlayInstallReferrerModule | null {
  */
 export function parseReferrerInvite(referrer: string): PendingInvite | null {
   if (!referrer) return null;
+  // Generic "invite to the app" — `invite_app_by_<uid>` (no target).
+  const appRef = /^invite_app_by_([^_]+)$/.exec(referrer);
+  if (appRef) {
+    const invitedBy = safeDecode(appRef[1]);
+    return invitedBy ? { type: 'app', invitedBy } : { type: 'app' };
+  }
   // Try the attributed format first since its prefix is a strict
   // superset; falling back to the legacy short form only if the
   // `_by_` segment isn't present.

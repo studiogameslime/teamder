@@ -632,13 +632,18 @@ async function applyInviteAttributionIfFresh(
     const existing = snap.data();
     if (existing?.invitedBy) return;
 
+    // A generic app invite has no game/team target — use an 'app'
+    // placeholder so the rules' "type+target present" guard still passes
+    // and the referral is credited (the count query keys on invitedBy).
+    const targetId = pending.type === 'app' ? 'app' : pending.id;
+
     // serverTimestamp() (NOT Date.now()) so the attribution time is
     // resilient to a wrong device clock and analytics queries can
     // trust ordering. Firestore replaces the sentinel server-side.
     await updateDoc(ref, {
       invitedBy: pending.invitedBy,
       invitedByType: pending.type,
-      invitedByTargetId: pending.id,
+      invitedByTargetId: targetId,
       invitedAt: serverTimestamp(),
     });
   } catch (err) {

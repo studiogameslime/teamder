@@ -216,7 +216,9 @@ const userConverter: FirestoreDataConverter<User> = {
       discipline: readDiscipline(d.discipline),
       invitedBy: typeof d.invitedBy === 'string' ? d.invitedBy : undefined,
       invitedByType:
-        d.invitedByType === 'session' || d.invitedByType === 'team'
+        d.invitedByType === 'session' ||
+        d.invitedByType === 'team' ||
+        d.invitedByType === 'app'
           ? d.invitedByType
           : undefined,
       invitedByTargetId:
@@ -745,6 +747,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rsvpNudgeSent: g.rsvpNudgeSent ?? false,
       arrivals: g.arrivals ?? null,
       cancellations: g.cancellations ?? null,
+      joinedAt: g.joinedAt ?? null,
       pinnedMessage:
         typeof g.pinnedMessage === 'string' && g.pinnedMessage.length > 0
           ? g.pinnedMessage
@@ -921,6 +924,8 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rsvpNudgeSent: d.rsvpNudgeSent === true,
       arrivals: readArrivals(d.arrivals),
       cancellations: readCancellations(d.cancellations),
+      // readCancellations is a generic uid→positive-ms map reader; reuse it.
+      joinedAt: readCancellations(d.joinedAt),
       pinnedMessage:
         typeof d.pinnedMessage === 'string' && d.pinnedMessage.length > 0
           ? d.pinnedMessage

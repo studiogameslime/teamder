@@ -54,6 +54,27 @@ export function parseInviteUrl(url: string): PendingInvite | null {
     const path = (parsed.path ?? '').replace(/^\//, '');
     const segments = path.split('/').filter((s) => s.length > 0);
 
+    const invitedByRaw0 = parsed.queryParams?.invitedBy;
+    const invitedBy0 =
+      typeof invitedByRaw0 === 'string' && invitedByRaw0.length > 0
+        ? invitedByRaw0
+        : undefined;
+
+    // Generic "invite to the app" link (no game/team target) —
+    // teamder://app, footy://app, or https://<host>/app?invitedBy=<uid>.
+    // Carries only the inviter so referral attribution lands; nothing to
+    // navigate to afterwards.
+    const isAppScheme =
+      (parsed.scheme === 'teamder' || parsed.scheme === 'footy') &&
+      (parsed.hostname === 'app' || segments[0] === 'app');
+    const isAppHosting =
+      parsed.hostname &&
+      HOSTING_DOMAINS.has(parsed.hostname) &&
+      segments[0] === 'app';
+    if (isAppScheme || isAppHosting) {
+      return invitedBy0 ? { type: 'app', invitedBy: invitedBy0 } : { type: 'app' };
+    }
+
     let type: 'session' | 'team' | null = null;
     let id: string | null = null;
 
@@ -112,6 +133,17 @@ export function buildInviteUrl(args: {
 }
 
 /**
+ * Build a generic "invite to the app" URL — `${HOSTING_ORIGIN}/app` — that
+ * promotes downloading Teamder and lands the user on the home screen (no
+ * community/game target). `invitedBy` is carried through so the inviter
+ * still gets referral credit on the new user's signup.
+ */
+export function buildAppInviteUrl(invitedBy?: string): string {
+  const base = `${HOSTING_ORIGIN}/app`;
+  return invitedBy ? `${base}?invitedBy=${encodeURIComponent(invitedBy)}` : base;
+}
+
+/**
  * Persist an invite for the post-login consumer in RootNavigator.
  *
  * Set-once contract: if a pending invite already exists in storage we
@@ -136,5 +168,6 @@ export async function stashPendingInvite(invite: PendingInvite): Promise<void> {
 export const deepLinkService = {
   parseInviteUrl,
   buildInviteUrl,
+  buildAppInviteUrl,
   stashPendingInvite,
 };

@@ -2306,6 +2306,15 @@ export const gameService = {
       updates.participantIds = Array.from(
         new Set([...nextPlayers, ...nextWaitlist, ...nextPending]),
       );
+      // Record WHEN this user joined (uid→ms map) so the admin panel can
+      // show an accurate "joined X ago" instead of falling back to the
+      // game's creation time. Read-modify-write is safe inside the txn.
+      const joinedMap: Record<string, number> =
+        data.joinedAt && typeof data.joinedAt === 'object'
+          ? { ...(data.joinedAt as Record<string, number>) }
+          : {};
+      if (joinedMap[userId] === undefined) joinedMap[userId] = Date.now();
+      updates.joinedAt = joinedMap;
       // Clear any prior cancellation timestamp on re-join — see the
       // mock branch comment for the rationale (stale timestamps
       // would otherwise leak into the discipline snapshot).

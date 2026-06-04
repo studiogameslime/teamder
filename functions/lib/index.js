@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -66,11 +66,30 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const crypto_1 = require("crypto");
 const v2_1 = require("firebase-functions/v2");
+const params_1 = require("firebase-functions/params");
+const reviewAlerts_1 = require("./reviewAlerts");
+const adminPush_1 = require("./adminPush");
 const notificationDedup_1 = require("./notificationDedup");
 admin.initializeApp();
 const db = admin.firestore();
 const messaging = admin.messaging();
 (0, v2_1.setGlobalOptions)({ region: 'us-central1', maxInstances: 10 });
+// ⚠️ TEMPORARY (2026-06-04): App Check enforcement is OFF for every
+// callable below. Reason: iOS App Attest was registered in the Firebase
+// console only after enforcement was already live, so iOS clients have no
+// valid App Check token yet and ALL enforced callables reject them with
+// `unauthenticated` (group/game creation, invites, etc. — fully broken on
+// iOS). Flipping this to `false` unblocks iOS immediately, server-side, no
+// app release. Auth is still required on every callable; we only drop the
+// App-Check abuse layer.
+// RE-ENABLE: set back to `true` and redeploy once App Attest is confirmed
+// minting valid tokens on iOS (check Firebase Console → App Check metrics
+// for "verified" iOS requests).
+const ENFORCE_APP_CHECK = false;
+// Store-review-alert credentials (App Store Connect .p8, Google Play SA JSON).
+// Set via: firebase functions:secrets:set ASC_P8 / PLAY_SA
+const ASC_P8 = (0, params_1.defineSecret)('ASC_P8');
+const PLAY_SA = (0, params_1.defineSecret)('PLAY_SA');
 // ─── Growth milestone dispatcher ────────────────────────────────────────
 //
 // Push admins exactly once when a community crosses a member-count
@@ -2539,7 +2558,7 @@ async function generateForGame(ref, g) {
 //
 // Gated to a single hard-coded admin uid so only the project owner can
 // call it — App Check + auth are layered on top in production.
-exports.updateAppConfig = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.updateAppConfig = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
     if (request.auth?.uid !== ALLOWED_UID) {
         throw new https_1.HttpsError('permission-denied', 'admin only');
@@ -2589,7 +2608,7 @@ exports.updateAppConfig = (0, https_1.onCall)({ enforceAppCheck: true }, async (
 //   • `resource-exhausted` — server-side rate limit exceeded
 const INVITE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const INVITE_RATE_LIMIT_CAP = 30;
-exports.sendGameInvite = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.sendGameInvite = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     // 1) Auth
     const auth = request.auth;
     if (!auth?.uid) {
@@ -2751,7 +2770,7 @@ exports.sendGameInvite = (0, https_1.onCall)({ enforceAppCheck: true }, async (r
 // game's createdBy is the recipient; if the canceller IS the game
 // creator (organiser cancelling themselves out of their own game)
 // we skip — they don't need a push about their own action.
-exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -2811,7 +2830,7 @@ exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: true }, a
 // so the rest of the app (rules, queries, CFs) keeps working unchanged.
 // The group is `isPersonal: true, hidden: true` so it never surfaces in
 // feeds, search, or discovery.
-exports.ensurePersonalGroup = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.ensurePersonalGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -2871,7 +2890,7 @@ exports.ensurePersonalGroup = (0, https_1.onCall)({ enforceAppCheck: true }, asy
 // be a personal group. We don't allow this callable to be used to
 // promote a regular group — that path stays via the standard groupEdit
 // flow.
-exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -3093,7 +3112,7 @@ function pickShortString(v, max, field, required) {
  * Client sends the already-resized JPEG as base64 (~250 KB → ~340 KB
  * base64, well within the callable payload limit).
  */
-exports.uploadGroupCover = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.uploadGroupCover = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -3144,7 +3163,7 @@ exports.uploadGroupCover = (0, https_1.onCall)({ enforceAppCheck: true }, async 
         `${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
     return { url };
 });
-exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -3270,7 +3289,7 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: true }, asy
 //
 // Run once (post-deploy) by invoking via httpsCallable from a trusted
 // client, then leave deployed for emergency re-runs.
-exports.backfillGroupCreatorIdsOnce = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.backfillGroupCreatorIdsOnce = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const ALLOWED_UID = '1IdtNEjbEXfiRSqvLrJVn99NsfI2'; // matan
     if (request.auth?.uid !== ALLOWED_UID) {
         throw new https_1.HttpsError('permission-denied', 'admin only');
@@ -4299,7 +4318,7 @@ exports.onFillerInterestCreated = (0, firestore_1.onDocumentCreated)('games/{gam
 // are CF-level (rules can't validate "caller is admin of the game's
 // community" on a sub-collection write that doesn't touch the
 // game doc).
-exports.submitFillerInterest = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.submitFillerInterest = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -4373,7 +4392,7 @@ exports.submitFillerInterest = (0, https_1.onCall)({ enforceAppCheck: true }, as
     });
     return { ok: true };
 });
-exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -4485,7 +4504,7 @@ exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: true }, async (re
     }
     return { ok: true };
 });
-exports.declineFiller = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.declineFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign-in required');
@@ -4570,7 +4589,7 @@ exports.onFriendRequestCreated = (0, firestore_1.onDocumentCreated)('friendReque
         createdByUid: req.fromUserId,
     });
 });
-exports.acceptFriendRequest = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.acceptFriendRequest = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -4622,7 +4641,7 @@ exports.acceptFriendRequest = (0, https_1.onCall)({ enforceAppCheck: true }, asy
     });
     return { ok: true };
 });
-exports.removeFriendship = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.removeFriendship = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -4655,7 +4674,7 @@ exports.removeFriendship = (0, https_1.onCall)({ enforceAppCheck: true }, async 
 // `groupInvitation` push. Server-side guards: caller must belong to the
 // group, and only the caller's actual friends who aren't already in the
 // group are invited (so this can't be used to spam strangers).
-exports.inviteFriendsToGroup = (0, https_1.onCall)({ enforceAppCheck: true }, async (request) => {
+exports.inviteFriendsToGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     }
@@ -4711,6 +4730,44 @@ exports.inviteFriendsToGroup = (0, https_1.onCall)({ enforceAppCheck: true }, as
     })));
     return { invited: accepted.length };
 });
+// ─── Founder real-time alerts ─────────────────────────────────────────────
+// Event-driven FCM pushes to the founder's Pulse device(s). Each respects the
+// per-type on/off toggle in adminConfig/prefs (server-side — see adminPush.ts).
+// "מישהו נרשם!" — the instant a /users doc is created.
+exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', async (event) => {
+    const user = event.data?.data();
+    if (!user)
+        return;
+    const name = user.name && user.name !== 'משתמש שהוסר' ? user.name : 'משתמש חדש';
+    await (0, adminPush_1.pushToAdmins)('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})`, {
+        uid: event.params.uid,
+    });
+});
+// New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires
+// only on a genuinely new kind of failure (not every repeat occurrence).
+exports.onErrorLogged = (0, firestore_1.onDocumentCreated)('errors/{fp}', async (event) => {
+    const e = event.data?.data();
+    if (!e)
+        return;
+    const emoji = e.category === 'crash' ? '💥' : e.category === 'silent' ? '⚠️' : '❌';
+    const title = e.title || e.operation || 'שגיאה';
+    const where = e.lastScreen ? ` · ${e.lastScreen}` : '';
+    await (0, adminPush_1.pushToAdmins)('error', `${emoji} שגיאה חדשה`, `${title}${where}`, {
+        fp: event.params.fp,
+    });
+});
+// User feedback — bug report / feature suggestion (separate toggles).
+exports.onFeedbackSubmitted = (0, firestore_1.onDocumentCreated)('feedback/{id}', async (event) => {
+    const f = event.data?.data();
+    if (!f)
+        return;
+    const isBug = f.type !== 'suggestion';
+    const label = isBug ? '🐛 דיווח על תקלה' : '💡 הצעה לשיפור';
+    const body = (f.userName ? f.userName + ': ' : '') + (f.message || '').slice(0, 140);
+    await (0, adminPush_1.pushToAdmins)(isBug ? 'bug' : 'suggestion', label, body || 'דיווח חדש', {
+        id: event.params.id,
+    });
+});
 // ---------------------------------------------------------------------------
 // Consolidated schedulers (cost optimisation)
 //
@@ -4756,12 +4813,15 @@ exports.cronEvery15Min = (0, scheduler_1.onSchedule)({
     region: 'us-central1',
     timeoutSeconds: 540,
     memory: '512MiB',
+    secrets: [ASC_P8, PLAY_SA],
 }, async () => {
     await runSweep('sendGameReminders', runSendGameReminders);
     await runSweep('sendRsvpNudges', runSendRsvpNudges);
     await runSweep('sendShortageWarnings', runSendShortageWarnings);
     await runSweep('sendRateReminders', runSendRateReminders);
     await runSweep('findFillerCandidates', runFindFillerCandidates);
+    // Near-real-time store-review alerts → FCM to the founder's Pulse.
+    await runSweep('reviewAlerts', () => (0, reviewAlerts_1.runReviewAlerts)(ASC_P8.value(), PLAY_SA.value()));
 });
 // Every 60 minutes — cleanup, promote prompts, and the gated daily sweep.
 exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' }, async () => {

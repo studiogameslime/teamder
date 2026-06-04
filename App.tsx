@@ -141,12 +141,14 @@ import {
   stashPendingInvite,
 } from '@/services/deepLinkService';
 import { consumeInstallReferrerIfFresh } from '@/services/installReferrerService';
+import { consumeClipboardInviteIfFresh } from '@/services/clipboardInviteService';
 import { storage } from '@/services/storage';
 import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
 import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
+import { MaintenanceGate, AnnouncementBanner } from '@/components/RemoteGates';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { checkForUpdate, type UpdateKind } from '@/services/updateService';
 import { useWatchSync } from '@/services/watchSyncService';
@@ -330,6 +332,8 @@ export default function App() {
       if (isDuplicate(url)) return;
       const parsed = parseInviteUrl(url);
       if (!parsed) return;
+      // Opened via an invite link → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
       try {
         await stashPendingInvite(parsed);
       } catch (err) {
@@ -355,6 +359,15 @@ export default function App() {
       if (isDuplicate(url)) return;
       const parsed = parseInviteUrl(url);
       if (!parsed) return;
+      // Opened via an invite link → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
+
+      // Generic app invite — no target to navigate to. Stash for
+      // attribution (a no-op for an already-signed-up user) and stop.
+      if (parsed.type === 'app') {
+        await storage.setPendingInvite(parsed).catch(() => undefined);
+        return;
+      }
 
       const userState = useUserStore.getState();
       const isAuthReady =
@@ -408,7 +421,7 @@ export default function App() {
       if (__DEV__) console.info('[invite] existing pending →', existing);
       if (existing) return;
 
-      // 3. Last resort: Play Install Referrer (Android-only). No-op on
+      // 3. Last resort (Android): Play Install Referrer. No-op on
       //    iOS / Expo Go / sideload. The service has its own internal
       //    set-once guard as a second line of defence.
       try {
@@ -419,6 +432,22 @@ export default function App() {
         }
       } catch (err) {
         if (__DEV__) console.warn('[invite] install-referrer threw', err);
+      }
+
+      // 4. Last resort (iOS): deferred deep link via the clipboard.
+      //    Apple has no install-referrer API, so the landing page copies
+      //    the invite URL to the clipboard on the "install" tap and we
+      //    recover it here on first launch. No-op on Android and after a
+      //    deep link already stashed an invite (checked at step 2 above
+      //    and again inside the service).
+      try {
+        await consumeClipboardInviteIfFresh();
+        if (__DEV__) {
+          const after = await storage.getPendingInvite();
+          console.info('[invite] after clipboard →', after);
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('[invite] clipboard invite threw', err);
       }
     })();
 
@@ -572,6 +601,8 @@ export default function App() {
       const data = response.notification.request.content.data ?? {};
       const type = typeof data.type === 'string' ? data.type : '';
       if (!type) return;
+      // Opened by tapping a push → suppress the next app-open ad.
+      adsService.noteIntentfulOpen();
       // Identifier of the source notification — needed to dismiss it
       // explicitly after an action button runs. Without an explicit
       // dismiss the notification card lingers in the tray even though
@@ -724,6 +755,7 @@ export default function App() {
             That combination is bulletproof across iOS + Android. */}
         <View style={{ flex: 1, backgroundColor: colors.bg }}>
           <MockModeBanner />
+          <AnnouncementBanner />
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <RootNavigator />
           </View>
@@ -778,6 +810,10 @@ export default function App() {
           }}
         />
       ) : null}
+
+      {/* Remote-Config blocking overlay — covers everything when
+          maintenance_mode is turned on in the Firebase console. */}
+      <MaintenanceGate />
     </SafeAreaProvider>
     </ErrorBoundary>
   );

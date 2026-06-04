@@ -123,9 +123,17 @@
   // Hosting rewrites /session/* and /team/* to this single file, so we
   // recover the original target via location.pathname.
   var parts = location.pathname.split('/').filter(Boolean);
-  var type = parts[0] === 'session' ? 'session' : parts[0] === 'team' ? 'team' : null;
+  var type = parts[0] === 'session' ? 'session'
+           : parts[0] === 'team' ? 'team'
+           : parts[0] === 'app' ? 'app'
+           : null;
   var id = parts[1] || '';
   var invitedBy = (new URLSearchParams(location.search).get('invitedBy') || '').trim();
+  // 'app' = generic "invite to the app" (no game/team target). It still
+  // carries `invitedBy` for referral credit; the app lands on home.
+  var isApp = type === 'app';
+  var valid = !!type && (isApp || !!id);
+  var pathPart = isApp ? 'app' : type + '/' + encodeURIComponent(id);
 
   var titleEl = document.getElementById('title');
   var subEl = document.getElementById('subtitle');
@@ -135,10 +143,13 @@
   } else if (type === 'team') {
     titleEl.textContent = 'הוזמנת לקבוצה ב־Teamder';
     subEl.textContent = 'הצטרף לקבוצה קבועה וקבל עדכונים על משחקים חדשים.';
+  } else if (isApp) {
+    titleEl.textContent = 'הוזמנת ל־Teamder';
+    subEl.textContent = 'האפליקציה לארגון משחקי כדורגל בלי בלגן. הורד ובוא לשחק.';
   }
 
   function deepLink() {
-    if (!type || !id) return null;
+    if (!valid) return null;
     var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
     // We use the `footy://` scheme rather than `teamder://` because
     // every shipped build of the app has registered `footy` since
@@ -146,29 +157,28 @@
     // in installed copies of older versions. The app's deep-link
     // parser accepts both, so this gives us universal coverage with
     // no client-side branching.
-    return 'footy://' + type + '/' + encodeURIComponent(id) + query;
+    return 'footy://' + pathPart + query;
   }
 
   // Persist invite in localStorage as a belt-and-suspenders cache.
   // Mainly useful for the *web* re-visit flow (user returns to this
   // page in the same browser session) — the app side relies on the
   // Play Install Referrer below for cross-install recovery.
-  if (type && id) {
+  if (valid) {
     try {
-      var cached = { type: type, id: id };
+      var cached = isApp ? { type: 'app' } : { type: type, id: id };
       if (invitedBy) cached.invitedBy = invitedBy;
       localStorage.setItem('pendingInvite', JSON.stringify(cached));
     } catch (_) { /* private mode / quota — non-fatal */ }
   }
 
-  // Append `referrer=invite_<type>_<id>[_by_<uid>]` to the Play Store
-  // link. The Play Install Referrer API delivers this verbatim to the
-  // freshly installed app on first launch, letting
-  // installReferrerService recover the invite context AND the
-  // inviter's id after the install.
-  if (type && id) {
+  // Append `referrer=invite_<type>_<id>[_by_<uid>]` (or `invite_app_by_<uid>`
+  // for a generic app invite) to the Play Store link. The Play Install
+  // Referrer API delivers it verbatim to the freshly installed app on
+  // first launch, letting installReferrerService recover the inviter.
+  if (valid) {
     var installEl = document.getElementById('installBtn');
-    var ref = 'invite_' + type + '_' + encodeURIComponent(id);
+    var ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);
     if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
     installEl.href =
       'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp' +
@@ -177,20 +187,66 @@
 
   // iOS has no Play Install Referrer — point the install button at the
   // App Store instead of Google Play so non-installed users can download.
+  // AND copy the invite URL to the clipboard on tap: Apple gives us no
+  // way to carry the inviter through a fresh App Store install, so the
+  // freshly launched app recovers it from the clipboard
+  // (clipboardInviteService). The write MUST happen inside the tap
+  // handler — Safari blocks programmatic clipboard writes without a user
+  // gesture — which is also why we don't auto-redirect iOS to the store.
   if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
     var iosInstallEl = document.getElementById('installBtn');
     if (iosInstallEl) {
       iosInstallEl.href = 'https://apps.apple.com/app/id6775178022';
+      if (valid) {
+        iosInstallEl.addEventListener('click', function () {
+          // Fire-and-forget clipboard write of the canonical invite URL
+          // (location.href is https://teamderfc.web.app/<type>/<id>?invitedBy=<uid>,
+          // exactly what the app's parseInviteUrl() reads). We do NOT
+          // preventDefault and do NOT defer navigation: iOS Safari blocks
+          // any location change that runs AFTER an async clipboard promise
+          // resolves (the user gesture is already spent), which made the
+          // button appear dead. Letting the <a>'s own gesture-backed
+          // navigation to the App Store proceed keeps the button working;
+          // the synchronous write still rides along for attribution.
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(location.href);
+            }
+          } catch (_) { /* non-fatal — navigation proceeds regardless */ }
+        });
+      }
     }
   }
 
-  // Manual fallback — also kept as a click handler in case the
-  // auto-redirect below doesn't fire (private-mode quirks, no JS in
-  // some embedded webviews, etc.). The buttons stay visible during
-  // the brief window before the auto-redirect kicks in.
+  // "פתח באפליקציה" — try to open the installed app via the custom
+  // scheme. If nothing takes over within a short window the app isn't
+  // installed → send the user to the right store instead of leaving
+  // them stuck on Safari's "address invalid" dialog (iOS shows that for
+  // an unhandled `footy://`). visibilitychange firing means the app
+  // actually opened — cancel the store fallback so we don't redirect on
+  // top of it. (The proper long-term fix is Universal Links, which lets
+  // the https invite link open the app directly with no custom scheme.)
   document.getElementById('openBtn').addEventListener('click', function () {
     var url = deepLink();
-    if (url) location.href = url;
+    if (!url) return;
+    var ua2 = navigator.userAgent || '';
+    var iOS = /iPhone|iPad|iPod/i.test(ua2);
+    var installEl2 = document.getElementById('installBtn');
+    var store = iOS
+      ? 'https://apps.apple.com/app/id6775178022'
+      : (installEl2 ? installEl2.href : '');
+    var opened = false;
+    var fallback = setTimeout(function () {
+      if (!opened && store) { opened = true; location.href = store; }
+    }, 1500);
+    document.addEventListener('visibilitychange', function vc() {
+      if (document.hidden) {
+        opened = true;
+        clearTimeout(fallback);
+        document.removeEventListener('visibilitychange', vc);
+      }
+    });
+    location.href = url;
   });
 
   // ── Auto-redirect ────────────────────────────────────────────────
@@ -220,10 +276,10 @@
   var PLAY_PACKAGE = 'com.studiogameslime.soccerapp';
 
   function autoRedirect() {
-    if (!type || !id) return;
+    if (!valid) return;
     if (!isMobile) return;
     var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
-    var path = type + '/' + encodeURIComponent(id) + query;
+    var path = pathPart + query;
     var installEl = document.getElementById('installBtn');
     var storeUrl = installEl ? installEl.href : null;
     if (isAndroid) {
@@ -242,24 +298,23 @@
         location.replace(intentUrl);
         return;
       }
-    }
-    // Non-Chrome / iOS: try the deep link; if the page is still
-    // alive a moment later, the app didn't intercept → send the
-    // user to the store. visibilitychange fires when the OS
-    // backgrounds the page (i.e. the app actually opened) — clear
-    // the timer in that case so we don't redirect on top of the
-    // newly-opened app.
-    var fallbackUrl = isIOS ? APP_STORE_URL_IOS : storeUrl;
-    var timer = setTimeout(function () {
-      if (fallbackUrl) location.replace(fallbackUrl);
-    }, 1500);
-    document.addEventListener('visibilitychange', function onHide() {
-      if (document.hidden) {
-        clearTimeout(timer);
-        document.removeEventListener('visibilitychange', onHide);
+      // Non-Chrome / in-app webview (WhatsApp, Instagram, Facebook, …):
+      // intent:// and custom-scheme deep links are unreliable in those
+      // embedded browsers, so go STRAIGHT to the Play Store (the install
+      // referrer is already baked into storeUrl). Reliable everywhere —
+      // no flicker, no deep-link error dialog.
+      if (storeUrl) {
+        location.replace(storeUrl);
+        return;
       }
-    });
-    location.href = 'footy://' + path;
+    }
+    // iOS: do NOT auto-redirect. The clipboard write that carries the
+    // inviter through a fresh install needs the user's tap on "install"
+    // (Safari blocks gesture-less clipboard writes), so we leave the page
+    // in place and let the visible buttons drive: "open in app" fires the
+    // deep link for installed users, "install" copies the invite then
+    // goes to the store. (Android is fully handled above; desktop is
+    // guarded out at the top — so only iOS reaches here.)
   }
 
   // Defer one tick so the install-referrer wiring above (which

@@ -99,6 +99,16 @@ service cloud.firestore {
       ];
     }
 
+    // True once a REAL inviter has been recorded. The client's user
+    // converter writes `invitedBy: null` on every fresh signup doc, so a
+    // mere `'invitedBy' in data` is NOT enough — a null placeholder must
+    // still count as "no inviter yet", otherwise the first-set-only guards
+    // below would reject the one legitimate attribution write and silently
+    // break all referral tracking.
+    function inviterLocked(data) {
+      return 'invitedBy' in data && data.invitedBy != null;
+    }
+
     // ── /users/{uid} ────────────────────────────────────────────────────
     // Reads: signed-in users can read profile basics. Sensitive fields
     // (fcmTokens, notificationPrefs, newGameSubscriptions) ARE in the
@@ -137,20 +147,24 @@ service cloud.firestore {
         isOptionalShortString(request.resource.data, 'avatarId', 80);
 
       allow update: if isSelf(uid) &&
-        // Attribution is first-set-only: once invitedBy exists in the
-        // stored doc, every subsequent write must keep it identical.
+        // Attribution is first-set-only: once a real inviter is locked in
+        // (a non-null invitedBy), every subsequent write must keep it
+        // identical. A null placeholder does NOT lock — it's "no inviter
+        // yet", so the first real attribution can still land.
         (
-          !('invitedBy' in resource.data) ||
+          !inviterLocked(resource.data) ||
           (
             'invitedBy' in request.resource.data &&
             request.resource.data.invitedBy == resource.data.invitedBy
           )
         ) &&
         // First-time attribution write: foreign uid + accompanying
-        // type+target fields. Self-attribution is rejected.
+        // type+target fields. Self-attribution is rejected. The null
+        // placeholder (writing/keeping invitedBy == null) is always fine
+        // and skips this validation.
         (
-          'invitedBy' in resource.data ||
-          !('invitedBy' in request.resource.data) ||
+          inviterLocked(resource.data) ||
+          request.resource.data.invitedBy == null ||
           (
             request.resource.data.invitedBy != uid &&
             'invitedByType' in request.resource.data &&
@@ -525,7 +539,10 @@ service cloud.firestore {
           ) &&
           affectedKeys().hasOnly([
             'players', 'waitlist', 'pending', 'participantIds',
-            'cancellations', 'pendingPromotion', 'updatedAt'
+            'cancellations', 'pendingPromotion', 'updatedAt',
+            // map uid→ms of when each player joined (powers accurate
+            // "joined X ago" in the admin panel; client-written, best-effort).
+            'joinedAt'
           ]) &&
           // ── Per-array delta: each may change by at most ±1, and
           //    if it grew, the auth user is the new entry; if it
@@ -1012,6 +1029,13 @@ service cloud.firestore {
     // caps so a malicious client can't bloat docs. Reads/deletes are
     // client-denied — only the admin dashboard (service account, which
     // bypasses these rules via IAM) and the Console read them.
+    // Admin/founder config (e.g. Pulse dashboard FCM push tokens). Written by
+    // the Pulse dashboard via the service account (bypasses rules); the app's
+    // regular clients have no business here, so deny them entirely.
+    match /adminConfig/{doc} {
+      allow read, write: if false;
+    }
+
     match /errors/{fp} {
       allow read, delete: if false;
       // No isSignedIn() gate ON PURPOSE: the most important errors to capture

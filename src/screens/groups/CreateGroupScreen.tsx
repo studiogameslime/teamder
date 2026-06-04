@@ -4,12 +4,13 @@
 // label differ.
 
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { logError } from '@/services/errorLog';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -77,6 +78,19 @@ export function CreateGroupScreen() {
       // Anything else falls back to a generic create-failed toast.
       const err = e as { code?: string; message?: string };
       const code = String(err.code ?? '').replace(/^functions\//, '');
+      // Log to the panel BEFORE branching the UI message. This catch used
+      // to only show an Alert, so App-Check-blocked creations (code
+      // 'unauthenticated' — e.g. iOS App Attest not attesting) never
+      // reached the errors collection. `unauthenticated` on iOS almost
+      // always means the App Check gate rejected the callable, NOT a
+      // missing auth session — capture platform + code so the panel can
+      // tell them apart.
+      logError('createGroup', e, {
+        screen: 'CreateGroupScreen',
+        code,
+        platform: Platform.OS,
+        appCheckSuspected: code === 'unauthenticated',
+      });
       let msg: string = he.createGroupGenericError;
       if (code === 'unauthenticated') {
         msg = he.createGroupAuthError;

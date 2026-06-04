@@ -6,28 +6,54 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "hosting": {
-    "site": "teamderfc",
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "cleanUrls": true,
-    "trailingSlash": false,
-    "rewrites": [
-      { "source": "/session/**", "destination": "/invite.html" },
-      {
-        "source": "/team/**",
-        "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
-      },
-      {
-        "source": "/c/**",
-        "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
-      }
-    ]
-  },
+  "hosting": [
+    {
+      "site": "teamderfc",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.DS_Store",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "rewrites": [
+        { "source": "/session/**", "destination": "/invite.html" },
+        { "source": "/app", "destination": "/invite.html" },
+        {
+          "source": "/team/**",
+          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        },
+        {
+          "source": "/c/**",
+          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        }
+      ]
+    },
+    {
+      "site": "soccer-app-52b6b",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.DS_Store",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "rewrites": [
+        { "source": "/session/**", "destination": "/invite.html" },
+        { "source": "/app", "destination": "/invite.html" },
+        {
+          "source": "/team/**",
+          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        },
+        {
+          "source": "/c/**",
+          "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        }
+      ]
+    }
+  ],
   "functions": [
     {
       "source": "functions",

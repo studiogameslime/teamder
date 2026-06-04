@@ -24,7 +24,6 @@ import { NativeModules, Platform } from 'react-native';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
-import { logError } from '@/services/errorLog';
 import { useUserStore } from '@/store/userStore';
 import type { Game } from '@/types';
 
@@ -191,8 +190,11 @@ export async function publishWatchState(
       JSON.stringify(await computeWatchPayload(myGames, viewer)),
     );
   } catch (err) {
-    logError('publishWatchState', err, { viewerId: viewer.id });
-    // best-effort — a missed relay never affects the phone UX
+    // Best-effort relay to the Wear OS companion — a failure here is almost
+    // always environmental (no watch paired, Data Layer busy) and never
+    // affects the phone UX, so we deliberately do NOT log it as a bug (it
+    // only added noise to the panel). Dev-only console for debugging.
+    if (__DEV__) console.warn('[watch] publishWatchState failed', err);
   }
 }
 

@@ -982,6 +982,7 @@
     var PROJECT_ID = 'soccer-app-52b6b';
     var API_KEY = 'AIzaSyCG-OXvqoCT3SESraD3byS6c3R12W9zu8M';
     var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+    var APP_STORE_URL = 'https://apps.apple.com/app/id6775178022';
 
     // ── routing ───────────────────────────────────────────────────
     // Hosting rewrites /c/** → /c/index.html. The first non-empty
@@ -1035,7 +1036,6 @@
     // iOS: rewrite every Play Store link on the showcase to the App
     // Store so iPhone visitors download from the correct store.
     if (isIOS) {
-      var APP_STORE_URL = 'https://apps.apple.com/app/id6775178022';
       var playLinks = document.querySelectorAll('a[href*="play.google.com"]');
       for (var i = 0; i < playLinks.length; i++) { playLinks[i].href = APP_STORE_URL; }
     }
@@ -1068,12 +1068,17 @@
     // pattern used in /invite.html).
     var playRef = 'invite_team_' + encodeURIComponent(groupId);
     var playUrlWithRef = PLAY_URL + '&referrer=' + encodeURIComponent(playRef);
+    // Platform-aware: iPhone visitors must land on the App Store. (The
+    // iOS link-rewrite above doesn't help these two buttons because we're
+    // re-assigning their href here AFTER it ran — so resolve the right
+    // store per-platform directly.)
+    var downloadUrl = isIOS ? APP_STORE_URL : playUrlWithRef;
     function setHref(id, url) {
       var el = document.getElementById(id);
       if (el) el.href = url;
     }
-    setHref('heroDownload', playUrlWithRef);
-    setHref('finalDownload', playUrlWithRef);
+    setHref('heroDownload', downloadUrl);
+    setHref('finalDownload', downloadUrl);
 
     // ── Firestore REST fetch ─────────────────────────────────────
     var url =

@@ -56,6 +56,7 @@ import {
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { rcBool, useRemoteConfig } from '@/services/remoteConfigService';
 import {
   isVisibleInMyGames,
   isVisibleInOpenGames,
@@ -74,6 +75,7 @@ type Nav = NativeStackNavigationProp<GameStackParamList, 'GamesList'>;
 type Tab = 'mine' | 'open';
 
 export function GamesListScreen() {
+  useRemoteConfig(); // re-render when feature flags activate
   const nav = useNavigation<Nav>();
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
@@ -590,28 +592,30 @@ export function GamesListScreen() {
             <Text style={createSheetStyles.title}>
               {he.createGameChooseTitle}
             </Text>
-            <Pressable
-              style={({ pressed }) => [
-                createSheetStyles.choice,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
-              ]}
-              onPress={() => {
-                setCreateSheetVisible(false);
-                nav.navigate('GameCreate', { quick: true });
-              }}
-            >
-              <View style={createSheetStyles.choiceIcon}>
-                <Ionicons name="flash" size={22} color="#1E40AF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={createSheetStyles.choiceTitle}>
-                  {he.createGameChooseQuickTitle}
-                </Text>
-                <Text style={createSheetStyles.choiceBody}>
-                  {he.createGameChooseQuickBody}
-                </Text>
-              </View>
-            </Pressable>
+            {rcBool('feature_quick_games') ? (
+              <Pressable
+                style={({ pressed }) => [
+                  createSheetStyles.choice,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                ]}
+                onPress={() => {
+                  setCreateSheetVisible(false);
+                  nav.navigate('GameCreate', { quick: true });
+                }}
+              >
+                <View style={createSheetStyles.choiceIcon}>
+                  <Ionicons name="flash" size={22} color="#1E40AF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={createSheetStyles.choiceTitle}>
+                    {he.createGameChooseQuickTitle}
+                  </Text>
+                  <Text style={createSheetStyles.choiceBody}>
+                    {he.createGameChooseQuickBody}
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
             <Pressable
               style={({ pressed }) => [
                 createSheetStyles.choice,

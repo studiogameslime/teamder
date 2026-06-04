@@ -24,6 +24,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { storage } from '@/services/storage';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
+import { rcBool, rcNumber } from '@/services/remoteConfigService';
 
 // Native-module loading: expo-store-review's native side may be
 // missing from older dev clients. Lazy-require so a missing module
@@ -59,8 +60,6 @@ function loadStoreReview(): StoreReviewModule | null {
     return null;
   }
 }
-
-const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type StoreReviewTrigger = 'gameFilled' | 'matchFinished';
 
@@ -100,10 +99,15 @@ export async function maybeRequestStoreReview(
   sessionShown.add(key);
 
   try {
+    // Remotely tunable: disable the prompt entirely, or change the
+    // cool-down (default 90 days) without an app release.
+    if (!rcBool('review_prompt_enabled')) return false;
+    const cooldownMs =
+      rcNumber('review_prompt_cooldown_days') * 24 * 60 * 60 * 1000;
     const StoreReview = loadStoreReview();
     if (!StoreReview) return false;
     const lastAt = await storage.getStoreReviewLastShownAt();
-    if (lastAt > 0 && Date.now() - lastAt < COOLDOWN_MS) {
+    if (lastAt > 0 && Date.now() - lastAt < cooldownMs) {
       return false;
     }
     const available = await StoreReview.isAvailableAsync();

@@ -34,13 +34,13 @@ import {
   useScrollToTop,
 } from '@react-navigation/native';
 import Constants from 'expo-constants';
-import * as StoreReview from 'expo-store-review';
 
 import { Button } from '@/components/Button';
 import { ProfileHeroCard } from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
 import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { ReferralCard } from '@/components/profile/ReferralCard';
+import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { AchievementsRail } from '@/components/profile/AchievementsRail';
 import {
   HamburgerMenu,
@@ -63,14 +63,12 @@ import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { getAttendanceRate, type User } from '@/types';
 
-const SUPPORT_EMAIL = 'studiogameslime@gmail.com';
-const PLAY_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
-const APP_STORE_URL = 'https://apps.apple.com/app/id6775178022';
-// Device-correct store link for generic invites (no community context).
-const STORE_URL = Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL;
+// Support email + store URLs are remotely overridable via Remote Config
+// (keys support_email / store_url_ios / store_url_android, defaults in
+// remoteConfigService.RC_DEFAULTS). Read at point of use via rcString().
 
 export function ProfileScreen() {
+  useRemoteConfig(); // re-render when feature flags / config activate
   const nav = useNavigation<any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
   const localUser = useUserStore((s) => s.currentUser);
   const signOut = useUserStore((s) => s.signOut);
@@ -251,24 +249,17 @@ export function ProfileScreen() {
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
     if (!user) return;
-    const firstCommunity = myCommunities[0];
-    const link = firstCommunity
-      ? deepLinkService.buildInviteUrl({
-          type: 'team',
-          id: firstCommunity.id,
-          invitedBy: user.id,
-        })
-      : STORE_URL;
+    // Generic "invite to the app" — lands on the home/download page and
+    // credits the inviter (invitedBy), WITHOUT pushing a specific
+    // community/game. The old behaviour shared the user's first community.
+    const link = deepLinkService.buildAppInviteUrl(user.id);
     try {
       const result = await Share.share({
         title: he.inviteShareSubject,
         message: he.profileInviteShareBody(link),
       });
       if (result.action !== 'dismissedAction') {
-        logEvent(AnalyticsEvent.InviteShared, {
-          source: 'profile',
-          hasCommunity: !!firstCommunity,
-        });
+        logEvent(AnalyticsEvent.InviteShared, { source: 'profile' });
       }
     } catch (err) {
       if (__DEV__) console.warn('[profile] invite share failed', err);
@@ -297,12 +288,16 @@ export function ProfileScreen() {
           icon: 'create-outline',
           onPress: () => nav.navigate('ProfileEdit'),
         },
-        {
-          id: 'friends',
-          label: he.friendsTitle,
-          icon: 'people-outline',
-          onPress: () => nav.navigate('Friends'),
-        },
+        ...(rcBool('feature_friends')
+          ? [
+              {
+                id: 'friends',
+                label: he.friendsTitle,
+                icon: 'people-outline' as const,
+                onPress: () => nav.navigate('Friends'),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -366,18 +361,22 @@ export function ProfileScreen() {
       id: 'support',
       title: he.profileMenuSectionSupport,
       items: [
-        {
-          id: 'bug',
-          label: he.settingsReportBug,
-          icon: 'bug-outline',
-          onPress: () => nav.navigate('Feedback', { type: 'bug' }),
-        },
-        {
-          id: 'feature',
-          label: he.settingsSuggestFeature,
-          icon: 'bulb-outline',
-          onPress: () => nav.navigate('Feedback', { type: 'suggestion' }),
-        },
+        ...(rcBool('feature_feedback')
+          ? [
+              {
+                id: 'bug',
+                label: he.settingsReportBug,
+                icon: 'bug-outline' as const,
+                onPress: () => nav.navigate('Feedback', { type: 'bug' }),
+              },
+              {
+                id: 'feature',
+                label: he.settingsSuggestFeature,
+                icon: 'bulb-outline' as const,
+                onPress: () => nav.navigate('Feedback', { type: 'suggestion' }),
+              },
+            ]
+          : []),
         {
           id: 'rate',
           label: he.settingsRateApp,
@@ -445,10 +444,12 @@ export function ProfileScreen() {
 
         <View style={styles.body}>
           {/* ③ Referral row — tap → list of who joined through you */}
-          <ReferralCard
-            count={referralCount}
-            onPress={() => nav.navigate('Referrals')}
-          />
+          {rcBool('feature_referrals') ? (
+            <ReferralCard
+              count={referralCount}
+              onPress={() => nav.navigate('Referrals')}
+            />
+          ) : null}
 
           {/* ④ Discipline row (red/yellow indicators on leading edge) */}
           <DisciplineRow userId={user.id} />
@@ -511,6 +512,9 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   );
   const subjectEnc = encodeURIComponent(subject);
   const bodyEnc = encodeURIComponent(debugInfoBlock(uid));
+  // Remotely overridable support address (rcString); falls back to the
+  // in-code default until a value is published in Remote Config.
+  const supportEmail = rcString('support_email');
 
   // 1) Native mail composer. We deliberately do NOT gate on
   //    Linking.canOpenURL('mailto:…') — on Android 11+ it returns false
@@ -518,7 +522,7 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   //    which produced a false "no mail app" even on phones with Gmail
   //    installed. Firing the intent and catching the rejection is the
   //    reliable check.
-  const mailto = `mailto:${SUPPORT_EMAIL}?subject=${subjectEnc}&body=${bodyEnc}`;
+  const mailto = `mailto:${supportEmail}?subject=${subjectEnc}&body=${bodyEnc}`;
   try {
     await Linking.openURL(mailto);
     return;
@@ -530,7 +534,7 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   //    mail client (a browser is effectively always present).
   const gmailWeb =
     `https://mail.google.com/mail/?view=cm&fs=1` +
-    `&to=${encodeURIComponent(SUPPORT_EMAIL)}&su=${subjectEnc}&body=${bodyEnc}`;
+    `&to=${encodeURIComponent(supportEmail)}&su=${subjectEnc}&body=${bodyEnc}`;
   try {
     await Linking.openURL(gmailWeb);
     return;
@@ -541,32 +545,27 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   // 3) Last resort: surface the address so the user can still reach us.
   Alert.alert(
     he.settingsEmailUnavailable,
-    `${he.settingsEmailUnavailableHint}\n\n${SUPPORT_EMAIL}`,
+    `${he.settingsEmailUnavailableHint}\n\n${supportEmail}`,
   );
 }
 
 async function openStore(): Promise<void> {
   logEvent(AnalyticsEvent.RateAppClicked);
-  // iOS: the app has no public App Store listing yet, so there's no
-  // stable `apps.apple.com/app/id…` URL to open. Use the native
-  // in-app review prompt (needs no App Store ID) — it's also the
-  // path Apple prefers over deep-linking to the listing.
-  if (Platform.OS === 'ios') {
-    try {
-      if (await StoreReview.isAvailableAsync()) {
-        await StoreReview.requestReview();
-        return;
-      }
-    } catch {
-      /* fall through to the unavailable notice */
-    }
-    Alert.alert(he.error, he.settingsRateUnavailable);
-    return;
-  }
-  // Android: open the Play Store listing directly.
+  // Explicit "rate us" tap → open the store listing's review screen
+  // directly. We deliberately do NOT use StoreReview.requestReview here:
+  // Apple (and Google) rate-limit the in-app prompt and may show nothing,
+  // which on a button tap looks broken. The contextual auto-prompt after
+  // a game fills (storeReviewService) keeps using requestReview — that's
+  // the API's intended, non-button use.
+  // Store URLs are remotely overridable (rcString); fall back to the
+  // in-code constants until a value is published.
+  const url =
+    Platform.OS === 'ios'
+      ? `${rcString('store_url_ios')}?action=write-review`
+      : rcString('store_url_android');
   try {
-    const ok = await Linking.canOpenURL(PLAY_STORE_URL);
-    if (ok) await Linking.openURL(PLAY_STORE_URL);
+    const ok = await Linking.canOpenURL(url);
+    if (ok) await Linking.openURL(url);
     else Alert.alert(he.error, he.settingsRateUnavailable);
   } catch {
     if (__DEV__) Alert.alert(he.error, he.settingsRateUnavailable);

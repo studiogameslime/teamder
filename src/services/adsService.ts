@@ -18,6 +18,27 @@ import React from 'react';
 import { Platform, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { logError } from '@/services/errorLog';
+import { storage } from '@/services/storage';
+import { rcNumber, rcBool, useRemoteConfig } from '@/services/remoteConfigService';
+
+// ─── App-open ad frequency controls ───────────────────────────────────────
+// The app-open ad is the most lucrative format but also the most intrusive
+// (it interrupts the very moment the user opens the app). These limits keep
+// the revenue while cutting the annoyance that drives churn:
+//   1. Cross-session cooldown + daily cap — a user who opens the app 10×/day
+//      sees it at most once per COOLDOWN window, and never more than the cap.
+//   2. New-user grace — brand-new accounts get an ad-free honeymoon so a
+//      first-session ad doesn't tank retention before they're hooked.
+//   3. Intentful-open suppression — when the app was opened by tapping a push
+//      or an invite link, the user came to DO something; an ad there is the
+//      most-complained-about case, so we skip it.
+// All thresholds are server-tunable via Remote Config (keys + defaults live
+// in remoteConfigService.RC_DEFAULTS), so they can be adjusted live — or the
+// format kill-switched — without an app release.
+
+// Set whenever the app is opened/navigated via a user-intentful entry (a
+// tapped push or an invite deep link). Read by showAppOpenAdIfAvailable.
+let lastIntentfulOpenAt = 0;
 
 // Google's official AdMob TEST app ID. Anyone building the iOS target
 // against this value gets test responses (or none) in production —
@@ -291,12 +312,58 @@ export const adsService = {
     }
   },
 
-  /** Show pre-warmed app-open ad, once per session. Always swallows errors. */
-  async showAppOpenAdIfAvailable(opts?: { skip?: boolean }): Promise<void> {
+  /**
+   * Mark that the app was just opened/navigated via a user-intentful entry
+   * — a tapped push or an invite deep link. The app-open ad is suppressed
+   * for a short window after, so we don't interrupt a user who came to do a
+   * specific thing. Call from the deep-link / notification-response handlers.
+   */
+  noteIntentfulOpen(): void {
+    lastIntentfulOpenAt = Date.now();
+  },
+
+  /**
+   * Show the pre-warmed app-open ad, once per session, subject to the
+   * frequency controls (cooldown + daily cap + new-user grace + intentful-
+   * open suppression). Always swallows errors.
+   *
+   * `accountCreatedAt` (ms) drives the new-user grace; pass the signed-in
+   * user's createdAt. Existing users have an old createdAt → no grace.
+   */
+  async showAppOpenAdIfAvailable(opts?: {
+    skip?: boolean;
+    accountCreatedAt?: number;
+  }): Promise<void> {
     if (SCREENSHOT_MODE) return;
     if (opts?.skip) return;
     if (!ADS_ENABLED) return;
     if (appOpenShownThisSession) return;
+
+    // (0) Remote kill-switch for the whole format.
+    if (!rcBool('app_open_ad_enabled')) return;
+    // (3) Intentful-open suppression — opened via push/invite link.
+    if (Date.now() - lastIntentfulOpenAt < rcNumber('app_open_intentful_suppress_ms')) {
+      return;
+    }
+    // (2) New-user grace — ad-free honeymoon for fresh accounts.
+    if (
+      opts?.accountCreatedAt &&
+      Date.now() - opts.accountCreatedAt < rcNumber('app_open_new_user_grace_ms')
+    ) {
+      return;
+    }
+    // (1) Cross-session cooldown + daily cap.
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    let gate: { lastShownAt: number; day: string; countToday: number };
+    try {
+      gate = await storage.getAppOpenAdState();
+    } catch {
+      gate = { lastShownAt: 0, day: '', countToday: 0 };
+    }
+    if (Date.now() - gate.lastShownAt < rcNumber('app_open_cooldown_ms')) return;
+    const countToday = gate.day === today ? gate.countToday : 0;
+    if (countToday >= rcNumber('app_open_max_per_day')) return;
+
     let mod: AdsModule | null = null;
     try {
       mod = loadAdsMod();
@@ -308,6 +375,15 @@ export const adsService = {
     try {
       appOpenShownThisSession = true;
       await appOpenAdHandle.show();
+      // Record only on a successful show so a load-failure doesn't burn
+      // the user's daily budget.
+      await storage
+        .setAppOpenAdState({
+          lastShownAt: Date.now(),
+          day: today,
+          countToday: countToday + 1,
+        })
+        .catch(() => undefined);
     } catch (err) {
       logError('showAppOpenAd', err, {});
       if (__DEV__) console.warn('[ads] showAppOpenAdIfAvailable failed', err);
@@ -322,6 +398,7 @@ export const adsService = {
 // Built with React.createElement so this file can stay .ts (no JSX).
 
 export function BannerAd(): React.ReactElement | null {
+  useRemoteConfig(); // re-render when the banner_enabled flag activates
   const [failed, setFailed] = React.useState(false);
   // Gate the actual native render until MobileAds().initialize() has
   // resolved. Without this, the banner can mount before the SDK is
@@ -341,6 +418,7 @@ export function BannerAd(): React.ReactElement | null {
 
   if (SCREENSHOT_MODE) return null;
   if (!ADS_ENABLED || !ready) return null;
+  if (!rcBool('banner_enabled')) return null; // remote kill-switch
   let mod: AdsModule | null = null;
   try {
     mod = loadAdsMod();
