@@ -13,6 +13,7 @@ import { useUserStore } from '@/store/userStore';
 import {
   getEligiblePopup,
   markPopupSeen,
+  trackCampaignEvent,
   type PopupCampaign,
 } from '@/services/campaignService';
 import { navigateCampaign } from '@/navigation/navigationRef';
@@ -39,6 +40,7 @@ export function CampaignGate({ active }: Props) {
       if (!cancelled && p) {
         shownThisSession.current = true;
         setPopup(p);
+        void trackCampaignEvent(p.id, 'impression');
       }
     }, 1200);
     return () => {
@@ -51,11 +53,13 @@ export function CampaignGate({ active }: Props) {
 
   const close = () => {
     void markPopupSeen(popup.id);
+    void trackCampaignEvent(popup.id, 'dismiss');
     setPopup(null);
   };
 
   const onAction = () => {
     void markPopupSeen(popup.id);
+    void trackCampaignEvent(popup.id, 'click');
     if (popup.action.type !== 'dismiss') navigateCampaign(popup.action);
     setPopup(null);
   };

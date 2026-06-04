@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -4761,6 +4761,21 @@ exports.onErrorLogged = (0, firestore_1.onDocumentCreated)('errors/{fp}', async 
 // dated ones wait for the cron sweep). Rate-limited + idempotent inside.
 exports.onCampaignCreated = (0, firestore_1.onDocumentCreated)('campaigns/{id}', async (event) => {
     await (0, adminUserPush_1.processCampaign)(event.params.id, Date.now());
+});
+// Engagement reporting — the app calls this when a push is tapped or a
+// popup is shown / clicked / dismissed. Increments campaigns/{id}.metrics.*
+// so Pulse can show received-vs-clicked per campaign. Append-only counters;
+// a signed-in user can only nudge a count up, never read or alter campaigns.
+exports.trackCampaignEvent = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    if (!request.auth)
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    const campaignId = request.data?.campaignId;
+    const event = request.data?.event;
+    if (typeof campaignId !== 'string' || typeof event !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'campaignId + event required');
+    }
+    await (0, adminUserPush_1.recordCampaignMetric)(campaignId, event);
+    return { ok: true };
 });
 // User feedback — bug report / feature suggestion (separate toggles).
 exports.onFeedbackSubmitted = (0, firestore_1.onDocumentCreated)('feedback/{id}', async (event) => {

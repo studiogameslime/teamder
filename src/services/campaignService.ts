@@ -164,3 +164,25 @@ export async function markPopupSeen(campaignId: string): Promise<void> {
     /* non-fatal */
   }
 }
+
+export type CampaignEvent = 'open' | 'impression' | 'click' | 'dismiss';
+
+/**
+ * Report an engagement event to the campaign's metrics counters (powers
+ * the Pulse per-campaign report). Best-effort, fire-and-forget.
+ *   open       → push notification tapped
+ *   impression → popup shown
+ *   click      → popup button tapped (action taken)
+ *   dismiss    → popup closed without acting
+ */
+export async function trackCampaignEvent(campaignId: string, event: CampaignEvent): Promise<void> {
+  if (USE_MOCK_DATA || !campaignId) return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const { functions } = getFirebase();
+    await httpsCallable(functions, 'trackCampaignEvent')({ campaignId, event });
+  } catch (err) {
+    if (__DEV__) console.warn('[campaignService] trackCampaignEvent failed', err);
+  }
+}

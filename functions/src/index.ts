@@ -37,7 +37,7 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import { runReviewAlerts } from './reviewAlerts';
 import { pushToAdmins } from './adminPush';
-import { processCampaign, sweepDueCampaigns } from './adminUserPush';
+import { processCampaign, sweepDueCampaigns, recordCampaignMetric } from './adminUserPush';
 import {
   NotificationKind as DedupeKind,
   NotificationEntity,
@@ -6037,6 +6037,24 @@ export const onCampaignCreated = onDocumentCreated(
   'campaigns/{id}',
   async (event) => {
     await processCampaign(event.params.id, Date.now());
+  },
+);
+
+// Engagement reporting — the app calls this when a push is tapped or a
+// popup is shown / clicked / dismissed. Increments campaigns/{id}.metrics.*
+// so Pulse can show received-vs-clicked per campaign. Append-only counters;
+// a signed-in user can only nudge a count up, never read or alter campaigns.
+export const trackCampaignEvent = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'sign in required');
+    const campaignId = request.data?.campaignId;
+    const event = request.data?.event;
+    if (typeof campaignId !== 'string' || typeof event !== 'string') {
+      throw new HttpsError('invalid-argument', 'campaignId + event required');
+    }
+    await recordCampaignMetric(campaignId, event);
+    return { ok: true };
   },
 );
 

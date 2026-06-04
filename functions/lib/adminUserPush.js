@@ -47,15 +47,18 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processCampaign = processCampaign;
 exports.sweepDueCampaigns = sweepDueCampaigns;
+exports.recordCampaignMetric = recordCampaignMetric;
 const admin = __importStar(require("firebase-admin"));
 // ── anti-spam (server-enforced) ──
-const MIN_INTERVAL_MS = 2 * 60 * 1000;
-const MAX_PER_HOUR = 5;
-const MAX_PER_DAY = 20;
+// The real guard is PER-USER, not global: every individual user receives at
+// most one broadcast push per 24h. The admin may queue/schedule as many
+// campaigns as they like (80 is fine) — a user who already got a push today
+// is simply skipped by the later ones. We stamp `lastBroadcastAt` on each
+// recipient after sending and filter on it next time.
+const PER_USER_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_RECIPIENTS = 20000;
 const RATE_DOC = 'pushRate';
 const DAY = 24 * 60 * 60 * 1000;
-const HOUR = 60 * 60 * 1000;
 function match(u, f, now) {
     if (f.city && (u.city ?? '').trim() !== f.city.trim())
         return false;
@@ -145,21 +148,12 @@ async function processCampaign(id, nowMs) {
         if (typeof c.sendAt === 'number' && c.sendAt > nowMs + 60000) {
             return { go: false }; // not due — cron revisits
         }
+        // Claim the campaign (idempotent: only one worker flips queued→sending).
+        // No global rate gate — the per-user cap below is the real guard. We
+        // still record the send timestamp for an informational "sent today".
+        tx.update(ref, { status: 'sending', processedAt: nowMs });
         const rateRef = db.collection('adminConfig').doc(RATE_DOC);
         const sends = ((await tx.get(rateRef)).data()?.sends ?? []).filter((t) => nowMs - t < DAY);
-        const last = sends.length ? Math.max(...sends) : 0;
-        let block = '';
-        if (last && nowMs - last < MIN_INTERVAL_MS)
-            block = 'נשלח פוש לפני פחות מ-2 דקות';
-        else if (sends.filter((t) => nowMs - t < HOUR).length >= MAX_PER_HOUR)
-            block = `מקסימום ${MAX_PER_HOUR} פושים בשעה`;
-        else if (sends.length >= MAX_PER_DAY)
-            block = `מקסימום ${MAX_PER_DAY} פושים ביום`;
-        if (block) {
-            tx.update(ref, { status: 'blocked', blockReason: block, processedAt: nowMs });
-            return { go: false };
-        }
-        tx.update(ref, { status: 'sending', processedAt: nowMs });
         tx.set(rateRef, { sends: [...sends, nowMs] }, { merge: true });
         return { go: true, c };
     });
@@ -179,6 +173,7 @@ async function processCampaign(id, nowMs) {
             docs.push({
                 uid: d.id,
                 root: u.fcmTokens,
+                lastBroadcastAt: Number(u.lastBroadcastAt ?? 0),
                 base: {
                     uid: d.id,
                     city: u.availability?.homeCity ?? u.city,
@@ -195,10 +190,21 @@ async function processCampaign(id, nowMs) {
         // Only do the (heavier) Auth lookup when the segment needs it.
         const needAuth = !!f.provider || !!f.inactiveDays;
         const meta = needAuth ? await authMeta(docs.map((d) => d.uid)) : new Map();
-        const matched = docs.filter((d) => match({ ...d.base, ...(meta.get(d.uid) ?? {}) }, f, nowMs));
+        const segmentMatched = docs.filter((d) => match({ ...d.base, ...(meta.get(d.uid) ?? {}) }, f, nowMs));
+        // PER-USER daily cap: drop anyone who already got a broadcast in the
+        // last 24h. This is what lets the admin queue many campaigns safely.
+        const matched = segmentMatched.filter((d) => nowMs - d.lastBroadcastAt >= PER_USER_DAY_MS);
+        const skippedDailyCap = segmentMatched.length - matched.length;
+        // Collect tokens, remembering which users we actually reach (≥1 token) so
+        // we only burn the daily cap for users who genuinely received the push.
+        const recipientUids = [];
         const tokenSet = new Set();
         for (const m of matched.slice(0, MAX_RECIPIENTS)) {
-            (await tokensFor(db, m.uid, m.root)).forEach((t) => tokenSet.add(t));
+            const toks = await tokensFor(db, m.uid, m.root);
+            if (toks.length) {
+                recipientUids.push(m.uid);
+                toks.forEach((t) => tokenSet.add(t));
+            }
         }
         const tokens = [...tokenSet];
         const messaging = admin.messaging();
@@ -221,13 +227,24 @@ async function processCampaign(id, nowMs) {
                     dead += 1;
             });
         }
+        // Stamp the per-user daily cap on everyone we reached (batched, 450/op).
+        for (let i = 0; i < recipientUids.length; i += 450) {
+            const batch = db.batch();
+            for (const uid of recipientUids.slice(i, i + 450)) {
+                batch.set(db.collection('users').doc(uid), { lastBroadcastAt: nowMs }, { merge: true });
+            }
+            await batch.commit();
+        }
         await ref.update({
             status: 'sent',
-            recipientUsers: matched.length,
+            matchedUsers: segmentMatched.length,
+            skippedDailyCap,
+            recipientUsers: recipientUids.length,
             recipientTokens: tokens.length,
             successCount: sent,
             deadTokens: dead,
             sentAt: nowMs,
+            'metrics.delivered': sent,
         });
     }
     catch (err) {
@@ -249,4 +266,24 @@ async function sweepDueCampaigns(nowMs) {
         // eslint-disable-next-line no-await-in-loop
         await processCampaign(d.id, nowMs);
     }
+}
+// Engagement metric written by the app via the trackCampaignEvent callable.
+// `open` = push notification tapped; `impression`/`click`/`dismiss` = popup
+// shown / button tapped / closed. Stored under campaigns/{id}.metrics.* so
+// Pulse can show a per-campaign report next to `delivered`.
+const METRIC_FIELD = {
+    open: 'opens',
+    impression: 'impressions',
+    click: 'clicks',
+    dismiss: 'dismisses',
+};
+async function recordCampaignMetric(campaignId, event) {
+    const field = METRIC_FIELD[event];
+    if (!campaignId || !field)
+        return;
+    await admin
+        .firestore()
+        .collection('campaigns')
+        .doc(campaignId)
+        .set({ metrics: { [field]: admin.firestore.FieldValue.increment(1) } }, { merge: true });
 }

@@ -604,6 +604,12 @@ export default function App() {
       if (!type) return;
       // Opened by tapping a push → suppress the next app-open ad.
       adsService.noteIntentfulOpen();
+      // Admin broadcast (Pulse campaign) tapped → report the open so the
+      // campaign report shows received-vs-opened. Fire-and-forget.
+      if (type === 'adminBroadcast' && typeof data.campaignId === 'string') {
+        const { trackCampaignEvent } = await import('@/services/campaignService');
+        void trackCampaignEvent(data.campaignId, 'open');
+      }
       // Identifier of the source notification — needed to dismiss it
       // explicitly after an action button runs. Without an explicit
       // dismiss the notification card lingers in the tray even though
