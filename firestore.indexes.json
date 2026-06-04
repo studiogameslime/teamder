@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type",   "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sendAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "groupJoinRequests",
       "queryScope": "COLLECTION",
       "fields": [
