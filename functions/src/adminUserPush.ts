@@ -24,44 +24,68 @@ const MAX_RECIPIENTS = 20000;
 const RATE_DOC = 'pushRate';
 const DAY = 24 * 60 * 60 * 1000;
 
-// Segment model — mirror of pulse/src/services/segments.ts. A rule list
-// combined with 'all' (AND) or 'any' (OR). Legacy flat filters normalized.
-type RuleKind =
-  | 'neverPlayed' | 'minGames' | 'inGroup' | 'notInGroup'
-  | 'city' | 'provider' | 'platform'
-  | 'newWithinDays' | 'inactiveDays' | 'hasPush' | 'fromInvite';
-interface SegmentRule { kind: RuleKind; value?: string | number }
+// Segment model — mirror of pulse/src/services/segments.ts. A list of
+// {field,op,value} conditions combined with 'all' (AND) or 'any' (OR).
+// Older {kind} + flat shapes normalize in for backward compatibility.
+type FieldKey =
+  | 'attended' | 'cancelled' | 'daysSinceJoin' | 'daysSinceActive'
+  | 'city' | 'provider' | 'platform' | 'inGroup' | 'hasPush' | 'invited';
+type Op = 'gt' | 'lt' | 'gte' | 'lte' | 'eq' | 'neq';
+interface SegmentRule { field: FieldKey; op: Op; value: string | number | boolean }
 interface SegmentDef { combinator: 'all' | 'any'; rules: SegmentRule[] }
 
+interface OldKindRule { kind: string; value?: string | number }
 interface LegacyFilters {
   city?: string; provider?: string; platform?: string;
   games?: string; minGames?: number; group?: string;
   newDays?: number; inactiveDays?: number; hasPush?: boolean; invited?: boolean;
 }
 
+function kindToRule(k: OldKindRule): SegmentRule | null {
+  switch (k.kind) {
+    case 'neverPlayed': return { field: 'attended', op: 'eq', value: 0 };
+    case 'minGames': return { field: 'attended', op: 'gte', value: Number(k.value ?? 1) };
+    case 'inGroup': return { field: 'inGroup', op: 'eq', value: true };
+    case 'notInGroup': return { field: 'inGroup', op: 'eq', value: false };
+    case 'city': return { field: 'city', op: 'eq', value: String(k.value ?? '') };
+    case 'provider': return { field: 'provider', op: 'eq', value: String(k.value ?? '') };
+    case 'platform': return { field: 'platform', op: 'eq', value: String(k.value ?? '') };
+    case 'newWithinDays': return { field: 'daysSinceJoin', op: 'lte', value: Number(k.value ?? 0) };
+    case 'inactiveDays': return { field: 'daysSinceActive', op: 'gte', value: Number(k.value ?? 0) };
+    case 'hasPush': return { field: 'hasPush', op: 'eq', value: true };
+    case 'fromInvite': return { field: 'invited', op: 'eq', value: true };
+    default: return null;
+  }
+}
+
 function normalizeSegment(raw: unknown): SegmentDef {
   const r = raw as (Partial<SegmentDef> & LegacyFilters) | undefined;
   if (r && Array.isArray(r.rules)) {
-    return { combinator: r.combinator === 'any' ? 'any' : 'all', rules: r.rules };
+    const rules: SegmentRule[] = [];
+    for (const rule of r.rules as (SegmentRule | OldKindRule)[]) {
+      if (rule && 'field' in rule && 'op' in rule) rules.push(rule as SegmentRule);
+      else if (rule && 'kind' in rule) { const m = kindToRule(rule as OldKindRule); if (m) rules.push(m); }
+    }
+    return { combinator: r.combinator === 'any' ? 'any' : 'all', rules };
   }
   const f = (r ?? {}) as LegacyFilters;
   const rules: SegmentRule[] = [];
-  if (f.city) rules.push({ kind: 'city', value: f.city });
-  if (f.provider) rules.push({ kind: 'provider', value: f.provider });
-  if (f.platform) rules.push({ kind: 'platform', value: f.platform });
-  if (f.games === 'never') rules.push({ kind: 'neverPlayed' });
-  if (f.games === 'min') rules.push({ kind: 'minGames', value: f.minGames ?? 1 });
-  if (f.group === 'in') rules.push({ kind: 'inGroup' });
-  if (f.group === 'notin') rules.push({ kind: 'notInGroup' });
-  if (f.newDays) rules.push({ kind: 'newWithinDays', value: f.newDays });
-  if (f.inactiveDays) rules.push({ kind: 'inactiveDays', value: f.inactiveDays });
-  if (f.hasPush === true) rules.push({ kind: 'hasPush' });
-  if (f.invited === true) rules.push({ kind: 'fromInvite' });
+  if (f.city) rules.push({ field: 'city', op: 'eq', value: f.city });
+  if (f.provider) rules.push({ field: 'provider', op: 'eq', value: f.provider });
+  if (f.platform) rules.push({ field: 'platform', op: 'eq', value: f.platform });
+  if (f.games === 'never') rules.push({ field: 'attended', op: 'eq', value: 0 });
+  if (f.games === 'min') rules.push({ field: 'attended', op: 'gte', value: f.minGames ?? 1 });
+  if (f.group === 'in') rules.push({ field: 'inGroup', op: 'eq', value: true });
+  if (f.group === 'notin') rules.push({ field: 'inGroup', op: 'eq', value: false });
+  if (f.newDays) rules.push({ field: 'daysSinceJoin', op: 'lte', value: f.newDays });
+  if (f.inactiveDays) rules.push({ field: 'daysSinceActive', op: 'gte', value: f.inactiveDays });
+  if (f.hasPush === true) rules.push({ field: 'hasPush', op: 'eq', value: true });
+  if (f.invited === true) rules.push({ field: 'invited', op: 'eq', value: true });
   return { combinator: 'all', rules };
 }
 
 function segmentNeedsAuth(seg: SegmentDef): boolean {
-  return seg.rules.some((r) => r.kind === 'provider' || r.kind === 'inactiveDays');
+  return seg.rules.some((r) => r.field === 'provider' || r.field === 'daysSinceActive');
 }
 
 // Per-user shape we evaluate against (assembled from doc + Auth + groups).
@@ -69,6 +93,7 @@ interface U {
   uid: string;
   city?: string;
   attended: number;
+  cancelled: number;
   createdAt: number;
   invitedBy?: string;
   platform?: string;
@@ -79,31 +104,50 @@ interface U {
   inGroup: boolean;
 }
 
-function matchRule(u: U, rule: SegmentRule, now: number): boolean {
-  switch (rule.kind) {
-    case 'neverPlayed': return u.attended === 0;
-    case 'minGames': return u.attended >= Number(rule.value ?? 1);
-    case 'inGroup': return u.inGroup;
-    case 'notInGroup': return !u.inGroup;
-    case 'city': return (u.city ?? '').trim() === String(rule.value ?? '').trim();
-    case 'provider': return u.provider === rule.value;
-    case 'platform': return u.platform === rule.value;
-    case 'newWithinDays': return now - u.createdAt <= Number(rule.value ?? 0) * DAY;
-    case 'inactiveDays': {
+function userField(u: U, field: FieldKey, now: number): number | string | boolean {
+  switch (field) {
+    case 'attended': return u.attended;
+    case 'cancelled': return u.cancelled;
+    case 'daysSinceJoin': return (now - u.createdAt) / DAY;
+    case 'daysSinceActive': {
       const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
-      return now - last >= Number(rule.value ?? 0) * DAY;
+      return (now - last) / DAY;
     }
+    case 'city': return (u.city ?? '').trim();
+    case 'provider': return u.provider ?? '';
+    case 'platform': return u.platform ?? '';
+    case 'inGroup': return u.inGroup;
     case 'hasPush': return u.hasPush;
-    case 'fromInvite': return !!u.invitedBy;
-    default: return true;
+    case 'invited': return !!u.invitedBy;
+    default: return '';
   }
+}
+
+function applyOp(actual: number | string | boolean, op: Op, value: string | number | boolean): boolean {
+  if (typeof actual === 'number') {
+    const v = Number(value);
+    switch (op) {
+      case 'gt': return actual > v;
+      case 'lt': return actual < v;
+      case 'gte': return actual >= v;
+      case 'lte': return actual <= v;
+      case 'eq': return actual === v;
+      case 'neq': return actual !== v;
+    }
+  }
+  if (typeof actual === 'boolean') {
+    const v = value === true || value === 'true' || value === 'כן';
+    return op === 'neq' ? actual !== v : actual === v;
+  }
+  const a = String(actual).trim();
+  const b = String(value).trim();
+  return op === 'neq' ? a !== b : a === b;
 }
 
 function match(u: U, seg: SegmentDef, now: number): boolean {
   if (seg.rules.length === 0) return true;
-  return seg.combinator === 'any'
-    ? seg.rules.some((r) => matchRule(u, r, now))
-    : seg.rules.every((r) => matchRule(u, r, now));
+  const test = (r: SegmentRule) => applyOp(userField(u, r.field, now), r.op, r.value);
+  return seg.combinator === 'any' ? seg.rules.some(test) : seg.rules.every(test);
 }
 
 async function groupMemberSet(db: admin.firestore.Firestore): Promise<Set<string>> {
@@ -216,6 +260,7 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
           uid: d.id,
           city: u.availability?.homeCity ?? u.city,
           attended: Number(u.stats?.attended ?? 0),
+          cancelled: Number(u.stats?.cancelled ?? 0),
           createdAt: Number(u.createdAt ?? 0),
           invitedBy: u.invitedBy,
           platform: u.platform,

@@ -59,65 +59,109 @@ const PER_USER_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_RECIPIENTS = 20000;
 const RATE_DOC = 'pushRate';
 const DAY = 24 * 60 * 60 * 1000;
+function kindToRule(k) {
+    switch (k.kind) {
+        case 'neverPlayed': return { field: 'attended', op: 'eq', value: 0 };
+        case 'minGames': return { field: 'attended', op: 'gte', value: Number(k.value ?? 1) };
+        case 'inGroup': return { field: 'inGroup', op: 'eq', value: true };
+        case 'notInGroup': return { field: 'inGroup', op: 'eq', value: false };
+        case 'city': return { field: 'city', op: 'eq', value: String(k.value ?? '') };
+        case 'provider': return { field: 'provider', op: 'eq', value: String(k.value ?? '') };
+        case 'platform': return { field: 'platform', op: 'eq', value: String(k.value ?? '') };
+        case 'newWithinDays': return { field: 'daysSinceJoin', op: 'lte', value: Number(k.value ?? 0) };
+        case 'inactiveDays': return { field: 'daysSinceActive', op: 'gte', value: Number(k.value ?? 0) };
+        case 'hasPush': return { field: 'hasPush', op: 'eq', value: true };
+        case 'fromInvite': return { field: 'invited', op: 'eq', value: true };
+        default: return null;
+    }
+}
 function normalizeSegment(raw) {
     const r = raw;
     if (r && Array.isArray(r.rules)) {
-        return { combinator: r.combinator === 'any' ? 'any' : 'all', rules: r.rules };
+        const rules = [];
+        for (const rule of r.rules) {
+            if (rule && 'field' in rule && 'op' in rule)
+                rules.push(rule);
+            else if (rule && 'kind' in rule) {
+                const m = kindToRule(rule);
+                if (m)
+                    rules.push(m);
+            }
+        }
+        return { combinator: r.combinator === 'any' ? 'any' : 'all', rules };
     }
     const f = (r ?? {});
     const rules = [];
     if (f.city)
-        rules.push({ kind: 'city', value: f.city });
+        rules.push({ field: 'city', op: 'eq', value: f.city });
     if (f.provider)
-        rules.push({ kind: 'provider', value: f.provider });
+        rules.push({ field: 'provider', op: 'eq', value: f.provider });
     if (f.platform)
-        rules.push({ kind: 'platform', value: f.platform });
+        rules.push({ field: 'platform', op: 'eq', value: f.platform });
     if (f.games === 'never')
-        rules.push({ kind: 'neverPlayed' });
+        rules.push({ field: 'attended', op: 'eq', value: 0 });
     if (f.games === 'min')
-        rules.push({ kind: 'minGames', value: f.minGames ?? 1 });
+        rules.push({ field: 'attended', op: 'gte', value: f.minGames ?? 1 });
     if (f.group === 'in')
-        rules.push({ kind: 'inGroup' });
+        rules.push({ field: 'inGroup', op: 'eq', value: true });
     if (f.group === 'notin')
-        rules.push({ kind: 'notInGroup' });
+        rules.push({ field: 'inGroup', op: 'eq', value: false });
     if (f.newDays)
-        rules.push({ kind: 'newWithinDays', value: f.newDays });
+        rules.push({ field: 'daysSinceJoin', op: 'lte', value: f.newDays });
     if (f.inactiveDays)
-        rules.push({ kind: 'inactiveDays', value: f.inactiveDays });
+        rules.push({ field: 'daysSinceActive', op: 'gte', value: f.inactiveDays });
     if (f.hasPush === true)
-        rules.push({ kind: 'hasPush' });
+        rules.push({ field: 'hasPush', op: 'eq', value: true });
     if (f.invited === true)
-        rules.push({ kind: 'fromInvite' });
+        rules.push({ field: 'invited', op: 'eq', value: true });
     return { combinator: 'all', rules };
 }
 function segmentNeedsAuth(seg) {
-    return seg.rules.some((r) => r.kind === 'provider' || r.kind === 'inactiveDays');
+    return seg.rules.some((r) => r.field === 'provider' || r.field === 'daysSinceActive');
 }
-function matchRule(u, rule, now) {
-    switch (rule.kind) {
-        case 'neverPlayed': return u.attended === 0;
-        case 'minGames': return u.attended >= Number(rule.value ?? 1);
-        case 'inGroup': return u.inGroup;
-        case 'notInGroup': return !u.inGroup;
-        case 'city': return (u.city ?? '').trim() === String(rule.value ?? '').trim();
-        case 'provider': return u.provider === rule.value;
-        case 'platform': return u.platform === rule.value;
-        case 'newWithinDays': return now - u.createdAt <= Number(rule.value ?? 0) * DAY;
-        case 'inactiveDays': {
+function userField(u, field, now) {
+    switch (field) {
+        case 'attended': return u.attended;
+        case 'cancelled': return u.cancelled;
+        case 'daysSinceJoin': return (now - u.createdAt) / DAY;
+        case 'daysSinceActive': {
             const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
-            return now - last >= Number(rule.value ?? 0) * DAY;
+            return (now - last) / DAY;
         }
+        case 'city': return (u.city ?? '').trim();
+        case 'provider': return u.provider ?? '';
+        case 'platform': return u.platform ?? '';
+        case 'inGroup': return u.inGroup;
         case 'hasPush': return u.hasPush;
-        case 'fromInvite': return !!u.invitedBy;
-        default: return true;
+        case 'invited': return !!u.invitedBy;
+        default: return '';
     }
+}
+function applyOp(actual, op, value) {
+    if (typeof actual === 'number') {
+        const v = Number(value);
+        switch (op) {
+            case 'gt': return actual > v;
+            case 'lt': return actual < v;
+            case 'gte': return actual >= v;
+            case 'lte': return actual <= v;
+            case 'eq': return actual === v;
+            case 'neq': return actual !== v;
+        }
+    }
+    if (typeof actual === 'boolean') {
+        const v = value === true || value === 'true' || value === 'כן';
+        return op === 'neq' ? actual !== v : actual === v;
+    }
+    const a = String(actual).trim();
+    const b = String(value).trim();
+    return op === 'neq' ? a !== b : a === b;
 }
 function match(u, seg, now) {
     if (seg.rules.length === 0)
         return true;
-    return seg.combinator === 'any'
-        ? seg.rules.some((r) => matchRule(u, r, now))
-        : seg.rules.every((r) => matchRule(u, r, now));
+    const test = (r) => applyOp(userField(u, r.field, now), r.op, r.value);
+    return seg.combinator === 'any' ? seg.rules.some(test) : seg.rules.every(test);
 }
 async function groupMemberSet(db) {
     const set = new Set();
@@ -208,6 +252,7 @@ async function processCampaign(id, nowMs) {
                     uid: d.id,
                     city: u.availability?.homeCity ?? u.city,
                     attended: Number(u.stats?.attended ?? 0),
+                    cancelled: Number(u.stats?.cancelled ?? 0),
                     createdAt: Number(u.createdAt ?? 0),
                     invitedBy: u.invitedBy,
                     platform: u.platform,
