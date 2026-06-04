@@ -24,7 +24,6 @@
       "bundleIdentifier": "com.studiogameslime.soccerapp",
       "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:teamderfc.web.app"],
       "infoPlist": {
         "CFBundleDevelopmentRegion": "he",
         "CFBundleLocalizations": ["he", "en"],
