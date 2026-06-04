@@ -28,18 +28,41 @@ export interface CampaignAction {
   value?: string;
 }
 
-// Must stay in sync with pulse/src/services/segments.ts + the server matcher.
-interface SegmentFilters {
-  city?: string;
-  provider?: 'google' | 'apple';
-  platform?: 'ios' | 'android';
-  games?: 'never' | 'min';
-  minGames?: number;
-  group?: 'in' | 'notin';
-  newDays?: number;
-  inactiveDays?: number;
-  hasPush?: boolean;
-  invited?: boolean;
+// ── Segment model (kept in lockstep with pulse/src/services/segments.ts
+// + functions/src/adminUserPush.ts). A segment is a rule list combined
+// with 'all' (AND) or 'any' (OR). Legacy flat filters are normalized in. ──
+type RuleKind =
+  | 'neverPlayed' | 'minGames' | 'inGroup' | 'notInGroup'
+  | 'city' | 'provider' | 'platform'
+  | 'newWithinDays' | 'inactiveDays' | 'hasPush' | 'fromInvite';
+interface SegmentRule { kind: RuleKind; value?: string | number }
+interface SegmentDef { combinator: 'all' | 'any'; rules: SegmentRule[] }
+
+interface LegacyFilters {
+  city?: string; provider?: string; platform?: string;
+  games?: string; minGames?: number; group?: string;
+  newDays?: number; inactiveDays?: number; hasPush?: boolean; invited?: boolean;
+}
+
+function normalizeSegment(raw: unknown): SegmentDef {
+  const r = raw as Partial<SegmentDef> & LegacyFilters;
+  if (r && Array.isArray(r.rules)) {
+    return { combinator: r.combinator === 'any' ? 'any' : 'all', rules: r.rules };
+  }
+  const f = (r ?? {}) as LegacyFilters;
+  const rules: SegmentRule[] = [];
+  if (f.city) rules.push({ kind: 'city', value: f.city });
+  if (f.provider) rules.push({ kind: 'provider', value: f.provider });
+  if (f.platform) rules.push({ kind: 'platform', value: f.platform });
+  if (f.games === 'never') rules.push({ kind: 'neverPlayed' });
+  if (f.games === 'min') rules.push({ kind: 'minGames', value: f.minGames ?? 1 });
+  if (f.group === 'in') rules.push({ kind: 'inGroup' });
+  if (f.group === 'notin') rules.push({ kind: 'notInGroup' });
+  if (f.newDays) rules.push({ kind: 'newWithinDays', value: f.newDays });
+  if (f.inactiveDays) rules.push({ kind: 'inactiveDays', value: f.inactiveDays });
+  if (f.hasPush === true) rules.push({ kind: 'hasPush' });
+  if (f.invited === true) rules.push({ kind: 'fromInvite' });
+  return { combinator: 'all', rules };
 }
 
 export interface PopupCampaign {
@@ -61,27 +84,35 @@ interface CurrentCtx {
   now: number;
 }
 
-function matchSegment(f: SegmentFilters, c: CurrentCtx): boolean {
+function matchRule(rule: SegmentRule, c: CurrentCtx): boolean {
   const u = c.user;
   const city = u.availability?.homeCity ?? (u as { city?: string }).city;
   const attended = u.stats?.attended ?? 0;
   const createdAt = u.createdAt ?? 0;
   const lastSeen = (u as { lastSeenAt?: number }).lastSeenAt ?? createdAt;
   const hasPush = Array.isArray(u.fcmTokens) && u.fcmTokens.length > 0;
+  switch (rule.kind) {
+    case 'neverPlayed': return attended === 0;
+    case 'minGames': return attended >= Number(rule.value ?? 1);
+    case 'inGroup': return c.inGroup;
+    case 'notInGroup': return !c.inGroup;
+    case 'city': return (city ?? '').trim() === String(rule.value ?? '').trim();
+    case 'provider': return c.provider === rule.value;
+    case 'platform': return Platform.OS === rule.value;
+    case 'newWithinDays': return c.now - createdAt <= Number(rule.value ?? 0) * DAY;
+    case 'inactiveDays': return c.now - lastSeen >= Number(rule.value ?? 0) * DAY;
+    case 'hasPush': return hasPush;
+    case 'fromInvite': return !!u.invitedBy;
+    default: return true;
+  }
+}
 
-  if (f.city && (city ?? '').trim() !== f.city.trim()) return false;
-  if (f.provider && c.provider !== f.provider) return false;
-  if (f.platform && Platform.OS !== f.platform) return false;
-  if (f.games === 'never' && attended > 0) return false;
-  if (f.games === 'min' && attended < (f.minGames ?? 1)) return false;
-  if (f.group === 'in' && !c.inGroup) return false;
-  if (f.group === 'notin' && c.inGroup) return false;
-  if (f.newDays && c.now - createdAt > f.newDays * DAY) return false;
-  if (f.inactiveDays && c.now - lastSeen < f.inactiveDays * DAY) return false;
-  if (f.hasPush === true && !hasPush) return false;
-  if (f.hasPush === false && hasPush) return false;
-  if (f.invited === true && !u.invitedBy) return false;
-  return true;
+function matchSegment(raw: unknown, c: CurrentCtx): boolean {
+  const seg = normalizeSegment(raw);
+  if (seg.rules.length === 0) return true;
+  return seg.combinator === 'any'
+    ? seg.rules.some((r) => matchRule(r, c))
+    : seg.rules.every((r) => matchRule(r, c));
 }
 
 function readAction(raw: Record<string, unknown>): CampaignAction {
@@ -126,7 +157,7 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
         const startAt = Number(raw.startAt ?? 0);
         const endAt = Number(raw.endAt ?? Number.MAX_SAFE_INTEGER);
         if (now < startAt || now > endAt) return false;
-        if (!matchSegment((raw.segment as SegmentFilters) ?? {}, ctx)) return false;
+        if (!matchSegment(raw.segment, ctx)) return false;
         const rec = seen[id];
         const maxImp = Number(raw.maxImpressions ?? 1);
         const cooldown = Number(raw.cooldownHours ?? 24) * 60 * 60 * 1000;

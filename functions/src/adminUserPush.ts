@@ -24,18 +24,44 @@ const MAX_RECIPIENTS = 20000;
 const RATE_DOC = 'pushRate';
 const DAY = 24 * 60 * 60 * 1000;
 
-// Mirror of pulse/src/services/segments.ts SegmentFilters — keep in sync.
-interface SegmentFilters {
-  city?: string;
-  provider?: 'google' | 'apple';
-  platform?: 'ios' | 'android';
-  games?: 'never' | 'min';
-  minGames?: number;
-  group?: 'in' | 'notin';
-  newDays?: number;
-  inactiveDays?: number;
-  hasPush?: boolean;
-  invited?: boolean;
+// Segment model — mirror of pulse/src/services/segments.ts. A rule list
+// combined with 'all' (AND) or 'any' (OR). Legacy flat filters normalized.
+type RuleKind =
+  | 'neverPlayed' | 'minGames' | 'inGroup' | 'notInGroup'
+  | 'city' | 'provider' | 'platform'
+  | 'newWithinDays' | 'inactiveDays' | 'hasPush' | 'fromInvite';
+interface SegmentRule { kind: RuleKind; value?: string | number }
+interface SegmentDef { combinator: 'all' | 'any'; rules: SegmentRule[] }
+
+interface LegacyFilters {
+  city?: string; provider?: string; platform?: string;
+  games?: string; minGames?: number; group?: string;
+  newDays?: number; inactiveDays?: number; hasPush?: boolean; invited?: boolean;
+}
+
+function normalizeSegment(raw: unknown): SegmentDef {
+  const r = raw as (Partial<SegmentDef> & LegacyFilters) | undefined;
+  if (r && Array.isArray(r.rules)) {
+    return { combinator: r.combinator === 'any' ? 'any' : 'all', rules: r.rules };
+  }
+  const f = (r ?? {}) as LegacyFilters;
+  const rules: SegmentRule[] = [];
+  if (f.city) rules.push({ kind: 'city', value: f.city });
+  if (f.provider) rules.push({ kind: 'provider', value: f.provider });
+  if (f.platform) rules.push({ kind: 'platform', value: f.platform });
+  if (f.games === 'never') rules.push({ kind: 'neverPlayed' });
+  if (f.games === 'min') rules.push({ kind: 'minGames', value: f.minGames ?? 1 });
+  if (f.group === 'in') rules.push({ kind: 'inGroup' });
+  if (f.group === 'notin') rules.push({ kind: 'notInGroup' });
+  if (f.newDays) rules.push({ kind: 'newWithinDays', value: f.newDays });
+  if (f.inactiveDays) rules.push({ kind: 'inactiveDays', value: f.inactiveDays });
+  if (f.hasPush === true) rules.push({ kind: 'hasPush' });
+  if (f.invited === true) rules.push({ kind: 'fromInvite' });
+  return { combinator: 'all', rules };
+}
+
+function segmentNeedsAuth(seg: SegmentDef): boolean {
+  return seg.rules.some((r) => r.kind === 'provider' || r.kind === 'inactiveDays');
 }
 
 // Per-user shape we evaluate against (assembled from doc + Auth + groups).
@@ -53,23 +79,31 @@ interface U {
   inGroup: boolean;
 }
 
-function match(u: U, f: SegmentFilters, now: number): boolean {
-  if (f.city && (u.city ?? '').trim() !== f.city.trim()) return false;
-  if (f.provider && u.provider !== f.provider) return false;
-  if (f.platform && u.platform !== f.platform) return false;
-  if (f.games === 'never' && u.attended > 0) return false;
-  if (f.games === 'min' && u.attended < (f.minGames ?? 1)) return false;
-  if (f.group === 'in' && !u.inGroup) return false;
-  if (f.group === 'notin' && u.inGroup) return false;
-  if (f.newDays && now - u.createdAt > f.newDays * DAY) return false;
-  if (f.inactiveDays) {
-    const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
-    if (now - last < f.inactiveDays * DAY) return false;
+function matchRule(u: U, rule: SegmentRule, now: number): boolean {
+  switch (rule.kind) {
+    case 'neverPlayed': return u.attended === 0;
+    case 'minGames': return u.attended >= Number(rule.value ?? 1);
+    case 'inGroup': return u.inGroup;
+    case 'notInGroup': return !u.inGroup;
+    case 'city': return (u.city ?? '').trim() === String(rule.value ?? '').trim();
+    case 'provider': return u.provider === rule.value;
+    case 'platform': return u.platform === rule.value;
+    case 'newWithinDays': return now - u.createdAt <= Number(rule.value ?? 0) * DAY;
+    case 'inactiveDays': {
+      const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
+      return now - last >= Number(rule.value ?? 0) * DAY;
+    }
+    case 'hasPush': return u.hasPush;
+    case 'fromInvite': return !!u.invitedBy;
+    default: return true;
   }
-  if (f.hasPush === true && !u.hasPush) return false;
-  if (f.hasPush === false && u.hasPush) return false;
-  if (f.invited === true && !u.invitedBy) return false;
-  return true;
+}
+
+function match(u: U, seg: SegmentDef, now: number): boolean {
+  if (seg.rules.length === 0) return true;
+  return seg.combinator === 'any'
+    ? seg.rules.some((r) => matchRule(u, r, now))
+    : seg.rules.every((r) => matchRule(u, r, now));
 }
 
 async function groupMemberSet(db: admin.firestore.Firestore): Promise<Set<string>> {
@@ -127,7 +161,7 @@ interface Campaign {
   type?: string;
   title?: string;
   body?: string;
-  segment?: SegmentFilters;
+  segment?: unknown;
   sendAt?: number;
   status?: string;
   data?: Record<string, string>;
@@ -160,7 +194,7 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
   if (!claim.go) return;
 
   try {
-    const f: SegmentFilters = claim.c.segment ?? {};
+    const seg = normalizeSegment(claim.c.segment);
     const [usersSnap, memberSet] = await Promise.all([
       db.collection('users').get(),
       groupMemberSet(db),
@@ -193,11 +227,11 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
     });
 
     // Only do the (heavier) Auth lookup when the segment needs it.
-    const needAuth = !!f.provider || !!f.inactiveDays;
+    const needAuth = segmentNeedsAuth(seg);
     const meta = needAuth ? await authMeta(docs.map((d) => d.uid)) : new Map();
 
     const segmentMatched = docs.filter((d) =>
-      match({ ...d.base, ...(meta.get(d.uid) ?? {}) }, f, nowMs),
+      match({ ...d.base, ...(meta.get(d.uid) ?? {}) }, seg, nowMs),
     );
     // PER-USER daily cap: drop anyone who already got a broadcast in the
     // last 24h. This is what lets the admin queue many campaigns safely.
