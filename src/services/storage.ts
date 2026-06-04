@@ -38,6 +38,12 @@ const KEYS = {
   // user who opens the app many times a day isn't hit with an app-open
   // ad on every launch.
   APP_OPEN_AD_STATE: 'footy.appOpenAd.state',
+  // Timestamp of the last presence ping (platform + lastSeenAt write).
+  // Throttles the per-launch write to ~once/6h.
+  PRESENCE_PING_AT: 'footy.presence.pingAt',
+  // Per-campaign popup impression ledger — `{ [campaignId]: lastSeenMs }`.
+  // Drives the client-side frequency cap before the modal is shown.
+  CAMPAIGN_SEEN: 'footy.campaign.seen',
 } as const;
 
 /**
@@ -187,5 +193,34 @@ export const storage = {
     countToday: number;
   }): Promise<void> {
     await AsyncStorage.setItem(KEYS.APP_OPEN_AD_STATE, JSON.stringify(state));
+  },
+
+  async getPresencePingAt(): Promise<number | null> {
+    const raw = await AsyncStorage.getItem(KEYS.PRESENCE_PING_AT);
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) ? n : null;
+  },
+  async setPresencePingAt(ts: number): Promise<void> {
+    await AsyncStorage.setItem(KEYS.PRESENCE_PING_AT, String(ts));
+  },
+
+  // Local impression ledger for popup campaigns — `{ [campaignId]: { c, t } }`
+  // where `c` = times shown, `t` = last-shown ms. Drives the client-side
+  // frequency cap (maxImpressions + cooldownHours) before a modal renders.
+  async getCampaignSeen(): Promise<Record<string, { c: number; t: number }>> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.CAMPAIGN_SEEN);
+      if (!raw) return {};
+      const p = JSON.parse(raw);
+      return p && typeof p === 'object' ? (p as Record<string, { c: number; t: number }>) : {};
+    } catch {
+      return {};
+    }
+  },
+  async recordCampaignSeen(campaignId: string, ts: number): Promise<void> {
+    const cur = await this.getCampaignSeen();
+    const prev = cur[campaignId];
+    cur[campaignId] = { c: (prev?.c ?? 0) + 1, t: ts };
+    await AsyncStorage.setItem(KEYS.CAMPAIGN_SEEN, JSON.stringify(cur));
   },
 };

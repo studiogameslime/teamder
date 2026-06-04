@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -69,6 +69,7 @@ const v2_1 = require("firebase-functions/v2");
 const params_1 = require("firebase-functions/params");
 const reviewAlerts_1 = require("./reviewAlerts");
 const adminPush_1 = require("./adminPush");
+const adminUserPush_1 = require("./adminUserPush");
 const notificationDedup_1 = require("./notificationDedup");
 admin.initializeApp();
 const db = admin.firestore();
@@ -4756,6 +4757,11 @@ exports.onErrorLogged = (0, firestore_1.onDocumentCreated)('errors/{fp}', async 
         fp: event.params.fp,
     });
 });
+// Admin push campaign created in Pulse → send immediately if due (future-
+// dated ones wait for the cron sweep). Rate-limited + idempotent inside.
+exports.onCampaignCreated = (0, firestore_1.onDocumentCreated)('campaigns/{id}', async (event) => {
+    await (0, adminUserPush_1.processCampaign)(event.params.id, Date.now());
+});
 // User feedback — bug report / feature suggestion (separate toggles).
 exports.onFeedbackSubmitted = (0, firestore_1.onDocumentCreated)('feedback/{id}', async (event) => {
     const f = event.data?.data();
@@ -4804,6 +4810,7 @@ async function runDailyCleanupIfDue() {
 exports.cronEvery5Min = (0, scheduler_1.onSchedule)({ schedule: 'every 5 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
     await runSweep('flipScheduledGames', runFlipScheduledGames);
     await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
+    await runSweep('sweepDueCampaigns', () => (0, adminUserPush_1.sweepDueCampaigns)(Date.now()));
 });
 // Every 15 minutes — reminders, nudges, shortage + filler matching.
 // Carries findFillerCandidates' heavier runtime budget (was 512MiB / 540s).

@@ -1070,5 +1070,21 @@ service cloud.firestore {
         request.resource.data.message.size() > 0 &&
         request.resource.data.userId == request.auth.uid;
     }
+
+    // ── /campaigns/{id} — admin marketing campaigns (push + in-app popup) ──
+    // Authored ONLY by the admin panel's service account (bypasses rules).
+    // The app reads popup campaigns to decide what to show; push campaigns
+    // are sent server-side. Read is open to signed-in users (popup content
+    // is non-sensitive marketing copy); all client writes are denied.
+    match /campaigns/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Per-user campaign impression ledger — frequency capping for popups.
+    // Self-only: a user records which popups they've already seen.
+    match /users/{uid}/campaignSeen/{cid} {
+      allow read, write: if isSelf(uid);
+    }
   }
 }

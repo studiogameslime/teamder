@@ -3,9 +3,67 @@
 // being mounted inside the React tree. App.tsx wires this same
 // instance into the NavigationContainer's `ref` prop.
 
+import { Linking } from 'react-native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 export const navigationRef = createNavigationContainerRef();
+
+/**
+ * Route a popup-campaign button tap (authored in Pulse) to the right
+ * destination. Mirrors the action types in
+ * src/services/campaignService.ts + pulse/src/services/campaigns.ts.
+ * Returns false if it couldn't navigate (caller just closes the modal).
+ */
+export function navigateCampaign(action: {
+  type: string;
+  value?: string;
+}): boolean {
+  if (action.type === 'openUrl') {
+    if (action.value) void Linking.openURL(action.value).catch(() => {});
+    return true;
+  }
+  if (!navigationRef.isReady()) return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  switch (action.type) {
+    case 'openGame':
+      if (!action.value) return false;
+      nav.navigate('GameTab', {
+        screen: 'MatchDetails',
+        initial: false,
+        params: { gameId: action.value },
+      });
+      return true;
+    case 'openCommunity':
+      if (!action.value) {
+        nav.navigate('CommunitiesTab', { screen: 'CommunitiesFeed' });
+        return true;
+      }
+      // Public screen reads /groupsPublic/{id} — safe for non-members too.
+      nav.navigate('CommunitiesTab', {
+        screen: 'CommunityDetailsPublic',
+        initial: false,
+        params: { groupId: action.value },
+      });
+      return true;
+    case 'openProfile':
+      nav.navigate('ProfileTab', { screen: 'Profile' });
+      return true;
+    case 'openScreen': {
+      // A small allowlist of safe top-level destinations by keyword.
+      const v = (action.value ?? '').toLowerCase();
+      if (v === 'communities') nav.navigate('CommunitiesTab', { screen: 'CommunitiesFeed' });
+      else if (v === 'games') nav.navigate('GameTab', { screen: 'GamesList' });
+      else if (v === 'achievements') nav.navigate('ProfileTab', { screen: 'Achievements' });
+      else if (v === 'profile') nav.navigate('ProfileTab', { screen: 'Profile' });
+      else return false;
+      return true;
+    }
+    case 'dismiss':
+    default:
+      return true;
+  }
+}
 
 /**
  * Navigate to a deep-linked screen. Tab navigators receive the

@@ -37,6 +37,7 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import { runReviewAlerts } from './reviewAlerts';
 import { pushToAdmins } from './adminPush';
+import { processCampaign, sweepDueCampaigns } from './adminUserPush';
 import {
   NotificationKind as DedupeKind,
   NotificationEntity,
@@ -6030,6 +6031,15 @@ export const onErrorLogged = onDocumentCreated('errors/{fp}', async (event) => {
   });
 });
 
+// Admin push campaign created in Pulse → send immediately if due (future-
+// dated ones wait for the cron sweep). Rate-limited + idempotent inside.
+export const onCampaignCreated = onDocumentCreated(
+  'campaigns/{id}',
+  async (event) => {
+    await processCampaign(event.params.id, Date.now());
+  },
+);
+
 // User feedback — bug report / feature suggestion (separate toggles).
 export const onFeedbackSubmitted = onDocumentCreated(
   'feedback/{id}',
@@ -6087,6 +6097,7 @@ export const cronEvery5Min = onSchedule(
   async () => {
     await runSweep('flipScheduledGames', runFlipScheduledGames);
     await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
+    await runSweep('sweepDueCampaigns', () => sweepDueCampaigns(Date.now()));
   },
 );
 

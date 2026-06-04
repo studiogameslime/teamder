@@ -14,6 +14,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { User } from '@/types';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
@@ -52,7 +53,12 @@ export const userService = {
     if (!fbUser) return null;
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+    if (snap.exists()) {
+      // Presence ping — powers Pulse's platform / "inactive N days" segments.
+      // Fire-and-forget; a failure here must never block sign-in.
+      void touchPresence(fbUser.uid);
+      return snap.data();
+    }
     // Lazily (re-)create with a random built-in avatar — handles two
     // cases: (a) brand-new sign-in where signInWithGoogle's setDoc
     // never ran, (b) recovery after a previous launch left an Auth
@@ -649,5 +655,31 @@ async function applyInviteAttributionIfFresh(
   } catch (err) {
     logError('applyInviteAttribution', err, { newUserId });
     if (__DEV__) console.warn('[userService] invite attribution failed', err);
+  }
+}
+
+/**
+ * Lightweight presence ping written on every launch. Records `platform`
+ * (so iOS/Android segments work) and `lastSeenAt` (so "inactive N days"
+ * segments are accurate — Auth's lastRefreshTime is too coarse). Throttled
+ * to once per ~6h via AsyncStorage so we don't write on every foreground.
+ * Fire-and-forget: never throws into the caller.
+ */
+const PRESENCE_THROTTLE_MS = 6 * 60 * 60 * 1000;
+async function touchPresence(uid: string): Promise<void> {
+  try {
+    if (USE_MOCK_DATA) return;
+    const last = await storage.getPresencePingAt();
+    const now = Date.now();
+    if (last && now - last < PRESENCE_THROTTLE_MS) return;
+    await storage.setPresencePingAt(now);
+    await updateDoc(docs.user(uid), {
+      platform: Platform.OS,
+      lastSeenAt: now,
+    });
+  } catch (err) {
+    // A denied/transient write here is non-fatal — segments degrade
+    // gracefully (fall back to Auth metadata). Don't surface it.
+    if (__DEV__) console.warn('[userService] presence ping failed', err);
   }
 }

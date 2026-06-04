@@ -133,6 +133,7 @@ import {
   logRenderError,
 } from '@/services/errorLog';
 import { RootNavigator } from '@/navigation/RootNavigator';
+import { CampaignGate } from '@/components/CampaignGate';
 import { navigationRef, navigateInvite } from '@/navigation/navigationRef';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -814,6 +815,10 @@ export default function App() {
       {/* Remote-Config blocking overlay — covers everything when
           maintenance_mode is turned on in the Firebase console. */}
       <MaintenanceGate />
+
+      {/* In-app popup campaigns (authored in Pulse). Only after splash +
+          when signed in and no blocking update modal is up. */}
+      <CampaignGate active={splashDone && updateKind === 'none' && !!currentUserId} />
     </SafeAreaProvider>
     </ErrorBoundary>
   );
