@@ -195,14 +195,19 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
     const candidates = snap.docs
       .map((d) => ({ id: d.id, raw: d.data() as Record<string, unknown> }))
       .filter(({ id, raw }) => {
-        // Test popup: shown ONLY to the targeted user, ignoring window /
-        // segment / frequency cap so the tester can preview it freely.
+        // Test popup: shown ONLY to the targeted user. It skips the segment
+        // and active-window checks, but STILL respects the frequency cap so
+        // it behaves like a real popup (shown once, not every launch). To
+        // preview again, just send another test.
         const testUid = typeof raw.testUserId === 'string' ? raw.testUserId : undefined;
-        if (testUid) return testUid === user.id;
-        const startAt = Number(raw.startAt ?? 0);
-        const endAt = Number(raw.endAt ?? Number.MAX_SAFE_INTEGER);
-        if (now < startAt || now > endAt) return false;
-        if (!matchSegment(raw.segment, ctx)) return false;
+        if (testUid) {
+          if (testUid !== user.id) return false;
+        } else {
+          const startAt = Number(raw.startAt ?? 0);
+          const endAt = Number(raw.endAt ?? Number.MAX_SAFE_INTEGER);
+          if (now < startAt || now > endAt) return false;
+          if (!matchSegment(raw.segment, ctx)) return false;
+        }
         const rec = seen[id];
         const maxImp = Number(raw.maxImpressions ?? 1);
         const cooldown = Number(raw.cooldownHours ?? 24) * 60 * 60 * 1000;
