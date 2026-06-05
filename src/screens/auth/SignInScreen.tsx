@@ -71,15 +71,30 @@ export function SignInScreen() {
     } catch (err) {
       if (__DEV__) console.warn('[signIn] apple failed', err);
       const e = err as { message?: string; code?: string };
+      const code = (e?.code ?? '').toString();
       const cancelled =
-        (e?.message ?? '').includes('cancelled') ||
-        (e?.code ?? '').includes('CANCEL');
-      if (!cancelled) {
+        (e?.message ?? '').includes('cancelled') || code.includes('CANCEL');
+      // Apple's ASAuthorization layer raises these for transient/environment
+      // problems — the user isn't signed into an Apple ID, a network blip, or
+      // the request just failed for an "unknown reason" (code 1000). They're
+      // not app bugs and resolve on retry, so keep them out of the error
+      // panel (same policy as the Google path above).
+      const transient =
+        code === 'ERR_REQUEST_UNKNOWN' ||
+        code === 'ERR_REQUEST_FAILED' ||
+        code === 'ERR_REQUEST_NOT_HANDLED' ||
+        code === 'ERR_REQUEST_NOT_INTERACTIVE' ||
+        (e?.message ?? '').toLowerCase().includes('network');
+      if (!cancelled && !transient) {
         logError('signInAppleScreen', err, {
           screen: 'SignInScreen',
           provider: 'apple',
           code: e?.code,
         });
+      }
+      // Still tell the user something went wrong (unless they cancelled) so a
+      // transient failure prompts a retry rather than a silent dead button.
+      if (!cancelled) {
         Alert.alert(he.error, friendlySignInError(err));
       }
     } finally {
