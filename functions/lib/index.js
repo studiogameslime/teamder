@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -4776,6 +4776,31 @@ exports.trackCampaignEvent = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
     }
     await (0, adminUserPush_1.recordCampaignMetric)(campaignId, event);
     return { ok: true };
+});
+// Public click beacon for tracked share links. The /go landing page fires
+// a fire-and-forget fetch here on load, so we count CLICKS (people who
+// tapped the link + reached the page) independently of installs. Keyed by
+// the link id `l` when present (per-link), else by source `s` (per-source).
+exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory: '256MiB', cors: true }, async (req, res) => {
+    try {
+        const l = typeof req.query.l === 'string' ? req.query.l : '';
+        const s = typeof req.query.s === 'string' ? req.query.s : '';
+        const inc = admin.firestore.FieldValue.increment(1);
+        const now = Date.now();
+        const db = admin.firestore();
+        if (l) {
+            await db.collection('adLinks').doc(l).set({ clicks: inc, lastClickAt: now }, { merge: true });
+        }
+        else if (s) {
+            // Old links with no id — bucket clicks by source.
+            await db.collection('linkClicks').doc(s).set({ clicks: inc, lastClickAt: now }, { merge: true });
+        }
+    }
+    catch {
+        /* best-effort beacon — never error the user's redirect */
+    }
+    res.set('Cache-Control', 'no-store');
+    res.status(204).send('');
 });
 // User feedback — bug report / feature suggestion (separate toggles).
 exports.onFeedbackSubmitted = (0, firestore_1.onDocumentCreated)('feedback/{id}', async (event) => {

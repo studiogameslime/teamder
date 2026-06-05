@@ -6058,6 +6058,37 @@ export const trackCampaignEvent = onCall(
   },
 );
 
+// Public click beacon for tracked share links. The /go landing page fires
+// a fire-and-forget fetch here on load, so we count CLICKS (people who
+// tapped the link + reached the page) independently of installs. Keyed by
+// the link id `l` when present (per-link), else by source `s` (per-source).
+export const trackLinkClick = onRequest(
+  { region: 'us-central1', memory: '256MiB', cors: true },
+  async (req, res) => {
+    try {
+      const l = typeof req.query.l === 'string' ? req.query.l : '';
+      const s = typeof req.query.s === 'string' ? req.query.s : '';
+      const inc = admin.firestore.FieldValue.increment(1);
+      const now = Date.now();
+      const db = admin.firestore();
+      if (l) {
+        await db.collection('adLinks').doc(l).set(
+          { clicks: inc, lastClickAt: now }, { merge: true },
+        );
+      } else if (s) {
+        // Old links with no id — bucket clicks by source.
+        await db.collection('linkClicks').doc(s).set(
+          { clicks: inc, lastClickAt: now }, { merge: true },
+        );
+      }
+    } catch {
+      /* best-effort beacon — never error the user's redirect */
+    }
+    res.set('Cache-Control', 'no-store');
+    res.status(204).send('');
+  },
+);
+
 // User feedback — bug report / feature suggestion (separate toggles).
 export const onFeedbackSubmitted = onDocumentCreated(
   'feedback/{id}',

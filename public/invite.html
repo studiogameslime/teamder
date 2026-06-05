@@ -135,6 +135,17 @@
   var source = (qp.get('s') || qp.get('utm_source') || '').trim();
   var campaign = (qp.get('c') || qp.get('utm_campaign') || '').trim();
   var gameTarget = (qp.get('g') || '').trim();
+  var linkId = (qp.get('l') || '').trim();
+
+  // Click beacon — count people who tapped a tracked link + reached the
+  // page, before any redirect. Fire-and-forget; never blocks navigation.
+  if (source || linkId) {
+    try {
+      var beacon = '/track-click?l=' + encodeURIComponent(linkId) + '&s=' + encodeURIComponent(source);
+      if (navigator.sendBeacon) navigator.sendBeacon(beacon);
+      else fetch(beacon, { mode: 'no-cors', keepalive: true });
+    } catch (_) { /* non-fatal */ }
+  }
   // 'app' / 'go' = generic "open the app" (no path target). 'go' is the
   // dedicated acquisition entry; it may still carry `g=<gameId>` to deep
   // link into a game. Both carry invitedBy/source for attribution.
