@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -4743,6 +4743,63 @@ exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', asyn
     await (0, adminPush_1.pushToAdmins)('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})`, {
         uid: event.params.uid,
     });
+});
+// ── Founder activity alerts: game/community create + join ──
+// All honor the per-type toggle in adminConfig/prefs (Pulse Settings).
+async function adminAlertUserName(uid) {
+    try {
+        const d = await admin.firestore().collection('users').doc(uid).get();
+        const n = d.data()?.name;
+        return n && n !== 'משתמש שהוסר' ? n : 'מישהו';
+    }
+    catch {
+        return 'מישהו';
+    }
+}
+exports.onGameCreatedAlert = (0, firestore_1.onDocumentCreated)('games/{id}', async (event) => {
+    const g = event.data?.data();
+    if (!g)
+        return;
+    const who = g.createdBy ? await adminAlertUserName(g.createdBy) : 'מישהו';
+    await (0, adminPush_1.pushToAdmins)('gameCreate', 'Teamder', `${who} יצר משחק חדש ⚽`, { id: event.params.id });
+});
+exports.onGameJoinedAlert = (0, firestore_1.onDocumentUpdated)('games/{id}', async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after)
+        return;
+    const arr = (d) => [
+        ...(d.players ?? []),
+        ...(d.participantIds ?? []),
+    ];
+    const had = new Set(arr(before));
+    const added = [...new Set(arr(after))].filter((u) => !had.has(u));
+    if (!added.length)
+        return;
+    const who = await adminAlertUserName(added[0]);
+    const extra = added.length > 1 ? ` +${added.length - 1}` : '';
+    await (0, adminPush_1.pushToAdmins)('gameJoin', 'Teamder', `${who}${extra} נרשם למשחק 🙋`, { id: event.params.id });
+});
+exports.onCommunityCreatedAlert = (0, firestore_1.onDocumentCreated)('groups/{id}', async (event) => {
+    const grp = event.data?.data();
+    if (!grp || grp.isPersonal === true)
+        return; // skip personal/orphan groups
+    const owner = grp.creatorId ?? grp.adminIds?.[0];
+    const who = owner ? await adminAlertUserName(owner) : 'מישהו';
+    await (0, adminPush_1.pushToAdmins)('communityCreate', 'Teamder', `${who} יצר קהילה: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
+});
+exports.onCommunityJoinedAlert = (0, firestore_1.onDocumentUpdated)('groups/{id}', async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after)
+        return;
+    const had = new Set(before.playerIds ?? []);
+    const added = (after.playerIds ?? []).filter((u) => !had.has(u));
+    if (!added.length)
+        return;
+    const who = await adminAlertUserName(added[0]);
+    const extra = added.length > 1 ? ` +${added.length - 1}` : '';
+    await (0, adminPush_1.pushToAdmins)('communityJoin', 'Teamder', `${who}${extra} הצטרף לקהילה ${after.name ?? ''} 👥`, { id: event.params.id });
 });
 // New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires
 // only on a genuinely new kind of failure (not every repeat occurrence).

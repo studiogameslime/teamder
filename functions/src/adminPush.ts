@@ -4,7 +4,9 @@
 
 import * as admin from 'firebase-admin';
 
-export type NotifType = 'newUser' | 'review' | 'error' | 'bug' | 'suggestion';
+export type NotifType =
+  | 'newUser' | 'review' | 'error' | 'bug' | 'suggestion'
+  | 'gameJoin' | 'gameCreate' | 'communityCreate' | 'communityJoin';
 
 export async function pushToAdmins(
   type: NotifType,

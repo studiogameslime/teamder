@@ -24,6 +24,7 @@
 import * as admin from 'firebase-admin';
 import {
   onDocumentCreated,
+  onDocumentUpdated,
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -6013,6 +6014,63 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
   await pushToAdmins('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})`, {
     uid: event.params.uid,
   });
+});
+
+// ── Founder activity alerts: game/community create + join ──
+// All honor the per-type toggle in adminConfig/prefs (Pulse Settings).
+async function adminAlertUserName(uid: string): Promise<string> {
+  try {
+    const d = await admin.firestore().collection('users').doc(uid).get();
+    const n = (d.data() as { name?: string } | undefined)?.name;
+    return n && n !== 'משתמש שהוסר' ? n : 'מישהו';
+  } catch {
+    return 'מישהו';
+  }
+}
+
+export const onGameCreatedAlert = onDocumentCreated('games/{id}', async (event) => {
+  const g = event.data?.data() as { createdBy?: string; title?: string } | undefined;
+  if (!g) return;
+  const who = g.createdBy ? await adminAlertUserName(g.createdBy) : 'מישהו';
+  await pushToAdmins('gameCreate', 'Teamder', `${who} יצר משחק חדש ⚽`, { id: event.params.id });
+});
+
+export const onGameJoinedAlert = onDocumentUpdated('games/{id}', async (event) => {
+  const before = event.data?.before.data() as Record<string, unknown> | undefined;
+  const after = event.data?.after.data() as Record<string, unknown> | undefined;
+  if (!before || !after) return;
+  const arr = (d: Record<string, unknown>): string[] => [
+    ...((d.players as string[] | undefined) ?? []),
+    ...((d.participantIds as string[] | undefined) ?? []),
+  ];
+  const had = new Set(arr(before));
+  const added = [...new Set(arr(after))].filter((u) => !had.has(u));
+  if (!added.length) return;
+  const who = await adminAlertUserName(added[0]);
+  const extra = added.length > 1 ? ` +${added.length - 1}` : '';
+  await pushToAdmins('gameJoin', 'Teamder', `${who}${extra} נרשם למשחק 🙋`, { id: event.params.id });
+});
+
+export const onCommunityCreatedAlert = onDocumentCreated('groups/{id}', async (event) => {
+  const grp = event.data?.data() as
+    | { isPersonal?: boolean; name?: string; creatorId?: string; adminIds?: string[] }
+    | undefined;
+  if (!grp || grp.isPersonal === true) return; // skip personal/orphan groups
+  const owner = grp.creatorId ?? grp.adminIds?.[0];
+  const who = owner ? await adminAlertUserName(owner) : 'מישהו';
+  await pushToAdmins('communityCreate', 'Teamder', `${who} יצר קהילה: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
+});
+
+export const onCommunityJoinedAlert = onDocumentUpdated('groups/{id}', async (event) => {
+  const before = event.data?.before.data() as { playerIds?: string[] } | undefined;
+  const after = event.data?.after.data() as { playerIds?: string[]; name?: string } | undefined;
+  if (!before || !after) return;
+  const had = new Set(before.playerIds ?? []);
+  const added = (after.playerIds ?? []).filter((u) => !had.has(u));
+  if (!added.length) return;
+  const who = await adminAlertUserName(added[0]);
+  const extra = added.length > 1 ? ` +${added.length - 1}` : '';
+  await pushToAdmins('communityJoin', 'Teamder', `${who}${extra} הצטרף לקהילה ${after.name ?? ''} 👥`, { id: event.params.id });
 });
 
 // New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires
