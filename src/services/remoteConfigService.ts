@@ -36,6 +36,10 @@ export const RC_DEFAULTS = {
   feature_friends: true,
   feature_feedback: true,
   feature_ios_clipboard_invite: true,
+  // Master kill-switch for the whole campaigns/in-app system: popup display,
+  // the per-launch eligibility query, presence ping, and engagement events.
+  // Flip to false in Remote Config to disable it all WITHOUT a new app build.
+  feature_campaigns: true,
 
   // ── Maintenance mode — blocking full-screen gate ──
   maintenance_mode: false,

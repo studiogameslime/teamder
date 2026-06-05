@@ -29,6 +29,7 @@ import {
 } from '@/firebase/auth';
 import { col, docs } from '@/firebase/firestore';
 import { logError } from './errorLog';
+import { rcBool } from './remoteConfigService';
 import { gameService } from './gameService';
 
 export const userService = {
@@ -709,6 +710,7 @@ const PRESENCE_THROTTLE_MS = 6 * 60 * 60 * 1000;
 async function touchPresence(uid: string): Promise<void> {
   try {
     if (USE_MOCK_DATA) return;
+    if (!rcBool('feature_campaigns')) return; // remote kill-switch
     const last = await storage.getPresencePingAt();
     const now = Date.now();
     if (last && now - last < PRESENCE_THROTTLE_MS) return;

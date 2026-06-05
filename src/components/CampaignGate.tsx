@@ -40,6 +40,10 @@ export function CampaignGate({ active }: Props) {
       if (!cancelled && p) {
         shownThisSession.current = true;
         setPopup(p);
+        // Record the impression in the LOCAL cap ledger at show-time, not on
+        // close — otherwise a force-kill while the modal is open leaves the
+        // cap un-incremented and the "once" popup re-shows every launch.
+        void markPopupSeen(p.id);
         void trackCampaignEvent(p.id, 'impression');
       }
     }, 1200);
@@ -52,13 +56,12 @@ export function CampaignGate({ active }: Props) {
   if (!popup) return null;
 
   const close = () => {
-    void markPopupSeen(popup.id);
+    // Seen already recorded at show-time; here we only log the engagement.
     void trackCampaignEvent(popup.id, 'dismiss');
     setPopup(null);
   };
 
   const onAction = () => {
-    void markPopupSeen(popup.id);
     void trackCampaignEvent(popup.id, 'click');
     if (popup.action.type !== 'dismiss') navigateCampaign(popup.action);
     setPopup(null);

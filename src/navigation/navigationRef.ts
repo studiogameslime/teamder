@@ -19,7 +19,11 @@ export function navigateCampaign(action: {
   value?: string;
 }): boolean {
   if (action.type === 'openUrl') {
-    if (action.value) void Linking.openURL(action.value).catch(() => {});
+    // Only allow safe web / own-scheme URLs — never javascript:, file:, etc.
+    const v = (action.value ?? '').trim();
+    if (/^(https?:\/\/|teamder:\/\/|footy:\/\/)/i.test(v)) {
+      void Linking.openURL(v).catch(() => {});
+    }
     return true;
   }
   if (!navigationRef.isReady()) return false;

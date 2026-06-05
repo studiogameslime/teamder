@@ -13,6 +13,7 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { storage } from './storage';
 import { groupService } from './groupService';
 import { logError } from './errorLog';
+import { rcBool } from './remoteConfigService';
 import type { User } from '@/types';
 
 export type CampaignActionType =
@@ -166,6 +167,7 @@ function readAction(raw: Record<string, unknown>): CampaignAction {
  */
 export async function getEligiblePopup(user: User): Promise<PopupCampaign | null> {
   if (USE_MOCK_DATA || !user) return null;
+  if (!rcBool('feature_campaigns')) return null; // remote kill-switch
   try {
     const { db, auth } = getFirebase();
     const snap = await getDocs(
@@ -251,6 +253,7 @@ export type CampaignEvent = 'open' | 'impression' | 'click' | 'dismiss';
  */
 export async function trackCampaignEvent(campaignId: string, event: CampaignEvent): Promise<void> {
   if (USE_MOCK_DATA || !campaignId) return;
+  if (!rcBool('feature_campaigns')) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { httpsCallable } = require('firebase/functions');
