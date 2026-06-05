@@ -81,14 +81,26 @@ export function PlayerCardScreen() {
   // context exists.
   const currentGroup = useCurrentGroup();
   const groupId = routeGroupId ?? currentGroup?.id;
+  // We can confirm the rated player's membership only when the group we'd
+  // scope the rating to is the one currently loaded (its playerIds/adminIds
+  // are in hand). For a different community named by the route param we have
+  // no member list locally.
+  const canVerifyMembership =
+    !!groupId && !!currentGroup && currentGroup.id === groupId;
   const ratedIsInGroup =
-    !!groupId &&
-    !!currentGroup &&
-    currentGroup.id === groupId &&
-    (currentGroup.playerIds.includes(userId) ||
-      currentGroup.adminIds.includes(userId));
-  const effectiveRatingGroupId =
-    routeGroupId ?? (ratedIsInGroup ? groupId : undefined);
+    canVerifyMembership &&
+    (currentGroup!.playerIds.includes(userId) ||
+      currentGroup!.adminIds.includes(userId));
+  // Only offer rating scoped to a group where the rules would actually let
+  // the write through — the rated player must be a member there. When we can
+  // verify locally, honour that check (so a non-member shows no rate UI even
+  // if the route handed us a groupId). When we can't (cross-community), fall
+  // back to trusting the explicit route param.
+  const effectiveRatingGroupId = canVerifyMembership
+    ? ratedIsInGroup
+      ? groupId
+      : undefined
+    : routeGroupId;
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
