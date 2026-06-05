@@ -515,7 +515,7 @@ export const he = {
   createGroupMaxMembers: 'מקסימום שחקנים בקבוצה',
   createGroupIsOpen: 'קבוצה פתוחה',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
-  createGroupContactPhone: 'טלפון איש קשר (חובה)',
+  createGroupContactPhone: 'טלפון איש קשר (לא חובה)',
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" בקבוצה',
   createGroupContactPhoneInvalid: 'מספר לא תקין. פורמט: 05XXXXXXXX או +9725XXXXXXXX',
