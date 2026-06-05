@@ -32,7 +32,7 @@ import { USE_MOCK_DATA } from '@/firebase/config';
 import { docs } from '@/firebase/firestore';
 import { mockGroup } from '@/data/mockUsers';
 import { AnalyticsEvent, logEvent } from './analyticsService';
-import { logError } from './errorLog';
+import { logError, isExpectedDenial } from './errorLog';
 
 // ─── Mock store ───────────────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ export const ratingsService = {
         updatedAt: now,
       } satisfies RatingVote);
     } catch (err) {
-      logError('ratePlayer', err, { groupId, raterUserId, ratedUserId, rating });
+      if (!isExpectedDenial(err)) logError('ratePlayer', err, { groupId, raterUserId, ratedUserId, rating });
       if (__DEV__) console.warn('[ratings] ratePlayer write failed', err);
       throw err;
     }

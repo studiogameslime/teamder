@@ -25,7 +25,7 @@ import { PlayerIdentity } from './PlayerIdentity';
 import { RatingStars } from './RatingStars';
 import { ratingsService } from '@/services/ratingsService';
 import { userService } from '@/services';
-import { logError } from '@/services/errorLog';
+import { logError, isExpectedDenial } from '@/services/errorLog';
 import type { RatingValue, User } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -119,7 +119,7 @@ export function RatingModal({
       onChanged?.();
       onClose();
     } catch (err) {
-      logError('ratePlayerInGroup', err, {
+      if (!isExpectedDenial(err)) logError('ratePlayerInGroup', err, {
         screen: 'RatingModal',
         groupId,
         raterUserId,

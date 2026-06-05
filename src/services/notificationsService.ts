@@ -46,7 +46,7 @@ import {
 } from '@/types';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { docs } from '@/firebase/firestore';
-import { logError } from '@/services/errorLog';
+import { logError, isExpectedDenial } from '@/services/errorLog';
 import {
   cooldownMsFor,
   dedupeIdFor,
@@ -331,7 +331,7 @@ export const notificationsService = {
         updatedAt: Date.now(),
       });
     } catch (err) {
-      logError('setCommunitySubscription', err, { uid, groupId, on });
+      if (!isExpectedDenial(err)) logError('setCommunitySubscription', err, { uid, groupId, on });
       if (__DEV__) {
         console.warn('[notifications] setCommunitySubscription failed', err);
       }

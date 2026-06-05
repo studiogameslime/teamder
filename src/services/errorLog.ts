@@ -254,6 +254,26 @@ export function logUnexpected(operation: string, context?: ErrorContext): void {
   logError(operation, new Error(operation), { ...(context ?? {}), silent: true });
 }
 
+/**
+ * True for failures that are EXPECTED outcomes of a best-effort write, not
+ * bugs: a rules denial on a cross-user / non-member write (the server or a
+ * different path handles it), or a transient network/offline/timeout hiccup
+ * the user simply retries. Use to skip logError on best-effort writes so the
+ * admin panel only surfaces genuine failures.
+ */
+export function isExpectedDenial(err: unknown): boolean {
+  const code = String((err as { code?: unknown })?.code ?? '').toLowerCase();
+  return (
+    code === 'permission-denied' ||
+    code === 'unauthenticated' ||
+    code === 'unavailable' ||
+    code === 'deadline-exceeded' ||
+    code === 'cancelled' ||
+    code === 'resource-exhausted' ||
+    code.includes('app-check')
+  );
+}
+
 function scheduleFlush(): void {
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
