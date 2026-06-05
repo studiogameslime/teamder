@@ -341,11 +341,19 @@ export function PublicGroupsFeedScreen() {
       if (code === 'GROUP_FULL') {
         toast.error(he.toastGroupFull);
       } else {
-        logError('requestJoinGroup', err, {
-          screen: 'PublicGroupsFeedScreen',
-          groupId: item.id,
-          userId: user.id,
-        });
+        // Transient/recoverable (offline, timeout, stale App Check token) is
+        // not a bug — the user retries. Only log a genuine failure.
+        const transient = [
+          'unavailable', 'deadline-exceeded', 'cancelled', 'unauthenticated',
+          'firebase-app-check-token-is-invalid',
+        ].includes(code);
+        if (!transient) {
+          logError('requestJoinGroup', err, {
+            screen: 'PublicGroupsFeedScreen',
+            groupId: item.id,
+            userId: user.id,
+          });
+        }
         if (__DEV__) console.warn('[publicFeed] join request failed', err);
         toast.error(he.toastRequestFailed);
       }

@@ -229,11 +229,17 @@ export function CommunityDetailsPublicScreen() {
       if (code === 'GROUP_FULL') {
         toast.error(he.toastGroupFull);
       } else {
-        logError('requestJoinGroup', err, {
-          screen: 'CommunityDetailsPublicScreen',
-          groupId: group.id,
-          userId: me?.id,
-        });
+        const transient = [
+          'unavailable', 'deadline-exceeded', 'cancelled', 'unauthenticated',
+          'firebase-app-check-token-is-invalid',
+        ].includes(code);
+        if (!transient) {
+          logError('requestJoinGroup', err, {
+            screen: 'CommunityDetailsPublicScreen',
+            groupId: group.id,
+            userId: me?.id,
+          });
+        }
         if (__DEV__) console.warn('[communityPublic] join failed', err);
         toast.error(he.toastRequestFailed);
       }

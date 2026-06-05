@@ -34,12 +34,20 @@ export function SignInScreen() {
       await signIn();
     } catch (err) {
       const e = err as { message?: string; code?: string };
+      const code = (e?.code ?? '').toString().toLowerCase();
+      const msg = (e?.message ?? '').toLowerCase();
       const cancelled =
-        (e?.message ?? '').toLowerCase().includes('cancel') ||
-        (e?.code ?? '').toLowerCase().includes('cancel');
-      // A real (non-cancellation) sign-in failure is critical — a user who
-      // can't get in churns silently. Record it so it surfaces in the panel.
-      if (!cancelled) {
+        msg.includes('cancel') || code.includes('cancel') || code === '12501';
+      // Transient/recoverable failures (Play Services hiccup, network, an
+      // INTERNAL_ERROR, or a concurrent attempt). The user just retries —
+      // these are NOT config bugs, so don't pollute the error panel. Only a
+      // genuine misconfiguration (DEVELOPER_ERROR / SHA mismatch) is logged.
+      const transient =
+        code === '8' || code.includes('internal') || msg.includes('internal') ||
+        code === '7' || code.includes('network') || msg.includes('network') ||
+        code === '12500' || code === '12502' || code.includes('play_services') ||
+        code.includes('in_progress') || msg.includes('in progress');
+      if (!cancelled && !transient) {
         logError('signInGoogleScreen', err, {
           screen: 'SignInScreen',
           provider: 'google',

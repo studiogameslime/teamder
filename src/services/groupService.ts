@@ -1819,6 +1819,12 @@ async function writeJoin(
         'functions/resource-exhausted',
         'unauthenticated',
         'functions/unauthenticated',
+        // Transient/recoverable — network blip, offline, timeout, or a stale
+        // App Check token. The user just retries; not a bug to surface.
+        'unavailable',
+        'deadline-exceeded',
+        'cancelled',
+        'firebase-app-check-token-is-invalid',
       ].includes(code as string)
     ) {
       logError('joinGroup', e, { groupId, isOpen });
