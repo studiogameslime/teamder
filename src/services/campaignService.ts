@@ -34,7 +34,9 @@ export interface CampaignAction {
 // conditions combined with 'all' (AND) or 'any' (OR). Older {kind} and flat
 // shapes normalize in for backward compatibility. ──
 type FieldKey =
-  | 'attended' | 'cancelled' | 'daysSinceJoin' | 'daysSinceActive'
+  | 'attended' | 'cancelled' | 'gamesJoined' | 'communitiesCreated'
+  | 'invitesSent' | 'friends' | 'achievements'
+  | 'daysSinceJoin' | 'daysSinceActive'
   | 'city' | 'provider' | 'platform' | 'inGroup' | 'hasPush' | 'invited';
 type Op = 'gt' | 'lt' | 'gte' | 'lte' | 'eq' | 'neq';
 interface SegmentRule { field: FieldKey; op: Op; value: string | number | boolean }
@@ -115,6 +117,11 @@ function userField(field: FieldKey, c: CurrentCtx): number | string | boolean {
   switch (field) {
     case 'attended': return u.stats?.attended ?? 0;
     case 'cancelled': return u.stats?.cancelled ?? 0;
+    case 'gamesJoined': return u.achievements?.gamesJoined ?? 0;
+    case 'communitiesCreated': return u.achievements?.teamsCreated ?? 0;
+    case 'invitesSent': return u.achievements?.invitesSent ?? 0;
+    case 'friends': return Array.isArray(u.friends) ? u.friends.length : 0;
+    case 'achievements': return u.achievements?.unlocked?.length ?? 0;
     case 'daysSinceJoin': return (c.now - (u.createdAt ?? 0)) / DAY;
     case 'daysSinceActive': return (c.now - lastSeen) / DAY;
     case 'city': return (u.availability?.homeCity ?? (u as { city?: string }).city ?? '').trim();

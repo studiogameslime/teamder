@@ -28,7 +28,9 @@ const DAY = 24 * 60 * 60 * 1000;
 // {field,op,value} conditions combined with 'all' (AND) or 'any' (OR).
 // Older {kind} + flat shapes normalize in for backward compatibility.
 type FieldKey =
-  | 'attended' | 'cancelled' | 'daysSinceJoin' | 'daysSinceActive'
+  | 'attended' | 'cancelled' | 'gamesJoined' | 'communitiesCreated'
+  | 'invitesSent' | 'friends' | 'achievements'
+  | 'daysSinceJoin' | 'daysSinceActive'
   | 'city' | 'provider' | 'platform' | 'inGroup' | 'hasPush' | 'invited';
 type Op = 'gt' | 'lt' | 'gte' | 'lte' | 'eq' | 'neq';
 interface SegmentRule { field: FieldKey; op: Op; value: string | number | boolean }
@@ -94,6 +96,11 @@ interface U {
   city?: string;
   attended: number;
   cancelled: number;
+  gamesJoined: number;
+  communitiesCreated: number;
+  invitesSent: number;
+  friends: number;
+  achievements: number;
   createdAt: number;
   invitedBy?: string;
   platform?: string;
@@ -108,6 +115,11 @@ function userField(u: U, field: FieldKey, now: number): number | string | boolea
   switch (field) {
     case 'attended': return u.attended;
     case 'cancelled': return u.cancelled;
+    case 'gamesJoined': return u.gamesJoined;
+    case 'communitiesCreated': return u.communitiesCreated;
+    case 'invitesSent': return u.invitesSent;
+    case 'friends': return u.friends;
+    case 'achievements': return u.achievements;
     case 'daysSinceJoin': return (now - u.createdAt) / DAY;
     case 'daysSinceActive': {
       const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
@@ -295,6 +307,11 @@ export async function processCampaign(id: string, nowMs: number): Promise<void> 
           city: u.availability?.homeCity ?? u.city,
           attended: Number(u.stats?.attended ?? 0),
           cancelled: Number(u.stats?.cancelled ?? 0),
+          gamesJoined: Number(u.achievements?.gamesJoined ?? 0),
+          communitiesCreated: Number(u.achievements?.teamsCreated ?? 0),
+          invitesSent: Number(u.achievements?.invitesSent ?? 0),
+          friends: Array.isArray(u.friends) ? u.friends.length : 0,
+          achievements: Array.isArray(u.achievements?.unlocked) ? u.achievements.unlocked.length : 0,
           createdAt: Number(u.createdAt ?? 0),
           invitedBy: u.invitedBy,
           platform: u.platform,
