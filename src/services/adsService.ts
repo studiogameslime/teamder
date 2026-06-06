@@ -17,9 +17,11 @@
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import { doc, getDoc } from 'firebase/firestore';
 import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { rcNumber, rcBool, useRemoteConfig } from '@/services/remoteConfigService';
+import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 
 // ─── App-open ad frequency controls ───────────────────────────────────────
 // The app-open ad is the most lucrative format but also the most intrusive
@@ -244,11 +246,35 @@ let appOpenShownThisSession = false;
 let appOpenAdHandle: ReturnType<AdsModule['AppOpenAd']['createForAdRequest']> | null =
   null;
 
+// Pulse-controlled master switch for app-open ads, stored in Firestore at
+// appConfig/ads.appOpenEnabled. Sits BEFORE all the Remote Config gates:
+// when false, the ad never shows to anyone; when true, the normal RC rules
+// (cooldown / daily cap / new-user grace) apply. Defaults to on, and a read
+// failure leaves the last known value so a network blip can't surprise-enable.
+let appOpenMasterEnabled = true;
+
+async function refreshAppOpenMaster(): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  try {
+    const { db } = getFirebase();
+    const snap = await getDoc(doc(db, 'appConfig', 'ads'));
+    if (snap.exists()) {
+      const v = (snap.data() as { appOpenEnabled?: unknown }).appOpenEnabled;
+      // Only an explicit `false` disables — a missing field means "on".
+      appOpenMasterEnabled = v !== false;
+    }
+  } catch (err) {
+    if (__DEV__) console.warn('[ads] refreshAppOpenMaster failed', err);
+  }
+}
+
 export const adsService = {
   /** Idempotent. Safe to call from app boot. Always swallows errors. */
   async initializeAds(): Promise<void> {
     if (initialized) return;
     initialized = true;
+    // Pull the Pulse-controlled app-open master switch (fire-and-forget).
+    void refreshAppOpenMaster();
     // Loud DEV warning if the iOS build was bundled against AdMob's
     // public TEST app ID. Real iOS revenue requires registering the
     // app in AdMob console and swapping `iosAppId` in app.json. Fires
@@ -339,6 +365,9 @@ export const adsService = {
     if (!ADS_ENABLED) return;
     if (appOpenShownThisSession) return;
 
+    // (−1) Pulse master switch (Firestore) — overrides everything: off = no
+    // app-open ad for anyone, regardless of the RC rules below.
+    if (!appOpenMasterEnabled) return;
     // (0) Remote kill-switch for the whole format.
     if (!rcBool('app_open_ad_enabled')) return;
     // (3) Intentful-open suppression — opened via push/invite link.
