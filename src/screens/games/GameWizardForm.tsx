@@ -37,6 +37,7 @@ import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
+import { InfoTip } from '@/components/InfoTip';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { searchCities } from '@/services/israelLocationService';
 import { FieldType, GameFormat } from '@/types';
@@ -664,6 +665,7 @@ function Step3({
         hint={he.gameFillerAcceptToggleHint}
         value={values.acceptsFillers}
         onChange={(v) => set('acceptsFillers', v)}
+        info={{ title: he.tipFillerTitle, text: he.tipFillerText }}
       />
       {values.acceptsFillers ? (
         <View style={styles.section}>
@@ -834,11 +836,13 @@ function ToggleRow({
   hint,
   value,
   onChange,
+  info,
 }: {
   label: string;
   hint?: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  info?: { title?: string; text: string };
 }) {
   // Wrap the whole row in a Pressable so tapping anywhere on the
   // label or hint also flips the Switch — the bare Switch was a tiny
@@ -846,7 +850,10 @@ function ToggleRow({
   return (
     <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.toggleLabel}>{label}</Text>
+        <View style={styles.toggleLabelRow}>
+          <Text style={styles.toggleLabel}>{label}</Text>
+          {info ? <InfoTip title={info.title} text={info.text} /> : null}
+        </View>
         {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       </View>
       <Switch
@@ -960,6 +967,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  toggleLabelRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
   },
   toggleLabel: {
     ...typography.body,

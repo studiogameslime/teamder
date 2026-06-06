@@ -31,6 +31,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { TrustMeter } from '@/components/TrustMeter';
+import { InfoTip } from '@/components/InfoTip';
 import { RatingModal } from '@/components/RatingModal';
 import { toast } from '@/components/Toast';
 import { ratingsService } from '@/services/ratingsService';
@@ -644,7 +645,10 @@ function RatingSection({
 
   return (
     <View style={styles.ratingSection}>
-      <Text style={styles.achievementsTitle}>{he.ratingInThisGroup}</Text>
+      <View style={styles.ratingTitleRow}>
+        <Text style={styles.achievementsTitle}>{he.ratingInThisGroup}</Text>
+        <InfoTip title={he.tipRatingTitle} text={he.tipRatingText} />
+      </View>
       {summary && summary.count > 0 ? (
         <View style={styles.ratingHeader}>
           <Ionicons
@@ -732,6 +736,7 @@ function DisciplineSection({ user }: { user: User }) {
     <View style={styles.disciplineSection}>
       <View style={styles.disciplineHeader}>
         <Text style={styles.achievementsTitle}>{he.trustMeterTitle}</Text>
+        <InfoTip title={he.tipTrustTitle} text={he.tipTrustText} />
       </View>
       {trustError ? (
         <Text style={styles.disciplineUnavailable}>
@@ -950,6 +955,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     fontWeight: '600',
+  },
+  ratingTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
   },
   ratingSection: {
     gap: spacing.sm,
