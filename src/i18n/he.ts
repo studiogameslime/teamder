@@ -327,6 +327,7 @@ export const he = {
   editGameNotifyConfirm: 'שמור ושלח',
   gameWizardSubmitFailed: 'יצירת המשחק נכשלה. נסה שוב.',
   createGameField: 'שם המגרש',
+  createGameFieldPlaceholder: 'חפש מגרש, בית ספר, פארק או כתובת',
   createGameCity: 'עיר',
   createGameCityPlaceholder: 'בחר עיר מהרשימה',
   createGameCityMustPick: 'חובה לבחור עיר מהרשימה (לא טקסט חופשי)',

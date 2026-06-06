@@ -1529,8 +1529,8 @@ export const gameService = {
     // mode (mock games already carry fieldLat/fieldLng). The pin lands on
     // the field address, degrading to the city when the address can't be
     // resolved.
-    if (!USE_MOCK_DATA && (input.fieldAddress || input.city)) {
-      void geocodeAddress(input.fieldAddress, input.city)
+    if (!USE_MOCK_DATA && (input.fieldName || input.fieldAddress || input.city)) {
+      void geocodeAddress(input.fieldAddress, input.city, input.fieldName)
         .then((coords) => {
           if (coords) {
             return updateDoc(docs.game(createdId), {

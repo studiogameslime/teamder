@@ -20,6 +20,7 @@
 //     server.
 
 import { logError } from './errorLog';
+import { searchPlaces } from './govmapService';
 
 const memo = new Map<string, { lat: number; lng: number } | null>();
 
@@ -47,12 +48,32 @@ const USER_AGENT = 'Teamder/1.0 (studiogameslime@gmail.com)';
 export async function geocodeAddress(
   fieldAddress: string | undefined,
   city: string | undefined,
+  fieldName?: string,
 ): Promise<{ lat: number; lng: number } | null> {
+  const name = (fieldName ?? '').trim();
   const addr = (fieldAddress ?? '').trim();
   const town = (city ?? '').trim();
+
+  // Prefer govmap (מפ"י): it indexes named POIs (schools, parks) — where
+  // pitches actually are — and has far better Hebrew coverage than the OSM
+  // geocoder. Try the most specific identifier first (venue name, then
+  // street address), each scoped to the city.
+  for (const q of [
+    [name, town].filter(Boolean).join(' '),
+    [addr, town].filter(Boolean).join(' '),
+  ]) {
+    if (!q) continue;
+    try {
+      const hits = await searchPlaces(q, 1);
+      if (hits.length) return { lat: hits[0].lat, lng: hits[0].lng };
+    } catch {
+      /* fall through to OSM */
+    }
+  }
+
+  // OSM/Nominatim fallback (original behaviour) when govmap finds nothing.
   const query = [addr, town].filter(Boolean).join(', ');
-  if (!query) return null;
-  // A precise address may not resolve; degrade to the city on a miss.
+  if (!query) return town ? geocodeCity(town) : null;
   return (await geocodeCity(query)) ?? (town ? geocodeCity(town) : null);
 }
 

@@ -40,6 +40,7 @@ import { StepIndicator } from '@/components/StepIndicator';
 import { InfoTip } from '@/components/InfoTip';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { searchCities } from '@/services/israelLocationService';
+import { searchPlaces } from '@/services/govmapService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -423,11 +424,16 @@ function Step1({
         required
       />
 
-      <InputField
-        label={he.createGameField}
+      {/* Venue — govmap autocomplete so the organiser can find the place
+          by NAME ("בית ספר רמון", "מתנ״ס…") or by street address, and it's a
+          real, locatable spot rather than free text. */}
+      <AutocompleteInput
+        label={`${he.createGameField} *`}
         value={values.fieldName}
-        onChangeText={(t) => set('fieldName', t)}
-        required
+        onChange={(t) => set('fieldName', t)}
+        onSelect={(v) => set('fieldName', v)}
+        placeholder={he.createGameFieldPlaceholder}
+        fetchSuggestions={(q) => searchPlaces(q).then((r) => r.map((p) => p.label))}
       />
 
       {/* City — MUST be picked from the autocomplete suggestions.
