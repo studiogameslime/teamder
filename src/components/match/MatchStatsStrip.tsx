@@ -32,7 +32,7 @@ export function MatchStatsStrip({
       <Cell
         icon="people-outline"
         iconColor={ACCENT}
-        value={`${registered}/${capacity}`}
+        value={`‎${registered}/${capacity}`}
         label={he.matchStatsPlayers}
       />
       <Divider />

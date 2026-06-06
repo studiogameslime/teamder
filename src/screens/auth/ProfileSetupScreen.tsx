@@ -5,7 +5,7 @@
 // the bottom.
 
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
@@ -44,35 +44,46 @@ export function ProfileSetupScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.title}>{he.profileTitle}</Text>
+      {/* KAV so the bottom-pinned CTA isn't hidden by the keyboard that
+          opens for the name field — this screen gates entry to the app. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Text style={styles.title}>{he.profileTitle}</Text>
 
-      <Card style={styles.identityCard}>
-        <PlayerIdentity user={previewUser} size="xl" />
-      </Card>
+        <Card style={styles.identityCard}>
+          <PlayerIdentity user={previewUser} size="xl" />
+        </Card>
 
-      <Card>
-        <InputField
-          label={he.profileName}
-          value={name}
-          onChangeText={setName}
-          placeholder={he.profileNamePlaceholder}
-          maxLength={40}
-          icon="person-outline"
-          required
-        />
-      </Card>
+        <Card>
+          <InputField
+            label={he.profileName}
+            value={name}
+            onChangeText={setName}
+            placeholder={he.profileNamePlaceholder}
+            maxLength={40}
+            icon="person-outline"
+            required
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (canSave) handleSave();
+            }}
+          />
+        </Card>
 
-      <View style={{ marginTop: 'auto' }}>
-        <Button
-          title={he.profileSave}
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!canSave}
-          loading={busy}
-          onPress={handleSave}
-        />
-      </View>
+        <View style={{ marginTop: 'auto' }}>
+          <Button
+            title={he.profileSave}
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!canSave}
+            loading={busy}
+            onPress={handleSave}
+          />
+        </View>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

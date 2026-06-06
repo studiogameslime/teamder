@@ -90,7 +90,7 @@ export function PlayerCountBar({ current, max, label }: Props) {
           style={[styles.label, isFull && styles.labelFull]}
           numberOfLines={1}
         >
-          {label ?? (isCapped ? `${current} / ${max} שחקנים` : `${current} שחקנים`)}
+          {label ?? (isCapped ? `‎${current} / ${max}‎ שחקנים` : `${current} שחקנים`)}
         </Text>
         {isFull ? (
           <Ionicons

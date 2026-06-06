@@ -15,6 +15,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -199,14 +200,29 @@ export function LiveMatchScreen() {
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
     }
   };
-  const onTimerReset = async () => {
+  const onTimerReset = () => {
     if (!gameId || !me) return;
-    try {
-      await gameService.resetTimer(gameId, me.id, me.name ?? '');
-    } catch (err) {
-      logError('liveTimerReset', err, { gameId, userId: me?.id });
-      if (__DEV__) console.warn('[live] resetTimer failed', err);
-    }
+    // Reset is the one irreversible timer control — confirm before wiping
+    // the running clock.
+    Alert.alert(
+      he.liveTimerResetConfirmTitle,
+      he.liveTimerResetConfirmBody,
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.liveTimerReset,
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await gameService.resetTimer(gameId, me.id, me.name ?? '');
+            } catch (err) {
+              logError('liveTimerReset', err, { gameId, userId: me?.id });
+              if (__DEV__) console.warn('[live] resetTimer failed', err);
+            }
+          },
+        },
+      ],
+    );
   };
   const onEndGame = async () => {
     if (!gameId) return;

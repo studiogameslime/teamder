@@ -96,7 +96,7 @@ export function FeedbackScreen() {
             style={styles.input}
           />
           <Text style={styles.counter}>
-            {message.length} / {MAX_LEN}
+            {`‎${message.length} / ${MAX_LEN}`}
           </Text>
         </View>
 

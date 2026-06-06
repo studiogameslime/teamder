@@ -207,14 +207,16 @@ export function FriendsScreen() {
                     <View style={styles.actions}>
                       <Pressable
                         onPress={() => handleAccept(request.fromUserId)}
-                        style={[styles.iconBtn, styles.acceptBtn]}
+                        style={({ pressed }) => [styles.iconBtn, styles.acceptBtn, pressed && { opacity: 0.7 }]}
+                        hitSlop={8}
                         accessibilityLabel={he.friendsAccept}
                       >
                         <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                       </Pressable>
                       <Pressable
                         onPress={() => handleDecline(request.fromUserId)}
-                        style={[styles.iconBtn, styles.declineBtn]}
+                        style={({ pressed }) => [styles.iconBtn, styles.declineBtn, pressed && { opacity: 0.7 }]}
+                        hitSlop={8}
                         accessibilityLabel={he.friendsDecline}
                       >
                         <Ionicons name="close" size={20} color={colors.textMuted} />

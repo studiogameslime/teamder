@@ -205,6 +205,8 @@ export const he = {
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',
+  liveTimerResetConfirmTitle: 'לאפס את הטיימר?',
+  liveTimerResetConfirmBody: 'השעון יחזור לאפס. אי אפשר לבטל.',
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
@@ -256,7 +258,7 @@ export const he = {
   gamesCreate: 'צור משחק חדש',
 
   // Game card
-  gameCardPlayersOf: (cur: number, max: number) => `${cur}/${max} שחקנים`,
+  gameCardPlayersOf: (cur: number, max: number) => `‎${cur}/${max}‎ שחקנים`,
   gameCardWaitlist: (n: number) => `+${n} בספסל`,
   gameCardJoin: 'אני מגיע',
   gameCardRequestJoin: 'בקש להצטרף',
@@ -925,7 +927,7 @@ export const he = {
   // Game wizard step 3 — cross-community filler matching.
   gameFillerAcceptToggle: 'פתוח לזרים אם חסרים שחקנים',
   gameFillerAcceptToggleHint:
-    'אם חסרים שחקנים, ישלחו push למשתמשי האפליקציה באזור שמעוניינים למלא. אתה תאשר ידנית מי מצטרף.',
+    'אם חסרים שחקנים, יישלחו התראות למשתמשי האפליקציה באזור שמעוניינים למלא. אתה תאשר ידנית מי מצטרף.',
   gameFillerMinTrust: 'מינימום מד אמינות',
   gameFillerMinTrustOption: (n: number) => `${n}+`,
   gameFillerMinTrustOptionAll: 'כולם',
@@ -1001,7 +1003,7 @@ export const he = {
   availabilityInvitableHint: 'כשמכובה — שום שחקן לא יוכל לראות אותך כמועמד הזמנה',
   availabilityFillerPush: 'קבל הזמנות מילוי לקהילות אחרות',
   availabilityFillerPushHint:
-    'נשלח לך push כשקהילה באזורך זקוקה לשחקנים. תוכל לבחור אם להגיש מועמדות.',
+    'תישלח לך התראה כשקהילה באזורך זקוקה לשחקנים. תוכל לבחור אם להגיש מועמדות.',
   availabilitySave: 'שמור זמינות',
 
   // Post sign-in onboarding — single profile-customisation step.
@@ -1167,7 +1169,7 @@ export const he = {
   matchCardJoin: 'הצטרף',
   matchCardWaitlist: 'המתנה',
   matchCardLeave: 'בטל הרשמה',
-  matchCardPlayersOf: (n: number, max: number) => `${n}/${max} שחקנים`,
+  matchCardPlayersOf: (n: number, max: number) => `‎${n}/${max}‎ שחקנים`,
   matchStatusOpen: 'פתוח',
   matchStatusFull: 'מלא',
   matchStatusJoined: 'נרשמת',
@@ -1284,10 +1286,10 @@ export const he = {
   matchDetailsLabelNotes: 'הערות',
   matchDetailsLabelOrganizer: 'יוצר המשחק',
   matchDetailsLabelCreatedAt: 'נוצר בתאריך',
-  matchDetailsLabelMeetingTime: 'שעה התכנסות',
+  matchDetailsLabelMeetingTime: 'שעת התכנסות',
   matchDetailsLabelCommunity: 'קבוצה',
   matchDetailsLabelFormat: 'הרכב',
-  matchHeroPlayers: (now: number, max: number) => `${now}/${max} שחקנים`,
+  matchHeroPlayers: (now: number, max: number) => `‎${now}/${max}‎ שחקנים`,
   matchPlayersTitle: 'שחקנים',
   matchPlayersSeeAll: 'לצפייה ברשימה המלאה',
   matchPlayersEmpty: 'אין עדיין שחקנים רשומים',

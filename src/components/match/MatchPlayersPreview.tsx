@@ -77,7 +77,7 @@ export function MatchPlayersPreview({
         <Text style={styles.title}>
           {he.matchPlayersTitle}{' '}
           <Text style={styles.count}>
-            ({registered}/{capacity})
+            {`‎(${registered}/${capacity})‎`}
           </Text>
         </Text>
         <View style={styles.cta}>

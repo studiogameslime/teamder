@@ -223,6 +223,7 @@ export function RatingModal({
                 placeholder={he.ratingCommentPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 multiline
+                maxLength={300}
                 style={styles.comment}
               />
 

@@ -94,7 +94,7 @@ export function MatchParticipantsSection({
         <Text style={styles.title}>
           {he.matchParticipantsTitle}{' '}
           <Text style={styles.count}>
-            ({total}/{capacity})
+            {`‎(${total}/${capacity})‎`}
           </Text>
         </Text>
         <View style={styles.headerActions}>

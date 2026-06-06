@@ -20,6 +20,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -183,6 +185,12 @@ export function PromoteOrphanScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.promoteOrphanTitle} />
+      {/* KAV so the autoFocused name field's keyboard doesn't hide the
+          bottom-pinned submit button. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.banner}>
           <Ionicons name="people" size={20} color="#1D4ED8" />
@@ -271,6 +279,7 @@ export function PromoteOrphanScreen() {
           )}
         </Pressable>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

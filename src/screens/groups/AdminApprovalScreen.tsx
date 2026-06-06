@@ -5,7 +5,7 @@
 // twice (once per community), keyed by groupId+userId.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, FlatList } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -32,6 +32,13 @@ export function AdminApprovalScreen() {
   const groups = useGroupStore((s) => s.groups);
   const me = useUserStore((s) => s.currentUser);
   const [rows, setRows] = useState<PendingRow[]>([]);
+  // Gate the empty state behind a real loading flag so "no requests" doesn't
+  // flash before the first hydrate resolves.
+  const [loading, setLoading] = useState(true);
+  // Row currently being approved/rejected ("groupId:userId") — disables that
+  // row's buttons so a slow network can't be double-tapped into duplicate writes.
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const rowKey = (r: PendingRow) => `${r.group.id}:${r.user.id}`;
 
   // Every community the viewer admins. We surface pending requests across
   // all of them, not just the currently-active one.
@@ -53,8 +60,10 @@ export function AdminApprovalScreen() {
     let alive = true;
     if (pendingUserIds.length === 0) {
       setRows([]);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     groupService
       .hydrateUsers(pendingUserIds)
       .then((users) => {
@@ -74,6 +83,9 @@ export function AdminApprovalScreen() {
           screen: 'AdminApprovalScreen',
           pendingCount: pendingUserIds.length,
         });
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
@@ -81,6 +93,8 @@ export function AdminApprovalScreen() {
   }, [adminGroups, pendingUserIds]);
 
   const handleApprove = async (row: PendingRow) => {
+    if (busyKey) return; // a row action is already in flight
+    setBusyKey(rowKey(row));
     // Use the store wrapper (groupId-aware) so the local `groups`
     // cache stays consistent across all screens that read from it
     // (badges on the Communities tab, ProfileScreen counter, etc.).
@@ -105,10 +119,14 @@ export function AdminApprovalScreen() {
         if (__DEV__) console.warn('[approve] failed', err);
         toast.error(he.toastApproveFailed);
       }
+    } finally {
+      setBusyKey(null);
     }
   };
 
   const handleReject = async (row: PendingRow) => {
+    if (busyKey) return;
+    setBusyKey(rowKey(row));
     try {
       await useGroupStore
         .getState()
@@ -121,6 +139,8 @@ export function AdminApprovalScreen() {
       toast.info(he.toastMemberRejected);
     } catch (err) {
       if (__DEV__) console.warn('[reject] failed', err);
+    } finally {
+      setBusyKey(null);
     }
   };
 
@@ -130,7 +150,11 @@ export function AdminApprovalScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.groupAdminApprovalTitle} />
       {rows.length === 0 ? (
-        <Text style={styles.empty}>{he.groupAdminEmpty}</Text>
+        loading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        ) : (
+          <Text style={styles.empty}>{he.groupAdminEmpty}</Text>
+        )
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
@@ -163,12 +187,15 @@ export function AdminApprovalScreen() {
                 title={he.approve}
                 variant="success"
                 size="sm"
+                loading={busyKey === rowKey(item)}
+                disabled={!!busyKey}
                 onPress={() => handleApprove(item)}
               />
               <Button
                 title={he.reject}
                 variant="outline"
                 size="sm"
+                disabled={!!busyKey}
                 onPress={() => handleReject(item)}
               />
             </Card>

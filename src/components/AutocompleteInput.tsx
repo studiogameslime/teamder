@@ -139,6 +139,10 @@ export function AutocompleteInput({
           // doesn't look like a real value.
           placeholderTextColor="#9CA3AF"
           editable={!disabled}
+          // OS autocorrect mangles RTL Hebrew city names and, with the
+          // strict "must pick from list" gate downstream, can strand users.
+          autoCorrect={false}
+          autoComplete="off"
           style={[styles.input, disabled && styles.inputDisabled]}
           textAlign="right"
         />
