@@ -39,9 +39,9 @@ interface Slide {
 }
 
 const SLIDES: Slide[] = [
-  { icon: 'search-outline', title: he.onb1Title, body: he.onb1Body },
-  { icon: 'add-circle-outline', title: he.onb2Title, body: he.onb2Body },
-  { icon: 'football-outline', title: he.onb3Title, body: he.onb3Body },
+  { icon: 'location-outline', title: he.onb1Title, body: he.onb1Body },
+  { icon: 'people-outline', title: he.onb2Title, body: he.onb2Body },
+  { icon: 'sync-outline', title: he.onb3Title, body: he.onb3Body },
 ];
 
 const { width } = Dimensions.get('window');

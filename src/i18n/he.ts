@@ -836,12 +836,12 @@ export const he = {
   onbCtaSignIn: 'התחבר עם Google',
   onbCtaSignInApple: 'התחבר עם Apple',
   onbCtaStart: 'המשך',
-  onb1Title: 'מצא משחק כדורגל בקלות',
-  onb1Body: 'הצטרף למשחקים קרובים או צור אחד משלך',
-  onb2Title: 'צור משחק תוך שניות',
-  onb2Body: 'בחר מגרש, קבע שעה והזמן שחקנים',
-  onb3Title: 'נהל משחק בזמן אמת',
-  onb3Body: 'קבע כוחות, עקוב אחרי התוצאה ושמור על סדר',
+  onb1Title: 'שחקו עם אנשים בקרבת מקום',
+  onb1Body: 'גלו משחקי כדורגל פתוחים באזור שלכם והצטרפו בלחיצה — או פגשו שחקנים חדשים לידכם',
+  onb2Title: 'קבוצה קבועה, משחק אוטומטי',
+  onb2Body: 'בנו את קבוצת השחקנים הקבועה שלכם — והמשחק השבועי נפתח לבד עם הזמנה לכולם',
+  onb3Title: 'הכל זורם מעצמו',
+  onb3Body: 'מישהו ביטל? המקום מתמלא אוטומטית משחקנים מתאימים. ותזכורות חכמות דואגות שכולם יגיעו',
   // 4th = final CTA screen — see onbStart / onbCtaSignIn above
   // (kept onb4* as legacy strings in case any UI still references them)
   onb4Title: 'בוא נתחיל',
