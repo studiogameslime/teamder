@@ -44,7 +44,6 @@ import {
   type MatchCardCta,
 } from '@/components/match/MatchListCard';
 import { MatchesHero } from '@/components/match/MatchesHero';
-import { MatchSegmentControl } from '@/components/match/MatchSegmentControl';
 import { MatchEmptyHintCard } from '@/components/match/MatchEmptyHintCard';
 import {
   GameFilterSheet,
@@ -88,14 +87,6 @@ export function GamesListScreen() {
   // updates its types for React 19.
   useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
-  // Default tab: "פתוחים" so a fresh user lands on discovery and is
-  // nudged to register. The first successful reload below flips this
-  // to "שלי" if the user already has at least one upcoming game —
-  // returning users care most about what they're already in. The flip
-  // is one-shot (gated by `initialTabSetRef`) so manually switching
-  // tabs always sticks afterwards.
-  const [tab, setTab] = useState<Tab>('open');
-  const initialTabSetRef = useRef(false);
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
@@ -146,13 +137,6 @@ export function GamesListScreen() {
         setMyGames(a);
         setCommunityGames(b);
         setOpenGames(c);
-        // First-load tab default: if the user is already registered to
-        // anything, surface "שלי" instead of "פתוחים". One-shot — once
-        // we've decided, the user's manual selection wins.
-        if (!initialTabSetRef.current) {
-          initialTabSetRef.current = true;
-          if (a.length > 0) setTab('mine');
-        }
         const uids = Array.from(
           new Set(
             [...a, ...b, ...c].flatMap((g) => [
@@ -295,33 +279,25 @@ export function GamesListScreen() {
 
   const sortByStart = (a: Game, b: Game) => a.startsAt - b.startsAt;
 
-  const visible = useMemo(() => {
-    let base: Game[];
-    if (tab === 'mine') {
-      base = myGames.filter(isVisibleInMyGames);
-    } else {
-      const set = new Map<string, Game>();
-      [...communityGames, ...openGames]
-        .filter(isVisibleInOpenGames)
-        .forEach((g) => set.set(g.id, g));
-      base = Array.from(set.values());
-    }
-    return applyGameFilters(base, filters).sort(sortByStart);
-  }, [tab, myGames, communityGames, openGames, filters]);
-
-  const filterCount = activeFiltersCount(filters);
-  const isEmpty = visible.length === 0;
-
-  // Counts shown on the segmented tabs — same numbers used to drive
-  // the "switch to other tab" CTA on the empty state.
-  const mineCount = myGames.filter(isVisibleInMyGames).length;
-  const openCount = useMemo(() => {
-    const set = new Set<string>();
+  // Single sectioned list (like Communities): the games I'm registered to on
+  // top, everything else below — no tabs.
+  const mineList = useMemo(
+    () => applyGameFilters(myGames.filter(isVisibleInMyGames), filters).sort(sortByStart),
+    [myGames, filters],
+  );
+  const restList = useMemo(() => {
+    const mineIds = new Set(mineList.map((g) => g.id));
+    const set = new Map<string, Game>();
     [...communityGames, ...openGames]
       .filter(isVisibleInOpenGames)
-      .forEach((g) => set.add(g.id));
-    return set.size;
-  }, [communityGames, openGames]);
+      .forEach((g) => {
+        if (!mineIds.has(g.id)) set.set(g.id, g);
+      });
+    return applyGameFilters(Array.from(set.values()), filters).sort(sortByStart);
+  }, [communityGames, openGames, filters, mineList]);
+
+  const filterCount = activeFiltersCount(filters);
+  const isEmpty = mineList.length === 0 && restList.length === 0;
 
   return (
     <View style={styles.root}>
@@ -332,29 +308,9 @@ export function GamesListScreen() {
           the pinning change, just with the hero no longer scrolling. */}
       <MatchesHero />
       <View style={styles.controlsFloat}>
-        <View style={{ flex: 1 }}>
-          <MatchSegmentControl
-            value={tab}
-            onChange={(next) => {
-              if (next !== tab) {
-                logEvent(AnalyticsEvent.GamesTabSwitched, { tab: next });
-              }
-              setTab(next);
-            }}
-            options={[
-              {
-                value: 'open',
-                label: he.matchesTabOpen,
-                badge: openCount,
-              },
-              {
-                value: 'mine',
-                label: he.matchesTabMine,
-                badge: mineCount,
-              },
-            ]}
-          />
-        </View>
+        {/* Tabs removed — the list is one sectioned scroll now. Spacer keeps
+            the filter button on the trailing edge. */}
+        <View style={{ flex: 1 }} />
         {/* Map view — hidden for this release (feature not shipped yet). */}
         {false && (
         <Pressable
@@ -468,51 +424,64 @@ export function GamesListScreen() {
       >
 
         <View style={styles.body}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>
-              {tab === 'open'
-                ? he.matchesSectionOpen
-                : he.matchesSectionMine}
-            </Text>
-            <View style={styles.sectionUnderline} />
-          </View>
-
-          {loading && visible.length === 0 ? (
+          {loading && isEmpty ? (
             // Skeleton placeholder cards — shape-accurate so the
-            // layout doesn't shove when the real cards land. Reads as
-            // "loading", not as "empty / broken".
+            // layout doesn't shove when the real cards land.
             <MatchCardSkeleton count={3} />
           ) : isEmpty ? (
             <FullEmptyState
-              tab={tab}
-              hasGamesInOtherTab={
-                tab === 'mine' ? openCount > 0 : mineCount > 0
-              }
+              tab="open"
+              hasGamesInOtherTab={false}
               onCreate={handleCreate}
-              onSwitchToOpen={() => setTab('open')}
+              onSwitchToOpen={handleCreate}
             />
           ) : (
-            <View style={styles.cardsList}>
-              {visible.map((g, idx) => (
-                <AppearItem key={g.id} index={idx}>
-                  <MatchListCard
-                    game={g}
-                    userId={user?.id ?? ''}
-                    busy={busyGameId === g.id}
-                    onPrimary={(cta) => handleCardPrimary(g, cta)}
-                  />
-                </AppearItem>
-              ))}
-              {/* Inviting "create your own" CTA — only meaningful in
-                  the "פתוחים" tab where the user is browsing for
-                  something to join. In the "שלי" tab they're already
-                  registered to what they wanted, so the prompt to
-                  "create one because you didn't find a fit" is just
-                  noise. */}
-              {tab === 'open' ? (
-                <MatchEmptyHintCard onPress={handleCreate} />
+            <>
+              {/* Section 1 — games I'm registered to (top). */}
+              {mineList.length > 0 ? (
+                <>
+                  <View style={styles.sectionTitleRow}>
+                    <Text style={styles.sectionTitle}>{he.matchesSectionMine}</Text>
+                    <View style={styles.sectionUnderline} />
+                  </View>
+                  <View style={styles.cardsList}>
+                    {mineList.map((g, idx) => (
+                      <AppearItem key={g.id} index={idx}>
+                        <MatchListCard
+                          game={g}
+                          userId={user?.id ?? ''}
+                          busy={busyGameId === g.id}
+                          onPrimary={(cta) => handleCardPrimary(g, cta)}
+                        />
+                      </AppearItem>
+                    ))}
+                  </View>
+                </>
               ) : null}
-            </View>
+
+              {/* Section 2 — everything else (below). */}
+              {restList.length > 0 ? (
+                <>
+                  <View style={[styles.sectionTitleRow, mineList.length > 0 && { marginTop: spacing.lg }]}>
+                    <Text style={styles.sectionTitle}>{he.matchesSectionOpen}</Text>
+                    <View style={styles.sectionUnderline} />
+                  </View>
+                  <View style={styles.cardsList}>
+                    {restList.map((g, idx) => (
+                      <AppearItem key={g.id} index={idx}>
+                        <MatchListCard
+                          game={g}
+                          userId={user?.id ?? ''}
+                          busy={busyGameId === g.id}
+                          onPrimary={(cta) => handleCardPrimary(g, cta)}
+                        />
+                      </AppearItem>
+                    ))}
+                    <MatchEmptyHintCard onPress={handleCreate} />
+                  </View>
+                </>
+              ) : null}
+            </>
           )}
         </View>
       </ScrollView>
@@ -545,7 +514,7 @@ export function GamesListScreen() {
       <GameFilterSheet
         visible={filterOpen}
         filters={filters}
-        matchCount={visible.length}
+        matchCount={mineList.length + restList.length}
         onChange={(next) => {
           // Compare before/after counts so we can differentiate
           // applying a filter from clearing one.
