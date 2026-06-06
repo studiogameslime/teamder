@@ -24,7 +24,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Game, GameFormat, FieldType, UserId } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShort, formatTime } from '@/utils/format';
+import { formatDateShort, formatTime, relativeKickoff } from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
@@ -93,6 +93,11 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const occupancy = game.players.length + (game.guests?.length ?? 0);
 
   const isFull = occupancy >= game.maxPlayers;
+  // Relative "time to kickoff" chip — nudges the user with how soon the game
+  // is ("מחר", "עוד 3 שעות") next to the absolute date.
+  const kickoff = relativeKickoff(game.startsAt);
+  // Highlight when it's imminent (today, within hours/minutes) vs just soon.
+  const kickoffSoon = !!kickoff && kickoff.startsWith('עוד');
 
   const openDetails = () =>
     nav.navigate('MatchDetails', { gameId: game.id });
@@ -166,6 +171,13 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
             text={formatDateShort(game.startsAt)}
           />
           <InfoRow icon="time" text={formatTime(game.startsAt)} />
+          {kickoff ? (
+            <View style={[styles.kickoffChip, kickoffSoon && styles.kickoffChipSoon]}>
+              <Text style={[styles.kickoffText, kickoffSoon && styles.kickoffTextSoon]}>
+                {kickoff}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Combined facts row — the per-game chips (capacity, format,
@@ -390,6 +402,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignSelf: 'flex-start',
   },
+  // "Time to kickoff" chip — neutral by default, blue when imminent (today).
+  kickoffChip: {
+    backgroundColor: '#E2E8F0',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  kickoffChipSoon: { backgroundColor: '#DBEAFE' },
+  kickoffText: { fontSize: 11, fontWeight: '700', color: '#475569' },
+  kickoffTextSoon: { color: '#1D4ED8' },
   tagsRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

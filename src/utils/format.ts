@@ -41,6 +41,37 @@ export function formatTime(ms: number): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
+/**
+ * Friendly Hebrew "time until kickoff" for upcoming games — e.g. "עוד 40 דק׳",
+ * "עוד 3 שעות", "מחר", "בעוד 4 ימים". Returns null when the game already
+ * started (handled by status elsewhere) or is more than ~6 days out (the
+ * absolute date already says enough).
+ */
+export function relativeKickoff(ms: number, now = Date.now()): string | null {
+  const diff = ms - now;
+  if (diff <= 0) return null;
+  const MIN = 60 * 1000;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+  if (diff < HOUR) {
+    const m = Math.max(1, Math.round(diff / MIN));
+    return `עוד ${m} דק׳`;
+  }
+  // Calendar-aware today/tomorrow so an 11 PM game tonight isn't "tomorrow".
+  const dayStart = (x: number) => {
+    const d = new Date(x);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  const days = Math.round((dayStart(ms) - dayStart(now)) / DAY);
+  if (days <= 0) {
+    const h = Math.round(diff / HOUR);
+    return h === 1 ? 'עוד שעה' : `עוד ${h} שעות`;
+  }
+  if (days === 1) return 'מחר';
+  if (days <= 6) return `בעוד ${days} ימים`;
+  return null;
+}
+
 /** "DD.MM" — the dense card variant (no year). */
 export function formatDateShort(ms: number): string {
   const d = new Date(ms);

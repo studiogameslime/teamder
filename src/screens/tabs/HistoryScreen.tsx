@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { Card } from '@/components/Card';
+import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { PressableScale } from '@/components/PressableScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Badge } from '@/components/Badge';
@@ -76,8 +77,8 @@ export function HistoryScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.historyTitle} />
       {loading ? (
-        <View style={styles.emptyWrap}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+          <MatchCardSkeleton count={4} />
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>
