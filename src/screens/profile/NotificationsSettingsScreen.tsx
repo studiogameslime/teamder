@@ -20,6 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { lightHaptic } from '@/utils/haptics';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -126,11 +128,24 @@ export function NotificationsSettingsScreen() {
   });
   const [busy, setBusy] = useState(false);
 
+  // Unsaved-changes guard: leaving with un-persisted toggle changes now
+  // prompts (save / discard / cancel) instead of silently dropping them,
+  // matching ProfileEdit. isDirty compares the draft to the saved store
+  // value, so it clears automatically after a successful save.
+  const isDirty =
+    JSON.stringify(prefs) !==
+    JSON.stringify({
+      ...defaultNotificationPrefs,
+      ...(user?.notificationPrefs ?? {}),
+    });
+  const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+
   if (!user) return null;
 
   const toggle = (k: keyof NotificationPrefs) =>
     setPrefs((p) => {
       const nextVal = !p[k];
+      lightHaptic();
       // Per-toggle analytics — finer-grained than the aggregate
       // `NotificationsToggled` event fired on save. Lets us see
       // which specific notifications users actually disable.
@@ -153,6 +168,8 @@ export function NotificationsSettingsScreen() {
       logEvent(AnalyticsEvent.NotificationsToggled, {
         enabledCount: String(Object.values(prefs).filter(Boolean).length),
       });
+      // Let the guard's beforeRemove pass through this programmatic leave.
+      savingRef.current = true;
       nav.goBack();
     } catch (e) {
       // savePreferences is a Firestore write with no logging of its own;

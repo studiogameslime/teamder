@@ -32,7 +32,7 @@ import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { userService } from './userService';
 import { AnalyticsEvent, logEvent } from './analyticsService';
-import { logError } from '@/services/errorLog';
+import { logError, isExpectedDenial } from '@/services/errorLog';
 import { FriendRequestDoc, User, UserId } from '@/types';
 
 /** Deterministic request id — blocks duplicate pending requests and lets
@@ -124,7 +124,12 @@ export const friendsService = {
         createdAt: Date.now(),
       });
     } catch (e) {
-      logError('sendFriendRequest', e, { fromUserId, toUserId });
+      // Don't pollute the dashboard with expected denials (e.g. a transient
+      // rules race) — only log genuine failures. Still rethrow so the UI
+      // can surface a toast.
+      if (!isExpectedDenial(e)) {
+        logError('sendFriendRequest', e, { fromUserId, toUserId });
+      }
       throw e;
     }
     logEvent(AnalyticsEvent.FriendRequestSent, { toUserId });

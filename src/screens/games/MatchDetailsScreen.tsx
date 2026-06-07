@@ -50,6 +50,8 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { PlayerCountBar } from '@/components/PlayerCountBar';
+import { CelebrationOverlay } from '@/components/anim/CelebrationOverlay';
+import { successHaptic } from '@/utils/haptics';
 import { toast } from '@/components/Toast';
 import {
   HamburgerMenu,
@@ -374,6 +376,9 @@ export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
   const gameId = route.params?.gameId;
+  // Set by GameCreate after a successful create → celebrate on arrival.
+  const celebrateOnArrival =
+    (route.params as { celebrate?: boolean } | undefined)?.celebrate === true;
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -430,6 +435,17 @@ export function MatchDetailsScreen() {
   const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
   // Hamburger bottom-sheet visibility.
   const [menuOpen, setMenuOpen] = useState(false);
+  // Join celebration — a short confetti + flying-balls burst + success
+  // haptic the moment the user actually lands IN the game (bucket
+  // 'players'), OR right after they created the game. Self-clears.
+  const [celebrate, setCelebrate] = useState(false);
+  // Fire the creation celebration once, on arrival from GameCreate.
+  useEffect(() => {
+    if (!celebrateOnArrival) return;
+    successHaptic();
+    setCelebrate(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Realtime banners for joins, guests, teams-ready, goals, status
   // changes — fired by the shared listener so every device sees the
@@ -806,6 +822,13 @@ export function MatchDetailsScreen() {
           joined = next;
           return next;
         });
+        // Celebrate the win: a real seat in the game (not waitlist/
+        // pending) gets a success haptic + a short confetti burst.
+        if (result.bucket === 'players') {
+          successHaptic();
+          setCelebrate(true);
+          setTimeout(() => setCelebrate(false), 1600);
+        }
         // Silent-failure guard: a successful join MUST leave the user in
         // the roster the UI now holds (players ∪ waitlist ∪ pending ∪
         // participantIds). If the game object vanished, or the user is in
@@ -1146,10 +1169,19 @@ export function MatchDetailsScreen() {
   );
 
 
-  // Compose the location string used by the hero strip + Waze link.
+  // Compose the location string for the hero strip. Dedupe overlapping
+  // parts — single-field govmap picks store the same full label in both
+  // fieldName and fieldAddress (and the city is inside it), so a naive
+  // join would repeat it. Legacy games (distinct venue/address/city) keep
+  // all three parts.
   const locationStr =
     [game.fieldName, game.fieldAddress, game.city]
-      .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+      .map((s) => (typeof s === 'string' ? s.trim() : ''))
+      .filter(Boolean)
+      .reduce<string[]>((acc, p) => {
+        if (!acc.some((s) => s.includes(p) || p.includes(s))) acc.push(p);
+        return acc;
+      }, [])
       .join(' · ') || undefined;
 
   // Waze handler. Earlier versions sent only `fieldName` (or whichever
@@ -1160,6 +1192,28 @@ export function MatchDetailsScreen() {
   // field name only when nothing else is set, giving Waze enough
   // context to resolve the right location.
   const openWaze = () => {
+    // PRECISE path: the location was picked from govmap, so the game has
+    // exact coords — navigate straight to the pin with `ll=` (no text
+    // search that could land on a same-named field in another city).
+    const fLat = game.fieldLat;
+    const fLng = game.fieldLng;
+    if (typeof fLat === 'number' && typeof fLng === 'number') {
+      Linking.openURL(`waze://?ll=${fLat},${fLng}&navigate=yes`)
+        .catch(() =>
+          Linking.openURL(
+            `https://www.google.com/maps/search/?api=1&query=${fLat},${fLng}`,
+          ),
+        )
+        .catch((err) => {
+          logError('matchOpenNavigation', err, {
+            screen: 'MatchDetailsScreen',
+            gameId: game.id,
+          });
+        });
+      return;
+    }
+
+    // FALLBACK (legacy games with no coords): a best-effort text query.
     const parts: string[] = [];
     const fieldAddress = (game.fieldAddress ?? '').trim();
     const city = (game.city ?? '').trim();
@@ -1417,6 +1471,24 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
+        // Organizer-only: find players whose availability matches this
+        // game and invite them. Only useful while the game is still open
+        // and has room. (This is the only entry point to the
+        // AvailablePlayers screen — it was previously unreachable.)
+        ...(isAdmin && game.status === 'open'
+          ? [
+              {
+                id: 'inviteAvailable',
+                label: he.matchInviteAvailable,
+                icon: 'person-add-outline' as const,
+                onPress: () =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'AvailablePlayers',
+                    { gameId: game.id },
+                  ),
+              },
+            ]
+          : []),
         ...(isAdmin
           ? [
               {
@@ -1571,6 +1643,11 @@ export function MatchDetailsScreen() {
 
   return (
     <View style={styles.root}>
+      {celebrate ? (
+        <View pointerEvents="none" style={styles.confettiLayer}>
+          <CelebrationOverlay onDone={() => setCelebrate(false)} />
+        </View>
+      ) : null}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -2376,6 +2453,14 @@ function InfoCell({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  // Full-screen, centred, non-interactive layer for the join confetti
+  // burst. zIndex keeps it above the scroll content + sticky CTA.
+  confettiLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  },
 
   // Average rating chip — small inline chip above the participants
   // list. Amber star + value (e.g. "4.2") + count caption.

@@ -65,14 +65,34 @@ export function relativeKickoff(ms: number, now = Date.now()): string | null {
   const days = Math.round((dayStart(ms) - dayStart(now)) / DAY);
   if (days <= 0) {
     const h = Math.round(diff / HOUR);
-    return h === 1 ? 'עוד שעה' : `עוד ${h} שעות`;
+    // Hebrew dual form: 1 → "שעה", 2 → "שעתיים", 3+ → "N שעות".
+    if (h === 1) return 'עוד שעה';
+    if (h === 2) return 'עוד שעתיים';
+    return `עוד ${h} שעות`;
   }
   if (days === 1) return 'מחר';
+  if (days === 2) return 'בעוד יומיים';
   if (days <= 6) return `בעוד ${days} ימים`;
   return null;
 }
 
 /** "DD.MM" — the dense card variant (no year). */
+/**
+ * Join a venue label + city for display without duplicating the city.
+ * Single-field govmap picks store the FULL place text (which already
+ * contains the city) in `fieldName`, so appending the reverse-geocoded
+ * `city` again would read "בית ספר רמון רחובות, רחובות". Skip the city
+ * when the venue label already contains it. Legacy games (venue + city
+ * stored separately) still render "venue, city" as before.
+ */
+export function joinLocation(fieldName?: string, city?: string): string {
+  const f = (fieldName ?? '').trim();
+  const c = (city ?? '').trim();
+  if (!f) return c;
+  if (!c || f.includes(c)) return f;
+  return `${f}, ${c}`;
+}
+
 export function formatDateShort(ms: number): string {
   const d = new Date(ms);
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}`;
@@ -86,13 +106,16 @@ export function formatDateShortYear(ms: number): string {
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${String(d.getFullYear()).slice(2)}`;
 }
 
-/** "DD/MM/YYYY" — the form / settings variant (full year). */
+/** "DD.MM.YYYY" — the form / settings variant (full year). Uses DOT
+ * separators to stay consistent with formatDateShort / formatDateShortYear
+ * across the app (the wizard date field previously used slashes, which
+ * read as a different date in the same flow). */
 export function formatDateFull(ms: number): string {
   const d = new Date(ms);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
-/** "DD/MM/YYYY · HH:MM" — used by the cancel-deadline display. */
+/** "DD.MM.YYYY · HH:MM" — used by the cancel-deadline display. */
 export function formatDateTimeFull(ms: number): string {
   return `${formatDateFull(ms)} · ${formatTime(ms)}`;
 }

@@ -25,6 +25,7 @@ import { PlayerIdentity } from './PlayerIdentity';
 import { RatingStars } from './RatingStars';
 import { ratingsService } from '@/services/ratingsService';
 import { userService } from '@/services';
+import { successHaptic } from '@/utils/haptics';
 import { logError, isExpectedDenial } from '@/services/errorLog';
 import type { RatingValue, User } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -115,6 +116,7 @@ export function RatingModal({
         ratedUserId,
         selected as RatingValue,
       );
+      successHaptic();
       toast.success(he.ratingSaved);
       onChanged?.();
       onClose();

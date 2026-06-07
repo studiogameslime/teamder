@@ -5,7 +5,7 @@
 //   • Dark vertical gradient overlay (legibility)
 //   • Top bar: ⋯ overflow on the leading edge, ← back on the
 //     trailing edge
-//   • Centered title "פרטי משחק" + "קהילה: X" subtitle
+//   • Centered title "פרטי משחק" + "קבוצה: X" subtitle
 //   • Floating dark card overlapping the bottom: small date row,
 //     huge time, location with pin
 //   • Optional small floating Waze chip on the leading side of the

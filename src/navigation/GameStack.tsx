@@ -69,7 +69,7 @@ export type GameStackParamList = {
   /** Reachable from MatchDetails' overflow menu. Pushed in-stack so
    *  back returns to the match. */
   History: undefined;
-  /** Post-orphan-game "צור קהילה" prompt — opens with the personal
+  /** Post-orphan-game "צור קבוצה" prompt — opens with the personal
    *  group + game preselected. Reachable from the `promotePrompt`
    *  notification tap and from a CTA on the finished orphan game's
    *  details screen. */

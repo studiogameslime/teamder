@@ -29,6 +29,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 import { AppearItem } from '@/components/anim/AppearItem';
+import { Breathing } from '@/components/anim/Breathing';
 import { toast } from '@/components/Toast';
 import {
   CommunityFilterSheet,
@@ -608,17 +609,19 @@ export function PublicGroupsFeedScreen() {
       {/* Floating "+" action — bottom LEFT under RTL. Using `end`
           (which resolves to the visual LEFT under forceRTL) keeps it
           off the right edge where the chevron-back gesture lives. */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
-        ]}
-        onPress={() => nav.navigate('CommunitiesCreate')}
-        accessibilityRole="button"
-        accessibilityLabel={he.communitiesCreateFirst}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </Pressable>
+      <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabInner,
+            pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
+          ]}
+          onPress={() => nav.navigate('CommunitiesCreate')}
+          accessibilityRole="button"
+          accessibilityLabel={he.communitiesCreateGroup}
+        >
+          <Ionicons name="add" size={30} color="#FFFFFF" />
+        </Pressable>
+      </Breathing>
 
       <CommunityFilterSheet
         visible={filterOpen}
@@ -823,12 +826,17 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#1E40AF',
     shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
+  },
+  fabInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

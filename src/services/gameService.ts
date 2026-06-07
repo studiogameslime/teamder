@@ -1291,13 +1291,13 @@ export const gameService = {
     fillerMinTrust?: number;
     createdBy: UserId;
     /**
-     * Set when the game was created via the "ללא קהילה — משחק
+     * Set when the game was created via the "ללא קבוצה — משחק
      * חד־פעמי" wizard path. The game still belongs to a real group
      * (the user's hidden personal community) but the UI renders it
      * as orphan-context: title shown as "משחק חד־פעמי", no
      * community link. After the game finishes the
      * `sendPromotePrompts` cron picks it up and pushes the creator
-     * with the "צור קהילה" CTA.
+     * with the "צור קבוצה" CTA.
      */
     isOrphanContext?: boolean;
   }): Promise<Game> {

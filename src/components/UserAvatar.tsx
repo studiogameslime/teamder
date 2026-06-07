@@ -94,13 +94,22 @@ export function UserAvatar({ user, size, style, ring }: Props) {
  * still render a colorful disc, and the same user always lands on
  * the same colour across sessions.
  */
+// Gender-neutral subset of the palette: the sport icons (⚽🏆🎽🥅) plus
+// the neutral person (🧑). The deterministic auto-avatar picks ONLY from
+// these so a name never gets a wrong-gender face (e.g. a male name with a
+// 👩 glyph). Users who want a gendered/skin-toned face can still pick one
+// explicitly from the full AVATARS palette in profile edit.
+const NEUTRAL_AVATAR_IDS = ['a01', 'a02', 'a03', 'a04', 'a23'];
+const NEUTRAL_AVATARS = AVATARS.filter((a) => NEUTRAL_AVATAR_IDS.includes(a.id));
+
 function autoAvatarFor(uid: string): (typeof AVATARS)[number] {
-  if (!uid) return AVATARS[0];
+  const pool = NEUTRAL_AVATARS.length > 0 ? NEUTRAL_AVATARS : AVATARS;
+  if (!uid) return pool[0];
   let hash = 0;
   for (let i = 0; i < uid.length; i++) {
     hash = (hash * 31 + uid.charCodeAt(i)) >>> 0;
   }
-  return AVATARS[hash % AVATARS.length];
+  return pool[hash % pool.length];
 }
 
 const styles = StyleSheet.create({

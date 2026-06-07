@@ -39,12 +39,13 @@ import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
 import { InfoTip } from '@/components/InfoTip';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
-import { searchCities } from '@/services/israelLocationService';
-import { searchPlaces } from '@/services/govmapService';
+import { searchPlaces, coordsForLabel } from '@/services/govmapService';
+import { reverseGeocodeCity } from '@/services/geocodeService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDayDate } from '@/utils/format';
+import { lightHaptic } from '@/utils/haptics';
 
 const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
 const TEAM_COUNTS = [2, 3, 4, 5] as const;
@@ -218,25 +219,17 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
-  // Step 1 hard gate: EVERY game — quick or community — REQUIRES a full
-  // location (field name + city + address) so invited players know
-  // exactly when, where and why to show up. City must additionally be
-  // picked from the autocomplete dropdown (the filler matcher reads the
-  // EXACT string, so a free-typed value would fragment the data).
+  // Step 1 hard gate: EVERY game needs a real, picked location. With the
+  // single govmap field, "picked from the list" (cityFromList) is what
+  // guarantees we have coords + a derived city for the matcher — a
+  // free-typed value that wasn't selected has neither.
   const step1Valid =
-    values.city.trim().length > 0 &&
-    values.cityFromList === true &&
-    values.fieldName.trim().length > 0 &&
-    values.fieldAddress.trim().length > 0;
+    values.fieldName.trim().length > 0 && values.cityFromList === true;
   // Human-readable list of what's still missing — surfaced under the
   // disabled "המשך" button so the user isn't left guessing why it's grey.
   const step1Missing: string[] = [];
-  if (values.fieldName.trim().length === 0)
+  if (values.fieldName.trim().length === 0 || values.cityFromList !== true)
     step1Missing.push(he.createGameField);
-  if (values.city.trim().length === 0 || values.cityFromList !== true)
-    step1Missing.push(he.createGameCity);
-  if (values.fieldAddress.trim().length === 0)
-    step1Missing.push(he.createGameAddressRequired);
   const goNext = () => {
     if (step === 1 && !step1Valid) return;
     if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
@@ -412,9 +405,7 @@ function Step1({
   set: SetFn;
 }) {
   // Step 1 — "מתי ואיפה". Identity of the event in physical space:
-  // when, field name, CITY (strict — picked from list, used by the
-  // filler matcher), free-text address detail, surface type.
-  const cityInvalid = values.city.trim().length > 0 && !values.cityFromList;
+  // when, a single picked location (govmap), surface type.
   return (
     <View style={styles.stack}>
       <AppDateTimeField
@@ -424,53 +415,48 @@ function Step1({
         required
       />
 
-      {/* Venue — govmap autocomplete so the organiser can find the place
-          by NAME ("בית ספר רמון", "מתנ״ס…") or by street address, and it's a
-          real, locatable spot rather than free text. */}
-      <AutocompleteInput
-        label={`${he.createGameField} *`}
-        value={values.fieldName}
-        onChange={(t) => set('fieldName', t)}
-        onSelect={(v) => set('fieldName', v)}
-        placeholder={he.createGameFieldPlaceholder}
-        fetchSuggestions={(q) => searchPlaces(q).then((r) => r.map((p) => p.label))}
-      />
-
-      {/* City — MUST be picked from the autocomplete suggestions.
-          Any manual edit flips `cityFromList` back to false; the
-          step-nav guard at the wizard level blocks Next until the
-          flag is true. This guarantees the saved city string can be
-          matched against user availability without normalisation
-          ambiguity. */}
+      {/* SINGLE location field (govmap). The picked place IS the full
+          address — it already contains the city — so the organiser fills
+          ONE field instead of separate venue + city + address inputs. On
+          select we keep govmap's precise coords and reverse-geocode the
+          clean city the availability matcher needs, all behind the scenes.
+          The underlying Game.fieldName / fieldAddress / city fields are
+          still populated, so existing games + the matcher + map are
+          unaffected. */}
       <View>
         <AutocompleteInput
-          label={`${he.createGameCity} *`}
-          value={values.city}
+          label={he.createGameField}
+          required
+          value={values.fieldName}
           onChange={(t) => {
-            set('city', t);
+            // Free typing → mirror to address, but it's NOT a confirmed
+            // pick yet (no coords/city), so block Next until they select.
+            set('fieldName', t);
+            set('fieldAddress', t);
             set('cityFromList', false);
           }}
-          onSelect={(v) => {
-            set('city', v);
+          onSelect={(label) => {
+            set('fieldName', label);
+            set('fieldAddress', label);
             set('cityFromList', true);
+            // Coords are available synchronously from the just-fetched
+            // govmap results; city via a best-effort reverse geocode.
+            const coords = coordsForLabel(label);
+            if (coords) {
+              reverseGeocodeCity(coords.lat, coords.lng)
+                .then((city) => {
+                  if (city) set('city', city);
+                })
+                .catch(() => {});
+            }
           }}
-          placeholder={he.createGameCityPlaceholder}
-          fetchSuggestions={(q) => searchCities(q)}
+          placeholder={he.createGameFieldPlaceholder}
+          fetchSuggestions={(q) => searchPlaces(q).then((r) => r.map((p) => p.label))}
         />
-        {cityInvalid ? (
-          <Text style={styles.hintError}>{he.createGameCityMustPick}</Text>
+        {values.fieldName.trim().length > 0 && !values.cityFromList ? (
+          <Text style={styles.hintError}>{he.createGameLocationMustPick}</Text>
         ) : null}
       </View>
-
-      {/* Address detail — free text, optional. Players read this on
-          the day; matcher ignores it. */}
-      <InputField
-        label={he.createGameAddressRequired}
-        value={values.fieldAddress}
-        onChangeText={(t) => set('fieldAddress', t)}
-        placeholder={he.createGameAddressPlaceholder}
-        required
-      />
 
       <View style={styles.section}>
         <Text style={styles.label}>{he.createGameFieldType}</Text>
@@ -573,6 +559,7 @@ function Step3({
     <View style={styles.stack}>
       <View style={styles.section}>
         <Text style={styles.label}>{he.wizardSectionVisibility}</Text>
+        <Text style={styles.hint}>{he.wizardVisibilityHint}</Text>
         <View style={styles.pillRow}>
           <Pill
             active={values.visibility === 'community'}
@@ -852,9 +839,14 @@ function ToggleRow({
 }) {
   // Wrap the whole row in a Pressable so tapping anywhere on the
   // label or hint also flips the Switch — the bare Switch was a tiny
-  // target on the LEFT edge.
+  // target on the LEFT edge. A light haptic on flip makes the toggle
+  // feel physical.
+  const flip = (v: boolean) => {
+    lightHaptic();
+    onChange(v);
+  };
   return (
-    <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
+    <Pressable onPress={() => flip(!value)} style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
         <View style={styles.toggleLabelRow}>
           <Text style={styles.toggleLabel}>{label}</Text>
@@ -864,7 +856,7 @@ function ToggleRow({
       </View>
       <Switch
         value={value}
-        onValueChange={onChange}
+        onValueChange={flip}
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />

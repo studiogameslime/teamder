@@ -19,10 +19,12 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useUserStore } from '@/store/userStore';
 import { userService } from '@/services';
 import { logError } from '@/services/errorLog';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -93,23 +95,8 @@ export function ReferralsListScreen() {
   const empty = !loading && rows.length === 0;
 
   return (
-    <View style={styles.root}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => nav.goBack()}
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.headerBtn,
-            pressed && { opacity: 0.6 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.back}
-        >
-          <Ionicons name="chevron-forward" size={24} color={colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{he.referralsScreenTitle}</Text>
-        <View style={styles.headerBtn} />
-      </View>
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <ScreenHeader title={he.referralsScreenTitle} />
 
       {loading ? (
         <View style={styles.center}>
@@ -145,7 +132,7 @@ export function ReferralsListScreen() {
           ))}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

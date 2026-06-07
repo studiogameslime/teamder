@@ -63,16 +63,15 @@ export function SplashVisual() {
   const lineOffset = useSharedValue(HALFWAY_LEN);
   const spotOpacity = useSharedValue(0);
 
-  // BALL — drops from above the stage, bounces on the spot, then
-  // keeps a slow rotation + breathing.
-  const ballY = useSharedValue(-SCREEN_H * 0.6);
-  const ballScaleY = useSharedValue(1);
-  const ballScaleX = useSharedValue(1);
+  // BALL — gets KICKED at the camera: starts tiny + low (far away),
+  // rushes in growing past full size with a fast spin, then settles on
+  // the centre spot and keeps a slow rotation + breathing.
+  const ballY = useSharedValue(SCREEN_H * 0.16);
+  const ballScaleY = useSharedValue(0.12);
+  const ballScaleX = useSharedValue(0.12);
   const ballRotate = useSharedValue(0);
   const ballOpacity = useSharedValue(0);
   const ballBreath = useSharedValue(1);
-  const shadowScale = useSharedValue(0.6);
-  const shadowOpacity = useSharedValue(0);
 
   // WORDMARK + TAGLINE + DOTS — rise in after the bounce settles.
   const wordmarkOpacity = useSharedValue(0);
@@ -98,61 +97,55 @@ export function SplashVisual() {
       withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
     );
 
-    // 2. Ball drops, hits the spot, bounces. The squash-stretch on
-    //    impact is what sells "real ball" vs "flat icon".
+    // 2. KICK toward the viewer. The ball appears small + low (far on
+    //    the pitch), then rushes the camera: it grows PAST full size
+    //    (overshoot = it's coming "at" you) and pops up slightly before
+    //    settling on the centre spot. A fast spin during the flight
+    //    sells the kick.
+    const KICK_AT = 440;
     ballOpacity.value = withDelay(
-      560,
-      withTiming(1, { duration: 120, easing: Easing.out(Easing.quad) }),
+      KICK_AT,
+      withTiming(1, { duration: 90, easing: Easing.out(Easing.quad) }),
     );
-    // Shadow grows + darkens as the ball falls toward it.
-    shadowOpacity.value = withDelay(
-      560,
-      withTiming(0.5, { duration: 320, easing: Easing.out(Easing.quad) }),
-    );
-    shadowScale.value = withDelay(
-      560,
-      withTiming(1, { duration: 320, easing: Easing.out(Easing.quad) }),
-    );
-    // Drop + bounce: -screen → 0 (impact) → -28 (bounce 1) → 0 → -10 → 0.
-    ballY.value = withDelay(
-      560,
-      withSequence(
-        withTiming(0, { duration: 360, easing: Easing.in(Easing.quad) }),
-        // Bounce 1
-        withTiming(-32, { duration: 220, easing: Easing.out(Easing.cubic) }),
-        withTiming(0, { duration: 220, easing: Easing.in(Easing.cubic) }),
-        // Bounce 2 (smaller)
-        withTiming(-10, { duration: 160, easing: Easing.out(Easing.cubic) }),
-        withTiming(0, { duration: 160, easing: Easing.in(Easing.cubic) }),
-      ),
-    );
-    // Squash on impact, then bounce back round. We don't repeat the
-    // squash on the second bounce — it'd over-animate.
-    ballScaleY.value = withDelay(
-      560 + 320,    // just before impact frame
-      withSequence(
-        withTiming(0.7, { duration: 90, easing: Easing.out(Easing.cubic) }),
-        withTiming(1.1, { duration: 110, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
-      ),
-    );
+    // Depth: tiny → overshoot 1.18 (rushing in) → settle 1.0.
     ballScaleX.value = withDelay(
-      560 + 320,
+      KICK_AT,
       withSequence(
-        withTiming(1.25, { duration: 90, easing: Easing.out(Easing.cubic) }),
-        withTiming(0.92, { duration: 110, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(1.0, { duration: 200, easing: Easing.out(Easing.quad) }),
+        withTiming(1.18, { duration: 300, easing: Easing.out(Easing.cubic) }),
+        withTiming(1.0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+      ),
+    );
+    ballScaleY.value = withDelay(
+      KICK_AT,
+      withSequence(
+        withTiming(1.18, { duration: 300, easing: Easing.out(Easing.cubic) }),
+        withTiming(1.0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+      ),
+    );
+    // Arc: kicked up from low → overshoot above the spot → drop onto it.
+    ballY.value = withDelay(
+      KICK_AT,
+      withSequence(
+        withTiming(-22, { duration: 300, easing: Easing.out(Easing.cubic) }),
+        withTiming(0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
       ),
     );
 
-    // 3. Once the ball has settled, start a slow rotation + tiny
-    //    breathing scale that runs forever until the splash exits.
+    // 3. Spin: one fast turn during the kick, then ease into the slow
+    //    idle rotation. The repeat target is +360 from the settle value
+    //    so the wrap-around (720→360) is visually seamless.
     ballRotate.value = withDelay(
-      1400,
-      withRepeat(
-        withTiming(360, { duration: 4000, easing: Easing.linear }),
-        -1,
-        false,
+      KICK_AT,
+      withSequence(
+        withTiming(360, { duration: 560, easing: Easing.out(Easing.cubic) }),
+        withDelay(
+          200,
+          withRepeat(
+            withTiming(720, { duration: 4000, easing: Easing.linear }),
+            -1,
+            false,
+          ),
+        ),
       ),
     );
     ballBreath.value = withDelay(
@@ -196,12 +189,12 @@ export function SplashVisual() {
 
     return () => {
       [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
-       ballRotate, ballOpacity, ballBreath, shadowScale, shadowOpacity,
+       ballRotate, ballOpacity, ballBreath,
        wordmarkOpacity, wordmarkY, dot0, dot1, dot2]
         .forEach(cancelAnimation);
     };
   }, [circleOffset, lineOffset, spotOpacity, ballY, ballScaleY, ballScaleX,
-      ballRotate, ballOpacity, ballBreath, shadowScale, shadowOpacity,
+      ballRotate, ballOpacity, ballBreath,
       wordmarkOpacity, wordmarkY, dot0, dot1, dot2]);
 
   // SVG animated props — strokeDashoffset can't go through a normal
@@ -226,10 +219,6 @@ export function SplashVisual() {
       { scaleY: ballScaleY.value * ballBreath.value },
       { rotate: `${ballRotate.value}deg` },
     ],
-  }));
-  const shadowStyle = useAnimatedStyle(() => ({
-    opacity: shadowOpacity.value,
-    transform: [{ scale: shadowScale.value }],
   }));
   const spotStyle = useAnimatedStyle(() => ({
     opacity: spotOpacity.value,
@@ -277,10 +266,8 @@ export function SplashVisual() {
         <Animated.View style={[styles.spot, spotStyle]} />
       </View>
 
-      {/* Ball + soft shadow under it. The shadow grows + darkens as
-          the ball approaches, then both share the bounce. */}
+      {/* Ball — drops in and settles on the centre spot. */}
       <View style={styles.ballArea} pointerEvents="none">
-        <Animated.View style={[styles.shadow, shadowStyle]} />
         <Animated.View
           style={[
             { width: BALL_SIZE, height: BALL_SIZE },
@@ -461,16 +448,6 @@ const styles = StyleSheet.create({
   ballWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // Soft elliptical shadow under the ball — grows as the ball nears
-  // ground, then shares the bounce.
-  shadow: {
-    position: 'absolute',
-    width: BALL_SIZE * 0.9,
-    height: BALL_SIZE * 0.18,
-    borderRadius: BALL_SIZE * 0.45,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    top: SCREEN_H / 2 + BALL_SIZE * 0.42,
   },
   wordmarkWrap: {
     position: 'absolute',

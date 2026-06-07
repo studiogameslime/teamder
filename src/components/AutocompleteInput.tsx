@@ -36,6 +36,9 @@ interface Props {
   minChars?: number;
   /** Debounce delay in ms. Default 300. */
   debounceMs?: number;
+  /** Appends a red "*" after the label, matching InputField /
+   *  DateTimeFields so required cells read the same across the form. */
+  required?: boolean;
   style?: ViewStyle;
 }
 
@@ -49,6 +52,7 @@ export function AutocompleteInput({
   fetchSuggestions,
   minChars = 2,
   debounceMs = 300,
+  required,
   style,
 }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -128,7 +132,10 @@ export function AutocompleteInput({
 
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+      </Text>
       <View style={styles.inputWrap}>
         <TextInput
           value={value}
@@ -179,6 +186,10 @@ export function AutocompleteInput({
 const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   label: { ...typography.label, color: colors.textMuted },
+  requiredStar: {
+    color: colors.danger,
+    fontWeight: '700',
+  },
   inputWrap: { position: 'relative' },
   // Matches InputField visually so an autocomplete cell sits in the
   // same form rhythm as the regular text inputs around it (light-gray

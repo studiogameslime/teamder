@@ -36,6 +36,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '@/components/Button';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
 import { AppearItem } from '@/components/anim/AppearItem';
+import { Breathing } from '@/components/anim/Breathing';
+import { joinLocation } from '@/utils/format';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -365,7 +367,7 @@ export function GamesListScreen() {
                   dateBucket: bucket,
                   timeLabel: `${dayLabel} · ${hhmm}`,
                   title: g.title,
-                  subtitle: [g.fieldName, g.city].filter(Boolean).join(', '),
+                  subtitle: joinLocation(g.fieldName, g.city),
                   badge: g.format
                     ? g.format.replace('v', '×')
                     : `${g.players.length}/${g.maxPlayers}`,
@@ -432,8 +434,10 @@ export function GamesListScreen() {
             <FullEmptyState
               tab="open"
               hasGamesInOtherTab={false}
+              hasActiveFilters={filterCount > 0}
               onCreate={handleCreate}
               onSwitchToOpen={handleCreate}
+              onClearFilters={() => setFilters(EMPTY_GAME_FILTERS)}
             />
           ) : (
             <>
@@ -489,20 +493,22 @@ export function GamesListScreen() {
       {/* Floating "+" FAB — pinned to the bottom-LEFT under forceRTL.
           `end: spacing.xl` is the trailing edge under RTL, which is
           the visual LEFT (per spec). */}
-      <Pressable
-        onPress={() => {
-          if (hintVisible) dismissHint();
-          handleCreate();
-        }}
-        style={({ pressed }) => [
-          styles.fab,
-          pressed && { transform: [{ scale: 0.95 }] },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={he.matchesCreateFab}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </Pressable>
+      <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
+        <Pressable
+          onPress={() => {
+            if (hintVisible) dismissHint();
+            handleCreate();
+          }}
+          style={({ pressed }) => [
+            styles.fabInner,
+            pressed && { transform: [{ scale: 0.95 }] },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.matchesCreateFab}
+        >
+          <Ionicons name="add" size={30} color="#FFFFFF" />
+        </Pressable>
+      </Breathing>
 
       {hintVisible ? (
         <Pressable style={styles.hintBubble} onPress={dismissHint}>
@@ -691,13 +697,18 @@ const createSheetStyles = StyleSheet.create({
 function FullEmptyState({
   tab,
   hasGamesInOtherTab,
+  hasActiveFilters,
   onCreate,
   onSwitchToOpen,
+  onClearFilters,
 }: {
   tab: Tab;
   hasGamesInOtherTab: boolean;
+  /** True when a filter is hiding games that actually exist. */
+  hasActiveFilters?: boolean;
   onCreate: () => void;
   onSwitchToOpen: () => void;
+  onClearFilters?: () => void;
 }) {
   return (
     <View style={emptyStyles.wrap}>
@@ -707,29 +718,45 @@ function FullEmptyState({
         <BouncingBall size={64} color="#3B82F6" />
       </View>
       <Text style={emptyStyles.body}>
-        {hasGamesInOtherTab
-          ? he.emptyHomeBody
-          : he.emptyHomeNoGamesAnywhere}
+        {hasActiveFilters
+          ? he.emptyHomeFilteredBody
+          : hasGamesInOtherTab
+            ? he.emptyHomeBody
+            : he.emptyHomeNoGamesAnywhere}
       </Text>
       <View style={emptyStyles.actions}>
-        <Button
-          title={he.emptyHomePrimary}
-          variant="primary"
-          size="lg"
-          iconLeft="add-circle-outline"
-          onPress={onCreate}
-          fullWidth
-        />
-        {hasGamesInOtherTab && tab === 'mine' ? (
+        {hasActiveFilters ? (
+          // Filter is the cause — offer to clear it, not "create a game".
           <Button
-            title={he.emptyHomeSecondary}
-            variant="outline"
+            title={he.emptyHomeClearFilters}
+            variant="primary"
             size="lg"
-            iconLeft="search-outline"
-            onPress={onSwitchToOpen}
+            iconLeft="close-circle-outline"
+            onPress={onClearFilters}
             fullWidth
           />
-        ) : null}
+        ) : (
+          <>
+            <Button
+              title={he.emptyHomePrimary}
+              variant="primary"
+              size="lg"
+              iconLeft="add-circle-outline"
+              onPress={onCreate}
+              fullWidth
+            />
+            {hasGamesInOtherTab && tab === 'mine' ? (
+              <Button
+                title={he.emptyHomeSecondary}
+                variant="outline"
+                size="lg"
+                iconLeft="search-outline"
+                onPress={onSwitchToOpen}
+                fullWidth
+              />
+            ) : null}
+          </>
+        )}
       </View>
     </View>
   );
@@ -838,13 +865,18 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#1E40AF',
     shadowOpacity: 0.32,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
+  },
+  fabInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // First-run hint bubble pointing at the FAB.

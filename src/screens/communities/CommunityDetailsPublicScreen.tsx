@@ -34,6 +34,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
+import { successHaptic } from '@/utils/haptics';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
@@ -213,9 +214,11 @@ export function CommunityDetailsPublicScreen() {
       }
       if (status === 'pending') {
         logEvent(AnalyticsEvent.GroupJoinRequested, { groupId: group.id });
+        successHaptic();
         toast.success(he.toastJoinRequestSent);
         nav.goBack();
       } else if (status === 'joined') {
+        successHaptic();
         toast.success(he.toastJoinedGroup);
         nav.goBack();
       } else if (status === 'already_member') {

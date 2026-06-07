@@ -1,7 +1,7 @@
 // CommunityNotifyToggle — single white row with the new-game
 // subscription toggle. Layout under forceRTL:
 //
-//   [Switch] ………………………… "עדכנו אותי על משחקים חדשים בקהילה" [🔔]
+//   [Switch] ………………………… "עדכנו אותי על משחקים חדשים בקבוצה" [🔔]
 //   ↑ leading                                    trailing ↑
 //
 // The Switch is the LEFT (leading) child so it sits on the visual

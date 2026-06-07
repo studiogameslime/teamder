@@ -142,7 +142,7 @@ export function CommunityFilterSheet({
               onChange={(v) => onChange({ ...filters, autoJoinOnly: v })}
             />
             <SwitchRow
-              label={he.gameFiltersOnlyAvailable}
+              label={he.communityFiltersHasRoom}
               value={filters.hasRoom}
               onChange={(v) => onChange({ ...filters, hasRoom: v })}
             />

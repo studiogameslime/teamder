@@ -27,8 +27,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
+import { successHaptic } from '@/utils/haptics';
 import { friendsService, type FriendRequestWithUser } from '@/services/friendsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
@@ -88,6 +90,7 @@ export function FriendsScreen() {
     setBusyId(fromUserId);
     try {
       await friendsService.acceptRequest(fromUserId, me.id);
+      successHaptic();
       toast.success(he.friendsAccepted);
       await load();
     } catch (e) {
@@ -166,7 +169,7 @@ export function FriendsScreen() {
       <ScreenHeader title={he.friendsTitle} />
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
+          <SoccerBallLoader size={40} />
         </View>
       ) : (
         <ScrollView

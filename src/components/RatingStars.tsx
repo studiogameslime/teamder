@@ -13,6 +13,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '@/theme';
+import { selectionHaptic } from '@/utils/haptics';
 
 interface Props {
   /** Currently selected count (0..5). */
@@ -39,7 +40,10 @@ export function RatingStars({
           <Pressable
             key={n}
             disabled={readonly}
-            onPress={() => onChange?.(value === n ? 0 : n)}
+            onPress={() => {
+              selectionHaptic();
+              onChange?.(value === n ? 0 : n);
+            }}
             hitSlop={6}
             style={({ pressed }) => [
               styles.cell,

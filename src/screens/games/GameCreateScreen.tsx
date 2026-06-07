@@ -249,7 +249,7 @@ export function GameCreateScreen() {
     setInitialKey((n) => n + 1);
   };
 
-  // Empty states with an "ללא קהילה" CTA — rendered AFTER all hooks (see
+  // Empty states with an "ללא קבוצה" CTA — rendered AFTER all hooks (see
   // the note above) so the hook count never changes. Both show the same
   // primary CTA ("צור משחק חד־פעמי"): the answer for "no community to
   // create in" is to make a one-off game without one.
@@ -367,7 +367,7 @@ export function GameCreateScreen() {
       }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
-        { gameId: created.id },
+        { gameId: created.id, celebrate: true },
       );
     } catch (err) {
       // Overlap guard hit — show the user the existing game's title +

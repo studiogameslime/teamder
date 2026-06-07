@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { updateDoc } from 'firebase/firestore';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppTimeField } from '@/components/DateTimeFields';
 import { userService } from '@/services';
@@ -95,6 +96,24 @@ export function AvailabilityEditScreen() {
   );
   const [busy, setBusy] = useState(false);
 
+  // Unsaved-changes guard — prompt instead of silently dropping edits on
+  // back/tab-switch, matching ProfileEdit. Compares each field to the
+  // value its useState initializer started from.
+  const isDirty =
+    JSON.stringify(days) !== JSON.stringify(initial.preferredDays ?? []) ||
+    timeFrom !== (initial.timeFrom ?? '') ||
+    timeTo !== (initial.timeTo ?? '') ||
+    homeCity !==
+      (initial.homeCity ?? initial.preferredCity ?? initial.cities?.[0] ?? '') ||
+    radiusKm !==
+      (typeof initial.availabilityRadiusKm === 'number' &&
+      initial.availabilityRadiusKm > 0
+        ? initial.availabilityRadiusKm
+        : 20) ||
+    invitable !== (initial.isAvailableForInvites !== false) ||
+    acceptsFillerPush !== (initial.acceptsFillerPush === true);
+  const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+
   if (!user) return null;
 
   const toggleDay = (d: WeekdayIndex) => {
@@ -154,6 +173,7 @@ export function AvailabilityEditScreen() {
         geocoded: coords !== null,
       });
       await reloadUser();
+      savingRef.current = true;
       nav.goBack();
     } catch (e) {
       logError('saveAvailability', e, {

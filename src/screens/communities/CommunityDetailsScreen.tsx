@@ -6,7 +6,7 @@
 //   ③ Notification toggle row (members only)
 //   ④ Next-game card — primary focus, dark blue gradient
 //   ⑤ Active-players preview — horizontal jersey rail
-//   ⑥ "שתף הזמנה לקהילה" gradient CTA (members only)
+//   ⑥ "שתף הזמנה לקבוצה" gradient CTA (members only)
 //
 // All admin / destructive actions live behind the ☰ hamburger menu;
 // the ⋯ overflow opens the same menu (a single source of truth keeps
@@ -38,6 +38,8 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { toast } from '@/components/Toast';
+import { CelebrationOverlay } from '@/components/anim/CelebrationOverlay';
+import { successHaptic } from '@/utils/haptics';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -82,7 +84,10 @@ type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetails'>;
 
 export function CommunityDetailsScreen() {
   const nav = useNavigation<Nav>();
-  const { groupId } = useRoute<Params>().params;
+  const params = useRoute<Params>().params;
+  const { groupId } = params;
+  const celebrateOnArrival =
+    (params as { celebrate?: boolean } | undefined)?.celebrate === true;
   const me = useUserStore((s) => s.currentUser);
   const leaveGroup = useGroupStore((s) => s.leaveGroup);
   const deleteGroup = useGroupStore((s) => s.deleteGroup);
@@ -101,6 +106,15 @@ export function CommunityDetailsScreen() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
+  // Celebration burst when arriving fresh from creating this group.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (celebrateOnArrival) {
+      successHaptic();
+      setCelebrate(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [invitingBusy, setInvitingBusy] = useState(false);
 
   const reload = useCallback(
@@ -498,6 +512,11 @@ export function CommunityDetailsScreen() {
 
   return (
     <View style={styles.root}>
+      {celebrate ? (
+        <View pointerEvents="none" style={styles.celebrationLayer}>
+          <CelebrationOverlay onDone={() => setCelebrate(false)} />
+        </View>
+      ) : null}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -539,8 +558,11 @@ export function CommunityDetailsScreen() {
               },
               {
                 icon: 'football',
+                // Always show the number — including "0" — to match the
+                // profile stats ("0 משחקים"). matchesHeld is a known
+                // count, so "0" means zero, not "no data".
                 label: he.communityStatsMatchesHeld,
-                value: matchesHeld > 0 ? String(matchesHeld) : '—',
+                value: String(matchesHeld),
               },
             ]}
           />
@@ -920,6 +942,12 @@ function nextOccurrence(g: Group): number | null {
 }
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  celebrationLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 60,
+  },
   scroll: {
     paddingBottom: spacing.xxl,
   },

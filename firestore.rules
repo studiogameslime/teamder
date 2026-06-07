@@ -465,11 +465,20 @@ service cloud.firestore {
         request.resource.data.toUserId != request.auth.uid &&
         request.resource.data.status == 'pending';
       // Recipient declines: status → 'declined', parties unchanged.
+      // OR the original SENDER re-sends — resetting a withdrawn/declined
+      // request back to 'pending'. The app uses setDoc(), which is an
+      // UPDATE when a stale doc already exists; without this branch a
+      // legitimate re-send fails with permission-denied. Parties are
+      // pinned so neither side can rewrite the other party.
       allow update: if isSignedIn() &&
-        request.auth.uid == resource.data.toUserId &&
-        request.resource.data.status == 'declined' &&
         request.resource.data.fromUserId == resource.data.fromUserId &&
-        request.resource.data.toUserId == resource.data.toUserId;
+        request.resource.data.toUserId == resource.data.toUserId &&
+        (
+          (request.auth.uid == resource.data.toUserId &&
+            request.resource.data.status == 'declined') ||
+          (request.auth.uid == resource.data.fromUserId &&
+            request.resource.data.status == 'pending')
+        );
       // Either party may remove the doc (sender withdraws / recipient
       // clears a declined one).
       allow delete: if isSignedIn() && (

@@ -47,6 +47,7 @@ import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState } from '@/types';
 import { he } from '@/i18n/he';
+import { colors } from '@/theme';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -285,8 +286,8 @@ export function LiveMatchScreen() {
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.loading}>
-          <ActivityIndicator color="#1D4ED8" />
-          <Text style={styles.loadingText}>טוען את המשחק…</Text>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.loadingText}>{he.gameLoading}</Text>
         </View>
       </SafeAreaView>
     );
@@ -314,7 +315,7 @@ export function LiveMatchScreen() {
           accessibilityRole="button"
           accessibilityLabel="חזרה"
         >
-          <Ionicons name="chevron-forward" size={26} color="#0F172A" />
+          <Ionicons name="chevron-forward" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
           {game.title}
@@ -406,7 +407,7 @@ export function LiveMatchScreen() {
             ) : null}
           </>
         ) : (
-          <Text style={styles.viewerHint}>הטיימר מנוהל על ידי מנהל המשחק</Text>
+          <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
         )}
       </View>
 
@@ -427,7 +428,7 @@ export function LiveMatchScreen() {
                 onPress={() => setEndOpen(false)}
                 disabled={ending}
               >
-                <Text style={styles.modalCancelText}>ביטול</Text>
+                <Text style={styles.modalCancelText}>{he.cancel}</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalBtn, styles.modalConfirm]}

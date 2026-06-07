@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { AppearItem } from '@/components/anim/AppearItem';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { achievementsService } from '@/services/achievementsService';
 import { userService } from '@/services';
@@ -133,15 +134,15 @@ export function AchievementsScreen() {
         ) : (
           <>
             <View style={styles.grid}>
-              {ordered.map((item) => (
-                <View key={item.def.id} style={styles.cell}>
+              {ordered.map((item, idx) => (
+                <AppearItem key={item.def.id} index={idx} style={styles.cell}>
                   <AchievementBadge
                     def={item.def}
                     unlocked={item.unlocked}
                     size={72}
                     onPress={() => setActiveId(item.def.id)}
                   />
-                </View>
+                </AppearItem>
               ))}
             </View>
 
@@ -182,7 +183,10 @@ function formatHebrewDate(ms: number): string {
   return `${dd}/${mm}/${yy}`;
 }
 
-const CELL_BASIS = '33.333%';
+// Three per row. Kept under a third so the two inter-column gaps that
+// `space-between` inserts fit inside 100% — at exactly 33.333% the row
+// overflows and silently drops to two columns (orphaning the left half).
+const CELL_BASIS = '30%';
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
@@ -227,8 +231,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     rowGap: spacing.lg,
-    justifyContent: 'flex-start',
-    columnGap: spacing.md,
+    justifyContent: 'space-between',
   },
   cell: {
     width: CELL_BASIS,

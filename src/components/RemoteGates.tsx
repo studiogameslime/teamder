@@ -11,7 +11,7 @@ import React, { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius } from '@/theme';
+import { colors, spacing, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 
 const DEFAULT_MAINTENANCE_MSG =
@@ -103,6 +103,6 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     fontSize: 13.5,
     fontWeight: '600',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 });

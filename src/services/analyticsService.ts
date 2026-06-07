@@ -139,12 +139,12 @@ export const AnalyticsEvent = {
   FriendsInvitedToGame: 'friends_invited_to_game',
 
   // ─── Quick (no-community) games ────────────────────────────────────────
-  /** The "ללא קהילה / משחק חד־פעמי" CTA was tapped (entry to orphan flow). */
+  /** The "ללא קבוצה / משחק חד־פעמי" CTA was tapped (entry to orphan flow). */
   QuickGameFlowStarted: 'quick_game_flow_started',
   /** A quick (orphan-context) game was successfully created. Distinct
    *  from `GameCreated` so adoption can be measured separately. */
   QuickGameCreated: 'quick_game_created',
-  /** Post-game "צור קהילה" prompt was accepted — the hidden personal
+  /** Post-game "צור קבוצה" prompt was accepted — the hidden personal
    *  group was promoted into a real community. */
   OrphanPromotedToCommunity: 'orphan_promoted_to_community',
 

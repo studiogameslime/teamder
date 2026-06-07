@@ -1,7 +1,7 @@
 // MatchStatsStrip — 4-column horizontal info row sitting under the
 // hero. Each cell: small icon + value + tiny label.
 //
-// Cells: שחקנים (count/cap) · משך משחק · קהילה · מזג אוויר.
+// Cells: שחקנים (count/cap) · משך משחק · קבוצה · מזג אוויר.
 // Weather cell flips to a moon icon + blue tone for evening kickoffs
 // (≥18:00 or <06:00) so a 20:00 game never shows a sun.
 

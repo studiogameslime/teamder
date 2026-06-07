@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -151,7 +152,9 @@ export function AdminApprovalScreen() {
       <ScreenHeader title={he.groupAdminApprovalTitle} />
       {rows.length === 0 ? (
         loading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <View style={{ marginTop: spacing.xl, alignItems: 'center' }}>
+            <SoccerBallLoader size={40} />
+          </View>
         ) : (
           <Text style={styles.empty}>{he.groupAdminEmpty}</Text>
         )

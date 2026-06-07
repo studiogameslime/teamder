@@ -77,6 +77,49 @@ export async function geocodeAddress(
   return (await geocodeCity(query)) ?? (town ? geocodeCity(town) : null);
 }
 
+/**
+ * Reverse-geocode coords → the Israeli city/town name. Used when the
+ * organiser picks a single govmap location (one address field instead of
+ * separate city + address inputs): govmap gives us precise coords, and we
+ * derive the clean city string the availability matcher needs (it compares
+ * `game.city` to the player's `preferredCity` case-insensitively).
+ *
+ * Returns null on any miss; callers keep the game's coords either way, so a
+ * missed city only weakens city-string matching, not radius matching.
+ */
+export async function reverseGeocodeCity(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  try {
+    const url =
+      'https://nominatim.openstreetmap.org/reverse' +
+      `?lat=${lat}&lon=${lng}` +
+      `&format=json&accept-language=he&zoom=14`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      address?: {
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+        suburb?: string;
+      };
+    };
+    const a = data.address ?? {};
+    const city =
+      a.city ?? a.town ?? a.village ?? a.municipality ?? a.suburb ?? null;
+    return city ? city.trim() : null;
+  } catch (err) {
+    logError('reverseGeocodeCity', err, { lat, lng });
+    return null;
+  }
+}
+
 export async function geocodeCity(
   name: string,
 ): Promise<{ lat: number; lng: number } | null> {

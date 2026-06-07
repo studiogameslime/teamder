@@ -198,6 +198,9 @@ export function CommunityPlayersScreen() {
                   onLongPress={
                     removable ? () => handleRemoveMember(u) : undefined
                   }
+                  onRemove={
+                    removable ? () => handleRemoveMember(u) : undefined
+                  }
                 />
               </View>
             );
@@ -217,6 +220,7 @@ function PlayerRow({
   showDivider,
   onPress,
   onLongPress,
+  onRemove,
 }: {
   user: User;
   isAdmin: boolean;
@@ -227,6 +231,9 @@ function PlayerRow({
    *  dialog. Undefined for non-removable rows (self / creator /
    *  viewer-not-admin). */
   onLongPress?: () => void;
+  /** Same remove action, but as a VISIBLE trash button so admins can
+   *  discover it without guessing the long-press gesture. */
+  onRemove?: () => void;
 }) {
   const games = stats?.gamesPlayed ?? 0;
   return (
@@ -264,6 +271,20 @@ function PlayerRow({
           />
         </View>
       </View>
+      {onRemove ? (
+        <Pressable
+          onPress={onRemove}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.removeBtn,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.communityRemoveMember}
+        >
+          <Ionicons name="person-remove-outline" size={20} color={colors.danger} />
+        </Pressable>
+      ) : null}
       <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
     </Pressable>
   );
@@ -324,6 +345,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  removeBtn: {
+    padding: 4,
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,

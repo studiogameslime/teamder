@@ -6,7 +6,7 @@
 //     hero uses; consistent visual language across the app)
 //   • Dark blue vertical gradient overlay for legibility
 //   • Top bar (mirrors MatchStadiumHero exactly):
-//       [back ←]  פרטי קהילה  [☰ menu]
+//       [back ←]  פרטי קבוצה  [☰ menu]
 //       (back is FIRST child → trailing/right edge under RTL,
 //        menu is LAST child → leading/left edge)
 //   • Centered huge community name

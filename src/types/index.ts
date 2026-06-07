@@ -77,11 +77,11 @@ export interface User {
 
   /**
    * The user's hidden "personal" community — created lazily on first
-   * use of the "ללא קהילה — משחק חד־פעמי" flow in GameCreate. All
+   * use of the "ללא קבוצה — משחק חד־פעמי" flow in GameCreate. All
    * orphan games this user creates land inside it so the rest of the
    * data model (game.groupId is non-null, rules expect a group, etc.)
    * keeps working unchanged. Once the user accepts the post-game
-   * "צור קהילה" prompt, this same group is promoted to a real
+   * "צור קבוצה" prompt, this same group is promoted to a real
    * community via `promoteOrphanToGroup` and the field continues
    * pointing at the now-public group.
    *
@@ -384,7 +384,7 @@ export type NotificationType =
   | 'groupDeleted'
   /**
    * Post-orphan-game prompt to the creator: "שיחקתם נחמד 🤝 רוצה
-   * לשמור את החברים? צור קהילה בלחיצה". Fires from the
+   * לשמור את החברים? צור קבוצה בלחיצה". Fires from the
    * `promotePromptCron` after a game finishes inside a personal
    * (`isPersonal: true`) group. Single-shot per game (latched by
    * `game.promotePromptSent`).
@@ -392,7 +392,7 @@ export type NotificationType =
   | 'promotePrompt'
   /**
    * Push to participants of a freshly-promoted group: "{name} יצר
-   * קהילה ומזמין אותך". Fires from `promoteOrphanToGroup` to every
+   * קבוצה ומזמין אותך". Fires from `promoteOrphanToGroup` to every
    * inviteUserId, asking them to confirm joining the new community.
    */
   | 'groupInvitation'
@@ -638,7 +638,7 @@ export interface Group {
    *
    * `isPersonal=true` is set on creation by the `ensurePersonalGroup`
    * callable. It flips to `false` when the user accepts the
-   * post-game "צור קהילה" prompt — at which point this group is
+   * post-game "צור קבוצה" prompt — at which point this group is
    * promoted to a real community via `promoteOrphanToGroup`.
    * `hidden=true` is the same lifecycle flag, kept as a separate
    * field for future use (e.g. an admin manually hiding a real
@@ -1087,11 +1087,11 @@ export interface Game {
   pinnedMessage?: string;
 
   /**
-   * Set on games created via the "ללא קהילה — משחק חד־פעמי" flow.
+   * Set on games created via the "ללא קבוצה — משחק חד־פעמי" flow.
    * The game still belongs to a group (the creator's personal /
    * hidden community) — this flag tells the UI to render the game
    * as orphan-context: title shown as "משחק חד־פעמי", no community
-   * link, no "פרטי קהילה" CTA.
+   * link, no "פרטי קבוצה" CTA.
    *
    * Cleared (or stays untouched) on a regular community game.
    */

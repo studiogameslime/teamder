@@ -32,6 +32,7 @@ import {
 } from '@react-navigation/native';
 
 import { MapWebView, type MapMarker } from '@/components/map/MapWebView';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -202,20 +203,9 @@ export function MapScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      {/* Header — standard back button (as everywhere) + centred title. */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => nav.goBack()}
-          hitSlop={12}
-          style={styles.headerBtn}
-          accessibilityRole="button"
-          accessibilityLabel={he.back}
-        >
-          <Ionicons name="chevron-forward" size={24} color={colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{title}</Text>
-        <View style={styles.headerBtn} />
-      </View>
+      {/* Shared ScreenHeader — same surface bar + back chevron as the rest
+          of the app (this screen used to roll its own). */}
+      <ScreenHeader title={title} />
 
       {/* Search row. Under RTL the first child sits on the visual RIGHT, so
           order is: locate (→ right) · search · filter (→ left) to match the

@@ -66,7 +66,10 @@ export function CreateGroupScreen() {
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });
-      nav.replace('CommunityDetails', { groupId: group.id });
+      (nav as { replace: (s: string, p: unknown) => void }).replace(
+        'CommunityDetails',
+        { groupId: group.id, celebrate: true },
+      );
     } catch (e) {
       // Surface a human-readable Hebrew message instead of dumping the
       // raw error text. The two practical failure modes:

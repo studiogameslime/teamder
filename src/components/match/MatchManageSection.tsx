@@ -24,6 +24,9 @@ interface Props {
   visibilityIsPublic: boolean;
   onToggleVisibility: (next: boolean) => void;
   onDelete: () => void;
+  /** Opens the "find available players to invite" screen. Optional —
+   *  only the organizer of an open game gets it. */
+  onInviteAvailable?: () => void;
   busy?: boolean;
 }
 
@@ -32,6 +35,7 @@ export function MatchManageSection({
   visibilityIsPublic,
   onToggleVisibility,
   onDelete,
+  onInviteAvailable,
   busy,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -84,6 +88,28 @@ export function MatchManageSection({
                   true: colors.primary,
                 }}
               />
+            </Pressable>
+          ) : null}
+          {onInviteAvailable ? (
+            <Pressable
+              onPress={onInviteAvailable}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { opacity: 0.7 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchInviteAvailable}
+            >
+              <Ionicons
+                name="person-add-outline"
+                size={18}
+                color={colors.primary}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{he.matchInviteAvailable}</Text>
+                <Text style={styles.rowHelper}>{he.matchInviteAvailableHelper}</Text>
+              </View>
+              <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
             </Pressable>
           ) : null}
           <Pressable

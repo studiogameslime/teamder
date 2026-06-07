@@ -266,7 +266,7 @@ export const groupService = {
     // we hit the wire. The CF re-validates authoritatively.
     const name = requireString('name', input.name, {
       max: 80,
-      label: 'שם הקהילה',
+      label: 'שם הקבוצה',
     });
     const description = optionalString('description', input.description, {
       max: 500,

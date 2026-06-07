@@ -94,8 +94,11 @@ export function ProfileHeroCard({
               accessibilityRole="button"
               accessibilityLabel={he.profileSectionNotifications}
             >
+              {/* Settings glyph (not a bell): this opens notification
+                  SETTINGS, and there is no notifications inbox — a bell
+                  here mis-signals "your notifications". */}
               <Ionicons
-                name="notifications-outline"
+                name="settings-outline"
                 size={24}
                 color="#FFFFFF"
               />

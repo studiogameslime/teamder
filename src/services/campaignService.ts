@@ -198,17 +198,34 @@ export async function getEligiblePopup(user: User): Promise<PopupCampaign | null
     const ctx: CurrentCtx = { user, inGroup, provider, now };
     const seen = await storage.getCampaignSeen();
 
+    // Stale-test guard: every test send creates a NEW campaign doc and they
+    // never auto-clean, so a user who got several test previews would see a
+    // different one on every launch ("the popup keeps coming back"). Collapse
+    // all of THIS user's test campaigns down to the single newest one — older
+    // previews are never eligible again.
+    const myTests = snap.docs
+      .map((d) => ({ id: d.id, raw: d.data() as Record<string, unknown> }))
+      .filter((c) => c.raw.testUserId === user.id);
+    let newestTestId: string | null = null;
+    if (myTests.length) {
+      myTests.sort(
+        (a, b) => Number(b.raw.createdAt ?? 0) - Number(a.raw.createdAt ?? 0),
+      );
+      newestTestId = myTests[0].id;
+    }
+
     // Candidates: in their active window, segment matches, under cap.
     const candidates = snap.docs
       .map((d) => ({ id: d.id, raw: d.data() as Record<string, unknown> }))
       .filter(({ id, raw }) => {
-        // Test popup: shown ONLY to the targeted user. It skips the segment
-        // and active-window checks, but STILL respects the frequency cap so
-        // it behaves like a real popup (shown once, not every launch). To
-        // preview again, just send another test.
+        // Test popup: shown ONLY to the targeted user, and only the most
+        // recent test for that user (older previews are ignored). It skips
+        // the segment + active-window checks but STILL respects the frequency
+        // cap so it behaves like a real popup (shown once, not every launch).
         const testUid = typeof raw.testUserId === 'string' ? raw.testUserId : undefined;
         if (testUid) {
           if (testUid !== user.id) return false;
+          if (id !== newestTestId) return false; // stale preview — drop
         } else {
           const startAt = Number(raw.startAt ?? 0);
           const endAt = Number(raw.endAt ?? Number.MAX_SAFE_INTEGER);
