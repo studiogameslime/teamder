@@ -330,7 +330,8 @@ export const he = {
   gameWizardSubmitFailed: 'יצירת המשחק נכשלה. נסה שוב.',
   createGameField: 'מיקום המגרש',
   createGameFieldPlaceholder: 'חפש מגרש, בית ספר, פארק או כתובת (כולל עיר)',
-  createGameLocationMustPick: 'יש לבחור מיקום מהרשימה כדי שנדע בדיוק איפה',
+  createGameLocationFreeTextHint:
+    'אפשר גם להקליד מיקום חופשי. בחירה מהרשימה תעזור לנו למקם את המשחק במדויק.',
   createGameCity: 'עיר',
   createGameCityPlaceholder: 'בחר עיר מהרשימה',
   createGameCityMustPick: 'חובה לבחור עיר מהרשימה (לא טקסט חופשי)',

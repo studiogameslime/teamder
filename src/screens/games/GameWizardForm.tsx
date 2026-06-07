@@ -219,16 +219,15 @@ export function GameWizardForm({
     }).start();
   }, [step, fade]);
 
-  // Step 1 hard gate: EVERY game needs a real, picked location. With the
-  // single govmap field, "picked from the list" (cityFromList) is what
-  // guarantees we have coords + a derived city for the matcher — a
-  // free-typed value that wasn't selected has neither.
-  const step1Valid =
-    values.fieldName.trim().length > 0 && values.cityFromList === true;
+  // Step 1 gate: a game needs a location, but it may be free text — the
+  // user isn't forced to pick from the autocomplete. Picking a suggestion
+  // still gives us coords + a derived city for the matcher; a free-typed
+  // value simply ships without them (the matcher just can't place it).
+  const step1Valid = values.fieldName.trim().length > 0;
   // Human-readable list of what's still missing — surfaced under the
   // disabled "המשך" button so the user isn't left guessing why it's grey.
   const step1Missing: string[] = [];
-  if (values.fieldName.trim().length === 0 || values.cityFromList !== true)
+  if (values.fieldName.trim().length === 0)
     step1Missing.push(he.createGameField);
   const goNext = () => {
     if (step === 1 && !step1Valid) return;
@@ -429,8 +428,9 @@ function Step1({
           required
           value={values.fieldName}
           onChange={(t) => {
-            // Free typing → mirror to address, but it's NOT a confirmed
-            // pick yet (no coords/city), so block Next until they select.
+            // Free typing is allowed — mirror to address. It's not a
+            // confirmed pick (no coords/city yet); if the user later taps a
+            // suggestion, onSelect fills those in for the matcher.
             set('fieldName', t);
             set('fieldAddress', t);
             set('cityFromList', false);
@@ -453,8 +453,10 @@ function Step1({
           placeholder={he.createGameFieldPlaceholder}
           fetchSuggestions={(q) => searchPlaces(q).then((r) => r.map((p) => p.label))}
         />
+        {/* Picking a suggestion is optional but helps location matching —
+            surface that as a gentle hint, not a blocking error. */}
         {values.fieldName.trim().length > 0 && !values.cityFromList ? (
-          <Text style={styles.hintError}>{he.createGameLocationMustPick}</Text>
+          <Text style={styles.hint}>{he.createGameLocationFreeTextHint}</Text>
         ) : null}
       </View>
 
