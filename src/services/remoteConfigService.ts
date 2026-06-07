@@ -13,7 +13,7 @@
 // still safe.
 
 import React from 'react';
-import { logError } from '@/services/errorLog';
+import { logError, isExpectedDenial } from '@/services/errorLog';
 
 // Keys + their in-code defaults. The defaults MUST stay sensible on their
 // own — they're what ships in the binary and what every user gets until a
@@ -124,7 +124,13 @@ export async function initRemoteConfig(): Promise<void> {
     );
     await inst.fetchAndActivate();
   } catch (err) {
-    logError('initRemoteConfig', err, {});
+    // RC fetch failures are transient (network) and non-fatal — the
+    // defaults are still registered below so the app behaves correctly.
+    // Don't pollute the dashboard with them; only log the unexpected.
+    const code = String((err as { code?: string })?.code ?? '');
+    if (!isExpectedDenial(err) && !code.startsWith('remoteConfig/')) {
+      logError('initRemoteConfig', err, {});
+    }
     if (__DEV__) console.warn('[remoteConfig] init failed', err);
   } finally {
     // Even on a fetch failure, defaults are now registered — let consumers

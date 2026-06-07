@@ -197,7 +197,11 @@ export const ratingsService = {
     const snap = await getDoc(
       docs.ratingSummary(groupId, ratedUserId),
     ).catch((err) => {
-      logError('getRatingSummary', err, { groupId, ratedUserId });
+      // Skip expected transient/denial errors (offline, unauth) — they're
+      // noise, not bugs. Returning null degrades gracefully below.
+      if (!isExpectedDenial(err)) {
+        logError('getRatingSummary', err, { groupId, ratedUserId });
+      }
       return null;
     });
     if (!snap?.exists()) {

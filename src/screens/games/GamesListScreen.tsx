@@ -230,12 +230,21 @@ export function GamesListScreen() {
       // somewhere the user can reach it (it moves into "שלי"). If it's in no
       // list at all, it silently vanished — the exact orphan/personal-group
       // case — so record it with full context even though nothing threw.
-      if ((cta === 'join' || cta === 'waitlist') && fresh) {
-        const visible =
-          fresh.mine.some((g) => g.id === game.id) ||
-          fresh.community.some((g) => g.id === game.id) ||
-          fresh.open.some((g) => g.id === game.id);
-        if (!visible) {
+      const inAnyList = (r: typeof fresh) =>
+        !!r &&
+        (r.mine.some((g) => g.id === game.id) ||
+          r.community.some((g) => g.id === game.id) ||
+          r.open.some((g) => g.id === game.id));
+      if ((cta === 'join' || cta === 'waitlist') && fresh && !inAnyList(fresh)) {
+        // The immediate reload can race the just-committed join write
+        // (read-after-write): the game is provably ours but a stale query
+        // result doesn't surface it yet. Retry once after a short beat — a
+        // race self-heals (and the user sees the game appear); only a game
+        // STILL in no list after a fresh, propagated read is a real
+        // reachability gap worth flagging.
+        await new Promise((r) => setTimeout(r, 800));
+        const retry = await reload();
+        if (!inAnyList(retry)) {
           logUnexpected('gameVanishedAfterJoin', {
             screen: 'GamesListScreen',
             gameId: game.id,

@@ -28,7 +28,7 @@ import {
   waitForAuthRestore,
 } from '@/firebase/auth';
 import { col, docs } from '@/firebase/firestore';
-import { logError } from './errorLog';
+import { logError, isExpectedDenial } from './errorLog';
 import { rcBool } from './remoteConfigService';
 import { gameService } from './gameService';
 
@@ -542,7 +542,10 @@ export const userService = {
       const snap = await getCountFromServer(q);
       return snap.data().count ?? 0;
     } catch (err) {
-      logError('getInvitedUsersCount', err, { userId });
+      // unauthenticated/offline during early hydration is expected — skip.
+      if (!isExpectedDenial(err)) {
+        logError('getInvitedUsersCount', err, { userId });
+      }
       if (__DEV__) console.warn('[users] getInvitedUsersCount failed', err);
       return 0;
     }
