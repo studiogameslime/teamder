@@ -527,33 +527,46 @@ function CalendarGrid({
         ))}
       </View>
       <View style={styles.daysGrid}>
-        {cells.map((cell, i) => {
-          const inMonth = cell.getMonth() === month.getMonth();
-          const isToday = cell.getTime() === todayTs;
-          const isPicked = cell.getTime() === pickedTs;
-          return (
-            <Pressable
-              key={i}
-              disabled={!inMonth}
-              onPress={() => onPick(applyTimeFromTs(cell.getTime(), picked))}
-              style={[
-                styles.dayCell,
-                isPicked && styles.dayCellPicked,
-                isToday && !isPicked && styles.dayCellToday,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  !inMonth && { color: colors.border },
-                  isPicked && styles.dayTextPicked,
-                ]}
-              >
-                {cell.getDate()}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {/* Render fixed week-rows of 7 flex:1 cells (one per weekday),
+            matching the flex:1 header cells exactly. The old approach used
+            `width: 100/7%` + flexWrap, but 7×14.285% can round past 100%,
+            wrapping the 7th cell (Saturday) to the next row and shifting
+            every date out of its weekday column. */}
+        {Array.from({ length: 6 }, (_, w) => cells.slice(w * 7, w * 7 + 7)).map(
+          (week, w) => (
+            <View key={w} style={styles.weekRow}>
+              {week.map((cell, i) => {
+                const inMonth = cell.getMonth() === month.getMonth();
+                const isToday = cell.getTime() === todayTs;
+                const isPicked = cell.getTime() === pickedTs;
+                return (
+                  <Pressable
+                    key={i}
+                    disabled={!inMonth}
+                    onPress={() =>
+                      onPick(applyTimeFromTs(cell.getTime(), picked))
+                    }
+                    style={[
+                      styles.dayCell,
+                      isPicked && styles.dayCellPicked,
+                      isToday && !isPicked && styles.dayCellToday,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        !inMonth && { color: colors.border },
+                        isPicked && styles.dayTextPicked,
+                      ]}
+                    >
+                      {cell.getDate()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ),
+        )}
       </View>
     </View>
   );
@@ -818,11 +831,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   daysGrid: {
+    // Stacks the six weekRow children vertically.
+  },
+  weekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1, // 7 equal columns per row — aligns 1:1 with the flex:1 headers
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
