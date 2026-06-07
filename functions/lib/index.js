@@ -4739,10 +4739,43 @@ exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', asyn
     const user = event.data?.data();
     if (!user)
         return;
+    const uid = event.params.uid;
     const name = user.name && user.name !== 'משתמש שהוסר' ? user.name : 'משתמש חדש';
-    await (0, adminPush_1.pushToAdmins)('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})`, {
-        uid: event.params.uid,
-    });
+    // Attribution is written by SEPARATE client updates ~1-3s after signup
+    // (applyInviteAttributionIfFresh / applyAcquisitionIfFresh), so neither is
+    // on the doc at create time. Poll briefly to catch a referrer (`invitedBy`)
+    // or a campaign-link (`acquisition.campaign`), exiting as soon as one lands
+    // (organic signups just wait out the window).
+    let inviterId;
+    let campaign;
+    for (const waitMs of [3000, 5000, 6000]) {
+        await new Promise((r) => setTimeout(r, waitMs));
+        const d = (await db.collection('users').doc(uid).get()).data();
+        const v = d?.invitedBy;
+        if (typeof v === 'string' && v && v !== uid)
+            inviterId = v;
+        const acq = d?.acquisition;
+        if (acq?.campaign && typeof acq.campaign === 'string')
+            campaign = acq.campaign;
+        if (inviterId || campaign)
+            break;
+    }
+    // Build the "via" suffix: a personal referral wins; otherwise a campaign.
+    let via = '';
+    if (inviterId) {
+        try {
+            const inv = (await db.collection('users').doc(inviterId).get()).data();
+            const invName = inv?.name && inv.name !== 'משתמש שהוסר' ? inv.name : null;
+            via = invName ? ` · דרך ${invName}` : ' · דרך הזמנה';
+        }
+        catch {
+            via = ' · דרך הזמנה';
+        }
+    }
+    else if (campaign) {
+        via = ` · דרך קמפיין ${campaign}`;
+    }
+    await (0, adminPush_1.pushToAdmins)('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})${via}`, { uid });
 });
 // ── Founder activity alerts: game/community create + join ──
 // All honor the per-type toggle in adminConfig/prefs (Pulse Settings).

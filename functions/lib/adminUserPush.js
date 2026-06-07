@@ -123,6 +123,11 @@ function userField(u, field, now) {
     switch (field) {
         case 'attended': return u.attended;
         case 'cancelled': return u.cancelled;
+        case 'gamesJoined': return u.gamesJoined;
+        case 'communitiesCreated': return u.communitiesCreated;
+        case 'invitesSent': return u.invitesSent;
+        case 'friends': return u.friends;
+        case 'achievements': return u.achievements;
         case 'daysSinceJoin': return (now - u.createdAt) / DAY;
         case 'daysSinceActive': {
             const last = u.lastSeenAt ?? u.lastActiveAt ?? u.createdAt;
@@ -286,6 +291,11 @@ async function processCampaign(id, nowMs) {
                     city: u.availability?.homeCity ?? u.city,
                     attended: Number(u.stats?.attended ?? 0),
                     cancelled: Number(u.stats?.cancelled ?? 0),
+                    gamesJoined: Number(u.achievements?.gamesJoined ?? 0),
+                    communitiesCreated: Number(u.achievements?.teamsCreated ?? 0),
+                    invitesSent: Number(u.achievements?.invitesSent ?? 0),
+                    friends: Array.isArray(u.friends) ? u.friends.length : 0,
+                    achievements: Array.isArray(u.achievements?.unlocked) ? u.achievements.unlocked.length : 0,
                     createdAt: Number(u.createdAt ?? 0),
                     invitedBy: u.invitedBy,
                     platform: u.platform,
