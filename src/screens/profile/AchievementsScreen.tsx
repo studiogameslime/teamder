@@ -74,7 +74,10 @@ export function AchievementsScreen() {
     if (!localUser) return;
     let alive = true;
     achievementsService
-      .deriveCounters(localUser.id, { groups })
+      .deriveCounters(localUser.id, {
+        groups,
+        friendsCount: localUser.friends?.length ?? 0,
+      })
       .then((c) => {
         if (!alive) return;
         setCounters(c);

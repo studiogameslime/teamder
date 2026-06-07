@@ -518,11 +518,11 @@ function Step2({
       <View style={styles.section}>
         <InputField
           label={he.createGameMatchDuration}
+          info={{ text: he.createGameMatchDurationHint }}
           value={values.matchDurationMinutes}
           onChangeText={(t) => set('matchDurationMinutes', t)}
           keyboardType="number-pad"
         />
-        <Text style={styles.hint}>{he.createGameMatchDurationHint}</Text>
       </View>
 
       {/* Free-text rule chips — replaces the old fixed toggles
@@ -532,10 +532,10 @@ function Step2({
       <View style={styles.section}>
         <RuleTagsInput
           label={he.ruleTagsLabel}
+          info={{ text: he.ruleTagsHint }}
           value={values.ruleTags}
           onChange={(next) => set('ruleTags', next)}
         />
-        <Text style={styles.hint}>{he.ruleTagsHint}</Text>
       </View>
     </View>
   );
@@ -560,8 +560,10 @@ function Step3({
   return (
     <View style={styles.stack}>
       <View style={styles.section}>
-        <Text style={styles.label}>{he.wizardSectionVisibility}</Text>
-        <Text style={styles.hint}>{he.wizardVisibilityHint}</Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelFlex]}>{he.wizardSectionVisibility}</Text>
+          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} size={16} />
+        </View>
         <View style={styles.pillRow}>
           <Pill
             active={values.visibility === 'community'}
@@ -588,7 +590,7 @@ function Step3({
 
       <ToggleRow
         label={he.createGameRequiresApproval}
-        hint={he.createGameRequiresApprovalHint}
+        info={{ title: he.createGameRequiresApproval, text: he.createGameRequiresApprovalHint }}
         value={values.requiresApproval}
         onChange={(v) => set('requiresApproval', v)}
       />
@@ -602,7 +604,7 @@ function Step3({
         <>
           <ToggleRow
             label={he.communityEditRecurringEnabled}
-            hint={he.communityEditRecurringHint}
+            info={{ title: he.communityEditRecurringEnabled, text: he.communityEditRecurringHint }}
             value={values.recurringGameEnabled}
             onChange={(v) => {
               set('recurringGameEnabled', v);
@@ -657,14 +659,16 @@ function Step3({
           push. */}
       <ToggleRow
         label={he.gameFillerAcceptToggle}
-        hint={he.gameFillerAcceptToggleHint}
         value={values.acceptsFillers}
         onChange={(v) => set('acceptsFillers', v)}
         info={{ title: he.tipFillerTitle, text: he.tipFillerText }}
       />
       {values.acceptsFillers ? (
         <View style={styles.section}>
-          <Text style={styles.label}>{he.gameFillerMinTrust}</Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, styles.labelFlex]}>{he.gameFillerMinTrust}</Text>
+            <InfoTip title={he.gameFillerMinTrust} text={he.gameFillerMinTrustHint} size={16} />
+          </View>
           <View style={styles.pillRow}>
             {FILLER_MIN_TRUST_OPTIONS.map((opt, i) => (
               <Pill
@@ -675,7 +679,6 @@ function Step3({
               />
             ))}
           </View>
-          <Text style={styles.hint}>{he.gameFillerMinTrustHint}</Text>
         </View>
       ) : null}
 
@@ -903,6 +906,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    width: '100%',
+  },
+  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
   hint: {
     ...typography.caption,
     color: colors.textMuted,

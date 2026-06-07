@@ -33,10 +33,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { InfoTip } from './InfoTip';
 
 interface Props
   extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
   label?: string;
+  /** Optional ⓘ next to the label that opens a brief explanation —
+   *  keeps the form clean instead of a constant paragraph under the field. */
+  info?: { title?: string; text: string };
   /** Ionicon glyph rendered on the right (RTL). */
   icon?: keyof typeof Ionicons.glyphMap;
   /** When set the field becomes a tappable label; the `value` prop is
@@ -54,6 +58,7 @@ interface Props
 
 export function InputField({
   label,
+  info,
   icon,
   onPress,
   placeholder,
@@ -96,10 +101,13 @@ export function InputField({
   return (
     <View style={[styles.wrap, containerStyle]}>
       {label ? (
-        <Text style={styles.label}>
-          {label}
-          {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
-        </Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelFlex]}>
+            {label}
+            {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+          </Text>
+          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+        </View>
       ) : null}
       {onPress ? (
         <Pressable
@@ -169,6 +177,17 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     alignSelf: 'stretch',
     width: '100%',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    width: '100%',
+  },
+  labelFlex: {
+    flex: 1,
+    width: undefined,
+    alignSelf: 'auto',
   },
   requiredStar: {
     color: colors.danger,

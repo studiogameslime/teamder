@@ -30,6 +30,7 @@ const TINT_GAMES = colors.primary;
 const TINT_TEAMS = colors.info;
 const TINT_INVITES = colors.warning;
 const TINT_COACH = '#7C3AED'; // purple — matches the JERSEY_COLORS.purple swatch
+const TINT_SOCIAL = '#10B981'; // emerald — friends
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   // ─── Games ─────────────────────────────────────────────────────────────
@@ -104,6 +105,58 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     threshold: 3,
     icon: 'people-outline',
     tint: TINT_TEAMS,
+  },
+  {
+    id: 'joinedFiveTeams',
+    titleHe: 'חבר ב-5 קבוצות',
+    descriptionHe: 'אתה חבר ב-5 קבוצות שונות',
+    category: 'teams',
+    metric: 'teamsJoined',
+    threshold: 5,
+    icon: 'people',
+    tint: TINT_TEAMS,
+  },
+  {
+    id: 'joinedTenTeams',
+    titleHe: 'חבר ב-10 קבוצות',
+    descriptionHe: 'אתה חבר ב-10 קבוצות שונות',
+    category: 'teams',
+    metric: 'teamsJoined',
+    threshold: 10,
+    icon: 'people-circle',
+    tint: TINT_TEAMS,
+  },
+
+  // ─── Social (friends) ────────────────────────────────────────────────────
+  {
+    id: 'firstFriend',
+    titleHe: 'חבר ראשון',
+    descriptionHe: 'הוספת את החבר הראשון שלך',
+    category: 'social',
+    metric: 'friendsCount',
+    threshold: 1,
+    icon: 'person-add-outline',
+    tint: TINT_SOCIAL,
+  },
+  {
+    id: 'fiveFriends',
+    titleHe: '5 חברים',
+    descriptionHe: 'יש לך 5 חברים באפליקציה',
+    category: 'social',
+    metric: 'friendsCount',
+    threshold: 5,
+    icon: 'people-outline',
+    tint: TINT_SOCIAL,
+  },
+  {
+    id: 'tenFriends',
+    titleHe: '10 חברים',
+    descriptionHe: 'רשת חברים מרשימה — 10 חברים',
+    category: 'social',
+    metric: 'friendsCount',
+    threshold: 10,
+    icon: 'people-circle-outline',
+    tint: TINT_SOCIAL,
   },
 
   // ─── Invites ───────────────────────────────────────────────────────────

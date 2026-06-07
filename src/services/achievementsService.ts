@@ -162,10 +162,13 @@ export const achievementsService = {
    */
   async deriveCounters(
     userId: UserId,
-    ctx: { groups?: Group[] } = {},
+    ctx: { groups?: Group[]; friendsCount?: number } = {},
   ): Promise<UserAchievementState> {
     if (!userId) return { ...defaultAchievementState };
     const groups = ctx.groups ?? [];
+    // friendsCount comes from the caller's already-loaded user doc
+    // (`user.friends`) — no extra read needed.
+    const friendsCount = Math.max(0, ctx.friendsCount ?? 0);
 
     // ── teamsJoined / teamsCreated / playersCoached — derive from
     //    the in-memory groups list (already hydrated by groupStore).
@@ -241,6 +244,7 @@ export const achievementsService = {
       teamsJoined,
       invitesSent,
       playersCoached,
+      friendsCount,
     };
   },
 
@@ -341,6 +345,7 @@ function readState(user: User): UserAchievementState {
     teamsJoined: a.teamsJoined ?? 0,
     invitesSent: a.invitesSent ?? 0,
     playersCoached: a.playersCoached ?? 0,
+    friendsCount: a.friendsCount ?? 0,
   };
 }
 

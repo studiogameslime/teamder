@@ -474,10 +474,13 @@ export function BannerAd(): React.ReactElement | null {
   const size =
     (mod.BannerAdSize as Record<string, string> | undefined)?.BANNER ??
     'BANNER';
-  // Wrapper stays mounted even after a load failure so the slot remains
-  // visible (with the debug label) — only the inner Banner element is
-  // dropped on failure. minHeight reserves space so a 0-fill doesn't
-  // collapse the layout while we're diagnosing.
+  // On a load failure (no-fill / network), collapse the slot entirely so
+  // the screen content fills the space instead of leaving an empty gap.
+  // In DEBUG_VISIBLE mode we keep the slot + label for diagnosing.
+  if (failed && !DEBUG_VISIBLE) return null;
+  // Wrapper stays mounted while loading / in debug mode. `minHeight`
+  // reserves space only then; a confirmed failure already returned null
+  // above, so a 0-fill no longer collapses *into* dead space.
   return React.createElement(
     View,
     {

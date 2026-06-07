@@ -171,7 +171,10 @@ export function ProfileScreen() {
     if (!uid) return;
     let alive = true;
     achievementsService
-      .deriveCounters(uid, { groups: myCommunities })
+      .deriveCounters(uid, {
+        groups: myCommunities,
+        friendsCount: localUser?.friends?.length ?? 0,
+      })
       .then((c) => {
         if (!alive) return;
         setAchievementCounters(c);

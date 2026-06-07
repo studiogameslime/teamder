@@ -32,6 +32,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
+import { InfoTip } from '@/components/InfoTip';
 import { StepIndicator } from '@/components/StepIndicator';
 import { searchCities } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
@@ -213,7 +214,7 @@ export function GroupWizardForm({
                     create time, so it lives in step 1. */}
                 <ToggleCard
                   label={he.createGroupIsOpen}
-                  hint={he.createGroupIsOpenHint}
+                  info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
                   value={values.isOpen}
                   onValueChange={(v) => set('isOpen', v)}
                 />
@@ -234,6 +235,7 @@ export function GroupWizardForm({
                 <View>
                   <InputField
                     label={he.createGroupContactPhone}
+                    info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
                     value={values.contactPhone}
                     onChangeText={(v) => set('contactPhone', v)}
                     placeholder={he.createGroupContactPhonePlaceholder}
@@ -242,10 +244,6 @@ export function GroupWizardForm({
                   {phoneError ? (
                     <Text style={styles.hintError}>
                       {he.createGroupContactPhoneInvalid}
-                    </Text>
-                  ) : phoneEntered ? (
-                    <Text style={styles.hint}>
-                      {he.createGroupContactPhoneHint}
                     </Text>
                   ) : null}
                 </View>
@@ -314,11 +312,13 @@ export function GroupWizardForm({
 function ToggleCard({
   label,
   hint,
+  info,
   value,
   onValueChange,
 }: {
   label: string;
   hint?: string;
+  info?: { title?: string; text: string };
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
@@ -328,9 +328,12 @@ function ToggleCard({
       style={styles.toggleCard}
     >
       <View style={styles.toggleText}>
-        <Text style={styles.toggleLabel} numberOfLines={2}>
-          {label}
-        </Text>
+        <View style={styles.toggleLabelRow}>
+          <Text style={[styles.toggleLabel, styles.toggleLabelFlex]} numberOfLines={2}>
+            {label}
+          </Text>
+          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+        </View>
         {hint ? (
           <Text style={styles.toggleHint} numberOfLines={2}>
             {hint}
@@ -398,6 +401,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
   },
+  toggleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  toggleLabelFlex: { flex: 1 },
   toggleHint: {
     ...typography.caption,
     color: colors.textMuted,

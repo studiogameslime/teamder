@@ -25,12 +25,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { InfoTip } from './InfoTip';
 
 interface Props {
   value: string[];
   onChange: (next: string[]) => void;
   /** Show above the chip area. Optional; the wizard provides one. */
   label?: string;
+  /** Optional ⓘ next to the label with a brief explanation. */
+  info?: { title?: string; text: string };
   /** Placeholder shown inside the empty input. */
   placeholder?: string;
   maxTags?: number;
@@ -44,6 +47,7 @@ export function RuleTagsInput({
   value,
   onChange,
   label,
+  info,
   placeholder,
   maxTags = DEFAULT_MAX_TAGS,
   maxTagLength = DEFAULT_MAX_LEN,
@@ -83,7 +87,12 @@ export function RuleTagsInput({
   const atCap = value.length >= maxTags;
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? (
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelFlex]}>{label}</Text>
+          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+        </View>
+      ) : null}
 
       {value.length > 0 ? (
         <View style={styles.chipsRow}>
@@ -146,6 +155,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  labelFlex: { flex: 1 },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

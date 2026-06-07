@@ -157,7 +157,7 @@ export interface User {
  * Buckets used to group achievements visually on the Player Card. Pure
  * presentation — the service treats every achievement the same.
  */
-export type AchievementCategory = 'games' | 'teams' | 'invites' | 'coaching';
+export type AchievementCategory = 'games' | 'teams' | 'invites' | 'coaching' | 'social';
 
 /**
  * The counter that an achievement watches. All metrics live on
@@ -169,7 +169,8 @@ export type AchievementMetric =
   | 'teamsCreated'
   | 'teamsJoined'
   | 'invitesSent'
-  | 'playersCoached';
+  | 'playersCoached'
+  | 'friendsCount';
 
 export interface UnlockedAchievement {
   id: string;
@@ -185,6 +186,8 @@ export interface UserAchievementState {
   invitesSent: number;
   /** Approvals an admin/coach has personally granted. */
   playersCoached: number;
+  /** Accepted (mutual) friends. */
+  friendsCount: number;
 }
 
 export const defaultAchievementState: UserAchievementState = {
@@ -194,6 +197,7 @@ export const defaultAchievementState: UserAchievementState = {
   teamsJoined: 0,
   invitesSent: 0,
   playersCoached: 0,
+  friendsCount: 0,
 };
 
 // ─── Discipline (yellow / red cards) ─────────────────────────────────────
