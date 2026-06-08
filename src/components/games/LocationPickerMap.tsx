@@ -169,8 +169,21 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
           map.setPaintProperty('building', 'fill-opacity', 0.55);
           map.setPaintProperty('building', 'fill-outline-color', '#e2ded8');
         } catch (e) {}
-        // Keep the rest of the style's natural colours — a clean light map
-        // with green parks and soft road lines. No road recolouring.
+        // Roads white instead of the style's yellow/orange: paint every
+        // road body white and its casing a light grey, so streets read as
+        // clean white lines with a soft outline (like the mockup).
+        var ROAD = /(motorway|trunk|primary|secondary|tertiary|_link|road_minor|street|service|track|path|road_)/;
+        (map.getStyle().layers || []).forEach(function (l) {
+          if (l.type !== 'line') return;
+          var id = l.id.toLowerCase();
+          if (id.indexOf('rail') > -1 || id.indexOf('transit') > -1) return;
+          if (!ROAD.test(id)) return;
+          try {
+            map.setPaintProperty(l.id, 'line-color', id.indexOf('casing') > -1 ? '#dcd8d2' : '#ffffff');
+          } catch (e) {}
+        });
+        // Keep the rest of the style's natural colours — green parks, blue
+        // water, soft labels.
         // Labels → Hebrew: prefer name:he, fall back to the default name.
         var heField = ['coalesce', ['get', 'name:he'], ['get', 'name:hebrew'], ['get', 'name']];
         (map.getStyle().layers || []).forEach(function (l) {
