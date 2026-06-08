@@ -437,7 +437,8 @@ export const he = {
   createGameNameHint: 'השם שיוצג בפיד ובכרטיס המשחק.',
   createGameForCommunity: (name: string) => `המשחק ייפתח לקבוצה: ${name}`,
   createGameChooseCommunityLocked:
-    'כדי לפתוח משחק לקבוצה צריך קודם להקים קבוצה (או להיות מנהל באחת).',
+    'משחק לקבוצה קבועה שלך — אבל עדיין אין לך קבוצה. הקם קבוצה ראשונה כדי לפתוח לה משחקים.',
+  createGameCreateCommunityCta: 'הקמת קבוצה ראשונה',
   // Scheduled public-open + guests-open pickers (community games)
   wizardPublicOpenToggle: 'פתיחה לכלל האפליקציה בזמן מתוזמן',
   wizardPublicOpenHint:

@@ -714,6 +714,32 @@ export function GamesListScreen() {
                 </Text>
               </View>
             </Pressable>
+            {/* No community yet → drive the user to create their first one. */}
+            {!canCreateCommunityGame ? (
+              <Pressable
+                style={({ pressed }) => [
+                  createSheetStyles.createCommunityCta,
+                  pressed && { opacity: 0.9 },
+                ]}
+                onPress={() => {
+                  setCreateSheetVisible(false);
+                  (
+                    nav as unknown as {
+                      getParent?: () => {
+                        navigate: (t: string, p?: unknown) => void;
+                      } | undefined;
+                    }
+                  )
+                    .getParent?.()
+                    ?.navigate('CommunitiesTab', { screen: 'CommunitiesCreate' });
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+                <Text style={createSheetStyles.createCommunityCtaText}>
+                  {he.createGameCreateCommunityCta}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               style={({ pressed }) => [
                 createSheetStyles.cancelBtn,
@@ -761,6 +787,16 @@ const createSheetStyles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   choiceLocked: { opacity: 0.55 },
+  createCommunityCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#1E40AF',
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+  },
+  createCommunityCtaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   choiceIcon: {
     width: 44,
     height: 44,
