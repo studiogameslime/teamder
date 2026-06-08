@@ -780,6 +780,10 @@ export const he = {
   communityCoverUploading: 'מעלה…',
   communityCoverUploadFailed: 'העלאת תמונת הרקע נכשלה. נסה שוב.',
   communityCoverUpdated: 'תמונת הרקע עודכנה',
+  // Cover image picker (gallery + device upload)
+  coverPickerTitle: 'תמונת נושא לקבוצה',
+  coverPickerGalleryLabel: 'בחר מהגלריה שלנו',
+  coverPickerUpload: 'העלאה מהמכשיר',
   // ── Friends ──────────────────────────────────────────────────────
   friendsTitle: 'חברים',
   friendsRequestsTitle: 'בקשות חברות',

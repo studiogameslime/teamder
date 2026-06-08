@@ -341,6 +341,7 @@ export function PublicGroupsFeedScreen() {
           locationLine={locationLine}
           description={g.description}
           coverPhotoUrl={g.coverPhotoUrl}
+          coverImageId={g.coverImageId}
           memberCount={memberCount}
           status={status}
           onPress={() => {

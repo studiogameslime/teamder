@@ -614,6 +614,14 @@ export interface Group {
   coverPhotoUrl?: string;
 
   /**
+   * Built-in cover chosen from the in-app gallery (id from
+   * src/data/coverImages.ts). Used when there's no uploaded
+   * `coverPhotoUrl`. A new group gets a random one at creation; the
+   * admin can switch to another gallery image or upload their own.
+   */
+  coverImageId?: string;
+
+  /**
    * @deprecated Recurring-game configuration moved to per-Game
    * settings. The Game wizard now exposes a "recurring game" toggle
    * that drives `registrationOpensAt`. The community no longer
@@ -741,6 +749,8 @@ export interface GroupPublic {
   lng?: number;
   /** Mirrored from Group. Lets the public showcase/feed render the cover. */
   coverPhotoUrl?: string;
+  /** Mirrored from Group — built-in gallery cover id. */
+  coverImageId?: string;
   /** @deprecated Recurring schedule moved to per-Game. Legacy reads only. */
   preferredDays?: WeekdayIndex[];
   /** @deprecated See `preferredDays`. */

@@ -245,6 +245,8 @@ export const groupService = {
     lng?: number;
     /** Total community size cap. */
     maxMembers?: number;
+    /** Built-in gallery cover id (random default chosen at creation). */
+    coverImageId?: string;
     creator: User;
     // ── Removed (now per-Game) ────────────────────────────────────
     // fieldName / fieldAddress / street / addressNote / preferredDays /
@@ -290,6 +292,7 @@ export const groupService = {
       isOpen: input.isOpen,
       contactPhone: input.contactPhone,
       rules: input.rules,
+      coverImageId: input.coverImageId,
       creatorId: input.creator.id,
       adminIds: [input.creator.id],
       playerIds: [input.creator.id],
@@ -885,6 +888,7 @@ export const groupService = {
         | 'city'
         | 'maxMembers'
         | 'coverPhotoUrl'
+        | 'coverImageId'
       >
     >,
   ): Promise<Group> {
@@ -928,6 +932,7 @@ export const groupService = {
       'city',
       'maxMembers',
       'coverPhotoUrl',
+      'coverImageId',
     ] as const) {
       if (k in patch) (cleaned as Record<string, unknown>)[k] = patch[k];
     }
@@ -971,6 +976,7 @@ export const groupService = {
       ...(cleaned.isOpen !== undefined ? { isOpen: cleaned.isOpen } : {}),
       ...(cleaned.contactPhone !== undefined ? { contactPhone: cleaned.contactPhone } : {}),
       ...(cleaned.coverPhotoUrl !== undefined ? { coverPhotoUrl: cleaned.coverPhotoUrl } : {}),
+      ...(cleaned.coverImageId !== undefined ? { coverImageId: cleaned.coverImageId } : {}),
       updatedAt: Date.now(),
     };
     // Only fire the public-projection update if there's something to
@@ -1591,6 +1597,9 @@ function toPublic(g: Group): GroupPublic {
   // the admin had set a real photo.
   if (typeof g.coverPhotoUrl === 'string' && g.coverPhotoUrl.length > 0) {
     out.coverPhotoUrl = g.coverPhotoUrl;
+  }
+  if (typeof g.coverImageId === 'string' && g.coverImageId.length > 0) {
+    out.coverImageId = g.coverImageId;
   }
   // Pass through legacy fields if present so re-publishing a
   // pre-refactor group via this helper doesn't blank them out.

@@ -47,6 +47,8 @@ interface GroupStore {
     lat?: number;
     lng?: number;
     maxMembers?: number;
+    /** Built-in gallery cover id (random default at creation). */
+    coverImageId?: string;
     creator: User;
   }) => Promise<Group>;
   requestJoin: (

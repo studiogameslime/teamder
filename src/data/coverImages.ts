@@ -21,9 +21,19 @@ export interface CoverDef {
 }
 
 export const COVER_IMAGES: CoverDef[] = [
-  // Seed entry — the existing default stadium background. Replace / extend
-  // with the curated set as images land in src/assets/images/covers/.
-  { id: 'c01', source: require('../assets/images/stadium-bg.png') },
+  // The 10 curated covers in src/assets/images/groupImages/. c01 is the
+  // original default stadium; c02–c10 are the new gallery images. Ids are
+  // stable forever (persisted on the group doc).
+  { id: 'c01', source: require('../assets/images/groupImages/default.png') },
+  { id: 'c02', source: require('../assets/images/groupImages/1.png') },
+  { id: 'c03', source: require('../assets/images/groupImages/2.png') },
+  { id: 'c04', source: require('../assets/images/groupImages/3.png') },
+  { id: 'c05', source: require('../assets/images/groupImages/4.png') },
+  { id: 'c06', source: require('../assets/images/groupImages/5.png') },
+  { id: 'c07', source: require('../assets/images/groupImages/6.png') },
+  { id: 'c08', source: require('../assets/images/groupImages/7.png') },
+  { id: 'c09', source: require('../assets/images/groupImages/8.png') },
+  { id: 'c10', source: require('../assets/images/groupImages/9.png') },
 ];
 
 /** Resolve a cover id → its bundled image source, or null if unknown. */

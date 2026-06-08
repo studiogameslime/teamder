@@ -49,6 +49,9 @@ import { PressableScale } from '@/components/PressableScale';
 const STADIUM_BG: ImageSourcePropType =
   require('../../assets/images/stadium-bg.png');
 
+// Resolve a built-in gallery cover id → its bundled image.
+import { getCoverSource } from '@/data/coverImages';
+
 export type CommunityCardStatus =
   | 'admin'
   | 'member'
@@ -64,6 +67,8 @@ interface Props {
   /** Optional remote URL for the community cover photo. When absent we
    *  render a brand-blue gradient with a faded ball icon. */
   coverPhotoUrl?: string;
+  /** Built-in gallery cover id (used when there's no uploaded photo). */
+  coverImageId?: string;
   memberCount: number;
   status: CommunityCardStatus;
   /** Tap whole card → details. */
@@ -80,6 +85,7 @@ export function CommunityCard({
   locationLine,
   description,
   coverPhotoUrl,
+  coverImageId,
   memberCount,
   status,
   onPress,
@@ -101,7 +107,11 @@ export function CommunityCard({
           falls back to). A dark gradient overlay keeps badge contrast
           high regardless of which photo surfaces. */}
       <ImageBackground
-        source={coverPhotoUrl ? { uri: coverPhotoUrl } : STADIUM_BG}
+        source={
+          coverPhotoUrl
+            ? { uri: coverPhotoUrl }
+            : getCoverSource(coverImageId) ?? STADIUM_BG
+        }
         style={styles.cover}
         resizeMode="cover"
       >

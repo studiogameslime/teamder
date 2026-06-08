@@ -20,6 +20,7 @@ import {
   EMPTY_GROUP_FORM_VALUES,
   type GroupFormValues,
 } from '@/screens/groups/GroupWizardForm';
+import { pickRandomCoverId } from '@/data/coverImages';
 
 export function CreateGroupScreen() {
   const nav = useNavigation<
@@ -66,6 +67,9 @@ export function CreateGroupScreen() {
         maxMembers: Number.isFinite(parsedMaxMembers)
           ? parsedMaxMembers
           : undefined,
+        // Random cover from the built-in gallery — the admin can switch
+        // to another gallery image or upload their own afterwards.
+        coverImageId: pickRandomCoverId(),
         creator: user,
       });
       logEvent(AnalyticsEvent.GroupCreated, { groupId: group.id });

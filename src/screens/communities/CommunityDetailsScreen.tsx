@@ -46,6 +46,7 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHero';
+import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
@@ -106,6 +107,7 @@ export function CommunityDetailsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
   // Celebration burst when arriving fresh from creating this group.
@@ -184,7 +186,38 @@ export function CommunityDetailsScreen() {
 
   // ─── Action handlers ────────────────────────────────────────────────────
 
-  const handleEditCover = async () => {
+  // Tapping the hero's "change cover" affordance opens the picker
+  // (gallery + device upload).
+  const handleEditCover = () => {
+    if (!group || !me) return;
+    setCoverPickerOpen(true);
+  };
+
+  // Pick one of the curated built-in covers — clears any uploaded photo
+  // so the gallery image takes effect.
+  const handleSelectBuiltinCover = async (coverImageId: string) => {
+    if (!group || !me) return;
+    setCoverPickerOpen(false);
+    try {
+      const fresh = await groupService.updateGroupMetadata(group.id, me.id, {
+        coverImageId,
+        coverPhotoUrl: '',
+      });
+      setGroup(fresh);
+      logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
+      toast.success(he.communityCoverUpdated);
+    } catch (e) {
+      logError('updateGroupMetadata', e, {
+        screen: 'CommunityDetailsScreen',
+        groupId: group.id,
+        field: 'coverImageId',
+      });
+      appAlert(he.error, he.communityCoverUploadFailed);
+    }
+  };
+
+  // Upload a custom cover from the device gallery.
+  const handleUploadCover = async () => {
     if (!group || !me || uploadingCover) return;
     setUploadingCover(true);
     const res = await pickAndUploadGroupCover(group.id);
@@ -205,6 +238,7 @@ export function CommunityDetailsScreen() {
         coverPhotoUrl: res.url,
       });
       setGroup(fresh);
+      setCoverPickerOpen(false);
       logEvent(AnalyticsEvent.PhotoUploaded, { source: 'community_cover' });
       logEvent(AnalyticsEvent.CommunityCoverUploaded, { groupId: group.id });
       toast.success(he.communityCoverUpdated);
@@ -530,6 +564,7 @@ export function CommunityDetailsScreen() {
           name={group.name}
           memberCount={group.playerIds?.length ?? 0}
           coverUrl={group.coverPhotoUrl}
+          coverImageId={group.coverImageId}
           canEditCover={isAdmin}
           uploadingCover={uploadingCover}
           onBackPress={() => nav.goBack()}
@@ -722,6 +757,16 @@ export function CommunityDetailsScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={sections}
+      />
+
+      <CoverImagePicker
+        visible={coverPickerOpen}
+        selectedId={group.coverImageId}
+        hasUploadedPhoto={!!group.coverPhotoUrl}
+        uploading={uploadingCover}
+        onSelectBuiltin={handleSelectBuiltinCover}
+        onUploadFromDevice={handleUploadCover}
+        onClose={() => setCoverPickerOpen(false)}
       />
 
       <ConfirmDialog

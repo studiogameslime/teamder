@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
+import { getCoverSource } from '@/data/coverImages';
 
 interface Props {
   name: string;
@@ -38,6 +39,8 @@ interface Props {
    * default when undefined/empty.
    */
   coverUrl?: string;
+  /** Built-in gallery cover id (used when there's no uploaded coverUrl). */
+  coverImageId?: string;
   /** Show the camera edit affordance (coaches only). */
   canEditCover?: boolean;
   /** Spinner over the edit button while an upload is in flight. */
@@ -53,15 +56,17 @@ export function CommunityStadiumHero({
   name,
   memberCount,
   coverUrl,
+  coverImageId,
   canEditCover = false,
   uploadingCover = false,
   onBackPress,
   onMenuPress,
   onEditCoverPress,
 }: Props) {
+  // Priority: uploaded photo → built-in gallery pick → bundled default.
   const source: ImageSourcePropType = coverUrl
     ? { uri: coverUrl }
-    : STADIUM_BG;
+    : getCoverSource(coverImageId) ?? STADIUM_BG;
   return (
     <View style={styles.wrap}>
       <ImageBackground
