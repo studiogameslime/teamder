@@ -36,8 +36,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { RadiusSelector } from './RadiusSelector';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { FieldType, GameFormat } from '@/types';
+import { haversineKm } from '@/utils/geo';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -64,7 +66,16 @@ export interface GameFilters {
   requiresApproval: boolean | null;
   /** When true, hide games that are full (no spots in players + waitlist). */
   onlyAvailable: boolean;
+  /** Match games within `nearbyRadiusKm` of the viewer's location. The
+   *  list screen resolves the viewer's coords and passes them to
+   *  `applyGameFilters` via ctx. */
+  nearby: boolean;
+  /** Radius in km — only consulted when `nearby` is true. */
+  nearbyRadiusKm: number;
 }
+
+/** Default "near me" radius — a metro-area cluster. */
+export const DEFAULT_GAME_NEARBY_RADIUS_KM = 25;
 
 export const EMPTY_GAME_FILTERS: GameFilters = {
   when: 'any',
@@ -74,6 +85,8 @@ export const EMPTY_GAME_FILTERS: GameFilters = {
   cost: 'any',
   requiresApproval: null,
   onlyAvailable: false,
+  nearby: false,
+  nearbyRadiusKm: DEFAULT_GAME_NEARBY_RADIUS_KM,
 };
 
 export function isFiltersEmpty(f: GameFilters): boolean {
@@ -84,7 +97,8 @@ export function isFiltersEmpty(f: GameFilters): boolean {
     f.visibility === null &&
     f.cost === 'any' &&
     f.requiresApproval === null &&
-    !f.onlyAvailable
+    !f.onlyAvailable &&
+    !f.nearby
   );
 }
 
@@ -97,6 +111,7 @@ export function activeFiltersCount(f: GameFilters): number {
   if (f.cost !== 'any') n += 1;
   if (f.requiresApproval !== null) n += 1;
   if (f.onlyAvailable) n += 1;
+  if (f.nearby) n += 1;
   return n;
 }
 
@@ -147,6 +162,8 @@ interface Props {
    * the effect of each toggle without closing the sheet.
    */
   matchCount?: number;
+  /** Optional caption under the "near me" toggle (e.g. resolved city). */
+  nearbyCaption?: string;
 }
 
 export function GameFilterSheet({
@@ -155,6 +172,7 @@ export function GameFilterSheet({
   onChange,
   onClose,
   matchCount,
+  nearbyCaption,
 }: Props) {
   const toggleFormat = (f: GameFormat) =>
     onChange({
@@ -214,6 +232,32 @@ export function GameFilterSheet({
                 ))}
               </PillRow>
             </Section>
+
+            {/* Near me — discovery by distance. Toggling reveals the
+                radius pills. The list screen resolves the viewer's GPS. */}
+            <Pressable
+              onPress={() => onChange({ ...filters, nearby: !filters.nearby })}
+              style={styles.switchRow}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>{he.filterNearby}</Text>
+                {nearbyCaption ? (
+                  <Text style={styles.switchCaption}>{nearbyCaption}</Text>
+                ) : null}
+              </View>
+              <Switch
+                value={filters.nearby}
+                onValueChange={(v) => onChange({ ...filters, nearby: v })}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </Pressable>
+            {filters.nearby ? (
+              <RadiusSelector
+                value={filters.nearbyRadiusKm}
+                onChange={(km) => onChange({ ...filters, nearbyRadiusKm: km })}
+              />
+            ) : null}
 
             {/* Format multi-select */}
             <Section title={he.createGameFormat}>
@@ -461,6 +505,14 @@ function fieldTypeLabel(f: FieldType): string {
 
 // ─── Filter application — pure function consumed by the list screen ────
 
+/** Context for the "near me" filter — the list screen resolves the
+ *  viewer's coords (and an optional city fallback for legacy games that
+ *  predate field-coords) and passes them here. */
+export interface GameApplyContext {
+  nearbyLatLng?: { lat: number; lng: number };
+  nearbyCityFallback?: string;
+}
+
 export function applyGameFilters<T extends {
   startsAt: number;
   format?: GameFormat;
@@ -470,7 +522,10 @@ export function applyGameFilters<T extends {
   requiresApproval?: boolean;
   maxPlayers: number;
   players: string[];
-}>(games: T[], f: GameFilters): T[] {
+  fieldLat?: number;
+  fieldLng?: number;
+  city?: string;
+}>(games: T[], f: GameFilters, ctx: GameApplyContext = {}): T[] {
   return games.filter((g) => {
     if (!gameMatchesWhen(g.startsAt, f.when)) return false;
     if (f.formats.length > 0 && (!g.format || !f.formats.includes(g.format))) {
@@ -497,6 +552,30 @@ export function applyGameFilters<T extends {
       return false;
     }
     if (f.onlyAvailable && g.players.length >= g.maxPlayers) return false;
+    if (f.nearby) {
+      // Preferred: radius via GPS against the game's field coords.
+      if (
+        ctx.nearbyLatLng &&
+        typeof g.fieldLat === 'number' &&
+        typeof g.fieldLng === 'number'
+      ) {
+        const km = haversineKm(ctx.nearbyLatLng, {
+          lat: g.fieldLat,
+          lng: g.fieldLng,
+        });
+        if (km > f.nearbyRadiusKm) return false;
+        return true;
+      }
+      // Fallback for legacy games without field coords — exact city match.
+      if (ctx.nearbyCityFallback && g.city) {
+        return (
+          g.city.trim().toLowerCase() ===
+          ctx.nearbyCityFallback.trim().toLowerCase()
+        );
+      }
+      // Can't verify distance — exclude from a "near me" result.
+      return false;
+    }
     return true;
   });
 }
@@ -591,6 +670,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  switchCaption: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+    textAlign: RTL_LABEL_ALIGN,
+    width: '100%',
   },
   footer: {
     flexDirection: 'row',

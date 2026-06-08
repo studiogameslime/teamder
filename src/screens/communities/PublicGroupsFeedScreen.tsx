@@ -51,86 +51,10 @@ import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { resolveNearbyLocation } from '@/utils/nearby';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
-
-/**
- * Determine the viewer's current city for the "קרוב אליי" filter.
- *
- * Order of attempts:
- *   1. GPS → reverse-geocode (expo-location)
- *   2. Saved `availability.preferredCity` from the profile
- *   3. null (filter excludes everything until something resolves)
- */
-/**
- * Resolve the viewer's location for the "nearby" filter.
- *
- * Returns:
- *   - `latLng` — preferred path. Used for true radius-based matching
- *     via Haversine, robust to city-name spelling variants.
- *   - `city`   — fallback. For legacy groups that lack lat/lng we still
- *     fall back to the old exact-name match.
- *
- * Order of attempts:
- *   1. GPS (`Location.getCurrentPositionAsync`) → both latLng and a
- *      reverse-geocoded city for fallback.
- *   2. Saved `availability.preferredCity` from the profile — city only,
- *      no coords (we don't geocode here to avoid an extra network hop
- *      on every filter open).
- *   3. `{ latLng: null, city: null }` — filter then returns nothing,
- *      caller surfaces an empty-state.
- */
-async function resolveNearbyLocation(
-  fallbackCity: string | undefined,
-): Promise<{ latLng: { lat: number; lng: number } | null; city: string | null }> {
-  let Location:
-    | typeof import('expo-location')
-    | null = null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Location = require('expo-location');
-  } catch {
-    Location = null;
-  }
-  if (Location) {
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.granted) {
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        const latLng = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        // Best-effort reverse-geocode for the fallback city — failures
-        // are non-fatal because latLng alone is enough for the radius
-        // check on geocoded groups.
-        let city: string | null = null;
-        try {
-          const places = await Location.reverseGeocodeAsync({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          });
-          const place = places[0];
-          city = (place?.city || place?.subregion || place?.region || '').trim() || null;
-        } catch {
-          // ignore
-        }
-        return { latLng, city: city ?? fallbackCity?.trim() ?? null };
-      }
-    } catch (err) {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.warn('[nearby] location resolve failed', err);
-      }
-    }
-  }
-  // GPS unavailable / denied → city-only fallback (no radius matching
-  // possible without coords).
-  return { latLng: null, city: fallbackCity?.trim() ?? null };
-}
 
 export function PublicGroupsFeedScreen() {
   const nav = useNavigation<Nav>();

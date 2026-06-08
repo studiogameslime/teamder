@@ -42,9 +42,11 @@ export function CreateGroupScreen() {
     if (cityVal) {
       try {
         const { geocodeCity } = await import('@/services/geocodeService');
+        // 7s cap (was 3.5s) so the city reliably resolves to coords on a
+        // slow link — the group needs them for the "near me" radius filter.
         coords = await Promise.race([
           geocodeCity(cityVal),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000)),
         ]);
       } catch {
         coords = null;

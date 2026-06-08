@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { RadiusSelector } from './RadiusSelector';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { GroupPublic, WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -152,6 +153,12 @@ export function CommunityFilterSheet({
               value={filters.nearby}
               onChange={(v) => onChange({ ...filters, nearby: v })}
             />
+            {filters.nearby ? (
+              <RadiusSelector
+                value={filters.nearbyRadiusKm}
+                onChange={(km) => onChange({ ...filters, nearbyRadiusKm: km })}
+              />
+            ) : null}
           </ScrollView>
 
           <View style={styles.footer}>

@@ -53,7 +53,9 @@ import {
   applyGameFilters,
   activeFiltersCount,
   type GameFilters,
+  type GameApplyContext,
 } from '@/components/GameFilterSheet';
+import { resolveNearbyLocation, type NearbyLocation } from '@/utils/nearby';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -107,6 +109,29 @@ export function GamesListScreen() {
 
   const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // "Near me" location — resolved (GPS, with city fallback) only while the
+  // filter is on. Held null when off so re-toggling re-prompts.
+  const [nearbyLoc, setNearbyLoc] = useState<NearbyLocation | null>(null);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  useEffect(() => {
+    if (!filters.nearby) {
+      setNearbyLoc(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      setNearbyLoading(true);
+      const loc = await resolveNearbyLocation(user?.availability?.preferredCity);
+      if (alive) {
+        setNearbyLoc(loc);
+        setNearbyLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [filters.nearby, user?.availability?.preferredCity]);
 
   // First-run hint pointing at the FAB. Surfaces once per device,
   // dismissible, never blocks taps on the FAB itself.
@@ -290,10 +315,36 @@ export function GamesListScreen() {
 
   const sortByStart = (a: Game, b: Game) => a.startsAt - b.startsAt;
 
+  // "Near me" context for the discovery list. While location is still
+  // resolving we pass an empty ctx so nothing matches yet (predictable,
+  // like the communities feed).
+  const gameCtx: GameApplyContext = useMemo(
+    () => ({
+      nearbyLatLng: nearbyLoc?.latLng ?? undefined,
+      nearbyCityFallback: nearbyLoc?.city ?? undefined,
+    }),
+    [nearbyLoc],
+  );
+  // When "near me" is on but the location isn't ready, suppress the radius
+  // filter on the discovery list (it would otherwise hide everything).
+  const restFilters = useMemo(
+    () =>
+      filters.nearby && (nearbyLoading || !nearbyLoc)
+        ? { ...filters, nearby: false }
+        : filters,
+    [filters, nearbyLoading, nearbyLoc],
+  );
+
   // Single sectioned list (like Communities): the games I'm registered to on
-  // top, everything else below — no tabs.
+  // top, everything else below — no tabs. "Near me" is a DISCOVERY filter, so
+  // it applies to the rest list only — my own games always show regardless of
+  // distance (`nearby: false` for mine).
   const mineList = useMemo(
-    () => applyGameFilters(myGames.filter(isVisibleInMyGames), filters).sort(sortByStart),
+    () =>
+      applyGameFilters(myGames.filter(isVisibleInMyGames), {
+        ...filters,
+        nearby: false,
+      }).sort(sortByStart),
     [myGames, filters],
   );
   const restList = useMemo(() => {
@@ -304,8 +355,10 @@ export function GamesListScreen() {
       .forEach((g) => {
         if (!mineIds.has(g.id)) set.set(g.id, g);
       });
-    return applyGameFilters(Array.from(set.values()), filters).sort(sortByStart);
-  }, [communityGames, openGames, filters, mineList]);
+    return applyGameFilters(Array.from(set.values()), restFilters, gameCtx).sort(
+      sortByStart,
+    );
+  }, [communityGames, openGames, restFilters, gameCtx, mineList]);
 
   const filterCount = activeFiltersCount(filters);
   const isEmpty = mineList.length === 0 && restList.length === 0;
@@ -529,6 +582,13 @@ export function GamesListScreen() {
       <GameFilterSheet
         visible={filterOpen}
         filters={filters}
+        nearbyCaption={
+          filters.nearby
+            ? nearbyLoading
+              ? he.locationResolving
+              : nearbyLoc?.city ?? undefined
+            : undefined
+        }
         matchCount={mineList.length + restList.length}
         onChange={(next) => {
           // Compare before/after counts so we can differentiate

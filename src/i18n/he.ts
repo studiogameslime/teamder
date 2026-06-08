@@ -585,6 +585,9 @@ export const he = {
   filterOpenOnly: 'פתוחות בלבד',
   filterHasRoom: 'מקום פנוי',
   filterNearby: 'קרוב אליי',
+  // Radius selector shown under the "near me" toggle (games + communities)
+  filterRadiusLabel: (km: number) => `טווח: עד ${km} ק"מ`,
+  filterRadiusKm: (km: number) => `${km}`,
 
   // Card actions
   communityEnter: 'כניסה לקבוצה',
