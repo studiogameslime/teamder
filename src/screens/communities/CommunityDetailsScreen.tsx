@@ -14,7 +14,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   RefreshControl,
@@ -24,6 +23,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import {
   RouteProp,
   useFocusEffect,
@@ -192,11 +192,11 @@ export function CommunityDetailsScreen() {
       setUploadingCover(false);
       // 'cancelled' is a no-op — the user backed out of the picker.
       if (res.reason === 'permission') {
-        Alert.alert(he.error, he.profilePhotoPermissionDenied);
+        appAlert(he.error, he.profilePhotoPermissionDenied);
       } else if (res.reason === 'unavailable') {
-        Alert.alert(he.error, he.profilePhotoUnavailable);
+        appAlert(he.error, he.profilePhotoUnavailable);
       } else if (res.reason === 'network') {
-        Alert.alert(he.error, he.communityCoverUploadFailed);
+        appAlert(he.error, he.communityCoverUploadFailed);
       }
       return;
     }
@@ -215,7 +215,7 @@ export function CommunityDetailsScreen() {
         field: 'coverPhotoUrl',
       });
       if (__DEV__) console.warn('[community] cover meta save failed', e);
-      Alert.alert(he.error, he.communityCoverUploadFailed);
+      appAlert(he.error, he.communityCoverUploadFailed);
     } finally {
       setUploadingCover(false);
     }
@@ -240,7 +240,7 @@ export function CommunityDetailsScreen() {
         inviteCount: inviteIds.length,
       });
       if (__DEV__) console.warn('[community] invite friends failed', e);
-      Alert.alert(he.error, he.communityInviteFriendsFailed);
+      appAlert(he.error, he.communityInviteFriendsFailed);
     } finally {
       setInvitingBusy(false);
     }
@@ -249,7 +249,7 @@ export function CommunityDetailsScreen() {
   const handleLeave = () => {
     if (!group || !me) return;
     if (group.adminIds.includes(me.id) && group.adminIds.length === 1) {
-      Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
+      appAlert(he.error, he.communityDetailsLeaveLastAdmin);
       return;
     }
     setLeaveOpen(true);
@@ -266,9 +266,9 @@ export function CommunityDetailsScreen() {
       const msg = (e as Error).message;
       setLeaveOpen(false);
       if (msg === 'LAST_ADMIN') {
-        Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
+        appAlert(he.error, he.communityDetailsLeaveLastAdmin);
       } else {
-        Alert.alert(he.error, String(msg ?? e));
+        appAlert(he.error, String(msg ?? e));
       }
     } finally {
       setBusyLeave(false);
@@ -648,7 +648,7 @@ export function CommunityDetailsScreen() {
                       const mm = String(d.getMonth() + 1).padStart(2, '0');
                       const hh = String(d.getHours()).padStart(2, '0');
                       const mn = String(d.getMinutes()).padStart(2, '0');
-                      Alert.alert(
+                      appAlert(
                         he.communityNextGameLocked,
                         he.communityNextGameLockedBody(
                           `${dd}.${mm} ${hh}:${mn}`,

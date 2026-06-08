@@ -8,7 +8,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -140,7 +140,7 @@ export function AvailabilityEditScreen() {
 
   const save = async () => {
     if (!cityIsValid) {
-      Alert.alert(he.error, he.availabilityHomeCityMustPick);
+      appAlert(he.error, he.availabilityHomeCityMustPick);
       return;
     }
     setBusy(true);
@@ -186,7 +186,7 @@ export function AvailabilityEditScreen() {
         acceptsFillerPush,
       });
       if (__DEV__) console.warn('[availability] save failed', e);
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      appAlert(he.error, String((e as Error).message ?? e));
     } finally {
       setBusy(false);
     }

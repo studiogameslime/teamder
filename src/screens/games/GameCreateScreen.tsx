@@ -3,7 +3,8 @@
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -169,7 +170,7 @@ export function GameCreateScreen() {
         screen: 'GameCreateScreen',
         userId: user.id,
       });
-      Alert.alert(
+      appAlert(
         he.createGameOrphanErrorTitle,
         he.createGameOrphanErrorBody,
       );
@@ -291,7 +292,7 @@ export function GameCreateScreen() {
     // legitimately open in the past, so skip the check for those.
     if (!v.recurringGameEnabled && v.startsAt < Date.now()) {
       const proceed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
+        appAlert(
           he.createGamePastDateTitle,
           he.createGamePastDateBody,
           [

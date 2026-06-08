@@ -15,13 +15,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -205,7 +205,7 @@ export function LiveMatchScreen() {
     if (!gameId || !me) return;
     // Reset is the one irreversible timer control — confirm before wiping
     // the running clock.
-    Alert.alert(
+    appAlert(
       he.liveTimerResetConfirmTitle,
       he.liveTimerResetConfirmBody,
       [

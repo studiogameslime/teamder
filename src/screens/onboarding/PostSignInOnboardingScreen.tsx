@@ -8,13 +8,13 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -67,11 +67,11 @@ export function PostSignInOnboardingScreen() {
     setUploading(false);
     if (!res.ok) {
       if (res.reason === 'permission') {
-        Alert.alert(he.error, he.profilePhotoPermissionDenied);
+        appAlert(he.error, he.profilePhotoPermissionDenied);
       } else if (res.reason === 'network') {
-        Alert.alert(he.error, he.profilePhotoUploadFailed);
+        appAlert(he.error, he.profilePhotoUploadFailed);
       } else if (res.reason === 'unavailable') {
-        Alert.alert(he.error, he.profilePhotoUnavailable);
+        appAlert(he.error, he.profilePhotoUnavailable);
       }
       return;
     }
@@ -107,7 +107,7 @@ export function PostSignInOnboardingScreen() {
       });
     } catch (err) {
       if (__DEV__) console.warn('[onboarding] complete failed', err);
-      Alert.alert(he.error, he.signInFailed);
+      appAlert(he.error, he.signInFailed);
     } finally {
       setBusy(false);
     }

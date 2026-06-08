@@ -4,7 +4,8 @@
 // label differ.
 
 import React from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
@@ -104,7 +105,7 @@ export function CreateGroupScreen() {
       } else if (err.message) {
         msg = err.message;
       }
-      Alert.alert(he.error, msg);
+      appAlert(he.error, msg);
     }
   };
 

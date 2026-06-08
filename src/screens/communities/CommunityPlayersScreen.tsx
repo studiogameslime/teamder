@@ -7,7 +7,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -98,7 +98,7 @@ export function CommunityPlayersScreen() {
   const handleRemoveMember = useCallback(
     (target: User) => {
       if (!group || !me) return;
-      Alert.alert(
+      appAlert(
         he.communityRemoveMemberConfirmTitle,
         he.communityRemoveMemberConfirmBody(target.name),
         [
@@ -114,7 +114,7 @@ export function CommunityPlayersScreen() {
               } catch (e) {
                 if (__DEV__) console.warn('[removeMember] failed', e);
                 const code = (e as Error)?.message;
-                Alert.alert(
+                appAlert(
                   he.error,
                   code === 'CANNOT_REMOVE_CREATOR'
                     ? he.communityRemoveMemberCreatorBlocked

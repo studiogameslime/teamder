@@ -14,7 +14,8 @@
 // re-prompting (the save handler navigates away itself).
 
 import { useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import {  } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { useNavigation } from '@react-navigation/native';
 import { he } from '@/i18n/he';
 
@@ -45,7 +46,7 @@ export function useUnsavedChangesGuard({ isDirty, savingRef, onSave }: Options) 
     }).addListener('beforeRemove', (e) => {
       if (!dirtyRef.current || saving.current) return;
       e.preventDefault();
-      Alert.alert(he.profileEditUnsavedTitle, he.profileEditUnsavedBody, [
+      appAlert(he.profileEditUnsavedTitle, he.profileEditUnsavedBody, [
         {
           text: he.profileEditUnsavedDiscard,
           style: 'destructive',

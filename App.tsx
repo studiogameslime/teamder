@@ -147,6 +147,7 @@ import { storage } from '@/services/storage';
 import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
+import { AppDialogHost } from '@/components/AppDialog';
 import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { MaintenanceGate, AnnouncementBanner } from '@/components/RemoteGates';
@@ -770,6 +771,7 @@ export default function App() {
         {/* Mounted at the navigator level so toasts overlay every screen
             but stay below RN's modal dialogs. */}
         <ToastHost />
+        <AppDialogHost />
         <BannerHost />
       </NavigationContainer>
 

@@ -11,7 +11,8 @@
 // user was stuck.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { toast } from '@/components/Toast';
 import {
@@ -70,7 +71,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       await load();
     } catch (e) {
       if (__DEV__) console.warn('[friendAction] cancel failed', e);
-      Alert.alert(he.error, he.friendsActionFailed);
+      appAlert(he.error, he.friendsActionFailed);
     } finally {
       setBusy(false);
     }
@@ -82,7 +83,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
     // tap; pulling it back should be a deliberate decision so we don't
     // surface a "did the button do anything?" interaction.
     if (rel === 'outgoing') {
-      Alert.alert(
+      appAlert(
         he.friendsCancelRequestConfirm,
         he.friendsCancelRequestConfirmBody(otherName),
         [
@@ -108,7 +109,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
       await load();
     } catch (e) {
       if (__DEV__) console.warn('[friendAction] failed', e);
-      Alert.alert(he.error, he.friendsActionFailed);
+      appAlert(he.error, he.friendsActionFailed);
     } finally {
       setBusy(false);
     }

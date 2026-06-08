@@ -2,7 +2,8 @@
 // the existing game's saved values and submitting via updateGameV2.
 
 import React, { useEffect, useState } from 'react';
-import { Alert, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -174,7 +175,7 @@ export function GameEditScreen() {
       (game.guests?.length ?? 0) +
       (game.pending?.length ?? 0);
     if (newMaxPlayers < registeredCount) {
-      Alert.alert(
+      appAlert(
         he.editGameCapacityTooLowTitle,
         he.editGameCapacityTooLowBody(registeredCount, newMaxPlayers),
       );
@@ -183,7 +184,7 @@ export function GameEditScreen() {
     // Warn before moving kickoff into the past (FV-03).
     if (!v.recurringGameEnabled && v.startsAt < Date.now()) {
       const proceed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
+        appAlert(
           he.createGamePastDateTitle,
           he.createGamePastDateBody,
           [
@@ -208,7 +209,7 @@ export function GameEditScreen() {
     const formatChanged = v.format !== game.format;
     if (notifiableCount > 0 && (timeChanged || fieldChanged || formatChanged)) {
       const proceed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
+        appAlert(
           he.editGameNotifyTitle,
           he.editGameNotifyBody(notifiableCount),
           [
@@ -283,7 +284,7 @@ export function GameEditScreen() {
       if (e.code === 'GAME_OVERLAP' && e.conflict) {
         const ts = new Date(e.conflict.startsAt);
         const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
-        Alert.alert(
+        appAlert(
           he.createGameOverlapTitle,
           he.createGameOverlapBody(
             e.conflict.title || he.createGameOverlapUnknownTitle,
@@ -293,11 +294,11 @@ export function GameEditScreen() {
         return;
       }
       if (e.code === 'GAME_REG_AFTER_KICKOFF') {
-        Alert.alert(he.editGameRegAfterKickoffTitle, he.editGameRegAfterKickoffBody);
+        appAlert(he.editGameRegAfterKickoffTitle, he.editGameRegAfterKickoffBody);
         return;
       }
       if (e.code === 'GAME_ALREADY_STARTED') {
-        Alert.alert(he.editGameAlreadyStartedTitle, he.editGameAlreadyStartedBody);
+        appAlert(he.editGameAlreadyStartedTitle, he.editGameAlreadyStartedBody);
         nav.replace('MatchDetails', { gameId: game.id });
         return;
       }

@@ -7,7 +7,6 @@
 
 import React, { useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -179,7 +179,7 @@ export function NotificationsSettingsScreen() {
         screen: 'NotificationsSettingsScreen',
         userId: user.id,
       });
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      appAlert(he.error, String((e as Error).message ?? e));
     } finally {
       setBusy(false);
     }

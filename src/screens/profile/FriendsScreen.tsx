@@ -11,7 +11,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,6 +20,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { deepLinkService } from '@/services/deepLinkService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -95,7 +95,7 @@ export function FriendsScreen() {
       await load();
     } catch (e) {
       if (__DEV__) console.warn('[friends] accept failed', e);
-      Alert.alert(he.error, he.friendsActionFailed);
+      appAlert(he.error, he.friendsActionFailed);
     } finally {
       setBusyId(null);
     }
@@ -109,7 +109,7 @@ export function FriendsScreen() {
       await load();
     } catch (e) {
       if (__DEV__) console.warn('[friends] decline failed', e);
-      Alert.alert(he.error, he.friendsActionFailed);
+      appAlert(he.error, he.friendsActionFailed);
     } finally {
       setBusyId(null);
     }
@@ -127,7 +127,7 @@ export function FriendsScreen() {
       await load();
     } catch (e) {
       if (__DEV__) console.warn('[friends] cancel request failed', e);
-      Alert.alert(he.error, he.friendsActionFailed);
+      appAlert(he.error, he.friendsActionFailed);
     } finally {
       setBusyId(null);
     }
@@ -135,7 +135,7 @@ export function FriendsScreen() {
 
   const handleRemove = (friend: User) => {
     if (!me) return;
-    Alert.alert(he.friendsRemoveTitle, he.friendsRemoveBody(friend.name), [
+    appAlert(he.friendsRemoveTitle, he.friendsRemoveBody(friend.name), [
       { text: he.cancel, style: 'cancel' },
       {
         text: he.friendsRemove,
@@ -153,7 +153,7 @@ export function FriendsScreen() {
             await load();
           } catch (e) {
             if (__DEV__) console.warn('[friends] remove failed', e);
-            Alert.alert(he.error, he.friendsActionFailed);
+            appAlert(he.error, he.friendsActionFailed);
           } finally {
             setBusyId(null);
           }

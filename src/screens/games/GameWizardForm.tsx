@@ -27,6 +27,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -257,11 +258,11 @@ export function GameWizardForm({
     if (!values.recurringGameEnabled) return true;
     const v = values.registrationOpensAt;
     if (!v) {
-      Alert.alert(he.error, he.wizardRegOpensRequired);
+      appAlert(he.error, he.wizardRegOpensRequired);
       return false;
     }
     if (v >= values.startsAt) {
-      Alert.alert(he.error, he.wizardRegOpensMustBeBeforeKickoff);
+      appAlert(he.error, he.wizardRegOpensMustBeBeforeKickoff);
       return false;
     }
     return true;
@@ -273,7 +274,7 @@ export function GameWizardForm({
       await onSubmit(values);
     } catch (e) {
       if (__DEV__) console.warn('[gameWizard] submit failed', e);
-      Alert.alert(he.error, he.gameWizardSubmitFailed);
+      appAlert(he.error, he.gameWizardSubmitFailed);
     } finally {
       setBusy(false);
     }

@@ -19,7 +19,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -29,6 +28,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -126,7 +126,7 @@ export function PromoteOrphanScreen() {
   const submit = async () => {
     const trimmedName = name.trim();
     if (trimmedName.length < 2) {
-      Alert.alert(he.promoteOrphanNameTooShortTitle, he.promoteOrphanNameTooShortBody);
+      appAlert(he.promoteOrphanNameTooShortTitle, he.promoteOrphanNameTooShortBody);
       return;
     }
     setSubmitting(true);
@@ -138,7 +138,7 @@ export function PromoteOrphanScreen() {
         city: city.trim() || undefined,
         inviteUserIds,
       });
-      Alert.alert(
+      appAlert(
         he.promoteOrphanSuccessTitle,
         he.promoteOrphanSuccessBody(res.invited),
         [
@@ -161,7 +161,7 @@ export function PromoteOrphanScreen() {
         inviteCount: roster.filter((uid) => includedIds[uid] === true).length,
       });
       const e = err as { code?: string; message?: string };
-      Alert.alert(
+      appAlert(
         he.promoteOrphanErrorTitle,
         e.message ?? he.promoteOrphanErrorBody,
       );

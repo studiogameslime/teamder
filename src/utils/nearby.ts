@@ -6,7 +6,8 @@
 // Shared by PublicGroupsFeedScreen and GamesListScreen so both "near me"
 // filters behave identically.
 
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { he } from '@/i18n/he';
 
 export interface NearbyLocation {
@@ -43,12 +44,36 @@ export async function resolveNearbyLocation(
   if (Location) {
     let canAskAgain = true;
     try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      canAskAgain = perm.canAskAgain;
-      if (perm.granted) {
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+      // Read the CURRENT status first (non-prompting). If it's already
+      // granted we skip the prompt; if it's permanently denied we return
+      // immediately — calling requestForegroundPermissionsAsync() in that
+      // state can hang forever on some Android builds (it never resolves
+      // because the OS won't show a prompt).
+      const cur = await Location.getForegroundPermissionsAsync();
+      let granted = cur.granted;
+      canAskAgain = cur.canAskAgain;
+      if (!granted && canAskAgain) {
+        const req = await Location.requestForegroundPermissionsAsync();
+        granted = req.granted;
+        canAskAgain = req.canAskAgain;
+      }
+      if (granted) {
+        // Cap the GPS fix so a slow/again-hanging sensor doesn't leave the
+        // UI stuck on "locating…" — fall back to a city-only result.
+        const pos = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+        ]);
+        if (!pos) {
+          return {
+            latLng: null,
+            city: fallbackCity?.trim() ?? null,
+            granted: true,
+            canAskAgain,
+          };
+        }
         const latLng = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
@@ -111,7 +136,7 @@ export async function resolveNearbyLocation(
  * back off after calling this so the list isn't left silently empty.
  */
 export function promptLocationDenied(canAskAgain: boolean): void {
-  Alert.alert(
+  appAlert(
     he.locationPermTitle,
     he.locationPermBody,
     canAskAgain

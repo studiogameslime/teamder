@@ -3,7 +3,8 @@
 // (hydrated from the existing community) and the submit label differ.
 
 import React, { useMemo, useState } from 'react';
-import { Alert, Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -110,7 +111,7 @@ export function CommunityEditScreen() {
       if (code === 'GROUP_MAX_BELOW_CURRENT') {
         const current =
           (e as { currentCount?: number }).currentCount ?? 0;
-        Alert.alert(
+        appAlert(
           he.groupMaxBelowCurrentTitle,
           he.groupMaxBelowCurrentBody(current),
         );
@@ -124,7 +125,7 @@ export function CommunityEditScreen() {
         screen: 'CommunityEditScreen',
         groupId: original.id,
       });
-      Alert.alert(he.error, String((e as Error).message ?? e));
+      appAlert(he.error, String((e as Error).message ?? e));
     }
   };
 

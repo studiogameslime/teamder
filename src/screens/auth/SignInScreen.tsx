@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,7 +56,7 @@ export function SignInScreen() {
       }
       // Map known errors to friendly Hebrew. Log raw error to console.
       if (__DEV__) console.warn('[signIn] failed', err);
-      Alert.alert(he.error, friendlySignInError(err));
+      appAlert(he.error, friendlySignInError(err));
     } finally {
       setBusy(false);
     }
@@ -95,7 +95,7 @@ export function SignInScreen() {
       // Still tell the user something went wrong (unless they cancelled) so a
       // transient failure prompts a retry rather than a silent dead button.
       if (!cancelled) {
-        Alert.alert(he.error, friendlySignInError(err));
+        appAlert(he.error, friendlySignInError(err));
       }
     } finally {
       setBusy(false);

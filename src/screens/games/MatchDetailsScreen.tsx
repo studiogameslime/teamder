@@ -13,7 +13,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Linking,
   Modal,
   Pressable,
@@ -25,6 +24,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
@@ -1809,7 +1809,7 @@ export function MatchDetailsScreen() {
                 const guestId = uid.replace(/^guest:/, '');
                 const guest = (game.guests ?? []).find((g) => g.id === guestId);
                 if (!guest) return;
-                Alert.alert(
+                appAlert(
                   he.guestRowActionTitle(guest.name),
                   undefined,
                   [

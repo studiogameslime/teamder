@@ -7,12 +7,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -98,7 +98,7 @@ export function ProfileEditScreen() {
     }).addListener('beforeRemove', (e) => {
       if (!dirtyRef.current || savingRef.current) return;
       e.preventDefault();
-      Alert.alert(
+      appAlert(
         he.profileEditUnsavedTitle,
         he.profileEditUnsavedBody,
         [
@@ -130,11 +130,11 @@ export function ProfileEditScreen() {
     setUploading(false);
     if (!res.ok) {
       if (res.reason === 'permission') {
-        Alert.alert(he.error, he.profilePhotoPermissionDenied);
+        appAlert(he.error, he.profilePhotoPermissionDenied);
       } else if (res.reason === 'network') {
-        Alert.alert(he.error, he.profilePhotoUploadFailed);
+        appAlert(he.error, he.profilePhotoUploadFailed);
       } else if (res.reason === 'unavailable') {
-        Alert.alert(he.error, he.profilePhotoUnavailable);
+        appAlert(he.error, he.profilePhotoUnavailable);
       }
       return;
     }
@@ -204,7 +204,7 @@ export function ProfileEditScreen() {
       if (__DEV__) console.warn('[profileEdit] save failed', err);
       // Friendly Hebrew only — the technical code/message stays in the
       // __DEV__ warn above and never reaches the user.
-      Alert.alert(he.error, he.profilePhotoUploadFailed);
+      appAlert(he.error, he.profilePhotoUploadFailed);
       // Bail out so the finally still resets busy/saving but goBack
       // never runs.
     } finally {

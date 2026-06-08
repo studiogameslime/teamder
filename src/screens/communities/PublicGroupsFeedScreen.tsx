@@ -99,10 +99,13 @@ export function PublicGroupsFeedScreen() {
       // Require location permission for "near me" — prompt + turn it off
       // instead of leaving the feed silently empty.
       if (!loc.granted) {
-        promptLocationDenied(loc.canAskAgain);
+        // Close the filter sheet first — the styled alert is a Modal and
+        // can't render over the (also-Modal) sheet on Android.
+        setFilterOpen(false);
         setNearbyLoc(null);
         setNearbyLoading(false);
         setFilters((f) => ({ ...f, nearby: false }));
+        promptLocationDenied(loc.canAskAgain);
         return;
       }
       setNearbyLoc(loc);

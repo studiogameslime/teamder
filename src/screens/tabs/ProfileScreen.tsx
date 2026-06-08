@@ -15,7 +15,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Linking,
   Platform,
   Pressable,
@@ -26,6 +25,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -201,7 +201,7 @@ export function ProfileScreen() {
   const onSignOut = () => {
     // Confirm before signing out — matches the delete-account guard and
     // prevents a stray tap from logging the user out.
-    Alert.alert(
+    appAlert(
       he.profileSignOutConfirmTitle,
       he.profileSignOutConfirmBody,
       [
@@ -213,7 +213,7 @@ export function ProfileScreen() {
   };
 
   const onDeleteAccount = () => {
-    Alert.alert(
+    appAlert(
       he.profileDeleteAccountTitle,
       he.profileDeleteAccountMessage,
       [
@@ -227,7 +227,7 @@ export function ProfileScreen() {
               await deleteOwnAccount();
             } catch (err) {
               if (__DEV__) console.warn('[profile] delete failed', err);
-              Alert.alert(he.profileDeleteAccountFailed);
+              appAlert(he.profileDeleteAccountFailed);
             } finally {
               setDeleting(false);
             }
@@ -546,7 +546,7 @@ async function openMailto(subject: string, uid: string): Promise<void> {
   }
 
   // 3) Last resort: surface the address so the user can still reach us.
-  Alert.alert(
+  appAlert(
     he.settingsEmailUnavailable,
     `${he.settingsEmailUnavailableHint}\n\n${supportEmail}`,
   );
@@ -569,9 +569,9 @@ async function openStore(): Promise<void> {
   try {
     const ok = await Linking.canOpenURL(url);
     if (ok) await Linking.openURL(url);
-    else Alert.alert(he.error, he.settingsRateUnavailable);
+    else appAlert(he.error, he.settingsRateUnavailable);
   } catch {
-    if (__DEV__) Alert.alert(he.error, he.settingsRateUnavailable);
+    if (__DEV__) appAlert(he.error, he.settingsRateUnavailable);
   }
 }
 

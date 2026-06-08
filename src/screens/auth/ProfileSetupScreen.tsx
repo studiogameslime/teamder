@@ -5,7 +5,8 @@
 // the bottom.
 
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
@@ -32,7 +33,7 @@ export function ProfileSetupScreen() {
       // failure here strands the user on this screen with no feedback —
       // surface the error so they know to retry.
       if (__DEV__) console.warn('[profileSetup] save failed', err);
-      Alert.alert(he.error, he.profileSaveError);
+      appAlert(he.error, he.profileSaveError);
     } finally {
       setBusy(false);
     }

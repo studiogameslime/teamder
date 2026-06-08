@@ -19,12 +19,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -171,7 +171,7 @@ export function FillerInterestsSection({
   };
 
   const handleDecline = async (candidateUid: string, name: string) => {
-    Alert.alert(
+    appAlert(
       he.fillerDeclineConfirmTitle,
       he.fillerDeclineConfirmBody(name || he.fillerDefaultName),
       [

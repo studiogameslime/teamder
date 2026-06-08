@@ -15,13 +15,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -293,7 +293,7 @@ export function MatchPlayersScreen() {
                     onAdminAdvance={
                       isOffered && !isMyOffer && isAdminViewer && !busyOffer
                         ? () => {
-                            Alert.alert(
+                            appAlert(
                               he.matchPlayersOfferAdvanceCta,
                               he.matchPlayersOfferAdvanceConfirm,
                               [
@@ -364,7 +364,7 @@ export function MatchPlayersScreen() {
                     onReject={
                       isAdminViewer
                         ? () =>
-                            Alert.alert(
+                            appAlert(
                               he.matchPlayersRejectTitle,
                               he.matchPlayersRejectBody(e.user.name),
                               [

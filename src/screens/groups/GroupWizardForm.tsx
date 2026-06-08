@@ -15,7 +15,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +25,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -167,7 +167,7 @@ export function GroupWizardForm({
       await onSubmit(values);
     } catch (e) {
       if (__DEV__) console.warn('[groupWizard] submit failed', e);
-      Alert.alert(he.error, he.groupWizardSubmitFailed);
+      appAlert(he.error, he.groupWizardSubmitFailed);
     } finally {
       setBusy(false);
     }
