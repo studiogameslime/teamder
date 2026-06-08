@@ -92,6 +92,7 @@ function buildInitial(
     // route param flagged a recurring entry; otherwise default OFF
     // and the registrationOpensAt picker stays hidden.
     recurringGameEnabled: overrides?.recurring === true,
+    scheduledRegEnabled: false,
     registrationOpensAt: 0,
     publicOpenAt: 0,
     guestsOpenAt: 0,
@@ -319,7 +320,7 @@ export function GameCreateScreen() {
     // and the game opens immediately. Past values are allowed and
     // fall through to immediate-open behaviour server-side.
     const regOpensAt =
-      v.recurringGameEnabled && v.registrationOpensAt > 0
+      v.scheduledRegEnabled && v.registrationOpensAt > 0
         ? v.registrationOpensAt
         : undefined;
     // publicOpenAt / guestsOpenAt are community-game scheduling knobs —

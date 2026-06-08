@@ -83,7 +83,8 @@ function gameToValues(g: Game): GameFormValues {
           ].filter((s) => s.length > 0),
     visibility: g.visibility ?? 'community',
     requiresApproval: !!g.requiresApproval,
-    recurringGameEnabled: isRecurringEdit || g.recurring === true,
+    recurringGameEnabled: g.recurring === true,
+    scheduledRegEnabled: isRecurringEdit,
     registrationOpensAt: g.registrationOpensAt ?? 0,
     publicOpenAt: g.publicOpenAt ?? 0,
     guestsOpenAt: g.guestsOpenAt ?? 0,
@@ -240,13 +241,13 @@ export function GameEditScreen() {
         throw err;
       }
     }
-    // `registrationOpensAt` is patched only when the recurring toggle
+    // `registrationOpensAt` is patched only when the scheduled-reg toggle
     // is ON and the game is still in 'scheduled' state — once the CF
     // has flipped it to 'open' the field is moot. The CF's
     // `openedNotificationSent` flag prevents a re-flip from
     // dispatching a second push.
     const regOpensPatch =
-      v.recurringGameEnabled &&
+      v.scheduledRegEnabled &&
       game.status === 'scheduled' &&
       v.registrationOpensAt > 0
         ? { registrationOpensAt: v.registrationOpensAt }

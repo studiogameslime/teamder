@@ -139,12 +139,16 @@ export interface GameFormValues {
   // Step 3 — Game Management
   visibility: 'public' | 'community';
   requiresApproval: boolean;
-  /** When true, the wizard surfaces the registrationOpensAt picker
-   *  and the game is created in 'scheduled' state; a Cloud Function
-   *  flips it to 'open' at the picked time and pushes
-   *  `newGameInCommunity`. When false, the game opens immediately. */
+  /** Recurring weekly fixture — auto-clones each week (Game.recurring).
+   *  Independent of the registration-open scheduling below. */
   recurringGameEnabled: boolean;
-  /** ms epoch — only consulted when `recurringGameEnabled` is true.
+  /** When true, the wizard surfaces the registrationOpensAt picker — the
+   *  game is created 'scheduled' and a CF flips it to 'open' + pushes
+   *  `newGameInCommunity` at the picked time. Independent of recurring:
+   *  a one-off game can defer its registration, and a recurring game can
+   *  open immediately each week. */
+  scheduledRegEnabled: boolean;
+  /** ms epoch — only consulted when `scheduledRegEnabled` is true.
    *  Stored on Game as `registrationOpensAt`. 0 means "not set". */
   registrationOpensAt: number;
   /** ms epoch — community games only. When >0 the game flips
@@ -281,7 +285,7 @@ export function GameWizardForm({
   // they pick a past value or one less than 4h before kickoff.
   const SHORT_OPEN_WINDOW_MS = 4 * 60 * 60 * 1000;
   const validateRegistrationOpensAt = (): boolean => {
-    if (!values.recurringGameEnabled) return true;
+    if (!values.scheduledRegEnabled) return true;
     const v = values.registrationOpensAt;
     if (!v) {
       appAlert(he.error, he.wizardRegOpensRequired);
@@ -308,7 +312,7 @@ export function GameWizardForm({
 
   const submit = async () => {
     if (!validateRegistrationOpensAt()) return;
-    if (values.recurringGameEnabled && values.registrationOpensAt > 0) {
+    if (values.scheduledRegEnabled && values.registrationOpensAt > 0) {
       const now = Date.now();
       const delta = values.startsAt - values.registrationOpensAt;
       const isPast = values.registrationOpensAt <= now;
@@ -699,26 +703,33 @@ function Step3({
         onChange={(v) => set('requiresApproval', v)}
       />
 
-      {/* Recurring game — a COMMUNITY concept (a regular weekly game),
-          hidden for quick one-offs. When on, the wizard surfaces a
-          "registration opens at" picker; the game is created in
-          'scheduled' state and a Cloud Function flips it to 'open' at
-          the picked time. */}
+      {/* Two INDEPENDENT community-game options (hidden for quick one-offs):
+          (1) recurring weekly fixture, (2) scheduled registration open.
+          A game can be either, both, or neither. */}
       {!quick ? (
         <>
+          {/* (1) Recurring weekly — auto-clones each week. */}
           <ToggleRow
             label={he.communityEditRecurringEnabled}
             info={{ title: he.communityEditRecurringEnabled, text: he.communityEditRecurringHint }}
             value={values.recurringGameEnabled}
+            onChange={(v) => set('recurringGameEnabled', v)}
+          />
+
+          {/* (2) Scheduled registration open — defer when the game appears
+              + opens for joins. Independent of recurring. */}
+          <ToggleRow
+            label={he.wizardScheduledRegToggle}
+            info={{ title: he.wizardScheduledRegToggle, text: he.wizardScheduledRegHint }}
+            value={values.scheduledRegEnabled}
             onChange={(v) => {
-              set('recurringGameEnabled', v);
+              set('scheduledRegEnabled', v);
               // Reset the picker value when turning the toggle off so a
-              // stale registrationOpensAt from a prior on/off cycle
-              // doesn't survive into submit.
+              // stale registrationOpensAt doesn't survive into submit.
               if (!v) set('registrationOpensAt', 0);
             }}
           />
-          {values.recurringGameEnabled ? (
+          {values.scheduledRegEnabled ? (
             <View style={styles.section}>
               <AppDateTimeField
                 label={he.wizardRegOpensLabel}
@@ -876,6 +887,10 @@ function SummaryCard({
         )
       : null;
   const recurringStr = values.recurringGameEnabled ? he.yes : null;
+  const regOpensStr =
+    values.scheduledRegEnabled && values.registrationOpensAt > 0
+      ? formatDateLong(values.registrationOpensAt)
+      : null;
 
   const rows = (
     <>
@@ -888,6 +903,9 @@ function SummaryCard({
       <SummaryRow icon="eye-outline" label={he.wizardSummaryVisibility} value={visibilityStr} />
       {recurringStr ? (
         <SummaryRow icon="repeat-outline" label={he.communityEditRecurringEnabled} value={recurringStr} />
+      ) : null}
+      {regOpensStr ? (
+        <SummaryRow icon="timer-outline" label={he.wizardRegOpensLabel} value={regOpensStr} />
       ) : null}
       {cancelStr ? (
         <SummaryRow icon="time-outline" label={he.wizardCancelDeadlineLabel} value={cancelStr} />

@@ -301,6 +301,10 @@ export const he = {
   createGameOverlapUnknownTitle: 'משחק קיים',
   createGameOverlapBody: (title: string, when: string) =>
     `כבר קיים משחק "${title}" ב-${when}. לא ניתן ליצור שני משחקים באותו חלון זמן.`,
+  // Scheduled registration-open (separate from the recurring toggle)
+  wizardScheduledRegToggle: 'תזמון פתיחת הרשמה',
+  wizardScheduledRegHint:
+    'במקום שההרשמה תיפתח מיד — בחר מתי המשחק יופיע בפיד וההרשמה תיפתח. עד אז המשחק נסתר. מתאים גם למשחק חד-פעמי וגם למשחק קבוע.',
   wizardRegOpensLabel: 'פתיחת הרשמה',
   wizardRegOpensHint:
     'במועד שתבחר המשחק יופיע בפיד וההרשמה תיפתח. עד אז הוא נסתר מכולם וחברי הקבוצה יקבלו התראה כשהוא נפתח.',
@@ -682,7 +686,7 @@ export const he = {
   communityEditNoPermission: 'רק מנהל יכול לערוך את הקבוצה',
   communityEditRecurringEnabled: 'משחק קבוע (שבועי)',
   communityEditRecurringHint:
-    'משחק שחוזר כל שבוע. כ-3 שעות אחרי שהמשחק מסתיים, נפתח אוטומטית משחק זהה לשבוע הבא (אותו יום ושעה), ופתיחת ההרשמה תתוזמן שוב באותו הפרש זמן. לא צריך לפתוח ידנית כל שבוע.',
+    'משחק שחוזר כל שבוע. כ-3 שעות אחרי שהמשחק מסתיים נפתח אוטומטית משחק זהה לשבוע הבא (אותו יום ושעה), כך שלא צריך לפתוח ידנית כל שבוע. אם הגדרת גם תזמון פתיחת הרשמה — הוא יוזז שבוע קדימה יחד עם המשחק.',
   communityEditSectionBasics: 'פרטים בסיסיים',
   communityEditSectionSchedule: 'מתי משחקים',
   communityEditSectionSettings: 'הגדרות קבוצה',
