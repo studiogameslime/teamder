@@ -461,23 +461,29 @@ export function GameWizardForm({
             <Text style={styles.summaryModalTitle}>{he.wizardSummaryTitle}</Text>
             <SummaryCard values={values} maxPlayers={maxPlayers} bare />
             <View style={styles.summaryModalFooter}>
-              <Button
-                title={he.wizardSummaryBackToEdit}
-                variant="outline"
-                size="sm"
-                onPress={() => setSummaryOpen(false)}
-                disabled={busy}
-              />
-              <Button
-                title={he.wizardSummaryConfirm}
-                variant="primary"
-                size="sm"
-                loading={busy}
-                onPress={() => {
-                  setSummaryOpen(false);
-                  void submit();
-                }}
-              />
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={he.wizardSummaryBackToEdit}
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  onPress={() => setSummaryOpen(false)}
+                  disabled={busy}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={he.wizardSummaryConfirm}
+                  variant="primary"
+                  size="sm"
+                  fullWidth
+                  loading={busy}
+                  onPress={() => {
+                    setSummaryOpen(false);
+                    void submit();
+                  }}
+                />
+              </View>
             </View>
           </Pressable>
         </SpringSheet>
