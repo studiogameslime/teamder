@@ -22,7 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { MapWebView } from '@/components/map/MapWebView';
+import { LocationPickerMap } from '@/components/games/LocationPickerMap';
 import { searchPlaces, type GovmapPlace } from '@/services/govmapService';
 import { reverseGeocode } from '@/services/geocodeService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -207,12 +207,9 @@ export function LocationSearchSheet({
 
         {/* Map (always visible) + results overlay */}
         <View style={styles.mapWrap}>
-          <MapWebView
-            markers={[]}
+          <LocationPickerMap
             center={initialCoords ?? DEFAULT_CENTER}
             zoom={initialCoords ? 15 : DEFAULT_ZOOM}
-            pickable
-            tintAlpha={0}
             pin={picked ? { lat: picked.lat, lng: picked.lng } : null}
             onPick={pickFromMap}
             focusOn={fly}
