@@ -488,7 +488,12 @@ export function GameCreateScreen() {
         onSubmit={submit}
         extraTopSlot={extraTopSlot}
         quick={isOrphan}
-        communityName={isOrphan ? undefined : selectedGroup?.name}
+        // Show the read-only "opens for <community>" label ONLY when the
+        // interactive community picker isn't shown (single community /
+        // locked) — otherwise the dropdown already names the target.
+        communityName={
+          isOrphan || extraTopSlot ? undefined : selectedGroup?.name
+        }
         showInviteFriends
       />
       <ConfirmDialog

@@ -189,7 +189,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelFlex: {
-    flexShrink: 1,
+    // flex:1 so the label fills the row and the ⓘ tooltip sits on the
+    // trailing (visual LEFT under RTL) edge, away from the label text.
+    flex: 1,
     width: undefined,
     alignSelf: 'auto',
   },

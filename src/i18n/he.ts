@@ -428,7 +428,7 @@ export const he = {
   wizardHasHalfTimeHint: 'משחקים עם חוצים',
   wizardSectionVisibility: 'נראות',
   wizardVisibilityHint:
-    'פתוח לכולם — כל שחקן באפליקציה יוכל לראות את המשחק ולהצטרף (כל אחד מסנן לעצמו לפי רדיוס). רק לקבוצה — רק חברי הקבוצה רואים אותו.',
+    'פתוח לכולם — כל שחקן באפליקציה יכול לראות את המשחק ולהצטרף.\n\nרק לקבוצה — רק חברי הקבוצה רואים את המשחק.',
   wizardVisibilityCommunity: 'רק לקבוצה שלי',
   wizardVisibilityPublic: 'פתוח לכולם',
   // Quick-game name + community target label (details step)
@@ -452,7 +452,14 @@ export const he = {
   wizardCancelDeadline: 'עד כמה שעות לפני אפשר לבטל הרשמה',
   wizardCancelDeadlineHint:
     'מעבר לזמן הזה, ביטול ייחשב כאי־הגעה. השאר ריק לחוסר הגבלה.',
+  // Cancel-deadline as a date (toggle + picker) instead of hour pills
+  wizardCancelDeadlineToggle: 'מועד אחרון לביטול הרשמה',
+  wizardCancelDeadlineToggleHint:
+    'כשמופעל — אחרי המועד שתבחר לא ניתן לבטל הרשמה (ביטול ייחשב כאי־הגעה). כבוי = אפשר לבטל בכל עת.',
+  wizardCancelDeadlineLabel: 'מועד אחרון לביטול',
   wizardSummaryTitle: 'תקציר המשחק',
+  wizardSummaryConfirm: 'אישור ויצירה',
+  wizardSummaryBackToEdit: 'חזרה לעריכה',
   wizardSummaryDate: 'מתי',
   wizardSummaryWhere: 'מיקום',
   wizardSummaryFormat: 'פורמט',

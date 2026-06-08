@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     width: '100%',
   },
-  labelFlex: { flexShrink: 1 },
+  labelFlex: { flex: 1 },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

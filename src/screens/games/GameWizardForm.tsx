@@ -19,6 +19,7 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -33,6 +34,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { SpringSheet } from '@/components/anim/SpringSheet';
 import { InputField } from '@/components/InputField';
 import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
@@ -220,6 +222,9 @@ export function GameWizardForm({
   // Soft "registration opens too close / in the past" warning — styled
   // popup instead of a native Alert. `isPast` picks the body copy.
   const [regWarn, setRegWarn] = useState<{ isPast: boolean } | null>(null);
+  // Summary confirmation popup shown when the user taps the final
+  // "create game" button (replaces the inline summary card).
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const set = <K extends keyof GameFormValues>(
     key: K,
@@ -394,7 +399,7 @@ export function GameWizardForm({
                 variant="primary"
                 size="lg"
                 fullWidth
-                onPress={submit}
+                onPress={() => setSummaryOpen(true)}
                 loading={busy}
               />
             )}
@@ -421,6 +426,53 @@ export function GameWizardForm({
         }}
         onClose={() => setRegWarn(null)}
       />
+
+      {/* Summary confirmation — shown when the user taps "create game".
+          Replaces the inline summary card: review the details, then
+          "אישור" to create or "חזרה לעריכה" to go back. */}
+      <Modal
+        visible={summaryOpen}
+        transparent
+        animationType="none"
+        onRequestClose={() => setSummaryOpen(false)}
+      >
+        <SpringSheet
+          visible={summaryOpen}
+          onBackdropPress={() => setSummaryOpen(false)}
+          position="center"
+          fromOffsetY={60}
+          panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
+        >
+          <Pressable style={styles.summaryModalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.summaryModalTitle}>{he.wizardSummaryTitle}</Text>
+            <ScrollView
+              style={{ maxHeight: 380 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <SummaryCard values={values} maxPlayers={maxPlayers} />
+            </ScrollView>
+            <View style={styles.summaryModalFooter}>
+              <Button
+                title={he.wizardSummaryBackToEdit}
+                variant="outline"
+                size="sm"
+                onPress={() => setSummaryOpen(false)}
+                disabled={busy}
+              />
+              <Button
+                title={he.wizardSummaryConfirm}
+                variant="primary"
+                size="sm"
+                loading={busy}
+                onPress={() => {
+                  setSummaryOpen(false);
+                  void submit();
+                }}
+              />
+            </View>
+          </Pressable>
+        </SpringSheet>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -635,16 +687,6 @@ function Step3({
   // to step 1.) Ends with the summary card.
   return (
     <View style={styles.stack}>
-      {/* Invite friends directly — they get an `inviteToGame` push the
-          moment the game is created. Shown on creation for both quick
-          and community games. */}
-      {showInviteFriends ? (
-        <FriendsInvitePicker
-          selected={values.inviteFriendIds ?? []}
-          onChange={(ids) => set('inviteFriendIds', ids)}
-        />
-      ) : null}
-
       <ToggleRow
         label={he.createGameRequiresApproval}
         info={{ title: he.createGameRequiresApproval, text: he.createGameRequiresApprovalHint }}
@@ -675,6 +717,7 @@ function Step3({
             <View style={styles.section}>
               <AppDateTimeField
                 label={he.wizardRegOpensLabel}
+                info={{ title: he.wizardRegOpensLabel, text: he.wizardRegOpensHint }}
                 value={
                   values.registrationOpensAt ||
                   defaultRegOpensAt(values.startsAt)
@@ -682,12 +725,6 @@ function Step3({
                 onChange={(ms) => set('registrationOpensAt', ms)}
                 required
               />
-              <Text style={styles.hint}>
-                {values.registrationOpensAt > 0 &&
-                values.registrationOpensAt <= Date.now()
-                  ? he.wizardRegOpensHintPast
-                  : he.wizardRegOpensHint}
-              </Text>
             </View>
           ) : null}
         </>
@@ -743,51 +780,44 @@ function Step3({
         </>
       ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.label}>{he.wizardCancelDeadline}</Text>
-        <View style={styles.pillRow}>
-          {CANCEL_DEADLINE_OPTIONS.map((opt, i) => (
-            <Pill
-              key={i}
-              active={values.cancelDeadlineHours === opt}
-              label={cancelOptionLabel(opt)}
-              onPress={() => set('cancelDeadlineHours', opt)}
-            />
-          ))}
+      {/* Cancel deadline — a toggle that reveals a date/time picker for
+          the LAST moment a player may cancel. Stored as the existing
+          `cancelDeadlineHours` (derived from the picked date relative to
+          kickoff) so all downstream late-cancel logic is unchanged. */}
+      <ToggleRow
+        label={he.wizardCancelDeadlineToggle}
+        info={{ title: he.wizardCancelDeadlineToggle, text: he.wizardCancelDeadlineToggleHint }}
+        value={values.cancelDeadlineHours !== undefined}
+        onChange={(v) => set('cancelDeadlineHours', v ? 12 : undefined)}
+      />
+      {values.cancelDeadlineHours !== undefined ? (
+        <View style={styles.section}>
+          <AppDateTimeField
+            label={he.wizardCancelDeadlineLabel}
+            value={
+              values.startsAt - (values.cancelDeadlineHours ?? 0) * 60 * 60 * 1000
+            }
+            onChange={(ms) => {
+              const hrs = Math.max(
+                0,
+                Math.round((values.startsAt - ms) / (60 * 60 * 1000)),
+              );
+              set('cancelDeadlineHours', hrs);
+            }}
+            required
+          />
         </View>
-      </View>
+      ) : null}
 
-      {/* Filler matching — opt-in per game. When ON, the scheduled
-          CF will scan users from outside the community whose
-          available cities include this game's city, and push them an
-          interest invitation when the roster falls below the
-          shortage threshold. The minTrust pill row sets the floor:
-          a candidate must have a trust score ≥ this to receive the
-          push. */}
+      {/* Filler matching — opt-in per game. When ON, the scheduled CF
+          pushes nearby non-members an interest invite when the roster
+          falls short. (The minimum-trust selector was removed for now.) */}
       <ToggleRow
         label={he.gameFillerAcceptToggle}
         value={values.acceptsFillers}
         onChange={(v) => set('acceptsFillers', v)}
         info={{ title: he.tipFillerTitle, text: he.tipFillerText }}
       />
-      {values.acceptsFillers ? (
-        <View style={styles.section}>
-          <View style={styles.labelRow}>
-            <Text style={[styles.label, styles.labelFlex]}>{he.gameFillerMinTrust}</Text>
-            <InfoTip title={he.gameFillerMinTrust} text={he.gameFillerMinTrustHint} />
-          </View>
-          <View style={styles.pillRow}>
-            {FILLER_MIN_TRUST_OPTIONS.map((opt, i) => (
-              <Pill
-                key={i}
-                active={values.fillerMinTrust === opt}
-                label={fillerMinTrustLabel(opt)}
-                onPress={() => set('fillerMinTrust', opt)}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
 
       <InputField
         label={he.createGameNotes}
@@ -797,15 +827,14 @@ function Step3({
         multiline
       />
 
-      {/* The "מי יביא כדור/גופיות" toggles used to live here but were
-          removed per product decision — the question is settled at
-          the community level and surfaces inline on the match details
-          screen for the actual game-day signal. The two underlying
-          `bringBall` / `bringShirts` values still default to true so
-          downstream consumers (the match details flagged badges)
-          don't suddenly see undefined. */}
-
-      <SummaryCard values={values} maxPlayers={maxPlayers} />
+      {/* Invite friends — moved to the bottom (above where the summary
+          used to be). They get an `inviteToGame` push on creation. */}
+      {showInviteFriends ? (
+        <FriendsInvitePicker
+          selected={values.inviteFriendIds ?? []}
+          onChange={(ids) => set('inviteFriendIds', ids)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -1019,7 +1048,24 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     width: '100%',
   },
-  labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
+  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
+  summaryModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  summaryModalTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  summaryModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
   // Read-only "this game opens for <community>" row (details step).
   targetRow: {
     flexDirection: 'row',
@@ -1103,18 +1149,18 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   toggleLabelRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
+    width: '100%',
   },
   toggleLabel: {
     ...typography.body,
     color: colors.text,
     fontWeight: '500',
     textAlign: RTL_LABEL_ALIGN,
-    alignSelf: 'stretch',
-    width: '100%',
+    // flex:1 so the ⓘ tooltip is pushed to the trailing (left) edge.
+    flex: 1,
   },
 
   // Summary card (Step 3)

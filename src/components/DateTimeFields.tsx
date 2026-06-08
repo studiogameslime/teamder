@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { InfoTip } from './InfoTip';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDateFull, formatDateTimeFull } from '@/utils/format';
@@ -183,6 +184,9 @@ interface AppDateTimeFieldProps {
   onChange: (ts: number) => void;
   style?: ViewStyle;
   required?: boolean;
+  /** Optional ⓘ tooltip next to the label (rendered on the trailing/left
+   *  side under RTL). */
+  info?: { title?: string; text: string };
 }
 
 /**
@@ -196,14 +200,25 @@ export function AppDateTimeField({
   onChange,
   style,
   required,
+  info,
 }: AppDateTimeFieldProps) {
   const [open, setOpen] = useState(false);
   return (
     <View style={[styles.field, style]}>
-      <Text style={styles.label}>
-        {label}
-        {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
-      </Text>
+      {info ? (
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, styles.labelFlex]}>
+            {label}
+            {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+          </Text>
+          <InfoTip title={info.title ?? label} text={info.text} />
+        </View>
+      ) : (
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
+        </Text>
+      )}
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
@@ -696,6 +711,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
   },
+  // ⓘ on the trailing (left, under RTL) edge: label fills the row.
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, width: '100%' },
+  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
   requiredStar: {
     color: colors.danger,
     fontWeight: '700',
