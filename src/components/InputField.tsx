@@ -119,6 +119,10 @@ export function InputField({
               numberOfLines={1}
               style={[
                 styles.input,
+                // Display (tap) variant is a <Text>, not a TextInput: under
+                // Android forceRTL physical 'right' resolves to visual LEFT
+                // for Hebrew values, so use the logical RTL_LABEL_ALIGN here.
+                styles.inputDisplay,
                 !hasValue && { color: colors.textMuted },
               ]}
             >
@@ -230,6 +234,11 @@ const styles = StyleSheet.create({
     // Pull the cursor onto the same baseline as the icon — RN's default
     // line-height pushes the digit down a few pixels otherwise.
     paddingVertical: spacing.sm,
+  },
+  inputDisplay: {
+    // <Text> (tap variant) needs the logical alignment so Hebrew values
+    // sit on the visual right under Android forceRTL.
+    textAlign: RTL_LABEL_ALIGN,
   },
   iconRight: {
     // With `flexDirection:'row-reverse'` the icon sits on the right.

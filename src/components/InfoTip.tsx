@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
@@ -85,20 +85,15 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
               style={[styles.card, { width: CARD_W, top: anchor.top, left: anchor.left }]}
               onPress={(e) => e.stopPropagation()}
             >
-              {/* caret */}
+              {/* caret — a real triangle pointing at the icon */}
               <View
                 style={[
                   styles.caret,
-                  { left: anchor.caretLeft - 6 },
-                  anchor.above ? styles.caretBottom : styles.caretTop,
+                  { left: anchor.caretLeft - 8 },
+                  anchor.above ? styles.caretDown : styles.caretUp,
                 ]}
               />
-              <View style={styles.headerRow}>
-                {title ? <Text style={styles.title}>{title}</Text> : <View style={{ flex: 1 }} />}
-                <Pressable onPress={() => setAnchor(null)} hitSlop={8}>
-                  <Ionicons name="close" size={20} color={colors.textMuted} />
-                </Pressable>
-              </View>
+              {title ? <Text style={styles.title}>{title}</Text> : null}
               <Text style={styles.body}>{text}</Text>
               <Pressable onPress={() => setAnchor(null)} style={styles.gotItWrap} hitSlop={6}>
                 <Text style={styles.gotIt}>{he.infoTipGotIt}</Text>
@@ -132,31 +127,38 @@ const styles = StyleSheet.create({
   },
   caret: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    transform: [{ rotate: '45deg' }],
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
-  caretTop: { top: -6, borderTopWidth: 1, borderLeftWidth: 1 },
-  caretBottom: { bottom: -6, borderBottomWidth: 1, borderRightWidth: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+  // Card is BELOW the icon → caret on the top edge pointing UP.
+  caretUp: {
+    top: -8,
+    borderBottomWidth: 8,
+    borderBottomColor: colors.surface,
+  },
+  // Card is ABOVE the icon → caret on the bottom edge pointing DOWN.
+  caretDown: {
+    bottom: -8,
+    borderTopWidth: 8,
+    borderTopColor: colors.surface,
   },
   title: {
     ...typography.h3,
-    flex: 1,
     color: colors.text,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
   },
   body: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
     lineHeight: 21,
   },
   gotItWrap: {
