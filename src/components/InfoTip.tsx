@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
@@ -82,6 +82,12 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
         <Pressable style={styles.backdrop} onPress={() => setAnchor(null)}>
           {anchor ? (
             <Pressable
+              // direction:'ltr' (in styles.card) makes the caret child's
+              // absolute `left` resolve to PHYSICAL left — under Android
+              // forceRTL an inherited-RTL parent mirrored it, throwing the
+              // caret to the wrong side of the card. The card's OWN position
+              // (`left: anchor.left`) is resolved in the backdrop's frame and
+              // is unaffected by this.
               style={[styles.card, { width: CARD_W, top: anchor.top, left: anchor.left }]}
               onPress={(e) => e.stopPropagation()}
             >
@@ -110,9 +116,20 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.25)',
+    // The whole overlay is laid out LTR so every absolute `left` here —
+    // the card's position, the caret, and the icon's measureInWindow x —
+    // lives in ONE consistent physical coordinate frame. Under Android
+    // forceRTL an inherited-RTL overlay mirrored `left`, pinning the card
+    // (and caret) to the wrong side. Text stays Hebrew-right via explicit
+    // textAlign:'right' + writingDirection:'rtl'.
+    direction: 'ltr',
   },
   card: {
     position: 'absolute',
+    // LTR so the absolutely-positioned caret child uses physical `left`
+    // (see render comment). Text inside stays Hebrew-right via explicit
+    // textAlign:'right' + writingDirection:'rtl' on the title/body.
+    direction: 'ltr',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
@@ -151,18 +168,21 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
+    // Card is direction:'ltr', so PHYSICAL 'right' = visual right for Hebrew.
+    textAlign: 'right',
     writingDirection: 'rtl',
   },
   body: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
+    textAlign: 'right',
     writingDirection: 'rtl',
     lineHeight: 21,
   },
   gotItWrap: {
-    alignSelf: 'flex-start',
+    // Card is direction:'ltr'; flex-end keeps "הבנתי" on the visual right
+    // (the natural end for Hebrew), where it sat under the old RTL card.
+    alignSelf: 'flex-end',
     paddingTop: spacing.xs,
   },
   gotIt: {

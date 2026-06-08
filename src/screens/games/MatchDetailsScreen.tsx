@@ -1521,6 +1521,12 @@ export function MatchDetailsScreen() {
     },
   ];
 
+  // A non-owner / non-admin viewer of someone else's game has no
+  // applicable menu actions — every item above is gated. Opening the
+  // hamburger would show an empty sheet, so hide the ⋯ trigger entirely
+  // when there's nothing in it.
+  const hasMenuItems = sections.some((s) => s.items.length > 0);
+
   // Resolve community name + organizer name from the local stores.
   // Orphan-context games belong to a hidden personal group with no
   // user-facing name — we render "משחק חד־פעמי" instead so the field
@@ -1679,7 +1685,7 @@ export function MatchDetailsScreen() {
       >
         <MatchStadiumHero
           startsAt={game.startsAt}
-          onMenuPress={() => setMenuOpen(true)}
+          onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
           onBackPress={() => {
             if (nav.canGoBack()) nav.goBack();
           }}

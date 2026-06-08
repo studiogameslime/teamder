@@ -30,7 +30,9 @@ import { formatDayDate, formatTime } from '@/utils/format';
 
 interface Props {
   startsAt?: number;
-  onMenuPress: () => void;
+  /** Omit to hide the ⋯ button entirely — e.g. a viewer with no
+   *  applicable menu actions (would otherwise open an empty sheet). */
+  onMenuPress?: () => void;
   onBackPress: () => void;
   /** Optional share entry-point. When passed, a small share icon
    *  renders next to the overflow menu so the share affordance has
@@ -105,22 +107,24 @@ export function MatchStadiumHero({
                   />
                 </Pressable>
               ) : null}
-              <Pressable
-                onPress={onMenuPress}
-                hitSlop={10}
-                style={({ pressed }) => [
-                  styles.iconBtn,
-                  pressed && { opacity: 0.7 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={he.profileMenuOpen}
-              >
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={22}
-                  color="#FFFFFF"
-                />
-              </Pressable>
+              {onMenuPress ? (
+                <Pressable
+                  onPress={onMenuPress}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.profileMenuOpen}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={22}
+                    color="#FFFFFF"
+                  />
+                </Pressable>
+              ) : null}
             </View>
           </View>
 
