@@ -101,19 +101,23 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #f4f6f8; }
-    /* The dropped location — a football, the app's motif. White disc, blue
-       ring, soft shadow, with a little stem so it points at the exact spot. */
-    .ballpin { width: 38px; height: 46px; cursor: grab; }
+    /* The dropped location — a football, the app's motif. White disc, green
+       ring (matches the mockup), soft shadow, with a little stem so it
+       points at the exact spot. */
+    .ballpin { width: 40px; height: 48px; cursor: grab; }
     .ballpin .ball {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: #fff; border: 3px solid #2563EB;
-      box-shadow: 0 3px 9px rgba(15,23,42,.35);
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #fff; border: 3px solid #16A34A;
+      box-shadow: 0 3px 10px rgba(15,23,42,.35);
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; line-height: 1;
+      font-size: 21px; line-height: 1;
     }
     .ballpin .stem {
-      width: 2px; height: 10px; margin: -1px auto 0; background: #2563EB;
-      box-shadow: 0 1px 2px rgba(15,23,42,.3);
+      width: 0; height: 0; margin: -2px auto 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 9px solid #16A34A;
+      filter: drop-shadow(0 1px 1px rgba(15,23,42,.3));
     }
     .maplibregl-ctrl-attrib { font-size: 9px; }
   </style>
@@ -130,7 +134,10 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
       var ISRAEL = [[34.10, 29.30], [35.95, 33.45]];
       var map = new maplibregl.Map({
         container: 'map',
-        style: 'https://tiles.openfreemap.org/styles/positron',
+        // 'liberty' = full-colour OSM style: green parks, light roads with
+        // soft casing, blue water, POI icons + route shields — the clean,
+        // readable Google-Maps-like look the owner asked for.
+        style: 'https://tiles.openfreemap.org/styles/liberty',
         center: [${center.lng}, ${center.lat}],
         zoom: ${zoom},
         minZoom: 7,
@@ -138,33 +145,19 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
         maxBounds: ISRAEL,
         attributionControl: true
       });
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
       // Pinch-zoom + double-tap zoom on by default in MapLibre.
 
-      // Road colours by hierarchy so the map reads as blue lines WITH
-      // depth, not a flat wall of one blue. Motorways strongest, residential
-      // streets a lighter blue, casings palest.
-      function roadColor(id) {
-        if (id.indexOf('casing') > -1) return '#cdddfb';        // outer stroke
-        if (id.indexOf('motorway') > -1) return '#1d4ed8';      // highways
-        if (id.indexOf('major') > -1) return '#2563EB';         // main roads
-        if (id.indexOf('minor') > -1) return '#7aa7f5';         // residential
-        if (id.indexOf('path') > -1 || id.indexOf('pier') > -1) return '#aac8fb';
-        return '#3b82f6';
-      }
-      function paintRoadsBlue() {
-        var layers = map.getStyle().layers || [];
-        layers.forEach(function (l) {
-          if (l.type !== 'line') return;
-          var id = l.id.toLowerCase();
-          if (id.indexOf('highway') === -1 && id.indexOf('motorway') === -1) return;
-          try {
-            map.setPaintProperty(l.id, 'line-color', roadColor(id));
-          } catch (e) {}
-        });
-      }
       map.on('load', function () {
-        paintRoadsBlue();
+        // Keep the style's natural colours — a clean light map with green
+        // parks and soft road lines. No recolouring.
+        // Labels → Hebrew: prefer name:he, fall back to the default name.
+        var heField = ['coalesce', ['get', 'name:he'], ['get', 'name:hebrew'], ['get', 'name']];
+        (map.getStyle().layers || []).forEach(function (l) {
+          if (l.type === 'symbol' && l.layout && l.layout['text-field']) {
+            try { map.setLayoutProperty(l.id, 'text-field', heField); } catch (e) {}
+          }
+        });
         send({ type: 'ready' });
       });
 
