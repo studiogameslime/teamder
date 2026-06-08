@@ -44,10 +44,11 @@ interface Props {
   initialCoords?: { lat: number; lng: number } | null;
 }
 
-// Map default view — central Israel, zoomed out enough to orient before
-// the user searches or taps. The map is locked to Israel in MapWebView.
-const ISRAEL_CENTER = { lat: 31.7, lng: 34.95 };
-const ISRAEL_ZOOM = 7;
+// Map default view — focus on Tel Aviv (the busiest area) rather than the
+// whole region. The user can pan/zoom anywhere in Israel from here; the
+// map is locked to Israel in MapWebView.
+const DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
+const DEFAULT_ZOOM = 13;
 
 export function LocationSearchSheet({
   visible,
@@ -208,9 +209,10 @@ export function LocationSearchSheet({
         <View style={styles.mapWrap}>
           <MapWebView
             markers={[]}
-            center={initialCoords ?? ISRAEL_CENTER}
-            zoom={initialCoords ? 15 : ISRAEL_ZOOM}
+            center={initialCoords ?? DEFAULT_CENTER}
+            zoom={initialCoords ? 15 : DEFAULT_ZOOM}
             pickable
+            tintAlpha={0}
             pin={picked ? { lat: picked.lat, lng: picked.lng } : null}
             onPick={pickFromMap}
             focusOn={fly}

@@ -32,6 +32,10 @@ interface Props {
   pin?: { lat: number; lng: number } | null;
   /** Fired with the picked coords on a map tap or pin drag-end. */
   onPick?: (lat: number, lng: number) => void;
+  /** Strength of the blue brand wash over the basemap (0–1). The games
+   *  map keeps the vivid default; the location picker passes 0 for a
+   *  clean, readable map. */
+  tintAlpha?: number;
 }
 
 export function MapWebView({
@@ -43,13 +47,14 @@ export function MapWebView({
   pickable = false,
   pin,
   onPick,
+  tintAlpha = 0.42,
 }: Props) {
   const ref = useRef<WebView>(null);
   // `pickable` changes the baked-in script, so it's a memo dep. `pin` is
   // NOT — it's moved imperatively below so a tap never reloads the map.
   const html = useMemo(
-    () => buildHtml(markers, center, zoom, pickable),
-    [markers, center, zoom, pickable],
+    () => buildHtml(markers, center, zoom, pickable, tintAlpha),
+    [markers, center, zoom, pickable, tintAlpha],
   );
 
   // Smoothly recenter without a full reload when `focusOn` changes.
@@ -120,6 +125,7 @@ function buildHtml(
   center: { lat: number; lng: number },
   zoom: number,
   pickable: boolean,
+  tintAlpha: number,
 ): string {
   const markersJson = JSON.stringify(
     markers.map((m) => ({
@@ -137,7 +143,9 @@ function buildHtml(
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; background: #4f93e0; }
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${
+      tintAlpha > 0 ? '#4f93e0' : '#e9eef3'
+    }; }
     .leaflet-control-attribution { font-size: 9px; }
     /* Lighten the pale Carto tiles a touch before tinting. */
     .leaflet-tile-pane { filter: brightness(1.05) contrast(1.02); }
@@ -145,11 +153,13 @@ function buildHtml(
        ABOVE the tiles (z-index 450) but BELOW the markers (Leaflet markerPane
        is z-index 600), so the basemap reads saturated blue while pins keep
        their true colours. Decoupling the colour from the tile filter lets us
-       dial the blue precisely by changing this one rgba alpha. */
+       dial the blue precisely by changing this one rgba alpha. Hidden
+       entirely when tintAlpha is 0 (the location picker wants a clean map). */
     #tint {
       position: absolute; inset: 0; z-index: 450;
-      background: rgba(37, 99, 235, 0.42);
+      background: rgba(37, 99, 235, ${tintAlpha});
       mix-blend-mode: multiply; pointer-events: none;
+      display: ${tintAlpha > 0 ? 'block' : 'none'};
     }
     .tpin {
       width: 36px; height: 36px; background: #fff;
@@ -187,7 +197,15 @@ function buildHtml(
         maxBounds: ISRAEL,
         maxBoundsViscosity: 1.0,
         minZoom: 7,
-        maxZoom: 18
+        maxZoom: 18,
+        // Explicitly enable every zoom gesture so pinch-to-zoom works
+        // inside the WebView (page pinch is disabled via the viewport
+        // meta; these are Leaflet's own touch handlers).
+        touchZoom: true,
+        bounceAtZoomLimits: true,
+        doubleClickZoom: true,
+        scrollWheelZoom: true,
+        tap: true
       }).setView([${center.lat}, ${center.lng}], ${zoom});
       window.tmap = map; // exposed so RN can fly-to via injectJavaScript
 
