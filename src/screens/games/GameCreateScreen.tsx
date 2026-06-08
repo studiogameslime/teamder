@@ -51,6 +51,10 @@ function buildInitial(
     format?: GameFormValues['format'];
     numberOfTeams?: number;
     recurring?: boolean;
+    /** Quick (orphan) game → start the name field blank so the user
+     *  types a real name instead of seeing the hidden personal group's
+     *  placeholder. */
+    quick?: boolean;
   },
 ): GameFormValues {
   // Pre-fill the city from the community's general city. NO field /
@@ -67,7 +71,7 @@ function buildInitial(
   // construction, already canonical.
   const presetCity = (g?.city ?? '').trim();
   return {
-    title: g?.name ?? '',
+    title: overrides?.quick ? '' : g?.name ?? '',
     startsAt: overrides?.startsAt ?? nextThursday20(),
     fieldName: '',
     city: presetCity,
@@ -248,6 +252,7 @@ export function GameCreateScreen() {
         format: params.format,
         numberOfTeams: params.numberOfTeams,
         recurring: isRecurring,
+        quick: isOrphan,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedGroup?.id, initialKey, isRecurring],
@@ -483,6 +488,7 @@ export function GameCreateScreen() {
         onSubmit={submit}
         extraTopSlot={extraTopSlot}
         quick={isOrphan}
+        communityName={isOrphan ? undefined : selectedGroup?.name}
         showInviteFriends
       />
       <ConfirmDialog

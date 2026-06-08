@@ -428,9 +428,23 @@ export const he = {
   wizardHasHalfTimeHint: 'משחקים עם חוצים',
   wizardSectionVisibility: 'נראות',
   wizardVisibilityHint:
-    'פתוח לכולם — כל שחקן באזור יראה את המשחק ויוכל לבקש להצטרף. רק לקבוצה — רק חברי הקבוצה רואים אותו.',
+    'פתוח לכולם — כל שחקן באפליקציה יוכל לראות את המשחק ולהצטרף (כל אחד מסנן לעצמו לפי רדיוס). רק לקבוצה — רק חברי הקבוצה רואים אותו.',
   wizardVisibilityCommunity: 'רק לקבוצה שלי',
   wizardVisibilityPublic: 'פתוח לכולם',
+  // Quick-game name + community target label (details step)
+  createGameNameLabel: 'שם המשחק',
+  createGameNamePlaceholder: 'לדוגמה: כדורגל שישי בבוקר',
+  createGameNameHint: 'השם שיוצג בפיד ובכרטיס המשחק.',
+  createGameForCommunity: (name: string) => `המשחק ייפתח לקבוצה: ${name}`,
+  // Scheduled public-open + guests-open pickers (community games)
+  wizardPublicOpenToggle: 'פתיחה לכלל האפליקציה בזמן מתוזמן',
+  wizardPublicOpenHint:
+    'בחר מתי המשחק יהפוך מ"רק לקבוצה" ל"פתוח לכולם". עד אז רק חברי הקבוצה רואים אותו; מהמועד שתבחר כל שחקן באפליקציה יוכל לראות ולהצטרף.',
+  wizardPublicOpenLabel: 'מועד פתיחה לכולם',
+  wizardGuestsOpenToggle: 'הגבלת הוספת אורחים עד זמן מסוים',
+  wizardGuestsOpenHint:
+    'עד המועד שתבחר רק מנהל המשחק יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
+  wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
   wizardSectionAdvanced: 'הגדרות מתקדמות',
   wizardCancelDeadline: 'עד כמה שעות לפני אפשר לבטל הרשמה',
   wizardCancelDeadlineHint:
@@ -656,8 +670,9 @@ export const he = {
   communityDetailsAdminBadge: 'מנהל',
   communityEditTitle: 'עריכת קבוצה',
   communityEditNoPermission: 'רק מנהל יכול לערוך את הקבוצה',
-  communityEditRecurringEnabled: 'הפעל משחק קבוע',
-  communityEditRecurringHint: 'יוצר משחק חדש אוטומטית לפי הימים והשעה למעלה',
+  communityEditRecurringEnabled: 'משחק קבוע (שבועי)',
+  communityEditRecurringHint:
+    'משחק שחוזר כל שבוע. כ-3 שעות אחרי שהמשחק מסתיים, נפתח אוטומטית משחק זהה לשבוע הבא (אותו יום ושעה), ופתיחת ההרשמה תתוזמן שוב באותו הפרש זמן. לא צריך לפתוח ידנית כל שבוע.',
   communityEditSectionBasics: 'פרטים בסיסיים',
   communityEditSectionSchedule: 'מתי משחקים',
   communityEditSectionSettings: 'הגדרות קבוצה',

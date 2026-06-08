@@ -21,6 +21,7 @@ import {
   GameWizardForm,
   type GameFormValues,
 } from '@/screens/games/GameWizardForm';
+import { useGroupStore } from '@/store/groupStore';
 import { Text } from 'react-native';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'GameEdit'>;
@@ -105,6 +106,7 @@ export function GameEditScreen() {
   const { gameId } = useRoute<Route>().params;
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
+  const myGroups = useGroupStore((s) => s.groups);
 
   useEffect(() => {
     let alive = true;
@@ -318,12 +320,19 @@ export function GameEditScreen() {
     nav.replace('MatchDetails', { gameId: game.id });
   };
 
+  const isOrphan = game.isOrphanContext === true;
   return (
     <GameWizardForm
       headerTitle={he.editGameTitle}
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}
       onSubmit={submit}
+      quick={isOrphan}
+      communityName={
+        isOrphan
+          ? undefined
+          : myGroups.find((g) => g.id === game.groupId)?.name
+      }
     />
   );
 }

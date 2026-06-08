@@ -198,6 +198,10 @@ interface Props {
    * fire only at creation time.
    */
   showInviteFriends?: boolean;
+  /** Name of the community this game opens for — shown read-only in the
+   *  details step (community games only) so the organiser always sees
+   *  where it lands, even with a single community. */
+  communityName?: string;
 }
 
 export function GameWizardForm({
@@ -208,6 +212,7 @@ export function GameWizardForm({
   extraTopSlot,
   quick = false,
   showInviteFriends = false,
+  communityName,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
@@ -332,7 +337,14 @@ export function GameWizardForm({
             <View style={styles.extraSlot}>{extraTopSlot}</View>
           ) : null}
           <Animated.View style={[styles.body, { opacity: fade }]}>
-            {step === 1 ? <Step1 values={values} set={set} /> : null}
+            {step === 1 ? (
+              <Step1
+                values={values}
+                set={set}
+                quick={quick}
+                communityName={communityName}
+              />
+            ) : null}
             {step === 2 ? (
               <Step2 values={values} maxPlayers={maxPlayers} set={set} />
             ) : null}
@@ -423,15 +435,39 @@ type SetFn = <K extends keyof GameFormValues>(
 function Step1({
   values,
   set,
+  quick,
+  communityName,
 }: {
   values: GameFormValues;
   set: SetFn;
+  quick: boolean;
+  communityName?: string;
 }) {
-  // Step 1 — "מתי ואיפה". Identity of the event in physical space:
-  // when, a single picked location (govmap), surface type.
+  // Step 1 — "פרטים". When, where, surface, who-sees-it. For a quick game
+  // the organiser names it (the name shows in the feed instead of "משחק
+  // חד־פעמי"); for a community game we show which community it opens for.
   const [locOpen, setLocOpen] = useState(false);
   return (
     <View style={styles.stack}>
+      {/* Quick game → name input. Community game → read-only target line. */}
+      {quick ? (
+        <InputField
+          label={he.createGameNameLabel}
+          info={{ text: he.createGameNameHint }}
+          value={values.title}
+          onChangeText={(t) => set('title', t)}
+          placeholder={he.createGameNamePlaceholder}
+          icon="football-outline"
+        />
+      ) : communityName ? (
+        <View style={styles.targetRow}>
+          <Ionicons name="people-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.targetText}>
+            {he.createGameForCommunity(communityName)}
+          </Text>
+        </View>
+      ) : null}
+
       <AppDateTimeField
         label={he.createGameDateTime}
         value={values.startsAt}
@@ -443,19 +479,14 @@ function Step1({
           address — it already contains the city — so the organiser fills
           ONE field instead of separate venue + city + address inputs. On
           select we keep govmap's precise coords and reverse-geocode the
-          clean city the availability matcher needs, all behind the scenes.
-          The underlying Game.fieldName / fieldAddress / city fields are
-          still populated, so existing games + the matcher + map are
-          unaffected. */}
-      {/* Tap opens a full-screen search (results clear above the keyboard,
-          no banner overlap) with a map confirm. Free text is still allowed. */}
+          clean city the availability matcher needs, all behind the scenes. */}
       <View>
         <InputField
           label={he.createGameField}
           required
           value={values.fieldName}
           placeholder={he.createGameFieldPlaceholder}
-          icon="search-outline"
+          icon="location-outline"
           onPress={() => setLocOpen(true)}
         />
       </View>
@@ -481,7 +512,10 @@ function Step1({
       />
 
       <View style={styles.section}>
-        <Text style={styles.label}>{he.createGameFieldType}</Text>
+        <View style={styles.labelRow}>
+          <Ionicons name="layers-outline" size={16} color={colors.textMuted} />
+          <Text style={[styles.label, styles.labelFlex]}>{he.createGameFieldType}</Text>
+        </View>
         <View style={styles.pillRow}>
           {FIELD_TYPES.map((f) => (
             <Pill
@@ -493,6 +527,28 @@ function Step1({
               }
             />
           ))}
+        </View>
+      </View>
+
+      {/* Visibility moved here (was in the advanced/management step) — it's
+          a core "who is this game for" decision, not an advanced setting. */}
+      <View style={styles.section}>
+        <View style={styles.labelRow}>
+          <Ionicons name="eye-outline" size={16} color={colors.textMuted} />
+          <Text style={[styles.label, styles.labelFlex]}>{he.wizardSectionVisibility}</Text>
+          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} />
+        </View>
+        <View style={styles.pillRow}>
+          <Pill
+            active={values.visibility === 'community'}
+            label={quick ? he.wizardVisibilityPrivate : he.wizardVisibilityCommunity}
+            onPress={() => set('visibility', 'community')}
+          />
+          <Pill
+            active={values.visibility === 'public'}
+            label={quick ? he.wizardVisibilityPublicOpen : he.wizardVisibilityPublic}
+            onPress={() => set('visibility', 'public')}
+          />
         </View>
       </View>
     </View>
@@ -574,30 +630,11 @@ function Step3({
   quick: boolean;
   showInviteFriends: boolean;
 }) {
-  // Step 3 — "ניהול". Visibility, approval, recurring schedule,
-  // cancellation deadline, plus the logistics toggles (bring ball /
-  // shirts) and free-text notes. Ends with the summary card.
+  // Step 3 — "ניהול". Approval, recurring schedule, scheduled public-open
+  // + guests-open, cancellation deadline, fillers, notes. (Visibility moved
+  // to step 1.) Ends with the summary card.
   return (
     <View style={styles.stack}>
-      <View style={styles.section}>
-        <View style={styles.labelRow}>
-          <Text style={[styles.label, styles.labelFlex]}>{he.wizardSectionVisibility}</Text>
-          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} />
-        </View>
-        <View style={styles.pillRow}>
-          <Pill
-            active={values.visibility === 'community'}
-            label={quick ? he.wizardVisibilityPrivate : he.wizardVisibilityCommunity}
-            onPress={() => set('visibility', 'community')}
-          />
-          <Pill
-            active={values.visibility === 'public'}
-            label={quick ? he.wizardVisibilityPublicOpen : he.wizardVisibilityPublic}
-            onPress={() => set('visibility', 'public')}
-          />
-        </View>
-      </View>
-
       {/* Invite friends directly — they get an `inviteToGame` push the
           moment the game is created. Shown on creation for both quick
           and community games. */}
@@ -651,6 +688,56 @@ function Step3({
                   ? he.wizardRegOpensHintPast
                   : he.wizardRegOpensHint}
               </Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {/* Scheduled flip community→public (community games only, and only
+          meaningful when the game starts as members-only). A CF flips the
+          visibility at the chosen time. */}
+      {!quick && values.visibility === 'community' ? (
+        <>
+          <ToggleRow
+            label={he.wizardPublicOpenToggle}
+            info={{ title: he.wizardPublicOpenToggle, text: he.wizardPublicOpenHint }}
+            value={values.publicOpenAt > 0}
+            onChange={(v) =>
+              set('publicOpenAt', v ? values.startsAt - 4 * 60 * 60 * 1000 : 0)
+            }
+          />
+          {values.publicOpenAt > 0 ? (
+            <View style={styles.section}>
+              <AppDateTimeField
+                label={he.wizardPublicOpenLabel}
+                value={values.publicOpenAt}
+                onChange={(ms) => set('publicOpenAt', ms)}
+                required
+              />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {/* Gate non-admin guest-adding until a chosen time (community games). */}
+      {!quick ? (
+        <>
+          <ToggleRow
+            label={he.wizardGuestsOpenToggle}
+            info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
+            value={values.guestsOpenAt > 0}
+            onChange={(v) =>
+              set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
+            }
+          />
+          {values.guestsOpenAt > 0 ? (
+            <View style={styles.section}>
+              <AppDateTimeField
+                label={he.wizardGuestsOpenLabel}
+                value={values.guestsOpenAt}
+                onChange={(ms) => set('guestsOpenAt', ms)}
+                required
+              />
             </View>
           ) : null}
         </>
@@ -933,6 +1020,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
+  // Read-only "this game opens for <community>" row (details step).
+  targetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  targetText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   hint: {
     ...typography.caption,
     color: colors.textMuted,
