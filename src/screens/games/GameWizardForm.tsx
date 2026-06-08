@@ -233,15 +233,25 @@ export function GameWizardForm({
 
   const maxPlayers = playersPerTeam(values.format) * values.numberOfTeams;
 
-  // Subtle fade-in when transitioning between steps.
+  // Subtle fade-in when transitioning between steps. We animate a fresh
+  // Animated.Value PER STEP (keyed below) rather than resetting one shared
+  // value to 0 — on a heavy step (step 3), swapping the body content could
+  // interrupt the native-driver animation and leave it stuck at opacity 0,
+  // rendering the whole step invisible. A per-step value can't get wedged
+  // by a previous step's cancelled animation.
   const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     fade.setValue(0);
-    Animated.timing(fade, {
+    const anim = Animated.timing(fade, {
       toValue: 1,
       duration: 220,
       useNativeDriver: true,
-    }).start();
+    });
+    anim.start();
+    // Safety net: if the animation is interrupted (content swap on a heavy
+    // step), force the end value so the step never stays invisible.
+    const t = setTimeout(() => fade.setValue(1), 300);
+    return () => clearTimeout(t);
   }, [step, fade]);
 
   // Step 1 gate: a game needs a location, but it may be free text — the
