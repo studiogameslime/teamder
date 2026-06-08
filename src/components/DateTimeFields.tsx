@@ -711,9 +711,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
   },
-  // ⓘ on the trailing (left, under RTL) edge: label fills the row.
+  // Label + ⓘ cluster at the start (right, RTL); ⓘ sits immediately to
+  // the left of the label text.
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, width: '100%' },
-  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
+  labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
   requiredStar: {
     color: colors.danger,
     fontWeight: '700',

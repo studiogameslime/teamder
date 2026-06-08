@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     width: '100%',
   },
-  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
+  labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
   summaryModalCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -1159,8 +1159,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
     textAlign: RTL_LABEL_ALIGN,
-    // flex:1 so the ⓘ tooltip is pushed to the trailing (left) edge.
-    flex: 1,
+    // Content-width so the ⓘ sits immediately to the LEFT of the label
+    // (the label+ⓘ cluster at the right; the Switch is at the far left).
+    flexShrink: 1,
   },
 
   // Summary card (Step 3)
