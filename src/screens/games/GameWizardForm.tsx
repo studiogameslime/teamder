@@ -858,10 +858,10 @@ function SummaryCard({
   bare?: boolean;
 }) {
   const dateLabel = formatDateLong(values.startsAt);
+  // fieldName is the picker's full label (already includes the city), so
+  // prefer it alone; fall back to city only when there's no field name.
   const placeLabel =
-    [values.fieldName, values.city, values.fieldAddress]
-      .filter((s) => s.trim().length > 0)
-      .join(' · ') || '—';
+    values.fieldName.trim() || values.city.trim() || '—';
   const formatStr = `${formatLabel(values.format)} · ${maxPlayers} שחקנים`;
   const visibilityStr =
     values.visibility === 'public'
