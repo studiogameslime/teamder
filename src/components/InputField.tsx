@@ -106,7 +106,7 @@ export function InputField({
             {label}
             {required ? <Text style={styles.requiredStar}>{' *'}</Text> : null}
           </Text>
-          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+          {info ? <InfoTip title={info.title ?? label} text={info.text} /> : null}
         </View>
       ) : null}
       {onPress ? (
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelFlex: {
-    flex: 1,
+    flexShrink: 1,
     width: undefined,
     alignSelf: 'auto',
   },

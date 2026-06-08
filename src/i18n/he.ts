@@ -332,6 +332,12 @@ export const he = {
   createGameFieldPlaceholder: 'חפש מגרש, בית ספר, פארק או כתובת (כולל עיר)',
   createGameLocationFreeTextHint:
     'אפשר גם להקליד מיקום חופשי. בחירה מהרשימה תעזור לנו למקם את המשחק במדויק.',
+  // Location search sheet
+  locationSearchTitle: 'חיפוש מיקום',
+  locationConfirm: 'אישור המיקום',
+  locationSearchAgain: 'חיפוש אחר',
+  locationNoResults: 'לא נמצאו תוצאות. אפשר להשתמש בטקסט שהקלדת.',
+  locationUseTyped: (q: string) => `השתמש ב: "${q}"`,
   createGameCity: 'עיר',
   createGameCityPlaceholder: 'בחר עיר מהרשימה',
   createGameCityMustPick: 'חובה לבחור עיר מהרשימה (לא טקסט חופשי)',
@@ -1231,6 +1237,8 @@ export const he = {
   matchDetailsCancel: 'בטל הרשמה',
   matchDetailsJoin: 'הצטרף למשחק',
   matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
+  matchDetailsRegistrationOpensAt: (when: string) =>
+    `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
   matchDetailsAlreadyStarted: 'המשחק כבר התחיל',
   matchDetailsAlreadyLive: 'המשחק כבר במצב לייב',
   matchDetailsAlreadyFinished: 'המשחק הסתיים',

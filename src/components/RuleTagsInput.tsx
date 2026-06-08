@@ -90,7 +90,7 @@ export function RuleTagsInput({
       {label ? (
         <View style={styles.labelRow}>
           <Text style={[styles.label, styles.labelFlex]}>{label}</Text>
-          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+          {info ? <InfoTip title={info.title ?? label} text={info.text} /> : null}
         </View>
       ) : null}
 
@@ -159,8 +159,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    width: '100%',
   },
-  labelFlex: { flex: 1 },
+  labelFlex: { flexShrink: 1 },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -83,6 +83,7 @@ import {
   isFinished,
   isOpen,
   isRoundRunning,
+  isScheduled,
   isTerminal as isTerminalGame,
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -740,6 +741,16 @@ export function MatchDetailsScreen() {
         else if (isRoundRunning(game)) toast.info(he.matchDetailsAlreadyLive);
         else if (game.startsAt && game.startsAt < Date.now()) {
           toast.info(he.matchDetailsAlreadyStarted);
+        } else if (isScheduled(game)) {
+          // Recurring game whose registration window hasn't OPENED yet —
+          // "closed" is misleading; tell the user when it opens.
+          toast.info(
+            game.registrationOpensAt
+              ? he.matchDetailsRegistrationOpensAt(
+                  formatDateLong(game.registrationOpensAt),
+                )
+              : he.communityNextGameLocked,
+          );
         } else toast.info(he.matchDetailsClosedForRegistration);
         return;
       }
@@ -900,7 +911,13 @@ export function MatchDetailsScreen() {
       } else if (msg.includes('GAME_LIVE')) {
         toast.info(he.matchDetailsAlreadyLive);
       } else if (msg.includes('GAME_NOT_OPEN')) {
-        toast.info(he.matchDetailsClosedForRegistration);
+        toast.info(
+          isScheduled(game) && game.registrationOpensAt
+            ? he.matchDetailsRegistrationOpensAt(
+                formatDateLong(game.registrationOpensAt),
+              )
+            : he.matchDetailsClosedForRegistration,
+        );
       } else if (__DEV__) {
         // Dev-only verbose toast so we can pinpoint which check the
         // transaction or rules are failing on. Production stays

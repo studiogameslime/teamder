@@ -34,12 +34,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { RuleTagsInput } from '@/components/RuleTagsInput';
-import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
 import { InfoTip } from '@/components/InfoTip';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
-import { searchPlaces, coordsForLabel } from '@/services/govmapService';
+import { LocationSearchSheet } from '@/components/games/LocationSearchSheet';
 import { reverseGeocodeCity } from '@/services/geocodeService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -405,6 +404,7 @@ function Step1({
 }) {
   // Step 1 — "מתי ואיפה". Identity of the event in physical space:
   // when, a single picked location (govmap), surface type.
+  const [locOpen, setLocOpen] = useState(false);
   return (
     <View style={styles.stack}>
       <AppDateTimeField
@@ -422,43 +422,37 @@ function Step1({
           The underlying Game.fieldName / fieldAddress / city fields are
           still populated, so existing games + the matcher + map are
           unaffected. */}
+      {/* Tap opens a full-screen search (results clear above the keyboard,
+          no banner overlap) with a map confirm. Free text is still allowed. */}
       <View>
-        <AutocompleteInput
+        <InputField
           label={he.createGameField}
           required
           value={values.fieldName}
-          onChange={(t) => {
-            // Free typing is allowed — mirror to address. It's not a
-            // confirmed pick (no coords/city yet); if the user later taps a
-            // suggestion, onSelect fills those in for the matcher.
-            set('fieldName', t);
-            set('fieldAddress', t);
-            set('cityFromList', false);
-          }}
-          onSelect={(label) => {
-            set('fieldName', label);
-            set('fieldAddress', label);
-            set('cityFromList', true);
-            // Coords are available synchronously from the just-fetched
-            // govmap results; city via a best-effort reverse geocode.
-            const coords = coordsForLabel(label);
-            if (coords) {
-              reverseGeocodeCity(coords.lat, coords.lng)
-                .then((city) => {
-                  if (city) set('city', city);
-                })
-                .catch(() => {});
-            }
-          }}
           placeholder={he.createGameFieldPlaceholder}
-          fetchSuggestions={(q) => searchPlaces(q).then((r) => r.map((p) => p.label))}
+          icon="search-outline"
+          onPress={() => setLocOpen(true)}
         />
-        {/* Picking a suggestion is optional but helps location matching —
-            surface that as a gentle hint, not a blocking error. */}
-        {values.fieldName.trim().length > 0 && !values.cityFromList ? (
-          <Text style={styles.hint}>{he.createGameLocationFreeTextHint}</Text>
-        ) : null}
       </View>
+      <LocationSearchSheet
+        visible={locOpen}
+        initialQuery={values.fieldName}
+        onClose={() => setLocOpen(false)}
+        onSelect={(r) => {
+          set('fieldName', r.label);
+          set('fieldAddress', r.label);
+          if (r.lat != null && r.lng != null) {
+            set('cityFromList', true);
+            reverseGeocodeCity(r.lat, r.lng)
+              .then((city) => {
+                if (city) set('city', city);
+              })
+              .catch(() => {});
+          } else {
+            set('cityFromList', false);
+          }
+        }}
+      />
 
       <View style={styles.section}>
         <Text style={styles.label}>{he.createGameFieldType}</Text>
@@ -562,7 +556,7 @@ function Step3({
       <View style={styles.section}>
         <View style={styles.labelRow}>
           <Text style={[styles.label, styles.labelFlex]}>{he.wizardSectionVisibility}</Text>
-          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} size={16} />
+          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} />
         </View>
         <View style={styles.pillRow}>
           <Pill
@@ -667,7 +661,7 @@ function Step3({
         <View style={styles.section}>
           <View style={styles.labelRow}>
             <Text style={[styles.label, styles.labelFlex]}>{he.gameFillerMinTrust}</Text>
-            <InfoTip title={he.gameFillerMinTrust} text={he.gameFillerMinTrustHint} size={16} />
+            <InfoTip title={he.gameFillerMinTrust} text={he.gameFillerMinTrustHint} />
           </View>
           <View style={styles.pillRow}>
             {FILLER_MIN_TRUST_OPTIONS.map((opt, i) => (
@@ -912,7 +906,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     width: '100%',
   },
-  labelFlex: { flex: 1, width: undefined, alignSelf: 'auto' },
+  labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
   hint: {
     ...typography.caption,
     color: colors.textMuted,

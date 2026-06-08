@@ -1,13 +1,20 @@
-// InfoTip — a small ⓘ icon that opens a brief explanation in a centred
-// modal. The app had no reusable way to explain a feature inline; drop this
-// next to any label/header that needs a "what is this / why" hint.
+// InfoTip — a small ⓘ icon that opens a brief explanation in a popover
+// ANCHORED to the icon (a speech-bubble with a caret pointing at it),
+// not a centred modal. Drop it next to any label that needs a "what is
+// this / why" hint.
 //
-//   <InfoTip title="מד אמינות" text="מד שמשקף עד כמה אפשר לסמוך עליך…" />
+//   <InfoTip title="אורך המשחק" text="משך הזמן הכולל של המשחק…" />
 
-import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  Dimensions,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from './Button';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -16,18 +23,48 @@ interface Props {
   title?: string;
   /** The explanation body. */
   text: string;
-  /** Icon size — match the label it sits next to. */
+  /** Icon size — defaults to 18 so it reads as a real, tappable affordance. */
   size?: number;
   /** Override the muted icon tint (e.g. on a coloured header). */
   color?: string;
 }
 
+const CARD_W = 280;
+const MARGIN = 12;
+const EST_H = 170; // rough card height for the above/below decision
+
+interface Anchor {
+  top: number;
+  left: number;
+  caretLeft: number;
+  above: boolean;
+}
+
 export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Props) {
-  const [open, setOpen] = useState(false);
+  const ref = useRef<View>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+
+  const open = () => {
+    const node = ref.current;
+    if (!node) return;
+    node.measureInWindow((x, y, w, h) => {
+      const screen = Dimensions.get('window');
+      const iconCenterX = x + w / 2;
+      let left = iconCenterX - CARD_W / 2;
+      left = Math.max(MARGIN, Math.min(left, screen.width - CARD_W - MARGIN));
+      const caretLeft = Math.max(16, Math.min(iconCenterX - left, CARD_W - 16));
+      // Prefer below the icon; flip above if there isn't room.
+      const above = y + h + 8 + EST_H > screen.height - MARGIN;
+      const top = above ? y - 8 - EST_H : y + h + 8;
+      setAnchor({ top, left, caretLeft, above });
+    });
+  };
+
   return (
     <>
       <Pressable
-        onPress={() => setOpen(true)}
+        ref={ref}
+        onPress={open}
         hitSlop={10}
         accessibilityRole="button"
         accessibilityLabel={he.infoTipA11y}
@@ -36,22 +73,38 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
         <Ionicons name="information-circle-outline" size={size} color={color} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="information-circle" size={28} color={colors.primary} />
-            </View>
-            {title ? <Text style={styles.title}>{title}</Text> : null}
-            <Text style={styles.body}>{text}</Text>
-            <Button
-              title={he.infoTipGotIt}
-              variant="primary"
-              size="md"
-              fullWidth
-              onPress={() => setOpen(false)}
-            />
-          </Pressable>
+      <Modal
+        visible={!!anchor}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAnchor(null)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setAnchor(null)}>
+          {anchor ? (
+            <Pressable
+              style={[styles.card, { width: CARD_W, top: anchor.top, left: anchor.left }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* caret */}
+              <View
+                style={[
+                  styles.caret,
+                  { left: anchor.caretLeft - 6 },
+                  anchor.above ? styles.caretBottom : styles.caretTop,
+                ]}
+              />
+              <View style={styles.headerRow}>
+                {title ? <Text style={styles.title}>{title}</Text> : <View style={{ flex: 1 }} />}
+                <Pressable onPress={() => setAnchor(null)} hitSlop={8}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </Pressable>
+              </View>
+              <Text style={styles.body}>{text}</Text>
+              <Pressable onPress={() => setAnchor(null)} style={styles.gotItWrap} hitSlop={6}>
+                <Text style={styles.gotIt}>{he.infoTipGotIt}</Text>
+              </Pressable>
+            </Pressable>
+          ) : null}
         </Pressable>
       </Modal>
     </>
@@ -61,37 +114,58 @@ export function InfoTip({ title, text, size = 18, color = colors.textMuted }: Pr
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
+    backgroundColor: 'rgba(15,23,42,0.25)',
   },
   card: {
-    width: '100%',
-    maxWidth: 360,
+    position: 'absolute',
     backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.md,
-    alignItems: 'center',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary + '1A',
+  caret: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    transform: [{ rotate: '45deg' }],
+  },
+  caretTop: { top: -6, borderTopWidth: 1, borderLeftWidth: 1 },
+  caretBottom: { bottom: -6, borderBottomWidth: 1, borderRightWidth: 1 },
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   title: {
-    ...typography.h2,
+    ...typography.h3,
+    flex: 1,
     color: colors.text,
-    textAlign: 'center',
+    fontWeight: '800',
+    textAlign: 'right',
   },
   body: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
+    textAlign: 'right',
+    lineHeight: 21,
+  },
+  gotItWrap: {
+    alignSelf: 'flex-start',
+    paddingTop: spacing.xs,
+  },
+  gotIt: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '800',
   },
 });

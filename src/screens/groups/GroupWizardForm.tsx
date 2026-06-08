@@ -332,7 +332,7 @@ function ToggleCard({
           <Text style={[styles.toggleLabel, styles.toggleLabelFlex]} numberOfLines={2}>
             {label}
           </Text>
-          {info ? <InfoTip title={info.title ?? label} text={info.text} size={16} /> : null}
+          {info ? <InfoTip title={info.title ?? label} text={info.text} /> : null}
         </View>
         {hint ? (
           <Text style={styles.toggleHint} numberOfLines={2}>
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
-  toggleLabelFlex: { flex: 1 },
+  toggleLabelFlex: { flexShrink: 1 },
   toggleHint: {
     ...typography.caption,
     color: colors.textMuted,
