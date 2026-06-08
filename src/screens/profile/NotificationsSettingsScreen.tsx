@@ -95,6 +95,11 @@ const ROWS: Row[] = [
     sub: he.notifGameRsvpNudgeSub,
   },
   {
+    key: 'gamePlayersJoined',
+    label: he.notifGamePlayersJoined,
+    sub: he.notifGamePlayersJoinedSub,
+  },
+  {
     key: 'playerCancelled',
     label: he.notifPlayerCancelled,
     sub: he.notifPlayerCancelledSub,

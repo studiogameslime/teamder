@@ -1555,6 +1555,9 @@ export const he = {
   notifGameFillingUpSub: 'משחקים בקבוצה שלך שכמעט מלאים',
   notifGameRsvpNudge: 'תזכורת להירשם למשחק',
   notifGameRsvpNudgeSub: 'נשלחת 5 שעות לפני המשחק אם עדיין לא ענית',
+  notifGamePlayersJoined: 'שחקן נרשם למשחק',
+  notifGamePlayersJoinedSub:
+    'מישהו נרשם למשחק שאני מארגן (כולל משחק קבוע ומשחק מהיר)',
   notifPlayerCancelled: 'שחקן ביטל השתתפות',
   notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמשחק שאני מארגן',
   notifGameShortageWarning: 'מחסור בשחקנים',

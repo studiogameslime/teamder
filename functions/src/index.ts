@@ -1685,7 +1685,10 @@ async function runFlipScheduledGames(): Promise<void> {
             title: g.title || 'המשחק',
             startsAt: g.startsAt,
             fieldName: g.fieldName,
-            createdBy: g.createdBy,
+            // Registration-open for a recurring/scheduled game: notify
+            // EVERYONE in the community INCLUDING the organiser/admin
+            // (spec) — so deliberately DON'T pass createdBy here (which
+            // would exclude the creator from the fan-out).
           },
         });
         // Step 2 — flag the game so a future run won't re-notify.
@@ -1724,6 +1727,156 @@ async function runFlipScheduledGames(): Promise<void> {
   console.log(
     `[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`,
   );
+}
+
+// ─── Scheduled: recurring weekly game clone-on-completion ───────────────
+//
+// A recurring community game (`recurring: true`) re-creates itself every
+// week. ~3h AFTER kickoff we clone the fixture into next week with the
+// EXACT same settings: startsAt +7d, and the same relative offsets for
+// registrationOpensAt / publicOpenAt / guestsOpenAt (each +7d). The fresh
+// instance starts with an empty roster. The original is stamped with
+// `recurringNextCreatedAt` so we never clone the same instance twice — the
+// clone (also recurring) will, in turn, spawn the following week's game
+// ~3h after ITS kickoff. No series doc, no management UI — just the toggle.
+const RECURRING_CLONE_DELAY_MS = 3 * 60 * 60 * 1000; // 3h after kickoff
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function runCloneRecurringGames(): Promise<void> {
+  const now = Date.now();
+  const snap = await db
+    .collection('games')
+    .where('recurring', '==', true)
+    .get();
+  if (snap.empty) {
+    console.log('[cloneRecurringGames] none');
+    return;
+  }
+  let cloned = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as Record<string, unknown> & {
+      startsAt?: number;
+      status?: string;
+      recurringNextCreatedAt?: number;
+      registrationOpensAt?: number;
+      publicOpenAt?: number;
+      guestsOpenAt?: number;
+      groupId?: string;
+      title?: string;
+    };
+    if (typeof g.startsAt !== 'number') continue;
+    if (g.recurringNextCreatedAt) continue; // already spawned next week
+    if (g.status === 'cancelled') continue; // a cancelled week doesn't recur
+    if (now < g.startsAt + RECURRING_CLONE_DELAY_MS) continue; // wait 3h post-kickoff
+
+    const shift = (v: unknown): number | undefined =>
+      typeof v === 'number' && v > 0 ? v + WEEK_MS : undefined;
+
+    // Faithful copy of the settings, with a reset roster + shifted times.
+    const next: Record<string, unknown> = { ...g };
+    next.id = '';
+    next.startsAt = g.startsAt + WEEK_MS;
+    const nextReg = shift(g.registrationOpensAt);
+    const nextPublic = shift(g.publicOpenAt);
+    const nextGuests = shift(g.guestsOpenAt);
+    if (nextReg !== undefined) next.registrationOpensAt = nextReg;
+    else delete next.registrationOpensAt;
+    if (nextPublic !== undefined) next.publicOpenAt = nextPublic;
+    else delete next.publicOpenAt;
+    if (nextGuests !== undefined) next.guestsOpenAt = nextGuests;
+    else delete next.guestsOpenAt;
+    // Fresh roster + per-instance transient state.
+    next.players = [];
+    next.waitlist = [];
+    next.pending = [];
+    next.participantIds = [];
+    next.guests = [];
+    next.matches = [];
+    next.arrivals = {};
+    next.cancellations = {};
+    next.ballBringerIds = [];
+    next.currentMatchIndex = 0;
+    next.locked = false;
+    // Clear all idempotency latches so next week's pushes fire fresh.
+    delete next.recurringNextCreatedAt;
+    delete next.openedNotificationSent;
+    delete next.reminderSent;
+    delete next.rateReminderSent;
+    delete next.rsvpNudgeSent;
+    delete next.shortageWarningSent;
+    delete next.fillingUpSent;
+    delete next.publicOpenedAt;
+    delete next.pinnedMessage;
+    // Status: scheduled if registration hasn't opened yet, else open.
+    const isDeferred = typeof nextReg === 'number' && nextReg > now;
+    next.status = isDeferred ? 'scheduled' : 'open';
+    // If it flips to public on a schedule, it starts members-only again.
+    if (nextPublic !== undefined) next.visibility = 'community';
+    next.createdAt = now;
+    next.updatedAt = now;
+
+    try {
+      const ref = await db.collection('games').add(next);
+      await ref.update({ id: ref.id });
+      await doc.ref.update({ recurringNextCreatedAt: now, updatedAt: now });
+      // Notify the community now only if it opened immediately. A deferred
+      // instance gets its push from flipScheduledGames when reg opens.
+      if (!isDeferred) {
+        await createNotificationOnce({
+          type: 'newGameInCommunity',
+          recipientId: g.groupId ?? ref.id,
+          payload: {
+            groupId: g.groupId,
+            gameId: ref.id,
+            title: g.title || 'המשחק',
+            startsAt: next.startsAt,
+            fieldName: (g as { fieldName?: string }).fieldName,
+          },
+        });
+      }
+      cloned++;
+    } catch (err) {
+      console.error(`[cloneRecurringGames] clone failed for ${doc.id}`, err);
+    }
+  }
+  console.log(`[cloneRecurringGames] cloned ${cloned}`);
+}
+
+// ─── Scheduled: flip community→public at publicOpenAt ───────────────────
+//
+// A community game can be scheduled to open to the whole app at a set
+// time (publicOpenAt). Every few minutes we flip any due game's
+// visibility to 'public' so it surfaces in the app-wide feed. The
+// `publicOpenedAt` latch makes the flip idempotent.
+async function runFlipPublicGames(): Promise<void> {
+  const now = Date.now();
+  const snap = await db
+    .collection('games')
+    .where('visibility', '==', 'community')
+    .get();
+  if (snap.empty) return;
+  let flipped = 0;
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      publicOpenAt?: number;
+      publicOpenedAt?: number;
+      status?: string;
+    };
+    if (g.publicOpenedAt) continue;
+    if (typeof g.publicOpenAt !== 'number' || g.publicOpenAt > now) continue;
+    if (g.status === 'cancelled' || g.status === 'finished') continue;
+    try {
+      await doc.ref.update({
+        visibility: 'public',
+        publicOpenedAt: now,
+        updatedAt: now,
+      });
+      flipped++;
+    } catch (err) {
+      console.error(`[flipPublicGames] flip failed for ${doc.id}`, err);
+    }
+  }
+  if (flipped) console.log(`[flipPublicGames] flipped ${flipped}`);
 }
 
 // ─── Scheduled: stale-game cleanup ─────────────────────────────────────
@@ -6240,6 +6393,8 @@ export const cronEvery5Min = onSchedule(
   { schedule: 'every 5 minutes', timeZone: 'Asia/Jerusalem' },
   async () => {
     await runSweep('flipScheduledGames', runFlipScheduledGames);
+    await runSweep('flipPublicGames', runFlipPublicGames);
+    await runSweep('cloneRecurringGames', runCloneRecurringGames);
     await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
     await runSweep('sweepDueCampaigns', () => sweepDueCampaigns(Date.now()));
   },
