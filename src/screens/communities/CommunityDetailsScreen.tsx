@@ -37,6 +37,7 @@ import { Button } from '@/components/Button';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { toast } from '@/components/Toast';
 import { CelebrationOverlay } from '@/components/anim/CelebrationOverlay';
 import { successHaptic } from '@/utils/haptics';
@@ -101,6 +102,7 @@ export function CommunityDetailsScreen() {
   // spinner doesn't fire at the same time as our SoccerBallLoader.
   const [refreshing, setRefreshing] = useState(false);
   const [busyLeave, setBusyLeave] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -250,33 +252,27 @@ export function CommunityDetailsScreen() {
       Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
       return;
     }
-    Alert.alert(
-      he.communityDetailsLeaveConfirmTitle,
-      he.communityDetailsLeaveConfirmBody,
-      [
-        { text: he.cancel, style: 'cancel' },
-        {
-          text: he.communityDetailsLeave,
-          style: 'destructive',
-          onPress: async () => {
-            setBusyLeave(true);
-            try {
-              await leaveGroup(group.id, me.id);
-              nav.goBack();
-            } catch (e) {
-              const msg = (e as Error).message;
-              if (msg === 'LAST_ADMIN') {
-                Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
-              } else {
-                Alert.alert(he.error, String(msg ?? e));
-              }
-            } finally {
-              setBusyLeave(false);
-            }
-          },
-        },
-      ],
-    );
+    setLeaveOpen(true);
+  };
+
+  const confirmLeave = async () => {
+    if (!group || !me) return;
+    setBusyLeave(true);
+    try {
+      await leaveGroup(group.id, me.id);
+      setLeaveOpen(false);
+      nav.goBack();
+    } catch (e) {
+      const msg = (e as Error).message;
+      setLeaveOpen(false);
+      if (msg === 'LAST_ADMIN') {
+        Alert.alert(he.error, he.communityDetailsLeaveLastAdmin);
+      } else {
+        Alert.alert(he.error, String(msg ?? e));
+      }
+    } finally {
+      setBusyLeave(false);
+    }
   };
 
   const handleInvite = async () => {
@@ -726,6 +722,18 @@ export function CommunityDetailsScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={sections}
+      />
+
+      <ConfirmDialog
+        visible={leaveOpen}
+        tone="danger"
+        title={he.communityDetailsLeaveConfirmTitle}
+        body={he.communityDetailsLeaveConfirmBody}
+        cancelLabel={he.cancel}
+        confirmLabel={he.communityDetailsLeave}
+        confirmVariant="danger"
+        onConfirm={confirmLeave}
+        onClose={() => setLeaveOpen(false)}
       />
 
       <ConfirmDestructiveModal

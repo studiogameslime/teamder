@@ -26,6 +26,7 @@ import {
   GameWizardForm,
   type GameFormValues,
 } from '@/screens/games/GameWizardForm';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'GameCreate'>;
 type Params = RouteProp<GameStackParamList, 'GameCreate'>;
@@ -129,6 +130,11 @@ export function GameCreateScreen() {
   // promote prompt converts it into a real community.
   const [orphanGroup, setOrphanGroup] = useState<Group | null>(null);
   const [orphanLoading, setOrphanLoading] = useState(false);
+  // Styled single-button notice popup (overlap / reg-after-kickoff) —
+  // replaces the native Alert so it matches the app's other popups.
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(
+    null,
+  );
 
   const startOrphanFlow = async () => {
     if (!user) return;
@@ -385,17 +391,20 @@ export function GameCreateScreen() {
       if (e.code === 'GAME_OVERLAP' && e.conflict) {
         const ts = new Date(e.conflict.startsAt);
         const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
-        Alert.alert(
-          he.createGameOverlapTitle,
-          he.createGameOverlapBody(e.conflict.title || he.createGameOverlapUnknownTitle, when),
-        );
+        setNotice({
+          title: he.createGameOverlapTitle,
+          body: he.createGameOverlapBody(
+            e.conflict.title || he.createGameOverlapUnknownTitle,
+            when,
+          ),
+        });
         return;
       }
       if (e.code === 'GAME_REG_AFTER_KICKOFF') {
-        Alert.alert(
-          he.editGameRegAfterKickoffTitle,
-          he.editGameRegAfterKickoffBody,
-        );
+        setNotice({
+          title: he.editGameRegAfterKickoffTitle,
+          body: he.editGameRegAfterKickoffBody,
+        });
         return;
       }
       throw err;
@@ -444,24 +453,35 @@ export function GameCreateScreen() {
   }
 
   return (
-    <GameWizardForm
-      // Force a remount whenever the user picks a different community
-      // from the dropdown. Without this, GameWizardForm's internal
-      // `useState(initial)` only seeds on first mount and never re-
-      // syncs when `initial` changes — so the form fields kept showing
-      // the FIRST community's pre-fill (title/fieldName/address) even
-      // after the user picked a different community.
-      key={`${selectedGroup?.id ?? 'none'}-${initialKey}`}
-      headerTitle={
-        isRecurring ? he.createGameRecurringTitle : he.createGameTitle
-      }
-      submitLabel={he.createGameSubmit}
-      initial={initial}
-      onSubmit={submit}
-      extraTopSlot={extraTopSlot}
-      quick={isOrphan}
-      showInviteFriends
-    />
+    <>
+      <GameWizardForm
+        // Force a remount whenever the user picks a different community
+        // from the dropdown. Without this, GameWizardForm's internal
+        // `useState(initial)` only seeds on first mount and never re-
+        // syncs when `initial` changes — so the form fields kept showing
+        // the FIRST community's pre-fill (title/fieldName/address) even
+        // after the user picked a different community.
+        key={`${selectedGroup?.id ?? 'none'}-${initialKey}`}
+        headerTitle={
+          isRecurring ? he.createGameRecurringTitle : he.createGameTitle
+        }
+        submitLabel={he.createGameSubmit}
+        initial={initial}
+        onSubmit={submit}
+        extraTopSlot={extraTopSlot}
+        quick={isOrphan}
+        showInviteFriends
+      />
+      <ConfirmDialog
+        visible={!!notice}
+        tone="warning"
+        title={notice?.title ?? ''}
+        body={notice?.body}
+        confirmLabel={he.infoTipGotIt}
+        onConfirm={() => setNotice(null)}
+        onClose={() => setNotice(null)}
+      />
+    </>
   );
 }
 

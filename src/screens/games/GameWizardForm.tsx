@@ -37,6 +37,7 @@ import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
 import { InfoTip } from '@/components/InfoTip';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { LocationSearchSheet } from '@/components/games/LocationSearchSheet';
 import { reverseGeocodeCity } from '@/services/geocodeService';
@@ -204,6 +205,9 @@ export function GameWizardForm({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GameFormValues>(initial);
+  // Soft "registration opens too close / in the past" warning — styled
+  // popup instead of a native Alert. `isPast` picks the body copy.
+  const [regWarn, setRegWarn] = useState<{ isPast: boolean } | null>(null);
 
   const set = <K extends keyof GameFormValues>(
     key: K,
@@ -285,19 +289,8 @@ export function GameWizardForm({
       if (isPast || isShort) {
         // Soft warning — admin can choose to continue. The hard
         // "must be before kickoff" check above is the only block.
-        Alert.alert(
-          he.wizardRegOpensWarnTitle,
-          isPast
-            ? he.wizardRegOpensWarnPastBody
-            : he.wizardRegOpensWarnShortBody,
-          [
-            { text: he.wizardRegOpensWarnEdit, style: 'cancel' },
-            {
-              text: he.wizardRegOpensWarnContinue,
-              onPress: finalizeSubmit,
-            },
-          ],
-        );
+        // Styled popup (ConfirmDialog) instead of a native Alert.
+        setRegWarn({ isPast });
         return;
       }
     }
@@ -389,6 +382,26 @@ export function GameWizardForm({
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Soft warning before creating with a too-close / past registration
+          time — styled popup, "ערוך" closes, "המשך בכל זאת" proceeds. */}
+      <ConfirmDialog
+        visible={!!regWarn}
+        tone="warning"
+        title={he.wizardRegOpensWarnTitle}
+        body={
+          regWarn?.isPast
+            ? he.wizardRegOpensWarnPastBody
+            : he.wizardRegOpensWarnShortBody
+        }
+        cancelLabel={he.wizardRegOpensWarnEdit}
+        confirmLabel={he.wizardRegOpensWarnContinue}
+        onConfirm={() => {
+          setRegWarn(null);
+          void finalizeSubmit();
+        }}
+        onClose={() => setRegWarn(null)}
+      />
     </SafeAreaView>
   );
 }
