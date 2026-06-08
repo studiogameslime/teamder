@@ -358,6 +358,7 @@ const groupConverter: FirestoreDataConverter<Group> = {
       addressNote: g.addressNote ?? null,
       description: g.description ?? null,
       coverPhotoUrl: g.coverPhotoUrl ?? null,
+      coverImageId: g.coverImageId ?? null,
       defaultMaxPlayers:
         typeof g.defaultMaxPlayers === 'number' ? g.defaultMaxPlayers : null,
       lat: g.lat ?? null,
@@ -418,6 +419,8 @@ const groupConverter: FirestoreDataConverter<Group> = {
       // never showed it and the WhatsApp invite couldn't attach it.
       coverPhotoUrl:
         typeof d.coverPhotoUrl === 'string' ? d.coverPhotoUrl : undefined,
+      coverImageId:
+        typeof d.coverImageId === 'string' ? d.coverImageId : undefined,
       adminIds: d.adminIds ?? [],
       playerIds: d.playerIds ?? [],
       pendingPlayerIds: d.pendingPlayerIds ?? [],
@@ -605,6 +608,7 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       // returning the default stadium fallback even after the admin
       // changed the cover. That's the bug surfaced today.
       coverPhotoUrl: g.coverPhotoUrl ?? null,
+      coverImageId: g.coverImageId ?? null,
       preferredDays: g.preferredDays ?? [],
       preferredHour: g.preferredHour ?? null,
       costPerGame: g.costPerGame ?? null,
@@ -634,6 +638,10 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       coverPhotoUrl:
         typeof d.coverPhotoUrl === 'string' && d.coverPhotoUrl.length > 0
           ? d.coverPhotoUrl
+          : undefined,
+      coverImageId:
+        typeof d.coverImageId === 'string' && d.coverImageId.length > 0
+          ? d.coverImageId
           : undefined,
       preferredDays: readWeekdays(d.preferredDays),
       preferredHour:
