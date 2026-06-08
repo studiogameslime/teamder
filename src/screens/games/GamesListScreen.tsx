@@ -376,6 +376,10 @@ export function GamesListScreen() {
   }, [communityGames, openGames, restFilters, gameCtx, mineList]);
 
   const filterCount = activeFiltersCount(filters);
+  // A community game needs a community the user admins. When they admin
+  // none, the chooser's "community game" option is locked with a hint.
+  const canCreateCommunityGame =
+    !!user && myCommunities.some((g) => g.adminIds.includes(user.id));
   const isEmpty = mineList.length === 0 && restList.length === 0;
 
   return (
@@ -676,24 +680,37 @@ export function GamesListScreen() {
               </Pressable>
             ) : null}
             <Pressable
+              disabled={!canCreateCommunityGame}
               style={({ pressed }) => [
                 createSheetStyles.choice,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
+                !canCreateCommunityGame && createSheetStyles.choiceLocked,
+                pressed &&
+                  canCreateCommunityGame && {
+                    opacity: 0.92,
+                    transform: [{ scale: 0.99 }],
+                  },
               ]}
               onPress={() => {
+                if (!canCreateCommunityGame) return;
                 setCreateSheetVisible(false);
                 nav.navigate('GameCreate');
               }}
             >
               <View style={createSheetStyles.choiceIcon}>
-                <Ionicons name="people" size={22} color="#1E40AF" />
+                <Ionicons
+                  name={canCreateCommunityGame ? 'people' : 'lock-closed'}
+                  size={22}
+                  color="#1E40AF"
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={createSheetStyles.choiceTitle}>
                   {he.createGameChooseCommunityTitle}
                 </Text>
                 <Text style={createSheetStyles.choiceBody}>
-                  {he.createGameChooseCommunityBody}
+                  {canCreateCommunityGame
+                    ? he.createGameChooseCommunityBody
+                    : he.createGameChooseCommunityLocked}
                 </Text>
               </View>
             </Pressable>
@@ -743,6 +760,7 @@ const createSheetStyles = StyleSheet.create({
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
   },
+  choiceLocked: { opacity: 0.55 },
   choiceIcon: {
     width: 44,
     height: 44,

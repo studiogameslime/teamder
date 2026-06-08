@@ -436,6 +436,8 @@ export const he = {
   createGameNamePlaceholder: 'לדוגמה: כדורגל שישי בבוקר',
   createGameNameHint: 'השם שיוצג בפיד ובכרטיס המשחק.',
   createGameForCommunity: (name: string) => `המשחק ייפתח לקבוצה: ${name}`,
+  createGameChooseCommunityLocked:
+    'כדי לפתוח משחק לקבוצה צריך קודם להקים קבוצה (או להיות מנהל באחת).',
   // Scheduled public-open + guests-open pickers (community games)
   wizardPublicOpenToggle: 'פתיחה לכלל האפליקציה בזמן מתוזמן',
   wizardPublicOpenHint:
@@ -1232,6 +1234,10 @@ export const he = {
   matchStatusJoined: 'נרשמת',
   matchStatusWaitlist: 'בהמתנה',
   matchStatusPending: 'ממתין לאישור',
+  // Visibility tag on the games list card
+  matchTagOpenToAll: 'פתוח לכולם',
+  matchTagCommunityOnly: 'סגור לקבוצה',
+  matchTagQuickClosed: 'משחק מהיר',
   // Urgency chip — surfaced when the game is full or nearly full so users
   // see scarcity at a glance, independent of their own registration state.
   matchStatusLastSpots: (n: number) =>

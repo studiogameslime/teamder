@@ -2040,6 +2040,22 @@ export function MatchDetailsScreen() {
                 icon: 'person-outline',
                 label: he.matchDetailsLabelOrganizer,
                 value: organizerName,
+                // Tap the organizer's row → open the creator's player card.
+                action: game.createdBy
+                  ? {
+                      icon: 'open-outline',
+                      onPress: () =>
+                        (
+                          nav as {
+                            navigate: (s: string, p: unknown) => void;
+                          }
+                        ).navigate('PlayerCard', {
+                          userId: game.createdBy,
+                          groupId: game.groupId,
+                        }),
+                      accessibilityLabel: he.matchDetailsLabelOrganizer,
+                    }
+                  : undefined,
               },
               {
                 icon: 'calendar-outline',

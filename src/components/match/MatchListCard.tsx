@@ -126,6 +126,14 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   if (game.requiresApproval) {
     tags.push({ label: he.matchStatusPending, tone: 'warning' });
   }
+  // Visibility at a glance: open-to-all (accent) vs members-only / quick.
+  if (game.visibility === 'public') {
+    tags.push({ label: he.matchTagOpenToAll, tone: 'accent' });
+  } else if (game.isOrphanContext) {
+    tags.push({ label: he.matchTagQuickClosed, tone: 'neutral' });
+  } else {
+    tags.push({ label: he.matchTagCommunityOnly, tone: 'neutral' });
+  }
 
   // Hide the cancel CTA on the list — it's a destructive action and
   // belongs only on MatchDetails where the consequence is more
