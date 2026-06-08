@@ -1264,6 +1264,11 @@ export const gameService = {
     notes?: string;
     city?: string;
     fieldAddress?: string;
+    /** Exact coords from the location picker. When present they're
+     *  written straight onto the doc (no post-create geocode), so the
+     *  game always has a real pin for Waze + the "near me" matcher. */
+    fieldLat?: number;
+    fieldLng?: number;
     /** @deprecated See `ruleTags`. Kept for legacy callers. */
     hasReferee?: boolean;
     /** @deprecated See `ruleTags`. */
@@ -1438,6 +1443,12 @@ export const gameService = {
       notes: input.notes,
       city: input.city,
       fieldAddress: input.fieldAddress,
+      // Pin coords from the picker, when supplied (else the async
+      // geocode below fills them best-effort).
+      fieldLat:
+        typeof input.fieldLat === 'number' ? input.fieldLat : undefined,
+      fieldLng:
+        typeof input.fieldLng === 'number' ? input.fieldLng : undefined,
       hasReferee: input.hasReferee,
       hasPenalties: input.hasPenalties,
       hasHalfTime: input.hasHalfTime,
@@ -1529,7 +1540,13 @@ export const gameService = {
     // mode (mock games already carry fieldLat/fieldLng). The pin lands on
     // the field address, degrading to the city when the address can't be
     // resolved.
-    if (!USE_MOCK_DATA && (input.fieldName || input.fieldAddress || input.city)) {
+    const hasPickedCoords =
+      typeof input.fieldLat === 'number' && typeof input.fieldLng === 'number';
+    if (
+      !USE_MOCK_DATA &&
+      !hasPickedCoords &&
+      (input.fieldName || input.fieldAddress || input.city)
+    ) {
       void geocodeAddress(input.fieldAddress, input.city, input.fieldName)
         .then((coords) => {
           if (coords) {
@@ -1628,6 +1645,10 @@ export const gameService = {
       notes: string;
       city: string;
       fieldAddress: string;
+      /** Pin coords from the location picker. Written through so an
+       *  edited location refreshes the map pin + Waze target. */
+      fieldLat: number;
+      fieldLng: number;
       hasReferee: boolean;
       hasPenalties: boolean;
       hasHalfTime: boolean;

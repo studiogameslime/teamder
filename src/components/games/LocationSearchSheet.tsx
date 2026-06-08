@@ -1,12 +1,17 @@
 // LocationSearchSheet — full-screen location picker for the game wizard.
-// Replaces the inline autocomplete dropdown (which the keyboard + banner ad
-// used to cover). Flow: type → clear results list above the keyboard →
-// tap a result → confirm on a small map → return. Free-typed text is also
-// allowed (returns without coords) so a place that isn't in govmap still works.
+//
+// Design goal: every chosen location ships with REAL coordinates, so the
+// game can be navigated to (Waze) and found by the "games near me" matcher.
+// The map is ALWAYS visible. Two ways to choose, both yielding coords:
+//   1. Search by text → tap a result (govmap gives precise coords).
+//   2. Tap / drag the pin on the map → reverse-geocoded to a label.
+// There is no coordless free-text path anymore: a pitch that isn't in the
+// search index is placed by tapping the map, which still produces coords.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   Pressable,
   StyleSheet,
@@ -19,13 +24,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { MapWebView } from '@/components/map/MapWebView';
 import { searchPlaces, type GovmapPlace } from '@/services/govmapService';
+import { reverseGeocode } from '@/services/geocodeService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 export interface LocationResult {
   label: string;
-  lat?: number;
-  lng?: number;
+  lat: number;
+  lng: number;
 }
 
 interface Props {
@@ -33,29 +39,64 @@ interface Props {
   onClose: () => void;
   onSelect: (result: LocationResult) => void;
   initialQuery?: string;
+  /** When editing a game that already has coords, center the map there
+   *  and show the existing pin so the organiser sees the current spot. */
+  initialCoords?: { lat: number; lng: number } | null;
 }
 
-export function LocationSearchSheet({ visible, onClose, onSelect, initialQuery }: Props) {
+// Map default view — central Israel, zoomed out enough to orient before
+// the user searches or taps. The map is locked to Israel in MapWebView.
+const ISRAEL_CENTER = { lat: 31.7, lng: 34.95 };
+const ISRAEL_ZOOM = 7;
+
+export function LocationSearchSheet({
+  visible,
+  onClose,
+  onSelect,
+  initialQuery,
+  initialCoords,
+}: Props) {
   const [query, setQuery] = useState(initialQuery ?? '');
   const [results, setResults] = useState<GovmapPlace[]>([]);
   const [loading, setLoading] = useState(false);
-  const [picked, setPicked] = useState<GovmapPlace | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // The currently-staged choice. `label` may be '' briefly while a map
+  // tap is being reverse-geocoded; coords are always present once set.
+  const [picked, setPicked] = useState<LocationResult | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [fly, setFly] = useState<{ lat: number; lng: number; zoom?: number } | null>(
+    null,
+  );
   const inputRef = useRef<TextInput>(null);
 
-  // Reset to a clean search each time the sheet opens.
+  // Reset to a clean search each time the sheet opens. If we're editing a
+  // game that already has coords, seed the pin + center on it.
   useEffect(() => {
     if (visible) {
       setQuery(initialQuery ?? '');
       setResults([]);
-      setPicked(null);
-      const t = setTimeout(() => inputRef.current?.focus(), 250);
-      return () => clearTimeout(t);
+      setSearchOpen(false);
+      setResolving(false);
+      if (initialCoords) {
+        setPicked({
+          label: initialQuery ?? he.locationOnMap,
+          lat: initialCoords.lat,
+          lng: initialCoords.lng,
+        });
+        setFly({ ...initialCoords, zoom: 15 });
+      } else {
+        setPicked(null);
+        setFly(null);
+      }
     }
-  }, [visible, initialQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
-  // Debounced search.
+  // Debounced text search. Only runs while the search dropdown is open
+  // (i.e. the user is actively typing) so a result/map pick doesn't
+  // re-trigger it.
   useEffect(() => {
-    if (!visible || picked) return;
+    if (!visible || !searchOpen) return;
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
@@ -78,19 +119,47 @@ export function LocationSearchSheet({ visible, onClose, onSelect, initialQuery }
       alive = false;
       clearTimeout(t);
     };
-  }, [query, visible, picked]);
+  }, [query, visible, searchOpen]);
 
-  const useFreeText = () => {
-    const q = query.trim();
-    if (!q) return;
-    onSelect({ label: q });
-    onClose();
+  const pickResult = (p: GovmapPlace) => {
+    Keyboard.dismiss();
+    setSearchOpen(false);
+    setResults([]);
+    setPicked({ label: p.label, lat: p.lat, lng: p.lng });
+    setFly({ lat: p.lat, lng: p.lng, zoom: 15 });
   };
-  const confirmPicked = () => {
+
+  const pickFromMap = (lat: number, lng: number) => {
+    Keyboard.dismiss();
+    setSearchOpen(false);
+    setResults([]);
+    // Show the pin + a "resolving" label immediately; fill the real label
+    // once reverse geocoding returns. Coords are final from this moment.
+    setPicked({ label: '', lat, lng });
+    setResolving(true);
+    reverseGeocode(lat, lng)
+      .then((r) => {
+        setPicked({ label: r?.label || he.locationOnMap, lat, lng });
+      })
+      .catch(() => {
+        setPicked({ label: he.locationOnMap, lat, lng });
+      })
+      .finally(() => setResolving(false));
+  };
+
+  const confirm = () => {
     if (!picked) return;
-    onSelect({ label: picked.label, lat: picked.lat, lng: picked.lng });
+    onSelect({
+      label: picked.label || he.locationOnMap,
+      lat: picked.lat,
+      lng: picked.lng,
+    });
     onClose();
   };
+
+  // Show the dropdown whenever the user is actively searching — it holds
+  // the spinner, the hits, or the "nothing found, tap the map" message.
+  const showResults = searchOpen && query.trim().length >= 2;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -104,83 +173,102 @@ export function LocationSearchSheet({ visible, onClose, onSelect, initialQuery }
           <View style={{ width: 26 }} />
         </View>
 
-        {picked ? (
-          // ── Confirm step: map + selected label ──
-          <View style={styles.confirmWrap}>
-            <View style={styles.mapBox}>
-              <MapWebView
-                markers={[{ id: 'sel', lat: picked.lat, lng: picked.lng }]}
-                center={{ lat: picked.lat, lng: picked.lng }}
-                zoom={15}
-              />
-            </View>
-            <View style={styles.confirmBody}>
-              <Ionicons name="location" size={22} color={colors.primary} />
-              <Text style={styles.pickedLabel}>{picked.label}</Text>
-            </View>
-            <Pressable style={styles.primaryBtn} onPress={confirmPicked}>
-              <Text style={styles.primaryBtnText}>{he.locationConfirm}</Text>
+        {/* Search box */}
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={20} color={colors.textMuted} />
+          <TextInput
+            ref={inputRef}
+            value={query}
+            onChangeText={(t) => {
+              setQuery(t);
+              setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            placeholder={he.createGameFieldPlaceholder}
+            placeholderTextColor="#9CA3AF"
+            style={styles.searchInput}
+            textAlign="right"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {query.length > 0 ? (
+            <Pressable
+              onPress={() => {
+                setQuery('');
+                setResults([]);
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
-            <Pressable style={styles.secondaryBtn} onPress={() => setPicked(null)}>
-              <Text style={styles.secondaryBtnText}>{he.locationSearchAgain}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          // ── Search step: input + results ──
-          <>
-            <View style={styles.searchBox}>
-              <Ionicons name="search" size={20} color={colors.textMuted} />
-              <TextInput
-                ref={inputRef}
-                value={query}
-                onChangeText={setQuery}
-                placeholder={he.createGameFieldPlaceholder}
-                placeholderTextColor="#9CA3AF"
-                style={styles.searchInput}
-                textAlign="right"
-                autoCorrect={false}
-                returnKeyType="search"
-                onSubmitEditing={useFreeText}
-              />
-              {query.length > 0 ? (
-                <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                  <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-                </Pressable>
-              ) : null}
-            </View>
+          ) : null}
+        </View>
 
-            <View style={styles.results}>
-              {/* Free-text option — always available so a place not in govmap still works. */}
-              {query.trim().length > 0 ? (
-                <Pressable style={styles.freeRow} onPress={useFreeText}>
-                  <Ionicons name="create-outline" size={20} color={colors.primary} />
-                  <Text style={styles.freeText} numberOfLines={1}>
-                    {he.locationUseTyped(query.trim())}
-                  </Text>
-                </Pressable>
-              ) : null}
+        {/* Map (always visible) + results overlay */}
+        <View style={styles.mapWrap}>
+          <MapWebView
+            markers={[]}
+            center={initialCoords ?? ISRAEL_CENTER}
+            zoom={initialCoords ? 15 : ISRAEL_ZOOM}
+            pickable
+            pin={picked ? { lat: picked.lat, lng: picked.lng } : null}
+            onPick={pickFromMap}
+            focusOn={fly}
+          />
 
+          {showResults ? (
+            <View style={styles.resultsOverlay}>
               {loading ? (
                 <View style={styles.center}>
                   <ActivityIndicator color={colors.primary} />
                 </View>
-              ) : (
+              ) : results.length > 0 ? (
                 results.map((p, i) => (
-                  <Pressable key={`${p.label}-${i}`} style={styles.resultRow} onPress={() => setPicked(p)}>
+                  <Pressable
+                    key={`${p.label}-${i}`}
+                    style={styles.resultRow}
+                    onPress={() => pickResult(p)}
+                  >
                     <Ionicons name="location-outline" size={20} color={colors.textMuted} />
                     <Text style={styles.resultText} numberOfLines={2}>
                       {p.label}
                     </Text>
                   </Pressable>
                 ))
-              )}
-
-              {!loading && query.trim().length >= 2 && results.length === 0 ? (
+              ) : (
                 <Text style={styles.empty}>{he.locationNoResults}</Text>
-              ) : null}
+              )}
             </View>
-          </>
-        )}
+          ) : null}
+        </View>
+
+        {/* Footer — picked location + confirm, or a how-to hint */}
+        <View style={styles.footer}>
+          {picked ? (
+            <>
+              <View style={styles.pickedRow}>
+                <Ionicons name="location" size={22} color={colors.primary} />
+                {resolving ? (
+                  <Text style={styles.pickedLabel} numberOfLines={2}>
+                    {he.locationResolving}
+                  </Text>
+                ) : (
+                  <Text style={styles.pickedLabel} numberOfLines={2}>
+                    {picked.label || he.locationOnMap}
+                  </Text>
+                )}
+              </View>
+              <Pressable style={styles.primaryBtn} onPress={confirm}>
+                <Text style={styles.primaryBtnText}>{he.locationConfirm}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <View style={styles.hintRow}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.textMuted} />
+              <Text style={styles.hintText}>{he.locationTapHint}</Text>
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -204,6 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     margin: spacing.lg,
+    marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: '#F5F5F5',
@@ -216,8 +305,23 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     paddingVertical: spacing.xs,
   },
-  results: { flex: 1, paddingHorizontal: spacing.lg },
-  center: { paddingVertical: spacing.xl, alignItems: 'center' },
+  mapWrap: { flex: 1, marginHorizontal: spacing.lg, borderRadius: radius.lg, overflow: 'hidden' },
+  resultsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  center: { paddingVertical: spacing.lg, alignItems: 'center' },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -227,24 +331,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.divider,
   },
   resultText: { ...typography.body, color: colors.text, flex: 1, textAlign: RTL_LABEL_ALIGN },
-  freeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  empty: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
   },
-  freeText: { ...typography.body, color: colors.primary, fontWeight: '700', flex: 1, textAlign: RTL_LABEL_ALIGN },
-  empty: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
-  confirmWrap: { flex: 1, padding: spacing.lg, gap: spacing.md },
-  mapBox: {
-    height: 300,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceMuted,
+  footer: {
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  confirmBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  pickedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   pickedLabel: { ...typography.body, color: colors.text, fontWeight: '700', flex: 1, textAlign: RTL_LABEL_ALIGN },
   primaryBtn: {
     backgroundColor: colors.primary,
@@ -253,6 +350,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  secondaryBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
-  secondaryBtnText: { color: colors.primary, fontWeight: '700' },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center' },
+  hintText: { ...typography.body, color: colors.textMuted, flex: 1, textAlign: RTL_LABEL_ALIGN },
 });

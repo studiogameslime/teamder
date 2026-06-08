@@ -333,6 +333,11 @@ export function GameCreateScreen() {
         notes: v.notes.trim() || undefined,
         city: v.city.trim() || undefined,
         fieldAddress: v.fieldAddress.trim() || undefined,
+        // Exact coords from the location picker — guarantees a real pin
+        // (Waze nav + "near me" matcher) without depending on a flaky
+        // post-create re-geocode.
+        fieldLat: v.coords?.lat,
+        fieldLng: v.coords?.lng,
         ruleTags: v.ruleTags,
         registrationOpensAt: regOpensAt,
         acceptsFillers: v.acceptsFillers,

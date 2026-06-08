@@ -117,6 +117,11 @@ export interface GameFormValues {
    *  Saved into Game.fieldAddress. Players use it to find the
    *  exact spot; the matcher does not consume this field. */
   fieldAddress: string;
+  /** Exact coords of the picked location. Always captured now (the
+   *  picker returns coords for both search hits and map taps), so the
+   *  game ships with a real pin for Waze nav + the "near me" matcher
+   *  instead of relying on a flaky post-create re-geocode. */
+  coords?: { lat: number; lng: number };
   fieldType: FieldType | undefined;
 
   // Step 2 — Match Setup
@@ -437,20 +442,21 @@ function Step1({
       <LocationSearchSheet
         visible={locOpen}
         initialQuery={values.fieldName}
+        initialCoords={values.coords ?? null}
         onClose={() => setLocOpen(false)}
         onSelect={(r) => {
           set('fieldName', r.label);
           set('fieldAddress', r.label);
-          if (r.lat != null && r.lng != null) {
-            set('cityFromList', true);
-            reverseGeocodeCity(r.lat, r.lng)
-              .then((city) => {
-                if (city) set('city', city);
-              })
-              .catch(() => {});
-          } else {
-            set('cityFromList', false);
-          }
+          // The picker always returns coords now (search hit or map tap),
+          // so store them on the form to ship a real pin, and derive the
+          // matcher's city string from them.
+          set('coords', { lat: r.lat, lng: r.lng });
+          set('cityFromList', true);
+          reverseGeocodeCity(r.lat, r.lng)
+            .then((city) => {
+              if (city) set('city', city);
+            })
+            .catch(() => {});
         }}
       />
 

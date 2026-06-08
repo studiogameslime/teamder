@@ -22,6 +22,16 @@ interface Props {
   /** When set (and changed), fly the map to this point. Used by the
    *  "focus on my city" button without reloading the whole map. */
   focusOn?: { lat: number; lng: number; zoom?: number } | null;
+  /** Picker mode: tapping the map (or dragging the pin) drops a single
+   *  pin and reports its coords via `onPick`. Used by the location
+   *  search sheet so the organiser can place a pitch that isn't in the
+   *  search index — guaranteeing every game still gets real coords. */
+  pickable?: boolean;
+  /** The currently-picked point in `pickable` mode. Moved without a full
+   *  map reload (via injectJavaScript) so tapping doesn't reset zoom/pan. */
+  pin?: { lat: number; lng: number } | null;
+  /** Fired with the picked coords on a map tap or pin drag-end. */
+  onPick?: (lat: number, lng: number) => void;
 }
 
 export function MapWebView({
@@ -30,11 +40,16 @@ export function MapWebView({
   zoom = 11,
   onMarkerPress,
   focusOn,
+  pickable = false,
+  pin,
+  onPick,
 }: Props) {
   const ref = useRef<WebView>(null);
+  // `pickable` changes the baked-in script, so it's a memo dep. `pin` is
+  // NOT — it's moved imperatively below so a tap never reloads the map.
   const html = useMemo(
-    () => buildHtml(markers, center, zoom),
-    [markers, center, zoom],
+    () => buildHtml(markers, center, zoom, pickable),
+    [markers, center, zoom, pickable],
   );
 
   // Smoothly recenter without a full reload when `focusOn` changes.
@@ -47,14 +62,38 @@ export function MapWebView({
     );
   }, [focusOn]);
 
+  // Place / move the picker pin imperatively (no reload). Clearing it
+  // (pin → null) removes the marker.
+  useEffect(() => {
+    if (!pickable) return;
+    if (pin) {
+      ref.current?.injectJavaScript(
+        `window.setPickPin && window.setPickPin(${pin.lat}, ${pin.lng}); true;`,
+      );
+    } else {
+      ref.current?.injectJavaScript(
+        `window.clearPickPin && window.clearPickPin(); true;`,
+      );
+    }
+  }, [pickable, pin?.lat, pin?.lng]);
+
   const handleMessage = (e: WebViewMessageEvent) => {
     try {
       const msg = JSON.parse(e.nativeEvent.data) as {
         type?: string;
         id?: string;
+        lat?: number;
+        lng?: number;
       };
       if (msg.type === 'markerPress' && msg.id && onMarkerPress) {
         onMarkerPress(msg.id);
+      } else if (
+        msg.type === 'mapPress' &&
+        typeof msg.lat === 'number' &&
+        typeof msg.lng === 'number' &&
+        onPick
+      ) {
+        onPick(msg.lat, msg.lng);
       }
     } catch {
       // Ignore malformed bridge messages.
@@ -80,6 +119,7 @@ function buildHtml(
   markers: MapMarker[],
   center: { lat: number; lng: number },
   zoom: number,
+  pickable: boolean,
 ): string {
   const markersJson = JSON.stringify(
     markers.map((m) => ({
@@ -122,6 +162,14 @@ function buildHtml(
       background: #2563EB; color: #fff; border: 2px solid #fff; border-radius: 9px;
       font-size: 11px; font-weight: 700; line-height: 14px; text-align: center;
       padding: 0 3px; font-family: -apple-system, system-ui, sans-serif;
+    }
+    /* Picker pin — a red teardrop so it reads as "the spot you chose",
+       distinct from the white football pins. */
+    .ppin {
+      width: 30px; height: 30px; background: #EF4444;
+      border: 3px solid #fff; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 3px 8px rgba(15,23,42,.4);
     }
   </style>
 </head>
@@ -184,6 +232,32 @@ function buildHtml(
       map.addLayer(cluster);
       if (bounds.length > 1) {
         try { map.fitBounds(bounds, { padding: [55, 80], maxZoom: 13 }); } catch (e) {}
+      }
+
+      // ── Picker mode ──────────────────────────────────────────────
+      // A single draggable red pin the organiser places by tapping the
+      // map. Tapping or dragging reports coords back to RN; RN also
+      // drives the pin position via setPickPin (e.g. after a text search).
+      if (${pickable ? 'true' : 'false'}) {
+        var pickIcon = L.divIcon({ className: '', html: '<div class="ppin"></div>', iconSize: [30, 30], iconAnchor: [15, 28] });
+        window.setPickPin = function (lat, lng) {
+          if (!window.pickMarker) {
+            window.pickMarker = L.marker([lat, lng], { icon: pickIcon, draggable: true }).addTo(map);
+            window.pickMarker.on('dragend', function (e) {
+              var p = e.target.getLatLng();
+              send({ type: 'mapPress', lat: p.lat, lng: p.lng });
+            });
+          } else {
+            window.pickMarker.setLatLng([lat, lng]);
+          }
+        };
+        window.clearPickPin = function () {
+          if (window.pickMarker) { map.removeLayer(window.pickMarker); window.pickMarker = null; }
+        };
+        map.on('click', function (e) {
+          window.setPickPin(e.latlng.lat, e.latlng.lng);
+          send({ type: 'mapPress', lat: e.latlng.lat, lng: e.latlng.lng });
+        });
       }
     })();
   </script>

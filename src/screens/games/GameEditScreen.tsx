@@ -50,6 +50,12 @@ function gameToValues(g: Game): GameFormValues {
     city: presetCity,
     cityFromList: presetCity.length > 0,
     fieldAddress: g.fieldAddress ?? '',
+    // Seed the picker's pin from the saved coords so editing the location
+    // starts on the current spot (and keeps coords if untouched).
+    coords:
+      typeof g.fieldLat === 'number' && typeof g.fieldLng === 'number'
+        ? { lat: g.fieldLat, lng: g.fieldLng }
+        : undefined,
     fieldType: g.fieldType,
     format: g.format ?? '5v5',
     numberOfTeams: g.numberOfTeams ?? 2,
@@ -260,6 +266,10 @@ export function GameEditScreen() {
         notes: v.notes.trim() || undefined,
         city: v.city.trim() || undefined,
         fieldAddress: v.fieldAddress.trim() || undefined,
+        // Persist the (possibly re-picked) coords so an edited location
+        // updates the pin too — previously edits never refreshed coords.
+        fieldLat: v.coords?.lat,
+        fieldLng: v.coords?.lng,
         ruleTags: v.ruleTags,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,

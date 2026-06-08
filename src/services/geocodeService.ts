@@ -120,6 +120,78 @@ export async function reverseGeocodeCity(
   }
 }
 
+/**
+ * Reverse-geocode coords → a short human label + city, for when the
+ * organiser drops a pin on the map (a spot that isn't in the search
+ * index). Composes a concise name from the most specific address parts
+ * — POI name / road / neighbourhood + city — rather than Nominatim's
+ * verbose `display_name`. Returns null on any miss; the caller still
+ * keeps the coords (the whole point is guaranteeing real coords), so a
+ * missed label just means we fall back to a generic "מיקום על המפה".
+ */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<{ label: string; city: string | null } | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  try {
+    const url =
+      'https://nominatim.openstreetmap.org/reverse' +
+      `?lat=${lat}&lon=${lng}` +
+      `&format=json&accept-language=he&zoom=18&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      name?: string;
+      address?: {
+        amenity?: string;
+        leisure?: string;
+        road?: string;
+        house_number?: string;
+        neighbourhood?: string;
+        suburb?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+      };
+    };
+    const a = data.address ?? {};
+    const city =
+      a.city ?? a.town ?? a.village ?? a.municipality ?? null;
+    // Most-specific identifier first: a named place, then a street
+    // (with house number when present), then the neighbourhood.
+    const street = a.road
+      ? [a.road, a.house_number].filter(Boolean).join(' ')
+      : null;
+    // A bare number (e.g. a tapped highway returns name:"203") is a
+    // useless field name — drop purely-numeric candidates so we fall
+    // through to the city / generic label instead.
+    const isUseful = (s?: string | null): s is string =>
+      !!s && s.trim().length > 0 && !/^\d+$/.test(s.trim());
+    const named = data.name?.trim();
+    const primary =
+      (isUseful(named) ? named : null) ||
+      (isUseful(a.amenity) ? a.amenity! : null) ||
+      (isUseful(a.leisure) ? a.leisure! : null) ||
+      (isUseful(street) ? street! : null) ||
+      (isUseful(a.neighbourhood) ? a.neighbourhood! : null) ||
+      (isUseful(a.suburb) ? a.suburb! : null) ||
+      null;
+    const parts = [primary, city].filter(
+      (p): p is string => !!p && p.length > 0,
+    );
+    const label = parts.length > 0 ? Array.from(new Set(parts)).join(', ') : '';
+    if (!label) return city ? { label: city, city } : null;
+    return { label, city: city ? city.trim() : null };
+  } catch (err) {
+    logError('reverseGeocode', err, { lat, lng });
+    return null;
+  }
+}
+
 export async function geocodeCity(
   name: string,
 ): Promise<{ lat: number; lng: number } | null> {

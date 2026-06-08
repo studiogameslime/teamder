@@ -336,8 +336,12 @@ export const he = {
   locationSearchTitle: 'חיפוש מיקום',
   locationConfirm: 'אישור המיקום',
   locationSearchAgain: 'חיפוש אחר',
-  locationNoResults: 'לא נמצאו תוצאות. אפשר להשתמש בטקסט שהקלדת.',
+  locationNoResults: 'לא נמצאו תוצאות. אפשר להקיש על המפה לבחירת המיקום.',
   locationUseTyped: (q: string) => `השתמש ב: "${q}"`,
+  // Always-on map picker
+  locationTapHint: 'חפש כתובת, או הקש על המפה כדי לסמן את המיקום המדויק',
+  locationResolving: 'מאתר מיקום…',
+  locationOnMap: 'מיקום על המפה',
   createGameCity: 'עיר',
   createGameCityPlaceholder: 'בחר עיר מהרשימה',
   createGameCityMustPick: 'חובה לבחור עיר מהרשימה (לא טקסט חופשי)',
