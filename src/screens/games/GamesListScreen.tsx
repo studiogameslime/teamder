@@ -55,7 +55,11 @@ import {
   type GameFilters,
   type GameApplyContext,
 } from '@/components/GameFilterSheet';
-import { resolveNearbyLocation, type NearbyLocation } from '@/utils/nearby';
+import {
+  resolveNearbyLocation,
+  promptLocationDenied,
+  type NearbyLocation,
+} from '@/utils/nearby';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -123,10 +127,18 @@ export function GamesListScreen() {
     (async () => {
       setNearbyLoading(true);
       const loc = await resolveNearbyLocation(user?.availability?.preferredCity);
-      if (alive) {
-        setNearbyLoc(loc);
+      if (!alive) return;
+      // Require location permission for "near me" — otherwise the list
+      // would silently show nothing. Prompt + turn the toggle back off.
+      if (!loc.granted) {
+        promptLocationDenied(loc.canAskAgain);
+        setNearbyLoc(null);
         setNearbyLoading(false);
+        setFilters((f) => ({ ...f, nearby: false }));
+        return;
       }
+      setNearbyLoc(loc);
+      setNearbyLoading(false);
     })();
     return () => {
       alive = false;

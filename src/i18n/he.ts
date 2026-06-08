@@ -588,6 +588,11 @@ export const he = {
   // Radius selector shown under the "near me" toggle (games + communities)
   filterRadiusLabel: (km: number) => `טווח: עד ${km} ק"מ`,
   filterRadiusKm: (km: number) => `${km}`,
+  // Shown when the user enables "near me" without granting location access
+  locationPermTitle: 'צריך גישה למיקום',
+  locationPermBody:
+    'כדי לחפש משחקים וקבוצות קרובים אליך, יש לאשר גישה למיקום.',
+  locationPermOpenSettings: 'פתיחת הגדרות',
 
   // Card actions
   communityEnter: 'כניסה לקבוצה',

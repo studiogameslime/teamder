@@ -51,7 +51,7 @@ import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-import { resolveNearbyLocation } from '@/utils/nearby';
+import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
@@ -95,10 +95,18 @@ export function PublicGroupsFeedScreen() {
       const loc = await resolveNearbyLocation(
         user?.availability?.preferredCity,
       );
-      if (alive) {
-        setNearbyLoc(loc);
+      if (!alive) return;
+      // Require location permission for "near me" — prompt + turn it off
+      // instead of leaving the feed silently empty.
+      if (!loc.granted) {
+        promptLocationDenied(loc.canAskAgain);
+        setNearbyLoc(null);
         setNearbyLoading(false);
+        setFilters((f) => ({ ...f, nearby: false }));
+        return;
       }
+      setNearbyLoc(loc);
+      setNearbyLoading(false);
     })();
     return () => {
       alive = false;
