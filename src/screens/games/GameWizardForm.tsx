@@ -455,7 +455,7 @@ export function GameWizardForm({
           onBackdropPress={() => setSummaryOpen(false)}
           position="center"
           fromOffsetY={60}
-          panelStyle={{ paddingHorizontal: spacing.lg, alignSelf: 'stretch' }}
+          panelStyle={{ paddingHorizontal: spacing.md, alignSelf: 'stretch' }}
         >
           <Pressable style={styles.summaryModalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.summaryModalTitle}>{he.wizardSummaryTitle}</Text>
@@ -1108,6 +1108,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     gap: spacing.md,
+    // Fill the (now slimmer-padded) panel so the popup is wider.
+    alignSelf: 'stretch',
   },
   summaryModalTitle: {
     ...typography.h3,
