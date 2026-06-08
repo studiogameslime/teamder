@@ -1288,6 +1288,13 @@ export const gameService = {
      * wizard. Past / undefined → game opens immediately.
      */
     registrationOpensAt?: number;
+    /** Recurring weekly fixture — the clone-on-completion CF re-creates
+     *  it for next week ~3h after kickoff. */
+    recurring?: boolean;
+    /** ms-epoch when the game flips community→public (CF-driven). */
+    publicOpenAt?: number;
+    /** ms-epoch before which non-admins can't add guests. */
+    guestsOpenAt?: number;
     /** When true, this game is open to receiving filler push to
      *  non-members. Default: false (admin must opt in). */
     acceptsFillers?: boolean;
@@ -1460,6 +1467,11 @@ export const gameService = {
             .slice(0, 12)
         : undefined,
       registrationOpensAt: input.registrationOpensAt,
+      recurring: input.recurring === true ? true : undefined,
+      publicOpenAt:
+        typeof input.publicOpenAt === 'number' ? input.publicOpenAt : undefined,
+      guestsOpenAt:
+        typeof input.guestsOpenAt === 'number' ? input.guestsOpenAt : undefined,
       acceptsFillers: input.acceptsFillers === true,
       fillerMinTrust:
         input.acceptsFillers === true &&
@@ -1659,6 +1671,12 @@ export const gameService = {
        *  `openedNotificationSent` latch ensures this never fires a
        *  second push if the original time already passed. */
       registrationOpensAt: number;
+      /** Recurring weekly fixture toggle. */
+      recurring: boolean;
+      /** ms-epoch community→public flip time. */
+      publicOpenAt: number;
+      /** ms-epoch before which non-admins can't add guests. */
+      guestsOpenAt: number;
       /** Toggle whether this game receives cross-community filler
        *  matching. Editable any time before the game starts. */
       acceptsFillers: boolean;

@@ -1044,6 +1044,41 @@ export interface Game {
   openedNotificationSent?: boolean;
 
   /**
+   * Recurring weekly fixture. When true, a Cloud Function clones this
+   * game ~3h after kickoff into next week (startsAt +7d, and the same
+   * relative registrationOpensAt / publicOpenAt / guestsOpenAt offsets),
+   * so a community's regular game re-opens automatically every week with
+   * the exact same settings. Just a toggle in the wizard — no series-
+   * editing UI.
+   */
+  recurring?: boolean;
+
+  /**
+   * Idempotency latch: ms-epoch when the recurring clone-on-completion CF
+   * created next week's instance from this game. Prevents the cron from
+   * cloning the same fixture twice.
+   */
+  recurringNextCreatedAt?: number;
+
+  /**
+   * Optional ms-epoch when a community game flips from members-only
+   * (`visibility:'community'`) to app-wide (`visibility:'public'`) so
+   * non-members can see + join it from the feed. A Cloud Function flips
+   * `visibility` at this time. Missing → visibility never auto-changes.
+   */
+  publicOpenAt?: number;
+
+  /** Latch: set once the publicOpenAt visibility flip has been applied. */
+  publicOpenedAt?: number;
+
+  /**
+   * Optional ms-epoch before which NON-admin players may not add guests.
+   * The organiser/admin can always add guests; this only gates everyone
+   * else. Missing → anyone allowed to add guests can do so anytime.
+   */
+  guestsOpenAt?: number;
+
+  /**
    * Phase E.2.2: flipped to true by the scheduled `sendGameReminders`
    * Cloud Function once it has dispatched the 1h-before reminder, so a
    * subsequent run doesn't double-send.

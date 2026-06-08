@@ -145,6 +145,12 @@ export interface GameFormValues {
   /** ms epoch — only consulted when `recurringGameEnabled` is true.
    *  Stored on Game as `registrationOpensAt`. 0 means "not set". */
   registrationOpensAt: number;
+  /** ms epoch — community games only. When >0 the game flips
+   *  community→public at this time (Game.publicOpenAt). 0 = never. */
+  publicOpenAt: number;
+  /** ms epoch — before this, non-admins can't add guests
+   *  (Game.guestsOpenAt). 0 = no restriction. */
+  guestsOpenAt: number;
   /** Hours (number) or undefined for "no limit". */
   cancelDeadlineHours: number | undefined;
   /** When true, the game's roster is open to filler push to non-members

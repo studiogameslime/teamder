@@ -89,6 +89,8 @@ function buildInitial(
     // and the registrationOpensAt picker stays hidden.
     recurringGameEnabled: overrides?.recurring === true,
     registrationOpensAt: 0,
+    publicOpenAt: 0,
+    guestsOpenAt: 0,
     cancelDeadlineHours: undefined,
     // Cross-community fillers: ON by default for OPEN communities
     // (anyone can join the community already, so accepting fillers is
@@ -315,6 +317,11 @@ export function GameCreateScreen() {
       v.recurringGameEnabled && v.registrationOpensAt > 0
         ? v.registrationOpensAt
         : undefined;
+    // publicOpenAt / guestsOpenAt are community-game scheduling knobs —
+    // only meaningful for non-quick games. Pass through when set (>0).
+    const publicOpenAt =
+      !isOrphan && v.publicOpenAt > 0 ? v.publicOpenAt : undefined;
+    const guestsOpenAt = v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined;
     try {
       const created = await gameService.createGameV2({
         groupId: selectedGroup.id,
@@ -347,6 +354,11 @@ export function GameCreateScreen() {
         fieldLng: v.coords?.lng,
         ruleTags: v.ruleTags,
         registrationOpensAt: regOpensAt,
+        // Recurring weekly fixture (community games only) — the CF clones
+        // it ~3h after kickoff into next week with the same settings.
+        recurring: !isOrphan && v.recurringGameEnabled,
+        publicOpenAt,
+        guestsOpenAt,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         createdBy: user.id,

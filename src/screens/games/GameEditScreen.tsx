@@ -82,8 +82,10 @@ function gameToValues(g: Game): GameFormValues {
           ].filter((s) => s.length > 0),
     visibility: g.visibility ?? 'community',
     requiresApproval: !!g.requiresApproval,
-    recurringGameEnabled: isRecurringEdit,
+    recurringGameEnabled: isRecurringEdit || g.recurring === true,
     registrationOpensAt: g.registrationOpensAt ?? 0,
+    publicOpenAt: g.publicOpenAt ?? 0,
+    guestsOpenAt: g.guestsOpenAt ?? 0,
     cancelDeadlineHours: g.cancelDeadlineHours,
     // For legacy games (saved before the filler fields existed):
     // default `acceptsFillers` to false (admin must opt in
@@ -272,6 +274,11 @@ export function GameEditScreen() {
         fieldLat: v.coords?.lat,
         fieldLng: v.coords?.lng,
         ruleTags: v.ruleTags,
+        // Recurring toggle + scheduling knobs. publicOpenAt/guestsOpenAt
+        // round-trip; 0 clears them (→ undefined via stripUndefined).
+        recurring: v.recurringGameEnabled,
+        publicOpenAt: v.publicOpenAt > 0 ? v.publicOpenAt : undefined,
+        guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         ...regOpensPatch,
