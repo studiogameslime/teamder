@@ -160,8 +160,17 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
       // Pinch-zoom + double-tap zoom on by default in MapLibre.
 
       map.on('load', function () {
-        // Keep the style's natural colours — a clean light map with green
-        // parks and soft road lines. No recolouring.
+        // Flatten the map to the clean mockup look: drop the 3D building
+        // extrusion and soften the flat building footprints (they read as
+        // a busy grey mass otherwise) so parks/roads/water stand out.
+        try { map.setLayoutProperty('building-3d', 'visibility', 'none'); } catch (e) {}
+        try {
+          map.setPaintProperty('building', 'fill-color', '#ece9e4');
+          map.setPaintProperty('building', 'fill-opacity', 0.55);
+          map.setPaintProperty('building', 'fill-outline-color', '#e2ded8');
+        } catch (e) {}
+        // Keep the rest of the style's natural colours — a clean light map
+        // with green parks and soft road lines. No road recolouring.
         // Labels → Hebrew: prefer name:he, fall back to the default name.
         var heField = ['coalesce', ['get', 'name:he'], ['get', 'name:hebrew'], ['get', 'name']];
         (map.getStyle().layers || []).forEach(function (l) {
