@@ -130,6 +130,17 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number): string {
       function send(p) {
         if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(p));
       }
+      // RTL text shaping — without this MapLibre renders Hebrew/Arabic
+      // labels reversed ("ופי-ביבא לת" instead of "תל-אביב-יפו"). Must be
+      // set before the map renders labels. (lazy=false → load immediately
+      // so the very first frame is shaped correctly.)
+      try {
+        maplibregl.setRTLTextPlugin(
+          'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
+          function () {},
+          false
+        );
+      } catch (e) {}
       // Lock panning to Israel.
       var ISRAEL = [[34.10, 29.30], [35.95, 33.45]];
       var map = new maplibregl.Map({
