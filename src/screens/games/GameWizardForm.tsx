@@ -445,12 +445,7 @@ export function GameWizardForm({
         >
           <Pressable style={styles.summaryModalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.summaryModalTitle}>{he.wizardSummaryTitle}</Text>
-            <ScrollView
-              style={{ maxHeight: 380 }}
-              showsVerticalScrollIndicator={false}
-            >
-              <SummaryCard values={values} maxPlayers={maxPlayers} />
-            </ScrollView>
+            <SummaryCard values={values} maxPlayers={maxPlayers} bare />
             <View style={styles.summaryModalFooter}>
               <Button
                 title={he.wizardSummaryBackToEdit}
@@ -844,9 +839,13 @@ function Step3({
 function SummaryCard({
   values,
   maxPlayers,
+  bare,
 }: {
   values: GameFormValues;
   maxPlayers: number;
+  /** Rows only — no bordered container or header title. Used inside the
+   *  confirm popup, which already provides its own title. */
+  bare?: boolean;
 }) {
   const dateLabel = formatDateLong(values.startsAt);
   const placeLabel =
@@ -858,6 +857,35 @@ function SummaryCard({
     values.visibility === 'public'
       ? he.wizardVisibilityPublic
       : he.wizardVisibilityCommunity;
+  // Extra rows worth confirming before creating.
+  const titleStr = values.title.trim();
+  const cancelStr =
+    values.cancelDeadlineHours !== undefined
+      ? formatDateLong(
+          values.startsAt - values.cancelDeadlineHours * 60 * 60 * 1000,
+        )
+      : null;
+  const recurringStr = values.recurringGameEnabled ? he.yes : null;
+
+  const rows = (
+    <>
+      {titleStr ? (
+        <SummaryRow icon="football-outline" label={he.createGameNameLabel} value={titleStr} />
+      ) : null}
+      <SummaryRow icon="calendar-outline" label={he.wizardSummaryDate} value={dateLabel} />
+      <SummaryRow icon="location-outline" label={he.wizardSummaryWhere} value={placeLabel} />
+      <SummaryRow icon="people-outline" label={he.wizardSummaryFormat} value={formatStr} />
+      <SummaryRow icon="eye-outline" label={he.wizardSummaryVisibility} value={visibilityStr} />
+      {recurringStr ? (
+        <SummaryRow icon="repeat-outline" label={he.communityEditRecurringEnabled} value={recurringStr} />
+      ) : null}
+      {cancelStr ? (
+        <SummaryRow icon="time-outline" label={he.wizardCancelDeadlineLabel} value={cancelStr} />
+      ) : null}
+    </>
+  );
+
+  if (bare) return <View style={styles.summaryBare}>{rows}</View>;
 
   return (
     <View style={styles.summary}>
@@ -869,10 +897,7 @@ function SummaryCard({
         />
         <Text style={styles.summaryTitle}>{he.wizardSummaryTitle}</Text>
       </View>
-      <SummaryRow icon="calendar-outline" label={he.wizardSummaryDate} value={dateLabel} />
-      <SummaryRow icon="location-outline" label={he.wizardSummaryWhere} value={placeLabel} />
-      <SummaryRow icon="football-outline" label={he.wizardSummaryFormat} value={formatStr} />
-      <SummaryRow icon="eye-outline" label={he.wizardSummaryVisibility} value={visibilityStr} />
+      {rows}
     </View>
   );
 }
@@ -1049,6 +1074,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelFlex: { flexShrink: 1, width: undefined, alignSelf: 'auto' },
+  summaryBare: { gap: spacing.sm },
   summaryModalCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
