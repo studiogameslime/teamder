@@ -2455,7 +2455,9 @@ function HeroStatusBadge({ status, game }: { status: CardStatus; game: Game }) {
     return <Badge label={he.matchStatusPending} tone="neutral" size="sm" />;
   if (game.players.length >= game.maxPlayers)
     return <Badge label={he.matchStatusFull} tone="neutral" size="sm" />;
-  return <Badge label={he.matchStatusOpen} tone="primary" size="sm" />;
+  // No "open" badge — the primary button ("הצטרף למשחק" / "בקש להצטרף")
+  // already conveys that the game is open to join.
+  return null;
 }
 
 function InfoCell({

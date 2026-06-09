@@ -29,6 +29,7 @@ import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
   | 'join'
+  | 'requestJoin'
   | 'cancel'
   | 'waitlist'
   | 'leaveWaitlist'
@@ -63,7 +64,9 @@ function ctaForGame(
   if (status === 'joined') return 'cancel';
   if (status === 'waitlist') return 'leaveWaitlist';
   if (status === 'pending') return 'pending';
-  if (g.requiresApproval) return 'pending';
+  // Approval-gated game the user hasn't requested yet → a "request to
+  // join" button (the join policy lives in the button text now, not a tag).
+  if (g.requiresApproval) return 'requestJoin';
   const occupancy = g.players.length + (g.guests?.length ?? 0);
   if (occupancy < g.maxPlayers) return 'join';
   return 'waitlist';
@@ -123,10 +126,8 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   if (game.fieldType) {
     tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
   }
-  if (game.requiresApproval) {
-    // Describes the GAME (joining needs approval) — not the viewer's status.
-    tags.push({ label: he.matchTagNeedsApproval, tone: 'warning' });
-  }
+  // (No "needs approval" tag — the join policy is conveyed by the button
+  // text: "הצטרף" for open games, "בקש להצטרף" for approval-gated ones.)
   // Visibility at a glance: open-to-all (accent) vs members-only / quick.
   if (game.visibility === 'public') {
     tags.push({ label: he.matchTagOpenToAll, tone: 'accent' });
@@ -139,7 +140,13 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // Hide the cancel CTA on the list — it's a destructive action and
   // belongs only on MatchDetails where the consequence is more
   // visible. Same rule the old card followed.
-  const showCta = cta === 'join' || cta === 'waitlist';
+  const showCta = cta === 'join' || cta === 'requestJoin' || cta === 'waitlist';
+  const ctaLabel =
+    cta === 'waitlist'
+      ? he.matchCardWaitlist
+      : cta === 'requestJoin'
+        ? he.gameCardRequestJoin
+        : he.matchCardJoin;
 
   return (
     <PressableScale
@@ -219,17 +226,9 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
                 (pressed || busy) && { opacity: 0.85 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={
-                cta === 'waitlist'
-                  ? he.matchCardWaitlist
-                  : he.matchCardJoinFull
-              }
+              accessibilityLabel={ctaLabel}
             >
-              <Text style={styles.ctaText}>
-                {cta === 'waitlist'
-                  ? he.matchCardWaitlist
-                  : he.matchCardJoinFull}
-              </Text>
+              <Text style={styles.ctaText}>{ctaLabel}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -307,16 +306,14 @@ function renderStatusPill(
       <PillBadge label={he.matchStatusPending} bg="#E2E8F0" fg="#475569" icon="time" />
     );
   }
-  // Not-related user: still show one pill so the card never looks bare.
-  // Full is the louder of the two; open is the default.
+  // Not-related user: only flag "full" (a real constraint). No "open" pill
+  // — the join button already says the game is open ("הצטרף").
   if (isFull) {
     return (
       <PillBadge label={he.matchStatusFull} bg="#FEE2E2" fg="#B91C1C" icon="people" />
     );
   }
-  return (
-    <PillBadge label={he.matchStatusOpen} bg="#DCFCE7" fg="#166534" icon="checkmark-circle" />
-  );
+  return null;
 }
 
 function PillBadge({

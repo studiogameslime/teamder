@@ -260,7 +260,7 @@ export function GamesListScreen() {
     }
     setBusyGameId(game.id);
     try {
-      if (cta === 'join' || cta === 'waitlist') {
+      if (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') {
         await gameService.joinGameV2(game.id, user.id);
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
         await gameService.cancelGameV2(game.id, user.id);
@@ -275,7 +275,11 @@ export function GamesListScreen() {
         (r.mine.some((g) => g.id === game.id) ||
           r.community.some((g) => g.id === game.id) ||
           r.open.some((g) => g.id === game.id));
-      if ((cta === 'join' || cta === 'waitlist') && fresh && !inAnyList(fresh)) {
+      if (
+        (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') &&
+        fresh &&
+        !inAnyList(fresh)
+      ) {
         // The immediate reload can race the just-committed join write
         // (read-after-write): the game is provably ours but a stale query
         // result doesn't surface it yet. Retry once after a short beat — a
