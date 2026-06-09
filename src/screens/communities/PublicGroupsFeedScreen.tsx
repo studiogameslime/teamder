@@ -1,11 +1,11 @@
 // Communities tab — premium card-based feed.
 //
 // Layout (top → bottom, RTL):
-//   ① Blue gradient hero ("קבוצות" + subtitle + people-icon disc)
+//   ① Blue gradient hero ("מועדונים" + subtitle + people-icon disc)
 //   ② Search + filter row, floating onto the bottom of the hero
-//   ③ Section "הקבוצות שלי"   — admin/member cards (admin floats up)
-//   ④ Section "ממתינות לאישור" — only when there are pending requests
-//   ⑤ Section "קבוצות פתוחות" — discovery (filtered)
+//   ③ Section "המועדונים שלי"   — admin/member cards (admin floats up)
+//   ④ Section "ממתינים לאישור" — only when there are pending requests
+//   ⑤ Section "מועדונים פתוחים" — discovery (filtered)
 //   ⑥ Floating "+" action button on the bottom-left
 //
 // Logic + data flow are unchanged from the previous version — only the
@@ -189,9 +189,9 @@ export function PublicGroupsFeedScreen() {
   }
 
   // ── Section partitions ──
-  // הקבוצות שלי     — communities I'm a member or admin of (admin floats up)
-  // ממתינות לאישור — communities with an outstanding join request
-  // קבוצות פתוחות   — discovery, filtered
+  // המועדונים שלי     — communities I'm a member or admin of (admin floats up)
+  // ממתינים לאישור — communities with an outstanding join request
+  // מועדונים פתוחים   — discovery, filtered
   const myItems = useMemo(
     () => {
       const list = (items ?? []).filter(
@@ -430,7 +430,7 @@ export function PublicGroupsFeedScreen() {
                 color: '#2563EB',
                 title: g.name,
                 subtitle: g.fieldName ?? g.city ?? '',
-                badge: `${g.memberCount} שחקנים`,
+                badge: `${g.memberCount} בסגל`,
                 open: g.isOpen ?? true,
               }));
             nav.navigate('CommunitiesMap', {

@@ -422,7 +422,7 @@ function buildMessage(
   type: NotificationType,
   payload: Record<string, unknown>
 ): { title: string; body: string } | null {
-  const groupName = (payload.groupName as string) || 'הקבוצה';
+  const groupName = (payload.groupName as string) || 'המועדון';
   const gameTitle = (payload.gameTitle as string) || (payload.title as string) || 'המשחק';
   const startsAt = payload.startsAt as number | undefined;
   const when = startsAt ? formatHebrewWhen(startsAt) : '';
@@ -594,8 +594,8 @@ function buildMessage(
       // members the COMMUNITY itself is gone.
       const name = (payload.groupName as string) || groupName;
       return {
-        title: 'הקהילה נסגרה',
-        body: `הקהילה ${name} נמחקה על ידי המנהל.`,
+        title: 'המועדון נסגר',
+        body: `המועדון ${name} נמחק על ידי המנהל.`,
       };
     }
     case 'gameShortageWarning': {
@@ -656,8 +656,8 @@ function buildMessage(
       // is never re-fired even if a member leaves and re-joins.
       const milestone = Number(payload.milestone) || 0;
       return {
-        title: `${groupName} חצתה ${milestone} חברים 🎉`,
-        body: `הקהילה גדלה — תודה שתרמתם לבנייתה.`,
+        title: `${groupName} חצה ${milestone} חברי סגל 🎉`,
+        body: `המועדון גדל — תודה שתרמתם לבנייתו.`,
       };
     }
     case 'fillerOpportunity': {
@@ -674,7 +674,7 @@ function buildMessage(
           : '';
       return {
         title: 'הזדמנות למילוי משחק',
-        body: `הקהילה ${groupName}${city} צריכה שחקנים${
+        body: `המועדון ${groupName}${city} צריך שחקנים${
           when ? ` — ${when}` : ''
         }.${shortBy} רוצה להגיש מועמדות?`,
       };
@@ -702,7 +702,7 @@ function buildMessage(
       // CTA opens the promote screen pre-filled with the roster.
       return {
         title: 'שיחקתם נחמד 🤝',
-        body: `רוצה לשמור את החברים מ${gameTitle}? צור קהילה בלחיצה ותקבע משחק שבועי.`,
+        body: `רוצה לשמור את החברים מ${gameTitle}? צור מועדון בלחיצה ותקבע מחזור שבועי.`,
       };
     }
     case 'groupInvitation': {
@@ -714,7 +714,7 @@ function buildMessage(
           : 'מארגן המשחק';
       const name = (payload.groupName as string) || groupName;
       return {
-        title: 'הזמנה לקהילה',
+        title: 'הזמנה למועדון',
         body: `${inviter} מזמין אותך להצטרף ל"${name}". להיכנס ולאשר?`,
       };
     }
@@ -2403,7 +2403,7 @@ export const onGroupPendingChanged = onDocumentWritten(
     if (admins.length === 0) return;
 
     const groupId = event.params.groupId;
-    const groupName = after.name || 'הקבוצה';
+    const groupName = after.name || 'המועדון';
 
     // Use allSettled so a single quota / network failure on one push
     // doesn't drop the rest. Previously Promise.all rejected on the
@@ -4012,7 +4012,7 @@ export const createGroupCallable = onCall(
       if (count >= CREATE_GROUP_RATE_CAP) {
         throw new HttpsError(
           'resource-exhausted',
-          'יצירת קהילות מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.',
+          'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.',
         );
       }
       tx.set(rateRef, {
@@ -4550,7 +4550,7 @@ async function recomputeCommunityShowcase(groupId: string): Promise<void> {
 
   const showcase: ShowcaseDoc = {
     groupId,
-    name: group.name ?? 'קהילה',
+    name: group.name ?? 'מועדון',
     description: group.description ?? null,
     city: group.city ?? null,
     fieldName: group.fieldName ?? null,
@@ -4754,9 +4754,9 @@ function buildMetaBlock(summary: ShowcaseSummary | null): {
 } {
   if (!summary) {
     return {
-      title: 'קהילה ב־Teamder',
+      title: 'מועדון ב־Teamder',
       description:
-        'צפו בסטטיסטיקות הקהילה, השחקנים הכי נאמנים, והמשחקים האחרונים.',
+        'צפו בסטטיסטיקות המועדון, השחקנים הכי נאמנים, והמשחקים האחרונים.',
     };
   }
   const title = `${summary.name} · Teamder`;
@@ -4767,8 +4767,8 @@ function buildMetaBlock(summary: ShowcaseSummary | null): {
     const parts: string[] = [];
     if (summary.city) parts.push(summary.city);
     parts.push(`${summary.totalGamesFinished} משחקים`);
-    parts.push(`${summary.totalMembers} חברים`);
-    description = `קהילת כדורגל ב־Teamder · ${parts.join(' · ')}`;
+    parts.push(`${summary.totalMembers} חברי סגל`);
+    description = `מועדון כדורגל ב־Teamder · ${parts.join(' · ')}`;
   }
   return { title, description };
 }
@@ -6223,7 +6223,7 @@ export const onCommunityCreatedAlert = onDocumentCreated('groups/{id}', async (e
   if (!grp || grp.isPersonal === true) return; // skip personal/orphan groups
   const owner = grp.creatorId ?? grp.adminIds?.[0];
   const who = owner ? await adminAlertUserName(owner) : 'מישהו';
-  await pushToAdmins('communityCreate', 'Teamder', `${who} יצר קהילה: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
+  await pushToAdmins('communityCreate', 'Teamder', `${who} יצר מועדון: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
 });
 
 export const onCommunityJoinedAlert = onDocumentUpdated('groups/{id}', async (event) => {
@@ -6235,7 +6235,7 @@ export const onCommunityJoinedAlert = onDocumentUpdated('groups/{id}', async (ev
   if (!added.length) return;
   const who = await adminAlertUserName(added[0]);
   const extra = added.length > 1 ? ` +${added.length - 1}` : '';
-  await pushToAdmins('communityJoin', 'Teamder', `${who}${extra} הצטרף לקהילה ${after.name ?? ''} 👥`, { id: event.params.id });
+  await pushToAdmins('communityJoin', 'Teamder', `${who}${extra} הצטרף למועדון ${after.name ?? ''} 👥`, { id: event.params.id });
 });
 
 // New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires

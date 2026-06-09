@@ -4,7 +4,7 @@
 // card (icon visually right under forceRTL).
 //
 // The four cards always render in this order:
-//   row 1 → תאריך הקמה · חברים בקבוצה
+//   row 1 → תאריך הקמה · סגל
 //   row 2 → מגרש קבוע   · מפגשים שנערכו
 //
 // All cards have identical height/padding/shadow so the grid reads as

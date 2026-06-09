@@ -2032,7 +2032,7 @@ export function MatchDetailsScreen() {
                           ).navigate('CommunityDetails', {
                             groupId: game.groupId,
                           }),
-                        accessibilityLabel: 'פתח את עמוד הקבוצה',
+                        accessibilityLabel: 'פתח את עמוד המועדון',
                       }
                     : undefined,
               },

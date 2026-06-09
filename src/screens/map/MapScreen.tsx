@@ -5,7 +5,7 @@
 //
 // Content is sorted by mode so the two maps never mix concerns:
 //   • games        → date chips (הכל / היום / סופ״ש), a by-date legend,
-//                     a "הצג קבוצות" toggle, and a game card.
+//                     a "הצג מועדונים" toggle, and a game card.
 //   • communities  → status chips (הכל / פתוחות), a "הצג משחקים" toggle,
 //                     and a community card.
 //

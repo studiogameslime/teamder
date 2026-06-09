@@ -458,7 +458,7 @@ function ToggleRow({
 /**
  * Tri-state pill row: any / yes / no. `null` = any (no filter).
  * Default labels are "כן" / "לא" but callers can override e.g. for the
- * visibility filter (ציבורי / קבוצה).
+ * visibility filter (ציבורי / מועדון).
  */
 function TriState({
   value,

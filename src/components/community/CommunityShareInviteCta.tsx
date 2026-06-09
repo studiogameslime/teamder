@@ -1,6 +1,6 @@
 // CommunityShareInviteCta — full-width gradient CTA at the bottom of
 // the redesigned CommunityDetailsScreen. Solid blue → deeper blue
-// gradient with a centered share icon + "שתף הזמנה לקבוצה" label.
+// gradient with a centered share icon + "שתף הזמנה למועדון" label.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

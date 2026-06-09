@@ -62,7 +62,7 @@ export type CommunitiesStackParamList = {
   AdminApproval: undefined;
   // Reachable from MatchDetails' overflow menu inside this stack.
   History: undefined;
-  // Reachable from CommunityDetails' "צור משחק קבוע" — opens the
+  // Reachable from CommunityDetails' "צור מחזור שבועי" — opens the
   // wizard in-stack so back returns to the community page.
   GameCreate:
     | undefined

@@ -33,7 +33,7 @@ export const mockGroup: Group = {
   fieldName: 'המגרש הקבוע',
   fieldAddress: 'רחוב הספורט 12, תל אביב',
   city: 'תל אביב',
-  description: 'קבוצה ותיקה, שחקנים קבועים, אווירה משפחתית',
+  description: 'מועדון ותיק, שחקנים קבועים, אווירה משפחתית',
   lat: 32.0853,
   lng: 34.7818,
   adminIds: [mockCurrentUser.id],

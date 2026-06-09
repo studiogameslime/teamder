@@ -3,7 +3,7 @@
 // Visual:
 //   • LinearGradient — top is the deeper blue, fading to the lighter
 //     accent at the bottom. Curved bottom-corners read as a soft wave.
-//   • Right side (RTL leading): big "קבוצות" title + subtitle.
+//   • Right side (RTL leading): big "מועדונים" title + subtitle.
 //   • Left side (RTL trailing): a frosted circle with a people icon.
 //
 // The hero is a presentational shell — no business logic. The screen

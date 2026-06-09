@@ -6,7 +6,7 @@
 //   ③ Notification toggle row (members only)
 //   ④ Next-game card — primary focus, dark blue gradient
 //   ⑤ Active-players preview — horizontal jersey rail
-//   ⑥ "שתף הזמנה לקבוצה" gradient CTA (members only)
+//   ⑥ "שתף הזמנה למועדון" gradient CTA (members only)
 //
 // All admin / destructive actions live behind the ☰ hamburger menu;
 // the ⋯ overflow opens the same menu (a single source of truth keeps

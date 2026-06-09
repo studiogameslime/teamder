@@ -337,7 +337,7 @@ async function createNotificationOnce(input) {
 }
 // ─── Default Hebrew messages per type ──────────────────────────────────
 function buildMessage(type, payload) {
-    const groupName = payload.groupName || 'הקבוצה';
+    const groupName = payload.groupName || 'המועדון';
     const gameTitle = payload.gameTitle || payload.title || 'המשחק';
     const startsAt = payload.startsAt;
     const when = startsAt ? formatHebrewWhen(startsAt) : '';
@@ -507,8 +507,8 @@ function buildMessage(type, payload) {
             // members the COMMUNITY itself is gone.
             const name = payload.groupName || groupName;
             return {
-                title: 'הקהילה נסגרה',
-                body: `הקהילה ${name} נמחקה על ידי המנהל.`,
+                title: 'המועדון נסגר',
+                body: `המועדון ${name} נמחק על ידי המנהל.`,
             };
         }
         case 'gameShortageWarning': {
@@ -564,8 +564,8 @@ function buildMessage(type, payload) {
             // is never re-fired even if a member leaves and re-joins.
             const milestone = Number(payload.milestone) || 0;
             return {
-                title: `${groupName} חצתה ${milestone} חברים 🎉`,
-                body: `הקהילה גדלה — תודה שתרמתם לבנייתה.`,
+                title: `${groupName} חצה ${milestone} חברי סגל 🎉`,
+                body: `המועדון גדל — תודה שתרמתם לבנייתו.`,
             };
         }
         case 'fillerOpportunity': {
@@ -580,7 +580,7 @@ function buildMessage(type, payload) {
                 : '';
             return {
                 title: 'הזדמנות למילוי משחק',
-                body: `הקהילה ${groupName}${city} צריכה שחקנים${when ? ` — ${when}` : ''}.${shortBy} רוצה להגיש מועמדות?`,
+                body: `המועדון ${groupName}${city} צריך שחקנים${when ? ` — ${when}` : ''}.${shortBy} רוצה להגיש מועמדות?`,
             };
         }
         case 'fillerInterestReceived': {
@@ -606,7 +606,7 @@ function buildMessage(type, payload) {
             // CTA opens the promote screen pre-filled with the roster.
             return {
                 title: 'שיחקתם נחמד 🤝',
-                body: `רוצה לשמור את החברים מ${gameTitle}? צור קהילה בלחיצה ותקבע משחק שבועי.`,
+                body: `רוצה לשמור את החברים מ${gameTitle}? צור מועדון בלחיצה ותקבע מחזור שבועי.`,
             };
         }
         case 'groupInvitation': {
@@ -617,7 +617,7 @@ function buildMessage(type, payload) {
                 : 'מארגן המשחק';
             const name = payload.groupName || groupName;
             return {
-                title: 'הזמנה לקהילה',
+                title: 'הזמנה למועדון',
                 body: `${inviter} מזמין אותך להצטרף ל"${name}". להיכנס ולאשר?`,
             };
         }
@@ -2088,7 +2088,7 @@ exports.onGroupPendingChanged = (0, firestore_1.onDocumentWritten)('groups/{grou
     if (admins.length === 0)
         return;
     const groupId = event.params.groupId;
-    const groupName = after.name || 'הקבוצה';
+    const groupName = after.name || 'המועדון';
     // Use allSettled so a single quota / network failure on one push
     // doesn't drop the rest. Previously Promise.all rejected on the
     // first failure — leaving the requester in pendingPlayerIds with
@@ -3338,7 +3338,7 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         const inWindow = now - windowStart < CREATE_GROUP_RATE_WINDOW_MS;
         const count = inWindow ? (cur.count ?? 0) : 0;
         if (count >= CREATE_GROUP_RATE_CAP) {
-            throw new https_1.HttpsError('resource-exhausted', 'יצירת קהילות מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.');
+            throw new https_1.HttpsError('resource-exhausted', 'יצירת מועדונים מוגבלת ל-5 ביום. נסה שוב מאוחר יותר.');
         }
         tx.set(rateRef, {
             uid,
@@ -3679,7 +3679,7 @@ async function recomputeCommunityShowcase(groupId) {
     const recentGames = recentGamesRaw.slice(0, 5);
     const showcase = {
         groupId,
-        name: group.name ?? 'קהילה',
+        name: group.name ?? 'מועדון',
         description: group.description ?? null,
         city: group.city ?? null,
         fieldName: group.fieldName ?? null,
@@ -3827,8 +3827,8 @@ async function loadShowcaseSummary(groupId) {
 function buildMetaBlock(summary) {
     if (!summary) {
         return {
-            title: 'קהילה ב־Teamder',
-            description: 'צפו בסטטיסטיקות הקהילה, השחקנים הכי נאמנים, והמשחקים האחרונים.',
+            title: 'מועדון ב־Teamder',
+            description: 'צפו בסטטיסטיקות המועדון, השחקנים הכי נאמנים, והמשחקים האחרונים.',
         };
     }
     const title = `${summary.name} · Teamder`;
@@ -3841,8 +3841,8 @@ function buildMetaBlock(summary) {
         if (summary.city)
             parts.push(summary.city);
         parts.push(`${summary.totalGamesFinished} משחקים`);
-        parts.push(`${summary.totalMembers} חברים`);
-        description = `קהילת כדורגל ב־Teamder · ${parts.join(' · ')}`;
+        parts.push(`${summary.totalMembers} חברי סגל`);
+        description = `מועדון כדורגל ב־Teamder · ${parts.join(' · ')}`;
     }
     return { title, description };
 }
@@ -4948,7 +4948,7 @@ exports.onCommunityCreatedAlert = (0, firestore_1.onDocumentCreated)('groups/{id
         return; // skip personal/orphan groups
     const owner = grp.creatorId ?? grp.adminIds?.[0];
     const who = owner ? await adminAlertUserName(owner) : 'מישהו';
-    await (0, adminPush_1.pushToAdmins)('communityCreate', 'Teamder', `${who} יצר קהילה: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
+    await (0, adminPush_1.pushToAdmins)('communityCreate', 'Teamder', `${who} יצר מועדון: ${grp.name ?? ''} 🏟️`, { id: event.params.id });
 });
 exports.onCommunityJoinedAlert = (0, firestore_1.onDocumentUpdated)('groups/{id}', async (event) => {
     const before = event.data?.before.data();
@@ -4961,7 +4961,7 @@ exports.onCommunityJoinedAlert = (0, firestore_1.onDocumentUpdated)('groups/{id}
         return;
     const who = await adminAlertUserName(added[0]);
     const extra = added.length > 1 ? ` +${added.length - 1}` : '';
-    await (0, adminPush_1.pushToAdmins)('communityJoin', 'Teamder', `${who}${extra} הצטרף לקהילה ${after.name ?? ''} 👥`, { id: event.params.id });
+    await (0, adminPush_1.pushToAdmins)('communityJoin', 'Teamder', `${who}${extra} הצטרף למועדון ${after.name ?? ''} 👥`, { id: event.params.id });
 });
 // New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires
 // only on a genuinely new kind of failure (not every repeat occurrence).

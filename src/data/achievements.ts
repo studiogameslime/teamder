@@ -37,7 +37,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'firstGame',
     titleHe: 'משחק ראשון',
-    descriptionHe: 'נרשמת למשחק הראשון שלך',
+    descriptionHe: 'בהרכב למשחק הראשון שלך',
     category: 'games',
     metric: 'gamesJoined',
     threshold: 1,
@@ -88,8 +88,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // ─── Teams ─────────────────────────────────────────────────────────────
   {
     id: 'createdFirstTeam',
-    titleHe: 'הקמת קבוצה',
-    descriptionHe: 'יצרת את הקבוצה הראשונה שלך',
+    titleHe: 'הקמת מועדון',
+    descriptionHe: 'יצרת את המועדון הראשון שלך',
     category: 'teams',
     metric: 'teamsCreated',
     threshold: 1,
@@ -98,8 +98,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'joinedThreeTeams',
-    titleHe: 'חבר ב-3 קבוצות',
-    descriptionHe: 'הצטרפת ל-3 קבוצות שונות',
+    titleHe: 'חבר ב-3 מועדונים',
+    descriptionHe: 'הצטרפת ל-3 מועדונים שונים',
     category: 'teams',
     metric: 'teamsJoined',
     threshold: 3,
@@ -108,8 +108,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'joinedFiveTeams',
-    titleHe: 'חבר ב-5 קבוצות',
-    descriptionHe: 'אתה חבר ב-5 קבוצות שונות',
+    titleHe: 'חבר ב-5 מועדונים',
+    descriptionHe: 'אתה חבר ב-5 מועדונים שונים',
     category: 'teams',
     metric: 'teamsJoined',
     threshold: 5,
@@ -118,8 +118,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'joinedTenTeams',
-    titleHe: 'חבר ב-10 קבוצות',
-    descriptionHe: 'אתה חבר ב-10 קבוצות שונות',
+    titleHe: 'חבר ב-10 מועדונים',
+    descriptionHe: 'אתה חבר ב-10 מועדונים שונים',
     category: 'teams',
     metric: 'teamsJoined',
     threshold: 10,
@@ -183,7 +183,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'invitedTenPlayers',
     titleHe: '10 הזמנות',
-    descriptionHe: 'מארח של הקבוצה',
+    descriptionHe: 'מארח של המועדון',
     category: 'invites',
     metric: 'invitesSent',
     threshold: 10,
@@ -195,7 +195,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'coachOf10',
     titleHe: 'מנהל של 10',
-    descriptionHe: 'אישרת 10 שחקנים לקבוצה',
+    descriptionHe: 'אישרת 10 שחקנים למועדון',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 10,
@@ -205,7 +205,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'coachOf20',
     titleHe: 'מנהל של 20',
-    descriptionHe: 'אישרת 20 שחקנים לקבוצה',
+    descriptionHe: 'אישרת 20 שחקנים למועדון',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 20,
@@ -215,7 +215,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'coachOf30',
     titleHe: 'מנהל של 30',
-    descriptionHe: 'אישרת 30 שחקנים לקבוצה',
+    descriptionHe: 'אישרת 30 שחקנים למועדון',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 30,
