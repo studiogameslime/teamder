@@ -196,13 +196,12 @@ function buildHtml(
           paint: { 'line-color': '#2563EB', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': 0.9 } });
       }
       function fit() {
-        var c = map.getContainer();
-        // Leave generous breathing room so the circle reads as a bounded
-        // area inside a larger map (not edge-to-edge, which made the
-        // radius look far bigger than it is).
-        var pad = Math.round(Math.min(c.clientWidth || 360, c.clientHeight || 230) * 0.26);
+        // Tight fit so the map ZOOM tracks the radius: a small radius
+        // zooms in to a neighbourhood (circle fills the map), a large one
+        // zooms out to a region. This is what makes "5 km" actually read
+        // as a small area instead of a city-spanning one.
         var b = bbox(state.lat, state.lng, state.km);
-        map.fitBounds(b, { padding: pad, duration: 350, maxZoom: 15 });
+        map.fitBounds(b, { padding: 14, duration: 350, maxZoom: 16 });
       }
 
       window.setRadius = function (km) { state.km = km; drawCircle(); fit(); };
