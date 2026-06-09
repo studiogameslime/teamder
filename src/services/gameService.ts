@@ -1891,6 +1891,66 @@ export const gameService = {
   },
 
   /**
+   * "Skip this week" for a recurring (מחזור שבועי) game: spawn next week's
+   * instance so the weekly series survives, THEN delete the current one.
+   * Without this, deleting a recurring game ends the series entirely (the
+   * clone-on-completion CF never runs for a removed/cancelled week).
+   *
+   * Mirrors the CF clone (gameService.createGameV2 with the same settings,
+   * +7d, fresh roster) so we don't need a dedicated callable. Creates next
+   * week FIRST — only removes the current week once the series is carried
+   * forward, so a failure never silently kills the recurrence.
+   */
+  async skipRecurringWeek(gameId: string, fallbackCreatedBy: UserId): Promise<void> {
+    const g = await gameService.getGameById(gameId);
+    if (!g) throw new Error('skipRecurringWeek: game not found');
+    if (!g.recurring) throw new Error('skipRecurringWeek: not a recurring game');
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const shift = (v?: number): number | undefined =>
+      typeof v === 'number' && v > 0 ? v + WEEK : undefined;
+    const nextPublic = shift(g.publicOpenAt);
+    await gameService.createGameV2({
+      groupId: g.groupId,
+      title: g.title,
+      startsAt: g.startsAt + WEEK,
+      fieldName: g.fieldName ?? '',
+      maxPlayers: g.maxPlayers,
+      minPlayers: g.minPlayers,
+      format: g.format,
+      numberOfTeams: g.numberOfTeams,
+      cancelDeadlineHours: g.cancelDeadlineHours,
+      fieldType: g.fieldType,
+      matchDurationMinutes: g.matchDurationMinutes,
+      // If it flips community→public on a schedule, next week starts
+      // members-only again (mirrors the CF clone).
+      visibility:
+        nextPublic !== undefined
+          ? 'community'
+          : g.visibility === 'public'
+            ? 'public'
+            : 'community',
+      requiresApproval: g.requiresApproval === true,
+      bringBall: g.bringBall === true,
+      bringShirts: g.bringShirts === true,
+      notes: g.notes,
+      city: g.city,
+      fieldAddress: g.fieldAddress,
+      fieldLat: g.fieldLat,
+      fieldLng: g.fieldLng,
+      ruleTags: g.ruleTags,
+      registrationOpensAt: shift(g.registrationOpensAt),
+      recurring: true,
+      publicOpenAt: nextPublic,
+      guestsOpenAt: shift(g.guestsOpenAt),
+      acceptsFillers: g.acceptsFillers,
+      fillerMinTrust: g.fillerMinTrust,
+      createdBy: g.createdBy ?? fallbackCreatedBy,
+      isOrphanContext: g.isOrphanContext,
+    });
+    await gameService.deleteGame(gameId);
+  },
+
+  /**
    * Permanently remove a game. Caller must be the creator or a community
    * admin — Firestore rules enforce this; we don't double-check here.
    * Notifies participants so subscribed UIs can navigate away.

@@ -1324,6 +1324,43 @@ export function MatchDetailsScreen() {
     }
   };
 
+  // Delete tap — for a recurring game, offer "this week only" (keeps the
+  // series) vs "stop the whole series". Non-recurring → the plain confirm.
+  const handleDeletePress = () => {
+    if (!game.recurring) {
+      setDeleteOpen(true);
+      return;
+    }
+    appAlert(he.deleteRecurringTitle, he.deleteRecurringBody, [
+      { text: he.cancel, style: 'cancel' },
+      { text: he.deleteRecurringThisWeek, onPress: () => void handleSkipWeek() },
+      {
+        text: he.deleteRecurringStop,
+        style: 'destructive',
+        onPress: () => setDeleteOpen(true),
+      },
+    ]);
+  };
+
+  const handleSkipWeek = async () => {
+    if (!user) return;
+    setBusy(true);
+    try {
+      await gameService.skipRecurringWeek(game.id, user.id);
+      toast.success(he.skipRecurringWeekSuccess);
+      nav.goBack();
+    } catch (err) {
+      logError('matchSkipRecurringWeek', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
+      if (__DEV__) console.warn('[matchDetails] skipRecurringWeek failed', err);
+      toast.error(he.error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Primary CTA — POSITIVE actions only. Cancel-registration is
   // intentionally NOT a primary anymore: it's a subtle outline-red
   // link below the quick actions so a stray tap can't accidentally
@@ -1512,7 +1549,7 @@ export function MatchDetailsScreen() {
                 id: 'delete',
                 label: he.deleteGameAction,
                 icon: 'trash-outline' as const,
-                onPress: () => setDeleteOpen(true),
+                onPress: handleDeletePress,
                 tone: 'danger' as const,
               },
             ]

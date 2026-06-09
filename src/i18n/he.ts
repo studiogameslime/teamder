@@ -89,6 +89,14 @@ export const he = {
   deleteGameTitle: 'מחיקת המשחק',
   deleteGameBody: 'המשחק יוסר לצמיתות מהמועדון ומהיסטוריית השחקנים. רישומים, רשימת המתנה והקבוצות שנבנו ימחקו.',
   deleteGameSuccess: 'המשחק נמחק',
+  // Recurring (מחזור שבועי) game — delete needs a choice so cancelling one
+  // week doesn't kill the whole series.
+  deleteRecurringTitle: 'משחק מחזור שבועי',
+  deleteRecurringBody:
+    'זהו משחק מחזור שבועי. אפשר למחוק רק את המשחק השבוע — והמחזור ימשיך בשבוע הבא — או להפסיק את כל המחזור.',
+  deleteRecurringThisWeek: 'מחק רק את השבוע הזה',
+  deleteRecurringStop: 'הפסק את כל המחזור',
+  skipRecurringWeekSuccess: 'המשחק השבוע נמחק — המחזור ממשיך בשבוע הבא',
   deleteGroupTitle: 'מחיקת המועדון',
   deleteGroupBody: 'המועדון ומידע השייך אליו יימחקו לצמיתות. כל החברים יתנתקו ולא ניתן יהיה לשחזר.',
   deleteGroupSuccess: 'המועדון נמחק',
