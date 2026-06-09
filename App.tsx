@@ -688,11 +688,22 @@ export default function App() {
   // call resolves when the ad is closed; if nothing is ready it returns
   // immediately. Either way we then drop the splash and reveal the app.
   const handleSplashFinish = async () => {
-    try {
-      await adsService.showAppOpenAdIfAvailable();
-    } catch {
-      // showAppOpenAdIfAvailable swallows internally; this is just a
-      // belt-and-suspenders guard against future signature changes.
+    // Reveal the app no matter what. Two guards so a slow/stuck app-open ad
+    // can never freeze startup (the Google "unresponsive app" rejection):
+    //   1. Skip the ad entirely until the user is signed in — a fresh
+    //      install (incl. the Play reviewer) goes straight to the app, never
+    //      sitting on the splash behind an ad.
+    //   2. Even for signed-in users, race the ad against a hard timeout so a
+    //      hung show() can't block setSplashDone.
+    if (useUserStore.getState().currentUser) {
+      try {
+        await Promise.race([
+          adsService.showAppOpenAdIfAvailable(),
+          new Promise<void>((resolve) => setTimeout(resolve, 3500)),
+        ]);
+      } catch {
+        // never block reveal on an ad failure
+      }
     }
     setSplashDone(true);
   };
