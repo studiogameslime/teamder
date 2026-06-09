@@ -32,7 +32,7 @@ import { useEffect, useRef } from 'react';
 import { onSnapshot } from 'firebase/firestore';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
-import { banner } from '@/components/Banner';
+import { toast } from '@/components/Toast';
 import { he } from '@/i18n/he';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
@@ -142,7 +142,7 @@ export function useGameEvents(
       if (joined.length > 0) {
         const store = useGameStore.getState();
         const missing = joined.filter((u) => !store.players[u]);
-        const fire = () => banner.success(describeJoiners(joined));
+        const fire = () => toast.success(describeJoiners(joined));
         if (missing.length > 0) {
           void store
             .hydratePlayers(missing)
@@ -153,7 +153,7 @@ export function useGameEvents(
         }
       }
       if (left.length > 0) {
-        banner.info(describeLeavers(left));
+        toast.info(describeLeavers(left));
       }
     };
 
@@ -238,15 +238,15 @@ export function useGameEvents(
         const prevGuests = prev?.guests?.length ?? 0;
         const currGuests = curr.guests?.length ?? 0;
         if (currGuests > prevGuests) {
-          banner.success(he.bannerGuestAdded);
+          toast.success(he.bannerGuestAdded);
         }
 
         // ── Status transitions ───────────────────────────────────────
         if (prev?.status !== 'finished' && curr.status === 'finished') {
-          banner.info(he.bannerEveningEnded);
+          toast.info(he.bannerEveningEnded);
         }
         if (prev?.status !== 'cancelled' && curr.status === 'cancelled') {
-          banner.info(he.bannerGameCancelled);
+          toast.info(he.bannerGameCancelled);
         }
 
         prevRef.current = curr;
