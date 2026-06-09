@@ -1096,6 +1096,14 @@ export const he = {
   availabilityNotifTitle: 'קבל התראות',
   availabilityNotifHint: 'שלח לי התראה כשיש משחקים עם חסרים באזור שלי',
   availabilitySavePrefs: 'שמור העדפות',
+  // Location gate — the whole feature is location-based, so it's off
+  // until the user grants location permission.
+  availabilityLocationToggle: 'איתור משחקים לפי המיקום שלי',
+  availabilityLocationToggleHint:
+    'נדרשת הרשאת מיקום כדי למצוא לך משחקים באזור שלך.',
+  availabilityLocationLockedTitle: 'אפשרו שיתוף מיקום',
+  availabilityLocationLockedHint:
+    'הפיצר הזה מוצא לך משחקים לפי המיקום שלך. הפעילו את המתג למעלה ואשרו שיתוף מיקום כדי להגדיר ימים, שעות וטווח חיפוש.',
 
   // Post sign-in onboarding — single profile-customisation step.
   // The welcome + "how it works" intermediate screens were removed

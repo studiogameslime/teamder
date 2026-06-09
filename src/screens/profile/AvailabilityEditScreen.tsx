@@ -26,6 +26,8 @@ import { appAlert } from '@/components/AppDialog';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RangeSlider } from '@/components/RangeSlider';
 import { AvailabilityRadiusMap } from '@/components/availability/AvailabilityRadiusMap';
+import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
+import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -80,11 +82,19 @@ export function AvailabilityEditScreen() {
   );
   const initialRadius = clampRadius(initial.availabilityRadiusKm ?? 15);
 
+  // The whole feature is location-based: it's "on" only once the user has
+  // a saved location (i.e. previously granted + picked). Seeded from coords.
+  const initialLocationEnabled =
+    typeof initial.homeCityLat === 'number' &&
+    typeof initial.homeCityLng === 'number';
+
   const [days, setDays] = useState<WeekdayIndex[]>(initial.preferredDays ?? []);
   const [times, setTimes] = useState<TimeBucket[]>(initial.preferredTimes ?? []);
   const [pin, setPin] = useState(initialPin);
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
   const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush === true);
+  const [locationEnabled, setLocationEnabled] = useState(initialLocationEnabled);
+  const [gpsBusy, setGpsBusy] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const isDirty =
@@ -93,8 +103,32 @@ export function AvailabilityEditScreen() {
     pin.lat !== initialPin.lat ||
     pin.lng !== initialPin.lng ||
     radiusKm !== initialRadius ||
-    notify !== (initial.acceptsFillerPush === true);
+    notify !== (initial.acceptsFillerPush === true) ||
+    locationEnabled !== initialLocationEnabled;
   const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+
+  // Master toggle. Turning it ON requires location permission; if the user
+  // refuses we flip it straight back off (the feature is useless without
+  // location). Turning it OFF just disables the feature.
+  const handleToggleLocation = async (next: boolean) => {
+    if (!next) {
+      setLocationEnabled(false);
+      return;
+    }
+    setGpsBusy(true);
+    try {
+      const r = await resolveNearbyLocation(initial.homeCity);
+      if (r.granted) {
+        if (r.latLng) setPin(r.latLng);
+        setLocationEnabled(true);
+      } else {
+        setLocationEnabled(false);
+        promptLocationDenied(r.canAskAgain);
+      }
+    } finally {
+      setGpsBusy(false);
+    }
+  };
 
   const toggleDay = useCallback((d: WeekdayIndex) => {
     setDays((prev) =>
@@ -113,15 +147,22 @@ export function AvailabilityEditScreen() {
   const save = async () => {
     setBusy(true);
     try {
-      // Resolve the dropped pin to a city name (best-effort) so the
-      // server-side matcher — which requires a city — still works.
-      let cityName = initial.homeCity ?? '';
-      try {
-        const { reverseGeocodeCity } = await import('@/services/geocodeService');
-        const c = await reverseGeocodeCity(pin.lat, pin.lng);
-        if (c) cityName = c;
-      } catch {
-        /* keep previous city name on failure */
+      // When location is off the feature is disabled: clear coords/city and
+      // force notifications off so the server-side matcher won't include the
+      // user. When on, resolve the dropped pin to a city name (best-effort)
+      // since the matcher requires a city.
+      let cityName = '';
+      let coords: { lat: number; lng: number } | null = null;
+      if (locationEnabled) {
+        coords = { lat: pin.lat, lng: pin.lng };
+        cityName = initial.homeCity ?? '';
+        try {
+          const { reverseGeocodeCity } = await import('@/services/geocodeService');
+          const c = await reverseGeocodeCity(pin.lat, pin.lng);
+          if (c) cityName = c;
+        } catch {
+          /* keep previous city name on failure */
+        }
       }
       const next: UserAvailability = {
         preferredDays: days,
@@ -133,14 +174,15 @@ export function AvailabilityEditScreen() {
         // Not surfaced in the new UI — preserve whatever was set before
         // (defaults to invitable).
         isAvailableForInvites: initial.isAvailableForInvites !== false,
-        acceptsFillerPush: notify,
+        acceptsFillerPush: locationEnabled ? notify : false,
       };
-      await persistAvailability(user.id, next, { lat: pin.lat, lng: pin.lng });
+      await persistAvailability(user.id, next, coords);
       logEvent(AnalyticsEvent.AvailabilitySet, {
         days: days.join(','),
         times: times.join(','),
         radiusKm,
-        acceptsFillerPush: String(notify),
+        locationEnabled: String(locationEnabled),
+        acceptsFillerPush: String(locationEnabled && notify),
         geocoded: cityName.length > 0,
       });
       await reloadUser();
@@ -180,6 +222,39 @@ export function AvailabilityEditScreen() {
           </View>
         </View>
 
+        {/* Master location gate — the feature requires location permission */}
+        <View style={styles.gateCard}>
+          <View style={styles.notifText}>
+            <View style={styles.sectionHeaderInner}>
+              <Ionicons name="navigate-circle-outline" size={18} color={ACCENT} />
+              <Text style={styles.notifTitle}>{he.availabilityLocationToggle}</Text>
+            </View>
+            <Text style={styles.notifHint}>{he.availabilityLocationToggleHint}</Text>
+          </View>
+          {gpsBusy ? (
+            <SoccerBallLoader size={22} />
+          ) : (
+            <Switch
+              value={locationEnabled}
+              onValueChange={handleToggleLocation}
+              trackColor={{ false: colors.border, true: ACCENT }}
+              thumbColor="#fff"
+            />
+          )}
+        </View>
+
+        {!locationEnabled ? (
+          <View style={styles.lockedCard}>
+            <Ionicons name="lock-closed-outline" size={26} color={colors.textMuted} />
+            <Text style={styles.lockedTitle}>
+              {he.availabilityLocationLockedTitle}
+            </Text>
+            <Text style={styles.lockedHint}>
+              {he.availabilityLocationLockedHint}
+            </Text>
+          </View>
+        ) : (
+          <>
         {/* Days — all 7 fit in one row, single letter each */}
         <SectionHeader icon="calendar-outline" title={he.availabilityDaysTitle} />
         <View style={styles.daysRow}>
@@ -283,6 +358,8 @@ export function AvailabilityEditScreen() {
             thumbColor="#fff"
           />
         </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Save CTA */}
@@ -498,6 +575,42 @@ const styles = StyleSheet.create({
     direction: 'ltr',
   },
   rangeEndText: { fontSize: 12, color: colors.textMuted },
+
+  // Location gate
+  gateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#EFF4FF',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#CFE0FF',
+    padding: spacing.lg,
+  },
+  lockedCard: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  lockedTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  lockedHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
 
   // Notifications
   notifCard: {
