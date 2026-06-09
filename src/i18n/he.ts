@@ -1273,11 +1273,15 @@ export const he = {
   matchCardWaitlist: 'המתנה',
   matchCardLeave: 'בטל הרשמה',
   matchCardPlayersOf: (n: number, max: number) => `‎${n}/${max}‎ שחקנים`,
-  matchStatusOpen: 'פתוח',
+  matchStatusOpen: 'פתוח להרשמה',
   matchStatusFull: 'מלא',
   matchStatusJoined: 'בהרכב',
   matchStatusWaitlist: 'בהמתנה',
   matchStatusPending: 'ממתין לאישור',
+  /** Tag describing the GAME's join policy (it requires admin approval) —
+   *  NOT the viewer's own status. Distinct wording so it never reads as
+   *  "you are pending" on a game the user never requested. */
+  matchTagNeedsApproval: 'הצטרפות באישור',
   // Visibility tag on the games list card
   matchTagOpenToAll: 'פתוח לכולם',
   matchTagCommunityOnly: 'סגור למועדון',

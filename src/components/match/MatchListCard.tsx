@@ -124,7 +124,8 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
     tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
   }
   if (game.requiresApproval) {
-    tags.push({ label: he.matchStatusPending, tone: 'warning' });
+    // Describes the GAME (joining needs approval) — not the viewer's status.
+    tags.push({ label: he.matchTagNeedsApproval, tone: 'warning' });
   }
   // Visibility at a glance: open-to-all (accent) vs members-only / quick.
   if (game.visibility === 'public') {
