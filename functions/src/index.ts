@@ -5285,8 +5285,6 @@ async function runFindFillerCandidates(): Promise<void> {
       ...(game.pending ?? []),
     ]);
     const alreadyPushed = game.fillerPushHistory ?? {};
-    const minTrust =
-      typeof game.fillerMinTrust === 'number' ? game.fillerMinTrust : 70;
 
     const newlyPushed: Record<string, number> = {};
     let pushesThisGame = 0;
@@ -5341,12 +5339,9 @@ async function runFindFillerCandidates(): Promise<void> {
       }
       if (!withinRange) continue;
 
-      // Trust gate. `null` (user has too little history) NEVER
-      // passes any minimum — they need to play 3+ games before
-      // entering the filler pool.
-      const score = await computeTrustScoreServerSide(uid);
-      if (score === null) continue;
-      if (score < minTrust) continue;
+      // (Trust filtering removed — candidates are matched purely by
+      // availability + geography now. Trust is still computed
+      // elsewhere but no longer gates the filler pool.)
 
       // Dispatch the opportunity notification. Recipient = uid,
       // single-recipient delivery via the existing
@@ -5378,31 +5373,10 @@ async function runFindFillerCandidates(): Promise<void> {
         },
         { merge: true },
       );
-    } else {
-      // 0 matches on this run. Tell the admin (latched so we don't
-      // spam) so they can lower the threshold or wait.
-      const lastFallbackAt = game.fillerNoCandidatesAt ?? 0;
-      if (
-        now - lastFallbackAt >= FILLER_NO_CANDIDATES_COOLDOWN_MS &&
-        game.createdBy
-      ) {
-        await createNotificationOnce({
-          type: 'fillerNoCandidates',
-          recipientId: game.createdBy,
-          payload: {
-            gameId: doc.id,
-            groupId: game.groupId,
-            gameTitle: game.title,
-            minTrust,
-          },
-        });
-        await doc.ref.set(
-          { fillerNoCandidatesAt: now, updatedAt: now },
-          { merge: true },
-        );
-        fallbackPushed += 1;
-      }
     }
+    // (No "no candidates" admin push anymore — without a trust filter
+    // there's no threshold for the admin to lower, so the fallback
+    // notification was removed.)
   }
 
   console.log(
