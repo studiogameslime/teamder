@@ -593,11 +593,12 @@ function buildMessage(type, payload) {
             };
         }
         case 'fillerNoCandidates': {
-            // → game admin, fallback after the matcher couldn't find
-            // anyone meeting the configured min-trust filter.
+            // → game admin, fallback after the matcher couldn't find any
+            // available candidate. (Trust filtering still runs server-side,
+            // but it's no longer surfaced to users — keep the copy neutral.)
             return {
-                title: 'אין כרגע fillers מתאימים',
-                body: `לא נמצאו שחקנים שעומדים בסף האמינות שהוגדר ל${gameTitle}. רוצה להוריד את הסף ולנסות שוב?`,
+                title: 'אין כרגע מועמדים מתאימים',
+                body: `לא נמצאו כרגע שחקנים פנויים שיכולים למלא ב${gameTitle}. ננסה שוב בהמשך.`,
             };
         }
         case 'promotePrompt': {

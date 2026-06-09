@@ -94,7 +94,7 @@ type NotificationType =
   // Cross-community filler matching (Phase 1)
   | 'fillerOpportunity'      // → candidate: "קהילה X זקוקה לשחקנים"
   | 'fillerInterestReceived' // → admin: "X מעוניין למלא"
-  | 'fillerNoCandidates'     // → admin: "לא נמצאו fillers, רוצה להוריד את הסף?"
+  | 'fillerNoCandidates'     // → admin: "אין כרגע מועמדים מתאימים"
   | 'gameShortageWarning'    // → admin: "אין מספיק שחקנים — תחליט אם לבטל"
   // Orphan-game → community promote flow
   | 'promotePrompt'          // → creator: "צור קהילה מהמשחק שלך"
@@ -689,11 +689,12 @@ function buildMessage(
       };
     }
     case 'fillerNoCandidates': {
-      // → game admin, fallback after the matcher couldn't find
-      // anyone meeting the configured min-trust filter.
+      // → game admin, fallback after the matcher couldn't find any
+      // available candidate. (Trust filtering still runs server-side,
+      // but it's no longer surfaced to users — keep the copy neutral.)
       return {
-        title: 'אין כרגע fillers מתאימים',
-        body: `לא נמצאו שחקנים שעומדים בסף האמינות שהוגדר ל${gameTitle}. רוצה להוריד את הסף ולנסות שוב?`,
+        title: 'אין כרגע מועמדים מתאימים',
+        body: `לא נמצאו כרגע שחקנים פנויים שיכולים למלא ב${gameTitle}. ננסה שוב בהמשך.`,
       };
     }
     case 'promotePrompt': {

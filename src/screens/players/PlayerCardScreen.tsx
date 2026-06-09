@@ -330,7 +330,9 @@ export function PlayerCardScreen() {
               />
             ) : null}
 
-            <DisciplineSection user={user} />
+            {/* Trust meter hidden from UI for now — score is still computed
+                server-side for filler matching; just not shown to users. */}
+            {/* <DisciplineSection user={user} /> */}
 
             <AchievementsSection user={user} />
           </>

@@ -38,7 +38,8 @@ import Constants from 'expo-constants';
 import { Button } from '@/components/Button';
 import { ProfileHeroCard } from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
-import { DisciplineRow } from '@/components/profile/DisciplineRow';
+// DisciplineRow (trust meter) hidden from UI for now — see render site below.
+// import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { AchievementsRail } from '@/components/profile/AchievementsRail';
@@ -454,8 +455,9 @@ export function ProfileScreen() {
             />
           ) : null}
 
-          {/* ④ Discipline row (red/yellow indicators on leading edge) */}
-          <DisciplineRow userId={user.id} />
+          {/* ④ Trust/discipline meter hidden from UI for now — still computed
+              server-side, just not shown to users. */}
+          {/* <DisciplineRow userId={user.id} /> */}
 
           {/* ⑤ Achievements rail (circular ring + label) */}
           <AchievementsRail

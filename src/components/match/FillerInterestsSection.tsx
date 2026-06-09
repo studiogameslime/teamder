@@ -30,7 +30,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 
 import { Card } from '@/components/Card';
-import { TrustMeter } from '@/components/TrustMeter';
+// TrustMeter hidden from UI for now — still computed server-side.
+// import { TrustMeter } from '@/components/TrustMeter';
 import { Avatar } from '@/components/Avatar';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
@@ -228,15 +229,7 @@ export function FillerInterestsSection({
             <Text style={styles.rowName} numberOfLines={1}>
               {row.user?.name ?? he.fillerDefaultName}
             </Text>
-            {row.trust ? (
-              <View style={styles.trustWrap}>
-                <TrustMeter
-                  score={row.trust.score}
-                  tier={row.trust.tier}
-                  size="sm"
-                />
-              </View>
-            ) : null}
+            {/* Trust meter hidden from UI for now — still computed server-side. */}
           </View>
           <View style={styles.actions}>
             <Pressable
