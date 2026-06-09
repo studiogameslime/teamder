@@ -123,31 +123,29 @@ export function ToastHost() {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  // White surface + a status-coloured icon in a soft translucent circle —
-  // matches the AppDialog popup style so all popups feel uniform.
+  // Wide card tinted by status, with a football icon in a soft circle on
+  // the trailing (right, RTL) side, a divider, and the message text.
   const palette =
     type === 'success'
-      ? { icon: colors.success, badge: 'rgba(22,163,74,0.12)' }
+      ? { icon: colors.success, iconBg: 'rgba(22,163,74,0.12)', card: '#F1FBF4', border: 'rgba(22,163,74,0.30)' }
       : type === 'error'
-        ? { icon: colors.danger, badge: 'rgba(239,68,68,0.12)' }
-        : { icon: colors.primary, badge: 'rgba(37,99,235,0.12)' };
-  const icon: keyof typeof Ionicons.glyphMap =
-    type === 'success'
-      ? 'checkmark'
-      : type === 'error'
-        ? 'close'
-        : 'information';
+        ? { icon: colors.danger, iconBg: 'rgba(239,68,68,0.12)', card: '#FEF3F2', border: 'rgba(239,68,68,0.28)' }
+        : { icon: colors.primary, iconBg: 'rgba(37,99,235,0.12)', card: '#EEF4FF', border: 'rgba(37,99,235,0.28)' };
 
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
       style={[styles.host, { top: insets.top + 8 }, animStyle]}
     >
-      <Pressable onPress={hide} style={styles.toast}>
-        <View style={[styles.iconBadge, { backgroundColor: palette.badge }]}>
-          <Ionicons name={icon} size={16} color={palette.icon} />
+      <Pressable
+        onPress={hide}
+        style={[styles.toast, { backgroundColor: palette.card, borderColor: palette.border }]}
+      >
+        <View style={[styles.iconCircle, { backgroundColor: palette.iconBg }]}>
+          <Ionicons name="football" size={24} color={palette.icon} />
         </View>
-        <Text style={styles.text} numberOfLines={2}>
+        <View style={styles.divider} />
+        <Text style={styles.text} numberOfLines={3}>
           {message}
         </Text>
       </Pressable>
@@ -160,40 +158,43 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
-    alignItems: 'center',
+    // Stretch so the toast spans the width (minus margins) — wider, like
+    // the mockup — instead of hugging its content.
+    alignItems: 'stretch',
     zIndex: 9999,
     elevation: 10,
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    gap: spacing.md,
+    borderRadius: radius.xxl,
     borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    minWidth: 220,
-    maxWidth: 480,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     // Soft, lifted shadow so the toast floats above content.
     shadowColor: '#0F172A',
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
-  iconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  divider: {
+    width: StyleSheet.hairlineWidth,
+    height: 34,
+    backgroundColor: colors.border,
   },
   text: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
   },
