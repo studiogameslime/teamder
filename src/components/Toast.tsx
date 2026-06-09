@@ -14,6 +14,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -25,7 +26,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -122,30 +123,30 @@ export function ToastHost() {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  const tint =
+  // Bright, dark-friendly tints (pop on the charcoal surface) + a soft
+  // translucent circle behind the icon.
+  const palette =
     type === 'success'
-      ? colors.success
+      ? { icon: '#4ADE80', badge: 'rgba(74,222,128,0.16)' }
       : type === 'error'
-        ? colors.danger
-        : colors.info;
+        ? { icon: '#F87171', badge: 'rgba(248,113,113,0.16)' }
+        : { icon: '#60A5FA', badge: 'rgba(96,165,250,0.16)' };
   const icon: keyof typeof Ionicons.glyphMap =
     type === 'success'
-      ? 'checkmark-circle'
+      ? 'checkmark'
       : type === 'error'
-        ? 'alert-circle'
-        : 'information-circle';
+        ? 'close'
+        : 'information';
 
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
-      style={[
-        styles.host,
-        { top: insets.top + 8 },
-        animStyle,
-      ]}
+      style={[styles.host, { top: insets.top + 8 }, animStyle]}
     >
-      <Pressable onPress={hide} style={[styles.toast, { borderColor: tint }]}>
-        <Ionicons name={icon} size={18} color={tint} />
+      <Pressable onPress={hide} style={styles.toast}>
+        <View style={[styles.iconBadge, { backgroundColor: palette.badge }]}>
+          <Ionicons name={icon} size={16} color={palette.icon} />
+        </View>
         <Text style={styles.text} numberOfLines={2}>
           {message}
         </Text>
@@ -167,22 +168,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
+    backgroundColor: '#1F2937',
+    borderRadius: radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     minWidth: 220,
     maxWidth: 480,
-    // Soft shadow so the toast lifts above the screen content.
+    // Soft, lifted shadow so the dark toast floats above content.
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  iconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
     ...typography.body,
-    color: colors.text,
+    color: '#F9FAFB',
+    fontWeight: '600',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
   },
