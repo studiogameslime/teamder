@@ -1077,6 +1077,26 @@ export const he = {
     'תישלח לך התראה כשקבוצה באזורך זקוקה לשחקנים. תוכל לבחור אם להגיש מועמדות.',
   availabilitySave: 'שמור זמינות',
 
+  // ── Redesigned availability screen ("מצא לי משחקים") ──────────────
+  availabilityHeaderTitle: 'מצא לי משחקים ⚽',
+  availabilityCardTitle: 'אנחנו נמצא לך משחקים מתאימים!',
+  availabilityCardBody:
+    'בחר את הימים, הזמן והאזור שבו תרצה לשחק. נמצא לך משחקים פתוחים עם שחקנים חסרים בסביבה שלך.',
+  availabilityDaysTitle: 'בחר ימי פעילות',
+  /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
+  availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],
+  availabilityTimesTitle: 'שעת פעילות מועדפת',
+  availabilityTimeMorning: 'בוקר',
+  availabilityTimeNoon: 'צהריים',
+  availabilityTimeEvening: 'ערב',
+  availabilityTimeNight: 'לילה',
+  availabilityAreaTitle: 'אזור חיפוש',
+  availabilityRangeTitle: 'טווח חיפוש',
+  availabilityRangeValue: (km: number) => `${km} ק"מ`,
+  availabilityNotifTitle: 'קבל התראות',
+  availabilityNotifHint: 'שלח לי התראה כשיש משחקים עם חסרים באזור שלי',
+  availabilitySavePrefs: 'שמור העדפות',
+
   // Post sign-in onboarding — single profile-customisation step.
   // The welcome + "how it works" intermediate screens were removed
   // (the user already saw the value pitch in the pre-sign-in flow);

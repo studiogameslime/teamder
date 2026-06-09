@@ -440,12 +440,18 @@ export interface NotificationDoc {
 /** ISO weekday: 0=Sunday, 6=Saturday. */
 export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+/** Coarse time-of-day buckets the user prefers to play in. */
+export type TimeBucket = 'morning' | 'noon' | 'evening' | 'night';
+
 export interface UserAvailability {
   /** Days the user is generally available, e.g. [4] = Thursday. */
   preferredDays: WeekdayIndex[];
-  /** "HH:mm" 24h, inclusive. */
+  /** Preferred time-of-day buckets (replaces the old from/to fields in
+   *  the UI; from/to kept below for backward compatibility). */
+  preferredTimes?: TimeBucket[];
+  /** @deprecated "HH:mm" 24h — superseded by `preferredTimes`. */
   timeFrom?: string;
-  /** "HH:mm" 24h, inclusive. */
+  /** @deprecated "HH:mm" 24h — superseded by `preferredTimes`. */
   timeTo?: string;
   /**
    * @deprecated Pre-radius single-city field. Reads still work; new

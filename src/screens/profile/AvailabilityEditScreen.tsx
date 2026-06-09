@@ -1,12 +1,13 @@
-// Edits the user's availability (preferred days / time range / city /
-// invitable toggle) and persists it via userService.updateProfile.
+// "מצא לי משחקים" — the user marks when/where they want to play so the
+// matcher can offer them open games with shortages nearby.
 //
-// Phase 5 scope: form-only. The data is read by Game create + Player Card
-// "Invite to Game" matching when those features ship. We don't show
-// explicit feedback if the user has never set availability — defaults to
-// no days selected, empty time range, empty city, invitable=true.
+// Redesigned to the product mockup: intro card, day chips, time-of-day
+// buckets, a radius map (search area), a range slider, a notifications
+// toggle and a save CTA. The location is set on the map (pin) and
+// reverse-geocoded to a city name on save so the server-side matcher —
+// which keys off the home city + radius — keeps working.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -15,162 +16,132 @@ import {
   Text,
   View,
 } from 'react-native';
-import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { updateDoc } from 'firebase/firestore';
+
+import { appAlert } from '@/components/AppDialog';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Button } from '@/components/Button';
+import { RangeSlider } from '@/components/RangeSlider';
+import { AvailabilityRadiusMap } from '@/components/availability/AvailabilityRadiusMap';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { AutocompleteInput } from '@/components/AutocompleteInput';
-import { AppTimeField } from '@/components/DateTimeFields';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
-import { searchCities } from '@/services/israelLocationService';
-import { UserAvailability, WeekdayIndex } from '@/types';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { TimeBucket, UserAvailability, WeekdayIndex } from '@/types';
+import { colors, radius, spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
 const ALL_DAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
-/** Radius options offered to the user. 20km is the default — covers
- *  most of "I'm willing to drive there" scenarios for an urban
- *  player without overshooting into "send me to Eilat" territory. */
-const RADIUS_OPTIONS = [10, 20, 30, 50, 100] as const;
+const RADIUS_MIN = 5;
+const RADIUS_MAX = 50;
+const ACCENT = '#2563EB';
+/** Gush Dan — sensible default focus when the user has no saved location. */
+const DEFAULT_CENTER = { lat: 32.0719, lng: 34.8417 };
+
+const TIME_BUCKETS: {
+  key: TimeBucket;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { key: 'morning', label: he.availabilityTimeMorning, icon: 'sunny-outline' },
+  { key: 'noon', label: he.availabilityTimeNoon, icon: 'sunny' },
+  { key: 'evening', label: he.availabilityTimeEvening, icon: 'partly-sunny-outline' },
+  { key: 'night', label: he.availabilityTimeNight, icon: 'moon-outline' },
+];
 
 export function AvailabilityEditScreen() {
   const nav = useNavigation();
   const user = useUserStore((s) => s.currentUser);
-  // Pull the action out of the store so we can refresh on save.
+
   const reloadUser = async () => {
     const fresh = await userService.getCurrentUser();
-    if (fresh) {
-      // userStore uses immutable state; this re-set keeps store in sync.
-      useUserStore.setState({ currentUser: fresh });
-    }
+    if (fresh) useUserStore.setState({ currentUser: fresh });
   };
 
   const initial: UserAvailability = user?.availability ?? {
     preferredDays: [],
-    timeFrom: '',
-    timeTo: '',
-    homeCity: '',
-    availabilityRadiusKm: 20,
     isAvailableForInvites: true,
-    acceptsFillerPush: false,
   };
 
+  const initialPin = useMemo(
+    () =>
+      typeof initial.homeCityLat === 'number' &&
+      typeof initial.homeCityLng === 'number'
+        ? { lat: initial.homeCityLat, lng: initial.homeCityLng }
+        : DEFAULT_CENTER,
+    [initial.homeCityLat, initial.homeCityLng],
+  );
+  const initialRadius = clampRadius(initial.availabilityRadiusKm ?? 15);
+
   const [days, setDays] = useState<WeekdayIndex[]>(initial.preferredDays ?? []);
-  const [timeFrom, setTimeFrom] = useState<string>(initial.timeFrom ?? '');
-  const [timeTo, setTimeTo] = useState<string>(initial.timeTo ?? '');
-  // Single home city. Seed from `homeCity` if present, else fall back
-  // to legacy `preferredCity` / first entry of `cities[]`. Mark
-  // `homeCityFromList` as true ONLY if we know the saved value came
-  // from the autocomplete (we can't tell for legacy data — assume
-  // false, force user to re-pick on first save).
-  const [homeCity, setHomeCity] = useState<string>(
-    initial.homeCity ??
-      initial.preferredCity ??
-      initial.cities?.[0] ??
-      '',
-  );
-  const [homeCityFromList, setHomeCityFromList] = useState<boolean>(
-    typeof initial.homeCity === 'string' && initial.homeCity.length > 0,
-  );
-  const [radiusKm, setRadiusKm] = useState<number>(
-    typeof initial.availabilityRadiusKm === 'number' &&
-      initial.availabilityRadiusKm > 0
-      ? initial.availabilityRadiusKm
-      : 20,
-  );
-  const [invitable, setInvitable] = useState<boolean>(
-    initial.isAvailableForInvites !== false,
-  );
-  const [acceptsFillerPush, setAcceptsFillerPush] = useState<boolean>(
-    initial.acceptsFillerPush === true,
-  );
+  const [times, setTimes] = useState<TimeBucket[]>(initial.preferredTimes ?? []);
+  const [pin, setPin] = useState(initialPin);
+  const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
+  const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush === true);
   const [busy, setBusy] = useState(false);
 
-  // Unsaved-changes guard — prompt instead of silently dropping edits on
-  // back/tab-switch, matching ProfileEdit. Compares each field to the
-  // value its useState initializer started from.
   const isDirty =
     JSON.stringify(days) !== JSON.stringify(initial.preferredDays ?? []) ||
-    timeFrom !== (initial.timeFrom ?? '') ||
-    timeTo !== (initial.timeTo ?? '') ||
-    homeCity !==
-      (initial.homeCity ?? initial.preferredCity ?? initial.cities?.[0] ?? '') ||
-    radiusKm !==
-      (typeof initial.availabilityRadiusKm === 'number' &&
-      initial.availabilityRadiusKm > 0
-        ? initial.availabilityRadiusKm
-        : 20) ||
-    invitable !== (initial.isAvailableForInvites !== false) ||
-    acceptsFillerPush !== (initial.acceptsFillerPush === true);
+    JSON.stringify(times) !== JSON.stringify(initial.preferredTimes ?? []) ||
+    pin.lat !== initialPin.lat ||
+    pin.lng !== initialPin.lng ||
+    radiusKm !== initialRadius ||
+    notify !== (initial.acceptsFillerPush === true);
   const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+
+  const toggleDay = useCallback((d: WeekdayIndex) => {
+    setDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
+    );
+  }, []);
+
+  const toggleTime = useCallback((t: TimeBucket) => {
+    setTimes((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+    );
+  }, []);
 
   if (!user) return null;
 
-  const toggleDay = (d: WeekdayIndex) => {
-    setDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
-    );
-  };
-
-  const fetchCities = useCallback(
-    (q: string) => searchCities(q),
-    [],
-  );
-
-  // Block save when the user has opted into filler push but the home
-  // city wasn't picked from the list. The matcher reads the EXACT
-  // string and the geocoder needs a canonical value to look up.
-  const cityIsValid =
-    !acceptsFillerPush ||
-    (homeCity.trim().length > 0 && homeCityFromList === true);
-  const cityInvalid =
-    acceptsFillerPush &&
-    homeCity.trim().length > 0 &&
-    !homeCityFromList;
-
   const save = async () => {
-    if (!cityIsValid) {
-      appAlert(he.error, he.availabilityHomeCityMustPick);
-      return;
-    }
     setBusy(true);
     try {
-      const cityVal = homeCity.trim();
+      // Resolve the dropped pin to a city name (best-effort) so the
+      // server-side matcher — which requires a city — still works.
+      let cityName = initial.homeCity ?? '';
+      try {
+        const { reverseGeocodeCity } = await import('@/services/geocodeService');
+        const c = await reverseGeocodeCity(pin.lat, pin.lng);
+        if (c) cityName = c;
+      } catch {
+        /* keep previous city name on failure */
+      }
       const next: UserAvailability = {
         preferredDays: days,
-        timeFrom: timeFrom.trim() || undefined,
-        timeTo: timeTo.trim() || undefined,
-        // Keep legacy fields populated for backward compat with old
-        // clients that still read `preferredCity` / `cities[]`.
-        preferredCity: cityVal || undefined,
-        cities: cityVal ? [cityVal] : [],
-        homeCity: cityVal || undefined,
+        preferredTimes: times,
+        homeCity: cityName || undefined,
+        preferredCity: cityName || undefined,
+        cities: cityName ? [cityName] : [],
         availabilityRadiusKm: radiusKm,
-        isAvailableForInvites: invitable,
-        acceptsFillerPush,
+        // Not surfaced in the new UI — preserve whatever was set before
+        // (defaults to invitable).
+        isAvailableForInvites: initial.isAvailableForInvites !== false,
+        acceptsFillerPush: notify,
       };
-      // Geocode the home city and persist coords if we got them.
-      // Best-effort: a failed geocode just stores no coords; the
-      // matcher then falls back to exact-city match for this user.
-      const coords = cityVal ? await tryGeocodeCity(cityVal) : null;
-      await persistAvailability(user.id, next, coords);
+      await persistAvailability(user.id, next, { lat: pin.lat, lng: pin.lng });
       logEvent(AnalyticsEvent.AvailabilitySet, {
         days: days.join(','),
-        invitable: String(invitable),
-        hasCity: cityVal.length > 0,
+        times: times.join(','),
         radiusKm,
-        acceptsFillerPush: String(acceptsFillerPush),
-        geocoded: coords !== null,
+        acceptsFillerPush: String(notify),
+        geocoded: cityName.length > 0,
       });
       await reloadUser();
       savingRef.current = true;
@@ -180,10 +151,7 @@ export function AvailabilityEditScreen() {
         screen: 'AvailabilityEditScreen',
         userId: user.id,
         days: days.join(','),
-        invitable,
-        homeCity: homeCity.trim(),
         radiusKm,
-        acceptsFillerPush,
       });
       if (__DEV__) console.warn('[availability] save failed', e);
       appAlert(he.error, String((e as Error).message ?? e));
@@ -193,161 +161,185 @@ export function AvailabilityEditScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.availabilityTitle} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>{he.availabilityIntro}</Text>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>{he.availabilityDays}</Text>
-          <View style={styles.daysRow}>
-            {ALL_DAYS.map((d) => {
-              const active = days.includes(d);
-              return (
-                <Pressable
-                  key={d}
-                  onPress={() => toggleDay(d)}
-                  style={({ pressed }) => [
-                    styles.dayPill,
-                    active && styles.dayPillActive,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayPillText,
-                      active && { color: '#FFFFFF', fontWeight: '700' },
-                    ]}
-                  >
-                    {he.availabilityDayShort[d]}
-                  </Text>
-                </Pressable>
-              );
-            })}
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <ScreenHeader title={he.availabilityHeaderTitle} />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Intro card */}
+        <View style={styles.introCard}>
+          <View style={styles.introAccent} />
+          <View style={styles.introText}>
+            <Text style={styles.introTitle}>{he.availabilityCardTitle}</Text>
+            <Text style={styles.introBody}>{he.availabilityCardBody}</Text>
+          </View>
+          <View style={styles.introIcon}>
+            <Ionicons name="search" size={26} color={ACCENT} />
+            <Text style={styles.introIconBall}>⚽</Text>
           </View>
         </View>
 
-        <AppTimeField
-          label={he.availabilityTimeFrom}
-          value={timeFrom}
-          onChange={setTimeFrom}
-        />
-        <AppTimeField
-          label={he.availabilityTimeTo}
-          value={timeTo}
-          onChange={setTimeTo}
-        />
+        {/* Days */}
+        <SectionHeader icon="calendar-outline" title={he.availabilityDaysTitle} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.daysRow}
+        >
+          {ALL_DAYS.map((d) => {
+            const active = days.includes(d);
+            return (
+              <Pressable
+                key={d}
+                onPress={() => toggleDay(d)}
+                style={({ pressed }) => [
+                  styles.dayChip,
+                  active && styles.chipActive,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={[styles.dayName, active && styles.textOnActive]}>
+                  {he.weekdayLong[d]}
+                </Text>
+                <Text style={[styles.dayLetter, active && styles.textOnActive]}>
+                  {he.availabilityDayLetter[d]}
+                </Text>
+                {active ? <CheckBadge /> : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
-        <View style={styles.field}>
-          <AutocompleteInput
-            label={he.availabilityHomeCity}
-            value={homeCity}
-            onChange={(t) => {
-              setHomeCity(t);
-              setHomeCityFromList(false);
-            }}
-            onSelect={(v) => {
-              setHomeCity(v);
-              setHomeCityFromList(true);
-            }}
-            placeholder={he.availabilityHomeCityPlaceholder}
-            fetchSuggestions={fetchCities}
-          />
-          {cityInvalid ? (
-            <Text style={styles.hintError}>
-              {he.availabilityHomeCityMustPick}
-            </Text>
-          ) : (
-            <Text style={styles.hint}>{he.availabilityHomeCityHint}</Text>
-          )}
+        {/* Time of day */}
+        <SectionHeader icon="time-outline" title={he.availabilityTimesTitle} />
+        <View style={styles.timesRow}>
+          {TIME_BUCKETS.map((t) => {
+            const active = times.includes(t.key);
+            return (
+              <Pressable
+                key={t.key}
+                onPress={() => toggleTime(t.key)}
+                style={({ pressed }) => [
+                  styles.timeChip,
+                  active && styles.chipActive,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={[styles.timeLabel, active && styles.textOnActive]}>
+                  {t.label}
+                </Text>
+                <Ionicons
+                  name={t.icon}
+                  size={22}
+                  color={active ? '#fff' : colors.textMuted}
+                  style={{ marginTop: 4 }}
+                />
+                {active ? <CheckBadge /> : null}
+              </Pressable>
+            );
+          })}
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>
-            {he.availabilityRadius(radiusKm)}
+        {/* Search area (map) */}
+        <SectionHeader icon="locate-outline" title={he.availabilityAreaTitle} />
+        <AvailabilityRadiusMap
+          center={pin}
+          radiusKm={radiusKm}
+          onPick={(lat, lng) => setPin({ lat, lng })}
+        />
+
+        {/* Range slider */}
+        <View style={styles.rangeHeader}>
+          <View style={styles.sectionHeaderInner}>
+            <Ionicons name="resize-outline" size={18} color={ACCENT} />
+            <Text style={styles.sectionTitle}>{he.availabilityRangeTitle}</Text>
+          </View>
+          <Text style={styles.rangeValue}>
+            {he.availabilityRangeValue(radiusKm)}
           </Text>
-          <View style={styles.radiusRow}>
-            {RADIUS_OPTIONS.map((km) => {
-              const active = radiusKm === km;
-              return (
-                <Pressable
-                  key={km}
-                  onPress={() => setRadiusKm(km)}
-                  style={({ pressed }) => [
-                    styles.radiusPill,
-                    active && styles.radiusPillActive,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.radiusPillText,
-                      active && styles.radiusPillTextActive,
-                    ]}
-                  >
-                    {km} ק"מ
-                  </Text>
-                </Pressable>
-              );
-            })}
+        </View>
+        <View style={styles.rangeCard}>
+          <RangeSlider
+            min={RADIUS_MIN}
+            max={RADIUS_MAX}
+            step={1}
+            value={radiusKm}
+            onChange={setRadiusKm}
+            accent={ACCENT}
+          />
+          <View style={styles.rangeEnds}>
+            <Text style={styles.rangeEndText}>{RADIUS_MIN} ק"מ</Text>
+            <Text style={styles.rangeEndText}>{RADIUS_MAX} ק"מ</Text>
           </View>
-          <Text style={styles.hint}>{he.availabilityRadiusHint}</Text>
         </View>
 
-        <Pressable
-          onPress={() => setInvitable(!invitable)}
-          style={styles.toggleRow}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{he.availabilityInvitable}</Text>
-            <Text style={styles.hint}>{he.availabilityInvitableHint}</Text>
+        {/* Notifications */}
+        <View style={styles.notifCard}>
+          <View style={styles.notifText}>
+            <View style={styles.sectionHeaderInner}>
+              <Ionicons name="notifications-outline" size={18} color={colors.success} />
+              <Text style={styles.notifTitle}>{he.availabilityNotifTitle}</Text>
+            </View>
+            <Text style={styles.notifHint}>{he.availabilityNotifHint}</Text>
           </View>
           <Switch
-            value={invitable}
-            onValueChange={setInvitable}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            value={notify}
+            onValueChange={setNotify}
+            trackColor={{ false: colors.border, true: colors.success }}
             thumbColor="#fff"
           />
-        </Pressable>
-
-        <Pressable
-          onPress={() => setAcceptsFillerPush(!acceptsFillerPush)}
-          style={styles.toggleRow}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{he.availabilityFillerPush}</Text>
-            <Text style={styles.hint}>{he.availabilityFillerPushHint}</Text>
-          </View>
-          <Switch
-            value={acceptsFillerPush}
-            onValueChange={setAcceptsFillerPush}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#fff"
-          />
-        </Pressable>
+        </View>
       </ScrollView>
 
-      <View style={{ padding: spacing.lg }}>
-        <Button
-          title={he.availabilitySave}
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={busy}
-          onPress={save}
-        />
+      {/* Save CTA */}
+      <View style={styles.footer}>
+        <Pressable onPress={save} disabled={busy} style={{ opacity: busy ? 0.7 : 1 }}>
+          <LinearGradient
+            colors={['#2F6BED', '#1E40AF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.saveBtn}
+          >
+            <Ionicons name="football-outline" size={22} color="#fff" />
+            <Text style={styles.saveText}>{he.availabilitySavePrefs}</Text>
+          </LinearGradient>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-// ── Persistence helper ────────────────────────────────────────────────────
-// Writes only the `availability` field. We don't add a method to userService
-// because availability lives entirely on the user doc and there's nothing
-// non-trivial in the write logic — keeping it inline avoids over-growing
-// the service surface for a single screen.
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeaderInner}>
+        <Ionicons name={icon} size={18} color={ACCENT} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+    </View>
+  );
+}
 
+function CheckBadge() {
+  return (
+    <View style={styles.checkBadge}>
+      <Ionicons name="checkmark" size={11} color={ACCENT} />
+    </View>
+  );
+}
+
+function clampRadius(km: number): number {
+  return Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(km)));
+}
+
+// ── Persistence ───────────────────────────────────────────────────────────
 async function persistAvailability(
   uid: string,
   availability: UserAvailability,
@@ -373,19 +365,16 @@ async function persistAvailability(
   await updateDoc(docs.user(uid), {
     availability: {
       preferredDays: availability.preferredDays,
-      timeFrom: availability.timeFrom ?? null,
-      timeTo: availability.timeTo ?? null,
+      preferredTimes: availability.preferredTimes ?? [],
       preferredCity: availability.preferredCity ?? null,
       cities: Array.isArray(availability.cities) ? availability.cities : [],
       homeCity: availability.homeCity ?? null,
-      // Coords come from a best-effort geocode; null means "unknown".
-      // The matcher gracefully degrades when missing.
       homeCityLat: coords?.lat ?? null,
       homeCityLng: coords?.lng ?? null,
       availabilityRadiusKm:
         typeof availability.availabilityRadiusKm === 'number'
           ? availability.availabilityRadiusKm
-          : 20,
+          : 15,
       isAvailableForInvites: availability.isAvailableForInvites !== false,
       acceptsFillerPush: availability.acceptsFillerPush === true,
     },
@@ -393,118 +382,167 @@ async function persistAvailability(
   });
 }
 
-/**
- * Best-effort geocode of a city name to lat/lng. Returns null on
- * any failure (network, rate limit, unknown city). The user record
- * stores the city name regardless; the coords are an optimisation
- * for distance-based filler matching.
- *
- * Implementation: lazy-import the geocode service so this screen
- * doesn't pull the network module unless the user actually saves
- * a city. The service handles caching internally.
- */
-async function tryGeocodeCity(
-  city: string,
-): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const { geocodeCity } = await import('@/services/geocodeService');
-    return await geocodeCity(city);
-  } catch (err) {
-    if (__DEV__) console.warn('[availability] geocode failed', err);
-    return null;
-  }
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: {
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+
+  // Intro card
+  introCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF4FF',
+    borderRadius: radius.xl,
     padding: spacing.lg,
     gap: spacing.md,
-    paddingBottom: spacing.xl,
+    overflow: 'hidden',
   },
-  intro: {
-    ...typography.body,
+  introAccent: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 6,
+    backgroundColor: ACCENT,
+  },
+  introText: { flex: 1, gap: 4 },
+  introTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: ACCENT,
+    textAlign: 'right',
+  },
+  introBody: {
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-    marginBottom: spacing.sm,
+    textAlign: 'right',
   },
-  field: { gap: spacing.xs },
-  label: { ...typography.label, color: colors.textMuted },
-  hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-    textAlign: RTL_LABEL_ALIGN,
+  introIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#DCE7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  input: {
-    ...typography.body,
+  introIconBall: { fontSize: 16, marginTop: -2 },
+
+  // Section headers
+  sectionHeader: { marginTop: spacing.sm },
+  sectionHeaderInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.text,
+    textAlign: 'right',
+  },
+
+  // Day chips
+  daysRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+  dayChip: {
+    width: 76,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayName: { fontSize: 14, fontWeight: '700', color: colors.text },
+  dayLetter: { fontSize: 12, color: colors.textMuted },
+
+  // Time chips
+  timesRow: { flexDirection: 'row', gap: spacing.sm },
+  timeChip: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  timeLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
+
+  chipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  textOnActive: { color: '#fff' },
+  checkBadge: {
+    position: 'absolute',
+    bottom: -8,
+    alignSelf: 'center',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: ACCENT,
+  },
+
+  // Range
+  rangeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  rangeValue: { fontSize: 15, fontWeight: '800', color: ACCENT },
+  rangeCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  daysRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  dayPill: {
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 44,
-    alignItems: 'center',
   },
-  // Active = strong fill + white text. The previous design used
-  // primaryLight + primary text which was hard to tell apart from
-  // unselected pills (low contrast). Bold fill makes selection obvious.
-  dayPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  dayPillText: { ...typography.body, color: colors.textMuted },
-
-  timeRow: { flexDirection: 'row', gap: spacing.sm },
-  hintError: {
-    ...typography.caption,
-    color: colors.danger,
-    marginTop: spacing.xs,
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  radiusRow: {
+  rangeEnds: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+    justifyContent: 'space-between',
+    direction: 'ltr',
   },
-  radiusPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  radiusPillActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  radiusPillText: {
-    ...typography.body,
-    color: colors.textMuted,
-  },
-  radiusPillTextActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  toggleRow: {
+  rangeEndText: { fontSize: 12, color: colors.textMuted },
+
+  // Notifications
+  notifCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
   },
+  notifText: { flex: 1, gap: 4 },
+  notifTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'right',
+  },
+  notifHint: { fontSize: 12, color: colors.textMuted, textAlign: 'right' },
+
+  // Footer / save
+  footer: {
+    padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 56,
+    borderRadius: radius.pill,
+  },
+  saveText: { fontSize: 17, fontWeight: '800', color: '#fff' },
 });
