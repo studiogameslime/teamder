@@ -26,7 +26,7 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
-import { radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -123,14 +123,14 @@ export function ToastHost() {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  // Bright, dark-friendly tints (pop on the charcoal surface) + a soft
-  // translucent circle behind the icon.
+  // White surface + a status-coloured icon in a soft translucent circle —
+  // matches the AppDialog popup style so all popups feel uniform.
   const palette =
     type === 'success'
-      ? { icon: '#4ADE80', badge: 'rgba(74,222,128,0.16)' }
+      ? { icon: colors.success, badge: 'rgba(22,163,74,0.12)' }
       : type === 'error'
-        ? { icon: '#F87171', badge: 'rgba(248,113,113,0.16)' }
-        : { icon: '#60A5FA', badge: 'rgba(96,165,250,0.16)' };
+        ? { icon: colors.danger, badge: 'rgba(239,68,68,0.12)' }
+        : { icon: colors.primary, badge: 'rgba(37,99,235,0.12)' };
   const icon: keyof typeof Ionicons.glyphMap =
     type === 'success'
       ? 'checkmark'
@@ -168,20 +168,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: '#1F2937',
+    backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
     minWidth: 220,
     maxWidth: 480,
-    // Soft, lifted shadow so the dark toast floats above content.
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
+    // Soft, lifted shadow so the toast floats above content.
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   iconBadge: {
     width: 28,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.body,
-    color: '#F9FAFB',
+    color: colors.text,
     fontWeight: '600',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
