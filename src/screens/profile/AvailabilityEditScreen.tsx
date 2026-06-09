@@ -180,13 +180,9 @@ export function AvailabilityEditScreen() {
           </View>
         </View>
 
-        {/* Days */}
+        {/* Days — all 7 fit in one row, single letter each */}
         <SectionHeader icon="calendar-outline" title={he.availabilityDaysTitle} />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.daysRow}
-        >
+        <View style={styles.daysRow}>
           {ALL_DAYS.map((d) => {
             const active = days.includes(d);
             return (
@@ -199,9 +195,6 @@ export function AvailabilityEditScreen() {
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                <Text style={[styles.dayName, active && styles.textOnActive]}>
-                  {he.weekdayLong[d]}
-                </Text>
                 <Text style={[styles.dayLetter, active && styles.textOnActive]}>
                   {he.availabilityDayLetter[d]}
                 </Text>
@@ -209,7 +202,7 @@ export function AvailabilityEditScreen() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         {/* Time of day */}
         <SectionHeader icon="time-outline" title={he.availabilityTimesTitle} />
@@ -441,20 +434,18 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // Day chips
-  daysRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+  // Day chips — 7 equal cells in one row
+  daysRow: { flexDirection: 'row', gap: spacing.xs },
   dayChip: {
-    width: 76,
+    flex: 1,
     paddingVertical: spacing.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
-    gap: 2,
   },
-  dayName: { fontSize: 14, fontWeight: '700', color: colors.text },
-  dayLetter: { fontSize: 12, color: colors.textMuted },
+  dayLetter: { fontSize: 16, fontWeight: '700', color: colors.text },
 
   // Time chips
   timesRow: { flexDirection: 'row', gap: spacing.sm },

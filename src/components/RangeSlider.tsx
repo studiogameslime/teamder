@@ -128,6 +128,9 @@ const styles = StyleSheet.create({
   wrap: {
     height: THUMB,
     justifyContent: 'center',
+    // Force LTR so `left`-anchored positions aren't mirrored under the
+    // app's RTL layout (min on the left, max on the right).
+    direction: 'ltr',
   },
   trackBg: {
     position: 'absolute',

@@ -196,8 +196,13 @@ function buildHtml(
           paint: { 'line-color': '#2563EB', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': 0.9 } });
       }
       function fit() {
+        var c = map.getContainer();
+        // Leave generous breathing room so the circle reads as a bounded
+        // area inside a larger map (not edge-to-edge, which made the
+        // radius look far bigger than it is).
+        var pad = Math.round(Math.min(c.clientWidth || 360, c.clientHeight || 230) * 0.26);
         var b = bbox(state.lat, state.lng, state.km);
-        map.fitBounds(b, { padding: 26, duration: 350, maxZoom: 15 });
+        map.fitBounds(b, { padding: pad, duration: 350, maxZoom: 15 });
       }
 
       window.setRadius = function (km) { state.km = km; drawCircle(); fit(); };
@@ -221,8 +226,17 @@ function buildHtml(
         });
         var heField = ['coalesce', ['get', 'name:he'], ['get', 'name:hebrew'], ['get', 'name']];
         (map.getStyle().layers || []).forEach(function (l) {
-          if (l.type === 'symbol' && l.layout && l.layout['text-field']) {
-            try { map.setLayoutProperty(l.id, 'text-field', heField); } catch (e) {}
+          if (l.type === 'symbol' && l.layout) {
+            // Hebrew text for any labelled symbol…
+            if (l.layout['text-field']) {
+              try { map.setLayoutProperty(l.id, 'text-field', heField); } catch (e) {}
+            }
+            // …and hide POI / shield ICONS (which render as broken white
+            // squares when the style's sprite doesn't load in the WebView)
+            // while keeping any text label on the same layer.
+            if (l.layout['icon-image']) {
+              try { map.setPaintProperty(l.id, 'icon-opacity', 0); } catch (e) {}
+            }
           }
         });
         placePin(); drawCircle(); fit();
