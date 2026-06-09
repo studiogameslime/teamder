@@ -528,7 +528,7 @@ export const he = {
   groupsSearchEmpty: 'אין תוצאות. נסה חיפוש אחר.',
   groupsSearchPrompt: 'הקלד שם מועדון כדי לחפש',
   groupsSearchByCode: 'או הצטרף בעזרת קוד הזמנה',
-  groupsSearchMembers: (n: number) => `${n} שחקנים`,
+  groupsSearchMembers: (n: number) => `${n} בסגל`,
   groupsActionRequest: 'בקש להצטרף',
   groupsActionPending: 'הבקשה נשלחה',
   groupsActionMember: 'אתה כבר במועדון',
@@ -593,7 +593,7 @@ export const he = {
   communitiesSectionPending: 'ממתינים לאישור',
   communitiesSectionOpen: 'מועדונים פתוחים',
   communitiesHeroSubtitle: 'כל המועדונים במקום אחד',
-  communitiesCardMemberBadge: 'אתה חבר',
+  communitiesCardMemberBadge: 'אתה בסגל',
   // Inline CTA on the community card — surfaced only when the viewer
   // is NOT a member / admin / pending. Maps to the same requestJoin
   // call the details screen uses.
@@ -1381,7 +1381,7 @@ export const he = {
   matchStatsCommunity: 'מועדון',
   matchStatsWeather: 'מזג אוויר',
   matchStatsMinutesShort: 'דק׳',
-  matchParticipantsTitle: 'רשימת שחקנים',
+  matchParticipantsTitle: 'ההרכב',
   matchParticipantStatusComing: 'מגיע',
   matchParticipantStatusArrived: 'הגיע',
   matchParticipantRoleOrganizer: 'מנהל',
@@ -1397,7 +1397,7 @@ export const he = {
   matchDetailsLabelCreatedAt: 'נוצר בתאריך',
   matchDetailsLabelMeetingTime: 'שעת התכנסות',
   matchDetailsLabelCommunity: 'מועדון',
-  matchDetailsLabelFormat: 'הרכב',
+  matchDetailsLabelFormat: 'פורמט',
   matchHeroPlayers: (now: number, max: number) => `‎${now}/${max}‎ שחקנים`,
   matchPlayersTitle: 'שחקנים',
   matchPlayersSeeAll: 'לצפייה ברשימה המלאה',
