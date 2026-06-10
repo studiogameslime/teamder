@@ -50,6 +50,12 @@ import {
 
 admin.initializeApp();
 const db = admin.firestore();
+// Skip — rather than reject — undefined fields on writes. Without this,
+// a single optional-and-absent field in a notification payload (e.g. a
+// game with no `fieldName`) throws "Cannot use undefined as a Firestore
+// value" and silently drops the whole push. Omitting the field is always
+// the safer outcome for our resilient notification writes.
+db.settings({ ignoreUndefinedProperties: true });
 const messaging = admin.messaging();
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
@@ -1902,7 +1908,7 @@ async function flipScheduledGameOnce(
   // notification doc → CF fan-out → FCM, so a second run that re-enters
   // this branch would double-notify. The flag write below prevents that.
   if (!g.openedNotificationSent) {
-    await createNotificationOnce({
+    const res = await createNotificationOnce({
       type: 'newGameInCommunity',
       recipientId: g.groupId ?? gameId,
       payload: {
@@ -1917,6 +1923,18 @@ async function flipScheduledGameOnce(
         // would exclude the creator from the fan-out).
       },
     });
+    // Only latch + flip if the notification actually landed or was
+    // correctly suppressed as an already-existing one (unread-exists /
+    // aggregated / duplicate-bucket — all mean "a push for this moment
+    // exists"). A genuine failure (Firestore error, invalid input) must
+    // NOT set the flag — otherwise the push is silently lost forever.
+    // Throwing makes the task/cron retry.
+    const failed = res.skipped === 'error' || res.skipped === 'invalid-input';
+    if (failed) {
+      throw new Error(
+        `[flipScheduledGameOnce] notify failed for ${gameId} (${res.skipped})`,
+      );
+    }
     // Step 2 — flag the game so a future run won't re-notify. Separate
     // write because if step 1 throws we must NOT mark the flag — the
     // next run has to retry.
