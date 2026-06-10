@@ -94,6 +94,9 @@ export function CommunityPlayersScreen() {
   // themselves. Closes TU-22 — kicking a member used to be impossible
   // without manual Firestore edits.
   const iAmAdmin = !!me && !!group && group.adminIds.includes(me.id);
+  // Only the creator can promote/demote admins (and delete the group).
+  const iAmCreator =
+    !!me && !!group && me.id === (group.creatorId ?? group.adminIds[0]);
 
   const handleRemoveMember = useCallback(
     (target: User) => {
@@ -127,6 +130,54 @@ export function CommunityPlayersScreen() {
       );
     },
     [group, me, reload],
+  );
+
+  // Creator-only: promote a member to admin, or demote an admin back to
+  // a regular member. Opens a small action menu per row.
+  const handleManageMember = useCallback(
+    (target: User) => {
+      if (!group || !me) return;
+      const targetIsAdmin = group.adminIds.includes(target.id);
+      const creatorId = group.creatorId ?? group.adminIds[0];
+      // The creator's own row never reaches here (filtered at the call
+      // site), so `target` is always someone else.
+      const runPromote = async () => {
+        try {
+          await groupService.promoteToCoach(group.id, me.id, target.id);
+          toast.success(he.communityPromoteAdminDone);
+          await reload();
+        } catch (e) {
+          if (__DEV__) console.warn('[promoteAdmin] failed', e);
+          appAlert(he.error, he.friendsActionFailed);
+        }
+      };
+      const runDemote = async () => {
+        try {
+          await groupService.demoteCoach(group.id, me.id, target.id);
+          toast.success(he.communityDemoteAdminDone);
+          await reload();
+        } catch (e) {
+          if (__DEV__) console.warn('[demoteAdmin] failed', e);
+          appAlert(he.error, he.friendsActionFailed);
+        }
+      };
+      appAlert(target.name, he.communityManageMemberBody, [
+        targetIsAdmin
+          ? { text: he.communityDemoteAdmin, onPress: runDemote }
+          : { text: he.communityPromoteAdmin, onPress: runPromote },
+        ...(creatorId !== target.id
+          ? [
+              {
+                text: he.communityRemoveMember,
+                style: 'destructive' as const,
+                onPress: () => handleRemoveMember(target),
+              },
+            ]
+          : []),
+        { text: he.cancel, style: 'cancel' as const },
+      ]);
+    },
+    [group, me, reload, handleRemoveMember],
   );
 
   // Sort: admins first (by name), then players by games-played desc,
@@ -178,10 +229,14 @@ export function CommunityPlayersScreen() {
             </Text>
           }
           renderItem={({ item: u, index: i }) => {
-            // Removable iff: viewer is admin, target isn't self, target
-            // isn't the creator. The service double-checks all three.
+            const isMe = me?.id === u.id;
+            const targetIsCreator =
+              (group.creatorId ?? group.adminIds[0]) === u.id;
+            // Creator → full management menu (promote / demote / remove)
+            // on every row but their own. Non-creator admin → remove only.
+            const canManage = iAmCreator && !isMe;
             const removable =
-              iAmAdmin && me?.id !== u.id && group.creatorId !== u.id;
+              iAmAdmin && !iAmCreator && !isMe && !targetIsCreator;
             return (
               <View style={i === 0 ? styles.listCard : null}>
                 <PlayerRow
@@ -196,8 +251,13 @@ export function CommunityPlayersScreen() {
                     )
                   }
                   onLongPress={
-                    removable ? () => handleRemoveMember(u) : undefined
+                    canManage
+                      ? () => handleManageMember(u)
+                      : removable
+                        ? () => handleRemoveMember(u)
+                        : undefined
                   }
+                  onManage={canManage ? () => handleManageMember(u) : undefined}
                   onRemove={
                     removable ? () => handleRemoveMember(u) : undefined
                   }
@@ -220,6 +280,7 @@ function PlayerRow({
   showDivider,
   onPress,
   onLongPress,
+  onManage,
   onRemove,
 }: {
   user: User;
@@ -227,12 +288,13 @@ function PlayerRow({
   stats?: PlayerStats;
   showDivider: boolean;
   onPress: () => void;
-  /** Optional admin action — long-press opens the remove-confirm
-   *  dialog. Undefined for non-removable rows (self / creator /
-   *  viewer-not-admin). */
+  /** Optional admin action — long-press opens the manage/remove dialog.
+   *  Undefined for rows the viewer can't act on. */
   onLongPress?: () => void;
-  /** Same remove action, but as a VISIBLE trash button so admins can
-   *  discover it without guessing the long-press gesture. */
+  /** Creator-only "manage member" menu (promote / demote / remove),
+   *  rendered as a visible ⋯ button. Takes precedence over onRemove. */
+  onManage?: () => void;
+  /** Remove action (non-creator admins) as a VISIBLE trash button. */
   onRemove?: () => void;
 }) {
   const games = stats?.gamesPlayed ?? 0;
@@ -271,7 +333,24 @@ function PlayerRow({
           />
         </View>
       </View>
-      {onRemove ? (
+      {onManage ? (
+        <Pressable
+          onPress={onManage}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.removeBtn,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.communityManageMember}
+        >
+          <Ionicons
+            name="ellipsis-vertical"
+            size={20}
+            color={colors.textMuted}
+          />
+        </Pressable>
+      ) : onRemove ? (
         <Pressable
           onPress={onRemove}
           hitSlop={10}

@@ -98,6 +98,30 @@ export function formatDateShort(ms: number): string {
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}`;
 }
 
+/** Calendar-day difference: 0 = same day as `now`, 1 = the day after, etc.
+ *  Compares local-midnight boundaries so an 11 PM game tonight is "today",
+ *  not tomorrow. */
+export function dayDiff(ms: number, now = Date.now()): number {
+  const dayStart = (x: number) => {
+    const d = new Date(x);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  return Math.round((dayStart(ms) - dayStart(now)) / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Game day label — "היום" / "מחר" when the game falls today or tomorrow,
+ * otherwise the dense "DD.MM". Use this anywhere a GAME's date is shown to
+ * the user (cards, lists, details, pushes) so near-term games read
+ * naturally instead of as a bare date.
+ */
+export function formatGameDay(ms: number, now = Date.now()): string {
+  const diff = dayDiff(ms, now);
+  if (diff === 0) return 'היום';
+  if (diff === 1) return 'מחר';
+  return formatDateShort(ms);
+}
+
 /** "DD.MM.YY" — compact form with two-digit year, used for static
  * "created at" / archive cells where the year still matters but
  * a full slash-separated date would be too wide. */
@@ -145,23 +169,32 @@ interface DayDateOptions {
  */
 export function formatDayDate(ms: number, opts?: DayDateOptions): string {
   const d = new Date(ms);
-  const dayMode = opts?.day ?? 'long';
-  const dayName =
-    dayMode === 'short'
-      ? HEBREW_DAYS_SHORT[d.getDay()]
-      : HEBREW_DAYS_LONG[d.getDay()];
-  const dayLabel = opts?.dayPrefix ? `יום ${dayName}` : dayName;
 
-  const sep = opts?.separator ?? ' · ';
-  const dateSep = opts?.dateSeparator ?? '.';
-  let dateStr = `${pad2(d.getDate())}${dateSep}${pad2(d.getMonth() + 1)}`;
-  if (opts?.withYear) {
-    dateStr += `${dateSep}${String(d.getFullYear()).slice(2)}`;
+  // Today / tomorrow short-circuit: collapse "{day} · {date}" to a single
+  // "היום" / "מחר" token (per product: near-term games everywhere read as
+  // היום/מחר, not a date). The optional time still appends below.
+  const diff = dayDiff(ms);
+  let out: string;
+  if (diff === 0 || diff === 1) {
+    out = diff === 0 ? 'היום' : 'מחר';
+  } else {
+    const dayMode = opts?.day ?? 'long';
+    const dayName =
+      dayMode === 'short'
+        ? HEBREW_DAYS_SHORT[d.getDay()]
+        : HEBREW_DAYS_LONG[d.getDay()];
+    const dayLabel = opts?.dayPrefix ? `יום ${dayName}` : dayName;
+    const sep = opts?.separator ?? ' · ';
+    const dateSep = opts?.dateSeparator ?? '.';
+    let dateStr = `${pad2(d.getDate())}${dateSep}${pad2(d.getMonth() + 1)}`;
+    if (opts?.withYear) {
+      dateStr += `${dateSep}${String(d.getFullYear()).slice(2)}`;
+    }
+    out = `${dayLabel}${sep}${dateStr}`;
   }
 
-  let out = `${dayLabel}${sep}${dateStr}`;
   if (opts?.withTime) {
-    const timeSep = opts.timeSeparator ?? ' · ';
+    const timeSep = opts?.timeSeparator ?? ' · ';
     out += `${timeSep}${formatTime(ms)}`;
   }
   return out;

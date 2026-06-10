@@ -111,6 +111,9 @@ interface NotificationDoc {
 }
 
 interface UserDoc {
+  /** The user's uid — set by loadUsers so a failed FCM token can be
+   *  pruned from the right user doc. */
+  uid?: string;
   fcmTokens?: string[];
   notificationPrefs?: Partial<Record<NotificationType, boolean>>;
   newGameSubscriptions?: string[];
@@ -490,14 +493,14 @@ function buildMessage(
       return {
         title: 'תזכורת למשחק',
         body: when
-          ? `${gameTitle} מתחיל ב-${when}`
+          ? `${gameTitle} מתחיל ${when}`
           : `${gameTitle} מתחיל בקרוב`,
       };
     case 'gameRsvpNudge':
       return {
         title: 'אתה בא למשחק?',
         body: when
-          ? `${gameTitle} מתחיל ב-${when}. אתה מצטרף?`
+          ? `${gameTitle} מתחיל ${when}. אתה מצטרף?`
           : `${gameTitle} מתחיל היום. אתה מצטרף?`,
       };
     case 'gameCanceledOrUpdated': {
@@ -750,8 +753,36 @@ function formatHebrewWhen(ms: number): string {
   // Cloud Functions run in UTC; use Israel local time so notification
   // text matches the time the user actually expects to play. Without
   // this override, a 20:00 Israel game renders as 17:00 (UTC).
+  // Designed to slot into "מתחיל {when}" — near-term games read as
+  // "היום ב-20:00" / "מחר ב-20:00" instead of a bare date.
   const tz = 'Asia/Jerusalem';
   const d = new Date(ms);
+
+  const timeParts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const tp = (t: string) => timeParts.find((p) => p.type === t)?.value ?? '';
+  const time = `${tp('hour')}:${tp('minute')}`;
+
+  // Calendar-day diff in Israel local time → היום / מחר.
+  const ymd = (x: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(x);
+  const diff = Math.round(
+    (Date.parse(`${ymd(d)}T00:00:00Z`) -
+      Date.parse(`${ymd(new Date())}T00:00:00Z`)) /
+      (24 * 60 * 60 * 1000),
+  );
+  if (diff === 0) return `היום ב-${time}`;
+  if (diff === 1) return `מחר ב-${time}`;
+
   const days = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
   const dayMap: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -761,16 +792,13 @@ function formatHebrewWhen(ms: number): string {
     timeZone: tz,
   }).format(d);
   const day = days[dayMap[weekdayShort] ?? 0];
-  const parts = new Intl.DateTimeFormat('en-GB', {
+  const dParts = new Intl.DateTimeFormat('en-GB', {
     timeZone: tz,
     day: '2-digit',
     month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
   }).formatToParts(d);
-  const part = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  return `יום ${day} ${part('day')}/${part('month')} ${part('hour')}:${part('minute')}`;
+  const dp = (t: string) => dParts.find((p) => p.type === t)?.value ?? '';
+  return `ביום ${day} ${dp('day')}/${dp('month')} ב-${time}`;
 }
 
 // ─── Recipient resolution ──────────────────────────────────────────────
@@ -805,6 +833,7 @@ async function loadUsers(uids: string[]): Promise<UserDoc[]> {
     const privSnap = all[i + half];
     if (!userSnap.exists) continue;
     const root = userSnap.data() as UserDoc;
+    const uid = userSnap.id;
     if (privSnap.exists) {
       const priv = privSnap.data() as {
         fcmTokens?: string[];
@@ -812,12 +841,13 @@ async function loadUsers(uids: string[]): Promise<UserDoc[]> {
       };
       out.push({
         ...root,
+        uid,
         fcmTokens: priv.fcmTokens ?? root.fcmTokens,
         notificationPrefs:
           priv.notificationPrefs ?? root.notificationPrefs,
       });
     } else {
-      out.push(root);
+      out.push({ ...root, uid });
     }
   }
   return out;
@@ -979,6 +1009,11 @@ async function deliverBatch(
   // token, which shouldn't happen but cheap to guard) doesn't get a
   // duplicate push for one logical notification.
   const tokens = new Set<string>();
+  // token → owning uid, so an FCM "token not registered" failure can be
+  // pruned from the right user doc (stale tokens otherwise live forever
+  // and every push to them is silently lost — exactly the symptom hit by
+  // users whose token refresh was blocked by the old /users rules bug).
+  const tokenToUser = new Map<string, string>();
   let skippedPref = 0;
   let skippedNoToken = 0;
   for (const user of recipients) {
@@ -993,7 +1028,10 @@ async function deliverBatch(
       skippedNoToken++;
       continue;
     }
-    userTokens.forEach((t) => tokens.add(t));
+    userTokens.forEach((t) => {
+      tokens.add(t);
+      if (user.uid && !tokenToUser.has(t)) tokenToUser.set(t, user.uid);
+    });
   }
 
   if (skippedPref > 0) {
@@ -1046,6 +1084,14 @@ async function deliverBatch(
   const all = Array.from(tokens);
   let ok = 0;
   let failed = 0;
+  // Tokens FCM reports as permanently invalid → pruned from their owner
+  // after the send loop.
+  const deadTokens = new Set<string>();
+  const DEAD_TOKEN_CODES = new Set([
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+    'messaging/invalid-argument',
+  ]);
   for (let i = 0; i < all.length; i += 500) {
     const chunk = all.slice(i, i + 500);
     const baseData: Record<string, string> = categoryIdentifier
@@ -1099,8 +1145,51 @@ async function deliverBatch(
         `[notifications] ${type}: ${res.failureCount} FCM failure(s) of ${chunk.length}`,
         JSON.stringify(failures.slice(0, 5)),
       );
+      // Flag permanently-invalid tokens for pruning.
+      res.responses.forEach((r, idx) => {
+        if (!r.success && r.error && DEAD_TOKEN_CODES.has(r.error.code)) {
+          const tok = chunk[idx];
+          if (tok) deadTokens.add(tok);
+        }
+      });
     }
   }
+
+  // Prune dead tokens from their owners — from BOTH the legacy root
+  // /users/{uid}.fcmTokens and the /users/{uid}/private/push.fcmTokens,
+  // so the next push for that user no longer wastes a slot on (and
+  // silently "succeeds" against) a dead token. Best-effort + grouped by
+  // user to minimise writes.
+  if (deadTokens.size > 0) {
+    const byUser = new Map<string, string[]>();
+    for (const tok of deadTokens) {
+      const uid = tokenToUser.get(tok);
+      if (!uid) continue;
+      const arr = byUser.get(uid) ?? [];
+      arr.push(tok);
+      byUser.set(uid, arr);
+    }
+    await Promise.allSettled(
+      Array.from(byUser.entries()).flatMap(([uid, toks]) => [
+        db
+          .collection('users')
+          .doc(uid)
+          .update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(...toks) })
+          .catch(() => undefined),
+        db
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('push')
+          .update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(...toks) })
+          .catch(() => undefined),
+      ]),
+    );
+    console.log(
+      `[notifications] ${type}: pruned ${deadTokens.size} dead token(s) across ${byUser.size} user(s)`,
+    );
+  }
+
   console.log(
     `[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} categoryIdentifier=${categoryIdentifier ?? 'none'}`,
   );
@@ -1618,6 +1707,134 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
   },
 );
 
+// ─── Precise one-shot: fire a scheduled game "moment" on time ───────────
+//
+// The every-5-min cron opens registration / flips a game public with up
+// to 5 minutes of slack ("registration opens at 10:00" can fire at
+// 10:03). For time-sensitive moments we ALSO enqueue a Cloud Task that
+// fires at the exact second. Both paths funnel through the same
+// self-verifying `flipScheduledGameOnce` / `flipPublicGameOnce`, so:
+//
+//   • cancel    → the game leaves 'scheduled'/'community'; a stale task
+//                 fired at the old moment no-ops.
+//   • reschedule→ `enqueueGameMoments` queues a fresh task for the new
+//                 time; the old task fires harmlessly (not-yet-due or
+//                 already-handled). No task deletion needed.
+//   • double-fire (task + cron, or a retry) → the openedNotificationSent
+//                 / publicOpenedAt latches make it idempotent.
+//
+// The cron stays as a safety net (covers moments >25 days out, which
+// exceed the Cloud Tasks 30-day schedule horizon, and any enqueue that
+// failed). `moment` is 'registrationOpen' | 'publicOpen'.
+export const scheduledGameMomentTask = onTaskDispatched(
+  {
+    retryConfig: { maxAttempts: 5, minBackoffSeconds: 10 },
+    rateLimits: { maxConcurrentDispatches: 6 },
+  },
+  async (req) => {
+    const { gameId, moment } = (req.data ?? {}) as {
+      gameId?: string;
+      moment?: string;
+      expectedAt?: number;
+    };
+    if (!gameId || !moment) {
+      console.warn('[scheduledGameMomentTask] missing gameId/moment', req.data);
+      return;
+    }
+    try {
+      if (moment === 'registrationOpen') {
+        const r = await flipScheduledGameOnce(gameId);
+        console.log(`[scheduledGameMomentTask] registrationOpen ${gameId} → ${r}`);
+      } else if (moment === 'publicOpen') {
+        const r = await flipPublicGameOnce(gameId);
+        console.log(`[scheduledGameMomentTask] publicOpen ${gameId} → ${r}`);
+      } else {
+        console.warn(`[scheduledGameMomentTask] unknown moment '${moment}'`);
+      }
+    } catch (err) {
+      console.error('[scheduledGameMomentTask] failed', gameId, moment, err);
+      throw err; // retry per retryConfig
+    }
+  },
+);
+
+// Cloud Tasks can schedule at most ~30 days out. Stay under that with a
+// margin; anything further is left to the safety-net cron.
+const MAX_TASK_HORIZON_MS = 25 * 24 * 60 * 60 * 1000;
+
+// Enqueue precise one-shot tasks for a game's future "moments" whenever
+// the game is created or edited. Called from `onGameRosterChanged`.
+//
+// We enqueue a task ONLY when the moment is (a) in the future, (b) within
+// the task horizon, and (c) NEW or CHANGED vs. the previous doc — so a
+// roster-only edit (someone joined) doesn't re-enqueue, but moving the
+// registration time does. Re-enqueueing on a no-op change would be safe
+// (the handler is idempotent) but wasteful, so we gate on change.
+async function enqueueGameMoments(
+  gameId: string,
+  before:
+    | { registrationOpensAt?: number; publicOpenAt?: number }
+    | undefined,
+  after: {
+    status?: string;
+    visibility?: string;
+    registrationOpensAt?: number;
+    publicOpenAt?: number;
+  },
+): Promise<void> {
+  const now = Date.now();
+  const horizon = now + MAX_TASK_HORIZON_MS;
+  const ops: Array<{ moment: string; at: number }> = [];
+
+  // registrationOpen — only meaningful while the game is still waiting
+  // to open (status 'scheduled').
+  const reg = after.registrationOpensAt;
+  if (
+    after.status === 'scheduled' &&
+    typeof reg === 'number' &&
+    reg > now + 1000 &&
+    reg < horizon &&
+    reg !== before?.registrationOpensAt
+  ) {
+    ops.push({ moment: 'registrationOpen', at: reg });
+  }
+
+  // publicOpen — community game scheduled to surface app-wide later.
+  const pub = after.publicOpenAt;
+  if (
+    after.visibility === 'community' &&
+    typeof pub === 'number' &&
+    pub > now + 1000 &&
+    pub < horizon &&
+    pub !== before?.publicOpenAt
+  ) {
+    ops.push({ moment: 'publicOpen', at: pub });
+  }
+
+  if (ops.length === 0) return;
+
+  for (const op of ops) {
+    try {
+      await getGcpFunctions()
+        .taskQueue('scheduledGameMomentTask')
+        .enqueue(
+          { gameId, moment: op.moment, expectedAt: op.at },
+          { scheduleTime: new Date(op.at) },
+        );
+      console.log(
+        `[enqueueGameMoments] ${op.moment} for ${gameId} @ ${new Date(op.at).toISOString()}`,
+      );
+    } catch (err) {
+      // Non-fatal — the safety-net cron will still pick this game up
+      // within 5 minutes of the moment.
+      console.error(
+        `[enqueueGameMoments] enqueue ${op.moment} failed for ${gameId}`,
+        err,
+      );
+    }
+  }
+}
+
 // ─── Scheduled: deferred-open flip for recurring games ──────────────────
 //
 // Every 5 minutes, look for games in `status: 'scheduled'` whose
@@ -1637,6 +1854,84 @@ export const flushPendingJoinerNotifsTask = onTaskDispatched(
 // `openedNotificationSent` is also the guard that prevents an admin's
 // post-creation edit of `registrationOpensAt` from firing a second
 // push: once the flag is true we never dispatch again for this game.
+// Per-game registration-open flip — the unit of work shared by the
+// every-5-min safety-net cron (`runFlipScheduledGames`) and the precise
+// one-shot Cloud Task (`scheduledGameMomentTask`). It re-reads the game
+// fresh and is fully self-verifying ("fire-but-verify"):
+//
+//   • status must still be 'scheduled' — a cancelled/edited-away game
+//     no-ops, so a stale task fired at an OLD registrationOpensAt does
+//     nothing once the game moved on.
+//   • registrationOpensAt must be ≤ now — a game rescheduled LATER is
+//     not opened early; the late task simply finds it not-yet-due.
+//   • openedNotificationSent latches the push so a double-fire (task +
+//     cron, or a task retry) can never double-notify.
+//
+// Because of these guards we never need to delete/cancel an in-flight
+// task on cancel or reschedule: we just enqueue a NEW task for the new
+// moment and let the old one fall through harmlessly.
+async function flipScheduledGameOnce(
+  gameId: string,
+): Promise<'flipped' | 'notified' | 'skip'> {
+  const now = Date.now();
+  const ref = db.collection('games').doc(gameId);
+  const snap = await ref.get();
+  if (!snap.exists) return 'skip';
+  const g = snap.data() as {
+    title?: string;
+    startsAt?: number;
+    fieldName?: string;
+    groupId?: string;
+    createdBy?: string;
+    status?: string;
+    registrationOpensAt?: number;
+    openedNotificationSent?: boolean;
+  };
+  // Guard 1 — only games still waiting to open. Cancelled/finished/
+  // already-open games are out of scope (this is what makes a stale
+  // task fired after a cancel a no-op).
+  if (g.status !== 'scheduled') return 'skip';
+  // Guard 2 — not yet due (game was rescheduled to a later time after
+  // this task/cron was queued).
+  if (typeof g.registrationOpensAt !== 'number' || g.registrationOpensAt > now) {
+    return 'skip';
+  }
+
+  let notified = false;
+  // Step 1 — dispatch notification (only if not already sent). The
+  // notification doc → CF fan-out → FCM, so a second run that re-enters
+  // this branch would double-notify. The flag write below prevents that.
+  if (!g.openedNotificationSent) {
+    await createNotificationOnce({
+      type: 'newGameInCommunity',
+      recipientId: g.groupId ?? gameId,
+      payload: {
+        groupId: g.groupId,
+        gameId,
+        title: g.title || 'המשחק',
+        startsAt: g.startsAt,
+        fieldName: g.fieldName,
+        // Registration-open for a recurring/scheduled game: notify
+        // EVERYONE in the community INCLUDING the organiser/admin
+        // (spec) — so deliberately DON'T pass createdBy here (which
+        // would exclude the creator from the fan-out).
+      },
+    });
+    // Step 2 — flag the game so a future run won't re-notify. Separate
+    // write because if step 1 throws we must NOT mark the flag — the
+    // next run has to retry.
+    await ref.update({ openedNotificationSent: true, updatedAt: now });
+    notified = true;
+  }
+
+  // Step 3 — flip status. Once this lands the game leaves the
+  // 'scheduled' window forever. Failure here is recoverable: the next
+  // cron run still sees status='scheduled' AND openedNotificationSent=
+  // true → skips step 1, retries step 3.
+  await ref.update({ status: 'open', updatedAt: now });
+  return notified ? 'flipped' : 'notified';
+}
+
 async function runFlipScheduledGames(): Promise<void> {
   const now = Date.now();
   // Equality query — auto-indexed, no composite needed. The
@@ -1653,81 +1948,23 @@ async function runFlipScheduledGames(): Promise<void> {
   }
 
   let flipped = 0;
-  let notifiedOnly = 0;
   for (const doc of snap.docs) {
-    const g = doc.data() as {
-      title?: string;
-      startsAt?: number;
-      fieldName?: string;
-      groupId?: string;
-      createdBy?: string;
-      registrationOpensAt?: number;
-      openedNotificationSent?: boolean;
-    };
+    const g = doc.data() as { registrationOpensAt?: number };
     if (
       typeof g.registrationOpensAt !== 'number' ||
       g.registrationOpensAt > now
     ) {
       continue;
     }
-
-    // Step 1 — dispatch notification (only if not already sent).
-    // The notification doc → CF fan-out → FCM, so a second cron run
-    // that re-enters this branch would double-notify. The flag
-    // write below makes that impossible.
-    if (!g.openedNotificationSent) {
-      try {
-        await createNotificationOnce({
-          type: 'newGameInCommunity',
-          recipientId: g.groupId ?? doc.id,
-          payload: {
-            groupId: g.groupId,
-            gameId: doc.id,
-            title: g.title || 'המשחק',
-            startsAt: g.startsAt,
-            fieldName: g.fieldName,
-            // Registration-open for a recurring/scheduled game: notify
-            // EVERYONE in the community INCLUDING the organiser/admin
-            // (spec) — so deliberately DON'T pass createdBy here (which
-            // would exclude the creator from the fan-out).
-          },
-        });
-        // Step 2 — flag the game so a future run won't re-notify.
-        // Done as a separate write because if step 1 throws we
-        // should NOT mark the flag — the next cron run must retry.
-        await doc.ref.update({
-          openedNotificationSent: true,
-          updatedAt: now,
-        });
-        notifiedOnly++;
-      } catch (err) {
-        console.error(
-          `[flipScheduledGames] notify failed for ${doc.id}`,
-          err,
-        );
-        // Skip the status flip too — we'll come back next run.
-        continue;
-      }
-    }
-
-    // Step 3 — flip status. Once this lands the game leaves the
-    // 'scheduled' query window forever. Failure here is recoverable
-    // because next run will still see status='scheduled' AND
-    // openedNotificationSent=true → skip step 1, retry step 3.
     try {
-      await doc.ref.update({
-        status: 'open',
-        updatedAt: now,
-      });
-      flipped++;
+      const r = await flipScheduledGameOnce(doc.id);
+      if (r === 'flipped' || r === 'notified') flipped++;
     } catch (err) {
       console.error(`[flipScheduledGames] flip failed for ${doc.id}`, err);
     }
   }
 
-  console.log(
-    `[flipScheduledGames] notified ${notifiedOnly}, flipped ${flipped}`,
-  );
+  console.log(`[flipScheduledGames] processed ${flipped} due game(s)`);
 }
 
 // ─── Scheduled: recurring weekly game clone-on-completion ───────────────
@@ -1849,6 +2086,34 @@ async function runCloneRecurringGames(): Promise<void> {
 // time (publicOpenAt). Every few minutes we flip any due game's
 // visibility to 'public' so it surfaces in the app-wide feed. The
 // `publicOpenedAt` latch makes the flip idempotent.
+// Per-game community→public flip — shared by the every-5-min safety-net
+// cron and the precise `scheduledGameMomentTask`. Self-verifying like
+// `flipScheduledGameOnce`: re-reads fresh, the `publicOpenedAt` latch
+// makes a double-fire idempotent, and a game cancelled/rescheduled after
+// the task was queued simply no-ops here.
+async function flipPublicGameOnce(gameId: string): Promise<'flipped' | 'skip'> {
+  const now = Date.now();
+  const ref = db.collection('games').doc(gameId);
+  const snap = await ref.get();
+  if (!snap.exists) return 'skip';
+  const g = snap.data() as {
+    visibility?: string;
+    publicOpenAt?: number;
+    publicOpenedAt?: number;
+    status?: string;
+  };
+  if (g.visibility !== 'community') return 'skip'; // already public / private
+  if (g.publicOpenedAt) return 'skip'; // idempotency latch
+  if (typeof g.publicOpenAt !== 'number' || g.publicOpenAt > now) return 'skip';
+  if (g.status === 'cancelled' || g.status === 'finished') return 'skip';
+  await ref.update({
+    visibility: 'public',
+    publicOpenedAt: now,
+    updatedAt: now,
+  });
+  return 'flipped';
+}
+
 async function runFlipPublicGames(): Promise<void> {
   const now = Date.now();
   const snap = await db
@@ -1858,21 +2123,12 @@ async function runFlipPublicGames(): Promise<void> {
   if (snap.empty) return;
   let flipped = 0;
   for (const doc of snap.docs) {
-    const g = doc.data() as {
-      publicOpenAt?: number;
-      publicOpenedAt?: number;
-      status?: string;
-    };
+    const g = doc.data() as { publicOpenAt?: number; publicOpenedAt?: number };
     if (g.publicOpenedAt) continue;
     if (typeof g.publicOpenAt !== 'number' || g.publicOpenAt > now) continue;
-    if (g.status === 'cancelled' || g.status === 'finished') continue;
     try {
-      await doc.ref.update({
-        visibility: 'public',
-        publicOpenedAt: now,
-        updatedAt: now,
-      });
-      flipped++;
+      const r = await flipPublicGameOnce(doc.id);
+      if (r === 'flipped') flipped++;
     } catch (err) {
       console.error(`[flipPublicGames] flip failed for ${doc.id}`, err);
     }
@@ -2479,6 +2735,8 @@ export const onGameRosterChanged = onDocumentWritten(
           capacityNoticeSent?: boolean;
           arrivals?: Record<string, string>;
           pending?: string[];
+          registrationOpensAt?: number;
+          publicOpenAt?: number;
         }
       | undefined;
     const after = event.data?.after?.data() as
@@ -2487,6 +2745,7 @@ export const onGameRosterChanged = onDocumentWritten(
           guests?: unknown[];
           maxPlayers?: number;
           status?: string;
+          visibility?: string;
           capacityNoticeSent?: boolean;
           title?: string;
           startsAt?: number;
@@ -2496,12 +2755,21 @@ export const onGameRosterChanged = onDocumentWritten(
           pendingJoinFlushAt?: number;
           arrivals?: Record<string, string>;
           pending?: string[];
+          registrationOpensAt?: number;
+          publicOpenAt?: number;
         }
       | undefined;
 
     if (!after) return; // doc deleted
 
     const ref = event.data!.after.ref;
+
+    // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this
+    // game's future registration-open / public-open moments. Idempotent +
+    // change-gated; the every-5-min cron remains the safety net. Cancel/
+    // reschedule are handled by the tasks' own fire-but-verify guards, so
+    // there is nothing to delete here.
+    await enqueueGameMoments(event.params.gameId, before, after);
 
     // ── Game join-request → notify the organizer (+ community admins).
     // A user requesting to join an approval-required game lands in

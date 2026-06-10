@@ -181,6 +181,16 @@ export function CommunityDetailsScreen() {
     () => !!group && !!me && group.adminIds.includes(me.id),
     [group, me],
   );
+  // Only the CREATOR may delete the whole community — promoted admins
+  // can manage it but not destroy it. Falls back to the first admin for
+  // legacy docs that predate creatorId.
+  const isCreator = useMemo(
+    () =>
+      !!group &&
+      !!me &&
+      me.id === (group.creatorId ?? group.adminIds[0]),
+    [group, me],
+  );
   const phoneValid =
     !!group?.contactPhone && isValidIsraeliPhone(group.contactPhone);
 
@@ -523,7 +533,7 @@ export function CommunityDetailsScreen() {
               },
             ]
           : []),
-        ...(isAdmin
+        ...(isCreator
           ? [
               {
                 id: 'delete',

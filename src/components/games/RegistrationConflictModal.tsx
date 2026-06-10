@@ -18,7 +18,7 @@ import {
   RTL_LABEL_ALIGN,
 } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShort, formatTime } from '@/utils/format';
+import { formatGameDay, formatTime } from '@/utils/format';
 
 interface Props {
   conflict: RegistrationConflict | null;
@@ -103,7 +103,7 @@ export function RegistrationConflictModal({
                       </Text>
                       {conflict.startsAt > 0 ? (
                         <Text style={styles.gameWhen}>
-                          {`${formatDateShort(conflict.startsAt)} · ${formatTime(
+                          {`${formatGameDay(conflict.startsAt)} · ${formatTime(
                             conflict.startsAt,
                           )}`}
                         </Text>

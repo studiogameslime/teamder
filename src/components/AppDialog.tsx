@@ -173,6 +173,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.xl,
     gap: spacing.md,
+    // Fill the panel width (minus its horizontal padding) instead of
+    // shrinking to the text — otherwise a short-title dialog with
+    // stacked buttons renders as a tall, narrow sliver. Matches the
+    // width of the app's other modals (rating / conflict).
+    alignSelf: 'stretch',
+    maxWidth: 440,
   },
   iconWrap: {
     width: 48,

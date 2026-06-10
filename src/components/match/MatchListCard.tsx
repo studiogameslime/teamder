@@ -24,7 +24,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Game, GameFormat, FieldType, UserId } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShort, formatTime, relativeKickoff } from '@/utils/format';
+import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
@@ -184,7 +184,10 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
         <View style={styles.dateLine}>
           <InfoRow
             icon="calendar"
-            text={formatDateShort(game.startsAt)}
+            text={formatGameDay(game.startsAt)}
+            // Highlight "היום" / "מחר" so a near-term game's day pops out
+            // from the gray date text.
+            emphasis={dayDiff(game.startsAt) <= 1}
           />
           <InfoRow icon="time" text={formatTime(game.startsAt)} />
           {kickoff ? (
@@ -243,9 +246,12 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
 function InfoRow({
   icon,
   text,
+  emphasis,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
+  /** Brand-colored + bold (used for the "היום"/"מחר" day label). */
+  emphasis?: boolean;
 }) {
   // `row-reverse` keeps the icon on the visual LEFT of the text
   // regardless of whether RN auto-flips `row` for the surrounding
@@ -253,10 +259,13 @@ function InfoRow({
   // RIGHT under both LTR and RTL renderings.
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoText} numberOfLines={1}>
+      <Text
+        style={[styles.infoText, emphasis && styles.infoTextEmphasis]}
+        numberOfLines={1}
+      >
         {text}
       </Text>
-      <Ionicons name={icon} size={13} color="#94A3B8" />
+      <Ionicons name={icon} size={13} color={emphasis ? ACCENT : '#94A3B8'} />
     </View>
   );
 }
@@ -399,6 +408,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     textAlign: RTL_LABEL_ALIGN,
+  },
+  infoTextEmphasis: {
+    color: ACCENT,
+    fontWeight: '800',
   },
   // Date + time live on one line (two InfoRows separated by a small
   // gap) — saves a row of vertical real estate.

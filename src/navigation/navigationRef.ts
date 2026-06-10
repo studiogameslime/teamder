@@ -288,6 +288,14 @@ export function navigateForPush(
       }
       return false;
 
+    case 'friendRequest':
+    case 'friendRequestAccepted':
+      // Friend pushes open the Friends screen — incoming requests sit at
+      // the top (to accept/decline), accepted friends below. Previously
+      // these fell through to `default` and tapping the push did nothing.
+      nav.navigate('ProfileTab', { screen: 'Friends' });
+      return true;
+
     default:
       return false;
   }

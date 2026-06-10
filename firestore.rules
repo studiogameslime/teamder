@@ -381,8 +381,20 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isSignedIn() &&
-        request.auth.uid in resource.data.adminIds;
+      // Delete the whole community: CREATOR ONLY. Promoted admins can
+      // manage the group (approve members, run games) but must not be
+      // able to destroy it. Falls back to the first admin for legacy
+      // docs that predate the mandatory creatorId.
+      allow delete: if isSignedIn() && (
+        (
+          'creatorId' in resource.data &&
+          request.auth.uid == resource.data.creatorId
+        ) ||
+        (
+          !('creatorId' in resource.data) &&
+          request.auth.uid == resource.data.adminIds[0]
+        )
+      );
     }
 
     // ── /groupsPublic/{gid} — public discovery projection ───────────────

@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Game, GameFormat, UserId } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShort, formatTime, relativeKickoff } from '@/utils/format';
+import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 
 interface Props {
@@ -109,7 +109,11 @@ function GameBody({
         ) : null}
 
         <View style={styles.dateLine}>
-          <InfoRow icon="calendar" text={formatDateShort(game.startsAt)} />
+          <InfoRow
+            icon="calendar"
+            text={formatGameDay(game.startsAt)}
+            emphasis={dayDiff(game.startsAt) <= 1}
+          />
           <InfoRow icon="time" text={formatTime(game.startsAt)} />
           {kickoff ? (
             <View
@@ -164,16 +168,22 @@ function EmptyBody({ onFindGame }: { onFindGame: () => void }) {
 function InfoRow({
   icon,
   text,
+  emphasis,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
+  /** Brand-colored + bold (for the "היום"/"מחר" day label). */
+  emphasis?: boolean;
 }) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoText} numberOfLines={1}>
+      <Text
+        style={[styles.infoText, emphasis && styles.infoTextEmphasis]}
+        numberOfLines={1}
+      >
         {text}
       </Text>
-      <Ionicons name={icon} size={13} color="#94A3B8" />
+      <Ionicons name={icon} size={13} color={emphasis ? ACCENT : '#94A3B8'} />
     </View>
   );
 }
@@ -281,6 +291,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     textAlign: RTL_LABEL_ALIGN,
+  },
+  infoTextEmphasis: {
+    color: ACCENT,
+    fontWeight: '800',
   },
   dateLine: {
     flexDirection: 'row-reverse',

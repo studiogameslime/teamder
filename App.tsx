@@ -660,9 +660,14 @@ export default function App() {
         await dismissNotificationSafely(notifId);
         return;
       }
-      // Wait briefly for the navigator to be ready (cold-start case);
-      // give up after ~3s so a permanently broken nav doesn't stall.
-      for (let i = 0; i < 30; i++) {
+      // Wait for the navigator to be ready. A COLD start runs through
+      // the splash (+ a possible app-open ad) + Firebase auth restore
+      // before the navigator mounts — easily 10-20s. The old 3s cap gave
+      // up long before then, so a push tapped while the app was killed
+      // silently landed on the home screen instead of its target. Poll
+      // up to ~30s; it resolves the instant nav is ready, so a fast warm
+      // tap is unaffected, and a genuinely-broken nav still bails out.
+      for (let i = 0; i < 300; i++) {
         if (navigationRef.isReady()) {
           const { navigateForPush } = await import('@/navigation/navigationRef');
           navigateForPush(type, data);

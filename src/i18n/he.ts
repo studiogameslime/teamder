@@ -826,6 +826,13 @@ export const he = {
   friendsRequestCancelled: 'הבקשה בוטלה',
   // ── Admin remove member (TU-22)
   communityRemoveMember: 'הסר מהמועדון',
+  // Creator-only member management (promote/demote admins).
+  communityManageMember: 'נהל חבר',
+  communityManageMemberBody: 'בחר פעולה',
+  communityPromoteAdmin: 'מנה למנהל',
+  communityDemoteAdmin: 'הסר ממנהלים',
+  communityPromoteAdminDone: 'המשתמש מונה למנהל',
+  communityDemoteAdminDone: 'המנהל הוסר מהניהול',
   communityRemoveMemberConfirmTitle: 'להסיר שחקן מהמועדון?',
   communityRemoveMemberConfirmBody: (name: string) =>
     `${name} לא יוכל לראות יותר תוכן פנימי של המועדון. ניתן להזמין מחדש בכל עת.`,

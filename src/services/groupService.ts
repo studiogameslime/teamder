@@ -1393,8 +1393,10 @@ export const groupService = {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
       if (!g) return;
-      if (!g.adminIds.includes(callerId)) {
-        throw new Error('deleteGroup: caller is not an admin');
+      // Creator-only: a promoted admin can manage the community but not
+      // destroy it (firestore.rules enforces the same server-side).
+      if ((g.creatorId ?? g.adminIds[0]) !== callerId) {
+        throw new Error('NOT_CREATOR');
       }
       // Notify every member that the community is gone — distinct
       // from the per-game pushes below, since members not registered
@@ -1418,15 +1420,20 @@ export const groupService = {
     }
     // 0) Read the canonical group doc to capture the member list +
     // name BEFORE we start cascading. After step 3 the doc is gone
-    // and we can't fetch members anymore. Best-effort: if the read
-    // fails (rules denial, etc.) we proceed without the per-member
-    // groupDeleted push.
+    // and we can't fetch members anymore. ALSO enforce creator-only
+    // here (a HARD throw before any cascade) so a promoted admin can't
+    // partially destroy the community — firestore.rules blocks the
+    // group-doc delete for non-creators, but we must refuse before
+    // deleting any games. Best-effort only for the per-member push.
     let memberRecipients: string[] = [];
     let groupName = '';
     try {
       const gSnap = await getDoc(docs.group(groupId));
       if (gSnap.exists()) {
         const g = gSnap.data();
+        if ((g.creatorId ?? g.adminIds?.[0]) !== callerId) {
+          throw new Error('NOT_CREATOR');
+        }
         groupName = g.name || '';
         const set = new Set<string>([
           ...(g.playerIds ?? []),
@@ -1436,6 +1443,7 @@ export const groupService = {
         memberRecipients = Array.from(set);
       }
     } catch (err) {
+      if ((err as Error)?.message === 'NOT_CREATOR') throw err;
       logError('deleteGroup', err, { groupId, phase: 'preflight' });
       if (__DEV__)
         console.warn('[groupService] preflight read for member list failed', err);

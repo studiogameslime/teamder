@@ -28,7 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import {
-  formatDateShort,
+  formatGameDay,
   formatDayDate,
   formatTime,
 } from '@/utils/format';
@@ -177,7 +177,7 @@ export function NextGameCard({
 
 // Local composite — "DD.MM HH:MM" — only used for the lock badge.
 function formatLockTime(ms: number): string {
-  return `${formatDateShort(ms)} ${formatTime(ms)}`;
+  return `${formatGameDay(ms)} ${formatTime(ms)}`;
 }
 
 // Local composite — "{day-long} · DD.MM" — same as the canonical
