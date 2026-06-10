@@ -2806,10 +2806,11 @@ export const onGameRosterChanged = onDocumentWritten(
  * to thousands of voters.
  */
 export const onVoteWritten = onDocumentWritten(
-  'groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}',
+  // GLOBAL ratings (was groups/{groupId}/ratings/...). One reputation
+  // per player across the whole app.
+  'ratings/{ratedUserId}/votes/{raterUserId}',
   async (event) => {
-    const { groupId, ratedUserId } = event.params as {
-      groupId: string;
+    const { ratedUserId } = event.params as {
       ratedUserId: string;
     };
 
@@ -2839,34 +2840,84 @@ export const onVoteWritten = onDocumentWritten(
       return; // no rating before or after; nothing to do
     }
 
-    const summaryRef = db
-      .collection('groups')
-      .doc(groupId)
-      .collection('ratings')
-      .doc(ratedUserId);
-
-    // Transaction so two near-simultaneous votes don't race on the
-    // count/sum read-modify-write.
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(summaryRef);
-      const cur =
-        snap.exists && snap.data()
-          ? (snap.data() as { count?: number; sum?: number })
-          : { count: 0, sum: 0 };
-      const newCount = Math.max(0, (cur.count ?? 0) + countDelta);
-      const newSum = Math.max(0, (cur.sum ?? 0) + sumDelta);
-      const newAvg =
-        newCount > 0 ? Math.round((newSum / newCount) * 10) / 10 : 0;
-      tx.set(summaryRef, {
-        userId: ratedUserId,
-        count: newCount,
-        sum: newSum,
-        average: newAvg,
-        updatedAt: Date.now(),
-      });
-    });
+    await applyVoteDelta(
+      db.collection('ratings').doc(ratedUserId),
+      ratedUserId,
+      countDelta,
+      sumDelta,
+    );
   },
 );
+
+// LEGACY per-group vote trigger. App versions already in the stores
+// (≤1.0.11) still write votes to /groups/{gid}/ratings/{uid}/votes/{uid};
+// this keeps their per-group summaries in sync so the rating action
+// doesn't silently stop working during the global-ratings rollout.
+// Remove once the global build is widely adopted.
+export const onVoteWrittenLegacy = onDocumentWritten(
+  'groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}',
+  async (event) => {
+    const { groupId, ratedUserId } = event.params as {
+      groupId: string;
+      ratedUserId: string;
+    };
+    const before = event.data?.before.data() as { rating?: number } | undefined;
+    const after = event.data?.after.data() as { rating?: number } | undefined;
+    const validRating = (r: unknown): r is number =>
+      typeof r === 'number' && Number.isInteger(r) && r >= 1 && r <= 5;
+    const oldR = validRating(before?.rating) ? (before!.rating as number) : null;
+    const newR = validRating(after?.rating) ? (after!.rating as number) : null;
+    let countDelta = 0;
+    let sumDelta = 0;
+    if (oldR === null && newR !== null) {
+      countDelta = 1;
+      sumDelta = newR;
+    } else if (oldR !== null && newR === null) {
+      countDelta = -1;
+      sumDelta = -oldR;
+    } else if (oldR !== null && newR !== null) {
+      sumDelta = newR - oldR;
+    } else {
+      return;
+    }
+    await applyVoteDelta(
+      db
+        .collection('groups')
+        .doc(groupId)
+        .collection('ratings')
+        .doc(ratedUserId),
+      ratedUserId,
+      countDelta,
+      sumDelta,
+    );
+  },
+);
+
+// Shared transactional count/sum/average updater for a rating summary doc.
+async function applyVoteDelta(
+  summaryRef: FirebaseFirestore.DocumentReference,
+  ratedUserId: string,
+  countDelta: number,
+  sumDelta: number,
+): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(summaryRef);
+    const cur =
+      snap.exists && snap.data()
+        ? (snap.data() as { count?: number; sum?: number })
+        : { count: 0, sum: 0 };
+    const newCount = Math.max(0, (cur.count ?? 0) + countDelta);
+    const newSum = Math.max(0, (cur.sum ?? 0) + sumDelta);
+    const newAvg = newCount > 0 ? Math.round((newSum / newCount) * 10) / 10 : 0;
+    tx.set(summaryRef, {
+      userId: ratedUserId,
+      count: newCount,
+      sum: newSum,
+      average: newAvg,
+      updatedAt: Date.now(),
+    });
+  });
+}
 
 // ─── Scheduled: auto-balance teams before a game ───────────────────────
 

@@ -41,6 +41,8 @@ import { joinLocation } from '@/utils/format';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { RegistrationConflictModal } from '@/components/games/RegistrationConflictModal';
+import type { RegistrationConflict } from '@/services/gameService';
 import {
   MatchListCard,
   type MatchCardCta,
@@ -110,6 +112,14 @@ export function GamesListScreen() {
   // Soft-confirm for cancellations past the cancel-deadline window.
   // Holds the target game so onConfirm knows what to cancel.
   const [lateCancelGame, setLateCancelGame] = useState<Game | null>(null);
+  // Overlap popup: when a join is refused because the user is already
+  // booked into a clashing game, we show the conflict modal (the same
+  // one MatchDetails uses) instead of a toast that's easy to miss.
+  const [conflict, setConflict] = useState<{
+    info: RegistrationConflict;
+    target: Game;
+  } | null>(null);
+  const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
 
   const [filters, setFilters] = useState<GameFilters>(EMPTY_GAME_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -307,13 +317,17 @@ export function GamesListScreen() {
           ? ((err as { code: string }).code)
           : '';
       if (code === 'REGISTRATION_CONFLICT') {
-        // The user is already registered to another game in the
-        // conflict window. We surface a heads-up toast — it's a
-        // warning ("you might want to know"), not an error — and
-        // stay on this screen. Navigating into MatchDetails was
-        // surprising; the user just tapped "Join" on a card and
-        // didn't ask to leave the list.
-        toast.info(he.registrationConflictTitle);
+        // The user is already registered to a clashing game. Pop the
+        // conflict modal (cancel-other / view-other) so they can resolve
+        // it in place — the old top toast was easy to miss and gave no
+        // way to act. Fall back to the toast only if the error somehow
+        // arrived without its conflict payload.
+        const info = (err as { conflict?: RegistrationConflict }).conflict;
+        if (info) {
+          setConflict({ info, target: game });
+        } else {
+          toast.info(he.registrationConflictTitle);
+        }
       } else {
         // Non-conflict failure. The underlying service (joinGameV2 /
         // cancelGameV2) self-logs the op, but capture the SCREEN
@@ -612,6 +626,18 @@ export function GamesListScreen() {
               : nearbyLoc?.city ?? undefined
             : undefined
         }
+        // Radius-preview map centre: resolved GPS first, else the user's
+        // saved home city, else null (map hidden, pin shown instead).
+        mapCenter={
+          nearbyLoc?.latLng ??
+          (typeof user?.availability?.homeCityLat === 'number' &&
+          typeof user?.availability?.homeCityLng === 'number'
+            ? {
+                lat: user.availability.homeCityLat,
+                lng: user.availability.homeCityLng,
+              }
+            : null)
+        }
         matchCount={mineList.length + restList.length}
         onChange={(next) => {
           // Compare before/after counts so we can differentiate
@@ -639,6 +665,45 @@ export function GamesListScreen() {
           setLateCancelGame(null);
           if (target) await runCancel(target);
         }}
+      />
+
+      <RegistrationConflictModal
+        conflict={conflict?.info ?? null}
+        targetGroupId={conflict?.target.groupId}
+        targetStartsAt={conflict?.target.startsAt}
+        communities={myCommunities}
+        cancelBusy={cancelOtherBusy}
+        onCancelOther={async (conflictGameId) => {
+          if (!user) return;
+          setCancelOtherBusy(true);
+          try {
+            // Drop the user's registration in the clashing game, then
+            // re-try the join they originally wanted so a single
+            // "cancel other" tap actually lands them in the new game.
+            await gameService.cancelGameV2(conflictGameId, user.id);
+            const target = conflict?.target;
+            if (target) {
+              await gameService.joinGameV2(target.id, user.id);
+            }
+            setConflict(null);
+            await reload();
+            toast.success(he.registrationConflictResolved);
+          } catch (e) {
+            logError('gamesListConflictCancelOther', e, {
+              screen: 'GamesListScreen',
+              conflictGameId,
+              userId: user.id,
+            });
+            toast.error(he.error);
+          } finally {
+            setCancelOtherBusy(false);
+          }
+        }}
+        onViewOther={(conflictGameId) => {
+          setConflict(null);
+          nav.navigate('MatchDetails', { gameId: conflictGameId });
+        }}
+        onClose={() => setConflict(null)}
       />
 
       {/* Custom create-game chooser. Replaces the native Alert with

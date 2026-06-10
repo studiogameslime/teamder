@@ -678,6 +678,27 @@ export const groupService = {
     return submitJoinByPublic(groupId, userId);
   },
 
+  // Withdraw a pending join request to a closed community. The
+  // groupJoinRequests audit doc is immutable, so we simply remove the
+  // user from the group's pendingPlayerIds — that's what the admin's
+  // approval queue reads, so they stop seeing the request. A pending
+  // user can read + self-remove per the firestore rules.
+  async cancelJoinById(groupId: GroupId, userId: UserId): Promise<void> {
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (g) {
+        g.pendingPlayerIds = (g.pendingPlayerIds ?? []).filter(
+          (id) => id !== userId,
+        );
+      }
+      return;
+    }
+    await updateDoc(docs.group(groupId), {
+      pendingPlayerIds: arrayRemove(userId),
+      updatedAt: Date.now(),
+    });
+  },
+
   async approveMember(groupId: GroupId, userId: UserId): Promise<Group> {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];

@@ -29,10 +29,20 @@ import type { User } from '@/types';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 
+export interface HeroMetaItem {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}
+
 interface Props {
   user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
   name: string;
   subtitle?: string;
+  /**
+   * Optional meta row shown under the name (location · trust ·
+   * communities). When present it replaces the plain subtitle pill.
+   */
+  meta?: HeroMetaItem[];
   /** Pencil-overlay button — taps go to ProfileEdit. */
   onEditProfile?: () => void;
   onMenuPress: () => void;
@@ -46,6 +56,7 @@ export function ProfileHeroCard({
   user,
   name,
   subtitle,
+  meta,
   onEditProfile,
   onMenuPress,
   onNotificationsPress,
@@ -129,7 +140,23 @@ export function ProfileHeroCard({
             <Text style={styles.name} numberOfLines={1}>
               {name}
             </Text>
-            {subtitle ? (
+            {meta && meta.length > 0 ? (
+              // Meta row — location · trust · communities, separated by
+              // hairline dividers. Replaces the role pill when present.
+              <View style={styles.metaRow}>
+                {meta.map((m, i) => (
+                  <React.Fragment key={`${m.icon}-${i}`}>
+                    {i > 0 ? <View style={styles.metaDivider} /> : null}
+                    <View style={styles.metaItem}>
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {m.text}
+                      </Text>
+                      <Ionicons name={m.icon} size={13} color="#FFFFFF" />
+                    </View>
+                  </React.Fragment>
+                ))}
+              </View>
+            ) : subtitle ? (
               // Role pill — translucent capsule so the word reads as
               // a deliberate label even on a busy stadium frame,
               // not free-floating text under the name.
@@ -223,6 +250,33 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginTop: 4,
+  },
+  // `row` under forceRTL flows children right-to-left, so the first
+  // meta item (communities) lands on the visual RIGHT — matching the
+  // mockup's reading order: communities · trust · location.
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+    paddingHorizontal: spacing.md,
+  },
+  metaItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metaDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   subtitlePill: {
     alignSelf: 'center',

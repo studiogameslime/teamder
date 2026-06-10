@@ -17,7 +17,7 @@ export const he = {
     'ציון שמשקף עד כמה אפשר לסמוך עליך שתגיע — נבנה מנוכחות במשחקים וביטולים בזמן. ככל שתגיע יותר ותבטל פחות, הציון עולה, ומארגנים נוטים יותר לאשר אותך למשחקים.',
   tipRatingTitle: 'דירוג שחקנים',
   tipRatingText:
-    'חברי מועדון מדרגים זה את זה 1–5 כוכבים. הדירוג אנונימי ומסייע למארגנים להרכיב קבוצות מאוזנות. רואים רק את הממוצע, לא מי נתן מה.',
+    'שחקנים מדרגים זה את זה 1–5 כוכבים. הדירוג כללי (לא פר־מועדון), אנונימי, ומסייע למארגנים להרכיב קבוצות מאוזנות. רואים רק את הממוצע ואת מספר המדרגים, לא מי נתן מה.',
   // Map
   mapGamesTitle: 'מפת המשחקים',
   mapCommunitiesTitle: 'מפת המועדונים',
@@ -56,6 +56,22 @@ export const he = {
   gameFiltersWhenToday: 'היום',
   gameFiltersWhenThisWeek: 'השבוע',
   gameFiltersWhenWeekend: 'בסופ״ש',
+  gameFiltersWhenTomorrow: 'מחר',
+  gameFiltersWhenPickDay: 'בחר יום',
+  // Redesigned "סינון משחקים" sheet (2026-06).
+  gameFiltersNearbyTitle: 'קרוב אליי',
+  gameFiltersNearbyNeedPermission: 'נדרש אישור מיקום',
+  gameFiltersNearbyPermissionHint: 'כדי להציג משחקים בקרבתך',
+  gameFiltersNearbyAllow: 'אפשר גישה למיקום',
+  gameFiltersNearbyActive: 'מציג משחקים בקרבתך',
+  gameFiltersNearbyOff: 'כבה',
+  gameFiltersKm: (km: number) => `${km} ק"מ`,
+  gameFiltersQuickTitle: 'סינונים מהירים',
+  gameFiltersOpenToAll: 'פתוח לכולם',
+  gameFiltersHasSpots: 'יש מקומות פנויים',
+  gameFiltersShowN: (n: number) => `הצג ${n} משחקים`,
+  gameFiltersFormatTitle: 'פורמט משחק',
+  gameFiltersMyHome: 'הבית שלי',
   // Cost — most games are free; surfacing this avoids the surprise.
   gameFiltersCost: 'תשלום',
   gameFiltersCostFree: 'חינם',
@@ -114,10 +130,11 @@ export const he = {
   errorBoundaryReportHint: 'אם זה ממשיך להופיע, עדכן אותנו דרך "דווח על באג" בכרטיס השחקן.',
 
   // Community ratings
-  ratingTitle: 'דרג את {name} במועדון הזה',
+  ratingTitle: 'דרג את {name}',
   ratingNoSelf: 'אי אפשר לדרג את עצמך',
   ratingNone: 'עדיין אין דירוגים',
-  ratingInThisGroup: 'דירוג במועדון הזה',
+  ratingInThisGroup: 'דירוג כללי',
+  ratingGlobalTitle: 'דירוג כללי',
   ratingSaved: 'הדירוג נשמר',
   ratingCleared: 'הדירוג הוסר',
   ratingButtonRate: 'דרג שחקן',
@@ -634,10 +651,12 @@ export const he = {
   communityEnter: 'כניסה למועדון',
   communityJoinAuto: 'הצטרף למועדון',
   communityRequestToJoin: 'בקש להצטרף',
+  communityCancelJoinRequest: 'בטל בקשת הצטרפות',
+  toastJoinRequestCancelled: 'בקשת ההצטרפות בוטלה',
   communityWhatsApp: 'WhatsApp',
 
   // Community details screen
-  communityDetailsAbout: 'על המועדון',
+  communityDetailsAbout: 'תיאור המועדון',
   communityDetailsField: 'מגרש',
   communityDetailsCity: 'עיר',
   communityDetailsPreferredDays: 'ימי משחק',
@@ -671,7 +690,7 @@ export const he = {
     'יצירת המועדון נחסמה כרגע מטעמי אבטחה. ודא שהאפליקציה מעודכנת לגרסה האחרונה ונסה שוב. אם הבעיה חוזרת, נסה לצאת ולהיכנס מחדש לחשבון.',
   createGroupRateLimitError:
     'יצירת מועדונים מוגבלת לחמש ביום. נסה שוב מחר.',
-  communityDescriptionTitle: 'על המועדון',
+  communityDescriptionTitle: 'תיאור המועדון',
   communityRulesTitle: 'חוקי המועדון',
   matchDetailsWaitlistTitle: 'רשימת המתנה',
   matchDetailsAvgRatingLabel: (count: number) =>
@@ -1247,6 +1266,33 @@ export const he = {
   profileStatGoals: 'שערים',
   profileSubtitlePlayer: 'שחקן',
   profileStatInvited: 'שחקנים שהצטרפו דרכי',
+  // Next-game card on the player's own profile (replaces the
+  // achievements rail) — shows the soonest game the user is in.
+  profileNextGameTitle: 'המשחק הקרוב שלך',
+  profileNextGameEmptyTitle: 'אין לך משחק קרוב',
+  profileNextGameEmptyBody: 'עוד לא נרשמת למשחק. בוא נמצא לך אחד.',
+  profileNextGameEmptyCta: 'חפש משחק',
+  // Hero meta row (under the name) — location · trust · communities.
+  profileHeroCommunities: (n: number) =>
+    n === 1 ? 'קהילה אחת' : `${n} קהילות`,
+  profileHeroTrust: (pct: number) => `${pct}% אמין`,
+  // Availability summary card on the profile.
+  profileAvailabilityTitle: 'זמינות למשחקים',
+  profileAvailabilityDaysLabel: 'ימים זמינים',
+  profileAvailabilityRadiusLabel: 'מרחק מועדף',
+  profileAvailabilityRadiusValue: (km: number) => `עד ${km} ק"מ`,
+  profileAvailabilityNoDays: 'לא נבחרו ימים',
+  profileAvailabilityEmptyBody: 'הגדר מתי ואיפה נוח לך לשחק — ונמצא לך משחקים מתאימים.',
+  profileAvailabilityEmptyCta: 'הגדר זמינות',
+  // Recent-activity feed on the profile — merged from achievements
+  // unlocked + players who joined through the user.
+  profileActivityTitle: 'פעילות אחרונה',
+  profileActivityEmpty: 'אין עדיין פעילות להצגה',
+  profileActivityAchievement: (title: string) => `פתחת תואר: ${title}`,
+  profileActivityReferral: (name: string) => `${name} הצטרף דרך ההזמנה שלך`,
+  profileActivityReferralAnon: 'שחקן חדש הצטרף דרך ההזמנה שלך',
+  profileActivityToday: 'היום',
+  profileActivityYesterday: 'אתמול',
   // Referrals list screen — opens when the user taps the referrals tile
   // on the Profile screen.
   referralsScreenTitle: 'שחקנים שהצטרפו דרכי',
@@ -1566,6 +1612,7 @@ export const he = {
   registrationConflictCancelFailed: 'לא ניתן לבטל את ההרשמה כרגע',
   registrationConflictViewOther: 'צפה במשחק האחר',
   registrationConflictClose: 'סגור',
+  registrationConflictResolved: 'בוטלה ההרשמה הקודמת ונרשמת למשחק החדש',
   sessionActionInviteCommunityOnly:
     'זמין רק למשחקים פתוחים לכלל האפליקציה',
   matchDetailsJoinAsPlayer: 'הצטרף כשחקן',

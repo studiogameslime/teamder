@@ -322,13 +322,9 @@ export function PlayerCardScreen() {
 
         {isSelfView ? (
           <>
-            {effectiveRatingGroupId ? (
-              <RatingSection
-                groupId={effectiveRatingGroupId}
-                viewerId={me?.id ?? null}
-                ratedUser={user}
-              />
-            ) : null}
+            {/* Global rating — shown on every player card now, no longer
+                gated on a shared-community context. */}
+            <RatingSection viewerId={me?.id ?? null} ratedUser={user} />
 
             {/* Trust meter hidden from UI for now — score is still computed
                 server-side for filler matching; just not shown to users. */}
@@ -338,17 +334,10 @@ export function PlayerCardScreen() {
           </>
         ) : me ? (
           <>
-            {/* Rate-this-player section is the WHOLE POINT of opening
-                someone else's card from the rateBanner — without it
-                the rate flow ended in a dead-end. Renders only when
-                we have a groupId to scope the rating to. */}
-            {effectiveRatingGroupId ? (
-              <RatingSection
-                groupId={effectiveRatingGroupId}
-                viewerId={me.id}
-                ratedUser={user}
-              />
-            ) : null}
+            {/* Rate-this-player section — global, so it renders for any
+                viewer (it was the whole point of opening someone's card
+                from the rate banner). */}
+            <RatingSection viewerId={me.id} ratedUser={user} />
             <PairStatsSection
               viewerId={me.id}
               otherId={user.id}
@@ -605,11 +594,9 @@ function formatPairDate(ms: number): string {
 }
 
 function RatingSection({
-  groupId,
   viewerId,
   ratedUser,
 }: {
-  groupId: string;
   viewerId: string | null;
   ratedUser: User;
 }) {
@@ -619,13 +606,9 @@ function RatingSection({
 
   // Live summary subscription so the badge re-renders right after a save.
   useEffect(() => {
-    const unsub = ratingsService.subscribeSummary(
-      groupId,
-      ratedUser.id,
-      setSummary,
-    );
+    const unsub = ratingsService.subscribeSummary(ratedUser.id, setSummary);
     return unsub;
-  }, [groupId, ratedUser.id]);
+  }, [ratedUser.id]);
 
   // Whether the viewer already cast a vote — drives the button label
   // and the prefill in the modal.
@@ -635,20 +618,20 @@ function RatingSection({
       return;
     }
     let alive = true;
-    ratingsService.getMyVote(groupId, viewerId, ratedUser.id).then((v) => {
+    ratingsService.getMyVote(viewerId, ratedUser.id).then((v) => {
       if (alive) setHasVoted(!!v);
     });
     return () => {
       alive = false;
     };
-  }, [groupId, viewerId, ratedUser.id]);
+  }, [viewerId, ratedUser.id]);
 
   const isSelf = !!viewerId && viewerId === ratedUser.id;
 
   return (
     <View style={styles.ratingSection}>
       <View style={styles.ratingTitleRow}>
-        <Text style={styles.achievementsTitle}>{he.ratingInThisGroup}</Text>
+        <Text style={styles.achievementsTitle}>{he.ratingGlobalTitle}</Text>
         <InfoTip title={he.tipRatingTitle} text={he.tipRatingText} />
       </View>
       {summary && summary.count > 0 ? (
@@ -684,7 +667,6 @@ function RatingSection({
 
       <RatingModal
         visible={open}
-        groupId={groupId}
         raterUserId={viewerId}
         ratedUserId={ratedUser.id}
         ratedDisplayName={ratedUser.name}
@@ -693,11 +675,7 @@ function RatingSection({
           // Force-refresh the local "have I voted?" flag so the button
           // toggles between "rate" / "update rating" without delay.
           if (viewerId) {
-            const v = await ratingsService.getMyVote(
-              groupId,
-              viewerId,
-              ratedUser.id,
-            );
+            const v = await ratingsService.getMyVote(viewerId, ratedUser.id);
             setHasVoted(!!v);
           }
         }}

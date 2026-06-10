@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -2407,8 +2407,11 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
  * subcollection, so latency stays O(1) even when a community grows
  * to thousands of voters.
  */
-exports.onVoteWritten = (0, firestore_1.onDocumentWritten)('groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}', async (event) => {
-    const { groupId, ratedUserId } = event.params;
+exports.onVoteWritten = (0, firestore_1.onDocumentWritten)(
+// GLOBAL ratings (was groups/{groupId}/ratings/...). One reputation
+// per player across the whole app.
+'ratings/{ratedUserId}/votes/{raterUserId}', async (event) => {
+    const { ratedUserId } = event.params;
     const before = event.data?.before.data();
     const after = event.data?.after.data();
     const validRating = (r) => typeof r === 'number' && Number.isInteger(r) && r >= 1 && r <= 5;
@@ -2431,13 +2434,44 @@ exports.onVoteWritten = (0, firestore_1.onDocumentWritten)('groups/{groupId}/rat
     else {
         return; // no rating before or after; nothing to do
     }
-    const summaryRef = db
+    await applyVoteDelta(db.collection('ratings').doc(ratedUserId), ratedUserId, countDelta, sumDelta);
+});
+// LEGACY per-group vote trigger. App versions already in the stores
+// (≤1.0.11) still write votes to /groups/{gid}/ratings/{uid}/votes/{uid};
+// this keeps their per-group summaries in sync so the rating action
+// doesn't silently stop working during the global-ratings rollout.
+// Remove once the global build is widely adopted.
+exports.onVoteWrittenLegacy = (0, firestore_1.onDocumentWritten)('groups/{groupId}/ratings/{ratedUserId}/votes/{raterUserId}', async (event) => {
+    const { groupId, ratedUserId } = event.params;
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const validRating = (r) => typeof r === 'number' && Number.isInteger(r) && r >= 1 && r <= 5;
+    const oldR = validRating(before?.rating) ? before.rating : null;
+    const newR = validRating(after?.rating) ? after.rating : null;
+    let countDelta = 0;
+    let sumDelta = 0;
+    if (oldR === null && newR !== null) {
+        countDelta = 1;
+        sumDelta = newR;
+    }
+    else if (oldR !== null && newR === null) {
+        countDelta = -1;
+        sumDelta = -oldR;
+    }
+    else if (oldR !== null && newR !== null) {
+        sumDelta = newR - oldR;
+    }
+    else {
+        return;
+    }
+    await applyVoteDelta(db
         .collection('groups')
         .doc(groupId)
         .collection('ratings')
-        .doc(ratedUserId);
-    // Transaction so two near-simultaneous votes don't race on the
-    // count/sum read-modify-write.
+        .doc(ratedUserId), ratedUserId, countDelta, sumDelta);
+});
+// Shared transactional count/sum/average updater for a rating summary doc.
+async function applyVoteDelta(summaryRef, ratedUserId, countDelta, sumDelta) {
     await db.runTransaction(async (tx) => {
         const snap = await tx.get(summaryRef);
         const cur = snap.exists && snap.data()
@@ -2454,7 +2488,7 @@ exports.onVoteWritten = (0, firestore_1.onDocumentWritten)('groups/{groupId}/rat
             updatedAt: Date.now(),
         });
     });
-});
+}
 // ─── Scheduled: auto-balance teams before a game ───────────────────────
 const DEFAULT_AUTO_BALANCE_MINUTES = 60;
 const GUEST_ID_PREFIX = 'guest:';

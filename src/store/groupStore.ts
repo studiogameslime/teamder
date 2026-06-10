@@ -60,6 +60,8 @@ interface GroupStore {
     groupId: GroupId,
     userId: UserId
   ) => Promise<'pending' | 'joined' | 'already_member' | 'not_found'>;
+  /** Withdraw a pending join request the user previously sent. */
+  cancelJoinById: (groupId: GroupId, userId: UserId) => Promise<void>;
   approve: (userId: UserId) => Promise<void>;
   reject: (userId: UserId) => Promise<void>;
   /** Admin-only: approve a pending join request for a specific group.
@@ -193,6 +195,13 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       await get().hydrate(userId);
     }
     return status;
+  },
+
+  cancelJoinById: async (groupId, userId) => {
+    await groupService.cancelJoinById(groupId, userId);
+    set((s) => ({
+      pendingGroups: s.pendingGroups.filter((g) => g.id !== groupId),
+    }));
   },
 
   approve: async (userId) => {

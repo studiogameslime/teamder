@@ -1,28 +1,24 @@
-// ratingsService — community-scoped player ratings.
+// ratingsService — GLOBAL (cross-community) player ratings.
 //
 // Storage:
-//   /groups/{groupId}/ratings/{ratedUserId}                 — summary
-//   /groups/{groupId}/ratings/{ratedUserId}/votes/{raterUid} — individual vote
+//   /ratings/{ratedUserId}                 — summary (count + average)
+//   /ratings/{ratedUserId}/votes/{raterUid} — individual vote
 //
-// Vote writes happen client-side (signed-in member writes their own
-// vote doc). Summary docs are kept in sync by the `onVoteWritten`
-// Cloud Function — clients never write the summary directly so a
-// malicious client can't fabricate an inflated average. The client
-// reads the summary; voter identity stays private (rules only let
-// each rater read their own vote).
+// Ratings used to be scoped per-community (/groups/{gid}/ratings/…), but
+// the same player got a different number in every club. They're now a
+// single global reputation: one rater → one vote per player, anywhere.
 //
-// Mock mode: in-memory store keyed by (groupId, ratedUserId, raterUid)
-// so the rating UX works locally without Firestore.
+// Vote writes happen client-side (signed-in user writes their own vote
+// doc). Summary docs are kept in sync by the `onVoteWritten` Cloud
+// Function — clients never write the summary directly so a malicious
+// client can't fabricate an inflated average. The client reads the
+// summary; voter identity stays private (rules only let each rater read
+// their own vote).
+//
+// Mock mode: in-memory store keyed by (ratedUserId, raterUid).
 
+import { deleteDoc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import {
-  deleteDoc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore';
-import {
-  GroupId,
   GroupRatingSummary,
   RatingValue,
   RatingVote,
@@ -37,17 +33,13 @@ import { logError, isExpectedDenial } from './errorLog';
 // ─── Mock store ───────────────────────────────────────────────────────────
 
 type MockKey = string;
-const mockKey = (groupId: GroupId, rated: UserId, rater: UserId) =>
-  `${groupId}::${rated}::${rater}`;
+const mockKey = (rated: UserId, rater: UserId) => `${rated}::${rater}`;
 const mockVotes = new Map<MockKey, RatingVote>();
 
-function recomputeMockSummary(
-  groupId: GroupId,
-  ratedUserId: UserId,
-): GroupRatingSummary {
+function recomputeMockSummary(ratedUserId: UserId): GroupRatingSummary {
   let count = 0;
   let sum = 0;
-  const prefix = `${groupId}::${ratedUserId}::`;
+  const prefix = `${ratedUserId}::`;
   for (const [k, v] of mockVotes.entries()) {
     if (!k.startsWith(prefix)) continue;
     count += 1;
@@ -66,31 +58,25 @@ function recomputeMockSummary(
 
 export const ratingsService = {
   /**
-   * Cast or update the rater's vote on a community member.
-   * Throws if the input is invalid; swallows all other errors with a
-   * dev-mode warning (the originating UI shouldn't break on a bad
-   * network blip).
+   * Cast or update the rater's vote on another player. Throws on invalid
+   * input; the summary is recomputed server-side by `onVoteWritten`.
    */
-  async ratePlayerInGroup(
-    groupId: GroupId,
+  async ratePlayer(
     raterUserId: UserId,
     ratedUserId: UserId,
     rating: RatingValue,
   ): Promise<void> {
     if (raterUserId === ratedUserId) {
-      throw new Error('ratePlayerInGroup: cannot rate self');
+      throw new Error('ratePlayer: cannot rate self');
     }
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      throw new Error('ratePlayerInGroup: rating must be 1–5');
+      throw new Error('ratePlayer: rating must be 1–5');
     }
-    // Spam guard: 60 votes / hour / rater. Caps an attempt to dump
-    // mass-ratings against opponents (or to inflate a friend's
-    // average) without breaking a community admin running through
-    // the post-game rate-everyone flow.
+    // Spam guard: 60 votes / hour / rater.
     const { enforceRateLimit } = await import('./rateLimitService');
     await enforceRateLimit(raterUserId, 'rateVote');
     if (USE_MOCK_DATA) {
-      const k = mockKey(groupId, ratedUserId, raterUserId);
+      const k = mockKey(ratedUserId, raterUserId);
       const existing = mockVotes.get(k);
       const now = Date.now();
       mockVotes.set(k, {
@@ -100,12 +86,12 @@ export const ratingsService = {
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       });
-      logEvent(AnalyticsEvent.PlayerRated, { groupId, rating, isUpdate: !!existing });
+      logEvent(AnalyticsEvent.PlayerRated, { rating, isUpdate: !!existing });
       return;
     }
-    const ref = docs.ratingVote(groupId, ratedUserId, raterUserId);
+    const ref = docs.globalRatingVote(ratedUserId, raterUserId);
     const existing = await getDoc(ref).catch((err) => {
-      logError('ratePlayerReadVote', err, { groupId, raterUserId, ratedUserId });
+      logError('ratePlayerReadVote', err, { raterUserId, ratedUserId });
       return null;
     });
     const now = Date.now();
@@ -123,12 +109,13 @@ export const ratingsService = {
         updatedAt: now,
       } satisfies RatingVote);
     } catch (err) {
-      if (!isExpectedDenial(err)) logError('ratePlayer', err, { groupId, raterUserId, ratedUserId, rating });
+      if (!isExpectedDenial(err)) {
+        logError('ratePlayer', err, { raterUserId, ratedUserId, rating });
+      }
       if (__DEV__) console.warn('[ratings] ratePlayer write failed', err);
       throw err;
     }
     logEvent(AnalyticsEvent.PlayerRated, {
-      groupId,
       rating,
       isUpdate: !!existing?.exists(),
     });
@@ -136,20 +123,17 @@ export const ratingsService = {
 
   /** Read the rater's own vote, if any. Returns null when not voted yet. */
   async getMyVote(
-    groupId: GroupId,
     raterUserId: UserId,
     ratedUserId: UserId,
   ): Promise<RatingVote | null> {
     if (raterUserId === ratedUserId) return null;
     if (USE_MOCK_DATA) {
-      return (
-        mockVotes.get(mockKey(groupId, ratedUserId, raterUserId)) ?? null
-      );
+      return mockVotes.get(mockKey(ratedUserId, raterUserId)) ?? null;
     }
     const snap = await getDoc(
-      docs.ratingVote(groupId, ratedUserId, raterUserId),
+      docs.globalRatingVote(ratedUserId, raterUserId),
     ).catch((err) => {
-      logError('getMyVote', err, { groupId, raterUserId, ratedUserId });
+      logError('getMyVote', err, { raterUserId, ratedUserId });
       return null;
     });
     if (!snap?.exists()) return null;
@@ -164,54 +148,38 @@ export const ratingsService = {
   },
 
   /** Remove a vote. Used by the rating modal's "clear" action. */
-  async clearMyVote(
-    groupId: GroupId,
-    raterUserId: UserId,
-    ratedUserId: UserId,
-  ): Promise<void> {
+  async clearMyVote(raterUserId: UserId, ratedUserId: UserId): Promise<void> {
     if (USE_MOCK_DATA) {
-      mockVotes.delete(mockKey(groupId, ratedUserId, raterUserId));
-      logEvent(AnalyticsEvent.RatingCleared, { groupId });
+      mockVotes.delete(mockKey(ratedUserId, raterUserId));
+      logEvent(AnalyticsEvent.RatingCleared, {});
       return;
     }
     await deleteDoc(
-      docs.ratingVote(groupId, ratedUserId, raterUserId),
+      docs.globalRatingVote(ratedUserId, raterUserId),
     ).catch((err) => {
-      logError('clearMyVote', err, { groupId, raterUserId, ratedUserId });
-      /* swallow — best effort */
+      logError('clearMyVote', err, { raterUserId, ratedUserId });
     });
-    logEvent(AnalyticsEvent.RatingCleared, { groupId });
+    logEvent(AnalyticsEvent.RatingCleared, {});
   },
 
   /**
    * Read the latest summary (count + average) for one rated user.
    * Returns a zero-summary when the doc doesn't exist yet.
    */
-  async getSummary(
-    groupId: GroupId,
-    ratedUserId: UserId,
-  ): Promise<GroupRatingSummary> {
+  async getSummary(ratedUserId: UserId): Promise<GroupRatingSummary> {
     if (USE_MOCK_DATA) {
-      return recomputeMockSummary(groupId, ratedUserId);
+      return recomputeMockSummary(ratedUserId);
     }
     const snap = await getDoc(
-      docs.ratingSummary(groupId, ratedUserId),
+      docs.globalRatingSummary(ratedUserId),
     ).catch((err) => {
-      // Skip expected transient/denial errors (offline, unauth) — they're
-      // noise, not bugs. Returning null degrades gracefully below.
       if (!isExpectedDenial(err)) {
-        logError('getRatingSummary', err, { groupId, ratedUserId });
+        logError('getRatingSummary', err, { ratedUserId });
       }
       return null;
     });
     if (!snap?.exists()) {
-      return {
-        userId: ratedUserId,
-        average: 0,
-        count: 0,
-        sum: 0,
-        updatedAt: 0,
-      };
+      return { userId: ratedUserId, average: 0, count: 0, sum: 0, updatedAt: 0 };
     }
     const d = snap.data() as GroupRatingSummary;
     return {
@@ -225,25 +193,18 @@ export const ratingsService = {
 
   /** Live subscription so the badge updates immediately after voting. */
   subscribeSummary(
-    groupId: GroupId,
     ratedUserId: UserId,
     cb: (summary: GroupRatingSummary) => void,
   ): () => void {
     if (USE_MOCK_DATA) {
-      cb(recomputeMockSummary(groupId, ratedUserId));
+      cb(recomputeMockSummary(ratedUserId));
       return () => {};
     }
     const unsub = onSnapshot(
-      docs.ratingSummary(groupId, ratedUserId),
+      docs.globalRatingSummary(ratedUserId),
       (snap) => {
         if (!snap.exists()) {
-          cb({
-            userId: ratedUserId,
-            average: 0,
-            count: 0,
-            sum: 0,
-            updatedAt: 0,
-          });
+          cb({ userId: ratedUserId, average: 0, count: 0, sum: 0, updatedAt: 0 });
           return;
         }
         const d = snap.data() as GroupRatingSummary;
@@ -256,7 +217,7 @@ export const ratingsService = {
         });
       },
       (err) => {
-        logError('subscribeRatingSummary', err, { groupId, ratedUserId });
+        logError('subscribeRatingSummary', err, { ratedUserId });
         if (__DEV__) {
           // eslint-disable-next-line no-console
           console.warn('[ratings] subscribeSummary failed', err);
@@ -274,9 +235,9 @@ export function __resetRatingsForTests(): void {
 }
 
 // ─── Mock seeding ─────────────────────────────────────────────────────────
-// Pre-fill realistic ratings for the demo community (g1) so player cards
-// already show averages without anyone having to vote first. Skill values
-// are hand-picked per player; each rater's vote is derived deterministically
+// Pre-fill realistic ratings for the demo players so player cards already
+// show averages without anyone having to vote first. Skill values are
+// hand-picked per player; each rater's vote is derived deterministically
 // from (rater id, rated id) so reloads produce identical averages.
 const MOCK_SKILL_BY_PLAYER_ID: Record<UserId, number> = {
   p1: 4.2, p2: 3.5, p3: 4.5, p4: 3.0, p5: 3.8,
@@ -290,7 +251,6 @@ let mockSeeded = false;
 function seedMockRatings(): void {
   if (mockSeeded) return;
   mockSeeded = true;
-  const groupId: GroupId = mockGroup.id;
   const memberIds = mockGroup.playerIds;
   const now = Date.now();
   const week = 1000 * 60 * 60 * 24 * 7;
@@ -298,7 +258,6 @@ function seedMockRatings(): void {
     for (const rated of memberIds) {
       if (rater === rated) continue;
       const base = MOCK_SKILL_BY_PLAYER_ID[rated] ?? 3.5;
-      // Deterministic ±0.5 noise from a hash of (rater, rated).
       const seed =
         (rater.charCodeAt(0) + rater.charCodeAt(rater.length - 1)) * 31 +
         rated.charCodeAt(rated.length - 1) * 17;
@@ -306,7 +265,7 @@ function seedMockRatings(): void {
       let v = Math.round(base + noise);
       if (v < 1) v = 1;
       if (v > 5) v = 5;
-      mockVotes.set(mockKey(groupId, rated, rater), {
+      mockVotes.set(mockKey(rated, rater), {
         raterUserId: rater,
         ratedUserId: rated,
         rating: v as RatingValue,
@@ -320,7 +279,3 @@ function seedMockRatings(): void {
 if (USE_MOCK_DATA) {
   seedMockRatings();
 }
-
-// Suppress unused-import warning for serverTimestamp — kept available
-// in case a future migration switches createdAt to a server clock.
-void serverTimestamp;

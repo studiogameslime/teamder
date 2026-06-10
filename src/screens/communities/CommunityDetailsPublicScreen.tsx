@@ -72,6 +72,7 @@ export function CommunityDetailsPublicScreen() {
   const pendingGroups = useGroupStore((s) => s.pendingGroups);
   const memberGroups = useGroupStore((s) => s.groups);
   const requestJoinById = useGroupStore((s) => s.requestJoinById);
+  const cancelJoinById = useGroupStore((s) => s.cancelJoinById);
 
   const [group, setGroup] = useState<GroupPublic | null>(null);
   // Upcoming public games drive the dynamic "ימי משחק" / "שעת משחק"
@@ -251,6 +252,26 @@ export function CommunityDetailsPublicScreen() {
     }
   };
 
+  const handleCancelRequest = async () => {
+    if (!me || busyJoin) return;
+    setBusyJoin(true);
+    try {
+      await cancelJoinById(group.id, me.id);
+      toast.success(he.toastJoinRequestCancelled);
+      nav.goBack();
+    } catch (err) {
+      logError('cancelJoinGroup', err, {
+        screen: 'CommunityDetailsPublicScreen',
+        groupId: group.id,
+        userId: me?.id,
+      });
+      if (__DEV__) console.warn('[communityPublic] cancel failed', err);
+      toast.error(he.toastRequestFailed);
+    } finally {
+      setBusyJoin(false);
+    }
+  };
+
   // CTA label depends on `isOpen` — auto-join vs admin approval.
   const cta = group.isOpen ? he.communityJoinAuto : he.communityRequestToJoin;
   const ctaDisabled = isPending || busyJoin;
@@ -319,6 +340,16 @@ export function CommunityDetailsPublicScreen() {
           disabled={ctaDisabled}
           onPress={handleJoin}
         />
+        {isPending ? (
+          <Button
+            title={he.communityCancelJoinRequest}
+            variant="outline"
+            size="lg"
+            fullWidth
+            loading={busyJoin}
+            onPress={handleCancelRequest}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

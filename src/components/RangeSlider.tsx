@@ -60,13 +60,20 @@ export function RangeSlider({
 
   const responder = useRef(
     PanResponder.create({
-      // Don't claim on touch-down — otherwise the start of a vertical
-      // scroll over the slider would jump the value. Only a clearly
-      // horizontal drag claims the gesture; vertical scrolls pass through
-      // to the ScrollView.
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_e, g) =>
-        Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 4,
+      // Claim the touch as soon as it lands on the track — and CAPTURE it
+      // before an enclosing ScrollView can. Without this the slider sits
+      // dead inside a scroll view (the scroll view swallows the drag), and
+      // a plain tap on the track did nothing. The trade-off (a vertical
+      // scroll that *starts* on the 44px track moves the value instead of
+      // scrolling) is well worth a slider that actually responds; tap +
+      // drag both work now.
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      // Once we own the gesture, don't surrender it to the ScrollView
+      // mid-drag.
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         onChange(fromX(e.nativeEvent.locationX - THUMB / 2));
       },
@@ -116,7 +123,10 @@ export function RangeSlider({
           { left: thumbLeft, borderColor: accent },
         ]}
       >
-        <Text style={[styles.thumbText, { color: accent }]}>
+        <Text
+          style={[styles.thumbText, { color: accent }]}
+          numberOfLines={1}
+        >
           {thumbLabel ?? String(value)}
         </Text>
       </View>

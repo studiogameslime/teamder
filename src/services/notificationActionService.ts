@@ -46,10 +46,22 @@ export async function handleGameReminderAction(
       });
     }
   } catch (err) {
-    // Common cases: network missing, registration conflict, game
-    // already started, capacity full. None should crash the
-    // background task — the user will see the up-to-date state on
-    // the next app launch.
+    // REGISTRATION_CONFLICT is an EXPECTED outcome here, not a failure:
+    // the user tapped "אני בא" from a reminder while already booked into
+    // an overlapping game. The join is correctly refused server-side;
+    // there's no background UI to resolve it, so we just drop it (the
+    // user sees the real state next launch) WITHOUT logging it as an
+    // error — otherwise it floods the error console as a false alarm.
+    const code = (err as { code?: string })?.code;
+    if (code === 'REGISTRATION_CONFLICT') {
+      if (__DEV__) {
+        console.warn('[notifAction] join conflict, ignored', gameId);
+      }
+      return;
+    }
+    // Other cases (network missing, game already started, capacity
+    // full): real, but none should crash the background task — the
+    // user will see the up-to-date state on the next app launch.
     logError('handleGameReminderAction', err, { action, gameId });
     if (__DEV__) {
       console.warn('[notifAction] failed', action, gameId, err);

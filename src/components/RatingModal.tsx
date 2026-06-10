@@ -34,7 +34,6 @@ import { toast } from './Toast';
 
 interface Props {
   visible: boolean;
-  groupId: string | null;
   raterUserId: string | null;
   ratedUserId: string | null;
   ratedDisplayName: string;
@@ -47,7 +46,6 @@ interface Props {
 
 export function RatingModal({
   visible,
-  groupId,
   raterUserId,
   ratedUserId,
   ratedDisplayName,
@@ -63,20 +61,18 @@ export function RatingModal({
 
   // Load existing vote on open so the stars start pre-selected.
   useEffect(() => {
-    if (!visible || !groupId || !raterUserId || !ratedUserId) return;
+    if (!visible || !raterUserId || !ratedUserId) return;
     if (raterUserId === ratedUserId) return;
     let alive = true;
-    ratingsService
-      .getMyVote(groupId, raterUserId, ratedUserId)
-      .then((vote) => {
-        if (!alive) return;
-        setSelected((vote?.rating as RatingValue | undefined) ?? 0);
-        setHasExisting(!!vote);
-      });
+    ratingsService.getMyVote(raterUserId, ratedUserId).then((vote) => {
+      if (!alive) return;
+      setSelected((vote?.rating as RatingValue | undefined) ?? 0);
+      setHasExisting(!!vote);
+    });
     return () => {
       alive = false;
     };
-  }, [visible, groupId, raterUserId, ratedUserId]);
+  }, [visible, raterUserId, ratedUserId]);
 
   // Pull the rated user's profile so the avatar/jersey is real.
   useEffect(() => {
@@ -107,11 +103,10 @@ export function RatingModal({
   const canSave = !busy && selected > 0;
 
   const save = async () => {
-    if (!groupId || !raterUserId || !ratedUserId || selected === 0) return;
+    if (!raterUserId || !ratedUserId || selected === 0) return;
     setBusy(true);
     try {
-      await ratingsService.ratePlayerInGroup(
-        groupId,
+      await ratingsService.ratePlayer(
         raterUserId,
         ratedUserId,
         selected as RatingValue,
@@ -121,9 +116,8 @@ export function RatingModal({
       onChanged?.();
       onClose();
     } catch (err) {
-      if (!isExpectedDenial(err)) logError('ratePlayerInGroup', err, {
+      if (!isExpectedDenial(err)) logError('ratePlayer', err, {
         screen: 'RatingModal',
-        groupId,
         raterUserId,
         ratedUserId,
         rating: selected,
@@ -135,10 +129,10 @@ export function RatingModal({
   };
 
   const clear = async () => {
-    if (!groupId || !raterUserId || !ratedUserId) return;
+    if (!raterUserId || !ratedUserId) return;
     setBusy(true);
     try {
-      await ratingsService.clearMyVote(groupId, raterUserId, ratedUserId);
+      await ratingsService.clearMyVote(raterUserId, ratedUserId);
       setSelected(0);
       setHasExisting(false);
       toast.info(he.ratingCleared);
@@ -150,7 +144,6 @@ export function RatingModal({
       // the doc still lives in Firestore.
       logError('clearMyVote', err, {
         screen: 'RatingModal',
-        groupId,
         raterUserId,
         ratedUserId,
       });

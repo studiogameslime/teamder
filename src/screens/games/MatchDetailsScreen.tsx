@@ -700,7 +700,7 @@ export function MatchDetailsScreen() {
       try {
         const summaries = await Promise.all(
           eligible.map((uid) =>
-            ratingsService.getSummary(groupId, uid).catch(() => null),
+            ratingsService.getSummary(uid).catch(() => null),
           ),
         );
         if (!alive) return;

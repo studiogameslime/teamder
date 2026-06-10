@@ -6,7 +6,7 @@
 //   ② 2×2 stats grid — משחקים / הגעה % / הופעות / ביטולים
 //   ③ Full-width referral card
 //   ④ Discipline row (last 10 games)
-//   ⑤ Achievements rail (optional)
+//   ⑤ Next-game card (soonest game the user is in, or empty state)
 //   ⑥ Primary CTA — "הזמן חברים לאפליקציה"
 //
 // Everything that used to live inline (settings, nav rows, support,
@@ -36,20 +36,27 @@ import {
 import Constants from 'expo-constants';
 
 import { Button } from '@/components/Button';
-import { ProfileHeroCard } from '@/components/profile/ProfileHeroCard';
+import {
+  ProfileHeroCard,
+  type HeroMetaItem,
+} from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
+import { ProfileAvailabilityCard } from '@/components/profile/ProfileAvailabilityCard';
+import {
+  ProfileActivityCard,
+  buildProfileActivity,
+} from '@/components/profile/ProfileActivityCard';
 // DisciplineRow (trust meter) hidden from UI for now — see render site below.
 // import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
-import { AchievementsRail } from '@/components/profile/AchievementsRail';
+import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
 import {
   HamburgerMenu,
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
-import { achievementsService } from '@/services/achievementsService';
-import type { UserAchievementState } from '@/types';
-import { userService } from '@/services';
+import { gameService, userService } from '@/services';
+import type { Game } from '@/types';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { deepLinkService } from '@/services/deepLinkService';
 import {
@@ -99,13 +106,17 @@ export function ProfileScreen() {
   ]);
   const [refreshing, setRefreshing] = useState(false);
   const [referralCount, setReferralCount] = useState<number | null>(null);
+  // Full referral list (who joined through the user + when) — powers
+  // both the count tile and the recent-activity feed.
+  const [referrals, setReferrals] = useState<
+    Awaited<ReturnType<typeof userService.listInvitedUsers>>
+  >([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Derived achievement counters — drives the inline achievements rail
-  // so it can't show a "5-games-played" badge while the stats grid
-  // shows 0 games. Null while computing.
-  const [achievementCounters, setAchievementCounters] =
-    useState<UserAchievementState | null>(null);
+  // The soonest game the user is registered for — drives the
+  // next-game card that replaced the achievements rail. Null = none
+  // upcoming (or still loading on first paint).
+  const [nextGame, setNextGame] = useState<Game | null>(null);
 
   // Scroll-to-top: react-navigation hook listens for tab re-press.
   const scrollRef = useRef<ScrollView>(null);
@@ -138,23 +149,29 @@ export function ProfileScreen() {
     };
   }, [localUser?.id]);
 
-  // Referral count — refreshes on focus so a new attribution lands
-  // in the metric the next time the user returns to the screen.
+  // Referral list — refreshes on focus so a new attribution lands in
+  // both the count tile and the activity feed the next time the user
+  // returns to the screen. We list (rather than just count) because the
+  // activity feed needs each joiner's name + timestamp; the count is
+  // simply the list length.
   useFocusEffect(
     React.useCallback(() => {
       const uid = user?.id;
       if (!uid) {
         setReferralCount(null);
+        setReferrals([]);
         return;
       }
       let alive = true;
       userService
-        .getInvitedUsersCount(uid)
-        .then((n) => {
-          if (alive) setReferralCount(n);
+        .listInvitedUsers(uid)
+        .then((list) => {
+          if (!alive) return;
+          setReferrals(list);
+          setReferralCount(list.length);
         })
         .catch(() => {
-          // Leave the previous count visible — flicker-back-to-loading
+          // Leave the previous values visible — flicker-back-to-loading
           // on every focus would be worse UX than a slightly stale 0.
         });
       return () => {
@@ -163,31 +180,36 @@ export function ProfileScreen() {
     }, [user?.id]),
   );
 
-  // Recompute achievement counters from real data when the user or
-  // their groups change. Fires once on mount and any time the
-  // surrounding state shifts. We also persist the reconciled
-  // unlocked list so legacy bump-driven entries get pruned.
-  useEffect(() => {
-    const uid = localUser?.id;
-    if (!uid) return;
-    let alive = true;
-    achievementsService
-      .deriveCounters(uid, {
-        groups: myCommunities,
-        friendsCount: localUser?.friends?.length ?? 0,
-      })
-      .then((c) => {
-        if (!alive) return;
-        setAchievementCounters(c);
-        achievementsService.persistDerivedUnlocks(uid, c);
-      })
-      .catch(() => {
-        // Leave null — rail just hides until next refresh.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [localUser?.id, myCommunities]);
+  // Load the user's soonest upcoming game. Refreshes on focus so a
+  // game the user just joined (or one that filled/cancelled) is
+  // reflected when they return to the profile tab.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid) {
+        setNextGame(null);
+        return;
+      }
+      let alive = true;
+      gameService
+        .getMyGames(uid)
+        .then((mine) => {
+          if (!alive) return;
+          // getMyGames already returns the user's open, non-stale games
+          // sorted by startsAt ascending — the first IS the soonest
+          // (a game that just kicked off but isn't stale still counts
+          // as "the game to show"; its kickoff chip simply hides).
+          setNextGame(mine[0] ?? null);
+        })
+        .catch(() => {
+          // Leave the previous value — a transient fetch error
+          // shouldn't blank an already-shown game.
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id]),
+  );
 
   // Admin-only: pending approvals across ALL the user's admin groups.
   // Surfaced as a badge on the hamburger row so it's still visible
@@ -244,11 +266,34 @@ export function ProfileScreen() {
   const totalGames = user.stats?.totalGames ?? 0;
   const attendedCount = user.stats?.attended ?? 0;
   const attendance = getAttendanceRate(user.stats);
-  // Strict derivation when ready; while computing we render nothing
-  // rather than risk showing stale stored counters.
-  const achievements = achievementCounters
-    ? achievementsService.listFromCounters(user, achievementCounters)
-    : [];
+
+  // Hero meta row (under the name): communities · trust · location.
+  // Each entry is only shown when its data actually exists — no
+  // placeholder "0 קהילות" or a trust score for a user who never
+  // played. Order matches the mockup reading right-to-left.
+  const heroMeta: HeroMetaItem[] = [];
+  if (myCommunities.length > 0) {
+    heroMeta.push({
+      icon: 'people-outline',
+      text: he.profileHeroCommunities(myCommunities.length),
+    });
+  }
+  if (totalGames > 0) {
+    heroMeta.push({
+      icon: 'shield-checkmark-outline',
+      text: he.profileHeroTrust(attendance),
+    });
+  }
+  if (user.availability?.homeCity) {
+    heroMeta.push({
+      icon: 'location-outline',
+      text: user.availability.homeCity,
+    });
+  }
+
+  // Recent-activity feed — merged from achievements unlocked + the
+  // people who joined through the user. Pure, recomputed on render.
+  const activityItems = buildProfileActivity(user, referrals);
 
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
@@ -432,6 +477,7 @@ export function ProfileScreen() {
           user={user}
           name={user.name}
           subtitle={he.profileSubtitlePlayer}
+          meta={heroMeta}
           onMenuPress={() => setMenuOpen(true)}
           onEditProfile={() => nav.navigate('ProfileEdit')}
           onNotificationsPress={() => nav.navigate('NotificationsSettings')}
@@ -459,13 +505,28 @@ export function ProfileScreen() {
               server-side, just not shown to users. */}
           {/* <DisciplineRow userId={user.id} /> */}
 
-          {/* ⑤ Achievements rail (circular ring + label) */}
-          <AchievementsRail
-            items={achievements}
-            onSeeAll={() => nav.navigate('Achievements')}
+          {/* ⑤ Next-game card — the soonest game the user is in,
+              or an empty state that jumps to the Games tab. Replaced
+              the achievements rail (titles still live in the menu →
+              Achievements screen). */}
+          <ProfileNextGameCard
+            game={nextGame}
+            userId={user.id}
+            onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
+            onFindGame={() => nav.navigate('GameTab')}
           />
 
-          {/* ⑥ PRIMARY CTA — invite friends. Blue accent (matches
+          {/* ⑥ Availability summary — tap → AvailabilityEdit. */}
+          <ProfileAvailabilityCard
+            availability={user.availability}
+            onEdit={() => nav.navigate('AvailabilityEdit')}
+          />
+
+          {/* ⑦ Recent activity — achievements unlocked + referrals,
+              merged newest-first (no fabricated game rows). */}
+          <ProfileActivityCard items={activityItems} />
+
+          {/* ⑧ PRIMARY CTA — invite friends. Blue accent (matches
               the new profile palette) but uses the brand-Button for
               consistency with the rest of the app. */}
           <Pressable

@@ -99,6 +99,10 @@ export function CommunityCard({
     <PressableScale
       onPress={onPress}
       style={styles.card}
+      // No press-in haptic: in a scrolling list every finger-down on a
+      // card fired a buzz before the scroll cancelled the press, so the
+      // whole feed vibrated while flicking through it.
+      haptic={false}
       accessibilityRole="button"
       accessibilityLabel={name}
     >

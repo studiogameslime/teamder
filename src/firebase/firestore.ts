@@ -1179,6 +1179,14 @@ export const col = {
       'votes',
     );
   },
+  /** GLOBAL (cross-community) rating summaries: /ratings/{uid}. */
+  globalRatings() {
+    return collection(getFirebase().db, 'ratings');
+  },
+  /** Global votes nested under a summary: /ratings/{uid}/votes/{raterUid}. */
+  globalRatingVotes(ratedUserId: UserId) {
+    return collection(getFirebase().db, 'ratings', ratedUserId, 'votes');
+  },
 };
 
 export const docs = {
@@ -1211,6 +1219,14 @@ export const docs = {
   },
   ratingVote(groupId: GroupId, ratedUserId: UserId, raterUserId: UserId) {
     return doc(col.ratingVotes(groupId, ratedUserId), raterUserId);
+  },
+  /** GLOBAL rating summary doc: /ratings/{uid}. */
+  globalRatingSummary(ratedUserId: UserId) {
+    return doc(col.globalRatings(), ratedUserId);
+  },
+  /** GLOBAL vote doc: /ratings/{uid}/votes/{raterUid}. */
+  globalRatingVote(ratedUserId: UserId, raterUserId: UserId) {
+    return doc(col.globalRatingVotes(ratedUserId), raterUserId);
   },
   // Self-only sub-doc for sensitive per-user state. fcmTokens +
   // notificationPrefs live here so other authenticated users can't
