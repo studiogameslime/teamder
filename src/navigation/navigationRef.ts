@@ -159,11 +159,18 @@ export function navigateForPush(
       if (gameId) {
         nav.navigate('GameTab', {
           screen: 'MatchDetails',
+          // initial:false keeps GamesList beneath MatchDetails so a
+          // cold-start push tap has a back target (not an app exit).
+          initial: false,
           params: { gameId },
         });
         return true;
       }
-      nav.navigate('ProfileTab', { screen: 'AdminApproval' });
+      nav.navigate('ProfileTab', {
+        screen: 'AdminApproval',
+        initial: false,
+        params: {},
+      });
       return true;
 
     case 'approved':
@@ -174,6 +181,7 @@ export function navigateForPush(
       if (gameId) {
         nav.navigate('GameTab', {
           screen: 'MatchDetails',
+          initial: false,
           params: { gameId },
         });
         return true;
@@ -195,6 +203,7 @@ export function navigateForPush(
       if (gameId) {
         nav.navigate('GameTab', {
           screen: 'MatchDetails',
+          initial: false,
           params: { gameId },
         });
         return true;
@@ -258,7 +267,11 @@ export function navigateForPush(
     case 'growthMilestone':
       // Achievements page surfaces all unlocked badges; the inner
       // detail popover keys off the optional `badgeId` payload field.
-      nav.navigate('ProfileTab', { screen: 'Achievements' });
+      nav.navigate('ProfileTab', {
+        screen: 'Achievements',
+        initial: false,
+        params: {},
+      });
       return true;
 
     case 'promotePrompt':
@@ -267,6 +280,7 @@ export function navigateForPush(
       if (gameId && groupId) {
         nav.navigate('GameTab', {
           screen: 'PromoteOrphan',
+          initial: false,
           params: { groupId, gameId },
         });
         return true;
@@ -293,7 +307,15 @@ export function navigateForPush(
       // Friend pushes open the Friends screen — incoming requests sit at
       // the top (to accept/decline), accepted friends below. Previously
       // these fell through to `default` and tapping the push did nothing.
-      nav.navigate('ProfileTab', { screen: 'Friends' });
+      // `initial: false` keeps ProfileTab's root (the player card) BELOW
+      // Friends in the stack — otherwise a cold-start friend push makes
+      // Friends the root, the header back-arrow has nowhere to go, and
+      // hardware-back exits the app instead of returning to the card.
+      nav.navigate('ProfileTab', {
+        screen: 'Friends',
+        initial: false,
+        params: {},
+      });
       return true;
 
     default:
