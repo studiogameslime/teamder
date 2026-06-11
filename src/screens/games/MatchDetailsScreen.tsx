@@ -1626,6 +1626,13 @@ export function MatchDetailsScreen() {
   const communityName = game.isOrphanContext
     ? he.matchDetailsCommunityOrphan
     : myCommunities.find((g) => g.id === game.groupId)?.name;
+  // Community rules (free text set in the community form) — surfaced here
+  // so every participant sees them before the game (no kickers, no late,
+  // bring water, …). Only available for members (myCommunities).
+  const communityRules = game.isOrphanContext
+    ? undefined
+    : myCommunities.find((g) => g.id === game.groupId)?.rules?.trim() ||
+      undefined;
   const organizerName = game.createdBy
     ? playersMap[game.createdBy]?.displayName ?? null
     : null;
@@ -2028,6 +2035,22 @@ export function MatchDetailsScreen() {
                     />
                   ))}
               </View>
+            </View>
+          ) : null}
+
+          {/* Community rules — free text from the community form, shown
+              to every participant. Amber tint = "behaviour expectations". */}
+          {communityRules ? (
+            <View style={styles.rulesCard}>
+              <View style={styles.rulesHeader}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={16}
+                  color="#B45309"
+                />
+                <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
+              </View>
+              <Text style={styles.rulesBody}>{communityRules}</Text>
             </View>
           ) : null}
 
@@ -3101,6 +3124,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  rulesCard: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+    gap: 6,
+  },
+  rulesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rulesTitle: {
+    ...typography.label,
+    color: '#B45309',
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  rulesBody: {
+    ...typography.body,
+    color: '#78350F',
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 21,
   },
   draftSection: { marginTop: spacing.lg, gap: spacing.sm },
   draftSectionHeader: {
