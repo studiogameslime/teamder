@@ -57,10 +57,12 @@ export function DraftTeamCard({ index, captain, members, highlight, width }: Pro
 function MemberRow({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
   return (
     <View style={styles.row}>
-      <UserAvatar user={user} size={34} />
+      <UserAvatar user={user} size={30} />
       <View style={styles.rowText}>
         {captain ? <Text style={styles.captainTag}>{he.draftCaptainLabel}</Text> : null}
-        <Text style={styles.name} numberOfLines={1}>
+        {/* 2 lines so real names ("Eliran Tzabari") stay readable inside the
+            narrow 3-up team cards instead of truncating to "Eli…". */}
+        <Text style={styles.name} numberOfLines={2}>
           {user.name}
         </Text>
       </View>
@@ -75,7 +77,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     ...shadows.card,
   },
   cardHighlight: {

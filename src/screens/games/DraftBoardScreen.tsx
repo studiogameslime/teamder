@@ -7,7 +7,13 @@
 // list. When everyone is placed it flips to a summary with "סיים".
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -36,11 +42,10 @@ import type { GameStackParamList } from '@/navigation/GameStack';
 type Nav = NativeStackNavigationProp<GameStackParamList>;
 type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 
-const TEAM_CARD_WIDTH = 230;
-
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
   const { gameId, captainIds, method } = useRoute<Params>().params;
+  const { width: screenW } = useWindowDimensions();
 
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -82,6 +87,13 @@ export function DraftBoardScreen() {
   );
 
   const numTeams = captainIds.length;
+  // Size team cards to FIT the screen: 2–3 teams fill the width evenly
+  // (like the mockup — no scroll, no clipped half-card), 4 teams fall back
+  // to a horizontal scroll showing 3-at-a-time and snapping cleanly.
+  const cols = Math.min(numTeams, 3);
+  const cardWidth = Math.floor(
+    (screenW - spacing.lg * 2 - spacing.md * (cols - 1)) / cols,
+  );
   const draftable = useMemo(
     () => (game?.players ?? []).filter((p) => !captainIds.includes(p)),
     [game?.players, captainIds],
@@ -218,6 +230,12 @@ export function DraftBoardScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.teamsRow}
+          // Only the 4-team case overflows; snap so a card never rests
+          // half-clipped at the edge.
+          scrollEnabled={numTeams > 3}
+          snapToInterval={cardWidth + spacing.md}
+          snapToAlignment="start"
+          decelerationRate="fast"
         >
           {Array.from({ length: numTeams }, (_, t) => (
             <DraftTeamCard
@@ -226,7 +244,7 @@ export function DraftBoardScreen() {
               captain={resolve(captainIds[t])}
               members={membersOf(t).map(resolve)}
               highlight={currentTeam === t}
-              width={TEAM_CARD_WIDTH}
+              width={cardWidth}
             />
           ))}
         </ScrollView>
@@ -277,7 +295,6 @@ const styles = StyleSheet.create({
   teamsRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    paddingHorizontal: spacing.xs,
     paddingBottom: spacing.sm,
   },
   availTitle: {
