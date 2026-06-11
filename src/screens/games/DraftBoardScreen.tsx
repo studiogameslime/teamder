@@ -7,13 +7,7 @@
 // list. When everyone is placed it flips to a summary with "סיים".
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -46,7 +40,6 @@ type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
   const { gameId, captainIds, method } = useRoute<Params>().params;
-  const { width: screenW } = useWindowDimensions();
 
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -101,13 +94,6 @@ export function DraftBoardScreen() {
   );
 
   const numTeams = captainIds.length;
-  // Size team cards to FIT the screen: 2–3 teams fill the width evenly
-  // (like the mockup — no scroll, no clipped half-card), 4 teams fall back
-  // to a horizontal scroll showing 3-at-a-time and snapping cleanly.
-  const cols = Math.min(numTeams, 3);
-  const cardWidth = Math.floor(
-    (screenW - spacing.lg * 2 - spacing.md * (cols - 1)) / cols,
-  );
   const draftable = useMemo(
     () => participants.filter((p) => !captainIds.includes(p.id)).map((p) => p.id),
     [participants, captainIds],
@@ -245,22 +231,14 @@ export function DraftBoardScreen() {
           />
         </View>
 
-        {/* Teams — horizontal cards; the team whose turn it is pulses
-            (big↔small) instead of a text banner. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.teamsRow}
-          scrollEnabled={numTeams > 3}
-          snapToInterval={cardWidth + spacing.md}
-          snapToAlignment="start"
-          decelerationRate="fast"
-        >
+        {/* Teams — one full-width card per row, stacked. The team whose
+            turn it is pulses (big↔small) instead of a text banner. */}
+        <View style={styles.teamsCol}>
           {Array.from({ length: numTeams }, (_, t) => (
             <Breathing
               key={t}
               active={currentTeam === t}
-              amount={0.045}
+              amount={0.02}
               periodMs={1050}
             >
               <DraftTeamCard
@@ -268,12 +246,10 @@ export function DraftBoardScreen() {
                 captain={resolve(captainIds[t])}
                 members={membersOf(t).map(resolve)}
                 highlight={currentTeam === t}
-                width={cardWidth}
-                compact
               />
             </Breathing>
           ))}
-        </ScrollView>
+        </View>
 
         {/* Undo last pick — for an accidental tap. */}
         {pickIndex > 0 ? (
@@ -322,17 +298,8 @@ const styles = StyleSheet.create({
   },
   stepText: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
   pathWrap: { marginBottom: spacing.lg },
-  teamsRow: {
-    flexDirection: 'row',
-    // Top-aligned: cards size to content (the active one pulses). A
-    // minHeight on the card keeps captain-only cards from looking tiny.
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    paddingBottom: spacing.sm,
-    // Room for the pulse so the enlarged card isn't clipped.
-    paddingHorizontal: 2,
-    paddingTop: 4,
-  },
+  // One full-width team card per row, stacked vertically.
+  teamsCol: { gap: spacing.md, paddingHorizontal: 2, paddingVertical: 4 },
   undoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
