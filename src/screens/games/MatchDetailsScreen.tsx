@@ -1640,6 +1640,45 @@ export function MatchDetailsScreen() {
     const g = (game.guests ?? []).find((x) => x.id === id);
     return { id, name: g?.name ?? '…' };
   };
+  // Remove a guest — triggered by the row's ✕ button (admin only), NOT
+  // by tapping the row (tapping a player is reserved for opening their
+  // card). `rosterId` is the synthetic `guest:<id>` token.
+  const handleRemoveGuest = (rosterId: string) => {
+    if (!isAdmin || !user) return;
+    const guestId = rosterId.replace(/^guest:/, '');
+    const guest = (game.guests ?? []).find((g) => g.id === guestId);
+    if (!guest) return;
+    appAlert(he.guestRowActionTitle(guest.name), undefined, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.guestRowActionRemove,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await gameService.removeGuest(game.id, user.id, guestId);
+            setGame((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    guests: (prev.guests ?? []).filter((g) => g.id !== guestId),
+                  }
+                : prev,
+            );
+            toast.success(he.guestRowRemoveSuccess);
+          } catch (err) {
+            logError('removeGuest', err, {
+              screen: 'MatchDetailsScreen',
+              gameId: game.id,
+              guestId,
+            });
+            if (__DEV__) console.warn('[guests] remove failed', err);
+            toast.error(he.guestRowRemoveError);
+          }
+        },
+      },
+    ]);
+  };
+
   const draftTeams = game.draftTeams;
   const openDraftView = () => {
     if (!draftTeams) return;
@@ -1913,64 +1952,12 @@ export function MatchDetailsScreen() {
                 ? () => setGuestModalOpen(true)
                 : undefined
             }
+            onRemoveGuest={handleRemoveGuest}
             onPressMember={(uid) => {
-              // Guests have no PlayerCard — their roster id is a
-              // synthetic `guest:<id>` token, not a real userId.
-              // For admins we open a short prompt to REMOVE the
-              // guest (or edit, via the existing GuestModal). This
-              // is the only entry point: tapping a guest row used to
-              // silently no-op, so admins had no way to undo an
-              // accidental "add guest" press.
-              if (typeof uid === 'string' && uid.startsWith('guest:')) {
-                if (!isAdmin || !user) return;
-                const guestId = uid.replace(/^guest:/, '');
-                const guest = (game.guests ?? []).find((g) => g.id === guestId);
-                if (!guest) return;
-                appAlert(
-                  he.guestRowActionTitle(guest.name),
-                  undefined,
-                  [
-                    { text: he.cancel, style: 'cancel' },
-                    {
-                      text: he.guestRowActionRemove,
-                      style: 'destructive',
-                      onPress: async () => {
-                        try {
-                          await gameService.removeGuest(
-                            game.id,
-                            user.id,
-                            guestId,
-                          );
-                          // Optimistic local splice so the row
-                          // disappears immediately — without it we'd
-                          // wait for the Firestore listener tick (up
-                          // to ~500 ms) and the user thinks the tap
-                          // did nothing.
-                          setGame((prev) => {
-                            if (!prev) return prev;
-                            return {
-                              ...prev,
-                              guests: (prev.guests ?? []).filter(
-                                (g) => g.id !== guestId,
-                              ),
-                            };
-                          });
-                          toast.success(he.guestRowRemoveSuccess);
-                        } catch (err) {
-                          logError('removeGuest', err, {
-                            screen: 'MatchDetailsScreen',
-                            gameId: game.id,
-                            guestId,
-                          });
-                          if (__DEV__) console.warn('[guests] remove failed', err);
-                          toast.error(he.guestRowRemoveError);
-                        }
-                      },
-                    },
-                  ],
-                );
-                return;
-              }
+              // Tapping a row = open the player's card. Guests have no
+              // PlayerCard (synthetic `guest:<id>` token) so their row tap
+              // is a no-op; removal is the dedicated ✕ button instead.
+              if (typeof uid === 'string' && uid.startsWith('guest:')) return;
               nav.navigate('PlayerCard', {
                 userId: uid,
                 groupId: game.groupId,
@@ -2030,6 +2017,14 @@ export function MatchDetailsScreen() {
                       index={t.index}
                       captain={resolveDraftUser(t.captainId)}
                       members={t.playerIds.slice(1).map(resolveDraftUser)}
+                      onPressUser={(id) => {
+                        // Guests have no card; real players → PlayerCard.
+                        if ((game.guests ?? []).some((g) => g.id === id)) return;
+                        nav.navigate('PlayerCard', {
+                          userId: id,
+                          groupId: game.groupId,
+                        });
+                      }}
                     />
                   ))}
               </View>

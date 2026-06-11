@@ -98,6 +98,14 @@ export function DraftBoardScreen() {
     (id: string) => byId.get(id) ?? { id, name: '…' },
     [byId],
   );
+  // Tap a player chip → their card (guests have no card → skip).
+  const openCard = useCallback(
+    (id: string) => {
+      if ((game?.guests ?? []).some((g) => g.id === id)) return;
+      nav.navigate('PlayerCard', { userId: id, groupId: game?.groupId });
+    },
+    [game?.guests, game?.groupId, nav],
+  );
 
   const numTeams = captainIds.length;
   const draftable = useMemo(
@@ -186,6 +194,7 @@ export function DraftBoardScreen() {
                 index={t}
                 captain={resolve(captainIds[t])}
                 members={membersOf(t).map(resolve)}
+                onPressUser={openCard}
               />
             ))}
           </View>
@@ -265,6 +274,7 @@ export function DraftBoardScreen() {
                 captain={resolve(captainIds[t])}
                 members={membersOf(t).map(resolve)}
                 highlight={currentTeam === t}
+                onPressUser={openCard}
               />
             </Breathing>
           ))}

@@ -73,6 +73,10 @@ interface Props {
    *  "הצג הכל"). Tapping reuses `onSeeAll` → the full players screen
    *  where approve/reject lives. */
   pendingCount?: number;
+  /** Admin-only: remove a guest. When provided, guest rows show a small
+   *  ✕ button next to the ball (tapping a guest row no longer deletes —
+   *  it's reserved for navigation/identity like every other row). */
+  onRemoveGuest?: (rosterId: string) => void;
 }
 
 export function MatchParticipantsSection({
@@ -86,6 +90,7 @@ export function MatchParticipantsSection({
   onAddGuest,
   isAdminViewer = false,
   pendingCount = 0,
+  onRemoveGuest,
 }: Props) {
   const visible = members.slice(0, maxRows);
   return (
@@ -135,6 +140,11 @@ export function MatchParticipantsSection({
               onPress={() => onPressMember(m.id)}
               onToggleBringingBall={onToggleBringingBall}
               isAdminViewer={isAdminViewer}
+              onRemove={
+                m.bucket === 'guest' && isAdminViewer && onRemoveGuest
+                  ? () => onRemoveGuest(m.id)
+                  : undefined
+              }
             />
           ))}
         </Card>
@@ -149,12 +159,14 @@ function ParticipantRow({
   onPress,
   onToggleBringingBall,
   isAdminViewer,
+  onRemove,
 }: {
   entry: ParticipantEntry;
   showDivider: boolean;
   onPress: () => void;
   onToggleBringingBall?: (uid: string) => void;
   isAdminViewer?: boolean;
+  onRemove?: () => void;
 }) {
   // Ball indicator. Toggle is enabled for:
   //   • The auth user's own row (any registered player toggles
@@ -251,6 +263,20 @@ function ParticipantRow({
       {entry.bucket === 'guest' ? null : (
         <StatusBadge bucket={entry.bucket} arrival={entry.arrival} />
       )}
+      {onRemove ? (
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onRemove();
+          }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.7 }]}
+          accessibilityRole="button"
+          accessibilityLabel={he.guestRowActionRemove}
+        >
+          <Ionicons name="close" size={15} color={colors.danger} />
+        </Pressable>
+      ) : null}
       <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
     </Pressable>
   );
@@ -450,6 +476,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#DBEAFE',
     borderWidth: 1,
     borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Admin-only ✕ to remove a guest — sits next to the ball badge.
+  removeBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
     alignItems: 'center',
     justifyContent: 'center',
   },

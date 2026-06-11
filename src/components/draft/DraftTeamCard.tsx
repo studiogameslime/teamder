@@ -6,7 +6,7 @@
 // wasted space.
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { teamName } from '@/utils/draft';
@@ -25,6 +25,8 @@ interface Props {
   members: DraftUserLite[];
   /** Highlight the team whose turn it is to pick. */
   highlight?: boolean;
+  /** Tap a player chip → open their card. */
+  onPressUser?: (id: string) => void;
 }
 
 /** First token only — "מתן לוי" → "מתן", "Itay Davidi" → "Itay". */
@@ -33,14 +35,20 @@ function firstName(name: string): string {
   return t || name || '';
 }
 
-export function DraftTeamCard({ index, captain, members, highlight }: Props) {
+export function DraftTeamCard({
+  index,
+  captain,
+  members,
+  highlight,
+  onPressUser,
+}: Props) {
   return (
     <View style={[styles.card, highlight && styles.cardHighlight]}>
       {/* RTL: captain (first chip) lands on the right; members flow left. */}
       <View style={styles.chips}>
-        <Chip user={captain} captain />
+        <Chip user={captain} captain onPressUser={onPressUser} />
         {members.map((m) => (
-          <Chip key={m.id} user={m} />
+          <Chip key={m.id} user={m} onPressUser={onPressUser} />
         ))}
       </View>
       <Text style={styles.teamName}>{teamName(index)}</Text>
@@ -48,9 +56,17 @@ export function DraftTeamCard({ index, captain, members, highlight }: Props) {
   );
 }
 
-function Chip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
-  return (
-    <View style={styles.chip}>
+function Chip({
+  user,
+  captain,
+  onPressUser,
+}: {
+  user: DraftUserLite;
+  captain?: boolean;
+  onPressUser?: (id: string) => void;
+}) {
+  const body = (
+    <>
       {/* Fixed-height area so a smaller member avatar centers on the same
           line as the larger captain avatar (not pinned to the top). */}
       <View style={styles.avatarArea}>
@@ -61,7 +77,19 @@ function Chip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
       <Text style={styles.chipName} numberOfLines={1}>
         {firstName(user.name)}
       </Text>
-    </View>
+    </>
+  );
+  return onPressUser ? (
+    <Pressable
+      style={styles.chip}
+      onPress={() => onPressUser(user.id)}
+      accessibilityRole="button"
+      accessibilityLabel={user.name}
+    >
+      {body}
+    </Pressable>
+  ) : (
+    <View style={styles.chip}>{body}</View>
   );
 }
 
