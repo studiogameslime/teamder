@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -26,7 +26,10 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "he",
-        "CFBundleLocalizations": ["he", "en"],
+        "CFBundleLocalizations": [
+          "he",
+          "en"
+        ],
         "CFBundleAllowMixedLocalizations": true,
         "NSLocationWhenInUseUsageDescription": "Teamder משתמשת במיקום שלך כדי להציג קהילות וכדורגל באזור שלך. אפשר תמיד לסנן ידנית לפי עיר במקום.",
         "NSPhotoLibraryUsageDescription": "Teamder מבקשת גישה לתמונות שלך כדי שתוכל להעלות אווטאר אישי או תמונת קאבר לקהילה שלך.",
