@@ -10,24 +10,28 @@
 // the circle layer + auto-fit behaviour is specific to this screen.
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { colors, radius as rad } from '@/theme';
+import { he } from '@/i18n/he';
 
 interface Props {
   center: { lat: number; lng: number };
   radiusKm: number;
   /** Fired with coords when the user taps the map or drags the pin. */
   onPick?: (lat: number, lng: number) => void;
+  /** Tap the expand badge → open the big, readable full-screen map. */
+  onExpand?: () => void;
 }
 
-export function AvailabilityRadiusMap({ center, radiusKm, onPick }: Props) {
+export function AvailabilityRadiusMap({ center, radiusKm, onPick, onExpand }: Props) {
   const ref = useRef<WebView>(null);
   // Build the HTML once from the initial center/radius; later updates are
   // injected imperatively so the map never reloads (and never flickers).
   const initial = useRef({ center, radiusKm });
   const html = useMemo(
-    () => buildHtml(initial.current.center, initial.current.radiusKm),
+    () => buildAvailabilityMapHtml(initial.current.center, initial.current.radiusKm),
     [],
   );
 
@@ -86,11 +90,24 @@ export function AvailabilityRadiusMap({ center, radiusKm, onPick }: Props) {
           <Text style={styles.pillText}>{radiusKm} ק"מ</Text>
         </View>
       </View>
+      {/* Expand → full-screen readable map. A small badge (not the whole
+          card) so the map keeps receiving tap/drag to move the pin. */}
+      {onExpand ? (
+        <Pressable
+          onPress={onExpand}
+          hitSlop={10}
+          style={styles.expandBadge}
+          accessibilityRole="button"
+          accessibilityLabel={he.availabilityAreaTitle}
+        >
+          <Ionicons name="expand" size={15} color="#FFFFFF" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
-function buildHtml(
+export function buildAvailabilityMapHtml(
   center: { lat: number; lng: number },
   radiusKm: number,
 ): string {
@@ -281,4 +298,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   pillText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  expandBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(37,99,235,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 });

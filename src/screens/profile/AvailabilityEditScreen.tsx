@@ -26,6 +26,7 @@ import { appAlert } from '@/components/AppDialog';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RangeSlider } from '@/components/RangeSlider';
 import { AvailabilityRadiusMap } from '@/components/availability/AvailabilityRadiusMap';
+import { AvailabilityRadiusMapModal } from '@/components/availability/AvailabilityRadiusMapModal';
 import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -96,6 +97,7 @@ export function AvailabilityEditScreen() {
   const [locationEnabled, setLocationEnabled] = useState(initialLocationEnabled);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const isDirty =
     JSON.stringify(days) !== JSON.stringify(initial.preferredDays ?? []) ||
@@ -315,6 +317,7 @@ export function AvailabilityEditScreen() {
           center={pin}
           radiusKm={radiusKm}
           onPick={(lat, lng) => setPin({ lat, lng })}
+          onExpand={() => setMapExpanded(true)}
         />
 
         {/* Range slider */}
@@ -376,6 +379,18 @@ export function AvailabilityEditScreen() {
           </LinearGradient>
         </Pressable>
       </View>
+
+      <AvailabilityRadiusMapModal
+        visible={mapExpanded}
+        center={pin}
+        radiusKm={radiusKm}
+        minKm={RADIUS_MIN}
+        maxKm={RADIUS_MAX}
+        cityName={initial.homeCity}
+        onClose={() => setMapExpanded(false)}
+        onPick={(lat, lng) => setPin({ lat, lng })}
+        onRadiusChange={setRadiusKm}
+      />
     </SafeAreaView>
   );
 }
