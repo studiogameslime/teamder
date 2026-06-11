@@ -1540,6 +1540,26 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
+        // ── Regular actions first ──────────────────────────────────
+        // Organizer-only: find players whose availability matches this
+        // game and invite them. Only useful while the game is still open
+        // and has room. (This is the only entry point to the
+        // AvailablePlayers screen — it was previously unreachable.)
+        ...(isAdmin && game.status === 'open'
+          ? [
+              {
+                id: 'inviteAvailable',
+                label: he.matchInviteAvailable,
+                icon: 'person-add-outline' as const,
+                onPress: () =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'AvailablePlayers',
+                    { gameId: game.id },
+                  ),
+              },
+            ]
+          : []),
+        // ── Setting ────────────────────────────────────────────────
         // Visibility toggle — admin only, only when the game is
         // still in 'open' state (matches gameService.setVisibility
         // gating). Tap flips public ↔ community-only.
@@ -1563,6 +1583,7 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
+        // ── Destructive actions, grouped at the bottom ─────────────
         // Leave game — only when the user is registered and can
         // still cancel.
         ...(primaryDestructive && canCancelRegistration(game)
@@ -1573,24 +1594,6 @@ export function MatchDetailsScreen() {
                 icon: 'exit-outline' as const,
                 onPress: handlePrimary,
                 tone: 'danger' as const,
-              },
-            ]
-          : []),
-        // Organizer-only: find players whose availability matches this
-        // game and invite them. Only useful while the game is still open
-        // and has room. (This is the only entry point to the
-        // AvailablePlayers screen — it was previously unreachable.)
-        ...(isAdmin && game.status === 'open'
-          ? [
-              {
-                id: 'inviteAvailable',
-                label: he.matchInviteAvailable,
-                icon: 'person-add-outline' as const,
-                onPress: () =>
-                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                    'AvailablePlayers',
-                    { gameId: game.id },
-                  ),
               },
             ]
           : []),
