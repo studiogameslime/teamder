@@ -254,8 +254,12 @@ export function DraftBoardScreen() {
         {/* Undo last pick — for an accidental tap. */}
         {pickIndex > 0 ? (
           <PressableScale style={styles.undoBtn} onPress={undo}>
-            <Ionicons name="arrow-undo-outline" size={16} color={colors.primary} />
-            <Text style={styles.undoText}>{he.draftUndo}</Text>
+            {/* Inner row — PressableScale stacks its children in a column,
+                so icon+text must share an explicit flex-row wrapper. */}
+            <View style={styles.undoInner}>
+              <Ionicons name="arrow-undo-outline" size={16} color={colors.primary} />
+              <Text style={styles.undoText}>{he.draftUndo}</Text>
+            </View>
           </PressableScale>
         ) : null}
 
@@ -302,16 +306,14 @@ const styles = StyleSheet.create({
   teamsCol: { gap: spacing.md, paddingHorizontal: 2, paddingVertical: 4 },
   // Light, compact "undo" chip — a secondary action, not a heavy outline.
   undoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
     alignSelf: 'center',
-    gap: 5,
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 7,
     borderRadius: radius.pill,
     backgroundColor: colors.primaryLight,
   },
+  undoInner: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   undoText: {
     ...typography.caption,
     fontSize: 13,
