@@ -300,20 +300,24 @@ const styles = StyleSheet.create({
   pathWrap: { marginBottom: spacing.lg },
   // One full-width team card per row, stacked vertically.
   teamsCol: { gap: spacing.md, paddingHorizontal: 2, paddingVertical: 4 },
+  // Light, compact "undo" chip — a secondary action, not a heavy outline.
   undoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
-    gap: 6,
+    gap: 5,
     marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primaryLight,
   },
-  undoText: { ...typography.button, color: colors.primary, fontWeight: '800' },
+  undoText: {
+    ...typography.caption,
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '800',
+  },
   availTitle: {
     ...typography.h3,
     color: colors.text,
