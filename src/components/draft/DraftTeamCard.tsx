@@ -1,13 +1,14 @@
-// DraftTeamCard — one team, one full-width row (stacked vertically on the
-// board and the summary). The captain is a larger avatar on the RIGHT with
-// their first name below; each drafted player is added beside them as a
-// smaller avatar + first name, flowing leftward and wrapping to new lines.
+// DraftTeamCard — one team, one COMPACT full-width row. The team label
+// sits on the left; the captain (avatar ringed in brand blue, no "קפטן"
+// text) sits on the right with their first name; each drafted player is
+// added beside the captain as a smaller avatar + first name, flowing
+// leftward and wrapping as the team grows. Height is content-driven — no
+// wasted space.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
-import { he } from '@/i18n/he';
 import { teamName } from '@/utils/draft';
 
 export interface DraftUserLite {
@@ -35,34 +36,27 @@ function firstName(name: string): string {
 export function DraftTeamCard({ index, captain, members, highlight }: Props) {
   return (
     <View style={[styles.card, highlight && styles.cardHighlight]}>
-      <Text style={styles.teamName}>{teamName(index)}</Text>
-      {/* RTL: first child (captain) lands on the right; members flow left. */}
+      {/* RTL: captain (first chip) lands on the right; members flow left. */}
       <View style={styles.chips}>
-        <Chip user={captain} big captain />
+        <Chip user={captain} captain />
         {members.map((m) => (
           <Chip key={m.id} user={m} />
         ))}
       </View>
+      <Text style={styles.teamName}>{teamName(index)}</Text>
     </View>
   );
 }
 
-function Chip({
-  user,
-  big,
-  captain,
-}: {
-  user: DraftUserLite;
-  big?: boolean;
-  captain?: boolean;
-}) {
+function Chip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
   return (
-    <View style={[styles.chip, big && styles.chipBig]}>
-      <UserAvatar user={user} size={big ? 60 : 42} ring={captain} />
-      <Text style={[styles.chipName, big && styles.chipNameBig]} numberOfLines={1}>
+    <View style={styles.chip}>
+      <View style={captain ? styles.captainRing : undefined}>
+        <UserAvatar user={user} size={captain ? 42 : 34} />
+      </View>
+      <Text style={styles.chipName} numberOfLines={1}>
         {firstName(user.name)}
       </Text>
-      {captain ? <Text style={styles.capTag}>{he.draftCaptainLabel}</Text> : null}
     </View>
   );
 }
@@ -70,46 +64,46 @@ function Chip({
 const styles = StyleSheet.create({
   card: {
     alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    gap: spacing.sm,
     ...shadows.card,
   },
   cardHighlight: { borderColor: colors.primary, borderWidth: 2 },
   teamName: {
-    ...typography.body,
+    ...typography.caption,
     fontWeight: '800',
     color: colors.primary,
-    textAlign: 'right',
+    marginTop: 6,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
+    justifyContent: 'flex-start',
     columnGap: spacing.sm,
-    rowGap: spacing.sm,
+    rowGap: spacing.xs,
+    flexShrink: 1,
   },
-  chip: {
-    width: 58,
-    alignItems: 'center',
-    gap: 3,
+  chip: { width: 50, alignItems: 'center', gap: 3 },
+  captainRing: {
+    borderWidth: 2.5,
+    borderColor: colors.primary,
+    borderRadius: 99,
+    padding: 2,
   },
-  chipBig: { width: 72 },
   chipName: {
     ...typography.caption,
+    fontSize: 11,
     color: colors.text,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  chipNameBig: { ...typography.body, fontWeight: '800' },
-  capTag: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.primary,
-    fontWeight: '800',
   },
 });
