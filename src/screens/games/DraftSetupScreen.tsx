@@ -131,20 +131,25 @@ export function DraftSetupScreen() {
                 onPress={() => toggleCaptain(uid)}
                 style={[styles.playerRow, isCap && styles.playerRowActive]}
               >
-                <UserAvatar user={u} size={44} />
-                <Text style={styles.playerName} numberOfLines={1}>
-                  {u.name}
-                </Text>
-                {isCap ? (
-                  <View style={styles.capBadge}>
-                    <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-                    <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
-                  </View>
-                ) : null}
-                <View style={[styles.check, isCap && styles.checkOn]}>
+                {/* PressableScale puts children inside a single Animated.View
+                    (no flexDirection) — so the row layout MUST live on this
+                    inner wrapper, not on the PressableScale style. */}
+                <View style={styles.playerRowInner}>
+                  <UserAvatar user={u} size={44} />
+                  <Text style={styles.playerName} numberOfLines={1}>
+                    {u.name}
+                  </Text>
                   {isCap ? (
-                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                    <View style={styles.capBadge}>
+                      <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
+                      <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
+                    </View>
                   ) : null}
+                  <View style={[styles.check, isCap && styles.checkOn]}>
+                    {isCap ? (
+                      <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                    ) : null}
+                  </View>
                 </View>
               </PressableScale>
             );
@@ -217,18 +222,20 @@ function OrderOption({
       onPress={onPress}
       style={[styles.option, selected && styles.optionActive]}
     >
-      <View style={styles.optionBody}>
-        {recommended ? (
-          <View style={styles.recBadge}>
-            <Ionicons name="star" size={11} color="#FFFFFF" />
-            <Text style={styles.recBadgeText}>{he.draftRecommended}</Text>
-          </View>
-        ) : null}
-        <DraftOrderPath order={order} compact />
-        <Text style={styles.optionLabel}>{label}</Text>
-      </View>
-      <View style={[styles.radio, selected && styles.radioOn]}>
-        {selected ? <View style={styles.radioDot} /> : null}
+      <View style={styles.optionInner}>
+        <View style={styles.optionBody}>
+          {recommended ? (
+            <View style={styles.recBadge}>
+              <Ionicons name="star" size={11} color="#FFFFFF" />
+              <Text style={styles.recBadgeText}>{he.draftRecommended}</Text>
+            </View>
+          ) : null}
+          <DraftOrderPath order={order} compact />
+          <Text style={styles.optionLabel}>{label}</Text>
+        </View>
+        <View style={[styles.radio, selected && styles.radioOn]}>
+          {selected ? <View style={styles.radioDot} /> : null}
+        </View>
       </View>
     </PressableScale>
   );
@@ -255,9 +262,6 @@ const styles = StyleSheet.create({
   },
   list: { gap: spacing.sm },
   playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1.5,
@@ -265,6 +269,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     ...shadows.card,
+  },
+  playerRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   playerRowActive: { borderColor: colors.primary },
   playerName: {
@@ -309,9 +318,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1.5,
@@ -319,6 +325,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
+  },
+  optionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   optionActive: { borderColor: colors.primary },
   optionBody: { flex: 1, gap: spacing.sm },

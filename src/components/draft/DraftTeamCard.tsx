@@ -1,7 +1,9 @@
 // DraftTeamCard — one team as a self-contained card: name, captain, and
-// the players drafted so far. Used both on the draft board (fixed width,
-// horizontally scrollable so 2–4 teams never get cramped) and on the
-// summary (full width, stacked).
+// the players drafted so far. Two layouts:
+//   • compact (board, 2–4 teams fit across the screen) — each member is a
+//     CENTERED chip (avatar on top, name below) so the full card width is
+//     available to the name and long names never break mid-word.
+//   • full-width (summary) — avatar-right / name-left rows.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -26,9 +28,19 @@ interface Props {
   highlight?: boolean;
   /** Fixed width for the horizontal board; omit for full-width summary. */
   width?: number;
+  /** Centered-chip layout for the narrow board cards. */
+  compact?: boolean;
 }
 
-export function DraftTeamCard({ index, captain, members, highlight, width }: Props) {
+export function DraftTeamCard({
+  index,
+  captain,
+  members,
+  highlight,
+  width,
+  compact,
+}: Props) {
+  const Chip = compact ? StackChip : RowChip;
   return (
     <View
       style={[
@@ -40,29 +52,39 @@ export function DraftTeamCard({ index, captain, members, highlight, width }: Pro
       <Text style={styles.teamName}>{teamName(index)}</Text>
       <View style={styles.titleRule} />
 
-      <MemberRow user={captain} captain />
-
-      {members.length > 0 ? (
-        <>
-          <View style={styles.divider} />
-          {members.map((m) => (
-            <MemberRow key={m.id} user={m} />
-          ))}
-        </>
-      ) : null}
+      <Chip user={captain} captain />
+      {members.length > 0 ? <View style={styles.divider} /> : null}
+      {members.map((m, i) => (
+        <React.Fragment key={m.id}>
+          {i > 0 ? <View style={styles.dividerLight} /> : null}
+          <Chip user={m} />
+        </React.Fragment>
+      ))}
     </View>
   );
 }
 
-function MemberRow({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
+/** Centered avatar-over-name chip — used in the narrow board cards. */
+function StackChip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
+  return (
+    <View style={styles.chip}>
+      {captain ? <Text style={styles.chipTag}>{he.draftCaptainLabel}</Text> : null}
+      <UserAvatar user={user} size={40} ring={captain} />
+      <Text style={styles.chipName} numberOfLines={2}>
+        {user.name}
+      </Text>
+    </View>
+  );
+}
+
+/** Avatar-right / name-left row — used in the full-width summary cards. */
+function RowChip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
   return (
     <View style={styles.row}>
-      <UserAvatar user={user} size={30} />
+      <UserAvatar user={user} size={36} ring={captain} />
       <View style={styles.rowText}>
-        {captain ? <Text style={styles.captainTag}>{he.draftCaptainLabel}</Text> : null}
-        {/* 2 lines so real names ("Eliran Tzabari") stay readable inside the
-            narrow 3-up team cards instead of truncating to "Eli…". */}
-        <Text style={styles.name} numberOfLines={2}>
+        {captain ? <Text style={styles.rowTag}>{he.draftCaptainLabel}</Text> : null}
+        <Text style={styles.rowName} numberOfLines={1}>
           {user.name}
         </Text>
       </View>
@@ -80,10 +102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     ...shadows.card,
   },
-  cardHighlight: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-  },
+  cardHighlight: { borderColor: colors.primary, borderWidth: 2 },
   teamName: {
     ...typography.body,
     fontWeight: '800',
@@ -100,29 +119,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     opacity: 0.5,
   },
-  // Avatar leads (visual right under RTL), name/label to its left.
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.divider,
+    marginVertical: spacing.sm,
+  },
+  dividerLight: { height: spacing.sm },
+
+  // ── compact (board) centered chip ──
+  chip: { alignItems: 'center', gap: 4 },
+  chipTag: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  chipName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  // ── full-width (summary) row ──
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   rowText: { flexShrink: 1 },
-  captainTag: {
+  rowTag: {
     ...typography.caption,
     color: colors.primary,
     fontWeight: '800',
     textAlign: 'right',
   },
-  name: {
+  rowName: {
     ...typography.body,
     color: colors.text,
     fontWeight: '600',
     textAlign: 'right',
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.divider,
-    marginVertical: spacing.sm,
   },
 });

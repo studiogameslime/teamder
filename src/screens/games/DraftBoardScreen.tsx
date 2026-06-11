@@ -245,6 +245,7 @@ export function DraftBoardScreen() {
               members={membersOf(t).map(resolve)}
               highlight={currentTeam === t}
               width={cardWidth}
+              compact
             />
           ))}
         </ScrollView>
@@ -294,6 +295,7 @@ const styles = StyleSheet.create({
   pathWrap: { marginBottom: spacing.lg },
   teamsRow: {
     flexDirection: 'row',
+    alignItems: 'stretch', // all team cards share the tallest card's height
     gap: spacing.md,
     paddingBottom: spacing.sm,
   },
