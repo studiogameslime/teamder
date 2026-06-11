@@ -123,6 +123,21 @@ export function MainTabs() {
   );
 }
 
+// The CONFIGURED root screen for each tab's nested stack — must match
+// the `initialRouteName` of GameStack / CommunitiesStack / ProfileStack.
+// We reset to THIS, never to `stackRoutes[0]`, because a deep-link that
+// navigated into a tab without `initial: false` can leave a non-root
+// screen as the stack's first/only route (e.g. Friends becoming the
+// ProfileTab root after a friend push). That bad state also gets
+// PERSISTED, so reading the live first route would make "tap tab → root"
+// keep landing on the wrong screen forever. Resetting to the known root
+// self-heals any such corrupted/persisted stack on the next tab tap.
+const TAB_ROOT: Record<string, string> = {
+  GameTab: 'GamesList',
+  CommunitiesTab: 'CommunitiesFeed',
+  ProfileTab: 'Profile',
+};
+
 // Every tab press — whether the tab is currently focused or not —
 // resets the nested stack so the user lands on that tab's root
 // screen ("the feed"). Previously we used `navigate(tabName, {
@@ -147,16 +162,24 @@ function resetTabToRoot(
   };
   const tabRoute = state.routes.find((r) => r.name === tabName);
   const stackRoutes = tabRoute?.state?.routes;
-  const rootName = stackRoutes?.[0]?.name;
+  // Prefer the CONFIGURED root; fall back to the live first route only for
+  // tabs not in the map (defensive — all three are mapped).
+  const rootName = TAB_ROOT[tabName] ?? stackRoutes?.[0]?.name;
   if (!rootName) return;
   // Already at the root of this tab AND it's the focused tab → no-op.
   // (If the user is on tab A's root and taps tab A again, nothing to
   // do.) When switching FROM a different tab we let the navigate fire
   // even if the destination was already at root, because we still
   // need to actually focus the tab.
+  // "Already at root" means the stack is EXACTLY [configured-root] — not
+  // merely length 1. A persisted [Friends]-only stack is length 1 but its
+  // sole route is NOT the root, so we must still reset (self-heal) instead
+  // of no-op'ing and leaving the user stuck on the wrong screen.
   const stackIndex = tabRoute?.state?.index ?? 0;
   const alreadyAtRoot =
-    stackIndex === 0 && stackRoutes && stackRoutes.length === 1;
+    stackIndex === 0 &&
+    stackRoutes?.length === 1 &&
+    stackRoutes[0]?.name === rootName;
   if (alreadyAtRoot && navigation.isFocused()) return;
   e.preventDefault();
   navigation.dispatch(
