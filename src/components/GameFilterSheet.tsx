@@ -16,7 +16,7 @@
 // `nearby:true` makes the list screen resolve GPS + (on denial) flip it
 // back off, so the "אפשר גישה למיקום" button just sets nearby:true.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -26,6 +26,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { RangeSlider } from './RangeSlider';
@@ -162,6 +163,34 @@ export function GameFilterSheet({
   mapCenter,
 }: Props) {
   const [bigMapOpen, setBigMapOpen] = useState(false);
+  // Whether the app ALREADY holds foreground location permission. When it
+  // does we drop the "אפשר גישה למיקום" framing (there's nothing to grant)
+  // and show a plain enable control instead. Read non-prompting on open.
+  const [locationGranted, setLocationGranted] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      let Location: typeof import('expo-location') | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        Location = require('expo-location');
+      } catch {
+        Location = null;
+      }
+      if (!Location) return;
+      try {
+        const cur = await Location.getForegroundPermissionsAsync();
+        if (!cancelled) setLocationGranted(cur.granted);
+      } catch {
+        // ignore — leave as not-granted, show the permission prompt.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   const toggleFormat = (f: GameFormat) =>
     onChange({
@@ -293,10 +322,14 @@ export function GameFilterSheet({
                   ) : (
                     <>
                       <Text style={styles.nearbyPromptTitle}>
-                        {he.gameFiltersNearbyNeedPermission}
+                        {locationGranted
+                          ? he.gameFiltersNearbyEnableTitle
+                          : he.gameFiltersNearbyNeedPermission}
                       </Text>
                       <Text style={styles.nearbyPromptHint}>
-                        {he.gameFiltersNearbyPermissionHint}
+                        {locationGranted
+                          ? he.gameFiltersNearbyEnableHint
+                          : he.gameFiltersNearbyPermissionHint}
                       </Text>
                       <Pressable
                         onPress={() => onChange({ ...filters, nearby: true })}
@@ -312,7 +345,9 @@ export function GameFilterSheet({
                           color={colors.primary}
                         />
                         <Text style={styles.nearbyAllowText}>
-                          {he.gameFiltersNearbyAllow}
+                          {locationGranted
+                            ? he.gameFiltersNearbyEnable
+                            : he.gameFiltersNearbyAllow}
                         </Text>
                       </Pressable>
                     </>
@@ -501,7 +536,7 @@ function QuickToggle({
           {label}
         </Text>
       </View>
-      <Switch
+      <BallSwitch
         value={value}
         onValueChange={onChange}
         trackColor={{ false: colors.border, true: colors.primary }}

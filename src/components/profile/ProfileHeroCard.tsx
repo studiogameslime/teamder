@@ -46,8 +46,6 @@ interface Props {
   /** Pencil-overlay button — taps go to ProfileEdit. */
   onEditProfile?: () => void;
   onMenuPress: () => void;
-  onNotificationsPress?: () => void;
-  hasUnreadNotifications?: boolean;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -59,8 +57,6 @@ export function ProfileHeroCard({
   meta,
   onEditProfile,
   onMenuPress,
-  onNotificationsPress,
-  hasUnreadNotifications,
 }: Props) {
   return (
     <View style={styles.wrap}>
@@ -95,28 +91,8 @@ export function ProfileHeroCard({
             >
               <Ionicons name="menu" size={26} color="#FFFFFF" />
             </Pressable>
-            <Pressable
-              onPress={onNotificationsPress}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.profileSectionNotifications}
-            >
-              {/* Settings glyph (not a bell): this opens notification
-                  SETTINGS, and there is no notifications inbox — a bell
-                  here mis-signals "your notifications". */}
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color="#FFFFFF"
-              />
-              {hasUnreadNotifications ? (
-                <View style={styles.notifDot} />
-              ) : null}
-            </Pressable>
+            {/* Notification SETTINGS are reachable from the hamburger menu —
+                no separate top-bar button here (it was redundant). */}
           </View>
 
           <View style={styles.center}>
@@ -204,15 +180,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  notifDot: {
-    position: 'absolute',
-    top: 8,
-    end: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3B82F6',
   },
   center: {
     alignItems: 'center',

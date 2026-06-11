@@ -103,7 +103,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.sm,
   },
-  x: { position: 'absolute', top: spacing.md, left: spacing.md, padding: 4, zIndex: 2 },
+  // RTL swaps left/right, so `right` lands the ✕ on the visual LEFT.
+  x: { position: 'absolute', top: spacing.md, right: spacing.md, padding: 4, zIndex: 2 },
   title: {
     ...typography.h3,
     color: colors.text,

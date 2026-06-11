@@ -1875,6 +1875,7 @@ export function MatchDetailsScreen() {
                 ? { tempC: forecast.tempC, rainProb: forecast.rainProb }
                 : undefined
             }
+            weatherCode={forecast?.weatherCode}
           />
         </View>
 
@@ -2151,10 +2152,17 @@ export function MatchDetailsScreen() {
               {
                 icon: 'location-outline',
                 label: he.matchDetailsLabelLocation,
-                value:
-                  game.city && game.fieldAddress
-                    ? `${game.city}, ${game.fieldAddress}`
-                    : game.city || game.fieldAddress || null,
+                // Only prepend the city when the address doesn't already
+                // contain it — most free-text games store the full address
+                // ("עזריה 21, תל־אביב–יפו") so a naive join repeated the city.
+                value: (() => {
+                  const addr = (game.fieldAddress ?? '').trim();
+                  const city = (game.city ?? '').trim();
+                  if (addr && city && !addr.toLowerCase().includes(city.toLowerCase())) {
+                    return `${city}, ${addr}`;
+                  }
+                  return addr || city || null;
+                })(),
                 action: locationStr
                   ? {
                       icon: 'navigate',

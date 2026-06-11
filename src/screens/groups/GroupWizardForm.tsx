@@ -25,6 +25,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -128,12 +129,15 @@ export function GroupWizardForm({
 
   const fetchCities = useCallback((q: string) => searchCities(q), []);
 
+  // Phone + city are now REQUIRED for a community.
   const phoneEntered = values.contactPhone.trim().length > 0;
-  const phoneValid = !phoneEntered || isValidIsraeliPhone(values.contactPhone);
+  const phoneValid = phoneEntered && isValidIsraeliPhone(values.contactPhone);
   const phoneError = phoneEntered && !phoneValid;
+  const cityValid = values.city.trim().length > 0;
 
   const step1Valid = values.name.trim().length > 0;
-  const canSubmit = step1Valid && phoneValid && !busy;
+  const step2Valid = phoneValid && cityValid;
+  const canSubmit = step1Valid && step2Valid && !busy;
 
   const fade = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -235,6 +239,7 @@ export function GroupWizardForm({
                 <View>
                   <InputField
                     label={he.createGroupContactPhone}
+                    required
                     info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
                     value={values.contactPhone}
                     onChangeText={(v) => set('contactPhone', v)}
@@ -249,17 +254,12 @@ export function GroupWizardForm({
                 </View>
                 <AutocompleteInput
                   label={he.createGroupCity}
+                  required
                   value={values.city}
                   onChange={(v) => set('city', v)}
                   onSelect={(v) => set('city', v)}
                   placeholder={he.createGroupCityPlaceholder}
                   fetchSuggestions={fetchCities}
-                />
-                <InputField
-                  label={he.createGroupMaxMembers}
-                  value={values.maxMembers}
-                  onChangeText={(v) => set('maxMembers', v)}
-                  keyboardType="number-pad"
                 />
               </View>
             ) : null}
@@ -295,9 +295,9 @@ export function GroupWizardForm({
                 onPress={submit}
                 loading={busy}
                 // Stay tappable when only the step-1 name is missing so
-                // the tap can route back to step 1 (see `submit`). Only a
-                // bad phone / busy actually blocks the tap.
-                disabled={busy || !phoneValid}
+                // the tap can route back to step 1 (see `submit`). A missing/
+                // invalid phone or city (both required) blocks the tap.
+                disabled={busy || !step2Valid}
               />
             )}
           </View>
@@ -340,7 +340,7 @@ function ToggleCard({
           </Text>
         ) : null}
       </View>
-      <Switch
+      <BallSwitch
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: colors.border, true: ACCENT }}

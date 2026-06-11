@@ -480,7 +480,6 @@ export function ProfileScreen() {
           meta={heroMeta}
           onMenuPress={() => setMenuOpen(true)}
           onEditProfile={() => nav.navigate('ProfileEdit')}
-          onNotificationsPress={() => nav.navigate('NotificationsSettings')}
         />
 
         {/* ② Floating stats card overlapping the hero bottom. */}

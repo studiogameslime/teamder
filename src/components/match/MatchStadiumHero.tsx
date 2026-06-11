@@ -23,10 +23,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDayDate, formatTime } from '@/utils/format';
+import { skyForHour } from '@/utils/heroAtmosphere';
+import { LiveCountdown } from './LiveCountdown';
 
 interface Props {
   startsAt?: number;
@@ -49,6 +52,11 @@ export function MatchStadiumHero({
   onBackPress,
   onSharePress,
 }: Props) {
+  // Living sky: the gradient tint follows the kickoff hour (morning/day/
+  // sunset/night), with floodlights at night.
+  const hour = startsAt ? new Date(startsAt).getHours() : 12;
+  const sky = skyForHour(hour);
+
   return (
     <View style={styles.wrap}>
       <ImageBackground
@@ -56,18 +64,12 @@ export function MatchStadiumHero({
         style={styles.bg}
         resizeMode="cover"
       >
-        {/* Stronger gradient — darker on top, fades into the
-            content below. Boosts contrast against the floating
-            time card so it really feels like it's lifting off the
-            stadium photo. */}
-        <LinearGradient
-          colors={[
-            'rgba(7,12,32,0.55)',
-            'rgba(7,12,32,0.72)',
-            'rgba(7,12,32,0.92)',
-          ]}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Time-of-day sky. Bottom stop stays dark so the floating white
+            time card keeps its contrast against the stadium photo. */}
+        <LinearGradient colors={sky.gradient} style={StyleSheet.absoluteFill} />
+
+        {/* Night-only floodlight washes in the top corners. */}
+        {sky.floodlights ? <Floodlights /> : null}
         <SafeAreaView edges={['top']} style={styles.safe}>
           <View style={styles.topBar}>
             {/* Back is now first → renders on the leading edge under
@@ -152,6 +154,7 @@ export function MatchStadiumHero({
               <Text style={styles.floatingTime}>
                 {startsAt ? formatTime(startsAt) : '—'}
               </Text>
+              {startsAt ? <LiveCountdown startsAt={startsAt} /> : null}
             </View>
           </View>
         </SafeAreaView>
@@ -160,10 +163,36 @@ export function MatchStadiumHero({
   );
 }
 
+/** Two soft white floodlight washes in the top corners — night only. */
+function Floodlights() {
+  return (
+    <View pointerEvents="none" style={styles.floodWrap}>
+      {[styles.floodLeft, styles.floodRight].map((pos, i) => (
+        <View key={i} style={[styles.flood, pos]}>
+          <Svg width={160} height={160}>
+            <Defs>
+              <RadialGradient id={`fl${i}`} cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.32} />
+                <Stop offset="55%" stopColor="#E8F0FF" stopOpacity={0.1} />
+                <Stop offset="100%" stopColor="#E8F0FF" stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={80} cy={80} r={80} fill={`url(#fl${i})`} />
+          </Svg>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'visible',
   },
+  floodWrap: { ...StyleSheet.absoluteFillObject },
+  flood: { position: 'absolute', top: -56 },
+  floodLeft: { left: -40 },
+  floodRight: { right: -40 },
   bg: {
     width: '100%',
     // Leaves a strip of stadium below the time card so the floating

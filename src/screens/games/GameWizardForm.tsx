@@ -28,6 +28,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -1054,7 +1055,7 @@ function ToggleRow({
         </View>
         {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       </View>
-      <Switch
+      <BallSwitch
         value={value}
         onValueChange={flip}
         trackColor={{ false: colors.border, true: colors.primary }}

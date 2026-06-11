@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { RTL_LABEL_ALIGN, spacing } from '@/theme';
 import { he } from '@/i18n/he';
@@ -41,12 +42,11 @@ export function CommunityNotifyToggle({ subscribed, onChange }: Props) {
       accessibilityRole="switch"
       accessibilityState={{ checked: on }}
     >
-      <Switch
+      <BallSwitch
         value={on}
         onValueChange={flip}
         trackColor={{ false: '#E2E8F0', true: ACCENT }}
         thumbColor="#FFFFFF"
-        ios_backgroundColor="#E2E8F0"
       />
       <Text style={styles.label} numberOfLines={2}>
         {he.communityNotifyDesignTitle}

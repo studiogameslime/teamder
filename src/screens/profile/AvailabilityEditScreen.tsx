@@ -7,7 +7,7 @@
 // reverse-geocoded to a city name on save so the server-side matcher —
 // which keys off the home city + radius — keeps working.
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -16,6 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,6 +96,10 @@ export function AvailabilityEditScreen() {
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
   const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush === true);
   const [locationEnabled, setLocationEnabled] = useState(initialLocationEnabled);
+  // Whether the OS already granted foreground location. When it has, the
+  // "אשרו שיתוף מיקום" framing is misleading (nothing to grant) — the copy
+  // drops to a plain "flip the toggle above" instruction. Read non-prompting.
+  const [locationGranted, setLocationGranted] = useState(false);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
@@ -108,6 +113,29 @@ export function AvailabilityEditScreen() {
     notify !== (initial.acceptsFillerPush === true) ||
     locationEnabled !== initialLocationEnabled;
   const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let Location: typeof import('expo-location') | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        Location = require('expo-location');
+      } catch {
+        Location = null;
+      }
+      if (!Location) return;
+      try {
+        const cur = await Location.getForegroundPermissionsAsync();
+        if (!cancelled) setLocationGranted(cur.granted);
+      } catch {
+        // ignore — leave as not-granted, keep the permission-framed copy.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Master toggle. Turning it ON requires location permission; if the user
   // refuses we flip it straight back off (the feature is useless without
@@ -231,12 +259,16 @@ export function AvailabilityEditScreen() {
               <Ionicons name="navigate-circle-outline" size={18} color={ACCENT} />
               <Text style={styles.notifTitle}>{he.availabilityLocationToggle}</Text>
             </View>
-            <Text style={styles.notifHint}>{he.availabilityLocationToggleHint}</Text>
+            <Text style={styles.notifHint}>
+              {locationGranted
+                ? he.availabilityLocationToggleHintGranted
+                : he.availabilityLocationToggleHint}
+            </Text>
           </View>
           {gpsBusy ? (
             <SoccerBallLoader size={22} />
           ) : (
-            <Switch
+            <BallSwitch
               value={locationEnabled}
               onValueChange={handleToggleLocation}
               trackColor={{ false: colors.border, true: ACCENT }}
@@ -247,12 +279,20 @@ export function AvailabilityEditScreen() {
 
         {!locationEnabled ? (
           <View style={styles.lockedCard}>
-            <Ionicons name="lock-closed-outline" size={26} color={colors.textMuted} />
+            <Ionicons
+              name={locationGranted ? 'navigate-circle-outline' : 'lock-closed-outline'}
+              size={26}
+              color={colors.textMuted}
+            />
             <Text style={styles.lockedTitle}>
-              {he.availabilityLocationLockedTitle}
+              {locationGranted
+                ? he.availabilityLocationLockedTitleGranted
+                : he.availabilityLocationLockedTitle}
             </Text>
             <Text style={styles.lockedHint}>
-              {he.availabilityLocationLockedHint}
+              {locationGranted
+                ? he.availabilityLocationLockedHintGranted
+                : he.availabilityLocationLockedHint}
             </Text>
           </View>
         ) : (
@@ -354,7 +394,7 @@ export function AvailabilityEditScreen() {
             </View>
             <Text style={styles.notifHint}>{he.availabilityNotifHint}</Text>
           </View>
-          <Switch
+          <BallSwitch
             value={notify}
             onValueChange={setNotify}
             trackColor={{ false: colors.border, true: colors.success }}

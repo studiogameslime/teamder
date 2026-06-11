@@ -63,6 +63,11 @@ export const he = {
   gameFiltersNearbyNeedPermission: 'נדרש אישור מיקום',
   gameFiltersNearbyPermissionHint: 'כדי להציג משחקים בקרבתך',
   gameFiltersNearbyAllow: 'אפשר גישה למיקום',
+  // Shown when location permission is ALREADY granted — no need to ask
+  // again, just an enable control.
+  gameFiltersNearbyEnableTitle: 'משחקים בקרבת מקום',
+  gameFiltersNearbyEnableHint: 'סנן לפי המרחק ממך',
+  gameFiltersNearbyEnable: 'הצג משחקים קרובים',
   gameFiltersNearbyActive: 'מציג משחקים בקרבתך',
   gameFiltersNearbyOff: 'כבה',
   gameFiltersKm: (km: number) => `${km} ק"מ`,
@@ -599,7 +604,7 @@ export const he = {
   createGroupMaxMembers: 'מקסימום שחקנים במועדון',
   createGroupIsOpen: 'מועדון פתוח',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
-  createGroupContactPhone: 'טלפון איש קשר (לא חובה)',
+  createGroupContactPhone: 'טלפון איש קשר',
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" במועדון',
   createGroupContactPhoneInvalid: 'מספר לא תקין. פורמט: 05XXXXXXXX או +9725XXXXXXXX',
@@ -1138,6 +1143,13 @@ export const he = {
   availabilityLocationLockedTitle: 'אפשרו שיתוף מיקום',
   availabilityLocationLockedHint:
     'הפיצר הזה מוצא לך משחקים לפי המיקום שלך. הפעילו את המתג למעלה ואשרו שיתוף מיקום כדי להגדיר ימים, שעות וטווח חיפוש.',
+  // Variants shown when location permission is ALREADY granted — there's
+  // nothing to approve, so we don't ask; just flip the toggle.
+  availabilityLocationLockedTitleGranted: 'הפעילו איתור לפי מיקום',
+  availabilityLocationLockedHintGranted:
+    'הפיצר הזה מוצא לך משחקים לפי המיקום שלך. הפעילו את המתג למעלה כדי להגדיר ימים, שעות וטווח חיפוש.',
+  availabilityLocationToggleHintGranted:
+    'נמצא לך משחקים באזור שלך לפי המיקום הנוכחי.',
 
   // Post sign-in onboarding — single profile-customisation step.
   // The welcome + "how it works" intermediate screens were removed
@@ -1281,7 +1293,7 @@ export const he = {
   profileNextGameEmptyCta: 'חפש משחק',
   // Hero meta row (under the name) — location · trust · communities.
   profileHeroCommunities: (n: number) =>
-    n === 1 ? 'קהילה אחת' : `${n} קהילות`,
+    n === 1 ? 'מועדון אחד' : `${n} מועדונים`,
   profileHeroTrust: (pct: number) => `${pct}% אמין`,
   // Availability summary card on the profile.
   profileAvailabilityTitle: 'זמינות למשחקים',
@@ -1366,6 +1378,7 @@ export const he = {
 
   // Match details screen
   matchDetailsTitle: 'פרטי המשחק',
+  matchDetailsLoading: 'טוען את המשחק…',
   matchDetailsDate: 'תאריך ושעה',
   matchDetailsLocation: 'מיקום',
   matchDetailsField: 'סוג מגרש',
@@ -1671,8 +1684,28 @@ export const he = {
     'התראה למארגן כשמתקרבים לקיק־אוף ויש פחות שחקנים מהמינימום',
   notifGroupDeleted: 'מועדון נסגר',
   notifGroupDeletedSub: 'כשמנהל מוחק מועדון שאני חבר בו',
-  notifSave: 'שמור',
+  notifSave: 'שמור הגדרות',
   notifSaved: 'נשמר',
+
+  // ── Redesigned notifications screen ──
+  // Hero card explaining the screen, then the toggles grouped by category.
+  notifHeroTitle: 'נהל את הקצב שלך',
+  notifHeroBody:
+    'בחר בדיוק אילו עדכונים לקבל כדי להישאר בעניינים בלי הסחות דעת.',
+  notifCategoryGames: 'ניהול משחקים',
+  notifCategoryCommunity: 'קהילה וחברה',
+  notifCategoryReminders: 'תזכורות',
+  // OS-permission gate — shown when notifications are turned off for the
+  // app on the device, BEFORE the per-type toggles (which do nothing
+  // until the OS lets pushes through).
+  notifPermTitle: 'ההתראות כבויות במכשיר',
+  notifPermBody:
+    'כדי לקבל עדכונים על משחקים, בקשות ותזכורות — צריך לאשר התראות לאפליקציה. אחרי שתאשר, תוכל לבחור כאן בדיוק מה לקבל.',
+  notifPermEnable: 'אפשר התראות',
+  notifPermOpenSettings: 'פתיחת הגדרות',
+  notifPermDeniedTitle: 'ההתראות חסומות',
+  notifPermDeniedBody:
+    'חסמת התראות לאפליקציה. פתח את הגדרות המכשיר ואפשר התראות כדי לקבל עדכונים.',
 
   // Per-community subscription
   communityNotifyNewGames: 'הודיעו לי על משחקים חדשים במועדון',

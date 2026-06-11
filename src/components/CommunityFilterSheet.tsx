@@ -20,6 +20,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { RadiusSelector } from './RadiusSelector';
@@ -204,7 +205,7 @@ function SwitchRow({
         <Text style={styles.switchLabel}>{label}</Text>
         {caption ? <Text style={styles.switchCaption}>{caption}</Text> : null}
       </View>
-      <Switch
+      <BallSwitch
         value={value}
         onValueChange={onChange}
         trackColor={{ false: colors.border, true: colors.primary }}

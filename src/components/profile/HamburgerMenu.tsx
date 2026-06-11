@@ -23,6 +23,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -207,7 +208,7 @@ function MenuRow({
         </View>
       ) : null}
       {isToggle ? (
-        <Switch
+        <BallSwitch
           value={!!item.toggle?.value}
           disabled={item.toggle?.disabled}
           onValueChange={(v) => item.toggle?.onChange(v)}

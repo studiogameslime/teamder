@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GrowIn, ShrinkOut } from './DraftScalePop';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { teamName } from '@/utils/draft';
@@ -27,6 +28,12 @@ interface Props {
   highlight?: boolean;
   /** Tap a player chip → open their card. */
   onPressUser?: (id: string) => void;
+  /** Live board only: members grow in when drafted (off for static views). */
+  growMembers?: boolean;
+  /** A just-un-picked player still shrinking out of this card. */
+  ghostMember?: DraftUserLite;
+  /** Called when the ghost finishes shrinking, so the parent drops it. */
+  onGhostDone?: () => void;
 }
 
 /** First token only — "מתן לוי" → "מתן", "Itay Davidi" → "Itay". */
@@ -41,15 +48,29 @@ export function DraftTeamCard({
   members,
   highlight,
   onPressUser,
+  growMembers,
+  ghostMember,
+  onGhostDone,
 }: Props) {
   return (
     <View style={[styles.card, highlight && styles.cardHighlight]}>
       {/* RTL: captain (first chip) lands on the right; members flow left. */}
       <View style={styles.chips}>
         <Chip user={captain} captain onPressUser={onPressUser} />
-        {members.map((m) => (
-          <Chip key={m.id} user={m} onPressUser={onPressUser} />
-        ))}
+        {members.map((m) =>
+          growMembers ? (
+            <GrowIn key={m.id}>
+              <Chip user={m} onPressUser={onPressUser} />
+            </GrowIn>
+          ) : (
+            <Chip key={m.id} user={m} onPressUser={onPressUser} />
+          ),
+        )}
+        {ghostMember && onGhostDone ? (
+          <ShrinkOut key={`ghost-${ghostMember.id}`} onDone={onGhostDone}>
+            <Chip user={ghostMember} />
+          </ShrinkOut>
+        ) : null}
       </View>
       <Text style={styles.teamName}>{teamName(index)}</Text>
     </View>

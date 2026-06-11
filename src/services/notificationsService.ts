@@ -388,6 +388,53 @@ export const notificationsService = {
    * it returns the raw APNs token; the Cloud Function consumer will
    * need to convert via firebase-admin if you ever target iOS.
    */
+  /**
+   * Read the CURRENT OS push-permission status without prompting. Used by
+   * the settings screen to decide whether to gate the per-type toggles
+   * behind an "enable notifications on this device" call-to-action.
+   *
+   * `available: false` means the native module isn't linked (Expo Go) or
+   * we're in mock mode — the caller should treat permission as unknown
+   * and NOT show a misleading "denied" gate.
+   */
+  async getPushPermissionStatus(): Promise<{
+    granted: boolean;
+    canAskAgain: boolean;
+    available: boolean;
+  }> {
+    if (USE_MOCK_DATA) {
+      return { granted: false, canAskAgain: true, available: false };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants').default;
+    if (
+      Constants?.appOwnership === 'expo' ||
+      Constants?.executionEnvironment === 'storeClient'
+    ) {
+      return { granted: false, canAskAgain: true, available: false };
+    }
+    let Notifications: typeof import('expo-notifications') | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      Notifications = require('expo-notifications');
+    } catch {
+      Notifications = null;
+    }
+    if (!Notifications) {
+      return { granted: false, canAskAgain: true, available: false };
+    }
+    try {
+      const cur = await Notifications.getPermissionsAsync();
+      return {
+        granted: cur.granted,
+        canAskAgain: cur.canAskAgain,
+        available: true,
+      };
+    } catch {
+      return { granted: false, canAskAgain: true, available: false };
+    }
+  },
+
   async requestAndRegisterPushToken(uid: UserId): Promise<string | null> {
     if (USE_MOCK_DATA) return null;
     // Push tokens require a native module that is NOT bundled in Expo Go

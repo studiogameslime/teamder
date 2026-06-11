@@ -13,6 +13,7 @@
 
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -79,7 +80,7 @@ export function MatchManageSection({
                 <Text style={styles.rowTitle}>{he.matchVisibilityToggle}</Text>
                 <Text style={styles.rowHelper}>{he.matchVisibilityHelper}</Text>
               </View>
-              <Switch
+              <BallSwitch
                 value={visibilityIsPublic}
                 disabled={busy}
                 onValueChange={onToggleVisibility}

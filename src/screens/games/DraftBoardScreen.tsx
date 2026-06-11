@@ -23,6 +23,7 @@ import { Button } from '@/components/Button';
 import { appAlert } from '@/components/AppDialog';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
 import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
+import { GrowIn, ShrinkOut } from '@/components/draft/DraftScalePop';
 import { Breathing } from '@/components/anim/Breathing';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
@@ -122,28 +123,57 @@ export function DraftBoardScreen() {
   const done = order.length > 0 && pickIndex >= order.length;
   const currentTeam = done ? null : order[pickIndex] ?? 0;
 
-  const available = useMemo(
-    () => draftable.filter((p) => !assigned.has(p)),
-    [draftable, assigned],
-  );
-
   /** Drafted member uids for a given team, in pick order. */
   const membersOf = useCallback(
     (team: number) => picks.filter((_, k) => order[k] === team),
     [picks, order],
   );
 
+  // ── Pick / undo with a shrink↔grow transition ───────────────────────
+  // `ghost` is the item currently shrinking away IN PLACE after it moved:
+  //   • where:'list' — a picked player shrinking out of the available list
+  //     (it has already grown into its team card).
+  //   • where:'team' — an un-picked player shrinking out of its team card
+  //     (it has already grown back into the available list).
+  // One at a time; taps are ignored while a ghost is animating.
+  const [ghost, setGhost] = useState<
+    { uid: string; where: 'list' | 'team'; team?: number } | null
+  >(null);
+
   const pick = useCallback(
     (uid: string) => {
-      if (done) return;
+      if (done || ghost) return;
       setPicks((prev) => [...prev, uid]);
+      setGhost({ uid, where: 'list' });
     },
-    [done],
+    [done, ghost],
   );
 
   const undo = useCallback(() => {
-    setPicks((prev) => prev.slice(0, -1));
-  }, []);
+    if (ghost) return;
+    setPicks((prev) => {
+      if (prev.length === 0) return prev;
+      const removed = prev[prev.length - 1];
+      const removedTeam = order[prev.length - 1];
+      setGhost({ uid: removed, where: 'team', team: removedTeam });
+      return prev.slice(0, -1);
+    });
+  }, [ghost, order]);
+
+  // When the last pick completes the draft we flip to the summary and the
+  // board (with its shrinking ghost) unmounts — clear the ghost so it can't
+  // block a later undo ("חזרה לתיקון").
+  useEffect(() => {
+    if (done && ghost) setGhost(null);
+  }, [done, ghost]);
+
+  // Rows to render in the available list — `available` plus, when a picked
+  // player is still shrinking out, that player held in its ORIGINAL slot.
+  const ghostListUid = ghost?.where === 'list' ? ghost.uid : null;
+  const listUids = useMemo(
+    () => draftable.filter((p) => !assigned.has(p) || p === ghostListUid),
+    [draftable, assigned, ghostListUid],
+  );
 
   const finish = useCallback(async () => {
     if (!currentUser) return;
@@ -275,6 +305,14 @@ export function DraftBoardScreen() {
                 members={membersOf(t).map(resolve)}
                 highlight={currentTeam === t}
                 onPressUser={openCard}
+                // Newly-drafted chips grow in; an un-picked one shrinks out.
+                growMembers
+                ghostMember={
+                  ghost?.where === 'team' && ghost.team === t
+                    ? resolve(ghost.uid)
+                    : undefined
+                }
+                onGhostDone={() => setGhost(null)}
               />
             </Breathing>
           ))}
@@ -295,10 +333,10 @@ export function DraftBoardScreen() {
         {/* Available players */}
         <Text style={styles.availTitle}>{he.draftAvailableTitle}</Text>
         <View style={styles.availList}>
-          {available.map((uid) => {
+          {listUids.map((uid) => {
             const u = resolve(uid);
-            return (
-              <View key={uid} style={styles.availRow}>
+            const row = (
+              <View style={styles.availRow}>
                 {/* Avatar + name grouped on the right; בחר alone on the left. */}
                 <View style={styles.availIdentity}>
                   <UserAvatar user={u} size={42} />
@@ -310,6 +348,15 @@ export function DraftBoardScreen() {
                   <Text style={styles.pickBtnText}>{he.draftPick}</Text>
                 </PressableScale>
               </View>
+            );
+            // The just-picked player shrinks out of its slot; everyone else
+            // grows in (on board open, or when an undo returns them).
+            return uid === ghostListUid ? (
+              <ShrinkOut key={uid} onDone={() => setGhost(null)}>
+                {row}
+              </ShrinkOut>
+            ) : (
+              <GrowIn key={uid}>{row}</GrowIn>
             );
           })}
         </View>

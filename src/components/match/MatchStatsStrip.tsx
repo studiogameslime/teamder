@@ -8,6 +8,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { AnimatedWeatherIcon } from '@/components/anim/AnimatedWeatherIcon';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -17,6 +18,8 @@ interface Props {
   durationMinutes?: number;
   startsAt?: number;
   weather?: { tempC: number; rainProb: number };
+  /** WMO code — drives the animated weather glyph. */
+  weatherCode?: number;
 }
 
 export function MatchStatsStrip({
@@ -25,6 +28,7 @@ export function MatchStatsStrip({
   durationMinutes,
   startsAt,
   weather,
+  weatherCode,
 }: Props) {
   const isNight = isNightTime(startsAt);
   return (
@@ -47,12 +51,15 @@ export function MatchStatsStrip({
         label={he.matchStatsDuration}
       />
       <Divider />
-      <Cell
-        icon={isNight ? 'moon' : 'partly-sunny-outline'}
-        iconColor={isNight ? '#1E40AF' : ACCENT}
-        value={weather ? `${weather.tempC}°` : '—'}
-        label={he.matchStatsWeather}
-      />
+      <View style={styles.cell}>
+        <AnimatedWeatherIcon code={weatherCode} isNight={isNight} size={26} />
+        <Text style={styles.value} numberOfLines={1}>
+          {weather ? `${weather.tempC}°` : '—'}
+        </Text>
+        <Text style={styles.label} numberOfLines={1}>
+          {he.matchStatsWeather}
+        </Text>
+      </View>
     </View>
   );
 }

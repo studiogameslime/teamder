@@ -17,6 +17,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
+import { RollInView } from '@/components/anim/RollInView';
 import { PulseOnChange } from '@/components/anim/PulseOnChange';
 import type { ArrivalStatus } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -135,6 +136,7 @@ export function MatchParticipantsSection({
           {visible.map((m, i) => (
             <ParticipantRow
               key={m.id}
+              index={i}
               entry={m}
               showDivider={i > 0}
               onPress={() => onPressMember(m.id)}
@@ -154,6 +156,7 @@ export function MatchParticipantsSection({
 }
 
 function ParticipantRow({
+  index,
   entry,
   showDivider,
   onPress,
@@ -161,6 +164,7 @@ function ParticipantRow({
   isAdminViewer,
   onRemove,
 }: {
+  index: number;
   entry: ParticipantEntry;
   showDivider: boolean;
   onPress: () => void;
@@ -202,15 +206,19 @@ function ParticipantRow({
           "person silhouette" Ionicons placeholder that ignored the
           user's actual identity even when avatarId/photoUrl were
           available. */}
-      <UserAvatar
-        user={{
-          id: entry.id,
-          name: entry.name,
-          avatarId: entry.avatarId,
-          photoUrl: entry.photoUrl,
-        }}
-        size={44}
-      />
+      {/* Roll the avatar in like a player taking the field — staggered by
+          row so the squad files onto the pitch one after another. */}
+      <RollInView delayMs={index * 55}>
+        <UserAvatar
+          user={{
+            id: entry.id,
+            name: entry.name,
+            avatarId: entry.avatarId,
+            photoUrl: entry.photoUrl,
+          }}
+          size={44}
+        />
+      </RollInView>
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
           {entry.name}

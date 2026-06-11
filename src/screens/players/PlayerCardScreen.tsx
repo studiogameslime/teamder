@@ -44,12 +44,13 @@ import { achievementsService } from '@/services/achievementsService';
 import { trustService, type TrustSummary } from '@/services/trustService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
-import { useCurrentGroup } from '@/store/groupStore';
+import { useCurrentGroup, useGroupStore } from '@/store/groupStore';
 import {
   Game,
   getAttendanceRate,
   getCancelRate,
   User,
+  UserAchievementState,
 } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -759,9 +760,40 @@ function DisciplineSection({ user }: { user: User }) {
 
 function AchievementsSection({ user }: { user: User }) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Compute on every render — list() is a pure read over user.achievements.
-  // Cheap; ACHIEVEMENTS has ~13 entries.
-  const items = achievementsService.list(user);
+  // The stored `user.achievements` counters can be stale/inflated (legacy
+  // join-bump path). For the viewer's OWN card we derive the real counters
+  // from finished-game attendance — exactly like the "ההישגים שלי" screen —
+  // so both places show the same count. For other users we can't read their
+  // games/groups, so we fall back to the stored counters.
+  const me = useUserStore((s) => s.currentUser);
+  const groups = useGroupStore((s) => s.groups);
+  const isMe = !!me && me.id === user.id;
+  const [counters, setCounters] = useState<UserAchievementState | null>(null);
+
+  useEffect(() => {
+    if (!isMe) {
+      setCounters(null);
+      return;
+    }
+    let alive = true;
+    achievementsService
+      .deriveCounters(user.id, { groups, friendsCount: me?.friends?.length ?? 0 })
+      .then((c) => {
+        if (!alive) return;
+        setCounters(c);
+        achievementsService.persistDerivedUnlocks(user.id, c);
+      })
+      .catch(() => {
+        /* keep stored counters on failure */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isMe, user.id, groups, me?.friends?.length]);
+
+  const items = counters
+    ? achievementsService.listFromCounters(user, counters)
+    : achievementsService.list(user);
   const active = activeId ? items.find((i) => i.def.id === activeId) : null;
 
   // Sort: unlocked first (by category order in the catalog), locked

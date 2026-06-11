@@ -23,6 +23,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -320,7 +321,7 @@ export function MapScreen() {
         {/* Overlay toggle — show the OTHER layer. */}
         {overlay && overlay.length > 0 ? (
           <View style={styles.toggle}>
-            <Switch
+            <BallSwitch
               value={showOverlay}
               onValueChange={setShowOverlay}
               trackColor={{ true: colors.primary, false: '#CBD5E1' }}

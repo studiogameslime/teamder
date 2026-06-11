@@ -1,12 +1,20 @@
-// NotificationsSettingsScreen — toggles for each push notification type.
+// NotificationsSettingsScreen — toggles for each push notification type,
+// grouped by category under a hero explainer.
 //
 // Saves to /users/{uid}.notificationPrefs. The Cloud Function consumer
 // reads this map alongside fcmTokens before delivering an FCM payload,
 // so a `false` here suppresses the corresponding type without touching
 // the dispatch path on the writer side.
+//
+// Per-type toggles are useless while the OS has notifications turned OFF
+// for the app — nothing gets through regardless. So when device-level
+// permission isn't granted we surface an "enable notifications" gate at
+// the top, BEFORE the toggles, and let the user grant (or, if blocked,
+// jump to Settings) first.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,9 +22,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { appAlert } from '@/components/AppDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
@@ -30,7 +40,7 @@ import {
   defaultNotificationPrefs,
 } from '@/services/notificationsService';
 import { NotificationPrefs } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -40,84 +50,47 @@ interface Row {
   sub: string;
 }
 
-// Order is the user-facing display order — top items are the most
-// useful day-to-day. "growthMilestone" lives at the bottom because
-// it's optional and chatty.
-const ROWS: Row[] = [
+interface Category {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  rows: Row[];
+}
+
+// Grouped by what the notification is about. Within each group, the most
+// useful day-to-day items come first; chatty/optional ones last.
+const CATEGORIES: Category[] = [
   {
-    key: 'joinRequest',
-    label: he.notifJoinRequest,
-    sub: he.notifJoinRequestSub,
+    title: he.notifCategoryGames,
+    icon: 'football-outline',
+    rows: [
+      { key: 'joinRequest', label: he.notifJoinRequest, sub: he.notifJoinRequestSub },
+      { key: 'approvedRejected', label: he.notifApprovedRejected, sub: he.notifApprovedRejectedSub },
+      { key: 'gamePlayersJoined', label: he.notifGamePlayersJoined, sub: he.notifGamePlayersJoinedSub },
+      { key: 'playerCancelled', label: he.notifPlayerCancelled, sub: he.notifPlayerCancelledSub },
+      { key: 'gameShortageWarning', label: he.notifGameShortageWarning, sub: he.notifGameShortageWarningSub },
+      { key: 'gameCanceledOrUpdated', label: he.notifGameCanceledOrUpdated, sub: he.notifGameCanceledOrUpdatedSub },
+    ],
   },
   {
-    key: 'approvedRejected',
-    label: he.notifApprovedRejected,
-    sub: he.notifApprovedRejectedSub,
+    title: he.notifCategoryCommunity,
+    icon: 'people-outline',
+    rows: [
+      { key: 'newGameInCommunity', label: he.notifNewGameInCommunity, sub: he.notifNewGameInCommunitySub },
+      { key: 'spotOpened', label: he.notifSpotOpened, sub: he.notifSpotOpenedSub },
+      { key: 'gameFillingUp', label: he.notifGameFillingUp, sub: he.notifGameFillingUpSub },
+      { key: 'inviteToGame', label: he.notifInviteToGame, sub: he.notifInviteToGameSub },
+      { key: 'groupDeleted', label: he.notifGroupDeleted, sub: he.notifGroupDeletedSub },
+    ],
   },
   {
-    key: 'newGameInCommunity',
-    label: he.notifNewGameInCommunity,
-    sub: he.notifNewGameInCommunitySub,
-  },
-  {
-    key: 'gameReminder',
-    label: he.notifGameReminder,
-    sub: he.notifGameReminderSub,
-  },
-  {
-    key: 'gameCanceledOrUpdated',
-    label: he.notifGameCanceledOrUpdated,
-    sub: he.notifGameCanceledOrUpdatedSub,
-  },
-  {
-    key: 'spotOpened',
-    label: he.notifSpotOpened,
-    sub: he.notifSpotOpenedSub,
-  },
-  {
-    key: 'inviteToGame',
-    label: he.notifInviteToGame,
-    sub: he.notifInviteToGameSub,
-  },
-  {
-    key: 'rateReminder',
-    label: he.notifRateReminder,
-    sub: he.notifRateReminderSub,
-  },
-  {
-    key: 'gameFillingUp',
-    label: he.notifGameFillingUp,
-    sub: he.notifGameFillingUpSub,
-  },
-  {
-    key: 'gameRsvpNudge',
-    label: he.notifGameRsvpNudge,
-    sub: he.notifGameRsvpNudgeSub,
-  },
-  {
-    key: 'gamePlayersJoined',
-    label: he.notifGamePlayersJoined,
-    sub: he.notifGamePlayersJoinedSub,
-  },
-  {
-    key: 'playerCancelled',
-    label: he.notifPlayerCancelled,
-    sub: he.notifPlayerCancelledSub,
-  },
-  {
-    key: 'gameShortageWarning',
-    label: he.notifGameShortageWarning,
-    sub: he.notifGameShortageWarningSub,
-  },
-  {
-    key: 'groupDeleted',
-    label: he.notifGroupDeleted,
-    sub: he.notifGroupDeletedSub,
-  },
-  {
-    key: 'growthMilestone',
-    label: he.notifGrowthMilestone,
-    sub: he.notifGrowthMilestoneSub,
+    title: he.notifCategoryReminders,
+    icon: 'alarm-outline',
+    rows: [
+      { key: 'gameReminder', label: he.notifGameReminder, sub: he.notifGameReminderSub },
+      { key: 'gameRsvpNudge', label: he.notifGameRsvpNudge, sub: he.notifGameRsvpNudgeSub },
+      { key: 'rateReminder', label: he.notifRateReminder, sub: he.notifRateReminderSub },
+      { key: 'growthMilestone', label: he.notifGrowthMilestone, sub: he.notifGrowthMilestoneSub },
+    ],
   },
 ];
 
@@ -133,6 +106,32 @@ export function NotificationsSettingsScreen() {
   });
   const [busy, setBusy] = useState(false);
 
+  // OS-level push permission. `null` = unknown/not-checked (e.g. Expo Go,
+  // mock mode) — we hide the gate entirely so we never show a misleading
+  // "blocked" message where we can't actually do anything about it.
+  const [permGranted, setPermGranted] = useState<boolean | null>(null);
+  const [permCanAsk, setPermCanAsk] = useState(true);
+  const [permBusy, setPermBusy] = useState(false);
+
+  const refreshPermission = async () => {
+    const s = await notificationsService.getPushPermissionStatus();
+    setPermGranted(s.available ? s.granted : null);
+    setPermCanAsk(s.canAskAgain);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const s = await notificationsService.getPushPermissionStatus();
+      if (cancelled) return;
+      setPermGranted(s.available ? s.granted : null);
+      setPermCanAsk(s.canAskAgain);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Unsaved-changes guard: leaving with un-persisted toggle changes now
   // prompts (save / discard / cancel) instead of silently dropping them,
   // matching ProfileEdit. isDirty compares the draft to the saved store
@@ -146,6 +145,25 @@ export function NotificationsSettingsScreen() {
   const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
 
   if (!user) return null;
+
+  // The OS won't show the system prompt again once permanently denied —
+  // jump straight to the app's settings page in that case.
+  const handleEnablePermission = async () => {
+    if (permBusy) return;
+    if (!permCanAsk) {
+      Linking.openSettings().catch(() => {});
+      return;
+    }
+    setPermBusy(true);
+    try {
+      await notificationsService.requestAndRegisterPushToken(user.id);
+      await refreshPermission();
+    } catch (e) {
+      if (__DEV__) console.warn('[notifications] enable failed', e);
+    } finally {
+      setPermBusy(false);
+    }
+  };
 
   const toggle = (k: keyof NotificationPrefs) =>
     setPrefs((p) => {
@@ -190,31 +208,91 @@ export function NotificationsSettingsScreen() {
     }
   };
 
+  // While permission is off, the per-type toggles can't deliver anything —
+  // dim them so the gate above reads as the necessary first step.
+  const gated = permGranted === false;
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.notificationsTitle} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>{he.notificationsIntro}</Text>
-        <Card style={styles.card}>
-          {ROWS.map((row, i) => (
-            <Pressable
-              key={row.key}
-              onPress={() => toggle(row.key)}
-              style={[styles.row, i > 0 && styles.rowDivider]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>{row.label}</Text>
-                <Text style={styles.sub}>{row.sub}</Text>
-              </View>
-              <Switch
-                value={prefs[row.key]}
-                onValueChange={() => toggle(row.key)}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#fff"
+        {/* Hero explainer */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>{he.notifHeroTitle}</Text>
+          <Text style={styles.heroBody}>{he.notifHeroBody}</Text>
+        </View>
+
+        {/* OS-permission gate — only when notifications are off on device */}
+        {gated ? (
+          <View style={styles.permCard}>
+            <View style={styles.permIcon}>
+              <Ionicons
+                name="notifications-off-outline"
+                size={24}
+                color={colors.warning}
               />
-            </Pressable>
+            </View>
+            <View style={styles.permTextWrap}>
+              <Text style={styles.permTitle}>
+                {permCanAsk ? he.notifPermTitle : he.notifPermDeniedTitle}
+              </Text>
+              <Text style={styles.permBody}>
+                {permCanAsk ? he.notifPermBody : he.notifPermDeniedBody}
+              </Text>
+              <Pressable
+                onPress={handleEnablePermission}
+                disabled={permBusy}
+                style={({ pressed }) => [
+                  styles.permBtn,
+                  pressed && { opacity: 0.9 },
+                  permBusy && { opacity: 0.6 },
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={permCanAsk ? 'notifications-outline' : 'settings-outline'}
+                  size={16}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.permBtnText}>
+                  {permCanAsk ? he.notifPermEnable : he.notifPermOpenSettings}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Per-type toggles, grouped by category */}
+        <View style={gated && styles.gatedGroup} pointerEvents={gated ? 'none' : 'auto'}>
+          {CATEGORIES.map((cat) => (
+            <View key={cat.title} style={styles.categoryBlock}>
+              <View style={styles.categoryHeader}>
+                <Ionicons name={cat.icon} size={16} color={colors.primary} />
+                <Text style={styles.categoryTitle}>{cat.title}</Text>
+              </View>
+              <Card style={styles.card}>
+                {cat.rows.map((row, i) => (
+                  <Pressable
+                    key={row.key}
+                    onPress={() => toggle(row.key)}
+                    style={[styles.row, i > 0 && styles.rowDivider]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.label}>{row.label}</Text>
+                      <Text style={styles.sub}>{row.sub}</Text>
+                    </View>
+                    <BallSwitch
+                      value={!!prefs[row.key]}
+                      onValueChange={() => toggle(row.key)}
+                      trackColor={{ false: colors.border, true: colors.primary }}
+                      thumbColor="#fff"
+                    />
+                  </Pressable>
+                ))}
+              </Card>
+            </View>
           ))}
-        </Card>
+        </View>
       </ScrollView>
       <View style={{ padding: spacing.lg }}>
         <Button
@@ -233,9 +311,94 @@ export function NotificationsSettingsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, gap: spacing.md },
-  intro: {
+  // ── Hero ──
+  hero: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    gap: 6,
+  },
+  heroTitle: {
+    ...typography.h3,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  heroBody: {
     ...typography.body,
+    color: 'rgba(255,255,255,0.88)',
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 21,
+  },
+  // ── Permission gate ──
+  // `row` flips under forceRTL → icon (first child) lands on the visual
+  // RIGHT, the text block to its left.
+  permCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: '#FFFBEB',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: spacing.md,
+  },
+  permIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permTextWrap: { flex: 1, gap: 4 },
+  permTitle: {
+    ...typography.body,
+    color: '#92400E',
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  permBody: {
+    ...typography.caption,
+    color: '#B45309',
+    textAlign: RTL_LABEL_ALIGN,
+    lineHeight: 18,
+  },
+  // `row-reverse` so icon sits to the right of the label, centred together.
+  permBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.lg,
+    height: 42,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warning,
+  },
+  permBtnText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  // ── Categories ──
+  gatedGroup: { opacity: 0.45 },
+  categoryBlock: { gap: 6, marginTop: spacing.xs },
+  // `row` → icon (first child) on the visual RIGHT under forceRTL.
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 6,
+    marginTop: spacing.sm,
+    marginBottom: 2,
+    paddingHorizontal: spacing.xs,
+  },
+  categoryTitle: {
+    ...typography.caption,
     color: colors.textMuted,
+    fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
   card: { padding: 0, overflow: 'hidden' },

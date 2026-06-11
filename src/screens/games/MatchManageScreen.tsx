@@ -17,6 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -187,7 +188,7 @@ export function MatchManageScreen() {
                 <Text style={styles.rowTitle}>{he.matchVisibilityToggle}</Text>
                 <Text style={styles.rowHelper}>{he.matchVisibilityHelper}</Text>
               </View>
-              <Switch
+              <BallSwitch
                 value={game.visibility === 'public'}
                 disabled={!isOpen(game) || busy}
                 onValueChange={flipVisibility}
