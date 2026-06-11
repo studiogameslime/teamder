@@ -51,8 +51,12 @@ export function DraftTeamCard({ index, captain, members, highlight }: Props) {
 function Chip({ user, captain }: { user: DraftUserLite; captain?: boolean }) {
   return (
     <View style={styles.chip}>
-      <View style={captain ? styles.captainRing : undefined}>
-        <UserAvatar user={user} size={captain ? 42 : 34} />
+      {/* Fixed-height area so a smaller member avatar centers on the same
+          line as the larger captain avatar (not pinned to the top). */}
+      <View style={styles.avatarArea}>
+        <View style={captain ? styles.captainRing : undefined}>
+          <UserAvatar user={user} size={captain ? 42 : 34} />
+        </View>
       </View>
       <Text style={styles.chipName} numberOfLines={1}>
         {firstName(user.name)}
@@ -93,6 +97,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   chip: { width: 50, alignItems: 'center', gap: 3 },
+  avatarArea: { height: 52, justifyContent: 'center', alignItems: 'center' },
   captainRing: {
     borderWidth: 2.5,
     borderColor: colors.primary,
