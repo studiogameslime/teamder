@@ -46,6 +46,7 @@ export function DraftTeamCard({
       style={[
         styles.card,
         width ? { width } : { alignSelf: 'stretch' },
+        compact && styles.cardCompact,
         highlight && styles.cardHighlight,
       ]}
     >
@@ -102,6 +103,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     ...shadows.card,
   },
+  cardCompact: { minHeight: 132 },
   cardHighlight: { borderColor: colors.primary, borderWidth: 2 },
   teamName: {
     ...typography.body,

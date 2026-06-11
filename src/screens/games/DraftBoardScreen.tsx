@@ -29,6 +29,7 @@ import { Button } from '@/components/Button';
 import { appAlert } from '@/components/AppDialog';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
 import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
+import { Breathing } from '@/components/anim/Breathing';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
 import { gameService } from '@/services';
@@ -36,7 +37,7 @@ import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
-import { buildPickOrder, teamLetter } from '@/utils/draft';
+import { buildPickOrder } from '@/utils/draft';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -198,14 +199,25 @@ export function DraftBoardScreen() {
           </View>
         </ScrollView>
         <View style={styles.footer}>
-          <Button
-            title={he.draftFinish}
-            onPress={finish}
-            loading={saving}
-            fullWidth
-            size="lg"
-            iconLeft="checkmark-circle"
-          />
+          <View style={styles.summaryActions}>
+            {/* Go back one pick to fix a mistake before finalizing. */}
+            <Button
+              title={he.draftBackToEdit}
+              onPress={undo}
+              variant="outline"
+              size="lg"
+              iconLeft="arrow-undo-outline"
+              style={styles.flexBtn}
+            />
+            <Button
+              title={he.draftFinish}
+              onPress={finish}
+              loading={saving}
+              size="lg"
+              iconLeft="checkmark-circle"
+              style={styles.flexBtn}
+            />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -214,14 +226,7 @@ export function DraftBoardScreen() {
   // ── Draft board ─────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader
-        title={he.draftTitle}
-        actions={
-          pickIndex > 0
-            ? [{ icon: 'arrow-undo-outline', onPress: undo, label: he.draftUndo }]
-            : undefined
-        }
-      />
+      <ScreenHeader title={he.draftTitle} />
       <ScrollView
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
@@ -230,38 +235,53 @@ export function DraftBoardScreen() {
           <Text style={styles.stepText}>{he.draftStepLabel(2, 2)}</Text>
         </View>
 
-        {/* Whose turn */}
-        <Text style={styles.turn}>
-          {he.draftBoardTurn(teamLetter(currentTeam ?? 0))}
-        </Text>
+        {/* Pick path — captain avatars; the active pick is enlarged + ringed.
+            No "whose turn" text: the team card itself pulses below. */}
         <View style={styles.pathWrap}>
-          <DraftOrderPath order={order} activeIndex={pickIndex} />
+          <DraftOrderPath
+            order={order}
+            activeIndex={pickIndex}
+            captains={captainIds.map(resolve)}
+          />
         </View>
 
-        {/* Teams — horizontal cards */}
+        {/* Teams — horizontal cards; the team whose turn it is pulses
+            (big↔small) instead of a text banner. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.teamsRow}
-          // Only the 4-team case overflows; snap so a card never rests
-          // half-clipped at the edge.
           scrollEnabled={numTeams > 3}
           snapToInterval={cardWidth + spacing.md}
           snapToAlignment="start"
           decelerationRate="fast"
         >
           {Array.from({ length: numTeams }, (_, t) => (
-            <DraftTeamCard
+            <Breathing
               key={t}
-              index={t}
-              captain={resolve(captainIds[t])}
-              members={membersOf(t).map(resolve)}
-              highlight={currentTeam === t}
-              width={cardWidth}
-              compact
-            />
+              active={currentTeam === t}
+              amount={0.045}
+              periodMs={1050}
+            >
+              <DraftTeamCard
+                index={t}
+                captain={resolve(captainIds[t])}
+                members={membersOf(t).map(resolve)}
+                highlight={currentTeam === t}
+                width={cardWidth}
+                compact
+              />
+            </Breathing>
           ))}
         </ScrollView>
+
+        {/* Undo last pick — for an accidental tap. */}
+        {pickIndex > 0 ? (
+          <PressableScale style={styles.undoBtn} onPress={undo}>
+            <Ionicons name="arrow-undo-outline" size={16} color={colors.primary} />
+            <Text style={styles.undoText}>{he.draftUndo}</Text>
+          </PressableScale>
+        ) : null}
 
         {/* Available players */}
         <Text style={styles.availTitle}>{he.draftAvailableTitle}</Text>
@@ -301,20 +321,32 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   stepText: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
-  turn: {
-    ...typography.h3,
-    color: colors.primary,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
   pathWrap: { marginBottom: spacing.lg },
   teamsRow: {
     flexDirection: 'row',
-    alignItems: 'stretch', // all team cards share the tallest card's height
+    // Top-aligned: cards size to content (the active one pulses). A
+    // minHeight on the card keeps captain-only cards from looking tiny.
+    alignItems: 'flex-start',
     gap: spacing.md,
     paddingBottom: spacing.sm,
+    // Room for the pulse so the enlarged card isn't clipped.
+    paddingHorizontal: 2,
+    paddingTop: 4,
   },
+  undoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  undoText: { ...typography.button, color: colors.primary, fontWeight: '800' },
   availTitle: {
     ...typography.h3,
     color: colors.text,
@@ -385,4 +417,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     backgroundColor: colors.surface,
   },
+  summaryActions: { flexDirection: 'row', gap: spacing.md },
+  flexBtn: { flex: 1 },
 });

@@ -1720,5 +1720,6 @@ export const he = {
   draftViewMenu: 'הצג חלוקת כוחות',
   draftRedoMenu: 'חלק כוחות מחדש',
   draftUndo: 'בטל בחירה אחרונה',
+  draftBackToEdit: 'חזרה לתיקון',
   draftSaveError: 'שמירת החלוקה נכשלה, נסו שוב',
 } as const;

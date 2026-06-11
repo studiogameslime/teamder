@@ -177,14 +177,12 @@ export function DraftSetupScreen() {
         <OrderOption
           selected={method === 'snake'}
           onPress={() => setMethod('snake')}
-          label={he.draftSnakeLabel}
           order={previewPath(previewTeams, 'snake')}
           recommended
         />
         <OrderOption
           selected={method === 'regular'}
           onPress={() => setMethod('regular')}
-          label={he.draftRegularLabel}
           order={previewPath(previewTeams, 'regular')}
         />
 
@@ -216,13 +214,11 @@ export function DraftSetupScreen() {
 function OrderOption({
   selected,
   onPress,
-  label,
   order,
   recommended,
 }: {
   selected: boolean;
   onPress: () => void;
-  label: string;
   order: number[];
   recommended?: boolean;
 }) {
@@ -233,14 +229,17 @@ function OrderOption({
     >
       <View style={styles.optionInner}>
         <View style={styles.optionBody}>
-          {recommended ? (
-            <View style={styles.recBadge}>
-              <Ionicons name="star" size={11} color="#FFFFFF" />
-              <Text style={styles.recBadgeText}>{he.draftRecommended}</Text>
-            </View>
-          ) : null}
+          {/* Fixed-height line reserved on BOTH options (badge or empty) so
+              the two cards stay exactly the same height. */}
+          <View style={styles.badgeLine}>
+            {recommended ? (
+              <View style={styles.recBadge}>
+                <Ionicons name="star" size={11} color="#FFFFFF" />
+                <Text style={styles.recBadgeText}>{he.draftRecommended}</Text>
+              </View>
+            ) : null}
+          </View>
           <DraftOrderPath order={order} compact />
-          <Text style={styles.optionLabel}>{label}</Text>
         </View>
         <View style={[styles.radio, selected && styles.radioOn]}>
           {selected ? <View style={styles.radioDot} /> : null}
@@ -347,17 +346,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   optionActive: { borderColor: colors.primary },
-  optionBody: { flex: 1, gap: spacing.sm },
-  optionLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-    textAlign: 'right',
+  optionBody: { flex: 1 },
+  // Reserved top line (same height on both cards) that holds the מומלץ
+  // badge on the right — keeps the two options exactly the same height.
+  badgeLine: {
+    height: 22,
+    flexDirection: 'row',
+    justifyContent: 'flex-start', // right under RTL
+    marginBottom: spacing.sm,
   },
   recBadge: {
-    // Sits on its own line at the top-RIGHT of the option (flex-start is
-    // the right edge under RTL), above the path — never overlapping it.
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -365,7 +363,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginBottom: 8,
   },
   recBadgeText: { ...typography.caption, color: '#FFFFFF', fontWeight: '800' },
   radio: {

@@ -1,19 +1,26 @@
-// DraftOrderPath — the "מסלול הבחירה" letter-circle visualization.
+// DraftOrderPath — the "מסלול הבחירה" visualization.
 //
-// Renders the pick sequence as connected circles (one per pick, showing
-// the team letter). Used two ways:
-//   • setup preview  — `order` only → all neutral, shows snake vs regular
-//   • live board     — `activeIndex` set → picks before it read "done",
-//                      the active pick is filled + enlarged ("now"), the
-//                      rest are upcoming.
+// Renders the pick sequence as connected circles. Each circle shows the
+// captain's AVATAR when `captains` is passed (the live board), or the
+// team letter for the setup preview. The active pick is enlarged +
+// ringed; done picks dim; upcoming picks are outlined.
 //
-// First child lands on the visual RIGHT under forceRTL, so pick #1 (א)
-// sits on the right and the path flows right-to-left — matching the spec.
+// First child lands on the visual RIGHT under forceRTL, so pick #1 sits
+// on the right and the path flows right-to-left. Generous padding keeps
+// the enlarged active circle from being clipped at the edges.
 
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { UserAvatar } from '@/components/UserAvatar';
 import { colors, spacing, typography } from '@/theme';
 import { teamLetter } from '@/utils/draft';
+
+interface DraftUserLite {
+  id: string;
+  name: string;
+  avatarId?: string;
+  photoUrl?: string;
+}
 
 interface Props {
   /** Team indices in pick order. */
@@ -22,10 +29,12 @@ interface Props {
   activeIndex?: number;
   /** Smaller circles for inline previews. */
   compact?: boolean;
+  /** Captain per team index — render their avatar instead of the letter. */
+  captains?: DraftUserLite[];
 }
 
-export function DraftOrderPath({ order, activeIndex, compact }: Props) {
-  const dim = compact ? 30 : 38;
+export function DraftOrderPath({ order, activeIndex, compact, captains }: Props) {
+  const dim = compact ? 30 : 42;
   return (
     <ScrollView
       horizontal
@@ -35,6 +44,7 @@ export function DraftOrderPath({ order, activeIndex, compact }: Props) {
       {order.map((team, i) => {
         const isActive = activeIndex === i;
         const isDone = activeIndex !== undefined && i < activeIndex;
+        const cap = captains?.[team];
         return (
           <View key={i} style={styles.item}>
             {i > 0 ? (
@@ -52,19 +62,23 @@ export function DraftOrderPath({ order, activeIndex, compact }: Props) {
                 { width: dim, height: dim, borderRadius: dim / 2 },
                 isDone && styles.circleDone,
                 isActive && styles.circleActive,
-                isActive && { transform: [{ scale: 1.12 }] },
+                isActive && { transform: [{ scale: 1.14 }] },
               ]}
             >
-              <Text
-                style={[
-                  styles.letter,
-                  compact && { fontSize: 13 },
-                  isDone && styles.letterDone,
-                  isActive && styles.letterActive,
-                ]}
-              >
-                {teamLetter(team)}
-              </Text>
+              {cap ? (
+                <UserAvatar user={cap} size={dim - 6} />
+              ) : (
+                <Text
+                  style={[
+                    styles.letter,
+                    compact && { fontSize: 13 },
+                    isDone && styles.letterDone,
+                    isActive && styles.letterActive,
+                  ]}
+                >
+                  {teamLetter(team)}
+                </Text>
+              )}
             </View>
           </View>
         );
@@ -77,10 +91,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Center the path when it fits; it still scrolls when it overflows.
+    // Center the path when it fits; still scrolls when it overflows. The
+    // generous padding gives the scaled active circle room (no clipping).
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     gap: 0,
   },
   item: { flexDirection: 'row', alignItems: 'center' },
@@ -94,14 +110,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   circleDone: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.surfaceMuted,
+    borderColor: colors.primary,
+    opacity: 0.45,
   },
   circleActive: {
-    backgroundColor: colors.primary,
     borderColor: colors.primary,
+    borderWidth: 2.5,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
@@ -114,5 +131,5 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   letterDone: { color: colors.textMuted },
-  letterActive: { color: colors.textOnPrimary },
+  letterActive: { color: colors.primary },
 });
