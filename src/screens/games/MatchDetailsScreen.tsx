@@ -58,6 +58,7 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { MatchStadiumHero } from '@/components/match/MatchStadiumHero';
+import { DraftTeamCard } from '@/components/draft/DraftTeamCard';
 import { MatchStatsStrip } from '@/components/match/MatchStatsStrip';
 import { MatchDetailsGrid } from '@/components/match/MatchDetailsGrid';
 import {
@@ -1629,6 +1630,31 @@ export function MatchDetailsScreen() {
     ? playersMap[game.createdBy]?.displayName ?? null
     : null;
 
+  // Resolve a draft participant id (uid → store; guest id → game.guests)
+  // to a name/avatar for the inline "הכוחות שחולקו" display.
+  const resolveDraftUser = (id: string) => {
+    const p = playersMap[id];
+    if (p) {
+      return { id, name: p.displayName ?? '…', avatarId: p.avatarId, photoUrl: p.photoUrl };
+    }
+    const g = (game.guests ?? []).find((x) => x.id === id);
+    return { id, name: g?.name ?? '…' };
+  };
+  const draftTeams = game.draftTeams;
+  const openDraftView = () => {
+    if (!draftTeams) return;
+    const captainIds = [...draftTeams.teams]
+      .sort((a, b) => a.index - b.index)
+      .map((t) => t.captainId);
+    nav.navigate('DraftBoard', {
+      gameId: game.id,
+      captainIds,
+      method: draftTeams.method,
+      resume: true,
+      readOnly: !isAdmin,
+    });
+  };
+
   // Field-type label (אספלט / סינטטי / דשא) — null when unset.
   const fieldTypeLabel: string | null = game.fieldType
     ? game.fieldType === 'asphalt'
@@ -1981,6 +2007,34 @@ export function MatchDetailsScreen() {
                 });
             }}
           />
+
+          {/* Drafted teams (חלוקת כוחות) — visible to ALL participants
+              once a split has been saved. Tap to open the full view
+              (read-only for non-managers, editable for the organizer). */}
+          {draftTeams ? (
+            <View style={styles.draftSection}>
+              <Pressable
+                style={styles.draftSectionHeader}
+                onPress={openDraftView}
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
+              </Pressable>
+              <View style={styles.draftSectionList}>
+                {[...draftTeams.teams]
+                  .sort((a, b) => a.index - b.index)
+                  .map((t) => (
+                    <DraftTeamCard
+                      key={t.index}
+                      index={t.index}
+                      captain={resolveDraftUser(t.captainId)}
+                      members={t.playerIds.slice(1).map(resolveDraftUser)}
+                    />
+                  ))}
+              </View>
+            </View>
+          ) : null}
 
           {/* Waitlist preview — separate from the main participants
               section so the user understands "these aren't in yet,
@@ -3053,6 +3107,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  draftSection: { marginTop: spacing.lg, gap: spacing.sm },
+  draftSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+  },
+  draftSectionTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  draftSectionList: { gap: spacing.sm },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
