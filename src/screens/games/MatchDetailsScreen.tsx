@@ -1490,9 +1490,10 @@ export function MatchDetailsScreen() {
             ]
           : []),
         // Draft Teams (חלוקת כוחות) — manager splits the roster into 2–4
-        // teams via a captain draft. Needs at least 2 registered players
-        // (≥2 captains). Re-running replaces the saved split.
-        ...(isAdmin && game.players.length >= 2
+        // teams via a captain draft. Needs at least 2 participants
+        // (players + guests both draftable). Re-running replaces the split.
+        ...(isAdmin &&
+        game.players.length + (game.guests?.length ?? 0) >= 2
           ? [
               {
                 id: 'draftTeams',

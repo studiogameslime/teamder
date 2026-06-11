@@ -65,9 +65,14 @@ export function DraftSetupScreen() {
     };
   }, [gameId, hydratePlayers]);
 
-  const playerIds = game?.players ?? [];
-  const resolve = useCallback(
-    (uid: string) => {
+  // Draftable roster = registered players (uid → name/avatar from the
+  // store) PLUS per-game guests (name only; avatar falls back to a
+  // deterministic disc from the guest id).
+  const participants = useMemo<
+    { id: string; name: string; avatarId?: string; photoUrl?: string }[]
+  >(() => {
+    if (!game) return [];
+    const players = (game.players ?? []).map((uid) => {
       const p = playersMap[uid];
       return {
         id: uid,
@@ -75,9 +80,10 @@ export function DraftSetupScreen() {
         avatarId: p?.avatarId,
         photoUrl: p?.photoUrl,
       };
-    },
-    [playersMap],
-  );
+    });
+    const guests = (game.guests ?? []).map((g) => ({ id: g.id, name: g.name }));
+    return [...players, ...guests];
+  }, [game, playersMap]);
 
   const toggleCaptain = useCallback((uid: string) => {
     setCaptainIds((prev) =>
@@ -91,7 +97,7 @@ export function DraftSetupScreen() {
   // Validation: 2–4 captains, and at least one non-captain to draft.
   const tooFew = numTeams < MIN_TEAMS;
   const tooMany = numTeams > MAX_TEAMS;
-  const noPlayersLeft = numTeams >= playerIds.length && playerIds.length > 0;
+  const noPlayersLeft = numTeams >= participants.length && participants.length > 0;
   const canContinue = !tooFew && !tooMany && !noPlayersLeft;
 
   const hint = tooMany
@@ -121,30 +127,33 @@ export function DraftSetupScreen() {
 
         {/* Players — tap to toggle captain */}
         <View style={styles.list}>
-          {playerIds.map((uid) => {
-            const u = resolve(uid);
-            const capIndex = captainIds.indexOf(uid);
+          {participants.map((u) => {
+            const capIndex = captainIds.indexOf(u.id);
             const isCap = capIndex >= 0;
             return (
               <PressableScale
-                key={uid}
-                onPress={() => toggleCaptain(uid)}
+                key={u.id}
+                onPress={() => toggleCaptain(u.id)}
                 style={[styles.playerRow, isCap && styles.playerRowActive]}
               >
                 {/* PressableScale puts children inside a single Animated.View
                     (no flexDirection) — so the row layout MUST live on this
                     inner wrapper, not on the PressableScale style. */}
                 <View style={styles.playerRowInner}>
-                  <UserAvatar user={u} size={44} />
-                  <Text style={styles.playerName} numberOfLines={1}>
-                    {u.name}
-                  </Text>
-                  {isCap ? (
-                    <View style={styles.capBadge}>
-                      <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-                      <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
-                    </View>
-                  ) : null}
+                  {/* Identity grouped on the right (avatar · name · קפטן);
+                      the select check sits alone on the left. */}
+                  <View style={styles.playerIdentity}>
+                    <UserAvatar user={u} size={44} />
+                    <Text style={styles.playerName} numberOfLines={1}>
+                      {u.name}
+                    </Text>
+                    {isCap ? (
+                      <View style={styles.capBadge}>
+                        <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
+                        <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <View style={[styles.check, isCap && styles.checkOn]}>
                     {isCap ? (
                       <Ionicons name="checkmark" size={18} color="#FFFFFF" />
@@ -154,7 +163,7 @@ export function DraftSetupScreen() {
               </PressableScale>
             );
           })}
-          {playerIds.length === 0 ? (
+          {participants.length === 0 ? (
             <Text style={styles.emptyHint}>{he.draftNotEnoughPlayers}</Text>
           ) : null}
         </View>
@@ -273,14 +282,20 @@ const styles = StyleSheet.create({
   playerRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  playerIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
+    flexShrink: 1,
   },
   playerRowActive: { borderColor: colors.primary },
   playerName: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
-    flex: 1,
+    flexShrink: 1,
     textAlign: 'right',
   },
   capBadge: {
@@ -340,9 +355,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   recBadge: {
-    position: 'absolute',
-    top: -2,
-    left: 0,
+    // Sits on its own line at the top-RIGHT of the option (flex-start is
+    // the right edge under RTL), above the path — never overlapping it.
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -350,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    zIndex: 2,
+    marginBottom: 8,
   },
   recBadgeText: { ...typography.caption, color: '#FFFFFF', fontWeight: '800' },
   radio: {

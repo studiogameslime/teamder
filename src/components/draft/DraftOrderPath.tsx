@@ -77,6 +77,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Center the path when it fits; it still scrolls when it overflows.
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: spacing.xs,
     gap: 0,
   },

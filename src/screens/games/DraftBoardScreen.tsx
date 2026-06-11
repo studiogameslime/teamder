@@ -73,8 +73,12 @@ export function DraftBoardScreen() {
     };
   }, [gameId, hydratePlayers]);
 
-  const resolve = useCallback(
-    (uid: string) => {
+  // Roster = registered players (from the store) + per-game guests.
+  const participants = useMemo<
+    { id: string; name: string; avatarId?: string; photoUrl?: string }[]
+  >(() => {
+    if (!game) return [];
+    const players = (game.players ?? []).map((uid) => {
       const p = playersMap[uid];
       return {
         id: uid,
@@ -82,8 +86,17 @@ export function DraftBoardScreen() {
         avatarId: p?.avatarId,
         photoUrl: p?.photoUrl,
       };
-    },
-    [playersMap],
+    });
+    const guests = (game.guests ?? []).map((g) => ({ id: g.id, name: g.name }));
+    return [...players, ...guests];
+  }, [game, playersMap]);
+  const byId = useMemo(
+    () => new Map(participants.map((p) => [p.id, p])),
+    [participants],
+  );
+  const resolve = useCallback(
+    (id: string) => byId.get(id) ?? { id, name: '…' },
+    [byId],
   );
 
   const numTeams = captainIds.length;
@@ -95,8 +108,8 @@ export function DraftBoardScreen() {
     (screenW - spacing.lg * 2 - spacing.md * (cols - 1)) / cols,
   );
   const draftable = useMemo(
-    () => (game?.players ?? []).filter((p) => !captainIds.includes(p)),
-    [game?.players, captainIds],
+    () => participants.filter((p) => !captainIds.includes(p.id)).map((p) => p.id),
+    [participants, captainIds],
   );
   const order = useMemo(
     () => buildPickOrder(numTeams, draftable.length, method),
@@ -257,10 +270,13 @@ export function DraftBoardScreen() {
             const u = resolve(uid);
             return (
               <View key={uid} style={styles.availRow}>
-                <UserAvatar user={u} size={42} />
-                <Text style={styles.availName} numberOfLines={1}>
-                  {u.name}
-                </Text>
+                {/* Avatar + name grouped on the right; בחר alone on the left. */}
+                <View style={styles.availIdentity}>
+                  <UserAvatar user={u} size={42} />
+                  <Text style={styles.availName} numberOfLines={1}>
+                    {u.name}
+                  </Text>
+                </View>
                 <PressableScale style={styles.pickBtn} onPress={() => pick(uid)}>
                   <Text style={styles.pickBtnText}>{he.draftPick}</Text>
                 </PressableScale>
@@ -311,7 +327,7 @@ const styles = StyleSheet.create({
   availRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -319,11 +335,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
+  availIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flexShrink: 1,
+  },
   availName: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
-    flex: 1,
+    flexShrink: 1,
     textAlign: 'right',
   },
   pickBtn: {
