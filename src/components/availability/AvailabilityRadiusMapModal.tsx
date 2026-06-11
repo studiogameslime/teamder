@@ -248,6 +248,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 4,
+    // Force LTR so the min/max labels align with the RangeSlider's own
+    // force-LTR track (min on the left, max on the right) — otherwise the
+    // row flips under the app's RTL and "5 ק"מ" lands over the max end.
+    direction: 'ltr',
   },
   rangeEndText: { ...typography.caption, color: colors.textMuted },
 });
