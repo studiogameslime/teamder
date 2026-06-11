@@ -1489,6 +1489,19 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
+        // Draft Teams (חלוקת כוחות) — manager splits the roster into 2–4
+        // teams via a captain draft. Needs at least 2 registered players
+        // (≥2 captains). Re-running replaces the saved split.
+        ...(isAdmin && game.players.length >= 2
+          ? [
+              {
+                id: 'draftTeams',
+                label: game.draftTeams ? he.draftRedoMenu : he.draftTitle,
+                icon: 'shuffle-outline' as const,
+                onPress: () => nav.navigate('DraftSetup', { gameId: game.id }),
+              },
+            ]
+          : []),
         // Visibility toggle — admin only, only when the game is
         // still in 'open' state (matches gameService.setVisibility
         // gating). Tap flips public ↔ community-only.

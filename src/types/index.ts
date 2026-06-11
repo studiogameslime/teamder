@@ -829,6 +829,25 @@ export interface Team {
   isWaiting?: boolean;           // team currently sitting out
 }
 
+// ─── Draft Teams (חלוקת כוחות) ────────────────────────────────────────────
+// Result of a manager-run captain draft, persisted on the game so the
+// split survives and can be re-viewed. Independent of the live-match
+// `teams`/`liveMatch` rotation model.
+export interface DraftTeam {
+  /** 0-based team index; 0 → 'א'. */
+  index: number;
+  captainId: UserId;
+  /** All members, captain first, then players in the order they were picked. */
+  playerIds: UserId[];
+}
+export interface DraftTeamsResult {
+  method: 'snake' | 'regular';
+  numTeams: number;
+  createdAt: number;
+  createdBy: UserId;
+  teams: DraftTeam[];
+}
+
 export interface MatchRound {
   index: number;
   teamA: TeamColor;
@@ -1031,6 +1050,9 @@ export interface Game {
    * `gameService.setLiveMatch` and observed via `subscribeLiveMatch`.
    */
   liveMatch?: LiveMatchState;
+
+  /** Captain-draft team split (חלוקת כוחות), set by the manager. */
+  draftTeams?: DraftTeamsResult;
 
   /**
    * ms epoch — the moment when this game's registration officially

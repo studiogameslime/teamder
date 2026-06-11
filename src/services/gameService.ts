@@ -42,6 +42,7 @@ import {
   MatchRound,
   Player,
   Team,
+  DraftTeamsResult,
   TeamColor,
   toGuestRosterId,
   UserId,
@@ -1851,6 +1852,27 @@ export const gameService = {
     }
     await updateGameDoc(gameId, {
       pinnedMessage: trimmed.length > 0 ? trimmed : null,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Persist a captain-draft team split (חלוקת כוחות). Overwrites any
+   * previous draft — a re-draft replaces the stored result. Pass `null`
+   * to clear it. Self-contained: no push, no live-match side effects.
+   */
+  async saveDraftTeams(
+    gameId: string,
+    draft: DraftTeamsResult | null,
+  ): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) m.draftTeams = draft ?? undefined;
+      return;
+    }
+    await updateGameDoc(gameId, {
+      draftTeams: draft ?? null,
       updatedAt: Date.now(),
     });
   },

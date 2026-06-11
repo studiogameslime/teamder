@@ -24,6 +24,8 @@ import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { MatchManageScreen } from '@/screens/games/MatchManageScreen';
+import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
+import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
@@ -62,6 +64,14 @@ export type GameStackParamList = {
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */
   MatchManage: { gameId: string };
+  /** Draft Teams (חלוקת כוחות) — step 1: pick captains + draft order. */
+  DraftSetup: { gameId: string };
+  /** Draft Teams — step 2: the live draft board + summary. */
+  DraftBoard: {
+    gameId: string;
+    captainIds: string[];
+    method: 'snake' | 'regular';
+  };
   PlayerCard: { userId: string; groupId?: string };
   /** Reachable from MatchDetails' community-link icon. Same component
    *  as in CommunitiesStack — instances are per-stack. */
@@ -96,6 +106,8 @@ export function GameStack() {
       />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="MatchManage" component={MatchManageScreen} />
+      <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
+      <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
