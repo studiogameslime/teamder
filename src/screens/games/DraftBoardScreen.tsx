@@ -31,7 +31,7 @@ import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
-import { buildPickOrder } from '@/utils/draft';
+import { buildPickOrder, reconstructPicks } from '@/utils/draft';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -39,7 +39,8 @@ type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
-  const { gameId, captainIds, method } = useRoute<Params>().params;
+  const { gameId, captainIds, method, resume, readOnly } =
+    useRoute<Params>().params;
 
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -58,6 +59,11 @@ export function DraftBoardScreen() {
         if (!alive) return;
         setGame(g);
         if (g?.players?.length) hydratePlayers(g.players);
+        // Resuming a saved draft → reconstruct the picks so we land on the
+        // summary (and can still step back to edit).
+        if (resume && g?.draftTeams) {
+          setPicks(reconstructPicks(g.draftTeams));
+        }
       } catch (err) {
         logError('draftBoardLoad', err, { gameId });
       }
@@ -184,27 +190,40 @@ export function DraftBoardScreen() {
             ))}
           </View>
         </ScrollView>
-        <View style={styles.footer}>
-          <View style={styles.summaryActions}>
-            {/* Go back one pick to fix a mistake before finalizing. */}
+        {readOnly ? (
+          // Players just view the teams — back via the header.
+          <View style={styles.footer}>
             <Button
-              title={he.draftBackToEdit}
-              onPress={undo}
+              title={he.close}
+              onPress={() => nav.goBack()}
               variant="outline"
               size="lg"
-              iconLeft="arrow-undo-outline"
-              style={styles.flexBtn}
-            />
-            <Button
-              title={he.draftFinish}
-              onPress={finish}
-              loading={saving}
-              size="lg"
-              iconLeft="checkmark-circle"
-              style={styles.flexBtn}
+              fullWidth
             />
           </View>
-        </View>
+        ) : (
+          <View style={styles.footer}>
+            <View style={styles.summaryActions}>
+              {/* Go back one pick to fix a mistake before finalizing. */}
+              <Button
+                title={he.draftBackToEdit}
+                onPress={undo}
+                variant="outline"
+                size="lg"
+                iconLeft="arrow-undo-outline"
+                style={styles.flexBtn}
+              />
+              <Button
+                title={he.draftFinish}
+                onPress={finish}
+                loading={saving}
+                size="lg"
+                iconLeft="checkmark-circle"
+                style={styles.flexBtn}
+              />
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     );
   }

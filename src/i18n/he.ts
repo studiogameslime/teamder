@@ -1718,6 +1718,7 @@ export const he = {
   draftFinish: 'סיים חלוקת כוחות',
   draftSaved: 'הכוחות חולקו ונשמרו בהצלחה',
   draftViewMenu: 'הצג חלוקת כוחות',
+  draftEditMenu: 'ערוך חלוקת כוחות',
   draftRedoMenu: 'חלק כוחות מחדש',
   draftUndo: 'בטל בחירה אחרונה',
   draftBackToEdit: 'חזרה לתיקון',

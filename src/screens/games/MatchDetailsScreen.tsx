@@ -1489,17 +1489,54 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
-        // Draft Teams (חלוקת כוחות) — manager splits the roster into 2–4
-        // teams via a captain draft. Needs at least 2 participants
-        // (players + guests both draftable). Re-running replaces the split.
+        // Draft Teams (חלוקת כוחות). Manager: if a split already exists,
+        // re-open on its SUMMARY (editable — revise, don't restart);
+        // otherwise start the captain picker. Needs ≥2 participants
+        // (players + guests are both draftable).
         ...(isAdmin &&
         game.players.length + (game.guests?.length ?? 0) >= 2
           ? [
               {
                 id: 'draftTeams',
-                label: game.draftTeams ? he.draftRedoMenu : he.draftTitle,
+                label: game.draftTeams ? he.draftEditMenu : he.draftTitle,
                 icon: 'shuffle-outline' as const,
-                onPress: () => nav.navigate('DraftSetup', { gameId: game.id }),
+                onPress: () => {
+                  const dt = game.draftTeams;
+                  if (dt) {
+                    nav.navigate('DraftBoard', {
+                      gameId: game.id,
+                      captainIds: [...dt.teams]
+                        .sort((a, b) => a.index - b.index)
+                        .map((t) => t.captainId),
+                      method: dt.method,
+                      resume: true,
+                    });
+                  } else {
+                    nav.navigate('DraftSetup', { gameId: game.id });
+                  }
+                },
+              },
+            ]
+          : []),
+        // Non-manager: view the saved split read-only.
+        ...(!isAdmin && game.draftTeams
+          ? [
+              {
+                id: 'draftView',
+                label: he.draftViewMenu,
+                icon: 'people-outline' as const,
+                onPress: () => {
+                  const dt = game.draftTeams!;
+                  nav.navigate('DraftBoard', {
+                    gameId: game.id,
+                    captainIds: [...dt.teams]
+                      .sort((a, b) => a.index - b.index)
+                      .map((t) => t.captainId),
+                    method: dt.method,
+                    resume: true,
+                    readOnly: true,
+                  });
+                },
               },
             ]
           : []),

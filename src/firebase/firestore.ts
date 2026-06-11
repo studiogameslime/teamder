@@ -38,6 +38,7 @@ import {
   LiveMatchPhase,
   LiveMatchState,
   LiveMatchZone,
+  DraftTeamsResult,
   MatchRound,
   NotificationPrefs,
   PlayerStats,
@@ -679,6 +680,37 @@ const joinRequestConverter: FirestoreDataConverter<GroupJoinRequestDoc> = {
   },
 };
 
+// Safe-parse the saved captain-draft split (חלוקת כוחות).
+function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const rawTeams = Array.isArray(o.teams) ? o.teams : [];
+  const teams = rawTeams
+    .map((t) => {
+      if (!t || typeof t !== 'object') return null;
+      const r = t as Record<string, unknown>;
+      const captainId = typeof r.captainId === 'string' ? r.captainId : '';
+      const playerIds = Array.isArray(r.playerIds)
+        ? (r.playerIds.filter((x) => typeof x === 'string') as string[])
+        : [];
+      if (!captainId || playerIds.length === 0) return null;
+      return {
+        index: typeof r.index === 'number' ? r.index : 0,
+        captainId,
+        playerIds,
+      };
+    })
+    .filter((t): t is NonNullable<typeof t> => t !== null);
+  if (teams.length < 2) return undefined;
+  return {
+    method: o.method === 'regular' ? 'regular' : 'snake',
+    numTeams: typeof o.numTeams === 'number' ? o.numTeams : teams.length,
+    createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
+    createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
+    teams,
+  };
+}
+
 // Stored shape of a game doc — matches collection in Firestore.
 // We exclude the matches[] array because rounds live in /rounds collection
 // (one doc per round). gameService re-merges them into Game on read.
@@ -749,6 +781,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? g.extraTimeMinutes
           : null,
       liveMatch: g.liveMatch ?? null,
+      draftTeams: g.draftTeams ?? null,
       reminderSent: g.reminderSent ?? false,
       rateReminderSent: g.rateReminderSent ?? false,
       capacityNoticeSent: g.capacityNoticeSent ?? false,
@@ -926,6 +959,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? d.extraTimeMinutes
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
+      draftTeams: readDraftTeams(d.draftTeams),
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,

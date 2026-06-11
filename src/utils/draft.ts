@@ -9,6 +9,8 @@
 // Everything here is pure + dynamic in the number of teams — no UI assumes
 // a fixed count.
 
+import type { DraftTeamsResult } from '@/types';
+
 export type DraftMethod = 'snake' | 'regular';
 
 /** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */
@@ -53,4 +55,28 @@ export function buildPickOrder(
  */
 export function previewPath(numTeams: number, method: DraftMethod): number[] {
   return buildPickOrder(numTeams, numTeams * 2, method);
+}
+
+/**
+ * Rebuild the global pick sequence (uids in the order they were drafted)
+ * from a SAVED draft result, so re-opening a finished draft can resume on
+ * the summary and still be edited. Each team's `playerIds[0]` is the
+ * captain; the rest are members in their pick order. Interleaving them by
+ * the deterministic order reproduces the original `picks` array.
+ */
+export function reconstructPicks(draft: DraftTeamsResult): string[] {
+  const teams = draft.teams.slice().sort((a, b) => a.index - b.index);
+  const queues = teams.map((t) => t.playerIds.slice(1)); // members only
+  const total = queues.reduce((s, q) => s + q.length, 0);
+  const order = buildPickOrder(draft.numTeams, total, draft.method);
+  const cursor = new Array(draft.numTeams).fill(0);
+  const picks: string[] = [];
+  for (const team of order) {
+    const q = queues[team];
+    if (q && cursor[team] < q.length) {
+      picks.push(q[cursor[team]]);
+      cursor[team] += 1;
+    }
+  }
+  return picks;
 }
