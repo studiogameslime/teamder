@@ -568,6 +568,7 @@ export function PublicGroupsFeedScreen() {
         onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
+        nearbyLatLng={nearbyLoc?.latLng ?? undefined}
         nearbyCaption={
           nearbyLoading
             ? undefined

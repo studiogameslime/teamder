@@ -24,6 +24,7 @@ import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { RadiusSelector } from './RadiusSelector';
+import { FilterRadiusMap } from '@/components/games/FilterRadiusMap';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { GroupPublic, WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -89,6 +90,9 @@ interface Props {
   onClose: () => void;
   /** Optional caption shown next to the "nearby" toggle (e.g. resolved city). */
   nearbyCaption?: string;
+  /** Resolved viewer coords — drives the radius-map preview (parity with the
+   *  games filter). When absent the map is hidden and only the chips show. */
+  nearbyLatLng?: { lat: number; lng: number };
 }
 
 export function CommunityFilterSheet({
@@ -97,6 +101,7 @@ export function CommunityFilterSheet({
   onChange,
   onClose,
   nearbyCaption,
+  nearbyLatLng,
 }: Props) {
   const toggleDay = (d: WeekdayIndex) =>
     onChange({
@@ -144,21 +149,27 @@ export function CommunityFilterSheet({
               onChange={(v) => onChange({ ...filters, autoJoinOnly: v })}
             />
             <SwitchRow
-              label={he.communityFiltersHasRoom}
-              value={filters.hasRoom}
-              onChange={(v) => onChange({ ...filters, hasRoom: v })}
-            />
-            <SwitchRow
               label={he.filterNearby}
               caption={nearbyCaption}
               value={filters.nearby}
               onChange={(v) => onChange({ ...filters, nearby: v })}
             />
             {filters.nearby ? (
-              <RadiusSelector
-                value={filters.nearbyRadiusKm}
-                onChange={(km) => onChange({ ...filters, nearbyRadiusKm: km })}
-              />
+              <>
+                {nearbyLatLng ? (
+                  <View style={styles.mapWrap}>
+                    <FilterRadiusMap
+                      center={nearbyLatLng}
+                      radiusKm={filters.nearbyRadiusKm}
+                      size={140}
+                    />
+                  </View>
+                ) : null}
+                <RadiusSelector
+                  value={filters.nearbyRadiusKm}
+                  onChange={(km) => onChange({ ...filters, nearbyRadiusKm: km })}
+                />
+              </>
             ) : null}
           </ScrollView>
 
@@ -325,6 +336,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  mapWrap: { alignItems: 'center', paddingVertical: spacing.xs },
   section: { gap: spacing.xs },
   sectionTitle: {
     ...typography.label,
