@@ -53,6 +53,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
+import { isPlayedGame } from '@/utils/playedGames';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
@@ -172,6 +173,30 @@ function ensureMockGame(): Game {
 function gameDocFromGame(g: Game): GameDoc {
   const { matches, ...rest } = g;
   return rest;
+}
+
+/** Lightweight GameSummary for a played game — no rounds fetch (timer-only
+ *  games carry none), so matchCount is 0 and there's no per-round result.
+ *  Accepts the structural subset shared by Game and the raw GameDoc. */
+function playedGameSummary(g: {
+  id: string;
+  groupId: GroupId;
+  startsAt: number;
+  status?: string;
+  title?: string;
+  fieldName?: string;
+  format?: GameFormat;
+}): GameSummary {
+  return {
+    id: g.id,
+    groupId: g.groupId,
+    date: g.startsAt,
+    matchCount: 0,
+    status: g.status === 'cancelled' ? 'cancelled' : 'finished',
+    title: g.title,
+    fieldName: g.fieldName,
+    format: g.format,
+  };
 }
 
 async function loadRoundsFor(gameId: string): Promise<MatchRound[]> {
@@ -690,6 +715,51 @@ export const gameService = {
         };
       })
     );
+  },
+
+  /**
+   * Games a user actually PLAYED — the personal "games played" feed that
+   * powers the Profile count, History, and Stats.
+   *
+   * Definition (decided 2026-06-12): a game counts as played iff the user
+   * was placed in the drawn teams (`draftTeams`) AND the game's start time
+   * has passed. Being in the teams is a strong "showed up / was in the
+   * lineup" signal — far better than mere registration, which over-counts
+   * no-shows. No server flow / manual "end evening" is required; we compute
+   * it live from the games the user participated in (same approach as the
+   * server-side trust score).
+   *
+   * Query is the single-field `participantIds array-contains` (no composite
+   * index needed); the time + teams filtering happens client-side.
+   */
+  async getPlayedGames(userId: UserId, max = 50): Promise<GameSummary[]> {
+    if (!userId) return [];
+    if (USE_MOCK_DATA) {
+      const now = Date.now();
+      return mockGamesV2
+        .filter((g) => isPlayedGame(g, userId, now))
+        .sort((a, b) => b.startsAt - a.startsAt)
+        .slice(0, max)
+        .map((g) => playedGameSummary(g));
+    }
+
+    let snap;
+    try {
+      snap = await getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      );
+    } catch (err) {
+      logError('getPlayedGames', err, { userId });
+      if (__DEV__) console.warn('[gameService] getPlayedGames failed', err);
+      throw err;
+    }
+    const now = Date.now();
+    return snap.docs
+      .map((d) => d.data())
+      .filter((g) => isPlayedGame(g, userId, now))
+      .sort((a, b) => b.startsAt - a.startsAt)
+      .slice(0, max)
+      .map((g) => playedGameSummary(g));
   },
 
   /**

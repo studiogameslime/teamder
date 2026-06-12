@@ -119,6 +119,10 @@ export function ProfileScreen() {
   // next-game card that replaced the achievements rail. Null = none
   // upcoming (or still loading on first paint).
   const [nextGame, setNextGame] = useState<Game | null>(null);
+  // Live "games played" count — games the user was placed in the teams for
+  // and that have passed. Replaces the dead user.stats.totalGames (never
+  // incremented by any flow). null = not loaded yet.
+  const [playedCount, setPlayedCount] = useState<number | null>(null);
 
   // Scroll-to-top: react-navigation hook listens for tab re-press.
   const scrollRef = useRef<ScrollView>(null);
@@ -213,6 +217,30 @@ export function ProfileScreen() {
     }, [localUser?.id]),
   );
 
+  // Live "games played" count — refreshed on focus so it reflects a game
+  // that just passed / got teams drawn.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid) {
+        setPlayedCount(null);
+        return;
+      }
+      let alive = true;
+      gameService
+        .getPlayedGames(uid)
+        .then((list) => {
+          if (alive) setPlayedCount(list.length);
+        })
+        .catch(() => {
+          // Keep the previous count on a transient error.
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id]),
+  );
+
   // Admin-only: pending approvals across ALL the user's admin groups.
   // Surfaced as a badge on the hamburger row so it's still visible
   // without sitting in the focused player card.
@@ -256,7 +284,9 @@ export function ProfileScreen() {
 
   if (!user) return null;
 
-  const totalGames = user.stats?.totalGames ?? 0;
+  // Live played-games count (teams-drawn + game passed). Falls back to the
+  // legacy stat only while the live count is still loading.
+  const totalGames = playedCount ?? user.stats?.totalGames ?? 0;
   const attendance = getAttendanceRate(user.stats);
 
   // Hero meta row (under the name): communities · trust · location.

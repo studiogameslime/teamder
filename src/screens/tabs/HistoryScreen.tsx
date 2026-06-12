@@ -14,7 +14,7 @@ import { GameSummary, TeamColor } from '@/types';
 import { gameService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
-import { useCurrentGroup } from '@/store/groupStore';
+import { useUserStore } from '@/store/userStore';
 
 const TEAM_LABEL: Record<TeamColor, string> = {
   team1: he.team1,
@@ -23,11 +23,11 @@ const TEAM_LABEL: Record<TeamColor, string> = {
 };
 
 export function HistoryScreen() {
-  const group = useCurrentGroup();
-  // `useNavigation<any>` to keep this screen's navigation untyped —
-  // History lives in ProfileStack which now registers MatchDetails
-  // alongside its own routes, so the bare navigate below resolves to
-  // a same-stack push.
+  // History is now PERSONAL (cross-group): the games the user actually
+  // played — i.e. was placed in the drawn teams for, and the game has
+  // passed. Previously this was the current group's "finished" games,
+  // which stayed empty because games are rarely ended manually.
+  const userId = useUserStore((s) => s.currentUser?.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
@@ -38,14 +38,14 @@ export function HistoryScreen() {
   }, []);
 
   useEffect(() => {
-    if (!group) {
+    if (!userId) {
       setLoading(false);
       return;
     }
     let alive = true;
     setLoading(true);
     gameService
-      .getHistory(group.id)
+      .getPlayedGames(userId)
       .then((list) => {
         if (alive) setItems(list.sort((a, b) => b.date - a.date));
       })
@@ -54,7 +54,7 @@ export function HistoryScreen() {
         // ("no history") — indistinguishable from genuinely having none.
         logError('loadHistory', err, {
           screen: 'HistoryScreen',
-          groupId: group.id,
+          userId,
         });
         if (__DEV__) console.warn('[history] load failed', err);
       })
@@ -64,7 +64,7 @@ export function HistoryScreen() {
     return () => {
       alive = false;
     };
-  }, [group]);
+  }, [userId]);
 
   const openDetails = (gameId: string) => {
     // Push within the current stack (ProfileStack) — back returns to

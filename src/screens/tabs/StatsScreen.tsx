@@ -1,13 +1,11 @@
 // StatsScreen — secondary stats surface.
 //
-// Originally rendered wins/losses/ties/win% on top of attendance metrics.
-// After the live-match pivot to timer-only (2026-05-27) the round-winner
-// model no longer exists, so `Player.stats.wins/losses/ties` is never
-// written and the win% always rendered 0%/0%. Those cells were removed
-// (2026-05-29) — what's left is the small set that's actually populated:
-// games played, attendance %, cancel rate.
+// History: round-winner stats (wins/losses/win%) died with the timer-only
+// pivot (2026-05-27); attendance/games stats on the player doc are never
+// written either. As of 2026-06-12 this surface shows REAL counts: games
+// played (live — was in the drawn teams + game passed), clubs, and friends.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,23 +16,43 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors, radius, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
-import { useGameStore } from '@/store/gameStore';
+import { useGroupStore } from '@/store/groupStore';
+import { gameService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 export function StatsScreen() {
   const user = useUserStore((s) => s.currentUser);
-  const players = useGameStore((s) => s.players);
+  const clubs = useGroupStore((s) => s.groups).length;
+  const [playedCount, setPlayedCount] = useState<number | null>(null);
+
   useEffect(() => {
     logEvent(AnalyticsEvent.StatsOpened);
   }, []);
-  if (!user) return null;
-  const player = players[user.id];
-  const stats = player?.stats;
 
-  // In Firebase mode, fresh users have no stats document yet — render an
-  // empty state instead of a zeroes grid that looks broken.
-  const hasData =
-    !!stats && (stats.gamesPlayed > 0 || stats.attendancePct > 0);
+  const uid = user?.id;
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    gameService
+      .getPlayedGames(uid)
+      .then((list) => {
+        if (alive) setPlayedCount(list.length);
+      })
+      .catch(() => {
+        if (alive) setPlayedCount(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
+
+  if (!user) return null;
+
+  const friends = user.friends?.length ?? 0;
+  const gamesPlayed = playedCount ?? 0;
+  // Loading until the live count lands; then show data when anything is
+  // non-zero, else the empty state.
+  const hasData = playedCount !== null && (gamesPlayed > 0 || clubs > 0 || friends > 0);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -53,13 +71,9 @@ export function StatsScreen() {
           </View>
         ) : (
           <View style={styles.grid}>
-            <StatCell value={stats!.gamesPlayed} label={he.statsGames} />
-            <StatCell
-              value={`${stats!.attendancePct}%`}
-              label={he.statsAttendance}
-              highlight
-            />
-            <StatCell value={`${stats!.cancelRate}%`} label={he.statsCancelRate} />
+            <StatCell value={gamesPlayed} label={he.statsGames} highlight />
+            <StatCell value={clubs} label={he.profileStatClubs} />
+            <StatCell value={friends} label={he.profileStatFriends} />
           </View>
         )}
       </ScrollView>
