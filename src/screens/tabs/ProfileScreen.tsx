@@ -495,6 +495,15 @@ export function ProfileScreen() {
             totalGames={totalGames}
             clubs={myCommunities.length}
             friends={user.friends?.length ?? 0}
+            onGamesPress={() => nav.navigate('History')}
+            onFriendsPress={() => nav.navigate('Friends')}
+            onClubsPress={() =>
+              (
+                nav.getParent?.() as
+                  | { navigate: (t: string) => void }
+                  | undefined
+              )?.navigate('CommunitiesTab')
+            }
           />
         </View>
 

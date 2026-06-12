@@ -8,6 +8,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '@/theme';
+import { LivingIcon } from '@/components/anim/LivingIcon';
 import type { AchievementDef } from '@/data/achievements';
 
 interface Props {
@@ -78,7 +79,15 @@ export function AchievementBadge({
             { width: inner, height: inner, borderRadius: inner / 2 },
           ]}
         >
-          <Ionicons name={def.icon} size={iconSize} color={fg} />
+          {/* Unlocked badges breathe (Pulse 4eEW3W — "every icon
+              animated"); locked ones stay still so the contrast reads. */}
+          {unlocked ? (
+            <LivingIcon motion="pulse" speed={1.4}>
+              <Ionicons name={def.icon} size={iconSize} color={fg} />
+            </LivingIcon>
+          ) : (
+            <Ionicons name={def.icon} size={iconSize} color={fg} />
+          )}
         </View>
       </View>
       <Text
