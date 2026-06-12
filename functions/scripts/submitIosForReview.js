@@ -12,10 +12,11 @@ const KEY_ID = 'SQBY46Q3DC';
 const ISSUER_ID = '0938f882-34aa-42d5-af5d-cab509cac969';
 const P8_PATH = '/Users/matan/Downloads/AuthKey_SQBY46Q3DC.p8';
 const APP_ID = '6775178022';
-const VERSION = '1.0.13';
-const BUILD_NUMBER = '22';
+const VERSION = '1.0.15';
+const BUILD_NUMBER = '23';
 const WHATS_NEW =
-  'שיפורי עיצוב וחוויית משתמש, אנימציות חדשות, ותיקוני באגים.';
+  'ספירת משחקים אמיתית בפרופיל ובהיסטוריה, טבעת התקדמות בטיימר, ' +
+  'שיפורי חלוקת כוחות ופרטי משחק, ותיקוני באגים.';
 
 const BASE = 'https://api.appstoreconnect.apple.com/v1';
 const privateKey = fs.readFileSync(P8_PATH, 'utf8');
@@ -205,7 +206,7 @@ async function main() {
     console.error('✗ submit for review failed', submit.status, submit.text);
     process.exit(1);
   }
-  console.log('✅ Submitted 1.0.13 for App Store review!');
+  console.log(`✅ Submitted ${VERSION} for App Store review!`);
 }
 
 main().catch((e) => {
