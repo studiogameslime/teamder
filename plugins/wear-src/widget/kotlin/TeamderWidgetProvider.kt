@@ -165,11 +165,18 @@ class TeamderWidgetProvider : AppWidgetProvider() {
             val started = running || accumulatedMs > 0L || lastStartedAt > 0L
             when {
                 running -> {
-                    // Running → just PAUSE.
+                    // Running → PAUSE + RESET (stop). Previously only PAUSE
+                    // showed, so there was no way to STOP the timer from the
+                    // widget without first pausing (user feedback).
                     views.setViewVisibility(R.id.widget_btn_pause, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_btn_reset, View.VISIBLE)
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_pause,
                         actionPi(context, REQ_PAUSE, TimerActionReceiver.ACTION_PAUSE, gameId, viewerName),
+                    )
+                    views.setOnClickPendingIntent(
+                        R.id.widget_btn_reset,
+                        actionPi(context, REQ_RESET, TimerActionReceiver.ACTION_RESET, gameId, viewerName),
                     )
                 }
                 started -> {
