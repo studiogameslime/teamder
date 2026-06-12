@@ -1687,6 +1687,34 @@ export function MatchDetailsScreen() {
   };
 
   const draftTeams = game.draftTeams;
+
+  // Teams go "stale" when someone registered AFTER the split was saved —
+  // i.e. a registered player isn't assigned to any team. We surface a "!"
+  // on the section so the admin knows to re-balance. Guests are draftable
+  // too, so they count toward the assigned set.
+  const assignedIds = new Set<string>(
+    (draftTeams?.teams ?? []).flatMap((t) => t.playerIds),
+  );
+  const teamsStale =
+    !!draftTeams &&
+    (game.players ?? []).some((uid) => !assignedIds.has(uid));
+
+  // "צרו כוחות" nudge: admin, no split yet, enough draftable people, and
+  // kickoff is close (≤24h away, not yet started). Otherwise the only path
+  // to create teams is buried in the ☰ menu — easy to miss (feedback).
+  const draftablePeople =
+    (game.players?.length ?? 0) + (game.guests?.length ?? 0);
+  const msToKickoff = game.startsAt - Date.now();
+  const showCreateTeamsBanner =
+    isAdmin &&
+    !draftTeams &&
+    !isTerminalGame(game) &&
+    draftablePeople >= 2 &&
+    msToKickoff > -2 * 60 * 60 * 1000 && // allow up to 2h after kickoff
+    msToKickoff <= 24 * 60 * 60 * 1000;
+
+  const openDraftSetup = () => nav.navigate('DraftSetup', { gameId: game.id });
+
   const openDraftView = () => {
     if (!draftTeams) return;
     const captainIds = [...draftTeams.teams]
@@ -1937,6 +1965,74 @@ export function MatchDetailsScreen() {
             </View>
           ) : null}
 
+          {/* "צרו כוחות" nudge — kickoff is close and no split exists yet.
+              Without this, creating teams is buried in the ☰ menu. */}
+          {showCreateTeamsBanner ? (
+            <Pressable
+              style={styles.createTeamsBanner}
+              onPress={openDraftSetup}
+              accessibilityRole="button"
+            >
+              <View style={styles.createTeamsIcon}>
+                <Ionicons name="shuffle" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.createTeamsTitle}>
+                  {he.matchCreateTeamsBannerTitle}
+                </Text>
+                <Text style={styles.createTeamsSub}>
+                  {he.matchCreateTeamsBannerSub}
+                </Text>
+              </View>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            </Pressable>
+          ) : null}
+
+          {/* Drafted teams (חלוקת כוחות) — sits ABOVE the roster (2026-06-12)
+              so the split is the first thing participants see. A "!" badge
+              warns the admin when someone joined after teams were saved. */}
+          {draftTeams ? (
+            <View style={styles.draftSection}>
+              <Pressable
+                style={styles.draftSectionHeader}
+                onPress={openDraftView}
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                <View style={styles.draftTitleRow}>
+                  <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
+                  {teamsStale ? (
+                    <View style={styles.staleBadge}>
+                      <Text style={styles.staleBadgeText}>!</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
+              {teamsStale ? (
+                <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
+              ) : null}
+              <View style={styles.draftSectionList}>
+                {[...draftTeams.teams]
+                  .sort((a, b) => a.index - b.index)
+                  .map((t) => (
+                    <DraftTeamCard
+                      key={t.index}
+                      index={t.index}
+                      captain={resolveDraftUser(t.captainId)}
+                      members={t.playerIds.slice(1).map(resolveDraftUser)}
+                      onPressUser={(id) => {
+                        if ((game.guests ?? []).some((g) => g.id === id)) return;
+                        nav.navigate('PlayerCard', {
+                          userId: id,
+                          groupId: game.groupId,
+                        });
+                      }}
+                    />
+                  ))}
+              </View>
+            </View>
+          ) : null}
+
           <MatchParticipantsSection
             total={totalParticipants}
             capacity={game.maxPlayers}
@@ -2002,42 +2098,6 @@ export function MatchDetailsScreen() {
                 });
             }}
           />
-
-          {/* Drafted teams (חלוקת כוחות) — visible to ALL participants
-              once a split has been saved. Tap to open the full view
-              (read-only for non-managers, editable for the organizer). */}
-          {draftTeams ? (
-            <View style={styles.draftSection}>
-              <Pressable
-                style={styles.draftSectionHeader}
-                onPress={openDraftView}
-                accessibilityRole="button"
-              >
-                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-                <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
-              </Pressable>
-              <View style={styles.draftSectionList}>
-                {[...draftTeams.teams]
-                  .sort((a, b) => a.index - b.index)
-                  .map((t) => (
-                    <DraftTeamCard
-                      key={t.index}
-                      index={t.index}
-                      captain={resolveDraftUser(t.captainId)}
-                      members={t.playerIds.slice(1).map(resolveDraftUser)}
-                      onPressUser={(id) => {
-                        // Guests have no card; real players → PlayerCard.
-                        if ((game.guests ?? []).some((g) => g.id === id)) return;
-                        nav.navigate('PlayerCard', {
-                          userId: id,
-                          groupId: game.groupId,
-                        });
-                      }}
-                    />
-                  ))}
-              </View>
-            </View>
-          ) : null}
 
           {/* Community rules — free text from the community form, shown
               to every participant. Amber tint = "behaviour expectations". */}
@@ -3172,6 +3232,53 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   draftSectionList: { gap: spacing.sm },
+  draftTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  staleBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  staleBadgeText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  staleHint: {
+    ...typography.caption,
+    color: '#B45309',
+    textAlign: RTL_LABEL_ALIGN,
+    paddingHorizontal: spacing.xs,
+  },
+  createTeamsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: '#EAF1FF',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  createTeamsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createTeamsTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  createTeamsSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
