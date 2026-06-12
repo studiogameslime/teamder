@@ -245,6 +245,8 @@ export const he = {
 
   // Live match — v2 portrait layout
   liveStartMatch: 'התחל משחק',
+  liveTimerOfTotal: (elapsed: number, total: number) =>
+    `${elapsed} מתוך ${total} דקות`,
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',

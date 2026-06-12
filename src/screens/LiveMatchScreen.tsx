@@ -35,6 +35,7 @@ import Animated, {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
+import { TimerProgressRing } from '@/components/match/TimerProgressRing';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import {
@@ -294,6 +295,12 @@ export function LiveMatchScreen() {
   }
 
   const statusLabel = timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
+  // Progress ring — elapsed vs the configured match duration. Only shown
+  // when a duration is set on the game.
+  const totalMinutes = game.matchDurationMinutes ?? 0;
+  const totalMs = totalMinutes * 60_000;
+  const progress = totalMs > 0 ? timerMs / totalMs : 0;
+  const elapsedMinutes = Math.floor(timerMs / 60_000);
   // Persistent "controlled by X" chip — visible whenever the timer has
   // been touched by another admin (running OR paused). Previously this
   // hid the moment the other admin paused the timer, which made the
@@ -325,19 +332,36 @@ export function LiveMatchScreen() {
 
       {/* Timer */}
       <View style={styles.center}>
-        <Animated.View
-          style={[
-            styles.timerCard,
-            timerRunning ? styles.timerCardRunning : null,
-            pulseStyle,
-          ]}
-        >
-          <Text
-            style={[styles.timerText, timerRunning ? styles.timerTextRunning : null]}
+        {totalMs > 0 ? (
+          <TimerProgressRing size={300} strokeWidth={8} progress={progress} running={timerRunning}>
+            <Animated.View
+              style={[styles.timerCard, styles.timerCardRinged, pulseStyle]}
+            >
+              <Text
+                style={[styles.timerText, timerRunning ? styles.timerTextRunning : null]}
+              >
+                {formatTime(timerMs)}
+              </Text>
+              <Text style={styles.timerOfTotal}>
+                {he.liveTimerOfTotal(elapsedMinutes, totalMinutes)}
+              </Text>
+            </Animated.View>
+          </TimerProgressRing>
+        ) : (
+          <Animated.View
+            style={[
+              styles.timerCard,
+              timerRunning ? styles.timerCardRunning : null,
+              pulseStyle,
+            ]}
           >
-            {formatTime(timerMs)}
-          </Text>
-        </Animated.View>
+            <Text
+              style={[styles.timerText, timerRunning ? styles.timerTextRunning : null]}
+            >
+              {formatTime(timerMs)}
+            </Text>
+          </Animated.View>
+        )}
         <View style={[styles.statusPill, timerRunning ? styles.statusPillRunning : null]}>
           {timerRunning ? <View style={styles.dot} /> : null}
           <Text style={[styles.statusText, timerRunning ? styles.statusTextRunning : null]}>
@@ -520,6 +544,23 @@ const styles = StyleSheet.create({
   },
   timerCardRunning: {
     borderColor: '#1D4ED8',
+  },
+  // Inside the progress ring the colored arc IS the edge — drop the card's
+  // own heavy border and shrink it so it nests within the ring.
+  timerCardRinged: {
+    width: 270,
+    height: 270,
+    borderRadius: 135,
+    borderColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  timerOfTotal: {
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B',
+    fontVariant: ['tabular-nums'],
   },
   timerText: {
     fontSize: 78,
