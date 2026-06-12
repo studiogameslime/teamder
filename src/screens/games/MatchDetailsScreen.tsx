@@ -2198,11 +2198,9 @@ export function MatchDetailsScreen() {
           <MatchDetailsGrid
             title={he.matchDetailsCardTitle}
             items={[
-              {
-                icon: 'football-outline',
-                label: he.matchDetailsLabelField,
-                value: game.fieldName,
-              },
+              // Field-name row removed per user feedback (Pulse AbwW4G) — the
+              // location row below already answers "where do I drive?", so the
+              // venue nickname was a redundant extra line.
               // Unified city + address row. The two fields conceptually
               // describe the same thing ("where do I drive?"), and the
               // Waze button belongs HERE — not on the field-name row
@@ -2250,7 +2248,10 @@ export function MatchDetailsScreen() {
               {
                 icon: 'people-outline',
                 label: he.matchDetailsLabelCommunity,
-                value: communityName,
+                // One-time games have no real community — hide the "מועדון"
+                // row entirely rather than showing "משחק חד־פעמי" (Pulse
+                // odLGvyv). Null-valued grid items are skipped.
+                value: game.isOrphanContext ? null : communityName,
                 action:
                   communityName && game.groupId && !game.isOrphanContext
                     ? {

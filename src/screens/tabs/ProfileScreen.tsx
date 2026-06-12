@@ -293,19 +293,9 @@ export function ProfileScreen() {
   // Each entry is only shown when its data actually exists — no
   // placeholder "0 קהילות" or a trust score for a user who never
   // played. Order matches the mockup reading right-to-left.
+  // Per user feedback (Pulse SM3iGk): the "{n} מועדונים" and "{x}% אמין"
+  // chips were noise under the name — drop them and keep only the location.
   const heroMeta: HeroMetaItem[] = [];
-  if (myCommunities.length > 0) {
-    heroMeta.push({
-      icon: 'people-outline',
-      text: he.profileHeroCommunities(myCommunities.length),
-    });
-  }
-  if (totalGames > 0) {
-    heroMeta.push({
-      icon: 'shield-checkmark-outline',
-      text: he.profileHeroTrust(attendance),
-    });
-  }
   if (user.availability?.homeCity) {
     heroMeta.push({
       icon: 'location-outline',

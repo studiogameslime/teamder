@@ -167,7 +167,11 @@ function HistoryRow({
               </View>
             ) : null}
           </View>
-          <Text style={styles.matches}>{he.historyMatches(item.matchCount)}</Text>
+          {item.matchCount > 0 ? (
+            <Text style={styles.matches}>
+              {he.historyMatches(item.matchCount)}
+            </Text>
+          ) : null}
         </View>
         {resultText ? (
           <Text style={[styles.result, { color: resultColor }]}>
