@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -3307,6 +3307,20 @@ exports.ensurePersonalGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
     });
     await userRef.set({ personalGroupId: groupRef.id, updatedAt: now }, { merge: true });
     return { groupId: groupRef.id, created: true };
+});
+// ─── Callable: server clock probe (NTP-style offset source) ────────────
+//
+// Returns the server's wall-clock epoch (ms). The client calls this a few
+// times, measures round-trip time, and derives `offset = serverNow -
+// localNow` so every device can compute a SHARED `serverNow()` for the
+// live-match timer. Without this, two phones with skewed clocks render the
+// same `timerLastStartedAt` anchor as different elapsed times.
+//
+// Deliberately minimal and unauthenticated: it leaks nothing (just the
+// time) and is cheap. No App Check / auth gate so the offset can be
+// measured even on a freshly-launched, not-yet-authed client.
+exports.getServerTime = (0, https_1.onCall)({ enforceAppCheck: false }, async () => {
+    return { now: Date.now() };
 });
 // ─── Callable: promote a personal/orphan group to a real community ─────
 //

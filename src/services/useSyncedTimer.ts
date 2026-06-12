@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { LiveMatchState } from '@/types';
+import { serverNow, syncServerClock } from '@/services/serverClock';
 
 /** Update interval for the displayed ms value. 250 ms is fine
  *  visually (text only shows whole seconds) and saves battery vs
@@ -43,17 +44,26 @@ export function useSyncedTimer(
   const lastStartedAt = liveMatch?.timerLastStartedAt ?? null;
   const accumulated = liveMatch?.timerAccumulatedMs ?? 0;
 
-  // Computes the current display value from the three primitives.
+  // Computes the current display value from the three primitives. Uses
+  // `serverNow()` (NOT `Date.now()`) so devices with skewed wall clocks
+  // still reconstruct the SAME elapsed time from the shared anchor.
   const compute = useRef<() => number>(() => 0);
   compute.current = () => {
     if (running && typeof lastStartedAt === 'number' && lastStartedAt > 0) {
-      const delta = Date.now() - lastStartedAt;
+      const delta = serverNow() - lastStartedAt;
       return accumulated + Math.max(0, delta);
     }
     return accumulated;
   };
 
   const [displayMs, setDisplayMs] = useState<number>(compute.current());
+
+  // Make sure this device's server-clock offset is measured whenever a live
+  // match is on screen. De-duped + cached inside the service, so mounting
+  // several timer consumers triggers at most one network sync.
+  useEffect(() => {
+    if (liveMatch) void syncServerClock();
+  }, [liveMatch]);
 
   // Snap to the latest server state on every change. This catches
   // pause / reset / external admin mutations immediately, not on the

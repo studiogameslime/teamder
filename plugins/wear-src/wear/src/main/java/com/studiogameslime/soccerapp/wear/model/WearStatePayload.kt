@@ -23,6 +23,8 @@ fun parseWearState(json: String): WearGameState = try {
                     running = t.optBoolean("running"),
                     lastStartedAt = t.optLong("lastStartedAt"),
                     accumulatedMs = t.optLong("accumulatedMs"),
+                    // clockOffsetMs lives at the payload root, not inside timer.
+                    clockOffsetMs = o.optLong("clockOffsetMs", 0L),
                 ),
                 gameId = o.optString("gameId"),
             )

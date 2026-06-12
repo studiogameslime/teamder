@@ -23,6 +23,7 @@ import { useEffect } from 'react';
 import { NativeModules, Platform } from 'react-native';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
+import { getServerOffsetMs, syncServerClock } from '@/services/serverClock';
 import { userService } from '@/services/userService';
 import { useUserStore } from '@/store/userStore';
 import type { Game } from '@/types';
@@ -38,7 +39,16 @@ type WatchPlayer = {
  *  widget can identify itself when writing back to Firestore. */
 type Viewer = { id: string; name: string };
 
-type WatchPayload = { viewer: Viewer } & (
+type WatchPayload = {
+  viewer: Viewer;
+  /** serverNow() - localNow on THIS device, in ms. The phone-side widget
+   *  (same device) and the paired watch (whose clock Wear OS keeps synced
+   *  to the phone) both add this to their local clock so they reconstruct
+   *  the timer in the SAME server-time base the in-app screen uses — no
+   *  cross-device skew. A constant correction, so it survives a stale
+   *  cached payload (unlike a one-shot "server time now" stamp would). */
+  clockOffsetMs: number;
+} & (
   | {
       kind: 'live';
       gameId: string;
@@ -96,6 +106,7 @@ export async function computeWatchPayload(
   if (live && live.liveMatch) {
     return {
       viewer,
+      clockOffsetMs: getServerOffsetMs(),
       kind: 'live',
       gameId: live.id,
       title: live.title,
@@ -124,6 +135,7 @@ export async function computeWatchPayload(
     ) {
       return {
         viewer,
+        clockOffsetMs: getServerOffsetMs(),
         kind: 'scheduled',
         gameId: upcoming.id,
         title: upcoming.title,
@@ -136,6 +148,7 @@ export async function computeWatchPayload(
     const players = await resolveRoster(upcoming);
     return {
       viewer,
+      clockOffsetMs: getServerOffsetMs(),
       kind: 'upcoming',
       gameId: upcoming.id,
       title: upcoming.title,
@@ -148,7 +161,7 @@ export async function computeWatchPayload(
     };
   }
 
-  return { viewer, kind: 'notRegistered' };
+  return { viewer, clockOffsetMs: getServerOffsetMs(), kind: 'notRegistered' };
 }
 
 /**
@@ -185,6 +198,10 @@ export async function publishWatchState(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bridge = (NativeModules as any).WatchBridge;
   if (!bridge?.publishState) return;
+  // Make sure this device's server-clock offset is measured so the value we
+  // relay to the widget + watch is correct. De-duped + cached, so this is a
+  // no-op network-wise once synced this session.
+  void syncServerClock();
   try {
     await bridge.publishState(
       JSON.stringify(await computeWatchPayload(myGames, viewer)),

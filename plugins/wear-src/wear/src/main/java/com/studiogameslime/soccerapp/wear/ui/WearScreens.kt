@@ -565,10 +565,14 @@ private fun BrandLogo() {
  */
 @Composable
 private fun rememberElapsedMs(timer: TimerState): Long {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    // Tick on server time (local clock + relayed offset) so the watch app
+    // stays in lockstep with the phone even when the watch clock is skewed.
+    var now by remember {
+        mutableLongStateOf(System.currentTimeMillis() + timer.clockOffsetMs)
+    }
     LaunchedEffect(timer.running, timer.lastStartedAt, timer.accumulatedMs) {
         while (timer.running) {
-            now = System.currentTimeMillis()
+            now = System.currentTimeMillis() + timer.clockOffsetMs
             delay(250)
         }
     }

@@ -302,7 +302,10 @@ class TeamderTileService : TileService() {
      *  device uses — phone, watch app, this tile — so they're identical. */
     private fun computeElapsedMs(t: TimerState): Long =
         if (t.running && t.lastStartedAt > 0) {
-            t.accumulatedMs + (System.currentTimeMillis() - t.lastStartedAt)
+            // Compare against SERVER time (local clock + relayed offset) so
+            // the tile matches the phone even if the watch clock is skewed.
+            t.accumulatedMs +
+                (System.currentTimeMillis() + t.clockOffsetMs - t.lastStartedAt)
         } else {
             t.accumulatedMs
         }

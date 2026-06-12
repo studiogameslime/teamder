@@ -59,7 +59,8 @@ class TimerActionReceiver : BroadcastReceiver() {
 
         // Cold-started receiver process — wait for Firebase Auth to finish
         // restoring the persisted user (up to AUTH_WAIT_MS) before bailing.
-        Log.d(TAG, "currentUser null; waiting for auth restore")
+        val waitStart = System.currentTimeMillis()
+        Log.d(TAG, "currentUser null; waiting up to ${AUTH_WAIT_MS}ms for auth restore")
         val handler = Handler(Looper.getMainLooper())
         val listenerHolder = arrayOfNulls<FirebaseAuth.AuthStateListener>(1)
         var settled = false
@@ -68,7 +69,7 @@ class TimerActionReceiver : BroadcastReceiver() {
             if (settled) return@Runnable
             settled = true
             listenerHolder[0]?.let { auth.removeAuthStateListener(it) }
-            Log.w(TAG, "auth did not restore in time; widget button ignored")
+            Log.w(TAG, "auth did not restore within ${AUTH_WAIT_MS}ms; widget button ignored")
             toast(context, "התחברו לאפליקציה כדי לשלוט בטיימר")
             pending.finish()
         }
@@ -79,6 +80,7 @@ class TimerActionReceiver : BroadcastReceiver() {
                 settled = true
                 handler.removeCallbacks(giveUp)
                 listenerHolder[0]?.let { a.removeAuthStateListener(it) }
+                Log.d(TAG, "auth restored after ${System.currentTimeMillis() - waitStart}ms")
                 performMutation(context, action, gameId, userName, u.uid, pending)
             }
         }
@@ -95,7 +97,11 @@ class TimerActionReceiver : BroadcastReceiver() {
         uid: String,
         pending: BroadcastReceiver.PendingResult,
     ) {
-        val now = System.currentTimeMillis()
+        // Stamp the anchor in the SHARED server-time base (local clock +
+        // the phone-measured offset), exactly like the in-app writer's
+        // `serverNow()`. This is what makes a widget/watch press produce the
+        // same elapsed time on every device, regardless of clock skew.
+        val now = System.currentTimeMillis() + readClockOffset(context)
         val db = FirebaseFirestore.getInstance()
         val ref = db.collection("games").document(gameId)
 
@@ -170,6 +176,22 @@ class TimerActionReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * Read the phone's measured server-clock offset (serverNow - localNow,
+     * ms) from the widget payload the JS app last published. The widget
+     * runs on the same device as the app, so the app's offset applies
+     * directly here. Missing payload / field → 0 (fall back to local clock,
+     * i.e. the pre-offset behaviour). Best-effort; never throws.
+     */
+    private fun readClockOffset(context: Context): Long = try {
+        val json = context.getSharedPreferences(
+            TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+        ).getString(TeamderWidgetProvider.KEY_JSON, null)
+        if (json != null) JSONObject(json).optLong("clockOffsetMs", 0L) else 0L
+    } catch (_: Exception) {
+        0L
+    }
+
     private fun toast(context: Context, msg: String) {
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(context.applicationContext, msg, Toast.LENGTH_SHORT).show()
@@ -233,8 +255,13 @@ class TimerActionReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "TimerActionReceiver"
 
-        /** How long to wait for Firebase Auth to restore in a cold process. */
-        private const val AUTH_WAIT_MS = 5_000L
+        /**
+         * How long to wait for Firebase Auth to restore in a cold process.
+         * A BroadcastReceiver has ~10s before the system treats it as stuck,
+         * so 8s gives auth the maximum realistic restore window while still
+         * leaving headroom for the Firestore transaction that follows.
+         */
+        private const val AUTH_WAIT_MS = 8_000L
 
         // Distinct intent action per button — fully-qualified to avoid
         // collisions with any other receiver in the system.

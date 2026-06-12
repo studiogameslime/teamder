@@ -3948,6 +3948,24 @@ export const ensurePersonalGroup = onCall(
   },
 );
 
+// ─── Callable: server clock probe (NTP-style offset source) ────────────
+//
+// Returns the server's wall-clock epoch (ms). The client calls this a few
+// times, measures round-trip time, and derives `offset = serverNow -
+// localNow` so every device can compute a SHARED `serverNow()` for the
+// live-match timer. Without this, two phones with skewed clocks render the
+// same `timerLastStartedAt` anchor as different elapsed times.
+//
+// Deliberately minimal and unauthenticated: it leaks nothing (just the
+// time) and is cheap. No App Check / auth gate so the offset can be
+// measured even on a freshly-launched, not-yet-authed client.
+export const getServerTime = onCall(
+  { enforceAppCheck: false },
+  async () => {
+    return { now: Date.now() };
+  },
+);
+
 // ─── Callable: promote a personal/orphan group to a real community ─────
 //
 // Flips `isPersonal` and `hidden` to false, applies the user-chosen

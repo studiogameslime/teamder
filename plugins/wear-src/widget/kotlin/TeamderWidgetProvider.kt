@@ -139,7 +139,12 @@ class TeamderWidgetProvider : AppWidgetProvider() {
 
         // Chronometer base — translate the server's epoch lastStartedAt
         // into a SystemClock-relative reference so the view ticks itself.
-        val nowEpoch = System.currentTimeMillis()
+        // `lastStartedAt` is stamped in SERVER time, so we compare it
+        // against server time too: local clock + the phone-measured offset
+        // (clockOffsetMs). Without this, a device whose clock is skewed
+        // would render a different elapsed time than the in-app screen.
+        val clockOffsetMs = o.optLong("clockOffsetMs", 0L)
+        val nowEpoch = System.currentTimeMillis() + clockOffsetMs
         val elapsedNow = if (running && lastStartedAt > 0) {
             accumulatedMs + (nowEpoch - lastStartedAt)
         } else {

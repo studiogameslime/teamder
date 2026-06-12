@@ -18,6 +18,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocFromCache,
   getDocs,
   limit,
   onSnapshot,
@@ -57,6 +58,7 @@ import { isPlayedGame } from '@/utils/playedGames';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
+import { serverNow } from '@/services/serverClock';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
@@ -163,6 +165,37 @@ async function updateGameDoc(
     if (__DEV__) console.warn('[gameService] updateGameDoc failed', err);
     throw err;
   }
+}
+
+/**
+ * Read a game's current `status` + `liveMatch` for a timer mutation,
+ * preferring Firestore's LOCAL cache (instant, offline-safe) and only
+ * hitting the network if the doc isn't cached. The live-match screen keeps
+ * an onSnapshot listener open, so during a match the cache is always warm
+ * and current — this replaces the old read-half of a `runTransaction`
+ * without its mandatory server round-trip, which is what let the timer
+ * feel laggy on every press.
+ */
+async function readTimerState(
+  gameId: string,
+): Promise<{ status?: GameStatus; liveMatch?: LiveMatchState } | null> {
+  const ref = docs.game(gameId);
+  let data: Record<string, unknown> | null = null;
+  try {
+    const cached = await getDocFromCache(ref);
+    if (cached.exists()) data = cached.data();
+  } catch {
+    // Not in cache yet — fall through to a network read.
+  }
+  if (!data) {
+    const fresh = await getDoc(ref);
+    if (!fresh.exists()) return null;
+    data = fresh.data();
+  }
+  return {
+    status: data.status as GameStatus | undefined,
+    liveMatch: data.liveMatch as LiveMatchState | undefined,
+  };
 }
 
 function ensureMockGame(): Game {
@@ -3985,27 +4018,25 @@ export const gameService = {
     }
     const ref = docs.game(gameId);
     try {
-      await runTransaction(getFirebase().db, async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        if (data.status === 'finished' || data.status === 'cancelled') return;
-        const prev = data.liveMatch;
-        if (!prev) return;
-        // Already running — second admin pressing play is a no-op.
-        if (prev.timerRunning) return;
-        const next = {
-          ...prev,
-          timerRunning: true,
-          timerLastStartedAt: Date.now(),
-          timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
-          timerControlledBy: userId,
-          timerControlledByName: userName,
-        };
-        tx.update(ref, {
-          liveMatch: next,
-          updatedAt: Date.now(),
-        });
+      const cur = await readTimerState(gameId);
+      if (!cur || !cur.liveMatch) return;
+      if (cur.status === 'finished' || cur.status === 'cancelled') return;
+      // Already running — second admin pressing play is a no-op.
+      if (cur.liveMatch.timerRunning) return;
+      // Field-path write: touch only the timer fields (not the whole
+      // liveMatch object) so the write is small, fast to fan out, and gets
+      // Firestore's local latency-compensation (the presser sees it
+      // instantly). Anchor is `serverNow()` so every device's skew cancels.
+      // We re-write the existing accumulator (not reset it) so resume
+      // continues from the pre-pause elapsed time, and so the field is
+      // never left absent for the native widget/watch readers.
+      await updateDoc(ref, {
+        'liveMatch.timerRunning': true,
+        'liveMatch.timerLastStartedAt': serverNow(),
+        'liveMatch.timerAccumulatedMs': cur.liveMatch.timerAccumulatedMs ?? 0,
+        'liveMatch.timerControlledBy': userId,
+        'liveMatch.timerControlledByName': userName,
+        updatedAt: serverNow(),
       });
     } catch (err) {
       logError('startTimer', err, { gameId, userId });
@@ -4044,29 +4075,25 @@ export const gameService = {
     }
     const ref = docs.game(gameId);
     try {
-      await runTransaction(getFirebase().db, async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        if (data.status === 'finished' || data.status === 'cancelled') return;
-        const prev = data.liveMatch;
-        if (!prev) return;
-        // Already paused — second admin pressing pause is a no-op.
-        if (!prev.timerRunning || !prev.timerLastStartedAt) return;
-        const extra = Date.now() - prev.timerLastStartedAt;
-        const next = {
-          ...prev,
-          timerRunning: false,
-          timerLastStartedAt: null,
-          timerAccumulatedMs:
-            (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
-          timerControlledBy: userId,
-          timerControlledByName: userName,
-        };
-        tx.update(ref, {
-          liveMatch: next,
-          updatedAt: Date.now(),
-        });
+      const cur = await readTimerState(gameId);
+      if (!cur || !cur.liveMatch) return;
+      if (cur.status === 'finished' || cur.status === 'cancelled') return;
+      // Already paused — second admin pressing pause is a no-op.
+      if (!cur.liveMatch.timerRunning || !cur.liveMatch.timerLastStartedAt) {
+        return;
+      }
+      // Fold the elapsed-since-start into the accumulator, measured in the
+      // SHARED server-time base so the frozen value every device snaps to is
+      // identical regardless of local clock skew.
+      const extra = serverNow() - cur.liveMatch.timerLastStartedAt;
+      await updateDoc(ref, {
+        'liveMatch.timerRunning': false,
+        'liveMatch.timerLastStartedAt': null,
+        'liveMatch.timerAccumulatedMs':
+          (cur.liveMatch.timerAccumulatedMs ?? 0) + Math.max(0, extra),
+        'liveMatch.timerControlledBy': userId,
+        'liveMatch.timerControlledByName': userName,
+        updatedAt: serverNow(),
       });
     } catch (err) {
       logError('pauseTimer', err, { gameId, userId });
@@ -4105,25 +4132,16 @@ export const gameService = {
     }
     const ref = docs.game(gameId);
     try {
-      await runTransaction(getFirebase().db, async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        if (data.status === 'finished' || data.status === 'cancelled') return;
-        const prev = data.liveMatch;
-        if (!prev) return;
-        const next = {
-          ...prev,
-          timerRunning: false,
-          timerLastStartedAt: null,
-          timerAccumulatedMs: 0,
-          timerControlledBy: userId,
-          timerControlledByName: userName,
-        };
-        tx.update(ref, {
-          liveMatch: next,
-          updatedAt: Date.now(),
-        });
+      const cur = await readTimerState(gameId);
+      if (!cur || !cur.liveMatch) return;
+      if (cur.status === 'finished' || cur.status === 'cancelled') return;
+      await updateDoc(ref, {
+        'liveMatch.timerRunning': false,
+        'liveMatch.timerLastStartedAt': null,
+        'liveMatch.timerAccumulatedMs': 0,
+        'liveMatch.timerControlledBy': userId,
+        'liveMatch.timerControlledByName': userName,
+        updatedAt: serverNow(),
       });
     } catch (err) {
       logError('resetTimer', err, { gameId, userId });
