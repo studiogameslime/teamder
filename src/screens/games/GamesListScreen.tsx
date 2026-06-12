@@ -591,29 +591,35 @@ export function GamesListScreen() {
 
       {/* Floating "+" FAB — pinned to the bottom-LEFT under forceRTL.
           `end: spacing.xl` is the trailing edge under RTL, which is
-          the visual LEFT (per spec). */}
-      <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
-        <Pressable
-          onPress={() => {
-            if (hintVisible) dismissHint();
-            handleCreate();
-          }}
-          style={({ pressed }) => [
-            styles.fabInner,
-            pressed && { transform: [{ scale: 0.95 }] },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.matchesCreateFab}
-        >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
-        </Pressable>
-      </Breathing>
+          the visual LEFT (per spec). Hidden on the empty state, which
+          already shows a centered "create game" CTA — a second floating
+          + would be redundant. */}
+      {!isEmpty ? (
+        <>
+          <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
+            <Pressable
+              onPress={() => {
+                if (hintVisible) dismissHint();
+                handleCreate();
+              }}
+              style={({ pressed }) => [
+                styles.fabInner,
+                pressed && { transform: [{ scale: 0.95 }] },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchesCreateFab}
+            >
+              <Ionicons name="add" size={30} color="#FFFFFF" />
+            </Pressable>
+          </Breathing>
 
-      {hintVisible ? (
-        <Pressable style={styles.hintBubble} onPress={dismissHint}>
-          <Text style={styles.hintText}>{he.hintCreateGame}</Text>
-          <View style={styles.hintArrow} />
-        </Pressable>
+          {hintVisible ? (
+            <Pressable style={styles.hintBubble} onPress={dismissHint}>
+              <Text style={styles.hintText}>{he.hintCreateGame}</Text>
+              <View style={styles.hintArrow} />
+            </Pressable>
+          ) : null}
+        </>
       ) : null}
 
       <GameFilterSheet

@@ -544,20 +544,24 @@ export function PublicGroupsFeedScreen() {
 
       {/* Floating "+" action — bottom LEFT under RTL. Using `end`
           (which resolves to the visual LEFT under forceRTL) keeps it
-          off the right edge where the chevron-back gesture lives. */}
-      <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.fabInner,
-            pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
-          ]}
-          onPress={() => nav.navigate('CommunitiesCreate')}
-          accessibilityRole="button"
-          accessibilityLabel={he.communitiesCreateGroup}
-        >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
-        </Pressable>
-      </Breathing>
+          off the right edge where the chevron-back gesture lives.
+          Hidden on the empty state, which already shows a centered
+          "create first community" button. */}
+      {totalKnown === 0 && !isSearching ? null : (
+        <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.fabInner,
+              pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
+            ]}
+            onPress={() => nav.navigate('CommunitiesCreate')}
+            accessibilityRole="button"
+            accessibilityLabel={he.communitiesCreateGroup}
+          >
+            <Ionicons name="add" size={30} color="#FFFFFF" />
+          </Pressable>
+        </Breathing>
+      )}
 
       <CommunityFilterSheet
         visible={filterOpen}
