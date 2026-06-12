@@ -40,6 +40,13 @@ export interface User {
    */
   onboardingCompleted?: boolean;
 
+  /**
+   * QA tester flag, toggled from the Pulse owner dashboard. Gates
+   * tester-only surfaces in the app — currently the screenshot→bug-report
+   * popup, which fires only when this is true.
+   */
+  qa?: boolean;
+
   /** When/where the user is generally available for pickup games. */
   availability?: UserAvailability;
   /**

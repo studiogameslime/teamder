@@ -189,6 +189,10 @@ const userConverter: FirestoreDataConverter<User> = {
       createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
       updatedAt: d.updatedAt ?? undefined,
       onboardingCompleted: d.onboardingCompleted === true,
+      // QA tester flag — set from Pulse. Gates tester-only surfaces
+      // (e.g. the screenshot→bug-report popup) so they appear only for
+      // people we've explicitly marked as testers.
+      qa: d.qa === true,
       availability: readAvailability(d),
       stats: readStats(d),
       fcmTokens: Array.isArray(d.fcmTokens)

@@ -22,6 +22,7 @@ import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
 import { submitFeedback } from '@/services/feedbackService';
 import { navigationRef } from '@/navigation/navigationRef';
+import { useUserStore } from '@/store/userStore';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -33,6 +34,9 @@ export function ScreenshotReportSheet() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const capturingRef = useRef(false);
+  // Tester-only surface: the screenshot→report popup fires only for users
+  // we've explicitly marked as QA testers from the Pulse dashboard.
+  const isTester = useUserStore((s) => s.currentUser?.qa === true);
 
   const onShot = useCallback(async () => {
     // Ignore re-entrancy and don't stack a second sheet over an open one.
@@ -57,6 +61,9 @@ export function ScreenshotReportSheet() {
   }, [visible]);
 
   useEffect(() => {
+    // Only testers get the listener at all — everyone else takes screenshots
+    // without ever seeing the report sheet.
+    if (!isTester) return;
     let sub: { remove: () => void } | undefined;
     try {
       sub = ScreenCapture.addScreenshotListener(() => {
@@ -66,7 +73,7 @@ export function ScreenshotReportSheet() {
       // Native module not linked (Expo Go / pre-rebuild) — no-op.
     }
     return () => sub?.remove?.();
-  }, [onShot]);
+  }, [onShot, isTester]);
 
   const close = () => {
     setVisible(false);
