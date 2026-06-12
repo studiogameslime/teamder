@@ -165,27 +165,31 @@ private fun StopwatchScreen(
     onTimerCommand: (action: String, gameId: String) -> Unit,
 ) {
     val elapsed = rememberElapsedMs(state.timer)
+    // No BrandLogo here — on a round watch the logo + big time + status
+    // pushed the control row off the bottom of the screen. The controls are
+    // the whole point of the live screen, so we drop the logo and tighten the
+    // layout to guarantee Play/Pause/Reset are always visible without scroll.
     CenteredScaffold {
-        BrandLogo()
         Text(
             text = state.title,
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.title3,
-            maxLines = 2,
+            style = MaterialTheme.typography.caption1,
+            color = TeamderInk,
+            maxLines = 1,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = formatStopwatch(elapsed),
             textAlign = TextAlign.Center,
-            fontSize = 44.sp,
+            fontSize = 40.sp,
             style = MaterialTheme.typography.display1,
             color = MaterialTheme.colors.primary,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = if (state.timer.running) "המשחק רץ" else "מושהה",
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.caption1,
+            style = MaterialTheme.typography.caption2,
             color = MaterialTheme.colors.primary,
         )
         // Control row — mirrors the phone widget's button logic exactly:
@@ -194,8 +198,8 @@ private fun StopwatchScreen(
         //   never started   → [Play]
         // Each tap sends a MessageClient command to the phone, which runs
         // the same Firestore mutation as the widget / in-app controls.
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (state.timer.running) {
                 TimerButton(PauseIcon, "השהה") {
                     onTimerCommand("pause", state.gameId)
