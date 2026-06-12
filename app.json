@@ -46,7 +46,8 @@
       "versionCode": 34,
       "googleServicesFile": "./google-services.json",
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.DETECT_SCREEN_CAPTURE"
       ]
     },
     "plugins": [
@@ -95,8 +96,7 @@
       "./plugins/withIoniconsAsset.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
-      "./plugins/withRemoveAlwaysLocation.js",
-      "expo-screen-capture"
+      "./plugins/withRemoveAlwaysLocation.js"
     ],
     "experiments": {
       "typedRoutes": false
