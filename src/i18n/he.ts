@@ -919,6 +919,14 @@ export const he = {
   feedbackSubmit: 'שליחה',
   feedbackSuccess: 'תודה! הדיווח התקבל 🙏',
   feedbackError: 'שליחת הדיווח נכשלה, נסו שוב',
+  // Screenshot-triggered bug report
+  screenshotReportTitle: 'צילמת מסך — לדווח על באג?',
+  screenshotReportSubtitle: 'צירפנו את הצילום אוטומטית. ספר/י בקצרה מה לא תקין.',
+  screenshotReportAttached: 'הצילום צורף',
+  screenshotReportPlaceholder: 'מה הבאג? (לא חובה)',
+  screenshotReportSend: 'שליחת דיווח',
+  screenshotReportSent: 'הדיווח נשלח עם הצילום, תודה! 🙏',
+  screenshotReportDefaultMsg: 'דיווח על באג מצילום מסך',
 
   // Invite
   inviteShareTitle: 'הזמן שחקנים',

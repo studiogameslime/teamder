@@ -148,6 +148,7 @@ import { MockModeBanner } from '@/components/MockModeBanner';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { ToastHost } from '@/components/Toast';
 import { AppDialogHost } from '@/components/AppDialog';
+import { ScreenshotReportSheet } from '@/components/ScreenshotReportSheet';
 import { BannerHost } from '@/components/Banner';
 import { adsService, AdDebugOverlay } from '@/services/adsService';
 import { MaintenanceGate, AnnouncementBanner } from '@/components/RemoteGates';
@@ -789,6 +790,8 @@ export default function App() {
         <ToastHost />
         <AppDialogHost />
         <BannerHost />
+        {/* Global: a device screenshot slides up a pre-filled bug report. */}
+        <ScreenshotReportSheet />
       </NavigationContainer>
 
       {/* Splash sits ABOVE everything. RootNavigator keeps mounting +

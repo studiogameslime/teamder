@@ -34,6 +34,9 @@ export async function submitFeedback(
   type: FeedbackType,
   message: string,
   screen?: string,
+  /** Optional raw base64 JPEG (no data: prefix) — e.g. a screenshot the
+   *  user attached. Capped client-side so the doc stays well under 1 MB. */
+  imageBase64?: string,
 ): Promise<void> {
   const text = message.trim().slice(0, 2000);
   if (text.length === 0) throw new Error('submitFeedback: empty message');
@@ -51,12 +54,20 @@ export async function submitFeedback(
     const userName =
       useUserStore.getState().currentUser?.name ?? fbUser.displayName ?? '';
 
+    // Guard the doc size: a ~600px JPEG q0.4 is ~30–80 KB of base64; cap at
+    // ~700 KB so we never approach Firestore's 1 MB document limit.
+    const image =
+      typeof imageBase64 === 'string' && imageBase64.length > 0 && imageBase64.length < 700_000
+        ? imageBase64
+        : undefined;
+
     await addDoc(collection(db, 'feedback'), {
       type,
       message: text,
       userId: fbUser.uid,
       userName,
       ...(screen ? { screen } : {}),
+      ...(image ? { image } : {}),
       appVersion,
       platform: Platform.OS,
       createdAt: serverTimestamp(),

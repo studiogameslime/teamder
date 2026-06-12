@@ -95,7 +95,8 @@
       "./plugins/withIoniconsAsset.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
-      "./plugins/withRemoveAlwaysLocation.js"
+      "./plugins/withRemoveAlwaysLocation.js",
+      "expo-screen-capture"
     ],
     "experiments": {
       "typedRoutes": false
