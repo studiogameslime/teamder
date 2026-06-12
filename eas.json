@@ -51,6 +51,12 @@
         "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
         "track": "production"
       }
+    },
+    "production-wear": {
+      "android": {
+        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "track": "production"
+      }
     }
   }
 }
