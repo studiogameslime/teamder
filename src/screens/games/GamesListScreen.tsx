@@ -182,7 +182,16 @@ export function GamesListScreen() {
       try {
         const myCommunityIds = myCommunities.map((g) => g.id);
         const [a, b, c] = await Promise.all([
-          gameService.getMyGames(user.id),
+          // getMyLiveOrUpcomingGames (not getMyGames): the latter is
+          // `status==='open'` only, so a game that went 'active' (live),
+          // 'locked', or was created 'scheduled' fell out of "המשחקים שלי".
+          // For a one-time PRIVATE game (in the user's hidden personal
+          // group) there's no community feed to fall back to, so it vanished
+          // entirely. This variant keeps scheduled|open|locked|active; the
+          // render layer already allows them (isVisibleInMyGames = non-
+          // terminal), and the open-only community/open sections below can't
+          // duplicate the non-open games this adds.
+          gameService.getMyLiveOrUpcomingGames(user.id),
           gameService.getCommunityGames(user.id, myCommunityIds),
           gameService.getOpenGames(user.id, myCommunityIds),
         ]);
