@@ -1250,6 +1250,11 @@ export const he = {
     'הפעולה תמחק לצמיתות את כרטיס השחקן שלך, ההיסטוריה וההגדרות. לא ניתן לשחזר.',
   profileDeleteAccountConfirm: 'מחק לצמיתות',
   profileDeleteAccountCancel: 'ביטול',
+  // Typed-confirmation guard so the irreversible delete can't be tapped
+  // by accident — the button stays disabled until the user types בטוח.
+  profileDeleteAccountConfirmWord: 'בטוח',
+  profileDeleteAccountTypePrompt: 'כדי לאשר, הקלידו בטוח',
+  profileDeleteAccountInputPlaceholder: 'הקלידו כאן בטוח',
   profileDeleteAccountSuccess: 'החשבון נמחק',
   profileDeleteAccountFailed: 'מחיקת החשבון נכשלה. נסה שוב.',
   profileChangePhoto: 'שנה תמונה',
@@ -1289,6 +1294,8 @@ export const he = {
   profileStatAttendance: 'הגעה',
   profileStatWinRate: 'אחוז ניצחון',
   profileStatAttended: 'הופעות',
+  profileStatClubs: 'מועדונים',
+  profileStatFriends: 'חברים',
   profileStatCancelRate: 'ביטולים',
   profileStatGoals: 'שערים',
   profileSubtitlePlayer: 'שחקן',

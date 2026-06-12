@@ -92,7 +92,7 @@ function Chip({
           line as the larger captain avatar (not pinned to the top). */}
       <View style={styles.avatarArea}>
         <View style={captain ? styles.captainRing : undefined}>
-          <UserAvatar user={user} size={captain ? 42 : 34} />
+          <UserAvatar user={user} size={captain ? 34 : 30} />
         </View>
       </View>
       <Text style={styles.chipName} numberOfLines={1}>
@@ -141,17 +141,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
-    columnGap: spacing.sm,
+    // Tightened (2026-06-12) so a 7-a-side team fits a row without
+    // wrapping to a lonely 5th/6th avatar.
+    columnGap: 4,
     rowGap: spacing.xs,
     flexShrink: 1,
   },
-  chip: { width: 50, alignItems: 'center', gap: 3 },
-  avatarArea: { height: 52, justifyContent: 'center', alignItems: 'center' },
+  chip: { width: 40, alignItems: 'center', gap: 3 },
+  avatarArea: { height: 44, justifyContent: 'center', alignItems: 'center' },
   captainRing: {
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: 99,
-    padding: 2,
+    padding: 1.5,
   },
   chipName: {
     ...typography.caption,

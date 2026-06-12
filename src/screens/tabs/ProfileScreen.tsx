@@ -41,6 +41,7 @@ import {
   type HeroMetaItem,
 } from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
+import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
 import { ProfileAvailabilityCard } from '@/components/profile/ProfileAvailabilityCard';
 import {
   ProfileActivityCard,
@@ -113,6 +114,7 @@ export function ProfileScreen() {
   >([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   // The soonest game the user is registered for — drives the
   // next-game card that replaced the achievements rail. Null = none
   // upcoming (or still loading on first paint).
@@ -235,36 +237,26 @@ export function ProfileScreen() {
     );
   };
 
-  const onDeleteAccount = () => {
-    appAlert(
-      he.profileDeleteAccountTitle,
-      he.profileDeleteAccountMessage,
-      [
-        { text: he.profileDeleteAccountCancel, style: 'cancel' },
-        {
-          text: he.profileDeleteAccountConfirm,
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              await deleteOwnAccount();
-            } catch (err) {
-              if (__DEV__) console.warn('[profile] delete failed', err);
-              appAlert(he.profileDeleteAccountFailed);
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-      { cancelable: true },
-    );
+  // Open the typed-confirmation sheet (user must type בטוח) instead of a
+  // one-tap destructive alert — deletion is irreversible.
+  const onDeleteAccount = () => setDeleteSheetOpen(true);
+
+  const confirmDeleteAccount = async () => {
+    try {
+      setDeleting(true);
+      await deleteOwnAccount();
+      setDeleteSheetOpen(false);
+    } catch (err) {
+      if (__DEV__) console.warn('[profile] delete failed', err);
+      appAlert(he.profileDeleteAccountFailed);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!user) return null;
 
   const totalGames = user.stats?.totalGames ?? 0;
-  const attendedCount = user.stats?.attended ?? 0;
   const attendance = getAttendanceRate(user.stats);
 
   // Hero meta row (under the name): communities · trust · location.
@@ -486,8 +478,8 @@ export function ProfileScreen() {
         <View style={styles.statsWrap}>
           <HeroStatsCard
             totalGames={totalGames}
-            attended={attendedCount}
-            attendancePct={attendance}
+            clubs={myCommunities.length}
+            friends={user.friends?.length ?? 0}
           />
         </View>
 
@@ -553,6 +545,13 @@ export function ProfileScreen() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         sections={sections}
+      />
+
+      <DeleteAccountSheet
+        visible={deleteSheetOpen}
+        loading={deleting}
+        onCancel={() => setDeleteSheetOpen(false)}
+        onConfirm={confirmDeleteAccount}
       />
     </View>
   );

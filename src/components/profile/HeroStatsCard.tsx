@@ -1,14 +1,15 @@
 // HeroStatsCard — dark navy floating stats strip that overlaps the
 // bottom of the stadium hero. Three fixed columns:
-//   משחקים · הופעות · הגעה %
+//   משחקים · מועדונים · חברים
 //
 // Each column = icon + bold number + small label. The dark
 // background reads against the gradient finale of the hero, then
 // gives way to the lighter content below.
 //
-// "שערים" was here historically but no flow ever wrote `stats.goals`
-// after the live-match pivot to timer-only — it always rendered 0,
-// which was misleading. Removed (2026-05-29).
+// History: "שערים" was dropped (2026-05-29, no flow wrote it). The
+// old "הופעות"/"הגעה %" columns were replaced (2026-06-12) — both
+// derived from stats that no flow increments yet, so they always read
+// 0; clubs + friends are real counts the user can see grow.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -19,15 +20,11 @@ import { CountUp } from '@/components/anim/CountUp';
 
 interface Props {
   totalGames: number;
-  attended: number;
-  attendancePct: number;
+  clubs: number;
+  friends: number;
 }
 
-export function HeroStatsCard({
-  totalGames,
-  attended,
-  attendancePct,
-}: Props) {
+export function HeroStatsCard({ totalGames, clubs, friends }: Props) {
   return (
     <View style={styles.card}>
       <Cell
@@ -38,19 +35,18 @@ export function HeroStatsCard({
       />
       <Divider />
       <Cell
-        icon="trophy-outline"
+        icon="people-outline"
         iconColor="#FFFFFF"
-        countTo={attended}
-        label={he.profileStatAttended}
+        countTo={clubs}
+        label={he.profileStatClubs}
       />
       <Divider />
       <Cell
-        icon="checkmark-circle-outline"
+        icon="person-add-outline"
         iconColor="#22C55E"
-        countTo={attendancePct}
-        suffix="%"
+        countTo={friends}
         valueColor="#22C55E"
-        label={he.profileStatAttendance}
+        label={he.profileStatFriends}
       />
     </View>
   );
