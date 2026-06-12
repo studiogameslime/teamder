@@ -387,14 +387,9 @@ export function ProfileScreen() {
           icon: 'time-outline',
           onPress: () => nav.navigate('History'),
         },
-        // Stats screen exists — keep accessible from menu under games
-        // so we don't drop functionality the previous design exposed.
-        {
-          id: 'stats',
-          label: he.profileSectionStats,
-          icon: 'stats-chart-outline',
-          onPress: () => nav.navigate('Stats'),
-        },
+        // Stats screen removed (2026-06-12) — its games/clubs/friends now
+        // live on the profile hero card itself, so the separate page was
+        // redundant.
       ],
     },
     // Admin-only: pending approvals. Rendered as its own section so

@@ -21,7 +21,6 @@ import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
-import { StatsScreen } from '@/screens/tabs/StatsScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
@@ -40,7 +39,6 @@ export type ProfileStackParamList = {
   NotificationsSettings: undefined;
   PlayerCard: { userId: string; groupId?: string };
   AdminApproval: undefined;
-  Stats: undefined;
   History: undefined;
   Achievements: undefined;
   Friends: undefined;
@@ -79,7 +77,6 @@ export function ProfileStack() {
       />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
-      <Stack.Screen name="Stats" component={StatsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Friends" component={FriendsScreen} />

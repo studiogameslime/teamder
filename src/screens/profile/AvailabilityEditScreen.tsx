@@ -38,7 +38,7 @@ import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { TimeBucket, UserAvailability, WeekdayIndex } from '@/types';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 
@@ -534,13 +534,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: ACCENT,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   introBody: {
     fontSize: 13,
     lineHeight: 19,
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   introIcon: {
     width: 64,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
 
   // Day chips — 7 equal cells in one row
@@ -684,9 +684,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
-  notifHint: { fontSize: 12, color: colors.textMuted, textAlign: 'right' },
+  notifHint: { fontSize: 12, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
 
   // Footer / save
   footer: {
