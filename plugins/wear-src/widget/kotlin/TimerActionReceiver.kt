@@ -3,7 +3,10 @@ package com.studiogameslime.soccerapp.widget
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONObject
@@ -23,15 +26,16 @@ import org.json.JSONObject
  * devices' UIs can show "מופעל ע״י X".
  *
  * Authentication: FirebaseAuth is shared between the JS app and native
- * code (same FirebaseApp instance), so a user who's logged into the JS
- * app is also authenticated for our Firestore transaction here — no
- * extra sign-in plumbing.
+ * code (same FirebaseApp instance). BUT when the app process was killed,
+ * tapping a widget button spawns a FRESH process where Firebase Auth may
+ * still be restoring the persisted user from disk — so `currentUser` can
+ * be momentarily null. Previously we bailed silently in that case, which
+ * is exactly why "the button does nothing" when the app isn't running.
+ * Now we wait briefly for the auth state to restore before giving up, and
+ * we Toast on every failure so a tap is never a silent no-op.
  *
  * After the transaction succeeds, we also patch the widget's
  * SharedPreferences with the new timer fields and broadcast a refresh.
- * That gives the widget an instant visual update without waiting for
- * the JS app's onSnapshot → bridge → publish round-trip (which only
- * fires if the JS app is currently running).
  */
 class TimerActionReceiver : BroadcastReceiver() {
 
@@ -40,18 +44,56 @@ class TimerActionReceiver : BroadcastReceiver() {
         val gameId = intent.getStringExtra(EXTRA_GAME_ID) ?: return
         val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
 
+        // goAsync lets the receiver outlive its synchronous lifetime so the
+        // auth-restore wait + Firestore transaction (~0.5-2s) can complete.
+        val pending = goAsync()
         val auth = FirebaseAuth.getInstance()
-        val uid = auth.currentUser?.uid
-        if (uid == null) {
-            Log.w(TAG, "no signed-in user; widget button ignored")
+
+        val existing = auth.currentUser
+        if (existing != null) {
+            performMutation(context, action, gameId, userName, existing.uid, pending)
             return
         }
 
-        // goAsync lets the receiver outlive its synchronous lifetime so
-        // the Firestore transaction (~0.5-2s round-trip) can complete.
-        val pending = goAsync()
-        val now = System.currentTimeMillis()
+        // Cold-started receiver process — wait for Firebase Auth to finish
+        // restoring the persisted user (up to AUTH_WAIT_MS) before bailing.
+        Log.d(TAG, "currentUser null; waiting for auth restore")
+        val handler = Handler(Looper.getMainLooper())
+        val listenerHolder = arrayOfNulls<FirebaseAuth.AuthStateListener>(1)
+        var settled = false
 
+        val giveUp = Runnable {
+            if (settled) return@Runnable
+            settled = true
+            listenerHolder[0]?.let { auth.removeAuthStateListener(it) }
+            Log.w(TAG, "auth did not restore in time; widget button ignored")
+            toast(context, "התחברו לאפליקציה כדי לשלוט בטיימר")
+            pending.finish()
+        }
+
+        val listener = FirebaseAuth.AuthStateListener { a ->
+            val u = a.currentUser
+            if (u != null && !settled) {
+                settled = true
+                handler.removeCallbacks(giveUp)
+                listenerHolder[0]?.let { a.removeAuthStateListener(it) }
+                performMutation(context, action, gameId, userName, u.uid, pending)
+            }
+        }
+        listenerHolder[0] = listener
+        auth.addAuthStateListener(listener)
+        handler.postDelayed(giveUp, AUTH_WAIT_MS)
+    }
+
+    private fun performMutation(
+        context: Context,
+        action: String,
+        gameId: String,
+        userName: String,
+        uid: String,
+        pending: BroadcastReceiver.PendingResult,
+    ) {
+        val now = System.currentTimeMillis()
         val db = FirebaseFirestore.getInstance()
         val ref = db.collection("games").document(gameId)
 
@@ -94,7 +136,6 @@ class TimerActionReceiver : BroadcastReceiver() {
             newLive["timerControlledByName"] = userName
 
             tx.update(ref, mapOf("liveMatch" to newLive, "updatedAt" to now))
-            // Return the new timer slice for the optimistic prefs update below.
             mapOf(
                 "timerRunning" to newLive["timerRunning"],
                 "timerLastStartedAt" to newLive["timerLastStartedAt"],
@@ -106,11 +147,25 @@ class TimerActionReceiver : BroadcastReceiver() {
             if (newTimer != null) {
                 applyOptimisticPrefsUpdate(context, newTimer)
                 TeamderWidgetProvider.requestRefresh(context)
+            } else {
+                // Transaction ran but was a no-op (game finished / not live /
+                // idempotent). Tell the user so the tap isn't a silent miss.
+                Log.w(TAG, "timer mutation no-op for action=$action gameId=$gameId")
+                toast(context, "לא ניתן לעדכן את הטיימר כרגע")
             }
             pending.finish()
         }.addOnFailureListener { e ->
             Log.w(TAG, "timer mutation failed for action=$action gameId=$gameId", e)
+            // Most common cause: the viewer isn't the game's admin/creator,
+            // so the Firestore rules reject the liveMatch write.
+            toast(context, "פעולת הטיימר נכשלה — רק מנהל המשחק יכול לשלוט")
             pending.finish()
+        }
+    }
+
+    private fun toast(context: Context, msg: String) {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context.applicationContext, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -148,6 +203,9 @@ class TimerActionReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "TimerActionReceiver"
+
+        /** How long to wait for Firebase Auth to restore in a cold process. */
+        private const val AUTH_WAIT_MS = 5_000L
 
         // Distinct intent action per button — fully-qualified to avoid
         // collisions with any other receiver in the system.
