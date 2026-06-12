@@ -7,6 +7,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONObject
@@ -147,6 +149,11 @@ class TimerActionReceiver : BroadcastReceiver() {
             if (newTimer != null) {
                 applyOptimisticPrefsUpdate(context, newTimer)
                 TeamderWidgetProvider.requestRefresh(context)
+                // Also push to the paired watch so the Wear tile reflects a
+                // timer change driven from the phone widget — without this,
+                // controlling the timer from the widget left the watch stale
+                // (the JS watch-sync only runs while the app is alive).
+                publishToWatch(context)
             } else {
                 // Transaction ran but was a no-op (game finished / not live /
                 // idempotent). Tell the user so the tap isn't a silent miss.
@@ -166,6 +173,28 @@ class TimerActionReceiver : BroadcastReceiver() {
     private fun toast(context: Context, msg: String) {
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(context.applicationContext, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Mirror the freshly-updated widget payload to the Wear Data Layer so
+     * the watch tile refreshes. The widget prefs JSON and the watch payload
+     * are the SAME shape (see WatchBridgeModule), so we forward it verbatim
+     * with a new timestamp (the Data Layer dedups identical content). The
+     * watch's TileUpdateListenerService picks this up and re-renders.
+     */
+    private fun publishToWatch(context: Context) {
+        try {
+            val json = context.getSharedPreferences(
+                TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+            ).getString(TeamderWidgetProvider.KEY_JSON, null) ?: return
+            val request = PutDataMapRequest.create("/teamder/state").apply {
+                dataMap.putString("json", json)
+                dataMap.putLong("ts", System.currentTimeMillis())
+            }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request)
+        } catch (_: Exception) {
+            // Best-effort — no paired watch, or Play Services unavailable.
         }
     }
 
