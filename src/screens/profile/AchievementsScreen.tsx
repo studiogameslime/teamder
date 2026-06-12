@@ -11,6 +11,8 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,7 +21,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -149,23 +150,6 @@ export function AchievementsScreen() {
               ))}
             </View>
 
-            {active ? (
-              <Card style={styles.detailCard}>
-                <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
-                <Text style={styles.detailDesc}>
-                  {active.def.descriptionHe}
-                </Text>
-                {active.unlocked && active.unlockedAt ? (
-                  <Text style={styles.detailMeta}>
-                    {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
-                  </Text>
-                ) : !active.unlocked ? (
-                  <Text style={styles.detailMeta}>
-                    {he.achievementsLockedHint}
-                  </Text>
-                ) : null}
-              </Card>
-            ) : null}
           </>
         )}
         {loading ? (
@@ -174,6 +158,37 @@ export function AchievementsScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Tap-to-detail tooltip — a centered popover so the explanation is
+          always visible (the old inline card sat below the fold and was
+          easy to miss). Tap anywhere to dismiss. */}
+      <Modal
+        visible={!!active}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveId(null)}
+      >
+        <Pressable style={styles.tooltipBackdrop} onPress={() => setActiveId(null)}>
+          {active ? (
+            <Pressable style={styles.tooltipCard} onPress={(e) => e.stopPropagation()}>
+              <AchievementBadge
+                def={active.def}
+                unlocked={active.unlocked}
+                size={72}
+              />
+              <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
+              <Text style={styles.detailDesc}>{active.def.descriptionHe}</Text>
+              {active.unlocked && active.unlockedAt ? (
+                <Text style={styles.detailMeta}>
+                  {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
+                </Text>
+              ) : !active.unlocked ? (
+                <Text style={styles.detailMeta}>{he.achievementsLockedHint}</Text>
+              ) : null}
+            </Pressable>
+          ) : null}
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -240,25 +255,38 @@ const styles = StyleSheet.create({
     width: CELL_BASIS,
     alignItems: 'center',
   },
-  detailCard: {
+  tooltipBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  tooltipCard: {
+    backgroundColor: colors.bg,
+    borderRadius: 20,
     padding: spacing.lg,
-    gap: spacing.xs,
+    gap: spacing.sm,
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    maxWidth: 360,
   },
   detailTitle: {
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   detailDesc: {
     ...typography.body,
     color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
+    textAlign: 'center',
   },
   detailMeta: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
+    textAlign: 'center',
     marginTop: spacing.xs,
   },
   loadingFooter: {

@@ -84,6 +84,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     icon: 'medal',
     tint: TINT_GAMES,
   },
+  {
+    id: 'hundredGames',
+    titleHe: '100 משחקים',
+    descriptionHe: 'אגדת מגרש — 100 משחקים',
+    category: 'games',
+    metric: 'gamesJoined',
+    threshold: 100,
+    icon: 'trophy',
+    tint: TINT_GAMES,
+  },
 
   // ─── Teams ─────────────────────────────────────────────────────────────
   {
@@ -158,6 +168,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     icon: 'people-circle-outline',
     tint: TINT_SOCIAL,
   },
+  {
+    id: 'twentyFiveFriends',
+    titleHe: '25 חברים',
+    descriptionHe: 'מלך החברתיות — 25 חברים',
+    category: 'social',
+    metric: 'friendsCount',
+    threshold: 25,
+    icon: 'people-circle',
+    tint: TINT_SOCIAL,
+  },
 
   // ─── Invites ───────────────────────────────────────────────────────────
   {
@@ -190,12 +210,25 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     icon: 'megaphone',
     tint: TINT_INVITES,
   },
+  {
+    id: 'invitedTwentyFivePlayers',
+    titleHe: '25 הזמנות',
+    descriptionHe: 'שגריר האפליקציה — 25 הזמנות',
+    category: 'invites',
+    metric: 'invitesSent',
+    threshold: 25,
+    icon: 'megaphone-outline',
+    tint: TINT_INVITES,
+  },
 
   // ─── Coaching ──────────────────────────────────────────────────────────
+  // Titles deliberately avoid a bare "מנהל של 30" — that reads as
+  // "manager of 30 communities". These count PLAYERS approved into your
+  // club, so the title is evocative and the count lives in the description.
   {
     id: 'coachOf10',
-    titleHe: 'מנהל של 10',
-    descriptionHe: 'אישרת 10 שחקנים למועדון',
+    titleHe: 'מנהל מתחיל',
+    descriptionHe: 'אישרת 10 שחקנים למועדון שלך',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 10,
@@ -204,8 +237,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'coachOf20',
-    titleHe: 'מנהל של 20',
-    descriptionHe: 'אישרת 20 שחקנים למועדון',
+    titleHe: 'מנהל מנוסה',
+    descriptionHe: 'אישרת 20 שחקנים למועדון שלך',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 20,
@@ -214,8 +247,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   },
   {
     id: 'coachOf30',
-    titleHe: 'מנהל של 30',
-    descriptionHe: 'אישרת 30 שחקנים למועדון',
+    titleHe: 'מנהל ותיק',
+    descriptionHe: 'אישרת 30 שחקנים למועדון שלך',
     category: 'coaching',
     metric: 'playersCoached',
     threshold: 30,
