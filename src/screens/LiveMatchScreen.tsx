@@ -38,6 +38,7 @@ import { toast } from '@/components/Toast';
 import { TimerProgressRing } from '@/components/match/TimerProgressRing';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
+import { lightHaptic, warningHaptic } from '@/utils/haptics';
 import {
   canEnterLive,
   isCancelled as isCancelledHelper,
@@ -84,6 +85,23 @@ export function LiveMatchScreen() {
   const timerMs = timerView.displayMs;
   const timerRunning = timerView.running;
   const timerStarted = timerView.started;
+
+  // ─── Timer math (computed before any early return so the haptics effect
+  //     below can depend on it without breaking hook order). ──────────────
+  const totalMinutes = game?.matchDurationMinutes ?? 0;
+  const totalMs = totalMinutes * 60_000;
+  const progress = totalMs > 0 ? timerMs / totalMs : 0;
+  // Overtime: once the configured duration is exceeded the MAIN clock
+  // freezes at the duration (e.g. 08:00) and a separate red "+MM:SS" added-
+  // time counter runs below — the regular minutes stay pinned at the limit.
+  const inOvertime = totalMs > 0 && timerMs > totalMs;
+  const overtimeMs = inOvertime ? timerMs - totalMs : 0;
+  const clockMs = inOvertime ? totalMs : timerMs;
+  const remainingMs = totalMs > 0 ? totalMs - timerMs : Infinity;
+  // Final minute before time → "redder" ring + clock and a gentle haptic.
+  const inLastMinute =
+    timerRunning && totalMs > 0 && !inOvertime && remainingMs <= 60_000;
+  const danger = inOvertime || inLastMinute;
 
   // ─── Load the game once + lifecycle guard ──────────────────────────────
   useEffect(() => {
@@ -262,6 +280,40 @@ export function LiveMatchScreen() {
     transform: [{ scale: pulse.value }],
   }));
 
+  // ─── Gentle haptics near time + at overtime ────────────────────────────
+  // A single light tap when the final minute begins, a light tap on each of
+  // the last 5 seconds (countdown feel), and one soft "warning" buzz the
+  // moment the configured duration is exceeded. All fire-and-forget; a
+  // device without haptics silently no-ops.
+  const enteredLastMinRef = useRef(false);
+  const enteredOvertimeRef = useRef(false);
+  const lastTickSecRef = useRef(-1);
+  useEffect(() => {
+    if (!timerRunning) {
+      enteredLastMinRef.current = false;
+      enteredOvertimeRef.current = false;
+      lastTickSecRef.current = -1;
+      return;
+    }
+    if (inLastMinute && !enteredLastMinRef.current) {
+      enteredLastMinRef.current = true;
+      lightHaptic();
+    }
+    if (!inLastMinute) enteredLastMinRef.current = false;
+    if (inLastMinute) {
+      const sec = Math.ceil(remainingMs / 1000);
+      if (sec <= 5 && sec >= 1 && sec !== lastTickSecRef.current) {
+        lastTickSecRef.current = sec;
+        lightHaptic();
+      }
+    }
+    if (inOvertime && !enteredOvertimeRef.current) {
+      enteredOvertimeRef.current = true;
+      warningHaptic();
+    }
+    if (!inOvertime) enteredOvertimeRef.current = false;
+  }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
+
   // ─── Not found ─────────────────────────────────────────────────────────
   // Game was deleted or failed to load — give the user an explanation and
   // a way out instead of an endless spinner.
@@ -295,12 +347,6 @@ export function LiveMatchScreen() {
   }
 
   const statusLabel = timerRunning ? 'רץ' : timerStarted ? 'מושהה' : 'מוכן';
-  // Progress ring — elapsed vs the configured match duration. Only shown
-  // when a duration is set on the game.
-  const totalMinutes = game.matchDurationMinutes ?? 0;
-  const totalMs = totalMinutes * 60_000;
-  const progress = totalMs > 0 ? timerMs / totalMs : 0;
-  const elapsedMinutes = Math.floor(timerMs / 60_000);
   // Persistent "controlled by X" chip — visible whenever the timer has
   // been touched by another admin (running OR paused). Previously this
   // hid the moment the other admin paused the timer, which made the
@@ -333,18 +379,35 @@ export function LiveMatchScreen() {
       {/* Timer */}
       <View style={styles.center}>
         {totalMs > 0 ? (
-          <TimerProgressRing size={300} strokeWidth={8} progress={progress} running={timerRunning}>
+          <TimerProgressRing
+            size={300}
+            strokeWidth={8}
+            progress={progress}
+            running={timerRunning}
+            warning={inLastMinute}
+          >
             <Animated.View
               style={[styles.timerCard, styles.timerCardRinged, pulseStyle]}
             >
               <Text
-                style={[styles.timerText, timerRunning ? styles.timerTextRunning : null]}
+                style={[
+                  styles.timerText,
+                  timerRunning ? styles.timerTextRunning : null,
+                  danger ? styles.timerTextDanger : null,
+                ]}
               >
-                {formatTime(timerMs)}
+                {formatTime(clockMs)}
               </Text>
-              <Text style={styles.timerOfTotal}>
-                {he.liveTimerOfTotal(elapsedMinutes, totalMinutes)}
-              </Text>
+              {inOvertime ? (
+                <>
+                  <Text style={styles.overtimeLabel}>{he.liveTimerOvertime}</Text>
+                  <Text style={styles.overtimeText}>+{formatTime(overtimeMs)}</Text>
+                </>
+              ) : (
+                <Text style={styles.timerOfTotal}>
+                  {he.liveTimerOfTotal(totalMinutes)}
+                </Text>
+              )}
             </Animated.View>
           </TimerProgressRing>
         ) : (
@@ -571,6 +634,22 @@ const styles = StyleSheet.create({
   },
   timerTextRunning: {
     color: '#1D4ED8',
+  },
+  timerTextDanger: {
+    color: '#DC2626',
+  },
+  overtimeLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  overtimeText: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#DC2626',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 1,
   },
   statusPill: {
     flexDirection: 'row',

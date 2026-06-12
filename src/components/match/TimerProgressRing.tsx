@@ -14,6 +14,9 @@ interface Props {
   progress: number;
   /** Stopwatch running → brighter arc. */
   running?: boolean;
+  /** Final minute before the configured duration → red arc (a "redder"
+   *  warning that the match is about to hit time, per user feedback). */
+  warning?: boolean;
   strokeWidth?: number;
   children?: React.ReactNode;
 }
@@ -22,6 +25,7 @@ export function TimerProgressRing({
   size,
   progress,
   running,
+  warning,
   strokeWidth = 6,
   children,
 }: Props) {
@@ -33,7 +37,13 @@ export function TimerProgressRing({
   const circumference = 2 * Math.PI * r;
   const dashOffset = circumference * (1 - clamped);
 
-  const arcColor = overtime ? '#DC2626' : running ? '#1D4ED8' : '#94A3B8';
+  const arcColor = overtime
+    ? '#DC2626'
+    : warning
+      ? '#EF4444'
+      : running
+        ? '#1D4ED8'
+        : '#94A3B8';
 
   return (
     <View style={{ width: size, height: size }}>

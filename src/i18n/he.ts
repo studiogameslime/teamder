@@ -245,8 +245,10 @@ export const he = {
 
   // Live match — v2 portrait layout
   liveStartMatch: 'התחל משחק',
-  liveTimerOfTotal: (elapsed: number, total: number) =>
-    `${elapsed} מתוך ${total} דקות`,
+  liveTimerOfTotal: (total: number) => `מתוך ${total} דקות`,
+  /** Label above the "+MM:SS" added-time counter shown once the configured
+   *  duration is exceeded (the main clock freezes at the duration). */
+  liveTimerOvertime: 'תוספת זמן',
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',
