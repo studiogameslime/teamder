@@ -16,6 +16,9 @@ interface Props {
   unlocked: boolean;
   /** Outer-ring diameter in dp. Default 72. */
   size?: number;
+  /** Hide the title label under the badge — used in the detail popover
+   *  where the title is already shown larger below (avoids a duplicate). */
+  hideTitle?: boolean;
   onPress?: () => void;
   style?: ViewStyle;
 }
@@ -24,6 +27,7 @@ export function AchievementBadge({
   def,
   unlocked,
   size = 72,
+  hideTitle,
   onPress,
   style,
 }: Props) {
@@ -90,17 +94,19 @@ export function AchievementBadge({
           )}
         </View>
       </View>
-      <Text
-        numberOfLines={2}
-        allowFontScaling={false}
-        style={[
-          styles.title,
-          { width: size + 16 },
-          !unlocked && styles.titleLocked,
-        ]}
-      >
-        {def.titleHe}
-      </Text>
+      {hideTitle ? null : (
+        <Text
+          numberOfLines={2}
+          allowFontScaling={false}
+          style={[
+            styles.title,
+            { width: size + 16 },
+            !unlocked && styles.titleLocked,
+          ]}
+        >
+          {def.titleHe}
+        </Text>
+      )}
     </View>
   );
 

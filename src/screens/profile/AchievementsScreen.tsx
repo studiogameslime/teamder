@@ -175,9 +175,35 @@ export function AchievementsScreen() {
                 def={active.def}
                 unlocked={active.unlocked}
                 size={72}
+                hideTitle
               />
               <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
               <Text style={styles.detailDesc}>{active.def.descriptionHe}</Text>
+              {(() => {
+                const current = counters?.[active.def.metric] ?? 0;
+                const target = active.def.threshold;
+                const pct = target > 0 ? Math.min(1, current / target) : 0;
+                return (
+                  <View style={styles.progressWrap}>
+                    <View style={styles.progressTrack}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${pct * 100}%`,
+                            backgroundColor: active.unlocked
+                              ? active.def.tint
+                              : '#94A3B8',
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>
+                      {Math.min(current, target)} / {target}
+                    </Text>
+                  </View>
+                );
+              })()}
               {active.unlocked && active.unlockedAt ? (
                 <Text style={styles.detailMeta}>
                   {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
@@ -288,6 +314,29 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  progressWrap: {
+    width: '100%',
+    marginTop: spacing.sm,
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   loadingFooter: {
     alignItems: 'center',
