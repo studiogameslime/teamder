@@ -2260,29 +2260,35 @@ export function MatchDetailsScreen() {
                       : '7×7'
                   : null,
               },
-              {
-                icon: 'people-outline',
-                label: he.matchDetailsLabelCommunity,
-                // One-time games have no real community — hide the "מועדון"
-                // row entirely rather than showing "משחק חד־פעמי" (Pulse
-                // odLGvyv). Null-valued grid items are skipped.
-                value: game.isOrphanContext ? null : communityName,
-                action:
-                  communityName && game.groupId && !game.isOrphanContext
-                    ? {
-                        icon: 'open-outline',
-                        onPress: () =>
-                          (
-                            nav as {
-                              navigate: (s: string, p: unknown) => void;
+              // One-time games (or any game with no real community to show)
+              // OMIT the "מועדון" row entirely — the grid renders empty values
+              // as "—", so a one-time game would otherwise read "מועדון —".
+              // Keyed on the resolved name (not just isOrphanContext, which
+              // older quick-created games may not have set). (Pulse odLGvyv.)
+              ...(game.isOrphanContext || !communityName
+                ? []
+                : [
+                    {
+                      icon: 'people-outline' as const,
+                      label: he.matchDetailsLabelCommunity,
+                      value: communityName,
+                      action:
+                        communityName && game.groupId
+                          ? {
+                              icon: 'open-outline' as const,
+                              onPress: () =>
+                                (
+                                  nav as {
+                                    navigate: (s: string, p: unknown) => void;
+                                  }
+                                ).navigate('CommunityDetails', {
+                                  groupId: game.groupId,
+                                }),
+                              accessibilityLabel: 'פתח את עמוד המועדון',
                             }
-                          ).navigate('CommunityDetails', {
-                            groupId: game.groupId,
-                          }),
-                        accessibilityLabel: 'פתח את עמוד המועדון',
-                      }
-                    : undefined,
-              },
+                          : undefined,
+                    },
+                  ]),
               {
                 icon: 'person-outline',
                 label: he.matchDetailsLabelOrganizer,
