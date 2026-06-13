@@ -91,14 +91,6 @@
           }
         }
       ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "כדי לצרף לדיווח את צילום המסך שצילמת",
-          "savePhotosPermission": "כדי לצרף לדיווח את צילום המסך שצילמת",
-          "isAccessMediaLocationEnabled": false
-        }
-      ],
       "expo-font",
       "expo-asset",
       "./plugins/withIoniconsAsset.js",
