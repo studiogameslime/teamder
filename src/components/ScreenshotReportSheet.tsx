@@ -1,13 +1,19 @@
 // ScreenshotReportSheet — a global host that watches for the user taking a
 // device screenshot and, the moment they do, slides a "report a bug" sheet up
-// from the bottom with a CLEAN capture of the current screen already attached
-// (iOS never hands us the user's actual screenshot, so we grab our own via
-// react-native-view-shot). Mounted once at the navigator level.
+// from the bottom with the EXACT image the user just captured already attached.
+//
+// On Android we read the real screenshot the user just saved from the media
+// library — this is the only way to capture native popups/modals (RN <Modal>
+// lives in a separate native window that react-native-view-shot can't see).
+// If that fails (permission denied, no asset, etc.) OR on iOS (no reliable
+// screenshot access), we fall back to re-capturing the RN view tree via
+// react-native-view-shot. Mounted once at the navigator level.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +22,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenCapture from 'expo-screen-capture';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { captureScreen } from 'react-native-view-shot';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { Button } from '@/components/Button';
@@ -27,6 +36,55 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 const MAX_LEN = 600;
+
+// Keep attachments small: downscale to 600px wide @ 0.4 jpg quality, same as
+// the view-shot path, and return raw base64 (no data: prefix).
+async function compressToBase64(uri: string): Promise<string | null> {
+  try {
+    const out = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 600 } }],
+      { compress: 0.4, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    if (out.base64) return out.base64;
+    // Fallback: read the (uncompressed) file directly.
+    return await FileSystem.readAsStringAsync(out.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Android-only: pull the screenshot the user JUST saved to the gallery so the
+// attachment matches EXACTLY what they captured (incl. native popups/modals).
+// Returns null on any failure so the caller can fall back to captureScreen.
+async function readLatestScreenshot(): Promise<string | null> {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const perm = await MediaLibrary.requestPermissionsAsync();
+    if (!perm.granted) return null;
+    const page = await MediaLibrary.getAssetsAsync({
+      first: 1,
+      sortBy: [MediaLibrary.SortBy.creationTime],
+      mediaType: MediaLibrary.MediaType.photo,
+    });
+    const asset = page.assets[0];
+    if (!asset) return null;
+    // asset.uri can be a content:// URI on Android; getAssetInfoAsync yields a
+    // readable localUri that ImageManipulator/FileSystem can open.
+    let uri = asset.uri;
+    try {
+      const info = await MediaLibrary.getAssetInfoAsync(asset);
+      if (info.localUri) uri = info.localUri;
+    } catch {
+      // keep asset.uri
+    }
+    return await compressToBase64(uri);
+  } catch {
+    return null;
+  }
+}
 
 export function ScreenshotReportSheet() {
   const [visible, setVisible] = useState(false);
@@ -43,16 +101,23 @@ export function ScreenshotReportSheet() {
     if (capturingRef.current || visible) return;
     capturingRef.current = true;
     let shot: string | null = null;
-    try {
-      shot = await captureScreen({
-        format: 'jpg',
-        quality: 0.4,
-        result: 'base64',
-        width: 600,
-      });
-    } catch {
-      // Capture can fail (e.g. a secure view) — still offer the report,
-      // just without the attached image.
+    // Preferred (Android): the user's ACTUAL screenshot from the gallery, which
+    // includes any native popups/modals that view-shot would miss.
+    shot = await readLatestScreenshot();
+    if (!shot) {
+      // Fallback (iOS, or Android permission/read failure): re-capture the RN
+      // view tree. Misses native modals but keeps the feature working.
+      try {
+        shot = await captureScreen({
+          format: 'jpg',
+          quality: 0.4,
+          result: 'base64',
+          width: 600,
+        });
+      } catch {
+        // Capture can fail (e.g. a secure view) — still offer the report,
+        // just without the attached image.
+      }
     }
     capturingRef.current = false;
     setImage(shot);

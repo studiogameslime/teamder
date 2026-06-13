@@ -15,19 +15,38 @@ interface Props {
   center: { lat: number; lng: number };
   radiusKm: number;
   size?: number;
+  /** Reference radius (km) the viewport is framed to. The drawn circle is
+   *  then rendered at TRUE scale within that frame, so its on-screen size
+   *  tracks `radiusKm` (a 1 km circle reads small, 50 km fills the frame)
+   *  instead of always being auto-fit to fill — which made every radius
+   *  look identical and the "X ק״מ" label meaningless. Defaults to the
+   *  slider max (50). */
+  fitKm?: number;
   /** Tap → open the big, readable map. Adds an expand affordance. */
   onPress?: () => void;
 }
 
-export function FilterRadiusMap({ center, radiusKm, size = 132, onPress }: Props) {
+export function FilterRadiusMap({
+  center,
+  radiusKm,
+  size = 132,
+  fitKm = 50,
+  onPress,
+}: Props) {
   const ref = useRef<WebView>(null);
-  const initial = useRef({ center, radiusKm });
+  const initial = useRef({ center, radiusKm, fitKm });
   const html = useMemo(
-    () => buildHtml(initial.current.center, initial.current.radiusKm),
+    () =>
+      buildHtml(
+        initial.current.center,
+        initial.current.radiusKm,
+        initial.current.fitKm,
+      ),
     [],
   );
 
-  // Redraw + refit the circle whenever the radius changes — no reload.
+  // Redraw the circle whenever the radius changes — no reload, NO refit, so
+  // the circle visibly grows/shrinks and matches its label.
   useEffect(() => {
     ref.current?.injectJavaScript(
       `window.setRadius && window.setRadius(${radiusKm}); true;`,
@@ -69,7 +88,11 @@ export function FilterRadiusMap({ center, radiusKm, size = 132, onPress }: Props
   );
 }
 
-function buildHtml(center: { lat: number; lng: number }, radiusKm: number): string {
+function buildHtml(
+  center: { lat: number; lng: number },
+  radiusKm: number,
+  fitKm: number,
+): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -93,7 +116,7 @@ function buildHtml(center: { lat: number; lng: number }, radiusKm: number): stri
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
     (function () {
-      var state = { lat: ${center.lat}, lng: ${center.lng}, km: ${radiusKm} };
+      var state = { lat: ${center.lat}, lng: ${center.lng}, km: ${radiusKm}, fitKm: ${fitKm} };
       var map = new maplibregl.Map({
         container: 'map',
         style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -139,11 +162,15 @@ function buildHtml(center: { lat: number; lng: number }, radiusKm: number): stri
         map.addLayer({ id: 'radius-line', type: 'line', source: 'radius',
           paint: { 'line-color': '#2563EB', 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': 0.9 } });
       }
+      // Frame the viewport to the REFERENCE radius (fitKm), not the current
+      // one, so the drawn circle renders at true scale and its on-screen
+      // size tracks state.km — the label and the circle finally agree.
       function fit() {
-        var b = bbox(state.lat, state.lng, state.km);
-        map.fitBounds(b, { padding: 10, duration: 300, maxZoom: 15 });
+        var b = bbox(state.lat, state.lng, Math.max(state.km, state.fitKm));
+        map.fitBounds(b, { padding: 8, duration: 300, maxZoom: 15 });
       }
-      window.setRadius = function (km) { state.km = km; drawCircle(); fit(); };
+      // Radius change → redraw only (no refit) so the circle visibly resizes.
+      window.setRadius = function (km) { state.km = km; drawCircle(); };
       window.setCenter = function (lat, lng) {
         state.lat = lat; state.lng = lng; placePin(); drawCircle(); fit();
       };

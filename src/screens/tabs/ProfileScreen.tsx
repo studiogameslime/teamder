@@ -52,6 +52,7 @@ import {
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
+import { ProfileCollectionCard } from '@/components/profile/ProfileCollectionCard';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -70,7 +71,8 @@ import {
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
-import { getAttendanceRate, type User } from '@/types';
+import { getAttendanceRate, getTeamCreatorId, type User } from '@/types';
+import { formatGameDay } from '@/utils/format';
 
 // Support email + store URLs are remotely overridable via Remote Config
 // (keys support_email / store_url_ios / store_url_android, defaults in
@@ -119,6 +121,10 @@ export function ProfileScreen() {
   // next-game card that replaced the achievements rail. Null = none
   // upcoming (or still loading on first paint).
   const [nextGame, setNextGame] = useState<Game | null>(null);
+  // Open, non-stale games the user CREATED (createdBy === me). Derived
+  // from the same getMyGames fetch that powers nextGame — no extra
+  // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
+  const [createdGames, setCreatedGames] = useState<Game[]>([]);
   // Live "games played" count — games the user was placed in the teams for
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
@@ -194,6 +200,7 @@ export function ProfileScreen() {
       const uid = localUser?.id;
       if (!uid) {
         setNextGame(null);
+        setCreatedGames([]);
         return;
       }
       let alive = true;
@@ -206,6 +213,9 @@ export function ProfileScreen() {
           // (a game that just kicked off but isn't stale still counts
           // as "the game to show"; its kickoff chip simply hides).
           setNextGame(mine[0] ?? null);
+          // Same list, filtered to the ones the user CREATED — powers
+          // the "משחקים שיצרתי" section. createdBy is set by the wizard.
+          setCreatedGames(mine.filter((g) => g.createdBy === uid));
         })
         .catch(() => {
           // Leave the previous value — a transient fetch error
@@ -306,6 +316,53 @@ export function ProfileScreen() {
   // Recent-activity feed — merged from achievements unlocked + the
   // people who joined through the user. Pure, recomputed on render.
   const activityItems = buildProfileActivity(user, referrals);
+
+  // ── Collections the user asked to see (Pulse 8qEmMj) ────────────────
+  // Three compact, tappable lists derived from data the screen already
+  // holds — no extra fetches:
+  //   • games the user CREATED (from getMyGames, filtered to createdBy)
+  //   • communities they OPENED (founder === me)
+  //   • communities they JOINED (member, but not the founder)
+  const createdGameItems = createdGames.map((g) => ({
+    id: g.id,
+    label: g.title,
+    subtitle: g.fieldName
+      ? `${formatGameDay(g.startsAt)} · ${g.fieldName}`
+      : formatGameDay(g.startsAt),
+    icon: 'football-outline' as const,
+  }));
+
+  const openedCommunityItems = myCommunities
+    .filter((g) => getTeamCreatorId(g) === user.id)
+    .map((g) => ({
+      id: g.id,
+      label: g.name,
+      subtitle: g.city || undefined,
+      icon: 'shield-outline' as const,
+    }));
+
+  const joinedCommunityItems = myCommunities
+    .filter((g) => getTeamCreatorId(g) !== user.id)
+    .map((g) => ({
+      id: g.id,
+      label: g.name,
+      subtitle: g.city || undefined,
+      icon: 'people-outline' as const,
+    }));
+
+  // Open a community from the Profile tab → hop to the Communities tab's
+  // details screen (same cross-tab pattern HeroStatsCard uses for clubs).
+  const openCommunity = (groupId: string) => {
+    (
+      nav.getParent?.() as
+        | { navigate: (t: string, p?: unknown) => void }
+        | undefined
+    )?.navigate('CommunitiesTab', {
+      screen: 'CommunityDetails',
+      initial: false,
+      params: { groupId },
+    });
+  };
 
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
@@ -535,6 +592,31 @@ export function ProfileScreen() {
           <ProfileAvailabilityCard
             availability={user.availability}
             onEdit={() => nav.navigate('AvailabilityEdit')}
+          />
+
+          {/* ⑥b Collections the user asked for (Pulse 8qEmMj):
+              games they created + communities they opened/joined. Each
+              section hides itself when empty (handled in the card). */}
+          <ProfileCollectionCard
+            title="משחקים שיצרתי"
+            headerIcon="football-outline"
+            accent="#3B82F6"
+            items={createdGameItems}
+            onPressItem={(gameId) => nav.navigate('MatchDetails', { gameId })}
+          />
+          <ProfileCollectionCard
+            title="מועדונים שפתחתי"
+            headerIcon="shield-outline"
+            accent="#16A34A"
+            items={openedCommunityItems}
+            onPressItem={openCommunity}
+          />
+          <ProfileCollectionCard
+            title="מועדונים שהצטרפתי"
+            headerIcon="people-outline"
+            accent="#7C3AED"
+            items={joinedCommunityItems}
+            onPressItem={openCommunity}
           />
 
           {/* ⑦ Recent activity — achievements unlocked + referrals,

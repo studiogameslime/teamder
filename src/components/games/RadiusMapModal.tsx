@@ -18,6 +18,12 @@ interface Props {
   radiusKm: number;
   /** City label shown in the header, if known. */
   cityName?: string;
+  /** Reference radius (km) the viewport is framed to, so the drawn circle
+   *  renders at TRUE scale against the street grid (a 1 km circle covers
+   *  1 km of real streets) instead of always being auto-fit to fill the
+   *  frame — which decoupled the circle from its "X ק״מ" label. Defaults
+   *  to the slider max (50). */
+  fitKm?: number;
   onClose: () => void;
 }
 
@@ -26,12 +32,18 @@ export function RadiusMapModal({
   center,
   radiusKm,
   cityName,
+  fitKm = 50,
   onClose,
 }: Props) {
   const ref = useRef<WebView>(null);
-  const initial = useRef({ center, radiusKm });
+  const initial = useRef({ center, radiusKm, fitKm });
   const html = useMemo(
-    () => buildHtml(initial.current.center, initial.current.radiusKm),
+    () =>
+      buildHtml(
+        initial.current.center,
+        initial.current.radiusKm,
+        initial.current.fitKm,
+      ),
     [],
   );
 
@@ -99,7 +111,11 @@ export function RadiusMapModal({
   );
 }
 
-function buildHtml(center: { lat: number; lng: number }, radiusKm: number): string {
+function buildHtml(
+  center: { lat: number; lng: number },
+  radiusKm: number,
+  fitKm: number,
+): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -129,7 +145,7 @@ function buildHtml(center: { lat: number; lng: number }, radiusKm: number): stri
           function () {}, false
         );
       } catch (e) {}
-      var state = { lat: ${center.lat}, lng: ${center.lng}, km: ${radiusKm} };
+      var state = { lat: ${center.lat}, lng: ${center.lng}, km: ${radiusKm}, fitKm: ${fitKm} };
       var map = new maplibregl.Map({
         container: 'map',
         style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -174,11 +190,16 @@ function buildHtml(center: { lat: number; lng: number }, radiusKm: number): stri
         map.addLayer({ id: 'radius-line', type: 'line', source: 'radius',
           paint: { 'line-color': '#2563EB', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.9 } });
       }
+      // Frame to the REFERENCE radius (fitKm) so the circle renders at true
+      // scale against the street grid; its on-screen size then tracks
+      // state.km and matches the "X ק״מ" label in the header.
       function fit() {
-        var b = bbox(state.lat, state.lng, state.km);
+        var b = bbox(state.lat, state.lng, Math.max(state.km, state.fitKm));
         map.fitBounds(b, { padding: 60, duration: 350, maxZoom: 16 });
       }
-      window.setRadius = function (km) { state.km = km; drawCircle(); fit(); };
+      // Radius change → redraw only (no refit); the user keeps their pan/zoom
+      // and the circle visibly resizes to match the chosen km.
+      window.setRadius = function (km) { state.km = km; drawCircle(); };
       window.setCenter = function (lat, lng) {
         state.lat = lat; state.lng = lng; placePin(); drawCircle(); fit();
       };

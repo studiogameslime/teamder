@@ -43,6 +43,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
+import { RichRulesText } from '@/components/community/RichRulesText';
 import { Button } from '@/components/Button';
 import { Badge } from '@/components/Badge';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -1478,8 +1479,10 @@ export function MatchDetailsScreen() {
           : []),
         // Quick entry to the full players screen — surfaces pending
         // approvals + waitlist for admins without having to scroll
-        // back to the inline "הצג הכל" link.
-        ...(isAdmin
+        // back to the inline "הצג הכל" link. Hidden once the game is
+        // terminal (finished / cancelled): there's nothing left to
+        // manage on a read-only match.
+        ...(isAdmin && !isTerminalGame(game)
           ? [
               {
                 id: 'players',
@@ -1493,8 +1496,11 @@ export function MatchDetailsScreen() {
         // Draft Teams (חלוקת כוחות). Manager: if a split already exists,
         // re-open on its SUMMARY (editable — revise, don't restart);
         // otherwise start the captain picker. Needs ≥2 participants
-        // (players + guests are both draftable).
+        // (players + guests are both draftable). Hidden on a terminal
+        // (finished / cancelled) game — setting teams is a pre-match
+        // action, and the match is now read-only.
         ...(isAdmin &&
+        !isTerminalGame(game) &&
         game.players.length + (game.guests?.length ?? 0) >= 2
           ? [
               {
@@ -1598,7 +1604,10 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
-        ...(isAdmin
+        // Delete game — admin only, and never on a terminal
+        // (finished / cancelled) match: history is read-only, so the
+        // destructive "מחק משחק" action disappears once the game ends.
+        ...(isAdmin && !isTerminalGame(game)
           ? [
               {
                 id: 'delete',
@@ -1914,7 +1923,13 @@ export function MatchDetailsScreen() {
               empty "+ הוסף הודעה" tile. */}
           <PinnedAdminMessageCard
             message={game.pinnedMessage}
-            isAdmin={isAdmin}
+            // On a terminal (finished / cancelled) game the admin
+            // controls disappear: no "+ הוסף הערה לכולם" tile and no
+            // edit affordance. A non-admin viewer with an existing
+            // pinned note still sees it read-only (PinnedAdminMessageCard
+            // renders the message for everyone; isAdmin only gates the
+            // add/edit UI).
+            isAdmin={isAdmin && !isTerminalGame(game)}
             onSave={async (text) => {
               try {
                 await gameService.setPinnedMessage(game.id, text);
@@ -2111,7 +2126,7 @@ export function MatchDetailsScreen() {
                 />
                 <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
               </View>
-              <Text style={styles.rulesBody}>{communityRules}</Text>
+              <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
             </View>
           ) : null}
 

@@ -3211,6 +3211,198 @@ export const gameService = {
   },
 
   /**
+   * Admin removes (kicks) a registered player from the game. Distinct
+   * from `cancelGameV2` (a self-cancel): the caller is the organizer /
+   * a group admin acting on SOMEONE ELSE, so we gate on
+   * `assertGuestPermission` (same gate the guest-mutation paths use)
+   * and notify the removed player via `gameCanceledOrUpdated`.
+   *
+   * Behaviour mirrors a self-cancel for everything roster-shaped —
+   * the player is pulled from players/waitlist/pending, the live-match
+   * assignments are stripped, participantIds is rebuilt, and a
+   * waitlist head is offered the freed slot when a real player seat
+   * opened. We intentionally do NOT stamp `cancellations[uid]`: that
+   * map drives the player's own discipline / late-cancel tracking, and
+   * an admin removal isn't the player's no-show.
+   */
+  async removePlayer(
+    gameId: string,
+    callerId: UserId,
+    targetUserId: UserId,
+  ): Promise<void> {
+    const stripFromLive = (
+      live: LiveMatchState | undefined,
+    ): LiveMatchState | undefined => {
+      if (!live) return live;
+      if (
+        !live.assignments?.[targetUserId] &&
+        !(live.benchOrder ?? []).includes(targetUserId)
+      ) {
+        return live;
+      }
+      const { [targetUserId]: _gone, ...rest } = live.assignments ?? {};
+      void _gone;
+      return {
+        ...live,
+        assignments: rest,
+        benchOrder: (live.benchOrder ?? []).filter((id) => id !== targetUserId),
+      };
+    };
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      const wasInPlayers = g.players.includes(targetUserId);
+      g.players = g.players.filter((id) => id !== targetUserId);
+      g.waitlist = g.waitlist.filter((id) => id !== targetUserId);
+      g.pending = (g.pending ?? []).filter((id) => id !== targetUserId);
+      if (g.pendingPromotion?.uid === targetUserId) {
+        g.pendingPromotion = null;
+      }
+      const occupancy =
+        g.players.length +
+        (g.guests?.length ?? 0) +
+        (g.pendingPromotion ? 1 : 0);
+      let offeredUid: string | null = null;
+      if (
+        wasInPlayers &&
+        !g.pendingPromotion &&
+        g.waitlist.length > 0 &&
+        occupancy < g.maxPlayers
+      ) {
+        offeredUid = g.waitlist[0];
+        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+      }
+      g.participantIds = (g.participantIds ?? []).filter(
+        (id) => id !== targetUserId,
+      );
+      g.liveMatch = stripFromLive(g.liveMatch);
+      g.updatedAt = Date.now();
+      if (offeredUid) {
+        notificationsService.dispatch({
+          type: 'spotOffered',
+          recipientId: offeredUid,
+          payload: { gameId, gameTitle: g.title, startsAt: g.startsAt },
+        });
+      }
+      notificationsService.dispatch({
+        type: 'gameCanceledOrUpdated',
+        recipientId: targetUserId,
+        payload: { gameId, gameTitle: g.title },
+      });
+      logEvent(AnalyticsEvent.GameCancelled, {
+        gameId,
+        promoted: false,
+        offered: !!offeredUid,
+      });
+      return;
+    }
+
+    const ref = docs.game(gameId);
+    const { db } = getFirebase();
+    // Permission gate up front so we fail fast with a clear error
+    // before the transaction — mirrors removeGuest.
+    const snapForPerm = await getDoc(ref);
+    if (!snapForPerm.exists()) return;
+    const permData = snapForPerm.data();
+    await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+
+    let result;
+    try {
+      result = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) {
+          return { offeredUid: null as string | null, title: '', startsAt: 0 };
+        }
+        const data = snap.data();
+        const wasInPlayers = (data.players ?? []).includes(targetUserId);
+        const players = (data.players ?? []).filter(
+          (id: string) => id !== targetUserId,
+        );
+        const waitlist = (data.waitlist ?? []).filter(
+          (id: string) => id !== targetUserId,
+        );
+        const pending = (data.pending ?? []).filter(
+          (id: string) => id !== targetUserId,
+        );
+        let pendingPromotion =
+          data.pendingPromotion &&
+          typeof data.pendingPromotion === 'object' &&
+          (data.pendingPromotion as { uid?: string }).uid === targetUserId
+            ? null
+            : (data.pendingPromotion ?? null);
+
+        const guests = Array.isArray(data.guests) ? data.guests : [];
+        const occupancy =
+          players.length + guests.length + (pendingPromotion ? 1 : 0);
+        let offeredUid: string | null = null;
+        if (
+          wasInPlayers &&
+          !pendingPromotion &&
+          waitlist.length > 0 &&
+          occupancy < (data.maxPlayers ?? 15)
+        ) {
+          offeredUid = waitlist[0];
+          pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+        }
+
+        const participantIds = Array.from(
+          new Set([...players, ...waitlist, ...pending]),
+        );
+        const nextLive = stripFromLive(data.liveMatch);
+        const update: Record<string, unknown> = {
+          players,
+          waitlist,
+          pending,
+          participantIds,
+          ...(nextLive ? { liveMatch: nextLive } : {}),
+          updatedAt: Date.now(),
+        };
+        const offerChanged =
+          JSON.stringify(data.pendingPromotion ?? null) !==
+          JSON.stringify(pendingPromotion ?? null);
+        if (offerChanged) {
+          update.pendingPromotion = pendingPromotion;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tx.update(ref, update as any);
+        return {
+          offeredUid,
+          title: data.title ?? '',
+          startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
+        };
+      });
+    } catch (err) {
+      logError('removePlayer', err, { gameId, callerId, targetUserId });
+      if (__DEV__) console.warn('[gameService] removePlayer failed', err);
+      throw err;
+    }
+
+    if (result.offeredUid) {
+      notificationsService.dispatch({
+        type: 'spotOffered',
+        recipientId: result.offeredUid,
+        payload: {
+          gameId,
+          gameTitle: result.title,
+          startsAt: result.startsAt,
+        },
+      });
+    }
+    notificationsService.dispatch({
+      type: 'gameCanceledOrUpdated',
+      recipientId: targetUserId,
+      payload: { gameId, gameTitle: result.title },
+    });
+    logEvent(AnalyticsEvent.GameCancelled, {
+      gameId,
+      promoted: false,
+      offered: !!result.offeredUid,
+    });
+  },
+
+  /**
    * Head of waitlist taps "אישור" on the spotOffered push (or the
    * in-app row). Validates the offer is still theirs (an admin may
    * have advanced past them), moves them from waitlist → players,

@@ -175,6 +175,13 @@ export function GameFilterSheet({
             contentContainerStyle={styles.bodyContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            // The "קרוב אליי" card embeds a WebView map; on Android a
+            // nested native scroll view can otherwise swallow the parent
+            // drag. nestedScrollEnabled + bounces keeps the sheet list
+            // scrollable end-to-end even when a drag starts over the map.
+            nestedScrollEnabled
+            bounces
+            alwaysBounceVertical
           >
             {/* ── מתי ─────────────────────────────────────────────── */}
             <SectionHeader icon="calendar-outline" title={he.gameFiltersWhen} />
@@ -537,7 +544,9 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
-    paddingBottom: spacing.lg,
+    // Generous tail so the last section (reset / format row) always
+    // clears the pinned footer and never reads as cut off.
+    paddingBottom: spacing.xxl,
     gap: spacing.sm,
   },
   // `row` → first child (icon) on the visual RIGHT under forceRTL.

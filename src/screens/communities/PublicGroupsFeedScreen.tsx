@@ -354,6 +354,10 @@ export function PublicGroupsFeedScreen() {
             }
           }}
           onJoinPress={() => handleRequest(g)}
+          // Closed / approval-gated communities (isOpen !== true) ask the
+          // user to REQUEST to join rather than promising an instant join.
+          // Open communities keep the default "הצטרף למועדון".
+          joinLabel={g.isOpen ? he.communitiesCardJoin : he.communityRequestToJoin}
         />
       </AppearItem>
     );

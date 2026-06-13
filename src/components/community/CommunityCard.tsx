@@ -78,6 +78,10 @@ interface Props {
   onJoinPress?: () => void;
   /** Disable the join CTA while a network request is in flight. */
   joinBusy?: boolean;
+  /** Label for the join CTA. Closed / approval-gated communities pass
+   *  "בקש להצטרף"; open communities fall back to the default
+   *  "הצטרף למועדון". */
+  joinLabel?: string;
 }
 
 export function CommunityCard({
@@ -91,9 +95,11 @@ export function CommunityCard({
   onPress,
   onJoinPress,
   joinBusy,
+  joinLabel,
 }: Props) {
   const palette = paletteFor(status);
   const showJoin = status === 'none' && !!onJoinPress;
+  const joinText = joinLabel ?? he.communitiesCardJoin;
 
   return (
     <PressableScale
@@ -191,9 +197,9 @@ export function CommunityCard({
               (pressed || joinBusy) && { opacity: 0.85 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={he.communitiesCardJoin}
+            accessibilityLabel={joinText}
           >
-            <Text style={styles.joinText}>{he.communitiesCardJoin}</Text>
+            <Text style={styles.joinText}>{joinText}</Text>
             <Ionicons name="add-circle" size={16} color="#FFFFFF" />
           </Pressable>
         ) : null}

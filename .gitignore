@@ -38,3 +38,5 @@ public/downloads/
 # out of source control so the function-side copy never drifts from
 # public/c/index.html — the predeploy script regenerates it.
 functions/templates/
+credentials.json
+credentials/

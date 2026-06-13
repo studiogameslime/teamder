@@ -37,6 +37,7 @@ import { Card } from '@/components/Card';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
+import { isTerminalGame } from '@/services/gameLifecycle';
 import { logError } from '@/services/errorLog';
 import { useGameStore } from '@/store/gameStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -142,6 +143,38 @@ export function MatchPlayersScreen() {
     [playersMap, adminIds, game?.arrivals, ballBringers],
   );
 
+  // Admin-only: kick a registered player off the game. Confirms first,
+  // then calls the service (which also offers the freed slot to the
+  // head of the waitlist) and reloads the roster.
+  const isAdminViewer = adminIds.has(currentUser?.id ?? '');
+  const handleRemovePlayer = useCallback(
+    (uid: string, name: string) => {
+      if (!game || !currentUser) return;
+      appAlert('הסרת שחקן', `להסיר את ${name} מהמשחק?`, [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: 'הסר',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await gameService.removePlayer(game.id, currentUser.id, uid);
+              toast.success('השחקן הוסר מהמשחק');
+              await reload();
+            } catch (err) {
+              logError('matchPlayersRemove', err, {
+                screen: 'MatchPlayersScreen',
+                gameId: game.id,
+                targetUserId: uid,
+              });
+              toast.error(String((err as Error)?.message ?? err));
+            }
+          },
+        },
+      ]);
+    },
+    [game, currentUser, reload],
+  );
+
   if (loading && !game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -212,6 +245,17 @@ export function MatchPlayersScreen() {
                   entry={e}
                   showDivider={i > 0}
                   onPress={() => goToCard(e.user.id)}
+                  // Admin-only kick. Hidden once the game is terminal
+                  // (finished / cancelled — read-only) and never offered
+                  // for the game's own organizer to avoid removing the
+                  // host from their own match.
+                  onRemove={
+                    isAdminViewer &&
+                    !isTerminalGame(game) &&
+                    game.createdBy !== e.user.id
+                      ? () => handleRemovePlayer(e.user.id, e.user.name)
+                      : undefined
+                  }
                 />
               ))}
               {guests.map((g, i) => (
@@ -483,6 +527,7 @@ function PlayerRow({
   onAdminAdvance,
   onApprove,
   onReject,
+  onRemove,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
@@ -494,6 +539,7 @@ function PlayerRow({
   onAdminAdvance?: () => void;
   onApprove?: () => void;
   onReject?: () => void;
+  onRemove?: () => void;
 }) {
   const { user, isAdmin, arrival, isBringingBall } = entry;
   const showOfferActions = !!(
@@ -501,7 +547,8 @@ function PlayerRow({
     onPassOffer ||
     onAdminAdvance ||
     onApprove ||
-    onReject
+    onReject ||
+    onRemove
   );
   return (
     <View
@@ -622,6 +669,19 @@ function PlayerRow({
               <Text style={styles.offerCtaGhostText}>
                 {he.matchPlayersRejectCta}
               </Text>
+            </Pressable>
+          ) : null}
+          {onRemove ? (
+            <Pressable
+              onPress={onRemove}
+              style={({ pressed }) => [
+                styles.offerCta,
+                styles.offerCtaDanger,
+                pressed && { opacity: 0.6 },
+              ]}
+              accessibilityLabel="הסר שחקן"
+            >
+              <Text style={styles.offerCtaDangerText}>הסר</Text>
             </Pressable>
           ) : null}
         </View>
@@ -756,6 +816,18 @@ const styles = StyleSheet.create({
   offerCtaGhostText: {
     color: colors.text,
     fontWeight: '600',
+    fontSize: 14,
+  },
+  offerCtaDanger: {
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    backgroundColor: '#FEE2E2',
+    flex: 1,
+    minWidth: 100,
+  },
+  offerCtaDangerText: {
+    color: colors.danger,
+    fontWeight: '700',
     fontSize: 14,
   },
   nameRow: {

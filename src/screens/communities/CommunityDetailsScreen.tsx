@@ -54,6 +54,7 @@ import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
 import { PlayersPreview } from '@/components/community/PlayersPreview';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
+import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
 import { logError } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
@@ -638,9 +639,10 @@ export function CommunityDetailsScreen() {
               <Text style={styles.descriptionTitle}>
                 {he.communityRulesTitle}
               </Text>
-              <Text style={styles.descriptionBody}>
-                {group.rules.trim()}
-              </Text>
+              {/* Rules support markdown-lite (**bold** + "- " bullets).
+                  RichRulesText parses + renders; plain legacy rules
+                  fall through as ordinary paragraphs. */}
+              <RichRulesText text={group.rules.trim()} />
             </View>
           ) : null}
 
@@ -720,6 +722,7 @@ export function CommunityDetailsScreen() {
           <PlayersPreview
             total={group.playerIds?.length ?? 0}
             members={members.filter((u) => group.playerIds.includes(u.id))}
+            adminIds={group.adminIds}
             onSeeAll={() =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                 'CommunityPlayers',

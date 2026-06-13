@@ -33,6 +33,9 @@ interface Props {
   total: number;
   /** Hydrated subset to render in the rail; first MAX_VISIBLE used. */
   members: Array<Pick<User, 'id' | 'name' | 'jersey'>>;
+  /** Ids of community admins — rendered with a small "מנהל" pill so the
+   *  organizers are recognisable at a glance in the rail. */
+  adminIds?: string[];
   onSeeAll: () => void;
   onPressMember?: (uid: string) => void;
 }
@@ -48,9 +51,11 @@ type Cell =
 export function PlayersPreview({
   total,
   members,
+  adminIds,
   onSeeAll,
   onPressMember,
 }: Props) {
+  const adminSet = React.useMemo(() => new Set(adminIds ?? []), [adminIds]);
   const visible = members.slice(0, MAX_VISIBLE);
   const overflow = Math.max(0, total - visible.length);
 
@@ -82,6 +87,7 @@ export function PlayersPreview({
         );
       }
       const u = item.user;
+      const isAdmin = adminSet.has(u.id);
       return (
         <Pressable
           onPress={() => onPressMember?.(u.id)}
@@ -93,13 +99,20 @@ export function PlayersPreview({
           accessibilityLabel={u.name}
         >
           <UserAvatar user={u} size={SHIRT_SIZE} />
+          {isAdmin ? (
+            <View style={styles.adminBadge}>
+              <Text style={styles.adminBadgeText} numberOfLines={1}>
+                {he.communityDetailsAdminBadge}
+              </Text>
+            </View>
+          ) : null}
           <Text style={styles.name} numberOfLines={1}>
             {u.name}
           </Text>
         </Pressable>
       );
     },
-    [onPressMember, onSeeAll],
+    [onPressMember, onSeeAll, adminSet],
   );
 
   return (
@@ -185,6 +198,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     maxWidth: SHIRT_SIZE + 8,
+  },
+  // "מנהל" pill under the jersey, mirroring the admin badge on the full
+  // members list (CommunityPlayersScreen) so admins read consistently
+  // across both surfaces.
+  adminBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: 'rgba(59,130,246,0.12)',
+  },
+  adminBadgeText: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: '800',
   },
   // Overflow chip — same footprint as a jersey cell so the rail
   // rhythm stays even.
