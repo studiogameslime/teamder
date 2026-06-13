@@ -36,6 +36,10 @@
         "gradleCommand": ":wear:bundleRelease",
         "applicationArchivePath": "android/wear/build/outputs/bundle/release/wear-release.aab"
       }
+    },
+    "production-ios-local": {
+      "extends": "production",
+      "credentialsSource": "local"
     }
   },
   "submit": {
