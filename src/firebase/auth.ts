@@ -100,6 +100,8 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
   const credential = GoogleAuthProvider.credential(data.idToken);
   try {
     const cred = await signInWithCredential(auth, credential);
+    // Also establish a native session so the widget/watch can control the timer.
+    mirrorToNativeAuth((rn) => rn.GoogleAuthProvider.credential(data.idToken));
     return cred.user;
   } catch (err) {
     const e = err as { name?: string; code?: string; message?: string; customData?: unknown };
@@ -114,6 +116,76 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     }
     const code = e.code ?? 'unknown';
     throw new Error(`ההתחברות ל-Firebase נכשלה (${code})`);
+  }
+}
+
+/**
+ * Mirror the just-completed JS-SDK sign-in into the NATIVE Firebase Auth
+ * (@react-native-firebase/auth). The app authenticates with the Firebase JS
+ * SDK, whose session lives only in the JS layer — but the home-screen widget
+ * AND the paired watch relay both write the timer from native Kotlin
+ * (TimerActionReceiver), which reads the NATIVE FirebaseAuth.getInstance().
+ * Without a native session that's always signed-out, so widget/watch timer
+ * taps just showed "התחברו לאפליקציה" after the 8s auth-restore timeout.
+ * Establishing a parallel native session (same user) gives those surfaces an
+ * authenticated user to write with; it persists natively across process
+ * restarts, so the cold widget process restores it. Best-effort +
+ * non-blocking — a failure only leaves the widget/watch unauthed, never
+ * breaks the app's primary JS-SDK sign-in.
+ */
+function mirrorToNativeAuth(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  makeCredential: (rnAuth: any) => any,
+): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const rnAuth = require('@react-native-firebase/auth').default;
+    rnAuth()
+      .signInWithCredential(makeCredential(rnAuth))
+      .catch((e: unknown) => {
+        if (__DEV__) console.warn('[auth] native-auth mirror failed', e);
+      });
+  } catch (e) {
+    // Native module not linked (e.g. pre-rebuild) — widget stays unauthed.
+    if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
+  }
+}
+
+/**
+ * Establish the native Firebase Auth session on app boot for users who are
+ * ALREADY signed in via the JS SDK. An app update does NOT sign the user out
+ * (the JS session persists), so the sign-in-time mirror above never fires for
+ * existing users — their widget/watch would stay unauthed forever after
+ * updating. Here we silently re-acquire a Google idToken (no UI) and mirror it
+ * into native auth, but ONLY when native is currently signed-out (so we don't
+ * thrash a session that's already good). Best-effort + non-blocking; runs once
+ * per boot from waitForAuthRestore. Google-only: the home widget + Wear relay
+ * are Android surfaces, and Apple users on iOS have no native widget to feed.
+ */
+function ensureNativeAuthMirror(): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const rnAuth = require('@react-native-firebase/auth').default;
+    // Already have a native session — nothing to do.
+    if (rnAuth().currentUser) return;
+    ensureGoogleConfigured();
+    GoogleSignin.signInSilently()
+      .then((res: unknown) => {
+        const idToken = (res as { data?: { idToken?: string }; idToken?: string })
+          ?.data?.idToken ?? (res as { idToken?: string })?.idToken;
+        if (!idToken) return;
+        return rnAuth().signInWithCredential(
+          rnAuth.GoogleAuthProvider.credential(idToken),
+        );
+      })
+      .catch((e: unknown) => {
+        // No cached Google session / silent sign-in unavailable — the user
+        // can still re-login to activate the widget. Stay quiet in prod.
+        if (__DEV__) console.warn('[auth] boot native-auth mirror skipped', e);
+      });
+  } catch (e) {
+    if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
 }
 
@@ -195,6 +267,9 @@ export async function signInWithApple(): Promise<{
 
   try {
     const cred = await signInWithCredential(auth, credential);
+    mirrorToNativeAuth((rn) =>
+      rn.AppleAuthProvider.credential(appleCred.identityToken, rawNonce),
+    );
     return { user: cred.user, fullName: fullName || undefined };
   } catch (err) {
     const e = err as { code?: string };
@@ -220,6 +295,13 @@ export async function signOutFirebase(): Promise<void> {
   }
   const { auth } = getFirebase();
   await firebaseSignOut(auth);
+  // Tear down the parallel native session too (kept in sync with the JS one).
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    await require('@react-native-firebase/auth').default().signOut();
+  } catch {
+    // Not signed in natively / module unavailable — fine.
+  }
 }
 
 /**
@@ -233,6 +315,10 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
   return new Promise((resolve) => {
     const unsub = onAuthStateChanged(auth, (user) => {
       unsub();
+      // Existing users won't re-login on an app update, so the sign-in-time
+      // native mirror never fires for them — re-establish it here on boot so
+      // the home widget / Wear relay can control the timer. Fire-and-forget.
+      if (user) ensureNativeAuthMirror();
       resolve(user);
     });
   });
