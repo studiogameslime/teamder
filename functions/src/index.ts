@@ -2459,63 +2459,15 @@ async function runDailyCleanup(): Promise<void> {
  * is belt-and-suspenders.
  */
 async function runSendRateReminders(): Promise<void> {
-  const now = Date.now();
-  // Window: 1h..6h after kickoff. Aligns with the 6h cleanup-CF
-  // boundary — past that point the cleanup flips the game to
-  // 'finished' and we'd skip it anyway. Wider than strictly
-  // necessary so we never miss a game between scheduler runs.
-  const lower = now - 6 * 60 * 60 * 1000;
-  const upper = now - 60 * 60 * 1000;
-
-  const snap = await db
-    .collection('games')
-    .where('startsAt', '>=', lower)
-    .where('startsAt', '<', upper)
-    .get();
-
-  if (snap.empty) {
-    console.log('[sendRateReminders] no candidate games');
-    return;
-  }
-
-  const ops: Promise<unknown>[] = [];
-  let dispatched = 0;
-
-  for (const gameDoc of snap.docs) {
-    const g = gameDoc.data() as {
-      title?: string;
-      status?: string;
-      rateReminderSent?: boolean;
-      players?: string[];
-    };
-    if (g.rateReminderSent) continue;
-    // Skip cancellations explicitly. We also skip 'open' games — a
-    // game still 'open' 1h+ after kickoff with players means nothing
-    // happened (no admin pressed start). Asking those players to
-    // rate is meaningless. The cleanup CF will eventually retire it.
-    if (g.status === 'cancelled') continue;
-    if (g.status === 'open') continue;
-    if (!g.players || g.players.length === 0) continue;
-
-    // One fan-out notification doc per game; the resolver expands it
-    // to game.players. recipientId carries the gameId, mirroring the
-    // pattern used by `gameReminder`.
-    ops.push(
-      createNotificationOnce({
-        type: 'rateReminder',
-        recipientId: gameDoc.id,
-        payload: {
-          gameId: gameDoc.id,
-          gameTitle: g.title || 'המשחק',
-        },
-      }),
-    );
-    ops.push(gameDoc.ref.update({ rateReminderSent: true }));
-    dispatched++;
-  }
-
-  await Promise.all(ops);
-  console.log(`[sendRateReminders] dispatched ${dispatched} rate reminder(s)`);
+  // DISABLED (product decision 2026-06-14): ratings are GLOBAL and PER-PAIR
+  // (one vote per rater→ratee, anywhere — see ratingsService), NOT per-game.
+  // A recurring "rate your teammates" reminder is therefore noise for a
+  // regular group — everyone's already rated after a game or two, and
+  // re-rating just overwrites the same vote. Players can still rate anyone
+  // anytime from the player card. Revisit with a "smart" version that only
+  // nudges players who still have UN-RATED teammates from a given game.
+  console.log('[sendRateReminders] disabled — no-op');
+  return;
 }
 
 // ─── Realtime trigger: community join request → admin push ─────────────
