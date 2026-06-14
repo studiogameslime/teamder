@@ -78,7 +78,10 @@ class PlayersRemoteViewsService : RemoteViewsService() {
             val json = prefs.getString(TeamderWidgetProvider.KEY_JSON, null) ?: return emptyList()
             return try {
                 val o = JSONObject(json)
-                if (o.optString("kind") != "upcoming") return emptyList()
+                // "live" carries the same roster as "upcoming" now, so the
+                // list shows the current squad during a game too.
+                val kind = o.optString("kind")
+                if (kind != "upcoming" && kind != "live") return emptyList()
                 val arr = o.optJSONArray("players") ?: return emptyList()
                 buildList {
                     for (i in 0 until arr.length()) {

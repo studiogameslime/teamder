@@ -52,7 +52,10 @@ class TeamderPlayersWidgetProvider : AppWidgetProvider() {
 
             val state = loadState(context)
             when (state?.optString("kind")) {
-                "upcoming" -> renderUpcoming(context, views, state, id)
+                // "live" carries the same roster fields as "upcoming" — show
+                // the current squad instead of the empty placeholder while a
+                // game is in progress.
+                "upcoming", "live" -> renderUpcoming(context, views, state, id)
                 "scheduled" -> renderScheduled(views, state)
                 else -> renderPlaceholder(views)
             }

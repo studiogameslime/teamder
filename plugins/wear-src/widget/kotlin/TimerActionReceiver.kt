@@ -46,6 +46,14 @@ class TimerActionReceiver : BroadcastReceiver() {
         val gameId = intent.getStringExtra(EXTRA_GAME_ID) ?: return
         val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: ""
 
+        // Stamp the moment of the TAP, in the shared server-time base, right
+        // now — BEFORE the auth-restore wait + Firestore transaction. Using
+        // this (instead of the time the transaction finally runs) makes the
+        // recorded pause/elapsed match what the user saw when they tapped, so
+        // the widget and the in-app screen agree instead of drifting by the
+        // processing latency (the "paused at 7 but app says 9" bug).
+        val tapServerMs = System.currentTimeMillis() + readClockOffset(context)
+
         // goAsync lets the receiver outlive its synchronous lifetime so the
         // auth-restore wait + Firestore transaction (~0.5-2s) can complete.
         val pending = goAsync()
@@ -53,7 +61,7 @@ class TimerActionReceiver : BroadcastReceiver() {
 
         val existing = auth.currentUser
         if (existing != null) {
-            performMutation(context, action, gameId, userName, existing.uid, pending)
+            performMutation(context, action, gameId, userName, existing.uid, tapServerMs, pending)
             return
         }
 
@@ -81,7 +89,7 @@ class TimerActionReceiver : BroadcastReceiver() {
                 handler.removeCallbacks(giveUp)
                 listenerHolder[0]?.let { a.removeAuthStateListener(it) }
                 Log.d(TAG, "auth restored after ${System.currentTimeMillis() - waitStart}ms")
-                performMutation(context, action, gameId, userName, u.uid, pending)
+                performMutation(context, action, gameId, userName, u.uid, tapServerMs, pending)
             }
         }
         listenerHolder[0] = listener
@@ -95,13 +103,14 @@ class TimerActionReceiver : BroadcastReceiver() {
         gameId: String,
         userName: String,
         uid: String,
+        now: Long,
         pending: BroadcastReceiver.PendingResult,
     ) {
-        // Stamp the anchor in the SHARED server-time base (local clock +
-        // the phone-measured offset), exactly like the in-app writer's
-        // `serverNow()`. This is what makes a widget/watch press produce the
-        // same elapsed time on every device, regardless of clock skew.
-        val now = System.currentTimeMillis() + readClockOffset(context)
+        // `now` is the TAP time in the shared server-time base (captured in
+        // onReceive, before the auth wait + transaction) — exactly like the
+        // in-app writer's `serverNow()`. Using the tap time, not the
+        // transaction-run time, keeps the recorded elapsed in sync with what
+        // the user saw across the widget + in-app screen.
         val db = FirebaseFirestore.getInstance()
         val ref = db.collection("games").document(gameId)
 

@@ -16,7 +16,10 @@ fun parseWearState(json: String): WearGameState = try {
     val o = JSONObject(json)
     when (o.optString("kind")) {
         "live" -> {
-            val t = o.getJSONObject("timer")
+            // Defensive: a live payload without a timer object degrades to a
+            // zeroed timer instead of throwing → Disconnected (which would
+            // wrongly show the "no game" placeholder during a live game).
+            val t = o.optJSONObject("timer") ?: JSONObject()
             WearGameState.Live(
                 title = o.optString("title"),
                 timer = TimerState(

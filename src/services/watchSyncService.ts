@@ -59,6 +59,14 @@ type WatchPayload = {
       /** Display name of the controller — used by the widget for the
        *  "מופעל ע״י X" hint when controller != viewer. */
       controlledByName: string;
+      /** Roster of the LIVE game — so the players widget shows the current
+       *  squad instead of "אין משחק קרוב" while a game is in progress. */
+      startsAt: number;
+      fieldName: string;
+      city: string;
+      playersCount: number;
+      maxPlayers: number;
+      players: WatchPlayer[];
     }
   | {
       kind: 'upcoming';
@@ -104,6 +112,7 @@ export async function computeWatchPayload(
     (g) => g.liveMatch != null && g.liveMatch.phase !== 'finished',
   );
   if (live && live.liveMatch) {
+    const players = await resolveRoster(live);
     return {
       viewer,
       clockOffsetMs: getServerOffsetMs(),
@@ -117,6 +126,12 @@ export async function computeWatchPayload(
       },
       controlledBy: live.liveMatch.timerControlledBy ?? '',
       controlledByName: live.liveMatch.timerControlledByName ?? '',
+      startsAt: live.startsAt,
+      fieldName: live.fieldName ?? '',
+      city: live.city ?? '',
+      playersCount: players.length,
+      maxPlayers: live.maxPlayers ?? 0,
+      players,
     };
   }
 
