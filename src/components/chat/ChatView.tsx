@@ -307,30 +307,37 @@ function MessageRow({
   mine: boolean;
   onLongPress: () => void;
 }) {
+  const avatar = (
+    <UserAvatar
+      user={{
+        id: message.senderId,
+        name: message.senderName,
+        avatarId: message.senderAvatarId,
+        photoUrl: message.senderPhotoUrl,
+      }}
+      size={32}
+      style={styles.avatar}
+    />
+  );
+  const bubble = (
+    <Pressable
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+    >
+      {!mine ? <Text style={styles.senderName}>{message.senderName}</Text> : null}
+      <Text style={[styles.messageText, mine && styles.messageTextMine]}>
+        {message.text}
+      </Text>
+    </Pressable>
+  );
+  // Avatar always sits on the message's OUTER edge: for my own (right-
+  // aligned) message it leads the row; for others it trails it.
   return (
     <View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
-      {!mine ? (
-        <UserAvatar
-          user={{
-            id: message.senderId,
-            name: message.senderName,
-            avatarId: message.senderAvatarId,
-            photoUrl: message.senderPhotoUrl,
-          }}
-          size={32}
-          style={styles.avatar}
-        />
-      ) : null}
-      <Pressable
-        onLongPress={onLongPress}
-        delayLongPress={350}
-        style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
-      >
-        {!mine ? <Text style={styles.senderName}>{message.senderName}</Text> : null}
-        <Text style={[styles.messageText, mine && styles.messageTextMine]}>
-          {message.text}
-        </Text>
-      </Pressable>
+      {mine ? avatar : null}
+      {bubble}
+      {!mine ? avatar : null}
     </View>
   );
 }
@@ -340,10 +347,19 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
-  listContent: { padding: spacing.md, gap: spacing.sm },
+  // flexGrow + flex-end keeps a short conversation pinned to the BOTTOM
+  // (just above the input), WhatsApp-style, instead of floating at the top.
+  listContent: {
+    padding: spacing.md,
+    gap: spacing.sm,
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, maxWidth: '88%' },
-  rowMine: { alignSelf: 'flex-end' },
-  rowOther: { alignSelf: 'flex-start' },
+  // Under forceRTL, flex-start = visual RIGHT. My own messages sit on the
+  // right; everyone else's on the left.
+  rowMine: { alignSelf: 'flex-start' },
+  rowOther: { alignSelf: 'flex-end' },
   avatar: { marginBottom: 2 },
   bubble: {
     borderRadius: 16,
