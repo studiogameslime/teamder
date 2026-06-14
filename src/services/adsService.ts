@@ -252,9 +252,18 @@ let appOpenAdHandle: ReturnType<AdsModule['AppOpenAd']['createForAdRequest']> | 
 // (cooldown / daily cap / new-user grace) apply. Defaults to on, and a read
 // failure leaves the last known value so a network blip can't surprise-enable.
 let appOpenMasterEnabled = true;
+// Has the master switch been read at least once? Until it has, an app-open ad
+// must NOT fire on the default — otherwise a Pulse-disabled ad slips through on
+// the first cold launch (the read is async and can lose the race).
+let appOpenMasterLoaded = false;
+// The in-flight read, so the first show() can await it instead of racing.
+let appOpenMasterPromise: Promise<void> | null = null;
 
 async function refreshAppOpenMaster(): Promise<void> {
-  if (USE_MOCK_DATA) return;
+  if (USE_MOCK_DATA) {
+    appOpenMasterLoaded = true;
+    return;
+  }
   try {
     const { db } = getFirebase();
     const snap = await getDoc(doc(db, 'appConfig', 'ads'));
@@ -265,6 +274,10 @@ async function refreshAppOpenMaster(): Promise<void> {
     }
   } catch (err) {
     if (__DEV__) console.warn('[ads] refreshAppOpenMaster failed', err);
+  } finally {
+    // Mark loaded even on failure: a genuine read error falls back to the
+    // default (on) rather than blocking ads forever.
+    appOpenMasterLoaded = true;
   }
 }
 
@@ -273,8 +286,9 @@ export const adsService = {
   async initializeAds(): Promise<void> {
     if (initialized) return;
     initialized = true;
-    // Pull the Pulse-controlled app-open master switch (fire-and-forget).
-    void refreshAppOpenMaster();
+    // Pull the Pulse-controlled app-open master switch. Keep the promise so
+    // the first app-open ad can await it (closes the show-before-loaded race).
+    appOpenMasterPromise = refreshAppOpenMaster();
     // Loud DEV warning if the iOS build was bundled against AdMob's
     // public TEST app ID. Real iOS revenue requires registering the
     // app in AdMob console and swapping `iosAppId` in app.json. Fires
@@ -366,7 +380,15 @@ export const adsService = {
     if (appOpenShownThisSession) return;
 
     // (−1) Pulse master switch (Firestore) — overrides everything: off = no
-    // app-open ad for anyone, regardless of the RC rules below.
+    // app-open ad for anyone, regardless of the RC rules below. Wait for the
+    // read to land (bounded) the first time so a disabled switch isn't raced
+    // by an early ad; on timeout we fall back to the default (on).
+    if (!appOpenMasterLoaded && appOpenMasterPromise) {
+      await Promise.race([
+        appOpenMasterPromise,
+        new Promise<void>((r) => setTimeout(r, 2500)),
+      ]);
+    }
     if (!appOpenMasterEnabled) return;
     // (0) Remote kill-switch for the whole format.
     if (!rcBool('app_open_ad_enabled')) return;

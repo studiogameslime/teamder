@@ -1775,6 +1775,7 @@ export const he = {
   draftTeamsToCreate: (n: number) => `${n} קבוצות ייווצרו`,
   draftContinue: 'המשך',
   draftNeedCaptains: 'בחרו 2–4 קפטנים כדי להמשיך',
+  draftChooseOrder: 'בחרו סדר הגרלה כדי להמשיך',
   draftTooManyCaptains: 'אפשר עד 4 קבוצות — הסירו קפטן',
   draftNotEnoughPlayers: 'אין מספיק שחקנים רשומים לחלוקה',
   draftBoardTurn: (letter: string) => `תורו של קפטן ${letter} לבחור`,

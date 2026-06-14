@@ -46,7 +46,10 @@ export function DraftSetupScreen() {
 
   const [game, setGame] = useState<Game | null>(null);
   const [captainIds, setCaptainIds] = useState<string[]>([]);
-  const [method, setMethod] = useState<DraftMethod>('snake');
+  // No default: the manager MUST actively pick an order. With a pre-selected
+  // default they often hit "המשך" without ever scrolling to the order options
+  // below a long captain list. Null → "המשך" stays disabled until chosen.
+  const [method, setMethod] = useState<DraftMethod | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -98,7 +101,8 @@ export function DraftSetupScreen() {
   const tooFew = numTeams < MIN_TEAMS;
   const tooMany = numTeams > MAX_TEAMS;
   const noPlayersLeft = numTeams >= participants.length && participants.length > 0;
-  const canContinue = !tooFew && !tooMany && !noPlayersLeft;
+  const captainsOk = !tooFew && !tooMany && !noPlayersLeft;
+  const canContinue = captainsOk && method !== null;
 
   const hint = tooMany
     ? he.draftTooManyCaptains
@@ -106,10 +110,12 @@ export function DraftSetupScreen() {
       ? he.draftNotEnoughPlayers
       : tooFew
         ? he.draftNeedCaptains
-        : null;
+        : method === null
+          ? he.draftChooseOrder
+          : null;
 
   const onContinue = () => {
-    if (!canContinue) return;
+    if (!canContinue || !method) return;
     nav.navigate('DraftBoard', { gameId, captainIds, method });
   };
 
@@ -194,11 +200,13 @@ export function DraftSetupScreen() {
           </Text>
         </View>
 
-        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       </ScrollView>
 
-      {/* Sticky CTA */}
+      {/* Sticky CTA. The hint lives HERE (not in the scroll) so the reason
+          "המשך" is disabled — including "בחרו סדר הגרלה" — is always visible
+          and nudges the manager to scroll down to the order options. */}
       <View style={styles.footer}>
+        {hint ? <Text style={styles.footerHint}>{hint}</Text> : null}
         <Button
           title={he.draftContinue}
           onPress={onContinue}
@@ -403,5 +411,11 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.divider,
     backgroundColor: colors.surface,
+  },
+  footerHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
 });
