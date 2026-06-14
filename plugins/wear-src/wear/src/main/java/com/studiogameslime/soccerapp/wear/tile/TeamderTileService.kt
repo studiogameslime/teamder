@@ -344,7 +344,10 @@ class TeamderTileService : TileService() {
         // Wear OS clamps refresh to ~60s; we still hint at 60s while live
         // so a stale tile self-refreshes if the listener service is killed.
         private val RUNNING_FRESHNESS_MS = TimeUnit.SECONDS.toMillis(60)
-        private val IDLE_FRESHNESS_MS = TimeUnit.MINUTES.toMillis(15)
+        // Safety net: if the push-driven TileUpdateListenerService refresh is
+        // missed, the idle tile still self-corrects within 5 min instead of
+        // looking frozen on a stale "no game" for a quarter hour.
+        private val IDLE_FRESHNESS_MS = TimeUnit.MINUTES.toMillis(5)
 
         // Brand — matches WearScreens.kt (TeamderBlue / TeamderInk / white bg)
         private const val COLOR_BG = 0xFFF9FAFB.toInt()
