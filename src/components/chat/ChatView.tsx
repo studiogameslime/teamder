@@ -323,7 +323,12 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
               onPress={send}
               disabled={!draft.trim() || sending}
             >
-              <Ionicons name="send" size={20} color="#FFFFFF" />
+              <Ionicons
+                name="send"
+                size={20}
+                color="#FFFFFF"
+                style={{ transform: [{ scaleX: -1 }] }}
+              />
             </Pressable>
           </View>
         ) : null}
@@ -597,7 +602,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 11 : 8,
     backgroundColor: colors.surface,
     color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
+    textAlign: 'right',
     ...typography.body,
   },
   sendBtn: {
