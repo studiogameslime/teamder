@@ -1805,6 +1805,8 @@ export const he = {
   chatWhoRead: 'מי קרא',
   chatReadByNobody: 'עדיין לא נקרא',
   chatReadByYou: 'אתה',
+  chatTypingOne: (name: string) => `${name} מקליד…`,
+  chatTypingMany: 'כמה משתתפים מקלידים…',
   chatMute: 'השתק התראות',
   chatUnmute: 'בטל השתקה',
   chatProfanityBlocked: 'ההודעה מכילה תוכן פוגעני ולא נשלחה',

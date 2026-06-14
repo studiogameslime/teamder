@@ -846,6 +846,11 @@ service cloud.firestore {
         allow read: if isGamePlayer(id);
         allow write: if isSelf(uid) && isGamePlayer(id);
       }
+      // ── /games/{id}/typing/{uid} — ephemeral "is typing" flags ──────
+      match /typing/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if isSelf(uid) && isGamePlayer(id);
+      }
     }
 
     // ── /rounds/{id} ────────────────────────────────────────────────────
@@ -909,6 +914,12 @@ service cloud.firestore {
 
     // ── /groups/{gid}/reads/{uid} — community chat read receipts ─────────
     match /groups/{gid}/reads/{uid} {
+      allow read: if isGroupMember(gid);
+      allow write: if isSelf(uid) && isGroupMember(gid);
+    }
+
+    // ── /groups/{gid}/typing/{uid} — ephemeral "is typing" flags ─────────
+    match /groups/{gid}/typing/{uid} {
       allow read: if isGroupMember(gid);
       allow write: if isSelf(uid) && isGroupMember(gid);
     }

@@ -29,7 +29,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
-import { chatService, MAX_MESSAGE_LEN, type ChatReader } from '@/services/chatService';
+import {
+  chatService,
+  MAX_MESSAGE_LEN,
+  type ChatReader,
+  type ChatTyper,
+} from '@/services/chatService';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
 import {
@@ -75,6 +80,9 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const [muted, setMuted] = useState(false);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
   const [readers, setReaders] = useState<ChatReader[]>([]);
+  const [typers, setTypers] = useState<ChatTyper[]>([]);
+  const [, setTick] = useState(0); // forces typing freshness re-eval
+  const lastTypingWriteRef = useRef(0);
   const [menu, setMenu] = useState<{ message: ChatMessage; x: number; y: number } | null>(null);
   const [showTerms, setShowTerms] = useState(false);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
@@ -99,16 +107,24 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     return unsub;
   }, [scope, parentId]);
 
-  // Per-chat mute state, my block list, and everyone's read positions.
+  // Per-chat mute state, my block list, read positions, and who's typing.
   useEffect(() => {
     if (!me) return;
     const unsubM = chatService.subscribeMuted(me.id, scope, parentId, setMuted);
     const unsubB = chatService.subscribeBlocked(me.id, setBlocked);
     const unsubR = chatService.subscribeReads(scope, parentId, setReaders);
+    const unsubT = chatService.subscribeTyping(scope, parentId, setTypers);
+    // Re-evaluate typing freshness every couple of seconds so a stale
+    // flag (someone stopped typing without sending) disappears on its own.
+    const tickId = setInterval(() => setTick((t) => t + 1), 2500);
     return () => {
       unsubM();
       unsubB();
       unsubR();
+      unsubT();
+      clearInterval(tickId);
+      // Make sure I'm not left showing as "typing" after I leave.
+      chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
     };
   }, [me?.id, scope, parentId]);
 
@@ -152,6 +168,8 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     }
     setSending(true);
     setDraft('');
+    lastTypingWriteRef.current = 0;
+    chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
     try {
       await chatService.sendMessage(scope, parentId, me, text);
     } catch {
@@ -162,6 +180,28 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
       setSending(false);
     }
   };
+
+  // Signal "typing" as the user edits — throttled to a write every ~2.5s.
+  const onDraftChange = (text: string) => {
+    setDraft(text);
+    if (!me) return;
+    const now = Date.now();
+    if (text.trim() && now - lastTypingWriteRef.current > 2500) {
+      lastTypingWriteRef.current = now;
+      chatService
+        .setTyping(scope, parentId, { id: me.id, name: me.name }, true)
+        .catch(() => {});
+    }
+  };
+
+  // Who's typing right now (fresh + not me).
+  const typingNow = typers.filter((t) => t.uid !== me?.id && Date.now() - t.at < 6000);
+  const typingLabel =
+    typingNow.length === 0
+      ? null
+      : typingNow.length === 1
+        ? he.chatTypingOne(typingNow[0].name)
+        : he.chatTypingMany;
 
   const deleteMessage = (m: ChatMessage) => {
     const mine = m.senderId === me?.id;
@@ -318,12 +358,18 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
           />
         )}
 
+        {!denied && typingLabel ? (
+          <View style={styles.typingWrap}>
+            <Text style={styles.typingText}>{typingLabel}</Text>
+          </View>
+        ) : null}
+
         {!denied ? (
           <View style={styles.inputBar}>
             <TextInput
               style={styles.input}
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={onDraftChange}
               placeholder={he.chatInputPlaceholder}
               placeholderTextColor={colors.textMuted}
               multiline
@@ -604,6 +650,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   menuItemText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  // "… מקליד" line just above the composer.
+  typingWrap: { paddingHorizontal: spacing.md, paddingBottom: 2 },
+  typingText: {
+    ...typography.caption,
+    color: '#1B8A43',
+    fontStyle: 'italic',
+    textAlign: 'right',
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

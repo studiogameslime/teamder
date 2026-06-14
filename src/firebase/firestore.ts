@@ -1250,6 +1250,14 @@ export const col = {
   groupReads(groupId: GroupId) {
     return collection(getFirebase().db, 'groups', groupId, 'reads');
   },
+  /** Typing indicators for a game chat: /games/{id}/typing/{uid}. */
+  gameTyping(gameId: string) {
+    return collection(getFirebase().db, 'games', gameId, 'typing');
+  },
+  /** Typing indicators for a community chat: /groups/{gid}/typing/{uid}. */
+  groupTyping(groupId: GroupId) {
+    return collection(getFirebase().db, 'groups', groupId, 'typing');
+  },
   /** Store-safety: reported chat messages. */
   chatReports() {
     return collection(getFirebase().db, 'chatReports');

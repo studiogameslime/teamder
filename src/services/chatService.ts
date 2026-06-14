@@ -40,6 +40,17 @@ function readsCol(scope: ChatScope, parentId: string) {
   return scope === 'game' ? col.gameReads(parentId) : col.groupReads(parentId);
 }
 
+function typingCol(scope: ChatScope, parentId: string) {
+  return scope === 'game' ? col.gameTyping(parentId) : col.groupTyping(parentId);
+}
+
+/** A member currently typing in the chat. */
+export interface ChatTyper {
+  uid: string;
+  name: string;
+  at: number;
+}
+
 /** A member's chat read state — who's caught up to where. */
 export interface ChatReader {
   uid: string;
@@ -164,6 +175,45 @@ export const chatService = {
       },
       { merge: true },
     );
+  },
+
+  // ── Typing indicators ("… מקליד") ──────────────────────────────────────
+
+  /** Flag (or clear) that I'm typing. Callers should throttle the `true`
+   *  writes (~every 2.5s) and clear on send / blur. */
+  async setTyping(
+    scope: ChatScope,
+    parentId: string,
+    user: Pick<User, 'id' | 'name'>,
+    isTyping: boolean,
+  ): Promise<void> {
+    const ref = doc(typingCol(scope, parentId), user.id);
+    if (isTyping) {
+      const first = (user.name ?? '').trim().split(/\s+/)[0] || (user.name ?? '');
+      await setDoc(ref, { name: first, at: Date.now() });
+    } else {
+      await deleteDoc(ref).catch(() => {});
+    }
+  },
+
+  /** Subscribe to who's typing right now. */
+  subscribeTyping(
+    scope: ChatScope,
+    parentId: string,
+    cb: (typers: ChatTyper[]) => void,
+  ): () => void {
+    return onSnapshot(typingCol(scope, parentId), (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const x = d.data() as Partial<ChatTyper>;
+          return {
+            uid: d.id,
+            name: typeof x.name === 'string' ? x.name : '',
+            at: typeof x.at === 'number' ? x.at : 0,
+          };
+        }),
+      );
+    });
   },
 
   /** Subscribe to every member's read position in this chat. */
