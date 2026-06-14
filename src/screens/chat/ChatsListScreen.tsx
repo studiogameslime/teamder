@@ -23,6 +23,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { gameService } from '@/services/gameService';
+import { chatKeyFor } from '@/services/chatService';
+import { useChatStore } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -32,14 +34,20 @@ import type { ChatStackParamList } from '@/navigation/ChatStack';
 
 type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatsList'>;
 
-type Row =
-  | { kind: 'community'; id: string; title: string }
-  | { kind: 'game'; id: string; title: string };
+type Row = {
+  kind: 'community' | 'game';
+  id: string;
+  title: string;
+  preview: string;
+  unread: number;
+  sortAt: number;
+};
 
 export function ChatsListScreen() {
   const nav = useNavigation<Nav>();
   const me = useUserStore((s) => s.currentUser);
   const groups = useGroupStore((s) => s.groups);
+  const unreadEntries = useChatStore((s) => s.entries);
   const [myGames, setMyGames] = useState<Game[]>([]);
 
   // Refetch the user's live/upcoming games each time the tab gains focus
@@ -62,10 +70,21 @@ export function ChatsListScreen() {
     }, [me?.id]),
   );
 
+  const toRow = (kind: 'community' | 'game', id: string, title: string): Row => {
+    const entry = unreadEntries[chatKeyFor(kind, id)];
+    return {
+      kind,
+      id,
+      title,
+      preview: entry?.lastText ?? '',
+      unread: entry?.count ?? 0,
+      sortAt: entry?.lastMessageAt ?? 0,
+    };
+  };
   const rows: Row[] = [
-    ...groups.map((g) => ({ kind: 'community' as const, id: g.id, title: g.name })),
-    ...myGames.map((g) => ({ kind: 'game' as const, id: g.id, title: g.title })),
-  ];
+    ...groups.map((g) => toRow('community', g.id, g.name)),
+    ...myGames.map((g) => toRow('game', g.id, g.title)),
+  ].sort((a, b) => b.sortAt - a.sortAt); // most-recently-active first
 
   const open = (row: Row) => {
     if (row.kind === 'community') {
@@ -104,14 +123,26 @@ export function ChatsListScreen() {
                 />
               </View>
               <View style={styles.rowBody}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
+                <Text
+                  style={[styles.rowTitle, item.unread > 0 && styles.rowTitleUnread]}
+                  numberOfLines={1}
+                >
                   {item.title}
                 </Text>
                 <Text style={styles.rowSub} numberOfLines={1}>
-                  {item.kind === 'community' ? he.chatCommunitySubtitle : he.chatGameSubtitle}
+                  {item.preview ||
+                    (item.kind === 'community' ? he.chatCommunitySubtitle : he.chatGameSubtitle)}
                 </Text>
               </View>
-              <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+              {item.unread > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {item.unread > 99 ? '99+' : item.unread}
+                  </Text>
+                </View>
+              ) : (
+                <Ionicons name="chevron-back" size={20} color={colors.textMuted} />
+              )}
             </Pressable>
           )}
         />
@@ -144,5 +175,16 @@ const styles = StyleSheet.create({
   },
   rowBody: { flex: 1 },
   rowTitle: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  rowTitleUnread: { fontWeight: '900' },
   rowSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
 });

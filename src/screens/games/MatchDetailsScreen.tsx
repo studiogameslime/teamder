@@ -45,6 +45,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { Button } from '@/components/Button';
+import { goToGameChat } from '@/navigation/navigationRef';
 import { Badge } from '@/components/Badge';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
@@ -1917,6 +1918,17 @@ export function MatchDetailsScreen() {
         </View>
 
         <View style={styles.body}>
+
+          {/* Game chat — registered players (or the organiser) only. */}
+          {user && (game.players.includes(user.id) || user.id === game.createdBy) ? (
+            <Button
+              title={he.chatOpenGame}
+              variant="secondary"
+              iconLeft="chatbubbles-outline"
+              onPress={() => goToGameChat(game.id)}
+              fullWidth
+            />
+          ) : null}
 
           {/* Admin-pinned announcement. Renders nothing for non-admins
               when there's no message; admins always see at least the

@@ -15,15 +15,22 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 
 import { col } from '@/firebase/firestore';
-import type { ChatMessage, ChatScope, User } from '@/types';
+import type { ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
 /** Max characters per message — guards against pathological payloads. */
 export const MAX_MESSAGE_LEN = 1000;
 /** How many recent messages we keep live in the screen. */
 const WINDOW = 100;
+
+/** Stable per-chat key used across chatUnread / chatSettings docs. */
+export function chatKeyFor(scope: ChatScope, parentId: string): string {
+  return `${scope}__${parentId}`;
+}
 
 function messagesCol(scope: ChatScope, parentId: string) {
   return scope === 'game' ? col.gameMessages(parentId) : col.groupMessages(parentId);
@@ -89,5 +96,104 @@ export const chatService = {
     messageId: string,
   ): Promise<void> {
     await deleteDoc(doc(messagesCol(scope, parentId), messageId));
+  },
+
+  // ── Unread index (per-user) ────────────────────────────────────────────
+
+  /** Subscribe to all of my unread entries (powers list sort + badges). */
+  subscribeUnread(
+    uid: UserId,
+    cb: (entries: ChatUnreadEntry[]) => void,
+  ): () => void {
+    return onSnapshot(col.userChatUnread(uid), (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const x = d.data() as Partial<ChatUnreadEntry>;
+          return {
+            id: d.id,
+            count: typeof x.count === 'number' ? x.count : 0,
+            lastMessageAt: typeof x.lastMessageAt === 'number' ? x.lastMessageAt : 0,
+            lastText: typeof x.lastText === 'string' ? x.lastText : '',
+            lastSenderName: typeof x.lastSenderName === 'string' ? x.lastSenderName : '',
+            scope: (x.scope as ChatScope) ?? 'game',
+            parentId: typeof x.parentId === 'string' ? x.parentId : '',
+            title: typeof x.title === 'string' ? x.title : '',
+          };
+        }),
+      );
+    });
+  },
+
+  /** Mark a chat read — resets my unread counter for it to 0. */
+  async markChatRead(uid: UserId, scope: ChatScope, parentId: string): Promise<void> {
+    await setDoc(
+      doc(col.userChatUnread(uid), chatKeyFor(scope, parentId)),
+      { count: 0, lastReadAt: Date.now() },
+      { merge: true },
+    );
+  },
+
+  // ── Per-chat mute ──────────────────────────────────────────────────────
+
+  subscribeMuted(
+    uid: UserId,
+    scope: ChatScope,
+    parentId: string,
+    cb: (muted: boolean) => void,
+  ): () => void {
+    return onSnapshot(
+      doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)),
+      (snap) => cb(snap.exists() && snap.data()?.muted === true),
+    );
+  },
+
+  async setMuted(
+    uid: UserId,
+    scope: ChatScope,
+    parentId: string,
+    muted: boolean,
+  ): Promise<void> {
+    await setDoc(
+      doc(col.userChatSettings(uid), chatKeyFor(scope, parentId)),
+      { muted, scope, parentId },
+      { merge: true },
+    );
+  },
+
+  // ── Block list (store-safety) ──────────────────────────────────────────
+
+  subscribeBlocked(uid: UserId, cb: (ids: Set<string>) => void): () => void {
+    return onSnapshot(col.userBlocked(uid), (snap) => {
+      cb(new Set(snap.docs.map((d) => d.id)));
+    });
+  },
+
+  async blockUser(uid: UserId, blockedUid: string): Promise<void> {
+    await setDoc(doc(col.userBlocked(uid), blockedUid), { at: Date.now() });
+  },
+
+  async unblockUser(uid: UserId, blockedUid: string): Promise<void> {
+    await deleteDoc(doc(col.userBlocked(uid), blockedUid));
+  },
+
+  // ── Report (store-safety) ──────────────────────────────────────────────
+
+  async reportMessage(
+    reporterId: UserId,
+    scope: ChatScope,
+    parentId: string,
+    message: ChatMessage,
+  ): Promise<void> {
+    await addDoc(col.chatReports(), {
+      reporterId,
+      scope,
+      parentId,
+      messageId: message.id,
+      messageText: message.text.slice(0, 2000),
+      senderId: message.senderId,
+      senderName: message.senderName,
+      createdAt: serverTimestamp(),
+      createdAtMs: Date.now(),
+    });
   },
 };

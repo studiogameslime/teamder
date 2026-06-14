@@ -1207,5 +1207,35 @@ service cloud.firestore {
     match /users/{uid}/campaignSeen/{cid} {
       allow read, write: if isSelf(uid);
     }
+
+    // ── Chat: per-user unread index ──────────────────────────────────────
+    // /users/{uid}/chatUnread/{chatKey} — maintained by the message-trigger
+    // Cloud Function (Admin SDK, bypasses rules) for OTHER users; the owner
+    // only resets their own counter to 0 on opening a chat.
+    match /users/{uid}/chatUnread/{chatKey} {
+      allow read, write: if isSelf(uid);
+    }
+    // Per-user, per-chat settings (mute). Self-only; the CF reads it via
+    // the Admin SDK before sending a push.
+    match /users/{uid}/chatSettings/{chatKey} {
+      allow read, write: if isSelf(uid);
+    }
+    // Per-user block list. Self-only — used client-side to hide a blocked
+    // user's messages and (store-safety) to stop seeing their content.
+    match /users/{uid}/blocked/{blockedUid} {
+      allow read, write: if isSelf(uid);
+    }
+
+    // ── /chatReports/{id} — store-safety: report an abusive message ───────
+    // Create-only by the reporter; reads/edits handled by the admin SA
+    // (surfaced in Pulse). Mirrors the /feedback pattern.
+    match /chatReports/{id} {
+      allow read, update, delete: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.reporterId == request.auth.uid &&
+        isShortString(request.resource.data.messageText, 2000) &&
+        request.resource.data.scope is string &&
+        request.resource.data.parentId is string;
+    }
   }
 }

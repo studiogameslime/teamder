@@ -26,6 +26,12 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { chatService, MAX_MESSAGE_LEN } from '@/services/chatService';
 import { appAlert } from '@/components/AppDialog';
+import { toast } from '@/components/Toast';
+import {
+  ChatTermsModal,
+  useChatTermsAccepted,
+} from '@/components/chat/ChatTermsModal';
+import { containsProfanity } from '@/data/profanity';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -48,6 +54,10 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const [denied, setDenied] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [blocked, setBlocked] = useState<Set<string>>(new Set());
+  const [showTerms, setShowTerms] = useState(false);
+  const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -69,6 +79,32 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     return unsub;
   }, [scope, parentId]);
 
+  // Per-chat mute state + my block list.
+  useEffect(() => {
+    if (!me) return;
+    const unsubM = chatService.subscribeMuted(me.id, scope, parentId, setMuted);
+    const unsubB = chatService.subscribeBlocked(me.id, setBlocked);
+    return () => {
+      unsubM();
+      unsubB();
+    };
+  }, [me?.id, scope, parentId]);
+
+  // Opening the chat (and reading new messages while open) clears my
+  // unread counter for it — which also re-arms the "one push" for the
+  // next message.
+  useEffect(() => {
+    if (!me || denied) return;
+    chatService.markChatRead(me.id, scope, parentId).catch(() => {});
+  }, [me?.id, scope, parentId, denied, messages.length]);
+
+  const visibleMessages = messages.filter((m) => !blocked.has(m.senderId));
+
+  const toggleMute = () => {
+    if (!me) return;
+    chatService.setMuted(me.id, scope, parentId, !muted).catch(() => {});
+  };
+
   // Stick to the newest message as they arrive.
   useEffect(() => {
     if (messages.length === 0) return;
@@ -81,6 +117,16 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const send = async () => {
     const text = draft.trim();
     if (!text || !me || sending) return;
+    // Terms gate — must accept the chat rules before posting (store-safety).
+    if (termsAccepted === false) {
+      setShowTerms(true);
+      return;
+    }
+    // First-line profanity filter (real moderation is report+block+delete).
+    if (containsProfanity(text)) {
+      toast.error(he.chatProfanityBlocked);
+      return;
+    }
     setSending(true);
     setDraft('');
     try {
@@ -94,9 +140,8 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     }
   };
 
-  const onLongPress = (m: ChatMessage) => {
+  const deleteMessage = (m: ChatMessage) => {
     const mine = m.senderId === me?.id;
-    if (!mine && !canModerate) return; // nothing this user can do yet
     appAlert(
       he.chatDeleteConfirmTitle,
       mine ? he.chatDeleteConfirmBodyOwn : he.chatDeleteConfirmBodyMod,
@@ -117,9 +162,72 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     );
   };
 
+  const reportMessage = (m: ChatMessage) => {
+    if (!me) return;
+    appAlert(he.chatReportConfirmTitle, he.chatReportConfirmBody, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.chatReport,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await chatService.reportMessage(me.id, scope, parentId, m);
+            toast.success(he.chatReportThanks);
+          } catch {
+            appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
+          }
+        },
+      },
+    ]);
+  };
+
+  const blockSender = (m: ChatMessage) => {
+    if (!me) return;
+    appAlert(he.chatBlockConfirmTitle, he.chatBlockConfirmBody(m.senderName), [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.chatBlock,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await chatService.blockUser(me.id, m.senderId);
+            toast.success(he.chatBlockDone);
+          } catch {
+            appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
+          }
+        },
+      },
+    ]);
+  };
+
+  const onLongPress = (m: ChatMessage) => {
+    const mine = m.senderId === me?.id;
+    const buttons: Parameters<typeof appAlert>[2] = [];
+    if (mine || canModerate) {
+      buttons.push({ text: he.delete, style: 'destructive', onPress: () => deleteMessage(m) });
+    }
+    if (!mine) {
+      buttons.push({ text: he.chatReport, onPress: () => reportMessage(m) });
+      buttons.push({ text: he.chatBlock, style: 'destructive', onPress: () => blockSender(m) });
+    }
+    if (buttons.length === 0) return;
+    buttons.push({ text: he.cancel, style: 'cancel' });
+    appAlert(m.senderName, undefined, buttons);
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={title} />
+      <ScreenHeader
+        title={title}
+        actions={[
+          {
+            icon: muted ? 'notifications-off-outline' : 'notifications-outline',
+            onPress: toggleMute,
+            tint: muted ? colors.textMuted : colors.text,
+            label: muted ? he.chatUnmute : he.chatMute,
+          },
+        ]}
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -134,7 +242,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
             <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
             <Text style={styles.emptyText}>{he.chatNoAccess}</Text>
           </View>
-        ) : messages.length === 0 ? (
+        ) : visibleMessages.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="chatbubbles-outline" size={40} color={colors.textMuted} />
             <Text style={styles.emptyText}>{he.chatEmpty}</Text>
@@ -142,7 +250,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
         ) : (
           <FlatList
             ref={listRef}
-            data={messages}
+            data={visibleMessages}
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
@@ -177,6 +285,15 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+
+      <ChatTermsModal
+        visible={showTerms}
+        onAccept={async () => {
+          await acceptTerms();
+          setShowTerms(false);
+        }}
+        onClose={() => setShowTerms(false)}
+      />
     </SafeAreaView>
   );
 }

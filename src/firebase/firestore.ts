@@ -1230,6 +1230,22 @@ export const col = {
       friendRequestConverter,
     );
   },
+  /** Per-user unread index: /users/{uid}/chatUnread/{chatKey}. */
+  userChatUnread(uid: UserId) {
+    return collection(getFirebase().db, 'users', uid, 'chatUnread');
+  },
+  /** Per-user, per-chat settings (mute): /users/{uid}/chatSettings/{chatKey}. */
+  userChatSettings(uid: UserId) {
+    return collection(getFirebase().db, 'users', uid, 'chatSettings');
+  },
+  /** Per-user block list: /users/{uid}/blocked/{blockedUid}. */
+  userBlocked(uid: UserId) {
+    return collection(getFirebase().db, 'users', uid, 'blocked');
+  },
+  /** Store-safety: reported chat messages. */
+  chatReports() {
+    return collection(getFirebase().db, 'chatReports');
+  },
   /** Game chat messages: /games/{gameId}/messages/{id} (players only). */
   gameMessages(gameId: string): CollectionReference<ChatMessage> {
     return collection(getFirebase().db, 'games', gameId, 'messages').withConverter(

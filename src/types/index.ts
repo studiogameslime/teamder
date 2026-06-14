@@ -466,6 +466,24 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+/**
+ * Per-user unread index entry: /users/{uid}/chatUnread/{chatKey}.
+ * Maintained by the message-trigger Cloud Function (fan-out on each new
+ * message); the owner resets `count` to 0 when they open the chat. Powers
+ * the chats-list sort + previews and the tab/per-chat unread badges.
+ */
+export interface ChatUnreadEntry {
+  /** chatKey = `${scope}__${parentId}`. */
+  id: string;
+  count: number;
+  lastMessageAt: number;
+  lastText: string;
+  lastSenderName: string;
+  scope: ChatScope;
+  parentId: string;
+  title: string;
+}
+
 /** ISO weekday: 0=Sunday, 6=Saturday. */
 export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 

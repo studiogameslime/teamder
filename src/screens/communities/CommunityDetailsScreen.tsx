@@ -34,6 +34,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
+import { goToCommunityChat } from '@/navigation/navigationRef';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
@@ -644,6 +645,17 @@ export function CommunityDetailsScreen() {
                   fall through as ordinary paragraphs. */}
               <RichRulesText text={group.rules.trim()} />
             </View>
+          ) : null}
+
+          {/* Community chat — members only. */}
+          {isMember && me ? (
+            <Button
+              title={he.chatOpenCommunity}
+              variant="secondary"
+              iconLeft="chatbubbles-outline"
+              onPress={() => goToCommunityChat(group.id)}
+              fullWidth
+            />
           ) : null}
 
           {/* ③ Notification toggle — members only */}

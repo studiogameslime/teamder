@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -71,6 +71,11 @@ const reviewAlerts_1 = require("./reviewAlerts");
 const adminPush_1 = require("./adminPush");
 const adminUserPush_1 = require("./adminUserPush");
 const notificationDedup_1 = require("./notificationDedup");
+// Chat fan-out + "one push per chat until opened" — defined in its own
+// module, re-exported so Cloud Functions discovers the triggers.
+var chatPush_1 = require("./chatPush");
+Object.defineProperty(exports, "onGameChatMessage", { enumerable: true, get: function () { return chatPush_1.onGameChatMessage; } });
+Object.defineProperty(exports, "onCommunityChatMessage", { enumerable: true, get: function () { return chatPush_1.onCommunityChatMessage; } });
 admin.initializeApp();
 const db = admin.firestore();
 // Skip — rather than reject — undefined fields on writes. Without this,

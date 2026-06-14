@@ -48,6 +48,10 @@ import {
   inferEntityFromPayload,
 } from './notificationDedup';
 
+// Chat fan-out + "one push per chat until opened" — defined in its own
+// module, re-exported so Cloud Functions discovers the triggers.
+export { onGameChatMessage, onCommunityChatMessage } from './chatPush';
+
 admin.initializeApp();
 const db = admin.firestore();
 // Skip — rather than reject — undefined fields on writes. Without this,

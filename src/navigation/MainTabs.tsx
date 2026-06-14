@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import {
   BottomTabBar,
@@ -14,6 +14,9 @@ import { CommunitiesStack } from './CommunitiesStack';
 import { ChatStack } from './ChatStack';
 import { BannerAd } from '@/services/adsService';
 import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
+import { chatService } from '@/services/chatService';
+import { useChatStore, totalUnread } from '@/store/chatStore';
+import { useUserStore } from '@/store/userStore';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -58,6 +61,21 @@ function TabBarWithBanner(props: BottomTabBarProps) {
 }
 
 export function MainTabs() {
+  // App-wide unread subscriber: keeps the chat store fresh so the tab
+  // badge + chats-list previews update no matter which tab is open.
+  const uid = useUserStore((s) => s.currentUser?.id);
+  useEffect(() => {
+    if (!uid) {
+      useChatStore.getState().clear();
+      return;
+    }
+    const unsub = chatService.subscribeUnread(uid, (list) =>
+      useChatStore.getState().setEntries(list),
+    );
+    return unsub;
+  }, [uid]);
+  const chatBadge = useChatStore((s) => totalUnread(s.entries));
+
   return (
     <Tab.Navigator
       // Land on Games (the core "what's happening / join a game" surface)
@@ -117,7 +135,10 @@ export function MainTabs() {
       <Tab.Screen
         name="ChatTab"
         component={ChatStack}
-        options={{ title: he.tabChat }}
+        options={{
+          title: he.tabChat,
+          tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined,
+        }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => resetTabToRoot(e, navigation, route.name),
         })}
