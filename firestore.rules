@@ -839,6 +839,13 @@ service cloud.firestore {
           isGroupAdmin(gameDoc(id).groupId)
         );
       }
+
+      // ── /games/{id}/reads/{uid} — chat read receipts ────────────────
+      // Any player can SEE who read; each player writes only their own.
+      match /reads/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if isSelf(uid) && isGamePlayer(id);
+      }
     }
 
     // ── /rounds/{id} ────────────────────────────────────────────────────
@@ -898,6 +905,12 @@ service cloud.firestore {
         resource.data.senderId == request.auth.uid ||
         isGroupAdmin(gid)
       );
+    }
+
+    // ── /groups/{gid}/reads/{uid} — community chat read receipts ─────────
+    match /groups/{gid}/reads/{uid} {
+      allow read: if isGroupMember(gid);
+      allow write: if isSelf(uid) && isGroupMember(gid);
     }
 
     match /groups/{gid}/ratings/{ratedUid} {

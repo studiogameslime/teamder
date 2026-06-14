@@ -1242,6 +1242,14 @@ export const col = {
   userBlocked(uid: UserId) {
     return collection(getFirebase().db, 'users', uid, 'blocked');
   },
+  /** Read receipts for a game chat: /games/{id}/reads/{uid}. */
+  gameReads(gameId: string) {
+    return collection(getFirebase().db, 'games', gameId, 'reads');
+  },
+  /** Read receipts for a community chat: /groups/{gid}/reads/{uid}. */
+  groupReads(groupId: GroupId) {
+    return collection(getFirebase().db, 'groups', groupId, 'reads');
+  },
   /** Store-safety: reported chat messages. */
   chatReports() {
     return collection(getFirebase().db, 'chatReports');

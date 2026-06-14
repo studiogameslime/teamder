@@ -36,6 +36,19 @@ function messagesCol(scope: ChatScope, parentId: string) {
   return scope === 'game' ? col.gameMessages(parentId) : col.groupMessages(parentId);
 }
 
+function readsCol(scope: ChatScope, parentId: string) {
+  return scope === 'game' ? col.gameReads(parentId) : col.groupReads(parentId);
+}
+
+/** A member's chat read state — who's caught up to where. */
+export interface ChatReader {
+  uid: string;
+  lastReadAt: number;
+  name: string;
+  avatarId?: string;
+  photoUrl?: string;
+}
+
 export const chatService = {
   /**
    * Subscribe to the most recent messages, oldest→newest. Returns an
@@ -131,6 +144,48 @@ export const chatService = {
       { count: 0, lastReadAt: Date.now() },
       { merge: true },
     );
+  },
+
+  // ── Read receipts ("who read") ─────────────────────────────────────────
+
+  /** Stamp my read position in this chat (visible to the other members). */
+  async writeReadReceipt(
+    scope: ChatScope,
+    parentId: string,
+    user: Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>,
+  ): Promise<void> {
+    await setDoc(
+      doc(readsCol(scope, parentId), user.id),
+      {
+        lastReadAt: Date.now(),
+        name: user.name ?? '',
+        ...(user.avatarId ? { avatarId: user.avatarId } : {}),
+        ...(user.photoUrl ? { photoUrl: user.photoUrl } : {}),
+      },
+      { merge: true },
+    );
+  },
+
+  /** Subscribe to every member's read position in this chat. */
+  subscribeReads(
+    scope: ChatScope,
+    parentId: string,
+    cb: (readers: ChatReader[]) => void,
+  ): () => void {
+    return onSnapshot(readsCol(scope, parentId), (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const x = d.data() as Partial<ChatReader>;
+          return {
+            uid: d.id,
+            lastReadAt: typeof x.lastReadAt === 'number' ? x.lastReadAt : 0,
+            name: typeof x.name === 'string' ? x.name : '',
+            avatarId: typeof x.avatarId === 'string' ? x.avatarId : undefined,
+            photoUrl: typeof x.photoUrl === 'string' ? x.photoUrl : undefined,
+          };
+        }),
+      );
+    });
   },
 
   // ── Per-chat mute ──────────────────────────────────────────────────────

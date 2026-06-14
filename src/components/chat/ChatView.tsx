@@ -24,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
-import { chatService, MAX_MESSAGE_LEN } from '@/services/chatService';
+import { chatService, MAX_MESSAGE_LEN, type ChatReader } from '@/services/chatService';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
 import {
@@ -57,6 +57,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const [sending, setSending] = useState(false);
   const [muted, setMuted] = useState(false);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
+  const [readers, setReaders] = useState<ChatReader[]>([]);
   const [showTerms, setShowTerms] = useState(false);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatRow>>(null);
@@ -80,23 +81,26 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     return unsub;
   }, [scope, parentId]);
 
-  // Per-chat mute state + my block list.
+  // Per-chat mute state, my block list, and everyone's read positions.
   useEffect(() => {
     if (!me) return;
     const unsubM = chatService.subscribeMuted(me.id, scope, parentId, setMuted);
     const unsubB = chatService.subscribeBlocked(me.id, setBlocked);
+    const unsubR = chatService.subscribeReads(scope, parentId, setReaders);
     return () => {
       unsubM();
       unsubB();
+      unsubR();
     };
   }, [me?.id, scope, parentId]);
 
   // Opening the chat (and reading new messages while open) clears my
   // unread counter for it — which also re-arms the "one push" for the
-  // next message.
+  // next message — and stamps my read position so others see I'm caught up.
   useEffect(() => {
     if (!me || denied) return;
     chatService.markChatRead(me.id, scope, parentId).catch(() => {});
+    chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
   }, [me?.id, scope, parentId, denied, messages.length]);
 
   const visibleMessages = messages.filter((m) => !blocked.has(m.senderId));
@@ -201,9 +205,22 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     ]);
   };
 
+  const showReaders = (m: ChatMessage) => {
+    // Who has read up to (or past) this message — excluding the sender.
+    const seen = readers
+      .filter((r) => r.uid !== m.senderId && r.lastReadAt >= m.createdAt)
+      .map((r) => (r.uid === me?.id ? he.chatReadByYou : r.name))
+      .filter(Boolean);
+    appAlert(
+      he.chatWhoRead,
+      seen.length ? seen.join('\n') : he.chatReadByNobody,
+    );
+  };
+
   const onLongPress = (m: ChatMessage) => {
     const mine = m.senderId === me?.id;
     const buttons: Parameters<typeof appAlert>[2] = [];
+    buttons.push({ text: he.chatWhoRead, onPress: () => showReaders(m) });
     if (mine || canModerate) {
       buttons.push({ text: he.delete, style: 'destructive', onPress: () => deleteMessage(m) });
     }
@@ -211,7 +228,6 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
       buttons.push({ text: he.chatReport, onPress: () => reportMessage(m) });
       buttons.push({ text: he.chatBlock, style: 'destructive', onPress: () => blockSender(m) });
     }
-    if (buttons.length === 0) return;
     buttons.push({ text: he.cancel, style: 'cancel' });
     appAlert(m.senderName, undefined, buttons);
   };
@@ -336,17 +352,21 @@ function MessageRow({
       </Text>
     </Pressable>
   );
-  const time = (
-    <Text style={styles.time}>{formatTime(message.createdAt)}</Text>
+  // The meta column hugs the bubble's INNER side: a caret (the visible
+  // hint that a message has actions — tap it, or long-press the bubble)
+  // above the send time. For my own (right-aligned) message the layout is
+  // [avatar | bubble | meta]; for others it's [meta | bubble | avatar].
+  const meta = (
+    <Pressable onPress={onLongPress} hitSlop={6} style={styles.meta}>
+      <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+      <Text style={styles.time}>{formatTime(message.createdAt)}</Text>
+    </Pressable>
   );
-  // Avatar sits on the message's OUTER edge; the time hugs the INNER side
-  // of the bubble (toward the screen centre). For my own (right-aligned)
-  // message: [avatar | bubble | time]. For others: [time | bubble | avatar].
   return (
     <View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
-      {mine ? avatar : time}
+      {mine ? avatar : meta}
       {bubble}
-      {mine ? time : avatar}
+      {mine ? meta : avatar}
     </View>
   );
 }
@@ -434,12 +454,12 @@ const styles = StyleSheet.create({
   },
   messageText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   messageTextMine: { color: '#FFFFFF' },
-  // Small muted timestamp hugging the inner side of the bubble.
+  // Caret hint + timestamp, hugging the inner side of the bubble.
+  meta: { alignItems: 'center', gap: 0, marginBottom: 2 },
   time: {
     ...typography.caption,
     fontSize: 11,
     color: colors.textMuted,
-    marginBottom: 3,
   },
   // WhatsApp-style centred date separator.
   dateWrap: { alignItems: 'center', paddingVertical: spacing.sm },
