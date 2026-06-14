@@ -35,7 +35,7 @@ import {
   useChatTermsAccepted,
 } from '@/components/chat/ChatTermsModal';
 import { containsProfanity } from '@/data/profanity';
-import { GrassBackdrop, EmptyPitch, RedCardGlyph } from '@/components/chat/ChatPitch';
+import { PitchLinesBackdrop, EmptyPitch, RedCardGlyph } from '@/components/chat/ChatPitch';
 import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -255,7 +255,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <GrassBackdrop />
+      <PitchLinesBackdrop />
       <ScreenHeader
         title={title}
         actions={[
