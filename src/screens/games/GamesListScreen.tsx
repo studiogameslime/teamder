@@ -421,8 +421,7 @@ export function GamesListScreen() {
         {/* Tabs removed — the list is one sectioned scroll now. Spacer keeps
             the filter button on the trailing edge. */}
         <View style={{ flex: 1 }} />
-        {/* Map view — hidden for this release (feature not shipped yet). */}
-        {false && (
+        {/* Map view — opens the games map next to the filter. */}
         <Pressable
           onPress={() => {
             const now = new Date();
@@ -493,7 +492,6 @@ export function GamesListScreen() {
         >
           <Ionicons name="map-outline" size={20} color="#1E40AF" />
         </Pressable>
-        )}
         <Pressable
           onPress={() => {
             logEvent(AnalyticsEvent.GameFilterSheetOpened);

@@ -418,8 +418,7 @@ export function PublicGroupsFeedScreen() {
             <Ionicons name="search" size={18} color="#94A3B8" />
           )}
         </View>
-        {/* Map view — hidden for this release (feature not shipped yet). */}
-        {false && (
+        {/* Map view — opens the communities map next to the filter. */}
         <Pressable
           onPress={() => {
             const mapItems = (items ?? [])
@@ -451,7 +450,6 @@ export function PublicGroupsFeedScreen() {
         >
           <Ionicons name="map-outline" size={20} color="#1E40AF" />
         </Pressable>
-        )}
         <Pressable
           onPress={() => setFilterOpen(true)}
           style={({ pressed }) => [

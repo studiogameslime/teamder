@@ -289,6 +289,9 @@ export function MapScreen() {
             center={center}
             focusOn={focusOn}
             onMarkerPress={onMarkerPress}
+            // Clean, natural basemap (no heavy blue wash) so it matches the
+            // app's other maps (the OpenFreeMap radius/picker maps).
+            tintAlpha={0}
           />
         ) : (
           <View style={styles.empty}>
