@@ -27,6 +27,7 @@ import {
 
 import {
   ArrivalStatus,
+  ChatMessage,
   FriendRequestDoc,
   FriendRequestStatus,
   Game,
@@ -1145,6 +1146,33 @@ const playerStatsConverter: FirestoreDataConverter<PlayerStats & { id: string }>
 // ─── Collection accessors ──────────────────────────────────────────────────
 // These throw if called while USE_MOCK_DATA is true via getFirebase().
 
+const chatMessageConverter: FirestoreDataConverter<ChatMessage> = {
+  toFirestore(m: ChatMessage) {
+    return {
+      text: m.text,
+      senderId: m.senderId,
+      senderName: m.senderName,
+      // Only write optional avatar fields when present — Firestore rejects
+      // `undefined`, and a sender may have neither an avatarId nor a photoUrl.
+      ...(m.senderAvatarId ? { senderAvatarId: m.senderAvatarId } : {}),
+      ...(m.senderPhotoUrl ? { senderPhotoUrl: m.senderPhotoUrl } : {}),
+      createdAt: m.createdAt,
+    };
+  },
+  fromFirestore(snap: QueryDocumentSnapshot<DocumentData>): ChatMessage {
+    const d = snap.data();
+    return {
+      id: snap.id,
+      text: typeof d.text === 'string' ? d.text : '',
+      senderId: typeof d.senderId === 'string' ? d.senderId : '',
+      senderName: typeof d.senderName === 'string' ? d.senderName : '',
+      senderAvatarId: typeof d.senderAvatarId === 'string' ? d.senderAvatarId : undefined,
+      senderPhotoUrl: typeof d.senderPhotoUrl === 'string' ? d.senderPhotoUrl : undefined,
+      createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+    };
+  },
+};
+
 const friendRequestConverter: FirestoreDataConverter<FriendRequestDoc> = {
   toFirestore(r: FriendRequestDoc) {
     return {
@@ -1200,6 +1228,18 @@ export const col = {
   friendRequests(): CollectionReference<FriendRequestDoc> {
     return collection(getFirebase().db, 'friendRequests').withConverter(
       friendRequestConverter,
+    );
+  },
+  /** Game chat messages: /games/{gameId}/messages/{id} (players only). */
+  gameMessages(gameId: string): CollectionReference<ChatMessage> {
+    return collection(getFirebase().db, 'games', gameId, 'messages').withConverter(
+      chatMessageConverter,
+    );
+  },
+  /** Community chat messages: /groups/{gid}/messages/{id} (members only). */
+  groupMessages(groupId: GroupId): CollectionReference<ChatMessage> {
+    return collection(getFirebase().db, 'groups', groupId, 'messages').withConverter(
+      chatMessageConverter,
     );
   },
   /** Per-community rating summaries: /groups/{gid}/ratings/{uid}. */

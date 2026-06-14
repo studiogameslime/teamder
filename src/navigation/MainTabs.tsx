@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GameStack } from './GameStack';
 import { ProfileStack } from './ProfileStack';
 import { CommunitiesStack } from './CommunitiesStack';
+import { ChatStack } from './ChatStack';
 import { BannerAd } from '@/services/adsService';
 import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
 import { colors } from '@/theme';
@@ -22,6 +23,7 @@ import { he } from '@/i18n/he';
 export type MainTabsParamList = {
   CommunitiesTab: undefined;
   GameTab: undefined;
+  ChatTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -77,6 +79,7 @@ export function MainTabs() {
               case 'ProfileTab':      return 'person-outline';
               case 'CommunitiesTab':  return 'globe-outline';
               case 'GameTab':         return 'football-outline';
+              case 'ChatTab':         return 'chatbubble-outline';
             }
           })();
           return (
@@ -112,6 +115,14 @@ export function MainTabs() {
         })}
       />
       <Tab.Screen
+        name="ChatTab"
+        component={ChatStack}
+        options={{ title: he.tabChat }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+        })}
+      />
+      <Tab.Screen
         name="ProfileTab"
         component={ProfileStack}
         options={{ title: he.tabProfile }}
@@ -135,6 +146,7 @@ export function MainTabs() {
 const TAB_ROOT: Record<string, string> = {
   GameTab: 'GamesList',
   CommunitiesTab: 'CommunitiesFeed',
+  ChatTab: 'ChatsList',
   ProfileTab: 'Profile',
 };
 

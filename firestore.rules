@@ -53,6 +53,17 @@ service cloud.firestore {
     function groupDoc(gid) {
       return get(/databases/$(database)/documents/groups/$(gid)).data;
     }
+    function gameDoc(gid) {
+      return get(/databases/$(database)/documents/games/$(gid)).data;
+    }
+    // Game chat: a registered player, the organiser, or a community admin.
+    function isGamePlayer(gid) {
+      return isSignedIn() && (
+        request.auth.uid in gameDoc(gid).players ||
+        request.auth.uid == gameDoc(gid).createdBy ||
+        isGroupAdmin(gameDoc(gid).groupId)
+      );
+    }
     function isGroupAdmin(gid) {
       return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
     }
@@ -809,6 +820,25 @@ service cloud.firestore {
           request.resource.data.status == 'cancelled';
         allow delete: if false;
       }
+
+      // ── /games/{id}/messages/{msgId} — game chat ────────────────────
+      // Read + write: registered players only (or the organiser / a
+      // community admin). No membership ⇒ no access at all.
+      match /messages/{msgId} {
+        allow read: if isGamePlayer(id);
+        allow create: if isGamePlayer(id) &&
+          request.resource.data.senderId == request.auth.uid &&
+          isShortString(request.resource.data.text, 1000) &&
+          request.resource.data.text.size() > 0;
+        allow update: if false; // no edits in v1
+        // Author deletes own; the game organiser (or a community admin)
+        // moderates everything.
+        allow delete: if isSignedIn() && (
+          resource.data.senderId == request.auth.uid ||
+          request.auth.uid == gameDoc(id).createdBy ||
+          isGroupAdmin(gameDoc(id).groupId)
+        );
+      }
     }
 
     // ── /rounds/{id} ────────────────────────────────────────────────────
@@ -854,6 +884,22 @@ service cloud.firestore {
     // CF keeps these per-group summaries in sync for those clients. Once
     // the global-ratings build is widely adopted this block + the legacy
     // CF can be removed.
+    // ── /groups/{gid}/messages/{msgId} — community chat ──────────────────
+    // Read + write: community members only. Author deletes own; a
+    // community admin moderates everything.
+    match /groups/{gid}/messages/{msgId} {
+      allow read: if isGroupMember(gid);
+      allow create: if isGroupMember(gid) &&
+        request.resource.data.senderId == request.auth.uid &&
+        isShortString(request.resource.data.text, 1000) &&
+        request.resource.data.text.size() > 0;
+      allow update: if false; // no edits in v1
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        isGroupAdmin(gid)
+      );
+    }
+
     match /groups/{gid}/ratings/{ratedUid} {
       allow read: if isSignedIn();
       allow write: if false;

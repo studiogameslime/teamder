@@ -70,6 +70,24 @@ export function navigateCampaign(action: {
 }
 
 /**
+ * Open a chat from inside a game / community screen (cross-tab into the
+ * Chats tab). `initial: false` keeps the chats list beneath the chat so
+ * the back arrow returns there rather than exiting the tab.
+ */
+export function goToGameChat(gameId: string): void {
+  if (!navigationRef.isReady()) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  nav.navigate('ChatTab', { screen: 'GameChat', initial: false, params: { gameId } });
+}
+export function goToCommunityChat(groupId: string): void {
+  if (!navigationRef.isReady()) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  nav.navigate('ChatTab', { screen: 'CommunityChat', initial: false, params: { groupId } });
+}
+
+/**
  * Navigate to a deep-linked screen. Tab navigators receive the
  * sub-screen via the `screen` + `params` shape.
  *

@@ -444,6 +444,28 @@ export interface NotificationDoc {
   deliveredAt?: number;
 }
 
+// ─── Chat ───────────────────────────────────────────────────────────────────
+// Two chat scopes share one message shape + one screen:
+//   game chat      → /games/{gameId}/messages/{id}   (registered players only)
+//   community chat → /groups/{groupId}/messages/{id} (community members only)
+// Access (read AND write) is members-only, enforced in firestore.rules.
+
+export type ChatScope = 'game' | 'community';
+
+export interface ChatMessage {
+  id: string;
+  /** Plain text (+ emoji). No images in v1. */
+  text: string;
+  senderId: UserId;
+  /** Denormalised at send time so a message renders without an extra
+   *  user fetch (avatar + name + text). WhatsApp-style historical naming. */
+  senderName: string;
+  senderAvatarId?: string;
+  senderPhotoUrl?: string;
+  /** ms epoch. Messages are ordered by this. */
+  createdAt: number;
+}
+
 /** ISO weekday: 0=Sunday, 6=Saturday. */
 export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
