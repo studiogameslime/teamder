@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -40,6 +42,7 @@ import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import type { ChatStackParamList } from '@/navigation/ChatStack';
 import type { ChatMessage, ChatScope } from '@/types';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -57,6 +60,13 @@ interface Props {
 
 export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const me = useUserStore((s) => s.currentUser);
+  const nav = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
+  const openProfile = (senderId: string) => {
+    nav.navigate('PlayerCard', {
+      userId: senderId,
+      groupId: scope === 'community' ? parentId : undefined,
+    });
+  };
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -300,6 +310,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
                   message={item.message}
                   mine={item.message.senderId === me?.id}
                   onOpenMenu={(e) => openMenu(item.message, e)}
+                  onOpenProfile={() => openProfile(item.message.senderId)}
                 />
               )
             }
@@ -395,22 +406,28 @@ function MessageRow({
   message,
   mine,
   onOpenMenu,
+  onOpenProfile,
 }: {
   message: ChatMessage;
   mine: boolean;
   onOpenMenu: (e: GestureResponderEvent) => void;
+  onOpenProfile: () => void;
 }) {
+  // First name only — keeps the header above the bubble tidy.
+  const firstName = (message.senderName || '').trim().split(/\s+/)[0] || message.senderName;
   const avatar = (
-    <UserAvatar
-      user={{
-        id: message.senderId,
-        name: message.senderName,
-        avatarId: message.senderAvatarId,
-        photoUrl: message.senderPhotoUrl,
-      }}
-      size={32}
-      style={styles.avatar}
-    />
+    <Pressable onPress={onOpenProfile} hitSlop={6}>
+      <UserAvatar
+        user={{
+          id: message.senderId,
+          name: message.senderName,
+          avatarId: message.senderAvatarId,
+          photoUrl: message.senderPhotoUrl,
+        }}
+        size={32}
+        style={styles.avatar}
+      />
+    </Pressable>
   );
   const bubble = (
     <Pressable
@@ -418,7 +435,11 @@ function MessageRow({
       delayLongPress={350}
       style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
     >
-      {!mine ? <Text style={styles.senderName}>{message.senderName}</Text> : null}
+      {!mine ? (
+        <Text style={styles.senderName} onPress={onOpenProfile}>
+          {firstName}
+        </Text>
+      ) : null}
       <Text style={[styles.messageText, mine && styles.messageTextMine]}>
         {message.text}
       </Text>
@@ -516,10 +537,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   // Own bubble in pitch green; others in white with a thin field-line edge.
-  bubbleMine: { backgroundColor: '#1B8A43', borderBottomRightRadius: 4 },
+  // The squared "tail" corner faces the avatar (own = right under RTL →
+  // bottom-start; others = left → bottom-end).
+  bubbleMine: { backgroundColor: '#1B8A43', borderBottomStartRadius: 4 },
   bubbleOther: {
     backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
+    borderBottomEndRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(27,138,67,0.18)',
   },
