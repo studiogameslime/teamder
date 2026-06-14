@@ -10,14 +10,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +40,9 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import type { ChatMessage, ChatScope } from '@/types';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const MENU_W = 200;
 
 interface Props {
   scope: ChatScope;
@@ -58,6 +64,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const [muted, setMuted] = useState(false);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
   const [readers, setReaders] = useState<ChatReader[]>([]);
+  const [menu, setMenu] = useState<{ message: ChatMessage; x: number; y: number } | null>(null);
   const [showTerms, setShowTerms] = useState(false);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatRow>>(null);
@@ -217,19 +224,29 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     );
   };
 
-  const onLongPress = (m: ChatMessage) => {
+  // Open the small floating action menu anchored at the touch point.
+  const openMenu = (m: ChatMessage, e: GestureResponderEvent) => {
+    const { pageX, pageY } = e.nativeEvent;
+    setMenu({ message: m, x: pageX, y: pageY });
+  };
+
+  // The actions available for the menu's target message.
+  const menuItems = (m: ChatMessage) => {
     const mine = m.senderId === me?.id;
-    const buttons: Parameters<typeof appAlert>[2] = [];
-    buttons.push({ text: he.chatWhoRead, onPress: () => showReaders(m) });
+    const items: {
+      label: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      danger?: boolean;
+      run: () => void;
+    }[] = [{ label: he.chatWhoRead, icon: 'eye-outline', run: () => showReaders(m) }];
     if (mine || canModerate) {
-      buttons.push({ text: he.delete, style: 'destructive', onPress: () => deleteMessage(m) });
+      items.push({ label: he.delete, icon: 'trash-outline', danger: true, run: () => deleteMessage(m) });
     }
     if (!mine) {
-      buttons.push({ text: he.chatReport, onPress: () => reportMessage(m) });
-      buttons.push({ text: he.chatBlock, style: 'destructive', onPress: () => blockSender(m) });
+      items.push({ label: he.chatReport, icon: 'flag-outline', run: () => reportMessage(m) });
+      items.push({ label: he.chatBlock, icon: 'ban-outline', danger: true, run: () => blockSender(m) });
     }
-    buttons.push({ text: he.cancel, style: 'cancel' });
-    appAlert(m.senderName, undefined, buttons);
+    return items;
   };
 
   return (
@@ -277,7 +294,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
                 <MessageRow
                   message={item.message}
                   mine={item.message.senderId === me?.id}
-                  onLongPress={() => onLongPress(item.message)}
+                  onOpenMenu={(e) => openMenu(item.message, e)}
                 />
               )
             }
@@ -315,6 +332,47 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
         }}
         onClose={() => setShowTerms(false)}
       />
+
+      {/* Small floating action menu anchored next to the tapped message
+          (not a centred dialog). Tap outside to dismiss. */}
+      {menu ? (
+        <Modal transparent animationType="fade" onRequestClose={() => setMenu(null)}>
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenu(null)}>
+            <View
+              style={[
+                styles.actionMenu,
+                {
+                  width: MENU_W,
+                  left: Math.min(Math.max(8, menu.x - MENU_W / 2), SCREEN_W - MENU_W - 8),
+                },
+                menu.y > SCREEN_H * 0.55
+                  ? { bottom: SCREEN_H - menu.y + 8 }
+                  : { top: menu.y + 8 },
+              ]}
+            >
+              {menuItems(menu.message).map((it, i) => (
+                <Pressable
+                  key={it.label}
+                  style={[styles.menuItem, i > 0 && styles.menuItemBorder]}
+                  onPress={() => {
+                    setMenu(null);
+                    it.run();
+                  }}
+                >
+                  <Ionicons
+                    name={it.icon}
+                    size={18}
+                    color={it.danger ? colors.danger : colors.text}
+                  />
+                  <Text style={[styles.menuItemText, it.danger && { color: colors.danger }]}>
+                    {it.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -322,11 +380,11 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
 function MessageRow({
   message,
   mine,
-  onLongPress,
+  onOpenMenu,
 }: {
   message: ChatMessage;
   mine: boolean;
-  onLongPress: () => void;
+  onOpenMenu: (e: GestureResponderEvent) => void;
 }) {
   const avatar = (
     <UserAvatar
@@ -342,7 +400,7 @@ function MessageRow({
   );
   const bubble = (
     <Pressable
-      onLongPress={onLongPress}
+      onLongPress={onOpenMenu}
       delayLongPress={350}
       style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
     >
@@ -357,7 +415,7 @@ function MessageRow({
   // above the send time. For my own (right-aligned) message the layout is
   // [avatar | bubble | meta]; for others it's [meta | bubble | avatar].
   const meta = (
-    <Pressable onPress={onLongPress} hitSlop={6} style={styles.meta}>
+    <Pressable onPress={onOpenMenu} hitSlop={6} style={styles.meta}>
       <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
       <Text style={styles.time}>{formatTime(message.createdAt)}</Text>
     </Pressable>
@@ -474,6 +532,31 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontWeight: '700',
   },
+  // Floating context menu next to a message.
+  menuBackdrop: { flex: 1, backgroundColor: 'transparent' },
+  actionMenu: {
+    position: 'absolute',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+  },
+  menuItemBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  menuItemText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
