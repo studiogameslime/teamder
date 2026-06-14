@@ -1789,7 +1789,7 @@ export const he = {
   chatOpenGame: "צ'אט המשחק",
   chatOpenCommunity: "צ'אט המועדון",
   chatNoAccess: 'אין לך גישה לצ׳אט הזה',
-  chatEmpty: 'עדיין אין הודעות — שלחו את הראשונה!',
+  chatEmpty: 'המגרש פנוי — שלחו את ההודעה הראשונה ⚽',
   chatInputPlaceholder: 'כתבו הודעה…',
   chatSendFailedTitle: 'ההודעה לא נשלחה',
   chatSendFailedBody: 'בדקו את החיבור ונסו שוב.',

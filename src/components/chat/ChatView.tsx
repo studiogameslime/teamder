@@ -35,6 +35,7 @@ import {
   useChatTermsAccepted,
 } from '@/components/chat/ChatTermsModal';
 import { containsProfanity } from '@/data/profanity';
+import { GrassBackdrop, EmptyPitch, RedCardGlyph } from '@/components/chat/ChatPitch';
 import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -237,20 +238,24 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
       label: string;
       icon: keyof typeof Ionicons.glyphMap;
       danger?: boolean;
+      redCard?: boolean;
       run: () => void;
     }[] = [{ label: he.chatWhoRead, icon: 'eye-outline', run: () => showReaders(m) }];
     if (mine || canModerate) {
-      items.push({ label: he.delete, icon: 'trash-outline', danger: true, run: () => deleteMessage(m) });
+      // Delete = a referee red card (send-off).
+      items.push({ label: he.delete, icon: 'trash-outline', danger: true, redCard: true, run: () => deleteMessage(m) });
     }
     if (!mine) {
+      // Report = corner flag; block = whistle (closest Ionicon).
       items.push({ label: he.chatReport, icon: 'flag-outline', run: () => reportMessage(m) });
-      items.push({ label: he.chatBlock, icon: 'ban-outline', danger: true, run: () => blockSender(m) });
+      items.push({ label: he.chatBlock, icon: 'megaphone-outline', danger: true, run: () => blockSender(m) });
     }
     return items;
   };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <GrassBackdrop />
       <ScreenHeader
         title={title}
         actions={[
@@ -278,7 +283,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
           </View>
         ) : visibleMessages.length === 0 ? (
           <View style={styles.center}>
-            <Ionicons name="chatbubbles-outline" size={40} color={colors.textMuted} />
+            <EmptyPitch width={200} />
             <Text style={styles.emptyText}>{he.chatEmpty}</Text>
           </View>
         ) : (
@@ -359,11 +364,15 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
                     it.run();
                   }}
                 >
-                  <Ionicons
-                    name={it.icon}
-                    size={18}
-                    color={it.danger ? colors.danger : colors.text}
-                  />
+                  {it.redCard ? (
+                    <RedCardGlyph size={18} />
+                  ) : (
+                    <Ionicons
+                      name={it.icon}
+                      size={18}
+                      color={it.danger ? colors.danger : colors.text}
+                    />
+                  )}
                   <Text style={[styles.menuItemText, it.danger && { color: colors.danger }]}>
                     {it.label}
                   </Text>
@@ -501,8 +510,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
+  // Own bubble in pitch green; others in white with a thin field-line edge.
+  bubbleMine: { backgroundColor: '#1B8A43', borderBottomRightRadius: 4 },
+  bubbleOther: {
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(27,138,67,0.18)',
+  },
   senderName: {
     ...typography.caption,
     color: colors.primary,
@@ -519,18 +534,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
   },
-  // WhatsApp-style centred date separator.
+  // Scoreboard-style centred date separator: dark pill, white text, with a
+  // thin pitch-line outline.
   dateWrap: { alignItems: 'center', paddingVertical: spacing.sm },
   datePill: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: '#0F172A',
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   dateText: {
     ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   // Floating context menu next to a message.
   menuBackdrop: { flex: 1, backgroundColor: 'transparent' },
@@ -563,8 +582,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    // A thin pitch-line accent along the top of the composer.
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(27,138,67,0.45)',
     backgroundColor: colors.bg,
   },
   input: {
@@ -584,7 +604,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.primary,
+    backgroundColor: '#1B8A43',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -165,6 +165,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: 14,
+    // Thin pitch-green accent on the card's leading edge.
+    borderStartWidth: 3,
+    borderStartColor: '#1B8A43',
   },
   iconCircle: {
     width: 46,
@@ -182,7 +185,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     paddingHorizontal: 6,
-    backgroundColor: colors.primary,
+    backgroundColor: '#1B8A43',
     alignItems: 'center',
     justifyContent: 'center',
   },
