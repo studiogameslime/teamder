@@ -13,7 +13,11 @@ export interface MapMarker {
   id: string;
   lat: number;
   lng: number;
+  /** Ring (stroke) colour. */
   color?: string;
+  /** Disc fill colour. Defaults to white. Communities use it to encode
+   *  membership (blue = member, white = not). */
+  fill?: string;
 }
 
 interface Props {
@@ -144,6 +148,7 @@ function buildHtml(
       lat: m.lat,
       lng: m.lng,
       color: m.color ?? '#2563EB',
+      fill: m.fill ?? '#ffffff',
     })),
   );
   return `<!DOCTYPE html>
@@ -232,9 +237,10 @@ function buildHtml(
         // baked to a canvas image because the vector fonts carry no emoji.
         map.addLayer({ id: 'point', type: 'circle', source: 'pts',
           filter: ['!', ['has', 'point_count']],
-          paint: { 'circle-color': '#ffffff', 'circle-radius': 15,
+          paint: { 'circle-color': ['get', 'fill'], 'circle-radius': 15,
             'circle-stroke-width': 3, 'circle-stroke-color': ['get', 'color'] } });
-        try {
+        ${pinEmoji
+          ? `try {
           var s = 64, cv = document.createElement('canvas'); cv.width = s; cv.height = s;
           var cx = cv.getContext('2d');
           cx.font = '44px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -244,7 +250,8 @@ function buildHtml(
             filter: ['!', ['has', 'point_count']],
             layout: { 'icon-image': 'pin', 'icon-size': 0.55,
               'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-        } catch (e) {}
+        } catch (e) {}`
+          : ''}
 
         if (markers.length > 1) {
           var b = new maplibregl.LngLatBounds();

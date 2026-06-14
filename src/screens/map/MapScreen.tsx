@@ -33,6 +33,7 @@ import {
 } from '@react-navigation/native';
 
 import { MapWebView, type MapMarker } from '@/components/map/MapWebView';
+import { DatePickerModal } from '@/components/DateTimeFields';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
@@ -47,6 +48,8 @@ export interface MapItem {
   lat: number;
   lng: number;
   color?: string;
+  /** Disc fill (communities encode membership here: blue = member). */
+  fill?: string;
   title: string;
   subtitle: string;
   /** Trailing chip on the card, e.g. "7×7" or "23 שחקנים". */
@@ -55,6 +58,8 @@ export interface MapItem {
   dateBucket?: DateBucket;
   /** Games: short time label for the card, e.g. "היום · 17:00". */
   timeLabel?: string;
+  /** Games: kickoff time (ms) — powers the "custom date" filter. */
+  dateMs?: number;
   /** Has spots (games) / open membership (communities). Drives the
    *  "open only" filter toggle. Undefined = always shown. */
   open?: boolean;
@@ -77,7 +82,22 @@ const BUCKET_COLOR: Record<DateBucket, string> = {
   other: '#6B7280',
 };
 
-type GameChip = 'all' | 'today' | 'weekend';
+type GameChip = 'all' | 'today' | 'tomorrow' | 'custom';
+
+function fmtDM(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function sameCalendarDay(a: number, b: number): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
 
 type Nav = { navigate: (s: string, p?: object) => void; goBack: () => void };
 
@@ -92,6 +112,8 @@ export function MapScreen() {
 
   const [query, setQuery] = useState('');
   const [chip, setChip] = useState<GameChip>('all');
+  const [customDate, setCustomDate] = useState<number | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [openOnly, setOpenOnly] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [selected, setSelected] = useState<MapItem | null>(null);
@@ -151,14 +173,17 @@ export function MapScreen() {
     return items.filter((it) => {
       if (q && !it.title.includes(q) && !it.subtitle.includes(q)) return false;
       if (isGames && chip === 'today' && it.dateBucket !== 'today') return false;
-      if (isGames && chip === 'weekend' && it.dateBucket !== 'weekend') {
-        return false;
+      if (isGames && chip === 'tomorrow' && it.dateBucket !== 'tomorrow') return false;
+      if (isGames && chip === 'custom') {
+        if (!customDate || !it.dateMs || !sameCalendarDay(it.dateMs, customDate)) {
+          return false;
+        }
       }
       // Filter toggle: only items with spots / open membership.
       if (openOnly && it.open === false) return false;
       return true;
     });
-  }, [items, query, chip, isGames, openOnly]);
+  }, [items, query, chip, isGames, openOnly, customDate]);
 
   // The markers actually rendered: filtered primary + (optionally) the
   // overlay layer (dimmed to a neutral tone so it reads as secondary).
@@ -168,6 +193,7 @@ export function MapScreen() {
       lat: it.lat,
       lng: it.lng,
       color: it.color,
+      fill: it.fill,
     }));
     if (showOverlay && overlay) {
       const sec = overlay.map((it) => ({
@@ -250,36 +276,49 @@ export function MapScreen() {
         </Pressable>
       </View>
 
-      {/* Filter chips — games: by date; communities: by status. */}
-      <View style={styles.chipsRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsContent}
-        >
-          {(isGames
-            ? ([
+      {/* Filter chips — games only (היום / מחר / מותאם). Communities have a
+          single implicit "all" so the chip row is omitted there. */}
+      {isGames ? (
+        <View style={styles.chipsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsContent}
+          >
+            {(
+              [
                 ['all', he.mapChipAllGames],
                 ['today', he.mapChipToday],
-                ['weekend', he.mapChipWeekend],
-              ] as [GameChip, string][])
-            : ([['all', he.mapChipAllCommunities]] as [GameChip, string][])
-          ).map(([value, label]) => {
-            const active = chip === value;
-            return (
-              <Pressable
-                key={value}
-                onPress={() => setChip(value)}
-                style={[styles.chip, active && styles.chipActive]}
+                ['tomorrow', he.mapChipTomorrow],
+              ] as [GameChip, string][]
+            ).map(([value, label]) => {
+              const active = chip === value;
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => setChip(value)}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {/* Custom date — opens a calendar picker. */}
+            <Pressable
+              onPress={() => setDatePickerOpen(true)}
+              style={[styles.chip, chip === 'custom' && styles.chipActive]}
+            >
+              <Text
+                style={[styles.chipText, chip === 'custom' && styles.chipTextActive]}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+                {chip === 'custom' && customDate ? fmtDM(customDate) : he.mapChipCustom}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      ) : null}
 
       {/* Map + floating overlays. */}
       <View style={styles.mapWrap}>
@@ -292,8 +331,9 @@ export function MapScreen() {
             // Clean, natural basemap (no heavy blue wash) so it matches the
             // app's other maps (the OpenFreeMap radius/picker maps).
             tintAlpha={0}
-            // Ball pins on the games map, people pins on the communities map.
-            pinEmoji={mode === 'communities' ? '👥' : '⚽'}
+            // Ball pins on the games map; communities use plain blue/white
+            // membership circles (no glyph) + a legend.
+            pinEmoji={mode === 'communities' ? '' : '⚽'}
           />
         ) : (
           <View style={styles.empty}>
@@ -302,7 +342,7 @@ export function MapScreen() {
           </View>
         )}
 
-        {/* Legend (games only) — colour by date. */}
+        {/* Legend — games: colour by date; communities: membership. */}
         {isGames ? (
           <View style={styles.legend}>
             {(
@@ -321,7 +361,28 @@ export function MapScreen() {
               </View>
             ))}
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.legend}>
+            <View style={styles.legendRow}>
+              <View
+                style={[
+                  styles.legendDot,
+                  { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+                ]}
+              />
+              <Text style={styles.legendText}>{he.mapLegendMember}</Text>
+            </View>
+            <View style={styles.legendRow}>
+              <View
+                style={[
+                  styles.legendDot,
+                  { backgroundColor: '#FFFFFF', borderColor: '#2563EB' },
+                ]}
+              />
+              <Text style={styles.legendText}>{he.mapLegendNonMember}</Text>
+            </View>
+          </View>
+        )}
 
         {/* Overlay toggle — show the OTHER layer. */}
         {overlay && overlay.length > 0 ? (
@@ -389,6 +450,18 @@ export function MapScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      {/* "מותאם" date picker for the games map. */}
+      <DatePickerModal
+        visible={datePickerOpen}
+        initial={customDate ?? Date.now()}
+        onClose={() => setDatePickerOpen(false)}
+        onConfirm={(ts) => {
+          setCustomDate(ts);
+          setChip('custom');
+          setDatePickerOpen(false);
+        }}
+      />
     </SafeAreaView>
   );
 }

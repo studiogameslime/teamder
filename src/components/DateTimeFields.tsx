@@ -332,7 +332,7 @@ function TimePickerModal({
   );
 }
 
-function DatePickerModal({
+export function DatePickerModal({
   visible,
   initial,
   onClose,

@@ -421,16 +421,42 @@ export function PublicGroupsFeedScreen() {
         {/* Map view — opens the communities map next to the filter. */}
         <Pressable
           onPress={async () => {
-            const groups = items ?? [];
-            // Most groups carry only a city name (no lat/lng) — geocode the
-            // unique cities (cached in geocodeService) so they show on the map.
+            // Mirror the feed on the map: my communities + the discovery
+            // list, deduped. A community is shown blue if I'm a member,
+            // white if not.
+            type N = {
+              id: string;
+              name: string;
+              city?: string;
+              field?: string;
+              lat?: number;
+              lng?: number;
+              member: boolean;
+              count: number;
+            };
+            const seen = new Set<string>();
+            const norm: N[] = [];
+            const push = (
+              g: { id: string; name: string; city?: string; fieldName?: string; lat?: number; lng?: number },
+              member: boolean,
+              count: number,
+            ) => {
+              if (seen.has(g.id)) return;
+              seen.add(g.id);
+              norm.push({
+                id: g.id, name: g.name, city: g.city, field: g.fieldName,
+                lat: g.lat, lng: g.lng, member, count,
+              });
+            };
+            memberGroups.forEach((g) => push(g, true, g.playerIds?.length ?? 0));
+            (items ?? []).forEach((g) => push(g, memberIds.has(g.id), g.memberCount));
+
+            // Geocode the cities for any community that lacks coords (cached).
             const { geocodeCity } = await import('@/services/geocodeService');
             const cities = [
               ...new Set(
-                groups
-                  .filter(
-                    (g) => !(typeof g.lat === 'number' && typeof g.lng === 'number'),
-                  )
+                norm
+                  .filter((g) => !(typeof g.lat === 'number' && typeof g.lng === 'number'))
                   .map((g) => (g.city ?? '').trim())
                   .filter(Boolean),
               ),
@@ -439,7 +465,7 @@ export function PublicGroupsFeedScreen() {
             await Promise.all(
               cities.map(async (c) => coords.set(c, await geocodeCity(c))),
             );
-            const mapItems = groups.flatMap((g) => {
+            const mapItems = norm.flatMap((g) => {
               let lat = g.lat;
               let lng = g.lng;
               if (!(typeof lat === 'number' && typeof lng === 'number')) {
@@ -455,11 +481,13 @@ export function PublicGroupsFeedScreen() {
                   id: g.id,
                   lat,
                   lng,
-                  color: '#2563EB',
+                  // Member = solid blue disc; non-member = white disc, blue ring.
+                  fill: g.member ? '#2563EB' : '#FFFFFF',
+                  color: g.member ? '#FFFFFF' : '#2563EB',
                   title: g.name,
-                  subtitle: g.fieldName ?? g.city ?? '',
-                  badge: `${g.memberCount} בסגל`,
-                  open: g.isOpen ?? true,
+                  subtitle: g.field ?? g.city ?? '',
+                  badge: `${g.count} בסגל`,
+                  open: true,
                 },
               ];
             });

@@ -437,6 +437,14 @@ export function GamesListScreen() {
               weekend: '#EA580C',
               other: '#6B7280',
             } as const;
+            // Show every game the user can see — open + their own registered
+            // + community — not just the open list, so a game they're already
+            // in (e.g. their Tel Aviv game) also pins. Deduped by id.
+            const mapGames = Array.from(
+              new Map(
+                [...openGames, ...myGames, ...communityGames].map((g) => [g.id, g]),
+              ).values(),
+            );
             // Games usually store the field's city (text), not lat/lng —
             // geocode the unique cities (cached) so they appear on the map.
             const { geocodeCity } = await import('@/services/geocodeService');
@@ -445,7 +453,7 @@ export function GamesListScreen() {
             const cityKey = (g: Game) => (g.city || g.fieldName || '').trim();
             const cities = [
               ...new Set(
-                openGames
+                mapGames
                   .filter(
                     (g) =>
                       !(typeof g.fieldLat === 'number' && typeof g.fieldLng === 'number'),
@@ -458,7 +466,7 @@ export function GamesListScreen() {
             await Promise.all(
               cities.map(async (c) => coords.set(c, await geocodeCity(c))),
             );
-            const items = openGames.flatMap((g) => {
+            const items = mapGames.flatMap((g) => {
               let lat = g.fieldLat;
               let lng = g.fieldLng;
               if (!(typeof lat === 'number' && typeof lng === 'number')) {
@@ -493,6 +501,7 @@ export function GamesListScreen() {
                   lng,
                   color: BUCKET[bucket],
                   dateBucket: bucket,
+                  dateMs: g.startsAt,
                   timeLabel: `${dayLabel} · ${hhmm}`,
                   title: g.title,
                   subtitle: joinLocation(g.fieldName, g.city),
