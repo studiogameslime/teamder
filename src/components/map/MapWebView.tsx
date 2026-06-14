@@ -1,7 +1,9 @@
 // MapWebView — zero-cost interactive map (NO API key, NO billing, NO Google).
-// Leaflet over Carto's free light basemap inside a WebView, tinted blue and
-// locked to Israel, with football pins + numbered clusters. Works identically
-// on iOS and Android with nothing for the app owner to configure.
+// MapLibre GL JS over the OpenFreeMap "liberty" vector style inside a WebView,
+// locked to Israel, with date-coloured football points + numbered clusters.
+// Uses the SAME basemap + palette as the availability "search area" map
+// (liberty tiles, beige buildings, white roads, #2563EB accent) so all the
+// app's maps look identical. Works on iOS + Android with nothing to configure.
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
@@ -127,6 +129,9 @@ function buildHtml(
   pickable: boolean,
   tintAlpha: number,
 ): string {
+  // tintAlpha is accepted for API compatibility but no longer used — the
+  // liberty basemap has its own (untinted) look shared with the other maps.
+  void tintAlpha;
   const markersJson = JSON.stringify(
     markers.map((m) => ({
       id: m.id,
@@ -140,41 +145,11 @@ function buildHtml(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${
-      tintAlpha > 0 ? '#4f93e0' : '#e9eef3'
-    }; }
-    .leaflet-control-attribution { font-size: 9px; }
-    /* Lighten the pale Carto tiles a touch before tinting. */
-    .leaflet-tile-pane { filter: brightness(1.05) contrast(1.02); }
-    /* Vivid azure wash (like the product mockup). A blue multiply layer sits
-       ABOVE the tiles (z-index 450) but BELOW the markers (Leaflet markerPane
-       is z-index 600), so the basemap reads saturated blue while pins keep
-       their true colours. Decoupling the colour from the tile filter lets us
-       dial the blue precisely by changing this one rgba alpha. Hidden
-       entirely when tintAlpha is 0 (the location picker wants a clean map). */
-    #tint {
-      position: absolute; inset: 0; z-index: 450;
-      background: rgba(37, 99, 235, ${tintAlpha});
-      mix-blend-mode: multiply; pointer-events: none;
-      display: ${tintAlpha > 0 ? 'block' : 'none'};
-    }
-    .tpin {
-      width: 36px; height: 36px; background: #fff;
-      border-radius: 50%; box-shadow: 0 2px 7px rgba(15,23,42,.32);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; line-height: 1; position: relative;
-    }
-    .tpin .badge {
-      position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px;
-      background: #2563EB; color: #fff; border: 2px solid #fff; border-radius: 9px;
-      font-size: 11px; font-weight: 700; line-height: 14px; text-align: center;
-      padding: 0 3px; font-family: -apple-system, system-ui, sans-serif;
-    }
-    /* Picker pin — a red teardrop so it reads as "the spot you chose",
-       distinct from the white football pins. */
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #eef1f4; }
+    .maplibregl-ctrl-attrib { font-size: 9px; }
+    /* Picker pin — a red teardrop so it reads as "the spot you chose". */
     .ppin {
       width: 30px; height: 30px; background: #EF4444;
       border: 3px solid #fff; border-radius: 50% 50% 50% 0;
@@ -184,43 +159,15 @@ function buildHtml(
   </style>
 </head>
 <body>
-  <div id="map"><div id="tint"></div></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <div id="map"></div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
     (function () {
-      // Lock the map to Israel — users can't pan/zoom away to other places.
-      var ISRAEL = L.latLngBounds([29.30, 34.10], [33.45, 35.95]);
-      var map = L.map('map', {
-        zoomControl: true,
-        attributionControl: true,
-        maxBounds: ISRAEL,
-        maxBoundsViscosity: 1.0,
-        minZoom: 7,
-        maxZoom: 18,
-        // Explicitly enable every zoom gesture so pinch-to-zoom works
-        // inside the WebView (page pinch is disabled via the viewport
-        // meta; these are Leaflet's own touch handlers).
-        touchZoom: true,
-        bounceAtZoomLimits: true,
-        doubleClickZoom: true,
-        scrollWheelZoom: true,
-        tap: true
-      }).setView([${center.lat}, ${center.lng}], ${zoom});
-      window.tmap = map; // exposed so RN can fly-to via injectJavaScript
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 20, bounds: ISRAEL,
-        attribution: '&copy; OpenStreetMap, &copy; CARTO'
-      }).addTo(map);
-
-      function disc(ring, badge) {
-        var b = badge ? '<span class="badge">' + badge + '</span>' : '';
-        return '<div class="tpin" style="border:3px solid ' + ring + '">⚽' + b + '</div>';
-      }
-      function pinIcon(color) {
-        return L.divIcon({ className: '', html: disc(color), iconSize: [36, 36], iconAnchor: [18, 18] });
-      }
+      try {
+        maplibregl.setRTLTextPlugin(
+          'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js',
+          null, true);
+      } catch (e) {}
 
       function send(payload) {
         if (window.ReactNativeWebView) {
@@ -228,53 +175,103 @@ function buildHtml(
         }
       }
 
-      var markers = ${markersJson};
-      var cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        maxClusterRadius: 45,
-        iconCreateFunction: function (c) {
-          return L.divIcon({
-            className: '',
-            html: disc('#2563EB', String(c.getChildCount())),
-            iconSize: [36, 36], iconAnchor: [18, 18]
-          });
-        }
+      // Lock to Israel ([sw],[ne] as lng,lat).
+      var ISRAEL = [[34.10, 29.30], [35.95, 33.45]];
+      var map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [${center.lng}, ${center.lat}],
+        zoom: ${zoom},
+        minZoom: 7,
+        maxZoom: 18,
+        maxBounds: ISRAEL,
+        attributionControl: false
       });
-      var bounds = [];
-      markers.forEach(function (m) {
-        var mk = L.marker([m.lat, m.lng], { icon: pinIcon(m.color) });
-        mk.on('click', function () { send({ type: 'markerPress', id: m.id }); });
-        cluster.addLayer(mk);
-        bounds.push([m.lat, m.lng]);
-      });
-      map.addLayer(cluster);
-      if (bounds.length > 1) {
-        try { map.fitBounds(bounds, { padding: [55, 80], maxZoom: 13 }); } catch (e) {}
-      }
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+      // RN flies the camera here via injectJavaScript: window.tmap.flyTo([lat,lng], z).
+      window.tmap = { flyTo: function (ll, z) { map.flyTo({ center: [ll[1], ll[0]], zoom: z || 13 }); } };
 
-      // ── Picker mode ──────────────────────────────────────────────
-      // A single draggable red pin the organiser places by tapping the
-      // map. Tapping or dragging reports coords back to RN; RN also
-      // drives the pin position via setPickPin (e.g. after a text search).
+      var markers = ${markersJson};
+
+      map.on('load', function () {
+        // Same warm palette as the availability map.
+        try { map.setPaintProperty('building', 'fill-color', '#ece9e4'); } catch (e) {}
+
+        map.addSource('pts', {
+          type: 'geojson',
+          cluster: true, clusterRadius: 45, clusterMaxZoom: 13,
+          data: {
+            type: 'FeatureCollection',
+            features: markers.map(function (m) {
+              return { type: 'Feature',
+                properties: { id: m.id, color: m.color },
+                geometry: { type: 'Point', coordinates: [m.lng, m.lat] } };
+            })
+          }
+        });
+
+        // Clusters — blue accent discs with a white ring + count.
+        map.addLayer({ id: 'clusters', type: 'circle', source: 'pts',
+          filter: ['has', 'point_count'],
+          paint: { 'circle-color': '#2563EB', 'circle-radius': 17,
+            'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
+        map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'pts',
+          filter: ['has', 'point_count'],
+          layout: { 'text-field': '{point_count_abbreviated}',
+            'text-font': ['Noto Sans Regular'], 'text-size': 13 },
+          paint: { 'text-color': '#ffffff' } });
+
+        // Single points — date-coloured discs with a white ring.
+        map.addLayer({ id: 'point', type: 'circle', source: 'pts',
+          filter: ['!', ['has', 'point_count']],
+          paint: { 'circle-color': ['get', 'color'], 'circle-radius': 13,
+            'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
+
+        if (markers.length > 1) {
+          var b = new maplibregl.LngLatBounds();
+          markers.forEach(function (m) { b.extend([m.lng, m.lat]); });
+          try { map.fitBounds(b, { padding: 60, maxZoom: 13, duration: 0 }); } catch (e) {}
+        }
+
+        map.on('click', 'point', function (e) {
+          var f = e.features && e.features[0];
+          if (f) send({ type: 'markerPress', id: f.properties.id });
+        });
+        map.on('click', 'clusters', function (e) {
+          var f = e.features && e.features[0];
+          if (!f) return;
+          map.getSource('pts').getClusterExpansionZoom(f.properties.cluster_id, function (err, z) {
+            if (err) return;
+            map.easeTo({ center: f.geometry.coordinates, zoom: z });
+          });
+        });
+        ['point', 'clusters'].forEach(function (l) {
+          map.on('mouseenter', l, function () { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', l, function () { map.getCanvas().style.cursor = ''; });
+        });
+      });
+
+      // ── Picker mode — a single draggable red pin. ─────────────────
       if (${pickable ? 'true' : 'false'}) {
-        var pickIcon = L.divIcon({ className: '', html: '<div class="ppin"></div>', iconSize: [30, 30], iconAnchor: [15, 28] });
         window.setPickPin = function (lat, lng) {
           if (!window.pickMarker) {
-            window.pickMarker = L.marker([lat, lng], { icon: pickIcon, draggable: true }).addTo(map);
-            window.pickMarker.on('dragend', function (e) {
-              var p = e.target.getLatLng();
+            var el = document.createElement('div'); el.className = 'ppin';
+            window.pickMarker = new maplibregl.Marker({ element: el, draggable: true, anchor: 'bottom' })
+              .setLngLat([lng, lat]).addTo(map);
+            window.pickMarker.on('dragend', function () {
+              var p = window.pickMarker.getLngLat();
               send({ type: 'mapPress', lat: p.lat, lng: p.lng });
             });
           } else {
-            window.pickMarker.setLatLng([lat, lng]);
+            window.pickMarker.setLngLat([lng, lat]);
           }
         };
         window.clearPickPin = function () {
-          if (window.pickMarker) { map.removeLayer(window.pickMarker); window.pickMarker = null; }
+          if (window.pickMarker) { window.pickMarker.remove(); window.pickMarker = null; }
         };
         map.on('click', function (e) {
-          window.setPickPin(e.latlng.lat, e.latlng.lng);
-          send({ type: 'mapPress', lat: e.latlng.lat, lng: e.latlng.lng });
+          window.setPickPin(e.lngLat.lat, e.lngLat.lng);
+          send({ type: 'mapPress', lat: e.lngLat.lat, lng: e.lngLat.lng });
         });
       }
     })();
@@ -284,5 +281,5 @@ function buildHtml(
 }
 
 const styles = StyleSheet.create({
-  web: { flex: 1, backgroundColor: '#bcdcf5' },
+  web: { flex: 1, backgroundColor: '#eef1f4' },
 });
