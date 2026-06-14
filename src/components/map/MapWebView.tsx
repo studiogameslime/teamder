@@ -215,7 +215,7 @@ function buildHtml(
             type: 'FeatureCollection',
             features: markers.map(function (m) {
               return { type: 'Feature',
-                properties: { id: m.id, color: m.color },
+                properties: { id: m.id, color: m.color, fill: m.fill },
                 geometry: { type: 'Point', coordinates: [m.lng, m.lat] } };
             })
           }
