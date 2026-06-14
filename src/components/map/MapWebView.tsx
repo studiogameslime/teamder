@@ -38,6 +38,10 @@ interface Props {
    *  map keeps the vivid default; the location picker passes 0 for a
    *  clean, readable map. */
   tintAlpha?: number;
+  /** Glyph drawn inside each single pin — '⚽' for the games map, '👥'
+   *  for the communities map. Rendered to a canvas image (so the emoji
+   *  shows even though the vector style's fonts have no emoji glyphs). */
+  pinEmoji?: string;
 }
 
 export function MapWebView({
@@ -50,13 +54,14 @@ export function MapWebView({
   pin,
   onPick,
   tintAlpha = 0.42,
+  pinEmoji = '⚽',
 }: Props) {
   const ref = useRef<WebView>(null);
   // `pickable` changes the baked-in script, so it's a memo dep. `pin` is
   // NOT — it's moved imperatively below so a tap never reloads the map.
   const html = useMemo(
-    () => buildHtml(markers, center, zoom, pickable, tintAlpha),
-    [markers, center, zoom, pickable, tintAlpha],
+    () => buildHtml(markers, center, zoom, pickable, tintAlpha, pinEmoji),
+    [markers, center, zoom, pickable, tintAlpha, pinEmoji],
   );
 
   // Smoothly recenter without a full reload when `focusOn` changes.
@@ -128,6 +133,7 @@ function buildHtml(
   zoom: number,
   pickable: boolean,
   tintAlpha: number,
+  pinEmoji: string,
 ): string {
   // tintAlpha is accepted for API compatibility but no longer used — the
   // liberty basemap has its own (untinted) look shared with the other maps.
@@ -221,11 +227,24 @@ function buildHtml(
             'text-font': ['Noto Sans Regular'], 'text-size': 13 },
           paint: { 'text-color': '#ffffff' } });
 
-        // Single points — date-coloured discs with a white ring.
+        // Single points — a white disc with a coloured ring + an emoji glyph
+        // (⚽ on the games map, 👥 on the communities map). The emoji is
+        // baked to a canvas image because the vector fonts carry no emoji.
         map.addLayer({ id: 'point', type: 'circle', source: 'pts',
           filter: ['!', ['has', 'point_count']],
-          paint: { 'circle-color': ['get', 'color'], 'circle-radius': 13,
-            'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
+          paint: { 'circle-color': '#ffffff', 'circle-radius': 15,
+            'circle-stroke-width': 3, 'circle-stroke-color': ['get', 'color'] } });
+        try {
+          var s = 64, cv = document.createElement('canvas'); cv.width = s; cv.height = s;
+          var cx = cv.getContext('2d');
+          cx.font = '44px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+          cx.fillText('${pinEmoji}', s / 2, s / 2 + 2);
+          if (!map.hasImage('pin')) map.addImage('pin', cx.getImageData(0, 0, s, s), { pixelRatio: 2 });
+          map.addLayer({ id: 'point-icon', type: 'symbol', source: 'pts',
+            filter: ['!', ['has', 'point_count']],
+            layout: { 'icon-image': 'pin', 'icon-size': 0.55,
+              'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+        } catch (e) {}
 
         if (markers.length > 1) {
           var b = new maplibregl.LngLatBounds();

@@ -440,6 +440,9 @@ export function GamesListScreen() {
             // Games usually store the field's city (text), not lat/lng —
             // geocode the unique cities (cached) so they appear on the map.
             const { geocodeCity } = await import('@/services/geocodeService');
+            // Geocode by city, falling back to the field/venue name (games
+            // often store the location there rather than in `city`).
+            const cityKey = (g: Game) => (g.city || g.fieldName || '').trim();
             const cities = [
               ...new Set(
                 openGames
@@ -447,7 +450,7 @@ export function GamesListScreen() {
                     (g) =>
                       !(typeof g.fieldLat === 'number' && typeof g.fieldLng === 'number'),
                   )
-                  .map((g) => (g.city ?? '').trim())
+                  .map(cityKey)
                   .filter(Boolean),
               ),
             ];
@@ -459,7 +462,7 @@ export function GamesListScreen() {
               let lat = g.fieldLat;
               let lng = g.fieldLng;
               if (!(typeof lat === 'number' && typeof lng === 'number')) {
-                const c = coords.get((g.city ?? '').trim());
+                const c = coords.get(cityKey(g));
                 if (c) {
                   lat = c.lat;
                   lng = c.lng;

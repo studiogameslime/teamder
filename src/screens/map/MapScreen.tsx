@@ -292,6 +292,8 @@ export function MapScreen() {
             // Clean, natural basemap (no heavy blue wash) so it matches the
             // app's other maps (the OpenFreeMap radius/picker maps).
             tintAlpha={0}
+            // Ball pins on the games map, people pins on the communities map.
+            pinEmoji={mode === 'communities' ? '👥' : '⚽'}
           />
         ) : (
           <View style={styles.empty}>
