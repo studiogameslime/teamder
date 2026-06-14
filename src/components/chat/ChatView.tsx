@@ -32,6 +32,7 @@ import {
   useChatTermsAccepted,
 } from '@/components/chat/ChatTermsModal';
 import { containsProfanity } from '@/data/profanity';
+import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -58,7 +59,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
   const [showTerms, setShowTerms] = useState(false);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
-  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const listRef = useRef<FlatList<ChatRow>>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -250,16 +251,20 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
         ) : (
           <FlatList
             ref={listRef}
-            data={visibleMessages}
-            keyExtractor={(m) => m.id}
+            data={buildChatRows(visibleMessages)}
+            keyExtractor={(row) => row.key}
             contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <MessageRow
-                message={item}
-                mine={item.senderId === me?.id}
-                onLongPress={() => onLongPress(item)}
-              />
-            )}
+            renderItem={({ item }) =>
+              item.kind === 'date' ? (
+                <DateDivider label={item.label} />
+              ) : (
+                <MessageRow
+                  message={item.message}
+                  mine={item.message.senderId === me?.id}
+                  onLongPress={() => onLongPress(item.message)}
+                />
+              )
+            }
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           />
         )}
@@ -331,13 +336,65 @@ function MessageRow({
       </Text>
     </Pressable>
   );
-  // Avatar always sits on the message's OUTER edge: for my own (right-
-  // aligned) message it leads the row; for others it trails it.
+  const time = (
+    <Text style={styles.time}>{formatTime(message.createdAt)}</Text>
+  );
+  // Avatar sits on the message's OUTER edge; the time hugs the INNER side
+  // of the bubble (toward the screen centre). For my own (right-aligned)
+  // message: [avatar | bubble | time]. For others: [time | bubble | avatar].
   return (
     <View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
-      {mine ? avatar : null}
+      {mine ? avatar : time}
       {bubble}
-      {!mine ? avatar : null}
+      {mine ? time : avatar}
+    </View>
+  );
+}
+
+// ── Date dividers ────────────────────────────────────────────────────────
+// WhatsApp-style centred date pills between messages of different days.
+
+type ChatRow =
+  | { kind: 'date'; key: string; label: string }
+  | { kind: 'msg'; key: string; message: ChatMessage };
+
+function startOfDay(ms: number): number {
+  return new Date(ms).setHours(0, 0, 0, 0);
+}
+
+function dayLabel(ms: number): string {
+  const todayStart = startOfDay(Date.now());
+  const dayStart = startOfDay(ms);
+  const DAY = 86_400_000;
+  if (dayStart === todayStart) return he.chatToday;
+  if (dayStart === todayStart - DAY) return he.chatYesterday;
+  const d = new Date(ms);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+/** Interleave the messages with a date divider before each new day. */
+function buildChatRows(messages: ChatMessage[]): ChatRow[] {
+  const rows: ChatRow[] = [];
+  let lastDay: number | null = null;
+  for (const m of messages) {
+    const day = startOfDay(m.createdAt);
+    if (day !== lastDay) {
+      rows.push({ kind: 'date', key: `date_${day}`, label: dayLabel(m.createdAt) });
+      lastDay = day;
+    }
+    rows.push({ kind: 'msg', key: m.id, message: m });
+  }
+  return rows;
+}
+
+function DateDivider({ label }: { label: string }) {
+  return (
+    <View style={styles.dateWrap}>
+      <View style={styles.datePill}>
+        <Text style={styles.dateText}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -377,6 +434,26 @@ const styles = StyleSheet.create({
   },
   messageText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   messageTextMine: { color: '#FFFFFF' },
+  // Small muted timestamp hugging the inner side of the bubble.
+  time: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginBottom: 3,
+  },
+  // WhatsApp-style centred date separator.
+  dateWrap: { alignItems: 'center', paddingVertical: spacing.sm },
+  datePill: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+  },
+  dateText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

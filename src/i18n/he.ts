@@ -1800,6 +1800,8 @@ export const he = {
   chatDeleteFailedBody: 'נסו שוב.',
   chatGameSubtitle: 'משתתפי המשחק',
   chatCommunitySubtitle: 'חברי המועדון',
+  chatToday: 'היום',
+  chatYesterday: 'אתמול',
   chatMute: 'השתק התראות',
   chatUnmute: 'בטל השתקה',
   chatProfanityBlocked: 'ההודעה מכילה תוכן פוגעני ולא נשלחה',
