@@ -420,22 +420,49 @@ export function PublicGroupsFeedScreen() {
         </View>
         {/* Map view — opens the communities map next to the filter. */}
         <Pressable
-          onPress={() => {
-            const mapItems = (items ?? [])
-              .filter(
-                (g) =>
-                  typeof g.lat === 'number' && typeof g.lng === 'number',
-              )
-              .map((g) => ({
-                id: g.id,
-                lat: g.lat as number,
-                lng: g.lng as number,
-                color: '#2563EB',
-                title: g.name,
-                subtitle: g.fieldName ?? g.city ?? '',
-                badge: `${g.memberCount} בסגל`,
-                open: g.isOpen ?? true,
-              }));
+          onPress={async () => {
+            const groups = items ?? [];
+            // Most groups carry only a city name (no lat/lng) — geocode the
+            // unique cities (cached in geocodeService) so they show on the map.
+            const { geocodeCity } = await import('@/services/geocodeService');
+            const cities = [
+              ...new Set(
+                groups
+                  .filter(
+                    (g) => !(typeof g.lat === 'number' && typeof g.lng === 'number'),
+                  )
+                  .map((g) => (g.city ?? '').trim())
+                  .filter(Boolean),
+              ),
+            ];
+            const coords = new Map<string, { lat: number; lng: number } | null>();
+            await Promise.all(
+              cities.map(async (c) => coords.set(c, await geocodeCity(c))),
+            );
+            const mapItems = groups.flatMap((g) => {
+              let lat = g.lat;
+              let lng = g.lng;
+              if (!(typeof lat === 'number' && typeof lng === 'number')) {
+                const c = coords.get((g.city ?? '').trim());
+                if (c) {
+                  lat = c.lat;
+                  lng = c.lng;
+                }
+              }
+              if (typeof lat !== 'number' || typeof lng !== 'number') return [];
+              return [
+                {
+                  id: g.id,
+                  lat,
+                  lng,
+                  color: '#2563EB',
+                  title: g.name,
+                  subtitle: g.fieldName ?? g.city ?? '',
+                  badge: `${g.memberCount} בסגל`,
+                  open: g.isOpen ?? true,
+                },
+              ];
+            });
             nav.navigate('CommunitiesMap', {
               mode: 'communities',
               items: mapItems,

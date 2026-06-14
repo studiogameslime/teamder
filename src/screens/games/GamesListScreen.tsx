@@ -423,7 +423,7 @@ export function GamesListScreen() {
         <View style={{ flex: 1 }} />
         {/* Map view — opens the games map next to the filter. */}
         <Pressable
-          onPress={() => {
+          onPress={async () => {
             const now = new Date();
             const sameDay = (a: Date, b: Date) =>
               a.getFullYear() === b.getFullYear() &&
@@ -437,39 +437,57 @@ export function GamesListScreen() {
               weekend: '#EA580C',
               other: '#6B7280',
             } as const;
-            const items = openGames
-              .filter(
-                (g) =>
-                  typeof g.fieldLat === 'number' &&
-                  typeof g.fieldLng === 'number',
-              )
-              .map((g) => {
-                const d = new Date(g.startsAt);
-                const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(
-                  d.getMinutes(),
-                ).padStart(2, '0')}`;
-                const diffDays = (d.getTime() - now.getTime()) / 86_400_000;
-                const dow = d.getDay();
-                let bucket: 'today' | 'tomorrow' | 'weekend' | 'other' =
-                  'other';
-                let dayLabel = `${d.getDate()}.${d.getMonth() + 1}`;
-                if (sameDay(d, now)) {
-                  bucket = 'today';
-                  dayLabel = he.mapLegendToday;
-                } else if (sameDay(d, tomorrow)) {
-                  bucket = 'tomorrow';
-                  dayLabel = he.mapLegendTomorrow;
-                } else if (
-                  (dow === 5 || dow === 6) &&
-                  diffDays >= 0 &&
-                  diffDays <= 7
-                ) {
-                  bucket = 'weekend';
+            // Games usually store the field's city (text), not lat/lng —
+            // geocode the unique cities (cached) so they appear on the map.
+            const { geocodeCity } = await import('@/services/geocodeService');
+            const cities = [
+              ...new Set(
+                openGames
+                  .filter(
+                    (g) =>
+                      !(typeof g.fieldLat === 'number' && typeof g.fieldLng === 'number'),
+                  )
+                  .map((g) => (g.city ?? '').trim())
+                  .filter(Boolean),
+              ),
+            ];
+            const coords = new Map<string, { lat: number; lng: number } | null>();
+            await Promise.all(
+              cities.map(async (c) => coords.set(c, await geocodeCity(c))),
+            );
+            const items = openGames.flatMap((g) => {
+              let lat = g.fieldLat;
+              let lng = g.fieldLng;
+              if (!(typeof lat === 'number' && typeof lng === 'number')) {
+                const c = coords.get((g.city ?? '').trim());
+                if (c) {
+                  lat = c.lat;
+                  lng = c.lng;
                 }
-                return {
+              }
+              if (typeof lat !== 'number' || typeof lng !== 'number') return [];
+              const d = new Date(g.startsAt);
+              const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(
+                d.getMinutes(),
+              ).padStart(2, '0')}`;
+              const diffDays = (d.getTime() - now.getTime()) / 86_400_000;
+              const dow = d.getDay();
+              let bucket: 'today' | 'tomorrow' | 'weekend' | 'other' = 'other';
+              let dayLabel = `${d.getDate()}.${d.getMonth() + 1}`;
+              if (sameDay(d, now)) {
+                bucket = 'today';
+                dayLabel = he.mapLegendToday;
+              } else if (sameDay(d, tomorrow)) {
+                bucket = 'tomorrow';
+                dayLabel = he.mapLegendTomorrow;
+              } else if ((dow === 5 || dow === 6) && diffDays >= 0 && diffDays <= 7) {
+                bucket = 'weekend';
+              }
+              return [
+                {
                   id: g.id,
-                  lat: g.fieldLat as number,
-                  lng: g.fieldLng as number,
+                  lat,
+                  lng,
                   color: BUCKET[bucket],
                   dateBucket: bucket,
                   timeLabel: `${dayLabel} · ${hhmm}`,
@@ -479,8 +497,9 @@ export function GamesListScreen() {
                     ? g.format.replace('v', '×')
                     : `${g.players.length}/${g.maxPlayers}`,
                   open: g.players.length < g.maxPlayers,
-                };
-              });
+                },
+              ];
+            });
             nav.navigate('GamesMap', { mode: 'games', items });
           }}
           style={({ pressed }) => [
