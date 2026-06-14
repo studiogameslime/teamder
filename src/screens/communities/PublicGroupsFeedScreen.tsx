@@ -46,6 +46,7 @@ import {
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { logError, logUnexpected } from '@/services/errorLog';
+import { gameService } from '@/services/gameService';
 import { GroupPublic } from '@/types';
 import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -53,6 +54,7 @@ import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
+import type { MapItem } from '@/screens/map/MapScreen';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
 
@@ -479,6 +481,7 @@ export function PublicGroupsFeedScreen() {
               return [
                 {
                   id: g.id,
+                  kind: 'community' as const,
                   lat,
                   lng,
                   // Member = solid blue disc; non-member = white disc, blue ring.
@@ -491,9 +494,66 @@ export function PublicGroupsFeedScreen() {
                 },
               ];
             });
+
+            // Overlay layer for the "הצג משחקים" toggle — open games
+            // (geocoded by city/venue). Without this the toggle never
+            // appeared. Best-effort: a fetch failure just omits the layer.
+            let overlay: MapItem[] = [];
+            try {
+              const openGames = await gameService.getOpenGames(
+                user?.id ?? '',
+                memberGroups.map((mg) => mg.id),
+              );
+              const gKey = (x: { city?: string; fieldName?: string }) =>
+                (x.city || x.fieldName || '').trim();
+              const gCities = [
+                ...new Set(
+                  openGames
+                    .filter(
+                      (x) => !(typeof x.fieldLat === 'number' && typeof x.fieldLng === 'number'),
+                    )
+                    .map(gKey)
+                    .filter(Boolean),
+                ),
+              ];
+              const gCoords = new Map<string, { lat: number; lng: number } | null>();
+              await Promise.all(
+                gCities.map(async (c) => gCoords.set(c, await geocodeCity(c))),
+              );
+              overlay = openGames.flatMap((x) => {
+                let glat = x.fieldLat;
+                let glng = x.fieldLng;
+                if (!(typeof glat === 'number' && typeof glng === 'number')) {
+                  const co = gCoords.get(gKey(x));
+                  if (co) {
+                    glat = co.lat;
+                    glng = co.lng;
+                  }
+                }
+                if (typeof glat !== 'number' || typeof glng !== 'number') return [];
+                return [
+                  {
+                    id: x.id,
+                    kind: 'game' as const,
+                    lat: glat,
+                    lng: glng,
+                    title: x.title,
+                    subtitle: x.fieldName || x.city || '',
+                    badge: x.format ? x.format.replace('v', '×') : undefined,
+                    open: x.players.length < x.maxPlayers,
+                  },
+                ];
+              });
+            } catch (err) {
+              logError('communitiesMapGamesOverlay', err, {
+                screen: 'PublicGroupsFeedScreen',
+              });
+            }
+
             nav.navigate('CommunitiesMap', {
               mode: 'communities',
               items: mapItems,
+              overlay,
             });
           }}
           style={({ pressed }) => [

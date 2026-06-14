@@ -198,7 +198,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: colors.text,
-    textAlign: RTL_LABEL_ALIGN,
+    // Physical 'right' so both the typed value AND the placeholder sit on
+    // the right in this RTL layout — RTL_LABEL_ALIGN ('left') left the
+    // placeholder hugging the left edge (QA request). Matches GuestModal.
+    textAlign: 'right',
   },
   addBtn: {
     width: 44,

@@ -758,7 +758,9 @@ export function CommunityDetailsScreen() {
               variant="outline"
               size="lg"
               fullWidth
-              iconLeft="logo-whatsapp"
+              // iconRight lands the WhatsApp glyph on the visual LEFT of
+              // the label in this RTL layout (QA request).
+              iconRight="logo-whatsapp"
               onPress={() => openWhatsApp(group.contactPhone)}
             />
           ) : null}

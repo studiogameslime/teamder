@@ -355,7 +355,8 @@ const styles = StyleSheet.create({
   },
   joinBtn: {
     marginTop: spacing.sm,
-    flexDirection: 'row-reverse',
+    // Icon on the LEFT of the "בקש להצטרף" label (QA request).
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,

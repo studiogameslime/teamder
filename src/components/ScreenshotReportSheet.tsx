@@ -17,7 +17,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenCapture from 'expo-screen-capture';
 import { captureScreen } from 'react-native-view-shot';
+import { captureFullScreenBase64 } from '@/native/screenCapture';
 import { SpringSheet } from '@/components/anim/SpringSheet';
+import { ScreenshotAnnotator } from '@/components/ScreenshotAnnotator';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
 import { submitFeedback } from '@/services/feedbackService';
@@ -33,6 +35,7 @@ export function ScreenshotReportSheet() {
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [annotating, setAnnotating] = useState(false);
   const capturingRef = useRef(false);
   // Tester-only surface: the screenshot→report popup fires only for users
   // we've explicitly marked as QA testers from the Pulse dashboard.
@@ -43,16 +46,22 @@ export function ScreenshotReportSheet() {
     if (capturingRef.current || visible) return;
     capturingRef.current = true;
     let shot: string | null = null;
-    try {
-      shot = await captureScreen({
-        format: 'jpg',
-        quality: 0.4,
-        result: 'base64',
-        width: 600,
-      });
-    } catch {
-      // Capture can fail (e.g. a secure view) — still offer the report,
-      // just without the attached image.
+    // Prefer the native PixelCopy capture (real window surface — maps/GL/video
+    // come through instead of rendering black). Falls back to view-shot's
+    // Canvas capture on iOS / Expo Go / pre-rebuild where the module is absent.
+    shot = await captureFullScreenBase64({ quality: 0.4, maxWidth: 600 });
+    if (!shot) {
+      try {
+        shot = await captureScreen({
+          format: 'jpg',
+          quality: 0.4,
+          result: 'base64',
+          width: 600,
+        });
+      } catch {
+        // Capture can fail (e.g. a secure view) — still offer the report,
+        // just without the attached image.
+      }
     }
     capturingRef.current = false;
     setImage(shot);
@@ -118,14 +127,26 @@ export function ScreenshotReportSheet() {
 
           {image ? (
             <View style={styles.attachRow}>
-              <Image
-                source={{ uri: `data:image/jpeg;base64,${image}` }}
-                style={styles.thumb}
-                resizeMode="cover"
-              />
-              <View style={styles.attachBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.attachText}>{he.screenshotReportAttached}</Text>
+              {/* Tap the thumbnail (or the pencil button) to mark up the shot. */}
+              <Pressable onPress={() => setAnnotating(true)}>
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${image}` }}
+                  style={styles.thumb}
+                  resizeMode="cover"
+                />
+              </Pressable>
+              <View style={styles.attachCol}>
+                <View style={styles.attachBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <Text style={styles.attachText}>{he.screenshotReportAttached}</Text>
+                </View>
+                <Pressable
+                  onPress={() => setAnnotating(true)}
+                  style={({ pressed }) => [styles.annotateCta, pressed && { opacity: 0.85 }]}
+                >
+                  <Ionicons name="brush-outline" size={15} color={colors.primary} />
+                  <Text style={styles.annotateCtaText}>{he.screenshotAnnotateCta}</Text>
+                </Pressable>
               </View>
             </View>
           ) : null}
@@ -153,6 +174,17 @@ export function ScreenshotReportSheet() {
           </Pressable>
         </Pressable>
       </SpringSheet>
+
+      {/* Markup overlay — draw on the screenshot to circle what's wrong. */}
+      <ScreenshotAnnotator
+        visible={annotating}
+        image={image}
+        onCancel={() => setAnnotating(false)}
+        onDone={(annotated) => {
+          setImage(annotated);
+          setAnnotating(false);
+        }}
+      />
     </Modal>
   );
 }
@@ -210,6 +242,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
   },
+  attachCol: {
+    flex: 1,
+    gap: spacing.sm,
+  },
   attachBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,6 +255,22 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.success,
     fontWeight: '700',
+  },
+  annotateCta: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  annotateCtaText: {
+    ...typography.button,
+    color: colors.primary,
   },
   input: {
     minHeight: 88,

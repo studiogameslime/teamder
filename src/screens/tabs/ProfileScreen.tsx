@@ -125,6 +125,9 @@ export function ProfileScreen() {
   // from the same getMyGames fetch that powers nextGame — no extra
   // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
   const [createdGames, setCreatedGames] = useState<Game[]>([]);
+  // The user's full registered/created game list (getMyGames) — kept so
+  // the activity feed can surface "created" + "registered to" events.
+  const [myGames, setMyGames] = useState<Game[]>([]);
   // Live "games played" count — games the user was placed in the teams for
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
@@ -200,6 +203,7 @@ export function ProfileScreen() {
       const uid = localUser?.id;
       if (!uid) {
         setNextGame(null);
+        setMyGames([]);
         setCreatedGames([]);
         return;
       }
@@ -213,6 +217,7 @@ export function ProfileScreen() {
           // (a game that just kicked off but isn't stale still counts
           // as "the game to show"; its kickoff chip simply hides).
           setNextGame(mine[0] ?? null);
+          setMyGames(mine);
           // Same list, filtered to the ones the user CREATED — powers
           // the "משחקים שיצרתי" section. createdBy is set by the wizard.
           setCreatedGames(mine.filter((g) => g.createdBy === uid));
@@ -313,10 +318,6 @@ export function ProfileScreen() {
     });
   }
 
-  // Recent-activity feed — merged from achievements unlocked + the
-  // people who joined through the user. Pure, recomputed on render.
-  const activityItems = buildProfileActivity(user, referrals);
-
   // ── Collections the user asked to see (Pulse 8qEmMj) ────────────────
   // Three compact, tappable lists derived from data the screen already
   // holds — no extra fetches:
@@ -332,23 +333,37 @@ export function ProfileScreen() {
     icon: 'football-outline' as const,
   }));
 
-  const openedCommunityItems = myCommunities
-    .filter((g) => getTeamCreatorId(g) === user.id)
-    .map((g) => ({
-      id: g.id,
-      label: g.name,
-      subtitle: g.city || undefined,
-      icon: 'shield-outline' as const,
-    }));
+  const openedCommunities = myCommunities.filter(
+    (g) => getTeamCreatorId(g) === user.id,
+  );
+  const joinedCommunities = myCommunities.filter(
+    (g) => getTeamCreatorId(g) !== user.id,
+  );
 
-  const joinedCommunityItems = myCommunities
-    .filter((g) => getTeamCreatorId(g) !== user.id)
-    .map((g) => ({
-      id: g.id,
-      label: g.name,
-      subtitle: g.city || undefined,
-      icon: 'people-outline' as const,
-    }));
+  const openedCommunityItems = openedCommunities.map((g) => ({
+    id: g.id,
+    label: g.name,
+    subtitle: g.city || undefined,
+    icon: 'shield-outline' as const,
+  }));
+
+  const joinedCommunityItems = joinedCommunities.map((g) => ({
+    id: g.id,
+    label: g.name,
+    subtitle: g.city || undefined,
+    icon: 'people-outline' as const,
+  }));
+
+  // Recent-activity feed — merged from achievements unlocked, referrals,
+  // and the real timestamped events the screen already holds: games the
+  // user created / registered to, communities they opened / joined.
+  const activityItems = buildProfileActivity(user, referrals, {
+    createdGames,
+    registeredGames: myGames.filter((g) => g.createdBy !== user.id),
+    openedCommunities,
+    joinedCommunities,
+    userId: user.id,
+  });
 
   // Open a community from the Profile tab → hop to the Communities tab's
   // details screen (same cross-tab pattern HeroStatsCard uses for clubs).
@@ -769,7 +784,9 @@ const styles = StyleSheet.create({
   // profile palette) with a subtle shadow. Hand-rolled instead of
   // the brand-green Button so the screen's accent stays cohesive.
   inviteCta: {
-    flexDirection: 'row',
+    // row-reverse puts the share icon on the LEFT of the label (QA: the
+    // icon read better on the leading-left side in this RTL layout).
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,

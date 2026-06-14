@@ -285,7 +285,11 @@ function ParticipantRow({
           <Ionicons name="close" size={15} color={colors.danger} />
         </Pressable>
       ) : null}
-      <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+      {/* Guests have no PlayerCard, so their row tap is a no-op — drop
+          the chevron affordance that implied the row was tappable. */}
+      {entry.bucket === 'guest' ? null : (
+        <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+      )}
     </Pressable>
   );
 }

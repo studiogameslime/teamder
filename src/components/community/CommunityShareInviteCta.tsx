@@ -53,7 +53,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   content: {
-    flexDirection: 'row',
+    // Share icon on the LEFT of the label (QA request).
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: spacing.sm,
   },

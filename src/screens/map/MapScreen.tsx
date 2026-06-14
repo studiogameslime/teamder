@@ -52,6 +52,10 @@ export interface MapItem {
   fill?: string;
   title: string;
   subtitle: string;
+  /** Which detail screen a tap opens — set by the builder so an overlay
+   *  pin routes correctly regardless of which map it's shown on. Falls
+   *  back to the screen mode when absent. */
+  kind?: 'game' | 'community';
   /** Trailing chip on the card, e.g. "7×7" or "23 שחקנים". */
   badge?: string;
   /** Games: when the game is — drives colour + date chips. */
@@ -216,10 +220,11 @@ export function MapScreen() {
 
   const openDetails = () => {
     if (!selected) return;
-    // A community card can appear from either map (it's an overlay on the
-    // games map); route by the card's own kind rather than the screen mode.
-    const looksLikeCommunity = !selected.timeLabel && !isGames;
-    if (isGames && !looksLikeCommunity) {
+    // A card can appear from EITHER map (the overlay layer shows the other
+    // kind), so route by the item's own `kind`, not the screen mode. Fall
+    // back to the mode for older items that predate the field.
+    const kind = selected.kind ?? (isGames ? 'game' : 'community');
+    if (kind === 'game') {
       nav.navigate('MatchDetails', { gameId: selected.id });
     } else {
       nav.navigate('CommunityDetailsPublic', { groupId: selected.id });

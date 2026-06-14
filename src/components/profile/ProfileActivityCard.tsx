@@ -15,7 +15,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ACHIEVEMENTS } from '@/data/achievements';
-import type { User } from '@/types';
+import type { Game, Group, User } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDateShort, formatTime } from '@/utils/format';
@@ -35,12 +35,34 @@ interface ReferralLike {
 }
 
 /**
+ * Extra real, timestamped sources the screen already holds (no extra
+ * fetch) — surfaced in the feed alongside achievements + referrals.
+ */
+export interface ProfileActivitySources {
+  /** Games the user CREATED — timestamp = game.createdAt. */
+  createdGames?: Pick<Game, 'id' | 'title' | 'createdAt'>[];
+  /** Games the user is REGISTERED to but did NOT create — timestamp =
+   *  joinedAt[userId] (best-effort) ?? game.createdAt. */
+  registeredGames?: Pick<Game, 'id' | 'title' | 'createdAt' | 'joinedAt'>[];
+  /** Communities the user OPENED / founded — timestamp = group.createdAt
+   *  (accurate: the founder created the community at that moment). */
+  openedCommunities?: Pick<Group, 'id' | 'name' | 'createdAt'>[];
+  /** Communities the user JOINED — timestamp = group.createdAt. Best
+   *  effort: the membership model has no per-member join time, so this
+   *  is the community's creation, not the user's join moment. */
+  joinedCommunities?: Pick<Group, 'id' | 'name' | 'createdAt'>[];
+  /** Viewer id — needed to read per-game joinedAt timestamps. */
+  userId?: string;
+}
+
+/**
  * Build the merged, newest-first activity list from the real sources.
- * Pure — the screen fetches the referrals and passes them in.
+ * Pure — the screen fetches the data and passes it in.
  */
 export function buildProfileActivity(
   user: Pick<User, 'achievements'>,
   referrals: ReferralLike[],
+  sources: ProfileActivitySources = {},
   limit = 6,
 ): ProfileActivityItem[] {
   const items: ProfileActivityItem[] = [];
@@ -67,6 +89,53 @@ export function buildProfileActivity(
       icon: 'person-add',
       iconColor: '#3B82F6',
       timestamp: r.invitedAt,
+    });
+  }
+
+  for (const g of sources.createdGames ?? []) {
+    if (!g.createdAt) continue;
+    items.push({
+      id: `game-created:${g.id}`,
+      text: he.profileActivityCreatedGame(g.title),
+      icon: 'football',
+      iconColor: '#3B82F6',
+      timestamp: g.createdAt,
+    });
+  }
+
+  for (const g of sources.registeredGames ?? []) {
+    const ts =
+      (sources.userId ? g.joinedAt?.[sources.userId] : undefined) ??
+      g.createdAt;
+    if (!ts) continue;
+    items.push({
+      id: `game-joined:${g.id}`,
+      text: he.profileActivityRegisteredGame(g.title),
+      icon: 'add-circle',
+      iconColor: '#16A34A',
+      timestamp: ts,
+    });
+  }
+
+  for (const c of sources.openedCommunities ?? []) {
+    if (!c.createdAt) continue;
+    items.push({
+      id: `comm-opened:${c.id}`,
+      text: he.profileActivityOpenedCommunity(c.name),
+      icon: 'shield',
+      iconColor: '#16A34A',
+      timestamp: c.createdAt,
+    });
+  }
+
+  for (const c of sources.joinedCommunities ?? []) {
+    if (!c.createdAt) continue;
+    items.push({
+      id: `comm-joined:${c.id}`,
+      text: he.profileActivityJoinedCommunity(c.name),
+      icon: 'people',
+      iconColor: '#7C3AED',
+      timestamp: c.createdAt,
     });
   }
 

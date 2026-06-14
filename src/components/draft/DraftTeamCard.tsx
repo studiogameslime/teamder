@@ -54,7 +54,8 @@ export function DraftTeamCard({
 }: Props) {
   return (
     <View style={[styles.card, highlight && styles.cardHighlight]}>
-      {/* RTL: captain (first chip) lands on the right; members flow left. */}
+      {/* QA: team label on the right, players start from the LEFT. The
+          captain (first chip) lands on the left; members flow right. */}
       <View style={styles.chips}>
         <Chip user={captain} captain onPressUser={onPressUser} />
         {members.map((m) =>
@@ -117,7 +118,9 @@ function Chip({
 const styles = StyleSheet.create({
   card: {
     alignSelf: 'stretch',
-    flexDirection: 'row',
+    // row-reverse → team label pinned to the RIGHT, the players block on
+    // the LEFT (QA request). Under forceRTL this reads as a plain LTR row.
+    flexDirection: 'row-reverse',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.sm,
@@ -137,7 +140,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   chips: {
-    flexDirection: 'row',
+    // row-reverse so the captain starts at the LEFT and members flow
+    // rightward (QA request); under forceRTL this reads as a plain LTR row.
+    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',

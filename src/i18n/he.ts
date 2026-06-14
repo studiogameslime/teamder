@@ -719,6 +719,7 @@ export const he = {
   guestSaved: 'נשמר',
   guestRemoved: 'האורח הוסר',
   guestErrorGameFull: 'המשחק מלא — הסר שחקן או אורח קיים',
+  guestErrorGameNotOpen: 'המשחק אינו פתוח להרשמה — אי אפשר להוסיף אורחים',
   guestErrorPermission: 'רק מנהל יכול לערוך אורחים',
   guestErrorGeneric: 'הפעולה נכשלה',
   communityDetailsAdminBadge: 'מנהל',
@@ -935,6 +936,12 @@ export const he = {
   screenshotReportSend: 'שליחת דיווח',
   screenshotReportSent: 'הדיווח נשלח עם הצילום, תודה! 🙏',
   screenshotReportDefaultMsg: 'דיווח על באג מצילום מסך',
+  screenshotAnnotateCta: 'סמן על הצילום',
+  screenshotAnnotateTitle: 'סימון על הצילום',
+  screenshotAnnotateHint: 'צייר/י עם האצבע לסמן מה לא תקין',
+  screenshotAnnotateUndo: 'בטל',
+  screenshotAnnotateClear: 'נקה',
+  screenshotAnnotateDone: 'שמירה',
 
   // Invite
   inviteShareTitle: 'הזמן שחקנים',
@@ -1194,6 +1201,7 @@ export const he = {
   inviteRateLimited: 'שלחת יותר מדי הזמנות. נסה שוב מאוחר יותר.',
   inviteAlreadyJoined: 'השחקן כבר רשום למשחק.',
   inviteNotAllowed: 'אין לך הרשאה להזמין למשחק הזה.',
+  inviteSelfNotAllowed: 'אי אפשר להזמין את עצמך.',
   psoProfileTitle: 'בוא נכיר',
   psoProfileSave: 'המשך',
 
@@ -1333,6 +1341,10 @@ export const he = {
   profileActivityAchievement: (title: string) => `פתחת תואר: ${title}`,
   profileActivityReferral: (name: string) => `${name} הצטרף דרך ההזמנה שלך`,
   profileActivityReferralAnon: 'שחקן חדש הצטרף דרך ההזמנה שלך',
+  profileActivityCreatedGame: (title: string) => `יצרת משחק · ${title}`,
+  profileActivityRegisteredGame: (title: string) => `נרשמת למשחק · ${title}`,
+  profileActivityOpenedCommunity: (name: string) => `פתחת מועדון · ${name}`,
+  profileActivityJoinedCommunity: (name: string) => `הצטרפת למועדון · ${name}`,
   profileActivityToday: 'היום',
   profileActivityYesterday: 'אתמול',
   // Referrals list screen — opens when the user taps the referrals tile
@@ -1392,7 +1404,7 @@ export const he = {
   // Matches screen redesign — hero / sections / empty card
   matchesHeroSubtitle: 'הצטרף למשחקים או צור משחק חדש',
   matchesSectionOpen: 'משחקים פתוחים',
-  matchesSectionMine: 'המשחקים הרשומים שלי',
+  matchesSectionMine: 'המשחקים שלי',
   matchesEmptyCardTitle: 'לא מצאת משחק שמתאים?',
   matchesEmptyCardSub: 'צור משחק חדש ותן לאחרים להצטרף',
   matchCardJoinFull: 'הצטרף למשחק',

@@ -81,6 +81,10 @@ export function AvailablePlayersScreen() {
         const day = new Date(g.startsAt).getDay();
         const hour = formatHour(g.startsAt);
         const exclude = [
+          // Never offer to invite yourself — the CF rejects it with
+          // invalid-argument ("cannot invite yourself"), which surfaced
+          // as a logged error from real users.
+          me.id,
           ...(g.players ?? []),
           ...(g.waitlist ?? []),
           ...(g.pending ?? []),
@@ -137,6 +141,8 @@ export function AvailablePlayersScreen() {
         toast.error(he.inviteAlreadyJoined);
       } else if (code === 'permission-denied') {
         toast.error(he.inviteNotAllowed);
+      } else if (code === 'invalid-argument') {
+        toast.error(he.inviteSelfNotAllowed);
       } else {
         toast.error(String((err as Error).message ?? err));
       }

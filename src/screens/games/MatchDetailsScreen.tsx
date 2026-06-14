@@ -2019,7 +2019,8 @@ export function MatchDetailsScreen() {
                 onPress={openDraftView}
                 accessibilityRole="button"
               >
-                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                {/* RTL: title sits on the right (the leading edge), the
+                    chevron affordance on the left (QA request). */}
                 <View style={styles.draftTitleRow}>
                   <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
                   {teamsStale ? (
@@ -2028,6 +2029,7 @@ export function MatchDetailsScreen() {
                     </View>
                   ) : null}
                 </View>
+                <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
               </Pressable>
               {teamsStale ? (
                 <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
@@ -2073,7 +2075,12 @@ export function MatchDetailsScreen() {
             // section header — only for admins, and only while the
             // game is still in a state where guests can be added.
             onAddGuest={
-              isAdmin && !isTerminalGame(game)
+              // Guests can only be added while registration is OPEN —
+              // the server (and firestore.rules) reject the write on any
+              // other status with GAME_NOT_OPEN. Previously the link
+              // showed on scheduled/locked/active games too, producing a
+              // stream of logged addGuest→GAME_NOT_OPEN errors.
+              isAdmin && isOpen(game)
                 ? () => setGuestModalOpen(true)
                 : undefined
             }
@@ -2843,7 +2850,8 @@ const styles = StyleSheet.create({
   // brand-tinted icon + label still makes it scannable as the
   // obvious "I'm driving there" affordance.
   navigateCta: {
-    flexDirection: 'row',
+    // Waze icon on the LEFT of the label (QA request).
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,

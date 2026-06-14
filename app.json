@@ -94,6 +94,7 @@
       "expo-font",
       "expo-asset",
       "./plugins/withIoniconsAsset.js",
+      "./plugins/withScreenCapture.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
       "./plugins/withRemoveAlwaysLocation.js"

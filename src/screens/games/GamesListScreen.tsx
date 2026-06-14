@@ -497,6 +497,7 @@ export function GamesListScreen() {
               return [
                 {
                   id: g.id,
+                  kind: 'game' as const,
                   lat,
                   lng,
                   color: BUCKET[bucket],
@@ -512,7 +513,50 @@ export function GamesListScreen() {
                 },
               ];
             });
-            nav.navigate('GamesMap', { mode: 'games', items });
+            // Overlay layer for the "הצג מועדונים" toggle — the user's
+            // communities as secondary pins (geocoded by city when they
+            // lack coords). Without this the toggle never appeared.
+            const commCities = [
+              ...new Set(
+                myCommunities
+                  .filter(
+                    (c) => !(typeof c.lat === 'number' && typeof c.lng === 'number'),
+                  )
+                  .map((c) => (c.city || '').trim())
+                  .filter(Boolean),
+              ),
+            ];
+            const commCoords = new Map<string, { lat: number; lng: number } | null>();
+            await Promise.all(
+              commCities.map(async (c) => commCoords.set(c, await geocodeCity(c))),
+            );
+            const overlay = myCommunities.flatMap((c) => {
+              let clat = c.lat;
+              let clng = c.lng;
+              if (!(typeof clat === 'number' && typeof clng === 'number')) {
+                const co = commCoords.get((c.city || '').trim());
+                if (co) {
+                  clat = co.lat;
+                  clng = co.lng;
+                }
+              }
+              if (typeof clat !== 'number' || typeof clng !== 'number') return [];
+              return [
+                {
+                  id: c.id,
+                  kind: 'community' as const,
+                  lat: clat,
+                  lng: clng,
+                  fill: '#2563EB',
+                  color: '#FFFFFF',
+                  title: c.name,
+                  subtitle: c.city || '',
+                  badge: `${c.playerIds?.length ?? 0} בסגל`,
+                  open: true,
+                },
+              ];
+            });
+            nav.navigate('GamesMap', { mode: 'games', items, overlay });
           }}
           style={({ pressed }) => [
             styles.filterBtn,
@@ -730,7 +774,22 @@ export function GamesListScreen() {
               await gameService.joinGameV2(target.id, user.id);
             }
             setConflict(null);
-            await reload();
+            const fresh = await reload();
+            // Same read-after-write guard as handleCardPrimary: the join
+            // we just committed can be missed by the immediate one-time
+            // query, so the freshly-joined game showed up only after a
+            // manual pull-to-refresh (QA report). If it isn't in any list
+            // yet, wait a beat for the write to propagate and reload once.
+            if (target && fresh) {
+              const inAnyList =
+                fresh.mine.some((g) => g.id === target.id) ||
+                fresh.community.some((g) => g.id === target.id) ||
+                fresh.open.some((g) => g.id === target.id);
+              if (!inAnyList) {
+                await new Promise((r) => setTimeout(r, 800));
+                await reload();
+              }
+            }
             toast.success(he.registrationConflictResolved);
           } catch (e) {
             logError('gamesListConflictCancelOther', e, {

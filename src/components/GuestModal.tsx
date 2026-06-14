@@ -106,6 +106,7 @@ export function GuestModal({
         guestId: existing?.id,
       });
       if (msg === 'GAME_FULL') toast.error(he.guestErrorGameFull);
+      else if (msg === 'GAME_NOT_OPEN') toast.error(he.guestErrorGameNotOpen);
       else if (msg === 'PERMISSION_DENIED') toast.error(he.guestErrorPermission);
       else toast.error(he.guestErrorGeneric);
       if (__DEV__) console.warn('[GuestModal] save failed', err);

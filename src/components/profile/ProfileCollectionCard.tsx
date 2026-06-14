@@ -65,6 +65,10 @@ export function ProfileCollectionCard({
             key={it.id}
             onPress={() => onPressItem(it.id)}
             style={[styles.row, i > 0 && styles.rowDivider]}
+            // No press-in haptic: these rows sit in a scroll view, so a
+            // press-in that's really the start of a scroll fired a stray
+            // buzz while flicking through the player card (QA report).
+            haptic={false}
             accessibilityRole="button"
             accessibilityLabel={it.label}
           >
