@@ -582,6 +582,9 @@ export function CommunityDetailsScreen() {
           onBackPress={() => nav.goBack()}
           onMenuPress={openMenu}
           onEditCoverPress={handleEditCover}
+          onChatPress={
+            isMember && me ? () => goToCommunityChat(group.id) : undefined
+          }
         />
 
         {/* ② Floating stats grid — pulled UP via negative margin so it
@@ -645,17 +648,6 @@ export function CommunityDetailsScreen() {
                   fall through as ordinary paragraphs. */}
               <RichRulesText text={group.rules.trim()} />
             </View>
-          ) : null}
-
-          {/* Community chat — members only. */}
-          {isMember && me ? (
-            <Button
-              title={he.chatOpenCommunity}
-              variant="secondary"
-              iconLeft="chatbubbles-outline"
-              onPress={() => goToCommunityChat(group.id)}
-              fullWidth
-            />
           ) : null}
 
           {/* ③ Notification toggle — members only */}

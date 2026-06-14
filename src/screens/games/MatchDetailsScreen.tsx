@@ -1895,6 +1895,11 @@ export function MatchDetailsScreen() {
           // session-action). Hidden for terminal-state games where
           // there's nothing meaningful to share.
           onSharePress={!isTerminalGame(game) ? handleShare : undefined}
+          onChatPress={
+            user && (game.players.includes(user.id) || user.id === game.createdBy)
+              ? () => goToGameChat(game.id)
+              : undefined
+          }
         />
 
         {/* Floating stats strip — pulled UP via negative margin so
@@ -1918,17 +1923,6 @@ export function MatchDetailsScreen() {
         </View>
 
         <View style={styles.body}>
-
-          {/* Game chat — registered players (or the organiser) only. */}
-          {user && (game.players.includes(user.id) || user.id === game.createdBy) ? (
-            <Button
-              title={he.chatOpenGame}
-              variant="secondary"
-              iconLeft="chatbubbles-outline"
-              onPress={() => goToGameChat(game.id)}
-              fullWidth
-            />
-          ) : null}
 
           {/* Admin-pinned announcement. Renders nothing for non-admins
               when there's no message; admins always see at least the

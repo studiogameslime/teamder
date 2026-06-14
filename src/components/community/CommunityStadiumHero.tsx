@@ -48,6 +48,8 @@ interface Props {
   onBackPress: () => void;
   onMenuPress: () => void;
   onEditCoverPress?: () => void;
+  /** Members only — opens the community chat. Hidden when undefined. */
+  onChatPress?: () => void;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -62,6 +64,7 @@ export function CommunityStadiumHero({
   onBackPress,
   onMenuPress,
   onEditCoverPress,
+  onChatPress,
 }: Props) {
   // Priority: uploaded photo → built-in gallery pick → bundled default.
   const source: ImageSourcePropType = coverUrl
@@ -103,18 +106,36 @@ export function CommunityStadiumHero({
             <Text style={styles.titleInline} numberOfLines={1}>
               {he.communityHeroDetailsTitle}
             </Text>
-            <Pressable
-              onPress={onMenuPress}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.profileMenuOpen}
-            >
-              <Ionicons name="menu" size={24} color="#FFFFFF" />
-            </Pressable>
+            {/* Trailing action group: chat (members) sits just before the
+                menu so both share the hero's leading (left under RTL) edge. */}
+            <View style={styles.actions}>
+              {onChatPress ? (
+                <Pressable
+                  onPress={onChatPress}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.chatOpenCommunity}
+                >
+                  <Ionicons name="chatbubble-ellipses" size={22} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={onMenuPress}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  pressed && { opacity: 0.7 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={he.profileMenuOpen}
+              >
+                <Ionicons name="menu" size={24} color="#FFFFFF" />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.identity}>
@@ -187,6 +208,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  // Groups the chat + menu icons together on the trailing edge.
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   // Inline title sandwiched between the two icon buttons — same
   // pattern as MatchStadiumHero's "פרטי משחק".

@@ -42,6 +42,8 @@ interface Props {
    *  a permanent home in the header — even when the sticky CTA at
    *  the bottom is showing a different action (cancel, start, etc.). */
   onSharePress?: () => void;
+  /** Registered players only — opens the game chat. Hidden when undefined. */
+  onChatPress?: () => void;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -51,6 +53,7 @@ export function MatchStadiumHero({
   onMenuPress,
   onBackPress,
   onSharePress,
+  onChatPress,
 }: Props) {
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
   // sunset/night), with floodlights at night.
@@ -91,6 +94,20 @@ export function MatchStadiumHero({
               {he.matchHeroTitle}
             </Text>
             <View style={styles.topBarTrailing}>
+              {onChatPress ? (
+                <Pressable
+                  onPress={onChatPress}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.chatOpenGame}
+                >
+                  <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
               {onSharePress ? (
                 <Pressable
                   onPress={onSharePress}
