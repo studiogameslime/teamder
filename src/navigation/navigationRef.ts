@@ -168,6 +168,27 @@ export function navigateForPush(
   const groupId = typeof data.groupId === 'string' ? data.groupId : undefined;
 
   switch (type) {
+    case 'chatMessage': {
+      // Chat-message push (data: { scope, parentId }) → open that chat.
+      const scope = typeof data.scope === 'string' ? data.scope : undefined;
+      const parentId = typeof data.parentId === 'string' ? data.parentId : undefined;
+      if (!parentId) return false;
+      if (scope === 'community') {
+        nav.navigate('ChatTab', {
+          screen: 'CommunityChat',
+          initial: false,
+          params: { groupId: parentId },
+        });
+      } else {
+        nav.navigate('ChatTab', {
+          screen: 'GameChat',
+          initial: false,
+          params: { gameId: parentId },
+        });
+      }
+      return true;
+    }
+
     case 'joinRequest':
       // Game-bound requests carry a gameId → open the game so the admin
       // approves/rejects right there (the pending section lives on
