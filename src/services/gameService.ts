@@ -4644,6 +4644,32 @@ export const gameService = {
     return unsub;
   },
 
+  /** Live subscription to a game's rotation + drafted teams (both Game
+   *  top-level fields) so the live-rotation panel updates on every device. */
+  subscribeRotation(
+    gameId: string,
+    cb: (data: { rotation?: import('@/types').MatchRotation; draftTeams?: DraftTeamsResult }) => void,
+  ): () => void {
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      cb({ rotation: g?.rotation, draftTeams: g?.draftTeams });
+      return () => undefined;
+    }
+    const ref = docs.game(gameId);
+    return onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) return cb({});
+        const g = snap.data();
+        cb({ rotation: g.rotation, draftTeams: g.draftTeams });
+      },
+      (err) => {
+        logError('subscribeRotation', err, { gameId });
+        if (__DEV__) console.warn('[gameService] subscribeRotation error', err);
+      },
+    );
+  },
+
   // ── Guests ──────────────────────────────────────────────────────────────
   // Coach/admin-only mutations. Guests live in the game doc, count toward
   // capacity, and participate in auto-balance with `guest:<id>` ids.

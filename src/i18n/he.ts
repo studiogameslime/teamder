@@ -273,6 +273,17 @@ export const he = {
   liveStoppageRanFor: (dur: string) => `שוחק ${dur}`,
   liveStoppageStoppedFor: (dur: string) => `היה עצור ${dur}`,
   liveStoppageStoppedNow: (dur: string) => `עצור כעת · ${dur}`,
+  // Live "winner stays" rotation
+  rotationTeamWord: 'קבוצה',
+  rotationTitle: 'רוטציה חיה',
+  rotationStartHint: 'מנצחת נשארת, מפסידה יוצאת, הממתינה נכנסת. קבוצה חסרה מושלמת אוטומטית.',
+  rotationStartCta: 'התחל רוטציה',
+  rotationNotEnough: 'אין מספיק שחקנים לשתי קבוצות מלאות',
+  rotationPlayingNow: 'משחקים עכשיו',
+  rotationWonCta: 'ניצחה',
+  rotationReset: 'אפס',
+  rotationResetConfirm: 'לאפס את הרוטציה? הקבוצות יחזרו למצב ההתחלתי.',
+  rotationWaiting: 'ממתינות',
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:

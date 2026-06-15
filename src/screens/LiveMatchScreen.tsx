@@ -49,7 +49,9 @@ import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState, TimerEvent } from '@/types';
+import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
+import { RotationPanel } from '@/components/match/RotationPanel';
+import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
 import { colors } from '@/theme';
 import { useUserStore } from '@/store/userStore';
@@ -238,6 +240,54 @@ export function LiveMatchScreen() {
     });
     return unsub;
   }, [gameId, game]);
+
+  // Live rotation (winner-stays teams) — separate top-level Game fields.
+  const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const playersMap = useGameStore((s) => s.players);
+  const [rotation, setRotation] = useState<MatchRotation | null>(null);
+  const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+  useEffect(() => {
+    if (!gameId) return;
+    const unsub = gameService.subscribeRotation(gameId, ({ rotation: r, draftTeams: d }) => {
+      setRotation(r ?? null);
+      setDraftTeams(d ?? null);
+      const ids = (d?.teams ?? []).flatMap((t) => t.playerIds);
+      if (ids.length > 0) hydratePlayers(ids);
+    });
+    return unsub;
+  }, [gameId, hydratePlayers]);
+
+  const perTeam =
+    game?.format === '4v4' ? 4 : game?.format === '6v6' ? 6 : game?.format === '7v7' ? 7 : 5;
+
+  const onRotationStart = async () => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.startRotation(gameId, me.id);
+    } catch (err) {
+      if (__DEV__) console.warn('[live] startRotation failed', err);
+    }
+  };
+  const onRotationWinner = async (teamIndex: number) => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.recordWinner(gameId, me.id, teamIndex);
+    } catch (err) {
+      if (__DEV__) console.warn('[live] recordWinner failed', err);
+    }
+  };
+  const onRotationStop = () => {
+    appAlert(he.rotationReset, he.rotationResetConfirm, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.rotationReset,
+        style: 'destructive',
+        onPress: async () => {
+          if (gameId) await gameService.stopRotation(gameId).catch(() => {});
+        },
+      },
+    ]);
+  };
 
   // Hint when ANOTHER admin touches the timer (so the state never seems
   // to change "by itself"). We don't toast for our own presses.
@@ -458,8 +508,8 @@ export function LiveMatchScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Timer */}
-      <View style={styles.center}>
+      {/* Timer (+ rotation panel) — scrollable so teams fit below the clock. */}
+      <ScrollView style={styles.center} contentContainerStyle={styles.centerContent}>
         {totalMs > 0 ? (
           <TimerProgressRing
             size={300}
@@ -537,7 +587,22 @@ export function LiveMatchScreen() {
             <Ionicons name="chevron-back" size={14} color="#94A3B8" />
           </Pressable>
         ) : null}
-      </View>
+
+        {/* Live rotation — teams playing / waiting + winner-stays controls.
+            Only when the manager drafted teams (חלוקת כוחות). */}
+        <View style={styles.rotationWrap}>
+          <RotationPanel
+            draftTeams={draftTeams ?? undefined}
+            rotation={rotation ?? undefined}
+            perTeam={perTeam}
+            playersMap={playersMap}
+            isAdmin={isAdmin}
+            onStart={onRotationStart}
+            onWinner={onRotationWinner}
+            onStop={onRotationStop}
+          />
+        </View>
+      </ScrollView>
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -774,12 +839,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
-  center: {
-    flex: 1,
+  center: { flex: 1 },
+  centerContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 18,
+    paddingBottom: 16,
   },
+  rotationWrap: { width: '100%' },
   timerCard: {
     width: 300,
     height: 300,
