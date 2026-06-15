@@ -52,7 +52,6 @@ import {
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
-import { ProfileCollectionCard } from '@/components/profile/ProfileCollectionCard';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -72,7 +71,6 @@ import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { getAttendanceRate, getTeamCreatorId, type User } from '@/types';
-import { formatGameDay } from '@/utils/format';
 
 // Support email + store URLs are remotely overridable via Remote Config
 // (keys support_email / store_url_ios / store_url_android, defaults in
@@ -318,41 +316,16 @@ export function ProfileScreen() {
     });
   }
 
-  // ── Collections the user asked to see (Pulse 8qEmMj) ────────────────
-  // Three compact, tappable lists derived from data the screen already
-  // holds — no extra fetches:
-  //   • games the user CREATED (from getMyGames, filtered to createdBy)
-  //   • communities they OPENED (founder === me)
-  //   • communities they JOINED (member, but not the founder)
-  const createdGameItems = createdGames.map((g) => ({
-    id: g.id,
-    label: g.title,
-    subtitle: g.fieldName
-      ? `${formatGameDay(g.startsAt)} · ${g.fieldName}`
-      : formatGameDay(g.startsAt),
-    icon: 'football-outline' as const,
-  }));
-
+  // The user's communities split into the ones they OPENED (founder) vs
+  // JOINED — used only to feed the unified recent-activity list below. The
+  // old separate "games I created / communities I opened / joined" sections
+  // were removed: everything now lives in one "פעילות אחרונה" feed.
   const openedCommunities = myCommunities.filter(
     (g) => getTeamCreatorId(g) === user.id,
   );
   const joinedCommunities = myCommunities.filter(
     (g) => getTeamCreatorId(g) !== user.id,
   );
-
-  const openedCommunityItems = openedCommunities.map((g) => ({
-    id: g.id,
-    label: g.name,
-    subtitle: g.city || undefined,
-    icon: 'shield-outline' as const,
-  }));
-
-  const joinedCommunityItems = joinedCommunities.map((g) => ({
-    id: g.id,
-    label: g.name,
-    subtitle: g.city || undefined,
-    icon: 'people-outline' as const,
-  }));
 
   // Recent-activity feed — merged from achievements unlocked, referrals,
   // and the real timestamped events the screen already holds: games the
@@ -364,20 +337,6 @@ export function ProfileScreen() {
     joinedCommunities,
     userId: user.id,
   });
-
-  // Open a community from the Profile tab → hop to the Communities tab's
-  // details screen (same cross-tab pattern HeroStatsCard uses for clubs).
-  const openCommunity = (groupId: string) => {
-    (
-      nav.getParent?.() as
-        | { navigate: (t: string, p?: unknown) => void }
-        | undefined
-    )?.navigate('CommunitiesTab', {
-      screen: 'CommunityDetails',
-      initial: false,
-      params: { groupId },
-    });
-  };
 
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
@@ -609,33 +568,9 @@ export function ProfileScreen() {
             onEdit={() => nav.navigate('AvailabilityEdit')}
           />
 
-          {/* ⑥b Collections the user asked for (Pulse 8qEmMj):
-              games they created + communities they opened/joined. Each
-              section hides itself when empty (handled in the card). */}
-          <ProfileCollectionCard
-            title="משחקים שיצרתי"
-            headerIcon="football-outline"
-            accent="#3B82F6"
-            items={createdGameItems}
-            onPressItem={(gameId) => nav.navigate('MatchDetails', { gameId })}
-          />
-          <ProfileCollectionCard
-            title="מועדונים שפתחתי"
-            headerIcon="shield-outline"
-            accent="#16A34A"
-            items={openedCommunityItems}
-            onPressItem={openCommunity}
-          />
-          <ProfileCollectionCard
-            title="מועדונים שהצטרפתי"
-            headerIcon="people-outline"
-            accent="#7C3AED"
-            items={joinedCommunityItems}
-            onPressItem={openCommunity}
-          />
-
-          {/* ⑦ Recent activity — achievements unlocked + referrals,
-              merged newest-first (no fabricated game rows). */}
+          {/* ⑦ Recent activity — ONE unified feed: achievements, referrals,
+              games created / registered to, and communities opened / joined
+              (replaces the old separate per-collection sections). */}
           <ProfileActivityCard items={activityItems} />
 
           {/* ⑧ PRIMARY CTA — invite friends. Blue accent (matches
