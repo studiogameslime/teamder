@@ -17,6 +17,7 @@ import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
 import { ProfileEditScreen } from '@/screens/tabs/ProfileEditScreen';
 import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
 import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
+import { BlockedUsersScreen } from '@/screens/profile/BlockedUsersScreen';
 import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
@@ -37,6 +38,7 @@ export type ProfileStackParamList = {
   ProfileEdit: undefined;
   AvailabilityEdit: undefined;
   NotificationsSettings: undefined;
+  BlockedUsers: undefined;
   PlayerCard: { userId: string; groupId?: string };
   AdminApproval: undefined;
   History: undefined;
@@ -67,6 +69,7 @@ export function ProfileStack() {
     >
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+      <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
       <Stack.Screen
         name="AvailabilityEdit"
         component={AvailabilityEditScreen}

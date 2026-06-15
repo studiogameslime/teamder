@@ -443,6 +443,12 @@ export function ProfileScreen() {
           icon: 'notifications-outline',
           onPress: () => nav.navigate('NotificationsSettings'),
         },
+        {
+          id: 'blocked',
+          label: he.profileSectionBlocked,
+          icon: 'ban-outline',
+          onPress: () => nav.navigate('BlockedUsers'),
+        },
       ],
     },
     {

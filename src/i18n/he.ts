@@ -1340,6 +1340,16 @@ export const he = {
   // asked specifically for "הישגים" in the menu.
   profileSectionMyAchievements: 'ההישגים שלי',
   profileSectionNotifications: 'התראות',
+  profileSectionBlocked: 'משתמשים חסומים',
+  blockedTitle: 'משתמשים חסומים',
+  blockedIntro: 'משתמשים שחסמת לא רואים אותך בצ׳אט ואתה לא רואה אותם. אפשר לבטל חסימה בכל רגע.',
+  blockedEmptyTitle: 'אין משתמשים חסומים',
+  blockedEmptyHint: 'כשתחסום מישהו בצ׳אט הוא יופיע כאן.',
+  blockedUnblockCta: 'בטל חסימה',
+  blockedUnblockTitle: 'לבטל חסימה?',
+  blockedUnblockBody: (name: string) =>
+    `${name} יוכל שוב לראות את ההודעות שלך, ואתה את שלו.`,
+  blockedUnblockDone: 'החסימה בוטלה',
   // New section labels for the redesigned profile
   profileSectionAccount: 'החשבון שלי',
   profileSectionMatches: 'משחקים ולוח זמנים',
