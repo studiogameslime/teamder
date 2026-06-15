@@ -1833,6 +1833,7 @@ export const he = {
   chatReportThanks: 'הדיווח התקבל, תודה',
   chatBlock: 'חסום',
   chatBlockConfirmTitle: 'לחסום את המשתמש?',
-  chatBlockConfirmBody: (name: string) => `לא תראה יותר הודעות מ${name}.`,
+  chatBlockConfirmBody: (name: string) => `לא תראה יותר את ההודעות של ${name}.`,
   chatBlockDone: 'המשתמש נחסם',
+  chatBlockedHidden: (name: string) => `הודעה מוסתרת — חסמת את ${name}`,
 } as const;

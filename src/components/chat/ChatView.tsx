@@ -44,7 +44,7 @@ import {
 import { containsProfanity } from '@/data/profanity';
 import { PitchLinesBackdrop, EmptyPitch, RedCardGlyph } from '@/components/chat/ChatPitch';
 import { formatTime } from '@/utils/format';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
@@ -136,8 +136,6 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
     chatService.markChatRead(me.id, scope, parentId).catch(() => {});
     chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
   }, [me?.id, scope, parentId, denied, messages.length]);
-
-  const visibleMessages = messages.filter((m) => !blocked.has(m.senderId));
 
   const toggleMute = () => {
     if (!me) return;
@@ -296,7 +294,9 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
       items.push({ label: he.delete, icon: 'trash-outline', danger: true, redCard: true, run: () => deleteMessage(m) });
     }
     if (!mine) {
-      // Report = corner flag; block = whistle (closest Ionicon).
+      // Report = corner flag; block = whistle (closest Ionicon). Block keeps
+      // the policy-required ability to block abusive users — its messages then
+      // render as a collapsed placeholder rather than vanishing.
       items.push({ label: he.chatReport, icon: 'flag-outline', run: () => reportMessage(m) });
       items.push({ label: he.chatBlock, icon: 'megaphone-outline', danger: true, run: () => blockSender(m) });
     }
@@ -331,7 +331,7 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
             <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
             <Text style={styles.emptyText}>{he.chatNoAccess}</Text>
           </View>
-        ) : visibleMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <View style={styles.center}>
             <EmptyPitch width={200} />
             <Text style={styles.emptyText}>{he.chatEmpty}</Text>
@@ -339,12 +339,17 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
         ) : (
           <FlatList
             ref={listRef}
-            data={buildChatRows(visibleMessages)}
+            data={buildChatRows(messages)}
             keyExtractor={(row) => row.key}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) =>
               item.kind === 'date' ? (
                 <DateDivider label={item.label} />
+              ) : blocked.has(item.message.senderId) ? (
+                // Blocked sender: keep a collapsed placeholder in place (instead
+                // of vanishing the message) so replies around it still have
+                // context — no more "ghost" threads.
+                <BlockedRow name={item.message.senderName} />
               ) : (
                 <MessageRow
                   message={item.message}
@@ -445,6 +450,18 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
         </Modal>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+// A collapsed stand-in for a message whose sender the viewer has blocked. Keeps
+// a marker in the timeline so surrounding replies still make sense, without
+// showing the blocked content.
+function BlockedRow({ name }: { name: string }) {
+  return (
+    <View style={styles.blockedRow}>
+      <Ionicons name="eye-off-outline" size={14} color={colors.textMuted} />
+      <Text style={styles.blockedText}>{he.chatBlockedHidden(name || 'משתמש')}</Text>
+    </View>
   );
 }
 
@@ -561,6 +578,18 @@ function DateDivider({ label }: { label: string }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  blockedRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    marginVertical: 4,
+  },
+  blockedText: { ...typography.caption, color: colors.textMuted },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   // flexGrow + flex-end keeps a short conversation pinned to the BOTTOM

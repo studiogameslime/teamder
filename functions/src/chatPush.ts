@@ -125,6 +125,21 @@ async function handleRecipient(
   const chatKey = chatKeyFor(scope, parentId);
 
   try {
+    // (0) Blocked sender? If this recipient has blocked the message's sender,
+    // skip them entirely — no push AND no unread bump. (Skipping the unread
+    // bump matters: otherwise a blocked message's 0→1 transition would consume
+    // the "push only on zero→one" trigger and silence the next real message.)
+    const senderId = typeof msg.senderId === 'string' ? msg.senderId : '';
+    if (senderId) {
+      const blockedSnap = await db
+        .collection('users')
+        .doc(uid)
+        .collection('blocked')
+        .doc(senderId)
+        .get();
+      if (blockedSnap.exists) return;
+    }
+
     const unreadRef = db
       .collection('users')
       .doc(uid)
