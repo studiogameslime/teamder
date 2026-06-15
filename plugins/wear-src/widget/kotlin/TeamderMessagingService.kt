@@ -1,0 +1,97 @@
+package com.studiogameslime.soccerapp.widget
+
+import android.content.Context
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import com.google.firebase.messaging.RemoteMessage
+import expo.modules.notifications.service.ExpoFirebaseMessagingService
+import org.json.JSONObject
+
+/**
+ * Custom FCM service so a server-sent `type:"timerSync"` data message
+ * refreshes the home-screen widget + paired-watch tile NATIVELY — even when
+ * the app is killed.
+ *
+ * Why this exists: in-app, `useWatchSync` (JS) listens to Firestore and
+ * republishes the widget payload on every timer change. But that listener
+ * only runs while the JS process is alive — so a registered player who
+ * isn't actively in the app saw a frozen clock when another device
+ * started/paused the timer. This service closes that gap: a silent FCM
+ * wakes it (no JS needed), and it patches the widget state in Kotlin.
+ *
+ * Registered with default intent-filter priority (0), which beats
+ * expo-notifications' own service (priority -1), so FCM dispatches here
+ * first. EVERY non-timer message is forwarded to `super` so normal push
+ * notifications keep flowing through expo-notifications unchanged.
+ */
+class TeamderMessagingService : ExpoFirebaseMessagingService() {
+
+  override fun onMessageReceived(remoteMessage: RemoteMessage) {
+    val data = remoteMessage.data
+    if (data["type"] == "timerSync") {
+      try {
+        handleTimerSync(applicationContext, data)
+      } catch (_: Exception) {
+        // Best-effort widget refresh — never crash the FCM pipeline.
+      }
+      return // silent: do not let expo build a visible notification
+    }
+    super.onMessageReceived(remoteMessage)
+  }
+
+  private fun handleTimerSync(context: Context, data: Map<String, String>) {
+    val gameId = data["gameId"] ?: return
+
+    val prefs = context.getSharedPreferences(
+      TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
+    )
+    val existing = prefs.getString(TeamderWidgetProvider.KEY_JSON, null)?.let {
+      try { JSONObject(it) } catch (_: Exception) { null }
+    }
+
+    val running = data["timerRunning"] == "true"
+    val lastStartedAt = data["timerLastStartedAt"]?.toLongOrNull() ?: 0L
+    val accumulatedMs = data["timerAccumulatedMs"]?.toLongOrNull() ?: 0L
+    val controlledBy = data["timerControlledBy"] ?: ""
+    val controlledByName = data["timerControlledByName"] ?: ""
+    val title = data["gameTitle"] ?: ""
+
+    // Merge into the existing payload when it's the SAME game so we keep the
+    // roster / viewer / measured clock offset the JS layer wrote. Otherwise
+    // build a minimal live payload (timer widget works; the players list
+    // fills in next time the app runs).
+    val state: JSONObject =
+      if (existing != null && existing.optString("gameId") == gameId) {
+        existing
+      } else {
+        JSONObject().apply { put("clockOffsetMs", 0L) }
+      }
+
+    state.put("kind", "live")
+    state.put("gameId", gameId)
+    if (title.isNotEmpty()) state.put("title", title)
+    state.put("controlledBy", controlledBy)
+    state.put("controlledByName", controlledByName)
+    val timer = state.optJSONObject("timer") ?: JSONObject()
+    timer.put("running", running)
+    timer.put("lastStartedAt", lastStartedAt)
+    timer.put("accumulatedMs", accumulatedMs)
+    state.put("timer", timer)
+
+    val json = state.toString()
+    prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, json).apply()
+    TeamderWidgetProvider.requestRefresh(context)
+    TeamderPlayersWidgetProvider.requestRefresh(context)
+
+    // Mirror to the paired watch (same path/keys WatchBridgeModule uses).
+    try {
+      val req = PutDataMapRequest.create("/teamder/state").apply {
+        dataMap.putString("json", json)
+        dataMap.putLong("ts", System.currentTimeMillis())
+      }.asPutDataRequest().setUrgent()
+      Wearable.getDataClient(context).putDataItem(req)
+    } catch (_: Exception) {
+      // No paired watch / Wearable unavailable — widget still updated above.
+    }
+  }
+}

@@ -148,6 +148,16 @@ function addWearableDep(config) {
         'dependencies {\n    implementation("com.google.firebase:firebase-auth")',
       );
     }
+    // Firebase Messaging — TeamderMessagingService extends expo's FCM
+    // service and references RemoteMessage; expo brings firebase-messaging
+    // transitively but not on :app's compile classpath. Pin via the RN
+    // Firebase BoM (no explicit version).
+    if (!contents.includes('com.google.firebase:firebase-messaging')) {
+      contents = contents.replace(
+        /^dependencies\s*\{/m,
+        'dependencies {\n    implementation("com.google.firebase:firebase-messaging")',
+      );
+    }
 
     cfg.modResults.contents = contents;
     return cfg;
@@ -301,11 +311,46 @@ function registerWidgetReceiver(config) {
   });
 }
 
+/**
+ * Register TeamderMessagingService as the FCM message handler. Default
+ * intent-filter priority (0) beats expo-notifications' service (-1) so FCM
+ * dispatches here first; non-`timerSync` messages are forwarded to super,
+ * keeping normal notifications intact. Idempotent.
+ */
+function registerMessagingService(config) {
+  return withAndroidManifest(config, (cfg) => {
+    const app = cfg.modResults.manifest.application?.[0];
+    if (!app) return cfg;
+    app.service = app.service ?? [];
+    const name =
+      'com.studiogameslime.soccerapp.widget.TeamderMessagingService';
+    const exists = app.service.some((s) => s.$?.['android:name'] === name);
+    if (!exists) {
+      app.service.push({
+        $: { 'android:name': name, 'android:exported': 'false' },
+        'intent-filter': [
+          {
+            action: [
+              {
+                $: {
+                  'android:name': 'com.google.firebase.MESSAGING_EVENT',
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }
+    return cfg;
+  });
+}
+
 module.exports = function withWearApp(config) {
   config = copyWearSources(config);
   config = addWearToSettings(config);
   config = addWearableDep(config);
   config = registerWatchPackage(config);
   config = registerWidgetReceiver(config);
+  config = registerMessagingService(config);
   return config;
 };

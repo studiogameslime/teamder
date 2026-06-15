@@ -127,6 +127,9 @@ interface UserDoc {
   fcmTokens?: string[];
   notificationPrefs?: Partial<Record<NotificationType, boolean>>;
   newGameSubscriptions?: string[];
+  /** Last-seen device platform. Used to skip iOS for Android-only silent
+   *  pushes (home widget / Wear tile sync). */
+  platform?: string;
 }
 
 // ─── Growth milestone dispatcher ────────────────────────────────────────
@@ -2673,6 +2676,111 @@ export const onGroupPendingChanged = onDocumentWritten(
       `[onGroupPendingChanged] dispatched ${ok}/${results.length} joinRequest push(es) for group ${groupId}`
     );
   }
+);
+
+// ─── Realtime trigger: live-timer sync to home widgets / watch tiles ───
+
+/**
+ * When the shared match clock changes (start / pause / resume / reset),
+ * fan out a SILENT, data-only FCM to every registered player so their
+ * home-screen widget + paired-watch tile refresh — even when their app is
+ * killed. (The in-app onSnapshot listener that normally pushes the payload
+ * to the widget only runs while the JS process is alive, so a player who
+ * isn't actively in the app saw a stale clock — the exact bug reported.)
+ *
+ * The native `TeamderMessagingService` receives this `type: 'timerSync'`
+ * message and updates the widget/tile directly in Kotlin (no JS, no
+ * Firestore read needed). Android-only: the home widget + Wear tile are
+ * Android surfaces, so we skip iOS recipients to avoid pointless wakeups.
+ */
+export const onGameTimerChanged = onDocumentWritten(
+  'games/{id}',
+  async (event) => {
+    const after = event.data?.after?.data() as
+      | {
+          liveMatch?: {
+            timerRunning?: boolean;
+            timerLastStartedAt?: number | null;
+            timerAccumulatedMs?: number;
+            timerControlledBy?: string | null;
+            timerControlledByName?: string | null;
+          };
+          participantIds?: string[];
+          players?: string[];
+          title?: string;
+        }
+      | undefined;
+    if (!after) return;
+    const before = event.data?.before?.data() as typeof after | undefined;
+    const a = after.liveMatch ?? {};
+    const b = before?.liveMatch ?? {};
+
+    // Only fire when a timer primitive actually changed — not on every
+    // roster write.
+    const changed =
+      (a.timerRunning ?? null) !== (b.timerRunning ?? null) ||
+      (a.timerLastStartedAt ?? null) !== (b.timerLastStartedAt ?? null) ||
+      (a.timerAccumulatedMs ?? null) !== (b.timerAccumulatedMs ?? null);
+    if (!changed) return;
+
+    const recipients = Array.isArray(after.participantIds)
+      ? after.participantIds
+      : Array.isArray(after.players)
+        ? after.players
+        : [];
+    if (recipients.length === 0) return;
+
+    const users = await loadUsers(recipients);
+    const tokens = new Set<string>();
+    for (const u of users) {
+      // Skip iOS — no Android-style home widget / Wear tile there.
+      if (u.platform === 'ios') continue;
+      (u.fcmTokens || []).forEach((t) => {
+        if (typeof t === 'string' && t.length > 0) tokens.add(t);
+      });
+    }
+    if (tokens.size === 0) return;
+
+    const data: Record<string, string> = {
+      type: 'timerSync',
+      gameId: event.params.id,
+      timerRunning: String(!!a.timerRunning),
+      timerLastStartedAt: String(a.timerLastStartedAt ?? 0),
+      timerAccumulatedMs: String(a.timerAccumulatedMs ?? 0),
+      timerControlledBy: String(a.timerControlledBy ?? ''),
+      timerControlledByName: String(a.timerControlledByName ?? ''),
+      // NOT `title`/`message`/`body`: those keys make expo-notifications
+      // render a visible notification on clients that DON'T have the native
+      // TeamderMessagingService yet (pre-1.0.21). `gameTitle` is inert there
+      // — the message stays silent — and the native service reads this key.
+      gameTitle: String(after.title ?? ''),
+    };
+
+    const all = Array.from(tokens);
+    let ok = 0;
+    for (let i = 0; i < all.length; i += 500) {
+      const chunk = all.slice(i, i + 500);
+      try {
+        // Data-only (no `notification` block) → silent: wakes the native
+        // service to refresh the widget, never shows a push.
+        const res = await messaging.sendEachForMulticast({
+          tokens: chunk,
+          data,
+          android: { priority: 'high' },
+          apns: {
+            headers: { 'apns-priority': '5', 'apns-push-type': 'background' },
+            payload: { aps: { 'content-available': 1 } },
+          },
+        });
+        ok += res.successCount;
+      } catch (err) {
+        console.warn('[onGameTimerChanged] send failed', err);
+      }
+    }
+    console.log(
+      `[onGameTimerChanged] timerSync → ${ok}/${tokens.size} token(s) for game ${event.params.id}`,
+    );
+  },
 );
 
 // ─── Realtime trigger: "almost full" FOMO push ─────────────────────────
