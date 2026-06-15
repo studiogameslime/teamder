@@ -259,7 +259,18 @@ let appOpenMasterLoaded = false;
 // The in-flight read, so the first show() can await it instead of racing.
 let appOpenMasterPromise: Promise<void> | null = null;
 
-async function refreshAppOpenMaster(): Promise<void> {
+// Pulse-controlled master switch for the BANNER ad, stored alongside the
+// app-open switch at appConfig/ads.bannerEnabled. Same contract: explicit
+// `false` hides the banner for everyone; missing/true = show per the
+// existing Remote Config rules. Defaults to on. The BannerAd component
+// subscribes via `useBannerMaster()` so it re-renders when the read lands.
+let bannerMasterEnabled = true;
+const bannerMasterListeners = new Set<() => void>();
+function notifyBannerMaster(): void {
+  bannerMasterListeners.forEach((l) => l());
+}
+
+async function refreshAdsMaster(): Promise<void> {
   if (USE_MOCK_DATA) {
     appOpenMasterLoaded = true;
     return;
@@ -268,17 +279,39 @@ async function refreshAppOpenMaster(): Promise<void> {
     const { db } = getFirebase();
     const snap = await getDoc(doc(db, 'appConfig', 'ads'));
     if (snap.exists()) {
-      const v = (snap.data() as { appOpenEnabled?: unknown }).appOpenEnabled;
+      const data = snap.data() as {
+        appOpenEnabled?: unknown;
+        bannerEnabled?: unknown;
+      };
       // Only an explicit `false` disables — a missing field means "on".
-      appOpenMasterEnabled = v !== false;
+      appOpenMasterEnabled = data.appOpenEnabled !== false;
+      const nextBanner = data.bannerEnabled !== false;
+      if (nextBanner !== bannerMasterEnabled) {
+        bannerMasterEnabled = nextBanner;
+        notifyBannerMaster();
+      }
     }
   } catch (err) {
-    if (__DEV__) console.warn('[ads] refreshAppOpenMaster failed', err);
+    if (__DEV__) console.warn('[ads] refreshAdsMaster failed', err);
   } finally {
     // Mark loaded even on failure: a genuine read error falls back to the
     // default (on) rather than blocking ads forever.
     appOpenMasterLoaded = true;
   }
+}
+
+/** Re-renders the BannerAd when the Pulse banner master switch resolves /
+ *  changes. Returns the current value (defaults to on until first read). */
+function useBannerMaster(): boolean {
+  const [, force] = React.useState(0);
+  React.useEffect(() => {
+    const l = () => force((x) => x + 1);
+    bannerMasterListeners.add(l);
+    return () => {
+      bannerMasterListeners.delete(l);
+    };
+  }, []);
+  return bannerMasterEnabled;
 }
 
 export const adsService = {
@@ -288,7 +321,7 @@ export const adsService = {
     initialized = true;
     // Pull the Pulse-controlled app-open master switch. Keep the promise so
     // the first app-open ad can await it (closes the show-before-loaded race).
-    appOpenMasterPromise = refreshAppOpenMaster();
+    appOpenMasterPromise = refreshAdsMaster();
     // Loud DEV warning if the iOS build was bundled against AdMob's
     // public TEST app ID. Real iOS revenue requires registering the
     // app in AdMob console and swapping `iosAppId` in app.json. Fires
@@ -450,6 +483,7 @@ export const adsService = {
 
 export function BannerAd(): React.ReactElement | null {
   useRemoteConfig(); // re-render when the banner_enabled flag activates
+  const bannerMaster = useBannerMaster(); // Pulse-controlled kill-switch
   const [failed, setFailed] = React.useState(false);
   // Gate the actual native render until MobileAds().initialize() has
   // resolved. Without this, the banner can mount before the SDK is
@@ -469,6 +503,7 @@ export function BannerAd(): React.ReactElement | null {
 
   if (SCREENSHOT_MODE) return null;
   if (!ADS_ENABLED || !ready) return null;
+  if (!bannerMaster) return null; // Pulse master kill-switch (appConfig/ads)
   if (!rcBool('banner_enabled')) return null; // remote kill-switch
   let mod: AdsModule | null = null;
   try {
