@@ -25,7 +25,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
@@ -35,13 +34,20 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { InputField } from '@/components/InputField';
+import { AutocompleteInput } from '@/components/AutocompleteInput';
+import { InfoTip } from '@/components/InfoTip';
+import { RichRulesInput } from '@/components/community/RichRulesInput';
+import { BallSwitch } from '@/components/anim/BallSwitch';
+import { searchCities } from '@/services/israelLocationService';
+import { isValidIsraeliPhone } from '@/services/whatsappService';
 import { groupService } from '@/services/groupService';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import { Game, UserId } from '@/types';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
@@ -61,8 +67,17 @@ export function PromoteOrphanScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [rules, setRules] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [city, setCity] = useState('');
   const [includedIds, setIncludedIds] = useState<Record<UserId, boolean>>({});
+
+  // Phone is OPTIONAL here (the community chat covers contact now), but if
+  // typed it must be a valid Israeli number.
+  const phoneEntered = contactPhone.trim().length > 0;
+  const phoneError = phoneEntered && !isValidIsraeliPhone(contactPhone);
 
   // Load the game once. It supplies the roster we'll let the user
   // cherry-pick from.
@@ -129,12 +144,20 @@ export function PromoteOrphanScreen() {
       appAlert(he.promoteOrphanNameTooShortTitle, he.promoteOrphanNameTooShortBody);
       return;
     }
+    if (phoneError) {
+      appAlert(he.error, he.createGroupContactPhoneInvalid);
+      return;
+    }
     setSubmitting(true);
     try {
       const inviteUserIds = roster.filter((uid) => includedIds[uid] === true);
       const res = await groupService.promoteOrphanGroup({
         groupId,
         name: trimmedName,
+        description: description.trim() || undefined,
+        isOpen,
+        rules: rules.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
         city: city.trim() || undefined,
         inviteUserIds,
       });
@@ -197,28 +220,68 @@ export function PromoteOrphanScreen() {
           <Text style={styles.bannerText}>{he.promoteOrphanBanner}</Text>
         </View>
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>{he.promoteOrphanNameLabel}</Text>
-          <TextInput
+        {/* Same field set as the regular "create community" form, so a
+            community made from a game is just as complete. All optional
+            except the name. */}
+        <View style={styles.fields}>
+          <InputField
+            label={he.promoteOrphanNameLabel}
             value={name}
             onChangeText={(t) => setName(t.slice(0, 60))}
             placeholder={he.promoteOrphanNamePlaceholder}
-            placeholderTextColor="#94A3B8"
-            style={styles.input}
             maxLength={60}
-            autoFocus
+            required
           />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>{he.promoteOrphanCityLabel}</Text>
-          <TextInput
+          <InputField
+            label={he.createGroupDescription}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+          {/* Open vs admin-approved join. */}
+          <Pressable
+            onPress={() => setIsOpen((v) => !v)}
+            style={styles.toggleCard}
+          >
+            <View style={styles.toggleText}>
+              <View style={styles.toggleLabelRow}>
+                <Text style={styles.toggleLabel}>{he.createGroupIsOpen}</Text>
+                <InfoTip title={he.createGroupIsOpen} text={he.createGroupIsOpenHint} />
+              </View>
+            </View>
+            <BallSwitch
+              value={isOpen}
+              onValueChange={setIsOpen}
+              trackColor={{ false: colors.border, true: '#3B82F6' }}
+              thumbColor="#fff"
+            />
+          </Pressable>
+          <RichRulesInput
+            label={he.communityDetailsRules}
+            value={rules}
+            onChangeText={setRules}
+            placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
+          />
+          <View>
+            <InputField
+              label={he.createGroupContactPhone}
+              info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
+              value={contactPhone}
+              onChangeText={setContactPhone}
+              placeholder={he.createGroupContactPhonePlaceholder}
+              keyboardType="phone-pad"
+            />
+            {phoneError ? (
+              <Text style={styles.hintError}>{he.createGroupContactPhoneInvalid}</Text>
+            ) : null}
+          </View>
+          <AutocompleteInput
+            label={he.promoteOrphanCityLabel}
             value={city}
-            onChangeText={(t) => setCity(t.slice(0, 80))}
-            placeholder={he.promoteOrphanCityPlaceholder}
-            placeholderTextColor="#94A3B8"
-            style={styles.input}
-            maxLength={80}
+            onChange={setCity}
+            onSelect={setCity}
+            placeholder={he.createGroupCityPlaceholder}
+            fetchSuggestions={(q) => searchCities(q)}
           />
         </View>
 
@@ -311,6 +374,37 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontSize: 14,
     fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  fields: { gap: spacing.md },
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  toggleText: { flexShrink: 1, alignItems: 'flex-start' },
+  toggleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  toggleLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+    flexShrink: 1,
+  },
+  hintError: {
+    ...typography.caption,
+    color: colors.danger,
+    marginTop: spacing.xs,
     textAlign: RTL_LABEL_ALIGN,
   },
   fieldGroup: {

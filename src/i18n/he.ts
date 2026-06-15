@@ -529,7 +529,7 @@ export const he = {
   // Promote-orphan-to-community screen
   promoteOrphanTitle: 'צור מועדון מהמשחק',
   promoteOrphanBanner:
-    'תני שם, סמן את מי להזמין — ובלחיצה כל החברים מהמשחק יקבלו הזמנה.',
+    'תן שם, סמן את מי להזמין — ובלחיצה כל החברים מהמשחק יקבלו הזמנה.',
   promoteOrphanNameLabel: 'שם המועדון',
   promoteOrphanNamePlaceholder: 'הכדורגלנים של חמישי',
   promoteOrphanCityLabel: 'עיר (אופציונלי)',

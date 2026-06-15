@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  /get — clean, marketing-friendly smart store link. Detects the platform and
+  redirects straight to the right store (App Store / Google Play). On desktop
+  it shows both buttons. No invite framing, no app-open attempt — purpose-built
+  for "try my app" posts (Facebook groups etc.). Domain: teamderfc.web.app/get
+-->
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teamder · הורדה</title>
+  <meta name="description" content="Teamder — מארגנים כדורגל בלי בלגן. הורד עכשיו." />
+  <meta property="og:title" content="Teamder · כדורגל בלי בלגן" />
+  <meta property="og:description" content="מארגנים משחק, מחלקים כוחות ומוצאים שחקנים — באפליקציה אחת." />
+  <meta property="og:image" content="https://teamderfc.web.app/logo.png" />
+  <style>
+    :root { --blue:#1E40AF; --blue2:#2563EB; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(160deg,#1E3A8A 0%,#1E40AF 55%,#2563EB 100%);
+      color:#fff; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .card { text-align:center; max-width:380px; width:100%; }
+    img.logo { width:96px; height:96px; border-radius:24px; box-shadow:0 12px 30px rgba(0,0,0,.35); }
+    h1 { font-size:26px; font-weight:800; margin:18px 0 6px; }
+    p  { font-size:15px; opacity:.9; margin:0 0 22px; line-height:1.5; }
+    .btns { display:flex; flex-direction:column; gap:12px; }
+    a.store {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      background:#fff; color:var(--blue); text-decoration:none; font-weight:800; font-size:16px;
+      padding:15px 18px; border-radius:999px; box-shadow:0 6px 18px rgba(0,0,0,.25);
+    }
+    .hint { margin-top:18px; font-size:13px; opacity:.75; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/logo.png" alt="Teamder" />
+    <h1>Teamder</h1>
+    <p>מארגנים כדורגל בלי בלגן ⚽<br/>פותח לך את החנות…</p>
+    <div class="btns">
+      <a class="store" id="ios" href="https://apps.apple.com/app/id6775178022">🍏 הורדה ל-iPhone</a>
+      <a class="store" id="android" href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">🤖 הורדה ל-Android</a>
+    </div>
+    <div class="hint">לא נפתח אוטומטית? בחר/י את החנות שלך למעלה.</div>
+  </div>
+  <script>
+    (function () {
+      var IOS = 'https://apps.apple.com/app/id6775178022';
+      var ANDROID = 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+      var ua = navigator.userAgent || navigator.vendor || '';
+      var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua) ||
+        // iPadOS 13+ reports as Mac; treat touch-capable Mac as iOS.
+        (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      // Hide the irrelevant button on mobile, then redirect.
+      if (isAndroid) {
+        document.getElementById('ios').style.display = 'none';
+        location.replace(ANDROID);
+      } else if (isIOS) {
+        document.getElementById('android').style.display = 'none';
+        location.replace(IOS);
+      }
+      // Desktop: show both, no redirect.
+    })();
+  </script>
+</body>
+</html>

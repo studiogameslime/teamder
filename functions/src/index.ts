@@ -714,8 +714,8 @@ function buildMessage(
       // → creator of an orphan game whose evening just ended. The
       // CTA opens the promote screen pre-filled with the roster.
       return {
-        title: 'שיחקתם נחמד 🤝',
-        body: `רוצה לשמור את החברים מ${gameTitle}? צור מועדון בלחיצה ותקבע מחזור שבועי.`,
+        title: 'היה אחלה משחק! 🤝',
+        body: `רוצה לשמור את החברים מ"${gameTitle}"? צור מועדון בלחיצה ותקבע מחזור שבועי.`,
       };
     }
     case 'groupInvitation': {
@@ -3944,6 +3944,9 @@ export const promoteOrphanToGroup = onCall(
       groupId?: unknown;
       name?: unknown;
       description?: unknown;
+      isOpen?: unknown;
+      rules?: unknown;
+      contactPhone?: unknown;
       city?: unknown;
       inviteUserIds?: unknown;
     };
@@ -3953,6 +3956,13 @@ export const promoteOrphanToGroup = onCall(
     const description =
       typeof data.description === 'string'
         ? data.description.trim().slice(0, 500)
+        : '';
+    const isOpen = data.isOpen === true;
+    const rules =
+      typeof data.rules === 'string' ? data.rules.trim().slice(0, 2000) : '';
+    const contactPhone =
+      typeof data.contactPhone === 'string'
+        ? data.contactPhone.trim().slice(0, 30)
         : '';
     const city =
       typeof data.city === 'string' ? data.city.trim().slice(0, 80) : '';
@@ -4001,6 +4011,9 @@ export const promoteOrphanToGroup = onCall(
       name,
       normalizedName: name.toLowerCase().trim(),
       description: description.length > 0 ? description : null,
+      rules: rules.length > 0 ? rules : null,
+      contactPhone: contactPhone.length > 0 ? contactPhone : null,
+      isOpen,
       city: city.length > 0 ? city : null,
       isPersonal: false,
       hidden: false,
@@ -4022,7 +4035,7 @@ export const promoteOrphanToGroup = onCall(
           memberCount: Array.isArray(group.playerIds)
             ? group.playerIds.length
             : 1,
-          isOpen: false,
+          isOpen,
           updatedAt: now,
           createdAt: now,
         },

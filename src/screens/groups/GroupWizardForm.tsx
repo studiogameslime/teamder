@@ -132,14 +132,15 @@ export function GroupWizardForm({
 
   const fetchCities = useCallback((q: string) => searchCities(q), []);
 
-  // Phone + city are now REQUIRED for a community.
+  // Phone is now OPTIONAL (the community chat covers contact) — but if typed
+  // it must be a valid Israeli number. City stays required.
   const phoneEntered = values.contactPhone.trim().length > 0;
-  const phoneValid = phoneEntered && isValidIsraeliPhone(values.contactPhone);
-  const phoneError = phoneEntered && !phoneValid;
+  const phoneOk = !phoneEntered || isValidIsraeliPhone(values.contactPhone);
+  const phoneError = phoneEntered && !phoneOk;
   const cityValid = values.city.trim().length > 0;
 
   const nameValid = values.name.trim().length > 0;
-  const canSubmit = nameValid && phoneValid && cityValid && !busy;
+  const canSubmit = nameValid && phoneOk && cityValid && !busy;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -208,7 +209,6 @@ export function GroupWizardForm({
             <View>
               <InputField
                 label={he.createGroupContactPhone}
-                required
                 info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
                 value={values.contactPhone}
                 onChangeText={(v) => set('contactPhone', v)}

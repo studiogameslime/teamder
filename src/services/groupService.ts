@@ -433,6 +433,9 @@ export const groupService = {
     groupId: GroupId;
     name: string;
     description?: string;
+    isOpen?: boolean;
+    rules?: string;
+    contactPhone?: string;
     city?: string;
     inviteUserIds: UserId[];
   }): Promise<{ invited: number }> {
@@ -449,6 +452,9 @@ export const groupService = {
         groupId: input.groupId,
         name: input.name,
         description: input.description ?? '',
+        isOpen: input.isOpen ?? false,
+        rules: input.rules ?? '',
+        contactPhone: input.contactPhone ?? '',
         city: input.city ?? '',
         inviteUserIds: input.inviteUserIds,
       })) as { data?: { ok?: boolean; invited?: number } };
