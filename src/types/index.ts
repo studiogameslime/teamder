@@ -164,7 +164,7 @@ export interface User {
  * Buckets used to group achievements visually on the Player Card. Pure
  * presentation — the service treats every achievement the same.
  */
-export type AchievementCategory = 'games' | 'teams' | 'invites' | 'coaching' | 'social';
+export type AchievementCategory = 'games' | 'wins' | 'teams' | 'invites' | 'coaching' | 'social';
 
 /**
  * The counter that an achievement watches. All metrics live on
@@ -173,6 +173,7 @@ export type AchievementCategory = 'games' | 'teams' | 'invites' | 'coaching' | '
  */
 export type AchievementMetric =
   | 'gamesJoined'
+  | 'wins'
   | 'teamsCreated'
   | 'teamsJoined'
   | 'invitesSent'
@@ -188,6 +189,8 @@ export interface UnlockedAchievement {
 export interface UserAchievementState {
   unlocked: UnlockedAchievement[];
   gamesJoined: number;
+  /** Lifetime winner-stays round wins (from stats.wins). */
+  wins: number;
   teamsCreated: number;
   teamsJoined: number;
   invitesSent: number;
@@ -200,6 +203,7 @@ export interface UserAchievementState {
 export const defaultAchievementState: UserAchievementState = {
   unlocked: [],
   gamesJoined: 0,
+  wins: 0,
   teamsCreated: 0,
   teamsJoined: 0,
   invitesSent: 0,

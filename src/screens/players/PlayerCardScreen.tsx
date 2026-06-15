@@ -798,7 +798,11 @@ function AchievementsSection({ user }: { user: User }) {
     }
     let alive = true;
     achievementsService
-      .deriveCounters(user.id, { groups, friendsCount: me?.friends?.length ?? 0 })
+      .deriveCounters(user.id, {
+        groups,
+        friendsCount: me?.friends?.length ?? 0,
+        wins: user.stats?.wins ?? 0,
+      })
       .then((c) => {
         if (!alive) return;
         setCounters(c);

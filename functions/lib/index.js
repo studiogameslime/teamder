@@ -2426,19 +2426,41 @@ exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}',
     const b = before?.rotation?.lastRoundAt ?? 0;
     if (a <= b)
         return; // no NEW round result
-    const winners = (after.rotation.lastRoundWinners ?? []).filter((u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'));
-    if (winners.length === 0)
+    const reg = (arr) => (arr ?? []).filter((u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'));
+    const winners = reg(after.rotation.lastRoundWinners);
+    const losers = reg(after.rotation.lastRoundLosers);
+    if (winners.length === 0 && losers.length === 0)
         return;
+    const inc = admin.firestore.FieldValue.increment(1);
     const batch = db.batch();
+    // 1) Lifetime per-player wins.
     for (const uid of winners) {
-        batch.set(db.collection('users').doc(uid), { stats: { wins: admin.firestore.FieldValue.increment(1) } }, { merge: true });
+        batch.set(db.collection('users').doc(uid), { stats: { wins: inc } }, { merge: true });
     }
+    // 2) Pairwise "played together on the same team" + together W/L. One doc
+    //    per unordered pair at pairStats/{a__b} (sorted), so a player card can
+    //    read a single doc for "you & X".
+    const pairKey = (x, y) => [x, y].sort().join('__');
+    const addPairs = (team, field) => {
+        for (let i = 0; i < team.length; i++) {
+            for (let j = i + 1; j < team.length; j++) {
+                batch.set(db.collection('pairStats').doc(pairKey(team[i], team[j])), {
+                    a: [team[i], team[j]].sort()[0],
+                    b: [team[i], team[j]].sort()[1],
+                    sameTeam: inc,
+                    [field]: inc,
+                }, { merge: true });
+            }
+        }
+    };
+    addPairs(winners, 'winsTogether');
+    addPairs(losers, 'lossesTogether');
     try {
         await batch.commit();
-        console.log(`[onGameRotationChanged] +1 win to ${winners.length} player(s) — game ${event.params.id}`);
+        console.log(`[onGameRotationChanged] game ${event.params.id}: +win×${winners.length}, pairs W${winners.length}/L${losers.length}`);
     }
     catch (err) {
-        console.warn('[onGameRotationChanged] win increment failed', err);
+        console.warn('[onGameRotationChanged] increment failed', err);
     }
 });
 // ─── Realtime trigger: "almost full" FOMO push ─────────────────────────

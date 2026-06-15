@@ -162,10 +162,11 @@ export const achievementsService = {
    */
   async deriveCounters(
     userId: UserId,
-    ctx: { groups?: Group[]; friendsCount?: number } = {},
+    ctx: { groups?: Group[]; friendsCount?: number; wins?: number } = {},
   ): Promise<UserAchievementState> {
     if (!userId) return { ...defaultAchievementState };
     const groups = ctx.groups ?? [];
+    const wins = Math.max(0, ctx.wins ?? 0);
     // friendsCount comes from the caller's already-loaded user doc
     // (`user.friends`) — no extra read needed.
     const friendsCount = Math.max(0, ctx.friendsCount ?? 0);
@@ -240,6 +241,7 @@ export const achievementsService = {
     return {
       unlocked: [],
       gamesJoined,
+      wins,
       teamsCreated,
       teamsJoined,
       invitesSent,
@@ -341,6 +343,7 @@ function readState(user: User): UserAchievementState {
   return {
     unlocked: Array.isArray(a.unlocked) ? a.unlocked : [],
     gamesJoined: a.gamesJoined ?? 0,
+    wins: a.wins ?? 0,
     teamsCreated: a.teamsCreated ?? 0,
     teamsJoined: a.teamsJoined ?? 0,
     invitesSent: a.invitesSent ?? 0,

@@ -1150,6 +1150,7 @@ export const he = {
   achievementsEmpty: 'עוד לא נפתחו תארים. תתחיל לשחק!',
   achievementsLockedHint: 'נפתח אחרי שתעבור את היעד',
   achievementCategoryGames: 'משחקים',
+  achievementCategoryWins: 'ניצחונות',
   achievementCategoryTeams: 'מועדונים',
   achievementCategoryInvites: 'הזמנות',
   achievementCategoryCoaching: 'ניהול',
