@@ -14,6 +14,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   runTransaction,
@@ -85,6 +86,43 @@ export const groupService = {
     // list — they're an implementation detail of the orphan-game flow,
     // never surfaced as real communities until the user promotes.
     return snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true);
+  },
+
+  /**
+   * LIVE version of `listForUser` — pushes the user's groups on every
+   * change so admin surfaces (e.g. the join-request approval queue) update
+   * in real time instead of only after an app restart. Returns an
+   * unsubscribe function. No-op under mock data.
+   */
+  subscribeForUser(
+    userId: UserId,
+    onChange: (groups: Group[]) => void,
+    onError?: (err: unknown) => void,
+  ): () => void {
+    if (USE_MOCK_DATA) {
+      onChange(
+        Object.values(groupsById).filter(
+          (g) =>
+            g.isPersonal !== true &&
+            (g.adminIds.includes(userId) || g.playerIds.includes(userId)),
+        ),
+      );
+      return () => {};
+    }
+    const q = query(col.groups(), where('playerIds', 'array-contains', userId));
+    return onSnapshot(
+      q,
+      (snap) => {
+        onChange(
+          snap.docs.map((d) => d.data()).filter((g) => g.isPersonal !== true),
+        );
+      },
+      (err) => {
+        logError('subscribeForUser', err, { userId });
+        if (__DEV__) console.warn('[groupService] subscribeForUser failed', err);
+        onError?.(err);
+      },
+    );
   },
 
   /**

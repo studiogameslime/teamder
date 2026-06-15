@@ -25,6 +25,14 @@ interface GroupStore {
   pendingGroups: Group[];   // groups the user has requested to join
 
   hydrate: (userId: UserId) => Promise<void>;
+  /**
+   * Start a LIVE listener on the user's groups so changes (e.g. a new
+   * incoming join request landing in a community's `pendingPlayerIds`)
+   * propagate to admin surfaces in real time — no app restart needed.
+   * Returns an unsubscribe; safe to call repeatedly (tears down the
+   * previous listener first).
+   */
+  subscribe: (userId: UserId) => () => void;
 
   // Membership state derived from currentGroupId + groups arrays
   getMembership: (userId: UserId) => MembershipStatus;
@@ -80,11 +88,35 @@ interface GroupStore {
   deleteGroup: (groupId: GroupId, userId: UserId) => Promise<void>;
 }
 
+// Live-groups listener handle. Module-level (not store state) so toggling
+// it never triggers a re-render; lifecycle owned by RootNavigator.
+let groupsUnsub: (() => void) | null = null;
+
 export const useGroupStore = create<GroupStore>((set, get) => ({
   hydrated: false,
   currentGroupId: null,
   groups: [],
   pendingGroups: [],
+
+  subscribe: (userId) => {
+    if (groupsUnsub) {
+      groupsUnsub();
+      groupsUnsub = null;
+    }
+    groupsUnsub = groupService.subscribeForUser(userId, (groups) => {
+      // Only the member-groups array is live (covers admins watching their
+      // own communities' pending queues). currentGroupId / pendingGroups
+      // stay as the initial hydrate set them; selectors tolerate a missing
+      // current group.
+      set({ groups, hydrated: true });
+    });
+    return () => {
+      if (groupsUnsub) {
+        groupsUnsub();
+        groupsUnsub = null;
+      }
+    };
+  },
 
   hydrate: async (userId) => {
     // Each fetch wrapped individually so a single failure doesn't

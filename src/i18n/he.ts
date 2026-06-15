@@ -997,6 +997,9 @@ export const he = {
   emailAuthWrongCredentials: 'מייל או סיסמה שגויים',
   emailAuthTooManyAttempts: 'יותר מדי ניסיונות. נסה שוב בעוד כמה דקות.',
   emailAuthGenericError: 'משהו השתבש, נסה שוב',
+  emailAuthAlreadyInUse:
+    'המייל הזה כבר רשום. אם נרשמת עם מייל וסיסמה — עבור להתחברות. אם נרשמת עם Google/Apple — חזור והשתמש בכפתור המתאים.',
+  emailAuthSwitchToSignIn: 'עבור להתחברות',
   emailAuthRegisteredWithGoogle: 'הכתובת הזו כבר רשומה דרך Google. התחבר עם Google.',
   emailAuthRegisteredWithApple: 'הכתובת הזו כבר רשומה דרך Apple. התחבר עם Apple.',
   emailAuthResetSentTitle: 'נשלח מייל איפוס',

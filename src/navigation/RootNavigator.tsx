@@ -192,13 +192,25 @@ export function RootNavigator() {
   // Firebase mode rather than the mock-seed uid).
   const setGameCurrentUserId = useGameStore((s) => s.setCurrentUserId);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const subscribeGroups = useGroupStore((s) => s.subscribe);
   useEffect(() => {
     if (currentUser) {
       hydrateGroup(currentUser.id);
       setGameCurrentUserId(currentUser.id);
       hydratePlayers([currentUser.id]);
+      // Live listener so incoming join requests (and any group change)
+      // reach admins without an app restart. Torn down on sign-out / user
+      // switch via the returned cleanup.
+      const unsub = subscribeGroups(currentUser.id);
+      return unsub;
     }
-  }, [currentUser, hydrateGroup, setGameCurrentUserId, hydratePlayers]);
+  }, [
+    currentUser,
+    hydrateGroup,
+    subscribeGroups,
+    setGameCurrentUserId,
+    hydratePlayers,
+  ]);
 
   // Phase E.2: register the device's push token once we have a user. The
   // helper is idempotent and quietly no-ops when the native module isn't

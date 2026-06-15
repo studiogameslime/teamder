@@ -89,7 +89,17 @@ export function EmailAuthScreen() {
     let msg: string = he.emailAuthGenericError;
     if (code === 'auth/invalid-email') msg = he.emailAuthInvalidEmail;
     else if (code === 'auth/weak-password') msg = he.emailAuthWeakPassword;
-    else if (
+    else if (code === 'auth/email-already-in-use') {
+      // The address is taken. Email-enumeration protection makes the
+      // provider undetectable (fetchSignInMethodsForEmail returns []), so
+      // the message covers both "you have an email account → sign in" and
+      // "you used Google/Apple → use that button". Offer to flip to sign-in.
+      appAlert(he.error, he.emailAuthAlreadyInUse, [
+        { text: he.cancel, style: 'cancel' },
+        { text: he.emailAuthSwitchToSignIn, onPress: () => setMode('signIn') },
+      ]);
+      return;
+    } else if (
       code === 'auth/wrong-password' ||
       code === 'auth/user-not-found' ||
       code === 'auth/invalid-credential'
