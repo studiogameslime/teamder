@@ -1381,6 +1381,8 @@ export const he = {
   profileStatWinRate: 'אחוז ניצחון',
   profileStatAttended: 'הופעות',
   profileStatClubs: 'מועדונים',
+  profileStatWins: 'ניצחונות',
+  profileMetaCommunities: (n: number) => `${n} מועדונים`,
   profileStatFriends: 'חברים',
   profileStatCancelRate: 'ביטולים',
   profileStatGoals: 'שערים',

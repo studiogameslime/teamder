@@ -772,6 +772,10 @@ function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
     loans,
     wins,
     round: typeof o.round === 'number' ? o.round : undefined,
+    lastRoundWinners: Array.isArray(o.lastRoundWinners)
+      ? (o.lastRoundWinners.filter((x) => typeof x === 'string') as string[])
+      : undefined,
+    lastRoundAt: typeof o.lastRoundAt === 'number' ? o.lastRoundAt : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };
 }

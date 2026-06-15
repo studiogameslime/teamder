@@ -550,6 +550,9 @@ export interface UserStats {
   totalGames: number;       // games the user was registered for and locked
   attended: number;         // status flipped to "arrived" by admin
   cancelled: number;        // user cancelled their own registration
+  /** Lifetime "winner-stays" round wins — incremented server-side each time
+   *  a round ends and the user was on the winning team (incl. as a filler). */
+  wins?: number;
   /**
    * Lifetime goals scored. Not currently written by any path —
    * kept on the type so the profile UI can render a stable "0"
@@ -929,6 +932,13 @@ export interface MatchRotation {
   wins?: Record<string, number>;
   /** 1-based round counter. */
   round?: number;
+  /** Registered uids who were on the winning team of the just-finished round
+   *  (guests excluded — they have no user doc). A server function reads this
+   *  to bump each player's lifetime `stats.wins`. */
+  lastRoundWinners?: string[];
+  /** Monotonic stamp of the last recorded result — the server function only
+   *  awards wins when this advances (idempotent across listener ticks). */
+  lastRoundAt?: number;
   updatedAt?: number;
 }
 

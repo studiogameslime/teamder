@@ -162,13 +162,26 @@ export function recordWinner(
   const [a, b] = rotation.playing;
   const loser = winner === a ? b : a;
   const incoming = rotation.waiting[0];
+  // Winning roster (as it stood THIS round, before rotating) — registered
+  // players only; guests have no account to credit. Drives per-player wins.
+  const lastRoundWinners = rosterOf(winner, teams, rotation.loans).filter(
+    (id) => !id.startsWith('guest:'),
+  );
+  const lastRoundAt = Date.now();
   // No one waiting → keep playing the same two (just bump the win tally).
   const wins = { ...(rotation.wins ?? {}) };
   wins[String(winner)] = (wins[String(winner)] ?? 0) + 1;
   if (incoming == null) {
     return {
       teams,
-      rotation: { ...rotation, wins, round: (rotation.round ?? 1) + 1, updatedAt: Date.now() },
+      rotation: {
+        ...rotation,
+        wins,
+        round: (rotation.round ?? 1) + 1,
+        lastRoundWinners,
+        lastRoundAt,
+        updatedAt: lastRoundAt,
+      },
     };
   }
 
@@ -193,7 +206,9 @@ export function recordWinner(
       loans: filled.loans,
       wins,
       round: (rotation.round ?? 1) + 1,
-      updatedAt: Date.now(),
+      lastRoundWinners,
+      lastRoundAt,
+      updatedAt: lastRoundAt,
     },
   };
 }

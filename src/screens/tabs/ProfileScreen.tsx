@@ -316,6 +316,14 @@ export function ProfileScreen() {
       text: user.availability.homeCity,
     });
   }
+  // Communities count moved here (next to the city) now that the stats strip
+  // shows wins instead. Only when the user is in at least one community.
+  if (myCommunities.length > 0) {
+    heroMeta.push({
+      icon: 'people-outline',
+      text: he.profileMetaCommunities(myCommunities.length),
+    });
+  }
 
   // The user's communities split into the ones they OPENED (founder) vs
   // JOINED — used only to feed the unified recent-activity list below. The
@@ -531,17 +539,10 @@ export function ProfileScreen() {
         <View style={styles.statsWrap}>
           <HeroStatsCard
             totalGames={totalGames}
-            clubs={myCommunities.length}
+            wins={user.stats?.wins ?? 0}
             friends={user.friends?.length ?? 0}
             onGamesPress={() => nav.navigate('History')}
             onFriendsPress={() => nav.navigate('Friends')}
-            onClubsPress={() =>
-              (
-                nav.getParent?.() as
-                  | { navigate: (t: string) => void }
-                  | undefined
-              )?.navigate('CommunitiesTab')
-            }
           />
         </View>
 

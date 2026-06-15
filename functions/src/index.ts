@@ -2783,6 +2783,50 @@ export const onGameTimerChanged = onDocumentWritten(
   },
 );
 
+// ─── Realtime trigger: per-player wins from the live rotation ──────────
+/**
+ * When a "winner-stays" round ends, the client stamps the winning team's
+ * registered players onto `rotation.lastRoundWinners` + a monotonic
+ * `rotation.lastRoundAt`. Here we credit each of them a lifetime win
+ * (`users/{uid}.stats.wins += 1`). Server-side because a client can't write
+ * other users' docs. Idempotent: only fires when `lastRoundAt` advances.
+ */
+export const onGameRotationChanged = onDocumentWritten(
+  'games/{id}',
+  async (event) => {
+    const after = event.data?.after?.data() as
+      | { rotation?: { lastRoundAt?: number; lastRoundWinners?: string[] } }
+      | undefined;
+    if (!after?.rotation) return;
+    const before = event.data?.before?.data() as typeof after | undefined;
+    const a = after.rotation.lastRoundAt ?? 0;
+    const b = before?.rotation?.lastRoundAt ?? 0;
+    if (a <= b) return; // no NEW round result
+
+    const winners = (after.rotation.lastRoundWinners ?? []).filter(
+      (u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'),
+    );
+    if (winners.length === 0) return;
+
+    const batch = db.batch();
+    for (const uid of winners) {
+      batch.set(
+        db.collection('users').doc(uid),
+        { stats: { wins: admin.firestore.FieldValue.increment(1) } },
+        { merge: true },
+      );
+    }
+    try {
+      await batch.commit();
+      console.log(
+        `[onGameRotationChanged] +1 win to ${winners.length} player(s) — game ${event.params.id}`,
+      );
+    } catch (err) {
+      console.warn('[onGameRotationChanged] win increment failed', err);
+    }
+  },
+);
+
 // ─── Realtime trigger: "almost full" FOMO push ─────────────────────────
 
 /**
