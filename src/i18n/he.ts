@@ -1639,6 +1639,9 @@ export const he = {
   // tile shown. The pair card uses this same order.
   pairStatsRegistered: 'נרשמתם יחד',
   pairStatsAttended: 'הגעתם יחד',
+  pairStatsSameTeam: 'באותה קבוצה',
+  pairStatsWinsTogether: 'ניצחתם יחד',
+  pairStatsLossesTogether: 'הפסדתם יחד',
   pairStatsSameTeamGames: 'משחקים באותה קבוצה',
   pairStatsSameTeamRounds: 'משחקונים באותה קבוצה',
   pairStatsEmpty: 'עדיין לא שיחקתם יחד',

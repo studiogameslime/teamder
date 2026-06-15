@@ -553,12 +553,19 @@ export const gameService = {
     attendedTogether: number;
     firstSharedAt: number | null;
     lastSharedAt: number | null;
+    /** Rounds the pair played on the SAME team (from the live rotation). */
+    sameTeam: number;
+    winsTogether: number;
+    lossesTogether: number;
   }> {
     const zero = {
       registeredTogether: 0,
       attendedTogether: 0,
       firstSharedAt: null as number | null,
       lastSharedAt: null as number | null,
+      sameTeam: 0,
+      winsTogether: 0,
+      lossesTogether: 0,
     };
     if (USE_MOCK_DATA || !uidA || !uidB || uidA === uidB) return zero;
     // Single `array-contains` query — Firestore auto-indexes that
@@ -604,6 +611,25 @@ export const gameService = {
           acc.lastSharedAt = ts;
         }
       }
+    }
+    // Same-team / together W-L come from the live rotation, accumulated
+    // server-side at pairStats/{a__b} (sorted key). Best-effort read.
+    try {
+      const key = [uidA, uidB].sort().join('__');
+      const psnap = await getDoc(doc(getFirebase().db, 'pairStats', key));
+      if (psnap.exists()) {
+        const d = psnap.data() as {
+          sameTeam?: number;
+          winsTogether?: number;
+          lossesTogether?: number;
+        };
+        acc.sameTeam = typeof d.sameTeam === 'number' ? d.sameTeam : 0;
+        acc.winsTogether = typeof d.winsTogether === 'number' ? d.winsTogether : 0;
+        acc.lossesTogether =
+          typeof d.lossesTogether === 'number' ? d.lossesTogether : 0;
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[gameService] pairStats read failed', err);
     }
     return acc;
   },

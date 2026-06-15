@@ -775,6 +775,9 @@ function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
     lastRoundWinners: Array.isArray(o.lastRoundWinners)
       ? (o.lastRoundWinners.filter((x) => typeof x === 'string') as string[])
       : undefined,
+    lastRoundLosers: Array.isArray(o.lastRoundLosers)
+      ? (o.lastRoundLosers.filter((x) => typeof x === 'string') as string[])
+      : undefined,
     lastRoundAt: typeof o.lastRoundAt === 'number' ? o.lastRoundAt : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };

@@ -936,6 +936,9 @@ export interface MatchRotation {
    *  (guests excluded — they have no user doc). A server function reads this
    *  to bump each player's lifetime `stats.wins`. */
   lastRoundWinners?: string[];
+  /** Registered uids on the LOSING team of the just-finished round — for the
+   *  pairwise "losses together" + "played on the same team" counts. */
+  lastRoundLosers?: string[];
   /** Monotonic stamp of the last recorded result — the server function only
    *  awards wins when this advances (idempotent across listener ticks). */
   lastRoundAt?: number;

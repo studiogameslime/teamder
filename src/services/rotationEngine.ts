@@ -167,6 +167,10 @@ export function recordWinner(
   const lastRoundWinners = rosterOf(winner, teams, rotation.loans).filter(
     (id) => !id.startsWith('guest:'),
   );
+  // Losing roster too — for pairwise "losses together" + "same team" counts.
+  const lastRoundLosers = rosterOf(loser, teams, rotation.loans).filter(
+    (id) => !id.startsWith('guest:'),
+  );
   const lastRoundAt = Date.now();
   // No one waiting → keep playing the same two (just bump the win tally).
   const wins = { ...(rotation.wins ?? {}) };
@@ -179,6 +183,7 @@ export function recordWinner(
         wins,
         round: (rotation.round ?? 1) + 1,
         lastRoundWinners,
+        lastRoundLosers,
         lastRoundAt,
         updatedAt: lastRoundAt,
       },
@@ -207,6 +212,7 @@ export function recordWinner(
       wins,
       round: (rotation.round ?? 1) + 1,
       lastRoundWinners,
+      lastRoundLosers,
       lastRoundAt,
       updatedAt: lastRoundAt,
     },

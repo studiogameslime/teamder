@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -2322,6 +2322,124 @@ exports.onGroupPendingChanged = (0, firestore_1.onDocumentWritten)('groups/{grou
     }
     const ok = results.length - failed;
     console.log(`[onGroupPendingChanged] dispatched ${ok}/${results.length} joinRequest push(es) for group ${groupId}`);
+});
+// ─── Realtime trigger: live-timer sync to home widgets / watch tiles ───
+/**
+ * When the shared match clock changes (start / pause / resume / reset),
+ * fan out a SILENT, data-only FCM to every registered player so their
+ * home-screen widget + paired-watch tile refresh — even when their app is
+ * killed. (The in-app onSnapshot listener that normally pushes the payload
+ * to the widget only runs while the JS process is alive, so a player who
+ * isn't actively in the app saw a stale clock — the exact bug reported.)
+ *
+ * The native `TeamderMessagingService` receives this `type: 'timerSync'`
+ * message and updates the widget/tile directly in Kotlin (no JS, no
+ * Firestore read needed). Android-only: the home widget + Wear tile are
+ * Android surfaces, so we skip iOS recipients to avoid pointless wakeups.
+ */
+exports.onGameTimerChanged = (0, firestore_1.onDocumentWritten)('games/{id}', async (event) => {
+    const after = event.data?.after?.data();
+    if (!after)
+        return;
+    const before = event.data?.before?.data();
+    const a = after.liveMatch ?? {};
+    const b = before?.liveMatch ?? {};
+    // Only fire when a timer primitive actually changed — not on every
+    // roster write.
+    const changed = (a.timerRunning ?? null) !== (b.timerRunning ?? null) ||
+        (a.timerLastStartedAt ?? null) !== (b.timerLastStartedAt ?? null) ||
+        (a.timerAccumulatedMs ?? null) !== (b.timerAccumulatedMs ?? null);
+    if (!changed)
+        return;
+    const recipients = Array.isArray(after.participantIds)
+        ? after.participantIds
+        : Array.isArray(after.players)
+            ? after.players
+            : [];
+    if (recipients.length === 0)
+        return;
+    const users = await loadUsers(recipients);
+    const tokens = new Set();
+    for (const u of users) {
+        // Skip iOS — no Android-style home widget / Wear tile there.
+        if (u.platform === 'ios')
+            continue;
+        (u.fcmTokens || []).forEach((t) => {
+            if (typeof t === 'string' && t.length > 0)
+                tokens.add(t);
+        });
+    }
+    if (tokens.size === 0)
+        return;
+    const data = {
+        type: 'timerSync',
+        gameId: event.params.id,
+        timerRunning: String(!!a.timerRunning),
+        timerLastStartedAt: String(a.timerLastStartedAt ?? 0),
+        timerAccumulatedMs: String(a.timerAccumulatedMs ?? 0),
+        timerControlledBy: String(a.timerControlledBy ?? ''),
+        timerControlledByName: String(a.timerControlledByName ?? ''),
+        // NOT `title`/`message`/`body`: those keys make expo-notifications
+        // render a visible notification on clients that DON'T have the native
+        // TeamderMessagingService yet (pre-1.0.21). `gameTitle` is inert there
+        // — the message stays silent — and the native service reads this key.
+        gameTitle: String(after.title ?? ''),
+    };
+    const all = Array.from(tokens);
+    let ok = 0;
+    for (let i = 0; i < all.length; i += 500) {
+        const chunk = all.slice(i, i + 500);
+        try {
+            // Data-only (no `notification` block) → silent: wakes the native
+            // service to refresh the widget, never shows a push.
+            const res = await messaging.sendEachForMulticast({
+                tokens: chunk,
+                data,
+                android: { priority: 'high' },
+                apns: {
+                    headers: { 'apns-priority': '5', 'apns-push-type': 'background' },
+                    payload: { aps: { 'content-available': 1 } },
+                },
+            });
+            ok += res.successCount;
+        }
+        catch (err) {
+            console.warn('[onGameTimerChanged] send failed', err);
+        }
+    }
+    console.log(`[onGameTimerChanged] timerSync → ${ok}/${tokens.size} token(s) for game ${event.params.id}`);
+});
+// ─── Realtime trigger: per-player wins from the live rotation ──────────
+/**
+ * When a "winner-stays" round ends, the client stamps the winning team's
+ * registered players onto `rotation.lastRoundWinners` + a monotonic
+ * `rotation.lastRoundAt`. Here we credit each of them a lifetime win
+ * (`users/{uid}.stats.wins += 1`). Server-side because a client can't write
+ * other users' docs. Idempotent: only fires when `lastRoundAt` advances.
+ */
+exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}', async (event) => {
+    const after = event.data?.after?.data();
+    if (!after?.rotation)
+        return;
+    const before = event.data?.before?.data();
+    const a = after.rotation.lastRoundAt ?? 0;
+    const b = before?.rotation?.lastRoundAt ?? 0;
+    if (a <= b)
+        return; // no NEW round result
+    const winners = (after.rotation.lastRoundWinners ?? []).filter((u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'));
+    if (winners.length === 0)
+        return;
+    const batch = db.batch();
+    for (const uid of winners) {
+        batch.set(db.collection('users').doc(uid), { stats: { wins: admin.firestore.FieldValue.increment(1) } }, { merge: true });
+    }
+    try {
+        await batch.commit();
+        console.log(`[onGameRotationChanged] +1 win to ${winners.length} player(s) — game ${event.params.id}`);
+    }
+    catch (err) {
+        console.warn('[onGameRotationChanged] win increment failed', err);
+    }
 });
 // ─── Realtime trigger: "almost full" FOMO push ─────────────────────────
 /**

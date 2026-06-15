@@ -1261,5 +1261,13 @@ service cloud.firestore {
         request.resource.data.scope is string &&
         request.resource.data.parentId is string;
     }
+
+    // Pairwise "played together" tallies (same team / wins / losses),
+    // written ONLY server-side by onGameRotationChanged. Any signed-in user
+    // may read (the public player card shows "you & X").
+    match /pairStats/{pair} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
   }
 }

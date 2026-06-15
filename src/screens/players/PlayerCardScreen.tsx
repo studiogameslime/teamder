@@ -479,6 +479,9 @@ function PairStatsSection({
     attendedTogether: 0,
     firstSharedAt: null as number | null,
     lastSharedAt: null as number | null,
+    sameTeam: 0,
+    winsTogether: 0,
+    lossesTogether: 0,
   };
   const [stats, setStats] = useState<typeof ZERO>(ZERO);
   const [sharedNames, setSharedNames] = useState<string[]>([]);
@@ -543,6 +546,24 @@ function PairStatsSection({
               value={String(stats.attendedTogether)}
             />
           </View>
+          {/* Same-team play + together W/L from the live rotation. Only shown
+              once the pair has actually shared a team. */}
+          {stats.sameTeam > 0 ? (
+            <View style={styles.pairGrid}>
+              <StatTile
+                label={he.pairStatsSameTeam}
+                value={String(stats.sameTeam)}
+              />
+              <StatTile
+                label={he.pairStatsWinsTogether}
+                value={String(stats.winsTogether)}
+              />
+              <StatTile
+                label={he.pairStatsLossesTogether}
+                value={String(stats.lossesTogether)}
+              />
+            </View>
+          ) : null}
           {(stats.firstSharedAt || stats.lastSharedAt) ? (
             <Card style={styles.pairTimelineCard}>
               {stats.firstSharedAt ? (
