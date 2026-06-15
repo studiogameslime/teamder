@@ -596,6 +596,7 @@ export function LiveMatchScreen() {
             rotation={rotation ?? undefined}
             perTeam={perTeam}
             playersMap={playersMap}
+            guests={game?.guests}
             isAdmin={isAdmin}
             onStart={onRotationStart}
             onWinner={onRotationWinner}

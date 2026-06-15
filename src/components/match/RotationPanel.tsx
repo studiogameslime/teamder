@@ -23,6 +23,9 @@ interface Props {
   rotation?: MatchRotation;
   perTeam: number;
   playersMap: Record<string, PlayerLite>;
+  /** Per-game guests (id → name) so guest rosters show real names, not "…"
+   *  (guests have no /users doc, so they're absent from playersMap). */
+  guests?: { id: string; name: string }[];
   isAdmin: boolean;
   onStart: () => void;
   onWinner: (teamIndex: number) => void;
@@ -34,12 +37,17 @@ export function RotationPanel({
   rotation,
   perTeam,
   playersMap,
+  guests,
   isAdmin,
   onStart,
   onWinner,
   onStop,
 }: Props) {
   if (!draftTeams || draftTeams.teams.length < 2) return null;
+
+  const guestName = (uid: string) => guests?.find((g) => g.id === uid)?.name;
+  const nameOf = (uid: string) =>
+    guestName(uid) ?? playersMap[uid]?.displayName ?? '…';
 
   const teams: RotationTeam[] = draftTeams.teams.map((t) => ({
     index: t.index,
@@ -90,15 +98,16 @@ export function RotationPanel({
         </View>
         {roster.map((uid) => {
           const p = playersMap[uid];
+          const name = nameOf(uid);
           const borrowed = loanedIn.has(uid);
           return (
             <View key={uid} style={styles.playerRow}>
               <UserAvatar
-                user={{ id: uid, name: p?.displayName ?? '…', avatarId: p?.avatarId, photoUrl: p?.photoUrl }}
+                user={{ id: uid, name, avatarId: p?.avatarId, photoUrl: p?.photoUrl }}
                 size={24}
               />
               <Text style={styles.playerName} numberOfLines={1}>
-                {p?.displayName ?? '…'}
+                {name}
               </Text>
               {borrowed ? (
                 <Ionicons
