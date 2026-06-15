@@ -3172,7 +3172,7 @@ interface BalanceGameDoc {
   status?: string;
   players?: string[];
   guests?: GuestDoc[];
-  format?: '5v5' | '6v6' | '7v7';
+  format?: '4v4' | '5v5' | '6v6' | '7v7';
   numberOfTeams?: number;
   autoTeamGenerationMinutesBeforeStart?: number;
   autoTeamsGeneratedAt?: number;
@@ -3195,6 +3195,7 @@ interface RatingSummaryDoc {
 }
 
 function perTeamSize(format: BalanceGameDoc['format']): number {
+  if (format === '4v4') return 4;
   if (format === '6v6') return 6;
   if (format === '7v7') return 7;
   return 5;
@@ -5742,7 +5743,7 @@ interface ShortageGameDoc {
   startsAt?: number;
   maxPlayers?: number;
   minPlayers?: number;
-  format?: '5v5' | '6v6' | '7v7';
+  format?: '4v4' | '5v5' | '6v6' | '7v7';
   numberOfTeams?: number;
   players?: string[];
   guests?: unknown[];
@@ -5752,6 +5753,7 @@ interface ShortageGameDoc {
 }
 
 function playersPerTeamForFormat(format: string | undefined): number {
+  if (format === '4v4') return 4;
   if (format === '6v6') return 6;
   if (format === '7v7') return 7;
   return 5;

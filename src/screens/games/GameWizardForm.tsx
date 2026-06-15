@@ -51,7 +51,7 @@ import { he } from '@/i18n/he';
 import { formatDayDate } from '@/utils/format';
 import { lightHaptic } from '@/utils/haptics';
 
-const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
+const FORMATS: GameFormat[] = ['4v4', '5v5', '6v6', '7v7'];
 const TEAM_COUNTS = [2, 3, 4, 5] as const;
 const FIELD_TYPES = ['asphalt', 'synthetic', 'grass'] as const;
 const CANCEL_DEADLINE_OPTIONS: Array<number | undefined> = [
@@ -67,6 +67,7 @@ const CANCEL_DEADLINE_OPTIONS: Array<number | undefined> = [
 const FILLER_MIN_TRUST_OPTIONS = [0, 50, 70, 80, 90] as const;
 
 function formatLabel(f: GameFormat): string {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '5v5') return he.gameFormat5;
   if (f === '6v6') return he.gameFormat6;
   return he.gameFormat7;
@@ -77,7 +78,7 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 function playersPerTeam(f: GameFormat): number {
-  return f === '5v5' ? 5 : f === '6v6' ? 6 : 7;
+  return f === '4v4' ? 4 : f === '5v5' ? 5 : f === '6v6' ? 6 : 7;
 }
 function cancelOptionLabel(h: number | undefined): string {
   return h === undefined ? he.wizardCancelOptionNone : he.wizardCancelOption(h);

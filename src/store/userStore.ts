@@ -18,8 +18,13 @@ interface UserStore {
   currentUser: User | null;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  deleteOwnAccount: () => Promise<void>;
+  /** Optional password re-auth for email/password accounts (Firebase
+   *  requires a fresh login to delete). */
+  deleteOwnAccount: (password?: string) => Promise<void>;
   updateProfile: (
     patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl'>>,
   ) => Promise<void>;
@@ -77,14 +82,30 @@ export const useUserStore = create<UserStore>((set, get) => ({
     logEvent(AnalyticsEvent.SignInSuccess);
   },
 
+  signInWithEmail: async (email, password) => {
+    const user = await userService.signInWithEmail(email, password);
+    set({ currentUser: user });
+    logEvent(AnalyticsEvent.SignInSuccess);
+  },
+
+  signUpWithEmail: async (email, password) => {
+    const user = await userService.signUpWithEmail(email, password);
+    set({ currentUser: user });
+    logEvent(AnalyticsEvent.SignInSuccess);
+  },
+
+  sendPasswordReset: async (email) => {
+    await userService.sendPasswordReset(email);
+  },
+
   signOut: async () => {
     await userService.signOut();
     set({ currentUser: null });
     logEvent(AnalyticsEvent.SignOut);
   },
 
-  deleteOwnAccount: async () => {
-    await userService.deleteOwnAccount();
+  deleteOwnAccount: async (password) => {
+    await userService.deleteOwnAccount(password);
     set({ currentUser: null });
     logEvent(AnalyticsEvent.AccountDeleted);
   },

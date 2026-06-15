@@ -47,6 +47,7 @@ import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { useGameStore } from '@/store/gameStore';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 import type { ChatMessage, ChatScope } from '@/types';
 
@@ -61,10 +62,26 @@ interface Props {
   /** True when the current user can delete anyone's message here
    *  (game organiser / community admin). */
   canModerate: boolean;
+  /** Member user-ids for the "who's in this chat" sheet. The header
+   *  members button is hidden when empty/undefined. */
+  memberIds?: string[];
+  /** Subset of `memberIds` who are admins/organisers — flagged in the
+   *  members sheet. */
+  adminIds?: string[];
 }
 
-export function ChatView({ scope, parentId, title, canModerate }: Props) {
+export function ChatView({
+  scope,
+  parentId,
+  title,
+  canModerate,
+  memberIds = [],
+  adminIds = [],
+}: Props) {
   const me = useUserStore((s) => s.currentUser);
+  const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const playersMap = useGameStore((s) => s.players);
+  const [membersOpen, setMembersOpen] = useState(false);
   const nav = useNavigation<NativeStackNavigationProp<ChatStackParamList>>();
   const openProfile = (senderId: string) => {
     nav.navigate('PlayerCard', {
@@ -309,6 +326,19 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
       <ScreenHeader
         title={title}
         actions={[
+          ...(memberIds.length > 0
+            ? [
+                {
+                  icon: 'people-outline' as const,
+                  onPress: () => {
+                    hydratePlayers(memberIds);
+                    setMembersOpen(true);
+                  },
+                  tint: colors.text,
+                  label: he.chatMembersTitle,
+                },
+              ]
+            : []),
           {
             icon: muted ? 'notifications-off-outline' : 'notifications-outline',
             onPress: toggleMute,
@@ -316,6 +346,17 @@ export function ChatView({ scope, parentId, title, canModerate }: Props) {
             label: muted ? he.chatUnmute : he.chatMute,
           },
         ]}
+      />
+      <ChatMembersSheet
+        visible={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        memberIds={memberIds}
+        adminIds={adminIds}
+        playersMap={playersMap}
+        onPressMember={(uid) => {
+          setMembersOpen(false);
+          openProfile(uid);
+        }}
       />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -575,9 +616,163 @@ function DateDivider({ label }: { label: string }) {
   );
 }
 
+// Bottom sheet listing everyone with access to this chat (community
+// members / game roster). Admins/organisers are flagged. Tapping a row
+// opens that player's card. (Feedback: "כפתור שפותח חלון של חברי השיחה".)
+function ChatMembersSheet({
+  visible,
+  onClose,
+  memberIds,
+  adminIds,
+  playersMap,
+  onPressMember,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  memberIds: string[];
+  adminIds: string[];
+  playersMap: Record<string, { displayName?: string; avatarId?: string; photoUrl?: string }>;
+  onPressMember: (uid: string) => void;
+}) {
+  const adminSet = new Set(adminIds);
+  // Admins first, then everyone else — both alphabetical-ish by load order.
+  const ordered = [...memberIds].sort(
+    (a, b) => Number(adminSet.has(b)) - Number(adminSet.has(a)),
+  );
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.membersBackdrop} onPress={onClose} />
+      <View style={styles.membersSheet}>
+        <View style={styles.membersHandle} />
+        <Text style={styles.membersTitle}>
+          {he.chatMembersTitle}
+          <Text style={styles.membersCount}>
+            {'  '}
+            {he.chatMembersCount(memberIds.length)}
+          </Text>
+        </Text>
+        {ordered.length === 0 ? (
+          <Text style={styles.membersEmpty}>{he.chatMembersEmpty}</Text>
+        ) : (
+          <FlatList
+            data={ordered}
+            keyExtractor={(uid) => uid}
+            contentContainerStyle={{ paddingBottom: spacing.lg }}
+            renderItem={({ item: uid }) => {
+              const p = playersMap[uid];
+              return (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.memberRow,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  onPress={() => onPressMember(uid)}
+                >
+                  <UserAvatar
+                    user={{
+                      id: uid,
+                      name: p?.displayName ?? '...',
+                      avatarId: p?.avatarId,
+                      photoUrl: p?.photoUrl,
+                    }}
+                    size={40}
+                  />
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {p?.displayName ?? '...'}
+                  </Text>
+                  {adminSet.has(uid) ? (
+                    <View style={styles.memberAdminTag}>
+                      <Text style={styles.memberAdminTagText}>
+                        {he.chatMembersAdminTag}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            }}
+          />
+        )}
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  membersBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  membersSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '70%',
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  membersHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  membersTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    marginBottom: spacing.sm,
+  },
+  membersCount: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  membersEmpty: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  memberName: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  memberAdminTag: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  memberAdminTagText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 11,
+  },
   blockedRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

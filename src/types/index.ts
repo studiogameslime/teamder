@@ -955,7 +955,7 @@ export type GameStatus =
   | 'active'
   | 'finished'
   | 'cancelled';
-export type GameFormat = '5v5' | '6v6' | '7v7';
+export type GameFormat = '4v4' | '5v5' | '6v6' | '7v7';
 /** Surface of the pitch. Drives default match-duration suggestions. */
 export type FieldType = 'asphalt' | 'synthetic' | 'grass';
 

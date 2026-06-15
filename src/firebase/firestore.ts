@@ -468,7 +468,9 @@ function readWeekdayIndex(v: unknown): WeekdayIndex | undefined {
 function readGameFormat(
   v: unknown,
 ): import('@/types').GameFormat | undefined {
-  return v === '5v5' || v === '6v6' || v === '7v7' ? v : undefined;
+  return v === '4v4' || v === '5v5' || v === '6v6' || v === '7v7'
+    ? v
+    : undefined;
 }
 
 function readFieldType(v: unknown): import('@/types').FieldType | undefined {
@@ -859,7 +861,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         : 'open';
     const fmt = d.format;
     const format: GameDoc['format'] =
-      fmt === '5v5' || fmt === '6v6' || fmt === '7v7' ? fmt : undefined;
+      fmt === '4v4' || fmt === '5v5' || fmt === '6v6' || fmt === '7v7'
+        ? fmt
+        : undefined;
     return {
       id: snap.id,
       groupId: d.groupId,

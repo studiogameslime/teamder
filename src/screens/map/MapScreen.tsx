@@ -15,6 +15,7 @@
 
 import React, { useMemo, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -121,6 +122,7 @@ export function MapScreen() {
   const [openOnly, setOpenOnly] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [selected, setSelected] = useState<MapItem | null>(null);
+  const [clusterItems, setClusterItems] = useState<MapItem[] | null>(null);
   const [focusOn, setFocusOn] = useState<{
     lat: number;
     lng: number;
@@ -216,6 +218,35 @@ export function MapScreen() {
     const realId = isOverlay ? id.slice(3) : id;
     const pool = isOverlay && overlay ? overlay : items;
     setSelected(pool.find((i) => i.id === realId) ?? null);
+  };
+
+  // Resolve a marker id (possibly overlay-prefixed) back to its MapItem.
+  const itemForMarkerId = (id: string): MapItem | undefined => {
+    const isOverlay = id.startsWith('ov:');
+    const realId = isOverlay ? id.slice(3) : id;
+    const pool = isOverlay && overlay ? overlay : items;
+    return pool.find((i) => i.id === realId);
+  };
+
+  // Cluster tapped → list every pin inside it in a scrollable sheet.
+  // Co-located pins (e.g. several communities in one city) never split on
+  // zoom, so the list is the only way to reach them.
+  const onClusterPress = (ids: string[]) => {
+    const list = ids
+      .map(itemForMarkerId)
+      .filter((x): x is MapItem => !!x);
+    if (list.length === 0) return;
+    setClusterItems(list);
+  };
+
+  const openItem = (it: MapItem) => {
+    const kind = it.kind ?? (isGames ? 'game' : 'community');
+    setClusterItems(null);
+    if (kind === 'game') {
+      nav.navigate('MatchDetails', { gameId: it.id });
+    } else {
+      nav.navigate('CommunityDetailsPublic', { groupId: it.id });
+    }
   };
 
   const openDetails = () => {
@@ -329,6 +360,7 @@ export function MapScreen() {
       <View style={styles.mapWrap}>
         {markers.length > 0 ? (
           <MapWebView
+            onClusterPress={onClusterPress}
             markers={markers}
             center={center}
             focusOn={focusOn}
@@ -354,7 +386,6 @@ export function MapScreen() {
               [
                 ['today', he.mapLegendToday],
                 ['tomorrow', he.mapLegendTomorrow],
-                ['weekend', he.mapLegendWeekend],
                 ['other', he.mapLegendOther],
               ] as [DateBucket, string][]
             ).map(([b, label]) => (
@@ -389,17 +420,16 @@ export function MapScreen() {
           </View>
         )}
 
-        {/* Overlay toggle — show the OTHER layer. */}
-        {overlay && overlay.length > 0 ? (
+        {/* Overlay toggle — show the OTHER layer. Communities map only:
+            the games map dropped its "הצג מועדונים" toggle per feedback. */}
+        {!isGames && overlay && overlay.length > 0 ? (
           <View style={styles.toggle}>
             <BallSwitch
               value={showOverlay}
               onValueChange={setShowOverlay}
               trackColor={{ true: colors.primary, false: '#CBD5E1' }}
             />
-            <Text style={styles.toggleText}>
-              {isGames ? he.mapShowCommunities : he.mapShowGames}
-            </Text>
+            <Text style={styles.toggleText}>{he.mapShowGames}</Text>
           </View>
         ) : null}
       </View>
@@ -455,6 +485,63 @@ export function MapScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      {/* Cluster sheet — every pin inside a tapped cluster, scrollable on
+          (up to) half the screen. The way to reach co-located pins that a
+          zoom can't separate. */}
+      <Modal
+        visible={!!clusterItems}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setClusterItems(null)}
+      >
+        <Pressable
+          style={styles.clusterBackdrop}
+          onPress={() => setClusterItems(null)}
+        />
+        <View style={styles.clusterSheet}>
+          <View style={styles.clusterHandle} />
+          <Text style={styles.clusterTitle}>
+            {isGames ? he.mapClusterGamesTitle : he.mapClusterCommunitiesTitle}
+            <Text style={styles.clusterCount}>
+              {'  '}
+              {clusterItems?.length ?? 0}
+            </Text>
+          </Text>
+          <ScrollView contentContainerStyle={styles.clusterList}>
+            {(clusterItems ?? []).map((it) => (
+              <Pressable
+                key={it.id}
+                onPress={() => openItem(it)}
+                style={({ pressed }) => [
+                  styles.clusterRow,
+                  pressed && { opacity: 0.6 },
+                ]}
+              >
+                <View style={styles.clusterRowIcon}>
+                  <Text style={{ fontSize: 18 }}>
+                    {(it.kind ?? (isGames ? 'game' : 'community')) === 'game'
+                      ? '⚽'
+                      : '👥'}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  {it.timeLabel ? (
+                    <Text style={styles.clusterRowTime}>{it.timeLabel}</Text>
+                  ) : null}
+                  <Text style={styles.clusterRowTitle} numberOfLines={1}>
+                    {it.title}
+                  </Text>
+                  <Text style={styles.clusterRowSub} numberOfLines={1}>
+                    {it.subtitle}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* "מותאם" date picker for the games map. */}
       <DatePickerModal
@@ -702,4 +789,76 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cardCtaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+
+  clusterBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  clusterSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '50%',
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  clusterHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  clusterTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    marginBottom: spacing.sm,
+  },
+  clusterCount: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  clusterList: { paddingBottom: spacing.lg, gap: spacing.xs },
+  clusterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.divider,
+  },
+  clusterRowIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clusterRowTime: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  clusterRowTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  clusterRowSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
 });

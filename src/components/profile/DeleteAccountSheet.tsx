@@ -14,16 +14,30 @@ import { he } from '@/i18n/he';
 interface Props {
   visible: boolean;
   loading?: boolean;
+  /** Email/password accounts must re-enter their password to confirm
+   *  deletion (Firebase requires a fresh login). Shows a password field
+   *  and passes it to `onConfirm`. */
+  requirePassword?: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (password?: string) => void;
 }
 
-export function DeleteAccountSheet({ visible, loading, onCancel, onConfirm }: Props) {
+export function DeleteAccountSheet({
+  visible,
+  loading,
+  requirePassword,
+  onCancel,
+  onConfirm,
+}: Props) {
   const [word, setWord] = useState('');
-  const armed = word.trim() === he.profileDeleteAccountConfirmWord;
+  const [password, setPassword] = useState('');
+  const wordOk = word.trim() === he.profileDeleteAccountConfirmWord;
+  const passwordOk = !requirePassword || password.length > 0;
+  const armed = wordOk && passwordOk;
 
   const close = () => {
     setWord('');
+    setPassword('');
     onCancel();
   };
 
@@ -46,9 +60,26 @@ export function DeleteAccountSheet({ visible, loading, onCancel, onConfirm }: Pr
             placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
-            style={[styles.input, armed && styles.inputArmed]}
+            style={[styles.input, wordOk && styles.inputArmed]}
             textAlign="right"
           />
+
+          {requirePassword ? (
+            <>
+              <Text style={styles.prompt}>{he.deleteAccountPasswordPrompt}</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={he.deleteAccountPasswordPlaceholder}
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.input}
+                textAlign="right"
+              />
+            </>
+          ) : null}
 
           <Button
             title={he.profileDeleteAccountConfirm}
@@ -57,7 +88,7 @@ export function DeleteAccountSheet({ visible, loading, onCancel, onConfirm }: Pr
             fullWidth
             disabled={!armed}
             loading={loading}
-            onPress={onConfirm}
+            onPress={() => onConfirm(requirePassword ? password : undefined)}
           />
           <Pressable onPress={close} hitSlop={8} style={styles.cancel}>
             <Text style={styles.cancelText}>{he.profileDeleteAccountCancel}</Text>

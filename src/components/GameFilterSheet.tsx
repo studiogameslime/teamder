@@ -62,7 +62,7 @@ export {
   applyGameFilters,
 };
 
-const FORMATS: GameFormat[] = ['5v5', '6v6', '7v7'];
+const FORMATS: GameFormat[] = ['4v4', '5v5', '6v6', '7v7'];
 const ALL_WEEKDAYS: WeekdayIndex[] = [0, 1, 2, 3, 4, 5, 6];
 
 /** Radius slider bounds (km). Mockup runs 50 (left) → 1 (right). */
@@ -487,6 +487,7 @@ function QuickToggle({
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 function formatLabel(f: GameFormat): string {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '5v5') return he.gameFormat5;
   if (f === '6v6') return he.gameFormat6;
   return he.gameFormat7;

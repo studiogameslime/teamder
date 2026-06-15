@@ -92,6 +92,7 @@ export function MatchFactsRow(props: Props) {
 }
 
 function formatLabel(f: GameFormat): string {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '5v5') return he.gameFormat5;
   if (f === '6v6') return he.gameFormat6;
   return he.gameFormat7;

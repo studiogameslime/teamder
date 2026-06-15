@@ -42,6 +42,7 @@ import {
 } from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
 import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
+import { currentAuthProviderId } from '@/firebase/auth';
 import { ProfileAvailabilityCard } from '@/components/profile/ProfileAvailabilityCard';
 import {
   ProfileActivityCard,
@@ -282,10 +283,10 @@ export function ProfileScreen() {
   // one-tap destructive alert — deletion is irreversible.
   const onDeleteAccount = () => setDeleteSheetOpen(true);
 
-  const confirmDeleteAccount = async () => {
+  const confirmDeleteAccount = async (password?: string) => {
     try {
       setDeleting(true);
-      await deleteOwnAccount();
+      await deleteOwnAccount(password);
       setDeleteSheetOpen(false);
     } catch (err) {
       if (__DEV__) console.warn('[profile] delete failed', err);
@@ -606,6 +607,7 @@ export function ProfileScreen() {
       <DeleteAccountSheet
         visible={deleteSheetOpen}
         loading={deleting}
+        requirePassword={currentAuthProviderId() === 'password'}
         onCancel={() => setDeleteSheetOpen(false)}
         onConfirm={confirmDeleteAccount}
       />

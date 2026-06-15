@@ -44,6 +44,9 @@ interface Props {
   onSharePress?: () => void;
   /** Registered players only — opens the game chat. Hidden when undefined. */
   onChatPress?: () => void;
+  /** Unread message count for the game chat — renders a badge on the
+   *  chat icon. 0/undefined → no badge. */
+  chatUnread?: number;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -54,6 +57,7 @@ export function MatchStadiumHero({
   onBackPress,
   onSharePress,
   onChatPress,
+  chatUnread = 0,
 }: Props) {
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
   // sunset/night), with floodlights at night.
@@ -106,6 +110,13 @@ export function MatchStadiumHero({
                   accessibilityLabel={he.chatOpenGame}
                 >
                   <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" />
+                  {chatUnread > 0 ? (
+                    <View style={styles.chatBadge}>
+                      <Text style={styles.chatBadgeText}>
+                        {chatUnread > 99 ? '99+' : chatUnread}
+                      </Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               ) : null}
               {onSharePress ? (
@@ -236,6 +247,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
+  chatBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   // Trailing-edge group for the overflow menu (and the optional
   // share icon when provided). flex-direction:row + small gap so the
   // two icons sit together without crowding the title.

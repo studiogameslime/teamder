@@ -28,6 +28,8 @@ export function CommunityChatScreen() {
       parentId={groupId}
       title={grp?.name ?? ''}
       canModerate={canModerate}
+      memberIds={grp?.playerIds ?? []}
+      adminIds={grp?.adminIds ?? []}
     />
   );
 }

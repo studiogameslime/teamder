@@ -8,11 +8,13 @@
 import React, { useCallback, useState } from 'react';
 import {
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -27,6 +29,7 @@ import { chatKeyFor } from '@/services/chatService';
 import { useChatStore } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { getCoverSource } from '@/data/coverImages';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { Game } from '@/types';
@@ -41,6 +44,9 @@ type Row = {
   preview: string;
   unread: number;
   sortAt: number;
+  /** Community cover (uploaded URL or built-in preset) shown in the
+   *  avatar circle. Undefined for games (they have no cover). */
+  image?: ImageSourcePropType;
 };
 
 export function ChatsListScreen() {
@@ -70,7 +76,12 @@ export function ChatsListScreen() {
     }, [me?.id]),
   );
 
-  const toRow = (kind: 'community' | 'game', id: string, title: string): Row => {
+  const toRow = (
+    kind: 'community' | 'game',
+    id: string,
+    title: string,
+    image?: ImageSourcePropType,
+  ): Row => {
     const entry = unreadEntries[chatKeyFor(kind, id)];
     return {
       kind,
@@ -79,10 +90,22 @@ export function ChatsListScreen() {
       preview: entry?.lastText ?? '',
       unread: entry?.count ?? 0,
       sortAt: entry?.lastMessageAt ?? 0,
+      image,
     };
   };
+  // Resolve each community's cover for its chat avatar — uploaded photo
+  // wins, else the built-in gallery preset chosen at creation.
+  const coverFor = (
+    coverPhotoUrl?: string,
+    coverImageId?: string,
+  ): ImageSourcePropType | undefined =>
+    coverPhotoUrl
+      ? { uri: coverPhotoUrl }
+      : getCoverSource(coverImageId) ?? undefined;
   const rows: Row[] = [
-    ...groups.map((g) => toRow('community', g.id, g.name)),
+    ...groups.map((g) =>
+      toRow('community', g.id, g.name, coverFor(g.coverPhotoUrl, g.coverImageId)),
+    ),
     ...myGames.map((g) => toRow('game', g.id, g.title)),
   ].sort((a, b) => b.sortAt - a.sortAt); // most-recently-active first
 
@@ -110,18 +133,23 @@ export function ChatsListScreen() {
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <Pressable style={styles.row} onPress={() => open(item)}>
-              <View
-                style={[
-                  styles.iconCircle,
-                  { backgroundColor: item.kind === 'community' ? '#DBEAFE' : '#DCFCE7' },
-                ]}
-              >
-                <Ionicons
-                  name={item.kind === 'community' ? 'globe-outline' : 'football-outline'}
-                  size={22}
-                  color={item.kind === 'community' ? colors.primary : '#16A34A'}
-                />
-              </View>
+              {item.image ? (
+                <Image source={item.image} style={styles.iconCircle} />
+              ) : (
+                <View
+                  style={[
+                    styles.iconCircle,
+                    styles.iconCircleFallback,
+                    { backgroundColor: item.kind === 'community' ? '#DBEAFE' : '#DCFCE7' },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.kind === 'community' ? 'globe-outline' : 'football-outline'}
+                    size={22}
+                    color={item.kind === 'community' ? colors.primary : '#16A34A'}
+                  />
+                </View>
+              )}
               <View style={styles.rowBody}>
                 <Text
                   style={[styles.rowTitle, item.unread > 0 && styles.rowTitleUnread]}
@@ -173,6 +201,9 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
+    backgroundColor: colors.surfaceMuted,
+  },
+  iconCircleFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },

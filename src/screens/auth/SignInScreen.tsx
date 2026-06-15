@@ -10,6 +10,9 @@ import {
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '@/navigation/AuthStack';
 
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -26,6 +29,8 @@ const ACCENT_SOFT = '#DBEAFE';
 export function SignInScreen() {
   const signIn = useUserStore((s) => s.signInWithGoogle);
   const signInApple = useUserStore((s) => s.signInWithApple);
+  const nav =
+    useNavigation<NativeStackNavigationProp<AuthStackParamList, 'SignIn'>>();
   const [busy, setBusy] = useState(false);
 
   const handlePress = async () => {
@@ -168,6 +173,22 @@ export function SignInScreen() {
             <Text style={styles.ctaText}>{he.signInApple}</Text>
           </Pressable>
         )}
+        {/* Email + password — a third option for users without (or who
+            prefer not to use) a Google/Apple account. */}
+        <Pressable
+          onPress={() => nav.navigate('EmailAuth')}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.ctaBtn,
+            pressed && { opacity: 0.92 },
+            busy && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.signInEmail}
+        >
+          <Ionicons name="mail-outline" size={20} color={ACCENT} />
+          <Text style={styles.ctaText}>{he.signInEmail}</Text>
+        </Pressable>
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>
     </SafeAreaView>

@@ -24,6 +24,9 @@ import {
   deleteCurrentFirebaseUser,
   signInWithGoogle as fbSignInWithGoogle,
   signInWithApple as fbSignInWithApple,
+  signInWithEmail as fbSignInWithEmail,
+  signUpWithEmail as fbSignUpWithEmail,
+  sendPasswordReset as fbSendPasswordReset,
   signOutFirebase,
   waitForAuthRestore,
 } from '@/firebase/auth';
@@ -172,6 +175,88 @@ export const userService = {
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
     return fresh;
+  },
+
+  /**
+   * Sign in an EXISTING email/password account. The /users doc was created at
+   * sign-up; if it's somehow missing (legacy/edge), lazy-create it so the app
+   * never crashes on `currentUser.name`.
+   */
+  async signInWithEmail(email: string, password: string): Promise<User> {
+    if (USE_MOCK_DATA) {
+      const user = { ...mockCurrentUser };
+      await storage.setAuthUserJson(JSON.stringify(user));
+      return user;
+    }
+    const fbUser = await fbSignInWithEmail(email, password);
+    const ref = docs.user(fbUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data();
+    const fresh: User = {
+      id: fbUser.uid,
+      name: fbUser.displayName ?? '',
+      email: fbUser.email ?? email.trim(),
+      avatarId: pickRandomAvatarId(),
+      createdAt: Date.now(),
+      onboardingCompleted: false,
+    };
+    try {
+      await setDoc(ref, fresh);
+    } catch (err) {
+      logError('createUserDoc', err, { uid: fresh.id, provider: 'email', email: fresh.email });
+      try {
+        await signOutFirebase();
+      } catch {
+        /* swallow */
+      }
+      throw err;
+    }
+    return fresh;
+  },
+
+  /**
+   * Create a NEW email/password account + its /users doc, then run the same
+   * invite-attribution / acquisition hooks as Google/Apple. Onboarding fills
+   * name + avatar afterwards (the provider gives us neither). The verification
+   * email is sent in the auth layer but does NOT block usage.
+   */
+  async signUpWithEmail(email: string, password: string): Promise<User> {
+    if (USE_MOCK_DATA) {
+      const user = { ...mockCurrentUser };
+      await storage.setAuthUserJson(JSON.stringify(user));
+      return user;
+    }
+    const fbUser = await fbSignUpWithEmail(email, password);
+    const ref = docs.user(fbUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data();
+    const fresh: User = {
+      id: fbUser.uid,
+      name: '',
+      email: fbUser.email ?? email.trim(),
+      avatarId: pickRandomAvatarId(),
+      createdAt: Date.now(),
+      onboardingCompleted: false,
+    };
+    try {
+      await setDoc(ref, fresh);
+    } catch (err) {
+      logError('createUserDoc', err, { uid: fresh.id, provider: 'email', email: fresh.email });
+      try {
+        await signOutFirebase();
+      } catch {
+        /* swallow */
+      }
+      throw err;
+    }
+    await applyInviteAttributionIfFresh(fresh.id);
+    await applyAcquisitionIfFresh(fresh.id);
+    return fresh;
+  },
+
+  /** Send a password-reset email (Firebase-hosted). No-op under mock data. */
+  async sendPasswordReset(email: string): Promise<void> {
+    await fbSendPasswordReset(email);
   },
 
   /**
@@ -366,7 +451,7 @@ export const userService = {
    * Step 3: clear local AsyncStorage so the app boots into the
    * sign-in screen.
    */
-  async deleteOwnAccount(): Promise<void> {
+  async deleteOwnAccount(password?: string): Promise<void> {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (cur) {
@@ -455,7 +540,7 @@ export const userService = {
       throw e;
     }
     try {
-      await deleteCurrentFirebaseUser();
+      await deleteCurrentFirebaseUser(password);
     } catch (err) {
       logError('deleteAccount', err, { uid: cur.id });
       // Auth deletion failed — restore the profile so the user

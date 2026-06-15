@@ -111,6 +111,8 @@ import { formatDateShortYear, formatDayDate } from '@/utils/format';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
+import { useChatStore } from '@/store/chatStore';
+import { chatKeyFor } from '@/services/chatService';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'MatchDetails'>;
@@ -139,6 +141,7 @@ function formatDateLong(ms: number): string {
 const formatShortDate = formatDateShortYear;
 
 function formatLabel(f: GameFormat | undefined): string | null {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '5v5') return he.gameFormat5;
   if (f === '6v6') return he.gameFormat6;
   if (f === '7v7') return he.gameFormat7;
@@ -172,7 +175,13 @@ type SessionStatus =
 function effectiveMinPlayers(game: Game): number {
   if (game.minPlayers && game.minPlayers > 0) return game.minPlayers;
   const perTeam =
-    game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
+    game.format === '4v4'
+      ? 4
+      : game.format === '6v6'
+        ? 6
+        : game.format === '7v7'
+          ? 7
+          : 5;
   return perTeam * 2;
 }
 
@@ -387,6 +396,11 @@ export function MatchDetailsScreen() {
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
+  // Unread count for THIS game's chat → drives the badge on the header
+  // chat icon (mirrors the badge on the chats-list tab).
+  const chatUnread = useChatStore(
+    (s) => s.entries[chatKeyFor('game', gameId)]?.count ?? 0,
+  );
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1900,6 +1914,7 @@ export function MatchDetailsScreen() {
               ? () => goToGameChat(game.id)
               : undefined
           }
+          chatUnread={chatUnread}
         />
 
         {/* Floating stats strip — pulled UP via negative margin so
@@ -2266,11 +2281,13 @@ export function MatchDetailsScreen() {
                 icon: 'grid-outline',
                 label: he.matchDetailsLabelFormat,
                 value: game.format
-                  ? game.format === '5v5'
-                    ? '5×5'
-                    : game.format === '6v6'
-                      ? '6×6'
-                      : '7×7'
+                  ? game.format === '4v4'
+                    ? '4×4'
+                    : game.format === '5v5'
+                      ? '5×5'
+                      : game.format === '6v6'
+                        ? '6×6'
+                        : '7×7'
                   : null,
               },
               // One-time games (or any game with no real community to show)
@@ -2351,15 +2368,8 @@ export function MatchDetailsScreen() {
             </View>
             <Pressable
               onPress={() => {
-                const firstTeammate = (game.players ?? []).find(
-                  (p) => p !== user.id,
-                );
-                if (!firstTeammate) return;
                 setRateBannerDismissed(true);
-                nav.navigate('PlayerCard', {
-                  userId: firstTeammate,
-                  groupId: game.groupId,
-                });
+                nav.navigate('RatePlayers', { gameId: game.id });
               }}
               style={({ pressed }) => [
                 styles.rateBannerCta,

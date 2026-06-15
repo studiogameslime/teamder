@@ -481,8 +481,9 @@ export function GamesListScreen() {
               const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(
                 d.getMinutes(),
               ).padStart(2, '0')}`;
-              const diffDays = (d.getTime() - now.getTime()) / 86_400_000;
-              const dow = d.getDay();
+              // Buckets drive pin colour + the legend. Per feedback the
+              // legend is now just היום / מחר / אחר — the old "סוף שבוע"
+              // (weekend) bucket folds into "other".
               let bucket: 'today' | 'tomorrow' | 'weekend' | 'other' = 'other';
               let dayLabel = `${d.getDate()}.${d.getMonth() + 1}`;
               if (sameDay(d, now)) {
@@ -491,8 +492,6 @@ export function GamesListScreen() {
               } else if (sameDay(d, tomorrow)) {
                 bucket = 'tomorrow';
                 dayLabel = he.mapLegendTomorrow;
-              } else if ((dow === 5 || dow === 6) && diffDays >= 0 && diffDays <= 7) {
-                bucket = 'weekend';
               }
               return [
                 {

@@ -55,12 +55,22 @@ export function GameChatScreen() {
     !!game &&
     (me.id === game.createdBy || (grp?.adminIds.includes(me.id) ?? false));
 
+  // Chat members = the registered roster. Organiser + community admins
+  // are flagged as admins in the members sheet.
+  const memberIds = game?.players ?? [];
+  const adminIds = [
+    ...(game?.createdBy ? [game.createdBy] : []),
+    ...(grp?.adminIds ?? []),
+  ];
+
   return (
     <ChatView
       scope="game"
       parentId={gameId}
       title={game?.title ?? ''}
       canModerate={canModerate}
+      memberIds={memberIds}
+      adminIds={adminIds}
     />
   );
 }

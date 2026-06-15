@@ -314,7 +314,13 @@ export function GameCreateScreen() {
     }
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
     const playersPerTeam =
-      v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
+      v.format === '4v4'
+        ? 4
+        : v.format === '6v6'
+          ? 6
+          : v.format === '7v7'
+            ? 7
+            : 5;
     // Recurring is now an in-form toggle (step 3). When enabled with
     // a real timestamp, persist `registrationOpensAt`; otherwise omit
     // and the game opens immediately. Past values are allowed and

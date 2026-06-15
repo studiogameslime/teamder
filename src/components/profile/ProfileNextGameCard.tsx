@@ -31,6 +31,7 @@ interface Props {
 const ACCENT = '#3B82F6';
 
 function formatLabel(f: GameFormat | undefined): string {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '6v6') return he.gameFormat6;
   if (f === '7v7') return he.gameFormat7;
   return he.gameFormat5;

@@ -25,6 +25,10 @@ interface Props {
   center: { lat: number; lng: number };
   zoom?: number;
   onMarkerPress?: (id: string) => void;
+  /** Fired when a numbered cluster is tapped, with the ids of every
+   *  marker inside it. Lets the host show a "these N are here" sheet
+   *  instead of a zoom that can't separate co-located pins. */
+  onClusterPress?: (ids: string[]) => void;
   /** When set (and changed), fly the map to this point. Used by the
    *  "focus on my city" button without reloading the whole map. */
   focusOn?: { lat: number; lng: number; zoom?: number } | null;
@@ -53,6 +57,7 @@ export function MapWebView({
   center,
   zoom = 11,
   onMarkerPress,
+  onClusterPress,
   focusOn,
   pickable = false,
   pin,
@@ -98,11 +103,18 @@ export function MapWebView({
       const msg = JSON.parse(e.nativeEvent.data) as {
         type?: string;
         id?: string;
+        ids?: string[];
         lat?: number;
         lng?: number;
       };
       if (msg.type === 'markerPress' && msg.id && onMarkerPress) {
         onMarkerPress(msg.id);
+      } else if (
+        msg.type === 'clusterPress' &&
+        Array.isArray(msg.ids) &&
+        onClusterPress
+      ) {
+        onClusterPress(msg.ids);
       } else if (
         msg.type === 'mapPress' &&
         typeof msg.lat === 'number' &&
@@ -266,9 +278,17 @@ function buildHtml(
         map.on('click', 'clusters', function (e) {
           var f = e.features && e.features[0];
           if (!f) return;
-          map.getSource('pts').getClusterExpansionZoom(f.properties.cluster_id, function (err, z) {
-            if (err) return;
-            map.easeTo({ center: f.geometry.coordinates, zoom: z });
+          var src = map.getSource('pts');
+          var cid = f.properties.cluster_id;
+          var count = f.properties.point_count || 100;
+          // List every marker in the cluster — the host shows them in a
+          // scrollable sheet. (Co-located pins, e.g. multiple communities
+          // in one city, never split on zoom, so a list is the only way
+          // to reach them.)
+          src.getClusterLeaves(cid, count, 0, function (err, leaves) {
+            if (err || !leaves) return;
+            var ids = leaves.map(function (l) { return l.properties.id; });
+            send({ type: 'clusterPress', ids: ids });
           });
         });
         ['point', 'clusters'].forEach(function (l) {

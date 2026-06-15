@@ -73,6 +73,7 @@ function ctaForGame(
 }
 
 function formatLabel(f: GameFormat | undefined): string | null {
+  if (f === '4v4') return he.gameFormat4;
   if (f === '5v5') return he.gameFormat5;
   if (f === '6v6') return he.gameFormat6;
   if (f === '7v7') return he.gameFormat7;
@@ -152,6 +153,10 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
     <PressableScale
       onPress={openDetails}
       style={styles.card}
+      // No press-in haptic: list cards fire it as soon as a finger lands,
+      // so a scroll gesture that starts on a card buzzed on every drag
+      // (feedback: "לבטל רטט בגלילה במסך המשחקים").
+      haptic={false}
       accessibilityRole="button"
       accessibilityLabel={game.title}
     >

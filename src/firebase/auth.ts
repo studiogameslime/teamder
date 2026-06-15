@@ -18,7 +18,13 @@ import * as Crypto from 'expo-crypto';
 import {
   GoogleAuthProvider,
   OAuthProvider,
+  EmailAuthProvider,
   signInWithCredential,
+  signInWithEmailAndPassword as fbSignInWithEmailAndPassword,
+  createUserWithEmailAndPassword as fbCreateUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   reauthenticateWithCredential,
@@ -116,6 +122,115 @@ export async function signInWithGoogle(): Promise<FirebaseUser> {
     }
     const code = e.code ?? 'unknown';
     throw new Error(`ההתחברות ל-Firebase נכשלה (${code})`);
+  }
+}
+
+// ─── Email + password ─────────────────────────────────────────────────────
+//
+// A third sign-in option alongside Google/Apple. Same downstream identity
+// (a Firebase Auth user → a /users/{uid} doc), so everything past sign-in is
+// provider-agnostic. We send a verification email but DON'T block usage on it
+// (verification only proves inbox control, not that the address is "real").
+
+/** Thrown by `signUpWithEmail` when the address is already registered via a
+ *  social provider — the caller surfaces "use Google/Apple instead". */
+export class EmailRegisteredWithProviderError extends Error {
+  provider: 'google' | 'apple';
+  constructor(provider: 'google' | 'apple') {
+    super(`email already registered with ${provider}`);
+    this.name = 'EmailRegisteredWithProviderError';
+    this.provider = provider;
+  }
+}
+
+export async function signInWithEmail(
+  email: string,
+  password: string,
+): Promise<FirebaseUser> {
+  if (USE_MOCK_DATA) throw new Error('signInWithEmail: USE_MOCK_DATA is true');
+  const { auth } = getFirebase();
+  const cred = await fbSignInWithEmailAndPassword(auth, email.trim(), password);
+  // Mirror into native auth so the home widget + Wear watch get an
+  // authenticated session to write the timer with (same as Google/Apple).
+  mirrorEmailToNativeAuth(email.trim(), password);
+  return cred.user;
+}
+
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+): Promise<FirebaseUser> {
+  if (USE_MOCK_DATA) throw new Error('signUpWithEmail: USE_MOCK_DATA is true');
+  const { auth } = getFirebase();
+  const trimmed = email.trim();
+  try {
+    const cred = await fbCreateUserWithEmailAndPassword(auth, trimmed, password);
+    // Best-effort verification email — never block the sign-up on it.
+    sendEmailVerification(cred.user).catch((e) => {
+      if (__DEV__) console.warn('[auth] sendEmailVerification failed', e);
+    });
+    mirrorEmailToNativeAuth(trimmed, password);
+    return cred.user;
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? '';
+    // Collision: this address is already a Firebase account. If it belongs to
+    // a social provider, the user has no password to sign in with — guide
+    // them to the right button instead of a dead "email in use" error.
+    if (code === 'auth/email-already-in-use') {
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, trimmed);
+        if (methods.includes('google.com')) {
+          throw new EmailRegisteredWithProviderError('google');
+        }
+        if (methods.includes('apple.com')) {
+          throw new EmailRegisteredWithProviderError('apple');
+        }
+      } catch (inner) {
+        if (inner instanceof EmailRegisteredWithProviderError) throw inner;
+        // fetch failed — fall through to the generic error below.
+      }
+    }
+    throw err;
+  }
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { auth } = getFirebase();
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+/** The current user's primary sign-in provider — drives provider-specific
+ *  flows (e.g. which credential to use when re-auth is required for account
+ *  deletion). */
+export function currentAuthProviderId():
+  | 'google.com'
+  | 'apple.com'
+  | 'password'
+  | null {
+  if (USE_MOCK_DATA) return null;
+  const user = getFirebase().auth.currentUser;
+  const pid = user?.providerData?.[0]?.providerId;
+  if (pid === 'google.com' || pid === 'apple.com' || pid === 'password') {
+    return pid;
+  }
+  return null;
+}
+
+/** Mirror an email/password sign-in into the NATIVE Firebase Auth session so
+ *  the home widget + Wear relay can control the timer. Best-effort. */
+function mirrorEmailToNativeAuth(email: string, password: string): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const rnAuth = require('@react-native-firebase/auth').default;
+    rnAuth()
+      .signInWithEmailAndPassword(email, password)
+      .catch((e: unknown) => {
+        if (__DEV__) console.warn('[auth] native email mirror failed', e);
+      });
+  } catch (e) {
+    if (__DEV__) console.warn('[auth] native-auth module unavailable', e);
   }
 }
 
@@ -324,13 +439,30 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
   });
 }
 
+/** Thrown by `deleteCurrentFirebaseUser` when an email/password user needs to
+ *  re-enter their password to confirm deletion (Firebase requires a fresh
+ *  login). The caller prompts for the password and retries with it. */
+export class NeedsPasswordReauthError extends Error {
+  constructor() {
+    super('needs password reauth');
+    this.name = 'NeedsPasswordReauthError';
+  }
+}
+
 /**
  * Delete the currently signed-in Firebase Auth user. If Auth requires a
- * fresh login (the default after ~1h), we re-authenticate silently via
- * Google and retry once. Throws on cancellation or any other error so
- * the caller can surface a Hebrew message.
+ * fresh login (the default after ~1h), we re-authenticate and retry once —
+ * via Google for Google users, or via the supplied `password` for
+ * email/password users. Throws on cancellation or any other error so the
+ * caller can surface a Hebrew message.
+ *
+ * @param password Re-auth password for email/password accounts. When the
+ *   account needs re-auth and no password is given, throws
+ *   `NeedsPasswordReauthError` so the UI can prompt and retry.
  */
-export async function deleteCurrentFirebaseUser(): Promise<void> {
+export async function deleteCurrentFirebaseUser(
+  password?: string,
+): Promise<void> {
   if (USE_MOCK_DATA) return;
   const { auth } = getFirebase();
   const user = auth.currentUser;
@@ -340,6 +472,20 @@ export async function deleteCurrentFirebaseUser(): Promise<void> {
   } catch (e: any) {
     logError('deleteAccount', e, { code: e?.code });
     if (e?.code !== 'auth/requires-recent-login') throw e;
+
+    // Email/password accounts re-auth with the password (re-prompted by the
+    // UI), NOT with the Google picker.
+    if (currentAuthProviderId() === 'password') {
+      if (!password) throw new NeedsPasswordReauthError();
+      const email = user.email;
+      if (!email) throw new Error('reauth: account has no email');
+      const credential = EmailAuthProvider.credential(email, password);
+      const fresh = getFirebase().auth.currentUser ?? user;
+      await reauthenticateWithCredential(fresh, credential);
+      await deleteUser(getFirebase().auth.currentUser ?? fresh);
+      return;
+    }
+
     if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw e;
     ensureGoogleConfigured();
     await GoogleSignin.signOut().catch(() => {});

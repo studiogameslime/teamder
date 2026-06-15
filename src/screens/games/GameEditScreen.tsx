@@ -170,7 +170,13 @@ export function GameEditScreen() {
   const submit = async (v: GameFormValues) => {
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
     const playersPerTeam =
-      v.format === '6v6' ? 6 : v.format === '7v7' ? 7 : 5;
+      v.format === '4v4'
+        ? 4
+        : v.format === '6v6'
+          ? 6
+          : v.format === '7v7'
+            ? 7
+            : 5;
     const newMaxPlayers = playersPerTeam * v.numberOfTeams;
     // Block lowering capacity below what's already registered. Counts
     // players + guests + pending (anyone currently holding a slot or
