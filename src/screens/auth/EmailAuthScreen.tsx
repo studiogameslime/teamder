@@ -44,12 +44,19 @@ export function EmailAuthScreen() {
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const isSignUp = mode === 'signUp';
   const emailOk = EMAIL_RE.test(email.trim());
   const passwordOk = password.length >= 6;
-  const canSubmit = emailOk && passwordOk && !busy;
+  // Sign-up requires the confirmation to match. Only flag a mismatch once
+  // the user has started typing the confirmation (avoids a premature error).
+  const passwordsMatch = password === confirmPassword;
+  const confirmError = isSignUp && confirmPassword.length > 0 && !passwordsMatch;
+  const canSubmit =
+    emailOk && passwordOk && (!isSignUp || passwordsMatch && confirmPassword.length > 0) && !busy;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -123,8 +130,6 @@ export function EmailAuthScreen() {
     }
   };
 
-  const isSignUp = mode === 'signUp';
-
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader
@@ -179,6 +184,48 @@ export function EmailAuthScreen() {
             </Pressable>
           </View>
 
+          {/* Sign-up only: re-enter the password to catch typos. Shares the
+              same show/hide eye state as the password above. */}
+          {isSignUp ? (
+            <>
+              <Text style={styles.label}>{he.emailAuthConfirmPasswordLabel}</Text>
+              <View style={styles.passwordRow}>
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder={he.emailAuthConfirmPasswordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="password-new"
+                  textContentType="newPassword"
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    confirmError && styles.inputError,
+                  ]}
+                  textAlign="right"
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  style={styles.eyeBtn}
+                  accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+              </View>
+              {confirmError ? (
+                <Text style={styles.errorText}>{he.emailAuthPasswordMismatch}</Text>
+              ) : null}
+            </>
+          ) : null}
+
           {!isSignUp ? (
             <Pressable onPress={onForgotPassword} hitSlop={8} style={styles.forgot}>
               <Text style={styles.forgotText}>{he.emailAuthForgot}</Text>
@@ -205,7 +252,10 @@ export function EmailAuthScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => setMode(isSignUp ? 'signIn' : 'signUp')}
+            onPress={() => {
+              setMode(isSignUp ? 'signIn' : 'signUp');
+              setConfirmPassword('');
+            }}
             hitSlop={8}
             style={styles.toggle}
           >
@@ -242,6 +292,13 @@ const styles = StyleSheet.create({
   },
   passwordRow: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingLeft: 44 },
+  inputError: { borderColor: colors.danger },
+  errorText: {
+    ...typography.caption,
+    color: colors.danger,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: -2,
+  },
   eyeBtn: {
     position: 'absolute',
     left: spacing.md,

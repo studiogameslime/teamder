@@ -31,6 +31,7 @@ export function DeleteAccountSheet({
 }: Props) {
   const [word, setWord] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const wordOk = word.trim() === he.profileDeleteAccountConfirmWord;
   const passwordOk = !requirePassword || password.length > 0;
   const armed = wordOk && passwordOk;
@@ -67,17 +68,31 @@ export function DeleteAccountSheet({
           {requirePassword ? (
             <>
               <Text style={styles.prompt}>{he.deleteAccountPasswordPrompt}</Text>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder={he.deleteAccountPasswordPlaceholder}
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={styles.input}
-                textAlign="right"
-              />
+              <View style={styles.passwordRow}>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={he.deleteAccountPasswordPlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={[styles.input, styles.passwordInput]}
+                  textAlign="right"
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  style={styles.eyeBtn}
+                  accessibilityLabel={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+              </View>
             </>
           ) : null}
 
@@ -148,6 +163,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   inputArmed: { borderColor: colors.danger },
+  passwordRow: { position: 'relative', justifyContent: 'center' },
+  passwordInput: { paddingLeft: 44, marginBottom: 0 },
+  eyeBtn: {
+    position: 'absolute',
+    left: spacing.md,
+    height: 48,
+    justifyContent: 'center',
+  },
   cancel: { alignSelf: 'center', paddingVertical: spacing.sm },
   cancelText: { ...typography.body, color: colors.textMuted, fontWeight: '700' },
 });

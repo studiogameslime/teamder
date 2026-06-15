@@ -2701,6 +2701,8 @@ async function applyVoteDelta(summaryRef, ratedUserId, countDelta, sumDelta) {
 const DEFAULT_AUTO_BALANCE_MINUTES = 60;
 const GUEST_ID_PREFIX = 'guest:';
 function perTeamSize(format) {
+    if (format === '4v4')
+        return 4;
     if (format === '6v6')
         return 6;
     if (format === '7v7')
@@ -4604,6 +4606,8 @@ async function runFindFillerCandidates() {
 const SHORTAGE_WINDOW_EARLIEST_MIN = 110;
 const SHORTAGE_WINDOW_LATEST_MIN = 130;
 function playersPerTeamForFormat(format) {
+    if (format === '4v4')
+        return 4;
     if (format === '6v6')
         return 6;
     if (format === '7v7')
