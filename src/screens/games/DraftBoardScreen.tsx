@@ -40,7 +40,7 @@ type Params = RouteProp<GameStackParamList, 'DraftBoard'>;
 
 export function DraftBoardScreen() {
   const nav = useNavigation<Nav>();
-  const { gameId, captainIds, method, resume, readOnly } =
+  const { gameId, captainIds, method, fillMode, resume, readOnly } =
     useRoute<Params>().params;
 
   const playersMap = useGameStore((s) => s.players);
@@ -187,6 +187,9 @@ export function DraftBoardScreen() {
         captainId: captainIds[t],
         playerIds: [captainIds[t], ...membersOf(t)],
       })),
+      // Preserve the fill mode across a re-draft: prefer the freshly-chosen
+      // value, else keep what's already saved on the game.
+      fillMode: fillMode ?? game?.draftTeams?.fillMode ?? 'temporary',
     };
     setSaving(true);
     try {

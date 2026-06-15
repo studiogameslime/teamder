@@ -56,6 +56,11 @@ import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isPlayedGame } from '@/utils/playedGames';
+import {
+  startRotation as runStartRotation,
+  recordWinner as runRecordWinner,
+  type RotationTeam,
+} from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
@@ -312,6 +317,12 @@ async function findOverlappingGameInGroup(
     title: c.title ?? '',
     startsAt: c.startsAt,
   };
+}
+
+/** On-field players per team for a game format (the live-rotation target
+ *  size each playing team is filled up to). Defaults to 5. */
+function playersPerTeamFor(format: GameFormat | undefined): number {
+  return format === '4v4' ? 4 : format === '6v6' ? 6 : format === '7v7' ? 7 : 5;
 }
 
 export const gameService = {
@@ -1977,6 +1988,85 @@ export const gameService = {
     }
     await updateGameDoc(gameId, {
       draftTeams: draft ?? null,
+      updatedAt: Date.now(),
+    });
+  },
+
+  // ─── Live "winner stays" rotation ──────────────────────────────────────
+  // Sits on top of draftTeams. All math is in the pure rotationEngine; these
+  // methods just load the game, run the engine, and persist rotation (+ the
+  // teams, which change under 'permanent' fill mode).
+
+  /** Begin the rotation: first two teams play (filled to full), rest wait.
+   *  No-op when there aren't two teams or not enough players for two full. */
+  async startRotation(gameId: string, _userId: string): Promise<void> {
+    if (!gameId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!g || !draft || draft.teams.length < 2) return;
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = draft.fillMode ?? 'temporary';
+    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const res = runStartRotation(teams, perTeam, fillMode);
+    if (!res) return; // gate: not enough players for two full teams
+    await this._persistRotation(gameId, draft, res);
+  },
+
+  /** Record the round result and rotate (winner stays, loser out, next in,
+   *  short incoming team auto-filled from the loser). `winner` is a team
+   *  index that's currently playing. */
+  async recordWinner(gameId: string, _userId: string, winner: number): Promise<void> {
+    if (!gameId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!g || !draft || !g.rotation) return;
+    if (!g.rotation.playing.includes(winner)) return;
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = draft.fillMode ?? 'temporary';
+    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const res = runRecordWinner(winner, teams, g.rotation, perTeam, fillMode);
+    await this._persistRotation(gameId, draft, res);
+  },
+
+  /** Clear the rotation (back to "not started"). */
+  async stopRotation(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) m.rotation = undefined;
+      return;
+    }
+    await updateGameDoc(gameId, { rotation: null, updatedAt: Date.now() });
+  },
+
+  /** Internal: write the engine result back (rotation + reassigned teams). */
+  async _persistRotation(
+    gameId: string,
+    draft: DraftTeamsResult,
+    res: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
+  ): Promise<void> {
+    const newDraft: DraftTeamsResult = {
+      ...draft,
+      teams: res.teams.map((rt) => {
+        const orig = draft.teams.find((t) => t.index === rt.index);
+        return {
+          index: rt.index,
+          captainId: orig?.captainId ?? rt.playerIds[0] ?? '',
+          playerIds: rt.playerIds,
+        };
+      }),
+    };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.rotation = res.rotation;
+        m.draftTeams = newDraft;
+      }
+      return;
+    }
+    await updateGameDoc(gameId, {
+      rotation: res.rotation,
+      draftTeams: newDraft,
       updatedAt: Date.now(),
     });
   },

@@ -1834,6 +1834,15 @@ export const he = {
   draftCaptainBadge: 'קפטן',
   draftOrderTitle: 'סדר בחירת שחקנים',
   draftOrderSubtitle: 'בחר את סדר החלוקה של השחקנים בין הקפטנים',
+  // Fill mode — how a borrowed player behaves when completing a short team
+  // in the live rotation.
+  draftFillModeTitle: 'השלמת קבוצה חסרה',
+  draftFillModeSubtitle:
+    'כשקבוצה לא מלאה עולה, האפליקציה משלימה אותה אוטומטית משחקן של הקבוצה שיצאה. מה קורה איתו אחרי?',
+  draftFillTemporaryTitle: 'השלמה זמנית',
+  draftFillTemporaryDesc: 'המשלים חוזר לקבוצה שלו כשהיא עולה שוב',
+  draftFillPermanentTitle: 'השלמה קבועה',
+  draftFillPermanentDesc: 'המשלים נשאר עם הקבוצה החדשה',
   draftSnakeLabel: 'סדר נחש (Snake Draft)',
   draftRegularLabel: 'סדר רגיל',
   draftRecommended: 'מומלץ',
