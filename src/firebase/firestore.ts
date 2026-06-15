@@ -734,6 +734,45 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
     createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
     teams,
+    fillMode: o.fillMode === 'permanent' ? 'permanent' : o.fillMode === 'temporary' ? 'temporary' : undefined,
+  };
+}
+
+function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const playing = Array.isArray(o.playing)
+    ? (o.playing.filter((x) => typeof x === 'number') as number[])
+    : [];
+  if (playing.length !== 2) return undefined;
+  const waiting = Array.isArray(o.waiting)
+    ? (o.waiting.filter((x) => typeof x === 'number') as number[])
+    : [];
+  const loans = Array.isArray(o.loans)
+    ? o.loans
+        .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
+        .map((l) => ({
+          playerId: typeof l.playerId === 'string' ? l.playerId : '',
+          homeTeam: typeof l.homeTeam === 'number' ? l.homeTeam : 0,
+          filledTeam: typeof l.filledTeam === 'number' ? l.filledTeam : 0,
+        }))
+        .filter((l) => l.playerId)
+    : [];
+  const wins =
+    o.wins && typeof o.wins === 'object'
+      ? Object.fromEntries(
+          Object.entries(o.wins as Record<string, unknown>).filter(
+            ([, n]) => typeof n === 'number',
+          ),
+        ) as Record<string, number>
+      : undefined;
+  return {
+    playing: [playing[0], playing[1]],
+    waiting,
+    loans,
+    wins,
+    round: typeof o.round === 'number' ? o.round : undefined,
+    updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };
 }
 
@@ -808,6 +847,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : null,
       liveMatch: g.liveMatch ?? null,
       draftTeams: g.draftTeams ?? null,
+      rotation: g.rotation ?? null,
       reminderSent: g.reminderSent ?? false,
       rateReminderSent: g.rateReminderSent ?? false,
       capacityNoticeSent: g.capacityNoticeSent ?? false,
@@ -988,6 +1028,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       draftTeams: readDraftTeams(d.draftTeams),
+      rotation: readRotation(d.rotation),
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
       capacityNoticeSent: d.capacityNoticeSent === true,

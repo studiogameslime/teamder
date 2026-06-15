@@ -887,12 +887,49 @@ export interface DraftTeam {
   /** All members, captain first, then players in the order they were picked. */
   playerIds: UserId[];
 }
+/** How a borrowed filler behaves when a short team is completed during the
+ *  live rotation. 'temporary' = the filler returns to their home team the
+ *  next time it comes on; 'permanent' = the filler stays with the team they
+ *  completed (rosters reshape over the evening). Chosen on the draft screen. */
+export type FillMode = 'temporary' | 'permanent';
+
 export interface DraftTeamsResult {
   method: 'snake' | 'regular';
   numTeams: number;
   createdAt: number;
   createdBy: UserId;
   teams: DraftTeam[];
+  /** Live-rotation fill behaviour. Defaults to 'temporary' when absent. */
+  fillMode?: FillMode;
+}
+
+/** A player currently completing a team that isn't their own. */
+export interface RotationLoan {
+  playerId: UserId;
+  /** The team the player actually belongs to (DraftTeam.index). */
+  homeTeam: number;
+  /** The team they're currently filling in for. */
+  filledTeam: number;
+}
+
+/**
+ * Live "winner stays" rotation state on top of `draftTeams`. Two teams play;
+ * the rest wait in a queue. A round can only start when both playing teams
+ * are FULL (per-team size = playersPerTeam) — a short incoming team is
+ * completed by borrowing random players from the team that just lost.
+ */
+export interface MatchRotation {
+  /** The two team indices on the field right now. */
+  playing: [number, number];
+  /** Team indices waiting to come on; front = next up. */
+  waiting: number[];
+  /** Fillers currently on a team that isn't their home. */
+  loans: RotationLoan[];
+  /** Wins per team index this session. */
+  wins?: Record<string, number>;
+  /** 1-based round counter. */
+  round?: number;
+  updatedAt?: number;
 }
 
 export interface MatchRound {
@@ -1100,6 +1137,11 @@ export interface Game {
 
   /** Captain-draft team split (חלוקת כוחות), set by the manager. */
   draftTeams?: DraftTeamsResult;
+
+  /** Live "winner stays" rotation over `draftTeams` — which two teams play,
+   *  who's waiting, and any borrowed fillers. Absent until the manager
+   *  starts the rotation. */
+  rotation?: MatchRotation;
 
   /**
    * ms epoch — the moment when this game's registration officially
