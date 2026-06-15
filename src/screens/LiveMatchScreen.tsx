@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -46,8 +47,9 @@ import {
 } from '@/services/gameLifecycle';
 import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
+import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState } from '@/types';
+import { Game, LiveMatchState, TimerEvent } from '@/types';
 import { he } from '@/i18n/he';
 import { colors } from '@/theme';
 import { useUserStore } from '@/store/userStore';
@@ -60,6 +62,74 @@ function formatTime(ms: number): string {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/** Time-of-day HH:MM for a stoppage-log row. */
+function formatClock(at: number): string {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(
+    d.getMinutes(),
+  ).padStart(2, '0')}`;
+}
+
+interface StoppageRow {
+  type: 'start' | 'resume' | 'pause';
+  at: number;
+  byName?: string | null;
+  /** For 'pause': how long the clock ran since the previous start/resume. */
+  ranForMs?: number;
+  /** For 'resume': how long the clock was stopped since the previous pause. */
+  stoppedForMs?: number;
+}
+
+/**
+ * Turn the synced `timerEvents` log into displayable rows + totals. All
+ * durations come from the events' shared-clock timestamps, so every device
+ * shows identical numbers — the whole point (settling "the clock kept
+ * running!" arguments). `nowMs` (server-time) drives the still-ongoing
+ * stoppage when the match is currently paused.
+ */
+function buildStoppages(
+  events: TimerEvent[] | undefined,
+  nowMs: number,
+): {
+  rows: StoppageRow[];
+  totalStoppedMs: number;
+  ongoingStoppedMs: number;
+  stopCount: number;
+} {
+  const rows: StoppageRow[] = [];
+  if (!events || events.length === 0) {
+    return { rows, totalStoppedMs: 0, ongoingStoppedMs: 0, stopCount: 0 };
+  }
+  const sorted = [...events].sort((a, b) => a.at - b.at);
+  let lastRunStart: number | null = null;
+  let lastPauseAt: number | null = null;
+  let totalStoppedMs = 0;
+  let stopCount = 0;
+  for (const e of sorted) {
+    if (e.type === 'start') {
+      rows.push({ type: 'start', at: e.at, byName: e.byName });
+      lastRunStart = e.at;
+      lastPauseAt = null;
+    } else if (e.type === 'resume') {
+      const stoppedForMs = lastPauseAt != null ? Math.max(0, e.at - lastPauseAt) : 0;
+      totalStoppedMs += stoppedForMs;
+      rows.push({ type: 'resume', at: e.at, byName: e.byName, stoppedForMs });
+      lastRunStart = e.at;
+      lastPauseAt = null;
+    } else if (e.type === 'pause') {
+      const ranForMs = lastRunStart != null ? Math.max(0, e.at - lastRunStart) : 0;
+      rows.push({ type: 'pause', at: e.at, byName: e.byName, ranForMs });
+      lastPauseAt = e.at;
+      lastRunStart = null;
+      stopCount += 1;
+    }
+  }
+  // Still paused right now → count the open stoppage as it grows.
+  const ongoingStoppedMs =
+    lastPauseAt != null ? Math.max(0, nowMs - lastPauseAt) : 0;
+  return { rows, totalStoppedMs, ongoingStoppedMs, stopCount };
 }
 
 type Params = RouteProp<GameStackParamList, 'LiveMatch'>;
@@ -79,6 +149,14 @@ export function LiveMatchScreen() {
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [stoppagesOpen, setStoppagesOpen] = useState(false);
+  // 1s ticker so the still-ongoing stoppage duration counts up while paused
+  // (the synced-timer hook only ticks while RUNNING).
+  const [nowTick, setNowTick] = useState(() => serverNow());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(serverNow()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Synced clock — derived from the three `liveMatch.timer*` primitives.
   const timerView = useSyncedTimer(live);
@@ -102,6 +180,10 @@ export function LiveMatchScreen() {
   const inLastMinute =
     timerRunning && totalMs > 0 && !inOvertime && remainingMs <= 60_000;
   const danger = inOvertime || inLastMinute;
+
+  // Synced stoppages log — drives the "history of stops/resumes" chip + sheet.
+  const stoppages = buildStoppages(live?.timerEvents, nowTick);
+  const totalStoppedMs = stoppages.totalStoppedMs + stoppages.ongoingStoppedMs;
 
   // ─── Load the game once + lifecycle guard ──────────────────────────────
   useEffect(() => {
@@ -439,6 +521,22 @@ export function LiveMatchScreen() {
             </Text>
           </View>
         ) : null}
+        {/* Stoppages summary — tap to see the full synced history. Shown
+            once the timer's been started (so disputes have a record). */}
+        {timerStarted ? (
+          <Pressable
+            style={styles.stoppagesChip}
+            onPress={() => setStoppagesOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={he.liveStoppagesTitle}
+          >
+            <Ionicons name="time-outline" size={15} color="#475569" />
+            <Text style={styles.stoppagesChipText}>
+              {he.liveStoppagesSummary(stoppages.stopCount, formatTime(totalStoppedMs))}
+            </Text>
+            <Ionicons name="chevron-back" size={14} color="#94A3B8" />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Controls */}
@@ -497,6 +595,98 @@ export function LiveMatchScreen() {
           <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
         )}
       </View>
+
+      {/* Stoppages history — the synced log of every start / pause / resume
+          so players can see exactly when (and for how long) the clock was
+          stopped. */}
+      <Modal
+        visible={stoppagesOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setStoppagesOpen(false)}
+      >
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setStoppagesOpen(false)}
+        />
+        <View style={styles.stoppagesSheet}>
+          <View style={styles.stoppagesHandle} />
+          <Text style={styles.stoppagesTitle}>{he.liveStoppagesTitle}</Text>
+          <Text style={styles.stoppagesTotal}>
+            {he.liveStoppagesTotal(formatTime(totalStoppedMs))}
+          </Text>
+          {stoppages.rows.length === 0 ? (
+            <Text style={styles.stoppagesEmpty}>{he.liveStoppagesEmpty}</Text>
+          ) : (
+            <ScrollView
+              style={styles.stoppagesList}
+              contentContainerStyle={{ paddingBottom: 24 }}
+            >
+              {stoppages.rows.map((r, i) => {
+                const isPause = r.type === 'pause';
+                const isResume = r.type === 'resume';
+                const label = isPause
+                  ? he.liveStoppagePaused
+                  : isResume
+                    ? he.liveStoppageResumed
+                    : he.liveStoppageStarted;
+                const sub = isPause
+                  ? he.liveStoppageRanFor(formatTime(r.ranForMs ?? 0))
+                  : isResume
+                    ? he.liveStoppageStoppedFor(formatTime(r.stoppedForMs ?? 0))
+                    : '';
+                return (
+                  <View key={`${r.at}-${i}`} style={styles.stoppageRow}>
+                    <View
+                      style={[
+                        styles.stoppageIcon,
+                        isPause ? styles.stoppageIconPause : styles.stoppageIconPlay,
+                      ]}
+                    >
+                      <Ionicons
+                        name={isPause ? 'pause' : 'play'}
+                        size={13}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    <View style={styles.stoppageBody}>
+                      <Text style={styles.stoppageLabel}>
+                        {label}
+                        {r.byName ? (
+                          <Text style={styles.stoppageBy}> · {r.byName}</Text>
+                        ) : null}
+                      </Text>
+                      {sub ? <Text style={styles.stoppageSub}>{sub}</Text> : null}
+                    </View>
+                    <Text style={styles.stoppageClock}>{formatClock(r.at)}</Text>
+                  </View>
+                );
+              })}
+              {/* Currently paused → show the open stoppage ticking up. */}
+              {stoppages.ongoingStoppedMs > 0 && !timerRunning ? (
+                <View style={styles.stoppageRow}>
+                  <View style={[styles.stoppageIcon, styles.stoppageIconPause]}>
+                    <Ionicons name="hourglass" size={13} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.stoppageBody}>
+                    <Text style={[styles.stoppageLabel, styles.stoppageOngoing]}>
+                      {he.liveStoppageStoppedNow(
+                        formatTime(stoppages.ongoingStoppedMs),
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </ScrollView>
+          )}
+          <Pressable
+            style={styles.stoppagesClose}
+            onPress={() => setStoppagesOpen(false)}
+          >
+            <Text style={styles.stoppagesCloseText}>{he.close}</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       {/* End-game confirm */}
       <Modal
@@ -694,6 +884,101 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontWeight: '700',
   },
+  stoppagesChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  stoppagesChipText: { fontSize: 13, color: '#475569', fontWeight: '700' },
+  stoppagesSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '70%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  stoppagesHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  stoppagesTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'right',
+  },
+  stoppagesTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1D4ED8',
+    textAlign: 'right',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  stoppagesEmpty: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  stoppagesList: { alignSelf: 'stretch' },
+  stoppageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1F5F9',
+  },
+  stoppageIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stoppageIconPlay: { backgroundColor: '#16A34A' },
+  stoppageIconPause: { backgroundColor: '#EA580C' },
+  stoppageBody: { flex: 1 },
+  stoppageLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'right',
+  },
+  stoppageBy: { fontWeight: '500', color: '#94A3B8' },
+  stoppageSub: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'right',
+    marginTop: 1,
+  },
+  stoppageOngoing: { color: '#EA580C' },
+  stoppageClock: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  stoppagesClose: {
+    marginTop: 14,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  stoppagesCloseText: { fontSize: 15, fontWeight: '700', color: '#1D4ED8' },
   controls: {
     paddingHorizontal: 20,
     paddingBottom: 16,

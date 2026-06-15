@@ -1485,8 +1485,28 @@ export interface LiveMatchState {
    *  neither field. */
   timerControlledByName?: string | null;
 
+  /**
+   * Chronological, synced log of every timer control press — drives the
+   * "stoppages history" on the live screen so players can settle disputes
+   * ("the clock kept running after the foul!"). Each entry is stamped in
+   * the SHARED server-time base (`serverNow()`) so durations are identical
+   * on every device. Cleared on reset. Kept small (one entry per press).
+   */
+  timerEvents?: TimerEvent[];
+
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */
   updatedAt?: number;
+}
+
+/** One timer control press in `LiveMatchState.timerEvents`. */
+export interface TimerEvent {
+  /** 'start' = first press from 00:00; 'resume' = play after a pause;
+   *  'pause' = stop. (Reset clears the whole log instead of logging.) */
+  type: 'start' | 'resume' | 'pause';
+  /** Server-time epoch (ms) of the press. */
+  at: number;
+  /** Denormalised name of whoever pressed — shown in the history row. */
+  byName?: string | null;
 }
 
 // ─── Legacy types kept for compatibility ──────────────────────────────────

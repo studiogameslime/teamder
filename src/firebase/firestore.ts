@@ -585,6 +585,25 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
       typeof o.timerControlledByName === 'string'
         ? o.timerControlledByName
         : undefined,
+    // Stoppages log — without this pass the array gets stripped on every
+    // listener tick and the history would flicker empty.
+    timerEvents: Array.isArray(o.timerEvents)
+      ? (o.timerEvents
+          .filter(
+            (e): e is { type: unknown; at: unknown; byName?: unknown } =>
+              !!e && typeof e === 'object',
+          )
+          .map((e) => ({
+            type: e.type,
+            at: typeof e.at === 'number' ? e.at : 0,
+            byName: typeof e.byName === 'string' ? e.byName : null,
+          }))
+          .filter(
+            (e) =>
+              (e.type === 'start' || e.type === 'resume' || e.type === 'pause') &&
+              e.at > 0,
+          ) as LiveMatchState['timerEvents'])
+      : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
     startedAt: typeof o.startedAt === 'number' ? o.startedAt : undefined,
   };

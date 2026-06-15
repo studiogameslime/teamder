@@ -15,6 +15,7 @@
 
 import {
   addDoc,
+  arrayUnion,
   deleteDoc,
   doc,
   getDoc,
@@ -4197,6 +4198,9 @@ export const gameService = {
       if (!g || g.status === 'finished' || g.status === 'cancelled') return;
       const prev = g.liveMatch;
       if (!prev || prev.timerRunning) return;
+      const isFirstStart =
+        (prev.timerAccumulatedMs ?? 0) === 0 &&
+        !(prev.timerEvents && prev.timerEvents.length);
       g.liveMatch = {
         ...prev,
         timerRunning: true,
@@ -4204,6 +4208,10 @@ export const gameService = {
         timerAccumulatedMs: prev.timerAccumulatedMs ?? 0,
         timerControlledBy: userId,
         timerControlledByName: userName,
+        timerEvents: [
+          ...(prev.timerEvents ?? []),
+          { type: isFirstStart ? 'start' : 'resume', at: Date.now(), byName: userName },
+        ],
       };
       g.updatedAt = Date.now();
       return;
@@ -4215,6 +4223,11 @@ export const gameService = {
       if (cur.status === 'finished' || cur.status === 'cancelled') return;
       // Already running — second admin pressing play is a no-op.
       if (cur.liveMatch.timerRunning) return;
+      // First press from 00:00 logs as 'start'; a press after a pause logs
+      // as 'resume' (drives the stoppages history).
+      const isFirstStart =
+        (cur.liveMatch.timerAccumulatedMs ?? 0) === 0 &&
+        !(cur.liveMatch.timerEvents && cur.liveMatch.timerEvents.length);
       // Field-path write: touch only the timer fields (not the whole
       // liveMatch object) so the write is small, fast to fan out, and gets
       // Firestore's local latency-compensation (the presser sees it
@@ -4228,6 +4241,11 @@ export const gameService = {
         'liveMatch.timerAccumulatedMs': cur.liveMatch.timerAccumulatedMs ?? 0,
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
+        'liveMatch.timerEvents': arrayUnion({
+          type: isFirstStart ? 'start' : 'resume',
+          at: serverNow(),
+          byName: userName,
+        }),
         updatedAt: serverNow(),
       });
     } catch (err) {
@@ -4261,6 +4279,10 @@ export const gameService = {
         timerAccumulatedMs: (prev.timerAccumulatedMs ?? 0) + Math.max(0, extra),
         timerControlledBy: userId,
         timerControlledByName: userName,
+        timerEvents: [
+          ...(prev.timerEvents ?? []),
+          { type: 'pause', at: Date.now(), byName: userName },
+        ],
       };
       g.updatedAt = Date.now();
       return;
@@ -4285,6 +4307,11 @@ export const gameService = {
           (cur.liveMatch.timerAccumulatedMs ?? 0) + Math.max(0, extra),
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
+        'liveMatch.timerEvents': arrayUnion({
+          type: 'pause',
+          at: serverNow(),
+          byName: userName,
+        }),
         updatedAt: serverNow(),
       });
     } catch (err) {
@@ -4318,6 +4345,7 @@ export const gameService = {
         timerAccumulatedMs: 0,
         timerControlledBy: userId,
         timerControlledByName: userName,
+        timerEvents: [],
       };
       g.updatedAt = Date.now();
       return;
@@ -4333,6 +4361,7 @@ export const gameService = {
         'liveMatch.timerAccumulatedMs': 0,
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
+        'liveMatch.timerEvents': [],
         updatedAt: serverNow(),
       });
     } catch (err) {

@@ -259,7 +259,20 @@ export const he = {
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',
   liveTimerResetConfirmTitle: 'לאפס את הטיימר?',
-  liveTimerResetConfirmBody: 'השעון יחזור לאפס. אי אפשר לבטל.',
+  liveTimerResetConfirmBody: 'השעון יחזור לאפס. היומן יתאפס גם הוא. אי אפשר לבטל.',
+  // Stoppages log — synced history of every start / pause / resume so
+  // players can settle "the clock kept running!" arguments.
+  liveStoppagesTitle: 'יומן עצירות',
+  liveStoppagesSummary: (count: number, total: string) =>
+    count === 0 ? 'יומן זמנים' : `${count} עצירות · עצור ${total}`,
+  liveStoppagesTotal: (total: string) => `סה״כ זמן עצור: ${total}`,
+  liveStoppagesEmpty: 'עוד לא היו עצירות',
+  liveStoppageStarted: 'המשחק התחיל',
+  liveStoppagePaused: 'הופסק',
+  liveStoppageResumed: 'חודש',
+  liveStoppageRanFor: (dur: string) => `שוחק ${dur}`,
+  liveStoppageStoppedFor: (dur: string) => `היה עצור ${dur}`,
+  liveStoppageStoppedNow: (dur: string) => `עצור כעת · ${dur}`,
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
