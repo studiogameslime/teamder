@@ -535,15 +535,18 @@ export function BannerAd(): React.ReactElement | null {
   // the screen content fills the space instead of leaving an empty gap.
   // In DEBUG_VISIBLE mode we keep the slot + label for diagnosing.
   if (failed && !DEBUG_VISIBLE) return null;
-  // Wrapper stays mounted while loading / in debug mode. `minHeight`
-  // reserves space only then; a confirmed failure already returned null
-  // above, so a 0-fill no longer collapses *into* dead space.
+  // No reserved height in production: the wrapper hugs the native banner,
+  // which is 0-high until an ad actually loads (then grows to ~50px). This
+  // is what keeps screens (e.g. the chat input) flush against the bottom /
+  // keyboard whenever there's no banner — disabled, loading, or no-fill —
+  // instead of leaving an empty white strip. (DEBUG_VISIBLE keeps a 60px
+  // slot so the diagnostic label has somewhere to render.)
   return React.createElement(
     View,
     {
       style: {
         width: '100%',
-        minHeight: 60,
+        ...(DEBUG_VISIBLE ? { minHeight: 60 } : null),
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'transparent',

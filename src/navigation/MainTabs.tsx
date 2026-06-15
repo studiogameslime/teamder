@@ -85,6 +85,10 @@ export function MainTabs() {
       tabBar={(props) => <TabBarWithBanner {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Slide the whole bottom bar (banner + tabs) away when the keyboard
+        // opens — so a chat input sits flush on the keyboard instead of
+        // floating above the bar / an empty banner strip.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
