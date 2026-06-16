@@ -47,10 +47,7 @@ export function TeamScore({
     return (
       <View style={styles.listCol}>
         <View style={styles.headerRow}>
-          <View style={styles.nameStack}>
-            <Text style={styles.name}>{teamName(teamIdx)}</Text>
-            <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
-          </View>
+          <Text style={styles.nameOnly}>{teamName(teamIdx)}</Text>
           <View style={styles.winsBox}>
             <Text style={styles.winsNum}>{wins}</Text>
             <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
@@ -159,7 +156,14 @@ const styles = StyleSheet.create({
   },
   winsNum: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, fontVariant: ['tabular-nums'] },
   winsLabel: { fontSize: 10, fontWeight: '700', color: '#64748B' },
-  nameStack: { flex: 1, minWidth: 0, gap: 1, alignItems: 'stretch' },
+  nameOnly: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 18,
+    fontWeight: '800',
+    color: TEAM_BLUE,
+    textAlign: 'right',
+  },
   list: { gap: 6 },
   playerRow: {
     flexDirection: 'row',
