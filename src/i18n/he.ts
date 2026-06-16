@@ -287,6 +287,7 @@ export const he = {
   rotationWaiting: 'ממתינות',
   // Scoreboard redesign
   rotationStreak: (n: number) => (n === 1 ? 'ניצחון רצוף' : `${n} ניצחונות רצוף`),
+  rotationWinsLabel: 'ניצחונות',
   rotationActiveBadge: 'משחק פעיל עכשיו',
   rotationWaitingTeams: 'קבוצות ממתינות',
   rotationNextUp: 'הבאה בתור',

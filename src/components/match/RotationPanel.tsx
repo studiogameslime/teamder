@@ -60,11 +60,11 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" singleRow />
+              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" variant="list" />
             </View>
             <View style={styles.divider} />
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" singleRow />
+              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" variant="list" />
             </View>
           </View>
           {fillers.length > 0 ? (

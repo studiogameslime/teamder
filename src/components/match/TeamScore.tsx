@@ -1,7 +1,9 @@
-// One team's "scoreboard" block: gold trophies + team name + a blue
-// "win streak" pill, the player count, and the roster. Two layouts:
-//   • singleRow (live scoreboard) — one clean avatar row, no names.
-//   • grid (winner picker / roster peek) — 3-up avatars with names.
+// One team's "scoreboard" block. Two layouts:
+//   • variant="list" (live scoreboard) — a wins box on the outer edge + the
+//     team name/count, then a numbered roster list (rank · name · avatar),
+//     mirrored so avatars sit on the outer edge and ranks toward the divider.
+//   • variant="grid" (winner picker / roster peek) — trophies + streak pill +
+//     a 3-up avatar grid with names.
 // A blue star badge marks a borrowed filler. Shared by both surfaces.
 
 import React from 'react';
@@ -20,8 +22,7 @@ interface Props {
   wins: number;
   align: 'right' | 'left';
   avatarSize?: number;
-  /** Live scoreboard: one centered avatar row + player count, no names. */
-  singleRow?: boolean;
+  variant?: 'list' | 'grid';
 }
 
 export function TeamScore({
@@ -30,11 +31,78 @@ export function TeamScore({
   wins,
   align,
   avatarSize,
-  singleRow = false,
+  variant = 'grid',
 }: Props) {
-  const size = avatarSize ?? (singleRow ? 28 : 40);
+  const right = align === 'right';
+
+  const star = (
+    <View style={styles.star}>
+      <Ionicons name="star" size={11} color="#FFFFFF" />
+    </View>
+  );
+
+  // ─── List layout (live scoreboard) ──────────────────────────────────────
+  if (variant === 'list') {
+    const size = avatarSize ?? 36;
+    const winsBox = (
+      <View style={styles.winsBox}>
+        <Text style={styles.winsNum}>{wins}</Text>
+        <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
+      </View>
+    );
+    const nameStack = (
+      <View style={styles.nameStack}>
+        <Text style={styles.name}>{teamName(teamIdx)}</Text>
+        <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
+      </View>
+    );
+    return (
+      <View style={styles.listCol}>
+        <View style={styles.headerRow}>
+          {right ? winsBox : nameStack}
+          {right ? nameStack : winsBox}
+        </View>
+        <View style={styles.list}>
+          {roster.map((m, i) => {
+            const avatar = (
+              <View>
+                <UserAvatar
+                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                  size={size}
+                  ring
+                />
+                {m.isFiller ? star : null}
+              </View>
+            );
+            const rank = (
+              <View style={styles.rank}>
+                <Text style={styles.rankText}>{i + 1}</Text>
+              </View>
+            );
+            const name = (
+              <Text
+                style={[styles.playerName, { textAlign: right ? 'right' : 'left' }]}
+                numberOfLines={1}
+              >
+                {m.name}
+              </Text>
+            );
+            return (
+              <View key={m.id} style={styles.playerRow}>
+                {right ? avatar : rank}
+                {name}
+                {right ? rank : avatar}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Grid layout (winner picker / roster peek) ──────────────────────────
+  const size = avatarSize ?? 40;
   const trophyCount = Math.min(Math.max(wins, 0), 3);
-  // Trophies on the inner side (toward the divider) so the two teams mirror.
   const trophyFirst = align === 'left';
   const trophies =
     trophyCount > 0 ? (
@@ -44,19 +112,10 @@ export function TeamScore({
         ))}
       </View>
     ) : null;
-
-  const Star = (
-    <View style={styles.star}>
-      <Ionicons name="star" size={11} color="#FFFFFF" />
-    </View>
-  );
-
   return (
-    <View style={styles.col}>
-      {/* Fixed-height header so both teams' rosters start at the same Y even
-          when only one team has a win-streak pill. */}
-      <View style={styles.headerBlock}>
-        <View style={styles.headRow}>
+    <View style={styles.gridCol}>
+      <View style={styles.gridHeader}>
+        <View style={styles.gridHeadRow}>
           {trophyFirst ? trophies : null}
           <Text style={styles.name}>{teamName(teamIdx)}</Text>
           {trophyFirst ? null : trophies}
@@ -67,85 +126,31 @@ export function TeamScore({
           </View>
         ) : null}
       </View>
-
-      {singleRow ? (
-        <>
-          <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
-          <View style={styles.rowAvatars}>
-            {roster.map((m) => (
-              <View key={m.id} style={styles.rowAvatarWrap}>
-                <UserAvatar
-                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                  size={size}
-                  ring
-                />
-                {m.isFiller ? Star : null}
-              </View>
-            ))}
-          </View>
-        </>
-      ) : (
-        <View style={styles.grid}>
-          {roster.map((m) => (
-            <View key={m.id} style={styles.cell}>
-              <View>
-                <UserAvatar
-                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                  size={size}
-                  ring
-                />
-                {m.isFiller ? Star : null}
-              </View>
-              <Text style={styles.playerName} numberOfLines={1}>
-                {m.name}
-              </Text>
+      <View style={styles.grid}>
+        {roster.map((m) => (
+          <View key={m.id} style={styles.cell}>
+            <View>
+              <UserAvatar
+                user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                size={size}
+                ring
+              />
+              {m.isFiller ? star : null}
             </View>
-          ))}
-        </View>
-      )}
+            <Text style={styles.playerNameGrid} numberOfLines={1}>
+              {m.name}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  col: { width: '100%', gap: 6, alignItems: 'center' },
-  headerBlock: { width: '100%', minHeight: 52, gap: 6, alignItems: 'center' },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  trophyRow: { flexDirection: 'row', alignItems: 'center' },
-  trophy: { marginHorizontal: -1 },
+  // shared
   name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE },
-  streakPill: {
-    backgroundColor: TEAM_BLUE,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  streakText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   count: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  // Each team's avatars sit on their own tinted strip so the two teams read
-  // as separate groups instead of one continuous row of 10.
-  rowAvatars: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    marginTop: 4,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  rowAvatarWrap: { position: 'relative' },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    columnGap: 4,
-    rowGap: 8,
-    marginTop: 4,
-    alignSelf: 'stretch',
-  },
-  cell: { width: '31%', alignItems: 'center', gap: 4 },
   star: {
     position: 'absolute',
     top: -2,
@@ -159,5 +164,67 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+
+  // list variant
+  listCol: { flex: 1, minWidth: 0, gap: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  winsBox: {
+    minWidth: 52,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#EFF3FA',
+    alignItems: 'center',
+  },
+  winsNum: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, fontVariant: ['tabular-nums'] },
+  winsLabel: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+  nameStack: { flex: 1, minWidth: 0, gap: 1, alignItems: 'center' },
+  list: { gap: 6 },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#EEF1F6',
+    backgroundColor: '#FFFFFF',
+  },
+  rank: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankText: { fontSize: 12, fontWeight: '800', color: TEAM_BLUE },
+  playerName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', color: '#1E293B' },
+
+  // grid variant
+  gridCol: { width: '100%', gap: 6, alignItems: 'center' },
+  gridHeader: { width: '100%', minHeight: 52, gap: 6, alignItems: 'center' },
+  gridHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  trophyRow: { flexDirection: 'row', alignItems: 'center' },
+  trophy: { marginHorizontal: -1 },
+  streakPill: {
+    backgroundColor: TEAM_BLUE,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  streakText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 4,
+    rowGap: 8,
+    marginTop: 4,
+    alignSelf: 'stretch',
+  },
+  cell: { width: '31%', alignItems: 'center', gap: 4 },
+  playerNameGrid: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
 });
