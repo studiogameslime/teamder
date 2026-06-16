@@ -28,7 +28,6 @@ import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersSc
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
-import { MatchManageScreen } from '@/screens/games/MatchManageScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
@@ -52,7 +51,6 @@ export type CommunitiesStackParamList = {
   // CommunityDetails rather than jumping the user to the Games tab.
   MatchDetails: { gameId: string };
   MatchPlayers: { gameId: string };
-  MatchManage: { gameId: string };
   AvailablePlayers: { gameId: string };
   GameEdit: { gameId: string };
   LiveMatch: { gameId: string };
@@ -100,7 +98,6 @@ export function CommunitiesStack() {
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
-      <Stack.Screen name="MatchManage" component={MatchManageScreen} />
       <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />

@@ -50,6 +50,7 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDayDate } from '@/utils/format';
 import { lightHaptic } from '@/utils/haptics';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const FORMATS: GameFormat[] = ['4v4', '5v5', '6v6', '7v7'];
 const TEAM_COUNTS = [2, 3, 4, 5] as const;
@@ -210,6 +211,9 @@ interface Props {
    *  details step (community games only) so the organiser always sees
    *  where it lands, even with a single community. */
   communityName?: string;
+  /** Warn on leave when there are unsaved edits. On for the EDIT flow
+   *  (where discarding silently loses real changes); off for create. */
+  enableUnsavedGuard?: boolean;
 }
 
 export function GameWizardForm({
@@ -221,10 +225,29 @@ export function GameWizardForm({
   quick = false,
   showInviteFriends = false,
   communityName,
+  enableUnsavedGuard = false,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GameFormValues>(initial);
+
+  // Unsaved-changes guard (edit flow): dirty = any field differs from the
+  // initial snapshot. savingRef lets the save→navigate flow pass through.
+  const savingRef = useRef(false);
+  useUnsavedChangesGuard({
+    isDirty:
+      enableUnsavedGuard &&
+      JSON.stringify(values) !== JSON.stringify(initial),
+    savingRef,
+    onSave: async () => {
+      savingRef.current = true;
+      try {
+        await onSubmit(values);
+      } finally {
+        savingRef.current = false;
+      }
+    },
+  });
   // Soft "registration opens too close / in the past" warning — styled
   // popup instead of a native Alert. `isPast` picks the body copy.
   const [regWarn, setRegWarn] = useState<{ isPast: boolean } | null>(null);

@@ -1181,21 +1181,32 @@ export const gameService = {
     for (let i = 0; i < communityIds.length; i += 30) {
       chunks.push(communityIds.slice(i, i + 30));
     }
-    let snaps;
-    try {
-      snaps = await Promise.all(
+    // Per-chunk, fail-soft. The games read rule allows a doc only when the
+    // user is a group member / participant / creator / it's public. A LIST
+    // query fails ENTIRELY if any matched doc fails the rule — which happens
+    // transiently when `communityIds` is briefly out of sync with the actual
+    // membership (join/leave, token refresh). Catch per chunk and return a
+    // PARTIAL result instead of throwing up and breaking the whole games list.
+    // 'permission-denied' is expected here, so it is NOT logged to /errors.
+    const snaps = (
+      await Promise.all(
         chunks.map((c) =>
-          getDocs(query(col.games(), where('groupId', 'in', c))),
+          getDocs(query(col.games(), where('groupId', 'in', c))).catch(
+            (err: { code?: string }) => {
+              if (err?.code !== 'permission-denied') {
+                logError('getCommunityGames', err, {
+                  userId,
+                  communityCount: communityIds.length,
+                });
+              } else if (__DEV__) {
+                console.warn('[gameService] getCommunityGames chunk denied (transient)');
+              }
+              return null;
+            },
+          ),
         ),
-      );
-    } catch (err) {
-      logError('getCommunityGames', err, {
-        userId,
-        communityCount: communityIds.length,
-      });
-      if (__DEV__) console.warn('[gameService] getCommunityGames failed', err);
-      throw err;
-    }
+      )
+    ).filter((s): s is NonNullable<typeof s> => s != null);
     const out: Game[] = [];
     const seen = new Set<string>();
     snaps.forEach((s) =>

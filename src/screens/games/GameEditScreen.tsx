@@ -334,6 +334,7 @@ export function GameEditScreen() {
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}
       onSubmit={submit}
+      enableUnsavedGuard
       quick={isOrphan}
       communityName={
         isOrphan

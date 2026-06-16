@@ -36,6 +36,7 @@ import Animated, {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
+import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { TimerProgressRing } from '@/components/match/TimerProgressRing';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
@@ -148,7 +149,6 @@ export function LiveMatchScreen() {
   const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
-  const [ending, setEnding] = useState(false);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
@@ -326,19 +326,19 @@ export function LiveMatchScreen() {
       ],
     );
   };
+  // ConfirmDestructiveModal owns the busy/close UX; on success we navigate
+  // away (screen unmounts). On failure we log and stay in the modal.
   const onEndGame = async () => {
     if (!gameId) return;
-    setEnding(true);
     try {
       await gameService.endEvening(gameId);
-      setEndOpen(false);
-      if (nav.canGoBack()) nav.goBack();
     } catch (err) {
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
-    } finally {
-      setEnding(false);
+      return;
     }
+    setEndOpen(false);
+    if (nav.canGoBack()) nav.goBack();
   };
 
   // ─── Pulse while running ───────────────────────────────────────────────
@@ -515,7 +515,7 @@ export function LiveMatchScreen() {
         </View>
         {showController ? (
           <View style={styles.controllerChip}>
-            <Ionicons name="person-circle" size={14} color="#1D4ED8" />
+            <Ionicons name="person-circle" size={14} color={colors.primary} />
             <Text style={styles.controllerChipText}>
               מופעל ע״י {timerView.controlledByName}
             </Text>
@@ -576,7 +576,7 @@ export function LiveMatchScreen() {
                   onPress={onTimerReset}
                   accessibilityRole="button"
                 >
-                  <Ionicons name="refresh" size={22} color="#1D4ED8" />
+                  <Ionicons name="refresh" size={22} color={colors.primary} />
                   <Text style={styles.resetBtnText}>{he.liveTimerReset}</Text>
                 </Pressable>
               </View>
@@ -688,40 +688,15 @@ export function LiveMatchScreen() {
         </View>
       </Modal>
 
-      {/* End-game confirm */}
-      <Modal
+      {/* End-game confirm — shared destructive modal (with ack checkbox). */}
+      <ConfirmDestructiveModal
         visible={endOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEndOpen(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => !ending && setEndOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>{he.liveEndEveningTitle}</Text>
-            <Text style={styles.modalBody}>{he.liveEndEveningBody}</Text>
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalBtn, styles.modalCancel]}
-                onPress={() => setEndOpen(false)}
-                disabled={ending}
-              >
-                <Text style={styles.modalCancelText}>{he.cancel}</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalBtn, styles.modalConfirm]}
-                onPress={onEndGame}
-                disabled={ending}
-              >
-                {ending ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>{he.liveEndEveningConfirm}</Text>
-                )}
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        title={he.liveEndEveningTitle}
+        body={he.liveEndEveningBody}
+        confirmLabel={he.liveEndEveningConfirm}
+        onConfirm={onEndGame}
+        onClose={() => setEndOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -747,7 +722,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 999,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: colors.primary,
   },
   notFoundBackText: {
     color: '#FFFFFF',
@@ -770,7 +745,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: 'center',
-    color: '#0F172A',
+    color: colors.text,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -789,14 +764,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 6,
     borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 24,
     elevation: 6,
   },
   timerCardRunning: {
-    borderColor: '#1D4ED8',
+    borderColor: colors.primary,
   },
   // Inside the progress ring the colored arc IS the edge — drop the card's
   // own heavy border and shrink it so it nests within the ring.
@@ -818,12 +793,12 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 78,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     fontVariant: ['tabular-nums'],
     letterSpacing: 2,
   },
   timerTextRunning: {
-    color: '#1D4ED8',
+    color: colors.primary,
   },
   timerTextDanger: {
     color: '#DC2626',
@@ -857,7 +832,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: colors.primary,
   },
   statusText: {
     fontSize: 14,
@@ -865,7 +840,7 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   statusTextRunning: {
-    color: '#1D4ED8',
+    color: colors.primary,
   },
   // Persistent chip when another admin holds the timer — pill shape so
   // it reads as a discrete signal vs the surrounding text, brand-tinted
@@ -881,7 +856,7 @@ const styles = StyleSheet.create({
   },
   controllerChipText: {
     fontSize: 13,
-    color: '#1D4ED8',
+    color: colors.primary,
     fontWeight: '700',
   },
   stoppagesChip: {
@@ -927,7 +902,7 @@ const styles = StyleSheet.create({
   stoppagesTotal: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1D4ED8',
+    color: colors.primary,
     textAlign: 'right',
     marginTop: 2,
     marginBottom: 8,
@@ -978,7 +953,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
   },
-  stoppagesCloseText: { fontSize: 15, fontWeight: '700', color: '#1D4ED8' },
+  stoppagesCloseText: { fontSize: 15, fontWeight: '700', color: colors.primary },
   controls: {
     paddingHorizontal: 20,
     paddingBottom: 16,
@@ -1024,7 +999,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,78,216,0.10)',
   },
   resetBtnText: {
-    color: '#1D4ED8',
+    color: colors.primary,
     fontSize: 17,
     fontWeight: '800',
   },
@@ -1065,7 +1040,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.text,
     textAlign: 'center',
   },
   modalBody: {

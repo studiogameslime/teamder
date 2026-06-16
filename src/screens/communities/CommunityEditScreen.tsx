@@ -135,6 +135,7 @@ export function CommunityEditScreen() {
       submitLabel={he.save}
       initial={initial}
       onSubmit={submit}
+      enableUnsavedGuard
       revertSignal={revertSignal}
       revertToStep={2}
       revertFields={['maxMembers']}

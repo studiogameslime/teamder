@@ -25,7 +25,6 @@ import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
-import { MatchManageScreen } from '@/screens/games/MatchManageScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
@@ -51,7 +50,6 @@ export type ProfileStackParamList = {
   // (typically History).
   MatchDetails: { gameId: string };
   MatchPlayers: { gameId: string };
-  MatchManage: { gameId: string };
   AvailablePlayers: { gameId: string };
   GameEdit: { gameId: string };
   LiveMatch: { gameId: string };
@@ -87,7 +85,6 @@ export function ProfileStack() {
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
-      <Stack.Screen name="MatchManage" component={MatchManageScreen} />
       <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />

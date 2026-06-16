@@ -18,7 +18,7 @@
 // different `submitLabel` and `initial` payload (empty for create,
 // hydrated from the existing group for edit).
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -42,6 +42,7 @@ import { searchCities } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
 import { he } from '@/i18n/he';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
 const ACCENT = '#3B82F6';
 
@@ -90,6 +91,8 @@ interface Props {
    * pulled from `initial`; everything else is left as the user typed.
    */
   revertFields?: Array<keyof GroupFormValues>;
+  /** Warn on leave when there are unsaved edits (edit flow only). */
+  enableUnsavedGuard?: boolean;
 }
 
 export function GroupWizardForm({
@@ -100,9 +103,27 @@ export function GroupWizardForm({
   revertSignal,
   revertToStep,
   revertFields,
+  enableUnsavedGuard = false,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GroupFormValues>(initial);
+
+  // Unsaved-changes guard (edit flow): dirty = any field differs from initial.
+  const savingRef = useRef(false);
+  useUnsavedChangesGuard({
+    isDirty:
+      enableUnsavedGuard &&
+      JSON.stringify(values) !== JSON.stringify(initial),
+    savingRef,
+    onSave: async () => {
+      savingRef.current = true;
+      try {
+        await onSubmit(values);
+      } finally {
+        savingRef.current = false;
+      }
+    },
+  });
 
   // Parent-driven partial revert. Triggered by ticking `revertSignal`.
   // We deliberately ignore the first render (signal===undefined or 0
