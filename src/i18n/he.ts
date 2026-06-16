@@ -266,6 +266,7 @@ export const he = {
   liveStoppagesSummary: (count: number, total: string) =>
     count === 0 ? 'יומן זמנים' : `${count} עצירות · עצור ${total}`,
   liveStoppagesTotal: (total: string) => `סה״כ זמן עצור: ${total}`,
+  liveStoppagesCount: (n: number) => `${n} עצירות`,
   liveStoppagesEmpty: 'עוד לא היו עצירות',
   liveStoppageStarted: 'המשחק התחיל',
   liveStoppagePaused: 'הופסק',
@@ -284,6 +285,18 @@ export const he = {
   rotationReset: 'אפס',
   rotationResetConfirm: 'לאפס את הרוטציה? הקבוצות יחזרו למצב ההתחלתי.',
   rotationWaiting: 'ממתינות',
+  // Scoreboard redesign
+  rotationStreak: (n: number) => (n === 1 ? 'ניצחון רצוף' : `${n} ניצחונות רצוף`),
+  rotationWaitingTeams: 'קבוצות ממתינות',
+  rotationNextUp: 'הבאה בתור',
+  rotationPlayersCount: (n: number) => `${n} שחקנים`,
+  rotationFillerStar: (teamName: string) => `שחקן משלים מ${teamName}`,
+  rotationFillerStarMulti: (teamNames: string) => `שחקנים משלימים מ${teamNames}`,
+  rotationStartRound: 'התחל משחקון',
+  rotationEndRound: 'סיים משחקון',
+  winnerPickTitle: 'מי ניצחה במשחקון?',
+  winnerPickSubtitle: 'בחר את הקבוצה שניצחה כדי לסיים את המשחקון',
+  winnerPickCancel: 'ביטול',
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
