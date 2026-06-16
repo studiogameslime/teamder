@@ -33,8 +33,6 @@ export function TeamScore({
   avatarSize,
   variant = 'grid',
 }: Props) {
-  const right = align === 'right';
-
   const star = (
     <View style={styles.star}>
       <Ionicons name="star" size={11} color="#FFFFFF" />
@@ -42,29 +40,25 @@ export function TeamScore({
   );
 
   // ─── List layout (live scoreboard) ──────────────────────────────────────
+  // Both teams use the IDENTICAL structure (not mirrored): in RTL the avatar
+  // leads on the right, the name follows, and the rank sits on the left.
   if (variant === 'list') {
     const size = avatarSize ?? 36;
-    const winsBox = (
-      <View style={styles.winsBox}>
-        <Text style={styles.winsNum}>{wins}</Text>
-        <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
-      </View>
-    );
-    const nameStack = (
-      <View style={styles.nameStack}>
-        <Text style={styles.name}>{teamName(teamIdx)}</Text>
-        <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
-      </View>
-    );
     return (
       <View style={styles.listCol}>
         <View style={styles.headerRow}>
-          {right ? winsBox : nameStack}
-          {right ? nameStack : winsBox}
+          <View style={styles.nameStack}>
+            <Text style={styles.name}>{teamName(teamIdx)}</Text>
+            <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
+          </View>
+          <View style={styles.winsBox}>
+            <Text style={styles.winsNum}>{wins}</Text>
+            <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
+          </View>
         </View>
         <View style={styles.list}>
-          {roster.map((m, i) => {
-            const avatar = (
+          {roster.map((m, i) => (
+            <View key={m.id} style={styles.playerRow}>
               <View>
                 <UserAvatar
                   user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
@@ -73,28 +67,14 @@ export function TeamScore({
                 />
                 {m.isFiller ? star : null}
               </View>
-            );
-            const rank = (
+              <Text style={styles.playerName} numberOfLines={1}>
+                {m.name}
+              </Text>
               <View style={styles.rank}>
                 <Text style={styles.rankText}>{i + 1}</Text>
               </View>
-            );
-            const name = (
-              <Text
-                style={[styles.playerName, { textAlign: right ? 'right' : 'left' }]}
-                numberOfLines={1}
-              >
-                {m.name}
-              </Text>
-            );
-            return (
-              <View key={m.id} style={styles.playerRow}>
-                {right ? avatar : rank}
-                {name}
-                {right ? rank : avatar}
-              </View>
-            );
-          })}
+            </View>
+          ))}
         </View>
       </View>
     );
@@ -149,8 +129,8 @@ export function TeamScore({
 
 const styles = StyleSheet.create({
   // shared
-  name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE },
-  count: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, textAlign: 'right' },
+  count: { fontSize: 13, fontWeight: '600', color: '#64748B', textAlign: 'right' },
   star: {
     position: 'absolute',
     top: -2,
@@ -178,7 +158,7 @@ const styles = StyleSheet.create({
   },
   winsNum: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, fontVariant: ['tabular-nums'] },
   winsLabel: { fontSize: 10, fontWeight: '700', color: '#64748B' },
-  nameStack: { flex: 1, minWidth: 0, gap: 1, alignItems: 'center' },
+  nameStack: { flex: 1, minWidth: 0, gap: 1, alignItems: 'stretch' },
   list: { gap: 6 },
   playerRow: {
     flexDirection: 'row',
@@ -201,7 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankText: { fontSize: 12, fontWeight: '800', color: TEAM_BLUE },
-  playerName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  playerName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: 'right' },
 
   // grid variant
   gridCol: { width: '100%', gap: 6, alignItems: 'center' },
