@@ -32,7 +32,7 @@ export function TeamScore({
   avatarSize,
   singleRow = false,
 }: Props) {
-  const size = avatarSize ?? (singleRow ? 30 : 40);
+  const size = avatarSize ?? (singleRow ? 28 : 40);
   const trophyCount = Math.min(Math.max(wins, 0), 3);
   // Trophies on the inner side (toward the divider) so the two teams mirror.
   const trophyFirst = align === 'left';
@@ -122,12 +122,18 @@ const styles = StyleSheet.create({
   },
   streakText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   count: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  // Each team's avatars sit on their own tinted strip so the two teams read
+  // as separate groups instead of one continuous row of 10.
   rowAvatars: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: 2,
+    marginTop: 4,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
   rowAvatarWrap: { position: 'relative' },
   grid: {
