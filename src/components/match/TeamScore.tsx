@@ -10,6 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
+import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { teamName, type RosterMember } from '@/components/match/rotationView';
 
@@ -127,8 +128,8 @@ export function TeamScore({
 
 const styles = StyleSheet.create({
   // shared
-  name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, textAlign: 'right' },
-  count: { fontSize: 13, fontWeight: '600', color: '#64748B', textAlign: 'right' },
+  name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE, textAlign: RTL_LABEL_ALIGN },
+  count: { fontSize: 13, fontWeight: '600', color: '#64748B', textAlign: RTL_LABEL_ALIGN },
   star: {
     position: 'absolute',
     top: -2,
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: TEAM_BLUE,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   list: { gap: 6 },
   playerRow: {
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankText: { fontSize: 12, fontWeight: '800', color: TEAM_BLUE },
-  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: 'right' },
+  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: RTL_LABEL_ALIGN },
   rowSpacer: { flex: 1, minWidth: 4 },
 
   // grid variant
