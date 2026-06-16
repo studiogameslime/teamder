@@ -72,8 +72,6 @@ export type GameStackParamList = {
     gameId: string;
     captainIds: string[];
     method: 'snake' | 'regular';
-    /** Live-rotation fill behaviour chosen on the setup screen. */
-    fillMode?: import('@/types').FillMode;
     /** Reconstruct picks from the game's saved draftTeams → opens on the
      *  summary (editable). */
     resume?: boolean;

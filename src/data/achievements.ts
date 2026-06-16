@@ -27,7 +27,6 @@ export interface AchievementDef {
 }
 
 const TINT_GAMES = colors.primary;
-const TINT_WINS = '#F59E0B'; // amber/gold — trophies
 const TINT_TEAMS = colors.info;
 const TINT_INVITES = colors.warning;
 const TINT_COACH = '#7C3AED'; // purple — matches the JERSEY_COLORS.purple swatch
@@ -94,48 +93,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     threshold: 100,
     icon: 'trophy',
     tint: TINT_GAMES,
-  },
-
-  // ─── Wins (live "winner stays" rounds) ───────────────────────────────────
-  {
-    id: 'firstWin',
-    titleHe: 'ניצחון ראשון',
-    descriptionHe: 'ניצחת משחקון ראשון',
-    category: 'wins',
-    metric: 'wins',
-    threshold: 1,
-    icon: 'ribbon',
-    tint: TINT_WINS,
-  },
-  {
-    id: 'tenWins',
-    titleHe: '10 ניצחונות',
-    descriptionHe: 'מנצח עקבי',
-    category: 'wins',
-    metric: 'wins',
-    threshold: 10,
-    icon: 'trophy-outline',
-    tint: TINT_WINS,
-  },
-  {
-    id: 'twentyFiveWins',
-    titleHe: '25 ניצחונות',
-    descriptionHe: 'מלך המגרש',
-    category: 'wins',
-    metric: 'wins',
-    threshold: 25,
-    icon: 'trophy',
-    tint: TINT_WINS,
-  },
-  {
-    id: 'fiftyWins',
-    titleHe: '50 ניצחונות',
-    descriptionHe: 'אלוף בלתי מנוצח',
-    category: 'wins',
-    metric: 'wins',
-    threshold: 50,
-    icon: 'medal',
-    tint: TINT_WINS,
   },
 
   // ─── Teams ─────────────────────────────────────────────────────────────

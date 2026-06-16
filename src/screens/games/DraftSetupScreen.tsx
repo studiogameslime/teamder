@@ -6,7 +6,7 @@
 // draft board. Fully dynamic for 2–4 teams.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,7 +25,7 @@ import { gameService } from '@/services';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
-import type { Game, FillMode } from '@/types';
+import type { Game } from '@/types';
 import {
   previewPath,
   MIN_TEAMS,
@@ -50,9 +50,6 @@ export function DraftSetupScreen() {
   // default they often hit "המשך" without ever scrolling to the order options
   // below a long captain list. Null → "המשך" stays disabled until chosen.
   const [method, setMethod] = useState<DraftMethod | null>(null);
-  // Live-rotation fill behaviour — what happens to a player who completes a
-  // short team: 'temporary' returns home next round, 'permanent' stays.
-  const [fillMode, setFillMode] = useState<FillMode>('temporary');
 
   useEffect(() => {
     let alive = true;
@@ -119,7 +116,7 @@ export function DraftSetupScreen() {
 
   const onContinue = () => {
     if (!canContinue || !method) return;
-    nav.navigate('DraftBoard', { gameId, captainIds, method, fillMode });
+    nav.navigate('DraftBoard', { gameId, captainIds, method });
   };
 
   return (
@@ -195,27 +192,6 @@ export function DraftSetupScreen() {
           order={previewPath(previewTeams, 'regular')}
         />
 
-        {/* Fill mode — what happens to a player who completes a short team
-            during the live rotation. */}
-        <Text style={[styles.sectionTitle, styles.orderTitle]}>
-          {he.draftFillModeTitle}
-        </Text>
-        <Text style={styles.orderSubtitle}>{he.draftFillModeSubtitle}</Text>
-        <FillModeOption
-          selected={fillMode === 'temporary'}
-          onPress={() => setFillMode('temporary')}
-          icon="swap-horizontal"
-          title={he.draftFillTemporaryTitle}
-          desc={he.draftFillTemporaryDesc}
-        />
-        <FillModeOption
-          selected={fillMode === 'permanent'}
-          onPress={() => setFillMode('permanent')}
-          icon="lock-closed"
-          title={he.draftFillPermanentTitle}
-          desc={he.draftFillPermanentDesc}
-        />
-
         {/* Teams-to-create info */}
         <View style={styles.teamsInfo}>
           <Ionicons name="people" size={18} color={colors.primary} />
@@ -272,40 +248,6 @@ function OrderOption({
             ) : null}
           </View>
           <DraftOrderPath order={order} compact />
-        </View>
-        <View style={[styles.radio, selected && styles.radioOn]}>
-          {selected ? <View style={styles.radioDot} /> : null}
-        </View>
-      </View>
-    </PressableScale>
-  );
-}
-
-function FillModeOption({
-  selected,
-  onPress,
-  icon,
-  title,
-  desc,
-}: {
-  selected: boolean;
-  onPress: () => void;
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <PressableScale
-      onPress={onPress}
-      style={[styles.option, selected && styles.optionActive]}
-    >
-      <View style={styles.optionInner}>
-        <View style={styles.fillIcon}>
-          <Ionicons name={icon} size={20} color={colors.primary} />
-        </View>
-        <View style={styles.optionBody}>
-          <Text style={styles.fillTitle}>{title}</Text>
-          <Text style={styles.fillDesc}>{desc}</Text>
         </View>
         <View style={[styles.radio, selected && styles.radioOn]}>
           {selected ? <View style={styles.radioDot} /> : null}
@@ -390,26 +332,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   orderTitle: { marginTop: spacing.xxl },
-  fillIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fillTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: 'right',
-  },
-  fillDesc: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'right',
-    marginTop: 2,
-  },
   orderSubtitle: {
     ...typography.caption,
     color: colors.textMuted,

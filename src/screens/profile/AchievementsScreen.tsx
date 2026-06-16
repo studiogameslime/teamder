@@ -78,7 +78,6 @@ export function AchievementsScreen() {
       .deriveCounters(localUser.id, {
         groups,
         friendsCount: localUser.friends?.length ?? 0,
-        wins: localUser.stats?.wins ?? 0,
       })
       .then((c) => {
         if (!alive) return;
