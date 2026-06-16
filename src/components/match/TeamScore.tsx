@@ -35,16 +35,20 @@ export function TeamScore({ teamIdx, roster, wins, align, avatarSize = 40 }: Pro
 
   return (
     <View style={[styles.col, align === 'right' ? styles.alignRight : styles.alignLeft]}>
-      <View style={styles.headRow}>
-        {trophyFirst ? trophies : null}
-        <Text style={styles.name}>{teamName(teamIdx)}</Text>
-        {trophyFirst ? null : trophies}
-      </View>
-      {wins > 0 ? (
-        <View style={styles.streakPill}>
-          <Text style={styles.streakText}>{he.rotationStreak(wins)}</Text>
+      {/* Fixed-height header so both teams' rosters start at the same Y even
+          when only one team has a win-streak pill. */}
+      <View style={[styles.headerBlock, align === 'right' ? styles.alignRight : styles.alignLeft]}>
+        <View style={styles.headRow}>
+          {trophyFirst ? trophies : null}
+          <Text style={styles.name}>{teamName(teamIdx)}</Text>
+          {trophyFirst ? null : trophies}
         </View>
-      ) : null}
+        {wins > 0 ? (
+          <View style={styles.streakPill}>
+            <Text style={styles.streakText}>{he.rotationStreak(wins)}</Text>
+          </View>
+        ) : null}
+      </View>
 
       <View style={styles.grid}>
         {roster.map((m) => (
@@ -75,6 +79,7 @@ const styles = StyleSheet.create({
   col: { width: '100%', gap: 8 },
   alignRight: { alignItems: 'flex-end' },
   alignLeft: { alignItems: 'flex-start' },
+  headerBlock: { width: '100%', minHeight: 52, gap: 6 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trophyRow: { flexDirection: 'row', alignItems: 'center' },
   trophy: { marginHorizontal: -1 },
