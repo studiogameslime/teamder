@@ -15,33 +15,34 @@ import {
   View,
   ViewToken,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
 import { spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import {
+  PreviewMatches,
+  PreviewClub,
+  PreviewLive,
+} from '@/screens/onboarding/OnboardingPreviews';
 
 interface Slide {
-  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   body: string;
+  Preview: React.ComponentType;
 }
 
 const SLIDES: Slide[] = [
-  { icon: 'location-outline', title: he.onb1Title, body: he.onb1Body },
-  { icon: 'people-outline', title: he.onb2Title, body: he.onb2Body },
-  { icon: 'sync-outline', title: he.onb3Title, body: he.onb3Body },
+  { title: he.onb1Title, body: he.onb1Body, Preview: PreviewMatches },
+  { title: he.onb2Title, body: he.onb2Body, Preview: PreviewClub },
+  { title: he.onb3Title, body: he.onb3Body, Preview: PreviewLive },
 ];
 
 const { width } = Dimensions.get('window');
@@ -117,13 +118,18 @@ export function OnboardingScreen() {
           inverted
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          renderItem={({ item, index: i }) => (
-            <View style={[styles.slide, { width }]}>
-              <BreathingIconDisc icon={item.icon} active={i === index} />
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.body}>{item.body}</Text>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const Preview = item.Preview;
+            return (
+              <View style={[styles.slide, { width }]}>
+                <View style={styles.previewWrap}>
+                  <Preview />
+                </View>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.body}>{item.body}</Text>
+              </View>
+            );
+          }}
         />
 
         <View style={styles.dots}>
@@ -166,58 +172,6 @@ export function OnboardingScreen() {
         </View>
       </SafeAreaView>
     </View>
-  );
-}
-
-// Breathing icon disc — the active slide's disc pulses gently
-// (scale 1 ↔ 1.04) so the user's eye lands on it instead of darting
-// around. Inactive slides hold a static smaller scale (0.94) so the
-// transition between slides reads as "this one wakes up". Animation
-// is cancelled when the slide goes inactive to avoid wasted UI-thread
-// work on the off-screen slides.
-function BreathingIconDisc({
-  icon,
-  active,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-}) {
-  const scale = useSharedValue(active ? 1 : 0.94);
-
-  useEffect(() => {
-    cancelAnimation(scale);
-    if (active) {
-      scale.value = withSequence(
-        withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }),
-        withRepeat(
-          withSequence(
-            withTiming(1.04, {
-              duration: 1400,
-              easing: Easing.inOut(Easing.quad),
-            }),
-            withTiming(1.0, {
-              duration: 1400,
-              easing: Easing.inOut(Easing.quad),
-            }),
-          ),
-          -1,
-          false,
-        ),
-      );
-    } else {
-      scale.value = withTiming(0.94, { duration: 220 });
-    }
-    return () => cancelAnimation(scale);
-  }, [active, scale]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <Animated.View style={[styles.iconDisc, animStyle]}>
-      <Ionicons name={icon} size={92} color="#FFFFFF" />
-    </Animated.View>
   );
 }
 
@@ -282,33 +236,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
   },
-  // Frosted disc — mirrors the icon discs on the Matches /
-  // Communities heroes for a cross-app visual rhyme.
-  iconDisc: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
+  previewWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.28)',
     marginBottom: spacing.xl,
   },
   title: {
     ...typography.h1,
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: spacing.md,
-    fontSize: 28,
+    marginBottom: spacing.sm,
+    fontSize: 24,
     letterSpacing: 0.3,
   },
   body: {
     ...typography.body,
     color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
-    lineHeight: 26,
-    fontSize: 16,
+    lineHeight: 23,
+    fontSize: 15,
   },
   dots: {
     flexDirection: 'row',
