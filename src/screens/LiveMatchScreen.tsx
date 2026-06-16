@@ -547,6 +547,8 @@ export function LiveMatchScreen() {
             >
               {formatTime(totalMs > 0 ? clockMs : timerMs)}
             </Text>
+            {/* Stoppages as a small top-right corner badge so it never competes
+                with the centered clock for horizontal space. */}
             {timerStarted ? (
               <Pressable
                 style={styles.stoppagesBlock}
@@ -558,7 +560,7 @@ export function LiveMatchScreen() {
                   <Text style={styles.stoppagesCount}>
                     {he.liveStoppagesCount(stoppages.stopCount)}
                   </Text>
-                  <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
+                  <Ionicons name="stopwatch-outline" size={15} color="#64748B" />
                 </View>
                 <Text style={styles.stoppagesClockText}>{formatTime(totalStoppedMs)}</Text>
               </Pressable>
@@ -955,12 +957,12 @@ const styles = StyleSheet.create({
   },
   timerTopRow: {
     position: 'relative',
-    minHeight: 70,
+    minHeight: 72,
     alignItems: 'center',
     justifyContent: 'center',
   },
   timerBig: {
-    fontSize: 62,
+    fontSize: 60,
     fontWeight: '800',
     color: '#0F172A',
     fontVariant: ['tabular-nums'],
@@ -971,9 +973,9 @@ const styles = StyleSheet.create({
   stoppagesBlock: {
     position: 'absolute',
     right: 0,
-    top: 6,
+    top: 0,
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 1,
   },
   stoppagesHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   stoppagesCount: { fontSize: 13, fontWeight: '700', color: '#475569' },

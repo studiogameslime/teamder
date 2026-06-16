@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   waitText: { gap: 2 },
   waitName: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   waitCount: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
-  waitAvatars: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 2 },
+  waitAvatars: { flex: 1, flexDirection: 'row', justifyContent: 'flex-start', gap: 2 },
   waitAvatarWrap: { marginHorizontal: -1 },
 
   backdrop: {
