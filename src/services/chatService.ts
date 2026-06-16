@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 
 import { col } from '@/firebase/firestore';
+import { logError } from '@/services/errorLog';
 import type { ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
 /** Max characters per message — guards against pathological payloads. */
@@ -268,9 +269,21 @@ export const chatService = {
   // ── Block list (store-safety) ──────────────────────────────────────────
 
   subscribeBlocked(uid: UserId, cb: (ids: Set<string>) => void): () => void {
-    return onSnapshot(col.userBlocked(uid), (snap) => {
-      cb(new Set(snap.docs.map((d) => d.id)));
-    });
+    return onSnapshot(
+      col.userBlocked(uid),
+      (snap) => {
+        cb(new Set(snap.docs.map((d) => d.id)));
+      },
+      (err) => {
+        // Without an error handler a transient rules/permission failure
+        // leaves the success callback unfired forever, hanging the
+        // BlockedUsersScreen on its loader. Emit an empty set so the
+        // screen resolves to its (correct) empty state instead.
+        logError('subscribeBlocked', err, { uid });
+        if (__DEV__) console.warn('[chatService] subscribeBlocked error', err);
+        cb(new Set());
+      },
+    );
   },
 
   async blockUser(uid: UserId, blockedUid: string): Promise<void> {
