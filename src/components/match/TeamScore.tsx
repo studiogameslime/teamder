@@ -70,6 +70,7 @@ export function TeamScore({
               <Text style={styles.playerName} numberOfLines={1}>
                 {m.name}
               </Text>
+              <View style={styles.rowSpacer} />
               <View style={styles.rank}>
                 <Text style={styles.rankText}>{i + 1}</Text>
               </View>
@@ -181,7 +182,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankText: { fontSize: 12, fontWeight: '800', color: TEAM_BLUE },
-  playerName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: 'right' },
+  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: 'right' },
+  rowSpacer: { flex: 1, minWidth: 4 },
 
   // grid variant
   gridCol: { width: '100%', gap: 6, alignItems: 'center' },

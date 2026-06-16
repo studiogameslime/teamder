@@ -37,8 +37,14 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
   const resolve = makeResolver(playersMap, guests);
   const teams = draftTeams.teams.map((t) => ({ index: t.index, playerIds: t.playerIds }));
   const [aIdx, bIdx] = rotation.playing;
-  const rosterA = buildRoster(aIdx, teams, rotation, resolve);
-  const rosterB = buildRoster(bIdx, teams, rotation, resolve);
+  // "Filler" only applies to TEMPORARY fill mode (a borrowed player who returns
+  // home). In PERMANENT mode a player who completed a team has actually moved
+  // there — they're not a filler, so never star them.
+  const temporary = (draftTeams.fillMode ?? 'temporary') === 'temporary';
+  const clean = (r: RosterMember[]) =>
+    temporary ? r : r.map((m) => ({ ...m, isFiller: false, fromTeam: undefined }));
+  const rosterA = clean(buildRoster(aIdx, teams, rotation, resolve));
+  const rosterB = clean(buildRoster(bIdx, teams, rotation, resolve));
   const winsOf = (i: number) => rotation.wins?.[String(i)] ?? 0;
 
   // Filler legend — name the specific player(s) + their home team, so it's
@@ -102,34 +108,46 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
                   pressed && { opacity: 0.9 },
                 ]}
               >
-                <View style={[styles.waitBadge, next && styles.waitBadgeNext]}>
-                  <Ionicons
-                    name="people"
-                    size={20}
-                    color={next ? colors.primary : '#94A3B8'}
-                  />
-                </View>
-                <View style={styles.waitText}>
-                  <Text style={[styles.waitLabel, next && styles.waitLabelNext]}>
+                {/* Corner tab — "הבאה בתור" (blue) / "אחריה" (gray). */}
+                <View style={[styles.waitTab, next ? styles.waitTabNext : styles.waitTabAfter]}>
+                  <Text
+                    style={[
+                      styles.waitTabText,
+                      next ? styles.waitTabTextNext : styles.waitTabTextAfter,
+                    ]}
+                  >
                     {next ? he.rotationNextUp : he.rotationAfter}
                   </Text>
-                  <Text style={styles.waitName}>{teamName(idx)}</Text>
-                  <Text style={styles.waitCount}>
-                    {he.rotationPlayersCount(roster.length)}
-                  </Text>
                 </View>
-                <View style={styles.waitAvatars}>
-                  {roster.slice(0, 5).map((m) => (
-                    <View key={m.id} style={styles.waitAvatarWrap}>
+
+                <View style={styles.waitTop}>
+                  <View style={[styles.waitBadge, next && styles.waitBadgeNext]}>
+                    <Ionicons name="people" size={20} color={next ? colors.primary : '#94A3B8'} />
+                  </View>
+                  <View style={styles.waitText}>
+                    <Text style={styles.waitName}>{teamName(idx)}</Text>
+                    <Text style={styles.waitCount}>
+                      {he.rotationPlayersCount(roster.length)}
+                    </Text>
+                  </View>
+                  <View style={styles.waitSpacer} />
+                  <Ionicons name="chevron-back" size={20} color="#94A3B8" />
+                </View>
+
+                <View style={styles.waitRoster}>
+                  {roster.slice(0, 6).map((m) => (
+                    <View key={m.id} style={styles.waitMini}>
                       <UserAvatar
                         user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                        size={34}
+                        size={32}
                         ring
                       />
+                      <Text style={styles.waitMiniName} numberOfLines={1}>
+                        {m.name}
+                      </Text>
                     </View>
                   ))}
                 </View>
-                <Ionicons name="chevron-back" size={20} color="#94A3B8" />
               </Pressable>
             );
           })}
@@ -211,37 +229,63 @@ const styles = StyleSheet.create({
   },
   waitHeaderText: { ...typography.body, color: colors.text, fontWeight: '800' },
   waitCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: spacing.sm,
+    overflow: 'hidden',
   },
   waitCardNext: {
     borderColor: '#BFDBFE',
     backgroundColor: '#EFF6FF',
-    borderRightWidth: 4,
-    borderRightColor: colors.primary,
   },
+  // Corner tab (top-start). RN flips physical right→visual-left under RTL, so
+  // `right: 0` pins it to the visual top-LEFT corner like the design.
+  waitTab: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderBottomLeftRadius: 10,
+    borderTopRightRadius: 15,
+  },
+  waitTabNext: { backgroundColor: colors.primary },
+  waitTabAfter: { backgroundColor: '#E2E8F0' },
+  waitTabText: { fontSize: 11, fontWeight: '800' },
+  waitTabTextNext: { color: '#FFFFFF' },
+  waitTabTextAfter: { color: '#64748B' },
+  waitTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   waitBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   waitBadgeNext: { backgroundColor: 'rgba(29,78,216,0.10)' },
   waitText: { gap: 1 },
-  waitLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
-  waitLabelNext: { color: colors.primary },
   waitName: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   waitCount: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
-  waitAvatars: { flex: 1, flexDirection: 'row', justifyContent: 'flex-start', gap: 2 },
-  waitAvatarWrap: { marginHorizontal: -1 },
+  waitSpacer: { flex: 1 },
+  waitRoster: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  waitMini: { alignItems: 'center', gap: 3, width: 52 },
+  waitMiniName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+    width: '100%',
+  },
 
   backdrop: {
     flex: 1,
