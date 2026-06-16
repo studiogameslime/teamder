@@ -1,8 +1,8 @@
 // RotationPanel — the live "winner stays" surface on LiveMatchScreen.
-// A live-scoreboard card (the two teams on the pitch, trophies + win streak +
-// rosters, filler stars) plus the "waiting teams" queue below it. Declaring a
-// winner happens via the WinnerPickerModal (opened from the bottom controls),
-// so this surface is display-only. All math lives in rotationEngine.
+// A live-scoreboard card (the two teams on the pitch: trophies + win streak +
+// player count + a single avatar row, fillers starred) plus the waiting-teams
+// queue below it. Declaring a winner happens via the WinnerPickerModal, so this
+// surface is display-only. All math lives in rotationEngine.
 
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,7 +13,6 @@ import { TeamScore } from '@/components/match/TeamScore';
 import {
   buildRoster,
   draftRoster,
-  fillerSources,
   makeResolver,
   teamName,
   type PlayerLite,
@@ -42,16 +41,9 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
   const rosterB = buildRoster(bIdx, teams, rotation, resolve);
   const winsOf = (i: number) => rotation.wins?.[String(i)] ?? 0;
 
-  // One combined filler legend line from both on-pitch rosters.
-  const fillerTeams = Array.from(
-    new Set([...fillerSources(rosterA), ...fillerSources(rosterB)]),
-  );
-  const legend =
-    fillerTeams.length === 1
-      ? he.rotationFillerStar(fillerTeams[0])
-      : fillerTeams.length > 1
-        ? he.rotationFillerStarMulti(fillerTeams.join(', '))
-        : null;
+  // Filler legend — name the specific player(s) + their home team, so it's
+  // clear WHO is completing the team.
+  const fillers = [...rosterA, ...rosterB].filter((m) => m.isFiller && m.fromTeam != null);
 
   const openRoster: RosterMember[] =
     openTeam != null ? draftRoster(openTeam, teams, resolve) : [];
@@ -59,28 +51,36 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
   return (
     <View style={styles.wrap}>
       {/* ── Scoreboard: the two teams on the pitch ───────────────────────── */}
-      <Card style={styles.scoreCard}>
-        <View style={styles.scoreRow}>
-          <View style={styles.scoreCol}>
-            <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" />
-          </View>
-          <View style={styles.vsCol}>
-            <View style={styles.vLine} />
-            <View style={styles.vsCircle}>
-              <Text style={styles.vsText}>{he.vs}</Text>
-            </View>
-          </View>
-          <View style={styles.scoreCol}>
-            <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" />
+      <View style={styles.scoreWrap}>
+        <View style={styles.activeBadgeWrap} pointerEvents="none">
+          <View style={styles.activeBadge}>
+            <Text style={styles.activeBadgeText}>{he.rotationActiveBadge}</Text>
           </View>
         </View>
-        {legend ? (
-          <View style={styles.legendRow}>
-            <Ionicons name="star" size={13} color="#1D4ED8" />
-            <Text style={styles.legendText}>{legend}</Text>
+        <Card style={styles.scoreCard}>
+          <View style={styles.scoreRow}>
+            <View style={styles.scoreCol}>
+              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" singleRow />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.scoreCol}>
+              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" singleRow />
+            </View>
           </View>
-        ) : null}
-      </Card>
+          {fillers.length > 0 ? (
+            <View style={styles.legend}>
+              {fillers.map((m) => (
+                <View key={m.id} style={styles.legendRow}>
+                  <Ionicons name="star" size={12} color="#1D4ED8" />
+                  <Text style={styles.legendText}>
+                    {he.rotationFillerNamed(m.name, teamName(m.fromTeam as number))}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+      </View>
 
       {/* ── Waiting queue ────────────────────────────────────────────────── */}
       {rotation.waiting.length > 0 ? (
@@ -102,15 +102,17 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
                   pressed && { opacity: 0.9 },
                 ]}
               >
-                {next ? (
-                  <View style={styles.nextTag}>
-                    <Text style={styles.nextTagText}>{he.rotationNextUp}</Text>
-                  </View>
-                ) : null}
-                <View style={styles.waitBadge}>
-                  <Ionicons name="people" size={20} color={colors.primary} />
+                <View style={[styles.waitBadge, next && styles.waitBadgeNext]}>
+                  <Ionicons
+                    name="people"
+                    size={20}
+                    color={next ? colors.primary : '#94A3B8'}
+                  />
                 </View>
                 <View style={styles.waitText}>
+                  <Text style={[styles.waitLabel, next && styles.waitLabelNext]}>
+                    {next ? he.rotationNextUp : he.rotationAfter}
+                  </Text>
                   <Text style={styles.waitName}>{teamName(idx)}</Text>
                   <Text style={styles.waitCount}>
                     {he.rotationPlayersCount(roster.length)}
@@ -151,7 +153,7 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
                   roster={openRoster}
                   wins={0}
                   align="right"
-                  avatarSize={52}
+                  avatarSize={50}
                 />
                 <Pressable style={styles.sheetClose} onPress={() => setOpenTeam(null)}>
                   <Text style={styles.sheetCloseText}>{he.close}</Text>
@@ -167,37 +169,38 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', gap: spacing.md },
-  scoreCard: { padding: spacing.md, gap: spacing.sm },
-  scoreRow: { flexDirection: 'row', alignItems: 'stretch' },
-  // minWidth:0 lets each column shrink to an equal half — without it a long
-  // streak pill / name keeps its min-content width and shoves the other team
-  // off the card's clipped edge.
-  scoreCol: { flex: 1, minWidth: 0 },
-  vsCol: { width: 46, alignItems: 'center', justifyContent: 'center' },
-  vLine: {
+  scoreWrap: { width: '100%', marginTop: 12 },
+  activeBadgeWrap: {
     position: 'absolute',
-    top: 6,
-    bottom: 6,
+    top: -12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  activeBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  activeBadgeText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  scoreCard: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm },
+  scoreRow: { flexDirection: 'row', alignItems: 'stretch' },
+  scoreCol: { flex: 1, minWidth: 0 },
+  divider: {
     width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
     backgroundColor: '#E2E8F0',
+    marginHorizontal: 8,
   },
-  vsCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vsText: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  legend: {
+    gap: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.divider,
     paddingTop: spacing.sm,
   },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-start' },
   legendText: { ...typography.caption, color: '#475569', fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
 
   waitHeader: {
@@ -218,29 +221,23 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   waitCardNext: {
-    borderColor: '#16A34A',
-    backgroundColor: '#F0FDF4',
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+    borderRightWidth: 4,
+    borderRightColor: colors.primary,
   },
-  nextTag: {
-    position: 'absolute',
-    top: -1,
-    left: 14,
-    backgroundColor: '#16A34A',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  nextTagText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   waitBadge: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(29,78,216,0.10)',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  waitText: { gap: 2 },
+  waitBadgeNext: { backgroundColor: 'rgba(29,78,216,0.10)' },
+  waitText: { gap: 1 },
+  waitLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  waitLabelNext: { color: colors.primary },
   waitName: { ...typography.body, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   waitCount: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
   waitAvatars: { flex: 1, flexDirection: 'row', justifyContent: 'flex-start', gap: 2 },

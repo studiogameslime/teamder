@@ -1,7 +1,8 @@
 // One team's "scoreboard" block: gold trophies + team name + a blue
-// "win streak" pill + the on-pitch roster as an avatar grid (3-up), with a
-// blue star badge on any borrowed filler. Shared by the live scoreboard card
-// and the winner-picker modal so both render identically.
+// "win streak" pill, the player count, and the roster. Two layouts:
+//   • singleRow (live scoreboard) — one clean avatar row, no names.
+//   • grid (winner picker / roster peek) — 3-up avatars with names.
+// A blue star badge marks a borrowed filler. Shared by both surfaces.
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -19,11 +20,22 @@ interface Props {
   wins: number;
   align: 'right' | 'left';
   avatarSize?: number;
+  /** Live scoreboard: one centered avatar row + player count, no names. */
+  singleRow?: boolean;
 }
 
-export function TeamScore({ teamIdx, roster, wins, align, avatarSize = 40 }: Props) {
+export function TeamScore({
+  teamIdx,
+  roster,
+  wins,
+  align,
+  avatarSize,
+  singleRow = false,
+}: Props) {
+  const size = avatarSize ?? (singleRow ? 30 : 40);
   const trophyCount = Math.min(Math.max(wins, 0), 3);
-  const trophyFirst = align === 'right';
+  // Trophies on the inner side (toward the divider) so the two teams mirror.
+  const trophyFirst = align === 'left';
   const trophies =
     trophyCount > 0 ? (
       <View style={styles.trophyRow}>
@@ -33,11 +45,17 @@ export function TeamScore({ teamIdx, roster, wins, align, avatarSize = 40 }: Pro
       </View>
     ) : null;
 
+  const Star = (
+    <View style={styles.star}>
+      <Ionicons name="star" size={11} color="#FFFFFF" />
+    </View>
+  );
+
   return (
-    <View style={[styles.col, align === 'right' ? styles.alignRight : styles.alignLeft]}>
+    <View style={styles.col}>
       {/* Fixed-height header so both teams' rosters start at the same Y even
           when only one team has a win-streak pill. */}
-      <View style={[styles.headerBlock, align === 'right' ? styles.alignRight : styles.alignLeft]}>
+      <View style={styles.headerBlock}>
         <View style={styles.headRow}>
           {trophyFirst ? trophies : null}
           <Text style={styles.name}>{teamName(teamIdx)}</Text>
@@ -50,37 +68,49 @@ export function TeamScore({ teamIdx, roster, wins, align, avatarSize = 40 }: Pro
         ) : null}
       </View>
 
-      <View style={styles.grid}>
-        {roster.map((m) => (
-          <View key={m.id} style={styles.cell}>
-            <View>
-              <UserAvatar
-                user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                size={avatarSize}
-                ring
-              />
-              {m.isFiller ? (
-                <View style={styles.star}>
-                  <Ionicons name="star" size={11} color="#FFFFFF" />
-                </View>
-              ) : null}
-            </View>
-            <Text style={styles.playerName} numberOfLines={1}>
-              {m.name}
-            </Text>
+      {singleRow ? (
+        <>
+          <Text style={styles.count}>{he.rotationPlayersCount(roster.length)}</Text>
+          <View style={styles.rowAvatars}>
+            {roster.map((m) => (
+              <View key={m.id} style={styles.rowAvatarWrap}>
+                <UserAvatar
+                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                  size={size}
+                  ring
+                />
+                {m.isFiller ? Star : null}
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        </>
+      ) : (
+        <View style={styles.grid}>
+          {roster.map((m) => (
+            <View key={m.id} style={styles.cell}>
+              <View>
+                <UserAvatar
+                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                  size={size}
+                  ring
+                />
+                {m.isFiller ? Star : null}
+              </View>
+              <Text style={styles.playerName} numberOfLines={1}>
+                {m.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  col: { width: '100%', gap: 8 },
-  alignRight: { alignItems: 'flex-end' },
-  alignLeft: { alignItems: 'flex-start' },
-  headerBlock: { width: '100%', minHeight: 52, gap: 6 },
-  headRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  col: { width: '100%', gap: 6, alignItems: 'center' },
+  headerBlock: { width: '100%', minHeight: 52, gap: 6, alignItems: 'center' },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   trophyRow: { flexDirection: 'row', alignItems: 'center' },
   trophy: { marginHorizontal: -1 },
   name: { fontSize: 18, fontWeight: '800', color: TEAM_BLUE },
@@ -91,6 +121,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   streakText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  count: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  rowAvatars: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 2,
+  },
+  rowAvatarWrap: { position: 'relative' },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

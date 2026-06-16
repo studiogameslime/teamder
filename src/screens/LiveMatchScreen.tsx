@@ -537,35 +537,15 @@ export function LiveMatchScreen() {
       {/* Timer card (+ rotation scoreboard) — scrollable so teams fit below. */}
       <ScrollView style={styles.center} contentContainerStyle={styles.centerContent}>
         <Animated.View style={[styles.timerCard, pulseStyle]}>
-          <View style={styles.timerTopRow}>
-            <Text
-              style={[
-                styles.timerBig,
-                timerRunning ? styles.timerBigRunning : null,
-                danger ? styles.timerBigDanger : null,
-              ]}
-            >
-              {formatTime(totalMs > 0 ? clockMs : timerMs)}
-            </Text>
-            {/* Stoppages as a small top-right corner badge so it never competes
-                with the centered clock for horizontal space. */}
-            {timerStarted ? (
-              <Pressable
-                style={styles.stoppagesBlock}
-                onPress={() => setStoppagesOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel={he.liveStoppagesTitle}
-              >
-                <View style={styles.stoppagesHeadRow}>
-                  <Text style={styles.stoppagesCount}>
-                    {he.liveStoppagesCount(stoppages.stopCount)}
-                  </Text>
-                  <Ionicons name="stopwatch-outline" size={15} color="#64748B" />
-                </View>
-                <Text style={styles.stoppagesClockText}>{formatTime(totalStoppedMs)}</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          <Text
+            style={[
+              styles.timerBig,
+              timerRunning ? styles.timerBigRunning : null,
+              danger ? styles.timerBigDanger : null,
+            ]}
+          >
+            {formatTime(totalMs > 0 ? clockMs : timerMs)}
+          </Text>
 
           {inOvertime ? (
             <View style={styles.overtimePill}>
@@ -589,6 +569,24 @@ export function LiveMatchScreen() {
                 מופעל ע״י {timerView.controlledByName}
               </Text>
             </View>
+          ) : null}
+
+          {/* Stoppages summary on its own centered row under a divider. */}
+          {timerStarted ? (
+            <>
+              <View style={styles.timerDivider} />
+              <Pressable
+                style={styles.stoppagesRow}
+                onPress={() => setStoppagesOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={he.liveStoppagesTitle}
+              >
+                <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
+                <Text style={styles.stoppagesRowText}>
+                  {he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs))}
+                </Text>
+              </Pressable>
+            </>
           ) : null}
         </Animated.View>
 
@@ -955,13 +953,9 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
-  timerTopRow: {
-    position: 'relative',
-    minHeight: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   timerBig: {
+    alignSelf: 'stretch',
+    textAlign: 'center',
     fontSize: 60,
     fontWeight: '800',
     color: '#0F172A',
@@ -970,19 +964,23 @@ const styles = StyleSheet.create({
   },
   timerBigRunning: { color: '#0F172A' },
   timerBigDanger: { color: '#DC2626' },
-  stoppagesBlock: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    alignItems: 'flex-end',
-    gap: 1,
+  timerDivider: {
+    height: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    backgroundColor: '#E2E8F0',
+    marginTop: 4,
   },
-  stoppagesHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  stoppagesCount: { fontSize: 13, fontWeight: '700', color: '#475569' },
-  stoppagesClockText: {
+  stoppagesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 6,
+  },
+  stoppagesRowText: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: '#475569',
     fontVariant: ['tabular-nums'],
   },
   overtimePill: {

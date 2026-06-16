@@ -1,9 +1,9 @@
 // "מי ניצחה במשחקון?" — bottom-of-round winner picker. Shows the two teams
-// currently on the pitch as tappable cards; choosing one records it as the
-// round winner (winner stays, loser rotates out). Opened from the live
-// controls' "סיים משחקון" button.
+// currently on the pitch as selectable cards; tapping one SELECTS it (it does
+// not save yet), and an explicit "אישור" button records the round winner.
+// Opened from the live controls' "סיים משחקון" button.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TeamScore } from '@/components/match/TeamScore';
@@ -31,14 +31,22 @@ export function WinnerPickerModal({
   onPick,
   onClose,
 }: Props) {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  // Clear the selection whenever the sheet is dismissed/reopened.
+  useEffect(() => {
+    if (!visible) setSelected(null);
+  }, [visible]);
+
   const ready = !!draftTeams && draftTeams.teams.length >= 2 && !!rotation;
   const resolve = makeResolver(playersMap, guests);
   const teams = (draftTeams?.teams ?? []).map((t) => ({ index: t.index, playerIds: t.playerIds }));
   const [aIdx, bIdx] = rotation?.playing ?? [0, 1];
   const winsOf = (i: number) => rotation?.wins?.[String(i)] ?? 0;
 
-  const pick = (idx: number) => {
-    onPick(idx);
+  const confirm = () => {
+    if (selected == null) return;
+    onPick(selected);
     onClose();
   };
 
@@ -54,9 +62,14 @@ export function WinnerPickerModal({
               ? ([aIdx, bIdx] as const).map((idx, i) => (
                   <Pressable
                     key={idx}
-                    onPress={() => pick(idx)}
-                    style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
+                    onPress={() => setSelected(idx)}
+                    style={[styles.choice, selected === idx && styles.choiceSelected]}
                   >
+                    {selected === idx ? (
+                      <View style={styles.checkBadge}>
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                      </View>
+                    ) : null}
                     <TeamScore
                       teamIdx={idx}
                       roster={buildRoster(idx, teams, rotation!, resolve)}
@@ -69,10 +82,18 @@ export function WinnerPickerModal({
               : null}
           </View>
 
-          <Pressable style={styles.cancel} onPress={onClose}>
-            <Ionicons name="close" size={18} color="#475569" />
-            <Text style={styles.cancelText}>{he.winnerPickCancel}</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable style={[styles.btn, styles.cancelBtn]} onPress={onClose}>
+              <Text style={styles.cancelText}>{he.winnerPickCancel}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.btn, styles.confirmBtn, selected == null && styles.confirmDisabled]}
+              onPress={confirm}
+              disabled={selected == null}
+            >
+              <Text style={styles.confirmText}>{he.winnerPickConfirm}</Text>
+            </Pressable>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -113,21 +134,37 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
-  choicePressed: {
+  choiceSelected: {
     borderColor: '#2563EB',
     backgroundColor: '#EFF6FF',
   },
-  cancel: {
-    flexDirection: 'row',
+  checkBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: spacing.sm,
+  },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  btn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 16,
+  },
+  cancelBtn: {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
   cancelText: { color: '#475569', fontSize: 16, fontWeight: '700' },
+  confirmBtn: { backgroundColor: colors.primary },
+  confirmDisabled: { opacity: 0.45 },
+  confirmText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 });

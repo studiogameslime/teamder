@@ -287,16 +287,24 @@ export const he = {
   rotationWaiting: 'ממתינות',
   // Scoreboard redesign
   rotationStreak: (n: number) => (n === 1 ? 'ניצחון רצוף' : `${n} ניצחונות רצוף`),
+  rotationActiveBadge: 'משחק פעיל עכשיו',
   rotationWaitingTeams: 'קבוצות ממתינות',
   rotationNextUp: 'הבאה בתור',
+  rotationAfter: 'אחריה',
   rotationPlayersCount: (n: number) => `${n} שחקנים`,
   rotationFillerStar: (teamName: string) => `שחקן משלים מ${teamName}`,
   rotationFillerStarMulti: (teamNames: string) => `שחקנים משלימים מ${teamNames}`,
+  /** Names the specific filler player + their home team. */
+  rotationFillerNamed: (playerName: string, teamName: string) =>
+    `${playerName} משלים מ${teamName}`,
+  rotationStoppagesInline: (count: number, time: string) =>
+    `${count} עצירות · ${time}`,
   rotationStartRound: 'התחל משחקון',
   rotationEndRound: 'סיים משחקון',
   winnerPickTitle: 'מי ניצחה במשחקון?',
   winnerPickSubtitle: 'בחר את הקבוצה שניצחה כדי לסיים את המשחקון',
   winnerPickCancel: 'ביטול',
+  winnerPickConfirm: 'אישור',
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
