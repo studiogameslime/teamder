@@ -551,7 +551,7 @@ function PairStatsSection({
           {stats.sameTeam > 0 ? (
             <View style={styles.pairGrid}>
               <StatTile
-                label={he.pairStatsSameTeam}
+                label={he.pairStatsSameTeamRounds}
                 value={String(stats.sameTeam)}
               />
               <StatTile

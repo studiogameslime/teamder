@@ -3,7 +3,7 @@
 // the waiting queue, and admin actions: start, "who won?", reset. All the
 // math lives in rotationEngine; this is presentational + callbacks.
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
@@ -43,6 +43,37 @@ export function RotationPanel({
   onWinner,
   onStop,
 }: Props) {
+  // Tap-guard: recording a winner writes a fresh `lastRoundAt`, and the
+  // server credits one win PER write. Without this, a double-tap (or
+  // tapping both teams quickly) double-credits the round. Lock the
+  // start/win buttons the moment one is pressed; release when the next
+  // rotation snapshot lands (round resolved) or after a safety timeout
+  // in case the write fails. Hooks must precede the early return below.
+  const [busy, setBusy] = useState(false);
+  const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A signature that changes whenever the rotation actually advances.
+  const rotSig = `${rotation?.lastRoundAt ?? 0}|${rotation?.playing?.join('-') ?? ''}|${rotation ? 1 : 0}`;
+  useEffect(() => {
+    setBusy(false);
+    if (busyTimer.current) {
+      clearTimeout(busyTimer.current);
+      busyTimer.current = null;
+    }
+  }, [rotSig]);
+  useEffect(
+    () => () => {
+      if (busyTimer.current) clearTimeout(busyTimer.current);
+    },
+    [],
+  );
+  const guard = (fn: () => void) => {
+    if (busy) return;
+    setBusy(true);
+    if (busyTimer.current) clearTimeout(busyTimer.current);
+    busyTimer.current = setTimeout(() => setBusy(false), 5000);
+    fn();
+  };
+
   if (!draftTeams || draftTeams.teams.length < 2) return null;
 
   const guestName = (uid: string) => guests?.find((g) => g.id === uid)?.name;
@@ -63,12 +94,12 @@ export function RotationPanel({
         <Text style={styles.subtitle}>{he.rotationStartHint}</Text>
         {isAdmin ? (
           <Pressable
-            onPress={onStart}
-            disabled={!startable}
+            onPress={() => guard(onStart)}
+            disabled={!startable || busy}
             style={({ pressed }) => [
               styles.startBtn,
               pressed && { opacity: 0.9 },
-              !startable && { opacity: 0.5 },
+              (!startable || busy) && { opacity: 0.5 },
             ]}
           >
             <Ionicons name="play" size={20} color="#FFFFFF" />
@@ -121,8 +152,13 @@ export function RotationPanel({
         })}
         {isAdmin ? (
           <Pressable
-            onPress={() => onWinner(teamIdx)}
-            style={({ pressed }) => [styles.winBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => guard(() => onWinner(teamIdx))}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.winBtn,
+              pressed && { opacity: 0.85 },
+              busy && { opacity: 0.5 },
+            ]}
           >
             <Text style={styles.winBtnText}>{he.rotationWonCta}</Text>
           </Pressable>
