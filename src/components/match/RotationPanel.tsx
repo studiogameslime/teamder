@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   nextTag: {
     position: 'absolute',
     top: -1,
-    right: 14,
+    left: 14,
     backgroundColor: '#16A34A',
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,

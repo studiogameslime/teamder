@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   star: {
     position: 'absolute',
     top: -2,
-    right: -2,
+    left: -2,
     width: 18,
     height: 18,
     borderRadius: 9,
