@@ -2035,6 +2035,12 @@ export const gameService = {
     const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
     const res = runStartRotation(teams, perTeam, fillMode);
     if (!res) return; // gate: not enough players for two full teams
+    // Snapshot the ORIGINAL drafted rosters (before any permanent-fill
+    // reassignment) so stopRotation can restore them on reset.
+    res.rotation.baseTeams = draft.teams.map((t) => ({
+      index: t.index,
+      playerIds: [...t.playerIds],
+    }));
     await this._persistRotation(gameId, draft, res);
   },
 
@@ -2051,18 +2057,36 @@ export const gameService = {
     const fillMode = draft.fillMode ?? 'temporary';
     const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
     const res = runRecordWinner(winner, teams, g.rotation, perTeam, fillMode);
+    // Carry the original-roster snapshot forward (the engine builds a fresh
+    // rotation object each round and doesn't know about baseTeams).
+    res.rotation.baseTeams = g.rotation.baseTeams;
     await this._persistRotation(gameId, draft, res);
   },
 
-  /** Clear the rotation (back to "not started"). */
+  /** Clear the rotation (back to "not started"). In 'permanent' fill mode the
+   *  drafted rosters were rewritten round-by-round, so we also restore them
+   *  from the snapshot taken at start — otherwise a reset leaves scrambled
+   *  teams and a restart begins from the reassigned (wrong) rosters. */
   async stopRotation(gameId: string): Promise<void> {
     if (!gameId) return;
+    const g = await this.getGameById(gameId);
+    const base = g?.rotation?.baseTeams;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) m.rotation = undefined;
       return;
     }
-    await updateGameDoc(gameId, { rotation: null, updatedAt: Date.now() });
+    const patch: Record<string, unknown> = { rotation: null, updatedAt: Date.now() };
+    if (g?.draftTeams && base && base.length > 0) {
+      patch.draftTeams = {
+        ...g.draftTeams,
+        teams: g.draftTeams.teams.map((t) => {
+          const snap = base.find((s) => s.index === t.index);
+          return snap ? { ...t, playerIds: [...snap.playerIds] } : t;
+        }),
+      };
+    }
+    await updateGameDoc(gameId, patch);
   },
 
   /** Internal: write the engine result back (rotation + reassigned teams). */

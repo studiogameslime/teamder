@@ -779,6 +779,16 @@ function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
       ? (o.lastRoundLosers.filter((x) => typeof x === 'string') as string[])
       : undefined,
     lastRoundAt: typeof o.lastRoundAt === 'number' ? o.lastRoundAt : undefined,
+    baseTeams: Array.isArray(o.baseTeams)
+      ? o.baseTeams
+          .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+          .map((t) => ({
+            index: typeof t.index === 'number' ? t.index : 0,
+            playerIds: Array.isArray(t.playerIds)
+              ? (t.playerIds.filter((p) => typeof p === 'string') as string[])
+              : [],
+          }))
+      : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };
 }

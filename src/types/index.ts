@@ -946,6 +946,11 @@ export interface MatchRotation {
   /** Monotonic stamp of the last recorded result — the server function only
    *  awards wins when this advances (idempotent across listener ticks). */
   lastRoundAt?: number;
+  /** Snapshot of the drafted rosters as they stood when the rotation STARTED,
+   *  taken before any 'permanent' fill reassignments. `stopRotation` restores
+   *  `draftTeams` from this so a reset returns to the original teams (permanent
+   *  mode rewrites the rosters round-by-round). */
+  baseTeams?: { index: number; playerIds: string[] }[];
   updatedAt?: number;
 }
 
