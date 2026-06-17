@@ -139,9 +139,13 @@
 
   // Click beacon — count people who tapped a tracked link + reached the
   // page, before any redirect. Fire-and-forget; never blocks navigation.
-  if (source || linkId) {
+  // Fires for ad/campaign links (source/linkId) AND personal invite links
+  // (invitedBy) so a user's "link clicks" can be counted per inviter.
+  if (source || linkId || invitedBy) {
     try {
-      var beacon = '/track-click?l=' + encodeURIComponent(linkId) + '&s=' + encodeURIComponent(source);
+      var beacon = '/track-click?l=' + encodeURIComponent(linkId) +
+        '&s=' + encodeURIComponent(source) +
+        '&inviter=' + encodeURIComponent(invitedBy);
       if (navigator.sendBeacon) navigator.sendBeacon(beacon);
       else fetch(beacon, { mode: 'no-cors', keepalive: true });
     } catch (_) { /* non-fatal */ }
