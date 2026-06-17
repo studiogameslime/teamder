@@ -124,6 +124,8 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
     outgoing: { label: he.friendsPendingOutgoing, icon: 'time-outline' },
     incoming: { label: he.friendsRespondIncoming, icon: 'checkmark-circle-outline' },
     friends: { label: he.friendsAlready, icon: 'people' },
+    // Declined — muted, non-interactive. No path to re-send.
+    rejected: { label: he.friendsRejected, icon: 'close-circle-outline' },
   };
   const { label, icon } = config[rel];
 

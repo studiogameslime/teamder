@@ -90,6 +90,7 @@ import {
   isTerminal as isTerminalGame,
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
+import { shareToWhatsApp } from '@/services/whatsappService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   getForecastFor,
@@ -923,6 +924,8 @@ export function MatchDetailsScreen() {
           // toast so the user isn't left guessing.
           toast.error(he.registrationConflictTitle);
         }
+      } else if (code === 'GAME_JOIN_REJECTED' || msg.includes('GAME_JOIN_REJECTED')) {
+        toast.error(he.matchDetailsJoinRejected);
       } else if (msg.includes('GAME_STARTED')) {
         toast.info(he.matchDetailsAlreadyStarted);
       } else if (msg.includes('GAME_LIVE')) {
@@ -1126,6 +1129,11 @@ export function MatchDetailsScreen() {
   }
 
   const status = user ? statusForUser(game, user.id) : 'none';
+  // Organizer rejected this user on a prior request → they can't re-join.
+  // Hide the join CTA proactively rather than letting them tap into a
+  // toast (the service blocks it server-side regardless).
+  const wasRejected =
+    !!user && (game.rejectedPlayerIds ?? []).includes(user.id);
   const fmt = formatLabel(game.format);
   // Capacity tracks BOTH registered uids and per-game guests — a guest
   // is a real seat at the match, just without a /users record.
@@ -1315,6 +1323,47 @@ export function MatchDetailsScreen() {
     }
   };
 
+  // WhatsApp recruitment — the lowest-friction way to fill a shortage.
+  // Builds a rich, scannable message (what / when / where / how many
+  // missing + join link) and opens WhatsApp straight to a contact picker.
+  // Falls back to the OS share sheet if WhatsApp isn't installed.
+  const handleShareWhatsApp = async () => {
+    if (game.visibility !== 'public') {
+      toast.info(he.sessionActionInviteCommunityOnly);
+      return;
+    }
+    if (!isOpen(game) || game.startsAt <= Date.now()) return;
+    const link = deepLinkService.buildInviteUrl({
+      type: 'session',
+      id: game.id,
+      invitedBy: user?.id,
+    });
+    const missing = Math.max(
+      0,
+      game.maxPlayers - (game.players.length + (game.guests?.length ?? 0)),
+    );
+    const text = he.sessionShareWhatsappBody({
+      title: game.title,
+      when: formatDateLong(game.startsAt),
+      field: game.fieldName,
+      missing,
+      link,
+    });
+    try {
+      const ok = await shareToWhatsApp(text);
+      if (!ok) {
+        await Share.share({ title: game.title, message: text });
+      }
+      logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
+    } catch (err) {
+      logError('matchShareWhatsApp', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
+      if (__DEV__) console.warn('[matchDetails] whatsapp share failed', err);
+    }
+  };
+
   // Visibility toggle — preserved from the previous design, now
   // hosted inside the collapsible MatchManageSection.
   const flipVisibility = async (next: boolean) => {
@@ -1435,6 +1484,8 @@ export function MatchDetailsScreen() {
     }
     // Regular user — primary is "join" only when not already in.
     if (primaryDestructive) return null;
+    // Rejected users get no join CTA at all.
+    if (wasRejected) return null;
     return {
       title: primaryLabel,
       onPress: handlePrimary,
@@ -1445,6 +1496,21 @@ export function MatchDetailsScreen() {
   // Conflict gate — only when the user is about to JOIN.
   const blockedByConflict =
     !!preCheckConflict && !!primary && status === 'none';
+
+  // WhatsApp recruitment bar — show whenever this public game is still
+  // open, in the future, and short of players. This is the app's main
+  // "reach strangers to fill the week" lever, so it gets a prominent
+  // green button regardless of the user's own join state.
+  const recruitMissing = Math.max(
+    0,
+    game.maxPlayers - (game.players.length + (game.guests?.length ?? 0)),
+  );
+  const canRecruitWhatsApp =
+    game.visibility === 'public' &&
+    !isTerminalGame(game) &&
+    isOpen(game) &&
+    game.startsAt > Date.now() &&
+    recruitMissing > 0;
 
   // Single-section hamburger — no titles, ordered by frequency of
   // use. Destructive items sit at the bottom in the danger tone.
@@ -2396,31 +2462,53 @@ export function MatchDetailsScreen() {
           participants + match-details sections. Share lives in the
           header now, so this bar is hidden entirely when there's no
           meaningful contextual action — see `ctaState`. */}
-      {ctaState ? (
+      {ctaState || canRecruitWhatsApp ? (
         <View
           style={[
             styles.stickyCta,
-            ctaState.tone === 'blocked' && styles.ctaBlocked,
+            ctaState?.tone === 'blocked' && styles.ctaBlocked,
           ]}
         >
-          <Pressable
-            onPress={ctaState.onPress}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.inviteCta,
-              ctaState.tone === 'destructive' && styles.inviteCtaDestructive,
-              pressed && { opacity: 0.9 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={ctaState.label}
-          >
-            <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />
-            <Text style={styles.inviteCtaText}>{ctaState.label}</Text>
-          </Pressable>
-          {ctaState.tone === 'blocked' ? (
-            <Text style={styles.ctaHelper}>
-              {he.registrationConflictHelper}
-            </Text>
+          {canRecruitWhatsApp ? (
+            <Pressable
+              onPress={handleShareWhatsApp}
+              style={({ pressed }) => [
+                styles.whatsappBtn,
+                pressed && { opacity: 0.9 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.sessionShareWhatsapp}
+            >
+              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+              <Text style={styles.whatsappBtnText}>
+                {he.sessionShareWhatsapp}
+              </Text>
+            </Pressable>
+          ) : null}
+          {ctaState ? (
+            <>
+              <Pressable
+                onPress={ctaState.onPress}
+                disabled={busy}
+                style={({ pressed }) => [
+                  styles.inviteCta,
+                  ctaState.tone === 'destructive' &&
+                    styles.inviteCtaDestructive,
+                  canRecruitWhatsApp && { marginTop: spacing.sm },
+                  pressed && { opacity: 0.9 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={ctaState.label}
+              >
+                <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />
+                <Text style={styles.inviteCtaText}>{ctaState.label}</Text>
+              </Pressable>
+              {ctaState.tone === 'blocked' ? (
+                <Text style={styles.ctaHelper}>
+                  {he.registrationConflictHelper}
+                </Text>
+              ) : null}
+            </>
           ) : null}
         </View>
       ) : null}
@@ -2926,6 +3014,23 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.lg,
     gap: spacing.xl,
+  },
+
+  // WhatsApp recruitment button — official WhatsApp green so it reads
+  // instantly as "share to WhatsApp". Sits at the top of the sticky bar.
+  whatsappBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#25D366',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  whatsappBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
 
   // Bottom CTA — bright royal blue with shadow. Hand-rolled so the

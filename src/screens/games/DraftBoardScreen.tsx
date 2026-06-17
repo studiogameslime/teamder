@@ -27,7 +27,9 @@ import { GrowIn, ShrinkOut } from '@/components/draft/DraftScalePop';
 import { Breathing } from '@/components/anim/Breathing';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
+import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
+import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
@@ -46,6 +48,7 @@ export function DraftBoardScreen() {
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const currentUser = useUserStore((s) => s.currentUser);
+  const myCommunities = useGroupStore((s) => s.groups);
 
   const [game, setGame] = useState<Game | null>(null);
   /** uids in the order they were picked; team = order[k]. Captains excluded. */
@@ -58,6 +61,20 @@ export function DraftBoardScreen() {
       try {
         const g = await gameService.getGameById(gameId);
         if (!alive) return;
+        // Editing teams is manager-only; viewing (readOnly) stays open to
+        // everyone. Bounce a non-manager who reaches the editable board.
+        if (g && !readOnly) {
+          const grp = myCommunities.find((c) => c.id === g.groupId);
+          const isAdmin =
+            !!currentUser &&
+            (g.createdBy === currentUser.id ||
+              (!!grp && grp.adminIds.includes(currentUser.id)));
+          if (!isAdmin) {
+            toast.info(he.draftAdminOnly);
+            if (nav.canGoBack()) nav.goBack();
+            return;
+          }
+        }
         setGame(g);
         if (g?.players?.length) hydratePlayers(g.players);
         // Resuming a saved draft → reconstruct the picks so we land on the
@@ -72,7 +89,7 @@ export function DraftBoardScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, hydratePlayers]);
+  }, [gameId, hydratePlayers, readOnly, currentUser, myCommunities, nav]);
 
   // Roster = registered players (from the store) + per-game guests.
   const participants = useMemo<

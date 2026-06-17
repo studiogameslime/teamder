@@ -54,3 +54,27 @@ export async function openWhatsApp(phone: string | undefined): Promise<boolean> 
     return false;
   }
 }
+
+/**
+ * Open WhatsApp's contact chooser with `text` pre-filled — no specific
+ * recipient. Used by the "share a game to WhatsApp" recruitment action.
+ * Tries the native `whatsapp://` scheme first (lands straight in the app
+ * when installed), then the wa.me web fallback. Returns false if WhatsApp
+ * isn't reachable so the caller can fall back to the OS share sheet.
+ */
+export async function shareToWhatsApp(text: string): Promise<boolean> {
+  const encoded = encodeURIComponent(text);
+  const candidates = [
+    `whatsapp://send?text=${encoded}`,
+    `https://wa.me/?text=${encoded}`,
+  ];
+  for (const url of candidates) {
+    try {
+      await Linking.openURL(url);
+      return true;
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return false;
+}

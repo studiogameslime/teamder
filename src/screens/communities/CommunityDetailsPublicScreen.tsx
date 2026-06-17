@@ -36,6 +36,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { toast } from '@/components/Toast';
 import { successHaptic } from '@/utils/haptics';
 import { groupService } from '@/services';
+import { GroupJoinRejectedError } from '@/services/groupService';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import {
@@ -226,6 +227,13 @@ export function CommunityDetailsPublicScreen() {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
+      if (
+        err instanceof GroupJoinRejectedError ||
+        (err as Error)?.name === 'GroupJoinRejectedError'
+      ) {
+        toast.error(he.toastJoinRejected);
+        return;
+      }
       const code =
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)

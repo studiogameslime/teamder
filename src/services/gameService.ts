@@ -2467,6 +2467,11 @@ export const gameService = {
       if (g.status === 'scheduled') {
         throw new Error('joinGameV2: registration not yet open');
       }
+      if ((g.rejectedPlayerIds ?? []).includes(userId)) {
+        const e = new Error('GAME_JOIN_REJECTED') as Error & { code?: string };
+        e.code = 'GAME_JOIN_REJECTED';
+        throw e;
+      }
       const already =
         g.players.includes(userId) ||
         g.waitlist.includes(userId) ||
@@ -2624,6 +2629,15 @@ export const gameService = {
       const players = data.players ?? [];
       const waitlist = data.waitlist ?? [];
       const pending = data.pending ?? [];
+      // Rejected by the organizer on a previous request → can't re-request
+      // this game. Checked before idempotency so a rejected user is always
+      // bounced (mirrors declined friends / rejected community joins).
+      const rejected = (data.rejectedPlayerIds ?? []) as string[];
+      if (rejected.includes(userId)) {
+        const e = new Error('GAME_JOIN_REJECTED') as Error & { code?: string };
+        e.code = 'GAME_JOIN_REJECTED';
+        throw e;
+      }
       // Idempotency — already joined? Return the detected bucket
       // without writing. Important: must be inside the txn so the
       // observation is consistent with the eventual write decision.
@@ -2796,6 +2810,7 @@ export const gameService = {
           'GAME_NOT_OPEN',
           'GAME_STARTED',
           'GAME_LIVE',
+          'GAME_JOIN_REJECTED',
           'GROUP_FULL',
           'STALE_OFFER',
           'resource-exhausted',
@@ -3016,6 +3031,10 @@ export const gameService = {
       const before = (g.pending ?? []).length;
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
       if (g.pending.length === before) return;
+      // Remember the rejection so the user can't immediately re-request.
+      g.rejectedPlayerIds = Array.from(
+        new Set([...(g.rejectedPlayerIds ?? []), userId]),
+      );
       // Rebuild from post-update arrays — same shape as the Firebase
       // path. Keeps mock state consistent with what the rules-checked
       // production write would produce.
@@ -3050,6 +3069,11 @@ export const gameService = {
       }
       const players = (data.players ?? []) as string[];
       const waitlist = (data.waitlist ?? []) as string[];
+      // Remember the rejection (bounded) so the user can't immediately
+      // re-request — joinGameV2 reads this back to block a re-join.
+      const rejectedPlayerIds = Array.from(
+        new Set([...((data.rejectedPlayerIds ?? []) as string[]), userId]),
+      ).slice(-200);
       // Rebuild from post-update arrays — same reason as joinGameV2:
       // an empty/stale `participantIds` would trip the rule's
       // `participantIds.size == players + waitlist + pending`
@@ -3061,6 +3085,7 @@ export const gameService = {
       tx.update(ref, {
         pending,
         participantIds,
+        rejectedPlayerIds,
         updatedAt: Date.now(),
       } as any);
       return { changed: true, title: data.title ?? '' };

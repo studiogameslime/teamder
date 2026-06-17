@@ -52,7 +52,16 @@ export type FriendRelationship =
   | 'friends'
   | 'outgoing' // I sent a request, awaiting their approval
   | 'incoming' // they sent me a request, awaiting my approval
+  | 'rejected' // I sent a request, they declined it — no re-send
   | 'none';
+
+/** Thrown by sendRequest when the target already declined a prior request. */
+export class FriendRequestDeclinedError extends Error {
+  constructor() {
+    super('friends: request was declined');
+    this.name = 'FriendRequestDeclinedError';
+  }
+}
 
 // ─── Mock state (dev / USE_MOCK_DATA) ────────────────────────────────────
 const mockRequests: FriendRequestDoc[] = [];
@@ -102,6 +111,9 @@ export const friendsService = {
       }
       const existing = mockRequests.find((r) => r.id === id);
       if (existing) {
+        if (existing.status === 'declined') {
+          throw new FriendRequestDeclinedError();
+        }
         existing.status = 'pending';
         existing.updatedAt = Date.now();
         return;
@@ -114,6 +126,21 @@ export const friendsService = {
         createdAt: Date.now(),
       });
       return;
+    }
+    // Block re-sending after a decline: if my previous outgoing request to
+    // this user was declined, don't let me reopen it. A declined doc is kept
+    // (status:'declined') precisely so we can enforce this. A get() on a
+    // NON-existent friendRequest throws permission-denied (the rule reads
+    // null resource.data) — that's the normal "no prior request" case, so we
+    // swallow it and let the send proceed.
+    try {
+      const prior = await getDoc(docs.friendRequest(id));
+      if (prior.exists() && prior.data().status === 'declined') {
+        throw new FriendRequestDeclinedError();
+      }
+    } catch (e) {
+      if (e instanceof FriendRequestDeclinedError) throw e;
+      // any read failure (incl. permission-denied on a missing doc) → proceed
     }
     try {
       await setDoc(docs.friendRequest(id), {
@@ -268,13 +295,12 @@ export const friendsService = {
     const friendIds = await this.listFriendIds(uid);
     if (friendIds.includes(otherId)) return 'friends';
     if (USE_MOCK_DATA) {
-      if (
-        mockRequests.some(
-          (r) => r.id === friendRequestId(uid, otherId) && r.status === 'pending',
-        )
-      ) {
-        return 'outgoing';
-      }
+      const outMock = mockRequests.find(
+        (r) => r.id === friendRequestId(uid, otherId),
+      );
+      if (outMock?.status === 'pending') return 'outgoing';
+      // They declined my request → blocked from re-sending.
+      if (outMock?.status === 'declined') return 'rejected';
       if (
         mockRequests.some(
           (r) => r.id === friendRequestId(otherId, uid) && r.status === 'pending',
@@ -289,6 +315,10 @@ export const friendsService = {
         docs.friendRequest(friendRequestId(uid, otherId)),
       );
       if (outSnap.exists() && outSnap.data().status === 'pending') return 'outgoing';
+      // They declined my outgoing request → don't let me spam another.
+      if (outSnap.exists() && outSnap.data().status === 'declined') {
+        return 'rejected';
+      }
       const inSnap = await getDoc(
         docs.friendRequest(friendRequestId(otherId, uid)),
       );

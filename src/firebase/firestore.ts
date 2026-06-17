@@ -985,6 +985,13 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
               ...(Array.isArray(d.pendingUserIds) ? d.pendingUserIds : []),
             ])
           ),
+      // Organizer-rejected users — kept so a rejected request can't be
+      // re-sent (read back by joinGameV2's block).
+      rejectedPlayerIds: Array.isArray(d.rejectedPlayerIds)
+        ? (d.rejectedPlayerIds as unknown[]).filter(
+            (u): u is string => typeof u === 'string',
+          )
+        : undefined,
       ballHolderUserId: d.ballHolderUserId ?? undefined,
       jerseysHolderUserId: d.jerseysHolderUserId ?? undefined,
       ballBringerIds: Array.isArray(d.ballBringerIds)

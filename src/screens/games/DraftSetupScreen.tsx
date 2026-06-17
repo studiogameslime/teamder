@@ -21,7 +21,10 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
 import { useGameStore } from '@/store/gameStore';
+import { useUserStore } from '@/store/userStore';
+import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
+import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
@@ -43,6 +46,8 @@ export function DraftSetupScreen() {
 
   const playersMap = useGameStore((s) => s.players);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const currentUser = useUserStore((s) => s.currentUser);
+  const myCommunities = useGroupStore((s) => s.groups);
 
   const [game, setGame] = useState<Game | null>(null);
   const [captainIds, setCaptainIds] = useState<string[]>([]);
@@ -57,6 +62,21 @@ export function DraftSetupScreen() {
       try {
         const g = await gameService.getGameById(gameId);
         if (!alive) return;
+        // Teams (כוחות) are a manager-only action. Guard the screen itself
+        // — not just the menu entry — so a non-manager who reaches it via a
+        // stale nav state or deep link is bounced out instead of editing.
+        if (g) {
+          const grp = myCommunities.find((c) => c.id === g.groupId);
+          const isAdmin =
+            !!currentUser &&
+            (g.createdBy === currentUser.id ||
+              (!!grp && grp.adminIds.includes(currentUser.id)));
+          if (!isAdmin) {
+            toast.info(he.draftAdminOnly);
+            if (nav.canGoBack()) nav.goBack();
+            return;
+          }
+        }
         setGame(g);
         if (g?.players?.length) hydratePlayers(g.players);
       } catch (err) {
@@ -66,7 +86,7 @@ export function DraftSetupScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, hydratePlayers]);
+  }, [gameId, hydratePlayers, currentUser, myCommunities, nav]);
 
   // Draftable roster = registered players (uid → name/avatar from the
   // store) PLUS per-game guests (name only; avatar falls back to a

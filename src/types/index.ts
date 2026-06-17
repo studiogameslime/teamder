@@ -1045,6 +1045,13 @@ export interface Game {
    */
   pending?: UserId[];
   /**
+   * Users an organizer explicitly REJECTED from `pending`. Kept as an
+   * audit trail so a rejected user can't immediately re-request the same
+   * game (mirrors declined friend requests / rejected community joins).
+   * Terminal: only an admin clears it.
+   */
+  rejectedPlayerIds?: UserId[];
+  /**
    * Denormalized union of `players + waitlist + pending`. Lets the
    * "my games" query be a single `array-contains` instead of three
    * unioned queries. Must be kept in sync on every write — see

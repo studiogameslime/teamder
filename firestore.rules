@@ -522,8 +522,13 @@ service cloud.firestore {
         (
           (request.auth.uid == resource.data.toUserId &&
             request.resource.data.status == 'declined') ||
+          // Sender may (re)set to pending — BUT a declined request is
+          // terminal: once the recipient declined, the sender can't flip
+          // it back to pending and spam again. They'd have to be re-invited
+          // by the other side (a fresh request in the opposite direction).
           (request.auth.uid == resource.data.fromUserId &&
-            request.resource.data.status == 'pending')
+            request.resource.data.status == 'pending' &&
+            resource.data.status != 'declined')
         );
       // Either party may remove the doc (sender withdraws / recipient
       // clears a declined one).
@@ -579,6 +584,10 @@ service cloud.firestore {
         (
           resource.data.status == 'open' &&
           request.resource.data.status == 'open' &&
+          // A user the organizer rejected can't re-join via a direct write
+          // (the client blocks it too). `rejectedPlayerIds` isn't in this
+          // branch's affectedKeys whitelist, so they also can't clear it.
+          !(request.auth.uid in resource.data.get('rejectedPlayerIds', [])) &&
           (
             !('startsAt' in resource.data) ||
             request.time.toMillis() < resource.data.startsAt
@@ -770,6 +779,13 @@ service cloud.firestore {
             (
               request.resource.data.pending is list &&
               request.resource.data.pending.size() <= 100
+            )
+          ) &&
+          (
+            !('rejectedPlayerIds' in request.resource.data) ||
+            (
+              request.resource.data.rejectedPlayerIds is list &&
+              request.resource.data.rejectedPlayerIds.size() <= 200
             )
           )
         )

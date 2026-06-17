@@ -59,6 +59,15 @@ function normalize(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/** Thrown by a join attempt when the user was already rejected from a
+ *  closed community — the request UI uses this to show a clear message. */
+export class GroupJoinRejectedError extends Error {
+  constructor() {
+    super('group: join request was rejected');
+    this.name = 'GroupJoinRejectedError';
+  }
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────
 
 export const groupService = {
@@ -1849,6 +1858,27 @@ async function writeJoin(
   isOpen: boolean,
 ): Promise<void> {
   const { db } = getFirebase();
+  // Block re-requesting after a rejection. Open communities auto-join with
+  // no approval step, so a rejection can only exist for closed ones — only
+  // check there. The rejected audit doc is kept (status:'rejected') exactly
+  // so we can enforce this.
+  if (!isOpen) {
+    try {
+      const rejected = await getDocs(
+        query(
+          col.joinRequests(),
+          where('groupId', '==', groupId),
+          where('userId', '==', userId),
+          where('status', '==', 'rejected'),
+        ),
+      );
+      if (!rejected.empty) throw new GroupJoinRejectedError();
+    } catch (e) {
+      if (e instanceof GroupJoinRejectedError) throw e;
+      // A read failure here (rules race / offline) shouldn't hard-block a
+      // legitimate join — fall through and let the write be attempted.
+    }
+  }
   const batch = writeBatch(db);
   if (isOpen) {
     // Open community: skip the join-request doc entirely and add the user

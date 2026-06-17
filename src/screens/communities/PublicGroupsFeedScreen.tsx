@@ -45,6 +45,7 @@ import {
 } from '@/components/community/CommunityCard';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
+import { GroupJoinRejectedError } from '@/services/groupService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
 import { GroupPublic } from '@/types';
@@ -228,7 +229,15 @@ export function PublicGroupsFeedScreen() {
           !adminIds.has(g.id) &&
           !pendingIds.has(g.id) &&
           passesDiscoveryFilters(g)
-      ),
+      )
+        // Biggest communities first — more players = more games happening,
+        // so the discovery feed leads with the most active clubs. Tie-break
+        // by name for a stable, predictable order.
+        .sort(
+          (a, b) =>
+            (b.memberCount ?? 0) - (a.memberCount ?? 0) ||
+            (a.name ?? '').localeCompare(b.name ?? '', 'he'),
+        ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [items, memberIds, adminIds, pendingIds, filters, nearbyLoc, nearbyLoading]
   );
@@ -272,6 +281,13 @@ export function PublicGroupsFeedScreen() {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
+      if (
+        err instanceof GroupJoinRejectedError ||
+        (err as Error)?.name === 'GroupJoinRejectedError'
+      ) {
+        toast.error(he.toastJoinRejected);
+        return;
+      }
       const code =
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)
@@ -629,9 +645,30 @@ export function PublicGroupsFeedScreen() {
             <View style={styles.body}>
               <Section title={he.communitiesSectionMember}>
                 {myItems.length === 0 ? (
-                  <Text style={styles.sectionEmpty}>
-                    {he.communitiesEmptyMember}
-                  </Text>
+                  <View style={styles.emptyHintCard}>
+                    <View style={styles.emptyHintIcon}>
+                      <Ionicons
+                        name="people-outline"
+                        size={26}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.emptyHintTitle}>
+                      {he.communitiesEmptyMember}
+                    </Text>
+                    <Text style={styles.emptyHintBody}>
+                      {he.communitiesEmptyMemberSub}
+                    </Text>
+                    <Button
+                      title={he.communitiesCreateFirst}
+                      variant="primary"
+                      size="md"
+                      iconLeft="add-circle-outline"
+                      onPress={() => nav.navigate('CommunitiesCreate')}
+                      style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
+                      fullWidth
+                    />
+                  </View>
                 ) : (
                   <View style={styles.cardsList}>{myItems.map(renderCard)}</View>
                 )}
@@ -869,6 +906,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: spacing.lg,
+  },
+  emptyHintCard: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EEF2F7',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyHintIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyHintTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  emptyHintBody: {
+    marginTop: spacing.xs,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   cardsList: {
     gap: spacing.md,

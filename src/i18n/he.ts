@@ -175,6 +175,7 @@ export const he = {
   toastMemberRejected: 'הבקשה נדחתה',
   toastSaved: 'נשמר',
   toastGroupFull: 'המועדון מלא. לא ניתן לשלוח בקשה כרגע.',
+  toastJoinRejected: 'בקשתך למועדון זה נדחתה ולא ניתן לשלוח שוב.',
   toastApproveFailed: 'אישור החבר נכשל. נסה שוב.',
   toastApproveGroupFull:
     'המועדון כבר מלא. לא ניתן לאשר חברים נוספים מעבר לקיבולת.',
@@ -230,6 +231,25 @@ export const he = {
   sessionActionGoLive: 'עבור ללייב',
   sessionInviteShareBody: (link: string) =>
     `הוזמנת למשחק ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
+  sessionShareWhatsapp: 'שתף בוואטסאפ',
+  // Rich, scannable WhatsApp recruitment message: what / when / where /
+  // how many still missing, then the join link. Lines are only added when
+  // their data exists so the message never shows an empty field.
+  sessionShareWhatsappBody: (args: {
+    title: string;
+    when: string;
+    field?: string;
+    missing?: number;
+    link: string;
+  }) => {
+    const lines: string[] = [`⚽ ${args.title} — מחפשים שחקנים!`, '', `🗓️ ${args.when}`];
+    if (args.field && args.field.trim()) lines.push(`📍 ${args.field.trim()}`);
+    if (typeof args.missing === 'number' && args.missing > 0) {
+      lines.push(`👥 חסרים עוד ${args.missing} שחקנים`);
+    }
+    lines.push('', 'הצטרפו כאן 👇', args.link);
+    return lines.join('\n');
+  },
   numWaiting: 'ספסל',
   numRegistered: 'בהרכב',
 
@@ -688,6 +708,8 @@ export const he = {
   communitiesCardSearchPlaceholder: 'חיפוש מועדון או עיר',
   communitiesEmptyAdmin: 'אינך מנהל אף מועדון',
   communitiesEmptyMember: 'עדיין לא הצטרפת לאף מועדון',
+  communitiesEmptyMemberSub:
+    'הצטרף למועדון מהרשימה למטה כדי לראות משחקים, או פתח מועדון משלך.',
   communitiesEmptyOpenSection: 'אין מועדונים פתוחים נוספים',
   // Legacy keys kept until any old caller is removed:
   communitiesSectionMine: 'המועדונים שלי',
@@ -919,6 +941,7 @@ export const he = {
   friendsPendingOutgoing: 'בקשת חברות נשלחה',
   friendsRespondIncoming: 'אשר בקשת חברות',
   friendsAlready: 'אתם חברים',
+  friendsRejected: 'הבקשה נדחתה',
   friendsRequestSent: 'בקשת חברות נשלחה',
   // ── Quick-game wizard ────────────────────────────────────────────
   wizardVisibilityPrivate: 'פרטי (בהזמנה בלבד)',
@@ -1522,6 +1545,7 @@ export const he = {
     `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
   matchDetailsAlreadyStarted: 'המשחק כבר התחיל',
   matchDetailsAlreadyLive: 'המשחק כבר במצב לייב',
+  matchDetailsJoinRejected: 'בקשתך למשחק זה נדחתה ולא ניתן להירשם שוב.',
   matchDetailsAlreadyFinished: 'המשחק הסתיים',
   matchDetailsAlreadyCancelled: 'המשחק בוטל',
   matchDetailsTerminalSub: 'לא ניתן לבצע פעולות על המשחק הזה',
@@ -1868,6 +1892,7 @@ export const he = {
 
   // ── Draft Teams (חלוקת כוחות) ──────────────────────────────────────
   draftTitle: 'חלוקת כוחות',
+  draftAdminOnly: 'רק מנהל המשחק יכול לקבוע כוחות',
   draftStepLabel: (n: number, total: number) => `שלב ${n} מתוך ${total}`,
   draftSetupSubtitle: 'בחר קפטנים',
   draftCaptainBadge: 'קפטן',
