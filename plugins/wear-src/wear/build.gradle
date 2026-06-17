@@ -44,8 +44,8 @@ android {
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
-    versionCode 1018
-    versionName "1.0.21"
+    versionCode 1019
+    versionName "1.0.22"
   }
 
   buildFeatures {

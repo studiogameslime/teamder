@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.21",
+    "version": "1.0.22",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
