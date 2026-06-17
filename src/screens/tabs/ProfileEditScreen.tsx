@@ -129,9 +129,10 @@ export function ProfileEditScreen() {
     const res = await pickAndUploadAvatar(user.id);
     setUploading(false);
     if (!res.ok) {
-      if (res.reason === 'permission') {
-        appAlert(he.error, he.profilePhotoPermissionDenied);
-      } else if (res.reason === 'network') {
+      // Photo is optional (built-in avatars available). Per App Store
+      // guideline 5.1.1(iv) we don't nag to reconsider or send the user to
+      // Settings after a denial — just fall back silently.
+      if (res.reason === 'network') {
         appAlert(he.error, he.profilePhotoUploadFailed);
       } else if (res.reason === 'unavailable') {
         appAlert(he.error, he.profilePhotoUnavailable);

@@ -19,6 +19,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   EmailAuthProvider,
+  signInAnonymously as fbSignInAnonymously,
   signInWithCredential,
   signInWithEmailAndPassword as fbSignInWithEmailAndPassword,
   createUserWithEmailAndPassword as fbCreateUserWithEmailAndPassword,
@@ -394,6 +395,19 @@ export async function signInWithApple(): Promise<{
     }
     throw new Error(`ההתחברות ל-Firebase נכשלה (${e.code ?? 'unknown'})`);
   }
+}
+
+/**
+ * Sign in anonymously — the "browse as guest" entry point. Gives the client a
+ * real Firebase uid so it can READ public communities/games (the rules require
+ * `isSignedIn()`), without collecting any personal info. The guest never gets a
+ * /users doc; account actions later prompt a full Google/Apple/email sign-in.
+ */
+export async function signInAnonymously(): Promise<FirebaseUser> {
+  if (USE_MOCK_DATA) throw new Error('signInAnonymously: USE_MOCK_DATA is true');
+  const { auth } = getFirebase();
+  const cred = await fbSignInAnonymously(auth);
+  return cred.user;
 }
 
 export async function signOutFirebase(): Promise<void> {

@@ -46,6 +46,7 @@ import {
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { GroupJoinRejectedError } from '@/services/groupService';
+import { ensureNotGuest } from '@/utils/guestGate';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
 import { GroupPublic } from '@/types';
@@ -248,6 +249,7 @@ export function PublicGroupsFeedScreen() {
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) return;
     if (!user) return;
     try {
       const status = await requestJoinById(item.id, user.id);
@@ -312,6 +314,13 @@ export function PublicGroupsFeedScreen() {
         toast.error(he.toastRequestFailed);
       }
     }
+  };
+
+  // Creating a community is an account action — guests are prompted to
+  // register first.
+  const handleCreate = () => {
+    if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    nav.navigate('CommunitiesCreate');
   };
 
   const handleEnter = async (item: GroupPublic) => {
@@ -614,7 +623,7 @@ export function PublicGroupsFeedScreen() {
             variant="primary"
             size="lg"
             iconLeft="add-circle-outline"
-            onPress={() => nav.navigate('CommunitiesCreate')}
+            onPress={handleCreate}
             style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
             fullWidth
           />
@@ -664,7 +673,7 @@ export function PublicGroupsFeedScreen() {
                       variant="primary"
                       size="md"
                       iconLeft="add-circle-outline"
-                      onPress={() => nav.navigate('CommunitiesCreate')}
+                      onPress={handleCreate}
                       style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
                       fullWidth
                     />
@@ -708,7 +717,7 @@ export function PublicGroupsFeedScreen() {
               styles.fabInner,
               pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
             ]}
-            onPress={() => nav.navigate('CommunitiesCreate')}
+            onPress={handleCreate}
             accessibilityRole="button"
             accessibilityLabel={he.communitiesCreateGroup}
           >

@@ -500,6 +500,31 @@ export function ProfileScreen() {
     },
   ];
 
+  // Guest session — no real profile/stats exist. Show a clean "register to
+  // unlock your profile" prompt instead of an empty stats screen with
+  // sign-out / delete-account controls that don't apply to a guest.
+  if (localUser?.isGuest) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <View style={styles.guestWrap}>
+          <View style={styles.guestIcon}>
+            <Ionicons name="person-circle-outline" size={72} color={colors.primary} />
+          </View>
+          <Text style={styles.guestTitle}>{he.guestProfileTitle}</Text>
+          <Text style={styles.guestBody}>{he.guestProfileBody}</Text>
+          <Button
+            title={he.guestRegisterCta}
+            variant="primary"
+            size="lg"
+            onPress={() => void signOut()}
+            fullWidth
+            style={{ marginTop: spacing.lg }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -704,6 +729,26 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  guestWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  guestIcon: { marginBottom: spacing.md },
+  guestTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  guestBody: {
+    fontSize: 15,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: spacing.sm,
   },
   scroll: {
     paddingBottom: spacing.xxl,

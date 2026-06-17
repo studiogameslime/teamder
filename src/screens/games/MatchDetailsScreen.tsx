@@ -91,6 +91,7 @@ import {
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
 import { shareToWhatsApp } from '@/services/whatsappService';
+import { ensureNotGuest } from '@/utils/guestGate';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   getForecastFor,
@@ -745,6 +746,8 @@ export function MatchDetailsScreen() {
 
   const handlePrimary = async () => {
     if (!user || !game) return;
+    // Guests can browse a game but must register to register/join it.
+    if (!ensureNotGuest(he.guestRegisterJoinGame)) return;
     const status = statusForUser(game, user.id);
     // Lifecycle gate via the shared helper (mirrors the txn check
     // inside joinGameV2 and the firestore.rules clause). Cancel

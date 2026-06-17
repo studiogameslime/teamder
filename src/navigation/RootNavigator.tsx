@@ -234,16 +234,21 @@ export function RootNavigator() {
 
   if (!currentUser) return <AuthStack initialRoute="SignIn" />;
 
+  // Guests (anonymous "browse" sessions) skip the registration gates and go
+  // straight to the tabs — browsing public communities/games must not require
+  // an account (App Store guideline 5.1.1(v)). Account actions prompt sign-in.
+  const isGuest = currentUser.isGuest === true;
+
   // Post-sign-in onboarding (welcome → how → profile confirm) before group
   // selection. Once completed, /users/{uid}.onboardingCompleted is true and
   // we fall through to the existing group flow. Existing accounts that
   // never had this field stay grandfathered as long as the converter writes
   // `false` rather than promoting them — they'll see it once.
-  if (currentUser && !hasCompletedOnboarding) {
+  if (!isGuest && currentUser && !hasCompletedOnboarding) {
     return <PostSignInOnboardingScreen />;
   }
 
-  if (!profileComplete) return <AuthStack initialRoute="ProfileSetup" />;
+  if (!isGuest && !profileComplete) return <AuthStack initialRoute="ProfileSetup" />;
 
   // Wait for group hydration so the membership state is real.
   if (!groupHydrated) return <Splash />;

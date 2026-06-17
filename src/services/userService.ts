@@ -22,6 +22,7 @@ import { storage } from './storage';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import {
   deleteCurrentFirebaseUser,
+  signInAnonymously as fbSignInAnonymously,
   signInWithGoogle as fbSignInWithGoogle,
   signInWithApple as fbSignInWithApple,
   signInWithEmail as fbSignInWithEmail,
@@ -35,7 +36,32 @@ import { logError, isExpectedDenial } from './errorLog';
 import { rcBool } from './remoteConfigService';
 import { gameService } from './gameService';
 
+/** A runtime-only User for an anonymous guest session (no /users doc). */
+function buildGuestUser(uid: string): User {
+  return {
+    id: uid,
+    name: '',
+    avatarId: pickRandomAvatarId(),
+    createdAt: Date.now(),
+    onboardingCompleted: true,
+    isGuest: true,
+  };
+}
+
 export const userService = {
+  /**
+   * Start a guest session (Firebase Anonymous Auth). Lets the user browse
+   * public communities + games without registering; account actions later
+   * prompt a real sign-in. No /users doc is created.
+   */
+  async signInAsGuest(): Promise<User> {
+    if (USE_MOCK_DATA) {
+      return buildGuestUser('guest-mock');
+    }
+    const fbUser = await fbSignInAnonymously();
+    return buildGuestUser(fbUser.uid);
+  },
+
   /**
    * Read the persisted user.
    * - Mock mode: reads AsyncStorage cache.
@@ -55,6 +81,13 @@ export const userService = {
     }
     const fbUser = await waitForAuthRestore();
     if (!fbUser) return null;
+    // Anonymous "browse as guest" session — synthesize a runtime-only guest
+    // user. No /users doc is read or created; the guest can browse but every
+    // account action prompts a real sign-in. `onboardingCompleted: true` and
+    // the `isGuest` flag let RootNavigator skip the profile/onboarding gates.
+    if (fbUser.isAnonymous) {
+      return buildGuestUser(fbUser.uid);
+    }
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
     if (snap.exists()) {

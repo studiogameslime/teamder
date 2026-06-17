@@ -74,6 +74,7 @@ import { storage } from '@/services/storage';
 import { Game } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { ensureNotGuest } from '@/utils/guestGate';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
@@ -244,7 +245,11 @@ export function GamesListScreen() {
   // cards that double as the choice + the explanation, matching the
   // visual language of the onboarding cards.
   const [createSheetVisible, setCreateSheetVisible] = useState(false);
-  const handleCreate = () => setCreateSheetVisible(true);
+  const handleCreate = () => {
+    // Guests browse games freely but must register to create one.
+    if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    setCreateSheetVisible(true);
+  };
 
   // Returns true if "now" is inside the cancel-deadline danger
   // window (e.g. < 12h before kickoff with a 12h deadline). The

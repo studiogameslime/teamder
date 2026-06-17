@@ -18,6 +18,7 @@ interface UserStore {
   currentUser: User | null;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
@@ -80,6 +81,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     const user = await userService.signInWithApple();
     set({ currentUser: user });
     logEvent(AnalyticsEvent.SignInSuccess);
+  },
+
+  signInAsGuest: async () => {
+    const user = await userService.signInAsGuest();
+    set({ currentUser: user });
+    logEvent(AnalyticsEvent.SignInSuccess, { method: 'guest' });
   },
 
   signInWithEmail: async (email, password) => {

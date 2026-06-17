@@ -37,6 +37,7 @@ import { toast } from '@/components/Toast';
 import { successHaptic } from '@/utils/haptics';
 import { groupService } from '@/services';
 import { GroupJoinRejectedError } from '@/services/groupService';
+import { ensureNotGuest } from '@/utils/guestGate';
 import { gameService } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import {
@@ -190,6 +191,7 @@ export function CommunityDetailsPublicScreen() {
     !!group.contactPhone && isValidIsraeliPhone(group.contactPhone);
 
   const handleJoin = async () => {
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) return;
     if (!me || isPending) return;
     setBusyJoin(true);
     try {

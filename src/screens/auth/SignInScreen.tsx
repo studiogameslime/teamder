@@ -29,6 +29,7 @@ const ACCENT_SOFT = '#DBEAFE';
 export function SignInScreen() {
   const signIn = useUserStore((s) => s.signInWithGoogle);
   const signInApple = useUserStore((s) => s.signInWithApple);
+  const signInGuest = useUserStore((s) => s.signInAsGuest);
   const nav =
     useNavigation<NativeStackNavigationProp<AuthStackParamList, 'SignIn'>>();
   const [busy, setBusy] = useState(false);
@@ -102,6 +103,21 @@ export function SignInScreen() {
       if (!cancelled) {
         appAlert(he.error, friendlySignInError(err));
       }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Browse as guest — anonymous session so users can explore communities +
+  // games without registering (App Store guideline 5.1.1(v)).
+  const handleGuest = async () => {
+    setBusy(true);
+    try {
+      await signInGuest();
+    } catch (err) {
+      if (__DEV__) console.warn('[signIn] guest failed', err);
+      logError('signInGuestScreen', err, { screen: 'SignInScreen' });
+      appAlert(he.error, he.signInFailed);
     } finally {
       setBusy(false);
     }
@@ -189,6 +205,21 @@ export function SignInScreen() {
           <Ionicons name="mail-outline" size={20} color={ACCENT} />
           <Text style={styles.ctaText}>{he.signInEmail}</Text>
         </Pressable>
+        {/* Browse without an account. Required so users can explore the app
+            before committing to sign-up (App Store guideline 5.1.1(v)). */}
+        <Pressable
+          onPress={handleGuest}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.guestBtn,
+            pressed && { opacity: 0.7 },
+            busy && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={he.signInGuest}
+        >
+          <Text style={styles.guestText}>{he.signInGuest}</Text>
+        </Pressable>
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>
     </SafeAreaView>
@@ -239,4 +270,15 @@ const styles = StyleSheet.create({
   // muted-text token (#94A3B8) was too light against the bg under
   // outdoor lighting and failed WCAG AA against white.
   privacy: { ...typography.caption, color: '#5A6478', textAlign: 'center' },
+  guestBtn: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestText: {
+    color: ACCENT,
+    fontSize: 15,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });

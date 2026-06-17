@@ -1045,7 +1045,19 @@ export const he = {
   signInGoogle: 'המשך עם Google',
   signInApple: 'המשך עם Apple',
   signInEmail: 'המשך עם מייל',
+  signInGuest: 'המשך כאורח',
   signInPrivacy: 'באמצעות התחברות אתה מסכים לתנאי השימוש',
+  // Guest → register prompt (shown when a guest taps an account action)
+  guestRegisterTitle: 'נדרשת הרשמה',
+  guestRegisterBody: 'כדי להשתמש בתכונה הזו צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterJoinGame: 'כדי להירשם למשחק צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterJoinCommunity: 'כדי להצטרף למועדון צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterCreate: 'כדי ליצור צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterChat: 'כדי להשתמש בצ׳אט צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterCta: 'הרשמה',
+  guestProfileTitle: 'הפרופיל שלך מחכה',
+  guestProfileBody:
+    'אתה גולש כאורח. הירשם כדי לשמור משחקים, להצטרף למועדונים ולבנות פרופיל שחקן.',
   // Email + password screen
   emailAuthSignInTitle: 'התחברות עם מייל',
   emailAuthSignUpTitle: 'הרשמה עם מייל',

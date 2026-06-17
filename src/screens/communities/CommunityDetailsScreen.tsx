@@ -235,10 +235,11 @@ export function CommunityDetailsScreen() {
     const res = await pickAndUploadGroupCover(group.id);
     if (!res.ok) {
       setUploadingCover(false);
-      // 'cancelled' is a no-op — the user backed out of the picker.
-      if (res.reason === 'permission') {
-        appAlert(he.error, he.profilePhotoPermissionDenied);
-      } else if (res.reason === 'unavailable') {
+      // 'cancelled' and 'permission' are no-ops — the user backed out of the
+      // picker or denied access. Built-in cover images are available, and
+      // App Store guideline 5.1.1(iv) forbids nagging to reconsider / sending
+      // the user to Settings after a denial, so we stay silent there.
+      if (res.reason === 'unavailable') {
         appAlert(he.error, he.profilePhotoUnavailable);
       } else if (res.reason === 'network') {
         appAlert(he.error, he.communityCoverUploadFailed);

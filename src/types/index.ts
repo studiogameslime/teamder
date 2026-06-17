@@ -41,6 +41,14 @@ export interface User {
   onboardingCompleted?: boolean;
 
   /**
+   * True for an anonymous "browse as guest" session (Firebase Anonymous
+   * Auth). Guests can browse public communities + games without registering
+   * (App Store guideline 5.1.1(v)); any account action prompts them to sign
+   * up. Never persisted to a /users doc — it's a runtime-only marker.
+   */
+  isGuest?: boolean;
+
+  /**
    * QA tester flag, toggled from the Pulse owner dashboard. Gates
    * tester-only surfaces in the app — currently the screenshot→bug-report
    * popup, which fires only when this is true.

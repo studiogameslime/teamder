@@ -66,9 +66,11 @@ export function PostSignInOnboardingScreen() {
     const res = await pickAndUploadAvatar(user.id);
     setUploading(false);
     if (!res.ok) {
-      if (res.reason === 'permission') {
-        appAlert(he.error, he.profilePhotoPermissionDenied);
-      } else if (res.reason === 'network') {
+      // Photo is optional — a built-in avatar grid sits right below. When
+      // the user denies gallery access we must NOT nag them to reconsider
+      // or point them to Settings (App Store guideline 5.1.1(iv)); just
+      // fall back silently and let them pick an avatar instead.
+      if (res.reason === 'network') {
         appAlert(he.error, he.profilePhotoUploadFailed);
       } else if (res.reason === 'unavailable') {
         appAlert(he.error, he.profilePhotoUnavailable);
