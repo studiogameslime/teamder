@@ -96,7 +96,7 @@ export function ProfileScreen() {
   // the useEffect below only re-fetches on `id` change, which
   // doesn't fire for an edit of the same user.
   useEffect(() => {
-    if (!localUser) return;
+    if (!localUser || localUser.isGuest) return;
     setUser((prev) =>
       prev && prev.id === localUser.id ? { ...prev, ...localUser } : localUser,
     );
@@ -137,7 +137,7 @@ export function ProfileScreen() {
   useScrollToTop(scrollRef as React.RefObject<ScrollView>);
 
   const refreshUser = React.useCallback(async () => {
-    if (!localUser) return;
+    if (!localUser || localUser.isGuest) return;
     setRefreshing(true);
     try {
       const u = await userService.getUserById(localUser.id);
@@ -148,7 +148,7 @@ export function ProfileScreen() {
   }, [localUser]);
 
   useEffect(() => {
-    if (!localUser) return;
+    if (!localUser || localUser.isGuest) return;
     let alive = true;
     userService
       .getUserById(localUser.id)
@@ -171,7 +171,9 @@ export function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const uid = user?.id;
-      if (!uid) {
+      // Guests have an anonymous uid but no /users doc — listInvitedUsers
+      // would just hit permission-denied and spam the error log. Skip.
+      if (!uid || localUser?.isGuest) {
         setReferralCount(null);
         setReferrals([]);
         return;
@@ -200,7 +202,7 @@ export function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       const uid = localUser?.id;
-      if (!uid) {
+      if (!uid || localUser?.isGuest) {
         setNextGame(null);
         setMyGames([]);
         setCreatedGames([]);
