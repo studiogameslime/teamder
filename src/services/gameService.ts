@@ -98,6 +98,41 @@ const GAME_OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000;
  */
 const CONFLICT_QUERY_LIMIT = 50;
 
+/**
+ * The per-user game lists (getMyGames / getMyLiveOrUpcomingGames /
+ * subscribeMyLiveOrUpcomingGames) only ever show open/live/upcoming games.
+ * Without a floor, the `participantIds array-contains` query reads the user's
+ * ENTIRE game history on every screen open — the single biggest Firestore-read
+ * cost in the app. A `startsAt >= now - WINDOW` floor caps the read to recent +
+ * future games. 48h is generous: it covers long-running live matches and games
+ * scheduled far ahead (those have a future startsAt and always pass). Stale
+ * past games are dropped by isStaleAfterStart anyway, so excluding them
+ * server-side changes nothing the user sees.
+ * Requires composite indexes: (participantIds CONTAINS, startsAt) and
+ * (createdBy, startsAt).
+ */
+const MY_GAMES_WINDOW_MS = 48 * 60 * 60 * 1000;
+const myGamesFloor = (): number => Date.now() - MY_GAMES_WINDOW_MS;
+
+/**
+ * Tiny per-user cache for the my-games lists. Absorbs repeated reads when the
+ * user flips between the Games / Profile / Player-card tabs in quick
+ * succession (each used to re-run the queries). Short TTL so it stays fresh;
+ * any of the user's own game mutations clears it via clearMyGamesCache().
+ */
+const MY_GAMES_TTL_MS = 15 * 1000;
+const myGamesCache = new Map<string, { at: number; data: Game[] }>();
+function clearMyGamesCache(): void {
+  myGamesCache.clear();
+}
+async function cachedMyGames(key: string, fn: () => Promise<Game[]>): Promise<Game[]> {
+  const hit = myGamesCache.get(key);
+  if (hit && Date.now() - hit.at < MY_GAMES_TTL_MS) return hit.data;
+  const data = await fn();
+  myGamesCache.set(key, { at: Date.now(), data });
+  return data;
+}
+
 export interface RegistrationConflict {
   gameId: string;
   title: string;
@@ -814,17 +849,27 @@ export const gameService = {
         .map((g) => playedGameSummary(g));
     }
 
+    const now = Date.now();
     let snap;
     try {
+      // Played games are in the PAST (startsAt < now). Read only the `max` most
+      // recent past games the user was in — ordered + limited server-side —
+      // instead of scanning their whole history and slicing client-side.
+      // Uses the (participantIds CONTAINS, startsAt) composite index.
       snap = await getDocs(
-        query(col.games(), where('participantIds', 'array-contains', userId)),
+        query(
+          col.games(),
+          where('participantIds', 'array-contains', userId),
+          where('startsAt', '<', now),
+          orderBy('startsAt', 'desc'),
+          limit(max),
+        ),
       );
     } catch (err) {
       logError('getPlayedGames', err, { userId });
       if (__DEV__) console.warn('[gameService] getPlayedGames failed', err);
       throw err;
     }
-    const now = Date.now();
     return snap.docs
       .map((d) => d.data())
       .filter((g) => isPlayedGame(g, userId, now))
@@ -908,24 +953,35 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
+    return cachedMyGames(`open:${userId}`, async () => {
     // Firebase: two parallel queries — games I'm a participant in
     // (`participantIds` array-contains me) AND games I created
-    // (`createdBy == me`). Both auto-indexed, no composite index
-    // needed. The creator union closes G-09 — admin who creates a
-    // game without registering themselves used to have the game
-    // disappear from "המשחקים שלי", which made it orphaned in the
-    // app (only reachable via the community feed). Now creators see
-    // their games whether they registered or not.
+    // (`createdBy == me`). Both are floored at `startsAt >= now-48h` so we
+    // read only recent/upcoming games, not the user's whole history — see
+    // MY_GAMES_WINDOW_MS. Needs the (participantIds CONTAINS, startsAt) and
+    // (createdBy, startsAt) composite indexes. The creator union closes G-09 —
+    // admins who create a game without registering still see it.
     //
     // `allSettled` (not `all`) on purpose: if ONE query trips a rules
     // edge case (e.g. a stale created-by row in a community the user
     // was removed from), we still want the other half to land. With
     // `all`, a single PERMISSION_DENIED would blank the entire list.
+    const floor = myGamesFloor();
     const [participatingResult, createdResult] = await Promise.allSettled([
       getDocs(
-        query(col.games(), where('participantIds', 'array-contains', userId)),
+        query(
+          col.games(),
+          where('participantIds', 'array-contains', userId),
+          where('startsAt', '>=', floor),
+        ),
       ),
-      getDocs(query(col.games(), where('createdBy', '==', userId))),
+      getDocs(
+        query(
+          col.games(),
+          where('createdBy', '==', userId),
+          where('startsAt', '>=', floor),
+        ),
+      ),
     ]);
     const seen = new Set<string>();
     const all: Game[] = [];
@@ -969,6 +1025,7 @@ export const gameService = {
       .filter((g) => g.status === 'open')
       .filter((g) => !isStaleAfterStart(g))
       .sort((a, b) => a.startsAt - b.startsAt);
+    });
   },
 
   /**
@@ -1003,15 +1060,27 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
+    return cachedMyGames(`live:${userId}`, async () => {
     // Two-query union (participating + created) — same G-09 rationale
-    // as getMyGames above. Creators see their games whether they
-    // registered or not. `allSettled` mirrors getMyGames — a single
-    // failing query never blanks the entire result.
+    // as getMyGames above. Both floored at `startsAt >= now-48h` so we read
+    // only recent/upcoming games, never the whole history. `allSettled`
+    // mirrors getMyGames — a single failing query never blanks the result.
+    const floor = myGamesFloor();
     const [participatingResult, createdResult] = await Promise.allSettled([
       getDocs(
-        query(col.games(), where('participantIds', 'array-contains', userId)),
+        query(
+          col.games(),
+          where('participantIds', 'array-contains', userId),
+          where('startsAt', '>=', floor),
+        ),
       ),
-      getDocs(query(col.games(), where('createdBy', '==', userId))),
+      getDocs(
+        query(
+          col.games(),
+          where('createdBy', '==', userId),
+          where('startsAt', '>=', floor),
+        ),
+      ),
     ]);
     const seen = new Set<string>();
     const all: Game[] = [];
@@ -1055,6 +1124,7 @@ export const gameService = {
       .filter((g) => LIVE_STATUSES.includes(g.status))
       .filter((g) => !isStaleAfterStart(g))
       .sort((a, b) => a.startsAt - b.startsAt);
+    });
   },
 
   /**
@@ -1126,8 +1196,16 @@ export const gameService = {
         );
       }
     };
+    // Floored at `startsAt >= now-48h` so the listener tracks only recent/
+    // upcoming games, not the user's entire history (which would re-read every
+    // historical game on attach and on any change). See MY_GAMES_WINDOW_MS.
+    const floor = myGamesFloor();
     const unsubA = onSnapshot(
-      query(col.games(), where('participantIds', 'array-contains', userId)),
+      query(
+        col.games(),
+        where('participantIds', 'array-contains', userId),
+        where('startsAt', '>=', floor),
+      ),
       (snap) => {
         participatingDocs = new Map(
           snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
@@ -1137,7 +1215,11 @@ export const gameService = {
       onErr,
     );
     const unsubB = onSnapshot(
-      query(col.games(), where('createdBy', '==', userId)),
+      query(
+        col.games(),
+        where('createdBy', '==', userId),
+        where('startsAt', '>=', floor),
+      ),
       (snap) => {
         createdDocs = new Map(
           snap.docs.map((d) => [d.id, { ...d.data(), matches: [] } as Game]),
@@ -1470,6 +1552,7 @@ export const gameService = {
      */
     isOrphanContext?: boolean;
   }): Promise<Game> {
+    clearMyGamesCache(); // a new game changes the creator's my-games list
     // Defensive: callers come from a TS-typed wizard but the field is
     // user-controlled, so reject anything that isn't one of the two
     // valid values rather than letting a typo land in Firestore.
@@ -1854,6 +1937,7 @@ export const gameService = {
       advancedTieMode: 'bothOut' | 'veteranOut';
     }>,
   ): Promise<void> {
+    clearMyGamesCache(); // status/startsAt edits can change the my-games lists
     // Visibility is access-control. Don't accept it through the
     // generic edit path — there are extra checks (admin, status,
     // enum) that only `setVisibility` enforces. Callers should
@@ -2251,6 +2335,7 @@ export const gameService = {
    */
   async deleteGame(gameId: string): Promise<void> {
     if (!gameId) return;
+    clearMyGamesCache();
     // Capture the roster + title BEFORE deleting. The Cloud Function fans
     // the "המשחק בוטל" push out by reading the game doc — which no longer
     // exists once we delete it (so previously NO registered player was
@@ -2474,6 +2559,7 @@ export const gameService = {
     gameId: string,
     userId: UserId
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
+    clearMyGamesCache(); // joining adds the game to the user's my-games list
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('joinGameV2: game not found');
@@ -3148,6 +3234,7 @@ export const gameService = {
    * slot is reserved-but-empty.
    */
   async cancelGameV2(gameId: string, userId: UserId): Promise<void> {
+    clearMyGamesCache(); // leaving removes the game from the user's list
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) return;
@@ -4093,6 +4180,7 @@ export const gameService = {
    * resolves recipients to players + waitlist + pending of the game.
    */
   async cancelGameByAdmin(gameId: string): Promise<void> {
+    clearMyGamesCache();
     // Empty/falsy gameId would explode at `docs.game('')` and is almost
     // certainly an upstream race (live match opened against an unloaded
     // game). Bail silently — the caller's optimistic UI is harmless.
@@ -4769,6 +4857,41 @@ export const gameService = {
       (err) => {
         logError('subscribeRotation', err, { gameId });
         if (__DEV__) console.warn('[gameService] subscribeRotation error', err);
+      },
+    );
+  },
+
+  /**
+   * Combined live subscription: liveMatch + rotation + draftTeams from ONE
+   * game-doc listener. The advanced live screen needs all three; using a
+   * single onSnapshot (instead of subscribeLiveMatch + subscribeRotation on
+   * the same doc) halves the reads — every game write (e.g. a timer press)
+   * used to bill TWO reads per device, now one.
+   */
+  subscribeLiveGame(
+    gameId: string,
+    cb: (data: {
+      liveMatch: LiveMatchState | null;
+      rotation?: import('@/types').MatchRotation;
+      draftTeams?: DraftTeamsResult;
+    }) => void,
+  ): () => void {
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      cb({ liveMatch: g?.liveMatch ?? null, rotation: g?.rotation, draftTeams: g?.draftTeams });
+      return () => undefined;
+    }
+    const ref = docs.game(gameId);
+    return onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) return cb({ liveMatch: null });
+        const g = snap.data();
+        cb({ liveMatch: g.liveMatch ?? null, rotation: g.rotation, draftTeams: g.draftTeams });
+      },
+      (err) => {
+        logError('subscribeLiveGame', err, { gameId });
+        if (__DEV__) console.warn('[gameService] subscribeLiveGame error', err);
       },
     );
   },

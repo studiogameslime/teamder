@@ -233,28 +233,27 @@ export function AdvancedLiveMatchScreen() {
     };
   }, [gameId, me, myCommunities, nav]);
 
-  // Realtime sync of the timer primitives.
-  useEffect(() => {
-    if (!gameId || !game) return;
-    const unsub = gameService.subscribeLiveMatch(gameId, (state) => {
-      setLive(state ?? null);
-    });
-    return unsub;
-  }, [gameId, game]);
-
   // Live rotation (winner-stays teams) — separate top-level Game fields.
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
   const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+
+  // One listener on the game doc delivers liveMatch + rotation + draftTeams.
+  // Halves reads vs. separate subscribeLiveMatch + subscribeRotation on the
+  // same doc — every game write used to fire two listeners on this device.
   useEffect(() => {
     if (!gameId) return;
-    const unsub = gameService.subscribeRotation(gameId, ({ rotation: r, draftTeams: d }) => {
-      setRotation(r ?? null);
-      setDraftTeams(d ?? null);
-      const ids = (d?.teams ?? []).flatMap((t) => t.playerIds);
-      if (ids.length > 0) hydratePlayers(ids);
-    });
+    const unsub = gameService.subscribeLiveGame(
+      gameId,
+      ({ liveMatch, rotation: r, draftTeams: d }) => {
+        setLive(liveMatch ?? null);
+        setRotation(r ?? null);
+        setDraftTeams(d ?? null);
+        const ids = (d?.teams ?? []).flatMap((t) => t.playerIds);
+        if (ids.length > 0) hydratePlayers(ids);
+      },
+    );
     return unsub;
   }, [gameId, hydratePlayers]);
 
