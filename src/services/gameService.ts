@@ -609,15 +609,16 @@ export const gameService = {
       lossesTogether: 0,
     };
     if (USE_MOCK_DATA || !uidA || !uidB || uidA === uidB) return zero;
-    // Single `array-contains` query — Firestore auto-indexes that
-    // field with no composite index needed. We then filter status /
-    // group / second-uid client-side. Earlier version added an
-    // equality-on-status + orderBy on top, which silently failed
-    // without a composite index → the UI dropped the whole pair-
-    // stats card.
+    // array-contains(uidA) + status=='finished' — pairs only form in played
+    // games, so filtering finished SERVER-SIDE trims open/scheduled/cancelled
+    // games from the read. Uses the (participantIds CONTAINS, status, startsAt)
+    // composite index (which now exists — an earlier version dropped this
+    // filter because the index was missing). group / second-uid stay
+    // client-side.
     const q = query(
       col.games(),
       where('participantIds', 'array-contains', uidA),
+      where('status', '==', 'finished'),
     );
     let snap;
     try {
