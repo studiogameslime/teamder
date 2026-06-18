@@ -36,10 +36,7 @@ import Animated, {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
-import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
-import { TimerProgressRing } from '@/components/match/TimerProgressRing';
 import { gameService } from '@/services/gameService';
-import { AdvancedLiveMatchScreen } from './AdvancedLiveMatchScreen';
 import { logError } from '@/services/errorLog';
 import { lightHaptic, warningHaptic } from '@/utils/haptics';
 import {
@@ -51,7 +48,10 @@ import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState, TimerEvent } from '@/types';
+import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
+import { RotationPanel } from '@/components/match/RotationPanel';
+import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
+import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
 import { colors } from '@/theme';
 import { useUserStore } from '@/store/userStore';
@@ -136,40 +136,7 @@ function buildStoppages(
 
 type Params = RouteProp<GameStackParamList, 'LiveMatch'>;
 
-// Router: a game created with `advancedMode` gets the full teams/rotation
-// live screen (כוחות + מי ניצחה); every other game gets the plain timer
-// below. The two implementations are fully isolated so the timer path is
-// never affected by the advanced UI — and hiding the creation toggle hides
-// the whole advanced feature.
-export function LiveMatchScreen() {
-  const route = useRoute<Params>();
-  const gameId = route.params?.gameId ?? null;
-  const [advanced, setAdvanced] = useState<boolean | null>(null);
-  useEffect(() => {
-    let alive = true;
-    if (!gameId) {
-      setAdvanced(false);
-      return;
-    }
-    gameService
-      .getGameById(gameId)
-      .then((g) => {
-        if (alive) setAdvanced(g?.advancedMode === true);
-      })
-      .catch(() => {
-        if (alive) setAdvanced(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [gameId]);
-  if (advanced === null) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
-  }
-  return advanced ? <AdvancedLiveMatchScreen /> : <PlainLiveMatchScreen />;
-}
-
-function PlainLiveMatchScreen() {
+export function AdvancedLiveMatchScreen() {
   const route = useRoute<Params>();
   const nav = useNavigation();
   const gameId = route.params?.gameId ?? null;
@@ -183,7 +150,10 @@ function PlainLiveMatchScreen() {
   const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
+  const [winnerOpen, setWinnerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
   const [nowTick, setNowTick] = useState(() => serverNow());
@@ -202,7 +172,6 @@ function PlainLiveMatchScreen() {
   //     below can depend on it without breaking hook order). ──────────────
   const totalMinutes = game?.matchDurationMinutes ?? 0;
   const totalMs = totalMinutes * 60_000;
-  const progress = totalMs > 0 ? timerMs / totalMs : 0;
   // Overtime: once the configured duration is exceeded the MAIN clock
   // freezes at the duration (e.g. 08:00) and a separate red "+MM:SS" added-
   // time counter runs below — the regular minutes stay pinned at the limit.
@@ -272,6 +241,56 @@ function PlainLiveMatchScreen() {
     });
     return unsub;
   }, [gameId, game]);
+
+  // Live rotation (winner-stays teams) — separate top-level Game fields.
+  const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+  const playersMap = useGameStore((s) => s.players);
+  const [rotation, setRotation] = useState<MatchRotation | null>(null);
+  const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+  useEffect(() => {
+    if (!gameId) return;
+    const unsub = gameService.subscribeRotation(gameId, ({ rotation: r, draftTeams: d }) => {
+      setRotation(r ?? null);
+      setDraftTeams(d ?? null);
+      const ids = (d?.teams ?? []).flatMap((t) => t.playerIds);
+      if (ids.length > 0) hydratePlayers(ids);
+    });
+    return unsub;
+  }, [gameId, hydratePlayers]);
+
+  const onRotationWinner = async (teamIndex: number) => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.recordWinner(gameId, me.id, teamIndex);
+    } catch (err) {
+      if (__DEV__) console.warn('[live] recordWinner failed', err);
+    }
+  };
+  const onRotationStop = () => {
+    appAlert(he.rotationReset, he.rotationResetConfirm, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.rotationReset,
+        style: 'destructive',
+        onPress: async () => {
+          if (gameId) await gameService.stopRotation(gameId).catch(() => {});
+        },
+      },
+    ]);
+  };
+  // "התחל משחקון" — kick off a round: draft rotation + start the match clock
+  // together so the live state goes straight to "running" (matches the design).
+  const onStartRound = async () => {
+    if (!gameId || !me) return;
+    try {
+      await gameService.startRotation(gameId, me.id);
+      await gameService.markGameStarted(gameId);
+      await gameService.startTimer(gameId, me.id, me.name ?? '');
+    } catch (err) {
+      logError('liveStartRound', err, { gameId, userId: me?.id });
+      if (__DEV__) console.warn('[live] startRound failed', err);
+    }
+  };
 
   // Hint when ANOTHER admin touches the timer (so the state never seems
   // to change "by itself"). We don't toast for our own presses.
@@ -360,19 +379,19 @@ function PlainLiveMatchScreen() {
       ],
     );
   };
-  // ConfirmDestructiveModal owns the busy/close UX; on success we navigate
-  // away (screen unmounts). On failure we log and stay in the modal.
   const onEndGame = async () => {
     if (!gameId) return;
+    setEnding(true);
     try {
       await gameService.endEvening(gameId);
+      setEndOpen(false);
+      if (nav.canGoBack()) nav.goBack();
     } catch (err) {
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
-      return;
+    } finally {
+      setEnding(false);
     }
-    setEndOpen(false);
-    if (nav.canGoBack()) nav.goBack();
   };
 
   // ─── Pulse while running ───────────────────────────────────────────────
@@ -473,6 +492,17 @@ function PlainLiveMatchScreen() {
     !!timerView.controlledByName &&
     timerView.controlledById !== me?.id;
 
+  // Control-state derivation for the bottom bar.
+  const hasTeams = !!draftTeams && draftTeams.teams.length >= 2;
+  const rotationActive = !!rotation;
+  const totalDrafted = (draftTeams?.teams ?? []).reduce(
+    (s, t) => s + t.playerIds.length,
+    0,
+  );
+  const perTeam =
+    game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
+  const canStartRound = hasTeams && totalDrafted >= perTeam * 2;
+
   return (
     <SafeAreaView style={styles.root}>
       {/* Header */}
@@ -489,93 +519,94 @@ function PlainLiveMatchScreen() {
         <Text style={styles.title} numberOfLines={1}>
           {game.title}
         </Text>
-        <View style={styles.headerSpacer} />
+        {isAdmin && (timerStarted || rotationActive) ? (
+          <Pressable
+            onPress={() => setMenuOpen(true)}
+            hitSlop={12}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="עוד"
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       </View>
 
-      {/* Timer */}
-      <View style={styles.center}>
-        {totalMs > 0 ? (
-          <TimerProgressRing
-            size={300}
-            strokeWidth={8}
-            progress={progress}
-            running={timerRunning}
-            warning={inLastMinute}
-          >
-            <Animated.View
-              style={[styles.timerCard, styles.timerCardRinged, pulseStyle]}
-            >
-              <Text
-                style={[
-                  styles.timerText,
-                  timerRunning ? styles.timerTextRunning : null,
-                  danger ? styles.timerTextDanger : null,
-                ]}
-              >
-                {formatTime(clockMs)}
-              </Text>
-              {inOvertime ? (
-                <>
-                  <Text style={styles.overtimeLabel}>{he.liveTimerOvertime}</Text>
-                  <Text style={styles.overtimeText}>+{formatTime(overtimeMs)}</Text>
-                </>
-              ) : (
-                <Text style={styles.timerOfTotal}>
-                  {he.liveTimerOfTotal(totalMinutes)}
-                </Text>
-              )}
-            </Animated.View>
-          </TimerProgressRing>
-        ) : (
-          <Animated.View
+      {/* Timer card (+ rotation scoreboard) — scrollable so teams fit below. */}
+      <ScrollView style={styles.center} contentContainerStyle={styles.centerContent}>
+        <Animated.View style={[styles.timerCard, pulseStyle]}>
+          <Text
             style={[
-              styles.timerCard,
-              timerRunning ? styles.timerCardRunning : null,
-              pulseStyle,
+              styles.timerBig,
+              timerRunning ? styles.timerBigRunning : null,
+              danger ? styles.timerBigDanger : null,
             ]}
           >
-            <Text
-              style={[styles.timerText, timerRunning ? styles.timerTextRunning : null]}
-            >
-              {formatTime(timerMs)}
-            </Text>
-          </Animated.View>
-        )}
-        <View style={[styles.statusPill, timerRunning ? styles.statusPillRunning : null]}>
-          {timerRunning ? <View style={styles.dot} /> : null}
-          <Text style={[styles.statusText, timerRunning ? styles.statusTextRunning : null]}>
-            {statusLabel}
+            {formatTime(totalMs > 0 ? clockMs : timerMs)}
           </Text>
-        </View>
-        {showController ? (
-          <View style={styles.controllerChip}>
-            <Ionicons name="person-circle" size={14} color={colors.primary} />
-            <Text style={styles.controllerChipText}>
-              מופעל ע״י {timerView.controlledByName}
+
+          {inOvertime ? (
+            <View style={styles.overtimePill}>
+              <Text style={styles.overtimePillText}>
+                {he.liveTimerOvertime} +{formatTime(overtimeMs)}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={styles.statusRow}>
+            {timerRunning ? <View style={styles.redDot} /> : null}
+            <Text style={[styles.statusWord, timerRunning ? styles.statusWordRunning : null]}>
+              {statusLabel}
             </Text>
           </View>
-        ) : null}
-        {/* Stoppages summary — tap to see the full synced history. Shown
-            once the timer's been started (so disputes have a record). */}
-        {timerStarted ? (
-          <Pressable
-            style={styles.stoppagesChip}
-            onPress={() => setStoppagesOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={he.liveStoppagesTitle}
-          >
-            <Ionicons name="time-outline" size={15} color="#475569" />
-            <Text style={styles.stoppagesChipText}>
-              {he.liveStoppagesSummary(stoppages.stopCount, formatTime(totalStoppedMs))}
-            </Text>
-            <Ionicons name="chevron-back" size={14} color="#94A3B8" />
-          </Pressable>
-        ) : null}
-      </View>
+
+          {showController ? (
+            <View style={styles.controllerChip}>
+              <Ionicons name="person-circle" size={14} color="#1D4ED8" />
+              <Text style={styles.controllerChipText}>
+                מופעל ע״י {timerView.controlledByName}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Stoppages summary on its own centered row under a divider. */}
+          {timerStarted ? (
+            <>
+              <View style={styles.timerDivider} />
+              <Pressable
+                style={styles.stoppagesRow}
+                onPress={() => setStoppagesOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={he.liveStoppagesTitle}
+              >
+                <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
+                <Text style={styles.stoppagesRowText}>
+                  {he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs))}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
+        </Animated.View>
+
+        {/* Live rotation scoreboard + waiting queue. Only when teams drafted. */}
+        <View style={styles.rotationWrap}>
+          <RotationPanel
+            draftTeams={draftTeams ?? undefined}
+            rotation={rotation ?? undefined}
+            playersMap={playersMap}
+            guests={game?.guests}
+          />
+        </View>
+      </ScrollView>
 
       {/* Controls */}
       <View style={styles.controls}>
-        {isAdmin ? (
+        {!isAdmin ? (
+          <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
+        ) : !hasTeams ? (
+          // ── Timer-only game (no drafted teams) ──────────────────────────
           <>
             {!timerStarted ? (
               <Pressable
@@ -605,28 +636,65 @@ function PlainLiveMatchScreen() {
                   <Ionicons name="play" size={26} color="#FFFFFF" />
                   <Text style={styles.primaryBtnText}>{he.liveTimerResume}</Text>
                 </Pressable>
-                <Pressable
-                  style={styles.resetBtn}
-                  onPress={onTimerReset}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="refresh" size={22} color={colors.primary} />
+                <Pressable style={styles.resetBtn} onPress={onTimerReset}>
+                  <Ionicons name="refresh" size={22} color="#1D4ED8" />
                   <Text style={styles.resetBtnText}>{he.liveTimerReset}</Text>
                 </Pressable>
               </View>
             )}
             {timerStarted ? (
-              <Pressable
-                style={styles.endBtn}
-                onPress={() => setEndOpen(true)}
-                accessibilityRole="button"
-              >
+              <Pressable style={styles.endBtn} onPress={() => setEndOpen(true)}>
+                <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>
+              </Pressable>
+            ) : null}
+          </>
+        ) : !rotationActive ? (
+          // ── Teams drafted, round not started → single CTA ───────────────
+          <>
+            <Pressable
+              style={[styles.primaryBtn, styles.startBtn, !canStartRound && styles.btnDisabled]}
+              onPress={onStartRound}
+              disabled={!canStartRound}
+              accessibilityRole="button"
+            >
+              <Ionicons name="play" size={26} color="#FFFFFF" />
+              <Text style={styles.primaryBtnText}>{he.rotationStartRound}</Text>
+            </Pressable>
+            {!canStartRound ? (
+              <Text style={styles.warnText}>{he.rotationNotEnough}</Text>
+            ) : null}
+            {timerStarted ? (
+              <Pressable style={styles.endBtn} onPress={() => setEndOpen(true)}>
                 <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>
               </Pressable>
             ) : null}
           </>
         ) : (
-          <Text style={styles.viewerHint}>{he.liveTimerViewerHint}</Text>
+          // ── Active rotation → [אפס] [סיים משחקון] [השהה / המשך] ──────────
+          <View style={styles.controlRow}>
+            <Pressable style={styles.sideBtn} onPress={onTimerReset}>
+              <Ionicons name="refresh" size={22} color="#1D4ED8" />
+              <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
+            </Pressable>
+            <Pressable style={styles.roundBtn} onPress={() => setWinnerOpen(true)}>
+              <Ionicons name="flag" size={22} color="#FFFFFF" />
+              <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
+            </Pressable>
+            {timerRunning ? (
+              <Pressable style={styles.sideBtn} onPress={onTimerPause}>
+                <Ionicons name="pause" size={22} color="#1D4ED8" />
+                <Text style={styles.sideBtnText}>{he.liveTimerPause}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={styles.sideBtn}
+                onPress={timerStarted ? onTimerResume : onTimerStart}
+              >
+                <Ionicons name="play" size={22} color="#1D4ED8" />
+                <Text style={styles.sideBtnText}>{he.liveTimerResume}</Text>
+              </Pressable>
+            )}
+          </View>
         )}
       </View>
 
@@ -722,15 +790,91 @@ function PlainLiveMatchScreen() {
         </View>
       </Modal>
 
-      {/* End-game confirm — shared destructive modal (with ack checkbox). */}
-      <ConfirmDestructiveModal
+      {/* End-game confirm */}
+      <Modal
         visible={endOpen}
-        title={he.liveEndEveningTitle}
-        body={he.liveEndEveningBody}
-        confirmLabel={he.liveEndEveningConfirm}
-        onConfirm={onEndGame}
-        onClose={() => setEndOpen(false)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEndOpen(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => !ending && setEndOpen(false)}>
+          <Pressable style={styles.modalCard} onPress={() => undefined}>
+            <Text style={styles.modalTitle}>{he.liveEndEveningTitle}</Text>
+            <Text style={styles.modalBody}>{he.liveEndEveningBody}</Text>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, styles.modalCancel]}
+                onPress={() => setEndOpen(false)}
+                disabled={ending}
+              >
+                <Text style={styles.modalCancelText}>{he.cancel}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalConfirm]}
+                onPress={onEndGame}
+                disabled={ending}
+              >
+                {ending ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>{he.liveEndEveningConfirm}</Text>
+                )}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Round winner picker — "מי ניצחה במשחקון?" */}
+      <WinnerPickerModal
+        visible={winnerOpen}
+        draftTeams={draftTeams ?? undefined}
+        rotation={rotation ?? undefined}
+        playersMap={playersMap}
+        guests={game?.guests}
+        onPick={(idx) => onRotationWinner(idx)}
+        onClose={() => setWinnerOpen(false)}
       />
+
+      {/* Overflow menu — reset rotation / end evening (rare destructive bits). */}
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setMenuOpen(false)}>
+          <Pressable style={styles.menuCard} onPress={() => undefined}>
+            {rotationActive ? (
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  onRotationStop();
+                }}
+              >
+                <Ionicons name="refresh" size={20} color="#1D4ED8" />
+                <Text style={styles.menuItemText}>{he.rotationReset} רוטציה</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                setEndOpen(true);
+              }}
+            >
+              <Ionicons name="flag-outline" size={20} color="#DC2626" />
+              <Text style={[styles.menuItemText, styles.menuItemDanger]}>
+                {he.liveEndEvening}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
+              <Text style={styles.menuCancelText}>{he.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -756,7 +900,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 999,
-    backgroundColor: colors.primary,
+    backgroundColor: '#1D4ED8',
   },
   notFoundBackText: {
     color: '#FFFFFF',
@@ -779,33 +923,134 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: 'center',
-    color: colors.text,
+    color: '#0F172A',
     fontSize: 18,
     fontWeight: '800',
   },
-  center: {
-    flex: 1,
+  center: { flex: 1 },
+  centerContent: {
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 18,
+    justifyContent: 'flex-start',
+    gap: 16,
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
+  rotationWrap: { width: '100%' },
   timerCard: {
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#EEF2F7',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    gap: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  timerBig: {
+    alignSelf: 'stretch',
+    textAlign: 'center',
+    fontSize: 60,
+    fontWeight: '800',
+    color: '#0F172A',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 1,
+  },
+  timerBigRunning: { color: '#0F172A' },
+  timerBigDanger: { color: '#DC2626' },
+  timerDivider: {
+    height: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    backgroundColor: '#E2E8F0',
+    marginTop: 4,
+  },
+  stoppagesRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 6,
-    borderColor: '#E2E8F0',
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 6,
+    gap: 8,
+    paddingTop: 6,
   },
+  stoppagesRowText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+    fontVariant: ['tabular-nums'],
+  },
+  overtimePill: {
+    alignSelf: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  overtimePillText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  redDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#DC2626' },
+  statusWord: { fontSize: 15, fontWeight: '700', color: '#64748B' },
+  statusWordRunning: { color: '#0F172A' },
+  controlRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  sideBtn: {
+    width: 84,
+    borderRadius: 18,
+    backgroundColor: 'rgba(29,78,216,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 12,
+  },
+  sideBtnText: { color: '#1D4ED8', fontSize: 14, fontWeight: '800' },
+  roundBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 999,
+    backgroundColor: '#1D4ED8',
+    paddingVertical: 18,
+  },
+  roundBtnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  btnDisabled: { opacity: 0.5 },
+  warnText: { textAlign: 'center', color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  menuCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    gap: 4,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  menuItemText: { fontSize: 16, fontWeight: '700', color: '#1D4ED8' },
+  menuItemDanger: { color: '#DC2626' },
+  menuCancel: { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
+  menuCancelText: { fontSize: 15, fontWeight: '700', color: '#475569' },
   timerCardRunning: {
-    borderColor: colors.primary,
+    borderColor: '#1D4ED8',
   },
   // Inside the progress ring the colored arc IS the edge — drop the card's
   // own heavy border and shrink it so it nests within the ring.
@@ -827,12 +1072,12 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 78,
     fontWeight: '800',
-    color: colors.text,
+    color: '#0F172A',
     fontVariant: ['tabular-nums'],
     letterSpacing: 2,
   },
   timerTextRunning: {
-    color: colors.primary,
+    color: '#1D4ED8',
   },
   timerTextDanger: {
     color: '#DC2626',
@@ -866,7 +1111,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: colors.primary,
+    backgroundColor: '#1D4ED8',
   },
   statusText: {
     fontSize: 14,
@@ -874,7 +1119,7 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   statusTextRunning: {
-    color: colors.primary,
+    color: '#1D4ED8',
   },
   // Persistent chip when another admin holds the timer — pill shape so
   // it reads as a discrete signal vs the surrounding text, brand-tinted
@@ -890,7 +1135,7 @@ const styles = StyleSheet.create({
   },
   controllerChipText: {
     fontSize: 13,
-    color: colors.primary,
+    color: '#1D4ED8',
     fontWeight: '700',
   },
   stoppagesChip: {
@@ -936,7 +1181,7 @@ const styles = StyleSheet.create({
   stoppagesTotal: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
+    color: '#1D4ED8',
     textAlign: 'right',
     marginTop: 2,
     marginBottom: 8,
@@ -987,7 +1232,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
   },
-  stoppagesCloseText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  stoppagesCloseText: { fontSize: 15, fontWeight: '700', color: '#1D4ED8' },
   controls: {
     paddingHorizontal: 20,
     paddingBottom: 16,
@@ -1033,7 +1278,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,78,216,0.10)',
   },
   resetBtnText: {
-    color: colors.primary,
+    color: '#1D4ED8',
     fontSize: 17,
     fontWeight: '800',
   },
@@ -1074,7 +1319,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 19,
     fontWeight: '800',
-    color: colors.text,
+    color: '#0F172A',
     textAlign: 'center',
   },
   modalBody: {
