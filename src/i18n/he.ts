@@ -463,6 +463,20 @@ export const he = {
   createGameMinPlayers: 'מינימום שחקנים (לא חובה)',
   createGameMinPlayersHint: 'מתחת למספר הזה המשחק עלול להתבטל',
   createGameNumberOfTeams: 'מספר קבוצות',
+  // Advanced game mode toggle + sub-options (placeholder copy — to refine).
+  createGameAdvancedMode: 'מצב משחק מתקדם',
+  createGameAdvancedModeHint:
+    'לוח קבוצות חי, רוטציה ובחירת מנצח/ת במסך הלייב',
+  createGameAdvancedModeInfo:
+    'במצב מתקדם, מסך הלייב מציג את הכוחות, הקבוצות, וניהול המשחקונים — כולל מי ניצחה בכל משחקון. בלי המצב הזה, הלייב הוא טיימר בלבד. (הסבר זמני — נחדד בהמשך.)',
+  createGameAdvancedFill: 'שלוש קבוצות — שחקן משלים',
+  createGameAdvancedFillTemporary: 'זמני (חוזר אחרי המשחקון)',
+  createGameAdvancedFillPermanent: 'קבוע (נשאר בקבוצה)',
+  createGameAdvancedFillHint:
+    'כשהקבוצה המנצחת עולה עם שחקן משלים (הקבוצות לא מלאות) — האם הוא נשאר בקבוצה או רק למשחקון הזה.',
+  createGameAdvancedTie: 'בתיקו — הקבוצה הוותיקה יוצאת',
+  createGameAdvancedTieHint:
+    'כבוי: בתיקו שתי הקבוצות יוצאות והשתיים הממתינות נכנסות. דלוק: רק הקבוצה הוותיקה (יותר זמן במגרש) יוצאת. (כרגע ויזואלי בלבד.)',
   createGameTotalPlayers: (n: number) => `סה״כ שחקנים: ${n}`,
   createGameFieldType: 'משטח המגרש',
   createGameMatchDuration: 'אורך המשחק (דקות)',

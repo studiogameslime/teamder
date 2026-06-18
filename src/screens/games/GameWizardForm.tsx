@@ -692,6 +692,41 @@ function Step2({
         </Text>
       </View>
 
+      {/* Advanced game mode — master toggle. When ON the live screen shows the
+          teams/rotation scoreboard + winner picker, and the conditional
+          sub-options below appear (depend on the chosen team count). */}
+      <ToggleRow
+        label={he.createGameAdvancedMode}
+        hint={he.createGameAdvancedModeHint}
+        info={{ title: he.createGameAdvancedMode, text: he.createGameAdvancedModeInfo }}
+        value={values.advancedMode}
+        onChange={(v) => set('advancedMode', v)}
+      />
+      {values.advancedMode && values.numberOfTeams === 3 ? (
+        <View style={styles.advancedSub}>
+          <PillRow
+            label={he.createGameAdvancedFill}
+            options={[
+              { value: 'temporary', label: he.createGameAdvancedFillTemporary },
+              { value: 'permanent', label: he.createGameAdvancedFillPermanent },
+            ]}
+            selected={values.advancedFillMode}
+            onSelect={(v) => set('advancedFillMode', v as 'permanent' | 'temporary')}
+          />
+          <Text style={styles.hint}>{he.createGameAdvancedFillHint}</Text>
+        </View>
+      ) : null}
+      {values.advancedMode && values.numberOfTeams === 4 ? (
+        <View style={styles.advancedSub}>
+          <ToggleRow
+            label={he.createGameAdvancedTie}
+            hint={he.createGameAdvancedTieHint}
+            value={values.advancedTieMode === 'veteranOut'}
+            onChange={(v) => set('advancedTieMode', v ? 'veteranOut' : 'bothOut')}
+          />
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <InputField
           label={he.createGameMatchDuration}
@@ -1122,6 +1157,15 @@ const styles = StyleSheet.create({
 
   // Step bodies
   section: { gap: spacing.xs, alignItems: 'stretch' },
+  // Indented container for advanced-mode sub-options — a subtle right border
+  // (RTL) marks them as nested under the master toggle.
+  advancedSub: {
+    marginTop: spacing.xs,
+    paddingEnd: spacing.md,
+    borderEndWidth: 2,
+    borderEndColor: colors.primaryLight ?? colors.border,
+    gap: spacing.xs,
+  },
   // RTL labels — On Android with `I18nManager.forceRTL(true)`,
   // `textAlign:'right'` is interpreted as "end of paragraph" which
   // under RTL becomes the visual LEFT (Yoga + Android TextView swap
