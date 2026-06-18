@@ -225,6 +225,12 @@ interface Props {
   enableUnsavedGuard?: boolean;
 }
 
+// Advanced game mode (teams/rotation/winner-stays live screen) is not finished
+// yet, so its creation toggle is hidden from users for now. Flip to `true` to
+// bring it back once the feature is complete. New games keep advancedMode=false,
+// so the live screen renders the plain synced timer.
+const ADVANCED_MODE_ENABLED = false;
+
 export function GameWizardForm({
   headerTitle,
   submitLabel,
@@ -692,41 +698,44 @@ function Step2({
         </Text>
       </View>
 
-      {/* Advanced game mode — master toggle. When ON the live screen shows the
-          teams/rotation scoreboard + winner picker, and the conditional
-          sub-options below appear (depend on the chosen team count). */}
-      <ToggleRow
-        label={he.createGameAdvancedMode}
-        hint={he.createGameAdvancedModeHint}
-        info={{ title: he.createGameAdvancedMode, text: he.createGameAdvancedModeInfo }}
-        value={values.advancedMode}
-        onChange={(v) => set('advancedMode', v)}
-      />
-      {values.advancedMode && values.numberOfTeams === 3 ? (
-        <View style={styles.advancedSub}>
-          <PillRow
-            label={he.createGameAdvancedFill}
-            info={{ title: he.createGameAdvancedFill, text: he.createGameAdvancedFillInfo }}
-            options={[
-              { value: 'temporary', label: he.createGameAdvancedFillTemporary },
-              { value: 'permanent', label: he.createGameAdvancedFillPermanent },
-            ]}
-            selected={values.advancedFillMode}
-            onSelect={(v) => set('advancedFillMode', v as 'permanent' | 'temporary')}
-          />
-          <Text style={styles.hint}>{he.createGameAdvancedFillHint}</Text>
-        </View>
-      ) : null}
-      {values.advancedMode && values.numberOfTeams === 4 ? (
-        <View style={styles.advancedSub}>
+      {/* Advanced game mode — master toggle + conditional sub-options. Hidden
+          behind ADVANCED_MODE_ENABLED while the feature is unfinished. */}
+      {ADVANCED_MODE_ENABLED ? (
+        <>
           <ToggleRow
-            label={he.createGameAdvancedTie}
-            hint={he.createGameAdvancedTieHint}
-            info={{ title: he.createGameAdvancedTie, text: he.createGameAdvancedTieInfo }}
-            value={values.advancedTieMode === 'veteranOut'}
-            onChange={(v) => set('advancedTieMode', v ? 'veteranOut' : 'bothOut')}
+            label={he.createGameAdvancedMode}
+            hint={he.createGameAdvancedModeHint}
+            info={{ title: he.createGameAdvancedMode, text: he.createGameAdvancedModeInfo }}
+            value={values.advancedMode}
+            onChange={(v) => set('advancedMode', v)}
           />
-        </View>
+          {values.advancedMode && values.numberOfTeams === 3 ? (
+            <View style={styles.advancedSub}>
+              <PillRow
+                label={he.createGameAdvancedFill}
+                info={{ title: he.createGameAdvancedFill, text: he.createGameAdvancedFillInfo }}
+                options={[
+                  { value: 'temporary', label: he.createGameAdvancedFillTemporary },
+                  { value: 'permanent', label: he.createGameAdvancedFillPermanent },
+                ]}
+                selected={values.advancedFillMode}
+                onSelect={(v) => set('advancedFillMode', v as 'permanent' | 'temporary')}
+              />
+              <Text style={styles.hint}>{he.createGameAdvancedFillHint}</Text>
+            </View>
+          ) : null}
+          {values.advancedMode && values.numberOfTeams === 4 ? (
+            <View style={styles.advancedSub}>
+              <ToggleRow
+                label={he.createGameAdvancedTie}
+                hint={he.createGameAdvancedTieHint}
+                info={{ title: he.createGameAdvancedTie, text: he.createGameAdvancedTieInfo }}
+                value={values.advancedTieMode === 'veteranOut'}
+                onChange={(v) => set('advancedTieMode', v ? 'veteranOut' : 'bothOut')}
+              />
+            </View>
+          ) : null}
+        </>
       ) : null}
 
       <View style={styles.section}>
