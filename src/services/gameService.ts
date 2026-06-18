@@ -316,12 +316,18 @@ async function findOverlappingGameInGroup(
 ): Promise<{ gameId: string; title: string; startsAt: number } | null> {
   const lower = startsAt - GAME_OVERLAP_WINDOW_MS;
   const upper = startsAt + GAME_OVERLAP_WINDOW_MS;
-  // Single equality query on `groupId` (auto-indexed). Status + window
-  // filters run client-side so we don't need a composite index.
+  // Read only games inside the ±window (range on startsAt), not the group's
+  // whole history. Status is filtered client-side. Uses the (groupId,
+  // startsAt) composite index.
   let snap;
   try {
     snap = await getDocs(
-      query(col.games(), where('groupId', '==', groupId)),
+      query(
+        col.games(),
+        where('groupId', '==', groupId),
+        where('startsAt', '>=', lower),
+        where('startsAt', '<=', upper),
+      ),
     );
   } catch (err) {
     logError('findOverlappingGameInGroup', err, { groupId, startsAt });
@@ -1256,9 +1262,11 @@ export const gameService = {
         .sort((a, b) => a.startsAt - b.startsAt);
     }
     // Firebase: chunk communityIds in groups of 30 for the `in`
-    // operator. Status filter + sort run client-side so we don't need
-    // a composite index — the per-field auto-index on `groupId` is
-    // enough for `where('groupId', 'in', chunk)`.
+    // operator. We filter `status == 'open'` SERVER-SIDE (uses the existing
+    // (groupId, status, startsAt) composite index) so we read only open games
+    // per community — not the whole all-time history of every community, which
+    // was a major read sink on the games tab. Remaining checks + sort are
+    // client-side.
     const chunks: string[][] = [];
     for (let i = 0; i < communityIds.length; i += 30) {
       chunks.push(communityIds.slice(i, i + 30));
@@ -1273,7 +1281,9 @@ export const gameService = {
     const snaps = (
       await Promise.all(
         chunks.map((c) =>
-          getDocs(query(col.games(), where('groupId', 'in', c))).catch(
+          getDocs(
+            query(col.games(), where('groupId', 'in', c), where('status', '==', 'open')),
+          ).catch(
             (err: { code?: string }) => {
               if (err?.code !== 'permission-denied') {
                 logError('getCommunityGames', err, {
@@ -1394,8 +1404,14 @@ export const gameService = {
     }
     let snap;
     try {
+      // Only future games (range on startsAt) — not the group's whole history.
+      // Status filtered client-side. Uses the (groupId, startsAt) index.
       snap = await getDocs(
-        query(col.games(), where('groupId', '==', groupId)),
+        query(
+          col.games(),
+          where('groupId', '==', groupId),
+          where('startsAt', '>', now),
+        ),
       );
     } catch (err) {
       logError('getUpcomingGamesForGroup', err, { groupId });
@@ -1443,13 +1459,19 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    // Firebase: equality query on the canonical visibility field
-    // (auto-indexed). status / startsAt / participation filters run
-    // client-side so we don't need a composite index.
+    // Public, open, future games only — filtered server-side so the public
+    // discovery feed reads only live listings, not every public game ever.
+    // Participation filters stay client-side. Uses the
+    // (visibility, status, startsAt) composite index.
     let snap;
     try {
       snap = await getDocs(
-        query(col.games(), where('visibility', '==', 'public')),
+        query(
+          col.games(),
+          where('visibility', '==', 'public'),
+          where('status', '==', 'open'),
+          where('startsAt', '>', now),
+        ),
       );
     } catch (err) {
       logError('getOpenGames', err, {

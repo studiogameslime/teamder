@@ -17,6 +17,23 @@
       ]
     },
     {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId",  "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "visibility", "order": "ASCENDING" },
+        { "fieldPath": "status",     "order": "ASCENDING" },
+        { "fieldPath": "startsAt",   "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "campaigns",
       "queryScope": "COLLECTION",
       "fields": [
