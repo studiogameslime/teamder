@@ -463,20 +463,29 @@ export const he = {
   createGameMinPlayers: 'מינימום שחקנים (לא חובה)',
   createGameMinPlayersHint: 'מתחת למספר הזה המשחק עלול להתבטל',
   createGameNumberOfTeams: 'מספר קבוצות',
-  // Advanced game mode toggle + sub-options (placeholder copy — to refine).
+  // Advanced game mode toggle + sub-options.
   createGameAdvancedMode: 'מצב משחק מתקדם',
   createGameAdvancedModeHint:
-    'לוח קבוצות חי, רוטציה ובחירת מנצח/ת במסך הלייב',
+    'כבוי: טיימר בלבד · דלוק: קבוצות, רוטציה וסטטיסטיקה',
   createGameAdvancedModeInfo:
-    'במצב מתקדם, מסך הלייב מציג את הכוחות, הקבוצות, וניהול המשחקונים — כולל מי ניצחה בכל משחקון. בלי המצב הזה, הלייב הוא טיימר בלבד. (הסבר זמני — נחדד בהמשך.)',
+    'הבחירה קובעת איך ייראה מסך הלייב במהלך המשחק:\n\n' +
+    '🔘 כבוי — טיימר משחק בלבד, מסונכרן בזמן אמת בין כל המכשירים, כולל שעונים חכמים. פשוט ונקי.\n\n' +
+    '🟢 דלוק — בנוסף לטיימר, מסך הלייב מנהל את כל הערב: חלוקה לקבוצות, רוטציה והחלפת שחקנים אוטומטית בין המשחקונים, ותיעוד ניצחונות וסטטיסטיקה לכל שחקן.',
   createGameAdvancedFill: 'שלוש קבוצות — שחקן משלים',
-  createGameAdvancedFillTemporary: 'זמני (חוזר אחרי המשחקון)',
-  createGameAdvancedFillPermanent: 'קבוע (נשאר בקבוצה)',
+  createGameAdvancedFillTemporary: 'זמני',
+  createGameAdvancedFillPermanent: 'קבוע',
   createGameAdvancedFillHint:
-    'כשהקבוצה המנצחת עולה עם שחקן משלים (הקבוצות לא מלאות) — האם הוא נשאר בקבוצה או רק למשחקון הזה.',
+    'כשקבוצה עולה עם שחקן מושאל (הקבוצות לא מלאות)',
+  createGameAdvancedFillInfo:
+    'כשמשחקים בשלוש קבוצות והן לא מלאות, הקבוצה שמנצחת ועולה משלימה את עצמה בשחקן מהקבוצה שיצאה:\n\n' +
+    '• קבוע — השחקן המושאל נשאר בקבוצה החדשה עד סוף הערב.\n' +
+    '• זמני — השחקן חוזר לקבוצתו ברגע שהיא חוזרת למגרש (מסומן בכוכב כל עוד הוא מושאל).',
   createGameAdvancedTie: 'בתיקו — הקבוצה הוותיקה יוצאת',
-  createGameAdvancedTieHint:
-    'כבוי: בתיקו שתי הקבוצות יוצאות והשתיים הממתינות נכנסות. דלוק: רק הקבוצה הוותיקה (יותר זמן במגרש) יוצאת. (כרגע ויזואלי בלבד.)',
+  createGameAdvancedTieHint: 'מי יוצא כשמשחקון נגמר בתיקו',
+  createGameAdvancedTieInfo:
+    'מה קורה כשמשחקון מסתיים בתיקו, כשמשחקים בארבע קבוצות:\n\n' +
+    '🔘 כבוי — שתי הקבוצות שעל המגרש יוצאות, ושתי הקבוצות הממתינות נכנסות במקומן.\n\n' +
+    '🟢 דלוק — רק הקבוצה הוותיקה (זו ששיחקה יותר זמן ברצף) יוצאת, והשנייה נשארת למשחקון נוסף.',
   createGameTotalPlayers: (n: number) => `סה״כ שחקנים: ${n}`,
   createGameFieldType: 'משטח המגרש',
   createGameMatchDuration: 'אורך המשחק (דקות)',

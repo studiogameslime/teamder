@@ -706,6 +706,7 @@ function Step2({
         <View style={styles.advancedSub}>
           <PillRow
             label={he.createGameAdvancedFill}
+            info={{ title: he.createGameAdvancedFill, text: he.createGameAdvancedFillInfo }}
             options={[
               { value: 'temporary', label: he.createGameAdvancedFillTemporary },
               { value: 'permanent', label: he.createGameAdvancedFillPermanent },
@@ -721,6 +722,7 @@ function Step2({
           <ToggleRow
             label={he.createGameAdvancedTie}
             hint={he.createGameAdvancedTieHint}
+            info={{ title: he.createGameAdvancedTie, text: he.createGameAdvancedTieInfo }}
             value={values.advancedTieMode === 'veteranOut'}
             onChange={(v) => set('advancedTieMode', v ? 'veteranOut' : 'bothOut')}
           />
@@ -1045,15 +1047,20 @@ function PillRow<T>({
   options,
   selected,
   onSelect,
+  info,
 }: {
   label: string;
   options: Array<{ value: T; label: string }>;
   selected: T;
   onSelect: (v: T) => void;
+  info?: { title?: string; text: string };
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>{label}</Text>
+        {info ? <InfoTip title={info.title} text={info.text} /> : null}
+      </View>
       <View style={styles.pillRow}>
         {options.map((opt, i) => (
           <Pill
