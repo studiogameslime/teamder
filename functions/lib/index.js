@@ -5412,6 +5412,10 @@ exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory:
     try {
         const l = typeof req.query.l === 'string' ? req.query.l : '';
         const s = typeof req.query.s === 'string' ? req.query.s : '';
+        // Personal invite links (`/app?invitedBy=<uid>`) carry the inviter uid.
+        // Count those clicks per-inviter so the dashboard can show "how many
+        // tapped this user's link" alongside "how many registered through them".
+        const inviter = typeof req.query.inviter === 'string' ? req.query.inviter : '';
         const inc = admin.firestore.FieldValue.increment(1);
         const now = Date.now();
         const db = admin.firestore();
@@ -5421,6 +5425,10 @@ exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory:
         else if (s) {
             // Old links with no id — bucket clicks by source.
             await db.collection('linkClicks').doc(s).set({ clicks: inc, lastClickAt: now }, { merge: true });
+        }
+        // Independent of l/s: a personal link's inviter click is always counted.
+        if (inviter) {
+            await db.collection('inviteClicks').doc(inviter).set({ clicks: inc, lastClickAt: now }, { merge: true });
         }
     }
     catch {

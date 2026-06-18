@@ -1454,6 +1454,10 @@ export const gameService = {
     /** Minimum trust score (0-100) for a filler candidate to receive
      *  the push. Ignored when `acceptsFillers !== true`. */
     fillerMinTrust?: number;
+    /** Advanced game mode + its sub-options (see Game type). */
+    advancedMode?: boolean;
+    advancedFillMode?: 'permanent' | 'temporary';
+    advancedTieMode?: 'bothOut' | 'veteranOut';
     createdBy: UserId;
     /**
      * Set when the game was created via the "ללא קבוצה — משחק
@@ -1630,6 +1634,15 @@ export const gameService = {
         input.acceptsFillers === true &&
         typeof input.fillerMinTrust === 'number'
           ? input.fillerMinTrust
+          : undefined,
+      advancedMode: input.advancedMode === true ? true : undefined,
+      advancedFillMode:
+        input.advancedMode === true && input.numberOfTeams === 3
+          ? input.advancedFillMode
+          : undefined,
+      advancedTieMode:
+        input.advancedMode === true && input.numberOfTeams === 4
+          ? input.advancedTieMode
           : undefined,
       isOrphanContext: input.isOrphanContext === true ? true : undefined,
       createdAt: now,
@@ -1835,6 +1848,10 @@ export const gameService = {
       acceptsFillers: boolean;
       /** Minimum trust score required for filler push. */
       fillerMinTrust: number;
+      /** Advanced game mode + sub-options (see Game type). */
+      advancedMode: boolean;
+      advancedFillMode: 'permanent' | 'temporary';
+      advancedTieMode: 'bothOut' | 'veteranOut';
     }>,
   ): Promise<void> {
     // Visibility is access-control. Don't accept it through the

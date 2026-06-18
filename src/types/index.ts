@@ -1387,6 +1387,30 @@ export interface Game {
    */
   fillerMinTrust?: number;
 
+  /**
+   * Advanced game mode (set at creation via the wizard toggle). When true,
+   * the live screen shows the full teams/rotation scoreboard + winner picker
+   * ("כוחות + מי ניצחה"); when false/undefined the live screen is a plain
+   * timer. This single flag is the master switch for the advanced live UI —
+   * hide the creation toggle and the whole feature disappears.
+   */
+  advancedMode?: boolean;
+  /**
+   * 3-team advanced sub-option: when the on-field team wins and goes up with
+   * a borrowed player (teams not full), does that player STAY ('permanent')
+   * or only fill for that round ('temporary'). Captured at creation; the
+   * rotation logic that consumes it is wired later. Only meaningful when
+   * advancedMode && numberOfTeams === 3.
+   */
+  advancedFillMode?: 'permanent' | 'temporary';
+  /**
+   * 4-team advanced sub-option: on a tie, do the two on-field teams both go
+   * out and the two waiting teams come in ('bothOut'), or does only the
+   * veteran (longer-on-field) team go out ('veteranOut'). Visual-only for
+   * now; logic wired later. Only meaningful when advancedMode && numberOfTeams === 4.
+   */
+  advancedTieMode?: 'bothOut' | 'veteranOut';
+
   createdAt: number;
   updatedAt?: number;
 }

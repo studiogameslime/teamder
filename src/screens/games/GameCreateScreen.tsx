@@ -81,6 +81,9 @@ function buildInitial(
     format: overrides?.format ?? '5v5',
     numberOfTeams: overrides?.numberOfTeams ?? 2,
     matchDurationMinutes: '8',
+    advancedMode: false,
+    advancedFillMode: 'temporary',
+    advancedTieMode: 'bothOut',
     ruleTags: [],
     // Open communities default to public games (anyone can discover
     // and join). Closed/private communities default to community-only
@@ -373,6 +376,9 @@ export function GameCreateScreen() {
         guestsOpenAt,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
+        advancedMode: v.advancedMode,
+        advancedFillMode: v.advancedFillMode,
+        advancedTieMode: v.advancedTieMode,
         createdBy: user.id,
         isOrphanContext: isOrphan,
       });

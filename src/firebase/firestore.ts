@@ -904,6 +904,17 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       acceptsFillers: g.acceptsFillers === true,
       fillerMinTrust:
         typeof g.fillerMinTrust === 'number' ? g.fillerMinTrust : null,
+      // Advanced game mode + its sub-options (see Game type). Master flag
+      // drives the advanced live UI; sub-options are captured for later logic.
+      advancedMode: g.advancedMode === true,
+      advancedFillMode:
+        g.advancedFillMode === 'permanent' || g.advancedFillMode === 'temporary'
+          ? g.advancedFillMode
+          : null,
+      advancedTieMode:
+        g.advancedTieMode === 'bothOut' || g.advancedTieMode === 'veteranOut'
+          ? g.advancedTieMode
+          : null,
       guests: Array.isArray(g.guests)
         ? (g.guests as import('@/types').GameGuest[]).map((x) => ({
             id: x.id,
@@ -1089,6 +1100,15 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       acceptsFillers: d.acceptsFillers === true,
       fillerMinTrust:
         typeof d.fillerMinTrust === 'number' ? d.fillerMinTrust : undefined,
+      advancedMode: d.advancedMode === true,
+      advancedFillMode:
+        d.advancedFillMode === 'permanent' || d.advancedFillMode === 'temporary'
+          ? d.advancedFillMode
+          : undefined,
+      advancedTieMode:
+        d.advancedTieMode === 'bothOut' || d.advancedTieMode === 'veteranOut'
+          ? d.advancedTieMode
+          : undefined,
       createdAt: d.createdAt ?? 0,
       updatedAt: d.updatedAt ?? undefined,
     };

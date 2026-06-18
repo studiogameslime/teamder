@@ -61,6 +61,9 @@ function gameToValues(g: Game): GameFormValues {
     fieldType: g.fieldType,
     format: g.format ?? '5v5',
     numberOfTeams: g.numberOfTeams ?? 2,
+    advancedMode: g.advancedMode === true,
+    advancedFillMode: g.advancedFillMode ?? 'temporary',
+    advancedTieMode: g.advancedTieMode ?? 'bothOut',
     matchDurationMinutes: g.matchDurationMinutes
       ? String(g.matchDurationMinutes)
       : '',
@@ -290,6 +293,9 @@ export function GameEditScreen() {
         guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
+        advancedMode: v.advancedMode,
+        advancedFillMode: v.advancedFillMode,
+        advancedTieMode: v.advancedTieMode,
         ...regOpensPatch,
       });
     } catch (err) {

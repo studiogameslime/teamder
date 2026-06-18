@@ -135,6 +135,15 @@ export interface GameFormValues {
   format: GameFormat;
   numberOfTeams: number;
   matchDurationMinutes: string;
+  /** Advanced game mode — master toggle. When true the live screen shows the
+   *  teams/rotation scoreboard + winner picker; reveals sub-options below. */
+  advancedMode: boolean;
+  /** 3-team sub-option: borrowed-player stays ('permanent') or for the round
+   *  only ('temporary'). */
+  advancedFillMode: 'permanent' | 'temporary';
+  /** 4-team sub-option: tie → both on-field teams out ('bothOut') or only the
+   *  veteran team out ('veteranOut'). Visual-only for now. */
+  advancedTieMode: 'bothOut' | 'veteranOut';
   /** Free-text rule chips — replaces the legacy hasReferee/Penalties/
    *  HalfTime/extraTime toggles. Cap: 12 entries, each ≤30 chars. */
   ruleTags: string[];
