@@ -1121,14 +1121,25 @@ function ToggleRow({
     lightHaptic();
     onChange(v);
   };
+  // The InfoTip is deliberately OUTSIDE the flip-pressables: a nested
+  // Pressable doesn't stop its parent's onPress in RN, so a single full-row
+  // Pressable made tapping the ⓘ also flip the toggle. Here the label + hint
+  // are their own pressables (tap to flip) and the ⓘ is a separate sibling,
+  // so tapping it only opens the tooltip.
   return (
-    <Pressable onPress={() => flip(!value)} style={styles.toggleRow}>
+    <View style={styles.toggleRow}>
       <View style={{ flex: 1 }}>
         <View style={styles.toggleLabelRow}>
-          <Text style={styles.toggleLabel}>{label}</Text>
+          <Pressable onPress={() => flip(!value)} hitSlop={6}>
+            <Text style={styles.toggleLabel}>{label}</Text>
+          </Pressable>
           {info ? <InfoTip title={info.title} text={info.text} /> : null}
         </View>
-        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+        {hint ? (
+          <Pressable onPress={() => flip(!value)} hitSlop={6}>
+            <Text style={styles.hint}>{hint}</Text>
+          </Pressable>
+        ) : null}
       </View>
       <BallSwitch
         value={value}
@@ -1136,7 +1147,7 @@ function ToggleRow({
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />
-    </Pressable>
+    </View>
   );
 }
 
