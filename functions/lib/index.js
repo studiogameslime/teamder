@@ -1681,17 +1681,18 @@ async function flipScheduledGameOnce(gameId) {
         if (failed) {
             throw new Error(`[flipScheduledGameOnce] notify failed for ${gameId} (${res.skipped})`);
         }
-        // Step 2 — flag the game so a future run won't re-notify. Separate
-        // write because if step 1 throws we must NOT mark the flag — the
-        // next run has to retry.
-        await ref.update({ openedNotificationSent: true, updatedAt: now });
         notified = true;
     }
-    // Step 3 — flip status. Once this lands the game leaves the
-    // 'scheduled' window forever. Failure here is recoverable: the next
-    // cron run still sees status='scheduled' AND openedNotificationSent=
-    // true → skips step 1, retries step 3.
-    await ref.update({ status: 'open', updatedAt: now });
+    // Single write — flip status AND (when we just notified) set the latch in
+    // ONE update instead of two. Two separate writes re-fired the whole
+    // games-trigger fan-out twice per flip; this halves it. Atomic: if it fails,
+    // neither the latch nor the flip lands, so the next run re-enters the notify
+    // branch (createNotificationOnce dedupes → no double push) and retries.
+    await ref.update({
+        status: 'open',
+        ...(notified ? { openedNotificationSent: true } : {}),
+        updatedAt: now,
+    });
     return notified ? 'flipped' : 'notified';
 }
 async function runFlipScheduledGames() {
@@ -3928,12 +3929,13 @@ async function issueDisciplineCard(uid, input) {
         }, { merge: true });
     });
 }
-async function recomputeCommunityShowcase(groupId) {
+async function recomputeCommunityShowcase(groupId, preloaded) {
     if (!groupId)
         return;
-    // 1) Canonical group doc — if missing, the community has been
-    //    deleted: tear down the showcase mirror.
-    const groupSnap = await db.collection('groups').doc(groupId).get();
+    // 1) Canonical group doc — reuse the trigger's already-loaded snapshot
+    //    when given (saves one read per fire), else fetch. If missing, the
+    //    community has been deleted: tear down the showcase mirror.
+    const groupSnap = preloaded ?? (await db.collection('groups').doc(groupId).get());
     if (!groupSnap.exists) {
         try {
             await db.collection('communityShowcase').doc(groupId).delete();
@@ -4115,10 +4117,28 @@ async function recomputeCommunityShowcase(groupId) {
  * Every metadata edit (rename, description tweak, city, etc.) and
  * every membership change affects the rendered page.
  */
+// Only these group fields affect the rendered showcase. Membership churn that
+// doesn't touch them (pendingPlayerIds, notifiedMilestones, updatedAt, …) must
+// NOT trigger a full rebuild — each rebuild is ~50-255 reads, and sibling
+// triggers (milestones, pending) write the group doc, so an unguarded rebuild
+// cascades. Created/deleted always recompute.
+const SHOWCASE_GROUP_FIELDS = [
+    'name', 'description', 'city', 'fieldName', 'fieldAddress',
+    'isOpen', 'playerIds', 'adminIds', 'createdAt',
+];
+function showcaseGroupFieldsChanged(before, after) {
+    return SHOWCASE_GROUP_FIELDS.some((f) => JSON.stringify(before[f]) !== JSON.stringify(after[f]));
+}
 exports.updateShowcaseOnGroupChange = (0, firestore_1.onDocumentWritten)('groups/{groupId}', async (event) => {
     const groupId = event.params.groupId;
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    // Recompute only when a showcase-relevant field changed, or on
+    // create/delete. Skips the cascade from pending/milestone/updatedAt writes.
+    if (before && after && !showcaseGroupFieldsChanged(before, after))
+        return;
     try {
-        await recomputeCommunityShowcase(groupId);
+        await recomputeCommunityShowcase(groupId, event.data?.after);
     }
     catch (err) {
         console.warn('[updateShowcaseOnGroupChange] recompute failed', groupId, err);
@@ -4577,6 +4597,11 @@ async function runFindFillerCandidates() {
     let processed = 0;
     let pushed = 0;
     let fallbackPushed = 0;
+    // Candidate pool is identical for every game in this run — load it AT MOST
+    // ONCE (lazily, only when the first shortage game needs it) and reuse, instead
+    // of re-scanning the users collection per game. If no game reaches the
+    // candidate stage, the users collection is never read.
+    let candidateDocs = null;
     for (const doc of snap.docs) {
         const game = doc.data();
         if (game.acceptsFillers !== true)
@@ -4610,15 +4635,16 @@ async function runFindFillerCandidates() {
         // distance to candidates — fall back to a name-equality match
         // so the user still gets some coverage.
         const gameCoords = await getCityCoords(city);
-        // Candidate query: opted-in users only. The pool is small (only
-        // users who toggled on `acceptsFillerPush`), so loading them all
-        // and filtering by distance in code is cheaper than maintaining
-        // a geo index. Adding a geohash bucket index is a future
-        // optimisation if the pool ever grows.
-        const candSnap = await db
-            .collection('users')
-            .where('availability.acceptsFillerPush', '==', true)
-            .get();
+        // Candidate query: opted-in users only — loaded once per run and reused
+        // across all shortage games (see candidateDocs above). The pool is small
+        // (only users who toggled on `acceptsFillerPush`), so filtering by distance
+        // in code is cheaper than a geo index for the MVP.
+        if (!candidateDocs) {
+            candidateDocs = (await db
+                .collection('users')
+                .where('availability.acceptsFillerPush', '==', true)
+                .get()).docs;
+        }
         // Exclude users already in the community or game.
         let memberSet = new Set();
         if (game.groupId) {
@@ -4643,7 +4669,7 @@ async function runFindFillerCandidates() {
         const alreadyPushed = game.fillerPushHistory ?? {};
         const newlyPushed = {};
         let pushesThisGame = 0;
-        for (const userDoc of candSnap.docs) {
+        for (const userDoc of candidateDocs) {
             if (pushesThisGame >= FILLER_PUSH_LIMIT_PER_GAME)
                 break;
             const uid = userDoc.id;

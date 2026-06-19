@@ -59,6 +59,9 @@ const PER_USER_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_RECIPIENTS = 20000;
 const RATE_DOC = 'pushRate';
 const DAY = 24 * 60 * 60 * 1000;
+// Cap how many times a single campaign may be (re)claimed before we park it in
+// `error`. Stops a stuck/re-queued campaign from re-scanning all users forever.
+const CAMPAIGN_MAX_ATTEMPTS = 6;
 function kindToRule(k) {
     switch (k.kind) {
         case 'neverPlayed': return { field: 'attended', op: 'eq', value: 0 };
@@ -227,10 +230,22 @@ async function processCampaign(id, nowMs) {
         if (typeof c.sendAt === 'number' && c.sendAt > nowMs + 60000) {
             return { go: false }; // not due — cron revisits
         }
+        // Safety net: a campaign that keeps landing back in `queued` (claim
+        // failure, external re-queue, etc.) must NOT be re-processed forever — that
+        // re-scans all users on every 5-min sweep (this is exactly what blew past
+        // the read quota once). After MAX_ATTEMPTS, park it in `error` for good.
+        const attempts = Number(c.attempts ?? 0);
+        if (attempts >= CAMPAIGN_MAX_ATTEMPTS) {
+            tx.update(ref, {
+                status: 'error',
+                errorMessage: `exceeded ${CAMPAIGN_MAX_ATTEMPTS} processing attempts`,
+            });
+            return { go: false };
+        }
         // Claim the campaign (idempotent: only one worker flips queued→sending).
         // No global rate gate — the per-user cap below is the real guard. We
         // still record the send timestamp for an informational "sent today".
-        tx.update(ref, { status: 'sending', processedAt: nowMs });
+        tx.update(ref, { status: 'sending', processedAt: nowMs, attempts: attempts + 1 });
         // Test sends don't touch the global rate record (they're not broadcasts).
         if (!c.testUserId) {
             const rateRef = db.collection('adminConfig').doc(RATE_DOC);
