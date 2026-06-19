@@ -20,6 +20,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PublicGroupsFeedScreen } from '@/screens/communities/PublicGroupsFeedScreen';
+import { RequestsScreen } from '@/screens/RequestsScreen';
 import { CreateGroupScreen } from '@/screens/groups/CreateGroupScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
@@ -38,6 +39,7 @@ import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type CommunitiesStackParamList = {
   CommunitiesFeed: undefined;
+  Requests: undefined;
   /** Full-screen map of open public communities (mode: 'communities'). */
   CommunitiesMap: MapScreenParams;
   CommunitiesCreate: undefined;
@@ -83,6 +85,7 @@ export function CommunitiesStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="CommunitiesFeed" component={PublicGroupsFeedScreen} />
+      <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="CommunitiesMap" component={MapScreen} />
       <Stack.Screen name="CommunitiesCreate" component={CreateGroupScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />

@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { RequestsBell } from '@/components/RequestsBell';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -610,6 +611,7 @@ export function PublicGroupsFeedScreen() {
             </View>
           ) : null}
         </Pressable>
+        <RequestsBell />
       </View>
       {totalKnown === 0 && !isSearching ? (
         <View style={styles.emptyAll}>

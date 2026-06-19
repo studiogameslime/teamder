@@ -14,6 +14,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
+import { RequestsScreen } from '@/screens/RequestsScreen';
 import { ProfileEditScreen } from '@/screens/tabs/ProfileEditScreen';
 import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
 import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
@@ -34,6 +35,7 @@ import { FeedbackScreen } from '@/screens/FeedbackScreen';
 
 export type ProfileStackParamList = {
   Profile: undefined;
+  Requests: undefined;
   ProfileEdit: undefined;
   AvailabilityEdit: undefined;
   NotificationsSettings: undefined;
@@ -66,6 +68,7 @@ export function ProfileStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
       <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
       <Stack.Screen

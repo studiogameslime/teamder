@@ -41,6 +41,7 @@ import {
   type HeroMetaItem,
 } from '@/components/profile/ProfileHeroCard';
 import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
+import { RequestsBell } from '@/components/RequestsBell';
 import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
 import { currentAuthProviderId } from '@/firebase/auth';
 import { ProfileAvailabilityCard } from '@/components/profile/ProfileAvailabilityCard';
@@ -552,6 +553,7 @@ export function ProfileScreen() {
           meta={heroMeta}
           onMenuPress={() => setMenuOpen(true)}
           onEditProfile={() => nav.navigate('ProfileEdit')}
+          headerRight={<RequestsBell bg="rgba(255,255,255,0.18)" color="#FFFFFF" />}
         />
 
         {/* ② Floating stats card overlapping the hero bottom. */}

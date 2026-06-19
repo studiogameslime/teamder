@@ -46,6 +46,9 @@ interface Props {
   /** Pencil-overlay button — taps go to ProfileEdit. */
   onEditProfile?: () => void;
   onMenuPress: () => void;
+  /** Optional element rendered at the opposite end of the top bar (e.g. the
+   *  requests bell). Only the owner's profile passes this. */
+  headerRight?: React.ReactNode;
 }
 
 const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.png');
@@ -57,6 +60,7 @@ export function ProfileHeroCard({
   meta,
   onEditProfile,
   onMenuPress,
+  headerRight,
 }: Props) {
   return (
     <View style={styles.wrap}>
@@ -91,8 +95,8 @@ export function ProfileHeroCard({
             >
               <Ionicons name="menu" size={26} color="#FFFFFF" />
             </Pressable>
-            {/* Notification SETTINGS are reachable from the hamburger menu —
-                no separate top-bar button here (it was redundant). */}
+            {/* Owner-only requests bell sits opposite the menu. */}
+            {headerRight ?? null}
           </View>
 
           <View style={styles.center}>
