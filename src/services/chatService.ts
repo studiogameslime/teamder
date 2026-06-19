@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 
 import { col } from '@/firebase/firestore';
+import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 import type { ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
@@ -130,6 +131,12 @@ export const chatService = {
     uid: UserId,
     cb: (entries: ChatUnreadEntry[]) => void,
   ): () => void {
+    // Mock mode has no chat backend — emit an empty list once and no-op the
+    // unsubscribe so the app-wide subscriber in MainTabs doesn't hit Firebase.
+    if (USE_MOCK_DATA) {
+      cb([]);
+      return () => {};
+    }
     return onSnapshot(col.userChatUnread(uid), (snap) => {
       cb(
         snap.docs.map((d) => {

@@ -288,8 +288,8 @@ export const mockGamesV2: Game[] = [
     minPlayers: 14,
     players: mockPlayers.slice(0, 13).map((p) => p.id), // 13 of 21, includes ME
     waitlist: [],
-    pending: [],
-    participantIds: unionIds(mockPlayers.slice(0, 13).map((p) => p.id), [], []),
+    pending: mockPlayers.slice(13, 16).map((p) => p.id), // 3 awaiting my approval
+    participantIds: unionIds(mockPlayers.slice(0, 13).map((p) => p.id), [], mockPlayers.slice(13, 16).map((p) => p.id)),
     ballHolderUserId: mockPlayers[4].id,
     status: 'open',
     locked: false,

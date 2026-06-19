@@ -1,8 +1,8 @@
 // In-app "screenshots" for the pre-sign-in onboarding. These are REAL
-// captures of the live app (games feed, club detail, live match + rotation),
-// cropped to app content and shown inside a clean phone frame so the product
-// sells itself before sign-up. Source PNGs live in
-// assets/images/onboarding/ (600px wide, status bar / gesture bar stripped).
+// captures of the live app (games feed, club detail, game detail with its
+// filling roster), cropped to app content and shown inside a clean phone
+// frame so the product sells itself before sign-up. Source PNGs live in
+// assets/images/onboarding/ (600×1253, status bar / ad / gesture bar stripped).
 
 import React from 'react';
 import {
