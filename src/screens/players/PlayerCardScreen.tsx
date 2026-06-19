@@ -479,6 +479,12 @@ function PairStatsSection({
     attendedTogether: 0,
     firstSharedAt: null as number | null,
     lastSharedAt: null as number | null,
+    sameTeam: 0,
+    winsTogether: 0,
+    lossesTogether: 0,
+    against: 0,
+    winsAgainst: 0,
+    lossesAgainst: 0,
   };
   const [stats, setStats] = useState<typeof ZERO>(ZERO);
   const [sharedNames, setSharedNames] = useState<string[]>([]);
@@ -543,6 +549,37 @@ function PairStatsSection({
               value={String(stats.attendedTogether)}
             />
           </View>
+          {stats.sameTeam > 0 || stats.against > 0 ? (
+            <Card style={styles.pairTimelineCard}>
+              <Text style={styles.pairSharedHeader}>{he.pairStatsH2HTitle}</Text>
+              {stats.sameTeam > 0 ? (
+                <View style={styles.pairTimelineRow}>
+                  <Text style={styles.pairTimelineLabel}>{he.pairStatsSameTeam}</Text>
+                  <View style={{ alignItems: 'flex-start' }}>
+                    <Text style={styles.pairTimelineValue}>
+                      {he.pairStatsRoundsUnit(stats.sameTeam)}
+                    </Text>
+                    <Text style={styles.pairH2HSub}>
+                      {he.pairStatsTogetherWL(stats.winsTogether, stats.lossesTogether)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+              {stats.against > 0 ? (
+                <View style={styles.pairTimelineRow}>
+                  <Text style={styles.pairTimelineLabel}>{he.pairStatsAgainst}</Text>
+                  <View style={{ alignItems: 'flex-start' }}>
+                    <Text style={styles.pairTimelineValue}>
+                      {he.pairStatsRoundsUnit(stats.against)}
+                    </Text>
+                    <Text style={styles.pairH2HSub}>
+                      {he.pairStatsAgainstWL(stats.winsAgainst, stats.lossesAgainst)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </Card>
+          ) : null}
           {(stats.firstSharedAt || stats.lastSharedAt) ? (
             <Card style={styles.pairTimelineCard}>
               {stats.firstSharedAt ? (
@@ -967,6 +1004,11 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     fontWeight: '600',
+  },
+  pairH2HSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 1,
   },
   ratingTitleRow: {
     flexDirection: 'row-reverse',

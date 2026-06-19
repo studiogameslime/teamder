@@ -598,6 +598,11 @@ export const gameService = {
     sameTeam: number;
     winsTogether: number;
     lossesTogether: number;
+    /** Rounds the pair played AGAINST each other (opposing sides). */
+    against: number;
+    /** Directional vs the VIEWER (uidA): times uidA's side beat uidB's. */
+    winsAgainst: number;
+    lossesAgainst: number;
   }> {
     const zero = {
       registeredTogether: 0,
@@ -607,6 +612,9 @@ export const gameService = {
       sameTeam: 0,
       winsTogether: 0,
       lossesTogether: 0,
+      against: 0,
+      winsAgainst: 0,
+      lossesAgainst: 0,
     };
     if (USE_MOCK_DATA || !uidA || !uidB || uidA === uidB) return zero;
     // array-contains(uidA) + status=='finished' — pairs only form in played
@@ -664,11 +672,21 @@ export const gameService = {
           sameTeam?: number;
           winsTogether?: number;
           lossesTogether?: number;
+          against?: number;
+          winsA?: number;
+          winsB?: number;
         };
         acc.sameTeam = typeof d.sameTeam === 'number' ? d.sameTeam : 0;
         acc.winsTogether = typeof d.winsTogether === 'number' ? d.winsTogether : 0;
         acc.lossesTogether =
           typeof d.lossesTogether === 'number' ? d.lossesTogether : 0;
+        acc.against = typeof d.against === 'number' ? d.against : 0;
+        // winsA = the sorted-FIRST uid's against-wins. Map to the viewer (uidA).
+        const aIsFirst = [uidA, uidB].sort()[0] === uidA;
+        const winsA = typeof d.winsA === 'number' ? d.winsA : 0;
+        const winsB = typeof d.winsB === 'number' ? d.winsB : 0;
+        acc.winsAgainst = aIsFirst ? winsA : winsB;
+        acc.lossesAgainst = aIsFirst ? winsB : winsA;
       }
     } catch (err) {
       if (__DEV__) console.warn('[gameService] pairStats read failed', err);
@@ -2196,6 +2214,170 @@ export const gameService = {
     // rotation object each round and doesn't know about baseTeams).
     res.rotation.baseTeams = g.rotation.baseTeams;
     await this._persistRotation(gameId, draft, res);
+  },
+
+  // ─── Advanced-mode goal entry (live scoreboard) ────────────────────────
+  // Goals accumulate on `liveMatch.goals` for the current round and bump
+  // `liveMatch.scoreA/scoreB`. Admin-only is enforced by the UI + rules.
+  // An own goal counts for the OPPONENT side and credits no scorer.
+
+  /** Log one goal for the running round. `team` is the side it COUNTS FOR. */
+  async recordGoal(
+    gameId: string,
+    opts: { team: 'A' | 'B'; scorerId: UserId | null; ownGoal?: boolean; minute: number },
+  ): Promise<void> {
+    if (!gameId) return;
+    const mkGoal = (n: number): import('@/types').RoundGoal => ({
+      id: `g_${Date.now()}_${n}`,
+      team: opts.team,
+      scorerId: opts.ownGoal ? null : opts.scorerId ?? null,
+      ownGoal: opts.ownGoal ? true : undefined,
+      minute: Math.max(0, Math.floor(opts.minute)),
+      at: Date.now(),
+    });
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) {
+        m.liveMatch.goals = [...(m.liveMatch.goals ?? []), mkGoal(m.liveMatch.goals?.length ?? 0)];
+        if (opts.team === 'A') m.liveMatch.scoreA += 1; else m.liveMatch.scoreB += 1;
+      }
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    const lm = cur.liveMatch;
+    const goals = [...(lm.goals ?? []), mkGoal(lm.goals?.length ?? 0)];
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.goals': goals,
+      'liveMatch.scoreA': lm.scoreA + (opts.team === 'A' ? 1 : 0),
+      'liveMatch.scoreB': lm.scoreB + (opts.team === 'B' ? 1 : 0),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Remove one goal from the running round by id (decrements its side). */
+  async removeGoal(gameId: string, goalId: string): Promise<void> {
+    if (!gameId || !goalId) return;
+    const apply = (lm: import('@/types').LiveMatchState) => {
+      const gone = (lm.goals ?? []).find((x) => x.id === goalId);
+      if (!gone) return null;
+      const goals = (lm.goals ?? []).filter((x) => x.id !== goalId);
+      return {
+        goals,
+        scoreA: Math.max(0, lm.scoreA - (gone.team === 'A' ? 1 : 0)),
+        scoreB: Math.max(0, lm.scoreB - (gone.team === 'B' ? 1 : 0)),
+      };
+    };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) {
+        const r = apply(m.liveMatch);
+        if (r) { m.liveMatch.goals = r.goals; m.liveMatch.scoreA = r.scoreA; m.liveMatch.scoreB = r.scoreB; }
+      }
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    const r = apply(cur.liveMatch);
+    if (!r) return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.goals': r.goals,
+      'liveMatch.scoreA': r.scoreA,
+      'liveMatch.scoreB': r.scoreB,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Undo the most recent goal of the running round. */
+  async undoLastGoal(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      const last = m?.liveMatch?.goals?.[m.liveMatch.goals.length - 1];
+      if (m?.liveMatch && last) return this.removeGoal(gameId, last.id);
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    const last = cur?.liveMatch?.goals?.[cur.liveMatch.goals.length - 1];
+    if (last) await this.removeGoal(gameId, last.id);
+  },
+
+  /**
+   * End the running round: derive the winner from the score (a tie is resolved
+   * by the manual `manualWinnerSide` the caller passes — that side is recorded
+   * as the winner), write goal + pair + community stats, clear the live
+   * scoreboard, and rotate (winner stays). Returns the winning side, or null
+   * if it can't finalize (e.g. tie with no manual pick).
+   *
+   * NOTE: writes one pairStats doc per player-pair per round (~C(n,2)). Fine
+   * behind the flag for now; a server-side aggregation is the eventual home.
+   */
+  async finalizeRoundAndRotate(
+    gameId: string,
+    userId: string,
+    manualWinnerSide?: 'A' | 'B',
+  ): Promise<'A' | 'B' | null> {
+    if (!gameId) return null;
+    const g = await this.getGameById(gameId);
+    const lm = g?.liveMatch;
+    const rot = g?.rotation;
+    const draft = g?.draftTeams;
+    if (!g || !lm || !rot || !draft) return null;
+    const [idxA, idxB] = rot.playing;
+    const winnerSide: 'A' | 'B' | null =
+      lm.scoreA > lm.scoreB ? 'A' : lm.scoreB > lm.scoreA ? 'B' : manualWinnerSide ?? null;
+    if (!winnerSide) return null; // tie with no manual pick — caller must supply
+    const winnerIdx = winnerSide === 'A' ? idxA : idxB;
+
+    // On-field rosters — registered uids only (guests carry no stats).
+    const rosterOf = (idx: number) =>
+      (draft.teams.find((t) => t.index === idx)?.playerIds ?? []).filter((id) => !isGuestId(id));
+    const sideA = rosterOf(idxA);
+    const sideB = rosterOf(idxB);
+
+    if (!USE_MOCK_DATA) {
+      const now = Date.now();
+      // Stats run SERVER-SIDE: the client can't write other players' stat
+      // docs (rules, correctly), so the per-scorer goals + pair/community
+      // aggregation happens in the `commitRoundStats` callable (Admin SDK).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { httpsCallable } = require('firebase/functions');
+        await httpsCallable(getFirebase().functions, 'commitRoundStats')({
+          gameId,
+          sideA,
+          sideB,
+          winnerSide,
+          goals: (lm.goals ?? []).map((gl) => ({
+            scorerId: gl.scorerId ?? null,
+            ownGoal: !!gl.ownGoal,
+          })),
+        });
+      } catch (err) {
+        logError('commitRoundStats', err, { gameId });
+        if (__DEV__) console.warn('[gameService] commitRoundStats failed', err);
+      }
+
+      // Clear the live scoreboard for the next round (game-doc write, admin-OK).
+      await updateDoc(docs.game(gameId), {
+        'liveMatch.scoreA': 0,
+        'liveMatch.scoreB': 0,
+        'liveMatch.goals': [],
+        updatedAt: now,
+      });
+    } else {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) {
+        m.liveMatch.scoreA = 0;
+        m.liveMatch.scoreB = 0;
+        m.liveMatch.goals = [];
+      }
+    }
+
+    // 5) rotate (winner stays, loser out, next in).
+    await this.recordWinner(gameId, userId, winnerIdx);
+    return winnerSide;
   },
 
   /** Clear the rotation (back to "not started"). In 'permanent' fill mode the

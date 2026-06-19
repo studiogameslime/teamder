@@ -962,6 +962,25 @@ export interface MatchRotation {
   updatedAt?: number;
 }
 
+/**
+ * A single goal logged during a live (advanced-mode) round.
+ *
+ * `team` is 'A' or 'B' — the on-field side the goal COUNTS FOR (for an own
+ * goal this is already the beneficiary side, i.e. the opponent of whoever
+ * put it in). `scorerId` is the attributed scorer, or null when unknown /
+ * an own goal (own goals never credit a scorer in the goals tally).
+ * `minute` is the match-clock minute (0-based) captured at entry — recorded
+ * behind the scenes even if not shown prominently.
+ */
+export interface RoundGoal {
+  id: string;
+  team: 'A' | 'B';
+  scorerId: UserId | null;
+  ownGoal?: boolean;
+  minute: number;
+  at: number; // epoch ms
+}
+
 export interface MatchRound {
   index: number;
   teamA: TeamColor;
@@ -972,6 +991,8 @@ export interface MatchRound {
   startedAt?: number;
   endedAt?: number;
   winner?: TeamColor | 'tie';
+  /** Per-goal log captured during the round (advanced-mode goal entry). */
+  goals?: RoundGoal[];
   /**
    * Snapshot of who was on each team when the round ENDED. Captured
    * by `LiveMatchScreen.endRound` so historical "who played with
@@ -1516,6 +1537,12 @@ export interface LiveMatchState {
   benchOrder: UserId[];
   scoreA: number;
   scoreB: number;
+  /**
+   * Goal log for the CURRENTLY-RUNNING round (advanced-mode goal entry).
+   * Drives the live scoreboard + scorer list. Committed onto the round's
+   * `MatchRound.goals` and cleared when the round ends.
+   */
+  goals?: RoundGoal[];
   /** Score for team C — only used when numberOfTeams ≥ 3. */
   scoreC?: number;
   /** Score for team D — only used when numberOfTeams ≥ 4. */

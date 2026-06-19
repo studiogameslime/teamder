@@ -559,6 +559,28 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
     benchOrder,
     scoreA: typeof o.scoreA === 'number' ? o.scoreA : 0,
     scoreB: typeof o.scoreB === 'number' ? o.scoreB : 0,
+    // Advanced-mode per-round goal log. Without explicit handling the
+    // field was silently stripped on read — the live goal log + the
+    // round-end stats commit both rely on it.
+    goals: Array.isArray(o.goals)
+      ? (o.goals as unknown[])
+          .filter(
+            (x): x is import('@/types').RoundGoal =>
+              !!x &&
+              typeof x === 'object' &&
+              typeof (x as { id?: unknown }).id === 'string' &&
+              ((x as { team?: unknown }).team === 'A' ||
+                (x as { team?: unknown }).team === 'B'),
+          )
+          .map((x) => ({
+            id: x.id,
+            team: x.team,
+            scorerId: typeof x.scorerId === 'string' ? x.scorerId : null,
+            ownGoal: x.ownGoal === true ? true : undefined,
+            minute: typeof x.minute === 'number' ? x.minute : 0,
+            at: typeof x.at === 'number' ? x.at : 0,
+          }))
+      : undefined,
     scoreC: typeof o.scoreC === 'number' ? o.scoreC : undefined,
     scoreD: typeof o.scoreD === 'number' ? o.scoreD : undefined,
     scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,

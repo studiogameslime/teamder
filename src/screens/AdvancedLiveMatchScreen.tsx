@@ -51,6 +51,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
+import { GoalEntryCard } from '@/components/match/GoalEntryCard';
 import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
 import { colors } from '@/theme';
@@ -265,6 +266,51 @@ export function AdvancedLiveMatchScreen() {
       if (__DEV__) console.warn('[live] recordWinner failed', err);
     }
   };
+
+  // End the round: winner is derived from the live score. A tie opens the
+  // manual picker (players decide off-app, admin marks who won).
+  // `finalizingRef` blocks a double-fire (rapid taps / re-render) from
+  // committing the round's stats twice.
+  const finalizingRef = useRef(false);
+  const onEndRound = async () => {
+    if (!gameId || !me || finalizingRef.current) return;
+    const a = live?.scoreA ?? 0;
+    const b = live?.scoreB ?? 0;
+    if (a === b) {
+      setWinnerOpen(true);
+      return;
+    }
+    finalizingRef.current = true;
+    try {
+      await gameService.finalizeRoundAndRotate(gameId, me.id);
+    } catch (err) {
+      logError('liveFinalizeRound', err, { gameId, userId: me.id });
+      if (__DEV__) console.warn('[live] finalizeRound failed', err);
+    } finally {
+      setTimeout(() => {
+        finalizingRef.current = false;
+      }, 1500);
+    }
+  };
+
+  // Tie resolved manually in the picker → that side is recorded as the winner.
+  const onTieWinner = async (teamIndex: number) => {
+    setWinnerOpen(false);
+    if (!gameId || !me || !rotation || finalizingRef.current) return;
+    const side: 'A' | 'B' = teamIndex === rotation.playing[0] ? 'A' : 'B';
+    finalizingRef.current = true;
+    try {
+      await gameService.finalizeRoundAndRotate(gameId, me.id, side);
+    } catch (err) {
+      logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
+      if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
+    } finally {
+      setTimeout(() => {
+        finalizingRef.current = false;
+      }, 1500);
+    }
+  };
+
   const onRotationStop = () => {
     appAlert(he.rotationReset, he.rotationResetConfirm, [
       { text: he.cancel, style: 'cancel' },
@@ -598,6 +644,19 @@ export function AdvancedLiveMatchScreen() {
             guests={game?.guests}
           />
         </View>
+
+        {/* Admin-only live goal entry (scorer + score + log). */}
+        {isAdmin && rotationActive && live && draftTeams && rotation ? (
+          <GoalEntryCard
+            gameId={gameId!}
+            live={live}
+            draftTeams={draftTeams}
+            rotation={rotation}
+            playersMap={playersMap}
+            guests={game?.guests}
+            minute={Math.floor(timerMs / 60000)}
+          />
+        ) : null}
       </ScrollView>
 
       {/* Controls */}
@@ -675,7 +734,7 @@ export function AdvancedLiveMatchScreen() {
               <Ionicons name="refresh" size={22} color="#1D4ED8" />
               <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
             </Pressable>
-            <Pressable style={styles.roundBtn} onPress={() => setWinnerOpen(true)}>
+            <Pressable style={styles.roundBtn} onPress={onEndRound}>
               <Ionicons name="flag" size={22} color="#FFFFFF" />
               <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
             </Pressable>
@@ -831,7 +890,7 @@ export function AdvancedLiveMatchScreen() {
         rotation={rotation ?? undefined}
         playersMap={playersMap}
         guests={game?.guests}
-        onPick={(idx) => onRotationWinner(idx)}
+        onPick={(idx) => onTieWinner(idx)}
         onClose={() => setWinnerOpen(false)}
       />
 

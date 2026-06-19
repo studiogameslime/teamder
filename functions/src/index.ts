@@ -6965,3 +6965,91 @@ export const cronEvery60Min = onSchedule(
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
   },
 );
+
+// ─── Advanced-mode round stats aggregation ─────────────────────────────────
+// Called by the game admin when a round ends. The client can't write other
+// players' stat docs (rules, correctly), so the aggregation runs here with the
+// Admin SDK: per-scorer goals, per-community goals, and pair stats (same-team
+// W/L + head-to-head against). Idempotency is the caller's concern — it sends
+// each finished round once.
+const GUEST_PREFIX = 'guest:';
+const isReal = (id: string) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX);
+
+export const commitRoundStats = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    const {
+      gameId,
+      sideA,
+      sideB,
+      winnerSide,
+      goals,
+    } = (request.data ?? {}) as {
+      gameId?: string;
+      sideA?: string[];
+      sideB?: string[];
+      winnerSide?: 'A' | 'B';
+      goals?: { scorerId?: string | null; ownGoal?: boolean }[];
+    };
+    if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B')) {
+      throw new HttpsError('invalid-argument', 'gameId + winnerSide required');
+    }
+    const snap = await db.collection('games').doc(gameId).get();
+    if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+    const game = snap.data() as Record<string, unknown>;
+    // Authorize: only the game creator or a community admin may commit stats.
+    const groupId = game.groupId as string | undefined;
+    let isAdmin = game.createdBy === uid;
+    if (!isAdmin && groupId) {
+      const grp = await db.collection('groups').doc(groupId).get();
+      isAdmin = ((grp.data()?.adminIds as string[] | undefined) ?? []).includes(uid);
+    }
+    if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
+
+    const A = (sideA ?? []).filter(isReal);
+    const B = (sideB ?? []).filter(isReal);
+    const inc = (n: number) => admin.firestore.FieldValue.increment(n);
+    const now = Date.now();
+    const batch = db.batch();
+    const pairKey = (x: string, y: string) => [x, y].sort().join('__');
+
+    // 1) goals → scorer.stats.goals + community tally
+    const byScorer: Record<string, number> = {};
+    for (const g of goals ?? []) {
+      if (g.ownGoal || !g.scorerId || !isReal(g.scorerId)) continue;
+      byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
+    }
+    for (const [scorer, n] of Object.entries(byScorer)) {
+      batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
+      if (groupId)
+        batch.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${scorer}`),
+          { groupId, userId: scorer, goals: inc(n), updatedAt: now },
+          { merge: true },
+        );
+    }
+
+    // NOTE: same-team pairs (sameTeam / winsTogether / lossesTogether) are
+    // already written by the existing `onGameRotationChanged` trigger on every
+    // rotation — do NOT duplicate them here. This callable only adds what that
+    // trigger doesn't: goals, the head-to-head "against" tally, and community.
+
+    // cross pairs (against) — directional winsA/winsB by sorted key.
+    const winners = winnerSide === 'A' ? A : B;
+    const losers = winnerSide === 'A' ? B : A;
+    for (const w of winners)
+      for (const l of losers) {
+        const wFirst = [w, l].sort()[0] === w;
+        batch.set(
+          db.collection('pairStats').doc(pairKey(w, l)),
+          { against: inc(1), winsA: inc(wFirst ? 1 : 0), winsB: inc(wFirst ? 0 : 1), updatedAt: now },
+          { merge: true },
+        );
+      }
+
+    await batch.commit();
+    return { ok: true, scorers: Object.keys(byScorer).length };
+  },
+);
