@@ -76,6 +76,7 @@ import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { ensureNotGuest } from '@/utils/guestGate';
 import { useUserStore } from '@/store/userStore';
+import { getInboxCount } from '@/services/requestsService';
 import { useGroupStore } from '@/store/groupStore';
 import { useGameStore } from '@/store/gameStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -110,6 +111,16 @@ export function GamesListScreen() {
   // first load / re-load with empty list.
   const [refreshing, setRefreshing] = useState(false);
   const [busyGameId, setBusyGameId] = useState<string | null>(null);
+  // Header bell badge — pending friend/community/game requests. Refreshed on
+  // focus (cheap aggregation; see requestsService).
+  const [requestCount, setRequestCount] = useState(0);
+  useEffect(() => {
+    const fetchCount = () => {
+      if (user) getInboxCount(user.id).then(setRequestCount).catch(() => {});
+    };
+    fetchCount();
+    return nav.addListener('focus', fetchCount);
+  }, [nav, user]);
   // Soft-confirm for cancellations past the cancel-deadline window.
   // Holds the target game so onConfirm knows what to cancel.
   const [lateCancelGame, setLateCancelGame] = useState<Game | null>(null);
@@ -592,6 +603,19 @@ export function GamesListScreen() {
           {filterCount > 0 ? (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+        <Pressable
+          onPress={() => nav.navigate('Requests')}
+          style={({ pressed }) => [styles.filterBtn, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+          accessibilityLabel={he.requestsTitle}
+        >
+          <Ionicons name="notifications-outline" size={20} color="#1E40AF" />
+          {requestCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{requestCount > 99 ? '99+' : requestCount}</Text>
             </View>
           ) : null}
         </Pressable>

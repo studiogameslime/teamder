@@ -17,6 +17,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GamesListScreen } from '@/screens/games/GamesListScreen';
+import { RequestsScreen } from '@/screens/RequestsScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
@@ -34,6 +35,7 @@ import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type GameStackParamList = {
   GamesList: undefined;
+  Requests: undefined;
   /** Full-screen map of open public games (mode: 'games'). */
   GamesMap: MapScreenParams;
   GameCreate:
@@ -102,6 +104,7 @@ export function GameStack() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="GamesList" component={GamesListScreen} />
+      <Stack.Screen name="Requests" component={RequestsScreen} />
       <Stack.Screen name="GamesMap" component={MapScreen} />
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />

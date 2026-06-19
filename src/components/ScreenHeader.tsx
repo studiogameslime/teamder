@@ -11,6 +11,8 @@ export interface HeaderAction {
   tint?: string;
   /** Optional accessibility label. */
   label?: string;
+  /** Optional unread/pending count — renders a red badge over the icon. */
+  badge?: number;
 }
 
 interface Props {
@@ -88,6 +90,11 @@ export function ScreenHeader({
               size={22}
               color={a.tint ?? colors.text}
             />
+            {a.badge && a.badge > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{a.badge > 99 ? '99+' : a.badge}</Text>
+              </View>
+            ) : null}
           </Pressable>
         ))}
       </View>
@@ -121,6 +128,23 @@ const styles = StyleSheet.create({
   actionBtn: {
     paddingVertical: 4,
     paddingHorizontal: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   center: {
     flex: 1,
