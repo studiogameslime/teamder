@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { teamName, type RosterMember } from '@/components/match/rotationView';
+import { teamName, firstName, type RosterMember } from '@/components/match/rotationView';
 
 const GOLD = '#F4B73E';
 const TEAM_BLUE = '#2563EB';
@@ -26,12 +26,6 @@ interface Props {
   variant?: 'list' | 'grid';
   /** Goals per player this round — shown in the list badge instead of a rank. */
   goalsByPlayer?: Record<string, number>;
-}
-
-/** First name only — keeps the live roster rows compact (e.g. "Eliran Tzabari"
- *  → "Eliran", "מתן לוי" → "מתן"). */
-function firstName(name: string): string {
-  return (name ?? '').trim().split(/\s+/)[0] || name;
 }
 
 export function TeamScore({
@@ -134,7 +128,7 @@ export function TeamScore({
               {m.isFiller ? star : null}
             </View>
             <Text style={styles.playerNameGrid} numberOfLines={1}>
-              {m.name}
+              {firstName(m.name)}
             </Text>
           </View>
         ))}

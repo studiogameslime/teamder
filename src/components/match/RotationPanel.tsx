@@ -13,6 +13,7 @@ import { TeamScore } from '@/components/match/TeamScore';
 import {
   buildRoster,
   draftRoster,
+  firstName,
   makeResolver,
   teamName,
   type PlayerLite,
@@ -144,7 +145,7 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
                         ring
                       />
                       <Text style={styles.waitMiniName} numberOfLines={1}>
-                        {m.name}
+                        {firstName(m.name)}
                       </Text>
                     </View>
                   ))}

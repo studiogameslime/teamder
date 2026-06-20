@@ -13,6 +13,12 @@ export function teamName(i: number): string {
   return `קבוצה ${teamLetter(i)}`;
 }
 
+/** First name only — keeps live roster rows compact ("Eliran Tzabari" →
+ *  "Eliran", "מתן לוי" → "מתן"). */
+export function firstName(name: string): string {
+  return (name ?? '').trim().split(/\s+/)[0] || name;
+}
+
 export type PlayerLite = {
   displayName?: string;
   avatarId?: string;
