@@ -635,15 +635,9 @@ export function AdvancedLiveMatchScreen() {
           ) : null}
         </Animated.View>
 
-        {/* Live rotation scoreboard + waiting queue. Only when teams drafted. */}
-        <View style={styles.rotationWrap}>
-          <RotationPanel
-            draftTeams={draftTeams ?? undefined}
-            rotation={rotation ?? undefined}
-            playersMap={playersMap}
-            guests={game?.guests}
-          />
-        </View>
+        {/* Hierarchy: timer + scores (goal card) at top, then the two playing
+            teams, then the waiting queue. The goal card sits right under the
+            timer so the score is always visible without scrolling. */}
 
         {/* Admin-only live goal entry (scorer + score + log). */}
         {isAdmin && rotationActive && live && draftTeams && rotation ? (
@@ -657,6 +651,16 @@ export function AdvancedLiveMatchScreen() {
             minute={Math.floor(timerMs / 60000)}
           />
         ) : null}
+
+        {/* Live rotation scoreboard (2 playing teams) + waiting queue. */}
+        <View style={styles.rotationWrap}>
+          <RotationPanel
+            draftTeams={draftTeams ?? undefined}
+            rotation={rotation ?? undefined}
+            playersMap={playersMap}
+            guests={game?.guests}
+          />
+        </View>
       </ScrollView>
 
       {/* Controls */}
