@@ -59,6 +59,7 @@ import { isPlayedGame } from '@/utils/playedGames';
 import {
   startRotation as runStartRotation,
   recordWinner as runRecordWinner,
+  recordTie as runRecordTie,
   type RotationTeam,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
@@ -364,6 +365,20 @@ async function findOverlappingGameInGroup(
  *  size each playing team is filled up to). Defaults to 5. */
 function playersPerTeamFor(format: GameFormat | undefined): number {
   return format === '4v4' ? 4 : format === '6v6' ? 6 : format === '7v7' ? 7 : 5;
+}
+
+/**
+ * Effective fill mode for the rotation. The advanced-mode game setting
+ * (`advancedFillMode`, chosen at creation) is the source of truth — the
+ * manual draft never copies it onto `draftTeams.fillMode`, so without this the
+ * engine always defaulted to 'temporary' and the "קבוע" option had no effect.
+ */
+function effFillMode(
+  g: { advancedMode?: boolean; advancedFillMode?: 'temporary' | 'permanent' },
+  draft: { fillMode?: 'temporary' | 'permanent' },
+): 'temporary' | 'permanent' {
+  if (g.advancedMode && g.advancedFillMode) return g.advancedFillMode;
+  return draft.fillMode ?? 'temporary';
 }
 
 export const gameService = {
@@ -2184,7 +2199,7 @@ export const gameService = {
     const draft = g?.draftTeams;
     if (!g || !draft || draft.teams.length < 2) return;
     const perTeam = playersPerTeamFor(g.format);
-    const fillMode = draft.fillMode ?? 'temporary';
+    const fillMode = effFillMode(g, draft);
     const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
     const res = runStartRotation(teams, perTeam, fillMode);
     if (!res) return; // gate: not enough players for two full teams
@@ -2207,11 +2222,26 @@ export const gameService = {
     if (!g || !draft || !g.rotation) return;
     if (!g.rotation.playing.includes(winner)) return;
     const perTeam = playersPerTeamFor(g.format);
-    const fillMode = draft.fillMode ?? 'temporary';
+    const fillMode = effFillMode(g, draft);
     const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
     const res = runRecordWinner(winner, teams, g.rotation, perTeam, fillMode);
     // Carry the original-roster snapshot forward (the engine builds a fresh
     // rotation object each round and doesn't know about baseTeams).
+    res.rotation.baseTeams = g.rotation.baseTeams;
+    await this._persistRotation(gameId, draft, res);
+  },
+
+  /** Record a TIE and rotate per the game's 4-team tie rule (advancedTieMode).
+   *  No-op unless a rotation is live. Used by finalizeRoundAndRotate. */
+  async recordTie(gameId: string, mode: 'bothOut' | 'veteranOut'): Promise<void> {
+    if (!gameId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!g || !draft || !g.rotation) return;
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = effFillMode(g, draft);
+    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const res = runRecordTie(teams, g.rotation, perTeam, fillMode, mode);
     res.rotation.baseTeams = g.rotation.baseTeams;
     await this._persistRotation(gameId, draft, res);
   },
@@ -2316,7 +2346,7 @@ export const gameService = {
     gameId: string,
     userId: string,
     manualWinnerSide?: 'A' | 'B',
-  ): Promise<'A' | 'B' | null> {
+  ): Promise<'A' | 'B' | 'tie' | null> {
     if (!gameId) return null;
     const g = await this.getGameById(gameId);
     const lm = g?.liveMatch;
@@ -2326,8 +2356,14 @@ export const gameService = {
     const [idxA, idxB] = rot.playing;
     const winnerSide: 'A' | 'B' | null =
       lm.scoreA > lm.scoreB ? 'A' : lm.scoreB > lm.scoreA ? 'B' : manualWinnerSide ?? null;
-    if (!winnerSide) return null; // tie with no manual pick — caller must supply
-    const winnerIdx = winnerSide === 'A' ? idxA : idxB;
+
+    // 4-team advanced games resolve a tie automatically via advancedTieMode
+    // (bothOut / veteranOut). Other team counts fall back to the manual picker
+    // (caller opens it when we return null).
+    const tieMode =
+      g.numberOfTeams === 4 && g.advancedMode ? g.advancedTieMode ?? 'bothOut' : undefined;
+    const isTie = !winnerSide;
+    if (isTie && !tieMode) return null; // 2–3 teams: caller must supply a winner
 
     // On-field rosters — registered uids only (guests carry no stats).
     const rosterOf = (idx: number) =>
@@ -2337,9 +2373,9 @@ export const gameService = {
 
     if (!USE_MOCK_DATA) {
       const now = Date.now();
-      // Stats run SERVER-SIDE: the client can't write other players' stat
-      // docs (rules, correctly), so the per-scorer goals + pair/community
-      // aggregation happens in the `commitRoundStats` callable (Admin SDK).
+      // Stats run SERVER-SIDE (rules block writing other players' docs): goals
+      // + pair/community aggregation in the `commitRoundStats` callable. On a
+      // tie, scorers still count; `winnerSide: 'tie'` skips directional wins.
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { httpsCallable } = require('firebase/functions');
@@ -2347,7 +2383,7 @@ export const gameService = {
           gameId,
           sideA,
           sideB,
-          winnerSide,
+          winnerSide: winnerSide ?? 'tie',
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
             ownGoal: !!gl.ownGoal,
@@ -2375,8 +2411,13 @@ export const gameService = {
       }
     }
 
-    // 5) rotate (winner stays, loser out, next in).
-    await this.recordWinner(gameId, userId, winnerIdx);
+    // Rotate. A tie in a 4-team game follows the tie rule; otherwise winner
+    // stays, loser out, next in.
+    if (isTie && tieMode) {
+      await this.recordTie(gameId, tieMode);
+      return 'tie';
+    }
+    await this.recordWinner(gameId, userId, winnerSide === 'A' ? idxA : idxB);
     return winnerSide;
   },
 

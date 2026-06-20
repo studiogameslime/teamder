@@ -218,3 +218,75 @@ export function recordWinner(
     },
   };
 }
+
+/**
+ * Record a TIE and rotate per the 4-team tie rule (advancedTieMode):
+ *   • 'bothOut'    → both on-field teams go off; the two waiting teams come on.
+ *   • 'veteranOut' → only the "veteran" (playing[0], the team that stayed and
+ *                    has been on longest) goes off; the challenger (playing[1])
+ *                    stays, and the next waiting team comes on.
+ * A tie has no winner, so no win tally / no winner-loser rosters are recorded
+ * (lastRoundWinners/Losers are emptied). Falls back gracefully when too few
+ * teams are waiting (keeps both on, or rotates one).
+ */
+export function recordTie(
+  teams: RotationTeam[],
+  rotation: MatchRotation,
+  perTeam: number,
+  fillMode: FillMode,
+  mode: 'bothOut' | 'veteranOut',
+  pick: <T>(a: T[], n: number) => T[] = pickRandom,
+): { rotation: MatchRotation; teams: RotationTeam[] } {
+  const [a, b] = rotation.playing;
+  const lastRoundAt = Date.now();
+  const base = {
+    wins: { ...(rotation.wins ?? {}) },
+    round: (rotation.round ?? 1) + 1,
+    lastRoundWinners: [] as string[],
+    lastRoundLosers: [] as string[],
+    lastRoundAt,
+    updatedAt: lastRoundAt,
+  };
+  const noOneWaiting = rotation.waiting[0] == null;
+  if (noOneWaiting) {
+    // Nobody to swap in → both stay, just advance the round.
+    return { teams, rotation: { ...rotation, ...base } };
+  }
+
+  // Helper: rotate so `out` goes to the back and `stay` is joined by `incoming`.
+  const rotateOneOut = (stay: number, out: number, incoming: number) => {
+    const newPlaying: [number, number] = [stay, incoming];
+    const newWaiting = [...rotation.waiting.filter((w) => w !== incoming), out];
+    let loans = rotation.loans.filter((l) => l.homeTeam !== incoming);
+    loans = loans.filter((l) => l.filledTeam !== out);
+    const filled = fillPlaying(newPlaying, teams, loans, perTeam, fillMode, out, pick);
+    return {
+      teams: filled.teams,
+      rotation: { ...base, playing: newPlaying, waiting: newWaiting, loans: filled.loans },
+    };
+  };
+
+  if (mode === 'veteranOut') {
+    // Veteran = playing[0] (incumbent); challenger b stays.
+    return rotateOneOut(b, a, rotation.waiting[0]);
+  }
+
+  // bothOut
+  const inc1 = rotation.waiting[0];
+  const inc2 = rotation.waiting[1];
+  if (inc2 == null) {
+    // Only one team waiting → can't swap both; treat as veteran-out fallback.
+    return rotateOneOut(b, a, inc1);
+  }
+  const newPlaying: [number, number] = [inc1, inc2];
+  const newWaiting = [...rotation.waiting.slice(2), a, b];
+  // Incoming teams come on → return their loaned-out players; drop loans into
+  // the two teams going off.
+  let loans = rotation.loans.filter((l) => l.homeTeam !== inc1 && l.homeTeam !== inc2);
+  loans = loans.filter((l) => l.filledTeam !== a && l.filledTeam !== b);
+  const filled = fillPlaying(newPlaying, teams, loans, perTeam, fillMode, null, pick);
+  return {
+    teams: filled.teams,
+    rotation: { ...base, playing: newPlaying, waiting: newWaiting, loans: filled.loans },
+  };
+}

@@ -1,6 +1,7 @@
 import {
   startRotation,
   recordWinner,
+  recordTie,
   rosterOf,
   canStart,
   type RotationTeam,
@@ -65,5 +66,33 @@ describe('rotationEngine — 8 players cannot start (need 10 = two full 5s)', ()
     expect(startRotation(teams, perTeam, 'temporary', pickFirst)).toBeNull();
     // eslint-disable-next-line no-console
     console.log('\n[GATE] 8 players, perTeam=5 → canStart=false (need 10). Rotation NOT started.\n');
+  });
+});
+
+describe('rotationEngine — recordTie (4-team advancedTieMode)', () => {
+  const perTeam = 4;
+  // 4 full teams of 4. Start → playing [0,1], waiting [2,3].
+  const teams: RotationTeam[] = [
+    { index: 0, playerIds: ['a1', 'a2', 'a3', 'a4'] },
+    { index: 1, playerIds: ['b1', 'b2', 'b3', 'b4'] },
+    { index: 2, playerIds: ['c1', 'c2', 'c3', 'c4'] },
+    { index: 3, playerIds: ['d1', 'd2', 'd3', 'd4'] },
+  ];
+
+  it('bothOut: both on-field teams go off, the two waiting teams come on', () => {
+    const start = startRotation(teams, perTeam, 'temporary', pickFirst)!;
+    expect(start.rotation.playing).toEqual([0, 1]);
+    expect(start.rotation.waiting).toEqual([2, 3]);
+    const res = recordTie(teams, start.rotation, perTeam, 'temporary', 'bothOut', pickFirst);
+    expect(res.rotation.playing).toEqual([2, 3]);     // waiting teams came on
+    expect(res.rotation.waiting).toEqual([0, 1]);      // both went to the back
+  });
+
+  it('veteranOut: the veteran (playing[0]) goes off, the challenger stays', () => {
+    const start = startRotation(teams, perTeam, 'temporary', pickFirst)!;
+    const res = recordTie(teams, start.rotation, perTeam, 'temporary', 'veteranOut', pickFirst);
+    // veteran=0 off, challenger=1 stays, next waiting (2) comes on.
+    expect(res.rotation.playing).toEqual([1, 2]);
+    expect(res.rotation.waiting).toEqual([3, 0]);
   });
 });
