@@ -73,14 +73,11 @@ export function TeamScore({
                 <Text style={styles.playerName} numberOfLines={1}>
                   {firstName(m.name)}
                 </Text>
-                {/* Goal count for this round (replaces the old rank number). */}
-                <View style={[styles.goalBadge, goals > 0 && styles.goalBadgeOn]}>
-                  <Ionicons
-                    name="football"
-                    size={11}
-                    color={goals > 0 ? '#FFFFFF' : '#94A3B8'}
-                  />
-                  <Text style={[styles.goalNum, goals > 0 && styles.goalNumOn]}>{goals}</Text>
+                {/* Goal count for this round (replaces the old rank number).
+                    Uniform, flat stat chip — never a filled/tappable look. */}
+                <View style={styles.goalBadge}>
+                  <Ionicons name="football" size={11} color="#64748B" />
+                  <Text style={styles.goalNum}>{goals}</Text>
                 </View>
               </View>
             );
@@ -188,24 +185,18 @@ const styles = StyleSheet.create({
     borderColor: '#EEF1F6',
     backgroundColor: '#FFFFFF',
   },
-  // Goal-count badge (replaces the rank). Muted at 0, brand-filled once the
-  // player has scored this round.
+  // Goal-count chip (replaces the rank). Uniform + flat for every player so it
+  // reads as a stat, not a tappable button.
   goalBadge: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
     minWidth: 36,
-    height: 24,
+    height: 22,
     paddingHorizontal: 7,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
   },
-  goalBadgeOn: { borderColor: TEAM_BLUE, backgroundColor: TEAM_BLUE },
-  goalNum: { fontSize: 12, fontWeight: '800', color: '#94A3B8', fontVariant: ['tabular-nums'] },
-  goalNumOn: { color: '#FFFFFF' },
+  goalNum: { fontSize: 13, fontWeight: '800', color: '#334155', fontVariant: ['tabular-nums'] },
   // `flex: 1` + `minWidth: 0` makes a long name ellipsize instead of pushing
   // the goal badge outside the card (the "Eliran Tzabari" overflow bug).
   playerName: {
