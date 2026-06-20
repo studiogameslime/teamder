@@ -21,22 +21,19 @@ import { LivingIcon, type LivingMotion } from '@/components/anim/LivingIcon';
 
 interface Props {
   totalGames: number;
-  clubs: number;
+  goals: number;
   friends: number;
   /** Tap the games cell → match history (Pulse dlsNUO). */
   onGamesPress?: () => void;
-  /** Tap the clubs cell → communities. */
-  onClubsPress?: () => void;
   /** Tap the friends cell → friends screen (Pulse dlsNUO). */
   onFriendsPress?: () => void;
 }
 
 export function HeroStatsCard({
   totalGames,
-  clubs,
+  goals,
   friends,
   onGamesPress,
-  onClubsPress,
   onFriendsPress,
 }: Props) {
   return (
@@ -51,12 +48,11 @@ export function HeroStatsCard({
       />
       <Divider />
       <Cell
-        icon="people-outline"
+        icon="football"
         motion="pulse"
         iconColor="#FFFFFF"
-        countTo={clubs}
-        label={he.profileStatClubs}
-        onPress={onClubsPress}
+        countTo={goals}
+        label={he.profileStatGoals}
       />
       <Divider />
       <Cell

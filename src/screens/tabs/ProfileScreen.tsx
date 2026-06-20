@@ -313,6 +313,12 @@ export function ProfileScreen() {
   // Per user feedback (Pulse SM3iGk): the "{n} מועדונים" and "{x}% אמין"
   // chips were noise under the name — drop them and keep only the location.
   const heroMeta: HeroMetaItem[] = [];
+  if (myCommunities.length > 0) {
+    heroMeta.push({
+      icon: 'people-outline',
+      text: he.profileMetaCommunities(myCommunities.length),
+    });
+  }
   if (user.availability?.homeCity) {
     heroMeta.push({
       icon: 'location-outline',
@@ -560,17 +566,10 @@ export function ProfileScreen() {
         <View style={styles.statsWrap}>
           <HeroStatsCard
             totalGames={totalGames}
-            clubs={myCommunities.length}
+            goals={user.stats?.goals ?? 0}
             friends={user.friends?.length ?? 0}
             onGamesPress={() => nav.navigate('History')}
             onFriendsPress={() => nav.navigate('Friends')}
-            onClubsPress={() =>
-              (
-                nav.getParent?.() as
-                  | { navigate: (t: string) => void }
-                  | undefined
-              )?.navigate('CommunitiesTab')
-            }
           />
         </View>
 

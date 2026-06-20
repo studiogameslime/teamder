@@ -1494,7 +1494,7 @@ export const he = {
   profileMetaCommunities: (n: number) => `${n} מועדונים`,
   profileStatFriends: 'חברים',
   profileStatCancelRate: 'ביטולים',
-  profileStatGoals: 'שערים',
+  profileStatGoals: 'גולים',
   profileSubtitlePlayer: 'שחקן',
   profileStatInvited: 'שחקנים שהצטרפו דרכי',
   // Next-game card on the player's own profile (replaces the

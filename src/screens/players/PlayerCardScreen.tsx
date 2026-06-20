@@ -462,7 +462,48 @@ function H2hCountRow({
   );
 }
 
-/** Donut row: label+sub … ring … wins(green)/losses(red). */
+/** Record row (no graph): [icon] label+sub … wins(green)/losses(red). */
+function H2hRecordRow({
+  icon,
+  label,
+  rounds,
+  wins,
+  losses,
+  wonLabel,
+  lostLabel,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  rounds: number;
+  wins: number;
+  losses: number;
+  wonLabel: string;
+  lostLabel: string;
+}) {
+  return (
+    <View style={styles.h2hRow}>
+      <Ionicons name={icon} size={20} color={colors.primary} style={styles.h2hRowIcon} />
+      <View style={[styles.h2hLabelCol, styles.h2hFlex]}>
+        <Text style={styles.h2hLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={styles.h2hSub}>{he.pairStatsRoundsCount(rounds)}</Text>
+      </View>
+      {/* Losses (red) on the right, wins (green) on the far left. */}
+      <View style={styles.wlStats}>
+        <View style={styles.wlStat}>
+          <Text style={[styles.wlNum, { color: colors.danger }]}>{losses}</Text>
+          <Text style={[styles.wlLabel, { color: colors.danger }]}>{lostLabel}</Text>
+        </View>
+        <View style={styles.wlStat}>
+          <Text style={[styles.wlNum, { color: colors.success }]}>{wins}</Text>
+          <Text style={[styles.wlLabel, { color: colors.success }]}>{wonLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 /** Date row: [calendar] label … date. */
 function H2hDateRow({ label, value }: { label: string; value: string }) {
   return (
@@ -577,6 +618,34 @@ function PairStatsSection({
               label={he.pairStatsAttended}
               value={String(stats.attendedTogether)}
             />
+            {stats.sameTeam > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hRecordRow
+                  icon="people-outline"
+                  label={he.pairStatsSameTeam}
+                  rounds={stats.sameTeam}
+                  wins={stats.winsTogether}
+                  losses={stats.lossesTogether}
+                  wonLabel={he.pairWonTogether}
+                  lostLabel={he.pairLostTogether}
+                />
+              </>
+            ) : null}
+            {stats.against > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hRecordRow
+                  icon="git-compare-outline"
+                  label={he.pairStatsAgainst}
+                  rounds={stats.against}
+                  wins={stats.winsAgainst}
+                  losses={stats.lossesAgainst}
+                  wonLabel={he.pairWonYou}
+                  lostLabel={he.pairLostYou}
+                />
+              </>
+            ) : null}
             {stats.lastSharedAt || stats.firstSharedAt ? (
               <>
                 <View style={styles.h2hDivider} />
@@ -971,8 +1040,14 @@ const styles = StyleSheet.create({
   h2hRowIcon: { width: 22, textAlign: 'center' },
   h2hLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   h2hFlex: { flex: 1, minWidth: 0 },
+  h2hLabelCol: { gap: 1 },
+  h2hSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   h2hBigNum: { ...typography.h2, color: colors.primary, fontWeight: '900' },
   h2hDate: { ...typography.body, color: colors.text, fontWeight: '700' },
+  wlStats: { flexDirection: 'row', gap: spacing.md },
+  wlStat: { alignItems: 'center', minWidth: 34 },
+  wlNum: { ...typography.h3, fontWeight: '900' },
+  wlLabel: { ...typography.caption, fontWeight: '700' },
   pairTitleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

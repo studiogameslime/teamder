@@ -117,6 +117,7 @@ function readStats(d: DocumentData): UserStats | undefined {
     totalGames: typeof s.totalGames === 'number' ? s.totalGames : 0,
     attended: typeof s.attended === 'number' ? s.attended : 0,
     cancelled: typeof s.cancelled === 'number' ? s.cancelled : 0,
+    goals: typeof s.goals === 'number' ? s.goals : 0,
   };
 }
 
