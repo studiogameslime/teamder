@@ -79,24 +79,48 @@ export function GoalEntryCard({ gameId, live, draftTeams, rotation, playersMap, 
     <View style={styles.wrap}>
       <Text style={styles.title}>{he.goalSectionTitle}</Text>
 
-      {/* Live score + per-team goal buttons */}
+      {/* Scoreboard — one clean row: team A (right) — team B (left). */}
       <View style={styles.scoreRow}>
-        <TeamGoalSide
-          name={teamName(aIdx)}
-          score={live.scoreA}
-          tint={colors.team1}
-          onAdd={() => setPickSide('A')}
-        />
+        <View style={styles.scoreCol}>
+          <Text style={[styles.sideName, { color: colors.team1 }]} numberOfLines={1}>
+            {teamName(aIdx)}
+          </Text>
+          <Text style={[styles.sideScore, { color: colors.team1 }]}>{live.scoreA}</Text>
+        </View>
         <Text style={styles.dash}>—</Text>
-        <TeamGoalSide
-          name={teamName(bIdx)}
-          score={live.scoreB}
-          tint={colors.team2}
-          onAdd={() => setPickSide('B')}
-        />
+        <View style={styles.scoreCol}>
+          <Text style={[styles.sideName, { color: colors.team2 }]} numberOfLines={1}>
+            {teamName(bIdx)}
+          </Text>
+          <Text style={[styles.sideScore, { color: colors.team2 }]}>{live.scoreB}</Text>
+        </View>
       </View>
 
-      {/* Goal log */}
+      {/* Goal buttons — one full-width row, never clipped. */}
+      <View style={styles.btnRow}>
+        <Pressable
+          style={[styles.goalBtn, { backgroundColor: colors.team1 }]}
+          onPress={() => setPickSide('A')}
+          accessibilityRole="button"
+        >
+          <Ionicons name="football" size={18} color="#FFFFFF" />
+          <Text style={styles.goalBtnTxt} numberOfLines={1}>
+            {he.goalAddTo(teamName(aIdx))}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.goalBtn, { backgroundColor: colors.team2 }]}
+          onPress={() => setPickSide('B')}
+          accessibilityRole="button"
+        >
+          <Ionicons name="football" size={18} color="#FFFFFF" />
+          <Text style={styles.goalBtnTxt} numberOfLines={1}>
+            {he.goalAddTo(teamName(bIdx))}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Goal log — who scored, which team, what minute. */}
       {goals.length > 0 ? (
         <View style={styles.log}>
           {goals
@@ -107,11 +131,12 @@ export function GoalEntryCard({ gameId, live, draftTeams, rotation, playersMap, 
                 <Pressable onPress={() => undo(g.id)} hitSlop={8} style={styles.undoBtn}>
                   <Ionicons name="close" size={15} color={colors.textMuted} />
                 </Pressable>
-                <View style={[styles.logDot, { backgroundColor: g.team === 'A' ? colors.team1 : colors.team2 }]} />
+                <Text style={styles.logMin}>{g.minute}'</Text>
+                <View style={{ flex: 1 }} />
                 <Text style={styles.logName} numberOfLines={1}>
                   {goalLabel(g)}
                 </Text>
-                <Text style={styles.logMin}>{g.minute}'</Text>
+                <View style={[styles.logDot, { backgroundColor: g.team === 'A' ? colors.team1 : colors.team2 }]} />
               </View>
             ))}
         </View>
@@ -129,33 +154,6 @@ export function GoalEntryCard({ gameId, live, draftTeams, rotation, playersMap, 
         onOwnGoal={() => pickSide && addGoal(pickSide, null, true)}
         onClose={() => setPickSide(null)}
       />
-    </View>
-  );
-}
-
-function TeamGoalSide({
-  name,
-  score,
-  tint,
-  onAdd,
-}: {
-  name: string;
-  score: number;
-  tint: string;
-  onAdd: () => void;
-}) {
-  return (
-    <View style={styles.side}>
-      <Text style={styles.sideName} numberOfLines={1}>
-        {name}
-      </Text>
-      <Text style={[styles.sideScore, { color: tint }]}>{score}</Text>
-      <Pressable style={[styles.goalBtn, { backgroundColor: tint }]} onPress={onAdd} accessibilityRole="button">
-        <Ionicons name="football" size={16} color="#FFFFFF" />
-        <Text style={styles.goalBtnTxt} numberOfLines={1}>
-          {he.goalAdd}
-        </Text>
-      </Pressable>
     </View>
   );
 }
@@ -212,6 +210,7 @@ function ScorerPicker({
 
 const styles = StyleSheet.create({
   wrap: {
+    alignSelf: 'stretch', // fill the (center-aligned) scroll container width
     marginTop: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -221,36 +220,45 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   title: { ...typography.bodyBold, color: colors.text, textAlign: 'center' },
-  scoreRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: spacing.md },
-  dash: { ...typography.h1, color: colors.textMuted, marginTop: 18 },
-  side: { flex: 1, alignItems: 'center', gap: 4 },
-  sideName: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: 'center' },
-  sideScore: { fontSize: 40, fontWeight: '900', lineHeight: 46 },
+  // Scoreboard: one row, team A on the right (RTL).
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    paddingVertical: 2,
+  },
+  scoreCol: { flex: 1, alignItems: 'center', gap: 2 },
+  sideName: { ...typography.bodyBold, fontWeight: '800', textAlign: 'center' },
+  sideScore: { fontSize: 44, fontWeight: '900', lineHeight: 50 },
+  dash: { fontSize: 28, fontWeight: '800', color: colors.textMuted },
+  // Goal buttons: one full-width row of two equal buttons.
+  btnRow: { flexDirection: 'row', gap: spacing.sm },
   goalBtn: {
-    alignSelf: 'stretch',
+    flex: 1,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     borderRadius: radius.md,
-    marginTop: 4,
   },
-  goalBtnTxt: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  log: { gap: 6, marginTop: 4 },
+  goalBtnTxt: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', flexShrink: 1 },
+  log: { gap: 8, marginTop: 2 },
   logRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   undoBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logDot: { width: 9, height: 9, borderRadius: 5 },
-  logName: { flex: 1, ...typography.body, color: colors.text, textAlign: 'right' },
-  logMin: { ...typography.caption, color: colors.textMuted, fontVariant: ['tabular-nums'] },
-  empty: { ...typography.caption, color: colors.textMuted, textAlign: 'center', paddingVertical: 4 },
+  logDot: { width: 10, height: 10, borderRadius: 5 },
+  logName: { ...typography.body, color: colors.text, textAlign: 'right', fontWeight: '600' },
+  logMin: { ...typography.caption, color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 28 },
+  empty: { ...typography.caption, color: colors.textMuted, textAlign: 'center', paddingVertical: 8 },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 24, padding: spacing.lg, gap: spacing.sm },

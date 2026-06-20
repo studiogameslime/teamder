@@ -328,6 +328,7 @@ export const he = {
   // ── Live goal entry (advanced mode) ──
   goalSectionTitle: 'תוצאת המשחקון',
   goalAdd: 'שער',
+  goalAddTo: (team: string) => `שער · ${team}`,
   goalLogEmpty: 'עדיין אין שערים במשחקון',
   goalScorerPickTitle: (team: string) => `מי הבקיע? · ${team}`,
   goalUnknownScorer: 'לא ידוע',
