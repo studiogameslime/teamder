@@ -1036,11 +1036,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.bg,
-    maxWidth: 200,
   },
   commLogo: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceMuted },
   commLogoFallback: { alignItems: 'center', justifyContent: 'center' },
-  commName: { ...typography.body, color: colors.text, fontWeight: '700', flexShrink: 1, textAlign: RTL_LABEL_ALIGN },
+  commName: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   // ── Head-to-head card ──
   h2hCard: { padding: spacing.md, gap: 0 },
   h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
