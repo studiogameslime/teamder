@@ -240,6 +240,17 @@ export function AdvancedLiveMatchScreen() {
   const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
 
+  // Goals per player THIS round — shown in each roster row's badge (own goals
+  // credit no scorer, so they're excluded).
+  const goalsByPlayer = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const g of live?.goals ?? []) {
+      if (g.ownGoal || !g.scorerId) continue;
+      acc[g.scorerId] = (acc[g.scorerId] ?? 0) + 1;
+    }
+    return acc;
+  }, [live?.goals]);
+
   // One listener on the game doc delivers liveMatch + rotation + draftTeams.
   // Halves reads vs. separate subscribeLiveMatch + subscribeRotation on the
   // same doc — every game write used to fire two listeners on this device.
@@ -670,6 +681,7 @@ export function AdvancedLiveMatchScreen() {
             rotation={rotation ?? undefined}
             playersMap={playersMap}
             guests={game?.guests}
+            goalsByPlayer={goalsByPlayer}
           />
         </View>
       </ScrollView>

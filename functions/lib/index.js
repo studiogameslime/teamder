@@ -5552,7 +5552,7 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
     const { gameId, sideA, sideB, winnerSide, goals, } = (request.data ?? {});
-    if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B')) {
+    if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
         throw new https_1.HttpsError('invalid-argument', 'gameId + winnerSide required');
     }
     const snap = await db.collection('games').doc(gameId).get();
@@ -5590,13 +5590,23 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // already written by the existing `onGameRotationChanged` trigger on every
     // rotation — do NOT duplicate them here. This callable only adds what that
     // trigger doesn't: goals, the head-to-head "against" tally, and community.
-    // cross pairs (against) — directional winsA/winsB by sorted key.
-    const winners = winnerSide === 'A' ? A : B;
-    const losers = winnerSide === 'A' ? B : A;
-    for (const w of winners)
-        for (const l of losers) {
+    // cross pairs (against) — every A×B pair played against each other this
+    // round. On a tie, count `against` but credit no directional win.
+    const aWon = winnerSide === 'A';
+    const bWon = winnerSide === 'B';
+    for (const w of A)
+        for (const l of B) {
             const wFirst = [w, l].sort()[0] === w;
-            batch.set(db.collection('pairStats').doc(pairKey(w, l)), { against: inc(1), winsA: inc(wFirst ? 1 : 0), winsB: inc(wFirst ? 0 : 1), updatedAt: now }, { merge: true });
+            // w is on side A, l on side B. winsA/winsB are by SORTED-first uid.
+            const aIsFirst = wFirst; // w (side A) sorts first
+            const sideAWinsField = aIsFirst ? 'winsA' : 'winsB';
+            const sideBWinsField = aIsFirst ? 'winsB' : 'winsA';
+            batch.set(db.collection('pairStats').doc(pairKey(w, l)), {
+                against: inc(1),
+                [sideAWinsField]: inc(aWon ? 1 : 0),
+                [sideBWinsField]: inc(bWon ? 1 : 0),
+                updatedAt: now,
+            }, { merge: true });
         }
     await batch.commit();
     return { ok: true, scorers: Object.keys(byScorer).length };

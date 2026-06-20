@@ -24,6 +24,14 @@ interface Props {
   align: 'right' | 'left';
   avatarSize?: number;
   variant?: 'list' | 'grid';
+  /** Goals per player this round — shown in the list badge instead of a rank. */
+  goalsByPlayer?: Record<string, number>;
+}
+
+/** First name only — keeps the live roster rows compact (e.g. "Eliran Tzabari"
+ *  → "Eliran", "מתן לוי" → "מתן"). */
+function firstName(name: string): string {
+  return (name ?? '').trim().split(/\s+/)[0] || name;
 }
 
 export function TeamScore({
@@ -33,6 +41,7 @@ export function TeamScore({
   align,
   avatarSize,
   variant = 'grid',
+  goalsByPlayer,
 }: Props) {
   const star = (
     <View style={styles.star}>
@@ -55,25 +64,33 @@ export function TeamScore({
           </View>
         </View>
         <View style={styles.list}>
-          {roster.map((m, i) => (
-            <View key={m.id} style={styles.playerRow}>
-              <View>
-                <UserAvatar
-                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                  size={size}
-                  ring
-                />
-                {m.isFiller ? star : null}
+          {roster.map((m) => {
+            const goals = goalsByPlayer?.[m.id] ?? 0;
+            return (
+              <View key={m.id} style={styles.playerRow}>
+                <View>
+                  <UserAvatar
+                    user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                    size={size}
+                    ring
+                  />
+                  {m.isFiller ? star : null}
+                </View>
+                <Text style={styles.playerName} numberOfLines={1}>
+                  {firstName(m.name)}
+                </Text>
+                {/* Goal count for this round (replaces the old rank number). */}
+                <View style={[styles.goalBadge, goals > 0 && styles.goalBadgeOn]}>
+                  <Ionicons
+                    name="football"
+                    size={11}
+                    color={goals > 0 ? '#FFFFFF' : '#94A3B8'}
+                  />
+                  <Text style={[styles.goalNum, goals > 0 && styles.goalNumOn]}>{goals}</Text>
+                </View>
               </View>
-              <Text style={styles.playerName} numberOfLines={1}>
-                {m.name}
-              </Text>
-              <View style={styles.rowSpacer} />
-              <View style={styles.rank}>
-                <Text style={styles.rankText}>{i + 1}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
     );
@@ -177,18 +194,34 @@ const styles = StyleSheet.create({
     borderColor: '#EEF1F6',
     backgroundColor: '#FFFFFF',
   },
-  rank: {
-    width: 24,
+  // Goal-count badge (replaces the rank). Muted at 0, brand-filled once the
+  // player has scored this round.
+  goalBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 2,
+    minWidth: 36,
     height: 24,
+    paddingHorizontal: 7,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#DBEAFE',
-    alignItems: 'center',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
   },
-  rankText: { fontSize: 12, fontWeight: '800', color: TEAM_BLUE },
-  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: RTL_LABEL_ALIGN },
-  rowSpacer: { flex: 1, minWidth: 4 },
+  goalBadgeOn: { borderColor: TEAM_BLUE, backgroundColor: TEAM_BLUE },
+  goalNum: { fontSize: 12, fontWeight: '800', color: '#94A3B8', fontVariant: ['tabular-nums'] },
+  goalNumOn: { color: '#FFFFFF' },
+  // `flex: 1` + `minWidth: 0` makes a long name ellipsize instead of pushing
+  // the goal badge outside the card (the "Eliran Tzabari" overflow bug).
+  playerName: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: RTL_LABEL_ALIGN,
+  },
 
   // grid variant
   gridCol: { width: '100%', gap: 6, alignItems: 'center' },

@@ -27,9 +27,11 @@ interface Props {
   rotation?: MatchRotation;
   playersMap: Record<string, PlayerLite>;
   guests?: { id: string; name: string }[];
+  /** Goals per player this round — shown in each roster row's badge. */
+  goalsByPlayer?: Record<string, number>;
 }
 
-export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Props) {
+export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsByPlayer }: Props) {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
 
   if (!draftTeams || draftTeams.teams.length < 2 || !rotation) return null;
@@ -65,11 +67,11 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" variant="list" />
+              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" variant="list" goalsByPlayer={goalsByPlayer} />
             </View>
             <View style={styles.divider} />
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" variant="list" />
+              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" variant="list" goalsByPlayer={goalsByPlayer} />
             </View>
           </View>
           {fillers.length > 0 ? (
