@@ -14,7 +14,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ACHIEVEMENTS } from '@/data/achievements';
+import { ACHIEVEMENTS, TIER_META } from '@/data/achievements';
 import type { Game, Group, User } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -74,7 +74,7 @@ export function buildProfileActivity(
       id: `ach:${unlock.id}`,
       text: he.profileActivityAchievement(def.titleHe),
       icon: 'trophy',
-      iconColor: def.tint,
+      iconColor: unlock.tier ? TIER_META[unlock.tier].color : colors.primary,
       timestamp: unlock.unlockedAt,
     });
   }

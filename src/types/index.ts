@@ -186,11 +186,20 @@ export type AchievementMetric =
   | 'teamsJoined'
   | 'invitesSent'
   | 'playersCoached'
-  | 'friendsCount';
+  | 'friendsCount'
+  | 'goals'
+  | 'maxGamesWithPlayer'
+  | 'maxWinsWithPlayer';
+
+/** A single badge now levels up through three metal tiers in place. */
+export type AchievementTier = 'bronze' | 'silver' | 'gold';
 
 export interface UnlockedAchievement {
   id: string;
-  /** ms epoch — the moment the threshold was first met. */
+  /** Highest tier reached for this achievement. Legacy entries (pre-tier)
+   *  omit it; the reconciler rewrites them. */
+  tier?: AchievementTier;
+  /** ms epoch — the moment the (current tier's) threshold was first met. */
   unlockedAt: number;
 }
 
@@ -206,6 +215,12 @@ export interface UserAchievementState {
   playersCoached: number;
   /** Accepted (mutual) friends. */
   friendsCount: number;
+  /** Lifetime goals scored (from stats.goals). */
+  goals: number;
+  /** Most games played alongside a single recurring teammate. */
+  maxGamesWithPlayer: number;
+  /** Most wins earned alongside a single recurring teammate. */
+  maxWinsWithPlayer: number;
 }
 
 export const defaultAchievementState: UserAchievementState = {
@@ -217,6 +232,9 @@ export const defaultAchievementState: UserAchievementState = {
   invitesSent: 0,
   playersCoached: 0,
   friendsCount: 0,
+  goals: 0,
+  maxGamesWithPlayer: 0,
+  maxWinsWithPlayer: 0,
 };
 
 // ─── Discipline (yellow / red cards) ─────────────────────────────────────

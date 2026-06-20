@@ -1,56 +1,51 @@
-// AchievementBadge — medal-style icon with title underneath.
-//
-// Visual: outer ring (lighter tint), inner disk (full tint), centered
-// glyph, soft drop shadow on unlocked. Locked state is faded but keeps
-// the ring + outline so the slot still reads as "achievement".
+// AchievementBadge — medal-style icon whose colour reflects the badge's
+// current TIER (bronze / silver / gold). Locked badges are faded grey but
+// keep the ring + glyph so the slot still reads as "achievement".
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '@/theme';
 import { LivingIcon } from '@/components/anim/LivingIcon';
-import type { AchievementDef } from '@/data/achievements';
+import { TIER_META, type AchievementDef } from '@/data/achievements';
+import type { AchievementTier } from '@/types';
 
 interface Props {
   def: AchievementDef;
-  unlocked: boolean;
+  /** Current tier, or null when the badge is still locked. */
+  tier: AchievementTier | null;
   /** Outer-ring diameter in dp. Default 72. */
   size?: number;
-  /** Hide the title label under the badge — used in the detail popover
-   *  where the title is already shown larger below (avoids a duplicate). */
+  /** Hide the title label under the badge. */
   hideTitle?: boolean;
+  /** Show the Hebrew tier name (ברונזה/כסף/זהב) under the title. */
+  showTierLabel?: boolean;
   onPress?: () => void;
   style?: ViewStyle;
 }
 
 export function AchievementBadge({
   def,
-  unlocked,
+  tier,
   size = 72,
   hideTitle,
+  showTierLabel,
   onPress,
   style,
 }: Props) {
-  const tint = def.tint;
+  const unlocked = tier !== null;
+  const tint = tier ? TIER_META[tier].color : colors.textMuted;
   // Inner disk is ~78% of the outer ring, leaving a colored halo.
   const inner = Math.round(size * 0.78);
   const iconSize = Math.round(size * 0.42);
 
   const ringStyle = unlocked
-    ? {
-        backgroundColor: tintWithAlpha(tint, 0.18),
-        borderColor: tint,
-      }
-    : {
-        backgroundColor: colors.surfaceMuted,
-        borderColor: colors.border,
-      };
+    ? { backgroundColor: tintWithAlpha(tint, 0.18), borderColor: tint }
+    : { backgroundColor: colors.surfaceMuted, borderColor: colors.border };
 
   const diskStyle = unlocked
     ? {
         backgroundColor: tint,
-        // Subtle shadow on iOS (works through the halo) — Android picks
-        // up the elevation field.
         shadowColor: tint,
         shadowOpacity: 0.35,
         shadowRadius: 6,
@@ -63,8 +58,6 @@ export function AchievementBadge({
         borderColor: colors.border,
       };
 
-  // Foreground stays white on the colored disk regardless of theme — the
-  // tint is bright enough in both modes.
   const fg = unlocked ? '#FFFFFF' : colors.textMuted;
 
   const content = (
@@ -83,8 +76,6 @@ export function AchievementBadge({
             { width: inner, height: inner, borderRadius: inner / 2 },
           ]}
         >
-          {/* Unlocked badges breathe (Pulse 4eEW3W — "every icon
-              animated"); locked ones stay still so the contrast reads. */}
           {unlocked ? (
             <LivingIcon motion="pulse" speed={1.4}>
               <Ionicons name={def.icon} size={iconSize} color={fg} />
@@ -98,24 +89,22 @@ export function AchievementBadge({
         <Text
           numberOfLines={2}
           allowFontScaling={false}
-          style={[
-            styles.title,
-            { width: size + 16 },
-            !unlocked && styles.titleLocked,
-          ]}
+          style={[styles.title, { width: size + 16 }, !unlocked && styles.titleLocked]}
         >
           {def.titleHe}
         </Text>
       )}
+      {showTierLabel && tier && !def.oneOff ? (
+        <Text allowFontScaling={false} style={[styles.tierLabel, { color: tint }]}>
+          {TIER_META[tier].he}
+        </Text>
+      ) : null}
     </View>
   );
 
   if (!onPress) return content;
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [pressed && { opacity: 0.75 }]}
-    >
+    <Pressable onPress={onPress} style={({ pressed }) => [pressed && { opacity: 0.75 }]}>
       {content}
     </Pressable>
   );
@@ -157,5 +146,12 @@ const styles = StyleSheet.create({
   titleLocked: {
     color: colors.textMuted,
     fontWeight: '500',
+  },
+  tierLabel: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: -2,
   },
 });

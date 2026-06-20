@@ -1,258 +1,148 @@
-// Achievement catalog. Each entry is a self-describing definition — id,
-// Hebrew copy, the counter it watches, the threshold to unlock, and a
-// vector icon glyph + tint used by the AchievementBadge component.
+// Achievement catalog — TIERED model.
 //
-// Order matters: badges render in the array order on the Player Card,
-// grouped by `category`.
+// Each entry is ONE badge that levels up in place through three metal
+// tiers: bronze → silver → gold. Crossing the next threshold upgrades the
+// same badge (it doesn't add a new one). This replaces the old model of a
+// separate badge per threshold (e.g. 5/10/25/50/100 games = five badges).
+//
+// Order matters: badges render in array order on the achievements grid.
 
 import type { Ionicons } from '@expo/vector-icons';
-import type {
-  AchievementCategory,
-  AchievementMetric,
-} from '@/types';
-import { colors } from '@/theme';
+import type { AchievementMetric, AchievementTier } from '@/types';
+
+/** Tier display metadata — Hebrew label + medal colour + sort order. */
+export const TIER_META: Record<
+  AchievementTier,
+  { he: string; color: string; order: number }
+> = {
+  bronze: { he: 'ברונזה', color: '#CD7F32', order: 1 },
+  silver: { he: 'כסף', color: '#9AA4B2', order: 2 },
+  gold: { he: 'זהב', color: '#F4B73E', order: 3 },
+};
+
+export interface AchievementTierStep {
+  tier: AchievementTier;
+  threshold: number;
+}
 
 export interface AchievementDef {
   id: string;
-  titleHe: string;
-  descriptionHe: string;
-  category: AchievementCategory;
   metric: AchievementMetric;
-  /** Counter value at which the achievement unlocks. */
-  threshold: number;
-  /** Ionicons glyph name. Rendered in a colored circle by AchievementBadge. */
+  /** Badge title (the noun/theme) — stays constant across tiers. */
+  titleHe: string;
+  /** Counted noun used in the progress copy, e.g. "100 שערים". */
+  nounHe: string;
+  /** Ionicons glyph rendered on the tier-coloured disk. */
   icon: keyof typeof Ionicons.glyphMap;
-  /** Background tint of the badge circle when unlocked. */
-  tint: string;
+  /** Ascending tier thresholds. One-off badges have a single gold step. */
+  tiers: AchievementTierStep[];
+  /** True when the badge has no bronze/silver climb — a single milestone. */
+  oneOff?: boolean;
 }
 
-const TINT_GAMES = colors.primary;
-const TINT_TEAMS = colors.info;
-const TINT_INVITES = colors.warning;
-const TINT_COACH = '#7C3AED'; // purple — matches the JERSEY_COLORS.purple swatch
-const TINT_SOCIAL = '#10B981'; // emerald — friends
+const tiered = (
+  bronze: number,
+  silver: number,
+  gold: number,
+): AchievementTierStep[] => [
+  { tier: 'bronze', threshold: bronze },
+  { tier: 'silver', threshold: silver },
+  { tier: 'gold', threshold: gold },
+];
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  // ─── Games ─────────────────────────────────────────────────────────────
   {
-    id: 'firstGame',
-    titleHe: 'משחק ראשון',
-    descriptionHe: 'בהרכב למשחק הראשון שלך',
-    category: 'games',
-    metric: 'gamesJoined',
-    threshold: 1,
-    icon: 'football-outline',
-    tint: TINT_GAMES,
-  },
-  {
-    id: 'fiveGames',
-    titleHe: '5 משחקים',
-    descriptionHe: 'השתתפת ב-5 משחקים',
-    category: 'games',
-    metric: 'gamesJoined',
-    threshold: 5,
+    id: 'goals',
+    metric: 'goals',
+    titleHe: 'שערים',
+    nounHe: 'שערים',
     icon: 'football',
-    tint: TINT_GAMES,
+    tiers: tiered(5, 20, 100),
   },
   {
-    id: 'tenGames',
-    titleHe: '10 משחקים',
-    descriptionHe: 'השתתפת ב-10 משחקים',
-    category: 'games',
+    id: 'games',
     metric: 'gamesJoined',
-    threshold: 10,
-    icon: 'flame-outline',
-    tint: TINT_GAMES,
+    titleHe: 'משחקים',
+    nounHe: 'משחקים',
+    icon: 'calendar',
+    tiers: tiered(5, 25, 100),
   },
   {
-    id: 'twentyFiveGames',
-    titleHe: '25 משחקים',
-    descriptionHe: 'אגדת מגרש בהתהוות',
-    category: 'games',
-    metric: 'gamesJoined',
-    threshold: 25,
-    icon: 'flame',
-    tint: TINT_GAMES,
-  },
-  {
-    id: 'fiftyGames',
-    titleHe: '50 משחקים',
-    descriptionHe: 'מתמיד אמיתי',
-    category: 'games',
-    metric: 'gamesJoined',
-    threshold: 50,
-    icon: 'medal',
-    tint: TINT_GAMES,
-  },
-  {
-    id: 'hundredGames',
-    titleHe: '100 משחקים',
-    descriptionHe: 'אגדת מגרש — 100 משחקים',
-    category: 'games',
-    metric: 'gamesJoined',
-    threshold: 100,
-    icon: 'trophy',
-    tint: TINT_GAMES,
-  },
-
-  // ─── Teams ─────────────────────────────────────────────────────────────
-  {
-    id: 'createdFirstTeam',
-    titleHe: 'הקמת מועדון',
-    descriptionHe: 'יצרת את המועדון הראשון שלך',
-    category: 'teams',
-    metric: 'teamsCreated',
-    threshold: 1,
-    icon: 'shield-outline',
-    tint: TINT_TEAMS,
-  },
-  {
-    id: 'joinedThreeTeams',
-    titleHe: 'חבר ב-3 מועדונים',
-    descriptionHe: 'הצטרפת ל-3 מועדונים שונים',
-    category: 'teams',
-    metric: 'teamsJoined',
-    threshold: 3,
-    icon: 'people-outline',
-    tint: TINT_TEAMS,
-  },
-  {
-    id: 'joinedFiveTeams',
-    titleHe: 'חבר ב-5 מועדונים',
-    descriptionHe: 'אתה חבר ב-5 מועדונים שונים',
-    category: 'teams',
-    metric: 'teamsJoined',
-    threshold: 5,
+    id: 'partner',
+    metric: 'maxGamesWithPlayer',
+    titleHe: 'שותף קבוע',
+    nounHe: 'משחקים עם אותו שחקן',
     icon: 'people',
-    tint: TINT_TEAMS,
+    tiers: tiered(5, 15, 30),
   },
   {
-    id: 'joinedTenTeams',
-    titleHe: 'חבר ב-10 מועדונים',
-    descriptionHe: 'אתה חבר ב-10 מועדונים שונים',
-    category: 'teams',
-    metric: 'teamsJoined',
-    threshold: 10,
-    icon: 'people-circle',
-    tint: TINT_TEAMS,
-  },
-
-  // ─── Social (friends) ────────────────────────────────────────────────────
-  {
-    id: 'firstFriend',
-    titleHe: 'חבר ראשון',
-    descriptionHe: 'הוספת את החבר הראשון שלך',
-    category: 'social',
-    metric: 'friendsCount',
-    threshold: 1,
-    icon: 'person-add-outline',
-    tint: TINT_SOCIAL,
-  },
-  {
-    id: 'fiveFriends',
-    titleHe: '5 חברים',
-    descriptionHe: 'יש לך 5 חברים באפליקציה',
-    category: 'social',
-    metric: 'friendsCount',
-    threshold: 5,
-    icon: 'people-outline',
-    tint: TINT_SOCIAL,
-  },
-  {
-    id: 'tenFriends',
-    titleHe: '10 חברים',
-    descriptionHe: 'רשת חברים מרשימה — 10 חברים',
-    category: 'social',
-    metric: 'friendsCount',
-    threshold: 10,
-    icon: 'people-circle-outline',
-    tint: TINT_SOCIAL,
-  },
-  {
-    id: 'twentyFiveFriends',
-    titleHe: '25 חברים',
-    descriptionHe: 'מלך החברתיות — 25 חברים',
-    category: 'social',
-    metric: 'friendsCount',
-    threshold: 25,
-    icon: 'people-circle',
-    tint: TINT_SOCIAL,
-  },
-
-  // ─── Invites ───────────────────────────────────────────────────────────
-  {
-    id: 'invitedFirstPlayer',
-    titleHe: 'הזמנה ראשונה',
-    descriptionHe: 'הזמנת שחקן למשחק',
-    category: 'invites',
-    metric: 'invitesSent',
-    threshold: 1,
-    icon: 'paper-plane-outline',
-    tint: TINT_INVITES,
-  },
-  {
-    id: 'invitedThreePlayers',
-    titleHe: '3 הזמנות',
-    descriptionHe: 'הזמנת 3 שחקנים למשחקים',
-    category: 'invites',
-    metric: 'invitesSent',
-    threshold: 3,
-    icon: 'paper-plane',
-    tint: TINT_INVITES,
-  },
-  {
-    id: 'invitedTenPlayers',
-    titleHe: '10 הזמנות',
-    descriptionHe: 'מארח של המועדון',
-    category: 'invites',
-    metric: 'invitesSent',
-    threshold: 10,
-    icon: 'megaphone',
-    tint: TINT_INVITES,
-  },
-  {
-    id: 'invitedTwentyFivePlayers',
-    titleHe: '25 הזמנות',
-    descriptionHe: 'שגריר האפליקציה — 25 הזמנות',
-    category: 'invites',
-    metric: 'invitesSent',
-    threshold: 25,
-    icon: 'megaphone-outline',
-    tint: TINT_INVITES,
-  },
-
-  // ─── Coaching ──────────────────────────────────────────────────────────
-  // Titles deliberately avoid a bare "מנהל של 30" — that reads as
-  // "manager of 30 communities". These count PLAYERS approved into your
-  // club, so the title is evocative and the count lives in the description.
-  {
-    id: 'coachOf10',
-    titleHe: 'מנהל מתחיל',
-    descriptionHe: 'אישרת 10 שחקנים למועדון שלך',
-    category: 'coaching',
-    metric: 'playersCoached',
-    threshold: 10,
-    icon: 'ribbon-outline',
-    tint: TINT_COACH,
-  },
-  {
-    id: 'coachOf20',
-    titleHe: 'מנהל מנוסה',
-    descriptionHe: 'אישרת 20 שחקנים למועדון שלך',
-    category: 'coaching',
-    metric: 'playersCoached',
-    threshold: 20,
-    icon: 'ribbon',
-    tint: TINT_COACH,
-  },
-  {
-    id: 'coachOf30',
-    titleHe: 'מנהל ותיק',
-    descriptionHe: 'אישרת 30 שחקנים למועדון שלך',
-    category: 'coaching',
-    metric: 'playersCoached',
-    threshold: 30,
+    id: 'duo',
+    metric: 'maxWinsWithPlayer',
+    titleHe: 'צמד מנצח',
+    nounHe: 'נצחונות עם אותו שחקן',
     icon: 'trophy',
-    tint: TINT_COACH,
+    tiers: tiered(3, 10, 25),
+  },
+  {
+    id: 'friends',
+    metric: 'friendsCount',
+    titleHe: 'חברים',
+    nounHe: 'חברים',
+    icon: 'person-add',
+    tiers: tiered(3, 10, 25),
+  },
+  {
+    id: 'communities',
+    metric: 'teamsJoined',
+    titleHe: 'מועדונים',
+    nounHe: 'מועדונים',
+    icon: 'shield',
+    tiers: tiered(2, 5, 10),
+  },
+  {
+    id: 'invites',
+    metric: 'invitesSent',
+    titleHe: 'הזמנות',
+    nounHe: 'שחקנים שהבאת',
+    icon: 'paper-plane',
+    tiers: tiered(3, 10, 25),
+  },
+  {
+    id: 'coaching',
+    metric: 'playersCoached',
+    titleHe: 'ניהול',
+    nounHe: 'שחקנים שאישרת',
+    icon: 'ribbon',
+    tiers: tiered(10, 25, 50),
+  },
+  {
+    id: 'founder',
+    metric: 'teamsCreated',
+    titleHe: 'מקים מועדון',
+    nounHe: 'מועדון שהקמת',
+    icon: 'flag',
+    tiers: [{ tier: 'gold', threshold: 1 }],
+    oneOff: true,
   },
 ];
+
+/**
+ * Resolve the current tier reached for a metric value plus the next step
+ * to climb toward. `current` is null when nothing is unlocked yet; `next`
+ * is null when the gold tier is already reached.
+ */
+export function resolveTier(
+  def: AchievementDef,
+  value: number,
+): { current: AchievementTierStep | null; next: AchievementTierStep | null } {
+  let current: AchievementTierStep | null = null;
+  let next: AchievementTierStep | null = null;
+  for (const step of def.tiers) {
+    if (value >= step.threshold) current = step;
+    else {
+      next = step;
+      break;
+    }
+  }
+  return { current, next };
+}

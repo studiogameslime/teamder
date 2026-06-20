@@ -38,6 +38,7 @@ import {
 } from 'firebase/firestore';
 import {
   AchievementMetric,
+  AchievementTier,
   Game,
   Group,
   UnlockedAchievement,
@@ -46,7 +47,13 @@ import {
   UserId,
   defaultAchievementState,
 } from '@/types';
-import { ACHIEVEMENTS, type AchievementDef } from '@/data/achievements';
+import {
+  ACHIEVEMENTS,
+  resolveTier,
+  TIER_META,
+  type AchievementDef,
+  type AchievementTierStep,
+} from '@/data/achievements';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { col, docs } from '@/firebase/firestore';
 import { mockGamesV2 } from '@/data/mockData';
@@ -56,8 +63,21 @@ import { logError, isExpectedDenial } from '@/services/errorLog';
 
 export interface AchievementListItem {
   def: AchievementDef;
+  /** Current metric value. */
+  value: number;
+  /** Highest tier reached, or null when still locked. */
+  currentTier: AchievementTierStep | null;
+  /** Next tier to climb toward, or null when maxed (gold reached). */
+  next: AchievementTierStep | null;
+  /** Convenience — true when any tier is reached. */
   unlocked: boolean;
   unlockedAt?: number;
+}
+
+/** A freshly-reached tier, surfaced to the UI so it can celebrate. */
+export interface NewlyUnlocked {
+  def: AchievementDef;
+  tier: AchievementTier;
 }
 
 export const achievementsService = {
@@ -116,22 +136,7 @@ export const achievementsService = {
    * meets the threshold), and the unlock time when known.
    */
   list(user: User): AchievementListItem[] {
-    const state = readState(user);
-    const unlockedById: Record<string, number> = {};
-    for (const u of state.unlocked) {
-      unlockedById[u.id] = u.unlockedAt;
-    }
-    return ACHIEVEMENTS.map((def) => {
-      const counterValue = state[def.metric];
-      const persistedAt = unlockedById[def.id];
-      const unlocked =
-        persistedAt !== undefined || counterValue >= def.threshold;
-      return {
-        def,
-        unlocked,
-        unlockedAt: persistedAt,
-      };
-    });
+    return buildList(user, readState(user));
   },
 
   /** Counters only — handy for tests / debug screens. */
@@ -162,11 +167,18 @@ export const achievementsService = {
    */
   async deriveCounters(
     userId: UserId,
-    ctx: { groups?: Group[]; friendsCount?: number; wins?: number } = {},
+    ctx: {
+      groups?: Group[];
+      friendsCount?: number;
+      wins?: number;
+      goals?: number;
+    } = {},
   ): Promise<UserAchievementState> {
     if (!userId) return { ...defaultAchievementState };
     const groups = ctx.groups ?? [];
     const wins = Math.max(0, ctx.wins ?? 0);
+    // goals comes from the caller's already-loaded user doc (stats.goals).
+    const goals = Math.max(0, ctx.goals ?? 0);
     // friendsCount comes from the caller's already-loaded user doc
     // (`user.friends`) — no extra read needed.
     const friendsCount = Math.max(0, ctx.friendsCount ?? 0);
@@ -207,6 +219,10 @@ export const achievementsService = {
     //    requirement and use arrival status, which is what the trust
     //    service already uses for "attended a game".
     let gamesJoined = 0;
+    // Co-attendance tally — how many finished games the user shared with
+    // each other player. The max across teammates feeds the "שותף קבוע"
+    // (regular partner) badge. Reuses the SAME games scan — no extra reads.
+    const withPlayer: Record<string, number> = {};
     try {
       const candidates = await loadParticipatedGames(userId);
       const now = Date.now();
@@ -220,10 +236,43 @@ export const achievementsService = {
         // admin). Only an explicit no_show excludes the game.
         if (arrivals[userId] === 'no_show') continue;
         gamesJoined += 1;
+        for (const pid of g.players ?? []) {
+          if (pid === userId) continue;
+          if (arrivals[pid] === 'no_show') continue;
+          withPlayer[pid] = (withPlayer[pid] ?? 0) + 1;
+        }
       }
     } catch (err) {
       logError('deriveGamesJoined', err, { userId });
       // Silent — leave gamesJoined at 0 on transient failures.
+    }
+    const maxGamesWithPlayer = Object.values(withPlayer).reduce(
+      (m, n) => Math.max(m, n),
+      0,
+    );
+
+    // ── maxWinsWithPlayer — best "wins together" across teammates. Lives
+    //    in the server-maintained pairStats docs (keyed a__b, with `a`/`b`
+    //    uid fields), so we read both halves and take the max. Best-effort
+    //    — 0 under mock or on any failure.
+    let maxWinsWithPlayer = 0;
+    if (!USE_MOCK_DATA) {
+      try {
+        const { getFirebase } = require('@/firebase/config');
+        const db = getFirebase().db;
+        const [asA, asB] = await Promise.all([
+          getDocs(query(col.pairStats(), where('a', '==', userId))),
+          getDocs(query(col.pairStats(), where('b', '==', userId))),
+        ]);
+        for (const d of [...asA.docs, ...asB.docs]) {
+          const w = (d.data() as { winsTogether?: number }).winsTogether ?? 0;
+          if (w > maxWinsWithPlayer) maxWinsWithPlayer = w;
+        }
+        void db;
+      } catch (err) {
+        logError('deriveMaxWinsWithPlayer', err, { userId });
+        // Silent — leave at 0.
+      }
     }
 
     // ── invitesSent — real referrals (users whose invitedBy points
@@ -247,6 +296,9 @@ export const achievementsService = {
       invitesSent,
       playersCoached,
       friendsCount,
+      goals,
+      maxGamesWithPlayer,
+      maxWinsWithPlayer,
     };
   },
 
@@ -266,20 +318,7 @@ export const achievementsService = {
     user: User,
     counters: UserAchievementState,
   ): AchievementListItem[] {
-    const stored = readState(user);
-    const persistedAtById: Record<string, number> = {};
-    for (const u of stored.unlocked) {
-      persistedAtById[u.id] = u.unlockedAt;
-    }
-    return ACHIEVEMENTS.map((def) => {
-      const counterValue = counters[def.metric];
-      const unlocked = counterValue >= def.threshold;
-      return {
-        def,
-        unlocked,
-        unlockedAt: unlocked ? persistedAtById[def.id] : undefined,
-      };
-    });
+    return buildList(user, counters);
   },
 
   /**
@@ -297,20 +336,20 @@ export const achievementsService = {
   async persistDerivedUnlocks(
     userId: UserId,
     counters: UserAchievementState,
-  ): Promise<void> {
-    if (!userId) return;
+  ): Promise<NewlyUnlocked[]> {
+    if (!userId) return [];
     try {
       if (USE_MOCK_DATA) {
-        await persistMock(userId, counters);
-      } else {
-        await persistFirebase(userId, counters);
+        return await persistMock(userId, counters);
       }
+      return await persistFirebase(userId, counters);
     } catch (err) {
       if (!isExpectedDenial(err)) logError('persistDerivedUnlocks', err, { userId });
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[achievements] persistDerivedUnlocks failed', err);
       }
+      return [];
     }
   },
 };
@@ -349,7 +388,33 @@ function readState(user: User): UserAchievementState {
     invitesSent: a.invitesSent ?? 0,
     playersCoached: a.playersCoached ?? 0,
     friendsCount: a.friendsCount ?? 0,
+    goals: a.goals ?? 0,
+    maxGamesWithPlayer: a.maxGamesWithPlayer ?? 0,
+    maxWinsWithPlayer: a.maxWinsWithPlayer ?? 0,
   };
+}
+
+/** Shared list builder — resolves each badge's current/next tier from a
+ *  set of counters, preserving the persisted unlock time when present. */
+function buildList(
+  user: User,
+  counters: UserAchievementState,
+): AchievementListItem[] {
+  const stored = readState(user);
+  const persistedAtById: Record<string, number> = {};
+  for (const u of stored.unlocked) persistedAtById[u.id] = u.unlockedAt;
+  return ACHIEVEMENTS.map((def) => {
+    const value = counters[def.metric] ?? 0;
+    const { current, next } = resolveTier(def, value);
+    return {
+      def,
+      value,
+      currentTier: current,
+      next,
+      unlocked: current !== null,
+      unlockedAt: current ? persistedAtById[def.id] : undefined,
+    };
+  });
 }
 
 async function bumpMock(
@@ -406,43 +471,66 @@ function diffUnlocks(
 ): {
   next: UnlockedAchievement[];
   changed: boolean;
+  newlyUnlocked: NewlyUnlocked[];
 } {
   const now = Date.now();
-  const persistedById: Record<string, number> = {};
-  for (const u of current) persistedById[u.id] = u.unlockedAt;
+  const catalogIds = new Set(ACHIEVEMENTS.map((d) => d.id));
+  // Migration run = the persisted list still holds legacy entries (old ids
+  // that aren't in the tiered catalog, or entries without a `tier`). On
+  // that one run we rewrite to the tiered shape but DON'T celebrate, so a
+  // long-time user isn't buried in confetti for tiers they already had.
+  const isMigration = current.some(
+    (u) => !catalogIds.has(u.id) || u.tier === undefined,
+  );
+  const prevById: Record<string, UnlockedAchievement> = {};
+  for (const u of current) prevById[u.id] = u;
+
   const next: UnlockedAchievement[] = [];
+  const newlyUnlocked: NewlyUnlocked[] = [];
   for (const def of ACHIEVEMENTS) {
-    const value = counters[def.metric];
-    if (value < def.threshold) continue; // not unlocked under derivation
+    const value = counters[def.metric] ?? 0;
+    const { current: tierStep } = resolveTier(def, value);
+    if (!tierStep) continue; // nothing reached yet
+    const prev = prevById[def.id];
+    const prevOrder = prev?.tier ? TIER_META[prev.tier].order : 0;
+    const curOrder = TIER_META[tierStep.tier].order;
+    // Same tier as before → keep its original unlock time. Higher tier (or
+    // brand new) → stamp now and flag it for a celebration.
+    const advanced = curOrder > prevOrder;
     next.push({
       id: def.id,
-      unlockedAt: persistedById[def.id] ?? now,
+      tier: tierStep.tier,
+      unlockedAt: advanced ? now : prev?.unlockedAt ?? now,
     });
+    if (advanced && !isMigration) {
+      newlyUnlocked.push({ def, tier: tierStep.tier });
+    }
   }
-  // Compare: same ids in same order? We sort both by id for a stable
-  // equality check that doesn't care about insertion order.
-  const a = current.map((u) => u.id).sort();
-  const b = next.map((u) => u.id).sort();
-  const changed = a.length !== b.length || a.some((id, i) => id !== b[i]);
-  return { next, changed };
+
+  // changed if the set of (id, tier) pairs differs.
+  const key = (u: UnlockedAchievement) => `${u.id}:${u.tier ?? ''}`;
+  const a = current.map(key).sort();
+  const b = next.map(key).sort();
+  const changed = a.length !== b.length || a.some((k, i) => k !== b[i]);
+  return { next, changed, newlyUnlocked };
 }
 
 async function persistMock(
   uid: UserId,
   counters: UserAchievementState,
-): Promise<void> {
+): Promise<NewlyUnlocked[]> {
   const json = await storage.getAuthUserJson();
-  if (!json) return;
+  if (!json) return [];
   let cur: User;
   try {
     cur = JSON.parse(json) as User;
   } catch {
-    return;
+    return [];
   }
-  if (cur.id !== uid) return;
+  if (cur.id !== uid) return [];
   const prev = readState(cur);
-  const { next, changed } = diffUnlocks(prev.unlocked, counters);
-  if (!changed) return;
+  const { next, changed, newlyUnlocked } = diffUnlocks(prev.unlocked, counters);
+  if (!changed) return newlyUnlocked;
   logNewlyUnlocked(prev.unlocked, next);
   const nextUser: User = {
     ...cur,
@@ -450,19 +538,20 @@ async function persistMock(
     updatedAt: Date.now(),
   };
   await storage.setAuthUserJson(JSON.stringify(nextUser));
+  return newlyUnlocked;
 }
 
 async function persistFirebase(
   uid: UserId,
   counters: UserAchievementState,
-): Promise<void> {
+): Promise<NewlyUnlocked[]> {
   // Lazy import to avoid a circular dep with userService.
   const { userService } = await import('@/services/userService');
   const fresh = await userService.getUserById(uid);
-  if (!fresh) return;
+  if (!fresh) return [];
   const prev = readState(fresh);
-  const { next, changed } = diffUnlocks(prev.unlocked, counters);
-  if (!changed) return;
+  const { next, changed, newlyUnlocked } = diffUnlocks(prev.unlocked, counters);
+  if (!changed) return newlyUnlocked;
   logNewlyUnlocked(prev.unlocked, next);
   // Whole-array overwrite — `arrayUnion` would only add, never
   // remove, and removing stale unlocks is the whole point.
@@ -470,6 +559,7 @@ async function persistFirebase(
     'achievements.unlocked': next,
     updatedAt: Date.now(),
   });
+  return newlyUnlocked;
 }
 
 /** Fire one analytics event per newly-unlocked achievement id. */

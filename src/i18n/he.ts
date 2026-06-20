@@ -1257,6 +1257,17 @@ export const he = {
   achievementsSeeAll: 'הצג הכל',
   achievementsEmpty: 'עוד לא נפתחו תארים. תתחיל לשחק!',
   achievementsLockedHint: 'נפתח אחרי שתעבור את היעד',
+  // Tiered badges — progress + tier copy.
+  achievementTierReached: (tierHe: string) => `דרגת ${tierHe}`,
+  achievementTierGoal: (threshold: number, noun: string) => `${threshold} ${noun}`,
+  achievementProgressToNext: (current: number, target: number, tierHe: string) =>
+    `${current}/${target} ל${tierHe}`,
+  achievementMaxed: 'הגעת לדרגה הגבוהה ביותר! 🏆',
+  // Celebration overlay copy.
+  achievementCelebrateKicker: 'כל הכבוד!',
+  achievementCelebrateTier: (tierHe: string) => `פתחת דרגת ${tierHe}!`,
+  achievementCelebrateOneOff: 'תואר חדש נפתח!',
+  achievementCelebrateCta: 'אדיר!',
   achievementCategoryGames: 'משחקים',
   achievementCategoryWins: 'ניצחונות',
   achievementCategoryTeams: 'מועדונים',

@@ -59,6 +59,11 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { gameService, userService } from '@/services';
+import {
+  achievementsService,
+  type NewlyUnlocked,
+} from '@/services/achievementsService';
+import { AchievementCelebration } from '@/components/AchievementCelebration';
 import type { Game } from '@/types';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { deepLinkService } from '@/services/deepLinkService';
@@ -132,6 +137,11 @@ export function ProfileScreen() {
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
   const [playedCount, setPlayedCount] = useState<number | null>(null);
+  // Tiers crossed since last check — shown as a celebration overlay. We
+  // derive achievements once per mount (not per focus) to keep the read
+  // cost down on this frequently-visited screen.
+  const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
+  const achievementsCheckedRef = useRef(false);
 
   // Scroll-to-top: react-navigation hook listens for tab re-press.
   const scrollRef = useRef<ScrollView>(null);
@@ -257,6 +267,32 @@ export function ProfileScreen() {
       };
     }, [localUser?.id]),
   );
+
+  // Derive achievements once per mount and celebrate any tier just
+  // crossed. Runs after groups hydrate so the team metrics are real.
+  useEffect(() => {
+    const uid = localUser?.id;
+    if (!uid || localUser?.isGuest || achievementsCheckedRef.current) return;
+    achievementsCheckedRef.current = true;
+    let alive = true;
+    achievementsService
+      .deriveCounters(uid, {
+        groups: myCommunities,
+        friendsCount: localUser?.friends?.length ?? 0,
+        goals: localUser?.stats?.goals ?? 0,
+      })
+      .then(async (c) => {
+        const fresh = await achievementsService.persistDerivedUnlocks(uid, c);
+        if (alive && fresh.length) setCelebrate(fresh);
+      })
+      .catch(() => {
+        // Best-effort — no celebration on a transient failure.
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localUser?.id, myCommunities.length]);
 
   // Admin-only: pending approvals across ALL the user's admin groups.
   // Surfaced as a badge on the hamburger row so it's still visible
@@ -645,6 +681,10 @@ export function ProfileScreen() {
         onCancel={() => setDeleteSheetOpen(false)}
         onConfirm={confirmDeleteAccount}
       />
+
+      {celebrate.length > 0 ? (
+        <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} />
+      ) : null}
     </View>
   );
 }

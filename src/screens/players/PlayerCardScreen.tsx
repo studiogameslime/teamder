@@ -31,6 +31,7 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { TIER_META } from '@/data/achievements';
 import { TrustMeter } from '@/components/TrustMeter';
 import { InfoTip } from '@/components/InfoTip';
 import { RatingModal } from '@/components/RatingModal';
@@ -41,7 +42,11 @@ import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
-import { achievementsService } from '@/services/achievementsService';
+import {
+  achievementsService,
+  type NewlyUnlocked,
+} from '@/services/achievementsService';
+import { AchievementCelebration } from '@/components/AchievementCelebration';
 import { trustService, type TrustSummary } from '@/services/trustService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
@@ -848,6 +853,7 @@ function AchievementsSection({ user }: { user: User }) {
   const groups = useGroupStore((s) => s.groups);
   const isMe = !!me && me.id === user.id;
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+  const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
   useEffect(() => {
     if (!isMe) {
@@ -856,11 +862,16 @@ function AchievementsSection({ user }: { user: User }) {
     }
     let alive = true;
     achievementsService
-      .deriveCounters(user.id, { groups, friendsCount: me?.friends?.length ?? 0 })
-      .then((c) => {
+      .deriveCounters(user.id, {
+        groups,
+        friendsCount: me?.friends?.length ?? 0,
+        goals: user.stats?.goals ?? 0,
+      })
+      .then(async (c) => {
         if (!alive) return;
         setCounters(c);
-        achievementsService.persistDerivedUnlocks(user.id, c);
+        const fresh = await achievementsService.persistDerivedUnlocks(user.id, c);
+        if (alive && fresh.length) setCelebrate(fresh);
       })
       .catch(() => {
         /* keep stored counters on failure */
@@ -897,8 +908,9 @@ function AchievementsSection({ user }: { user: User }) {
           <View key={item.def.id} style={styles.achievementsCell}>
             <AchievementBadge
               def={item.def}
-              unlocked={item.unlocked}
+              tier={item.currentTier?.tier ?? null}
               size={64}
+              showTierLabel
               onPress={() => setActiveId(item.def.id)}
             />
           </View>
@@ -907,7 +919,25 @@ function AchievementsSection({ user }: { user: User }) {
       {active ? (
         <Card style={styles.detailCard}>
           <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
-          <Text style={styles.detailDesc}>{active.def.descriptionHe}</Text>
+          {active.currentTier ? (
+            <Text
+              style={[
+                styles.detailTier,
+                { color: TIER_META[active.currentTier.tier].color },
+              ]}
+            >
+              {he.achievementTierReached(TIER_META[active.currentTier.tier].he)}
+            </Text>
+          ) : null}
+          <Text style={styles.detailDesc}>
+            {active.next
+              ? he.achievementProgressToNext(
+                  Math.min(active.value, active.next.threshold),
+                  active.next.threshold,
+                  TIER_META[active.next.tier].he,
+                )
+              : he.achievementMaxed}
+          </Text>
           {active.unlocked && active.unlockedAt ? (
             <Text style={styles.detailMeta}>
               {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
@@ -916,6 +946,12 @@ function AchievementsSection({ user }: { user: User }) {
             <Text style={styles.detailMeta}>{he.achievementsLockedHint}</Text>
           ) : null}
         </Card>
+      ) : null}
+      {celebrate.length > 0 ? (
+        <AchievementCelebration
+          items={celebrate}
+          onDone={() => setCelebrate([])}
+        />
       ) : null}
     </View>
   );
@@ -1266,6 +1302,11 @@ const styles = StyleSheet.create({
   detailTitle: {
     ...typography.bodyBold,
     color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  detailTier: {
+    ...typography.caption,
+    fontWeight: '900',
     textAlign: RTL_LABEL_ALIGN,
   },
   detailDesc: {

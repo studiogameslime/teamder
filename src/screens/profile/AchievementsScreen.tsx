@@ -22,9 +22,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { AchievementCelebration } from '@/components/AchievementCelebration';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { achievementsService } from '@/services/achievementsService';
+import {
+  achievementsService,
+  type NewlyUnlocked,
+} from '@/services/achievementsService';
+import { TIER_META } from '@/data/achievements';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -44,6 +49,8 @@ export function AchievementsScreen() {
   // counters for the unlock check. The persisted unlocked-id list
   // still wins, so a badge already earned stays earned.
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+  // Newly-reached tiers to celebrate (filled from persistDerivedUnlocks).
+  const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
   // Screen-level mount log so we can chart how often the achievements
   // page is opened (separate from the generic ScreenView signal).
@@ -78,14 +85,18 @@ export function AchievementsScreen() {
       .deriveCounters(localUser.id, {
         groups,
         friendsCount: localUser.friends?.length ?? 0,
+        goals: localUser.stats?.goals ?? 0,
       })
-      .then((c) => {
+      .then(async (c) => {
         if (!alive) return;
         setCounters(c);
-        // Reconcile the persisted unlocked list with the new
-        // truth — adds newly-met thresholds and prunes stale
-        // entries from the legacy bump path. Best-effort.
-        achievementsService.persistDerivedUnlocks(localUser.id, c);
+        // Reconcile the persisted unlocked list with the new truth and
+        // celebrate any tiers that were just crossed.
+        const fresh = await achievementsService.persistDerivedUnlocks(
+          localUser.id,
+          c,
+        );
+        if (alive && fresh.length) setCelebrate(fresh);
       })
       .catch(() => {
         // Leave counters null → screen falls back to the stored
@@ -142,8 +153,9 @@ export function AchievementsScreen() {
                 <AppearItem key={item.def.id} index={idx} style={styles.cell}>
                   <AchievementBadge
                     def={item.def}
-                    unlocked={item.unlocked}
+                    tier={item.currentTier?.tier ?? null}
                     size={72}
+                    showTierLabel
                     onPress={() => setActiveId(item.def.id)}
                   />
                 </AppearItem>
@@ -173,37 +185,50 @@ export function AchievementsScreen() {
             <Pressable style={styles.tooltipCard} onPress={(e) => e.stopPropagation()}>
               <AchievementBadge
                 def={active.def}
-                unlocked={active.unlocked}
+                tier={active.currentTier?.tier ?? null}
                 size={72}
                 hideTitle
               />
               <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
-              <Text style={styles.detailDesc}>{active.def.descriptionHe}</Text>
-              {(() => {
-                const current = counters?.[active.def.metric] ?? 0;
-                const target = active.def.threshold;
-                const pct = target > 0 ? Math.min(1, current / target) : 0;
-                return (
-                  <View style={styles.progressWrap}>
-                    <View style={styles.progressTrack}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${pct * 100}%`,
-                            backgroundColor: active.unlocked
-                              ? active.def.tint
-                              : '#94A3B8',
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.progressText}>
-                      {Math.min(current, target)} / {target}
-                    </Text>
+              {active.currentTier ? (
+                <Text
+                  style={[
+                    styles.detailTier,
+                    { color: TIER_META[active.currentTier.tier].color },
+                  ]}
+                >
+                  {he.achievementTierReached(
+                    TIER_META[active.currentTier.tier].he,
+                  )}
+                </Text>
+              ) : null}
+              {/* Progress bar toward the NEXT tier (or "maxed" when gold). */}
+              {active.next ? (
+                <View style={styles.progressWrap}>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${Math.min(1, active.value / active.next.threshold) * 100}%`,
+                          backgroundColor: active.currentTier
+                            ? TIER_META[active.currentTier.tier].color
+                            : '#94A3B8',
+                        },
+                      ]}
+                    />
                   </View>
-                );
-              })()}
+                  <Text style={styles.progressText}>
+                    {he.achievementProgressToNext(
+                      Math.min(active.value, active.next.threshold),
+                      active.next.threshold,
+                      TIER_META[active.next.tier].he,
+                    )}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.detailDesc}>{he.achievementMaxed}</Text>
+              )}
               {active.unlocked && active.unlockedAt ? (
                 <Text style={styles.detailMeta}>
                   {he.achievementUnlockedAt(formatHebrewDate(active.unlockedAt))}
@@ -215,6 +240,13 @@ export function AchievementsScreen() {
           ) : null}
         </Pressable>
       </Modal>
+
+      {celebrate.length > 0 ? (
+        <AchievementCelebration
+          items={celebrate}
+          onDone={() => setCelebrate([])}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -303,6 +335,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  detailTier: {
+    ...typography.body,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   detailDesc: {
     ...typography.body,

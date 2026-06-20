@@ -1351,6 +1351,10 @@ export const col = {
   playerStats() {
     return collection(getFirebase().db, 'playerStats').withConverter(playerStatsConverter);
   },
+  /** Per-pair "played/won together" rollups, keyed a__b with `a`/`b` uids. */
+  pairStats() {
+    return collection(getFirebase().db, 'pairStats');
+  },
   /** Phase E: outbound queue of FCM dispatches (consumed by Cloud Function). */
   notifications() {
     return collection(getFirebase().db, 'notifications');
