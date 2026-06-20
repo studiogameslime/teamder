@@ -397,19 +397,24 @@ function OtherTopCard({ user, viewerId }: { user: User; viewerId: string }) {
   return (
     <Card style={styles.topCard}>
       <View style={styles.topRow}>
+        {/* Identity unit (right): avatar on the far right, name + rating to
+            its left — matches the sketch. */}
         <View style={styles.topIdentity}>
-          <PlayerIdentity user={user} size={68} />
-          <Text style={styles.topName} numberOfLines={1}>
-            {user.name}
-          </Text>
-          <View style={styles.topRatingRow}>
-            <Text style={styles.topRatingNum}>{count > 0 ? avg.toFixed(1) : '—'}</Text>
-            <StarRow rating={avg} />
+          <PlayerIdentity user={user} size={62} />
+          <View style={styles.topNameBlock}>
+            <Text style={styles.topName} numberOfLines={1}>
+              {user.name}
+            </Text>
+            <View style={styles.topRatingRow}>
+              <Text style={styles.topRatingNum}>{count > 0 ? avg.toFixed(1) : '—'}</Text>
+              <StarRow rating={avg} size={14} />
+            </View>
+            <Text style={styles.topRatingCount}>
+              {count > 0 ? he.ratingCountBased(count) : he.ratingNone}
+            </Text>
           </View>
-          <Text style={styles.topRatingCount}>
-            {count > 0 ? he.ratingCount(count) : he.ratingNone}
-          </Text>
         </View>
+        {/* Buttons (left). */}
         <View style={styles.topButtons}>
           <FriendActionButton meId={viewerId} otherUserId={user.id} />
           <Button
@@ -1001,11 +1006,12 @@ const styles = StyleSheet.create({
   // ── Other-player top card ──
   topCard: { padding: spacing.md },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  topIdentity: { alignItems: 'center', gap: 4 },
-  topName: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
-  topRatingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  topIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  topNameBlock: { alignItems: 'flex-start', gap: 3 },
+  topName: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  topRatingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   topRatingNum: { ...typography.body, color: colors.text, fontWeight: '800' },
-  topRatingCount: { ...typography.caption, color: colors.textMuted },
+  topRatingCount: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   topButtons: { flex: 1, gap: spacing.sm, justifyContent: 'center' },
   starRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 1 },
   // ── Shared-communities chips ──
@@ -1040,7 +1046,7 @@ const styles = StyleSheet.create({
   h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
   h2hTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   h2hDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
-  h2hRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },
+  h2hRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },
   h2hRowIcon: { width: 22, textAlign: 'center' },
   h2hLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   h2hFlex: { flex: 1, minWidth: 0 },
@@ -1048,7 +1054,7 @@ const styles = StyleSheet.create({
   h2hSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   h2hBigNum: { ...typography.h2, color: colors.primary, fontWeight: '900' },
   h2hDate: { ...typography.body, color: colors.text, fontWeight: '700' },
-  wlStats: { flexDirection: 'row-reverse', gap: spacing.md },
+  wlStats: { flexDirection: 'row', gap: spacing.md },
   wlStat: { alignItems: 'center', minWidth: 34 },
   wlNum: { ...typography.h3, fontWeight: '900' },
   wlLabel: { ...typography.caption, fontWeight: '700' },

@@ -152,6 +152,8 @@ export const he = {
   ratingButtonReRate: 'עדכן דירוג',
   ratingCount: (n: number) =>
     n === 1 ? 'דירוג אחד' : `${n} דירוגים`,
+  ratingCountBased: (n: number) =>
+    n === 1 ? 'מבוסס על דירוג אחד' : `מבוסס על ${n} דירוגים`,
   ratingHowWasTheir: 'איך היית מדרג את ההופעה?',
   ratingCommentPlaceholder: 'כתוב הערה (אופציונלי)…',
   ratingSend: 'שלח דירוג',
