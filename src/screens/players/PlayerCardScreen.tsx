@@ -443,18 +443,58 @@ function StatTile({
   label,
   value,
   tint,
+  icon,
 }: {
   label: string;
   value: string;
   tint?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <Card style={styles.statTile}>
+      {icon ? (
+        <Ionicons name={icon} size={18} color={tint ?? colors.primary} style={styles.statTileIcon} />
+      ) : null}
       <Text style={[styles.statValue, tint ? { color: tint } : null]}>
         {value}
       </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Card>
+  );
+}
+
+/** A head-to-head row: a leading colored icon chip + label + value/sub. */
+function PairRow({
+  icon,
+  tint,
+  label,
+  value,
+  sub,
+  subIcon,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  label: string;
+  value: string;
+  sub?: string;
+  subIcon?: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View style={styles.pairRow}>
+      <View style={[styles.pairRowIcon, { backgroundColor: tint + '1A' }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <View style={styles.pairRowText}>
+        <Text style={styles.pairRowLabel}>{label}</Text>
+        {sub ? (
+          <View style={styles.pairRowSubRow}>
+            {subIcon ? <Ionicons name={subIcon} size={12} color={colors.textMuted} /> : null}
+            <Text style={styles.pairRowSub}>{sub}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text style={styles.pairRowValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -518,17 +558,25 @@ function PairStatsSection({
 
   const hasSharedGames =
     stats.registeredTogether > 0 || stats.attendedTogether > 0;
+  const oneShared =
+    !stats.lastSharedAt || stats.lastSharedAt === stats.firstSharedAt;
   return (
     <View style={styles.pairWrap}>
-      <Text style={styles.pairTitle}>{he.pairStatsTitle(otherName)}</Text>
+      <View style={styles.pairTitleRow}>
+        <Ionicons name="git-compare" size={18} color={colors.primary} />
+        <Text style={styles.pairTitle}>{he.pairStatsTitle(otherName)}</Text>
+      </View>
 
       {/* Shared communities up top — that's the most concrete
           "we know each other from..." signal. */}
       {sharedNames.length > 0 ? (
         <Card style={styles.pairSharedCard}>
-          <Text style={styles.pairSharedHeader}>
-            {he.pairStatsSharedCommunitiesPlural(sharedNames.length)}
-          </Text>
+          <View style={styles.pairSharedHeadRow}>
+            <Ionicons name="people-circle-outline" size={15} color={colors.textMuted} />
+            <Text style={styles.pairSharedHeader}>
+              {he.pairStatsSharedCommunitiesPlural(sharedNames.length)}
+            </Text>
+          </View>
           <Text style={styles.pairSharedList} numberOfLines={3}>
             {sharedNames.join(' · ')}
           </Text>
@@ -541,74 +589,62 @@ function PairStatsSection({
               chronology and reads better in Hebrew. */}
           <View style={styles.pairGrid}>
             <StatTile
+              icon="clipboard-outline"
               label={he.pairStatsRegistered}
               value={String(stats.registeredTogether)}
             />
             <StatTile
+              icon="checkmark-done-circle-outline"
+              tint={colors.success ?? '#16A34A'}
               label={he.pairStatsAttended}
               value={String(stats.attendedTogether)}
             />
           </View>
           {stats.sameTeam > 0 || stats.against > 0 ? (
             <Card style={styles.pairTimelineCard}>
-              <Text style={styles.pairSharedHeader}>{he.pairStatsH2HTitle}</Text>
+              <View style={styles.pairSharedHeadRow}>
+                <Ionicons name="podium-outline" size={15} color={colors.primary} />
+                <Text style={styles.pairH2HHeader}>{he.pairStatsH2HTitle}</Text>
+              </View>
               {stats.sameTeam > 0 ? (
-                <View style={styles.pairTimelineRow}>
-                  <Text style={styles.pairTimelineLabel}>{he.pairStatsSameTeam}</Text>
-                  <View style={{ alignItems: 'flex-start' }}>
-                    <Text style={styles.pairTimelineValue}>
-                      {he.pairStatsRoundsUnit(stats.sameTeam)}
-                    </Text>
-                    <Text style={styles.pairH2HSub}>
-                      {he.pairStatsTogetherWL(stats.winsTogether, stats.lossesTogether)}
-                    </Text>
-                  </View>
-                </View>
+                <PairRow
+                  icon="shirt-outline"
+                  tint="#2563EB"
+                  label={he.pairStatsSameTeam}
+                  value={he.pairStatsRoundsUnit(stats.sameTeam)}
+                  subIcon="trophy-outline"
+                  sub={he.pairStatsTogetherWL(stats.winsTogether, stats.lossesTogether)}
+                />
               ) : null}
               {stats.against > 0 ? (
-                <View style={styles.pairTimelineRow}>
-                  <Text style={styles.pairTimelineLabel}>{he.pairStatsAgainst}</Text>
-                  <View style={{ alignItems: 'flex-start' }}>
-                    <Text style={styles.pairTimelineValue}>
-                      {he.pairStatsRoundsUnit(stats.against)}
-                    </Text>
-                    <Text style={styles.pairH2HSub}>
-                      {he.pairStatsAgainstWL(stats.winsAgainst, stats.lossesAgainst)}
-                    </Text>
-                  </View>
-                </View>
+                <PairRow
+                  icon="flash-outline"
+                  tint="#EA580C"
+                  label={he.pairStatsAgainst}
+                  value={he.pairStatsRoundsUnit(stats.against)}
+                  subIcon="trophy-outline"
+                  sub={he.pairStatsAgainstWL(stats.winsAgainst, stats.lossesAgainst)}
+                />
               ) : null}
             </Card>
           ) : null}
           {(stats.firstSharedAt || stats.lastSharedAt) ? (
             <Card style={styles.pairTimelineCard}>
               {stats.firstSharedAt ? (
-                <View style={styles.pairTimelineRow}>
-                  <Text style={styles.pairTimelineLabel}>
-                    {/* When the pair only ever shared one game, the
-                        "first" / "last" pair would read as duplicates
-                        with the same date. Collapse to a single
-                        neutral label in that case. */}
-                    {stats.lastSharedAt &&
-                    stats.lastSharedAt !== stats.firstSharedAt
-                      ? he.pairStatsFirstShared
-                      : he.pairStatsOnlyShared}
-                  </Text>
-                  <Text style={styles.pairTimelineValue}>
-                    {formatPairDate(stats.firstSharedAt)}
-                  </Text>
-                </View>
+                <PairRow
+                  icon="calendar-outline"
+                  tint="#7C3AED"
+                  label={oneShared ? he.pairStatsOnlyShared : he.pairStatsFirstShared}
+                  value={formatPairDate(stats.firstSharedAt)}
+                />
               ) : null}
-              {stats.lastSharedAt &&
-              stats.lastSharedAt !== stats.firstSharedAt ? (
-                <View style={styles.pairTimelineRow}>
-                  <Text style={styles.pairTimelineLabel}>
-                    {he.pairStatsLastShared}
-                  </Text>
-                  <Text style={styles.pairTimelineValue}>
-                    {formatPairDate(stats.lastSharedAt)}
-                  </Text>
-                </View>
+              {!oneShared && stats.lastSharedAt ? (
+                <PairRow
+                  icon="calendar-number-outline"
+                  tint="#7C3AED"
+                  label={he.pairStatsLastShared}
+                  value={formatPairDate(stats.lastSharedAt)}
+                />
               ) : null}
             </Card>
           ) : null}
@@ -939,6 +975,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
   statValue: { ...typography.h2, color: colors.text },
+  statTileIcon: { marginBottom: 2 },
   statLabel: {
     ...typography.caption,
     color: colors.textMuted,
@@ -951,12 +988,38 @@ const styles = StyleSheet.create({
   pairWrap: {
     gap: spacing.sm,
   },
+  pairTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+  },
   pairTitle: {
     ...typography.body,
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
   },
+  pairSharedHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
+  pairH2HHeader: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Head-to-head row: leading colored icon chip · label/sub · value.
+  pairRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm },
+  pairRowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pairRowText: { flex: 1, minWidth: 0, gap: 1 },
+  pairRowLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  pairRowSubRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
+  pairRowSub: { ...typography.caption, color: colors.textMuted },
+  pairRowValue: { ...typography.body, color: colors.text, fontWeight: '800' },
   pairGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
