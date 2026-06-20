@@ -1,16 +1,20 @@
 // AchievementCelebration — the full-screen "you earned a title" moment.
 //
 // Pass a queue of newly-unlocked tiers; it shows them one at a time over a
-// dimmed backdrop: the badge springs in, confetti + soccer balls burst
-// (CelebrationOverlay), and a congrats line names the tier. Tap / button /
-// a short auto-timer advances to the next, then calls onDone.
+// dimmed backdrop with a big celebratory production: rotating sunburst rays
+// in the tier colour, expanding shockwave rings, twinkling sparkles, a
+// dramatic medal entrance (spin + overshoot), two confetti/ball bursts and
+// a congrats line. Tap / button / auto advances to the next, then onDone.
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -41,12 +45,15 @@ export function AchievementCelebration({ items, onDone }: Props) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={advance}>
       <Pressable style={styles.backdrop} onPress={advance}>
-        {/* key forces a fresh spring + confetti for each queued item. */}
+        {/* key forces a fresh production for each queued item. */}
         <CelebrationCard key={index} item={item} onCta={advance} />
       </Pressable>
     </Modal>
   );
 }
+
+const RAY_COUNT = 12;
+const RAY_FIELD = 300;
 
 function CelebrationCard({
   item,
@@ -55,28 +62,116 @@ function CelebrationCard({
   item: NewlyUnlocked;
   onCta: () => void;
 }) {
-  const scale = useSharedValue(0.2);
-  const opacity = useSharedValue(0);
+  const tierColor = TIER_META[item.tier].color;
+
+  const cardScale = useSharedValue(0.7);
+  const cardOpacity = useSharedValue(0);
+  const badgeScale = useSharedValue(0.1);
+  const badgeSpin = useSharedValue(-180);
+  const textIn = useSharedValue(0);
+  const rayspin = useSharedValue(0);
+  const glow = useSharedValue(0.6);
+  // Two shockwave rings + a couple of sparkles, all looping.
+  const wave1 = useSharedValue(0);
+  const wave2 = useSharedValue(0);
+  const spark = useSharedValue(0);
+
+  // A second confetti burst a beat after the first for a sustained pop.
+  const [secondBurst, setSecondBurst] = useState(false);
 
   useEffect(() => {
     successHaptic();
-    opacity.value = withTiming(1, { duration: 180 });
-    scale.value = withSequence(
-      withSpring(1.12, { damping: 7, stiffness: 140 }),
-      withSpring(1, { damping: 9, stiffness: 130 }),
+    // Card pops in.
+    cardOpacity.value = withTiming(1, { duration: 160 });
+    cardScale.value = withSpring(1, { damping: 11, stiffness: 140 });
+    // Medal flies in: spin to upright + overshoot scale, then settle into a
+    // slow continuous breathing.
+    badgeSpin.value = withSpring(0, { damping: 9, stiffness: 90 });
+    badgeScale.value = withSequence(
+      withSpring(1.18, { damping: 6, stiffness: 150 }),
+      withSpring(1, { damping: 8, stiffness: 120 }),
+      withDelay(
+        200,
+        withRepeat(
+          withSequence(
+            withTiming(1.05, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+            withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+          ),
+          -1,
+          false,
+        ),
+      ),
     );
-    // A second little buzz as the badge lands.
-    const t = setTimeout(() => lightHaptic(), 180);
-    return () => clearTimeout(t);
+    // Text rises in after the medal lands.
+    textIn.value = withDelay(260, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
+    // Rays rotate forever.
+    rayspin.value = withRepeat(
+      withTiming(1, { duration: 9000, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    // Glow breathes.
+    glow.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0.55, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true,
+    );
+    // Shockwave rings, staggered.
+    wave1.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false);
+    wave2.value = withDelay(
+      750,
+      withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.quad) }), -1, false),
+    );
+    // Sparkle twinkle.
+    spark.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0.2, { duration: 600, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true,
+    );
+
+    const h = setTimeout(() => lightHaptic(), 180);
+    const h2 = setTimeout(() => successHaptic(), 620);
+    const b = setTimeout(() => setSecondBurst(true), 600);
+    return () => {
+      clearTimeout(h);
+      clearTimeout(h2);
+      clearTimeout(b);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
+    transform: [{ scale: cardScale.value }],
+  }));
   const badgeStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: badgeScale.value }, { rotate: `${badgeSpin.value}deg` }],
   }));
   const textStyle = useAnimatedStyle(() => ({
-    opacity: withDelay(220, withTiming(opacity.value, { duration: 200 })),
+    opacity: textIn.value,
+    transform: [{ translateY: (1 - textIn.value) * 14 }],
+  }));
+  const raysStyle = useAnimatedStyle(() => ({
+    opacity: 0.9,
+    transform: [{ rotate: `${rayspin.value * 360}deg` }],
+  }));
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: 0.12 + glow.value * 0.18,
+    transform: [{ scale: 0.9 + glow.value * 0.25 }],
+  }));
+  const wave1Style = useAnimatedStyle(() => ({
+    opacity: (1 - wave1.value) * 0.5,
+    transform: [{ scale: 0.4 + wave1.value * 1.9 }],
+  }));
+  const wave2Style = useAnimatedStyle(() => ({
+    opacity: (1 - wave2.value) * 0.5,
+    transform: [{ scale: 0.4 + wave2.value * 1.9 }],
   }));
 
   const tierHe = TIER_META[item.tier].he;
@@ -84,32 +179,106 @@ function CelebrationCard({
     ? he.achievementCelebrateOneOff
     : he.achievementCelebrateTier(tierHe);
 
+  // Sparkle positions around the medal.
+  const sparkAt = [
+    { top: 6, left: 30 },
+    { top: 24, right: 18 },
+    { bottom: 18, left: 14 },
+    { bottom: 4, right: 36 },
+  ];
+
   return (
-    <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-      <View style={styles.burst} pointerEvents="none">
-        <CelebrationOverlay ballCount={9} spread={220} durationMs={1600} />
-      </View>
-      <Text style={styles.kicker}>{he.achievementCelebrateKicker}</Text>
-      <Animated.View style={badgeStyle}>
-        <AchievementBadge def={item.def} tier={item.tier} size={120} hideTitle />
-      </Animated.View>
-      <Animated.View style={[styles.textWrap, textStyle]}>
-        <Text style={styles.title}>{item.def.titleHe}</Text>
-        <Text style={[styles.tier, { color: TIER_META[item.tier].color }]}>
-          {headline}
-        </Text>
-      </Animated.View>
-      <Pressable style={styles.cta} onPress={onCta}>
-        <Text style={styles.ctaText}>{he.achievementCelebrateCta}</Text>
+    <Animated.View style={[styles.card, cardStyle]}>
+      <Pressable onPress={(e) => e.stopPropagation()}>
+        <View style={styles.burst} pointerEvents="none">
+          <CelebrationOverlay ballCount={10} spread={240} durationMs={1700} />
+          {secondBurst ? (
+            <CelebrationOverlay ballCount={8} spread={200} durationMs={1500} />
+          ) : null}
+        </View>
+
+        <Text style={styles.kicker}>{he.achievementCelebrateKicker}</Text>
+
+        {/* Medal stage — rays + glow + shockwaves behind the badge. */}
+        <View style={styles.stage}>
+          <Animated.View style={[styles.rays, raysStyle]} pointerEvents="none">
+            {Array.from({ length: RAY_COUNT }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.rayWrap,
+                  { transform: [{ rotate: `${(360 / RAY_COUNT) * i}deg` }] },
+                ]}
+              >
+                <View style={[styles.ray, { backgroundColor: tierColor }]} />
+              </View>
+            ))}
+          </Animated.View>
+
+          <Animated.View
+            style={[styles.glow, { backgroundColor: tierColor }, glowStyle]}
+            pointerEvents="none"
+          />
+          <Animated.View
+            style={[styles.wave, { borderColor: tierColor }, wave1Style]}
+            pointerEvents="none"
+          />
+          <Animated.View
+            style={[styles.wave, { borderColor: tierColor }, wave2Style]}
+            pointerEvents="none"
+          />
+
+          {sparkAt.map((pos, i) => (
+            <Sparkle key={i} progress={spark} color={tierColor} pos={pos} delayIdx={i} />
+          ))}
+
+          <Animated.View style={badgeStyle}>
+            <AchievementBadge def={item.def} tier={item.tier} size={120} hideTitle />
+          </Animated.View>
+        </View>
+
+        <Animated.View style={[styles.textWrap, textStyle]}>
+          <Text style={styles.title}>{item.def.titleHe}</Text>
+          <Text style={[styles.tier, { color: tierColor }]}>{headline}</Text>
+        </Animated.View>
+
+        <Pressable style={styles.cta} onPress={onCta}>
+          <Text style={styles.ctaText}>{he.achievementCelebrateCta}</Text>
+        </Pressable>
       </Pressable>
-    </Pressable>
+    </Animated.View>
   );
 }
+
+function Sparkle({
+  progress,
+  color,
+  pos,
+  delayIdx,
+}: {
+  progress: Animated.SharedValue<number>;
+  color: string;
+  pos: { top?: number; bottom?: number; left?: number; right?: number };
+  delayIdx: number;
+}) {
+  const style = useAnimatedStyle(() => {
+    // Alternate phase so sparkles don't blink in unison.
+    const p = delayIdx % 2 === 0 ? progress.value : 1 - progress.value;
+    return { opacity: 0.25 + p * 0.75, transform: [{ scale: 0.6 + p * 0.7 }] };
+  });
+  return (
+    <Animated.View style={[styles.spark, pos, style]} pointerEvents="none">
+      <Ionicons name="sparkles" size={18} color={color} />
+    </Animated.View>
+  );
+}
+
+const STAGE = 200;
 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(8,12,24,0.78)',
+    backgroundColor: 'rgba(8,12,24,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
@@ -119,10 +288,11 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     maxWidth: 360,
     backgroundColor: colors.bg,
-    borderRadius: 24,
+    borderRadius: 26,
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
+    gap: spacing.sm,
+    overflow: 'hidden',
   },
   burst: {
     ...StyleSheet.absoluteFillObject,
@@ -130,10 +300,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   kicker: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontWeight: '800',
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  stage: {
+    width: STAGE,
+    height: STAGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: spacing.sm,
+  },
+  rays: {
+    position: 'absolute',
+    width: RAY_FIELD,
+    height: RAY_FIELD,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rayWrap: {
+    position: 'absolute',
+    width: RAY_FIELD,
+    height: RAY_FIELD,
+    alignItems: 'center',
+  },
+  ray: {
+    width: 10,
+    height: RAY_FIELD / 2,
+    borderRadius: 6,
+    opacity: 0.16,
+  },
+  glow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+  },
+  wave: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+  },
+  spark: {
+    position: 'absolute',
   },
   textWrap: { alignItems: 'center', gap: 2 },
   title: {
@@ -148,11 +360,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cta: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     backgroundColor: colors.primary,
     borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 40,
+    paddingVertical: 13,
+    paddingHorizontal: 44,
   },
   ctaText: {
     color: '#FFFFFF',
