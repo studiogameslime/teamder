@@ -39,8 +39,8 @@ export function HeroStatsCard({
   return (
     <View style={styles.card}>
       <Cell
-        icon="football-outline"
-        motion="spin"
+        icon="calendar-outline"
+        motion="pulse"
         iconColor="#FFFFFF"
         countTo={totalGames}
         label={he.profileStatTotalGames}
@@ -49,7 +49,7 @@ export function HeroStatsCard({
       <Divider />
       <Cell
         icon="football"
-        motion="pulse"
+        motion="spin"
         iconColor="#FFFFFF"
         countTo={goals}
         label={he.profileStatGoals}
