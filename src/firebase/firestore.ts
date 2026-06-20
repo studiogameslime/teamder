@@ -161,6 +161,9 @@ const userConverter: FirestoreDataConverter<User> = {
             totalGames: u.stats.totalGames,
             attended: u.stats.attended,
             cancelled: u.stats.cancelled,
+            // Server-maintained (commitRoundStats). Serialize it so a full
+            // setDoc of a User object doesn't clobber the goal tally to 0.
+            goals: u.stats.goals ?? 0,
           }
         : null,
       fcmTokens: u.fcmTokens ?? [],
@@ -303,17 +306,33 @@ function readAchievements(v: unknown): UserAchievementState | undefined {
         if (!u || typeof u !== 'object') return [];
         const x = u as Record<string, unknown>;
         if (typeof x.id !== 'string' || typeof x.unlockedAt !== 'number') return [];
-        return [{ id: x.id, unlockedAt: x.unlockedAt }];
+        // Preserve the reached tier — dropping it made every reconcile look
+        // like a migration, which permanently suppressed the unlock
+        // celebration and re-stamped earned-at dates.
+        const tier =
+          x.tier === 'bronze' || x.tier === 'silver' || x.tier === 'gold'
+            ? x.tier
+            : undefined;
+        return [{ id: x.id, ...(tier ? { tier } : {}), unlockedAt: x.unlockedAt }];
       })
     : [];
   return {
     ...defaultAchievementState,
     unlocked,
     gamesJoined: typeof o.gamesJoined === 'number' ? o.gamesJoined : 0,
+    wins: typeof o.wins === 'number' ? o.wins : 0,
     teamsCreated: typeof o.teamsCreated === 'number' ? o.teamsCreated : 0,
     teamsJoined: typeof o.teamsJoined === 'number' ? o.teamsJoined : 0,
     invitesSent: typeof o.invitesSent === 'number' ? o.invitesSent : 0,
     playersCoached: typeof o.playersCoached === 'number' ? o.playersCoached : 0,
+    friendsCount: typeof o.friendsCount === 'number' ? o.friendsCount : 0,
+    goals: typeof o.goals === 'number' ? o.goals : 0,
+    maxGamesWithPlayer:
+      typeof o.maxGamesWithPlayer === 'number' ? o.maxGamesWithPlayer : 0,
+    maxWinsWithPlayer:
+      typeof o.maxWinsWithPlayer === 'number' ? o.maxWinsWithPlayer : 0,
+    distinctPlayers:
+      typeof o.distinctPlayers === 'number' ? o.distinctPlayers : 0,
   };
 }
 

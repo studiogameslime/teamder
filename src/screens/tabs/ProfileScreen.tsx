@@ -138,10 +138,15 @@ export function ProfileScreen() {
   // incremented by any flow). null = not loaded yet.
   const [playedCount, setPlayedCount] = useState<number | null>(null);
   // Tiers crossed since last check — shown as a celebration overlay. We
-  // derive achievements once per mount (not per focus) to keep the read
-  // cost down on this frequently-visited screen.
+  // derive achievements once per signed-in user (not per focus) to keep the
+  // read cost down on this frequently-visited screen.
   const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
-  const achievementsCheckedRef = useRef(false);
+  // Stores the uid we already derived for. Using the uid (not a bool) means
+  // it naturally re-runs after an account switch, and gating on the groups
+  // `hydrated` flag stops it firing with an empty groups list (which would
+  // prune team-based tiers to 0).
+  const derivedForRef = useRef<string | null>(null);
+  const groupsHydrated = useGroupStore((s) => s.hydrated);
 
   // Scroll-to-top: react-navigation hook listens for tab re-press.
   const scrollRef = useRef<ScrollView>(null);
@@ -272,8 +277,11 @@ export function ProfileScreen() {
   // crossed. Runs after groups hydrate so the team metrics are real.
   useEffect(() => {
     const uid = localUser?.id;
-    if (!uid || localUser?.isGuest || achievementsCheckedRef.current) return;
-    achievementsCheckedRef.current = true;
+    // Wait for groups to hydrate — deriving with an empty list would prune
+    // team-based tiers to 0. Re-runs when the uid changes (account switch).
+    if (!uid || localUser?.isGuest || !groupsHydrated) return;
+    if (derivedForRef.current === uid) return;
+    derivedForRef.current = uid;
     let alive = true;
     achievementsService
       .deriveCounters(uid, {
@@ -292,7 +300,7 @@ export function ProfileScreen() {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localUser?.id, myCommunities.length]);
+  }, [localUser?.id, localUser?.isGuest, groupsHydrated, myCommunities.length]);
 
   // Admin-only: pending approvals across ALL the user's admin groups.
   // Surfaced as a badge on the hamburger row so it's still visible

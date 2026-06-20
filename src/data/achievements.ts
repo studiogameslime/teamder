@@ -84,6 +84,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     tiers: tiered(3, 10, 25),
   },
   {
+    id: 'distinctPlayers',
+    metric: 'distinctPlayers',
+    titleHe: 'היכרויות',
+    nounHe: 'שחקנים שהכרת',
+    icon: 'people-circle',
+    tiers: tiered(10, 30, 75),
+  },
+  {
     id: 'friends',
     metric: 'friendsCount',
     titleHe: 'חברים',

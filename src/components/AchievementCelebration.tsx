@@ -6,10 +6,11 @@
 // dramatic medal entrance (spin + overshoot), two confetti/ball bursts and
 // a congrats line. Tap / button / auto advances to the next, then onDone.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -35,8 +36,22 @@ interface Props {
 export function AchievementCelebration({ items, onDone }: Props) {
   const [index, setIndex] = useState(0);
   const item = items[index];
+  // Guard against a double-tap (CTA + backdrop, or two taps in one frame)
+  // advancing twice / calling onDone after unmount. Reset per item.
+  const advancingRef = useRef(false);
+  useEffect(() => {
+    advancingRef.current = false;
+  }, [index]);
+
+  // Defensive: if the queue ever shrinks past the cursor, finish cleanly
+  // instead of rendering an empty modal forever.
+  useEffect(() => {
+    if (index >= items.length) onDone();
+  }, [index, items.length, onDone]);
 
   const advance = () => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     if (index + 1 < items.length) setIndex((i) => i + 1);
     else onDone();
   };
@@ -142,6 +157,9 @@ function CelebrationCard({
       clearTimeout(h);
       clearTimeout(h2);
       clearTimeout(b);
+      // Stop the infinite loops on unmount / queue advance (matches the
+      // codebase convention; avoids stray work after the card is gone).
+      [badgeScale, rayspin, glow, wave1, wave2, spark].forEach(cancelAnimation);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

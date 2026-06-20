@@ -250,6 +250,8 @@ export const achievementsService = {
       (m, n) => Math.max(m, n),
       0,
     );
+    // Distinct teammates ever shared a finished game with.
+    const distinctPlayers = Object.keys(withPlayer).length;
 
     // ── maxWinsWithPlayer — best "wins together" across teammates. Lives
     //    in the server-maintained pairStats docs (keyed a__b, with `a`/`b`
@@ -258,8 +260,6 @@ export const achievementsService = {
     let maxWinsWithPlayer = 0;
     if (!USE_MOCK_DATA) {
       try {
-        const { getFirebase } = require('@/firebase/config');
-        const db = getFirebase().db;
         const [asA, asB] = await Promise.all([
           getDocs(query(col.pairStats(), where('a', '==', userId))),
           getDocs(query(col.pairStats(), where('b', '==', userId))),
@@ -268,7 +268,6 @@ export const achievementsService = {
           const w = (d.data() as { winsTogether?: number }).winsTogether ?? 0;
           if (w > maxWinsWithPlayer) maxWinsWithPlayer = w;
         }
-        void db;
       } catch (err) {
         logError('deriveMaxWinsWithPlayer', err, { userId });
         // Silent — leave at 0.
@@ -299,6 +298,7 @@ export const achievementsService = {
       goals,
       maxGamesWithPlayer,
       maxWinsWithPlayer,
+      distinctPlayers,
     };
   },
 
@@ -391,6 +391,7 @@ function readState(user: User): UserAchievementState {
     goals: a.goals ?? 0,
     maxGamesWithPlayer: a.maxGamesWithPlayer ?? 0,
     maxWinsWithPlayer: a.maxWinsWithPlayer ?? 0,
+    distinctPlayers: a.distinctPlayers ?? 0,
   };
 }
 

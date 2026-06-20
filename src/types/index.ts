@@ -189,7 +189,8 @@ export type AchievementMetric =
   | 'friendsCount'
   | 'goals'
   | 'maxGamesWithPlayer'
-  | 'maxWinsWithPlayer';
+  | 'maxWinsWithPlayer'
+  | 'distinctPlayers';
 
 /** A single badge now levels up through three metal tiers in place. */
 export type AchievementTier = 'bronze' | 'silver' | 'gold';
@@ -221,6 +222,8 @@ export interface UserAchievementState {
   maxGamesWithPlayer: number;
   /** Most wins earned alongside a single recurring teammate. */
   maxWinsWithPlayer: number;
+  /** Distinct players the user has shared a finished game with. */
+  distinctPlayers: number;
 }
 
 export const defaultAchievementState: UserAchievementState = {
@@ -235,6 +238,7 @@ export const defaultAchievementState: UserAchievementState = {
   goals: 0,
   maxGamesWithPlayer: 0,
   maxWinsWithPlayer: 0,
+  distinctPlayers: 0,
 };
 
 // ─── Discipline (yellow / red cards) ─────────────────────────────────────
