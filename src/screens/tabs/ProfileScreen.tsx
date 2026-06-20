@@ -429,6 +429,12 @@ export function ProfileScreen() {
           onPress: () => nav.navigate('Achievements'),
         },
         {
+          id: 'statistics',
+          label: he.statsMenuLabel,
+          icon: 'stats-chart-outline',
+          onPress: () => nav.navigate('Statistics'),
+        },
+        {
           id: 'edit',
           label: he.profileEdit,
           icon: 'create-outline',

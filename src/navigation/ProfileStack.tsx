@@ -20,6 +20,7 @@ import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen
 import { NotificationsSettingsScreen } from '@/screens/profile/NotificationsSettingsScreen';
 import { BlockedUsersScreen } from '@/screens/profile/BlockedUsersScreen';
 import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
+import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
@@ -44,6 +45,7 @@ export type ProfileStackParamList = {
   AdminApproval: undefined;
   History: undefined;
   Achievements: undefined;
+  Statistics: undefined;
   Friends: undefined;
   Referrals: undefined;
   Feedback: { type?: 'bug' | 'suggestion' } | undefined;
@@ -83,6 +85,7 @@ export function ProfileStack() {
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="Referrals" component={ReferralsListScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
