@@ -16,7 +16,6 @@ import {
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
-import { WinLossRing } from '@/components/players/WinLossRing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
@@ -464,46 +463,6 @@ function H2hCountRow({
 }
 
 /** Donut row: label+sub … ring … wins(green)/losses(red). */
-function H2hDonutRow({
-  label,
-  rounds,
-  wins,
-  losses,
-  wonLabel,
-  lostLabel,
-}: {
-  label: string;
-  rounds: number;
-  wins: number;
-  losses: number;
-  wonLabel: string;
-  lostLabel: string;
-}) {
-  return (
-    <View style={styles.h2hRow}>
-      <View style={styles.h2hLabelCol}>
-        <Text style={styles.h2hLabel} numberOfLines={1}>
-          {label}
-        </Text>
-        <Text style={styles.h2hSub}>{he.pairStatsRoundsCount(rounds)}</Text>
-      </View>
-      <WinLossRing wins={wins} losses={losses} size={52} />
-      {/* Losses (red) on the right, wins (green) on the far left — matches the
-          sketch reading order. */}
-      <View style={styles.wlStats}>
-        <View style={styles.wlStat}>
-          <Text style={[styles.wlNum, { color: colors.danger }]}>{losses}</Text>
-          <Text style={[styles.wlLabel, { color: colors.danger }]}>{lostLabel}</Text>
-        </View>
-        <View style={styles.wlStat}>
-          <Text style={[styles.wlNum, { color: colors.success }]}>{wins}</Text>
-          <Text style={[styles.wlLabel, { color: colors.success }]}>{wonLabel}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 /** Date row: [calendar] label … date. */
 function H2hDateRow({ label, value }: { label: string; value: string }) {
   return (
@@ -594,8 +553,6 @@ function PairStatsSection({
 
   const hasSharedGames =
     stats.registeredTogether > 0 || stats.attendedTogether > 0;
-  const oneShared =
-    !stats.lastSharedAt || stats.lastSharedAt === stats.firstSharedAt;
 
   return (
     <View style={styles.pairWrap}>
@@ -620,47 +577,12 @@ function PairStatsSection({
               label={he.pairStatsAttended}
               value={String(stats.attendedTogether)}
             />
-            {stats.sameTeam > 0 ? (
-              <>
-                <View style={styles.h2hDivider} />
-                <H2hDonutRow
-                  label={he.pairStatsSameTeam}
-                  rounds={stats.sameTeam}
-                  wins={stats.winsTogether}
-                  losses={stats.lossesTogether}
-                  wonLabel={he.pairWonTogether}
-                  lostLabel={he.pairLostTogether}
-                />
-              </>
-            ) : null}
-            {stats.against > 0 ? (
-              <>
-                <View style={styles.h2hDivider} />
-                <H2hDonutRow
-                  label={he.pairStatsAgainst}
-                  rounds={stats.against}
-                  wins={stats.winsAgainst}
-                  losses={stats.lossesAgainst}
-                  wonLabel={he.pairWonYou}
-                  lostLabel={he.pairLostYou}
-                />
-              </>
-            ) : null}
-            {stats.firstSharedAt ? (
-              <>
-                <View style={styles.h2hDivider} />
-                <H2hDateRow
-                  label={oneShared ? he.pairStatsOnlyShared : he.pairStatsFirstShared}
-                  value={formatPairDate(stats.firstSharedAt)}
-                />
-              </>
-            ) : null}
-            {!oneShared && stats.lastSharedAt ? (
+            {stats.lastSharedAt || stats.firstSharedAt ? (
               <>
                 <View style={styles.h2hDivider} />
                 <H2hDateRow
                   label={he.pairStatsLastShared}
-                  value={formatPairDate(stats.lastSharedAt)}
+                  value={formatPairDate((stats.lastSharedAt ?? stats.firstSharedAt) as number)}
                 />
               </>
             ) : null}
@@ -1049,14 +971,8 @@ const styles = StyleSheet.create({
   h2hRowIcon: { width: 22, textAlign: 'center' },
   h2hLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   h2hFlex: { flex: 1, minWidth: 0 },
-  h2hLabelCol: { flex: 1, minWidth: 0, gap: 1 },
-  h2hSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   h2hBigNum: { ...typography.h2, color: colors.primary, fontWeight: '900' },
   h2hDate: { ...typography.body, color: colors.text, fontWeight: '700' },
-  wlStats: { flexDirection: 'row', gap: spacing.md },
-  wlStat: { alignItems: 'center', minWidth: 34 },
-  wlNum: { ...typography.h3, fontWeight: '900' },
-  wlLabel: { ...typography.caption, fontWeight: '700' },
   pairTitleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
