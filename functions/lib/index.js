@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -5538,4 +5538,66 @@ exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minut
     await runSweep('cleanupStaleGames', runCleanupStaleGames);
     await runSweep('sendPromotePrompts', runSendPromotePrompts);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
+});
+// ─── Advanced-mode round stats aggregation ─────────────────────────────────
+// Called by the game admin when a round ends. The client can't write other
+// players' stat docs (rules, correctly), so the aggregation runs here with the
+// Admin SDK: per-scorer goals, per-community goals, and pair stats (same-team
+// W/L + head-to-head against). Idempotency is the caller's concern — it sends
+// each finished round once.
+const GUEST_PREFIX = 'guest:';
+const isReal = (id) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX);
+exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    const { gameId, sideA, sideB, winnerSide, goals, } = (request.data ?? {});
+    if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B')) {
+        throw new https_1.HttpsError('invalid-argument', 'gameId + winnerSide required');
+    }
+    const snap = await db.collection('games').doc(gameId).get();
+    if (!snap.exists)
+        throw new https_1.HttpsError('not-found', 'game not found');
+    const game = snap.data();
+    // Authorize: only the game creator or a community admin may commit stats.
+    const groupId = game.groupId;
+    let isAdmin = game.createdBy === uid;
+    if (!isAdmin && groupId) {
+        const grp = await db.collection('groups').doc(groupId).get();
+        isAdmin = (grp.data()?.adminIds ?? []).includes(uid);
+    }
+    if (!isAdmin)
+        throw new https_1.HttpsError('permission-denied', 'admin only');
+    const A = (sideA ?? []).filter(isReal);
+    const B = (sideB ?? []).filter(isReal);
+    const inc = (n) => admin.firestore.FieldValue.increment(n);
+    const now = Date.now();
+    const batch = db.batch();
+    const pairKey = (x, y) => [x, y].sort().join('__');
+    // 1) goals → scorer.stats.goals + community tally
+    const byScorer = {};
+    for (const g of goals ?? []) {
+        if (g.ownGoal || !g.scorerId || !isReal(g.scorerId))
+            continue;
+        byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
+    }
+    for (const [scorer, n] of Object.entries(byScorer)) {
+        batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${scorer}`), { groupId, userId: scorer, goals: inc(n), updatedAt: now }, { merge: true });
+    }
+    // NOTE: same-team pairs (sameTeam / winsTogether / lossesTogether) are
+    // already written by the existing `onGameRotationChanged` trigger on every
+    // rotation — do NOT duplicate them here. This callable only adds what that
+    // trigger doesn't: goals, the head-to-head "against" tally, and community.
+    // cross pairs (against) — directional winsA/winsB by sorted key.
+    const winners = winnerSide === 'A' ? A : B;
+    const losers = winnerSide === 'A' ? B : A;
+    for (const w of winners)
+        for (const l of losers) {
+            const wFirst = [w, l].sort()[0] === w;
+            batch.set(db.collection('pairStats').doc(pairKey(w, l)), { against: inc(1), winsA: inc(wFirst ? 1 : 0), winsB: inc(wFirst ? 0 : 1), updatedAt: now }, { merge: true });
+        }
+    await batch.commit();
+    return { ok: true, scorers: Object.keys(byScorer).length };
 });

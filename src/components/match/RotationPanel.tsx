@@ -58,10 +58,9 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
     <View style={styles.wrap}>
       {/* ── Scoreboard: the two teams on the pitch ───────────────────────── */}
       <View style={styles.scoreWrap}>
-        <View style={styles.activeBadgeWrap} pointerEvents="none">
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>{he.rotationActiveBadge}</Text>
-          </View>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="football" size={16} color={colors.primary} />
+          <Text style={styles.sectionHeaderText}>{he.rotationPlayingTeams}</Text>
         </View>
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
@@ -187,23 +186,15 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests }: Prop
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', gap: spacing.md },
-  scoreWrap: { width: '100%', marginTop: 12 },
-  activeBadgeWrap: {
-    position: 'absolute',
-    top: -12,
-    left: 0,
-    right: 0,
+  scoreWrap: { width: '100%', gap: spacing.sm },
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 2,
+    justifyContent: 'center',
+    gap: 6,
   },
-  activeBadge: {
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-  },
-  activeBadgeText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  scoreCard: { padding: spacing.md, paddingTop: spacing.lg, gap: spacing.sm },
+  sectionHeaderText: { ...typography.body, color: colors.text, fontWeight: '800' },
+  scoreCard: { padding: spacing.md, gap: spacing.sm },
   scoreRow: { flexDirection: 'row', alignItems: 'stretch' },
   scoreCol: { flex: 1, minWidth: 0 },
   divider: {

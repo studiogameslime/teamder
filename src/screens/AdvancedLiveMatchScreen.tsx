@@ -51,7 +51,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
-import { GoalEntryCard } from '@/components/match/GoalEntryCard';
+import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
 import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
 import { colors } from '@/theme';
@@ -581,67 +581,11 @@ export function AdvancedLiveMatchScreen() {
 
       {/* Timer card (+ rotation scoreboard) — scrollable so teams fit below. */}
       <ScrollView style={styles.center} contentContainerStyle={styles.centerContent}>
-        <Animated.View style={[styles.timerCard, pulseStyle]}>
-          <Text
-            style={[
-              styles.timerBig,
-              timerRunning ? styles.timerBigRunning : null,
-              danger ? styles.timerBigDanger : null,
-            ]}
-          >
-            {formatTime(totalMs > 0 ? clockMs : timerMs)}
-          </Text>
-
-          {inOvertime ? (
-            <View style={styles.overtimePill}>
-              <Text style={styles.overtimePillText}>
-                {he.liveTimerOvertime} +{formatTime(overtimeMs)}
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={styles.statusRow}>
-            {timerRunning ? <View style={styles.redDot} /> : null}
-            <Text style={[styles.statusWord, timerRunning ? styles.statusWordRunning : null]}>
-              {statusLabel}
-            </Text>
-          </View>
-
-          {showController ? (
-            <View style={styles.controllerChip}>
-              <Ionicons name="person-circle" size={14} color="#1D4ED8" />
-              <Text style={styles.controllerChipText}>
-                מופעל ע״י {timerView.controlledByName}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Stoppages summary on its own centered row under a divider. */}
-          {timerStarted ? (
-            <>
-              <View style={styles.timerDivider} />
-              <Pressable
-                style={styles.stoppagesRow}
-                onPress={() => setStoppagesOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel={he.liveStoppagesTitle}
-              >
-                <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
-                <Text style={styles.stoppagesRowText}>
-                  {he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs))}
-                </Text>
-              </Pressable>
-            </>
-          ) : null}
-        </Animated.View>
-
-        {/* Hierarchy: timer + scores (goal card) at top, then the two playing
-            teams, then the waiting queue. The goal card sits right under the
-            timer so the score is always visible without scrolling. */}
-
-        {/* Admin-only live goal entry (scorer + score + log). */}
-        {isAdmin && rotationActive && live && draftTeams && rotation ? (
-          <GoalEntryCard
+        {/* Hierarchy: timer + scores at top, then the two playing teams, then
+            the waiting queue. During an active round the timer is MERGED with
+            the two team scores into one card; otherwise a plain timer card. */}
+        {rotationActive && live && draftTeams && rotation ? (
+          <LiveScoreboardCard
             gameId={gameId!}
             live={live}
             draftTeams={draftTeams}
@@ -649,8 +593,74 @@ export function AdvancedLiveMatchScreen() {
             playersMap={playersMap}
             guests={game?.guests}
             minute={Math.floor(timerMs / 60000)}
+            canEdit={isAdmin}
+            timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}
+            statusLabel={statusLabel}
+            running={timerRunning}
+            danger={danger}
+            overtimeText={inOvertime ? formatTime(overtimeMs) : null}
+            stoppagesText={he.rotationStoppagesInline(
+              stoppages.stopCount,
+              formatTime(totalStoppedMs),
+            )}
+            onStoppages={() => setStoppagesOpen(true)}
+            controllerName={showController ? timerView.controlledByName : null}
           />
-        ) : null}
+        ) : (
+          <Animated.View style={[styles.timerCard, pulseStyle]}>
+            <Text
+              style={[
+                styles.timerBig,
+                timerRunning ? styles.timerBigRunning : null,
+                danger ? styles.timerBigDanger : null,
+              ]}
+            >
+              {formatTime(totalMs > 0 ? clockMs : timerMs)}
+            </Text>
+
+            {inOvertime ? (
+              <View style={styles.overtimePill}>
+                <Text style={styles.overtimePillText}>
+                  {he.liveTimerOvertime} +{formatTime(overtimeMs)}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.statusRow}>
+              {timerRunning ? <View style={styles.redDot} /> : null}
+              <Text style={[styles.statusWord, timerRunning ? styles.statusWordRunning : null]}>
+                {statusLabel}
+              </Text>
+            </View>
+
+            {showController ? (
+              <View style={styles.controllerChip}>
+                <Ionicons name="person-circle" size={14} color="#1D4ED8" />
+                <Text style={styles.controllerChipText}>
+                  מופעל ע״י {timerView.controlledByName}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Stoppages summary on its own centered row under a divider. */}
+            {timerStarted ? (
+              <>
+                <View style={styles.timerDivider} />
+                <Pressable
+                  style={styles.stoppagesRow}
+                  onPress={() => setStoppagesOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={he.liveStoppagesTitle}
+                >
+                  <Ionicons name="stopwatch-outline" size={16} color="#64748B" />
+                  <Text style={styles.stoppagesRowText}>
+                    {he.rotationStoppagesInline(stoppages.stopCount, formatTime(totalStoppedMs))}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+          </Animated.View>
+        )}
 
         {/* Live rotation scoreboard (2 playing teams) + waiting queue. */}
         <View style={styles.rotationWrap}>
