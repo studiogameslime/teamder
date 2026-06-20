@@ -122,7 +122,7 @@ export function StatisticsScreen() {
             />
             <PersonCard
               index={2}
-              icon="happy"
+              icon="thumbs-up"
               tint={colors.success}
               title={he.statBiggestVictim}
               stat={stats!.biggestVictim}
@@ -131,7 +131,7 @@ export function StatisticsScreen() {
             />
             <PersonCard
               index={3}
-              icon="skull"
+              icon="flame"
               tint={colors.danger}
               title={he.statNemesis}
               stat={stats!.nemesis}
