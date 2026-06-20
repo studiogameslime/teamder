@@ -9,12 +9,14 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { WinLossRing } from '@/components/players/WinLossRing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
@@ -35,7 +37,7 @@ import { InfoTip } from '@/components/InfoTip';
 import { RatingModal } from '@/components/RatingModal';
 import { toast } from '@/components/Toast';
 import { ratingsService } from '@/services/ratingsService';
-import type { GroupRatingSummary } from '@/types';
+import type { Group, GroupRatingSummary } from '@/types';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
@@ -267,78 +269,52 @@ export function PlayerCardScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={user.name} />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <PlayerIdentity user={user} size="xl" showShirtName />
-          <Text style={styles.name}>{user.name}</Text>
-          {/* Email is intentionally only shown on YOUR own card. It's
-              PII and there's no use case for surfacing it on
-              someone else's profile. */}
-          {isSelfView && user.email ? (
-            <Text style={styles.email}>{user.email}</Text>
-          ) : null}
-          {!isSelfView && me ? (
-            <FriendActionButton meId={me.id} otherUserId={user.id} />
-          ) : null}
-        </View>
-
-        {/* Dry facts about the player. Shown for both self and other
-            views — they're factual ("how reliable is this person?")
-            and don't read as private. The "other" view skips the
-            sections that are inherently personal: rating widget,
-            achievements, discipline cards. */}
-        {/* 0% on attendance previously rendered green — read as a
-            "good" stat when in fact it just means no data. Now: tile
-            stays muted-grey when total games is zero, and only turns
-            green once there's a real signal. Same logic on cancel
-            rate (it stays grey at 0 and goes red only once it
-            crosses the danger threshold). */}
-        <View style={styles.statsRow}>
-          <StatTile label={he.playerCardTotalGames} value={String(total)} />
-          <StatTile
-            label={he.playerCardAttendance}
-            value={`${attendance}%`}
-            tint={total > 0 ? colors.success : colors.textMuted}
-          />
-          <StatTile
-            label={he.playerCardCancelRate}
-            value={`${cancelRate}%`}
-            tint={cancelRate > 30 ? colors.danger : colors.textMuted}
-          />
-        </View>
-
-        {referralCount !== null && referralCount > 0 ? (
-          <View style={styles.referralRow}>
-            <StatTile
-              label={he.playerCardReferrals}
-              value={String(referralCount)}
-              tint={colors.primary}
-            />
-            <Text style={styles.referralHelper}>
-              {isSelfView
-                ? he.playerCardReferralsHelper
-                : he.playerCardReferralsHelperOther}
-            </Text>
-          </View>
-        ) : null}
-
         {isSelfView ? (
           <>
-            {/* Global rating — shown on every player card now, no longer
-                gated on a shared-community context. */}
+            <View style={styles.header}>
+              <PlayerIdentity user={user} size="xl" showShirtName />
+              <Text style={styles.name}>{user.name}</Text>
+              {user.email ? (
+                <Text style={styles.email}>{user.email}</Text>
+              ) : null}
+            </View>
+
+            {/* Dry facts — total/attendance/cancel. Attendance/cancel stay
+                muted-grey at 0 (no data) and only colour once real. */}
+            <View style={styles.statsRow}>
+              <StatTile label={he.playerCardTotalGames} value={String(total)} />
+              <StatTile
+                label={he.playerCardAttendance}
+                value={`${attendance}%`}
+                tint={total > 0 ? colors.success : colors.textMuted}
+              />
+              <StatTile
+                label={he.playerCardCancelRate}
+                value={`${cancelRate}%`}
+                tint={cancelRate > 30 ? colors.danger : colors.textMuted}
+              />
+            </View>
+
+            {referralCount !== null && referralCount > 0 ? (
+              <View style={styles.referralRow}>
+                <StatTile
+                  label={he.playerCardReferrals}
+                  value={String(referralCount)}
+                  tint={colors.primary}
+                />
+                <Text style={styles.referralHelper}>
+                  {he.playerCardReferralsHelper}
+                </Text>
+              </View>
+            ) : null}
+
             <RatingSection viewerId={me?.id ?? null} ratedUser={user} />
-
-            {/* Trust meter hidden from UI for now — score is still computed
-                server-side for filler matching; just not shown to users. */}
-            {/* <DisciplineSection user={user} /> */}
-
             <AchievementsSection user={user} />
           </>
         ) : me ? (
+          // ── Other-player card (per the owner's sketch) ──
           <>
-            {/* Rate-this-player section — global, so it renders for any
-                viewer (it was the whole point of opening someone's card
-                from the rate banner). */}
-            <RatingSection viewerId={me.id} ratedUser={user} />
+            <OtherTopCard user={user} viewerId={me.id} />
             <PairStatsSection
               viewerId={me.id}
               otherId={user.id}
@@ -346,94 +322,13 @@ export function PlayerCardScreen() {
               groupId={effectiveRatingGroupId}
             />
           </>
-        ) : null}
-
-        <Card style={styles.ctaCard}>
-          <Button
-            title={
-              inviteSent
-                ? he.playerCardInviteSent
-                : gamesLoading
-                ? he.playerCardLoadingGame
-                : he.playerCardInvite
-            }
-            variant="primary"
-            size="lg"
-            fullWidth
-            loading={busyInvite || gamesLoading}
-            disabled={!canInvite || busyInvite}
-            onPress={async () => {
-              if (!canInvite || !me || !user || !nextGame) return;
-              setBusyInvite(true);
-              try {
-                await notificationsService.inviteToGame({
-                  recipientId: user.id,
-                  gameId: nextGame.id,
-                });
-                // Note: the CF (`sendGameInvite`) bumps the inviter's
-                // achievements counter server-side on success, so we
-                // no longer call `achievementsService.bump` here.
-                setInviteSent(true);
-                toast.success(
-                  he.playerCardInviteSentToast.replace('{name}', user.name),
-                );
-              } catch (err) {
-                logError('inviteToGame', err, {
-                  screen: 'PlayerCardScreen',
-                  recipientId: user.id,
-                  gameId: nextGame.id,
-                  inviterId: me.id,
-                });
-                if (__DEV__) console.warn('[PlayerCard] invite failed', err);
-                const code = (err as { code?: string })?.code ?? '';
-                if (code === 'resource-exhausted') {
-                  toast.error(he.inviteRateLimited);
-                } else if (code === 'failed-precondition') {
-                  toast.error(he.inviteAlreadyJoined);
-                } else if (code === 'permission-denied') {
-                  toast.error(he.inviteNotAllowed);
-                } else {
-                  toast.error(he.playerCardInviteFailed);
-                }
-              } finally {
-                setBusyInvite(false);
-              }
-            }}
-          />
-          {inviteSent ? (
-            <Text style={styles.success}>
-              {he.playerCardInviteSentToast.replace('{name}', user.name)}
-            </Text>
-          ) : blockedReason === he.playerCardNoGameToInvite ? (
-            /* The "no game yet" branch turns the latter half of the
-               sentence into a tappable shortcut to the wizard — the
-               user wanted to act on the hint immediately. The other
-               blocked-reason variants stay as plain text. */
-            <Text style={styles.unavailable}>
-              {'אין לך משחק פעיל להזמנה. '}
-              <Text
-                style={styles.unavailableLink}
-                onPress={() =>
-                  // Cross-stack navigation — we're inside a stack but
-                  // want to jump to the GameTab's GameCreate screen.
-                  // Cast through `unknown` because typed navigation
-                  // can't statically express "go to any tab's
-                  // nested route" without re-typing the root.
-                  (nav as unknown as {
-                    navigate: (s: string, p?: unknown) => void;
-                  }).navigate('GameTab', {
-                    screen: 'GameCreate',
-                    params: { quick: true },
-                  })
-                }
-              >
-                צור משחק חדש
-              </Text>
-            </Text>
-          ) : blockedReason ? (
-            <Text style={styles.unavailable}>{blockedReason}</Text>
-          ) : null}
-        </Card>
+        ) : (
+          // Not signed in — minimal identity only.
+          <View style={styles.header}>
+            <PlayerIdentity user={user} size="xl" showShirtName />
+            <Text style={styles.name}>{user.name}</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -463,37 +358,183 @@ function StatTile({
   );
 }
 
-/** A head-to-head row: a leading colored icon chip + label + value/sub. */
-function PairRow({
+/** 5-star row for a 0–5 rating. */
+function StarRow({ rating, size = 16 }: { rating: number; size?: number }) {
+  const filled = Math.round(rating);
+  return (
+    <View style={styles.starRow}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Ionicons
+          key={i}
+          name={i <= filled ? 'star' : 'star-outline'}
+          size={size}
+          color={i <= filled ? colors.warning : '#CBD5E1'}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Top profile card for the OTHER-player view: avatar + name + rating on the
+ *  right, "הוסף לחברים" + "דרג שחקן" buttons on the left. */
+function OtherTopCard({ user, viewerId }: { user: User; viewerId: string }) {
+  const [summary, setSummary] = useState<GroupRatingSummary | null>(null);
+  const [open, setOpen] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+
+  useEffect(() => ratingsService.subscribeSummary(user.id, setSummary), [user.id]);
+  useEffect(() => {
+    let alive = true;
+    ratingsService.getMyVote(viewerId, user.id).then((v) => alive && setHasVoted(!!v));
+    return () => {
+      alive = false;
+    };
+  }, [viewerId, user.id]);
+
+  const count = summary?.count ?? 0;
+  const avg = count > 0 ? summary!.average : 0;
+
+  return (
+    <Card style={styles.topCard}>
+      <View style={styles.topRow}>
+        <View style={styles.topIdentity}>
+          <PlayerIdentity user={user} size={68} />
+          <Text style={styles.topName} numberOfLines={1}>
+            {user.name}
+          </Text>
+          <View style={styles.topRatingRow}>
+            <Text style={styles.topRatingNum}>{count > 0 ? avg.toFixed(1) : '—'}</Text>
+            <StarRow rating={avg} />
+          </View>
+          <Text style={styles.topRatingCount}>
+            {count > 0 ? he.ratingCount(count) : he.ratingNone}
+          </Text>
+        </View>
+        <View style={styles.topButtons}>
+          <FriendActionButton meId={viewerId} otherUserId={user.id} />
+          <Button
+            title={hasVoted ? he.ratingButtonReRate : he.ratingButtonRate}
+            variant="outline"
+            size="sm"
+            iconLeft="star-outline"
+            onPress={() => setOpen(true)}
+            fullWidth
+          />
+        </View>
+      </View>
+      <RatingModal
+        visible={open}
+        raterUserId={viewerId}
+        ratedUserId={user.id}
+        ratedDisplayName={user.name}
+        onClose={() => setOpen(false)}
+        onChanged={async () => {
+          const v = await ratingsService.getMyVote(viewerId, user.id);
+          setHasVoted(!!v);
+        }}
+      />
+    </Card>
+  );
+}
+
+/** Simple count row: [icon] label … big blue number. */
+function H2hCountRow({
   icon,
-  tint,
   label,
   value,
-  sub,
-  subIcon,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
   label: string;
   value: string;
-  sub?: string;
-  subIcon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
-    <View style={styles.pairRow}>
-      <View style={[styles.pairRowIcon, { backgroundColor: tint + '1A' }]}>
-        <Ionicons name={icon} size={18} color={tint} />
+    <View style={styles.h2hRow}>
+      <Ionicons name={icon} size={20} color={colors.primary} style={styles.h2hRowIcon} />
+      <Text style={[styles.h2hLabel, styles.h2hFlex]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.h2hBigNum}>{value}</Text>
+    </View>
+  );
+}
+
+/** Donut row: label+sub … ring … wins(green)/losses(red). */
+function H2hDonutRow({
+  label,
+  rounds,
+  wins,
+  losses,
+  wonLabel,
+  lostLabel,
+}: {
+  label: string;
+  rounds: number;
+  wins: number;
+  losses: number;
+  wonLabel: string;
+  lostLabel: string;
+}) {
+  return (
+    <View style={styles.h2hRow}>
+      <View style={styles.h2hLabelCol}>
+        <Text style={styles.h2hLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={styles.h2hSub}>{he.pairStatsRoundsCount(rounds)}</Text>
       </View>
-      <View style={styles.pairRowText}>
-        <Text style={styles.pairRowLabel}>{label}</Text>
-        {sub ? (
-          <View style={styles.pairRowSubRow}>
-            {subIcon ? <Ionicons name={subIcon} size={12} color={colors.textMuted} /> : null}
-            <Text style={styles.pairRowSub}>{sub}</Text>
+      <WinLossRing wins={wins} losses={losses} size={52} />
+      {/* Losses (red) on the right, wins (green) on the far left — matches the
+          sketch reading order. */}
+      <View style={styles.wlStats}>
+        <View style={styles.wlStat}>
+          <Text style={[styles.wlNum, { color: colors.danger }]}>{losses}</Text>
+          <Text style={[styles.wlLabel, { color: colors.danger }]}>{lostLabel}</Text>
+        </View>
+        <View style={styles.wlStat}>
+          <Text style={[styles.wlNum, { color: colors.success }]}>{wins}</Text>
+          <Text style={[styles.wlLabel, { color: colors.success }]}>{wonLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Date row: [calendar] label … date. */
+function H2hDateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.h2hRow}>
+      <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.h2hRowIcon} />
+      <Text style={[styles.h2hLabel, styles.h2hFlex]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.h2hDate}>{value}</Text>
+    </View>
+  );
+}
+
+function CommunityChips({ groups }: { groups: Group[] }) {
+  return (
+    <View style={styles.commCard}>
+      <View style={styles.commHeadRow}>
+        <Ionicons name="people" size={16} color={colors.primary} />
+        <Text style={styles.commHeader}>{he.pairStatsSharedCommunities}</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commScroll}>
+        {groups.map((g) => (
+          <View key={g.id} style={styles.commChip}>
+            {g.coverPhotoUrl ? (
+              <Image source={{ uri: g.coverPhotoUrl }} style={styles.commLogo} />
+            ) : (
+              <View style={[styles.commLogo, styles.commLogoFallback]}>
+                <Ionicons name="football" size={18} color={colors.primary} />
+              </View>
+            )}
+            <Text style={styles.commName} numberOfLines={1}>
+              {g.name}
+            </Text>
           </View>
-        ) : null}
-      </View>
-      <Text style={styles.pairRowValue}>{value}</Text>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -509,11 +550,6 @@ function PairStatsSection({
   otherName: string;
   groupId?: string;
 }) {
-  // Default to the zero shape so the section always renders — even
-  // if the stats query is still in flight or it failed silently
-  // (missing index, network blip). Without this fallback the whole
-  // "אתה ו-X" card would disappear and the user would think the
-  // feature is broken.
   const ZERO = {
     registeredTogether: 0,
     attendedTogether: 0,
@@ -527,26 +563,21 @@ function PairStatsSection({
     lossesAgainst: 0,
   };
   const [stats, setStats] = useState<typeof ZERO>(ZERO);
-  const [sharedNames, setSharedNames] = useState<string[]>([]);
+  const [sharedGroups, setSharedGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     let alive = true;
     setStats(ZERO);
-    setSharedNames([]);
+    setSharedGroups([]);
     gameService
       .getPairStats(viewerId, otherId, groupId)
-      .then((s) => {
-        if (alive) setStats(s);
-      })
+      .then((s) => alive && setStats(s))
       .catch((err) => {
         if (__DEV__) console.warn('[pairStats] query failed', err);
-        // keep ZERO so the empty-state still renders
       });
     groupService
       .findSharedCommunities(viewerId, otherId)
-      .then((groups) => {
-        if (alive) setSharedNames(groups.map((g) => g.name).filter(Boolean));
-      })
+      .then((groups) => alive && setSharedGroups(groups))
       .catch((err) => {
         if (__DEV__) console.warn('[pairStats] shared-communities failed', err);
       });
@@ -560,100 +591,79 @@ function PairStatsSection({
     stats.registeredTogether > 0 || stats.attendedTogether > 0;
   const oneShared =
     !stats.lastSharedAt || stats.lastSharedAt === stats.firstSharedAt;
+
   return (
     <View style={styles.pairWrap}>
-      <View style={styles.pairTitleRow}>
-        <Ionicons name="git-compare" size={18} color={colors.primary} />
-        <Text style={styles.pairTitle}>{he.pairStatsTitle(otherName)}</Text>
-      </View>
+      {sharedGroups.length > 0 ? <CommunityChips groups={sharedGroups} /> : null}
 
-      {/* Shared communities up top — that's the most concrete
-          "we know each other from..." signal. */}
-      {sharedNames.length > 0 ? (
-        <Card style={styles.pairSharedCard}>
-          <View style={styles.pairSharedHeadRow}>
-            <Ionicons name="people-circle-outline" size={15} color={colors.textMuted} />
-            <Text style={styles.pairSharedHeader}>
-              {he.pairStatsSharedCommunitiesPlural(sharedNames.length)}
-            </Text>
-          </View>
-          <Text style={styles.pairSharedList} numberOfLines={3}>
-            {sharedNames.join(' · ')}
-          </Text>
-        </Card>
-      ) : null}
+      <Card style={styles.h2hCard}>
+        <View style={styles.h2hTitleRow}>
+          <Ionicons name="people" size={18} color={colors.primary} />
+          <Text style={styles.h2hTitle}>{he.pairStatsTitle(otherName)}</Text>
+        </View>
 
-      {hasSharedGames ? (
-        <>
-          {/* Registration → attendance order: matches the natural
-              chronology and reads better in Hebrew. */}
-          <View style={styles.pairGrid}>
-            <StatTile
+        {hasSharedGames ? (
+          <>
+            <H2hCountRow
               icon="clipboard-outline"
               label={he.pairStatsRegistered}
               value={String(stats.registeredTogether)}
             />
-            <StatTile
+            <View style={styles.h2hDivider} />
+            <H2hCountRow
               icon="checkmark-done-circle-outline"
-              tint={colors.success ?? '#16A34A'}
               label={he.pairStatsAttended}
               value={String(stats.attendedTogether)}
             />
-          </View>
-          {stats.sameTeam > 0 || stats.against > 0 ? (
-            <Card style={styles.pairTimelineCard}>
-              <View style={styles.pairSharedHeadRow}>
-                <Ionicons name="podium-outline" size={15} color={colors.primary} />
-                <Text style={styles.pairH2HHeader}>{he.pairStatsH2HTitle}</Text>
-              </View>
-              {stats.sameTeam > 0 ? (
-                <PairRow
-                  icon="shirt-outline"
-                  tint="#2563EB"
+            {stats.sameTeam > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hDonutRow
                   label={he.pairStatsSameTeam}
-                  value={he.pairStatsRoundsUnit(stats.sameTeam)}
-                  subIcon="trophy-outline"
-                  sub={he.pairStatsTogetherWL(stats.winsTogether, stats.lossesTogether)}
+                  rounds={stats.sameTeam}
+                  wins={stats.winsTogether}
+                  losses={stats.lossesTogether}
+                  wonLabel={he.pairWonTogether}
+                  lostLabel={he.pairLostTogether}
                 />
-              ) : null}
-              {stats.against > 0 ? (
-                <PairRow
-                  icon="flash-outline"
-                  tint="#EA580C"
+              </>
+            ) : null}
+            {stats.against > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hDonutRow
                   label={he.pairStatsAgainst}
-                  value={he.pairStatsRoundsUnit(stats.against)}
-                  subIcon="trophy-outline"
-                  sub={he.pairStatsAgainstWL(stats.winsAgainst, stats.lossesAgainst)}
+                  rounds={stats.against}
+                  wins={stats.winsAgainst}
+                  losses={stats.lossesAgainst}
+                  wonLabel={he.pairWonYou}
+                  lostLabel={he.pairLostYou}
                 />
-              ) : null}
-            </Card>
-          ) : null}
-          {(stats.firstSharedAt || stats.lastSharedAt) ? (
-            <Card style={styles.pairTimelineCard}>
-              {stats.firstSharedAt ? (
-                <PairRow
-                  icon="calendar-outline"
-                  tint="#7C3AED"
+              </>
+            ) : null}
+            {stats.firstSharedAt ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hDateRow
                   label={oneShared ? he.pairStatsOnlyShared : he.pairStatsFirstShared}
                   value={formatPairDate(stats.firstSharedAt)}
                 />
-              ) : null}
-              {!oneShared && stats.lastSharedAt ? (
-                <PairRow
-                  icon="calendar-number-outline"
-                  tint="#7C3AED"
+              </>
+            ) : null}
+            {!oneShared && stats.lastSharedAt ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hDateRow
                   label={he.pairStatsLastShared}
                   value={formatPairDate(stats.lastSharedAt)}
                 />
-              ) : null}
-            </Card>
-          ) : null}
-        </>
-      ) : (
-        <Card style={styles.pairEmptyCard}>
+              </>
+            ) : null}
+          </>
+        ) : (
           <Text style={styles.pairEmpty}>{he.pairStatsNoSharedHistory}</Text>
-        </Card>
-      )}
+        )}
+      </Card>
     </View>
   );
 }
@@ -986,8 +996,62 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   pairWrap: {
+    gap: spacing.lg,
+  },
+  // ── Other-player top card ──
+  topCard: { padding: spacing.md },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  topIdentity: { alignItems: 'center', gap: 4 },
+  topName: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
+  topRatingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  topRatingNum: { ...typography.body, color: colors.text, fontWeight: '800' },
+  topRatingCount: { ...typography.caption, color: colors.textMuted },
+  topButtons: { flex: 1, gap: spacing.sm, justifyContent: 'center' },
+  starRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 1 },
+  // ── Shared-communities chips ──
+  commCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
     gap: spacing.sm,
   },
+  commHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  commHeader: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  commScroll: { flexDirection: 'row-reverse', gap: spacing.sm, paddingVertical: 2 },
+  commChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    maxWidth: 200,
+  },
+  commLogo: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceMuted },
+  commLogoFallback: { alignItems: 'center', justifyContent: 'center' },
+  commName: { ...typography.body, color: colors.text, fontWeight: '700', flexShrink: 1, textAlign: RTL_LABEL_ALIGN },
+  // ── Head-to-head card ──
+  h2hCard: { padding: spacing.md, gap: 0 },
+  h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
+  h2hTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  h2hDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  h2hRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },
+  h2hRowIcon: { width: 22, textAlign: 'center' },
+  h2hLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  h2hFlex: { flex: 1, minWidth: 0 },
+  h2hLabelCol: { flex: 1, minWidth: 0, gap: 1 },
+  h2hSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  h2hBigNum: { ...typography.h2, color: colors.primary, fontWeight: '900' },
+  h2hDate: { ...typography.body, color: colors.text, fontWeight: '700' },
+  wlStats: { flexDirection: 'row-reverse', gap: spacing.md },
+  wlStat: { alignItems: 'center', minWidth: 34 },
+  wlNum: { ...typography.h3, fontWeight: '900' },
+  wlLabel: { ...typography.caption, fontWeight: '700' },
   pairTitleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

@@ -1759,6 +1759,12 @@ export const he = {
   pairStatsTogetherWL: (w: number, l: number) => `ניצחתם ${w} · הפסדתם ${l}`,
   pairStatsAgainstWL: (w: number, l: number) => `ניצחת ${w} · הפסדת ${l}`,
   pairStatsRoundsUnit: (n: number) => (n === 1 ? 'משחקון 1' : `${n} משחקונים`),
+  pairStatsRoundsCount: (n: number) => (n === 1 ? 'משחקון אחד' : `${n} משחקונים`),
+  // Separate W/L labels for the donut rows (big number + small label).
+  pairWonTogether: 'ניצחתם',
+  pairLostTogether: 'הפסדתם',
+  pairWonYou: 'ניצחת',
+  pairLostYou: 'הפסדת',
   communityStatsTitle: 'נתוני מועדון',
   communityStatsTotalFinished: 'משחקים שיצאו לפועל',
   communityStatsThisMonth: 'משחקים החודש',
