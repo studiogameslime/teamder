@@ -290,19 +290,16 @@ export function AdvancedLiveMatchScreen() {
       // finalize derives the winner from the score; a 4-team tie auto-resolves
       // via advancedTieMode. Only a 2–3 team tie returns null → manual picker.
       const result = await gameService.finalizeRoundAndRotate(gameId, me.id);
-      if (result === null) {
-        // Nothing was committed — release the guard so the picker's pick works.
-        finalizingRef.current = false;
-        setWinnerOpen(true);
-        return;
-      }
+      if (result === null) setWinnerOpen(true);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
-    }
-    setTimeout(() => {
+    } finally {
+      // Release the guard only when the round genuinely settled (the await
+      // resolved) — a fixed timer could clear it mid-flight on a slow network
+      // and let a second tap re-commit the same round.
       finalizingRef.current = false;
-    }, 1500);
+    }
   };
 
   // Tie resolved manually in the picker → that side is recorded as the winner.
@@ -317,9 +314,7 @@ export function AdvancedLiveMatchScreen() {
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
       if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
     } finally {
-      setTimeout(() => {
-        finalizingRef.current = false;
-      }, 1500);
+      finalizingRef.current = false;
     }
   };
 

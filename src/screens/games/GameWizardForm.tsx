@@ -225,11 +225,10 @@ interface Props {
   enableUnsavedGuard?: boolean;
 }
 
-// Advanced game mode (teams/rotation/winner-stays live screen) is not finished
-// yet, so its creation toggle is hidden from users for now. Flip to `true` to
-// bring it back once the feature is complete. New games keep advancedMode=false,
-// so the live screen renders the plain synced timer.
-const ADVANCED_MODE_ENABLED = false;
+// Advanced game mode (teams/rotation/winner-stays live screen). Enabled in
+// production 2026-06-21 after a full end-to-end verification pass. New games
+// can opt into advancedMode; non-advanced games keep the plain synced timer.
+const ADVANCED_MODE_ENABLED = true;
 
 export function GameWizardForm({
   headerTitle,

@@ -21,6 +21,7 @@ import {
   getDoc,
   getDocFromCache,
   getDocs,
+  increment,
   limit,
   onSnapshot,
   orderBy,
@@ -60,6 +61,7 @@ import {
   startRotation as runStartRotation,
   recordWinner as runRecordWinner,
   recordTie as runRecordTie,
+  rosterOf as effectiveRosterOf,
   type RotationTeam,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
@@ -2257,30 +2259,35 @@ export const gameService = {
     opts: { team: 'A' | 'B'; scorerId: UserId | null; ownGoal?: boolean; minute: number },
   ): Promise<void> {
     if (!gameId) return;
-    const mkGoal = (n: number): import('@/types').RoundGoal => ({
-      id: `g_${Date.now()}_${n}`,
+    // Collision-proof id: `g_<ms>_<n>` collided when two goals landed in the
+    // same ms at the same array length (two rapid taps / two devices), which
+    // then made removeGoal delete EVERY goal sharing that id. A random suffix
+    // guarantees uniqueness.
+    const goal: import('@/types').RoundGoal = {
+      id: `g_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
       team: opts.team,
       scorerId: opts.ownGoal ? null : opts.scorerId ?? null,
       ownGoal: opts.ownGoal ? true : undefined,
       minute: Math.max(0, Math.floor(opts.minute)),
       at: Date.now(),
-    });
+    };
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch) {
-        m.liveMatch.goals = [...(m.liveMatch.goals ?? []), mkGoal(m.liveMatch.goals?.length ?? 0)];
+        m.liveMatch.goals = [...(m.liveMatch.goals ?? []), goal];
         if (opts.team === 'A') m.liveMatch.scoreA += 1; else m.liveMatch.scoreB += 1;
       }
       return;
     }
     const cur = await readTimerState(gameId);
     if (!cur?.liveMatch) return;
-    const lm = cur.liveMatch;
-    const goals = [...(lm.goals ?? []), mkGoal(lm.goals?.length ?? 0)];
+    // arrayUnion + increment so two near-simultaneous goal entries don't clobber
+    // each other (the old read-modify-write replaced the whole array and could
+    // drop a concurrent goal). The goal log is the source of truth for stats.
     await updateDoc(docs.game(gameId), {
-      'liveMatch.goals': goals,
-      'liveMatch.scoreA': lm.scoreA + (opts.team === 'A' ? 1 : 0),
-      'liveMatch.scoreB': lm.scoreB + (opts.team === 'B' ? 1 : 0),
+      'liveMatch.goals': arrayUnion(goal),
+      'liveMatch.scoreA': increment(opts.team === 'A' ? 1 : 0),
+      'liveMatch.scoreB': increment(opts.team === 'B' ? 1 : 0),
       updatedAt: Date.now(),
     });
   },
@@ -2365,11 +2372,14 @@ export const gameService = {
     const isTie = !winnerSide;
     if (isTie && !tieMode) return null; // 2–3 teams: caller must supply a winner
 
-    // On-field rosters — registered uids only (guests carry no stats).
-    const rosterOf = (idx: number) =>
-      (draft.teams.find((t) => t.index === idx)?.playerIds ?? []).filter((id) => !isGuestId(id));
-    const sideA = rosterOf(idxA);
-    const sideB = rosterOf(idxB);
+    // On-field rosters — the EFFECTIVE lineup (loan-adjusted), registered uids
+    // only (guests carry no stats). Must match the loan-aware rosters the
+    // rotation trigger uses for same-team pairs, or the head-to-head "against"
+    // tally would describe a different lineup when a player was borrowed.
+    const rosterFor = (idx: number) =>
+      effectiveRosterOf(idx, draft.teams, rot.loans ?? []).filter((id) => !isGuestId(id));
+    const sideA = rosterFor(idxA);
+    const sideB = rosterFor(idxB);
 
     if (!USE_MOCK_DATA) {
       const now = Date.now();
@@ -2381,6 +2391,10 @@ export const gameService = {
         const { httpsCallable } = require('firebase/functions');
         await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
+          // Idempotency key — the round being committed. The server records
+          // committed round ids so a retry / partial-failure re-press can't
+          // double-count goals + against-pairs.
+          roundId: rot.round ?? null,
           sideA,
           sideB,
           winnerSide: winnerSide ?? 'tie',

@@ -81,7 +81,10 @@ function fillPlaying(
   const offIndices = outTeams
     .map((t) => t.index)
     .filter((i) => !playing.includes(i))
-    .sort((a, b) => (a === loserFirst ? -1 : b === loserFirst ? 1 : 0));
+    // Proper total-order comparator: the loser sorts before everyone else.
+    // (The old `? -1 : ? 1 : 0` form isn't antisymmetric and only worked by
+    // luck of V8's insertion sort for small arrays.)
+    .sort((a, b) => (b === loserFirst ? 1 : 0) - (a === loserFirst ? 1 : 0));
 
   for (const teamIdx of playing) {
     let size = rosterOf(teamIdx, outTeams, outLoans).length;

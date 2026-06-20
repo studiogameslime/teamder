@@ -2798,6 +2798,7 @@ export const onGameRotationChanged = onDocumentWritten(
     const after = event.data?.after?.data() as
       | {
           rotation?: {
+            round?: number;
             lastRoundAt?: number;
             lastRoundWinners?: string[];
             lastRoundLosers?: string[];
@@ -2806,9 +2807,20 @@ export const onGameRotationChanged = onDocumentWritten(
       | undefined;
     if (!after?.rotation) return;
     const before = event.data?.before?.data() as typeof after | undefined;
-    const a = after.rotation.lastRoundAt ?? 0;
-    const b = before?.rotation?.lastRoundAt ?? 0;
-    if (a <= b) return; // no NEW round result
+    // Latch on the MONOTONIC round counter, not the wall-clock lastRoundAt: a
+    // client clock that regresses (NTP/DST) or two rounds in the same ms would
+    // make lastRoundAt non-increasing and silently DROP a round's win/pair
+    // credit. `round` strictly increases by 1 per finalize. Fall back to
+    // lastRoundAt only for legacy docs that predate the round counter.
+    const ar = after.rotation.round;
+    const br = before?.rotation?.round;
+    if (typeof ar === 'number' && typeof br === 'number') {
+      if (ar <= br) return; // no NEW round result
+    } else {
+      const a = after.rotation.lastRoundAt ?? 0;
+      const b = before?.rotation?.lastRoundAt ?? 0;
+      if (a <= b) return;
+    }
 
     const reg = (arr?: string[]) =>
       (arr ?? []).filter(
@@ -6982,12 +6994,14 @@ export const commitRoundStats = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
     const {
       gameId,
+      roundId,
       sideA,
       sideB,
       winnerSide,
       goals,
     } = (request.data ?? {}) as {
       gameId?: string;
+      roundId?: number | string | null;
       sideA?: string[];
       sideB?: string[];
       winnerSide?: 'A' | 'B' | 'tie';
@@ -7014,6 +7028,18 @@ export const commitRoundStats = onCall(
     const now = Date.now();
     const batch = db.batch();
     const pairKey = (x: string, y: string) => [x, y].sort().join('__');
+
+    // Idempotency latch — record this round's commit marker via create() in the
+    // same batch. A retry / partial-failure re-press (or an SDK auto-retry of a
+    // timed-out call) commits the SAME goals + against-pairs again; the create
+    // then fails ALREADY_EXISTS and the whole batch is rejected, so increments
+    // never double-apply. Skipped only for legacy callers that send no roundId.
+    if (roundId !== undefined && roundId !== null) {
+      batch.create(
+        db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
+        { committedAt: now, by: uid, winnerSide },
+      );
+    }
 
     // 1) goals → scorer.stats.goals + community tally
     const byScorer: Record<string, number> = {};
@@ -7047,9 +7073,15 @@ export const commitRoundStats = onCall(
         const aIsFirst = wFirst; // w (side A) sorts first
         const sideAWinsField = aIsFirst ? 'winsA' : 'winsB';
         const sideBWinsField = aIsFirst ? 'winsB' : 'winsA';
+        const [pa, pb] = [w, l].sort();
         batch.set(
           db.collection('pairStats').doc(pairKey(w, l)),
           {
+            // Write a/b so against-ONLY pairs (never same-team) are still
+            // discoverable by the Statistics screen's `where('a'|'b','==',uid)`
+            // queries — otherwise the rival/nemesis cards would miss them.
+            a: pa,
+            b: pb,
             against: inc(1),
             [sideAWinsField]: inc(aWon ? 1 : 0),
             [sideBWinsField]: inc(bWon ? 1 : 0),
