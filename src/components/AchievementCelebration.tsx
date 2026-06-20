@@ -23,7 +23,7 @@ import { AchievementBadge } from '@/components/AchievementBadge';
 import { CelebrationOverlay } from '@/components/anim/CelebrationOverlay';
 import { TIER_META } from '@/data/achievements';
 import type { NewlyUnlocked } from '@/services/achievementsService';
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { lightHaptic, successHaptic } from '@/utils/haptics';
 
@@ -188,63 +188,65 @@ function CelebrationCard({
   ];
 
   return (
-    <Animated.View style={[styles.card, cardStyle]}>
-      <Pressable onPress={(e) => e.stopPropagation()}>
-        <View style={styles.burst} pointerEvents="none">
-          <CelebrationOverlay ballCount={10} spread={240} durationMs={1700} />
-          {secondBurst ? (
-            <CelebrationOverlay ballCount={8} spread={200} durationMs={1500} />
-          ) : null}
-        </View>
+    <Animated.View style={[styles.stageCard, cardStyle]} pointerEvents="box-none">
+      {/* Confetti + flying balls fill the whole screen, not a box. */}
+      <View style={styles.burst} pointerEvents="none">
+        <CelebrationOverlay ballCount={12} spread={320} durationMs={1800} />
+        {secondBurst ? (
+          <CelebrationOverlay ballCount={9} spread={260} durationMs={1500} />
+        ) : null}
+      </View>
 
-        <Text style={styles.kicker}>{he.achievementCelebrateKicker}</Text>
+      <Animated.Text style={[styles.kicker, textStyle]} pointerEvents="none">
+        {he.achievementCelebrateKicker}
+      </Animated.Text>
 
-        {/* Medal stage — rays + glow + shockwaves behind the badge. */}
-        <View style={styles.stage}>
-          <Animated.View style={[styles.rays, raysStyle]} pointerEvents="none">
-            {Array.from({ length: RAY_COUNT }).map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.rayWrap,
-                  { transform: [{ rotate: `${(360 / RAY_COUNT) * i}deg` }] },
-                ]}
-              >
-                <View style={[styles.ray, { backgroundColor: tierColor }]} />
-              </View>
-            ))}
-          </Animated.View>
-
-          <Animated.View
-            style={[styles.glow, { backgroundColor: tierColor }, glowStyle]}
-            pointerEvents="none"
-          />
-          <Animated.View
-            style={[styles.wave, { borderColor: tierColor }, wave1Style]}
-            pointerEvents="none"
-          />
-          <Animated.View
-            style={[styles.wave, { borderColor: tierColor }, wave2Style]}
-            pointerEvents="none"
-          />
-
-          {sparkAt.map((pos, i) => (
-            <Sparkle key={i} progress={spark} color={tierColor} pos={pos} delayIdx={i} />
+      {/* Medal stage — rays + glow + shockwaves behind the badge, all
+          floating in the air (no card behind them). */}
+      <View style={styles.stage} pointerEvents="none">
+        <Animated.View style={[styles.rays, raysStyle]} pointerEvents="none">
+          {Array.from({ length: RAY_COUNT }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.rayWrap,
+                { transform: [{ rotate: `${(360 / RAY_COUNT) * i}deg` }] },
+              ]}
+            >
+              <View style={[styles.ray, { backgroundColor: tierColor }]} />
+            </View>
           ))}
-
-          <Animated.View style={badgeStyle}>
-            <AchievementBadge def={item.def} tier={item.tier} size={120} hideTitle />
-          </Animated.View>
-        </View>
-
-        <Animated.View style={[styles.textWrap, textStyle]}>
-          <Text style={styles.title}>{item.def.titleHe}</Text>
-          <Text style={[styles.tier, { color: tierColor }]}>{headline}</Text>
         </Animated.View>
 
-        <Pressable style={styles.cta} onPress={onCta}>
-          <Text style={styles.ctaText}>{he.achievementCelebrateCta}</Text>
-        </Pressable>
+        <Animated.View
+          style={[styles.glow, { backgroundColor: tierColor }, glowStyle]}
+          pointerEvents="none"
+        />
+        <Animated.View
+          style={[styles.wave, { borderColor: tierColor }, wave1Style]}
+          pointerEvents="none"
+        />
+        <Animated.View
+          style={[styles.wave, { borderColor: tierColor }, wave2Style]}
+          pointerEvents="none"
+        />
+
+        {sparkAt.map((pos, i) => (
+          <Sparkle key={i} progress={spark} color={tierColor} pos={pos} delayIdx={i} />
+        ))}
+
+        <Animated.View style={badgeStyle}>
+          <AchievementBadge def={item.def} tier={item.tier} size={132} hideTitle />
+        </Animated.View>
+      </View>
+
+      <Animated.View style={[styles.textWrap, textStyle]} pointerEvents="none">
+        <Text style={styles.title}>{item.def.titleHe}</Text>
+        <Text style={[styles.tier, { color: tierColor }]}>{headline}</Text>
+      </Animated.View>
+
+      <Pressable style={styles.cta} onPress={onCta}>
+        <Text style={styles.ctaText}>{he.achievementCelebrateCta}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -278,21 +280,16 @@ const STAGE = 200;
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(8,12,24,0.82)',
+    backgroundColor: 'rgba(6,10,20,0.86)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  card: {
+  // No box — the whole production floats over the dimmed screen.
+  stageCard: {
     alignItems: 'center',
     alignSelf: 'stretch',
-    maxWidth: 360,
-    backgroundColor: colors.bg,
-    borderRadius: 26,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    overflow: 'hidden',
+    gap: spacing.md,
   },
   burst: {
     ...StyleSheet.absoluteFillObject,
@@ -300,10 +297,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   kicker: {
-    ...typography.h3,
-    color: colors.text,
+    ...typography.h2,
+    color: '#FFFFFF',
     fontWeight: '900',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   stage: {
     width: STAGE,
@@ -347,24 +347,33 @@ const styles = StyleSheet.create({
   spark: {
     position: 'absolute',
   },
-  textWrap: { alignItems: 'center', gap: 2 },
+  textWrap: { alignItems: 'center', gap: 4 },
   title: {
-    ...typography.h2,
-    color: colors.text,
+    ...typography.h1,
+    color: '#FFFFFF',
     fontWeight: '900',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   tier: {
     ...typography.h3,
     fontWeight: '900',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
+  // Floating glassy pill rather than a solid button — keeps the airy feel.
   cta: {
-    marginTop: spacing.md,
-    backgroundColor: colors.primary,
+    marginTop: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.55)',
     borderRadius: 999,
     paddingVertical: 13,
-    paddingHorizontal: 44,
+    paddingHorizontal: 48,
   },
   ctaText: {
     color: '#FFFFFF',
