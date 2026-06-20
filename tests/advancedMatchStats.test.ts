@@ -113,15 +113,14 @@ describe('advanced match — rotation + stat-roster consistency (all 8 configs)'
           const next = recordWinner(winnerIdx, teams, rotation, cfg.perTeam, cfg.fill, pickFirst);
           // Invariant 4: the two stat paths agree on this round's lineup.
           // same-team rosters (winners ∪ losers) == against rosters (sideA ∪ sideB).
-          const sameTeamPlayers = new Set([
-            ...next.rotation.lastRoundWinners,
-            ...next.rotation.lastRoundLosers,
-          ]);
+          const winnersRoster = next.rotation.lastRoundWinners ?? [];
+          const losersRoster = next.rotation.lastRoundLosers ?? [];
+          const sameTeamPlayers = new Set([...winnersRoster, ...losersRoster]);
           const againstPlayers = new Set([...sideA, ...sideB]);
           expect([...sameTeamPlayers].sort()).toEqual([...againstPlayers].sort());
           // winners are exactly the winning side; losers the other.
-          expect([...next.rotation.lastRoundWinners].sort()).toEqual([...sideA].sort());
-          expect([...next.rotation.lastRoundLosers].sort()).toEqual([...sideB].sort());
+          expect([...winnersRoster].sort()).toEqual([...sideA].sort());
+          expect([...losersRoster].sort()).toEqual([...sideB].sort());
           // Invariant 5: win tally incremented by exactly 1 for the winner.
           expect(next.rotation.wins?.[String(winnerIdx)] ?? 0).toBe(
             (before[String(winnerIdx)] ?? 0) + 1,

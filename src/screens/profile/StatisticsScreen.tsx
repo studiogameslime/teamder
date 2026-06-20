@@ -37,8 +37,17 @@ export function StatisticsScreen() {
     if (!uid) return;
     let alive = true;
     setLoading(true);
-    playerStatsService
-      .compute(uid, { goals: localUser?.stats?.goals ?? 0 })
+    // Goals are incremented SERVER-side (commitRoundStats), so the local store
+    // copy lags. Fetch the fresh user doc for an accurate goal count + goals/
+    // evening rather than trusting the (possibly stale) cached stats.
+    userService
+      .getUserById(uid)
+      .catch(() => null)
+      .then((fresh) =>
+        playerStatsService.compute(uid, {
+          goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
+        }),
+      )
       .then(async (s) => {
         if (!alive) return;
         setStats(s);
