@@ -588,10 +588,12 @@ service cloud.firestore {
           // (the client blocks it too). `rejectedPlayerIds` isn't in this
           // branch's affectedKeys whitelist, so they also can't clear it.
           !(request.auth.uid in resource.data.get('rejectedPlayerIds', [])) &&
-          (
-            !('startsAt' in resource.data) ||
-            request.time.toMillis() < resource.data.startsAt
-          ) &&
+          // No `startsAt` gate here: a registered player — or a PENDING,
+          // not-yet-approved requester — may withdraw any time UNTIL the match
+          // is actually live. The liveMatch.phase guard below is the real
+          // lock. Gating on the nominal start time wrongly denied withdrawals
+          // from games that started late or sit in 'organizing' past their
+          // start (caused cancelGame permission-denied — fixed 2026-06-21).
           (
             !('liveMatch' in resource.data) ||
             resource.data.liveMatch == null ||
