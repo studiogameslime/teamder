@@ -41,6 +41,8 @@ interface Palette {
   team2Bg: string;
   team3: string;
   team3Bg: string;
+  team4: string;
+  team4Bg: string;
 
   // Field
   field: string;
@@ -87,6 +89,8 @@ const lightPalette: Palette = {
   team2Bg: '#DBEAFE',
   team3: '#22C55E',
   team3Bg: '#DCFCE7',
+  team4: '#EAB308',
+  team4Bg: '#FEF9C3',
 
   field: '#15803D',
   fieldStripe: '#16A34A',
@@ -123,6 +127,8 @@ const darkPalette: Palette = {
   team2Bg: '#1E2A4A',
   team3: '#34D399',
   team3Bg: '#0F3328',
+  team4: '#FACC15',
+  team4Bg: '#3A3410',
 
   field: '#10612F',
   fieldStripe: '#1B7A3E',

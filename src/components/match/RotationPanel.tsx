@@ -16,6 +16,7 @@ import {
   firstName,
   makeResolver,
   teamName,
+  teamColor,
   type PlayerLite,
   type RosterMember,
 } from '@/components/match/rotationView';
@@ -127,7 +128,7 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
                     <Ionicons name="people" size={20} color={next ? colors.primary : '#94A3B8'} />
                   </View>
                   <View style={styles.waitText}>
-                    <Text style={styles.waitName}>{teamName(idx)}</Text>
+                    <Text style={[styles.waitName, { color: teamColor(idx) }]}>{teamName(idx)}</Text>
                     <Text style={styles.waitCount}>
                       {he.rotationPlayersCount(roster.length)}
                     </Text>

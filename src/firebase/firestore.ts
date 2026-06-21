@@ -397,6 +397,8 @@ const groupConverter: FirestoreDataConverter<Group> = {
       pendingPlayerIds: g.pendingPlayerIds,
       inviteCode: g.inviteCode,
       isOpen: g.isOpen ?? null,
+      internalRating: g.internalRating ?? null,
+      adminRatings: g.adminRatings ?? null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
       preferredDays: g.preferredDays ?? [],
@@ -452,6 +454,16 @@ const groupConverter: FirestoreDataConverter<Group> = {
       pendingPlayerIds: d.pendingPlayerIds ?? [],
       inviteCode: d.inviteCode ?? '',
       isOpen: typeof d.isOpen === 'boolean' ? d.isOpen : undefined,
+      internalRating:
+        typeof d.internalRating === 'boolean' ? d.internalRating : undefined,
+      adminRatings:
+        d.adminRatings && typeof d.adminRatings === 'object'
+          ? (Object.fromEntries(
+              Object.entries(d.adminRatings as Record<string, unknown>).filter(
+                ([, v]) => typeof v === 'number',
+              ),
+            ) as Record<string, number>)
+          : undefined,
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,

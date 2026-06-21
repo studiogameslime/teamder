@@ -188,18 +188,6 @@ function effectiveMinPlayers(game: Game): number {
 }
 
 /**
- * True when "now" is past the cancel-deadline window, i.e. inside
- * the danger zone right before kickoff. Cancellation is still
- * allowed in this window — the discipline tracker flags it — but
- * the UI shows a destructive confirmation prompt first.
- */
-function isPastCancelDeadline(g: Game): boolean {
-  if (!g.cancelDeadlineHours || g.cancelDeadlineHours <= 0) return false;
-  if (typeof g.startsAt !== 'number') return false;
-  return Date.now() > g.startsAt - g.cancelDeadlineHours * 60 * 60 * 1000;
-}
-
-/**
  * Inspect `liveMatch.assignments` against the current registered roster.
  * Stale uids (a player who was assigned to a team and then unregistered
  * from the game) cause `state: 'invalid'` so the UI can prompt to
@@ -416,7 +404,6 @@ export function MatchDetailsScreen() {
   // Open when the user taps "cancel" and we're already past the
   // cancel-deadline window. Soft-confirm — the cancellation is
   // allowed, but we ask once with a destructive-styled prompt.
-  const [lateCancelOpen, setLateCancelOpen] = useState(false);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   // Local-only dismiss for the post-game "rate teammates" banner.
   // Intentionally not persisted — re-entering the screen is a fine
@@ -424,6 +411,11 @@ export function MatchDetailsScreen() {
   // without acting. If we ever want it sticky, switch to AsyncStorage
   // keyed by gameId.
   const [rateBannerDismissed, setRateBannerDismissed] = useState(false);
+  // Measured height of the sticky bottom CTA bar so the ScrollView can pad its
+  // content by exactly that much. The bar grows to TWO stacked buttons (share +
+  // cancel), which a fixed 112px pad didn't clear — the last detail rows
+  // ("הערות"/"נוצר בתאריך") ended up hidden behind it (user report 2026-06-21).
+  const [ctaHeight, setCtaHeight] = useState(0);
   // Set when Firestore returns permission-denied for this game —
   // typically a non-member following an old invite link to a game
   // that's now visibility='community'. We render a dedicated blocked
@@ -715,6 +707,25 @@ export function MatchDetailsScreen() {
       return;
     }
     const groupId = game.groupId;
+
+    // Internal-rating community → use the admins' ratings (carried on the
+    // group doc, no network) instead of the global peer-vote averages.
+    const grp = myCommunities.find((c) => c.id === groupId);
+    if (grp?.internalRating) {
+      const vals = eligible
+        .map((uid) => grp.adminRatings?.[uid])
+        .filter((v): v is number => typeof v === 'number' && v > 0);
+      if (vals.length < 2) {
+        setRegisteredRatingAvg(null);
+        return;
+      }
+      setRegisteredRatingAvg({
+        average: vals.reduce((a, b) => a + b, 0) / vals.length,
+        ratedCount: vals.length,
+      });
+      return;
+    }
+
     (async () => {
       try {
         const summaries = await Promise.all(
@@ -742,7 +753,7 @@ export function MatchDetailsScreen() {
     return () => {
       alive = false;
     };
-  }, [game, adminUids]);
+  }, [game, adminUids, myCommunities]);
 
   const handlePrimary = async () => {
     if (!user || !game) return;
@@ -781,14 +792,9 @@ export function MatchDetailsScreen() {
       toast.info(he.matchDetailsAlreadyLive);
       return;
     }
-    // Soft-confirm late cancellations. We allow them — the discipline
-    // tracker already records the timestamp — but the user gets a
-    // red prompt so they don't drop out by accident in the danger
-    // window. Only triggers on the cancel path.
-    if (!isJoinAction && isPastCancelDeadline(game)) {
-      setLateCancelOpen(true);
-      return;
-    }
+    // Late-cancel confirm popup removed 2026-06-21 (user report): the
+    // reliability/"אמינות" feature it warned for was scrapped, so cancelling
+    // now proceeds directly with no danger-window prompt.
     setBusy(true);
     try {
       if (!isJoinAction) {
@@ -959,44 +965,9 @@ export function MatchDetailsScreen() {
   // the late-cancel confirmation modal. Splits out so the modal's
   // onConfirm can reuse the same splice logic without re-checking
   // the deadline.
-  const runCancel = async () => {
-    if (!user || !game) return;
-    setBusy(true);
-    try {
-      await gameService.cancelGameV2(game.id, user.id);
-      setGame((prev) => {
-        if (!prev) return prev;
-        const wasPlayer = prev.players.includes(user.id);
-        const players = prev.players.filter((id) => id !== user.id);
-        let waitlist = prev.waitlist.filter((id) => id !== user.id);
-        const pending = (prev.pending ?? []).filter((id) => id !== user.id);
-        let promotedPlayers = players;
-        if (
-          wasPlayer &&
-          waitlist.length > 0 &&
-          players.length < prev.maxPlayers
-        ) {
-          promotedPlayers = [...players, waitlist[0]];
-          waitlist = waitlist.slice(1);
-        }
-        const participantIds = (prev.participantIds ?? []).filter(
-          (id) => id !== user.id,
-        );
-        return {
-          ...prev,
-          players: promotedPlayers,
-          waitlist,
-          pending,
-          participantIds,
-        };
-      });
-    } catch (err) {
-      if (__DEV__) console.warn('[matchDetails] late-cancel failed', err);
-      toast.error(he.error);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // (runCancel removed 2026-06-21 — it only served the late-cancel popup,
+  //  which was removed with the scrapped reliability feature; the inline
+  //  cancel path in the primary action handler covers all cancellations.)
 
   // Cancel the user's registration on the OTHER (conflicting) game,
   // straight from the conflict modal — saves a navigate-out trip.
@@ -1956,7 +1927,12 @@ export function MatchDetailsScreen() {
         </View>
       ) : null}
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          // Clear the sticky CTA bar dynamically — its height varies with the
+          // number of buttons (1 share / 1 action / both stacked).
+          ctaHeight > 0 ? { paddingBottom: ctaHeight + spacing.lg } : null,
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -2467,6 +2443,7 @@ export function MatchDetailsScreen() {
           meaningful contextual action — see `ctaState`. */}
       {ctaState || canRecruitWhatsApp ? (
         <View
+          onLayout={(e) => setCtaHeight(e.nativeEvent.layout.height)}
           style={[
             styles.stickyCta,
             ctaState?.tone === 'blocked' && styles.ctaBlocked,
@@ -2561,18 +2538,6 @@ export function MatchDetailsScreen() {
             if (__DEV__) console.warn('[matchDetails] delete failed', err);
             toast.error(he.error);
           }
-        }}
-      />
-
-      <ConfirmDestructiveModal
-        visible={lateCancelOpen}
-        title={he.lateCancelTitle}
-        body={he.lateCancelBody(game.cancelDeadlineHours ?? 0)}
-        confirmLabel={he.lateCancelConfirm}
-        onClose={() => setLateCancelOpen(false)}
-        onConfirm={async () => {
-          setLateCancelOpen(false);
-          await runCancel();
         }}
       />
 

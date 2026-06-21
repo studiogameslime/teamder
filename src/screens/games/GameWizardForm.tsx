@@ -812,6 +812,13 @@ function Step3({
               // Reset the picker value when turning the toggle off so a
               // stale registrationOpensAt doesn't survive into submit.
               if (!v) set('registrationOpensAt', 0);
+              // Turning ON: commit the default immediately. The field below
+              // only DISPLAYS `registrationOpensAt || default`, so without
+              // this the user sees an auto-filled time while state stays 0 —
+              // and submit then rejects it as "no time chosen".
+              else if (!values.registrationOpensAt) {
+                set('registrationOpensAt', defaultRegOpensAt(values.startsAt));
+              }
             }}
           />
           {values.scheduledRegEnabled ? (
@@ -881,34 +888,11 @@ function Step3({
         </>
       ) : null}
 
-      {/* Cancel deadline — a toggle that reveals a date/time picker for
-          the LAST moment a player may cancel. Stored as the existing
-          `cancelDeadlineHours` (derived from the picked date relative to
-          kickoff) so all downstream late-cancel logic is unchanged. */}
-      <ToggleRow
-        label={he.wizardCancelDeadlineToggle}
-        info={{ title: he.wizardCancelDeadlineToggle, text: he.wizardCancelDeadlineToggleHint }}
-        value={values.cancelDeadlineHours !== undefined}
-        onChange={(v) => set('cancelDeadlineHours', v ? 12 : undefined)}
-      />
-      {values.cancelDeadlineHours !== undefined ? (
-        <View style={styles.section}>
-          <AppDateTimeField
-            label={he.wizardCancelDeadlineLabel}
-            value={
-              values.startsAt - (values.cancelDeadlineHours ?? 0) * 60 * 60 * 1000
-            }
-            onChange={(ms) => {
-              const hrs = Math.max(
-                0,
-                Math.round((values.startsAt - ms) / (60 * 60 * 1000)),
-              );
-              set('cancelDeadlineHours', hrs);
-            }}
-            required
-          />
-        </View>
-      ) : null}
+      {/* Cancel-deadline toggle removed 2026-06-21 (user report): the
+          reliability/"אמינות" feature it fed was scrapped, so the late-cancel
+          window + its confirm popup are no longer wanted. New games leave
+          `cancelDeadlineHours` undefined → isPastCancelDeadline() is always
+          false → no popup. */}
 
       {/* Filler matching — opt-in per game. When ON, the scheduled CF
           pushes nearby non-members an interest invite when the roster

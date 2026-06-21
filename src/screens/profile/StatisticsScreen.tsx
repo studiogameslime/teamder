@@ -46,6 +46,7 @@ export function StatisticsScreen() {
       .then((fresh) =>
         playerStatsService.compute(uid, {
           goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
+          assists: fresh?.stats?.assists ?? localUser?.stats?.assists ?? 0,
         }),
       )
       .then(async (s) => {
@@ -101,6 +102,7 @@ export function StatisticsScreen() {
           <View style={styles.tileGrid}>
             <NumberTile icon="calendar-outline" value={String(stats!.attendedGames)} label={he.statGames} />
             <NumberTile icon="football" value={String(stats!.goals)} label={he.statGoals} />
+            <NumberTile icon="hand-left" value={String(stats!.assists)} label={he.statAssists} />
             <NumberTile icon="flash-outline" value={stats!.goalsPerEvening.toFixed(1)} label={he.statGoalsPerEvening} />
             <NumberTile icon="people-circle-outline" value={String(stats!.distinctPlayers)} label={he.statDistinctPlayers} />
           </View>

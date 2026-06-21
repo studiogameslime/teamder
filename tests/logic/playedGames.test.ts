@@ -1,4 +1,8 @@
-import { wasInDraftTeams, isPlayedGame } from '@/utils/playedGames';
+import {
+  wasInDraftTeams,
+  isPlayedGame,
+  isAttendedGame,
+} from '@/utils/playedGames';
 import { DraftTeamsResult } from '@/types';
 
 function teams(...teamPlayerIds: string[][]): DraftTeamsResult {
@@ -62,5 +66,47 @@ describe('isPlayedGame', () => {
     expect(
       isPlayedGame({ startsAt: PAST, draftTeams: teams(['u2']) }, 'u1', NOW),
     ).toBe(false);
+  });
+});
+
+// The canonical predicate shared by the Profile count, Statistics screen,
+// History list, and achievements derivation. These four MUST agree.
+describe('isAttendedGame', () => {
+  const base = { status: 'finished', startsAt: PAST, players: ['u1', 'u2'] };
+
+  it('counts a finished, past game the user is in and did not no-show', () => {
+    expect(isAttendedGame(base, 'u1', NOW)).toBe(true);
+  });
+
+  it('counts when there is no arrival entry (no_show is opt-in)', () => {
+    expect(isAttendedGame({ ...base, arrivals: {} }, 'u1', NOW)).toBe(true);
+  });
+
+  it('does NOT count an explicit no_show', () => {
+    expect(
+      isAttendedGame({ ...base, arrivals: { u1: 'no_show' } }, 'u1', NOW),
+    ).toBe(false);
+  });
+
+  it('does NOT count an unfinished game', () => {
+    expect(isAttendedGame({ ...base, status: 'live' }, 'u1', NOW)).toBe(false);
+  });
+
+  it('does NOT count a future game', () => {
+    expect(isAttendedGame({ ...base, startsAt: FUTURE }, 'u1', NOW)).toBe(false);
+  });
+
+  it('does NOT count a game the user is not a player in', () => {
+    expect(isAttendedGame(base, 'u9', NOW)).toBe(false);
+  });
+
+  it('is false for an empty user id', () => {
+    expect(isAttendedGame(base, '', NOW)).toBe(false);
+  });
+
+  it('does NOT require draftTeams (unlike isPlayedGame) — the key fix', () => {
+    // Same past finished game, user in players[], NO teams drawn.
+    expect(isPlayedGame({ startsAt: PAST }, 'u1', NOW)).toBe(false);
+    expect(isAttendedGame(base, 'u1', NOW)).toBe(true);
   });
 });

@@ -22,8 +22,11 @@ export function teamLetter(i: number): string {
   return TEAM_LETTERS[i] ?? String(i + 1);
 }
 
+// Teams are identified by COLOR (clearer than "קבוצה א/ב"), fixed per index.
+const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה'];
 export function teamName(i: number): string {
-  return `קבוצה ${teamLetter(i)}`;
+  const c = TEAM_COLOR_NAMES[i];
+  return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
 }
 
 /**

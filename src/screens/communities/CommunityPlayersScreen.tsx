@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
+import { RatingStars } from '@/components/RatingStars';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -56,6 +58,9 @@ export function CommunityPlayersScreen() {
   const [members, setMembers] = useState<User[]>([]);
   const [stats, setStats] = useState<Record<UserId, PlayerStats> | null>(null);
   const [loading, setLoading] = useState(true);
+  // Admin-rating editor target (internalRating communities only).
+  const [ratingTarget, setRatingTarget] = useState<User | null>(null);
+  const [savingRating, setSavingRating] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -97,6 +102,26 @@ export function CommunityPlayersScreen() {
   // Only the creator can promote/demote admins (and delete the group).
   const iAmCreator =
     !!me && !!group && me.id === (group.creatorId ?? group.adminIds[0]);
+  // Internal-rating mode: admins set player ratings; everyone sees them.
+  const internalRating = group?.internalRating === true;
+
+  const saveAdminRating = useCallback(
+    async (playerId: UserId, rating: number | null) => {
+      if (!me || !group) return;
+      setSavingRating(true);
+      try {
+        await groupService.setAdminRating(group.id, me.id, playerId, rating);
+        setRatingTarget(null);
+        await reload();
+      } catch (err) {
+        logError('setAdminRating', err, { groupId, playerId });
+        toast.error(he.error);
+      } finally {
+        setSavingRating(false);
+      }
+    },
+    [me, group, groupId, reload],
+  );
 
   const handleRemoveMember = useCallback(
     (target: User) => {
@@ -244,6 +269,13 @@ export function CommunityPlayersScreen() {
                   isAdmin={group.adminIds.includes(u.id)}
                   stats={stats?.[u.id]}
                   showDivider={i > 0}
+                  internalRating={internalRating}
+                  rating={group.adminRatings?.[u.id]}
+                  onSetRating={
+                    internalRating && iAmAdmin
+                      ? () => setRatingTarget(u)
+                      : undefined
+                  }
                   onPress={() =>
                     (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                       'PlayerCard',
@@ -269,7 +301,76 @@ export function CommunityPlayersScreen() {
           windowSize={10}
         />
       )}
+
+      <AdminRatingSheet
+        target={ratingTarget}
+        current={
+          ratingTarget ? group?.adminRatings?.[ratingTarget.id] ?? 0 : 0
+        }
+        saving={savingRating}
+        onClose={() => setRatingTarget(null)}
+        onSave={(rating) => ratingTarget && saveAdminRating(ratingTarget.id, rating)}
+      />
     </SafeAreaView>
+  );
+}
+
+/** Bottom-sheet editor for an admin-assigned player rating (1–5, or clear). */
+function AdminRatingSheet({
+  target,
+  current,
+  saving,
+  onClose,
+  onSave,
+}: {
+  target: User | null;
+  current: number;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (rating: number | null) => void;
+}) {
+  const [value, setValue] = useState(current);
+  // Sync the local stars to the opened player's stored rating.
+  useEffect(() => {
+    setValue(current);
+  }, [current, target?.id]);
+  return (
+    <Modal
+      visible={!!target}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.sheetBackdrop} onPress={onClose}>
+        <Pressable style={styles.sheetCard} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.sheetTitle}>
+            {target ? he.communityAdminRatingTitle(target.name) : ''}
+          </Text>
+          <Text style={styles.sheetHint}>{he.communityAdminRatingHint}</Text>
+          <RatingStars value={value} onChange={setValue} size={36} />
+          <View style={styles.sheetActions}>
+            <Pressable
+              onPress={() => onSave(null)}
+              disabled={saving}
+              style={({ pressed }) => [styles.sheetClear, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.sheetClearText}>{he.communityAdminRatingClear}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onSave(value === 0 ? null : value)}
+              disabled={saving}
+              style={({ pressed }) => [
+                styles.sheetSave,
+                (saving) && { opacity: 0.6 },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={styles.sheetSaveText}>{he.save}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -278,6 +379,9 @@ function PlayerRow({
   isAdmin,
   stats,
   showDivider,
+  internalRating,
+  rating,
+  onSetRating,
   onPress,
   onLongPress,
   onManage,
@@ -287,6 +391,12 @@ function PlayerRow({
   isAdmin: boolean;
   stats?: PlayerStats;
   showDivider: boolean;
+  /** Community is in internal-rating mode → show the admins' rating. */
+  internalRating?: boolean;
+  /** The admin-assigned rating for this player, if set. */
+  rating?: number;
+  /** Admin-only: open the rating editor for this player. */
+  onSetRating?: () => void;
   onPress: () => void;
   /** Optional admin action — long-press opens the manage/remove dialog.
    *  Undefined for rows the viewer can't act on. */
@@ -331,6 +441,27 @@ function PlayerRow({
             icon="football-outline"
             text={he.communityPlayerGames(games)}
           />
+          {internalRating ? (
+            onSetRating ? (
+              // Admin in an internal-rating community → tappable to edit.
+              <Pressable onPress={onSetRating} hitSlop={6}>
+                <View style={[styles.chip, styles.ratingChip]}>
+                  <Ionicons name="star" size={12} color={colors.warning} />
+                  <Text style={[styles.chipText, styles.ratingChipText]}>
+                    {rating ? String(rating) : he.communityAdminRatingSet}
+                  </Text>
+                </View>
+              </Pressable>
+            ) : rating ? (
+              // Member view — read-only admins' rating.
+              <View style={[styles.chip, styles.ratingChip]}>
+                <Ionicons name="star" size={12} color={colors.warning} />
+                <Text style={[styles.chipText, styles.ratingChipText]}>
+                  {String(rating)}
+                </Text>
+              </View>
+            ) : null
+          ) : null}
         </View>
       </View>
       {onManage ? (
@@ -474,4 +605,60 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
+  ratingChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  ratingChipText: {
+    color: colors.text,
+    fontWeight: '800',
+  },
+  // ── Admin-rating editor sheet ──
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetCard: {
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  sheetTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  sheetHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  sheetActions: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
+    alignSelf: 'stretch',
+    marginTop: spacing.sm,
+  },
+  sheetSave: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  sheetSaveText: { ...typography.bodyBold, color: '#FFFFFF', fontWeight: '800' },
+  sheetClear: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  sheetClearText: { ...typography.body, color: colors.danger, fontWeight: '700' },
 });

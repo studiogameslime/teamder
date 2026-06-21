@@ -288,8 +288,12 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, color: colors.text, textAlign: 'right' },
   approveAllBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8 },
   approveAllTxt: { ...typography.bodyBold, color: colors.primary },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs },
-  rowMain: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm, flex: 1 },
+  // `row` (NOT row-reverse): under the app's RTL this lays the avatar+name out
+  // from the RIGHT and the approve/decline actions on the LEFT — matching the
+  // section title row and the rest of the app (e.g. CommunityPlayers). The old
+  // row-reverse + the `flex:1` on rowMain flipped it to avatar-left (the bug).
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs },
+  rowMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
   name: { ...typography.bodyBold, color: colors.text, textAlign: 'right', flex: 1 },
   actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },

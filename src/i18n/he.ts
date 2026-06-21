@@ -325,6 +325,11 @@ export const he = {
     `${count} עצירות · ${time}`,
   rotationStartRound: 'התחל משחקון',
   rotationEndRound: 'סיים משחקון',
+  fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
+  fillPickerSelectCount: (chosen: number, required: number) =>
+    `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
+  fillPickerConfirm: 'אישור',
+  rotationPreviewLabel: 'מי נגד מי · הקבוצות יושלמו בלחיצת ״התחל משחקון״',
   winnerPickTitle: 'מי ניצחה במשחקון?',
   winnerPickSubtitle: 'בחר את הקבוצה שניצחה כדי לסיים את המשחקון',
   winnerPickTieSubtitle: 'תיקו בתוצאה — בחרו ביניכם מי ניצחה (פנדלים / פרט-זוג / וכו׳) וסמנו כאן',
@@ -338,6 +343,8 @@ export const he = {
   goalScorerPickTitle: (team: string) => `מי הבקיע? · ${team}`,
   goalUnknownScorer: 'לא ידוע',
   goalOwnGoal: 'שער עצמי',
+  goalAssistPickTitle: (team: string) => `מי בישל? · ${team}`,
+  goalAssistNone: 'אף אחד',
   goalOwnGoalShort: 'שער עצמי',
   winnerPickCancel: 'ביטול',
   winnerPickConfirm: 'אישור',
@@ -520,7 +527,7 @@ export const he = {
   createGameFormat: 'פורמט',
   createGameIsPublic: 'משחק פתוח (גלוי לכולם)',
   createGameIsPublicHint: 'כשמופעל — המשחק יוצג בלשונית המשחקים גם למי שאינם במועדון',
-  createGameRequiresApproval: 'דורש אישור',
+  createGameRequiresApproval: 'הצטרפות דורשת אישור',
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
   createGameNotes: 'הערות (לא חובה)',
   createGameBringBall: 'מישהו צריך להביא כדור',
@@ -719,6 +726,13 @@ export const he = {
   createGroupMaxMembers: 'מקסימום שחקנים במועדון',
   createGroupIsOpen: 'מועדון פתוח',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
+  createGroupInternalRating: 'דירוג פנימי',
+  createGroupInternalRatingHint:
+    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המשחק ובמועדון (במקום דירוג השחקנים). כבוי = הדירוג נקבע מהצבעות השחקנים.',
+  communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
+  communityAdminRatingHint: 'קבע את דירוג השחקן (1–5). הדירוג מוצג לכל חברי המועדון.',
+  communityAdminRatingClear: 'נקה דירוג',
+  communityAdminRatingSet: 'קבע',
   createGroupContactPhone: 'טלפון איש קשר',
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" במועדון',
@@ -800,6 +814,7 @@ export const he = {
   communityDetailsNoUpcoming: 'אין משחקים קרובים',
 
   // Guests (per-game guest players, not real users)
+  guestLabel: 'אורח',
   guestAddButton: 'הוסף אורח',
   guestAddTitle: 'הוסף אורח למשחק',
   guestEditTitle: 'ערוך אורח',
@@ -814,6 +829,8 @@ export const he = {
     'יצירת מועדונים מוגבלת לחמש ביום. נסה שוב מחר.',
   communityDescriptionTitle: 'תיאור המועדון',
   communityRulesTitle: 'חוקי המועדון',
+  communityReadMore: 'קרא עוד',
+  communityReadLess: 'הצג פחות',
   matchDetailsWaitlistTitle: 'רשימת המתנה',
   matchDetailsAvgRatingLabel: (count: number) =>
     `מבוסס על ${count} דירוגים`,
@@ -1263,6 +1280,10 @@ export const he = {
   achievementProgressToNext: (current: number, target: number, tierHe: string) =>
     `${current}/${target} ל${tierHe}`,
   achievementMaxed: 'הגעת לדרגה הגבוהה ביותר! 🏆',
+  // "How do I earn this?" — action phrase + the tier targets.
+  achievementHowTitle: 'איך משיגים?',
+  achievementTiersLine: (bronze: number, silver: number, gold: number) =>
+    `יעדים: ${bronze} (ברונזה) · ${silver} (כסף) · ${gold} (זהב)`,
   // Celebration overlay copy.
   achievementCelebrateKicker: 'כל הכבוד!',
   achievementCelebrateTier: (tierHe: string) => `פתחת דרגת ${tierHe}!`,
@@ -1276,6 +1297,7 @@ export const he = {
   statGames: 'משחקים',
   statAttendance: 'אחוז הגעה',
   statGoals: 'שערים',
+  statAssists: 'בישולים',
   statGoalsPerEvening: 'גולים לערב',
   statDistinctPlayers: 'שחקנים שונים',
   statMostPlayedWith: 'השותף הקבוע',
@@ -1780,6 +1802,8 @@ export const he = {
   // tile shown. The pair card uses this same order.
   pairStatsRegistered: 'נרשמתם יחד',
   pairStatsAttended: 'הגעתם יחד',
+  pairAssistedThem: 'בישלת לו',
+  pairAssistedYou: 'הוא בישל לך',
   pairStatsSameTeam: 'באותה קבוצה',
   pairStatsWinsTogether: 'ניצחתם יחד',
   pairStatsLossesTogether: 'הפסדתם יחד',

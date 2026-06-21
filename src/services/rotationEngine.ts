@@ -25,8 +25,10 @@ export interface RotationTeam {
   playerIds: string[];
 }
 
-/** Default random picker — chooses `n` distinct items. Override in tests. */
-function pickRandom<T>(arr: T[], n: number): T[] {
+/** Default random picker — chooses `n` distinct items. Override in tests.
+ *  Exported so the interactive-fill UI can pre-select the SAME random
+ *  recommendation the auto path would have picked. */
+export function pickRandom<T>(arr: T[], n: number): T[] {
   const pool = [...arr];
   const out: T[] = [];
   while (out.length < n && pool.length > 0) {
@@ -61,11 +63,106 @@ export function canStart(teams: RotationTeam[], perTeam: number): boolean {
 }
 
 /**
- * Fill the two PLAYING teams up to `perTeam` by borrowing from the OFF teams
- * (preferring `loserFirst` when given — the team that just lost). Mutates a
- * working copy of loans/teams per `fillMode` and returns them.
+ * A rotation transition computed UP TO — but not including — the fill step.
+ * Both the automatic path (fill with the random recommendation) and the
+ * interactive path (let the admin pick the fillers) start from one of these.
  */
-function fillPlaying(
+export interface RotationFillState {
+  /** Teams as they stand pre-fill (home rosters; permanent moves not yet applied). */
+  teams: RotationTeam[];
+  /** The two teams now on the field. */
+  playing: [number, number];
+  perTeam: number;
+  fillMode: FillMode;
+  /** Team to borrow from first (the one going off / the loser); null at start. */
+  loserFirst: number | null;
+  /** The new rotation minus the fill (loans are the post-return baseline). */
+  rotation: MatchRotation;
+}
+
+/**
+ * The next playing team that still needs filling, with its ordered donor pool.
+ * Donors = the OFF teams' available home players (loser-first), excluding
+ * anyone already loaned out of their team. null when both playing teams are
+ * full. Pure — drives both the auto loop and the interactive picker UI.
+ */
+export function nextFillNeeded(
+  playing: [number, number],
+  teams: RotationTeam[],
+  loans: RotationLoan[],
+  perTeam: number,
+  loserFirst: number | null,
+): { team: number; deficit: number; donors: string[] } | null {
+  // Source teams to borrow from = teams NOT currently playing, loser first.
+  // Proper total-order comparator so the loser sorts before everyone else.
+  const offIndices = teams
+    .map((t) => t.index)
+    .filter((i) => !playing.includes(i))
+    .sort((a, b) => (b === loserFirst ? 1 : 0) - (a === loserFirst ? 1 : 0));
+  for (const teamIdx of playing) {
+    const deficit = perTeam - rosterOf(teamIdx, teams, loans).length;
+    if (deficit <= 0) continue;
+    const donors: string[] = [];
+    for (const src of offIndices) {
+      const loanedOut = new Set(
+        loans.filter((l) => l.homeTeam === src).map((l) => l.playerId),
+      );
+      const avail = (teams.find((t) => t.index === src)?.playerIds ?? []).filter(
+        (p) => !loanedOut.has(p),
+      );
+      donors.push(...avail);
+    }
+    return { team: teamIdx, deficit, donors };
+  }
+  return null;
+}
+
+/**
+ * Borrow a chosen set of players into `targetTeam`. Each filler's source is the
+ * team that currently holds them (and hasn't loaned them out). Permanent →
+ * their home team is reassigned to the target; temporary → a loan is recorded.
+ * Pure — used both by the auto loop (chosen = recommendation) and the
+ * interactive path (chosen = what the admin picked).
+ */
+export function applyChosenFill(
+  teams: RotationTeam[],
+  loans: RotationLoan[],
+  targetTeam: number,
+  chosenIds: string[],
+  fillMode: FillMode,
+): { teams: RotationTeam[]; loans: RotationLoan[] } {
+  let outTeams = teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
+  let outLoans = [...loans];
+  for (const playerId of chosenIds) {
+    const src = outTeams.find(
+      (t) =>
+        t.index !== targetTeam &&
+        t.playerIds.includes(playerId) &&
+        !outLoans.some((l) => l.homeTeam === t.index && l.playerId === playerId),
+    )?.index;
+    if (src == null) continue; // not an available donor — skip defensively
+    if (fillMode === 'permanent') {
+      outTeams = outTeams.map((t) =>
+        t.index === src
+          ? { ...t, playerIds: t.playerIds.filter((p) => p !== playerId) }
+          : t.index === targetTeam
+            ? { ...t, playerIds: [...t.playerIds, playerId] }
+            : t,
+      );
+    } else {
+      outLoans.push({ playerId, homeTeam: src, filledTeam: targetTeam });
+    }
+  }
+  return { teams: outTeams, loans: outLoans };
+}
+
+/**
+ * AUTO fill: loop nextFillNeeded + applyChosenFill, choosing donors with
+ * `pick` (the recommendation) each round, until both playing teams are full.
+ * This is the non-interactive path; the interactive UI runs the same loop but
+ * substitutes the admin's selection for `pick`.
+ */
+function fillAll(
   playing: [number, number],
   teams: RotationTeam[],
   loans: RotationLoan[],
@@ -76,46 +173,20 @@ function fillPlaying(
 ): { teams: RotationTeam[]; loans: RotationLoan[] } {
   let outTeams = teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
   let outLoans = [...loans];
-
-  // Source teams to borrow from = teams NOT currently playing, loser first.
-  const offIndices = outTeams
-    .map((t) => t.index)
-    .filter((i) => !playing.includes(i))
-    // Proper total-order comparator: the loser sorts before everyone else.
-    // (The old `? -1 : ? 1 : 0` form isn't antisymmetric and only worked by
-    // luck of V8's insertion sort for small arrays.)
-    .sort((a, b) => (b === loserFirst ? 1 : 0) - (a === loserFirst ? 1 : 0));
-
-  for (const teamIdx of playing) {
-    let size = rosterOf(teamIdx, outTeams, outLoans).length;
-    let deficit = perTeam - size;
-    if (deficit <= 0) continue;
-    for (const src of offIndices) {
-      if (deficit <= 0) break;
-      // Available donors from `src` = its home players not already loaned out.
-      const loanedOut = new Set(
-        outLoans.filter((l) => l.homeTeam === src).map((l) => l.playerId),
-      );
-      const donors = (outTeams.find((t) => t.index === src)?.playerIds ?? [])
-        .filter((p) => !loanedOut.has(p));
-      const chosen = pick(donors, deficit);
-      for (const playerId of chosen) {
-        if (fillMode === 'permanent') {
-          // Move the player's home team to the team they completed.
-          outTeams = outTeams.map((t) =>
-            t.index === src
-              ? { ...t, playerIds: t.playerIds.filter((p) => p !== playerId) }
-              : t.index === teamIdx
-                ? { ...t, playerIds: [...t.playerIds, playerId] }
-                : t,
-          );
-        } else {
-          outLoans.push({ playerId, homeTeam: src, filledTeam: teamIdx });
-        }
-      }
-      deficit -= chosen.length;
-      size += chosen.length;
-    }
+  // Bounded loop — at most one fill per playing team per source; the guard is a
+  // far-above-real backstop against a donor-pool stalemate.
+  for (let guard = 0; guard < 100; guard++) {
+    const req = nextFillNeeded(playing, outTeams, outLoans, perTeam, loserFirst);
+    if (!req) break;
+    const chosen = pick(req.donors, req.deficit);
+    if (chosen.length === 0) break; // no donors left → can't fill further
+    ({ teams: outTeams, loans: outLoans } = applyChosenFill(
+      outTeams,
+      outLoans,
+      req.team,
+      chosen,
+      fillMode,
+    ));
   }
   return { teams: outTeams, loans: outLoans };
 }
@@ -124,28 +195,35 @@ function fillPlaying(
  * Start the rotation: first two teams play (filled to full from the rest),
  * the remaining teams wait. Returns null when there aren't enough players.
  */
+export function startRotationSkeleton(
+  teams: RotationTeam[],
+  perTeam: number,
+  fillMode: FillMode,
+): RotationFillState | null {
+  if (!canStart(teams, perTeam)) return null;
+  const ordered = [...teams].sort((a, b) => a.index - b.index);
+  const playing: [number, number] = [ordered[0].index, ordered[1].index];
+  const waiting = ordered.slice(2).map((t) => t.index);
+  return {
+    teams,
+    playing,
+    perTeam,
+    fillMode,
+    loserFirst: null,
+    rotation: { playing, waiting, loans: [], wins: {}, round: 1, updatedAt: Date.now() },
+  };
+}
+
 export function startRotation(
   teams: RotationTeam[],
   perTeam: number,
   fillMode: FillMode,
   pick: <T>(a: T[], n: number) => T[] = pickRandom,
 ): { rotation: MatchRotation; teams: RotationTeam[] } | null {
-  if (!canStart(teams, perTeam)) return null;
-  const ordered = [...teams].sort((a, b) => a.index - b.index);
-  const playing: [number, number] = [ordered[0].index, ordered[1].index];
-  const waiting = ordered.slice(2).map((t) => t.index);
-  const filled = fillPlaying(playing, teams, [], perTeam, fillMode, null, pick);
-  return {
-    rotation: {
-      playing,
-      waiting,
-      loans: filled.loans,
-      wins: {},
-      round: 1,
-      updatedAt: Date.now(),
-    },
-    teams: filled.teams,
-  };
+  const s = startRotationSkeleton(teams, perTeam, fillMode);
+  if (!s) return null;
+  const filled = fillAll(s.playing, s.teams, s.rotation.loans, perTeam, fillMode, null, pick);
+  return { rotation: { ...s.rotation, loans: filled.loans }, teams: filled.teams };
 }
 
 /**
@@ -154,14 +232,13 @@ export function startRotation(
  * comes on and is filled (loser-first). Temporary loans whose HOME team is
  * the one now coming on are first returned home before re-filling.
  */
-export function recordWinner(
+export function recordWinnerSkeleton(
   winner: number,
   teams: RotationTeam[],
   rotation: MatchRotation,
   perTeam: number,
   fillMode: FillMode,
-  pick: <T>(a: T[], n: number) => T[] = pickRandom,
-): { rotation: MatchRotation; teams: RotationTeam[] } {
+): RotationFillState {
   const [a, b] = rotation.playing;
   const loser = winner === a ? b : a;
   const incoming = rotation.waiting[0];
@@ -175,12 +252,16 @@ export function recordWinner(
     (id) => !id.startsWith('guest:'),
   );
   const lastRoundAt = Date.now();
-  // No one waiting → keep playing the same two (just bump the win tally).
   const wins = { ...(rotation.wins ?? {}) };
   wins[String(winner)] = (wins[String(winner)] ?? 0) + 1;
+  // No one waiting → keep playing the same two (just bump the win tally).
   if (incoming == null) {
     return {
       teams,
+      playing: rotation.playing,
+      perTeam,
+      fillMode,
+      loserFirst: null,
       rotation: {
         ...rotation,
         wins,
@@ -195,23 +276,21 @@ export function recordWinner(
 
   const newPlaying: [number, number] = [winner, incoming];
   const newWaiting = [...rotation.waiting.slice(1), loser];
-
   // The incoming team comes ON → any temporary loans whose HOME is `incoming`
-  // return home (the player rejoins their own team for this stint).
+  // return home; drop loans tied to the loser's stint that just ended.
   let loans = rotation.loans.filter((l) => l.homeTeam !== incoming);
-
-  // Drop loans tied to the loser's stint that just ended (a player borrowed
-  // INTO the loser team goes back to their home — the loser is going off).
   loans = loans.filter((l) => l.filledTeam !== loser);
 
-  // Now fill the two playing teams to full, borrowing loser-first.
-  const filled = fillPlaying(newPlaying, teams, loans, perTeam, fillMode, loser, pick);
   return {
-    teams: filled.teams,
+    teams,
+    playing: newPlaying,
+    perTeam,
+    fillMode,
+    loserFirst: loser,
     rotation: {
       playing: newPlaying,
       waiting: newWaiting,
-      loans: filled.loans,
+      loans,
       wins,
       round: (rotation.round ?? 1) + 1,
       lastRoundWinners,
@@ -220,6 +299,27 @@ export function recordWinner(
       updatedAt: lastRoundAt,
     },
   };
+}
+
+export function recordWinner(
+  winner: number,
+  teams: RotationTeam[],
+  rotation: MatchRotation,
+  perTeam: number,
+  fillMode: FillMode,
+  pick: <T>(a: T[], n: number) => T[] = pickRandom,
+): { rotation: MatchRotation; teams: RotationTeam[] } {
+  const s = recordWinnerSkeleton(winner, teams, rotation, perTeam, fillMode);
+  const filled = fillAll(
+    s.playing,
+    s.teams,
+    s.rotation.loans,
+    perTeam,
+    fillMode,
+    s.loserFirst,
+    pick,
+  );
+  return { teams: filled.teams, rotation: { ...s.rotation, loans: filled.loans } };
 }
 
 /**
@@ -232,14 +332,13 @@ export function recordWinner(
  * (lastRoundWinners/Losers are emptied). Falls back gracefully when too few
  * teams are waiting (keeps both on, or rotates one).
  */
-export function recordTie(
+export function recordTieSkeleton(
   teams: RotationTeam[],
   rotation: MatchRotation,
   perTeam: number,
   fillMode: FillMode,
   mode: 'bothOut' | 'veteranOut',
-  pick: <T>(a: T[], n: number) => T[] = pickRandom,
-): { rotation: MatchRotation; teams: RotationTeam[] } {
+): RotationFillState {
   const [a, b] = rotation.playing;
   const lastRoundAt = Date.now();
   const base = {
@@ -250,23 +349,25 @@ export function recordTie(
     lastRoundAt,
     updatedAt: lastRoundAt,
   };
+  const state = (
+    playing: [number, number],
+    rot: MatchRotation,
+    loserFirst: number | null,
+  ): RotationFillState => ({ teams, playing, perTeam, fillMode, loserFirst, rotation: rot });
+
   const noOneWaiting = rotation.waiting[0] == null;
   if (noOneWaiting) {
-    // Nobody to swap in → both stay, just advance the round.
-    return { teams, rotation: { ...rotation, ...base } };
+    // Nobody to swap in → both stay, just advance the round (no fill).
+    return state(rotation.playing, { ...rotation, ...base }, null);
   }
 
   // Helper: rotate so `out` goes to the back and `stay` is joined by `incoming`.
-  const rotateOneOut = (stay: number, out: number, incoming: number) => {
+  const rotateOneOut = (stay: number, out: number, incoming: number): RotationFillState => {
     const newPlaying: [number, number] = [stay, incoming];
     const newWaiting = [...rotation.waiting.filter((w) => w !== incoming), out];
     let loans = rotation.loans.filter((l) => l.homeTeam !== incoming);
     loans = loans.filter((l) => l.filledTeam !== out);
-    const filled = fillPlaying(newPlaying, teams, loans, perTeam, fillMode, out, pick);
-    return {
-      teams: filled.teams,
-      rotation: { ...base, playing: newPlaying, waiting: newWaiting, loans: filled.loans },
-    };
+    return state(newPlaying, { ...base, playing: newPlaying, waiting: newWaiting, loans }, out);
   };
 
   if (mode === 'veteranOut') {
@@ -287,9 +388,26 @@ export function recordTie(
   // the two teams going off.
   let loans = rotation.loans.filter((l) => l.homeTeam !== inc1 && l.homeTeam !== inc2);
   loans = loans.filter((l) => l.filledTeam !== a && l.filledTeam !== b);
-  const filled = fillPlaying(newPlaying, teams, loans, perTeam, fillMode, null, pick);
-  return {
-    teams: filled.teams,
-    rotation: { ...base, playing: newPlaying, waiting: newWaiting, loans: filled.loans },
-  };
+  return state(newPlaying, { ...base, playing: newPlaying, waiting: newWaiting, loans }, null);
+}
+
+export function recordTie(
+  teams: RotationTeam[],
+  rotation: MatchRotation,
+  perTeam: number,
+  fillMode: FillMode,
+  mode: 'bothOut' | 'veteranOut',
+  pick: <T>(a: T[], n: number) => T[] = pickRandom,
+): { rotation: MatchRotation; teams: RotationTeam[] } {
+  const s = recordTieSkeleton(teams, rotation, perTeam, fillMode, mode);
+  const filled = fillAll(
+    s.playing,
+    s.teams,
+    s.rotation.loans,
+    perTeam,
+    fillMode,
+    s.loserFirst,
+    pick,
+  );
+  return { teams: filled.teams, rotation: { ...s.rotation, loans: filled.loans } };
 }

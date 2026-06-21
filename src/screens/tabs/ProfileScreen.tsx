@@ -259,10 +259,12 @@ export function ProfileScreen() {
         return;
       }
       let alive = true;
+      // Exact, unbounded attended-games count — equals the Statistics screen's
+      // "משחקים" tile (same `isAttendedGame` model, no 50-row cap).
       gameService
-        .getPlayedGames(uid)
-        .then((list) => {
-          if (alive) setPlayedCount(list.length);
+        .getPlayedGamesCount(uid)
+        .then((count) => {
+          if (alive && count !== null) setPlayedCount(count);
         })
         .catch(() => {
           // Keep the previous count on a transient error.
@@ -288,6 +290,7 @@ export function ProfileScreen() {
         groups: myCommunities,
         friendsCount: localUser?.friends?.length ?? 0,
         goals: localUser?.stats?.goals ?? 0,
+        assists: localUser?.stats?.assists ?? 0,
       })
       .then(async (c) => {
         const fresh = await achievementsService.persistDerivedUnlocks(uid, c);

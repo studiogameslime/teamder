@@ -15,6 +15,7 @@ import { getDocs, query, where } from 'firebase/firestore';
 import { col } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
+import { isAttendedGame } from '@/utils/playedGames';
 import type { UserId } from '@/types';
 
 export interface NamedStat {
@@ -28,6 +29,8 @@ export interface PlayerStatsSummary {
   /** attended / registered, 0-100. */
   attendanceRate: number;
   goals: number;
+  /** lifetime assists (admin-attributed in advanced-match rounds). */
+  assists: number;
   /** goals per evening attended, one decimal. */
   goalsPerEvening: number;
   /** distinct teammates ever shared a finished game with. */
@@ -40,12 +43,13 @@ export interface PlayerStatsSummary {
   nemesis: NamedStat | null;
 }
 
-function emptySummary(goals: number): PlayerStatsSummary {
+function emptySummary(goals: number, assists: number): PlayerStatsSummary {
   return {
     attendedGames: 0,
     totalRegistered: 0,
     attendanceRate: 0,
     goals,
+    assists,
     goalsPerEvening: 0,
     distinctPlayers: 0,
     mostPlayedWith: null,
@@ -66,10 +70,11 @@ function topEntry(map: Record<string, number>): NamedStat | null {
 export const playerStatsService = {
   async compute(
     userId: UserId,
-    ctx: { goals?: number } = {},
+    ctx: { goals?: number; assists?: number } = {},
   ): Promise<PlayerStatsSummary> {
     const goals = Math.max(0, ctx.goals ?? 0);
-    if (!userId || USE_MOCK_DATA) return emptySummary(goals);
+    const assists = Math.max(0, ctx.assists ?? 0);
+    if (!userId || USE_MOCK_DATA) return emptySummary(goals, assists);
 
     // ── Games scan: attendance + co-attendance per teammate ──────────────
     let attendedGames = 0;
@@ -93,7 +98,8 @@ export const playerStatsService = {
         if (!players.includes(userId)) continue;
         const arrivals = g.arrivals ?? {};
         totalRegistered += 1;
-        if (arrivals[userId] === 'no_show') continue;
+        // Canonical attended gate — shared with the Profile count + History.
+        if (!isAttendedGame(g, userId, now)) continue;
         attendedGames += 1;
         for (const pid of players) {
           if (pid === userId || arrivals[pid] === 'no_show') continue;
@@ -173,6 +179,7 @@ export const playerStatsService = {
       totalRegistered,
       attendanceRate,
       goals,
+      assists,
       goalsPerEvening,
       distinctPlayers,
       mostPlayedWith,

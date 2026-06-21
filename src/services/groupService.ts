@@ -11,6 +11,7 @@ import {
   arrayRemove,
   arrayUnion,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -276,6 +277,8 @@ export const groupService = {
     description?: string;
     /** When true, joining is auto-approved (no admin gate). */
     isOpen?: boolean;
+    /** When true, admins set player ratings themselves (vs. peer-voted). */
+    internalRating?: boolean;
     // ── Info (Step 2 of the wizard) ───────────────────────────────
     /** Code-of-conduct text shown on the community page. */
     rules?: string;
@@ -337,6 +340,7 @@ export const groupService = {
       description,
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
+      internalRating: input.internalRating,
       contactPhone: input.contactPhone,
       rules: input.rules,
       coverImageId: input.coverImageId,
@@ -382,6 +386,7 @@ export const groupService = {
         name: baseGroup.name,
         description: baseGroup.description,
         isOpen: baseGroup.isOpen,
+        internalRating: baseGroup.internalRating,
         rules: baseGroup.rules,
         contactPhone: baseGroup.contactPhone,
         city: baseGroup.city,
@@ -937,6 +942,50 @@ export const groupService = {
   },
 
   /**
+   * Set (or clear) an admin-assigned player rating for a community running in
+   * `internalRating` mode. Caller must be a coach. `rating` 1–5 sets it; 0 or
+   * null clears it. Written as a field-path update on the group doc's
+   * `adminRatings` map, so it's a single cheap write and reads come free with
+   * the group. Returns silently in mock mode after mutating the in-memory doc.
+   */
+  async setAdminRating(
+    groupId: GroupId,
+    callerId: UserId,
+    playerId: UserId,
+    rating: number | null,
+  ): Promise<void> {
+    if (!groupId || !playerId) return;
+    const valid =
+      rating != null && Number.isInteger(rating) && rating >= 1 && rating <= 5;
+    const clear = rating == null || rating === 0;
+    if (!valid && !clear) {
+      throw new Error('setAdminRating: rating must be 1–5 (or 0/null to clear)');
+    }
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (!g) throw new Error('setAdminRating: group not found');
+      if (!g.adminIds.includes(callerId)) {
+        throw new Error('setAdminRating: caller is not a coach');
+      }
+      const next = { ...(g.adminRatings ?? {}) };
+      if (clear) delete next[playerId];
+      else next[playerId] = rating as number;
+      g.adminRatings = next;
+      g.updatedAt = Date.now();
+      return;
+    }
+    const g = await this.get(groupId);
+    if (!g) throw new Error('setAdminRating: group not found');
+    if (!g.adminIds.includes(callerId)) {
+      throw new Error('setAdminRating: caller is not a coach');
+    }
+    await updateDoc(docs.group(groupId), {
+      [`adminRatings.${playerId}`]: clear ? deleteField() : (rating as number),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
    * Update editable metadata on a community. Caller must be a coach.
    * Locked fields (`id`, `creatorId`, `adminIds`, `playerIds`,
    * `pendingPlayerIds`, `inviteCode`, `createdAt`, `normalizedName`)
@@ -957,6 +1006,7 @@ export const groupService = {
         | 'name'
         | 'description'
         | 'isOpen'
+        | 'internalRating'
         | 'rules'
         | 'contactPhone'
         | 'city'
@@ -1001,6 +1051,7 @@ export const groupService = {
     for (const k of [
       'description',
       'isOpen',
+      'internalRating',
       'rules',
       'contactPhone',
       'city',

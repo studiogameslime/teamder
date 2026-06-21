@@ -32,6 +32,10 @@ export interface AchievementDef {
   titleHe: string;
   /** Counted noun used in the progress copy, e.g. "100 שערים". */
   nounHe: string;
+  /** Short action phrase explaining HOW the badge is earned, e.g.
+   *  "כבוש שערים במשחקים". The concrete tier targets are appended from
+   *  `tiers` at render time, so this stays just the action. */
+  howHe: string;
   /** Ionicons glyph rendered on the tier-coloured disk. */
   icon: keyof typeof Ionicons.glyphMap;
   /** Ascending tier thresholds. One-off badges have a single gold step. */
@@ -56,14 +60,25 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'goals',
     titleHe: 'שערים',
     nounHe: 'שערים',
+    howHe: 'כבוש שערים במשחקים חיים',
     icon: 'football',
     tiers: tiered(5, 20, 100),
+  },
+  {
+    id: 'assists',
+    metric: 'assists',
+    titleHe: 'בישולים',
+    nounHe: 'בישולים',
+    howHe: 'בשל לחברים לקבוצה — מסירה שמובילה לגול',
+    icon: 'hand-left',
+    tiers: tiered(5, 20, 75),
   },
   {
     id: 'games',
     metric: 'gamesJoined',
     titleHe: 'משחקים',
     nounHe: 'משחקים',
+    howHe: 'השתתף במשחקים',
     icon: 'calendar',
     tiers: tiered(5, 25, 100),
   },
@@ -72,6 +87,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'maxGamesWithPlayer',
     titleHe: 'שותף קבוע',
     nounHe: 'משחקים עם אותו שחקן',
+    howHe: 'שחק שוב ושוב עם אותו שחקן',
     icon: 'people',
     tiers: tiered(5, 15, 30),
   },
@@ -80,6 +96,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'maxWinsWithPlayer',
     titleHe: 'צמד מנצח',
     nounHe: 'נצחונות עם אותו שחקן',
+    howHe: 'נצח משחקים יחד עם אותו שחקן',
     icon: 'trophy',
     tiers: tiered(3, 10, 25),
   },
@@ -88,6 +105,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'distinctPlayers',
     titleHe: 'היכרויות',
     nounHe: 'שחקנים שהכרת',
+    howHe: 'שחק עם כמה שיותר שחקנים שונים',
     icon: 'people-circle',
     tiers: tiered(10, 30, 75),
   },
@@ -96,6 +114,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'friendsCount',
     titleHe: 'חברים',
     nounHe: 'חברים',
+    howHe: 'הוסף חברים באפליקציה',
     icon: 'person-add',
     tiers: tiered(3, 10, 25),
   },
@@ -104,6 +123,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'teamsJoined',
     titleHe: 'מועדונים',
     nounHe: 'מועדונים',
+    howHe: 'הצטרף למועדונים',
     icon: 'shield',
     tiers: tiered(2, 5, 10),
   },
@@ -112,6 +132,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'invitesSent',
     titleHe: 'הזמנות',
     nounHe: 'שחקנים שהבאת',
+    howHe: 'הזמן שחקנים חדשים שיורידו את האפליקציה',
     icon: 'paper-plane',
     tiers: tiered(3, 10, 25),
   },
@@ -120,6 +141,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'playersCoached',
     titleHe: 'ניהול',
     nounHe: 'שחקנים שאישרת',
+    howHe: 'אשר בקשות הצטרפות כמנהל מועדון',
     icon: 'ribbon',
     tiers: tiered(10, 25, 50),
   },
@@ -128,6 +150,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'teamsCreated',
     titleHe: 'מקים מועדון',
     nounHe: 'מועדון שהקמת',
+    howHe: 'הקם מועדון משלך',
     icon: 'flag',
     tiers: [{ tier: 'gold', threshold: 1 }],
     oneOff: true,

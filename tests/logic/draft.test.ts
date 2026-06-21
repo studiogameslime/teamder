@@ -18,9 +18,12 @@ describe('team labels', () => {
     expect(teamLetter(4)).toBe('5');
     expect(teamLetter(9)).toBe('10');
   });
-  it('teamName composes "קבוצה <letter>"', () => {
-    expect(teamName(0)).toBe('קבוצה א');
-    expect(teamName(3)).toBe('קבוצה ד');
+  it('teamName composes "קבוצה <color>" (color-named for clarity)', () => {
+    expect(teamName(0)).toBe('קבוצה אדומה');
+    expect(teamName(1)).toBe('קבוצה כחולה');
+    expect(teamName(3)).toBe('קבוצה צהובה');
+    // Falls back to the letter helper beyond the 4 colors.
+    expect(teamName(4)).toBe('קבוצה 5');
   });
   it('constants', () => {
     expect(MIN_TEAMS).toBe(2);

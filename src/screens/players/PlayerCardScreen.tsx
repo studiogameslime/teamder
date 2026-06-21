@@ -304,11 +304,16 @@ export function PlayerCardScreen() {
           // ── Other-player card (per the owner's sketch) ──
           <>
             <OtherTopCard user={user} viewerId={me.id} />
+            {/* H2H "played together" must be GLOBAL (all communities) to agree
+                with the Statistics screen's "השותף הקבוע" — scoping it to the
+                rating group made a card opened from one community show "no
+                shared history" even when the two played together elsewhere
+                (user report, 2026-06-21). The same-team / against rows come
+                from the global pairStats doc, so they were never group-scoped. */}
             <PairStatsSection
               viewerId={me.id}
               otherId={user.id}
               otherName={user.name}
-              groupId={effectiveRatingGroupId}
             />
           </>
         ) : (
@@ -556,6 +561,8 @@ function PairStatsSection({
     against: 0,
     winsAgainst: 0,
     lossesAgainst: 0,
+    assistedThem: 0,
+    assistedMe: 0,
   };
   const [stats, setStats] = useState<typeof ZERO>(ZERO);
   const [sharedGroups, setSharedGroups] = useState<Group[]>([]);
@@ -633,6 +640,26 @@ function PairStatsSection({
                   losses={stats.lossesAgainst}
                   wonLabel={he.pairWonYou}
                   lostLabel={he.pairLostYou}
+                />
+              </>
+            ) : null}
+            {stats.assistedThem > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hCountRow
+                  icon="hand-left-outline"
+                  label={he.pairAssistedThem}
+                  value={String(stats.assistedThem)}
+                />
+              </>
+            ) : null}
+            {stats.assistedMe > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hCountRow
+                  icon="hand-right-outline"
+                  label={he.pairAssistedYou}
+                  value={String(stats.assistedMe)}
                 />
               </>
             ) : null}
@@ -851,6 +878,7 @@ function AchievementsSection({ user }: { user: User }) {
         groups,
         friendsCount: me?.friends?.length ?? 0,
         goals: user.stats?.goals ?? 0,
+        assists: user.stats?.assists ?? 0,
       })
       .then(async (c) => {
         if (!alive) return;
@@ -1035,7 +1063,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  commHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  commHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   commHeader: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   commScroll: { flexDirection: 'row-reverse', gap: spacing.sm, paddingVertical: 2 },
   commChip: {
@@ -1054,7 +1082,7 @@ const styles = StyleSheet.create({
   commName: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   // ── Head-to-head card ──
   h2hCard: { padding: spacing.md, gap: 0 },
-  h2hTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
+  h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
   h2hTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   h2hDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   h2hRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },

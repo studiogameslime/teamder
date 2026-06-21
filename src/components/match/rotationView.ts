@@ -4,13 +4,27 @@
 
 import { rosterOf } from '@/services/rotationEngine';
 import type { MatchRotation } from '@/types';
+import { colors } from '@/theme';
 
 const LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
 export function teamLetter(i: number): string {
   return LETTERS[i] ?? String(i + 1);
 }
+
+// Teams are identified by COLOR (clearer than "קבוצה א/ב"). The color is fixed
+// per team INDEX so a team keeps its identity across rotations. Falls back to
+// the Hebrew letter for a hypothetical 5th+ team.
+const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה'];
+const TEAM_COLORS = [colors.team1, colors.team2, colors.team3, colors.team4];
+
 export function teamName(i: number): string {
-  return `קבוצה ${teamLetter(i)}`;
+  const c = TEAM_COLOR_NAMES[i];
+  return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
+}
+
+/** The fixed tint for a team index — matches its color name. */
+export function teamColor(i: number): string {
+  return TEAM_COLORS[i] ?? colors.textMuted;
 }
 
 /** First name only — keeps live roster rows compact ("Eliran Tzabari" →

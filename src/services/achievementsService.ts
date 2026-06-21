@@ -60,6 +60,7 @@ import { mockGamesV2 } from '@/data/mockData';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError, isExpectedDenial } from '@/services/errorLog';
+import { isAttendedGame } from '@/utils/playedGames';
 
 export interface AchievementListItem {
   def: AchievementDef;
@@ -172,13 +173,15 @@ export const achievementsService = {
       friendsCount?: number;
       wins?: number;
       goals?: number;
+      assists?: number;
     } = {},
   ): Promise<UserAchievementState> {
     if (!userId) return { ...defaultAchievementState };
     const groups = ctx.groups ?? [];
     const wins = Math.max(0, ctx.wins ?? 0);
-    // goals comes from the caller's already-loaded user doc (stats.goals).
+    // goals + assists come from the caller's already-loaded user doc (stats.*).
     const goals = Math.max(0, ctx.goals ?? 0);
+    const assists = Math.max(0, ctx.assists ?? 0);
     // friendsCount comes from the caller's already-loaded user doc
     // (`user.friends`) — no extra read needed.
     const friendsCount = Math.max(0, ctx.friendsCount ?? 0);
@@ -227,14 +230,12 @@ export const achievementsService = {
       const candidates = await loadParticipatedGames(userId);
       const now = Date.now();
       for (const g of candidates) {
-        if (g.status !== 'finished') continue;
-        if (typeof g.startsAt === 'number' && g.startsAt >= now) continue;
-        if (!(g.players ?? []).includes(userId)) continue;
+        // Canonical attended gate — shared with the Profile count, the
+        // Statistics screen, and the History list (finished + past + in
+        // players[] + not no_show). A missing arrival entry counts as
+        // attended (the no_show marker is opt-in by the admin).
+        if (!isAttendedGame(g, userId, now)) continue;
         const arrivals = (g.arrivals ?? {}) as Record<string, string>;
-        // Default to "attended" — if no arrival entry exists, assume
-        // the player showed up (the no_show marker is opt-in by the
-        // admin). Only an explicit no_show excludes the game.
-        if (arrivals[userId] === 'no_show') continue;
         gamesJoined += 1;
         for (const pid of g.players ?? []) {
           if (pid === userId) continue;
@@ -296,6 +297,7 @@ export const achievementsService = {
       playersCoached,
       friendsCount,
       goals,
+      assists,
       maxGamesWithPlayer,
       maxWinsWithPlayer,
       distinctPlayers,
@@ -389,6 +391,7 @@ function readState(user: User): UserAchievementState {
     playersCoached: a.playersCoached ?? 0,
     friendsCount: a.friendsCount ?? 0,
     goals: a.goals ?? 0,
+    assists: a.assists ?? 0,
     maxGamesWithPlayer: a.maxGamesWithPlayer ?? 0,
     maxWinsWithPlayer: a.maxWinsWithPlayer ?? 0,
     distinctPlayers: a.distinctPlayers ?? 0,

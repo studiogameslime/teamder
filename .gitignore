@@ -40,3 +40,5 @@ public/downloads/
 functions/templates/
 credentials.json
 credentials/
+qa_emulator_run/
+firebase-debug.log

@@ -414,8 +414,10 @@ export function AvailabilityEditScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.saveBtn}
           >
-            <Ionicons name="football-outline" size={22} color="#fff" />
+            {/* Text first so the ball icon lands on the visual LEFT (forceRTL
+                flips `row`: last child → visual left). */}
             <Text style={styles.saveText}>{he.availabilitySavePrefs}</Text>
+            <Ionicons name="football-outline" size={22} color="#fff" />
           </LinearGradient>
         </Pressable>
       </View>

@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { teamName, firstName, type RosterMember } from '@/components/match/rotationView';
+import { teamName, teamColor, firstName, type RosterMember } from '@/components/match/rotationView';
 
 const GOLD = '#F4B73E';
 const TEAM_BLUE = '#2563EB';
@@ -51,7 +51,7 @@ export function TeamScore({
     return (
       <View style={styles.listCol}>
         <View style={styles.headerRow}>
-          <Text style={styles.nameOnly}>{teamName(teamIdx)}</Text>
+          <Text style={[styles.nameOnly, { color: teamColor(teamIdx) }]}>{teamName(teamIdx)}</Text>
           <View style={styles.winsBox}>
             <Text style={styles.winsNum}>{wins}</Text>
             <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
@@ -104,7 +104,7 @@ export function TeamScore({
       <View style={styles.gridHeader}>
         <View style={styles.gridHeadRow}>
           {trophyFirst ? trophies : null}
-          <Text style={styles.name}>{teamName(teamIdx)}</Text>
+          <Text style={[styles.name, { color: teamColor(teamIdx) }]}>{teamName(teamIdx)}</Text>
           {trophyFirst ? null : trophies}
         </View>
         {wins > 0 ? (

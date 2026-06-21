@@ -86,6 +86,7 @@ export function AchievementsScreen() {
         groups,
         friendsCount: localUser.friends?.length ?? 0,
         goals: localUser.stats?.goals ?? 0,
+        assists: localUser.stats?.assists ?? 0,
       })
       .then(async (c) => {
         if (!alive) return;
@@ -190,6 +191,21 @@ export function AchievementsScreen() {
                 hideTitle
               />
               <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
+              {/* How to earn — the action + the concrete tier targets, so
+                  the user knows exactly what unlocks each medal. */}
+              <View style={styles.howBox}>
+                <Text style={styles.howTitle}>{he.achievementHowTitle}</Text>
+                <Text style={styles.howText}>{active.def.howHe}</Text>
+                {!active.def.oneOff ? (
+                  <Text style={styles.howTiers}>
+                    {he.achievementTiersLine(
+                      active.def.tiers[0].threshold,
+                      active.def.tiers[1].threshold,
+                      active.def.tiers[2].threshold,
+                    )}
+                  </Text>
+                ) : null}
+              </View>
               {active.currentTier ? (
                 <Text
                   style={[
@@ -344,6 +360,32 @@ const styles = StyleSheet.create({
   detailDesc: {
     ...typography.body,
     color: colors.text,
+    textAlign: 'center',
+  },
+  howBox: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.sm,
+    gap: 2,
+    alignItems: 'center',
+  },
+  howTitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  howText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  howTiers: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
     textAlign: 'center',
   },
   detailMeta: {

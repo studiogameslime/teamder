@@ -15,12 +15,13 @@ import {
   buildRoster,
   makeResolver,
   teamName,
+  teamColor,
   type PlayerLite,
   type RosterMember,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
 import type { DraftTeamsResult, GameGuest, LiveMatchState, MatchRotation } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 interface Props {
@@ -48,6 +49,12 @@ interface Props {
 export function LiveScoreboardCard(props: Props) {
   const { gameId, live, draftTeams, rotation, playersMap, guests, minute, canEdit } = props;
   const [pickSide, setPickSide] = useState<'A' | 'B' | null>(null);
+  // After a real scorer is picked we ask "who assisted?" — this holds the
+  // in-progress goal until the assist step resolves.
+  const [pendingAssist, setPendingAssist] = useState<{
+    side: 'A' | 'B';
+    scorerId: string;
+  } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -61,12 +68,18 @@ export function LiveScoreboardCard(props: Props) {
   const rosterB = useMemo(() => buildRoster(bIdx, teams, rotation, resolve), [bIdx, teams, rotation, resolve]);
   const goals = live.goals ?? [];
 
-  const addGoal = async (team: 'A' | 'B', scorerId: string | null, ownGoal?: boolean) => {
+  const addGoal = async (
+    team: 'A' | 'B',
+    scorerId: string | null,
+    ownGoal?: boolean,
+    assisterId?: string | null,
+  ) => {
     setPickSide(null);
+    setPendingAssist(null);
     if (busy) return;
     setBusy(true);
     try {
-      await gameService.recordGoal(gameId, { team, scorerId, ownGoal, minute });
+      await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute });
     } finally {
       setBusy(false);
     }
@@ -93,7 +106,7 @@ export function LiveScoreboardCard(props: Props) {
         <ScoreSide
           label={teamName(aIdx)}
           score={live.scoreA}
-          tint={colors.team1}
+          tint={teamColor(aIdx)}
           canEdit={canEdit}
           onAdd={() => setPickSide('A')}
         />
@@ -122,7 +135,7 @@ export function LiveScoreboardCard(props: Props) {
         <ScoreSide
           label={teamName(bIdx)}
           score={live.scoreB}
-          tint={colors.team2}
+          tint={teamColor(bIdx)}
           canEdit={canEdit}
           onAdd={() => setPickSide('B')}
         />
@@ -159,7 +172,7 @@ export function LiveScoreboardCard(props: Props) {
                       {goalLabel(g)}
                     </Text>
                     <View
-                      style={[styles.logDot, { backgroundColor: g.team === 'A' ? colors.team1 : colors.team2 }]}
+                      style={[styles.logDot, { backgroundColor: g.team === 'A' ? teamColor(aIdx) : teamColor(bIdx) }]}
                     />
                   </View>
                 ))}
@@ -172,10 +185,31 @@ export function LiveScoreboardCard(props: Props) {
         visible={pickSide !== null}
         teamLabel={pickSide === 'A' ? teamName(aIdx) : teamName(bIdx)}
         roster={pickSide === 'A' ? rosterA : rosterB}
-        onPick={(id) => pickSide && addGoal(pickSide, id)}
+        onPick={(id) => {
+          if (!pickSide) return;
+          // Real scorer → ask who assisted (step 2). Unknown / own goal skip it.
+          setPendingAssist({ side: pickSide, scorerId: id });
+          setPickSide(null);
+        }}
         onUnknown={() => pickSide && addGoal(pickSide, null)}
         onOwnGoal={() => pickSide && addGoal(pickSide, null, true)}
         onClose={() => setPickSide(null)}
+      />
+
+      <AssisterPicker
+        visible={pendingAssist !== null}
+        teamLabel={pendingAssist?.side === 'A' ? teamName(aIdx) : teamName(bIdx)}
+        // The other players on the scorer's team — you can't assist your own goal.
+        roster={(pendingAssist?.side === 'A' ? rosterA : rosterB).filter(
+          (m) => m.id !== pendingAssist?.scorerId,
+        )}
+        onPick={(id) =>
+          pendingAssist && addGoal(pendingAssist.side, pendingAssist.scorerId, false, id)
+        }
+        onNone={() =>
+          pendingAssist && addGoal(pendingAssist.side, pendingAssist.scorerId, false, null)
+        }
+        onClose={() => setPendingAssist(null)}
       />
     </View>
   );
@@ -241,11 +275,10 @@ function ScorerPicker({
           <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
             {roster.map((m) => (
               <Pressable key={m.id} style={styles.scorerRow} onPress={() => onPick(m.id)}>
-                <Ionicons name="football-outline" size={18} color={colors.primary} />
+                <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
                 <Text style={styles.scorerName} numberOfLines={1}>
                   {m.name}
                 </Text>
-                <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
               </Pressable>
             ))}
           </ScrollView>
@@ -255,6 +288,52 @@ function ScorerPicker({
             </Pressable>
             <Pressable style={styles.specialBtn} onPress={onOwnGoal}>
               <Text style={styles.specialTxt}>{he.goalOwnGoal}</Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.cancelBtn} onPress={onClose}>
+            <Text style={styles.cancelTxt}>{he.cancel}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** Step 2 of goal entry — "who assisted?". Shows the scorer's teammates plus a
+ *  "no one" option (a goal can have no assist). Reuses the scorer-picker chrome. */
+function AssisterPicker({
+  visible,
+  teamLabel,
+  roster,
+  onPick,
+  onNone,
+  onClose,
+}: {
+  visible: boolean;
+  teamLabel: string;
+  roster: RosterMember[];
+  onPick: (id: string) => void;
+  onNone: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.sheetTitle}>{he.goalAssistPickTitle(teamLabel)}</Text>
+          <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+            {roster.map((m) => (
+              <Pressable key={m.id} style={styles.scorerRow} onPress={() => onPick(m.id)}>
+                <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
+                <Text style={styles.scorerName} numberOfLines={1}>
+                  {m.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <View style={styles.specialRow}>
+            <Pressable style={styles.specialBtn} onPress={onNone}>
+              <Text style={styles.specialTxt}>{he.goalAssistNone}</Text>
             </Pressable>
           </View>
           <Pressable style={styles.cancelBtn} onPress={onClose}>
@@ -317,14 +396,16 @@ const styles = StyleSheet.create({
   logRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   undoBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   logDot: { width: 9, height: 9, borderRadius: 5 },
-  logName: { ...typography.body, color: colors.text, textAlign: 'right', fontWeight: '600' },
+  logName: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
   logMin: { ...typography.caption, color: colors.textMuted, fontVariant: ['tabular-nums'], minWidth: 26 },
   // ── Scorer picker modal ──
   backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 24, padding: spacing.lg, gap: spacing.sm },
   sheetTitle: { ...typography.h2, color: colors.text, fontWeight: '800', textAlign: 'center', marginBottom: spacing.xs },
   scorerRow: {
-    flexDirection: 'row-reverse',
+    // `row` (NOT row-reverse): under the app's RTL the FIRST child (avatar)
+    // lands on the RIGHT, the name right-aligned beside it, icon on the left.
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: 9,
@@ -332,7 +413,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  scorerName: { flex: 1, ...typography.body, color: colors.text, textAlign: 'right', fontWeight: '600' },
+  scorerName: { flex: 1, ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
   specialRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   specialBtn: {
     flex: 1,

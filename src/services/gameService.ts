@@ -15,6 +15,7 @@
 
 import {
   addDoc,
+  arrayRemove,
   arrayUnion,
   collection,
   deleteDoc,
@@ -57,13 +58,17 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
-import { isPlayedGame } from '@/utils/playedGames';
+import { isAttendedGame } from '@/utils/playedGames';
 import {
   startRotation as runStartRotation,
   recordWinner as runRecordWinner,
   recordTie as runRecordTie,
+  startRotationSkeleton,
+  recordWinnerSkeleton,
+  recordTieSkeleton,
   rosterOf as effectiveRosterOf,
   type RotationTeam,
+  type RotationFillState,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
@@ -621,6 +626,9 @@ export const gameService = {
     /** Directional vs the VIEWER (uidA): times uidA's side beat uidB's. */
     winsAgainst: number;
     lossesAgainst: number;
+    /** Directional assists vs the VIEWER (uidA). */
+    assistedThem: number;
+    assistedMe: number;
   }> {
     const zero = {
       registeredTogether: 0,
@@ -633,6 +641,8 @@ export const gameService = {
       against: 0,
       winsAgainst: 0,
       lossesAgainst: 0,
+      assistedThem: 0,
+      assistedMe: 0,
     };
     if (USE_MOCK_DATA || !uidA || !uidB || uidA === uidB) return zero;
     // array-contains(uidA) + status=='finished' — pairs only form in played
@@ -693,6 +703,8 @@ export const gameService = {
           against?: number;
           winsA?: number;
           winsB?: number;
+          assistsAToB?: number;
+          assistsBToA?: number;
         };
         acc.sameTeam = typeof d.sameTeam === 'number' ? d.sameTeam : 0;
         acc.winsTogether = typeof d.winsTogether === 'number' ? d.winsTogether : 0;
@@ -705,6 +717,12 @@ export const gameService = {
         const winsB = typeof d.winsB === 'number' ? d.winsB : 0;
         acc.winsAgainst = aIsFirst ? winsA : winsB;
         acc.lossesAgainst = aIsFirst ? winsB : winsA;
+        // assistsAToB = sorted-FIRST assisted sorted-SECOND. Map to the viewer:
+        // assistedThem = times uidA assisted uidB; assistedMe = the reverse.
+        const aToB = typeof d.assistsAToB === 'number' ? d.assistsAToB : 0;
+        const bToA = typeof d.assistsBToA === 'number' ? d.assistsBToA : 0;
+        acc.assistedThem = aIsFirst ? aToB : bToA;
+        acc.assistedMe = aIsFirst ? bToA : aToB;
       }
     } catch (err) {
       if (__DEV__) console.warn('[gameService] pairStats read failed', err);
@@ -714,10 +732,15 @@ export const gameService = {
 
   /**
    * Community-level aggregate stats for the CommunityDetails screen.
-   *   • totalFinished      — finished games all-time (capped at 200 reads)
-   *   • totalCancelled     — cancelled games all-time
+   *
+   * NOTE: all figures are computed over the most-recent 200 terminal
+   * (finished|cancelled) game docs — NOT strictly all-time. For clubs with
+   * ≤200 terminal games this equals all-time; beyond that it's a recent
+   * window. Kept bounded deliberately to cap read cost.
+   *   • totalFinished      — finished games in the 200-doc window
+   *   • totalCancelled     — cancelled games in the window
    *   • organizationRate   — finished / (finished + cancelled). Captures
-   *     "what % of attempts actually happened?".
+   *     "what % of attempts actually happened?" over the window.
    *   • avgAttendance      — average # of arrived players per finished game
    *   • thisMonthFinished  — games finished in the last 30 days
    *   • topPlayers         — uid + attended count, sorted desc, top 5
@@ -844,7 +867,10 @@ export const gameService = {
           return { uid: x.userId ?? '', goals: typeof x.goals === 'number' ? x.goals : 0 };
         })
         .filter((s) => s.uid && s.goals > 0)
-        .sort((a, b) => b.goals - a.goals);
+        // Deterministic tie-break by uid so equal-goal scorers keep a STABLE
+        // order (and stable medals) across reads — Firestore doc-iteration
+        // order is otherwise unstable, which made medals flip between refreshes.
+        .sort((a, b) => b.goals - a.goals || a.uid.localeCompare(b.uid));
       const totalGoals = scorers.reduce((a, s) => a + s.goals, 0);
       const totalRounds = csSnap.exists()
         ? ((csSnap.data() as { rounds?: number }).rounds ?? 0)
@@ -908,23 +934,22 @@ export const gameService = {
    * Games a user actually PLAYED — the personal "games played" feed that
    * powers the Profile count, History, and Stats.
    *
-   * Definition (decided 2026-06-12): a game counts as played iff the user
-   * was placed in the drawn teams (`draftTeams`) AND the game's start time
-   * has passed. Being in the teams is a strong "showed up / was in the
-   * lineup" signal — far better than mere registration, which over-counts
-   * no-shows. No server flow / manual "end evening" is required; we compute
-   * it live from the games the user participated in (same approach as the
-   * server-side trust score).
+   * Definition (unified 2026-06-21): a game counts as played iff it is a
+   * FINISHED, PAST game where the user is in the final `players[]` and was not
+   * marked `no_show` — `isAttendedGame`, the SAME predicate the Statistics
+   * screen and achievements use, so the "משחקים" count agrees everywhere.
+   * (Previously this used a stricter `draftTeams`-membership gate, which
+   * disagreed with the stats screen for any game where teams weren't drawn.)
    *
    * Query is the single-field `participantIds array-contains` (no composite
-   * index needed); the time + teams filtering happens client-side.
+   * index needed); the time + attendance filtering happens client-side.
    */
   async getPlayedGames(userId: UserId, max = 50): Promise<GameSummary[]> {
     if (!userId) return [];
     if (USE_MOCK_DATA) {
       const now = Date.now();
       return mockGamesV2
-        .filter((g) => isPlayedGame(g, userId, now))
+        .filter((g) => isAttendedGame(g, userId, now))
         .sort((a, b) => b.startsAt - a.startsAt)
         .slice(0, max)
         .map((g) => playedGameSummary(g));
@@ -953,10 +978,39 @@ export const gameService = {
     }
     return snap.docs
       .map((d) => d.data())
-      .filter((g) => isPlayedGame(g, userId, now))
+      .filter((g) => isAttendedGame(g, userId, now))
       .sort((a, b) => b.startsAt - a.startsAt)
       .slice(0, max)
       .map((g) => playedGameSummary(g));
+  },
+
+  /**
+   * Exact count of games the user played — the headline number on the
+   * Profile. Uses an UNBOUNDED `participantIds array-contains` scan (the same
+   * single-field index playerStatsService uses) and the canonical
+   * `isAttendedGame` predicate, so it equals the Statistics screen's "משחקים"
+   * tile precisely (no 50-row cap, no model drift). Best-effort: returns null
+   * on failure so callers can keep the previous value.
+   */
+  async getPlayedGamesCount(userId: UserId): Promise<number | null> {
+    if (!userId) return 0;
+    const now = Date.now();
+    if (USE_MOCK_DATA) {
+      return mockGamesV2.filter((g) => isAttendedGame(g, userId, now)).length;
+    }
+    try {
+      const snap = await getDocs(
+        query(col.games(), where('participantIds', 'array-contains', userId)),
+      );
+      return snap.docs.reduce(
+        (n, d) => (isAttendedGame(d.data(), userId, now) ? n + 1 : n),
+        0,
+      );
+    } catch (err) {
+      logError('getPlayedGamesCount', err, { userId });
+      if (__DEV__) console.warn('[gameService] getPlayedGamesCount failed', err);
+      return null;
+    }
   },
 
   /**
@@ -2295,17 +2349,31 @@ export const gameService = {
   /** Log one goal for the running round. `team` is the side it COUNTS FOR. */
   async recordGoal(
     gameId: string,
-    opts: { team: 'A' | 'B'; scorerId: UserId | null; ownGoal?: boolean; minute: number },
+    opts: {
+      team: 'A' | 'B';
+      scorerId: UserId | null;
+      assisterId?: UserId | null;
+      ownGoal?: boolean;
+      minute: number;
+    },
   ): Promise<void> {
     if (!gameId) return;
     // Collision-proof id: `g_<ms>_<n>` collided when two goals landed in the
     // same ms at the same array length (two rapid taps / two devices), which
     // then made removeGoal delete EVERY goal sharing that id. A random suffix
     // guarantees uniqueness.
+    const scorerId = opts.ownGoal ? null : opts.scorerId ?? null;
+    // An assist only makes sense for a real, attributed scorer (never on an own
+    // goal / unknown scorer, and never the scorer assisting themselves).
+    const assisterId =
+      scorerId && opts.assisterId && opts.assisterId !== scorerId
+        ? opts.assisterId
+        : undefined;
     const goal: import('@/types').RoundGoal = {
       id: `g_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
       team: opts.team,
-      scorerId: opts.ownGoal ? null : opts.scorerId ?? null,
+      scorerId,
+      ...(assisterId ? { assisterId } : {}),
       ownGoal: opts.ownGoal ? true : undefined,
       minute: Math.max(0, Math.floor(opts.minute)),
       at: Date.now(),
@@ -2354,12 +2422,18 @@ export const gameService = {
     }
     const cur = await readTimerState(gameId);
     if (!cur?.liveMatch) return;
-    const r = apply(cur.liveMatch);
-    if (!r) return;
+    const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
+    if (!gone) return;
+    // arrayRemove + increment(-1) compose ATOMICALLY at the field level with a
+    // concurrent recordGoal (arrayUnion + increment(+1)) — unlike the old
+    // read-modify-write, which overwrote the whole `goals` array and could drop
+    // a concurrent goal, leaving the score and the goal log permanently out of
+    // sync. arrayRemove matches by value, so a double-remove of the same goal
+    // is a no-op on the array (the score guard below keeps it from going wrong).
     await updateDoc(docs.game(gameId), {
-      'liveMatch.goals': r.goals,
-      'liveMatch.scoreA': r.scoreA,
-      'liveMatch.scoreB': r.scoreB,
+      'liveMatch.goals': arrayRemove(gone),
+      'liveMatch.scoreA': increment(gone.team === 'A' ? -1 : 0),
+      'liveMatch.scoreB': increment(gone.team === 'B' ? -1 : 0),
       updatedAt: Date.now(),
     });
   },
@@ -2411,10 +2485,33 @@ export const gameService = {
     const isTie = !winnerSide;
     if (isTie && !tieMode) return null; // 2–3 teams: caller must supply a winner
 
+    await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
+
+    // Rotate. A tie in a 4-team game follows the tie rule; otherwise winner
+    // stays, loser out, next in.
+    if (isTie && tieMode) {
+      await this.recordTie(gameId, tieMode);
+      return 'tie';
+    }
+    await this.recordWinner(gameId, userId, winnerSide === 'A' ? idxA : idxB);
+    return winnerSide;
+  },
+
+  /** Commit the just-finished round's stats (goals + pairs + community) and
+   *  clear the live scoreboard. Shared by the auto path
+   *  (finalizeRoundAndRotate) and the interactive-fill path
+   *  (prepareRoundResult). Idempotent server-side via `roundId`. */
+  async _commitRoundStatsAndClear(
+    gameId: string,
+    lm: import('@/types').LiveMatchState,
+    rot: import('@/types').MatchRotation,
+    draft: DraftTeamsResult,
+    winnerSide: 'A' | 'B' | null,
+  ): Promise<void> {
+    const [idxA, idxB] = rot.playing;
     // On-field rosters — the EFFECTIVE lineup (loan-adjusted), registered uids
     // only (guests carry no stats). Must match the loan-aware rosters the
-    // rotation trigger uses for same-team pairs, or the head-to-head "against"
-    // tally would describe a different lineup when a player was borrowed.
+    // rotation trigger uses for same-team pairs.
     const rosterFor = (idx: number) =>
       effectiveRosterOf(idx, draft.teams, rot.loans ?? []).filter((id) => !isGuestId(id));
     const sideA = rosterFor(idxA);
@@ -2422,23 +2519,18 @@ export const gameService = {
 
     if (!USE_MOCK_DATA) {
       const now = Date.now();
-      // Stats run SERVER-SIDE (rules block writing other players' docs): goals
-      // + pair/community aggregation in the `commitRoundStats` callable. On a
-      // tie, scorers still count; `winnerSide: 'tie'` skips directional wins.
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { httpsCallable } = require('firebase/functions');
         await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
-          // Idempotency key — the round being committed. The server records
-          // committed round ids so a retry / partial-failure re-press can't
-          // double-count goals + against-pairs.
           roundId: rot.round ?? null,
           sideA,
           sideB,
           winnerSide: winnerSide ?? 'tie',
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
+            assisterId: gl.assisterId ?? null,
             ownGoal: !!gl.ownGoal,
           })),
         });
@@ -2446,8 +2538,6 @@ export const gameService = {
         logError('commitRoundStats', err, { gameId });
         if (__DEV__) console.warn('[gameService] commitRoundStats failed', err);
       }
-
-      // Clear the live scoreboard for the next round (game-doc write, admin-OK).
       await updateDoc(docs.game(gameId), {
         'liveMatch.scoreA': 0,
         'liveMatch.scoreB': 0,
@@ -2463,15 +2553,97 @@ export const gameService = {
         m.liveMatch.goals = [];
       }
     }
+  },
 
-    // Rotate. A tie in a 4-team game follows the tie rule; otherwise winner
-    // stays, loser out, next in.
+  // ── Interactive fill (admin chooses who completes a short team) ──────────
+  // The engine builds the rotation SKELETON (which teams play, who's the
+  // donor) without filling; the UI then loops nextFillNeeded + applyChosenFill,
+  // asking the admin per short team, and finally calls commitFilledRotation.
+  // These methods do the I/O around that pure flow.
+
+  /** START skeleton, no persist. Null when a rotation can't start. */
+  async prepareStartRotation(gameId: string): Promise<{
+    skeleton: RotationFillState;
+    draft: DraftTeamsResult;
+    baseTeams: { index: number; playerIds: string[] }[];
+  } | null> {
+    if (!gameId) return null;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!g || !draft || draft.teams.length < 2) return null;
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = effFillMode(g, draft);
+    const teams: RotationTeam[] = draft.teams.map((t) => ({
+      index: t.index,
+      playerIds: [...t.playerIds],
+    }));
+    const skeleton = startRotationSkeleton(teams, perTeam, fillMode);
+    if (!skeleton) return null;
+    const baseTeams = draft.teams.map((t) => ({
+      index: t.index,
+      playerIds: [...t.playerIds],
+    }));
+    return { skeleton, draft, baseTeams };
+  },
+
+  /** Commit round stats + clear scoreboard, then return the post-round
+   *  skeleton (no persist). `{ outcome: null }` → a 2–3 team tie needs a
+   *  manual winner; caller opens the picker and calls again with it. */
+  async prepareRoundResult(
+    gameId: string,
+    _userId: string,
+    manualWinnerSide?: 'A' | 'B',
+  ): Promise<
+    | { outcome: 'A' | 'B' | 'tie'; skeleton: RotationFillState; draft: DraftTeamsResult }
+    | { outcome: null }
+    | null
+  > {
+    if (!gameId) return null;
+    const g = await this.getGameById(gameId);
+    const lm = g?.liveMatch;
+    const rot = g?.rotation;
+    const draft = g?.draftTeams;
+    if (!g || !lm || !rot || !draft) return null;
+    const [idxA, idxB] = rot.playing;
+    const winnerSide: 'A' | 'B' | null =
+      lm.scoreA > lm.scoreB ? 'A' : lm.scoreB > lm.scoreA ? 'B' : manualWinnerSide ?? null;
+    const tieMode =
+      g.numberOfTeams === 4 && g.advancedMode ? g.advancedTieMode ?? 'bothOut' : undefined;
+    const isTie = !winnerSide;
+    if (isTie && !tieMode) return { outcome: null };
+
+    await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
+
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = effFillMode(g, draft);
+    const teams: RotationTeam[] = draft.teams.map((t) => ({
+      index: t.index,
+      playerIds: [...t.playerIds],
+    }));
     if (isTie && tieMode) {
-      await this.recordTie(gameId, tieMode);
-      return 'tie';
+      return { outcome: 'tie', skeleton: recordTieSkeleton(teams, rot, perTeam, fillMode, tieMode), draft };
     }
-    await this.recordWinner(gameId, userId, winnerSide === 'A' ? idxA : idxB);
-    return winnerSide;
+    const winnerIdx = winnerSide === 'A' ? idxA : idxB;
+    return {
+      outcome: winnerSide as 'A' | 'B',
+      skeleton: recordWinnerSkeleton(winnerIdx, teams, rot, perTeam, fillMode),
+      draft,
+    };
+  },
+
+  /** Persist a fully-filled rotation. For a START rotation pass baseTeams so a
+   *  later reset can restore the original drafted rosters. */
+  async commitFilledRotation(
+    gameId: string,
+    draft: DraftTeamsResult,
+    result: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
+    baseTeams?: { index: number; playerIds: string[] }[],
+  ): Promise<void> {
+    if (!gameId) return;
+    const rotation = baseTeams
+      ? { ...result.rotation, baseTeams }
+      : result.rotation;
+    await this._persistRotation(gameId, draft, { rotation, teams: result.teams });
   },
 
   /** Clear the rotation (back to "not started"). In 'permanent' fill mode the

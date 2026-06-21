@@ -188,6 +188,7 @@ export type AchievementMetric =
   | 'playersCoached'
   | 'friendsCount'
   | 'goals'
+  | 'assists'
   | 'maxGamesWithPlayer'
   | 'maxWinsWithPlayer'
   | 'distinctPlayers';
@@ -218,6 +219,8 @@ export interface UserAchievementState {
   friendsCount: number;
   /** Lifetime goals scored (from stats.goals). */
   goals: number;
+  /** Lifetime assists (from stats.assists). */
+  assists: number;
   /** Most games played alongside a single recurring teammate. */
   maxGamesWithPlayer: number;
   /** Most wins earned alongside a single recurring teammate. */
@@ -236,6 +239,7 @@ export const defaultAchievementState: UserAchievementState = {
   playersCoached: 0,
   friendsCount: 0,
   goals: 0,
+  assists: 0,
   maxGamesWithPlayer: 0,
   maxWinsWithPlayer: 0,
   distinctPlayers: 0,
@@ -594,6 +598,9 @@ export interface UserStats {
    * it in without a schema migration.
    */
   goals?: number;
+  /** Lifetime assists — incremented server-side by `commitRoundStats` when the
+   *  admin attributes an assist to the goal during an advanced-match round. */
+  assists?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
@@ -748,6 +755,22 @@ export interface Group {
    */
   isPersonal?: boolean;
   hidden?: boolean;
+
+  /**
+   * "Internal rating" mode. When true, player skill ratings are set by the
+   * community's admins themselves (a managed roster level) rather than by the
+   * peer-voting system. The community / match-details surfaces then show the
+   * admins' rating instead of the crowd average. Opt-in at create/edit time;
+   * undefined/false → the default peer-voted rating behaviour.
+   */
+  internalRating?: boolean;
+  /**
+   * Admin-set player ratings (1–5), keyed by member uid. Only meaningful when
+   * `internalRating` is true. Lives on the group doc itself (read for free with
+   * the group — no extra reads), written by admins via field-path updates.
+   * A missing entry = that player hasn't been rated by the admins yet.
+   */
+  adminRatings?: Record<UserId, number>;
 
   createdAt: number;
   updatedAt?: number;
@@ -998,6 +1021,9 @@ export interface RoundGoal {
   id: string;
   team: 'A' | 'B';
   scorerId: UserId | null;
+  /** Player who assisted the goal (same team, not the scorer), or null when
+   *  there was no assist / unknown scorer / own goal. */
+  assisterId?: UserId | null;
   ownGoal?: boolean;
   minute: number;
   at: number; // epoch ms

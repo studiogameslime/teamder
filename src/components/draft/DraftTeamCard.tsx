@@ -145,7 +145,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    // center (not flex-start) so when a big team WRAPS, the leftover avatars
+    // sit centered under the row instead of a lonely orphan hugging the edge
+    // (user report 2026-06-21). No effect on teams that fit one row — the
+    // chips block is content-sized via the parent's `space-between`, so a
+    // single full row equals the block width and centering is a no-op there.
+    justifyContent: 'center',
     // Tightened (2026-06-12) so a 7-a-side team fits a row without
     // wrapping to a lonely 5th/6th avatar.
     columnGap: 4,

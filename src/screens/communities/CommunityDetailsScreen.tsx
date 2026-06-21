@@ -87,6 +87,10 @@ type Nav = NativeStackNavigationProp<
 >;
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityDetails'>;
 
+type CommunityStatsData = Awaited<
+  ReturnType<typeof gameService.getCommunityStats>
+>;
+
 export function CommunityDetailsScreen() {
   const nav = useNavigation<Nav>();
   const params = useRoute<Params>().params;
@@ -101,6 +105,9 @@ export function CommunityDetailsScreen() {
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
   const [history, setHistory] = useState<GameSummary[]>([]);
+  const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -138,20 +145,23 @@ export function CommunityDetailsScreen() {
           setMembers([]);
           setUpcoming([]);
           setHistory([]);
+          setCommunityStats(null);
           return;
         }
         logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
         const memberIds = Array.from(
           new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds]),
         );
-        const [users, games, hist] = await Promise.all([
+        const [users, games, hist, cStats] = await Promise.all([
           groupService.hydrateUsers(memberIds),
           gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
           gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
+          gameService.getCommunityStats(g.id).catch(() => null),
         ]);
         setMembers(users);
         setUpcoming(games);
         setHistory(hist);
+        setCommunityStats(cStats);
       } catch (err) {
         logError('communityDetailsReload', err, {
           screen: 'CommunityDetailsScreen',
@@ -444,7 +454,15 @@ export function CommunityDetailsScreen() {
   }
 
   const nextGame = upcoming[0];
-  const matchesHeld = history.filter((h) => h.status === 'finished').length;
+  // Use the authoritative finished-games count from getCommunityStats (windowed
+  // to ~200 terminal docs, cancelled excluded) so this number AGREES with the
+  // "משחקים שיצאו לפועל" stat shown lower on the same screen. The old source
+  // (history list, limit 20, cancelled INCLUDED) both undercounted past ~20
+  // games and contradicted that stat. Fall back to the history-derived count
+  // only until the stats load.
+  const matchesHeld =
+    communityStats?.totalFinished ??
+    history.filter((h) => h.status === 'finished').length;
 
   // Hamburger menu — all admin / destructive / contact actions live
   // here. The ⋯ overflow opens the same sheet so users get one mental
@@ -630,9 +648,11 @@ export function CommunityDetailsScreen() {
               <Text style={styles.descriptionTitle}>
                 {he.communityDescriptionTitle}
               </Text>
-              <Text style={styles.descriptionBody}>
-                {group.description.trim()}
-              </Text>
+              <CollapsibleContent>
+                <Text style={styles.descriptionBody}>
+                  {group.description.trim()}
+                </Text>
+              </CollapsibleContent>
             </View>
           ) : null}
 
@@ -647,8 +667,11 @@ export function CommunityDetailsScreen() {
               </Text>
               {/* Rules support markdown-lite (**bold** + "- " bullets).
                   RichRulesText parses + renders; plain legacy rules
-                  fall through as ordinary paragraphs. */}
-              <RichRulesText text={group.rules.trim()} />
+                  fall through as ordinary paragraphs. Collapsed by default
+                  when long so the rules don't fill the whole screen. */}
+              <CollapsibleContent>
+                <RichRulesText text={group.rules.trim()} />
+              </CollapsibleContent>
             </View>
           ) : null}
 
@@ -743,9 +766,10 @@ export function CommunityDetailsScreen() {
             }
           />
 
-          {/* Community-level aggregate stats. Loaded lazily — read
-              cost is bounded to ~200 finished/cancelled game docs. */}
-          <CommunityStatsSection groupId={group.id} />
+          {/* Community-level aggregate stats. Loaded once by the parent
+              (read cost bounded to ~200 finished/cancelled game docs) and
+              passed down so the count here AGREES with "מפגשים שנערכו". */}
+          <CommunityStatsSection stats={communityStats} />
 
           {/* Goals championship — club-scoped scorers leaderboard. */}
           <CommunityChampionship groupId={group.id} />
@@ -861,39 +885,77 @@ export function CommunityDetailsScreen() {
   );
 }
 
+// Collapsible long-text wrapper — clamps content to `collapsedHeight` and
+// shows a "קרא עוד / הצג פחות" toggle ONLY when the content actually overflows.
+// Wraps the description + rules cards, which can run long enough to fill the
+// whole screen (user report 2026-06-21). Height is measured with Math.max so
+// the clamp can't shrink the measurement and cause a toggle flicker loop.
+function CollapsibleContent({
+  children,
+  collapsedHeight = 160,
+}: {
+  children: React.ReactNode;
+  collapsedHeight?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [fullHeight, setFullHeight] = useState(0);
+  const overflows = fullHeight > collapsedHeight + 12;
+  return (
+    <View>
+      <View
+        style={
+          !expanded && overflows
+            ? { maxHeight: collapsedHeight, overflow: 'hidden' }
+            : undefined
+        }
+      >
+        <View
+          onLayout={(e) =>
+            setFullHeight((prev) => Math.max(prev, e.nativeEvent.layout.height))
+          }
+        >
+          {children}
+        </View>
+      </View>
+      {overflows ? (
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          hitSlop={8}
+          style={collapsibleStyles.toggle}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.primary}
+          />
+          <Text style={collapsibleStyles.toggleText}>
+            {expanded ? he.communityReadLess : he.communityReadMore}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+const collapsibleStyles = StyleSheet.create({
+  toggle: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    paddingTop: spacing.xs,
+  },
+  toggleText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+});
+
 // ─── Community stats section ────────────────────────────────────────────
 
-function CommunityStatsSection({ groupId }: { groupId: string }) {
-  const [stats, setStats] = useState<{
-    totalFinished: number;
-    totalCancelled: number;
-    organizationRate: number;
-    avgAttendance: number;
-    thisMonthFinished: number;
-    activeThisMonth: number;
-    activeThisYear: number;
-    topPlayers: Array<{ uid: string; attended: number }>;
-  } | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    gameService
-      .getCommunityStats(groupId)
-      .then((s) => {
-        if (alive) setStats(s);
-      })
-      .catch((err) => {
-        logError('getCommunityStats', err, {
-          screen: 'CommunityDetailsScreen',
-          groupId,
-        });
-        if (alive) setStats(null);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [groupId]);
-
+function CommunityStatsSection({ stats }: { stats: CommunityStatsData | null }) {
   if (!stats) return null;
   if (stats.totalFinished === 0 && stats.totalCancelled === 0) return null;
 

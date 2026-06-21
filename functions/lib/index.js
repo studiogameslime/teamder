@@ -3781,6 +3781,7 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         ? Math.min(input.maxMembers, 1000)
         : undefined;
     const isOpen = input.isOpen === true;
+    const internalRating = input.internalRating === true;
     // 3) Generate id + invite code. Server-controlled to prevent
     //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
     const groupRef = db.collection('groups').doc();
@@ -3796,6 +3797,7 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         pendingPlayerIds: [],
         inviteCode: genInviteCode(),
         isOpen,
+        internalRating,
         createdAt,
         updatedAt: createdAt,
     };
@@ -5613,6 +5615,31 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // games. In the same idempotent batch, so a retry can't double-count.
     if (groupId) {
         batch.set(db.collection('communityStats').doc(groupId), { groupId, rounds: inc(1), goals: inc(totalGoalsThisRound), updatedAt: now }, { merge: true });
+    }
+    // 1b) assists → assister.stats.assists + community tally + directional
+    //     head-to-head ("X assisted Y") on the sorted pair doc. An assist only
+    //     counts for a real, attributed scorer and a real, different assister.
+    const byAssister = {};
+    const assistPairs = [];
+    for (const g of goals ?? []) {
+        if (g.ownGoal || !g.scorerId || !isReal(g.scorerId))
+            continue;
+        if (!g.assisterId || !isReal(g.assisterId) || g.assisterId === g.scorerId)
+            continue;
+        byAssister[g.assisterId] = (byAssister[g.assisterId] ?? 0) + 1;
+        assistPairs.push({ assister: g.assisterId, scorer: g.scorerId });
+    }
+    for (const [assister, n] of Object.entries(byAssister)) {
+        batch.set(db.collection('users').doc(assister), { stats: { assists: inc(n) } }, { merge: true });
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${assister}`), { groupId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
+    }
+    // Directional pair assists: assistsAToB = sorted-first player assisted the
+    // sorted-second; assistsBToA = the reverse. The player card reads its side.
+    for (const { assister, scorer } of assistPairs) {
+        const [pa, pb] = [assister, scorer].sort();
+        const field = assister === pa ? 'assistsAToB' : 'assistsBToA';
+        batch.set(db.collection('pairStats').doc(pairKey(assister, scorer)), { a: pa, b: pb, [field]: inc(1), updatedAt: now }, { merge: true });
     }
     // NOTE: same-team pairs (sameTeam / winsTogether / lossesTogether) are
     // already written by the existing `onGameRotationChanged` trigger on every

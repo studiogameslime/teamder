@@ -52,9 +52,22 @@ import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } fro
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
 import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
+import {
+  FillerPickerModal,
+  type FillRequestView,
+} from '@/components/match/FillerPickerModal';
+import {
+  nextFillNeeded,
+  applyChosenFill,
+  pickRandom,
+  rosterOf,
+  type RotationFillState,
+  type RotationTeam,
+} from '@/services/rotationEngine';
+import { teamName } from '@/utils/draft';
 import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
-import { colors } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -154,6 +167,21 @@ export function AdvancedLiveMatchScreen() {
   const [ending, setEnding] = useState(false);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
+  // Interactive team-completion flow. The modal request is render state; the
+  // in-progress working rosters + queue live in a ref (mutated between popups).
+  const [fillRequest, setFillRequest] = useState<FillRequestView | null>(null);
+  const fillFlowRef = useRef<{
+    draft: DraftTeamsResult;
+    baseTeams?: { index: number; playerIds: string[] }[];
+    working: { teams: RotationTeam[]; loans: MatchRotation['loans'] };
+    rotationBase: MatchRotation;
+    perTeam: number;
+    fillMode: RotationFillState['fillMode'];
+    loserFirst: number | null;
+    playing: [number, number];
+    queue: number[];
+    current: number | null;
+  } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
   // (the synced-timer hook only ticks while RUNNING).
@@ -283,21 +311,127 @@ export function AdvancedLiveMatchScreen() {
   // `finalizingRef` blocks a double-fire (rapid taps / re-render) from
   // committing the round's stats twice.
   const finalizingRef = useRef(false);
+  // Resolve a roster id (registered uid OR guest id) to a display card.
+  const resolveFillPlayer = (
+    id: string,
+  ): { id: string; name: string; avatarId?: string; photoUrl?: string } => {
+    const u = playersMap[id];
+    if (u) return { id, name: u.displayName ?? id, avatarId: u.avatarId, photoUrl: u.photoUrl };
+    const guest = (game?.guests ?? []).find((x) => x.id === id);
+    return { id, name: guest?.name ?? he.guestLabel };
+  };
+
+  // Kick off the team-completion flow from an engine skeleton: seed the working
+  // rosters, queue the short playing teams (RANDOM order when both are short),
+  // then drive the popups.
+  const beginFillFlow = (
+    skeleton: RotationFillState,
+    draft: DraftTeamsResult,
+    baseTeams?: { index: number; playerIds: string[] }[],
+  ) => {
+    const working = {
+      teams: skeleton.teams,
+      loans: skeleton.rotation.loans,
+    };
+    const short = skeleton.playing.filter(
+      (t) => skeleton.perTeam - rosterOf(t, working.teams, working.loans).length > 0,
+    );
+    // Random which short team completes (and so picks) first.
+    const queue =
+      short.length > 1 && Math.random() < 0.5 ? [short[1], short[0]] : short.slice();
+    fillFlowRef.current = {
+      draft,
+      baseTeams,
+      working,
+      rotationBase: skeleton.rotation,
+      perTeam: skeleton.perTeam,
+      fillMode: skeleton.fillMode,
+      loserFirst: skeleton.loserFirst,
+      playing: skeleton.playing,
+      queue,
+      current: null,
+    };
+    advanceFillFlow();
+  };
+
+  // Show the next short team's picker, or — when none remain — persist the
+  // fully-filled rotation.
+  const advanceFillFlow = async () => {
+    const flow = fillFlowRef.current;
+    if (!flow) return;
+    while (flow.queue.length > 0) {
+      const team = flow.queue.shift() as number;
+      const other = flow.playing[0] === team ? flow.playing[1] : flow.playing[0];
+      const req = nextFillNeeded(
+        [team, other],
+        flow.working.teams,
+        flow.working.loans,
+        flow.perTeam,
+        flow.loserFirst,
+      );
+      if (req && req.team === team && req.deficit > 0) {
+        flow.current = team;
+        setFillRequest({
+          teamLabel: teamName(team),
+          players: req.donors.map(resolveFillPlayer),
+          recommendedIds: pickRandom(req.donors, req.deficit),
+          requiredCount: req.deficit,
+        });
+        return; // wait for the admin to confirm
+      }
+      // team already full → skip to the next in the queue
+    }
+    // Nothing left to fill → commit.
+    setFillRequest(null);
+    fillFlowRef.current = null;
+    if (!gameId) return;
+    const rotation = { ...flow.rotationBase, loans: flow.working.loans };
+    try {
+      await gameService.commitFilledRotation(
+        gameId,
+        flow.draft,
+        { rotation, teams: flow.working.teams },
+        flow.baseTeams,
+      );
+    } catch (err) {
+      logError('liveCommitFilledRotation', err, { gameId });
+      if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
+    }
+  };
+
+  // Admin confirmed who completes the current team → apply + advance.
+  const onFillConfirm = (chosen: string[]) => {
+    const flow = fillFlowRef.current;
+    if (!flow || flow.current == null) return;
+    flow.working = applyChosenFill(
+      flow.working.teams,
+      flow.working.loans,
+      flow.current,
+      chosen,
+      flow.fillMode,
+    );
+    flow.current = null;
+    setFillRequest(null);
+    advanceFillFlow();
+  };
+
   const onEndRound = async () => {
     if (!gameId || !me || finalizingRef.current) return;
     finalizingRef.current = true;
     try {
-      // finalize derives the winner from the score; a 4-team tie auto-resolves
-      // via advancedTieMode. Only a 2–3 team tie returns null → manual picker.
-      const result = await gameService.finalizeRoundAndRotate(gameId, me.id);
-      if (result === null) setWinnerOpen(true);
+      // Commit stats + build the post-round skeleton (no rotate yet). A 4-team
+      // tie auto-resolves; a 2–3 team tie returns outcome null → manual picker.
+      const res = await gameService.prepareRoundResult(gameId, me.id);
+      if (!res) return;
+      if (res.outcome === null) {
+        setWinnerOpen(true);
+        return;
+      }
+      beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
     } finally {
-      // Release the guard only when the round genuinely settled (the await
-      // resolved) — a fixed timer could clear it mid-flight on a slow network
-      // and let a second tap re-commit the same round.
       finalizingRef.current = false;
     }
   };
@@ -309,7 +443,8 @@ export function AdvancedLiveMatchScreen() {
     const side: 'A' | 'B' = teamIndex === rotation.playing[0] ? 'A' : 'B';
     finalizingRef.current = true;
     try {
-      await gameService.finalizeRoundAndRotate(gameId, me.id, side);
+      const res = await gameService.prepareRoundResult(gameId, me.id, side);
+      if (res && res.outcome !== null) beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
       if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
@@ -335,9 +470,13 @@ export function AdvancedLiveMatchScreen() {
   const onStartRound = async () => {
     if (!gameId || !me) return;
     try {
-      await gameService.startRotation(gameId, me.id);
+      // Build the start skeleton (no persist). The admin then completes the two
+      // playing teams via the picker; the rotation is committed at the end.
+      const prep = await gameService.prepareStartRotation(gameId);
+      if (!prep) return; // gate: not enough players for two teams
       await gameService.markGameStarted(gameId);
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      beginFillFlow(prep.skeleton, prep.draft, prep.baseTeams);
     } catch (err) {
       logError('liveStartRound', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startRound failed', err);
@@ -555,6 +694,24 @@ export function AdvancedLiveMatchScreen() {
     game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
   const canStartRound = hasTeams && totalDrafted >= perTeam * 2;
 
+  // Before the round starts, synthesize a PREVIEW rotation (first two teams
+  // play, the rest wait) so the admin sees "who's vs who / who waits" up front
+  // instead of a blank board until "התחל משחקון". Completion happens on start.
+  const previewRotation: MatchRotation | null =
+    !rotationActive && hasTeams && draftTeams
+      ? (() => {
+          const ordered = [...draftTeams.teams].sort((a, b) => a.index - b.index);
+          return {
+            playing: [ordered[0].index, ordered[1].index] as [number, number],
+            waiting: ordered.slice(2).map((t) => t.index),
+            loans: [],
+            wins: {},
+            round: 0,
+            updatedAt: 0,
+          };
+        })()
+      : null;
+
   return (
     <SafeAreaView style={styles.root}>
       {/* Header */}
@@ -669,11 +826,15 @@ export function AdvancedLiveMatchScreen() {
           </Animated.View>
         )}
 
-        {/* Live rotation scoreboard (2 playing teams) + waiting queue. */}
+        {/* Live rotation scoreboard (2 playing teams) + waiting queue. Before
+            the round starts we show a PREVIEW (who's vs who / who waits). */}
         <View style={styles.rotationWrap}>
+          {previewRotation ? (
+            <Text style={styles.previewLabel}>{he.rotationPreviewLabel}</Text>
+          ) : null}
           <RotationPanel
             draftTeams={draftTeams ?? undefined}
-            rotation={rotation ?? undefined}
+            rotation={rotation ?? previewRotation ?? undefined}
             playersMap={playersMap}
             guests={game?.guests}
             goalsByPlayer={goalsByPlayer}
@@ -916,6 +1077,10 @@ export function AdvancedLiveMatchScreen() {
         onClose={() => setWinnerOpen(false)}
       />
 
+      {/* Team-completion picker — admin chooses who comes up to fill a short
+          playing team (random order when both are short). */}
+      <FillerPickerModal request={fillRequest} onConfirm={onFillConfirm} />
+
       {/* Overflow menu — reset rotation / end evening (rare destructive bits). */}
       <Modal
         visible={menuOpen}
@@ -1018,6 +1183,13 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   rotationWrap: { width: '100%' },
+  previewLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
   timerCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',

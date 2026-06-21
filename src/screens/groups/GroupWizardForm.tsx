@@ -51,6 +51,8 @@ export interface GroupFormValues {
   name: string;
   description: string;
   isOpen: boolean;
+  /** Admins set player ratings themselves (vs. peer-voted). Stored as Group.internalRating. */
+  internalRating: boolean;
 
   // Info
   rules: string;
@@ -64,6 +66,7 @@ export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   name: '',
   description: '',
   isOpen: false,
+  internalRating: false,
   rules: '',
   contactPhone: '',
   city: '',
@@ -215,6 +218,19 @@ export function GroupWizardForm({
               info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
               value={values.isOpen}
               onValueChange={(v) => set('isOpen', v)}
+            />
+
+            {/* Internal rating — admins set player skill levels themselves
+                instead of the peer-voting system. The chosen rating is what
+                the community / match-details surfaces display. */}
+            <ToggleCard
+              label={he.createGroupInternalRating}
+              info={{
+                title: he.createGroupInternalRating,
+                text: he.createGroupInternalRatingHint,
+              }}
+              value={values.internalRating}
+              onValueChange={(v) => set('internalRating', v)}
             />
 
             {/* Code-of-conduct (rich text: **bold** + bullets). Stored
