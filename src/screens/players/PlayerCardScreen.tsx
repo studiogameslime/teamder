@@ -230,9 +230,6 @@ export function PlayerCardScreen() {
 
   const inviteAvailable =
     user.availability?.isAvailableForInvites !== false;
-  const attendance = getAttendanceRate(user.stats);
-  const cancelRate = getCancelRate(user.stats);
-  const total = user.stats?.totalGames ?? 0;
 
   // Compute *why* the invite CTA is unavailable, in priority order, so
   // we can show a single explicit reason next to the button instead of
@@ -283,21 +280,9 @@ export function PlayerCardScreen() {
               ) : null}
             </View>
 
-            {/* Dry facts — total/attendance/cancel. Attendance/cancel stay
-                muted-grey at 0 (no data) and only colour once real. */}
-            <View style={styles.statsRow}>
-              <StatTile label={he.playerCardTotalGames} value={String(total)} />
-              <StatTile
-                label={he.playerCardAttendance}
-                value={`${attendance}%`}
-                tint={total > 0 ? colors.success : colors.textMuted}
-              />
-              <StatTile
-                label={he.playerCardCancelRate}
-                value={`${cancelRate}%`}
-                tint={cancelRate > 30 ? colors.danger : colors.textMuted}
-              />
-            </View>
+            {/* Games/attendance/cancel removed — attendance % is no longer
+                shown, and games already live on the Profile + Statistics
+                screens (this row was the dead stored-stats source). */}
 
             {referralCount !== null && referralCount > 0 ? (
               <View style={styles.referralRow}>

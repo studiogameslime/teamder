@@ -100,7 +100,6 @@ export function StatisticsScreen() {
           <Text style={styles.section}>{he.statsSectionNumbers}</Text>
           <View style={styles.tileGrid}>
             <NumberTile icon="calendar-outline" value={String(stats!.attendedGames)} label={he.statGames} />
-            <NumberTile icon="checkmark-done-circle-outline" value={`${stats!.attendanceRate}%`} label={he.statAttendance} />
             <NumberTile icon="football" value={String(stats!.goals)} label={he.statGoals} />
             <NumberTile icon="flash-outline" value={stats!.goalsPerEvening.toFixed(1)} label={he.statGoalsPerEvening} />
             <NumberTile icon="people-circle-outline" value={String(stats!.distinctPlayers)} label={he.statDistinctPlayers} />
