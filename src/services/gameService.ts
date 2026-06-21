@@ -16,6 +16,7 @@
 import {
   addDoc,
   arrayUnion,
+  collection,
   deleteDoc,
   doc,
   getDoc,
@@ -816,6 +817,44 @@ export const gameService = {
       activeThisYear: activeYear.size,
       topPlayers,
     };
+  },
+
+  /**
+   * Community goals championship — the club's scorers ranked by goals scored
+   * THROUGH this club's games only (the `communityPlayerStats` rollup), NOT a
+   * player's global `stats.goals`. Plus the club totals: total goals + total
+   * mini-games (`communityStats/{groupId}`).
+   */
+  async getCommunityChampionship(groupId: GroupId): Promise<{
+    totalGoals: number;
+    totalRounds: number;
+    scorers: Array<{ uid: UserId; goals: number }>;
+  }> {
+    const empty = { totalGoals: 0, totalRounds: 0, scorers: [] as Array<{ uid: UserId; goals: number }> };
+    if (USE_MOCK_DATA || !groupId) return empty;
+    const db = getFirebase().db;
+    try {
+      const [psSnap, csSnap] = await Promise.all([
+        getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
+        getDoc(doc(db, 'communityStats', groupId)),
+      ]);
+      const scorers = psSnap.docs
+        .map((d) => {
+          const x = d.data() as { userId?: string; goals?: number };
+          return { uid: x.userId ?? '', goals: typeof x.goals === 'number' ? x.goals : 0 };
+        })
+        .filter((s) => s.uid && s.goals > 0)
+        .sort((a, b) => b.goals - a.goals);
+      const totalGoals = scorers.reduce((a, s) => a + s.goals, 0);
+      const totalRounds = csSnap.exists()
+        ? ((csSnap.data() as { rounds?: number }).rounds ?? 0)
+        : 0;
+      return { totalGoals, totalRounds, scorers };
+    } catch (err) {
+      logError('getCommunityChampionship', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
+      return empty;
+    }
   },
 
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {

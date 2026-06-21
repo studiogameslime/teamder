@@ -5602,10 +5602,17 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             continue;
         byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
     }
+    const totalGoalsThisRound = Object.values(byScorer).reduce((a, b) => a + b, 0);
     for (const [scorer, n] of Object.entries(byScorer)) {
         batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
         if (groupId)
             batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${scorer}`), { groupId, userId: scorer, goals: inc(n), updatedAt: now }, { merge: true });
+    }
+    // Community-level rollup for the club's stats + championship table:
+    // total mini-games (rounds) and total goals scored THROUGH this club's
+    // games. In the same idempotent batch, so a retry can't double-count.
+    if (groupId) {
+        batch.set(db.collection('communityStats').doc(groupId), { groupId, rounds: inc(1), goals: inc(totalGoalsThisRound), updatedAt: now }, { merge: true });
     }
     // NOTE: same-team pairs (sameTeam / winsTogether / lossesTogether) are
     // already written by the existing `onGameRotationChanged` trigger on every

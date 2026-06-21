@@ -611,7 +611,7 @@ export function PublicGroupsFeedScreen() {
             </View>
           ) : null}
         </Pressable>
-        <RequestsBell />
+        <RequestsBell bg="#FFFFFF" style={styles.filterButton} />
       </View>
       {totalKnown === 0 && !isSearching ? (
         <View style={styles.emptyAll}>

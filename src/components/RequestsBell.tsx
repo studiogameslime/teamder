@@ -15,9 +15,12 @@ import { he } from '@/i18n/he';
 export function RequestsBell({
   color = '#1E40AF',
   bg = '#EFF3FF',
+  style,
 }: {
   color?: string;
   bg?: string;
+  /** Override the button shell so it can match sibling header buttons. */
+  style?: import('react-native').ViewStyle;
 }) {
   const nav = useNavigation<any>();
   const user = useUserStore((s) => s.currentUser);
@@ -36,7 +39,7 @@ export function RequestsBell({
   return (
     <Pressable
       onPress={() => nav.navigate('Requests')}
-      style={({ pressed }) => [styles.btn, { backgroundColor: bg }, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [styles.btn, { backgroundColor: bg }, style, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
       accessibilityLabel={he.requestsTitle}
       hitSlop={8}

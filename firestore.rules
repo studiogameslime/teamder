@@ -1285,5 +1285,16 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if false;
     }
+
+    // Community goals rollups — read by the club stats + championship table.
+    // Written server-side only (commitRoundStats).
+    match /communityPlayerStats/{doc} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /communityStats/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
   }
 }

@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  commHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  commHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   commHeader: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   commScroll: { flexDirection: 'row-reverse', gap: spacing.sm, paddingVertical: 2 },
   commChip: {
@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
   commName: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   // ── Head-to-head card ──
   h2hCard: { padding: spacing.md, gap: 0 },
-  h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
+  h2hTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
   h2hTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   h2hDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   h2hRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },

@@ -174,6 +174,7 @@ export function FriendActionButton({ meId, otherUserId }: Props) {
         />
       )}
       <Text
+        numberOfLines={1}
         style={[
           styles.label,
           rel === 'outgoing'
@@ -194,12 +195,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    gap: 6,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     marginTop: spacing.md,
-    alignSelf: 'center',
+    // Stretch to the column so the label has the full width on one line
+    // (it was wrapping "אתם חברים" to two lines in the narrow card column).
+    alignSelf: 'stretch',
   },
   active: { backgroundColor: colors.primary },
   muted: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },

@@ -1807,6 +1807,11 @@ export const he = {
   communityStatsActiveMonth: 'פעילים החודש',
   communityStatsActiveYear: 'פעילים השנה',
   communityStatsVitalityTitle: 'מד חיים של המועדון',
+  // Community goals championship (community-scoped goals only).
+  communityChampTitle: 'אלופי המועדון',
+  communityChampNote: 'גולים שנכבשו במשחקי המועדון בלבד',
+  communityChampTotalGoals: 'סך הגולים',
+  communityChampTotalRounds: 'משחקונים',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,

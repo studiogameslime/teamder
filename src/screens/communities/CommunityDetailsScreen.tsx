@@ -50,6 +50,7 @@ import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHer
 import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
+import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
@@ -745,6 +746,9 @@ export function CommunityDetailsScreen() {
           {/* Community-level aggregate stats. Loaded lazily — read
               cost is bounded to ~200 finished/cancelled game docs. */}
           <CommunityStatsSection groupId={group.id} />
+
+          {/* Goals championship — club-scoped scorers leaderboard. */}
+          <CommunityChampionship groupId={group.id} />
 
 
           {/* WhatsApp contact CTA — visible to non-admin members (and
