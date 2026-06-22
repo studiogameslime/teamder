@@ -44,6 +44,7 @@ import {
   GameSummary,
   GroupId,
   GUEST_ID_PREFIX,
+  activeGuestCount,
   isGuestId,
   LiveMatchState,
   MatchRound,
@@ -3054,7 +3055,7 @@ export const gameService = {
       players?: string[];
       waitlist?: string[];
       pending?: string[];
-      guests?: { id: string }[];
+      guests?: { id: string; waitlisted?: boolean }[];
       maxPlayers?: number;
       requiresApproval?: boolean;
       createdBy?: string;
@@ -3064,7 +3065,7 @@ export const gameService = {
         players: g.players ?? [],
         waitlist: g.waitlist ?? [],
         pending: g.pending ?? [],
-        guestsCount: g.guests?.length ?? 0,
+        guestsCount: activeGuestCount(g.guests),
         maxPlayers: g.maxPlayers ?? 15,
         // The game's creator/manager joins their OWN game without approval —
         // requiring them to approve themselves is nonsense.
@@ -3117,7 +3118,7 @@ export const gameService = {
           players: g.players,
           waitlist: g.waitlist,
           pending: g.pending ?? [],
-          guestsCount: g.guests?.length ?? 0,
+          guestsCount: activeGuestCount(g.guests),
           maxPlayers: g.maxPlayers,
           requiresApproval: g.requiresApproval === true && g.createdBy !== userId,
           pendingOfferReservation: !!g.pendingPromotion?.uid,
@@ -3237,7 +3238,7 @@ export const gameService = {
       let bucket: 'players' | 'waitlist' | 'pending';
       // Capacity is shared between real players and guests — guests are
       // first-class participants per the spec.
-      const occupancy = g.players.length + (g.guests?.length ?? 0);
+      const occupancy = g.players.length + activeGuestCount(g.guests);
       if (g.requiresApproval && g.createdBy !== userId) {
         g.pending = [...(g.pending ?? []), userId];
         bucket = 'pending';
@@ -3396,7 +3397,7 @@ export const gameService = {
         | undefined;
       const offerReservation = pendingOffer && pendingOffer.uid ? 1 : 0;
       const occupancy =
-        players.length + (data.guests ?? []).length + offerReservation;
+        players.length + activeGuestCount(data.guests) + offerReservation;
       // The rules engine reads
       // `request.resource.data.{players,waitlist,pending}.size()` for
       // the participantIds invariant. On a legacy doc where one of
@@ -3619,7 +3620,7 @@ export const gameService = {
         g.updatedAt = Date.now();
         return { bucket: 'waitlist' };
       }
-      const occupancy = g.players.length + (g.guests?.length ?? 0);
+      const occupancy = g.players.length + activeGuestCount(g.guests);
       let bucket: 'players' | 'waitlist';
       if (occupancy < g.maxPlayers) {
         g.players = [...g.players, userId];
@@ -3665,7 +3666,7 @@ export const gameService = {
       }
       const players = (data.players ?? []) as string[];
       const waitlist = (data.waitlist ?? []) as string[];
-      const occupancy = players.length + (data.guests ?? []).length;
+      const occupancy = players.length + activeGuestCount(data.guests);
       const nextPending = pending.filter((id) => id !== userId);
       let bucket: 'players' | 'waitlist';
       const updates: Record<string, unknown> = {
@@ -3893,7 +3894,7 @@ export const gameService = {
       //   • capacity (after the cancel) actually has room
       const occupancy =
         g.players.length +
-        (g.guests?.length ?? 0) +
+        activeGuestCount(g.guests) +
         (g.pendingPromotion ? 1 : 0);
       let offeredUid: string | null = null;
       if (
@@ -3995,7 +3996,7 @@ export const gameService = {
           : (data.pendingPromotion ?? null);
 
       const guests = Array.isArray(data.guests) ? data.guests : [];
-      const occupancy = players.length + guests.length + (pendingPromotion ? 1 : 0);
+      const occupancy = players.length + activeGuestCount(guests) + (pendingPromotion ? 1 : 0);
       let offeredUid: string | null = null;
       if (
         wasInPlayers &&
@@ -4176,7 +4177,7 @@ export const gameService = {
       }
       const occupancy =
         g.players.length +
-        (g.guests?.length ?? 0) +
+        activeGuestCount(g.guests) +
         (g.pendingPromotion ? 1 : 0);
       let offeredUid: string | null = null;
       if (
@@ -4249,7 +4250,7 @@ export const gameService = {
 
         const guests = Array.isArray(data.guests) ? data.guests : [];
         const occupancy =
-          players.length + guests.length + (pendingPromotion ? 1 : 0);
+          players.length + activeGuestCount(guests) + (pendingPromotion ? 1 : 0);
         let offeredUid: string | null = null;
         if (
           wasInPlayers &&
@@ -4356,7 +4357,7 @@ export const gameService = {
       let nextOffer: { uid: string; offeredAt: number } | null = null;
       if (
         waitlist.length > 0 &&
-        players.length + guests.length < (data.maxPlayers ?? 15)
+        players.length + activeGuestCount(guests) < (data.maxPlayers ?? 15)
       ) {
         nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
       }
@@ -4453,7 +4454,7 @@ export const gameService = {
       let nextOffer: { uid: string; offeredAt: number } | null = null;
       if (
         waitlist.length > 0 &&
-        players.length + guests.length < (data.maxPlayers ?? 15)
+        players.length + activeGuestCount(guests) < (data.maxPlayers ?? 15)
       ) {
         nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
       }
@@ -4546,7 +4547,7 @@ export const gameService = {
       if (
         waitlist.length > 0 &&
         waitlist[0] !== offeredUid &&
-        players.length + guests.length < (data.maxPlayers ?? 15)
+        players.length + activeGuestCount(guests) < (data.maxPlayers ?? 15)
       ) {
         nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
       }
@@ -5586,14 +5587,17 @@ export const gameService = {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('addGuest: game not found');
       await assertGuestPermission(g.createdBy, g.groupId, callerId);
-      const occupancy = g.players.length + (g.guests?.length ?? 0);
-      if (occupancy >= g.maxPlayers) {
-        throw new Error('GAME_FULL');
-      }
-      g.guests = [...(g.guests ?? []), guest];
+      // Full game → queue the guest on the waitlist instead of refusing.
+      const occupancy = g.players.length + activeGuestCount(g.guests);
+      const wlGuest = occupancy >= g.maxPlayers ? { ...guest, waitlisted: true } : guest;
+      g.guests = [...(g.guests ?? []), wlGuest];
       g.updatedAt = Date.now();
-      logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
-      return guest;
+      logEvent(AnalyticsEvent.GuestAdded, {
+        gameId,
+        hasRating: rating !== undefined,
+        waitlisted: !!wlGuest.waitlisted,
+      });
+      return wlGuest;
     }
 
     // Permission check is done OUTSIDE the transaction (it reads the
@@ -5603,6 +5607,7 @@ export const gameService = {
     // capacity by racing concurrent guest additions or user joins.
     const ref = docs.game(gameId);
     const { db } = getFirebase();
+    let savedGuest: GameGuest = guest;
     try {
       const snapForPerm = await getDoc(ref);
       if (!snapForPerm.exists()) throw new Error('addGuest: game not found');
@@ -5621,12 +5626,13 @@ export const gameService = {
         // a game that's already finished/locked.
         if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
         const playersLen = (data.players ?? []).length;
-        const guestsLen = (data.guests ?? []).length;
-        if (playersLen + guestsLen >= (data.maxPlayers ?? 15)) {
-          throw new Error('GAME_FULL');
-        }
+        const guestsLen = activeGuestCount(data.guests);
+        // Full game → add the guest as waitlisted (queued) rather than
+        // refusing. Waitlisted guests don't occupy an active slot.
+        const full = playersLen + guestsLen >= (data.maxPlayers ?? 15);
+        savedGuest = full ? { ...guest, waitlisted: true } : guest;
         tx.update(ref, {
-          guests: [...(data.guests ?? []), guest],
+          guests: [...(data.guests ?? []), savedGuest],
           updatedAt: Date.now(),
         });
       });
@@ -5635,8 +5641,12 @@ export const gameService = {
       if (__DEV__) console.warn('[gameService] addGuest failed', err);
       throw err;
     }
-    logEvent(AnalyticsEvent.GuestAdded, { gameId, hasRating: rating !== undefined });
-    return guest;
+    logEvent(AnalyticsEvent.GuestAdded, {
+      gameId,
+      hasRating: rating !== undefined,
+      waitlisted: !!savedGuest.waitlisted,
+    });
+    return savedGuest;
   },
 
   /**

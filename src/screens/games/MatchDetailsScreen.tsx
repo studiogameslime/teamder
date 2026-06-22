@@ -106,6 +106,7 @@ import {
   LiveMatchZone,
   UserId,
   toGuestRosterId,
+  activeGuestCount,
 } from '@/types';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -670,7 +671,7 @@ export function MatchDetailsScreen() {
     const totalSeats = game.maxPlayers ?? 0;
     if (totalSeats <= 0) return;
     const filled =
-      (game.players?.length ?? 0) + (game.guests?.length ?? 0);
+      (game.players?.length ?? 0) + activeGuestCount(game.guests);
     if (filled < totalSeats) return;
     void maybeRequestStoreReview('gameFilled', game.id);
   }, [user, game]);
@@ -1117,7 +1118,7 @@ export function MatchDetailsScreen() {
   const fmt = formatLabel(game.format);
   // Capacity tracks BOTH registered uids and per-game guests — a guest
   // is a real seat at the match, just without a /users record.
-  const guestCount = (game.guests ?? []).length;
+  const guestCount = activeGuestCount(game.guests);
   const totalParticipants = game.players.length + guestCount;
   const isFull = totalParticipants >= game.maxPlayers;
 
@@ -1320,7 +1321,7 @@ export function MatchDetailsScreen() {
     const link = inviteLinkForGame();
     const missing = Math.max(
       0,
-      game.maxPlayers - (game.players.length + (game.guests?.length ?? 0)),
+      game.maxPlayers - (game.players.length + activeGuestCount(game.guests)),
     );
     const text = he.sessionShareWhatsappBody({
       title: game.title,
@@ -1483,7 +1484,7 @@ export function MatchDetailsScreen() {
   // green button regardless of the user's own join state.
   const recruitMissing = Math.max(
     0,
-    game.maxPlayers - (game.players.length + (game.guests?.length ?? 0)),
+    game.maxPlayers - (game.players.length + activeGuestCount(game.guests)),
   );
   const canRecruitWhatsApp =
     game.visibility === 'public' &&
@@ -1562,7 +1563,7 @@ export function MatchDetailsScreen() {
         // action, and the match is now read-only.
         ...(isAdmin &&
         !isTerminalGame(game) &&
-        game.players.length + (game.guests?.length ?? 0) >= 2
+        game.players.length + activeGuestCount(game.guests) >= 2
           ? [
               {
                 id: 'draftTeams',
@@ -1773,7 +1774,7 @@ export function MatchDetailsScreen() {
   // kickoff is close (≤24h away, not yet started). Otherwise the only path
   // to create teams is buried in the ☰ menu — easy to miss (feedback).
   const draftablePeople =
-    (game.players?.length ?? 0) + (game.guests?.length ?? 0);
+    (game.players?.length ?? 0) + activeGuestCount(game.guests);
   const msToKickoff = game.startsAt - Date.now();
   const showCreateTeamsBanner =
     isAdmin &&
@@ -1844,7 +1845,9 @@ export function MatchDetailsScreen() {
         name: g.name,
         isAdmin: false,
         isOrganizer: false,
-        bucket: 'guest' as const,
+        // A guest added while the game was full sits on the waitlist — render
+        // it in the waitlist group rather than the active roster.
+        bucket: g.waitlisted ? ('waitlist' as const) : ('guest' as const),
         isBringingBall: ballBringers.has(guestRosterId),
       };
     }),

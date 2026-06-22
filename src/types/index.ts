@@ -1541,6 +1541,18 @@ export interface GameGuest {
   /** uid of the coach who added the guest. */
   addedBy: UserId;
   createdAt: number;
+  /** When true, the guest was added while the game was full → they're queued
+   *  on the waitlist and do NOT occupy an active slot until promoted. */
+  waitlisted?: boolean;
+}
+
+/** Count of guests that occupy a real slot (waitlisted guests don't). Use this
+ *  everywhere capacity/occupancy is computed so a waitlisted guest never blocks
+ *  a real joiner or inflates the "X/Y" count. */
+export function activeGuestCount(
+  guests?: { waitlisted?: boolean }[] | null,
+): number {
+  return (guests ?? []).filter((g) => !g.waitlisted).length;
 }
 
 /** Prefix used to distinguish guest ids from real uids in flat string id arrays. */

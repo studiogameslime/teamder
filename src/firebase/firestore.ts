@@ -982,6 +982,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
               typeof x.estimatedRating === 'number' ? x.estimatedRating : null,
             addedBy: x.addedBy,
             createdAt: x.createdAt,
+            ...(x.waitlisted ? { waitlisted: true } : {}),
           }))
         : [],
       createdAt: g.createdAt,
@@ -1199,6 +1200,7 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
       addedBy: typeof o.addedBy === 'string' ? o.addedBy : '',
       createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
       ...(rating !== undefined ? { estimatedRating: rating } : {}),
+      ...(o.waitlisted === true ? { waitlisted: true } : {}),
     });
   }
   return out;

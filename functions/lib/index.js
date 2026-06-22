@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -923,10 +923,14 @@ async function deliverBatch(type, recipients, message, data) {
     // the "אני בא / לא בא" pair; `spotOffered` uses its own
     // "אישור הגעה / ויתור" pair.
     let categoryIdentifier;
-    if (type === 'gameReminder' ||
-        type === 'gameRsvpNudge' ||
-        type === 'newGameInCommunity') {
+    if (type === 'gameReminder' || type === 'gameRsvpNudge') {
         categoryIdentifier = 'GAME_REMINDER';
+    }
+    else if (type === 'newGameInCommunity') {
+        // Registration-just-opened announcement → "מגיע" (join) / "לא מגיע"
+        // (dismiss). NOT the reminder category, whose "לא בא" cancels a
+        // registration the recipient doesn't have yet.
+        categoryIdentifier = 'NEW_GAME_RSVP';
     }
     else if (type === 'spotOffered') {
         categoryIdentifier = 'SPOT_OFFER';
@@ -1599,6 +1603,154 @@ async function enqueueGameMoments(gameId, before, after) {
         }
     }
 }
+// ═══ Fair registration — tap-time reconciler ════════════════════════════
+//
+// Clients write a contention-free request doc per user
+// (/games/{id}/joinRequests/{uid}) stamped with `tappedAt` from the
+// server-synced clock. A short settle window collects the opening burst, then
+// this reconciler seats everyone strictly by tap time — so the spot goes to
+// whoever tapped first, not whoever's network was fastest. Mirrors the pure
+// `assignJoins` in src/services/joinFairness.ts (kept in sync by hand; the app
+// side has the exhaustive unit tests).
+const JOIN_SETTLE_MS = 2000;
+const TAP_BACKDATE_GRACE_MS = 15000;
+async function reconcileGameJoins(gameId) {
+    const gameRef = db.collection('games').doc(gameId);
+    const reqCol = gameRef.collection('joinRequests');
+    await db.runTransaction(async (tx) => {
+        // Reads first (Admin SDK allows queries inside a transaction).
+        const gameSnap = await tx.get(gameRef);
+        if (!gameSnap.exists)
+            return;
+        const queuedSnap = await tx.get(reqCol.where('state', '==', 'queued'));
+        if (queuedSnap.empty)
+            return;
+        const g = gameSnap.data();
+        const now = Date.now();
+        // Lifecycle gate — if the game isn't joinable, reject the whole batch
+        // (the client surfaces a friendly message off the request doc state).
+        const liveMatch = g.liveMatch;
+        const notOpen = g.status !== 'open';
+        const started = typeof g.startsAt === 'number' && g.startsAt < now;
+        const live = liveMatch?.phase === 'live';
+        if (notOpen || started || live) {
+            const reason = notOpen ? 'GAME_NOT_OPEN' : started ? 'GAME_STARTED' : 'GAME_LIVE';
+            queuedSnap.docs.forEach((d) => tx.update(d.ref, { state: 'rejected', reason, assignedAt: now }));
+            return;
+        }
+        // Order the batch by clamped tap time (network-independent), then receipt,
+        // then uid — identical to assignJoins/orderJoinRequests.
+        const reqs = queuedSnap.docs.map((d) => {
+            const r = d.data();
+            const receipt = r.requestedAt instanceof admin.firestore.Timestamp
+                ? r.requestedAt.toMillis()
+                : now;
+            const rawTap = typeof r.tappedAt === 'number' && r.tappedAt > 0 ? r.tappedAt : receipt;
+            const key = Math.max(rawTap, receipt - TAP_BACKDATE_GRACE_MS);
+            return { ref: d.ref, uid: r.uid ?? d.id, key, receipt };
+        });
+        reqs.sort((a, b) => a.key - b.key ||
+            a.receipt - b.receipt ||
+            (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
+        const players = [...(g.players ?? [])];
+        const waitlist = [...(g.waitlist ?? [])];
+        const pending = [...(g.pending ?? [])];
+        const inAny = new Set([...players, ...waitlist, ...pending]);
+        const rejected = g.rejectedPlayerIds ?? [];
+        const guests = Array.isArray(g.guests) ? g.guests.length : 0;
+        const offer = g.pendingPromotion?.uid ? 1 : 0;
+        const maxPlayers = typeof g.maxPlayers === 'number' ? g.maxPlayers : 15;
+        const requiresApproval = g.requiresApproval === true;
+        const createdBy = typeof g.createdBy === 'string' ? g.createdBy : '';
+        const joinedAt = g.joinedAt && typeof g.joinedAt === 'object'
+            ? { ...g.joinedAt }
+            : {};
+        let occupancy = players.length + guests + offer;
+        for (const r of reqs) {
+            if (rejected.includes(r.uid)) {
+                tx.update(r.ref, {
+                    state: 'rejected',
+                    reason: 'GAME_JOIN_REJECTED',
+                    assignedAt: now,
+                });
+                continue;
+            }
+            let bucket;
+            if (inAny.has(r.uid)) {
+                bucket = players.includes(r.uid)
+                    ? 'players'
+                    : waitlist.includes(r.uid)
+                        ? 'waitlist'
+                        : 'pending';
+            }
+            else if (requiresApproval && r.uid !== createdBy) {
+                // The creator/manager joins their OWN game without approval.
+                pending.push(r.uid);
+                bucket = 'pending';
+            }
+            else if (occupancy < maxPlayers) {
+                players.push(r.uid);
+                occupancy += 1;
+                bucket = 'players';
+            }
+            else {
+                waitlist.push(r.uid);
+                bucket = 'waitlist';
+            }
+            inAny.add(r.uid);
+            if (joinedAt[r.uid] === undefined)
+                joinedAt[r.uid] = r.receipt;
+            tx.update(r.ref, { state: 'assigned', bucket, assignedAt: now });
+        }
+        const participantIds = Array.from(new Set([...players, ...waitlist, ...pending]));
+        tx.update(gameRef, {
+            players,
+            waitlist,
+            pending,
+            participantIds,
+            joinedAt,
+            updatedAt: now,
+        });
+    });
+}
+// A new join request schedules a reconcile ~SETTLE later. A deterministic,
+// time-bucketed task id dedupes the whole opening burst down to ONE reconcile
+// (all the simultaneous taps map to the same id → only the first task lands).
+exports.onJoinRequestCreated = (0, firestore_1.onDocumentCreated)('games/{gameId}/joinRequests/{uid}', async (event) => {
+    const gameId = event.params.gameId;
+    const windowBucket = Math.floor(Date.now() / JOIN_SETTLE_MS);
+    try {
+        await (0, functions_1.getFunctions)()
+            .taskQueue('reconcileJoinsTask')
+            .enqueue({ gameId }, {
+            scheduleTime: new Date(Date.now() + JOIN_SETTLE_MS),
+            id: `rj-${gameId}-${windowBucket}`,
+        });
+    }
+    catch (err) {
+        // ALREADY_EXISTS (gRPC code 6) → a reconcile for this window is already
+        // scheduled. That's the dedupe working as intended; swallow it.
+        const code = err?.code;
+        if (code !== 6 && !String(err).includes('ALREADY_EXISTS')) {
+            console.error('[onJoinRequestCreated] enqueue failed', gameId, err);
+        }
+    }
+});
+exports.reconcileJoinsTask = (0, tasks_1.onTaskDispatched)({
+    retryConfig: { maxAttempts: 5, minBackoffSeconds: 5 },
+    rateLimits: { maxConcurrentDispatches: 6 },
+}, async (req) => {
+    const gameId = (req.data ?? {}).gameId;
+    if (!gameId)
+        return;
+    try {
+        await reconcileGameJoins(gameId);
+    }
+    catch (err) {
+        console.error('[reconcileJoinsTask] failed', gameId, err);
+        throw err; // retry per retryConfig
+    }
+});
 // ─── Scheduled: deferred-open flip for recurring games ──────────────────
 //
 // Every 5 minutes, look for games in `status: 'scheduled'` whose
@@ -2440,7 +2592,14 @@ exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}',
         if (a <= b)
             return;
     }
-    const reg = (arr) => (arr ?? []).filter((u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'));
+    const reg = (arr) => (arr ?? []).filter((u) => typeof u === 'string' &&
+        u.length > 0 &&
+        !u.startsWith('guest:') &&
+        // Defence-in-depth: a raw guest id (genGuestId → "<base36ts>-<rand>")
+        // contains a hyphen; a real Firebase Auth uid never does. Without
+        // this, a guest id that slipped the `guest:` prefix got `set(merge)`
+        // a phantom /users doc → a spurious "new user" push.
+        !u.includes('-'));
     const winners = reg(after.rotation.lastRoundWinners);
     const losers = reg(after.rotation.lastRoundLosers);
     if (winners.length === 0 && losers.length === 0)
@@ -3782,6 +3941,8 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         : undefined;
     const isOpen = input.isOpen === true;
     const internalRating = input.internalRating === true;
+    // Only meaningful alongside internalRating — ratings become admin-private.
+    const hideInternalRating = internalRating && input.hideInternalRating === true;
     // 3) Generate id + invite code. Server-controlled to prevent
     //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
     const groupRef = db.collection('groups').doc();
@@ -3798,6 +3959,7 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         inviteCode: genInviteCode(),
         isOpen,
         internalRating,
+        hideInternalRating,
         createdAt,
         updatedAt: createdAt,
     };
@@ -5561,7 +5723,10 @@ exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minut
 // W/L + head-to-head against). Idempotency is the caller's concern — it sends
 // each finished round once.
 const GUEST_PREFIX = 'guest:';
-const isReal = (id) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX);
+// A real Firebase Auth uid: not guest-prefixed AND no hyphen (a raw guest id
+// from genGuestId is "<base36ts>-<rand>"). The hyphen check stops a guest id
+// that slipped the prefix from `set(merge)`-creating a phantom /users doc.
+const isReal = (id) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX) && !id.includes('-');
 exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
