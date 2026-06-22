@@ -206,7 +206,16 @@ export function RequestsScreen() {
                 key={`${game.id}:${u.id}`}
                 user={u}
                 busy={busy === `m:${game.id}:${u.id}`}
-                onApprove={() => act(`m:${game.id}:${u.id}`, () => gameService.approveGameJoin(game.id, u.id))}
+                onApprove={() =>
+                  act(`m:${game.id}:${u.id}`, async () => {
+                    const r = await gameService.approveGameJoin(game.id, u.id);
+                    // Full game → the approved player lands on the waitlist;
+                    // tell the admin so it's not a silent surprise.
+                    if (r?.bucket === 'waitlist') {
+                      toast.info(he.requestsApprovedToWaitlist);
+                    }
+                  })
+                }
                 onDecline={() => act(`m:${game.id}:${u.id}`, () => gameService.rejectGameJoin(game.id, u.id))}
               />
             ))}

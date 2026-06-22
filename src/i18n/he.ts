@@ -1013,6 +1013,7 @@ export const he = {
   requestsApprovedToast: (n: number) => (n === 1 ? 'בקשה אחת אושרה' : `${n} בקשות אושרו`),
   requestsPartial: (ok: number, fail: number) => `${ok} אושרו, ${fail} נכשלו`,
   requestsActionFailed: 'הפעולה נכשלה, נסה שוב',
+  requestsApprovedToWaitlist: 'המשחק מלא — השחקן אושר ונכנס לרשימת ההמתנה',
   friendsAccepted: 'נוספתם כחברים',
   friendsRemove: 'הסר חבר',
   friendsRemoveTitle: 'להסיר חבר?',

@@ -2491,8 +2491,10 @@ export function MatchDetailsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={ctaState.label}
               >
-                <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />
+                {/* Text first so the icon lands on the visual LEFT (forceRTL
+                    flips `row`: last child → visual left). */}
                 <Text style={styles.inviteCtaText}>{ctaState.label}</Text>
+                <Ionicons name={ctaState.icon} size={18} color="#FFFFFF" />
               </Pressable>
               {ctaState.tone === 'blocked' ? (
                 <Text style={styles.ctaHelper}>

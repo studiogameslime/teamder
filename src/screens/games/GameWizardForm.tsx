@@ -1050,7 +1050,10 @@ function PillRow<T>({
   return (
     <View style={styles.section}>
       <View style={styles.labelRow}>
-        <Text style={styles.label}>{label}</Text>
+        {/* labelFlex drops the label's width:100% so it only takes its text
+            width — otherwise it shoves the ⓘ to the far (left) screen edge
+            instead of hugging the text. */}
+        <Text style={[styles.label, info ? styles.labelFlex : null]}>{label}</Text>
         {info ? <InfoTip title={info.title} text={info.text} /> : null}
       </View>
       <View style={styles.pillRow}>

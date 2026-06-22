@@ -1066,6 +1066,13 @@ export function AdvancedLiveMatchScreen() {
             )}
           </View>
         )}
+        {/* End the whole evening — available in advanced mode too (was only on
+            the timer-only screen). Hidden before kickoff. */}
+        {isAdmin && hasTeams && (rotationActive || timerStarted) ? (
+          <Pressable style={styles.endEveningLink} onPress={() => setEndOpen(true)}>
+            <Text style={styles.endEveningLinkText}>{he.liveEndEvening}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Stoppages history — the synced log of every start / pause / resume
@@ -1446,6 +1453,8 @@ const styles = StyleSheet.create({
   statusWord: { fontSize: 15, fontWeight: '700', color: '#64748B' },
   statusWordRunning: { color: '#0F172A' },
   controlRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
+  endEveningLink: { alignSelf: 'center', paddingVertical: 10, marginTop: 6 },
+  endEveningLinkText: { ...typography.body, color: colors.danger, fontWeight: '700' },
   sideBtn: {
     width: 84,
     borderRadius: 18,
@@ -1616,13 +1625,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   stoppagesTotal: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1D4ED8',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: 2,
     marginBottom: 8,
   },

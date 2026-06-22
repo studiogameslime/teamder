@@ -63,8 +63,9 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
       {/* ── Scoreboard: the two teams on the pitch ───────────────────────── */}
       <View style={styles.scoreWrap}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="football" size={16} color={colors.primary} />
+          {/* Text first → icon lands on the visual LEFT under forceRTL. */}
           <Text style={styles.sectionHeaderText}>{he.rotationPlayingTeams}</Text>
+          <Ionicons name="football" size={16} color={colors.primary} />
         </View>
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
@@ -95,8 +96,8 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
       {rotation.waiting.length > 0 ? (
         <>
           <View style={styles.waitHeader}>
-            <Ionicons name="people" size={16} color={colors.primary} />
             <Text style={styles.waitHeaderText}>{he.rotationWaitingTeams}</Text>
+            <Ionicons name="people" size={16} color={colors.primary} />
           </View>
           {rotation.waiting.map((idx, i) => {
             const roster = draftRoster(idx, teams, resolve);
