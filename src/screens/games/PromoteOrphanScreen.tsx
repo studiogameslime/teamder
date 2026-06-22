@@ -160,6 +160,7 @@ export function PromoteOrphanScreen() {
         contactPhone: contactPhone.trim() || undefined,
         city: city.trim() || undefined,
         inviteUserIds,
+        fromGameId: gameId,
       });
       appAlert(
         he.promoteOrphanSuccessTitle,

@@ -495,6 +495,10 @@ export const groupService = {
     contactPhone?: string;
     city?: string;
     inviteUserIds: UserId[];
+    /** The orphan game this community is created FROM — scopes the new
+     *  community's inherited stats to just this game (the personal group
+     *  commingles every one-off game's goals/mini-games). */
+    fromGameId?: string;
   }): Promise<{ invited: number }> {
     if (USE_MOCK_DATA) {
       return { invited: input.inviteUserIds.length };
@@ -514,6 +518,7 @@ export const groupService = {
         contactPhone: input.contactPhone ?? '',
         city: input.city ?? '',
         inviteUserIds: input.inviteUserIds,
+        ...(input.fromGameId ? { fromGameId: input.fromGameId } : {}),
       })) as { data?: { ok?: boolean; invited?: number } };
     } catch (err) {
       logError('promoteOrphanGroup', err, {

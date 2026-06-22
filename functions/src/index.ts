@@ -4385,6 +4385,12 @@ export const promoteOrphanToGroup = onCall(
           .filter((u): u is string => typeof u === 'string' && u.length > 0)
           .slice(0, 100)
       : [];
+    // The specific orphan game this community is being created FROM. Used
+    // to scope the community's inherited stats to just that game (see below).
+    const fromGameId =
+      typeof (data as { fromGameId?: unknown }).fromGameId === 'string'
+        ? ((data as { fromGameId: string }).fromGameId).slice(0, 128)
+        : '';
 
     if (!groupId || groupId.length > 128) {
       throw new HttpsError('invalid-argument', 'invalid groupId');
@@ -4432,8 +4438,70 @@ export const promoteOrphanToGroup = onCall(
       isPersonal: false,
       hidden: false,
       pendingPlayerIds: dedupedInvitees,
+      promotedAt: now,
+      ...(fromGameId ? { promotedFromGameId: fromGameId } : {}),
       updatedAt: now,
     });
+
+    // ── Scope the new community's stats to the promoting game only ─────────
+    // A user's one-off games ALL share one hidden personal group, so its
+    // communityStats / communityPlayerStats commingle every one-off game's
+    // goals + mini-games. When that group becomes a real community we reset
+    // those aggregates to reflect ONLY the game it was created from — the
+    // reported surprise of "a brand-new community already showing goals,
+    // mini-games and a championship from games that aren't this one".
+    // Per-GAME stats (gamePlayerStats) stay intact on every game.
+    if (fromGameId) {
+      try {
+        const [cpsSnap, gpsSnap, roundsSnap] = await Promise.all([
+          db.collection('communityPlayerStats').where('groupId', '==', groupId).get(),
+          db.collection('gamePlayerStats').where('gameId', '==', fromGameId).get(),
+          db.collection('games').doc(fromGameId).collection('committedRounds').get(),
+        ]);
+        const keep = new Map<string, { goals: number; assists: number }>();
+        let totalGoals = 0;
+        for (const d of gpsSnap.docs) {
+          const x = d.data() as { userId?: string; goals?: number; assists?: number };
+          if (!x.userId) continue;
+          const goals = x.goals ?? 0;
+          const assists = x.assists ?? 0;
+          keep.set(x.userId, { goals, assists });
+          totalGoals += goals;
+        }
+        const batch = db.batch();
+        // Drop every commingled row that doesn't belong to the promoting game.
+        for (const d of cpsSnap.docs) {
+          const x = d.data() as { userId?: string };
+          if (x.userId && keep.has(x.userId)) continue;
+          batch.delete(d.ref);
+        }
+        // Overwrite the kept players with EXACTLY this game's tally.
+        for (const [uid, v] of keep) {
+          batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), {
+            groupId,
+            userId: uid,
+            goals: v.goals,
+            assists: v.assists,
+            updatedAt: now,
+          });
+        }
+        // Club totals = this game's mini-games (committed rounds) + goals.
+        batch.set(db.collection('communityStats').doc(groupId), {
+          groupId,
+          rounds: roundsSnap.size,
+          goals: totalGoals,
+          updatedAt: now,
+        });
+        await batch.commit();
+      } catch (err) {
+        console.error(
+          '[promoteOrphanToGroup] stats reset failed',
+          groupId,
+          fromGameId,
+          err,
+        );
+      }
+    }
 
     // Write the /groupsPublic mirror so the new community shows up in
     // discovery. Mirror the same shape the createGroup callable uses.
