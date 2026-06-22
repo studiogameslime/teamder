@@ -712,6 +712,12 @@ export function MatchDetailsScreen() {
     // group doc, no network) instead of the global peer-vote averages.
     const grp = myCommunities.find((c) => c.id === groupId);
     if (grp?.internalRating) {
+      // Ratings are admin-private in this community → don't surface the
+      // derived average to non-admins (it would leak the hidden ratings).
+      if (grp.hideInternalRating === true && !isAdmin) {
+        setRegisteredRatingAvg(null);
+        return;
+      }
       const vals = eligible
         .map((uid) => grp.adminRatings?.[uid])
         .filter((v): v is number => typeof v === 'number' && v > 0);
@@ -753,7 +759,7 @@ export function MatchDetailsScreen() {
     return () => {
       alive = false;
     };
-  }, [game, adminUids, myCommunities]);
+  }, [game, adminUids, myCommunities, isAdmin]);
 
   const handlePrimary = async () => {
     if (!user || !game) return;
@@ -832,7 +838,7 @@ export function MatchDetailsScreen() {
           };
         });
       } else {
-        const result = await gameService.joinGameV2(game.id, user.id);
+        const result = await gameService.requestJoinGame(game.id, user.id);
         // Capture the post-join game state out of the optimistic-splice
         // updater so we can assert the silent-failure post-condition
         // below WITHOUT a second Firestore read. `joined` records the
@@ -1266,21 +1272,29 @@ export function MatchDetailsScreen() {
       });
   };
 
-  // Share handler — community-only games still suppress the share
-  // because the link would land on the rules-blocked screen for
-  // non-members.
+  // The right invite link for THIS game: public → direct session link;
+  // community/private → the public community link (actionable for non-members).
+  const inviteLinkForGame = (): string =>
+    game.visibility === 'public'
+      ? deepLinkService.buildInviteUrl({
+          type: 'session',
+          id: game.id,
+          invitedBy: user?.id,
+        })
+      : deepLinkService.buildInviteUrl({
+          type: 'team',
+          id: game.groupId,
+          invitedBy: user?.id,
+        });
+
+  // Share handler — works for ALL game types now (user report). Public games
+  // share a direct session link; community/private games share the COMMUNITY
+  // link instead, so a non-member recipient lands on the public community page
+  // (where they can request to join) rather than the dead "members only" wall.
   const handleShare = async () => {
-    if (game.visibility !== 'public') {
-      toast.info(he.sessionActionInviteCommunityOnly);
-      return;
-    }
     if (!isOpen(game) || game.startsAt <= Date.now()) return;
     try {
-      const link = deepLinkService.buildInviteUrl({
-        type: 'session',
-        id: game.id,
-        invitedBy: user?.id,
-      });
+      const link = inviteLinkForGame();
       const result = await Share.share({
         title: game.title,
         message: he.sessionInviteShareBody(link),
@@ -1302,16 +1316,8 @@ export function MatchDetailsScreen() {
   // missing + join link) and opens WhatsApp straight to a contact picker.
   // Falls back to the OS share sheet if WhatsApp isn't installed.
   const handleShareWhatsApp = async () => {
-    if (game.visibility !== 'public') {
-      toast.info(he.sessionActionInviteCommunityOnly);
-      return;
-    }
     if (!isOpen(game) || game.startsAt <= Date.now()) return;
-    const link = deepLinkService.buildInviteUrl({
-      type: 'session',
-      id: game.id,
-      invitedBy: user?.id,
-    });
+    const link = inviteLinkForGame();
     const missing = Math.max(
       0,
       game.maxPlayers - (game.players.length + (game.guests?.length ?? 0)),
@@ -1945,6 +1951,7 @@ export function MatchDetailsScreen() {
       >
         <MatchStadiumHero
           startsAt={game.startsAt}
+          title={game.title}
           onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
           onBackPress={() => {
             if (nav.canGoBack()) nav.goBack();
@@ -2396,6 +2403,7 @@ export function MatchDetailsScreen() {
                 icon: 'reader-outline',
                 label: he.matchDetailsLabelNotes,
                 value: game.notes,
+                multiline: true, // show the full note, never clamp it
               },
             ]}
           />

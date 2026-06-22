@@ -398,6 +398,7 @@ const groupConverter: FirestoreDataConverter<Group> = {
       inviteCode: g.inviteCode,
       isOpen: g.isOpen ?? null,
       internalRating: g.internalRating ?? null,
+      hideInternalRating: g.hideInternalRating ?? null,
       adminRatings: g.adminRatings ?? null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
@@ -456,6 +457,10 @@ const groupConverter: FirestoreDataConverter<Group> = {
       isOpen: typeof d.isOpen === 'boolean' ? d.isOpen : undefined,
       internalRating:
         typeof d.internalRating === 'boolean' ? d.internalRating : undefined,
+      hideInternalRating:
+        typeof d.hideInternalRating === 'boolean'
+          ? d.hideInternalRating
+          : undefined,
       adminRatings:
         d.adminRatings && typeof d.adminRatings === 'object'
           ? (Object.fromEntries(

@@ -33,7 +33,7 @@ export async function handleGameReminderAction(
       return;
     }
     if (action === 'JOIN_GAME') {
-      await gameService.joinGameV2(gameId, authUser.uid);
+      await gameService.requestJoinGame(gameId, authUser.uid);
       logEvent(AnalyticsEvent.GameJoined, {
         gameId,
         viaNotificationAction: true,

@@ -33,6 +33,8 @@ import { LiveCountdown } from './LiveCountdown';
 
 interface Props {
   startsAt?: number;
+  /** Game name — shown above the date/time inside the floating card. */
+  title?: string;
   /** Omit to hide the ⋯ button entirely — e.g. a viewer with no
    *  applicable menu actions (would otherwise open an empty sheet). */
   onMenuPress?: () => void;
@@ -53,6 +55,7 @@ const STADIUM_BG: ImageSourcePropType = require('../../assets/images/stadium-bg.
 
 export function MatchStadiumHero({
   startsAt,
+  title,
   onMenuPress,
   onBackPress,
   onSharePress,
@@ -164,6 +167,11 @@ export function MatchStadiumHero({
               top: WHAT screen + WHEN the game is. */}
           <View style={styles.floatingWrap}>
             <View style={styles.floating}>
+              {title ? (
+                <Text style={styles.floatingTitle} numberOfLines={1}>
+                  {title}
+                </Text>
+              ) : null}
               {startsAt ? (
                 <View style={styles.floatingDateRow}>
                   <Ionicons
@@ -300,6 +308,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.32,
     shadowRadius: 22,
     elevation: 10,
+  },
+  floatingTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 6,
+    maxWidth: 260,
   },
   floatingDateRow: {
     flexDirection: 'row',

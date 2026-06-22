@@ -34,7 +34,7 @@ import {
   type BulkResult,
 } from '@/services/requestsService';
 import { logError } from '@/services/errorLog';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
 
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   emptyHint: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingHorizontal: spacing.lg },
   section: { marginBottom: spacing.lg },
   sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sectionTitle: { ...typography.h3, color: colors.text, textAlign: 'right' },
+  sectionTitle: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   approveAllBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8 },
   approveAllTxt: { ...typography.bodyBold, color: colors.primary },
   // `row` (NOT row-reverse): under the app's RTL this lays the avatar+name out
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   // row-reverse + the `flex:1` on rowMain flipped it to avatar-left (the bug).
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs },
   rowMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
-  name: { ...typography.bodyBold, color: colors.text, textAlign: 'right', flex: 1 },
+  name: { ...typography.bodyBold, color: colors.text, textAlign: RTL_LABEL_ALIGN, flex: 1 },
   actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   acceptBtn: { backgroundColor: colors.primary },

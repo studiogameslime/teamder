@@ -88,6 +88,21 @@ try {
     // worst case is the buttons don't render and the user taps
     // through to the app, which is the existing behaviour.
   });
+  // New-game announcement (registration just opened for the community).
+  // "מגיע" → JOIN_GAME (reuses the fair-join handler); "לא מגיע" just
+  // dismisses — NOT a cancel, since the recipient isn't registered yet.
+  Notifications.setNotificationCategoryAsync('NEW_GAME_RSVP', [
+    {
+      identifier: 'JOIN_GAME',
+      buttonTitle: 'מגיע',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: 'DISMISS_NEW_GAME',
+      buttonTitle: 'לא מגיע',
+      options: { opensAppToForeground: false, isDestructive: true },
+    },
+  ]).catch(() => {});
   // Waitlist promotion offer: someone cancelled, head of waitlist
   // gets a chance to claim the spot. CONFIRM_SPOT moves them into
   // players[]; PASS_SPOT removes them from waitlist entirely (so
@@ -647,6 +662,12 @@ export default function App() {
         );
         await handleSpotOfferAction(action, gameId);
         await dismissNotificationSafely(notifId);
+      }
+      if (action === 'DISMISS_NEW_GAME') {
+        // "לא מגיע" on a new-game announcement → just clear the card, no
+        // side-effect (the user has no registration to cancel).
+        await dismissNotificationSafely(notifId);
+        return;
       }
       if (
         action === 'EXPRESS_FILLER_INTEREST' ||

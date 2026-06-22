@@ -1069,12 +1069,13 @@ async function deliverBatch(
   // the "אני בא / לא בא" pair; `spotOffered` uses its own
   // "אישור הגעה / ויתור" pair.
   let categoryIdentifier: string | undefined;
-  if (
-    type === 'gameReminder' ||
-    type === 'gameRsvpNudge' ||
-    type === 'newGameInCommunity'
-  ) {
+  if (type === 'gameReminder' || type === 'gameRsvpNudge') {
     categoryIdentifier = 'GAME_REMINDER';
+  } else if (type === 'newGameInCommunity') {
+    // Registration-just-opened announcement → "מגיע" (join) / "לא מגיע"
+    // (dismiss). NOT the reminder category, whose "לא בא" cancels a
+    // registration the recipient doesn't have yet.
+    categoryIdentifier = 'NEW_GAME_RSVP';
   } else if (type === 'spotOffered') {
     categoryIdentifier = 'SPOT_OFFER';
   } else if (type === 'fillerOpportunity') {
@@ -1847,6 +1848,174 @@ async function enqueueGameMoments(
     }
   }
 }
+
+// ═══ Fair registration — tap-time reconciler ════════════════════════════
+//
+// Clients write a contention-free request doc per user
+// (/games/{id}/joinRequests/{uid}) stamped with `tappedAt` from the
+// server-synced clock. A short settle window collects the opening burst, then
+// this reconciler seats everyone strictly by tap time — so the spot goes to
+// whoever tapped first, not whoever's network was fastest. Mirrors the pure
+// `assignJoins` in src/services/joinFairness.ts (kept in sync by hand; the app
+// side has the exhaustive unit tests).
+const JOIN_SETTLE_MS = 2000;
+const TAP_BACKDATE_GRACE_MS = 15_000;
+
+async function reconcileGameJoins(gameId: string): Promise<void> {
+  const gameRef = db.collection('games').doc(gameId);
+  const reqCol = gameRef.collection('joinRequests');
+  await db.runTransaction(async (tx) => {
+    // Reads first (Admin SDK allows queries inside a transaction).
+    const gameSnap = await tx.get(gameRef);
+    if (!gameSnap.exists) return;
+    const queuedSnap = await tx.get(reqCol.where('state', '==', 'queued'));
+    if (queuedSnap.empty) return;
+    const g = gameSnap.data() as Record<string, unknown>;
+    const now = Date.now();
+
+    // Lifecycle gate — if the game isn't joinable, reject the whole batch
+    // (the client surfaces a friendly message off the request doc state).
+    const liveMatch = g.liveMatch as { phase?: string } | undefined;
+    const notOpen = g.status !== 'open';
+    const started =
+      typeof g.startsAt === 'number' && (g.startsAt as number) < now;
+    const live = liveMatch?.phase === 'live';
+    if (notOpen || started || live) {
+      const reason = notOpen ? 'GAME_NOT_OPEN' : started ? 'GAME_STARTED' : 'GAME_LIVE';
+      queuedSnap.docs.forEach((d) =>
+        tx.update(d.ref, { state: 'rejected', reason, assignedAt: now }),
+      );
+      return;
+    }
+
+    // Order the batch by clamped tap time (network-independent), then receipt,
+    // then uid — identical to assignJoins/orderJoinRequests.
+    const reqs = queuedSnap.docs.map((d) => {
+      const r = d.data() as { uid?: string; tappedAt?: number; requestedAt?: unknown };
+      const receipt =
+        r.requestedAt instanceof admin.firestore.Timestamp
+          ? r.requestedAt.toMillis()
+          : now;
+      const rawTap =
+        typeof r.tappedAt === 'number' && r.tappedAt > 0 ? r.tappedAt : receipt;
+      const key = Math.max(rawTap, receipt - TAP_BACKDATE_GRACE_MS);
+      return { ref: d.ref, uid: r.uid ?? d.id, key, receipt };
+    });
+    reqs.sort(
+      (a, b) =>
+        a.key - b.key ||
+        a.receipt - b.receipt ||
+        (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0),
+    );
+
+    const players = [...((g.players as string[]) ?? [])];
+    const waitlist = [...((g.waitlist as string[]) ?? [])];
+    const pending = [...((g.pending as string[]) ?? [])];
+    const inAny = new Set([...players, ...waitlist, ...pending]);
+    const rejected = (g.rejectedPlayerIds as string[]) ?? [];
+    const guests = Array.isArray(g.guests) ? (g.guests as unknown[]).length : 0;
+    const offer = (g.pendingPromotion as { uid?: string } | null)?.uid ? 1 : 0;
+    const maxPlayers = typeof g.maxPlayers === 'number' ? (g.maxPlayers as number) : 15;
+    const requiresApproval = g.requiresApproval === true;
+    const createdBy = typeof g.createdBy === 'string' ? (g.createdBy as string) : '';
+    const joinedAt: Record<string, number> =
+      g.joinedAt && typeof g.joinedAt === 'object'
+        ? { ...(g.joinedAt as Record<string, number>) }
+        : {};
+    let occupancy = players.length + guests + offer;
+
+    for (const r of reqs) {
+      if (rejected.includes(r.uid)) {
+        tx.update(r.ref, {
+          state: 'rejected',
+          reason: 'GAME_JOIN_REJECTED',
+          assignedAt: now,
+        });
+        continue;
+      }
+      let bucket: 'players' | 'waitlist' | 'pending';
+      if (inAny.has(r.uid)) {
+        bucket = players.includes(r.uid)
+          ? 'players'
+          : waitlist.includes(r.uid)
+            ? 'waitlist'
+            : 'pending';
+      } else if (requiresApproval && r.uid !== createdBy) {
+        // The creator/manager joins their OWN game without approval.
+        pending.push(r.uid);
+        bucket = 'pending';
+      } else if (occupancy < maxPlayers) {
+        players.push(r.uid);
+        occupancy += 1;
+        bucket = 'players';
+      } else {
+        waitlist.push(r.uid);
+        bucket = 'waitlist';
+      }
+      inAny.add(r.uid);
+      if (joinedAt[r.uid] === undefined) joinedAt[r.uid] = r.receipt;
+      tx.update(r.ref, { state: 'assigned', bucket, assignedAt: now });
+    }
+
+    const participantIds = Array.from(
+      new Set([...players, ...waitlist, ...pending]),
+    );
+    tx.update(gameRef, {
+      players,
+      waitlist,
+      pending,
+      participantIds,
+      joinedAt,
+      updatedAt: now,
+    });
+  });
+}
+
+// A new join request schedules a reconcile ~SETTLE later. A deterministic,
+// time-bucketed task id dedupes the whole opening burst down to ONE reconcile
+// (all the simultaneous taps map to the same id → only the first task lands).
+export const onJoinRequestCreated = onDocumentCreated(
+  'games/{gameId}/joinRequests/{uid}',
+  async (event) => {
+    const gameId = event.params.gameId as string;
+    const windowBucket = Math.floor(Date.now() / JOIN_SETTLE_MS);
+    try {
+      await getGcpFunctions()
+        .taskQueue('reconcileJoinsTask')
+        .enqueue(
+          { gameId },
+          {
+            scheduleTime: new Date(Date.now() + JOIN_SETTLE_MS),
+            id: `rj-${gameId}-${windowBucket}`,
+          },
+        );
+    } catch (err) {
+      // ALREADY_EXISTS (gRPC code 6) → a reconcile for this window is already
+      // scheduled. That's the dedupe working as intended; swallow it.
+      const code = (err as { code?: number | string })?.code;
+      if (code !== 6 && !String(err).includes('ALREADY_EXISTS')) {
+        console.error('[onJoinRequestCreated] enqueue failed', gameId, err);
+      }
+    }
+  },
+);
+
+export const reconcileJoinsTask = onTaskDispatched(
+  {
+    retryConfig: { maxAttempts: 5, minBackoffSeconds: 5 },
+    rateLimits: { maxConcurrentDispatches: 6 },
+  },
+  async (req) => {
+    const gameId = (req.data ?? {}).gameId as string | undefined;
+    if (!gameId) return;
+    try {
+      await reconcileGameJoins(gameId);
+    } catch (err) {
+      console.error('[reconcileJoinsTask] failed', gameId, err);
+      throw err; // retry per retryConfig
+    }
+  },
+);
 
 // ─── Scheduled: deferred-open flip for recurring games ──────────────────
 //
@@ -4383,6 +4552,7 @@ interface CreateGroupInput {
   description?: string;
   isOpen?: boolean;
   internalRating?: boolean;
+  hideInternalRating?: boolean;
   // Info
   rules?: string;
   contactPhone?: string;
@@ -4573,6 +4743,8 @@ export const createGroupCallable = onCall(
         : undefined;
     const isOpen = input.isOpen === true;
     const internalRating = input.internalRating === true;
+    // Only meaningful alongside internalRating — ratings become admin-private.
+    const hideInternalRating = internalRating && input.hideInternalRating === true;
 
     // 3) Generate id + invite code. Server-controlled to prevent
     //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
@@ -4591,6 +4763,7 @@ export const createGroupCallable = onCall(
       inviteCode: genInviteCode(),
       isOpen,
       internalRating,
+      hideInternalRating,
       createdAt,
       updatedAt: createdAt,
     };

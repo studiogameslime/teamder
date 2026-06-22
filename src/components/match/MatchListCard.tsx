@@ -64,6 +64,11 @@ function ctaForGame(
   if (status === 'joined') return 'cancel';
   if (status === 'waitlist') return 'leaveWaitlist';
   if (status === 'pending') return 'pending';
+  // Deferred-open ("scheduled") game — registration hasn't started yet. NOT
+  // joinable until the CF flips it to 'open' at registrationOpensAt; surfacing
+  // a join button let people register before the game was meant to be visible
+  // (user report). No CTA → the card just shows when registration opens.
+  if (g.status === 'scheduled') return 'none';
   // Approval-gated game the user hasn't requested yet → a "request to
   // join" button (the join policy lives in the button text now, not a tag).
   if (g.requiresApproval) return 'requestJoin';
@@ -93,6 +98,8 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
+  // The viewer manages this game (its creator) → show a "מנהל" badge.
+  const isManager = !!userId && game.createdBy === userId;
   const fmt = formatLabel(game.format) ?? he.gameFormat5;
   const occupancy = game.players.length + (game.guests?.length ?? 0);
 
@@ -177,9 +184,15 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
               style={styles.titleChevron}
             />
           </View>
-          {statusPill ? (
-            <View style={styles.titleStatusPill}>{statusPill}</View>
-          ) : null}
+          <View style={styles.titlePills}>
+            {isManager ? (
+              <View style={styles.managerPill}>
+                <Ionicons name="shield-checkmark" size={11} color="#1D4ED8" />
+                <Text style={styles.managerPillText}>{he.gameManagerBadge}</Text>
+              </View>
+            ) : null}
+            {statusPill ? <View>{statusPill}</View> : null}
+          </View>
         </View>
 
         {game.fieldName ? (
@@ -389,6 +402,26 @@ const styles = StyleSheet.create({
   },
   titleStatusPill: {
     flexShrink: 0,
+  },
+  titlePills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  managerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 999,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  managerPillText: {
+    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '800',
   },
   title: {
     color: '#0F172A',

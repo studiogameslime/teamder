@@ -771,6 +771,14 @@ export interface Group {
    * A missing entry = that player hasn't been rated by the admins yet.
    */
   adminRatings?: Record<UserId, number>;
+  /**
+   * When true (only meaningful alongside `internalRating`), the admins' ratings
+   * are PRIVATE to the admins: regular members can't see any rating — not their
+   * own, not others'. It becomes a purely internal management signal. Surfaces
+   * that display ratings (community roster, match-details average) suppress them
+   * for non-admins. undefined/false → ratings are visible to all members.
+   */
+  hideInternalRating?: boolean;
 
   createdAt: number;
   updatedAt?: number;
@@ -1094,6 +1102,28 @@ export type GameStatus =
 export type GameFormat = '4v4' | '5v5' | '6v6' | '7v7';
 /** Surface of the pitch. Drives default match-duration suggestions. */
 export type FieldType = 'asphalt' | 'synthetic' | 'grass';
+
+/**
+ * A fair-registration request — one doc per user under
+ * /games/{gameId}/joinRequests/{uid}. Each tapper writes their OWN doc
+ * (contention-free, instant), stamped with `tappedAt` from the server-synced
+ * clock. A server reconciler collects the opening burst over a short settle
+ * window and assigns seats strictly in `tappedAt` order, so the spot goes to
+ * whoever tapped first — not whoever's network was fastest. See joinFairness.ts.
+ */
+export interface GameJoinRequest {
+  uid: UserId;
+  /** serverNow() captured at the tap instant — the fair ordering key. */
+  tappedAt: number;
+  /** Server-receipt time (serverTimestamp → ms). Tiebreaker + anti-backdate. */
+  requestedAt: number;
+  state: 'queued' | 'assigned' | 'rejected';
+  /** Where the reconciler placed this user (once assigned). */
+  bucket?: 'players' | 'waitlist' | 'pending';
+  /** Why the request couldn't be honoured (e.g. game not open). */
+  reason?: string;
+  assignedAt?: number;
+}
 
 export interface Game {
   id: string;

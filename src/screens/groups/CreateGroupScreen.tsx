@@ -60,6 +60,7 @@ export function CreateGroupScreen() {
         description: v.description.trim() || undefined,
         isOpen: v.isOpen,
         internalRating: v.internalRating,
+        hideInternalRating: v.internalRating ? v.hideInternalRating : undefined,
         rules: v.rules.trim() || undefined,
         contactPhone: phone || undefined,
         city: cityVal || undefined,

@@ -728,7 +728,10 @@ export const he = {
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
   createGroupInternalRating: 'דירוג פנימי',
   createGroupInternalRatingHint:
-    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המשחק ובמועדון (במקום דירוג השחקנים). כבוי = הדירוג נקבע מהצבעות השחקנים.',
+    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המשחק ובמועדון במקום דירוג השחקנים. כבוי = הדירוג נקבע מהצבעות השחקנים.',
+  createGroupHideInternalRating: 'להסתיר דירוג פנימי',
+  createGroupHideInternalRatingHint:
+    'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
   communityAdminRatingHint: 'קבע את דירוג השחקן (1–5). הדירוג מוצג לכל חברי המועדון.',
   communityAdminRatingClear: 'נקה דירוג',
@@ -1685,7 +1688,7 @@ export const he = {
   // the user played in. Complements the post-game push so a player who
   // muted notifications still gets a clear nudge to rate teammates.
   rateBannerTitle: 'דרג את חבריך מהמשחק',
-  rateBannerSub: 'תן דירוג מהיר לכל מי ששיחק איתך — חמש כוכבים, סוגר תוך דקה.',
+  rateBannerSub: 'תן דירוג מהיר לכל מי ששיחק איתך.',
   rateBannerCta: 'התחל לדרג',
   rateBannerDismiss: 'סגור',
   // RatePlayersScreen — the full list reached from the banner CTA.
@@ -1900,6 +1903,12 @@ export const he = {
   // Registration conflict — surfaced in the modal that blocks a join
   // when the user is already registered to a game within ±4h of the
   // target. The helper variant is for the inline disabled-CTA hint.
+  gameManagerBadge: 'מנהל',
+  communityHistoryTitle: 'היסטוריית משחקים',
+  communityHistoryShowLess: 'הצג פחות',
+  communityHistorySeeAll: (n: number) => `הצג את כל ההיסטוריה (${n})`,
+  gameJoinRejectedToast: 'הבקשה שלך למשחק נדחתה על ידי המנהל',
+  gameNotJoinableToast: 'המשחק כבר לא פתוח להרשמה',
   registrationConflictTitle: 'אתה כבר רשום למשחק בזמן חופף',
   // Variant shown when the conflicting game lives in a DIFFERENT
   // community than the target. Same body copy works for both — only

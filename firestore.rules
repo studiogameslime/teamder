@@ -869,6 +869,29 @@ service cloud.firestore {
         allow read: if isGamePlayer(id);
         allow write: if isSelf(uid) && isGamePlayer(id);
       }
+
+      // ── /games/{id}/joinRequests/{uid} — FAIR registration ──────────
+      // Each user writes ONE request doc (their OWN), stamped with a
+      // server-synced tap time. Writing separate docs means zero contention,
+      // so a burst of simultaneous taps all land instantly. The reconciler CF
+      // (Admin SDK, bypasses these rules) then seats everyone by tap time.
+      match /joinRequests/{uid} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.state == 'queued' &&
+          request.resource.data.tappedAt is number &&
+          // requestedAt MUST be the server clock (serverTimestamp) so the
+          // reconciler's anti-backdate clamp can trust it.
+          request.resource.data.requestedAt == request.time &&
+          request.resource.data.keys().hasOnly(
+            ['uid', 'tappedAt', 'requestedAt', 'state']
+          );
+        // The reconciler owns state transitions; the author may only withdraw
+        // (delete) their own still-queued request.
+        allow update: if false;
+        allow delete: if isSelf(uid);
+      }
     }
 
     // ── /rounds/{id} ────────────────────────────────────────────────────

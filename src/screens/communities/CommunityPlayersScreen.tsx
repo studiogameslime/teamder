@@ -102,8 +102,12 @@ export function CommunityPlayersScreen() {
   // Only the creator can promote/demote admins (and delete the group).
   const iAmCreator =
     !!me && !!group && me.id === (group.creatorId ?? group.adminIds[0]);
-  // Internal-rating mode: admins set player ratings; everyone sees them.
+  // Internal-rating mode: admins set player ratings; everyone sees them —
+  // UNLESS hideInternalRating is on, in which case regular members see no
+  // ratings at all (admins still see + edit them as an internal signal).
   const internalRating = group?.internalRating === true;
+  const ratingsHiddenFromMe =
+    internalRating && group?.hideInternalRating === true && !iAmAdmin;
 
   const saveAdminRating = useCallback(
     async (playerId: UserId, rating: number | null) => {
@@ -270,7 +274,9 @@ export function CommunityPlayersScreen() {
                   stats={stats?.[u.id]}
                   showDivider={i > 0}
                   internalRating={internalRating}
-                  rating={group.adminRatings?.[u.id]}
+                  rating={
+                    ratingsHiddenFromMe ? undefined : group.adminRatings?.[u.id]
+                  }
                   onSetRating={
                     internalRating && iAmAdmin
                       ? () => setRatingTarget(u)

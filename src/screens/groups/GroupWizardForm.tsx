@@ -53,6 +53,9 @@ export interface GroupFormValues {
   isOpen: boolean;
   /** Admins set player ratings themselves (vs. peer-voted). Stored as Group.internalRating. */
   internalRating: boolean;
+  /** Hide the admins' ratings from regular members (admins-only signal). Only
+   *  meaningful when `internalRating` is on. Stored as Group.hideInternalRating. */
+  hideInternalRating: boolean;
 
   // Info
   rules: string;
@@ -67,6 +70,7 @@ export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   description: '',
   isOpen: false,
   internalRating: false,
+  hideInternalRating: false,
   rules: '',
   contactPhone: '',
   city: '',
@@ -169,9 +173,15 @@ export function GroupWizardForm({
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
+    // Mark the save as intentional BEFORE onSubmit (which navigates back on
+    // success) so the unsaved-changes guard doesn't pop "שינויים שלא נשמרו"
+    // on the way out — the form values still differ from `initial` at that
+    // point, so without this flag the guard mistakes a save for a discard.
+    savingRef.current = true;
     try {
       await onSubmit(values);
     } catch (e) {
+      savingRef.current = false; // save failed → still genuinely dirty
       if (__DEV__) console.warn('[groupWizard] submit failed', e);
       appAlert(he.error, he.groupWizardSubmitFailed);
     } finally {
@@ -230,8 +240,27 @@ export function GroupWizardForm({
                 text: he.createGroupInternalRatingHint,
               }}
               value={values.internalRating}
-              onValueChange={(v) => set('internalRating', v)}
+              onValueChange={(v) => {
+                set('internalRating', v);
+                // Turning internal rating off makes "hide" meaningless — reset
+                // it so a stale `true` doesn't get persisted.
+                if (!v) set('hideInternalRating', false);
+              }}
             />
+
+            {/* Hide-internal-rating — only relevant when internal rating is on.
+                Makes the admins' ratings private to admins (members see nothing). */}
+            {values.internalRating ? (
+              <ToggleCard
+                label={he.createGroupHideInternalRating}
+                info={{
+                  title: he.createGroupHideInternalRating,
+                  text: he.createGroupHideInternalRatingHint,
+                }}
+                value={values.hideInternalRating}
+                onValueChange={(v) => set('hideInternalRating', v)}
+              />
+            ) : null}
 
             {/* Code-of-conduct (rich text: **bold** + bullets). Stored
                 as the raw markdown-lite string; RichRulesText renders

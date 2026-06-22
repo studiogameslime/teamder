@@ -25,6 +25,8 @@ interface Item {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string | null | undefined;
+  /** Show the full value (no 2-line clamp) — e.g. free-text notes. */
+  multiline?: boolean;
   action?: {
     /** Optional small icon shown next to the value to hint that
      *  the row is tappable (e.g. navigate icon for Waze). */
@@ -79,7 +81,10 @@ function Row({
         {item.action?.icon ? (
           <Ionicons name={item.action.icon} size={16} color={ACCENT} />
         ) : null}
-        <Text style={styles.value} numberOfLines={2}>
+        <Text
+          style={[styles.value, item.multiline && styles.valueMultiline]}
+          numberOfLines={item.multiline ? undefined : 2}
+        >
           {valueText}
         </Text>
       </View>
@@ -171,5 +176,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  // Free-text notes: let the value fill the row and wrap to as many lines as
+  // it needs instead of clamping at 2 (user report — notes were cut off).
+  valueMultiline: {
+    flexShrink: 1,
+    fontWeight: '600',
   },
 });

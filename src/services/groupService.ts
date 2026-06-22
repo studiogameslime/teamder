@@ -279,6 +279,9 @@ export const groupService = {
     isOpen?: boolean;
     /** When true, admins set player ratings themselves (vs. peer-voted). */
     internalRating?: boolean;
+    /** When true (with internalRating), ratings are hidden from regular
+     *  members — admins-only signal. */
+    hideInternalRating?: boolean;
     // ── Info (Step 2 of the wizard) ───────────────────────────────
     /** Code-of-conduct text shown on the community page. */
     rules?: string;
@@ -341,6 +344,7 @@ export const groupService = {
       maxMembers: input.maxMembers,
       isOpen: input.isOpen,
       internalRating: input.internalRating,
+      hideInternalRating: input.internalRating ? input.hideInternalRating : undefined,
       contactPhone: input.contactPhone,
       rules: input.rules,
       coverImageId: input.coverImageId,
@@ -387,6 +391,7 @@ export const groupService = {
         description: baseGroup.description,
         isOpen: baseGroup.isOpen,
         internalRating: baseGroup.internalRating,
+        hideInternalRating: baseGroup.hideInternalRating,
         rules: baseGroup.rules,
         contactPhone: baseGroup.contactPhone,
         city: baseGroup.city,
@@ -1007,6 +1012,7 @@ export const groupService = {
         | 'description'
         | 'isOpen'
         | 'internalRating'
+        | 'hideInternalRating'
         | 'rules'
         | 'contactPhone'
         | 'city'
@@ -1052,6 +1058,7 @@ export const groupService = {
       'description',
       'isOpen',
       'internalRating',
+      'hideInternalRating',
       'rules',
       'contactPhone',
       'city',

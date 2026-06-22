@@ -296,7 +296,7 @@ export function GamesListScreen() {
     setBusyGameId(game.id);
     try {
       if (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') {
-        await gameService.joinGameV2(game.id, user.id);
+        await gameService.requestJoinGame(game.id, user.id);
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
         await gameService.cancelGameV2(game.id, user.id);
       }
@@ -353,6 +353,18 @@ export function GamesListScreen() {
         } else {
           toast.info(he.registrationConflictTitle);
         }
+      } else if (code === 'GAME_JOIN_REJECTED') {
+        // Expected: an organizer-rejected user re-tapped join. Same friendly
+        // top-toast as MatchDetails (user report: show it here too), NOT an
+        // error — it's normal product behaviour, not a failure.
+        toast.info(he.matchDetailsJoinRejected);
+      } else if (
+        code === 'GAME_NOT_OPEN' ||
+        code === 'GAME_STARTED' ||
+        code === 'GAME_LIVE'
+      ) {
+        // Stale list/deep-link raced the game's lifecycle. Soft toast, no log.
+        toast.info(he.gameNotJoinableToast);
       } else {
         // Non-conflict failure. The underlying service (joinGameV2 /
         // cancelGameV2) self-logs the op, but capture the SCREEN
@@ -799,7 +811,7 @@ export function GamesListScreen() {
             await gameService.cancelGameV2(conflictGameId, user.id);
             const target = conflict?.target;
             if (target) {
-              await gameService.joinGameV2(target.id, user.id);
+              await gameService.requestJoinGame(target.id, user.id);
             }
             setConflict(null);
             const fresh = await reload();

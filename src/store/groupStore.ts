@@ -48,6 +48,7 @@ interface GroupStore {
     description?: string;
     isOpen?: boolean;
     internalRating?: boolean;
+    hideInternalRating?: boolean;
     // Info
     rules?: string;
     contactPhone?: string;

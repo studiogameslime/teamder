@@ -343,6 +343,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     textAlignVertical: 'top',
     textAlign: RTL_LABEL_ALIGN,
+    // Force RTL base direction so the placeholder + caret sit on the RIGHT for
+    // an empty multiline input (RN otherwise defaults an empty field to LTR,
+    // dropping the placeholder on the left — user report).
+    writingDirection: 'rtl',
     color: colors.text,
     fontSize: 15,
     lineHeight: 22,

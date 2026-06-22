@@ -29,6 +29,8 @@ import {
   orderBy,
   query,
   runTransaction,
+  serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -74,6 +76,7 @@ import { stripUndefined } from '@/utils/stripUndefined';
 import { optionalString, requireInt, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
 import { serverNow } from '@/services/serverClock';
+import { assignJoins, type RosterState } from '@/services/joinFairness';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
@@ -3026,6 +3029,164 @@ export const gameService = {
    *   - players.length < maxPlayers → players[]
    *   - else → waitlist[]
    */
+  /**
+   * FAIR registration. Captures `tappedAt = serverNow()` at the tap instant
+   * (network-independent), then writes a contention-free per-user request doc
+   * (`games/{id}/joinRequests/{uid}`). A server reconciler collects the opening
+   * burst over a ~2s settle window and assigns seats strictly by tap time, so
+   * the spot goes to whoever tapped first — not whoever's network was fastest.
+   *
+   * Returns an OPTIMISTIC bucket (predicted from the roster snapshot) so the UI
+   * gives instant feedback; the live game subscription corrects it if the
+   * server's fair assignment differs in a contested boundary case. Same return
+   * shape + thrown errors as joinGameV2, so callers swap in 1:1.
+   */
+  async requestJoinGame(
+    gameId: string,
+    userId: UserId,
+  ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
+    // Capture the tap timestamp FIRST — before any await — so network latency
+    // on the pre-checks below never shifts a user's place in line.
+    const tappedAt = serverNow();
+    clearMyGamesCache();
+
+    const predictBucket = (g: {
+      players?: string[];
+      waitlist?: string[];
+      pending?: string[];
+      guests?: { id: string }[];
+      maxPlayers?: number;
+      requiresApproval?: boolean;
+      createdBy?: string;
+      pendingPromotion?: { uid?: string } | null;
+    }): 'players' | 'waitlist' | 'pending' => {
+      const state: RosterState = {
+        players: g.players ?? [],
+        waitlist: g.waitlist ?? [],
+        pending: g.pending ?? [],
+        guestsCount: g.guests?.length ?? 0,
+        maxPlayers: g.maxPlayers ?? 15,
+        // The game's creator/manager joins their OWN game without approval —
+        // requiring them to approve themselves is nonsense.
+        requiresApproval: g.requiresApproval === true && g.createdBy !== userId,
+        pendingOfferReservation: !!g.pendingPromotion?.uid,
+      };
+      const res = assignJoins(state, [
+        { uid: userId, tappedAt, requestedAt: tappedAt },
+      ]);
+      return res.assignments[0]?.bucket ?? 'waitlist';
+    };
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('requestJoinGame: game not found');
+      if (g.status === 'scheduled') {
+        throw new Error('requestJoinGame: registration not yet open');
+      }
+      if ((g.rejectedPlayerIds ?? []).includes(userId)) {
+        const e = new Error('GAME_JOIN_REJECTED') as Error & { code?: string };
+        e.code = 'GAME_JOIN_REJECTED';
+        throw e;
+      }
+      const already =
+        g.players.includes(userId) ||
+        g.waitlist.includes(userId) ||
+        (g.pending ?? []).includes(userId);
+      if (already) {
+        return {
+          bucket: g.players.includes(userId)
+            ? 'players'
+            : g.waitlist.includes(userId)
+              ? 'waitlist'
+              : 'pending',
+        };
+      }
+      const conflict = await gameService.findRegistrationConflict(userId, {
+        id: g.id,
+        startsAt: g.startsAt,
+      });
+      if (conflict) {
+        throw makeRegistrationConflictError(
+          { id: g.id, groupId: g.groupId, startsAt: g.startsAt },
+          conflict,
+        );
+      }
+      // Mock has no server reconciler → apply the fair assignment locally.
+      const res = assignJoins(
+        {
+          players: g.players,
+          waitlist: g.waitlist,
+          pending: g.pending ?? [],
+          guestsCount: g.guests?.length ?? 0,
+          maxPlayers: g.maxPlayers,
+          requiresApproval: g.requiresApproval === true && g.createdBy !== userId,
+          pendingOfferReservation: !!g.pendingPromotion?.uid,
+        },
+        [{ uid: userId, tappedAt, requestedAt: tappedAt }],
+      );
+      g.players = res.players;
+      g.waitlist = res.waitlist;
+      g.pending = res.pending;
+      g.participantIds = Array.from(
+        new Set([...res.players, ...res.waitlist, ...res.pending]),
+      );
+      return { bucket: res.assignments[0]?.bucket ?? 'waitlist' };
+    }
+
+    // Real Firestore. Lifecycle + conflict pre-check (fast, friendly errors);
+    // tappedAt is already locked so this latency can't reorder anyone.
+    const ref = docs.game(gameId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('requestJoinGame: game not found');
+    const data = snap.data();
+    if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
+    if (data.startsAt && data.startsAt < Date.now()) {
+      throw new Error('GAME_STARTED');
+    }
+    if (data.liveMatch?.phase === 'live') throw new Error('GAME_LIVE');
+    if ((data.rejectedPlayerIds ?? []).includes(userId)) {
+      const e = new Error('GAME_JOIN_REJECTED') as Error & { code?: string };
+      e.code = 'GAME_JOIN_REJECTED';
+      throw e;
+    }
+    const inRoster =
+      (data.players ?? []).includes(userId) ||
+      (data.waitlist ?? []).includes(userId) ||
+      (data.pending ?? []).includes(userId);
+    if (inRoster) {
+      return {
+        bucket: (data.players ?? []).includes(userId)
+          ? 'players'
+          : (data.waitlist ?? []).includes(userId)
+            ? 'waitlist'
+            : 'pending',
+      };
+    }
+    const conflict = await gameService.findRegistrationConflict(userId, {
+      id: gameId,
+      startsAt: data.startsAt,
+    });
+    if (conflict) {
+      throw makeRegistrationConflictError(
+        { id: gameId, groupId: data.groupId, startsAt: data.startsAt },
+        conflict,
+      );
+    }
+    // Contention-free write: each user owns their own request doc, so all
+    // concurrent taps land immediately in parallel — no transaction retries,
+    // no delay. The server reconciler does the authoritative fair seating.
+    const { db } = getFirebase();
+    const reqRef = doc(db, 'games', gameId, 'joinRequests', userId);
+    await setDoc(reqRef, {
+      uid: userId,
+      tappedAt,
+      requestedAt: serverTimestamp(),
+      state: 'queued',
+    });
+    logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true });
+    return { bucket: predictBucket(data) };
+  },
+
   async joinGameV2(
     gameId: string,
     userId: UserId
@@ -3077,7 +3238,7 @@ export const gameService = {
       // Capacity is shared between real players and guests — guests are
       // first-class participants per the spec.
       const occupancy = g.players.length + (g.guests?.length ?? 0);
-      if (g.requiresApproval) {
+      if (g.requiresApproval && g.createdBy !== userId) {
         g.pending = [...(g.pending ?? []), userId];
         bucket = 'pending';
       } else if (occupancy < g.maxPlayers) {
@@ -3247,7 +3408,8 @@ export const gameService = {
       if (!Array.isArray(data.waitlist)) updates.waitlist = [];
       if (!Array.isArray(data.pending)) updates.pending = [];
       let bucket: 'players' | 'waitlist' | 'pending';
-      if (data.requiresApproval) {
+      // The creator/manager joins their OWN game without approval.
+      if (data.requiresApproval && data.createdBy !== userId) {
         updates.pending = [...pending, userId];
         bucket = 'pending';
       } else if (occupancy < (data.maxPlayers ?? 15)) {
