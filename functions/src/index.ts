@@ -2993,7 +2993,15 @@ export const onGameRotationChanged = onDocumentWritten(
 
     const reg = (arr?: string[]) =>
       (arr ?? []).filter(
-        (u) => typeof u === 'string' && u.length > 0 && !u.startsWith('guest:'),
+        (u) =>
+          typeof u === 'string' &&
+          u.length > 0 &&
+          !u.startsWith('guest:') &&
+          // Defence-in-depth: a raw guest id (genGuestId → "<base36ts>-<rand>")
+          // contains a hyphen; a real Firebase Auth uid never does. Without
+          // this, a guest id that slipped the `guest:` prefix got `set(merge)`
+          // a phantom /users doc → a spurious "new user" push.
+          !u.includes('-'),
       );
     const winners = reg(after.rotation.lastRoundWinners);
     const losers = reg(after.rotation.lastRoundLosers);
@@ -7161,7 +7169,11 @@ export const cronEvery60Min = onSchedule(
 // W/L + head-to-head against). Idempotency is the caller's concern — it sends
 // each finished round once.
 const GUEST_PREFIX = 'guest:';
-const isReal = (id: string) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX);
+// A real Firebase Auth uid: not guest-prefixed AND no hyphen (a raw guest id
+// from genGuestId is "<base36ts>-<rand>"). The hyphen check stops a guest id
+// that slipped the prefix from `set(merge)`-creating a phantom /users doc.
+const isReal = (id: string) =>
+  typeof id === 'string' && !id.startsWith(GUEST_PREFIX) && !id.includes('-');
 
 export const commitRoundStats = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },

@@ -34,6 +34,7 @@ import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
+import { toGuestRosterId, isGuestId } from '@/types';
 import { buildPickOrder, reconstructPicks } from '@/utils/draft';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
@@ -105,7 +106,15 @@ export function DraftBoardScreen() {
         photoUrl: p?.photoUrl,
       };
     });
-    const guests = (game.guests ?? []).map((g) => ({ id: g.id, name: g.name }));
+    // Guests MUST carry the `guest:` roster-id prefix here — same as every
+    // other surface (MatchDetails, live rotation). Using the raw guest id let
+    // it leak through the `guest:`-prefix filters into per-player win/goal
+    // stats, which created phantom /users docs (and spurious "new user"
+    // pushes) keyed on the raw guest id. See toGuestRosterId.
+    const guests = (game.guests ?? []).map((g) => ({
+      id: toGuestRosterId(g.id),
+      name: g.name,
+    }));
     return [...players, ...guests];
   }, [game, playersMap]);
   const byId = useMemo(
@@ -119,7 +128,7 @@ export function DraftBoardScreen() {
   // Tap a player chip → their card (guests have no card → skip).
   const openCard = useCallback(
     (id: string) => {
-      if ((game?.guests ?? []).some((g) => g.id === id)) return;
+      if (isGuestId(id)) return; // guests have no player card
       nav.navigate('PlayerCard', { userId: id, groupId: game?.groupId });
     },
     [game?.guests, game?.groupId, nav],
