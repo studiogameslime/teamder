@@ -89,10 +89,17 @@ export function AvailablePlayersScreen() {
           ...(g.waitlist ?? []),
           ...(g.pending ?? []),
         ];
+        // Prefer the game's actual field coords for the radius match; fall
+        // back to the community's coords, then the city name.
+        const grp = myCommunities.find((c) => c.id === g.groupId);
+        const gameLat = g.fieldLat ?? grp?.lat;
+        const gameLng = g.fieldLng ?? grp?.lng;
         const list = await userService.findAvailablePlayers({
           day,
           hour,
           city,
+          gameLat,
+          gameLng,
           excludeIds: exclude,
         });
         if (alive) setCandidates(list);

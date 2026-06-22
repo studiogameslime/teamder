@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { User } from '@/types';
+import { haversineKm } from '@/utils/geo';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
@@ -405,13 +406,20 @@ export const userService = {
     day: number;
     /** "HH:mm" of the kickoff. Used for time-window match. */
     hour?: string;
-    /** Free-text city — compared case-insensitively. */
+    /** Free-text city — fallback match when geo coords are unavailable. */
     city?: string;
+    /** Game location (preferred) — drives the radius/distance match. */
+    gameLat?: number;
+    gameLng?: number;
     excludeIds: string[];
     limit?: number;
   }): Promise<User[]> {
     const limit = opts.limit ?? 50;
     const excluded = new Set(opts.excludeIds);
+    const gamePt =
+      typeof opts.gameLat === 'number' && typeof opts.gameLng === 'number'
+        ? { lat: opts.gameLat, lng: opts.gameLng }
+        : null;
     const matches = (u: User): boolean => {
       if (excluded.has(u.id)) return false;
       const a = u.availability;
@@ -420,8 +428,28 @@ export const userService = {
       if (!Array.isArray(a.preferredDays) || !a.preferredDays.includes(opts.day as never)) {
         return false;
       }
-      if (opts.city && a.preferredCity) {
-        if (a.preferredCity.trim().toLowerCase() !== opts.city.trim().toLowerCase()) {
+      // ── Location: RADIUS-based (the whole point of `availabilityRadiusKm`).
+      // Compute the great-circle distance from the player's home to the game
+      // and include them when it's within their chosen radius — so a Kiryat
+      // Ekron player with a 50km radius IS offered a Petah Tikva game (~30km),
+      // not excluded just because the city NAMES differ. City-name equality is
+      // kept only as a fallback when either side is missing coordinates.
+      const home =
+        typeof a.homeCityLat === 'number' && typeof a.homeCityLng === 'number'
+          ? { lat: a.homeCityLat, lng: a.homeCityLng }
+          : null;
+      const radiusKm =
+        typeof a.availabilityRadiusKm === 'number' && a.availabilityRadiusKm > 0
+          ? a.availabilityRadiusKm
+          : 20; // model default
+      if (gamePt && home) {
+        if (haversineKm(home, gamePt) > radiusKm) return false;
+      } else if (opts.city) {
+        const playerCity = a.homeCity || a.preferredCity;
+        if (
+          playerCity &&
+          playerCity.trim().toLowerCase() !== opts.city.trim().toLowerCase()
+        ) {
           return false;
         }
       }
