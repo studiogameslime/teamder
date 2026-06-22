@@ -55,7 +55,14 @@ export function StatisticsScreen() {
         // Resolve the (few) distinct uids the named cards reference.
         const ids = Array.from(
           new Set(
-            [s.mostPlayedWith, s.mostWinsWith, s.biggestVictim, s.nemesis]
+            [
+              s.mostPlayedWith,
+              s.mostWinsWith,
+              s.biggestVictim,
+              s.nemesis,
+              s.mostAssistedTo,
+              s.mostAssistedBy,
+            ]
               .filter((x): x is NamedStat => !!x)
               .map((x) => x.uid),
           ),
@@ -147,6 +154,24 @@ export function StatisticsScreen() {
               stat={stats!.nemesis}
               sub={(n) => he.statNemesisSub(n)}
               person={resolve(stats!.nemesis, people)}
+            />
+            <PersonCard
+              index={4}
+              icon="hand-left"
+              tint="#0EA5E9"
+              title={he.statMostAssistedTo}
+              stat={stats!.mostAssistedTo}
+              sub={(n) => he.statMostAssistedToSub(n)}
+              person={resolve(stats!.mostAssistedTo, people)}
+            />
+            <PersonCard
+              index={5}
+              icon="hand-right"
+              tint="#8B5CF6"
+              title={he.statMostAssistedBy}
+              stat={stats!.mostAssistedBy}
+              sub={(n) => he.statMostAssistedBySub(n)}
+              person={resolve(stats!.mostAssistedBy, people)}
             />
           </View>
         </ScrollView>

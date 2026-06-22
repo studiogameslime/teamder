@@ -1325,6 +1325,12 @@ export const he = {
   statBiggestVictimSub: (n: number) => (n === 1 ? 'ניצחת אותו פעם אחת' : `ניצחת אותו ${n} פעמים`),
   statNemesis: 'היריב הקשה',
   statNemesisSub: (n: number) => (n === 1 ? 'ניצח אותך פעם אחת' : `ניצח אותך ${n} פעמים`),
+  statMostAssistedTo: 'הכי בישלת לו',
+  statMostAssistedToSub: (n: number) =>
+    n === 1 ? 'בישלת לו פעם אחת' : `בישלת לו ${n} פעמים`,
+  statMostAssistedBy: 'הכי בישל לך',
+  statMostAssistedBySub: (n: number) =>
+    n === 1 ? 'בישל לך פעם אחת' : `בישל לך ${n} פעמים`,
   statsScreenEmpty: 'עוד אין מספיק נתונים — תתחיל לשחק והמספרים יתחילו להצטבר!',
   statsPersonEmpty: 'עדיין אין מספיק משחקים',
   achievementCategoryGames: 'משחקים',

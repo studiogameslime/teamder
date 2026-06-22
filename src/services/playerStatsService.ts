@@ -41,6 +41,10 @@ export interface PlayerStatsSummary {
   biggestVictim: NamedStat | null;
   /** opponent who beat you the most. */
   nemesis: NamedStat | null;
+  /** teammate you SET UP the most (most goals you assisted them). */
+  mostAssistedTo: NamedStat | null;
+  /** teammate who SET YOU UP the most (most goals they assisted you). */
+  mostAssistedBy: NamedStat | null;
 }
 
 function emptySummary(goals: number, assists: number): PlayerStatsSummary {
@@ -56,6 +60,8 @@ function emptySummary(goals: number, assists: number): PlayerStatsSummary {
     mostWinsWith: null,
     biggestVictim: null,
     nemesis: null,
+    mostAssistedTo: null,
+    mostAssistedBy: null,
   };
 }
 
@@ -123,6 +129,8 @@ export const playerStatsService = {
     let mostWinsWith: NamedStat | null = null;
     let biggestVictim: NamedStat | null = null;
     let nemesis: NamedStat | null = null;
+    let mostAssistedTo: NamedStat | null = null;
+    let mostAssistedBy: NamedStat | null = null;
     try {
       const [asA, asB] = await Promise.all([
         getDocs(query(col.pairStats(), where('a', '==', userId))),
@@ -131,11 +139,15 @@ export const playerStatsService = {
       let bestWith = 0;
       let bestVic = 0;
       let bestNem = 0;
+      let bestAssistTo = 0;
+      let bestAssistBy = 0;
       const consider = (
         partner: string,
         winsTogether: number,
         myWins: number,
         myLosses: number,
+        iAssistedThem: number,
+        theyAssistedMe: number,
       ) => {
         if (winsTogether > bestWith) {
           bestWith = winsTogether;
@@ -149,17 +161,37 @@ export const playerStatsService = {
           bestNem = myLosses;
           nemesis = { uid: partner, count: myLosses };
         }
+        if (iAssistedThem > bestAssistTo) {
+          bestAssistTo = iAssistedThem;
+          mostAssistedTo = { uid: partner, count: iAssistedThem };
+        }
+        if (theyAssistedMe > bestAssistBy) {
+          bestAssistBy = theyAssistedMe;
+          mostAssistedBy = { uid: partner, count: theyAssistedMe };
+        }
       };
-      // winsA/winsB are by SORTED-first uid. When I'm `a`, my directional
-      // wins are winsA and my losses winsB; when I'm `b`, it's mirrored.
+      // winsA/winsB + assistsAToB/BToA are by SORTED-first uid. When I'm `a`,
+      // my directional wins are winsA, my losses winsB, the assists I GAVE are
+      // assistsAToB and assists I RECEIVED are assistsBToA; when I'm `b` it's
+      // all mirrored.
       for (const d of asA.docs) {
         const x = d.data() as {
           b?: string;
           winsTogether?: number;
           winsA?: number;
           winsB?: number;
+          assistsAToB?: number;
+          assistsBToA?: number;
         };
-        if (x.b) consider(x.b, x.winsTogether ?? 0, x.winsA ?? 0, x.winsB ?? 0);
+        if (x.b)
+          consider(
+            x.b,
+            x.winsTogether ?? 0,
+            x.winsA ?? 0,
+            x.winsB ?? 0,
+            x.assistsAToB ?? 0,
+            x.assistsBToA ?? 0,
+          );
       }
       for (const d of asB.docs) {
         const x = d.data() as {
@@ -167,8 +199,18 @@ export const playerStatsService = {
           winsTogether?: number;
           winsA?: number;
           winsB?: number;
+          assistsAToB?: number;
+          assistsBToA?: number;
         };
-        if (x.a) consider(x.a, x.winsTogether ?? 0, x.winsB ?? 0, x.winsA ?? 0);
+        if (x.a)
+          consider(
+            x.a,
+            x.winsTogether ?? 0,
+            x.winsB ?? 0,
+            x.winsA ?? 0,
+            x.assistsBToA ?? 0,
+            x.assistsAToB ?? 0,
+          );
       }
     } catch (err) {
       logError('playerStats.pairs', err, { userId });
@@ -186,6 +228,8 @@ export const playerStatsService = {
       mostWinsWith,
       biggestVictim,
       nemesis,
+      mostAssistedTo,
+      mostAssistedBy,
     };
   },
 };
