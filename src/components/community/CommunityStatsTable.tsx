@@ -68,9 +68,13 @@ export function CommunityStatsTable({
 
   // Goals first (the ranking metric → visible without scrolling), then the
   // rest. Scroll the strip to reveal the others.
+  // Mini-games (rounds), NOT evenings, as the "played" count — so it shares a
+  // unit with wins/losses (you can't win more rounds than you played). An
+  // evening has several rounds, so evenings would read oddly next to wins
+  // ("10 games, 20 wins"). Goals first — it's the ranking metric.
   const cols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
     { key: 'goals', label: he.champColGoals, primary: true },
-    { key: 'games', label: he.champColGames },
+    { key: 'rounds', label: he.champColMiniGames },
     { key: 'wins', label: he.champColWins },
     { key: 'losses', label: he.champColLosses },
     { key: 'assists', label: he.champColAssists },
