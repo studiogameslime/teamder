@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
-import { ChampionshipTable } from '@/components/community/ChampionshipTable';
+import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { gameService } from '@/services';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -57,7 +57,7 @@ export function CommunityChampionship({ groupId }: { groupId: string }) {
         </Card>
       </View>
 
-      <ChampionshipTable players={data.players} groupId={groupId} variant="community" />
+      <CommunityStatsTable players={data.players} groupId={groupId} />
     </View>
   );
 }

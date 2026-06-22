@@ -30,17 +30,12 @@ export function ChampionshipTable({
   players,
   groupId,
   limit = 20,
-  variant = 'game',
 }: {
   players: ChampionshipRow[];
   /** Passed through to the player card for community-scoped head-to-head. */
   groupId?: string;
   limit?: number;
-  /** 'game' → goals · assists · mini-games · score-per-game (after a game).
-   *  'community' → games · wins · goals (cumulative, in community details). */
-  variant?: 'game' | 'community';
 }) {
-  const community = variant === 'community';
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
 
@@ -76,20 +71,10 @@ export function ChampionshipTable({
         <View style={styles.who}>
           <Text style={styles.headerWho}>{he.champColPlayer}</Text>
         </View>
-        {community ? (
-          <>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColWins}</Text>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerScore]}>{he.champColGoals}</Text>
-          </>
-        ) : (
-          <>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
-            <Text numberOfLines={1} style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
-          </>
-        )}
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
       </View>
 
       {rows.map((r, i) => {
@@ -118,20 +103,10 @@ export function ChampionshipTable({
                 {p ? firstName(p.name) : '—'}
               </Text>
             </Pressable>
-            {community ? (
-              <>
-                <Text style={styles.stat}>{r.games}</Text>
-                <Text style={styles.stat}>{r.wins}</Text>
-                <Text style={[styles.stat, styles.score]}>{r.goals}</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.stat}>{r.goals}</Text>
-                <Text style={styles.stat}>{r.assists}</Text>
-                <Text style={styles.stat}>{r.rounds}</Text>
-                <Text style={[styles.stat, styles.score]}>{avgText}</Text>
-              </>
-            )}
+            <Text style={styles.stat}>{r.goals}</Text>
+            <Text style={styles.stat}>{r.assists}</Text>
+            <Text style={styles.stat}>{r.rounds}</Text>
+            <Text style={[styles.stat, styles.score]}>{avgText}</Text>
           </View>
         );
       })}

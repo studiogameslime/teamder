@@ -4524,6 +4524,7 @@ export const promoteOrphanToGroup = onCall(
             assists: number;
             rounds: number;
             wins: number;
+            losses: number;
             games: number;
           }
         >();
@@ -4535,14 +4536,16 @@ export const promoteOrphanToGroup = onCall(
             assists?: number;
             rounds?: number;
             wins?: number;
+            losses?: number;
           };
           if (!x.userId) continue;
           const goals = x.goals ?? 0;
           const assists = x.assists ?? 0;
           const rounds = x.rounds ?? 0;
           const wins = x.wins ?? 0;
+          const losses = x.losses ?? 0;
           // The community is created FROM this one game → games played = 1.
-          keep.set(x.userId, { goals, assists, rounds, wins, games: 1 });
+          keep.set(x.userId, { goals, assists, rounds, wins, losses, games: 1 });
           totalGoals += goals;
         }
         const batch = db.batch();
@@ -4561,6 +4564,7 @@ export const promoteOrphanToGroup = onCall(
             assists: v.assists,
             rounds: v.rounds,
             wins: v.wins,
+            losses: v.losses,
             games: v.games,
             updatedAt: now,
           });
@@ -7500,24 +7504,29 @@ export const commitRoundStats = onCall(
       );
     }
 
-    // 1d) mini-games WON — the winning side's players get a +1 `wins` tally,
-    //     per-community + per-game. Drives the community league/stats table's
-    //     wins column. (A tie credits no one.)
+    // 1d) mini-games WON / LOST — the winning side's players get a +1 `wins`
+    //     tally and the losing side a +1 `losses`, per-community + per-game.
+    //     Drives the community table's wins/losses columns. (A tie credits
+    //     neither side.)
     const roundWinners =
       winnerSide === 'A' ? A : winnerSide === 'B' ? B : [];
-    for (const uid of roundWinners) {
+    const roundLosers =
+      winnerSide === 'A' ? B : winnerSide === 'B' ? A : [];
+    const tallyResult = (uid: string, field: 'wins' | 'losses') => {
       if (groupId)
         batch.set(
           db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
-          { groupId, userId: uid, wins: inc(1), updatedAt: now },
+          { groupId, userId: uid, [field]: inc(1), updatedAt: now },
           { merge: true },
         );
       batch.set(
         db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
-        { gameId, userId: uid, wins: inc(1), updatedAt: now },
+        { gameId, userId: uid, [field]: inc(1), updatedAt: now },
         { merge: true },
       );
-    }
+    };
+    for (const uid of roundWinners) tallyResult(uid, 'wins');
+    for (const uid of roundLosers) tallyResult(uid, 'losses');
 
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.

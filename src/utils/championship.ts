@@ -18,6 +18,8 @@ export interface ChampionshipRow {
   rounds: number;
   /** Mini-games (rounds) the player's side won. */
   wins: number;
+  /** Mini-games (rounds) the player's side lost. */
+  losses: number;
   /** Full games (evenings) the player took part in. */
   games: number;
 }
@@ -59,6 +61,7 @@ export function rankChampionshipRows(
     assists?: number;
     rounds?: number;
     wins?: number;
+    losses?: number;
     games?: number;
   }>,
   sortBy: ChampionshipSort = 'perGame',
@@ -69,6 +72,7 @@ export function rankChampionshipRows(
     assists: typeof x.assists === 'number' ? x.assists : 0,
     rounds: typeof x.rounds === 'number' ? x.rounds : 0,
     wins: typeof x.wins === 'number' ? x.wins : 0,
+    losses: typeof x.losses === 'number' ? x.losses : 0,
     games: typeof x.games === 'number' ? x.games : 0,
   }));
   if (sortBy === 'goals') {

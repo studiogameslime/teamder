@@ -1872,6 +1872,7 @@ export const he = {
   champColAssists: 'בישולים',
   champColGames: 'משחקים',
   champColWins: 'ניצחונות',
+  champColLosses: 'הפסדים',
   champColScore: 'ניקוד',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
