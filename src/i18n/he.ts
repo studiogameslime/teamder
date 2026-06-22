@@ -280,8 +280,9 @@ export const he = {
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
   liveTimerReset: 'אפס',
-  liveTimerResetConfirmTitle: 'לאפס את הטיימר?',
-  liveTimerResetConfirmBody: 'השעון יחזור לאפס. היומן יתאפס גם הוא. אי אפשר לבטל.',
+  liveTimerResetConfirmTitle: 'לאפס את המשחק ולהתחיל מחדש?',
+  liveTimerResetConfirmBody:
+    'כל הגולים יימחקו, הטיימר יתאפס, והמשחק יתחיל מהתחלה. אי אפשר לבטל.',
   // Stoppages log — synced history of every start / pause / resume so
   // players can settle "the clock kept running!" arguments.
   liveStoppagesTitle: 'יומן עצירות',

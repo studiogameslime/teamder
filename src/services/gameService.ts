@@ -5236,10 +5236,10 @@ export const gameService = {
   },
 
   /**
-   * Reset the timer back to 00:00 (paused). Used between rounds
-   * — admin presses "סיים סיבוב" → the parent flow already updates
-   * scores + assignments, then calls this to zero the clock so the
-   * next round starts fresh.
+   * Full match reset — zero the clock (paused) AND wipe the live score +
+   * goal log so the round genuinely starts over from 0-0 at 00:00. Admin-only,
+   * irreversible (confirmed in the UI). Named `resetTimer` for history; it now
+   * resets the whole live match, not just the clock.
    */
   async resetTimer(
     gameId: string,
@@ -5260,6 +5260,11 @@ export const gameService = {
         timerControlledBy: userId,
         timerControlledByName: userName,
         timerEvents: [],
+        // Full match reset — wipe the score + goal log so the round truly
+        // starts over (not just the clock).
+        scoreA: 0,
+        scoreB: 0,
+        goals: [],
       };
       g.updatedAt = Date.now();
       return;
@@ -5276,6 +5281,11 @@ export const gameService = {
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
         'liveMatch.timerEvents': [],
+        // Full match reset — wipe the score + goal log so the round truly
+        // starts over (not just the clock).
+        'liveMatch.scoreA': 0,
+        'liveMatch.scoreB': 0,
+        'liveMatch.goals': [],
         updatedAt: serverNow(),
       });
     } catch (err) {
