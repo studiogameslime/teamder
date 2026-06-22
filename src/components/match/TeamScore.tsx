@@ -13,6 +13,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { teamName, teamColor, firstName, type RosterMember } from '@/components/match/rotationView';
+import { MeasurablePressable, type MenuAnchor } from '@/components/match/PlayerActionMenu';
 
 const GOLD = '#F4B73E';
 const TEAM_BLUE = '#2563EB';
@@ -26,6 +27,9 @@ interface Props {
   variant?: 'list' | 'grid';
   /** Goals per player this round — shown in the list badge instead of a rank. */
   goalsByPlayer?: Record<string, number>;
+  /** Tap a player (list variant only) → reports the avatar's on-screen rect so
+   *  the caller can anchor a popover menu beside them. */
+  onPlayerPress?: (m: RosterMember, rect: MenuAnchor) => void;
 }
 
 export function TeamScore({
@@ -36,6 +40,7 @@ export function TeamScore({
   avatarSize,
   variant = 'grid',
   goalsByPlayer,
+  onPlayerPress,
 }: Props) {
   const star = (
     <View style={styles.star}>
@@ -60,16 +65,29 @@ export function TeamScore({
         <View style={styles.list}>
           {roster.map((m) => {
             const goals = goalsByPlayer?.[m.id] ?? 0;
+            const avatar = (
+              <View>
+                <UserAvatar
+                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                  size={size}
+                  ring
+                />
+                {m.isFiller ? star : null}
+              </View>
+            );
             return (
               <View key={m.id} style={styles.playerRow}>
-                <View>
-                  <UserAvatar
-                    user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                    size={size}
-                    ring
-                  />
-                  {m.isFiller ? star : null}
-                </View>
+                {onPlayerPress ? (
+                  <MeasurablePressable
+                    onMeasured={(rect) => onPlayerPress(m, rect)}
+                    hitSlop={6}
+                    accessibilityLabel={m.name}
+                  >
+                    {avatar}
+                  </MeasurablePressable>
+                ) : (
+                  avatar
+                )}
                 <Text style={styles.playerName} numberOfLines={1}>
                   {firstName(m.name)}
                 </Text>

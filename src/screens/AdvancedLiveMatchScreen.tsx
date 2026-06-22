@@ -295,8 +295,13 @@ export function AdvancedLiveMatchScreen() {
         setLive(liveMatch ?? null);
         setRotation(r ?? null);
         setDraftTeams(d ?? null);
+        // Hydrate team players AND anyone who went home (they're off their team
+        // now, so they wouldn't be fetched otherwise — their name would be
+        // missing in the "הלכו הביתה" section).
         const ids = (d?.teams ?? []).flatMap((t) => t.playerIds);
-        if (ids.length > 0) hydratePlayers(ids);
+        const leftIds = (d?.leftHome ?? []).map((l) => l.playerId);
+        const all = [...ids, ...leftIds];
+        if (all.length > 0) hydratePlayers(all);
       },
     );
     return unsub;
@@ -777,6 +782,58 @@ export function AdvancedLiveMatchScreen() {
       return next;
     });
 
+  // ─── Per-player actions from the live roster popover menu ───────────────
+  // "כרטיס שחקן" → open the player's card (community-scoped for head-to-head).
+  const openPlayerCard = (userId: string) =>
+    (nav as unknown as { navigate: (s: string, p: object) => void }).navigate(
+      'PlayerCard',
+      game?.groupId ? { userId, groupId: game.groupId } : { userId },
+    );
+  // "הלך הביתה" — remove a player for the rest of the evening. Only BETWEEN
+  // rounds (the menu disables it while the clock runs), so guard here too.
+  const onPlayerWentHome = (player: { id: string; name: string }) => {
+    if (!gameId || timerRunning) return;
+    appAlert(
+      he.wentHomeConfirmTitle(player.name),
+      he.wentHomeConfirmBody,
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.wentHomeConfirmOk,
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await gameService.markPlayerWentHome(gameId, player.id);
+            } catch (err) {
+              logError('markPlayerWentHome', err, { gameId, playerId: player.id });
+            }
+          },
+        },
+      ],
+    );
+  };
+  // "החזר למשחק" — bring a departed player back onto their team.
+  const onRestorePlayer = (player: { id: string; name: string }) => {
+    if (!gameId || timerRunning) return;
+    appAlert(
+      he.restoreConfirmTitle(player.name),
+      he.restoreConfirmBody,
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.restoreConfirmOk,
+          onPress: async () => {
+            try {
+              await gameService.restorePlayer(gameId, player.id);
+            } catch (err) {
+              logError('restorePlayer', err, { gameId, playerId: player.id });
+            }
+          },
+        },
+      ],
+    );
+  };
+
   // Before the round starts, synthesize a PREVIEW rotation (the chosen two
   // teams play, the rest wait) so the admin sees "who's vs who / who waits" up
   // front. Completion (filling teams) happens on start.
@@ -974,6 +1031,11 @@ export function AdvancedLiveMatchScreen() {
               playersMap={playersMap}
               guests={game?.guests}
               goalsByPlayer={goalsByPlayer}
+              isAdmin={isAdmin}
+              canMarkHome={isAdmin && !timerRunning}
+              onPlayerCard={openPlayerCard}
+              onPlayerWentHome={onPlayerWentHome}
+              onRestorePlayer={onRestorePlayer}
             />
           ) : null}
         </View>

@@ -2699,6 +2699,9 @@ export const gameService = {
           const snap = base.find((s) => s.index === t.index);
           return snap ? { ...t, playerIds: [...snap.playerIds] } : t;
         }),
+        // Reset restores the original rosters, so anyone marked "went home"
+        // is back on the field — clear the list.
+        leftHome: [],
       };
     }
     await updateGameDoc(gameId, patch);
@@ -2734,6 +2737,78 @@ export const gameService = {
       draftTeams: newDraft,
       updatedAt: Date.now(),
     });
+  },
+
+  /** Mark a player as having left for the evening ("הלך הביתה"). Removes them
+   *  from whichever team currently holds them (so the rotation no longer counts
+   *  or borrows them) and records their home team in `draftTeams.leftHome` so an
+   *  admin can restore them later. Any active loan referencing them is dropped.
+   *  Caller gates this to BETWEEN rounds (timer not running). */
+  async markPlayerWentHome(gameId: string, playerId: string): Promise<void> {
+    if (!gameId || !playerId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!draft) return;
+    const team = draft.teams.find((t) => t.playerIds.includes(playerId));
+    const homeTeam = team?.index ?? draft.teams[0]?.index ?? 0;
+    const teams = draft.teams.map((t) => ({
+      ...t,
+      playerIds: t.playerIds.filter((p) => p !== playerId),
+    }));
+    const leftHome = [
+      ...(draft.leftHome ?? []).filter((l) => l.playerId !== playerId),
+      { playerId, homeTeam },
+    ];
+    const newDraft = { ...draft, teams, leftHome };
+    const patch: Record<string, unknown> = {
+      draftTeams: newDraft,
+      updatedAt: Date.now(),
+    };
+    // Drop any loan that referenced the departing player.
+    if (g?.rotation?.loans?.some((l) => l.playerId === playerId)) {
+      patch.rotation = {
+        ...g.rotation,
+        loans: g.rotation.loans.filter((l) => l.playerId !== playerId),
+        updatedAt: Date.now(),
+      };
+    }
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.draftTeams = newDraft;
+        if (patch.rotation) m.rotation = patch.rotation as import('@/types').MatchRotation;
+      }
+      return;
+    }
+    await updateGameDoc(gameId, patch);
+  },
+
+  /** Restore a player who had gone home: put them back on their original team
+   *  and clear them from `draftTeams.leftHome`. They rejoin the next round. */
+  async restorePlayer(gameId: string, playerId: string): Promise<void> {
+    if (!gameId || !playerId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!draft) return;
+    const entry = (draft.leftHome ?? []).find((l) => l.playerId === playerId);
+    const homeTeam = entry?.homeTeam ?? draft.teams[0]?.index ?? 0;
+    const hasHome = draft.teams.some((t) => t.index === homeTeam);
+    const teams = draft.teams.map((t) => {
+      // Re-add to the recorded home team, or to the first team if that team no
+      // longer exists (e.g. it had emptied out).
+      const target = hasHome ? t.index === homeTeam : t === draft.teams[0];
+      return target && !t.playerIds.includes(playerId)
+        ? { ...t, playerIds: [...t.playerIds, playerId] }
+        : t;
+    });
+    const leftHome = (draft.leftHome ?? []).filter((l) => l.playerId !== playerId);
+    const newDraft = { ...draft, teams, leftHome };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) m.draftTeams = newDraft;
+      return;
+    }
+    await updateGameDoc(gameId, { draftTeams: newDraft, updatedAt: Date.now() });
   },
 
   /**

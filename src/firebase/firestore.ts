@@ -787,6 +787,15 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
     })
     .filter((t): t is NonNullable<typeof t> => t !== null);
   if (teams.length < 2) return undefined;
+  const leftHome = Array.isArray(o.leftHome)
+    ? o.leftHome
+        .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
+        .map((l) => ({
+          playerId: typeof l.playerId === 'string' ? l.playerId : '',
+          homeTeam: typeof l.homeTeam === 'number' ? l.homeTeam : 0,
+        }))
+        .filter((l) => l.playerId)
+    : undefined;
   return {
     method: o.method === 'regular' ? 'regular' : 'snake',
     numTeams: typeof o.numTeams === 'number' ? o.numTeams : teams.length,
@@ -794,6 +803,7 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
     createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
     teams,
     fillMode: o.fillMode === 'permanent' ? 'permanent' : o.fillMode === 'temporary' ? 'temporary' : undefined,
+    leftHome: leftHome && leftHome.length > 0 ? leftHome : undefined,
   };
 }
 

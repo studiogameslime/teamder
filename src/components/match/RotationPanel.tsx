@@ -11,6 +11,12 @@ import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { TeamScore } from '@/components/match/TeamScore';
 import {
+  PlayerActionMenu,
+  MeasurablePressable,
+  type PlayerMenuTarget,
+  type PlayerMenuItem,
+} from '@/components/match/PlayerActionMenu';
+import {
   buildRoster,
   draftRoster,
   firstName,
@@ -31,10 +37,35 @@ interface Props {
   guests?: { id: string; name: string }[];
   /** Goals per player this round — shown in each roster row's badge. */
   goalsByPlayer?: Record<string, number>;
+  /** Admin can open the per-player action menu (went-home / restore). */
+  isAdmin?: boolean;
+  /** Marking "went home" is only allowed BETWEEN rounds — false while the
+   *  match clock is running. */
+  canMarkHome?: boolean;
+  /** Open a player's card. */
+  onPlayerCard?: (playerId: string) => void;
+  /** Mark a player as having left for the evening. */
+  onPlayerWentHome?: (player: { id: string; name: string }) => void;
+  /** Restore a player who had gone home. */
+  onRestorePlayer?: (player: { id: string; name: string }) => void;
 }
 
-export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsByPlayer }: Props) {
+type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
+
+export function RotationPanel({
+  draftTeams,
+  rotation,
+  playersMap,
+  guests,
+  goalsByPlayer,
+  isAdmin,
+  canMarkHome,
+  onPlayerCard,
+  onPlayerWentHome,
+  onRestorePlayer,
+}: Props) {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
+  const [menu, setMenu] = useState<MenuTarget | null>(null);
 
   if (!draftTeams || draftTeams.teams.length < 2 || !rotation) return null;
 
@@ -58,6 +89,69 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
   const openRoster: RosterMember[] =
     openTeam != null ? draftRoster(openTeam, teams, resolve) : [];
 
+  // Players who left for the evening — resolved to display cards.
+  const leftHomeList = (draftTeams.leftHome ?? []).map((l) => {
+    const r = resolve(l.playerId);
+    return {
+      id: l.playerId,
+      name: r.displayName ?? '…',
+      avatarId: r.avatarId,
+      photoUrl: r.photoUrl,
+    };
+  });
+
+  const isRegistered = (id: string) => !!playersMap[id];
+  const openMenu = (m: RosterMember | typeof leftHomeList[number], rect: PlayerMenuTarget['anchor'], kind: MenuTarget['kind']) =>
+    setMenu({
+      player: { id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl },
+      anchor: rect,
+      kind,
+    });
+
+  // Build the menu items for whoever is currently tapped (action depends on
+  // whether they're on the field or already in the "went home" list).
+  const menuItems: PlayerMenuItem[] = (() => {
+    if (!menu) return [];
+    const p = menu.player;
+    const cardItem: PlayerMenuItem | null = isRegistered(p.id)
+      ? {
+          key: 'card',
+          icon: 'person-circle-outline',
+          label: he.playerMenuCard,
+          onPress: () => onPlayerCard?.(p.id),
+        }
+      : null;
+    const out: PlayerMenuItem[] = [];
+    if (menu.kind === 'left') {
+      if (isAdmin) {
+        out.push({
+          key: 'restore',
+          icon: 'arrow-undo',
+          label: he.playerMenuRestore,
+          sublabel: canMarkHome ? undefined : he.playerMenuWentHomeHint,
+          disabled: !canMarkHome,
+          color: colors.primary,
+          onPress: () => onRestorePlayer?.({ id: p.id, name: p.name }),
+        });
+      }
+      if (cardItem) out.push(cardItem);
+    } else {
+      if (cardItem) out.push(cardItem);
+      if (isAdmin) {
+        out.push({
+          key: 'home',
+          icon: 'exit-outline',
+          label: he.playerMenuWentHome,
+          sublabel: canMarkHome ? undefined : he.playerMenuWentHomeHint,
+          disabled: !canMarkHome,
+          color: colors.danger,
+          onPress: () => onPlayerWentHome?.({ id: p.id, name: p.name }),
+        });
+      }
+    }
+    return out;
+  })();
+
   return (
     <View style={styles.wrap}>
       {/* ── Scoreboard: the two teams on the pitch ───────────────────────── */}
@@ -70,11 +164,31 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={aIdx} roster={rosterA} wins={winsOf(aIdx)} align="right" variant="list" goalsByPlayer={goalsByPlayer} />
+              <TeamScore
+                teamIdx={aIdx}
+                roster={rosterA}
+                wins={winsOf(aIdx)}
+                align="right"
+                variant="list"
+                goalsByPlayer={goalsByPlayer}
+                onPlayerPress={
+                  onPlayerCard ? (m, rect) => openMenu(m, rect, 'active') : undefined
+                }
+              />
             </View>
             <View style={styles.divider} />
             <View style={styles.scoreCol}>
-              <TeamScore teamIdx={bIdx} roster={rosterB} wins={winsOf(bIdx)} align="left" variant="list" goalsByPlayer={goalsByPlayer} />
+              <TeamScore
+                teamIdx={bIdx}
+                roster={rosterB}
+                wins={winsOf(bIdx)}
+                align="left"
+                variant="list"
+                goalsByPlayer={goalsByPlayer}
+                onPlayerPress={
+                  onPlayerCard ? (m, rect) => openMenu(m, rect, 'active') : undefined
+                }
+              />
             </View>
           </View>
           {fillers.length > 0 ? (
@@ -144,11 +258,25 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
                 <View style={styles.waitRoster}>
                   {roster.slice(0, 6).map((m) => (
                     <View key={m.id} style={styles.waitMini}>
-                      <UserAvatar
-                        user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                        size={32}
-                        ring
-                      />
+                      {onPlayerCard ? (
+                        <MeasurablePressable
+                          onMeasured={(rect) => openMenu(m, rect, 'active')}
+                          hitSlop={4}
+                          accessibilityLabel={m.name}
+                        >
+                          <UserAvatar
+                            user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                            size={32}
+                            ring
+                          />
+                        </MeasurablePressable>
+                      ) : (
+                        <UserAvatar
+                          user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                          size={32}
+                          ring
+                        />
+                      )}
                       <Text style={styles.waitMiniName} numberOfLines={1}>
                         {firstName(m.name)}
                       </Text>
@@ -160,6 +288,54 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
           })}
         </>
       ) : null}
+
+      {/* ── הלכו הביתה — players who left the evening ─────────────────────── */}
+      {leftHomeList.length > 0 ? (
+        <View style={styles.leftWrap}>
+          <View style={styles.waitHeader}>
+            <Text style={styles.waitHeaderText}>{he.wentHomeSectionTitle}</Text>
+            <Ionicons name="walk-outline" size={16} color={colors.textMuted} />
+          </View>
+          <Card style={styles.leftCard}>
+            {isAdmin ? (
+              <Text style={styles.leftHint}>{he.wentHomeTapHint}</Text>
+            ) : null}
+            <View style={styles.leftRoster}>
+              {leftHomeList.map((m) => (
+                <View key={m.id} style={styles.waitMini}>
+                  {onPlayerCard ? (
+                    <MeasurablePressable
+                      onMeasured={(rect) => openMenu(m, rect, 'left')}
+                      hitSlop={4}
+                      accessibilityLabel={m.name}
+                    >
+                      <View style={styles.leftAvatar}>
+                        <UserAvatar
+                          user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                          size={32}
+                        />
+                      </View>
+                    </MeasurablePressable>
+                  ) : (
+                    <View style={styles.leftAvatar}>
+                      <UserAvatar
+                        user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                        size={32}
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.waitMiniName} numberOfLines={1}>
+                    {firstName(m.name)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+        </View>
+      ) : null}
+
+      {/* Anchored per-player menu (כרטיס שחקן / הלך הביתה / החזר). */}
+      <PlayerActionMenu target={menu} items={menuItems} onClose={() => setMenu(null)} />
 
       {/* ── Waiting-team roster peek ─────────────────────────────────────── */}
       <Modal
@@ -278,6 +454,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   waitMini: { alignItems: 'center', gap: 3, width: 52 },
+
+  // ── הלכו הביתה section ──
+  leftWrap: { width: '100%', gap: spacing.sm },
+  leftCard: { padding: spacing.md, gap: spacing.sm },
+  leftHint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  leftRoster: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Faded avatar so a departed player reads as "off" without losing identity.
+  leftAvatar: { opacity: 0.55 },
+
   waitMiniName: {
     fontSize: 11,
     fontWeight: '600',

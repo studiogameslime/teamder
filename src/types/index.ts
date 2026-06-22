@@ -969,6 +969,10 @@ export interface DraftTeamsResult {
   teams: DraftTeam[];
   /** Live-rotation fill behaviour. Defaults to 'temporary' when absent. */
   fillMode?: FillMode;
+  /** Players who left during the evening ("הלך הביתה"). They're removed from
+   *  their team's roster so the rotation skips them; `homeTeam` is remembered
+   *  so an admin can restore them to the same team. */
+  leftHome?: { playerId: UserId; homeTeam: number }[];
 }
 
 /** A player currently completing a team that isn't their own. */
