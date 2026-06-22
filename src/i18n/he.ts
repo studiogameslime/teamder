@@ -1860,7 +1860,7 @@ export const he = {
   communityStatsVitalityTitle: 'מד חיים של המועדון',
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
-  communityChampNote: 'במשחקי המועדון בלבד · ניקוד = (גול×2 + בישול) חלקי מספר המשחקים',
+  communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי גולים',
   communityChampTotalGoals: 'סך הגולים',
   communityChampTotalRounds: 'משחקונים',
   // Per-game championship (shown once the game is finished).
@@ -1871,6 +1871,7 @@ export const he = {
   champColGoals: 'גולים',
   champColAssists: 'בישולים',
   champColGames: 'משחקים',
+  champColWins: 'ניצחונות',
   champColScore: 'ניקוד',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>

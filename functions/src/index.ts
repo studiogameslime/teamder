@@ -3151,6 +3151,42 @@ export const onGameRosterChanged = onDocumentWritten(
       }
     }
 
+    // ── Count a full GAME per participant when the game FINISHES ───────────
+    // Drives the community table's cumulative "games played" column. The
+    // before→after status transition to 'finished' fires exactly once, so
+    // this can't double-count. Uses the registered roster (players[]).
+    if (
+      before?.status !== 'finished' &&
+      after.status === 'finished' &&
+      after.groupId &&
+      Array.isArray(after.players) &&
+      after.players.length > 0
+    ) {
+      try {
+        const gid = after.groupId;
+        const batch = db.batch();
+        for (const uid of after.players) {
+          batch.set(
+            db.collection('communityPlayerStats').doc(`${gid}__${uid}`),
+            {
+              groupId: gid,
+              userId: uid,
+              games: admin.firestore.FieldValue.increment(1),
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          );
+        }
+        await batch.commit();
+      } catch (err) {
+        console.error(
+          '[onGameRosterChanged] games tally failed',
+          event.params.gameId,
+          err,
+        );
+      }
+    }
+
     // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this
     // game's future registration-open / public-open moments. Idempotent +
     // change-gated; the every-5-min cron remains the safety net. Cancel/
@@ -4483,7 +4519,13 @@ export const promoteOrphanToGroup = onCall(
         ]);
         const keep = new Map<
           string,
-          { goals: number; assists: number; rounds: number }
+          {
+            goals: number;
+            assists: number;
+            rounds: number;
+            wins: number;
+            games: number;
+          }
         >();
         let totalGoals = 0;
         for (const d of gpsSnap.docs) {
@@ -4492,12 +4534,15 @@ export const promoteOrphanToGroup = onCall(
             goals?: number;
             assists?: number;
             rounds?: number;
+            wins?: number;
           };
           if (!x.userId) continue;
           const goals = x.goals ?? 0;
           const assists = x.assists ?? 0;
           const rounds = x.rounds ?? 0;
-          keep.set(x.userId, { goals, assists, rounds });
+          const wins = x.wins ?? 0;
+          // The community is created FROM this one game → games played = 1.
+          keep.set(x.userId, { goals, assists, rounds, wins, games: 1 });
           totalGoals += goals;
         }
         const batch = db.batch();
@@ -4515,6 +4560,8 @@ export const promoteOrphanToGroup = onCall(
             goals: v.goals,
             assists: v.assists,
             rounds: v.rounds,
+            wins: v.wins,
+            games: v.games,
             updatedAt: now,
           });
         }
@@ -7449,6 +7496,25 @@ export const commitRoundStats = onCall(
       batch.set(
         db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
         { gameId, userId: uid, rounds: inc(1), updatedAt: now },
+        { merge: true },
+      );
+    }
+
+    // 1d) mini-games WON — the winning side's players get a +1 `wins` tally,
+    //     per-community + per-game. Drives the community league/stats table's
+    //     wins column. (A tie credits no one.)
+    const roundWinners =
+      winnerSide === 'A' ? A : winnerSide === 'B' ? B : [];
+    for (const uid of roundWinners) {
+      if (groupId)
+        batch.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
+          { groupId, userId: uid, wins: inc(1), updatedAt: now },
+          { merge: true },
+        );
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
+        { gameId, userId: uid, wins: inc(1), updatedAt: now },
         { merge: true },
       );
     }

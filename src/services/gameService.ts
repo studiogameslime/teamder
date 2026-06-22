@@ -869,7 +869,11 @@ export const gameService = {
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
         getDoc(doc(db, 'communityStats', groupId)),
       ]);
-      const players = rankChampionshipRows(psSnap.docs.map((d) => d.data()));
+      // Community table ranks by cumulative goals (not per-game efficiency).
+      const players = rankChampionshipRows(
+        psSnap.docs.map((d) => d.data()),
+        'goals',
+      );
       const totalGoals = players.reduce((a, s) => a + s.goals, 0);
       const totalRounds = csSnap.exists()
         ? ((csSnap.data() as { rounds?: number }).rounds ?? 0)

@@ -57,7 +57,7 @@ export function CommunityChampionship({ groupId }: { groupId: string }) {
         </Card>
       </View>
 
-      <ChampionshipTable players={data.players} groupId={groupId} />
+      <ChampionshipTable players={data.players} groupId={groupId} variant="community" />
     </View>
   );
 }
