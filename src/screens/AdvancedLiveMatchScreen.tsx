@@ -398,6 +398,9 @@ export function AdvancedLiveMatchScreen() {
         { rotation, teams: flow.working.teams },
         flow.baseTeams,
       );
+      // New round is set up → zero the clock (paused) so the next משחקון starts
+      // fresh at 00:00 instead of carrying the previous round's running time.
+      if (me) await gameService.resetTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
@@ -420,10 +423,46 @@ export function AdvancedLiveMatchScreen() {
     advanceFillFlow();
   };
 
+  // "סיים משחקון" → confirm first, naming the winner + who comes on next, so
+  // the admin doesn't accidentally end a round (and sees the rotation result).
+  // A tie skips straight to the manual winner picker.
+  const confirmEndRound = () => {
+    if (!rotation || !live) {
+      void onEndRound();
+      return;
+    }
+    const [a, b] = rotation.playing;
+    const winnerIdx =
+      (live.scoreA ?? 0) > (live.scoreB ?? 0)
+        ? a
+        : (live.scoreB ?? 0) > (live.scoreA ?? 0)
+          ? b
+          : null;
+    if (winnerIdx == null) {
+      void onEndRound(); // tie → picker
+      return;
+    }
+    const next = rotation.waiting[0];
+    appAlert(
+      he.rotationEndRoundConfirmTitle(teamName(winnerIdx)),
+      next != null
+        ? he.rotationEndRoundConfirmBody(teamName(next))
+        : he.rotationEndRoundConfirmBodyNoNext,
+      [
+        { text: he.cancel, style: 'cancel' },
+        { text: he.rotationEndRoundConfirmOk, onPress: () => void onEndRound() },
+      ],
+    );
+  };
+
   const onEndRound = async () => {
     if (!gameId || !me || finalizingRef.current) return;
     finalizingRef.current = true;
     try {
+      // STOP (don't reset) the clock the moment the round ends — it shouldn't
+      // keep ticking through the fill flow. It's zeroed after the new round is
+      // committed (see advanceFillFlow).
+      await gameService.pauseTimer(gameId, me.id, me.name ?? '').catch(() => {});
       // Commit stats + build the post-round skeleton (no rotate yet). A 4-team
       // tie auto-resolves; a 2–3 team tie returns outcome null → manual picker.
       const res = await gameService.prepareRoundResult(gameId, me.id);
@@ -1007,7 +1046,7 @@ export function AdvancedLiveMatchScreen() {
               <Ionicons name="refresh" size={22} color="#1D4ED8" />
               <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
             </Pressable>
-            <Pressable style={styles.roundBtn} onPress={onEndRound}>
+            <Pressable style={styles.roundBtn} onPress={confirmEndRound}>
               <Ionicons name="flag" size={22} color="#FFFFFF" />
               <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
             </Pressable>

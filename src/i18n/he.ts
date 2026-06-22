@@ -317,6 +317,7 @@ export const he = {
   rotationNextUp: 'הבאה בתור',
   rotationAfter: 'אחריה',
   rotationPlayersCount: (n: number) => `${n} שחקנים`,
+  rotationWinsShort: (n: number) => `${n} נצחונות`,
   rotationFillerStar: (teamName: string) => `שחקן משלים מ${teamName}`,
   rotationFillerStarMulti: (teamNames: string) => `שחקנים משלימים מ${teamNames}`,
   /** Names the specific filler player + their home team. */
@@ -326,6 +327,11 @@ export const he = {
     `${count} עצירות · ${time}`,
   rotationStartRound: 'התחל משחקון',
   rotationEndRound: 'סיים משחקון',
+  rotationEndRoundConfirmTitle: (winner: string) => `${winner} ניצחה! 🏆`,
+  rotationEndRoundConfirmBody: (next: string) =>
+    `הבאה שעולה למגרש: ${next}. לסיים את המשחקון?`,
+  rotationEndRoundConfirmBodyNoNext: 'לסיים את המשחקון?',
+  rotationEndRoundConfirmOk: 'סיים משחקון',
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   fillPickerSelectCount: (chosen: number, required: number) =>
     `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
@@ -529,8 +535,9 @@ export const he = {
   createGameCancelDeadlineHint:
     'אחרי הזמן הזה ביטול ייספר כאי-הגעה',
   createGameFormat: 'פורמט',
-  createGameIsPublic: 'משחק פתוח (גלוי לכולם)',
-  createGameIsPublicHint: 'כשמופעל — המשחק יוצג בלשונית המשחקים גם למי שאינם במועדון',
+  createGameIsPublic: 'משחק פתוח לכולם',
+  createGameIsPublicHint:
+    'כשמופעל — המשחק פתוח ומוצג בלשונית המשחקים גם למי שאינם במועדון. כבוי — המשחק סגור לחברי המועדון בלבד.',
   createGameRequiresApproval: 'הצטרפות דורשת אישור',
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
   createGameNotes: 'הערות (לא חובה)',

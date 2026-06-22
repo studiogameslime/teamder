@@ -131,6 +131,9 @@ export function RotationPanel({ draftTeams, rotation, playersMap, guests, goalsB
                     <Text style={[styles.waitName, { color: teamColor(idx) }]}>{teamName(idx)}</Text>
                     <Text style={styles.waitCount}>
                       {he.rotationPlayersCount(roster.length)}
+                      {winsOf(idx) > 0
+                        ? ` · 🏆 ${he.rotationWinsShort(winsOf(idx))}`
+                        : ''}
                     </Text>
                   </View>
                   <View style={styles.waitSpacer} />
