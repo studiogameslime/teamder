@@ -31,6 +31,7 @@ import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
 import { ReferralsListScreen } from '@/screens/profile/ReferralsListScreen';
 import { FeedbackScreen } from '@/screens/FeedbackScreen';
 
@@ -59,6 +60,7 @@ export type ProfileStackParamList = {
   LiveMatch: { gameId: string };
   // Reachable from MatchDetails' community-link icon.
   CommunityDetails: { groupId: string };
+  CommunityStats: { groupId: string };
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -95,6 +97,7 @@ export function ProfileStack() {
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
     </Stack.Navigator>
   );
 }

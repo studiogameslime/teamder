@@ -26,6 +26,7 @@ import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsSc
 import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
 import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
 import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
+import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
@@ -47,6 +48,7 @@ export type CommunitiesStackParamList = {
   CommunityDetailsPublic: { groupId: string };
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
+  CommunityStats: { groupId: string };
   PlayerCard: { userId: string; groupId?: string };
   // Match-detail chain — same routes as GameStack, deliberately
   // duplicated so back-navigation from MatchDetails returns to
@@ -98,6 +100,7 @@ export function CommunitiesStack() {
         name="CommunityPlayers"
         component={CommunityPlayersScreen}
       />
+      <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />

@@ -522,6 +522,16 @@ export function CommunityDetailsScreen() {
               { groupId: group.id },
             ),
         },
+        {
+          id: 'stats',
+          label: he.communityMenuStats,
+          icon: 'stats-chart-outline' as const,
+          onPress: () =>
+            (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+              'CommunityStats',
+              { groupId: group.id },
+            ),
+        },
         ...(isMember || isAdmin
           ? [
               {
