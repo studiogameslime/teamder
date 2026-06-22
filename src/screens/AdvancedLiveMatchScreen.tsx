@@ -687,6 +687,30 @@ export function AdvancedLiveMatchScreen() {
     if (!inOvertime) enteredOvertimeRef.current = false;
   }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
 
+  // Randomise the opening order once teams are drafted (re-randomise if the
+  // team set changes). Stable across renders. MUST stay above the early
+  // returns below so the hook order never changes (no conditional hooks).
+  useEffect(() => {
+    if (rotation || !draftTeams) return;
+    const idx = draftTeams.teams.map((t) => t.index);
+    setStartOrder((prev) => {
+      const sameSet =
+        prev.length === idx.length && idx.every((i) => prev.includes(i));
+      if (sameSet) return prev;
+      return [...idx].sort(() => Math.random() - 0.5);
+    });
+  }, [draftTeams, rotation]);
+
+  // Effective opening order — admin's (random/edited) order when valid, else
+  // by-index. Also above the early returns for stable hook order.
+  const effectiveStartOrder = useMemo<number[]>(() => {
+    if (!draftTeams) return [];
+    const idx = draftTeams.teams.map((t) => t.index);
+    const valid =
+      startOrder.length === idx.length && idx.every((i) => startOrder.includes(i));
+    return valid ? startOrder : [...idx].sort((a, b) => a - b);
+  }, [draftTeams, startOrder]);
+
   // ─── Not found ─────────────────────────────────────────────────────────
   // Game was deleted or failed to load — give the user an explanation and
   // a way out instead of an endless spinner.
@@ -740,30 +764,6 @@ export function AdvancedLiveMatchScreen() {
   const perTeam =
     game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
   const canStartRound = hasTeams && totalDrafted >= perTeam * 2;
-
-  // Randomise the opening order once teams are drafted (and re-randomise if the
-  // team set changes). Kept in state so it's STABLE across renders — it only
-  // re-rolls on an explicit shuffle or a real teams change, never per render.
-  useEffect(() => {
-    if (rotationActive || !draftTeams) return;
-    const idx = draftTeams.teams.map((t) => t.index);
-    setStartOrder((prev) => {
-      const sameSet =
-        prev.length === idx.length && idx.every((i) => prev.includes(i));
-      if (sameSet) return prev; // keep the admin's current order
-      return [...idx].sort(() => Math.random() - 0.5);
-    });
-  }, [draftTeams, rotationActive]);
-
-  // The effective opening order: the admin's (random/edited) startOrder when
-  // valid, else by-index as a safe fallback.
-  const effectiveStartOrder = useMemo<number[]>(() => {
-    if (!draftTeams) return [];
-    const idx = draftTeams.teams.map((t) => t.index);
-    const valid =
-      startOrder.length === idx.length && idx.every((i) => startOrder.includes(i));
-    return valid ? startOrder : [...idx].sort((a, b) => a - b);
-  }, [draftTeams, startOrder]);
 
   const reshuffleStart = () =>
     setStartOrder((prev) => [...prev].sort(() => Math.random() - 0.5));
