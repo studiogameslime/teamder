@@ -393,11 +393,18 @@ export function MatchPlayersScreen() {
                       isAdminViewer
                         ? async () => {
                             try {
-                              await gameService.approveGameJoin(
+                              const r = await gameService.approveGameJoin(
                                 game.id,
                                 e.user.id,
                               );
-                              toast.success(he.matchPlayersApproveDone);
+                              // Full game → the approved player lands on the
+                              // waitlist; tell the admin so it's not a silent
+                              // "approved" that looks like a squad spot (J2vGVko0).
+                              if (r?.bucket === 'waitlist') {
+                                toast.info(he.requestsApprovedToWaitlist);
+                              } else {
+                                toast.success(he.matchPlayersApproveDone);
+                              }
                               await reload();
                             } catch (err) {
                               toast.error(String((err as Error)?.message ?? err));

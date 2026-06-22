@@ -63,6 +63,10 @@ import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
 import {
+  rankChampionshipRows,
+  type ChampionshipRow,
+} from '@/utils/championship';
+import {
   startRotation as runStartRotation,
   recordWinner as runRecordWinner,
   recordTie as runRecordTie,
@@ -855,9 +859,9 @@ export const gameService = {
   async getCommunityChampionship(groupId: GroupId): Promise<{
     totalGoals: number;
     totalRounds: number;
-    scorers: Array<{ uid: UserId; goals: number }>;
+    players: ChampionshipRow[];
   }> {
-    const empty = { totalGoals: 0, totalRounds: 0, scorers: [] as Array<{ uid: UserId; goals: number }> };
+    const empty = { totalGoals: 0, totalRounds: 0, players: [] as ChampionshipRow[] };
     if (USE_MOCK_DATA || !groupId) return empty;
     const db = getFirebase().db;
     try {
@@ -865,25 +869,37 @@ export const gameService = {
         getDocs(query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId))),
         getDoc(doc(db, 'communityStats', groupId)),
       ]);
-      const scorers = psSnap.docs
-        .map((d) => {
-          const x = d.data() as { userId?: string; goals?: number };
-          return { uid: x.userId ?? '', goals: typeof x.goals === 'number' ? x.goals : 0 };
-        })
-        .filter((s) => s.uid && s.goals > 0)
-        // Deterministic tie-break by uid so equal-goal scorers keep a STABLE
-        // order (and stable medals) across reads — Firestore doc-iteration
-        // order is otherwise unstable, which made medals flip between refreshes.
-        .sort((a, b) => b.goals - a.goals || a.uid.localeCompare(b.uid));
-      const totalGoals = scorers.reduce((a, s) => a + s.goals, 0);
+      const players = rankChampionshipRows(psSnap.docs.map((d) => d.data()));
+      const totalGoals = players.reduce((a, s) => a + s.goals, 0);
       const totalRounds = csSnap.exists()
         ? ((csSnap.data() as { rounds?: number }).rounds ?? 0)
         : 0;
-      return { totalGoals, totalRounds, scorers };
+      return { totalGoals, totalRounds, players };
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
       return empty;
+    }
+  },
+
+  /**
+   * Per-GAME championship — goals + assists each player tallied IN THIS game
+   * (gamePlayerStats/{gameId}__{uid}, written by commitRoundStats). Ranked by
+   * score = goals×2 + assists×1. Shown on MatchDetails once the game is
+   * finished. Games that finished before this collection existed return [].
+   */
+  async getGameChampionship(gameId: string): Promise<{ players: ChampionshipRow[] }> {
+    if (USE_MOCK_DATA || !gameId) return { players: [] };
+    const db = getFirebase().db;
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId)),
+      );
+      return { players: rankChampionshipRows(snap.docs.map((d) => d.data())) };
+    } catch (err) {
+      logError('getGameChampionship', err, { gameId });
+      if (__DEV__) console.warn('[gameService] getGameChampionship failed', err);
+      return { players: [] };
     }
   },
 
@@ -894,12 +910,18 @@ export const gameService = {
     // a mid-flow state (registration frozen, game not started) and
     // does NOT belong here — the previous filter accidentally surfaced
     // unfinished games as "history".
+    // Community history should list ALL of the club's past games, not just
+    // the most recent 20 (the old cap silently truncated active clubs — see
+    // the count mismatch noted in CommunityDetailsScreen). 100 covers ~2
+    // years of weekly play; we keep a bound because each game also costs a
+    // rounds-subcollection read, and an unbounded query on a busy club would
+    // multiply reads on every page open.
     const q = query(
       col.games(),
       where('groupId', '==', groupId),
       where('status', 'in', ['finished', 'cancelled']),
       orderBy('startsAt', 'desc'),
-      limit(20)
+      limit(100)
     );
     let snap;
     try {
@@ -2144,21 +2166,18 @@ export const gameService = {
     if (!existing) {
       throw new Error('updateGameV2: game not found');
     }
-    // Once the game has started — either the kickoff time has
-    // passed, or the status flipped to active/finished/cancelled —
-    // edits are no longer permitted. UI hides the edit affordance
-    // via canEditGame(), this is the defense-in-depth check on the
-    // service layer. The typed code lets the screen show a clean
-    // "המשחק כבר התחיל" message instead of falling through to a
-    // generic permission-denied.
+    // Edits are blocked only once the evening has actually begun —
+    // the status flipped to active (admin pressed "התחל ערב") or the
+    // game is terminal (finished/cancelled). The kickoff *time*
+    // passing does NOT lock editing: a late-starting game is still
+    // editable until it goes live. Defense-in-depth mirror of
+    // canEditGame(); the typed code lets the screen show a clean
+    // "הערב כבר התחיל" message instead of a generic permission error.
     const startedByStatus =
       existing.status === 'active' ||
       existing.status === 'finished' ||
       existing.status === 'cancelled';
-    const startedByTime =
-      typeof existing.startsAt === 'number' &&
-      existing.startsAt <= Date.now();
-    if (startedByStatus || startedByTime) {
+    if (startedByStatus) {
       const err = new Error('GAME_ALREADY_STARTED') as Error & {
         code: 'GAME_ALREADY_STARTED';
       };
@@ -3886,20 +3905,27 @@ export const gameService = {
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
-      g.pendingPromotion = null; // offer model retired — auto-promote instead
-      // Auto-promote the waitlist head straight into the freed seat (no
-      // offer/confirm step). Mirrors the server-side onGameRosterChanged.
-      const occupancy = g.players.length + activeGuestCount(g.guests);
-      let promotedUid: string | null = null;
-      if (g.waitlist.length > 0 && occupancy < g.maxPlayers) {
-        promotedUid = g.waitlist[0];
-        g.waitlist = g.waitlist.slice(1);
-        g.players = [...g.players, promotedUid];
+      // OFFER model: a freed player slot is OFFERED to the head of the
+      // waitlist (push + confirm), NOT auto-filled. If the cancelling user
+      // was the one we'd offered, clear it so a fresh offer can go out.
+      if (g.pendingPromotion?.uid === userId) {
+        g.pendingPromotion = null;
+      }
+      // Generate a new offer when: a real player slot opened (wasInPlayers),
+      // no offer is pending, the waitlist is non-empty, and there's room.
+      const occupancy =
+        g.players.length + activeGuestCount(g.guests) + (g.pendingPromotion ? 1 : 0);
+      let offeredUid: string | null = null;
+      if (
+        wasInPlayers &&
+        !g.pendingPromotion &&
+        g.waitlist.length > 0 &&
+        occupancy < g.maxPlayers
+      ) {
+        offeredUid = g.waitlist[0];
+        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
       }
       g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
-      if (promotedUid && !g.participantIds.includes(promotedUid)) {
-        g.participantIds = [...g.participantIds, promotedUid];
-      }
       g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       // Silent-failure guard: a cancel must REMOVE the user from every
@@ -3918,10 +3944,10 @@ export const gameService = {
           where: cancelStillIn,
         });
       }
-      if (promotedUid) {
+      if (offeredUid) {
         notificationsService.dispatch({
-          type: 'spotOpened',
-          recipientId: promotedUid,
+          type: 'spotOffered',
+          recipientId: offeredUid,
           payload: { gameId, gameTitle: g.title, startsAt: g.startsAt },
         });
       }
@@ -3933,8 +3959,8 @@ export const gameService = {
       }
       logEvent(AnalyticsEvent.GameCancelled, {
         gameId,
-        promoted: !!promotedUid,
-        offered: false,
+        promoted: false,
+        offered: !!offeredUid,
       });
       if (isLate && wasInPlayers) {
         const hoursToKickoff = (g.startsAt - Date.now()) / (60 * 60 * 1000);
@@ -3977,12 +4003,31 @@ export const gameService = {
       const pending = (data.pending ?? []).filter(
         (id: string) => id !== userId,
       );
-      // Offer model retired: a freed seat is filled automatically by the
-      // server (onGameRosterChanged auto-promotes the waitlist head). We only
-      // remove the canceller here — no pendingPromotion offer. Always clear any
-      // legacy/stale offer so it can't reserve a phantom seat.
-      const pendingPromotion = null;
-      const offeredUid: string | null = null;
+      // OFFER model: a freed player slot is OFFERED to the waitlist head
+      // (push + confirm). The spotOffered push is sent SERVER-SIDE by
+      // onGameRosterChanged when this pendingPromotion lands (reliable —
+      // a cross-user client write can hit the notifications read-rule and
+      // silently no-op). Clear an offer naming the canceller first, then
+      // pick a new head if a real seat opened and there's room.
+      let pendingPromotion =
+        data.pendingPromotion &&
+        typeof data.pendingPromotion === 'object' &&
+        (data.pendingPromotion as { uid?: string }).uid === userId
+          ? null
+          : (data.pendingPromotion ?? null);
+      const guestsArr = Array.isArray(data.guests) ? data.guests : [];
+      const occupancy =
+        players.length + activeGuestCount(guestsArr) + (pendingPromotion ? 1 : 0);
+      let offeredUid: string | null = null;
+      if (
+        wasInPlayers &&
+        !pendingPromotion &&
+        waitlist.length > 0 &&
+        occupancy < (data.maxPlayers ?? 15)
+      ) {
+        offeredUid = waitlist[0];
+        pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+      }
 
       // Rebuild from post-cancel arrays so the rule invariant holds
       // even when the stored union was stale (a stale union can happen

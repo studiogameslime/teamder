@@ -962,13 +962,20 @@ export function AdvancedLiveMatchScreen() {
               ) : null}
             </View>
           ) : null}
-          <RotationPanel
-            draftTeams={draftTeams ?? undefined}
-            rotation={rotation ?? previewRotation ?? undefined}
-            playersMap={playersMap}
-            guests={game?.guests}
-            goalsByPlayer={goalsByPlayer}
-          />
+          {/* In preview the admin start-control already lists every team
+              (playing + waiting), so rendering the RotationPanel on top of
+              it duplicated each team title (Bog4adSl). Show the panel only
+              when it ISN'T duplicated: live rounds, or a non-admin viewer in
+              preview (who has no start-control above). */}
+          {!(previewRotation && isAdmin && draftTeams) ? (
+            <RotationPanel
+              draftTeams={draftTeams ?? undefined}
+              rotation={rotation ?? previewRotation ?? undefined}
+              playersMap={playersMap}
+              guests={game?.guests}
+              goalsByPlayer={goalsByPlayer}
+            />
+          ) : null}
         </View>
       </ScrollView>
 
@@ -1665,13 +1672,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   stoppageBy: { fontWeight: '500', color: '#94A3B8' },
   stoppageSub: {
     fontSize: 12,
     color: '#64748B',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: 1,
   },
   stoppageOngoing: { color: '#EA580C' },

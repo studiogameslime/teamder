@@ -53,7 +53,7 @@ import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent } from '@/types';
 import { he } from '@/i18n/he';
-import { colors } from '@/theme';
+import { colors, RTL_LABEL_ALIGN } from '@/theme';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -931,13 +931,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   stoppagesTotal: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: 2,
     marginBottom: 8,
   },
@@ -970,13 +970,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   stoppageBy: { fontWeight: '500', color: '#94A3B8' },
   stoppageSub: {
     fontSize: 12,
     color: '#64748B',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: 1,
   },
   stoppageOngoing: { color: '#EA580C' },

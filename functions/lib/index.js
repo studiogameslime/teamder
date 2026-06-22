@@ -2663,6 +2663,37 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
     if (!after)
         return; // doc deleted
     const ref = event.data.after.ref;
+    // ── Waitlist-offer push (server-side, reliable) ───────────────────────
+    // Model: a freed player seat is OFFERED to the head of the waitlist — the
+    // game doc gets `pendingPromotion = { uid, offeredAt }`, the offered user
+    // gets a push, and they CONFIRM to take the seat (gameService handles the
+    // accept). We send that push HERE rather than from the client that freed
+    // the seat, because a cross-user notification write is fragile: the
+    // notifications read-rule denies the dispatcher's existence-check on any
+    // repeat offer, so the client write silently no-ops and no push arrives
+    // (the reported "I was waiting, someone cancelled, and I got nothing").
+    //
+    // This fires for EVERY source of an offer (self-cancel, admin-remove,
+    // pass→re-offer-to-next) and only ever to the ONE newly-offered uid.
+    // Gated on the uid CHANGING so an unrelated game write doesn't re-push.
+    const beforeOfferUid = before?.pendingPromotion?.uid;
+    const afterOfferUid = after.pendingPromotion?.uid;
+    if (afterOfferUid && afterOfferUid !== beforeOfferUid) {
+        try {
+            await createNotificationOnce({
+                type: 'spotOffered',
+                recipientId: afterOfferUid,
+                payload: {
+                    gameId: event.params.gameId,
+                    title: after.title ?? '',
+                    startsAt: after.startsAt,
+                },
+            });
+        }
+        catch (err) {
+            console.error('[onGameRosterChanged] spotOffered push failed', event.params.gameId, err);
+        }
+    }
     // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this
     // game's future registration-open / public-open moments. Idempotent +
     // change-gated; the every-5-min cron remains the safety net. Cancel/
@@ -5774,6 +5805,9 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
         if (groupId)
             batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${scorer}`), { groupId, userId: scorer, goals: inc(n), updatedAt: now }, { merge: true });
+        // Per-GAME tally → drives the in-game championship (shown once the
+        // game is finished). Same idempotent batch, so a retry can't double.
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${scorer}`), { gameId, userId: scorer, goals: inc(n), updatedAt: now }, { merge: true });
     }
     // Community-level rollup for the club's stats + championship table:
     // total mini-games (rounds) and total goals scored THROUGH this club's
@@ -5798,6 +5832,8 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         batch.set(db.collection('users').doc(assister), { stats: { assists: inc(n) } }, { merge: true });
         if (groupId)
             batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${assister}`), { groupId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
+        // Per-GAME assist tally (mirrors the per-game goals write above).
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${assister}`), { gameId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
     }
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.

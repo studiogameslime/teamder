@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.studiogameslime.soccerapp",
+      "sha256_cert_fingerprints": [
+        "D2:73:E1:DE:0F:FF:CA:13:B4:C0:F8:AA:CE:83:99:DF:43:C2:33:76:1D:7B:FE:E3:64:F8:F8:DA:17:73:FF:41",
+        "E8:72:FE:B1:55:B9:46:18:06:85:0B:EA:26:03:AF:4D:66:53:63:49:F8:66:93:A0:C0:66:A3:25:34:6E:5C:B5"
+      ]
+    }
+  }
+]

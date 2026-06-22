@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.29",
+    "version": "1.0.30",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -48,6 +48,33 @@
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.DETECT_SCREEN_CAPTURE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "teamderfc.web.app",
+              "pathPrefix": "/session"
+            },
+            {
+              "scheme": "https",
+              "host": "teamderfc.web.app",
+              "pathPrefix": "/team"
+            },
+            {
+              "scheme": "https",
+              "host": "teamderfc.web.app",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "plugins": [

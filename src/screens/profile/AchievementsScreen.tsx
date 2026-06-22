@@ -191,6 +191,14 @@ export function AchievementsScreen() {
                 hideTitle
               />
               <Text style={styles.detailTitle}>{active.def.titleHe}</Text>
+              {/* What the player has actually DONE for this badge (feat-63l30):
+                  e.g. "כבר 10 שערים". Counted metrics only — a one-off badge
+                  is binary (earned / not) and has no running tally. */}
+              {!active.def.oneOff && active.value > 0 ? (
+                <Text style={styles.detailTally}>
+                  {he.achievementYourTally(active.value, active.def.nounHe)}
+                </Text>
+              ) : null}
               {/* How to earn — the action + the concrete tier targets, so
                   the user knows exactly what unlocks each medal. */}
               <View style={styles.howBox}>
@@ -351,6 +359,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  detailTally: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 2,
   },
   detailTier: {
     ...typography.body,

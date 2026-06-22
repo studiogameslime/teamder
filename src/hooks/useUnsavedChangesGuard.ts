@@ -28,9 +28,20 @@ interface Options {
   savingRef?: React.MutableRefObject<boolean>;
   /** Invoked when the user picks "save" in the dialog. */
   onSave: () => void | Promise<void>;
+  /** Optional dialog copy override. Defaults to the profile/avatar
+   *  wording — every non-profile screen (game/community wizard) should
+   *  pass its own so the prompt actually matches what the user edited. */
+  title?: string;
+  body?: string;
 }
 
-export function useUnsavedChangesGuard({ isDirty, savingRef, onSave }: Options) {
+export function useUnsavedChangesGuard({
+  isDirty,
+  savingRef,
+  onSave,
+  title,
+  body,
+}: Options) {
   const nav = useNavigation();
   const internalSaving = useRef(false);
   const saving = savingRef ?? internalSaving;
@@ -46,7 +57,7 @@ export function useUnsavedChangesGuard({ isDirty, savingRef, onSave }: Options) 
     }).addListener('beforeRemove', (e) => {
       if (!dirtyRef.current || saving.current) return;
       e.preventDefault();
-      appAlert(he.profileEditUnsavedTitle, he.profileEditUnsavedBody, [
+      appAlert(title ?? he.profileEditUnsavedTitle, body ?? he.profileEditUnsavedBody, [
         {
           text: he.profileEditUnsavedDiscard,
           style: 'destructive',

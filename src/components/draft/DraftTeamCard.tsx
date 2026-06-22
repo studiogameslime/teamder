@@ -11,6 +11,7 @@ import { GrowIn, ShrinkOut } from './DraftScalePop';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { teamName } from '@/utils/draft';
+import { teamColor } from '@/components/match/rotationView';
 
 export interface DraftUserLite {
   id: string;
@@ -52,8 +53,18 @@ export function DraftTeamCard({
   ghostMember,
   onGhostDone,
 }: Props) {
+  // Each team carries its own colour (red / blue / green / yellow). Tint the
+  // label + a leading accent bar so the teams are visually distinct at a
+  // glance (feat 7p1vkun), not all in the same brand blue.
+  const tColor = teamColor(index);
   return (
-    <View style={[styles.card, highlight && styles.cardHighlight]}>
+    <View
+      style={[
+        styles.card,
+        { borderColor: tColor },
+        highlight && styles.cardHighlight,
+      ]}
+    >
       {/* QA: team label on the right, players start from the LEFT. The
           captain (first chip) lands on the left; members flow right. */}
       <View style={styles.chips}>
@@ -73,7 +84,12 @@ export function DraftTeamCard({
           </ShrinkOut>
         ) : null}
       </View>
-      <Text style={styles.teamName}>{teamName(index)}</Text>
+      <View style={styles.teamNameRow}>
+        <View style={[styles.teamDot, { backgroundColor: tColor }]} />
+        <Text style={[styles.teamName, { color: tColor }]}>
+          {teamName(index)}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -133,11 +149,17 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   cardHighlight: { borderColor: colors.primary, borderWidth: 2 },
+  teamNameRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  teamDot: { width: 8, height: 8, borderRadius: 4 },
   teamName: {
     ...typography.caption,
     fontWeight: '800',
     color: colors.primary,
-    marginTop: 6,
   },
   chips: {
     // row-reverse so the captain starts at the LEFT and members flow

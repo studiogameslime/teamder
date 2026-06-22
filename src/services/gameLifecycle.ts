@@ -166,13 +166,13 @@ export function canCancelRegistration(game: Game): boolean {
 export function canEditGame(game: Game, actor: ActorFlags): boolean {
   if (!actor.isOrganizerOrAdmin) return false;
   if (isTerminal(game)) return false;
-  if (isActive(game)) return false; // mid-evening: edit-by-mistake risk
-  // Once kickoff time has passed, the game is "live in the world"
-  // even if the status hasn't auto-flipped yet — editing things like
-  // start time / format / location after that point is more
-  // confusing than helpful. Locks the affordance regardless of
-  // whether the auto-flip CF has caught up.
-  if (hasStarted(game)) return false;
+  // Editing stays open right up until the admin actually presses
+  // "התחל ערב" (status → active). The kickoff *time* passing no
+  // longer locks editing: a game can run late, and the admin should
+  // still be able to fix the address / format / start time until the
+  // evening genuinely begins. Once it's active, editing is blocked
+  // (the UI keeps the affordance visible and explains why on tap).
+  if (isActive(game)) return false;
   return true;
 }
 

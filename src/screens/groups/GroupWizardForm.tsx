@@ -122,6 +122,8 @@ export function GroupWizardForm({
       enableUnsavedGuard &&
       JSON.stringify(values) !== JSON.stringify(initial),
     savingRef,
+    title: he.groupEditUnsavedTitle,
+    body: he.groupEditUnsavedBody,
     onSave: async () => {
       savingRef.current = true;
       try {

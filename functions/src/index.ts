@@ -3083,6 +3083,7 @@ export const onGameRosterChanged = onDocumentWritten(
           capacityNoticeSent?: boolean;
           arrivals?: Record<string, string>;
           pending?: string[];
+          pendingPromotion?: { uid?: string; offeredAt?: number } | null;
           registrationOpensAt?: number;
           publicOpenAt?: number;
         }
@@ -3104,6 +3105,7 @@ export const onGameRosterChanged = onDocumentWritten(
           arrivals?: Record<string, string>;
           pending?: string[];
           waitlist?: string[];
+          pendingPromotion?: { uid?: string; offeredAt?: number } | null;
           liveMatch?: { phase?: string } | null;
           registrationOpensAt?: number;
           publicOpenAt?: number;
@@ -3114,60 +3116,35 @@ export const onGameRosterChanged = onDocumentWritten(
 
     const ref = event.data!.after.ref;
 
-    // ── Auto-promote the waitlist head when a slot frees ───────────────────
-    // Product decision: a player who leaves opens a real seat, and the next
-    // person waiting moves straight into the squad — no offer/confirm step.
-    // Runs server-side (Admin SDK) so it bypasses the self-cancel client rule
-    // that only lets a user change their OWN slot. One promotion per write;
-    // freeing two seats just re-triggers this and promotes the next. Skipped
-    // once the game has started or gone live.
-    if (after.status === 'open' && (after.waitlist?.length ?? 0) > 0) {
+    // ── Waitlist-offer push (server-side, reliable) ───────────────────────
+    // Model: a freed player seat is OFFERED to the head of the waitlist — the
+    // game doc gets `pendingPromotion = { uid, offeredAt }`, the offered user
+    // gets a push, and they CONFIRM to take the seat (gameService handles the
+    // accept). We send that push HERE rather than from the client that freed
+    // the seat, because a cross-user notification write is fragile: the
+    // notifications read-rule denies the dispatcher's existence-check on any
+    // repeat offer, so the client write silently no-ops and no push arrives
+    // (the reported "I was waiting, someone cancelled, and I got nothing").
+    //
+    // This fires for EVERY source of an offer (self-cancel, admin-remove,
+    // pass→re-offer-to-next) and only ever to the ONE newly-offered uid.
+    // Gated on the uid CHANGING so an unrelated game write doesn't re-push.
+    const beforeOfferUid = before?.pendingPromotion?.uid;
+    const afterOfferUid = after.pendingPromotion?.uid;
+    if (afterOfferUid && afterOfferUid !== beforeOfferUid) {
       try {
-        const promotedUid = await db.runTransaction(async (tx) => {
-          const snap = await tx.get(ref);
-          const d = snap.data() as Record<string, unknown> | undefined;
-          if (!d || d.status !== 'open') return null;
-          if (typeof d.startsAt === 'number' && d.startsAt < Date.now()) return null;
-          if ((d.liveMatch as { phase?: string } | null)?.phase === 'live') return null;
-          const players = (d.players as string[]) ?? [];
-          const waitlist = (d.waitlist as string[]) ?? [];
-          const pending = (d.pending as string[]) ?? [];
-          if (waitlist.length === 0) return null;
-          const guests = Array.isArray(d.guests)
-            ? (d.guests as { waitlisted?: boolean }[]).filter((g) => !g?.waitlisted).length
-            : 0;
-          const max = typeof d.maxPlayers === 'number' ? (d.maxPlayers as number) : 15;
-          if (players.length + guests >= max) return null; // no room
-          const head = waitlist[0];
-          const nextPlayers = [...players, head];
-          const nextWaitlist = waitlist.slice(1);
-          tx.update(ref, {
-            players: nextPlayers,
-            waitlist: nextWaitlist,
-            participantIds: Array.from(
-              new Set([...nextPlayers, ...nextWaitlist, ...pending]),
-            ),
-            // The offer model is retired in favour of auto-promotion; clear any
-            // stale reservation so it never blocks a future seat.
-            pendingPromotion: admin.firestore.FieldValue.delete(),
-            updatedAt: Date.now(),
-          });
-          return head;
+        await createNotificationOnce({
+          type: 'spotOffered',
+          recipientId: afterOfferUid,
+          payload: {
+            gameId: event.params.gameId,
+            title: after.title ?? '',
+            startsAt: after.startsAt,
+          },
         });
-        if (promotedUid) {
-          await createNotificationOnce({
-            type: 'spotOpened',
-            recipientId: promotedUid,
-            payload: {
-              gameId: event.params.gameId,
-              title: after.title ?? '',
-              startsAt: after.startsAt,
-            },
-          });
-        }
       } catch (err) {
         console.error(
-          '[onGameRosterChanged] auto-promote failed',
+          '[onGameRosterChanged] spotOffered push failed',
           event.params.gameId,
           err,
         );
@@ -7310,6 +7287,13 @@ export const commitRoundStats = onCall(
           { groupId, userId: scorer, goals: inc(n), updatedAt: now },
           { merge: true },
         );
+      // Per-GAME tally → drives the in-game championship (shown once the
+      // game is finished). Same idempotent batch, so a retry can't double.
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${scorer}`),
+        { gameId, userId: scorer, goals: inc(n), updatedAt: now },
+        { merge: true },
+      );
     }
 
     // Community-level rollup for the club's stats + championship table:
@@ -7342,6 +7326,12 @@ export const commitRoundStats = onCall(
           { groupId, userId: assister, assists: inc(n), updatedAt: now },
           { merge: true },
         );
+      // Per-GAME assist tally (mirrors the per-game goals write above).
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
+        { gameId, userId: assister, assists: inc(n), updatedAt: now },
+        { merge: true },
+      );
     }
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.

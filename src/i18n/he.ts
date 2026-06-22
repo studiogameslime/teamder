@@ -1295,6 +1295,8 @@ export const he = {
   achievementProgressToNext: (current: number, target: number, tierHe: string) =>
     `${current}/${target} ל${tierHe}`,
   achievementMaxed: 'הגעת לדרגה הגבוהה ביותר! 🏆',
+  // The player's actual accomplishment for this badge, e.g. "כבר 10 שערים".
+  achievementYourTally: (value: number, noun: string) => `כבר ${value} ${noun}`,
   // "How do I earn this?" — action phrase + the tier targets.
   achievementHowTitle: 'איך משיגים?',
   achievementTiersLine: (bronze: number, silver: number, gold: number) =>
@@ -1432,6 +1434,10 @@ export const he = {
     'בחרת תמונה / אווטאר חדשים אבל לא לחצת על שמור. לשמור עכשיו?',
   profileEditUnsavedSave: 'שמור',
   profileEditUnsavedDiscard: 'התעלם וצא',
+  gameEditUnsavedTitle: 'יש שינויים שלא נשמרו',
+  gameEditUnsavedBody: 'שינית פרטים במשחק ולא שמרת. לשמור עכשיו?',
+  groupEditUnsavedTitle: 'יש שינויים שלא נשמרו',
+  groupEditUnsavedBody: 'שינית פרטים במועדון ולא שמרת. לשמור עכשיו?',
   validateRequired: 'יש להזין {field}',
   validateTooLong: '{field} ארוך מדי (עד {max} תווים)',
   validateOutOfRange: '{field} חייב להיות בין {min} ל-{max}',
@@ -1848,9 +1854,17 @@ export const he = {
   communityStatsVitalityTitle: 'מד חיים של המועדון',
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
-  communityChampNote: 'גולים שנכבשו במשחקי המועדון בלבד',
+  communityChampNote: 'גולים ובישולים במשחקי המועדון בלבד · גול = 2 נק׳, בישול = 1 נק׳',
   communityChampTotalGoals: 'סך הגולים',
   communityChampTotalRounds: 'משחקונים',
+  // Per-game championship (shown once the game is finished).
+  gameChampTitle: 'אלופי המשחק',
+  gameChampNote: 'גול = 2 נק׳, בישול = 1 נק׳',
+  // Championship table column headers.
+  champColPlayer: 'שחקן',
+  champColGoals: 'גולים',
+  champColAssists: 'בישולים',
+  champColScore: 'ניקוד',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,
@@ -1867,6 +1881,9 @@ export const he = {
   matchMenuSectionPlayers: 'שחקנים',
   matchMenuSectionDanger: 'מסוכן',
   matchMenuEdit: 'ערוך משחק',
+  matchEditBlockedTitle: 'הערב כבר התחיל',
+  matchEditBlockedBody:
+    'לא ניתן לערוך את פרטי המשחק אחרי שלחצתם על "התחל ערב". כדי לערוך, סיימו או בטלו את המשחק.',
   matchMenuPlayers: 'ניהול שחקנים',
   matchMenuShare: 'שתף משחק',
   // Explicit entry to the full players screen — players, waitlist,

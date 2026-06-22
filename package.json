@@ -2,6 +2,13 @@
   "name": "footy",
   "version": "0.1.0",
   "main": "node_modules/expo/AppEntry.js",
+  "expo": {
+    "install": {
+      "exclude": [
+        "@react-native-async-storage/async-storage"
+      ]
+    }
+  },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",

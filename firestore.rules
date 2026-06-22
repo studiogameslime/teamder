@@ -1317,6 +1317,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if false;
     }
+    match /gamePlayerStats/{doc} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
     match /communityStats/{groupId} {
       allow read: if isSignedIn();
       allow write: if false;

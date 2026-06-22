@@ -71,6 +71,7 @@ import {
 } from '@/components/match/MatchParticipantsSection';
 import { FillerInterestsSection } from '@/components/match/FillerInterestsSection';
 import { PinnedAdminMessageCard } from '@/components/match/PinnedAdminMessageCard';
+import { GameChampionship } from '@/components/match/GameChampionship';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
@@ -1504,17 +1505,28 @@ export function MatchDetailsScreen() {
     {
       id: 'main',
       items: [
-        // Edit is hidden once the game starts (kickoff passed, or
-        // status went 'active'/'finished'/'cancelled') so admins
-        // don't accidentally rewrite history or shift a game that
-        // people are already on the way to.
-        ...(canEditGame(game, { isOrganizerOrAdmin: isAdmin })
+        // Edit stays VISIBLE for admins right up until the evening
+        // actually starts — we no longer hide it once kickoff time
+        // passes. If the admin pressed "התחל ערב" (active), the item
+        // is still shown but tapping it explains why editing is
+        // locked instead of silently disappearing. Terminal games
+        // (finished/cancelled) drop it entirely — nothing to edit.
+        ...(isAdmin && !isTerminalGame(game)
           ? [
               {
                 id: 'edit',
                 label: he.matchMenuEdit,
                 icon: 'create-outline' as const,
-                onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
+                onPress: () => {
+                  if (canEditGame(game, { isOrganizerOrAdmin: isAdmin })) {
+                    nav.navigate('GameEdit', { gameId: game.id });
+                  } else {
+                    appAlert(
+                      he.matchEditBlockedTitle,
+                      he.matchEditBlockedBody,
+                    );
+                  }
+                },
               },
             ]
           : []),
@@ -2442,6 +2454,13 @@ export function MatchDetailsScreen() {
               <Ionicons name="close" size={18} color={colors.textMuted} />
             </Pressable>
           </View>
+        ) : null}
+
+        {/* Per-game championship — goals + assists tallied in THIS game,
+            ranked by score (goal=2, assist=1). Only after the game is
+            finished. Renders nothing for games with no recorded stats. */}
+        {isFinished(game) ? (
+          <GameChampionship gameId={game.id} groupId={game.groupId} />
         ) : null}
         </View>
       </ScrollView>

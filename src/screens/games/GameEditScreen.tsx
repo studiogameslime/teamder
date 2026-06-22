@@ -195,8 +195,12 @@ export function GameEditScreen() {
       );
       return;
     }
-    // Warn before moving kickoff into the past (FV-03).
-    if (!v.recurringGameEnabled && v.startsAt < Date.now()) {
+    // Warn before moving kickoff into the past (FV-03). Only when the
+    // admin actually CHANGED the date — a late-running game (kickoff
+    // already passed, evening not started) is now editable, and
+    // re-saving its unchanged past date shouldn't nag every time.
+    const kickoffChanged = v.startsAt !== game.startsAt;
+    if (!v.recurringGameEnabled && kickoffChanged && v.startsAt < Date.now()) {
       const proceed = await new Promise<boolean>((resolve) => {
         appAlert(
           he.createGamePastDateTitle,

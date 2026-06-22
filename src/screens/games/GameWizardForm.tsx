@@ -253,6 +253,8 @@ export function GameWizardForm({
       enableUnsavedGuard &&
       JSON.stringify(values) !== JSON.stringify(initial),
     savingRef,
+    title: he.gameEditUnsavedTitle,
+    body: he.gameEditUnsavedBody,
     onSave: async () => {
       savingRef.current = true;
       try {
@@ -339,9 +341,18 @@ export function GameWizardForm({
 
   const finalizeSubmit = async () => {
     setBusy(true);
+    // Arm the guard's bypass BEFORE submitting: a successful onSubmit
+    // navigates away (nav.replace → MatchDetails), which fires the
+    // screen's `beforeRemove` listener. Without this flag the guard would
+    // mistake the legitimate save-and-leave for an abandon and pop the
+    // "unsaved changes" dialog on top of an already-saved game.
+    savingRef.current = true;
     try {
       await onSubmit(values);
+      // success → leaving the screen; keep savingRef armed so the
+      // departing navigation passes through cleanly.
     } catch (e) {
+      savingRef.current = false; // stayed on the form → re-arm the guard
       if (__DEV__) console.warn('[gameWizard] submit failed', e);
       appAlert(he.error, he.gameWizardSubmitFailed);
     } finally {
@@ -637,26 +648,16 @@ function Step1({
       </View>
 
       {/* Visibility moved here (was in the advanced/management step) — it's
-          a core "who is this game for" decision, not an advanced setting. */}
-      <View style={styles.section}>
-        <View style={styles.labelRow}>
-          <Ionicons name="eye-outline" size={16} color={colors.textMuted} />
-          <Text style={[styles.label, styles.labelFlex]}>{he.wizardSectionVisibility}</Text>
-          <InfoTip title={he.wizardSectionVisibility} text={he.wizardVisibilityHint} />
-        </View>
-        <View style={styles.pillRow}>
-          <Pill
-            active={values.visibility === 'community'}
-            label={quick ? he.wizardVisibilityPrivate : he.wizardVisibilityCommunity}
-            onPress={() => set('visibility', 'community')}
-          />
-          <Pill
-            active={values.visibility === 'public'}
-            label={quick ? he.wizardVisibilityPublicOpen : he.wizardVisibilityPublic}
-            onPress={() => set('visibility', 'public')}
-          />
-        </View>
-      </View>
+          a core "who is this game for" decision, not an advanced setting.
+          A single ON/OFF toggle (per Eliran's feedback): ON → open to
+          everyone (public), OFF → community/invite-only. Clearer than two
+          competing pills, and the tooltip spells out both states. */}
+      <ToggleRow
+        label={he.createGameIsPublic}
+        info={{ title: he.createGameIsPublic, text: he.createGameIsPublicHint }}
+        value={values.visibility === 'public'}
+        onChange={(v) => set('visibility', v ? 'public' : 'community')}
+      />
     </View>
   );
 }
