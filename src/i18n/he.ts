@@ -343,7 +343,7 @@ export const he = {
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuWentHome: 'הלך הביתה',
-  playerMenuWentHomeHint: 'אפשר רק בין משחקונים',
+  playerMenuWentHomeHint: 'אפשר רק כשהשעון מאופס (בין משחקונים)',
   playerMenuRestore: 'החזר למשחק',
   wentHomeSectionTitle: 'הלכו הביתה',
   wentHomeTapHint: 'הקש על שחקן כדי להחזיר אותו',
@@ -758,9 +758,9 @@ export const he = {
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'קבע את דירוג השחקן (1–5). הדירוג מוצג לכל חברי המועדון.',
+  communityAdminRatingHint: 'דרג את השחקן (1–5). דירוג פנימי — נראה למנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
-  communityAdminRatingSet: 'קבע',
+  communityAdminRatingSet: 'דרג',
   createGroupContactPhone: 'טלפון איש קשר',
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" במועדון',

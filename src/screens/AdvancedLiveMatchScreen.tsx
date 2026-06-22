@@ -1032,7 +1032,11 @@ export function AdvancedLiveMatchScreen() {
               guests={game?.guests}
               goalsByPlayer={goalsByPlayer}
               isAdmin={isAdmin}
-              canMarkHome={isAdmin && !timerRunning}
+              // Marking "went home" is only allowed when the clock is RESET —
+              // i.e. at 00:00 and not running (start of evening or between
+              // משחקונים). A paused mid-round clock (elapsed > 0) is NOT a
+              // valid moment.
+              canMarkHome={isAdmin && !timerRunning && timerMs === 0}
               onPlayerCard={openPlayerCard}
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}

@@ -714,9 +714,9 @@ export function MatchDetailsScreen() {
     // group doc, no network) instead of the global peer-vote averages.
     const grp = myCommunities.find((c) => c.id === groupId);
     if (grp?.internalRating) {
-      // Ratings are admin-private in this community → don't surface the
-      // derived average to non-admins (it would leak the hidden ratings).
-      if (grp.hideInternalRating === true && !isAdmin) {
+      // Internal ratings are ADMIN-ONLY — never surface the derived average to
+      // non-admins (it would leak the private ratings).
+      if (!isAdmin) {
         setRegisteredRatingAvg(null);
         return;
       }

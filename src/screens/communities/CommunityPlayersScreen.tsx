@@ -447,26 +447,19 @@ function PlayerRow({
             icon="football-outline"
             text={he.communityPlayerGames(games)}
           />
-          {internalRating ? (
-            onSetRating ? (
-              // Admin in an internal-rating community → tappable to edit.
-              <Pressable onPress={onSetRating} hitSlop={6}>
-                <View style={[styles.chip, styles.ratingChip]}>
-                  <Ionicons name="star" size={12} color={colors.warning} />
-                  <Text style={[styles.chipText, styles.ratingChipText]}>
-                    {rating ? String(rating) : he.communityAdminRatingSet}
-                  </Text>
-                </View>
-              </Pressable>
-            ) : rating ? (
-              // Member view — read-only admins' rating.
+          {/* Internal rating is ADMIN-ONLY: the "דרג" chip shows solely to
+              admins (onSetRating is provided). Members never see it — not even
+              read-only — so the rating stays internal. When internal rating is
+              off entirely, no chip at all. */}
+          {internalRating && onSetRating ? (
+            <Pressable onPress={onSetRating} hitSlop={6}>
               <View style={[styles.chip, styles.ratingChip]}>
                 <Ionicons name="star" size={12} color={colors.warning} />
                 <Text style={[styles.chipText, styles.ratingChipText]}>
-                  {String(rating)}
+                  {rating ? String(rating) : he.communityAdminRatingSet}
                 </Text>
               </View>
-            ) : null
+            </Pressable>
           ) : null}
         </View>
       </View>
