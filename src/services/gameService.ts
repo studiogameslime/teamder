@@ -2565,8 +2565,13 @@ export const gameService = {
   // asking the admin per short team, and finally calls commitFilledRotation.
   // These methods do the I/O around that pure flow.
 
-  /** START skeleton, no persist. Null when a rotation can't start. */
-  async prepareStartRotation(gameId: string): Promise<{
+  /** START skeleton, no persist. Null when a rotation can't start.
+   *  `startOrder` (optional) is the admin's chosen / randomised opening order
+   *  of team indices — the first two play, the rest wait in that order. */
+  async prepareStartRotation(
+    gameId: string,
+    startOrder?: number[],
+  ): Promise<{
     skeleton: RotationFillState;
     draft: DraftTeamsResult;
     baseTeams: { index: number; playerIds: string[] }[];
@@ -2581,7 +2586,7 @@ export const gameService = {
       index: t.index,
       playerIds: [...t.playerIds],
     }));
-    const skeleton = startRotationSkeleton(teams, perTeam, fillMode);
+    const skeleton = startRotationSkeleton(teams, perTeam, fillMode, startOrder);
     if (!skeleton) return null;
     const baseTeams = draft.teams.map((t) => ({
       index: t.index,

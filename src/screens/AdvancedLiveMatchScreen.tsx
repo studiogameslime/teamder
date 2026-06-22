@@ -65,9 +65,10 @@ import {
   type RotationTeam,
 } from '@/services/rotationEngine';
 import { teamName } from '@/utils/draft';
+import { teamColor } from '@/components/match/rotationView';
 import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -267,6 +268,10 @@ export function AdvancedLiveMatchScreen() {
   const playersMap = useGameStore((s) => s.players);
   const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+  // Opening order of team indices — the first two play first, the rest wait in
+  // this order. RANDOMISED by default once teams are drafted; the admin can
+  // re-shuffle or tap a waiting team to swap it in (preview controls below).
+  const [startOrder, setStartOrder] = useState<number[]>([]);
 
   // Goals per player THIS round — shown in each roster row's badge (own goals
   // credit no scorer, so they're excluded).
@@ -472,7 +477,10 @@ export function AdvancedLiveMatchScreen() {
     try {
       // Build the start skeleton (no persist). The admin then completes the two
       // playing teams via the picker; the rotation is committed at the end.
-      const prep = await gameService.prepareStartRotation(gameId);
+      const prep = await gameService.prepareStartRotation(
+        gameId,
+        effectiveStartOrder,
+      );
       if (!prep) return; // gate: not enough players for two teams
       await gameService.markGameStarted(gameId);
       await gameService.startTimer(gameId, me.id, me.name ?? '');
@@ -694,22 +702,58 @@ export function AdvancedLiveMatchScreen() {
     game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
   const canStartRound = hasTeams && totalDrafted >= perTeam * 2;
 
-  // Before the round starts, synthesize a PREVIEW rotation (first two teams
-  // play, the rest wait) so the admin sees "who's vs who / who waits" up front
-  // instead of a blank board until "התחל משחקון". Completion happens on start.
+  // Randomise the opening order once teams are drafted (and re-randomise if the
+  // team set changes). Kept in state so it's STABLE across renders — it only
+  // re-rolls on an explicit shuffle or a real teams change, never per render.
+  useEffect(() => {
+    if (rotationActive || !draftTeams) return;
+    const idx = draftTeams.teams.map((t) => t.index);
+    setStartOrder((prev) => {
+      const sameSet =
+        prev.length === idx.length && idx.every((i) => prev.includes(i));
+      if (sameSet) return prev; // keep the admin's current order
+      return [...idx].sort(() => Math.random() - 0.5);
+    });
+  }, [draftTeams, rotationActive]);
+
+  // The effective opening order: the admin's (random/edited) startOrder when
+  // valid, else by-index as a safe fallback.
+  const effectiveStartOrder = useMemo<number[]>(() => {
+    if (!draftTeams) return [];
+    const idx = draftTeams.teams.map((t) => t.index);
+    const valid =
+      startOrder.length === idx.length && idx.every((i) => startOrder.includes(i));
+    return valid ? startOrder : [...idx].sort((a, b) => a - b);
+  }, [draftTeams, startOrder]);
+
+  const reshuffleStart = () =>
+    setStartOrder((prev) => [...prev].sort(() => Math.random() - 0.5));
+  // Tap a waiting team → swap it into the second playing slot.
+  const swapInStartTeam = (teamIdx: number) =>
+    setStartOrder((prev) => {
+      const pos = prev.indexOf(teamIdx);
+      if (pos < 2) return prev; // already playing
+      const next = [...prev];
+      [next[1], next[pos]] = [next[pos], next[1]];
+      return next;
+    });
+
+  // Before the round starts, synthesize a PREVIEW rotation (the chosen two
+  // teams play, the rest wait) so the admin sees "who's vs who / who waits" up
+  // front. Completion (filling teams) happens on start.
   const previewRotation: MatchRotation | null =
-    !rotationActive && hasTeams && draftTeams
-      ? (() => {
-          const ordered = [...draftTeams.teams].sort((a, b) => a.index - b.index);
-          return {
-            playing: [ordered[0].index, ordered[1].index] as [number, number],
-            waiting: ordered.slice(2).map((t) => t.index),
-            loans: [],
-            wins: {},
-            round: 0,
-            updatedAt: 0,
-          };
-        })()
+    !rotationActive && hasTeams && draftTeams && effectiveStartOrder.length >= 2
+      ? {
+          playing: [effectiveStartOrder[0], effectiveStartOrder[1]] as [
+            number,
+            number,
+          ],
+          waiting: effectiveStartOrder.slice(2),
+          loans: [],
+          wins: {},
+          round: 0,
+          updatedAt: 0,
+        }
       : null;
 
   return (
@@ -831,6 +875,52 @@ export function AdvancedLiveMatchScreen() {
         <View style={styles.rotationWrap}>
           {previewRotation ? (
             <Text style={styles.previewLabel}>{he.rotationPreviewLabel}</Text>
+          ) : null}
+          {previewRotation && isAdmin && draftTeams ? (
+            <View style={styles.startCtrl}>
+              <View style={styles.startCtrlHead}>
+                <Text style={styles.startCtrlTitle}>
+                  {he.rotationStartingTeams}
+                </Text>
+                <Pressable onPress={reshuffleStart} style={styles.shuffleBtn}>
+                  <Ionicons name="shuffle" size={16} color={colors.primary} />
+                  <Text style={styles.shuffleBtnText}>{he.rotationShuffle}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.startChips}>
+                {effectiveStartOrder.map((idx, i) => {
+                  const playing = i < 2;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => (playing ? undefined : swapInStartTeam(idx))}
+                      style={[
+                        styles.teamChip,
+                        playing ? styles.teamChipPlaying : styles.teamChipWaiting,
+                      ]}
+                    >
+                      <View
+                        style={[styles.teamDot, { backgroundColor: teamColor(idx) }]}
+                      />
+                      <Text
+                        style={[
+                          styles.teamChipText,
+                          playing && styles.teamChipTextPlaying,
+                        ]}
+                      >
+                        {teamName(idx)}
+                      </Text>
+                      {playing ? (
+                        <Ionicons name="play" size={11} color={colors.primary} />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {effectiveStartOrder.length > 2 ? (
+                <Text style={styles.startCtrlHint}>{he.rotationTapToSwap}</Text>
+              ) : null}
+            </View>
           ) : null}
           <RotationPanel
             draftTeams={draftTeams ?? undefined}
@@ -1189,6 +1279,65 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: spacing.xs,
+  },
+  startCtrl: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  startCtrlHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  startCtrlTitle: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '800',
+  },
+  shuffleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(29,78,216,0.08)',
+  },
+  shuffleBtnText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
+  startChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  teamChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  teamChipPlaying: {
+    backgroundColor: 'rgba(29,78,216,0.10)',
+    borderColor: 'rgba(29,78,216,0.35)',
+  },
+  teamChipWaiting: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+  },
+  teamDot: { width: 10, height: 10, borderRadius: 5 },
+  teamChipText: { ...typography.caption, color: colors.text, fontWeight: '600' },
+  teamChipTextPlaying: { fontWeight: '800', color: colors.primary },
+  startCtrlHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
   },
   timerCard: {
     width: '100%',

@@ -199,11 +199,23 @@ export function startRotationSkeleton(
   teams: RotationTeam[],
   perTeam: number,
   fillMode: FillMode,
+  /** Explicit starting order (team indices); the first two play, the rest
+   *  wait in this order. When omitted/invalid, defaults to by-index order.
+   *  Callers wanting a RANDOM or admin-chosen opening pair pass this — the
+   *  engine stays pure (randomness lives in the caller, so tests stay stable). */
+  order?: number[],
 ): RotationFillState | null {
   if (!canStart(teams, perTeam)) return null;
-  const ordered = [...teams].sort((a, b) => a.index - b.index);
-  const playing: [number, number] = [ordered[0].index, ordered[1].index];
-  const waiting = ordered.slice(2).map((t) => t.index);
+  const byIndex = [...teams].sort((a, b) => a.index - b.index).map((t) => t.index);
+  // Use the caller's order only when it's a valid permutation of the teams.
+  const valid =
+    Array.isArray(order) &&
+    order.length === byIndex.length &&
+    new Set(order).size === order.length &&
+    order.every((i) => byIndex.includes(i));
+  const seq = valid ? (order as number[]) : byIndex;
+  const playing: [number, number] = [seq[0], seq[1]];
+  const waiting = seq.slice(2);
   return {
     teams,
     playing,
@@ -219,8 +231,9 @@ export function startRotation(
   perTeam: number,
   fillMode: FillMode,
   pick: <T>(a: T[], n: number) => T[] = pickRandom,
+  order?: number[],
 ): { rotation: MatchRotation; teams: RotationTeam[] } | null {
-  const s = startRotationSkeleton(teams, perTeam, fillMode);
+  const s = startRotationSkeleton(teams, perTeam, fillMode, order);
   if (!s) return null;
   const filled = fillAll(s.playing, s.teams, s.rotation.loans, perTeam, fillMode, null, pick);
   return { rotation: { ...s.rotation, loans: filled.loans }, teams: filled.teams };

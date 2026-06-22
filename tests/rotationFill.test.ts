@@ -171,3 +171,28 @@ describe('skeletons expose the pre-fill state', () => {
     expect(s.rotation.waiting).toEqual([1]);
   });
 });
+
+describe('startRotationSkeleton — opening order (random/admin override)', () => {
+  const teams: RotationTeam[] = [0, 1, 2, 3].map((index) => ({
+    index,
+    playerIds: Array.from({ length: 5 }, (_, i) => `t${index}p${i}`),
+  }));
+
+  it('defaults to by-index order when none is given', () => {
+    const s = startRotationSkeleton(teams, 5, 'temporary')!;
+    expect(s.rotation.playing).toEqual([0, 1]);
+    expect(s.rotation.waiting).toEqual([2, 3]);
+  });
+
+  it('honours an explicit opening order (the first two play)', () => {
+    const s = startRotationSkeleton(teams, 5, 'temporary', [3, 1, 0, 2])!;
+    expect(s.rotation.playing).toEqual([3, 1]);
+    expect(s.rotation.waiting).toEqual([0, 2]);
+  });
+
+  it('ignores an invalid order (wrong length / dup / phantom) → by-index', () => {
+    expect(startRotationSkeleton(teams, 5, 'temporary', [3, 1])!.rotation.playing).toEqual([0, 1]);
+    expect(startRotationSkeleton(teams, 5, 'temporary', [0, 0, 1, 2])!.rotation.playing).toEqual([0, 1]);
+    expect(startRotationSkeleton(teams, 5, 'temporary', [9, 1, 0, 2])!.rotation.playing).toEqual([0, 1]);
+  });
+});
