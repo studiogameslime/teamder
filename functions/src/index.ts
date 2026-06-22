@@ -4451,12 +4451,35 @@ export const promoteOrphanToGroup = onCall(
     // reported surprise of "a brand-new community already showing goals,
     // mini-games and a championship from games that aren't this one".
     // Per-GAME stats (gamePlayerStats) stay intact on every game.
-    if (fromGameId) {
+    //
+    // The app passes `fromGameId` (1.0.31+). Older clients don't, so we
+    // derive it: the promote prompt fires right after a game ends, so the
+    // group's most-recent finished game is the one being promoted. (Two
+    // equality filters → no composite index; pick the max startsAt in code.)
+    let effectiveFromGameId = fromGameId;
+    if (!effectiveFromGameId) {
+      try {
+        const finished = await db
+          .collection('games')
+          .where('groupId', '==', groupId)
+          .where('status', '==', 'finished')
+          .get();
+        let best: { id: string; startsAt: number } | null = null;
+        for (const d of finished.docs) {
+          const sa = (d.data() as { startsAt?: number }).startsAt ?? 0;
+          if (!best || sa > best.startsAt) best = { id: d.id, startsAt: sa };
+        }
+        if (best) effectiveFromGameId = best.id;
+      } catch (err) {
+        console.error('[promoteOrphanToGroup] derive fromGame failed', groupId, err);
+      }
+    }
+    if (effectiveFromGameId) {
       try {
         const [cpsSnap, gpsSnap, roundsSnap] = await Promise.all([
           db.collection('communityPlayerStats').where('groupId', '==', groupId).get(),
-          db.collection('gamePlayerStats').where('gameId', '==', fromGameId).get(),
-          db.collection('games').doc(fromGameId).collection('committedRounds').get(),
+          db.collection('gamePlayerStats').where('gameId', '==', effectiveFromGameId).get(),
+          db.collection('games').doc(effectiveFromGameId).collection('committedRounds').get(),
         ]);
         const keep = new Map<string, { goals: number; assists: number }>();
         let totalGoals = 0;
@@ -4497,7 +4520,7 @@ export const promoteOrphanToGroup = onCall(
         console.error(
           '[promoteOrphanToGroup] stats reset failed',
           groupId,
-          fromGameId,
+          effectiveFromGameId,
           err,
         );
       }
