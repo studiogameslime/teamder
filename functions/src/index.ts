@@ -3103,6 +3103,8 @@ export const onGameRosterChanged = onDocumentWritten(
           pendingJoinFlushAt?: number;
           arrivals?: Record<string, string>;
           pending?: string[];
+          waitlist?: string[];
+          liveMatch?: { phase?: string } | null;
           registrationOpensAt?: number;
           publicOpenAt?: number;
         }
@@ -3111,6 +3113,66 @@ export const onGameRosterChanged = onDocumentWritten(
     if (!after) return; // doc deleted
 
     const ref = event.data!.after.ref;
+
+    // ── Auto-promote the waitlist head when a slot frees ───────────────────
+    // Product decision: a player who leaves opens a real seat, and the next
+    // person waiting moves straight into the squad — no offer/confirm step.
+    // Runs server-side (Admin SDK) so it bypasses the self-cancel client rule
+    // that only lets a user change their OWN slot. One promotion per write;
+    // freeing two seats just re-triggers this and promotes the next. Skipped
+    // once the game has started or gone live.
+    if (after.status === 'open' && (after.waitlist?.length ?? 0) > 0) {
+      try {
+        const promotedUid = await db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref);
+          const d = snap.data() as Record<string, unknown> | undefined;
+          if (!d || d.status !== 'open') return null;
+          if (typeof d.startsAt === 'number' && d.startsAt < Date.now()) return null;
+          if ((d.liveMatch as { phase?: string } | null)?.phase === 'live') return null;
+          const players = (d.players as string[]) ?? [];
+          const waitlist = (d.waitlist as string[]) ?? [];
+          const pending = (d.pending as string[]) ?? [];
+          if (waitlist.length === 0) return null;
+          const guests = Array.isArray(d.guests)
+            ? (d.guests as { waitlisted?: boolean }[]).filter((g) => !g?.waitlisted).length
+            : 0;
+          const max = typeof d.maxPlayers === 'number' ? (d.maxPlayers as number) : 15;
+          if (players.length + guests >= max) return null; // no room
+          const head = waitlist[0];
+          const nextPlayers = [...players, head];
+          const nextWaitlist = waitlist.slice(1);
+          tx.update(ref, {
+            players: nextPlayers,
+            waitlist: nextWaitlist,
+            participantIds: Array.from(
+              new Set([...nextPlayers, ...nextWaitlist, ...pending]),
+            ),
+            // The offer model is retired in favour of auto-promotion; clear any
+            // stale reservation so it never blocks a future seat.
+            pendingPromotion: admin.firestore.FieldValue.delete(),
+            updatedAt: Date.now(),
+          });
+          return head;
+        });
+        if (promotedUid) {
+          await createNotificationOnce({
+            type: 'spotOpened',
+            recipientId: promotedUid,
+            payload: {
+              gameId: event.params.gameId,
+              title: after.title ?? '',
+              startsAt: after.startsAt,
+            },
+          });
+        }
+      } catch (err) {
+        console.error(
+          '[onGameRosterChanged] auto-promote failed',
+          event.params.gameId,
+          err,
+        );
+      }
+    }
 
     // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this
     // game's future registration-open / public-open moments. Idempotent +

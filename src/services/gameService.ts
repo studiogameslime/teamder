@@ -3886,32 +3886,20 @@ export const gameService = {
       g.players = g.players.filter((id) => id !== userId);
       g.waitlist = g.waitlist.filter((id) => id !== userId);
       g.pending = (g.pending ?? []).filter((id) => id !== userId);
-      // If the cancelling user happened to be the one we'd offered,
-      // clear the offer so we can generate a fresh one for someone
-      // else.
-      if (g.pendingPromotion?.uid === userId) {
-        g.pendingPromotion = null;
-      }
-      // Generate a new offer when:
-      //   • a real player slot opened (wasInPlayers)
-      //   • no offer is currently pending
-      //   • there's at least one waitlist user
-      //   • capacity (after the cancel) actually has room
-      const occupancy =
-        g.players.length +
-        activeGuestCount(g.guests) +
-        (g.pendingPromotion ? 1 : 0);
-      let offeredUid: string | null = null;
-      if (
-        wasInPlayers &&
-        !g.pendingPromotion &&
-        g.waitlist.length > 0 &&
-        occupancy < g.maxPlayers
-      ) {
-        offeredUid = g.waitlist[0];
-        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+      g.pendingPromotion = null; // offer model retired — auto-promote instead
+      // Auto-promote the waitlist head straight into the freed seat (no
+      // offer/confirm step). Mirrors the server-side onGameRosterChanged.
+      const occupancy = g.players.length + activeGuestCount(g.guests);
+      let promotedUid: string | null = null;
+      if (g.waitlist.length > 0 && occupancy < g.maxPlayers) {
+        promotedUid = g.waitlist[0];
+        g.waitlist = g.waitlist.slice(1);
+        g.players = [...g.players, promotedUid];
       }
       g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
+      if (promotedUid && !g.participantIds.includes(promotedUid)) {
+        g.participantIds = [...g.participantIds, promotedUid];
+      }
       g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       // Silent-failure guard: a cancel must REMOVE the user from every
@@ -3930,10 +3918,10 @@ export const gameService = {
           where: cancelStillIn,
         });
       }
-      if (offeredUid) {
+      if (promotedUid) {
         notificationsService.dispatch({
-          type: 'spotOffered',
-          recipientId: offeredUid,
+          type: 'spotOpened',
+          recipientId: promotedUid,
           payload: { gameId, gameTitle: g.title, startsAt: g.startsAt },
         });
       }
@@ -3945,8 +3933,8 @@ export const gameService = {
       }
       logEvent(AnalyticsEvent.GameCancelled, {
         gameId,
-        promoted: false,
-        offered: !!offeredUid,
+        promoted: !!promotedUid,
+        offered: false,
       });
       if (isLate && wasInPlayers) {
         const hoursToKickoff = (g.startsAt - Date.now()) / (60 * 60 * 1000);
@@ -3989,29 +3977,12 @@ export const gameService = {
       const pending = (data.pending ?? []).filter(
         (id: string) => id !== userId,
       );
-      // Clear an offer that named the cancelling user (rare but
-      // possible: head-of-waitlist cancels while their own offer is
-      // pending). The next pendingPromotion compute below will pick
-      // a new head if there's still capacity.
-      let pendingPromotion =
-        data.pendingPromotion &&
-        typeof data.pendingPromotion === 'object' &&
-        (data.pendingPromotion as { uid?: string }).uid === userId
-          ? null
-          : (data.pendingPromotion ?? null);
-
-      const guests = Array.isArray(data.guests) ? data.guests : [];
-      const occupancy = players.length + activeGuestCount(guests) + (pendingPromotion ? 1 : 0);
-      let offeredUid: string | null = null;
-      if (
-        wasInPlayers &&
-        !pendingPromotion &&
-        waitlist.length > 0 &&
-        occupancy < (data.maxPlayers ?? 15)
-      ) {
-        offeredUid = waitlist[0];
-        pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
-      }
+      // Offer model retired: a freed seat is filled automatically by the
+      // server (onGameRosterChanged auto-promotes the waitlist head). We only
+      // remove the canceller here — no pendingPromotion offer. Always clear any
+      // legacy/stale offer so it can't reserve a phantom seat.
+      const pendingPromotion = null;
+      const offeredUid: string | null = null;
 
       // Rebuild from post-cancel arrays so the rule invariant holds
       // even when the stored union was stale (a stale union can happen
