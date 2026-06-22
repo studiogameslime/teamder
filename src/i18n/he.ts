@@ -1872,6 +1872,7 @@ export const he = {
   champColAssists: 'בישולים',
   champColGames: 'משחקים',
   champColMiniGames: 'משחקונים',
+  champColAppearances: 'הופעות',
   champColWins: 'ניצחונות',
   champColLosses: 'הפסדים',
   champColScore: 'ניקוד',

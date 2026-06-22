@@ -74,7 +74,8 @@ export function CommunityStatsTable({
   // ("10 games, 20 wins"). Goals first — it's the ranking metric.
   const cols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
     { key: 'goals', label: he.champColGoals, primary: true },
-    { key: 'rounds', label: he.champColMiniGames },
+    { key: 'games', label: he.champColAppearances }, // evenings attended
+    { key: 'rounds', label: he.champColMiniGames }, // mini-games played
     { key: 'wins', label: he.champColWins },
     { key: 'losses', label: he.champColLosses },
     { key: 'assists', label: he.champColAssists },
