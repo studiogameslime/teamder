@@ -71,10 +71,10 @@ export function ChampionshipTable({
         <View style={styles.who}>
           <Text style={styles.headerWho}>{he.champColPlayer}</Text>
         </View>
-        <Text style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
-        <Text style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
-        <Text style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
-        <Text style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
       </View>
 
       {rows.map((r, i) => {
@@ -114,8 +114,8 @@ export function ChampionshipTable({
   );
 }
 
-const STAT_W = 46;
-const SCORE_W = 50;
+const STAT_W = 52;
+const SCORE_W = 52;
 
 const styles = StyleSheet.create({
   table: { padding: spacing.sm, gap: 0 },
@@ -148,6 +148,6 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   score: { width: SCORE_W, color: colors.primary, fontWeight: '900' },
-  headerStat: { width: STAT_W, ...typography.caption, color: colors.textMuted, fontWeight: '700' },
-  headerScore: { width: SCORE_W, ...typography.caption, color: colors.primary, fontWeight: '800' },
+  headerStat: { width: STAT_W, ...typography.caption, fontSize: 11, color: colors.textMuted, fontWeight: '700', textAlign: 'center' },
+  headerScore: { width: SCORE_W, ...typography.caption, fontSize: 11, color: colors.primary, fontWeight: '800', textAlign: 'center' },
 });
