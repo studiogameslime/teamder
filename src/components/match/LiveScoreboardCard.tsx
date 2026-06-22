@@ -37,6 +37,8 @@ interface Props {
   canEdit: boolean;
   // ── Timer display (computed by the screen from the synced clock) ──
   timerText: string;
+  /** Match length in minutes → shows "מתוך X דקות" under the clock. */
+  totalMinutes?: number;
   statusLabel: string;
   running: boolean;
   danger: boolean;
@@ -115,6 +117,11 @@ export function LiveScoreboardCard(props: Props) {
           <Text style={[styles.timer, props.danger && styles.timerDanger]} numberOfLines={1}>
             {props.timerText}
           </Text>
+          {props.totalMinutes ? (
+            <Text style={styles.ofTotal}>
+              {he.liveTimerOfTotal(props.totalMinutes)}
+            </Text>
+          ) : null}
           {props.overtimeText ? (
             <Text style={styles.overtime}>+{props.overtimeText}</Text>
           ) : null}
@@ -381,6 +388,7 @@ const styles = StyleSheet.create({
   timer: { fontSize: 38, fontWeight: '900', color: colors.text, fontVariant: ['tabular-nums'], letterSpacing: 1 },
   timerDanger: { color: colors.danger },
   overtime: { ...typography.caption, color: colors.danger, fontWeight: '800' },
+  ofTotal: { ...typography.caption, color: colors.textMuted, fontWeight: '600' },
   statusRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   redDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.danger },
   statusWord: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },

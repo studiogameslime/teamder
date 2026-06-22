@@ -841,6 +841,7 @@ export function AdvancedLiveMatchScreen() {
             guests={game?.guests}
             minute={Math.floor(timerMs / 60000)}
             canEdit={isAdmin}
+            totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}
             statusLabel={statusLabel}
             running={timerRunning}
