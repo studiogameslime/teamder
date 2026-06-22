@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { userService } from '@/services';
-import { championshipScore, type ChampionshipRow } from '@/utils/championship';
+import { perGameScore, type ChampionshipRow } from '@/utils/championship';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
@@ -73,12 +73,15 @@ export function ChampionshipTable({
         </View>
         <Text style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
         <Text style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
+        <Text style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
         <Text style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
       </View>
 
       {rows.map((r, i) => {
         const p = people[r.uid];
-        const score = championshipScore(r.goals, r.assists);
+        // Score per mini-game (1 decimal). Whole numbers show without ".0".
+        const avg = perGameScore(r.goals, r.assists, r.rounds);
+        const avgText = Number.isInteger(avg) ? String(avg) : avg.toFixed(1);
         return (
           <View key={r.uid} style={[styles.row, styles.dataRow]}>
             {/* Avatar + name → tappable, opens the player card. */}
@@ -102,7 +105,8 @@ export function ChampionshipTable({
             </Pressable>
             <Text style={styles.stat}>{r.goals}</Text>
             <Text style={styles.stat}>{r.assists}</Text>
-            <Text style={[styles.stat, styles.score]}>{score}</Text>
+            <Text style={styles.stat}>{r.rounds}</Text>
+            <Text style={[styles.stat, styles.score]}>{avgText}</Text>
           </View>
         );
       })}
@@ -110,8 +114,8 @@ export function ChampionshipTable({
   );
 }
 
-const STAT_W = 52;
-const SCORE_W = 56;
+const STAT_W = 46;
+const SCORE_W = 50;
 
 const styles = StyleSheet.create({
   table: { padding: spacing.sm, gap: 0 },

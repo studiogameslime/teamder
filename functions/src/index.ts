@@ -4481,14 +4481,23 @@ export const promoteOrphanToGroup = onCall(
           db.collection('gamePlayerStats').where('gameId', '==', effectiveFromGameId).get(),
           db.collection('games').doc(effectiveFromGameId).collection('committedRounds').get(),
         ]);
-        const keep = new Map<string, { goals: number; assists: number }>();
+        const keep = new Map<
+          string,
+          { goals: number; assists: number; rounds: number }
+        >();
         let totalGoals = 0;
         for (const d of gpsSnap.docs) {
-          const x = d.data() as { userId?: string; goals?: number; assists?: number };
+          const x = d.data() as {
+            userId?: string;
+            goals?: number;
+            assists?: number;
+            rounds?: number;
+          };
           if (!x.userId) continue;
           const goals = x.goals ?? 0;
           const assists = x.assists ?? 0;
-          keep.set(x.userId, { goals, assists });
+          const rounds = x.rounds ?? 0;
+          keep.set(x.userId, { goals, assists, rounds });
           totalGoals += goals;
         }
         const batch = db.batch();
@@ -4505,6 +4514,7 @@ export const promoteOrphanToGroup = onCall(
             userId: uid,
             goals: v.goals,
             assists: v.assists,
+            rounds: v.rounds,
             updatedAt: now,
           });
         }
@@ -7424,6 +7434,25 @@ export const commitRoundStats = onCall(
         { merge: true },
       );
     }
+
+    // 1c) mini-games PLAYED — every on-field player this round (both teams)
+    //     gets a +1 `rounds` tally, per-community and per-game. Drives the
+    //     championship's "games played" column + its score-per-game average.
+    //     Counts everyone who played, not just scorers/assisters.
+    for (const uid of new Set([...A, ...B])) {
+      if (groupId)
+        batch.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
+          { groupId, userId: uid, rounds: inc(1), updatedAt: now },
+          { merge: true },
+        );
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
+        { gameId, userId: uid, rounds: inc(1), updatedAt: now },
+        { merge: true },
+      );
+    }
+
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.
     for (const { assister, scorer } of assistPairs) {
