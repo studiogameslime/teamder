@@ -4171,7 +4171,21 @@ export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, asy
     );
   }
 
-  // 8) Construct payload server-side ONLY. inviterName / gameTitle /
+  // 8) Record the invitee on the game so the security rules grant them
+  //    read + self-join access even on a community-only game (they're not
+  //    a member, but they were explicitly invited). Admin-SDK write →
+  //    bypasses rules. Without this the invitee tapping the push hit the
+  //    "members only" wall (user report).
+  try {
+    await gameSnap.ref.update({
+      invitedUserIds: admin.firestore.FieldValue.arrayUnion(recipientId),
+      updatedAt: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[sendGameInvite] invitedUserIds write failed', err);
+  }
+
+  // 9) Construct payload server-side ONLY. inviterName / gameTitle /
   //    startsAt all come from canonical state — the client cannot
   //    influence what the recipient sees.
   await createNotificationOnce({

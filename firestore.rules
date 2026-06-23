@@ -548,7 +548,12 @@ service cloud.firestore {
         // `where('createdBy', '==', uid)` query path used by
         // getMyGames so an admin who created a game without
         // registering still sees it in "המשחקים שלי".
-        request.auth.uid == resource.data.createdBy
+        request.auth.uid == resource.data.createdBy ||
+        // An INVITED player can read (and then join) a community-only
+        // game even if they're not a member — `sendGameInvite` adds them
+        // to `invitedUserIds`. Without this an invitee tapping the push
+        // hit the "members only" wall (user report).
+        request.auth.uid in resource.data.get('invitedUserIds', [])
       );
 
       allow create: if isSignedIn() &&
