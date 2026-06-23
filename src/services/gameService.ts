@@ -3103,9 +3103,18 @@ export const gameService = {
       if (g.id === targetGame.id) return false;
       if (!ACTIVE_STATUSES.includes(g.status)) return false;
       if (!userParticipates(g)) return false;
-      // Live game ALWAYS conflicts — the user is presently committed
-      // there, time-window logic doesn't apply.
-      if (g.status === 'active') return true;
+      // A genuinely-CURRENT live game conflicts (the user is presently
+      // committed there). But a STALE 'active' game — one whose evening
+      // the admin never ended — must NOT block a join days later. Without
+      // this, yesterday's forgotten-active game blocked tomorrow's game
+      // with a nonsensical "34-hour overlap" (user report). Treat an
+      // active game as current only if it started within the last 12h.
+      if (g.status === 'active') {
+        const ACTIVE_STALE_MS = 12 * 60 * 60 * 1000;
+        return typeof g.startsAt === 'number'
+          ? Date.now() - g.startsAt < ACTIVE_STALE_MS
+          : true;
+      }
       // Otherwise we need both sides of the window to evaluate.
       if (!hasStart) return false;
       if (typeof g.startsAt !== 'number') return false;

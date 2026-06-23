@@ -1451,6 +1451,22 @@ export function MatchDetailsScreen() {
           icon: 'share-social-outline' as const,
         };
       }
+      // Don't surface "עבור ללייב" a day early (user report: game is
+      // tomorrow but the live button already showed). Only from a few
+      // hours before kickoff onward — before that the useful admin action
+      // is still recruiting players, so fall through to the invite CTA.
+      const LIVE_LEAD_MS = 4 * 60 * 60 * 1000;
+      if (
+        sessionStatus !== 'active' &&
+        typeof game.startsAt === 'number' &&
+        Date.now() < game.startsAt - LIVE_LEAD_MS
+      ) {
+        return {
+          title: he.sessionActionInvitePlayers,
+          onPress: handleShare,
+          icon: 'share-social-outline' as const,
+        };
+      }
       // Team-building was removed: the admin no longer creates "כוחות"
       // before going live. Once there are enough players, the single
       // positive action is "עבור ללייב" → the timer-only LiveMatch
