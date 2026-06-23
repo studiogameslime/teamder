@@ -3,7 +3,7 @@
 // detection in one place so every surface renders identical rosters.
 
 import { rosterOf } from '@/services/rotationEngine';
-import type { MatchRotation } from '@/types';
+import { parseGuestRosterId, type MatchRotation } from '@/types';
 import { colors } from '@/theme';
 
 const LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
@@ -56,7 +56,12 @@ export function makeResolver(
   guests?: { id: string; name: string }[],
 ) {
   return (id: string): PlayerLite => {
-    const g = guests?.find((x) => x.id === id);
+    // Roster ids for guests carry a `guest:` prefix, but the `guests` array
+    // is keyed by the RAW id — match against both so a guest's name resolves
+    // in the live rotation / scoreboard instead of showing blank (user
+    // reports: "אין שמות לאורחים", DraftBoard guest name missing).
+    const rawGuestId = parseGuestRosterId(id);
+    const g = guests?.find((x) => x.id === id || (rawGuestId !== null && x.id === rawGuestId));
     if (g) return { displayName: g.name };
     return playersMap[id] ?? {};
   };

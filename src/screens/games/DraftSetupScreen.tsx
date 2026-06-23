@@ -28,7 +28,7 @@ import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { he } from '@/i18n/he';
-import type { Game } from '@/types';
+import { toGuestRosterId, type Game } from '@/types';
 import {
   previewPath,
   MIN_TEAMS,
@@ -104,7 +104,14 @@ export function DraftSetupScreen() {
         photoUrl: p?.photoUrl,
       };
     });
-    const guests = (game.guests ?? []).map((g) => ({ id: g.id, name: g.name }));
+    // Use the PREFIXED `guest:` roster id — the same id DraftBoard (and every
+    // other surface) uses. With the raw id, a guest picked as captain didn't
+    // match DraftBoard's prefixed roster: their name showed blank in the
+    // captain slot AND they leaked back into the player pool (user report).
+    const guests = (game.guests ?? []).map((g) => ({
+      id: toGuestRosterId(g.id),
+      name: g.name,
+    }));
     return [...players, ...guests];
   }, [game, playersMap]);
 
