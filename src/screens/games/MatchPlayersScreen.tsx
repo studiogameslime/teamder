@@ -549,13 +549,16 @@ function PlayerRow({
   onRemove?: () => void;
 }) {
   const { user, isAdmin, arrival, isBringingBall } = entry;
+  // `onRemove` is NOT here on purpose — a plain "remove player" renders as
+  // a compact inline icon on the row instead of a full-width pink bar, which
+  // looked cluttered down a long roster (user report). The prominent
+  // full-width buttons are reserved for offer/approve/reject.
   const showOfferActions = !!(
     onConfirmOffer ||
     onPassOffer ||
     onAdminAdvance ||
     onApprove ||
-    onReject ||
-    onRemove
+    onReject
   );
   return (
     <View
@@ -678,20 +681,24 @@ function PlayerRow({
               </Text>
             </Pressable>
           ) : null}
-          {onRemove ? (
-            <Pressable
-              onPress={onRemove}
-              style={({ pressed }) => [
-                styles.offerCta,
-                styles.offerCtaDanger,
-                pressed && { opacity: 0.6 },
-              ]}
-              accessibilityLabel="הסר שחקן"
-            >
-              <Text style={styles.offerCtaDangerText}>הסר</Text>
-            </Pressable>
-          ) : null}
         </View>
+      ) : null}
+      {/* Compact inline remove — a small icon at the row's end instead of a
+          full-width bar (only shown when there are no offer/approve actions
+          stacking below). */}
+      {onRemove && !showOfferActions ? (
+        <Pressable
+          onPress={onRemove}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.inlineRemoveBtn,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="הסר שחקן"
+        >
+          <Ionicons name="person-remove-outline" size={18} color={colors.danger} />
+        </Pressable>
       ) : null}
     </View>
   );
@@ -776,9 +783,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(59,130,246,0.06)',
   },
   rowBodyPressable: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+  },
+  inlineRemoveBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
