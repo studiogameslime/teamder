@@ -524,6 +524,16 @@ export function CommunityDetailsScreen() {
             ),
         },
         {
+          id: 'history',
+          label: he.communityMenuHistory,
+          icon: 'time-outline' as const,
+          onPress: () =>
+            (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+              'CommunityHistory',
+              { groupId: group.id },
+            ),
+        },
+        {
           id: 'stats',
           label: he.communityMenuStats,
           icon: 'stats-chart-outline' as const,
