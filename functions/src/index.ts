@@ -690,7 +690,9 @@ function buildMessage(
           : '';
       return {
         title: 'הזדמנות למילוי משחק',
-        body: `המועדון ${groupName}${city} צריך שחקנים${
+        // Show the GAME name, never the community name — outside candidates
+        // shouldn't see the club's identity here (organiser request).
+        body: `${gameTitle}${city} צריך שחקנים${
           when ? ` — ${when}` : ''
         }.${shortBy} רוצה להגיש מועמדות?`,
       };
@@ -6288,7 +6290,10 @@ async function runFindFillerCandidates(): Promise<void> {
           gameTitle: game.title,
           startsAt: game.startsAt,
           city,
-          shortBy: threshold - players.length,
+          // Open spots until the game is FULL (maxPlayers − registered), e.g.
+          // 10/15 → 5. NOT `threshold − players` (threshold is the shortage
+          // trigger = minPlayers or 80%, which overstated the gap).
+          shortBy: maxPlayers - players.length,
         },
       });
       newlyPushed[uid] = now;

@@ -591,7 +591,9 @@ function buildMessage(type, payload) {
                 : '';
             return {
                 title: 'הזדמנות למילוי משחק',
-                body: `המועדון ${groupName}${city} צריך שחקנים${when ? ` — ${when}` : ''}.${shortBy} רוצה להגיש מועמדות?`,
+                // Show the GAME name, never the community name — outside candidates
+                // shouldn't see the club's identity here (organiser request).
+                body: `${gameTitle}${city} צריך שחקנים${when ? ` — ${when}` : ''}.${shortBy} רוצה להגיש מועמדות?`,
             };
         }
         case 'fillerInterestReceived': {
@@ -2694,6 +2696,32 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
             console.error('[onGameRosterChanged] spotOffered push failed', event.params.gameId, err);
         }
     }
+    // ── Count a full GAME per participant when the game FINISHES ───────────
+    // Drives the community table's cumulative "games played" column. The
+    // before→after status transition to 'finished' fires exactly once, so
+    // this can't double-count. Uses the registered roster (players[]).
+    if (before?.status !== 'finished' &&
+        after.status === 'finished' &&
+        after.groupId &&
+        Array.isArray(after.players) &&
+        after.players.length > 0) {
+        try {
+            const gid = after.groupId;
+            const batch = db.batch();
+            for (const uid of after.players) {
+                batch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), {
+                    groupId: gid,
+                    userId: uid,
+                    games: admin.firestore.FieldValue.increment(1),
+                    updatedAt: Date.now(),
+                }, { merge: true });
+            }
+            await batch.commit();
+        }
+        catch (err) {
+            console.error('[onGameRosterChanged] games tally failed', event.params.gameId, err);
+        }
+    }
     // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this
     // game's future registration-open / public-open moments. Idempotent +
     // change-gated; the every-5-min cron remains the safety net. Cancel/
@@ -3667,6 +3695,11 @@ exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_AP
             .filter((u) => typeof u === 'string' && u.length > 0)
             .slice(0, 100)
         : [];
+    // The specific orphan game this community is being created FROM. Used
+    // to scope the community's inherited stats to just that game (see below).
+    const fromGameId = typeof data.fromGameId === 'string'
+        ? (data.fromGameId).slice(0, 128)
+        : '';
     if (!groupId || groupId.length > 128) {
         throw new https_1.HttpsError('invalid-argument', 'invalid groupId');
     }
@@ -3701,8 +3734,101 @@ exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_AP
         isPersonal: false,
         hidden: false,
         pendingPlayerIds: dedupedInvitees,
+        promotedAt: now,
+        ...(fromGameId ? { promotedFromGameId: fromGameId } : {}),
         updatedAt: now,
     });
+    // ── Scope the new community's stats to the promoting game only ─────────
+    // A user's one-off games ALL share one hidden personal group, so its
+    // communityStats / communityPlayerStats commingle every one-off game's
+    // goals + mini-games. When that group becomes a real community we reset
+    // those aggregates to reflect ONLY the game it was created from — the
+    // reported surprise of "a brand-new community already showing goals,
+    // mini-games and a championship from games that aren't this one".
+    // Per-GAME stats (gamePlayerStats) stay intact on every game.
+    //
+    // The app passes `fromGameId` (1.0.31+). Older clients don't, so we
+    // derive it: the promote prompt fires right after a game ends, so the
+    // group's most-recent finished game is the one being promoted. (Two
+    // equality filters → no composite index; pick the max startsAt in code.)
+    let effectiveFromGameId = fromGameId;
+    if (!effectiveFromGameId) {
+        try {
+            const finished = await db
+                .collection('games')
+                .where('groupId', '==', groupId)
+                .where('status', '==', 'finished')
+                .get();
+            let best = null;
+            for (const d of finished.docs) {
+                const sa = d.data().startsAt ?? 0;
+                if (!best || sa > best.startsAt)
+                    best = { id: d.id, startsAt: sa };
+            }
+            if (best)
+                effectiveFromGameId = best.id;
+        }
+        catch (err) {
+            console.error('[promoteOrphanToGroup] derive fromGame failed', groupId, err);
+        }
+    }
+    if (effectiveFromGameId) {
+        try {
+            const [cpsSnap, gpsSnap, roundsSnap] = await Promise.all([
+                db.collection('communityPlayerStats').where('groupId', '==', groupId).get(),
+                db.collection('gamePlayerStats').where('gameId', '==', effectiveFromGameId).get(),
+                db.collection('games').doc(effectiveFromGameId).collection('committedRounds').get(),
+            ]);
+            const keep = new Map();
+            let totalGoals = 0;
+            for (const d of gpsSnap.docs) {
+                const x = d.data();
+                if (!x.userId)
+                    continue;
+                const goals = x.goals ?? 0;
+                const assists = x.assists ?? 0;
+                const rounds = x.rounds ?? 0;
+                const wins = x.wins ?? 0;
+                const losses = x.losses ?? 0;
+                // The community is created FROM this one game → games played = 1.
+                keep.set(x.userId, { goals, assists, rounds, wins, losses, games: 1 });
+                totalGoals += goals;
+            }
+            const batch = db.batch();
+            // Drop every commingled row that doesn't belong to the promoting game.
+            for (const d of cpsSnap.docs) {
+                const x = d.data();
+                if (x.userId && keep.has(x.userId))
+                    continue;
+                batch.delete(d.ref);
+            }
+            // Overwrite the kept players with EXACTLY this game's tally.
+            for (const [uid, v] of keep) {
+                batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), {
+                    groupId,
+                    userId: uid,
+                    goals: v.goals,
+                    assists: v.assists,
+                    rounds: v.rounds,
+                    wins: v.wins,
+                    losses: v.losses,
+                    games: v.games,
+                    updatedAt: now,
+                });
+            }
+            // Club totals = this game's mini-games (committed rounds) + goals.
+            batch.set(db.collection('communityStats').doc(groupId), {
+                groupId,
+                rounds: roundsSnap.size,
+                goals: totalGoals,
+                updatedAt: now,
+            });
+            await batch.commit();
+        }
+        catch (err) {
+            console.error('[promoteOrphanToGroup] stats reset failed', groupId, effectiveFromGameId, err);
+        }
+    }
     // Write the /groupsPublic mirror so the new community shows up in
     // discovery. Mirror the same shape the createGroup callable uses.
     await db
@@ -4932,7 +5058,10 @@ async function runFindFillerCandidates() {
                     gameTitle: game.title,
                     startsAt: game.startsAt,
                     city,
-                    shortBy: threshold - players.length,
+                    // Open spots until the game is FULL (maxPlayers − registered), e.g.
+                    // 10/15 → 5. NOT `threshold − players` (threshold is the shortage
+                    // trigger = minPlayers or 80%, which overstated the gap).
+                    shortBy: maxPlayers - players.length,
                 },
             });
             newlyPushed[uid] = now;
@@ -5835,6 +5964,30 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         // Per-GAME assist tally (mirrors the per-game goals write above).
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${assister}`), { gameId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
     }
+    // 1c) mini-games PLAYED — every on-field player this round (both teams)
+    //     gets a +1 `rounds` tally, per-community and per-game. Drives the
+    //     championship's "games played" column + its score-per-game average.
+    //     Counts everyone who played, not just scorers/assisters.
+    for (const uid of new Set([...A, ...B])) {
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), { groupId, userId: uid, rounds: inc(1), updatedAt: now }, { merge: true });
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${uid}`), { gameId, userId: uid, rounds: inc(1), updatedAt: now }, { merge: true });
+    }
+    // 1d) mini-games WON / LOST — the winning side's players get a +1 `wins`
+    //     tally and the losing side a +1 `losses`, per-community + per-game.
+    //     Drives the community table's wins/losses columns. (A tie credits
+    //     neither side.)
+    const roundWinners = winnerSide === 'A' ? A : winnerSide === 'B' ? B : [];
+    const roundLosers = winnerSide === 'A' ? B : winnerSide === 'B' ? A : [];
+    const tallyResult = (uid, field) => {
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), { groupId, userId: uid, [field]: inc(1), updatedAt: now }, { merge: true });
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${uid}`), { gameId, userId: uid, [field]: inc(1), updatedAt: now }, { merge: true });
+    };
+    for (const uid of roundWinners)
+        tallyResult(uid, 'wins');
+    for (const uid of roundLosers)
+        tallyResult(uid, 'losses');
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.
     for (const { assister, scorer } of assistPairs) {
