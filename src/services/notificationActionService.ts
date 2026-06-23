@@ -33,11 +33,29 @@ export async function handleGameReminderAction(
       return;
     }
     if (action === 'JOIN_GAME') {
-      await gameService.requestJoinGame(gameId, authUser.uid);
+      const res = await gameService.requestJoinGame(gameId, authUser.uid);
       logEvent(AnalyticsEvent.GameJoined, {
         gameId,
         viaNotificationAction: true,
       });
+      // The join ran in the BACKGROUND (no app launch) — post a local
+      // notification so the user still gets a result (in / waitlist /
+      // pending). Best-effort; never throws into the action flow.
+      try {
+        const Notifications = await import('expo-notifications');
+        const body =
+          res.bucket === 'players'
+            ? 'נרשמת למשחק! נתראה במגרש ⚽'
+            : res.bucket === 'waitlist'
+              ? 'נכנסת לרשימת ההמתנה — נעדכן אם יתפנה מקום'
+              : 'הבקשה נשלחה — ממתינה לאישור המנהל';
+        await Notifications.scheduleNotificationAsync({
+          content: { title: 'Teamder', body, data: { type: 'gameReminder', gameId } },
+          trigger: null,
+        });
+      } catch {
+        // ignore — confirmation is a nicety, not required for the join
+      }
     } else {
       await gameService.cancelGameV2(gameId, authUser.uid);
       logEvent(AnalyticsEvent.GameCancelled, {

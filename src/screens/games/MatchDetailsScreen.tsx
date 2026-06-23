@@ -43,6 +43,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
+import { UserAvatar } from '@/components/UserAvatar';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { CollapsibleContent } from '@/components/CollapsibleContent';
 import { Button } from '@/components/Button';
@@ -964,6 +965,13 @@ export function MatchDetailsScreen() {
       } else {
         toast.error(he.error);
       }
+      // Any failure here usually means the LOCAL roster was stale (the
+      // user already got approved / the spot filled / the game changed)
+      // and the optimistic CTA fired against an out-of-date state. Pull
+      // the authoritative doc so the CTA snaps to reality — this is what
+      // breaks the "error → still shows 'בקש' → tap again → error" loop
+      // (user report).
+      void reload();
     } finally {
       setBusy(false);
     }
@@ -1347,6 +1355,39 @@ export function MatchDetailsScreen() {
     }
   };
 
+  // Approve / reject a pending join request RIGHT HERE on the match
+  // details page (admins) — no longer forcing a trip to the full
+  // players screen (user report). Mirrors MatchPlayersScreen's flow.
+  const handleApprovePending = async (uid: string) => {
+    try {
+      const r = await gameService.approveGameJoin(game.id, uid);
+      if (r?.bucket === 'waitlist') toast.info(he.requestsApprovedToWaitlist);
+      else toast.success(he.matchPlayersApproveDone);
+      await reload();
+    } catch (err) {
+      logError('matchApprovePending', err, { gameId: game.id, uid });
+      toast.error(he.error);
+    }
+  };
+  const handleRejectPending = (uid: string, name: string) => {
+    appAlert(he.matchPlayersRejectTitle, he.matchPlayersRejectBody(name), [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.matchPlayersRejectCta,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await gameService.rejectGameJoin(game.id, uid);
+            await reload();
+          } catch (err) {
+            logError('matchRejectPending', err, { gameId: game.id, uid });
+            toast.error(he.error);
+          }
+        },
+      },
+    ]);
+  };
+
   // Visibility toggle — preserved from the previous design, now
   // hosted inside the collapsible MatchManageSection.
   const flipVisibility = async (next: boolean) => {
@@ -1484,16 +1525,15 @@ export function MatchDetailsScreen() {
   // open, in the future, and short of players. This is the app's main
   // "reach strangers to fill the week" lever, so it gets a prominent
   // green button regardless of the user's own join state.
-  const recruitMissing = Math.max(
-    0,
-    game.maxPlayers - (game.players.length + activeGuestCount(game.guests)),
-  );
+  // Keep the WhatsApp share available even when the roster is FULL — the
+  // owner can still recruit for the waitlist (someone always drops) and
+  // share the game (user report: button vanished when full). The message
+  // body itself drops the "חסרים N" line when there's no shortage.
   const canRecruitWhatsApp =
     game.visibility === 'public' &&
     !isTerminalGame(game) &&
     isOpen(game) &&
-    game.startsAt > Date.now() &&
-    recruitMissing > 0;
+    game.startsAt > Date.now();
 
   // Single-section hamburger — no titles, ordered by frequency of
   // use. Destructive items sit at the bottom in the danger tone.
@@ -2137,6 +2177,61 @@ export function MatchDetailsScreen() {
                   ))}
               </View>
             </View>
+          ) : null}
+
+          {/* Pending join requests — approve/reject inline (admins only),
+              so the admin doesn't have to leave for the full players
+              screen (user report). */}
+          {isAdmin && (game.pending ?? []).length > 0 ? (
+            <Card style={styles.pendingCard}>
+              <Text style={styles.pendingTitle}>
+                {he.matchPlayersSectionPending} ({(game.pending ?? []).length})
+              </Text>
+              {(game.pending ?? []).map((uid, i) => {
+                const p = playersMap[uid];
+                const name = p?.displayName ?? '...';
+                return (
+                  <View
+                    key={uid}
+                    style={[styles.pendingRow, i > 0 && styles.pendingRowDivider]}
+                  >
+                    <Pressable
+                      style={styles.pendingWho}
+                      onPress={() =>
+                        nav.navigate('PlayerCard', {
+                          userId: uid,
+                          groupId: game.groupId,
+                        })
+                      }
+                    >
+                      <UserAvatar
+                        user={{ id: uid, name, avatarId: p?.avatarId, photoUrl: p?.photoUrl }}
+                        size={38}
+                      />
+                      <Text style={styles.pendingName} numberOfLines={1}>
+                        {name}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.pendingApprove}
+                      onPress={() => handleApprovePending(uid)}
+                      accessibilityRole="button"
+                      accessibilityLabel={he.matchPlayersApproveDone}
+                    >
+                      <Ionicons name="checkmark" size={22} color="#FFFFFF" />
+                    </Pressable>
+                    <Pressable
+                      style={styles.pendingReject}
+                      onPress={() => handleRejectPending(uid, name)}
+                      accessibilityRole="button"
+                      accessibilityLabel={he.matchPlayersRejectCta}
+                    >
+                      <Ionicons name="close" size={20} color={colors.danger} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </Card>
           ) : null}
 
           <MatchParticipantsSection
@@ -3037,6 +3132,46 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+
+  // Inline pending-approval card (admins, on MatchDetails).
+  pendingCard: { padding: spacing.md, gap: spacing.xs, marginBottom: spacing.md },
+  pendingTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    marginBottom: spacing.xs,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  pendingRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  pendingWho: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  pendingName: { flex: 1, minWidth: 0, ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  pendingApprove: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingReject: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Bottom CTA — bright royal blue with shadow. Hand-rolled so the

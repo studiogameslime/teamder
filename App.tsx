@@ -76,7 +76,10 @@ try {
     {
       identifier: 'JOIN_GAME',
       buttonTitle: 'אני בא',
-      options: { opensAppToForeground: true },
+      // Background action (no app launch) → records instantly instead of
+      // the ~3s foreground spin-up the user reported. A confirming local
+      // notification is posted from the handler so feedback isn't lost.
+      options: { opensAppToForeground: false },
     },
     {
       identifier: 'CANCEL_GAME',
@@ -95,7 +98,9 @@ try {
     {
       identifier: 'JOIN_GAME',
       buttonTitle: 'מגיע',
-      options: { opensAppToForeground: true },
+      // Instant background join (no ~3s app launch). Handler posts a
+      // local confirmation notification with the result.
+      options: { opensAppToForeground: false },
     },
     {
       identifier: 'DISMISS_NEW_GAME',
@@ -654,6 +659,12 @@ export default function App() {
         );
         await handleGameReminderAction(action, gameId);
         await dismissNotificationSafely(notifId);
+        // JOIN_GAME is a background action now (opensAppToForeground:false)
+        // — don't fall through to the navigation block, which would drag
+        // the app to MatchDetails behind the user's back. The handler
+        // already posted a local confirmation. CANCEL_GAME still opens the
+        // app (destructive → show the result), so it falls through.
+        if (action === 'JOIN_GAME') return;
       } else if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
         const gameId = typeof data.gameId === 'string' ? data.gameId : '';
         if (!gameId) return;

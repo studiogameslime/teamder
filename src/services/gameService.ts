@@ -211,6 +211,17 @@ function makeRegistrationConflictError(
  * rejects `undefined` field values with "Unsupported field value:
  * undefined" and the helper has zero cost in the happy path.
  */
+/**
+ * A Firestore `permission-denied` on a community READ is almost always an
+ * EXPECTED outcome — the group/game was deleted, or the viewer isn't a member
+ * — not a real bug. Callers use this to return an empty result quietly instead
+ * of logging it to the error inbox (which spammed it with stale-reference
+ * denials; see Pulse dev-inbox triage 2026-06-23).
+ */
+function isPermissionDenied(err: unknown): boolean {
+  return (err as { code?: unknown })?.code === 'permission-denied';
+}
+
 async function updateGameDoc(
   gameId: string,
   patch: Record<string, unknown>,
@@ -580,6 +591,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+      if (isPermissionDenied(err)) return acc; // deleted group / non-member
       logError('getCommunityPlayerStats', err, {
         groupId,
         userCount: userIds.length,
@@ -785,6 +797,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+      if (isPermissionDenied(err)) return empty; // deleted group / non-member
       logError('getCommunityStats', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityStats failed', err);
       throw err;
@@ -931,6 +944,7 @@ export const gameService = {
     try {
       snap = await getDocs(q);
     } catch (err) {
+      if (isPermissionDenied(err)) return []; // deleted group / non-member
       logError('getHistory', err, { groupId });
       if (__DEV__) console.warn('[gameService] getHistory failed', err);
       throw err;
@@ -1037,6 +1051,7 @@ export const gameService = {
         0,
       );
     } catch (err) {
+      if (isPermissionDenied(err)) return null; // deleted game / no access — quiet
       logError('getPlayedGamesCount', err, { userId });
       if (__DEV__) console.warn('[gameService] getPlayedGamesCount failed', err);
       return null;
@@ -1573,6 +1588,7 @@ export const gameService = {
         ),
       );
     } catch (err) {
+      if (isPermissionDenied(err)) return []; // deleted group / non-member
       logError('getUpcomingGamesForGroup', err, { groupId });
       if (__DEV__) {
         console.warn('[gameService] getUpcomingGamesForGroup failed', err);
