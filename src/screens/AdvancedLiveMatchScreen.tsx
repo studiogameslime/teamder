@@ -271,7 +271,10 @@ export function AdvancedLiveMatchScreen() {
   // Opening order of team indices — the first two play first, the rest wait in
   // this order. RANDOMISED by default once teams are drafted; the admin can
   // re-shuffle or tap a waiting team to swap it in (preview controls below).
-  const [startOrder, setStartOrder] = useState<number[]>([]);
+  // The two team indices the admin chose to play FIRST (the rest wait in
+  // order). Admin-selectable (was a fixed random first-two); seeded with a
+  // random pair when teams load.
+  const [firstTwo, setFirstTwo] = useState<number[]>([]);
 
   // Goals per player THIS round — shown in each roster row's badge (own goals
   // credit no scorer, so they're excluded).
@@ -692,29 +695,30 @@ export function AdvancedLiveMatchScreen() {
     if (!inOvertime) enteredOvertimeRef.current = false;
   }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
 
-  // Randomise the opening order once teams are drafted (re-randomise if the
-  // team set changes). Stable across renders. MUST stay above the early
-  // returns below so the hook order never changes (no conditional hooks).
+  // Seed a random starting PAIR once teams are drafted (re-seed if the team
+  // set changes). Stable across renders. MUST stay above the early returns so
+  // the hook order never changes (no conditional hooks).
   useEffect(() => {
     if (rotation || !draftTeams) return;
     const idx = draftTeams.teams.map((t) => t.index);
-    setStartOrder((prev) => {
-      const sameSet =
-        prev.length === idx.length && idx.every((i) => prev.includes(i));
-      if (sameSet) return prev;
-      return [...idx].sort(() => Math.random() - 0.5);
+    setFirstTwo((prev) => {
+      const stillValid = prev.length === 2 && prev.every((i) => idx.includes(i));
+      if (stillValid) return prev;
+      return [...idx].sort(() => Math.random() - 0.5).slice(0, 2);
     });
   }, [draftTeams, rotation]);
 
-  // Effective opening order — admin's (random/edited) order when valid, else
-  // by-index. Also above the early returns for stable hook order.
+  // Effective opening order = the two chosen starters first, then the rest in
+  // index order. Empty until exactly two valid starters are picked (gates the
+  // preview + the start button). Above the early returns for stable hooks.
   const effectiveStartOrder = useMemo<number[]>(() => {
     if (!draftTeams) return [];
     const idx = draftTeams.teams.map((t) => t.index);
-    const valid =
-      startOrder.length === idx.length && idx.every((i) => startOrder.includes(i));
-    return valid ? startOrder : [...idx].sort((a, b) => a - b);
-  }, [draftTeams, startOrder]);
+    const starters = firstTwo.filter((i) => idx.includes(i));
+    if (starters.length !== 2) return [];
+    const rest = idx.filter((i) => !starters.includes(i)).sort((a, b) => a - b);
+    return [...starters, ...rest];
+  }, [draftTeams, firstTwo]);
 
   // ─── Not found ─────────────────────────────────────────────────────────
   // Game was deleted or failed to load — give the user an explanation and
@@ -768,18 +772,24 @@ export function AdvancedLiveMatchScreen() {
   );
   const perTeam =
     game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
-  const canStartRound = hasTeams && totalDrafted >= perTeam * 2;
+  const enoughPlayers = hasTeams && totalDrafted >= perTeam * 2;
+  // Also require exactly two chosen starters (effectiveStartOrder is empty
+  // until then) so we never start with an ambiguous opening pair.
+  const canStartRound = enoughPlayers && effectiveStartOrder.length >= 2;
 
-  const reshuffleStart = () =>
-    setStartOrder((prev) => [...prev].sort(() => Math.random() - 0.5));
-  // Tap a waiting team → swap it into the second playing slot.
-  const swapInStartTeam = (teamIdx: number) =>
-    setStartOrder((prev) => {
-      const pos = prev.indexOf(teamIdx);
-      if (pos < 2) return prev; // already playing
-      const next = [...prev];
-      [next[1], next[pos]] = [next[pos], next[1]];
-      return next;
+  const reshuffleStart = () => {
+    if (!draftTeams) return;
+    const idx = draftTeams.teams.map((t) => t.index);
+    setFirstTwo([...idx].sort(() => Math.random() - 0.5).slice(0, 2));
+  };
+  // Tap a team to select/deselect it as one of the two starters. Capped at
+  // two: tapping a third replaces the older selection so you always converge
+  // on exactly two.
+  const toggleStartTeam = (teamIdx: number) =>
+    setFirstTwo((prev) => {
+      if (prev.includes(teamIdx)) return prev.filter((i) => i !== teamIdx);
+      if (prev.length < 2) return [...prev, teamIdx];
+      return [prev[1], teamIdx];
     });
 
   // ─── Per-player actions from the live roster popover menu ───────────────
@@ -851,6 +861,12 @@ export function AdvancedLiveMatchScreen() {
           updatedAt: 0,
         }
       : null;
+
+  // The admin team-selection control shows whenever a round isn't running and
+  // there are ≥2 teams — independent of `previewRotation` (which only exists
+  // once exactly two starters are picked), so the admin can still (de)select.
+  const showStartCtrl =
+    !rotationActive && hasTeams && isAdmin && !!draftTeams && draftTeams.teams.length >= 2;
 
   return (
     <SafeAreaView style={styles.root}>
@@ -970,14 +986,14 @@ export function AdvancedLiveMatchScreen() {
         {/* Live rotation scoreboard (2 playing teams) + waiting queue. Before
             the round starts we show a PREVIEW (who's vs who / who waits). */}
         <View style={styles.rotationWrap}>
-          {previewRotation ? (
+          {previewRotation && !showStartCtrl ? (
             <Text style={styles.previewLabel}>{he.rotationPreviewLabel}</Text>
           ) : null}
-          {previewRotation && isAdmin && draftTeams ? (
+          {showStartCtrl && draftTeams ? (
             <View style={styles.startCtrl}>
               <View style={styles.startCtrlHead}>
                 <Text style={styles.startCtrlTitle}>
-                  {he.rotationStartingTeams}
+                  {he.rotationPickStartingTeams}
                 </Text>
                 <Pressable onPress={reshuffleStart} style={styles.shuffleBtn}>
                   <Ionicons name="shuffle" size={16} color={colors.primary} />
@@ -985,15 +1001,16 @@ export function AdvancedLiveMatchScreen() {
                 </Pressable>
               </View>
               <View style={styles.startChips}>
-                {effectiveStartOrder.map((idx, i) => {
-                  const playing = i < 2;
+                {draftTeams.teams.map((t) => {
+                  const idx = t.index;
+                  const selected = firstTwo.includes(idx);
                   return (
                     <Pressable
                       key={idx}
-                      onPress={() => (playing ? undefined : swapInStartTeam(idx))}
+                      onPress={() => toggleStartTeam(idx)}
                       style={[
                         styles.teamChip,
-                        playing ? styles.teamChipPlaying : styles.teamChipWaiting,
+                        selected ? styles.teamChipPlaying : styles.teamChipWaiting,
                       ]}
                     >
                       <View
@@ -1002,29 +1019,30 @@ export function AdvancedLiveMatchScreen() {
                       <Text
                         style={[
                           styles.teamChipText,
-                          playing && styles.teamChipTextPlaying,
+                          selected && styles.teamChipTextPlaying,
                         ]}
                       >
                         {teamName(idx)}
                       </Text>
-                      {playing ? (
-                        <Ionicons name="play" size={11} color={colors.primary} />
+                      {selected ? (
+                        <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
                       ) : null}
                     </Pressable>
                   );
                 })}
               </View>
-              {effectiveStartOrder.length > 2 ? (
-                <Text style={styles.startCtrlHint}>{he.rotationTapToSwap}</Text>
-              ) : null}
+              <Text style={styles.startCtrlHint}>
+                {firstTwo.length === 2
+                  ? he.rotationPickStartingHint
+                  : he.rotationPickStartingNeedTwo}
+              </Text>
             </View>
           ) : null}
-          {/* In preview the admin start-control already lists every team
-              (playing + waiting), so rendering the RotationPanel on top of
-              it duplicated each team title (Bog4adSl). Show the panel only
-              when it ISN'T duplicated: live rounds, or a non-admin viewer in
-              preview (who has no start-control above). */}
-          {!(previewRotation && isAdmin && draftTeams) ? (
+          {/* The admin start-control already lists every team, so don't also
+              render the RotationPanel on top of it (would duplicate each team
+              title). Show the panel only when the start-control ISN'T up:
+              live rounds, or a non-admin viewer in preview. */}
+          {!showStartCtrl ? (
             <RotationPanel
               draftTeams={draftTeams ?? undefined}
               rotation={rotation ?? previewRotation ?? undefined}
@@ -1104,8 +1122,10 @@ export function AdvancedLiveMatchScreen() {
               <Ionicons name="play" size={26} color="#FFFFFF" />
               <Text style={styles.primaryBtnText}>{he.rotationStartRound}</Text>
             </Pressable>
-            {!canStartRound ? (
+            {!enoughPlayers ? (
               <Text style={styles.warnText}>{he.rotationNotEnough}</Text>
+            ) : !canStartRound ? (
+              <Text style={styles.warnText}>{he.rotationPickStartingNeedTwo}</Text>
             ) : null}
             {timerStarted ? (
               <Pressable style={styles.endBtn} onPress={() => setEndOpen(true)}>

@@ -340,6 +340,9 @@ export const he = {
   rotationStartingTeams: 'קבוצות פותחות (אקראי)',
   rotationShuffle: 'ערבב',
   rotationTapToSwap: 'הקש על קבוצה ממתינה כדי להחליף אותה בפותחת',
+  rotationPickStartingTeams: 'בחרו 2 קבוצות פותחות',
+  rotationPickStartingHint: 'אלו 2 הקבוצות שיפתחו · השאר ממתינות בתור',
+  rotationPickStartingNeedTwo: 'סמנו בדיוק 2 קבוצות כדי להתחיל',
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuWentHome: 'הלך הביתה',
