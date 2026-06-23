@@ -109,9 +109,10 @@ export function StatisticsScreen() {
           <View style={styles.tileGrid}>
             <NumberTile icon="calendar-outline" value={String(stats!.attendedGames)} label={he.statGames} />
             <NumberTile icon="football" value={String(stats!.goals)} label={he.statGoals} />
-            <NumberTile icon="hand-left" value={String(stats!.assists)} label={he.statAssists} />
-            <NumberTile icon="flash-outline" value={stats!.goalsPerEvening.toFixed(1)} label={he.statGoalsPerEvening} />
-            <NumberTile icon="people-circle-outline" value={String(stats!.distinctPlayers)} label={he.statDistinctPlayers} />
+            {/* "בישול" (assist) = cooking pun → a food icon, not a hand
+               (user request). Dropped the "גולים לערב" + "שחקנים שונים"
+               tiles entirely (user request). */}
+            <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
           </View>
 
           {/* ── People (named superlatives) ─────────────────────────── */}
