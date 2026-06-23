@@ -44,6 +44,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { RichRulesText } from '@/components/community/RichRulesText';
+import { CollapsibleContent } from '@/components/CollapsibleContent';
 import { Button } from '@/components/Button';
 import { goToGameChat } from '@/navigation/navigationRef';
 import { Badge } from '@/components/Badge';
@@ -2221,7 +2222,12 @@ export function MatchDetailsScreen() {
                 />
                 <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
               </View>
-              <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
+              {/* Collapsible (קרא עוד / הצג פחות) — same behaviour as the rules
+                  card on CommunityDetails, so a long rules block never fills
+                  the whole screen. */}
+              <CollapsibleContent>
+                <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
+              </CollapsibleContent>
             </View>
           ) : null}
 

@@ -37,6 +37,7 @@ import { Button } from '@/components/Button';
 import { goToCommunityChat } from '@/navigation/navigationRef';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { CollapsibleContent } from '@/components/CollapsibleContent';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { toast } from '@/components/Toast';
@@ -932,74 +933,6 @@ export function CommunityDetailsScreen() {
     </View>
   );
 }
-
-// Collapsible long-text wrapper — clamps content to `collapsedHeight` and
-// shows a "קרא עוד / הצג פחות" toggle ONLY when the content actually overflows.
-// Wraps the description + rules cards, which can run long enough to fill the
-// whole screen (user report 2026-06-21). Height is measured with Math.max so
-// the clamp can't shrink the measurement and cause a toggle flicker loop.
-function CollapsibleContent({
-  children,
-  collapsedHeight = 160,
-}: {
-  children: React.ReactNode;
-  collapsedHeight?: number;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [fullHeight, setFullHeight] = useState(0);
-  const overflows = fullHeight > collapsedHeight + 12;
-  return (
-    <View>
-      <View
-        style={
-          !expanded && overflows
-            ? { maxHeight: collapsedHeight, overflow: 'hidden' }
-            : undefined
-        }
-      >
-        <View
-          onLayout={(e) =>
-            setFullHeight((prev) => Math.max(prev, e.nativeEvent.layout.height))
-          }
-        >
-          {children}
-        </View>
-      </View>
-      {overflows ? (
-        <Pressable
-          onPress={() => setExpanded((v) => !v)}
-          hitSlop={8}
-          style={collapsibleStyles.toggle}
-          accessibilityRole="button"
-        >
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={colors.primary}
-          />
-          <Text style={collapsibleStyles.toggleText}>
-            {expanded ? he.communityReadLess : he.communityReadMore}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
-const collapsibleStyles = StyleSheet.create({
-  toggle: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 4,
-    paddingTop: spacing.xs,
-  },
-  toggleText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '800',
-  },
-});
 
 // ─── Community stats section ────────────────────────────────────────────
 
