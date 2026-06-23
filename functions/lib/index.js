@@ -759,23 +759,17 @@ async function resolveRecipients(notif) {
         const groupId = payload.groupId || notif.recipientId;
         if (!groupId)
             return [];
-        // Self-exclusion: the admin who just created the game shouldn't
-        // get pinged about their own creation. We prefer payload.createdBy
-        // (forward-compatible) and fall back to reading the game doc —
-        // older app builds didn't include createdBy in the payload, but
-        // it's always written on the game itself.
-        let createdBy = typeof payload.createdBy === 'string' ? payload.createdBy : '';
-        if (!createdBy) {
-            const gameId = typeof payload.gameId === 'string' ? payload.gameId : '';
-            if (gameId) {
-                const gSnap = await db.collection('games').doc(gameId).get();
-                if (gSnap.exists) {
-                    const gd = gSnap.data();
-                    if (typeof gd.createdBy === 'string')
-                        createdBy = gd.createdBy;
-                }
-            }
-        }
+        // Self-exclusion depends ENTIRELY on whether the dispatcher passed
+        // `createdBy` in the payload:
+        //   • Manual game creation DOES pass it → the organiser is excluded
+        //     (they just made the game; no need to ping them).
+        //   • Registration-open (flipScheduledGameOnce) and recurring-clone
+        //     opens deliberately OMIT it → the organiser IS notified that
+        //     registration opened, same as everyone else (spec).
+        // We must NOT re-derive createdBy from the game doc here — that
+        // fallback wrongly excluded the organiser from the registration-open
+        // push (user report: "as the manager I should also get the push").
+        const createdBy = typeof payload.createdBy === 'string' ? payload.createdBy : '';
         const snap = await db
             .collection('users')
             .where('newGameSubscriptions', 'array-contains', groupId)
@@ -787,6 +781,15 @@ async function resolveRecipients(notif) {
         const uids = snap.docs
             .map((d) => d.id)
             .filter((uid) => uid !== createdBy);
+        // Always include the organiser on a registration-open push, even if
+        // they never toggled the community's new-game subscription — they
+        // scheduled the game and expect the "registration opened" ping.
+        // `flipScheduledGameOnce` passes their uid here (the manual-creation
+        // path doesn't, so it stays self-excluded).
+        const alsoNotify = typeof payload.alsoNotifyUid === 'string' ? payload.alsoNotifyUid : '';
+        if (alsoNotify && alsoNotify !== createdBy && !uids.includes(alsoNotify)) {
+            uids.push(alsoNotify);
+        }
         return loadUsers(uids);
     }
     if (notif.type === 'gameReminder' ||
@@ -1822,7 +1825,10 @@ async function flipScheduledGameOnce(gameId) {
                 // Registration-open for a recurring/scheduled game: notify
                 // EVERYONE in the community INCLUDING the organiser/admin
                 // (spec) — so deliberately DON'T pass createdBy here (which
-                // would exclude the creator from the fan-out).
+                // would exclude the creator from the fan-out). And force-include
+                // the organiser even if they never subscribed: it's THEIR game
+                // opening, they expect the ping.
+                alsoNotifyUid: g.createdBy,
             },
         });
         // Only latch + flip if the notification actually landed or was
