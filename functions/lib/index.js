@@ -1670,6 +1670,13 @@ async function reconcileGameJoins(gameId) {
         const joinedAt = g.joinedAt && typeof g.joinedAt === 'object'
             ? { ...g.joinedAt }
             : {};
+        // Clear a re-joiner's stale cancellation: someone who cancelled and then
+        // re-joins must not linger in `cancellations` — otherwise they show up in
+        // BOTH the roster and the "ביטלו השתתפות" list (user report).
+        const cancellations = g.cancellations && typeof g.cancellations === 'object'
+            ? { ...g.cancellations }
+            : {};
+        let cancellationsChanged = false;
         let occupancy = players.length + guests + offer;
         for (const r of reqs) {
             if (rejected.includes(r.uid)) {
@@ -1705,17 +1712,24 @@ async function reconcileGameJoins(gameId) {
             inAny.add(r.uid);
             if (joinedAt[r.uid] === undefined)
                 joinedAt[r.uid] = r.receipt;
+            if (cancellations[r.uid] !== undefined) {
+                delete cancellations[r.uid];
+                cancellationsChanged = true;
+            }
             tx.update(r.ref, { state: 'assigned', bucket, assignedAt: now });
         }
         const participantIds = Array.from(new Set([...players, ...waitlist, ...pending]));
-        tx.update(gameRef, {
+        const update = {
             players,
             waitlist,
             pending,
             participantIds,
             joinedAt,
             updatedAt: now,
-        });
+        };
+        if (cancellationsChanged)
+            update.cancellations = cancellations;
+        tx.update(gameRef, update);
     });
 }
 // A new join request schedules a reconcile ~SETTLE later. A deterministic,

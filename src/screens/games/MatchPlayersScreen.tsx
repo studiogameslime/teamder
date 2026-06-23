@@ -201,10 +201,20 @@ export function MatchPlayersScreen() {
   const pendingEntries = buildEntries(game.pending ?? []);
   const guests = game.guests ?? [];
   // Anyone who joined and then cancelled. Sort newest-first so the
-  // admin sees fresh drop-outs at the top of the section.
+  // admin sees fresh drop-outs at the top of the section. EXCLUDE anyone
+  // who's currently back in the roster — a stale `cancellations[uid]` entry
+  // (a re-join that didn't clear it) otherwise showed the same player both
+  // in the roster AND in "ביטלו השתתפות" (user report).
   const cancelledEntries = (() => {
     const map = game.cancellations ?? {};
-    const uids = Object.keys(map).sort((a, b) => (map[b] ?? 0) - (map[a] ?? 0));
+    const active = new Set<string>([
+      ...(game.players ?? []),
+      ...(game.waitlist ?? []),
+      ...(game.pending ?? []),
+    ]);
+    const uids = Object.keys(map)
+      .filter((uid) => !active.has(uid))
+      .sort((a, b) => (map[b] ?? 0) - (map[a] ?? 0));
     return buildEntries(uids).map((e) => ({
       ...e,
       cancelledAt: map[e.user.id] ?? 0,
