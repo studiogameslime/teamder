@@ -10,6 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -513,6 +514,7 @@ function H2hDateRow({ label, value }: { label: string; value: string }) {
 }
 
 function CommunityChips({ groups }: { groups: Group[] }) {
+  const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   return (
     <View style={styles.commCard}>
       <View style={styles.commHeadRow}>
@@ -521,7 +523,14 @@ function CommunityChips({ groups }: { groups: Group[] }) {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commScroll}>
         {groups.map((g) => (
-          <View key={g.id} style={styles.commChip}>
+          // Tap a community chip → its page (user request).
+          <Pressable
+            key={g.id}
+            style={({ pressed }) => [styles.commChip, pressed && { opacity: 0.7 }]}
+            onPress={() => nav.navigate('CommunityDetails', { groupId: g.id })}
+            accessibilityRole="button"
+            accessibilityLabel={g.name}
+          >
             {g.coverPhotoUrl ? (
               <Image source={{ uri: g.coverPhotoUrl }} style={styles.commLogo} />
             ) : (
@@ -532,7 +541,7 @@ function CommunityChips({ groups }: { groups: Group[] }) {
             <Text style={styles.commName} numberOfLines={1}>
               {g.name}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
     </View>
