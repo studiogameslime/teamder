@@ -93,7 +93,6 @@ import {
   isTerminal as isTerminalGame,
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
-import { shareToWhatsApp } from '@/services/whatsappService';
 import { ensureNotGuest } from '@/utils/guestGate';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
@@ -1306,10 +1305,23 @@ export function MatchDetailsScreen() {
     if (!isOpen(game) || game.startsAt <= Date.now()) return;
     try {
       const link = inviteLinkForGame();
-      const result = await Share.share({
+      // Use the RICH recruitment text (what / when / where / how many
+      // missing + join link) — the same content the old bottom WhatsApp
+      // button used. The header share icon is now the single share entry
+      // point (user request: move the rich content up, drop the bottom
+      // button). Missing-count line is auto-omitted when full.
+      const missing = Math.max(
+        0,
+        game.maxPlayers - (game.players.length + activeGuestCount(game.guests)),
+      );
+      const message = he.sessionShareWhatsappBody({
         title: game.title,
-        message: he.sessionInviteShareBody(link),
+        when: formatDateLong(game.startsAt),
+        field: game.fieldName,
+        missing,
+        link,
       });
+      const result = await Share.share({ title: game.title, message });
       if (result.action !== 'dismissedAction') {
         logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
       }
@@ -1319,39 +1331,6 @@ export function MatchDetailsScreen() {
         gameId: game.id,
       });
       if (__DEV__) console.warn('[matchDetails] share failed', err);
-    }
-  };
-
-  // WhatsApp recruitment — the lowest-friction way to fill a shortage.
-  // Builds a rich, scannable message (what / when / where / how many
-  // missing + join link) and opens WhatsApp straight to a contact picker.
-  // Falls back to the OS share sheet if WhatsApp isn't installed.
-  const handleShareWhatsApp = async () => {
-    if (!isOpen(game) || game.startsAt <= Date.now()) return;
-    const link = inviteLinkForGame();
-    const missing = Math.max(
-      0,
-      game.maxPlayers - (game.players.length + activeGuestCount(game.guests)),
-    );
-    const text = he.sessionShareWhatsappBody({
-      title: game.title,
-      when: formatDateLong(game.startsAt),
-      field: game.fieldName,
-      missing,
-      link,
-    });
-    try {
-      const ok = await shareToWhatsApp(text);
-      if (!ok) {
-        await Share.share({ title: game.title, message: text });
-      }
-      logEvent(AnalyticsEvent.InviteShared, { gameId: game.id });
-    } catch (err) {
-      logError('matchShareWhatsApp', err, {
-        screen: 'MatchDetailsScreen',
-        gameId: game.id,
-      });
-      if (__DEV__) console.warn('[matchDetails] whatsapp share failed', err);
     }
   };
 
@@ -1520,20 +1499,6 @@ export function MatchDetailsScreen() {
   // Conflict gate — only when the user is about to JOIN.
   const blockedByConflict =
     !!preCheckConflict && !!primary && status === 'none';
-
-  // WhatsApp recruitment bar — show whenever this public game is still
-  // open, in the future, and short of players. This is the app's main
-  // "reach strangers to fill the week" lever, so it gets a prominent
-  // green button regardless of the user's own join state.
-  // Keep the WhatsApp share available even when the roster is FULL — the
-  // owner can still recruit for the waitlist (someone always drops) and
-  // share the game (user report: button vanished when full). The message
-  // body itself drops the "חסרים N" line when there's no shortage.
-  const canRecruitWhatsApp =
-    game.visibility === 'public' &&
-    !isTerminalGame(game) &&
-    isOpen(game) &&
-    game.startsAt > Date.now();
 
   // Single-section hamburger — no titles, ordered by frequency of
   // use. Destructive items sit at the bottom in the danger tone.
@@ -2572,7 +2537,7 @@ export function MatchDetailsScreen() {
           participants + match-details sections. Share lives in the
           header now, so this bar is hidden entirely when there's no
           meaningful contextual action — see `ctaState`. */}
-      {ctaState || canRecruitWhatsApp ? (
+      {ctaState ? (
         <View
           onLayout={(e) => setCtaHeight(e.nativeEvent.layout.height)}
           style={[
@@ -2580,22 +2545,6 @@ export function MatchDetailsScreen() {
             ctaState?.tone === 'blocked' && styles.ctaBlocked,
           ]}
         >
-          {canRecruitWhatsApp ? (
-            <Pressable
-              onPress={handleShareWhatsApp}
-              style={({ pressed }) => [
-                styles.whatsappBtn,
-                pressed && { opacity: 0.9 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.sessionShareWhatsapp}
-            >
-              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
-              <Text style={styles.whatsappBtnText}>
-                {he.sessionShareWhatsapp}
-              </Text>
-            </Pressable>
-          ) : null}
           {ctaState ? (
             <>
               <Pressable
@@ -2605,7 +2554,6 @@ export function MatchDetailsScreen() {
                   styles.inviteCta,
                   ctaState.tone === 'destructive' &&
                     styles.inviteCtaDestructive,
-                  canRecruitWhatsApp && { marginTop: spacing.sm },
                   pressed && { opacity: 0.9 },
                 ]}
                 accessibilityRole="button"
@@ -3115,23 +3063,6 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.lg,
     gap: spacing.xl,
-  },
-
-  // WhatsApp recruitment button — official WhatsApp green so it reads
-  // instantly as "share to WhatsApp". Sits at the top of the sticky bar.
-  whatsappBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#25D366',
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  whatsappBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
   },
 
   // Inline pending-approval card (admins, on MatchDetails).
