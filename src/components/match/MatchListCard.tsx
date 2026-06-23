@@ -107,6 +107,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // Relative "time to kickoff" chip — nudges the user with how soon the game
   // is ("מחר", "עוד 3 שעות") next to the absolute date.
   const kickoff = relativeKickoff(game.startsAt);
+  const dayLabel = formatGameDay(game.startsAt);
   // Highlight when it's imminent (today, within hours/minutes) vs just soon.
   const kickoffSoon = !!kickoff && kickoff.startsWith('עוד');
 
@@ -202,13 +203,16 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
         <View style={styles.dateLine}>
           <InfoRow
             icon="calendar"
-            text={formatGameDay(game.startsAt)}
+            text={dayLabel}
             // Highlight "היום" / "מחר" so a near-term game's day pops out
             // from the gray date text.
             emphasis={dayDiff(game.startsAt) <= 1}
           />
           <InfoRow icon="time" text={formatTime(game.startsAt)} />
-          {kickoff ? (
+          {/* Relative chip — skip it when it just repeats the day label
+              (both read "מחר" for a tomorrow game → duplicate, user report).
+              It still shows for "עוד 3 שעות" / "בעוד 4 ימים". */}
+          {kickoff && kickoff !== dayLabel ? (
             <View style={[styles.kickoffChip, kickoffSoon && styles.kickoffChipSoon]}>
               <Text style={[styles.kickoffText, kickoffSoon && styles.kickoffTextSoon]}>
                 {kickoff}
