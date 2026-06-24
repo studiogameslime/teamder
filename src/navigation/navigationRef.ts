@@ -86,6 +86,12 @@ export function goToCommunityChat(groupId: string): void {
   const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
   nav.navigate('ChatTab', { screen: 'CommunityChat', initial: false, params: { groupId } });
 }
+export function goToDirectChat(convId: string): void {
+  if (!navigationRef.isReady()) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigationRef as unknown as { navigate: (...a: any[]) => void };
+  nav.navigate('ChatTab', { screen: 'DirectChat', initial: false, params: { convId } });
+}
 
 /**
  * Navigate to a deep-linked screen. Tab navigators receive the
@@ -179,6 +185,12 @@ export function navigateForPush(
           initial: false,
           params: { groupId: parentId },
         });
+      } else if (scope === 'dm') {
+        nav.navigate('ChatTab', {
+          screen: 'DirectChat',
+          initial: false,
+          params: { convId: parentId },
+        });
       } else {
         nav.navigate('ChatTab', {
           screen: 'GameChat',
@@ -267,6 +279,8 @@ export function navigateForPush(
     case 'gameRsvpNudge':
     case 'gamePlayersJoined':
     case 'playerCancelled':
+    // Auto-balanced teams ready → open MatchDetails to see the teams.
+    case 'teamsGenerated':
     // Cross-community filler flow — admin-side pushes ("someone
     // applied to fill", "no matching fillers right now") and the
     // candidate-side "fillerOpportunity" all carry a `gameId` in

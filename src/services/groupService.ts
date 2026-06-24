@@ -966,10 +966,10 @@ export const groupService = {
   ): Promise<void> {
     if (!groupId || !playerId) return;
     const valid =
-      rating != null && Number.isInteger(rating) && rating >= 1 && rating <= 5;
+      rating != null && Number.isInteger(rating) && rating >= 1 && rating <= 10;
     const clear = rating == null || rating === 0;
     if (!valid && !clear) {
-      throw new Error('setAdminRating: rating must be 1–5 (or 0/null to clear)');
+      throw new Error('setAdminRating: rating must be 1–10 (or 0/null to clear)');
     }
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];

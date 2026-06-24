@@ -408,6 +408,30 @@ function effFillMode(
   return draft.fillMode ?? 'temporary';
 }
 
+/**
+ * Drafted teams with any id no longer on the roster removed — so a player who
+ * CANCELLED after teams were drafted (but before "start evening") never enters
+ * the live rotation as a ghost. `leftHome` players stay (they are still
+ * registered; the rotation engine skips them separately).
+ */
+function liveRosterTeams(
+  g: { players?: string[]; guests?: { id: string; waitlisted?: boolean }[] },
+  draft: { teams: { index: number; playerIds: string[] }[] },
+): { index: number; playerIds: string[] }[] {
+  const players = new Set(g.players ?? []);
+  const guests = new Set(
+    (g.guests ?? [])
+      .filter((gu) => !gu.waitlisted)
+      .map((gu) => toGuestRosterId(gu.id)),
+  );
+  const inRoster = (id: string) =>
+    isGuestId(id) ? guests.has(id) : players.has(id);
+  return draft.teams.map((t) => ({
+    index: t.index,
+    playerIds: t.playerIds.filter(inRoster),
+  }));
+}
+
 export const gameService = {
   /**
    * Returns the active game for a group, or null if none exists yet.
@@ -1689,6 +1713,8 @@ export const gameService = {
     fieldType?: import('@/types').FieldType;
     matchDurationMinutes?: number;
     autoTeamGenerationMinutesBeforeStart?: number;
+    autoTeamsAt?: number;
+    autoTeamsMethod?: 'rating' | 'random';
     visibility: 'public' | 'community';
     requiresApproval: boolean;
     bringBall: boolean;
@@ -1882,6 +1908,8 @@ export const gameService = {
       matchDurationMinutes: input.matchDurationMinutes,
       autoTeamGenerationMinutesBeforeStart:
         input.autoTeamGenerationMinutesBeforeStart,
+      autoTeamsAt: input.autoTeamsAt,
+      autoTeamsMethod: input.autoTeamsMethod,
       bringBall: input.bringBall,
       bringShirts: input.bringShirts,
       notes: input.notes,
@@ -2132,6 +2160,11 @@ export const gameService = {
       advancedMode: boolean;
       advancedFillMode: 'permanent' | 'temporary';
       advancedTieMode: 'bothOut' | 'veteranOut';
+      /** ms-epoch wall-clock time to auto-generate balanced teams.
+       *  null clears the schedule (turned off in the edit form). */
+      autoTeamsAt: number | null;
+      /** Scheduled split method: 'rating' | 'random'. */
+      autoTeamsMethod: 'rating' | 'random';
     }>,
   ): Promise<void> {
     clearMyGamesCache(); // status/startsAt edits can change the my-games lists
@@ -2324,6 +2357,49 @@ export const gameService = {
     });
   },
 
+  /**
+   * A member's 👍/👎 reaction to the current team split. Writes ONLY the
+   * caller's own key via a field-path update (`draftTeamFeedback.<uid>`) so
+   * Firestore rules can permit members to react without touching anyone
+   * else's vote. Pass `null` to clear the reaction.
+   */
+  async setDraftTeamFeedback(
+    gameId: string,
+    userId: string,
+    value: 'like' | 'dislike' | null,
+  ): Promise<void> {
+    if (!gameId || !userId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        const fb = { ...(m.draftTeamFeedback ?? {}) };
+        if (value) fb[userId] = value;
+        else delete fb[userId];
+        m.draftTeamFeedback = fb;
+      }
+      return;
+    }
+    const { deleteField } = require('firebase/firestore');
+    await updateDoc(docs.game(gameId), {
+      [`draftTeamFeedback.${userId}`]: value ?? deleteField(),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Admin-trigger: notify every registered player of their team via a
+   * personalized push ("אתה בקבוצה עם …"). Server computes the teammates
+   * per player and fans out one notification doc each. No-op in mock mode.
+   */
+  async notifyTeamsReady(gameId: string): Promise<void> {
+    if (!gameId || USE_MOCK_DATA) return;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    await httpsCallable(getFirebase().functions, 'notifyTeamsReady')({
+      gameId,
+    });
+  },
+
   // ─── Live "winner stays" rotation ──────────────────────────────────────
   // Sits on top of draftTeams. All math is in the pure rotationEngine; these
   // methods just load the game, run the engine, and persist rotation (+ the
@@ -2338,12 +2414,13 @@ export const gameService = {
     if (!g || !draft || draft.teams.length < 2) return;
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
-    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const teams = liveRosterTeams(g, draft);
     const res = runStartRotation(teams, perTeam, fillMode);
     if (!res) return; // gate: not enough players for two full teams
-    // Snapshot the ORIGINAL drafted rosters (before any permanent-fill
-    // reassignment) so stopRotation can restore them on reset.
-    res.rotation.baseTeams = draft.teams.map((t) => ({
+    // Snapshot the (roster-filtered) drafted rosters before any permanent-fill
+    // reassignment, so stopRotation restores them on reset — without resurrecting
+    // a player who cancelled before the evening started.
+    res.rotation.baseTeams = teams.map((t) => ({
       index: t.index,
       playerIds: [...t.playerIds],
     }));
@@ -2361,7 +2438,7 @@ export const gameService = {
     if (!g.rotation.playing.includes(winner)) return;
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
-    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const teams = liveRosterTeams(g, draft);
     const res = runRecordWinner(winner, teams, g.rotation, perTeam, fillMode);
     // Carry the original-roster snapshot forward (the engine builds a fresh
     // rotation object each round and doesn't know about baseTeams).
@@ -2378,7 +2455,7 @@ export const gameService = {
     if (!g || !draft || !g.rotation) return;
     const perTeam = playersPerTeamFor(g.format);
     const fillMode = effFillMode(g, draft);
-    const teams = draft.teams.map((t) => ({ index: t.index, playerIds: [...t.playerIds] }));
+    const teams = liveRosterTeams(g, draft);
     const res = runRecordTie(teams, g.rotation, perTeam, fillMode, mode);
     res.rotation.baseTeams = g.rotation.baseTeams;
     await this._persistRotation(gameId, draft, res);
@@ -2567,7 +2644,11 @@ export const gameService = {
         const { httpsCallable } = require('firebase/functions');
         await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
-          roundId: rot.round ?? null,
+          // Idempotency key for the server's double-commit latch. `round` is the
+          // normal value; fall back to the rotation's `updatedAt` (stable for a
+          // given round, unique across rounds, identical on an SDK retry) so the
+          // latch ALWAYS applies — never null → no un-deduped double-credit.
+          roundId: rot.round ?? rot.updatedAt ?? null,
           sideA,
           sideB,
           winnerSide: winnerSide ?? 'tie',
@@ -3306,6 +3387,14 @@ export const gameService = {
     // no delay. The server reconciler does the authoritative fair seating.
     const { db } = getFirebase();
     const reqRef = doc(db, 'games', gameId, 'joinRequests', userId);
+    // After the reconciler seats a user it leaves their request doc behind in
+    // state 'assigned'. If that user later LEAVES and re-joins, a plain setDoc
+    // would be an UPDATE of the existing doc — which the rules forbid
+    // (`allow update: if false`; the reconciler owns transitions), so the
+    // re-join failed with permission-denied. Delete any stale doc first so the
+    // setDoc below is always a fresh CREATE (self-delete + self-create are both
+    // allowed). No-op when there's nothing to delete.
+    await deleteDoc(reqRef).catch(() => undefined);
     await setDoc(reqRef, {
       uid: userId,
       tappedAt,
@@ -5691,9 +5780,9 @@ export const gameService = {
       (typeof rating !== 'number' ||
         !Number.isFinite(rating) ||
         rating < 1 ||
-        rating > 5)
+        rating > 10)
     ) {
-      throw new Error('addGuest: estimatedRating must be 1..5');
+      throw new Error('addGuest: estimatedRating must be 1..10');
     }
     // Firestore rejects writes that include `undefined` values
     // (`Unsupported field value`). Build the guest object WITHOUT
@@ -5711,7 +5800,7 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('addGuest: game not found');
-      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      await assertCanAddGuest(g, callerId);
       // Full game → queue the guest on the waitlist instead of refusing.
       const occupancy = g.players.length + activeGuestCount(g.guests);
       const wlGuest = occupancy >= g.maxPlayers ? { ...guest, waitlisted: true } : guest;
@@ -5737,9 +5826,13 @@ export const gameService = {
       const snapForPerm = await getDoc(ref);
       if (!snapForPerm.exists()) throw new Error('addGuest: game not found');
       const permData = snapForPerm.data();
-      await assertGuestPermission(
-        permData.createdBy,
-        permData.groupId,
+      await assertCanAddGuest(
+        {
+          createdBy: permData.createdBy,
+          groupId: permData.groupId,
+          players: permData.players,
+          guestsOpenAt: permData.guestsOpenAt,
+        },
         callerId,
       );
 
@@ -5801,9 +5894,9 @@ export const gameService = {
           typeof r !== 'number' ||
           !Number.isFinite(r) ||
           r < 1 ||
-          r > 5
+          r > 10
         ) {
-          throw new Error('updateGuest: estimatedRating must be 1..5');
+          throw new Error('updateGuest: estimatedRating must be 1..10');
         }
         nextRating = r;
       }
@@ -5954,6 +6047,46 @@ export const gameService = {
  * Mirrors the Firestore rule on /games/{id}.update — duplicated here so
  * we can fail fast with a clear error before the network round-trip.
  */
+/**
+ * ADD-guest permission. Looser than {@link assertGuestPermission}: besides the
+ * creator and group admins, a registered participant may add a guest UNLESS the
+ * game restricts it until a set time (`guestsOpenAt`). When `guestsOpenAt` is
+ * unset/0 there's no restriction — any participant can always add. This mirrors
+ * `canAddGuest` (client gate) and the firestore.rules self-add-guest branch.
+ */
+async function assertCanAddGuest(
+  game: {
+    createdBy?: string | null;
+    groupId?: string | null;
+    players?: string[];
+    guestsOpenAt?: number | null;
+  },
+  callerId: string,
+): Promise<void> {
+  if (game.createdBy && callerId === game.createdBy) return;
+  if (game.groupId) {
+    if (USE_MOCK_DATA) {
+      const { groupService } = await import('./groupService');
+      const g = await groupService.get(game.groupId);
+      if (g && g.adminIds.includes(callerId)) return;
+    } else {
+      const groupSnap = await getDoc(docs.group(game.groupId));
+      if (
+        groupSnap.exists() &&
+        ((groupSnap.data().adminIds as string[] | undefined) ?? []).includes(
+          callerId,
+        )
+      ) {
+        return;
+      }
+    }
+  }
+  // Registered participant + guests open (no restriction, or time passed).
+  const openAt = game.guestsOpenAt ?? 0;
+  if ((game.players ?? []).includes(callerId) && Date.now() >= openAt) return;
+  throw new Error('PERMISSION_DENIED');
+}
+
 async function assertGuestPermission(
   createdBy: string | null | undefined,
   groupId: string | null | undefined,

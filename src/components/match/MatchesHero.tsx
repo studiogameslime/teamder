@@ -23,10 +23,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { useUserStore } from '@/store/userStore';
 
 const HERO_BG: ImageSourcePropType = require('../../assets/images/gamesTabBackground.png');
 
+/** Time-of-day greeting word (Israel local time — the device clock). */
+function greetingWord(hour: number): string {
+  if (hour >= 5 && hour < 12) return he.greetingMorning;
+  if (hour >= 12 && hour < 17) return he.greetingNoon;
+  if (hour >= 17 && hour < 22) return he.greetingEvening;
+  return he.greetingNight;
+}
+
 export function MatchesHero() {
+  const name = useUserStore((st) => st.currentUser?.name) ?? '';
+  const firstName = name.trim().split(/\s+/)[0] || '';
+  const heading = firstName
+    ? he.greetingWithName(greetingWord(new Date().getHours()), firstName)
+    : he.gamesListTitle;
   return (
     <View style={styles.wrap}>
       <ImageBackground
@@ -56,7 +70,7 @@ export function MatchesHero() {
             </View>
             <View style={styles.text}>
               <Text style={styles.title} numberOfLines={1}>
-                {he.gamesListTitle}
+                {heading}
               </Text>
               <Text style={styles.subtitle} numberOfLines={2}>
                 {he.matchesHeroSubtitle}

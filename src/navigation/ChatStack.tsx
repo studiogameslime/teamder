@@ -9,12 +9,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ChatsListScreen } from '@/screens/chat/ChatsListScreen';
 import { GameChatScreen } from '@/screens/chat/GameChatScreen';
 import { CommunityChatScreen } from '@/screens/chat/CommunityChatScreen';
+import { DirectChatScreen } from '@/screens/chat/DirectChatScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 
 export type ChatStackParamList = {
   ChatsList: undefined;
   GameChat: { gameId: string };
   CommunityChat: { groupId: string };
+  DirectChat: { convId: string };
   PlayerCard: { userId: string; groupId?: string };
 };
 
@@ -29,6 +31,7 @@ export function ChatStack() {
       <Stack.Screen name="ChatsList" component={ChatsListScreen} />
       <Stack.Screen name="GameChat" component={GameChatScreen} />
       <Stack.Screen name="CommunityChat" component={CommunityChatScreen} />
+      <Stack.Screen name="DirectChat" component={DirectChatScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
     </Stack.Navigator>
   );

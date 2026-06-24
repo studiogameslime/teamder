@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -76,6 +76,7 @@ const notificationDedup_1 = require("./notificationDedup");
 var chatPush_1 = require("./chatPush");
 Object.defineProperty(exports, "onGameChatMessage", { enumerable: true, get: function () { return chatPush_1.onGameChatMessage; } });
 Object.defineProperty(exports, "onCommunityChatMessage", { enumerable: true, get: function () { return chatPush_1.onCommunityChatMessage; } });
+Object.defineProperty(exports, "onDmChatMessage", { enumerable: true, get: function () { return chatPush_1.onDmChatMessage; } });
 admin.initializeApp();
 const db = admin.firestore();
 // Skip — rather than reject — undefined fields on writes. Without this,
@@ -653,6 +654,19 @@ function buildMessage(type, payload) {
             return {
                 title: 'בקשת החברות אושרה 🤝',
                 body: `${fromName} אישר/ה את בקשת החברות שלך — אתם חברים עכשיו.`,
+            };
+        }
+        case 'teamsGenerated': {
+            // Per-player: the dispatcher pre-computes `teammates` (this player's
+            // same-team members' first names) so the body is personal.
+            const teammates = typeof payload.teammates === 'string' && payload.teammates.length > 0
+                ? payload.teammates
+                : '';
+            return {
+                title: 'הכוחות להיום מוכנים! ⚽',
+                body: teammates
+                    ? `אתה בקבוצה עם ${teammates}`
+                    : 'הכוחות חולקו — לחץ לצפייה בקבוצות',
             };
         }
         default:
@@ -1914,9 +1928,16 @@ const RECURRING_CLONE_DELAY_MS = 3 * 60 * 60 * 1000; // 3h after kickoff
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 async function runCloneRecurringGames() {
     const now = Date.now();
+    // `recurring == true` accumulates EVERY weekly instance ever created (each
+    // clone is also recurring), so an unbounded scan grows forever. Only the most
+    // RECENT instances can be due to clone (a game clones ~3h after its kickoff,
+    // and once cloned it's latched via recurringNextCreatedAt). Order by newest
+    // kickoff + cap so we never re-read years of old, already-cloned instances.
     const snap = await db
         .collection('games')
         .where('recurring', '==', true)
+        .orderBy('startsAt', 'desc')
+        .limit(100)
         .get();
     if (snap.empty) {
         console.log('[cloneRecurringGames] none');
@@ -1941,6 +1962,7 @@ async function runCloneRecurringGames() {
         const nextReg = shift(g.registrationOpensAt);
         const nextPublic = shift(g.publicOpenAt);
         const nextGuests = shift(g.guestsOpenAt);
+        const nextAutoTeams = shift(g.autoTeamsAt);
         if (nextReg !== undefined)
             next.registrationOpensAt = nextReg;
         else
@@ -1953,6 +1975,13 @@ async function runCloneRecurringGames() {
             next.guestsOpenAt = nextGuests;
         else
             delete next.guestsOpenAt;
+        // Scheduled auto-teams time shifts +7d like the others; keep autoTeamsMethod
+        // (copied via spread). The GENERATED outputs/latches are cleared below so
+        // next week re-generates fresh instead of inheriting last week's teams.
+        if (nextAutoTeams !== undefined)
+            next.autoTeamsAt = nextAutoTeams;
+        else
+            delete next.autoTeamsAt;
         // Fresh roster + per-instance transient state.
         next.players = [];
         next.waitlist = [];
@@ -1965,6 +1994,18 @@ async function runCloneRecurringGames() {
         next.ballBringerIds = [];
         next.currentMatchIndex = 0;
         next.locked = false;
+        // Reset team/match state so next week's instance starts blank — without
+        // this the clone inherited last week's draftTeams + live state, and the
+        // copied autoTeamsGeneratedAt latch permanently disabled auto-generation.
+        delete next.draftTeams;
+        delete next.draftTeamFeedback;
+        delete next.liveMatch;
+        delete next.rotation;
+        delete next.autoTeamsGeneratedAt;
+        delete next.autoTeamsGeneratedBy;
+        delete next.teamBalanceMeta;
+        delete next.teamsNotifiedAt;
+        delete next.teamsEditedManually;
         // Clear all idempotency latches so next week's pushes fire fresh.
         delete next.recurringNextCreatedAt;
         delete next.openedNotificationSent;
@@ -2090,6 +2131,83 @@ async function runFlipPublicGames() {
  * CF makes the change durable in Firestore so writes from older
  * clients (or admins reaching the doc via direct nav) can't resurrect.
  */
+// ── Promotion-offer expiry ─────────────────────────────────────────────
+// When a player spot opens it's OFFERED to the head of the waitlist
+// (`pendingPromotion = { uid, offeredAt }`) and reserved until they confirm.
+// With no expiry, an unresponsive offered user holds the spot FOREVER — so
+// everyone else who joins lands on the waitlist and the roster is stuck (user
+// report). This sweep advances any offer older than the TTL to the next in
+// line, mirroring the client `adminAdvanceOffer`: the unresponsive uid is moved
+// to the BACK of the waitlist (keeps their place, drops priority) and the new
+// head is offered (or the offer is cleared when no one's left / the game is
+// full). The existing onGameRosterChanged trigger sends the spotOffered push on
+// the uid change, so we don't dispatch it here.
+const PROMO_OFFER_TTL_MS = 20 * 60 * 1000; // 20 minutes to respond to an offer
+async function runExpireStaleOffers() {
+    const cutoff = Date.now() - PROMO_OFFER_TTL_MS;
+    // Single-field range filter (auto-indexed); games with no offer lack this
+    // field and games with a fresh offer have offeredAt >= cutoff, so only stale
+    // offers match. Status is re-checked per game below.
+    const snap = await db
+        .collection('games')
+        .where('pendingPromotion.offeredAt', '<', cutoff)
+        .limit(50)
+        .get();
+    if (snap.empty) {
+        console.log('[expireStaleOffers] none');
+        return;
+    }
+    let advanced = 0;
+    for (const gameDoc of snap.docs) {
+        if (gameDoc.data().status !== 'open')
+            continue;
+        try {
+            await db.runTransaction(async (tx) => {
+                const fresh = await tx.get(gameDoc.ref);
+                if (!fresh.exists)
+                    return;
+                const d = fresh.data();
+                if (d.status !== 'open')
+                    return;
+                const offer = d.pendingPromotion;
+                // Re-check inside the txn — the offer may have been accepted/advanced
+                // (or refreshed) since the query read.
+                if (!offer?.uid ||
+                    typeof offer.offeredAt !== 'number' ||
+                    offer.offeredAt >= cutoff) {
+                    return;
+                }
+                const offeredUid = offer.uid;
+                // Move the unresponsive uid to the BACK of the waitlist.
+                const waitlist = (d.waitlist ?? []).filter((id) => id !== offeredUid);
+                waitlist.push(offeredUid);
+                const players = d.players ?? [];
+                const pending = d.pending ?? [];
+                const activeGuests = (d.guests ?? []).filter((g) => !g?.waitlisted).length;
+                let nextOffer = null;
+                if (waitlist.length > 0 &&
+                    waitlist[0] !== offeredUid &&
+                    players.length + activeGuests < (d.maxPlayers ?? 15)) {
+                    nextOffer = { uid: waitlist[0], offeredAt: Date.now() };
+                }
+                // Keep the denormalised participant union consistent — the offered uid
+                // may not have been in the waitlist before (it's now appended).
+                const participantIds = Array.from(new Set([...players, ...waitlist, ...pending]));
+                tx.update(gameDoc.ref, {
+                    waitlist,
+                    participantIds,
+                    pendingPromotion: nextOffer,
+                    updatedAt: Date.now(),
+                });
+            });
+            advanced += 1;
+        }
+        catch (err) {
+            console.error('[expireStaleOffers] failed', gameDoc.id, err);
+        }
+    }
+    console.log(`[expireStaleOffers] advanced ${advanced} stale offer(s)`);
+}
 async function runCleanupStaleGames() {
     const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
     const cutoff = Date.now() - STALE_AFTER_MS;
@@ -3116,7 +3234,7 @@ function balanceTeamsV1(playerIds, ratings, numberOfTeams, perTeam) {
             return { id, rating: known, unrated: false };
         }
         unratedCount += 1;
-        return { id, rating: 3, unrated: true };
+        return { id, rating: 5.5, unrated: true }; // neutral midpoint of 1..10
     });
     // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
     // stable, so shuffled-order survives within any tied rating bucket.
@@ -3234,6 +3352,11 @@ async function runScheduledAutoGenerateTeams() {
             continue;
         if (!g.groupId)
             continue;
+        // Opt-in `autoTeamsAt` games are owned by the wall-clock path below
+        // (which writes draftTeams + pushes). Don't let the legacy
+        // minutes-before path race it and seed liveMatch.assignments instead.
+        if (typeof g.autoTeamsAt === 'number' && g.autoTeamsAt > 0)
+            continue;
         const players = g.players ?? [];
         if (players.length === 0)
             continue;
@@ -3252,6 +3375,52 @@ async function runScheduledAutoGenerateTeams() {
     }
     await Promise.all(ops);
     console.log(`[autoBalance] generated for ${ops.length} game(s)`);
+    // Opt-in path: games with an explicit wall-clock `autoTeamsAt` that has
+    // passed. These write the manual-draft shape (`draftTeams`) by INTERNAL
+    // rating and push every player their team. Separate query because
+    // Firestore can't OR two range fields in one go.
+    await runDueAutoTeamsAt(now);
+}
+/**
+ * Generate balanced teams (by internal admin rating) for every open game
+ * whose admin-picked `autoTeamsAt` time has passed and which hasn't been
+ * generated yet. Writes `draftTeams` and fans out the "teams ready" push.
+ */
+async function runDueAutoTeamsAt(now) {
+    // Bounded circuit-breaker. The index is (status, autoTeamsAt) so results come
+    // oldest-autoTeamsAt first (FIFO), and generation clears autoTeamsAt — so the
+    // set drains and no due game is ever starved past a tick or two.
+    const snap = await db
+        .collection('games')
+        .where('status', '==', 'open')
+        .where('autoTeamsAt', '<=', now)
+        .limit(200)
+        .get();
+    if (snap.empty)
+        return;
+    const ops = [];
+    for (const doc of snap.docs) {
+        const g = doc.data();
+        g.id = doc.id;
+        if (!g.autoTeamsAt || g.autoTeamsAt <= 0)
+            continue;
+        if (g.autoTeamsGeneratedAt)
+            continue;
+        if (g.teamsEditedManually)
+            continue;
+        // Manual teams ALWAYS win: if an admin already set a split (by any
+        // method), never auto-generate over it. The transaction re-checks too.
+        if (g.draftTeams)
+            continue;
+        if (!g.groupId)
+            continue;
+        if ((g.players ?? []).length === 0 && (g.guests ?? []).length === 0) {
+            continue;
+        }
+        ops.push(generateDraftTeamsForGame(doc.ref, g));
+    }
+    await Promise.all(ops);
+    console.log(`[autoBalance] draftTeams generated for ${ops.length} game(s)`);
 }
 async function generateForGame(ref, g) {
     try {
@@ -3289,7 +3458,7 @@ async function generateForGame(ref, g) {
             for (const gu of freshGuests) {
                 if (typeof gu.estimatedRating === 'number' &&
                     gu.estimatedRating >= 1 &&
-                    gu.estimatedRating <= 5) {
+                    gu.estimatedRating <= 10) {
                     guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
                 }
             }
@@ -3333,6 +3502,193 @@ async function generateForGame(ref, g) {
     }
     catch (err) {
         console.error('[autoBalance] generateForGame failed', ref.id, err);
+    }
+}
+/** Convert a balanceTeamsV1 zone map into draft teams (captain = highest
+ *  rated member of each zone; `playerIds[0]` = captain). */
+function buildDraftTeamsFromBalance(assignments, ratings, numberOfTeams, createdBy) {
+    const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
+    const ratingOf = (id) => typeof ratings[id] === 'number' && ratings[id] > 0 ? ratings[id] : 5.5;
+    const teams = [];
+    for (let i = 0; i < numberOfTeams; i++) {
+        const zone = ZONES[i];
+        const members = Object.keys(assignments)
+            .filter((id) => assignments[id] === zone)
+            .sort((a, b) => ratingOf(b) - ratingOf(a));
+        teams.push({
+            index: i,
+            captainId: members[0] ?? '',
+            playerIds: members,
+        });
+    }
+    return teams;
+}
+/** Read display names (first word) for a set of uids, for push bodies. */
+async function loadFirstNames(uids) {
+    const out = {};
+    if (uids.length === 0)
+        return out;
+    const unique = Array.from(new Set(uids));
+    const snaps = await db.getAll(...unique.map((u) => db.collection('users').doc(u)));
+    snaps.forEach((s, i) => {
+        if (!s.exists)
+            return;
+        const d = s.data();
+        const full = (d.name || d.displayName || '').trim();
+        if (full)
+            out[unique[i]] = full.split(' ')[0];
+    });
+    return out;
+}
+/** Join names as "א, ב ו-ג" (Hebrew "and" before the last). */
+function joinHebrewNames(names) {
+    if (names.length === 0)
+        return '';
+    if (names.length === 1)
+        return names[0];
+    return `${names.slice(0, -1).join(', ')} ו${names[names.length - 1]}`;
+}
+/**
+ * Fan out one `teamsGenerated` notification per registered player, each with
+ * a personal body listing their same-team members. Guests get no push (no
+ * account). Stamps `teamsNotifiedAt` so a later edit/re-save can't re-spam.
+ */
+async function fanOutTeamsReadyPush(ref, gameId, teams) {
+    // Only real users (skip guest:* ids) receive a push.
+    const realByTeam = teams.map((t) => t.playerIds.filter((id) => !id.startsWith(GUEST_ID_PREFIX)));
+    const allReal = realByTeam.flat();
+    if (allReal.length === 0)
+        return;
+    const firstNames = await loadFirstNames(allReal);
+    const batch = db.batch();
+    teams.forEach((t, ti) => {
+        const mates = realByTeam[ti];
+        mates.forEach((uid) => {
+            const teammateNames = mates
+                .filter((m) => m !== uid)
+                .map((m) => firstNames[m])
+                .filter((n) => !!n);
+            const notifRef = db.collection('notifications').doc();
+            batch.set(notifRef, {
+                type: 'teamsGenerated',
+                recipientId: uid,
+                payload: {
+                    gameId,
+                    teammates: joinHebrewNames(teammateNames),
+                },
+                delivered: false,
+                createdAt: Date.now(),
+            });
+        });
+    });
+    batch.update(ref, { teamsNotifiedAt: Date.now() });
+    await batch.commit();
+}
+/**
+ * Balance one game by internal rating into `draftTeams`, then push. The write
+ * is transactional and re-checks the generation flags so a concurrent run or
+ * a coach edit can't be clobbered.
+ */
+async function generateDraftTeamsForGame(ref, g) {
+    try {
+        const groupId = g.groupId;
+        const grpSnap = await db.collection('groups').doc(groupId).get();
+        if (!grpSnap.exists)
+            return;
+        const grp = grpSnap.data();
+        const players = g.players ?? [];
+        // Ratings depend on the admin-picked method:
+        //  • 'random' → no ratings at all → balanceTeamsV1 splits evenly + random.
+        //  • 'rating' (default) → internal admin ratings (or peer-vote fallback).
+        let ratings;
+        if (g.autoTeamsMethod === 'random') {
+            ratings = {};
+        }
+        else if (grp.internalRating) {
+            ratings = {};
+            for (const uid of players) {
+                const r = grp.adminRatings?.[uid];
+                if (typeof r === 'number' && r > 0)
+                    ratings[uid] = r;
+            }
+        }
+        else {
+            ratings = await loadGroupRatings(groupId, players);
+        }
+        const perTeam = perTeamSize(g.format);
+        const numberOfTeams = typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
+            ? g.numberOfTeams
+            : 2;
+        const built = await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(ref);
+            if (!fresh.exists)
+                return null;
+            const data = fresh.data();
+            if (data.autoTeamsGeneratedAt)
+                return null;
+            if (data.teamsEditedManually)
+                return null;
+            // Manual teams win — never overwrite a split an admin already made.
+            if (data.draftTeams)
+                return null;
+            const freshPlayers = data.players ?? players;
+            const freshGuests = data.guests ?? [];
+            if (freshPlayers.length === 0 && freshGuests.length === 0)
+                return null;
+            const guestRoster = freshGuests.map((gu) => `${GUEST_ID_PREFIX}${gu.id}`);
+            const guestRatings = {};
+            for (const gu of freshGuests) {
+                if (typeof gu.estimatedRating === 'number' &&
+                    gu.estimatedRating >= 1 &&
+                    gu.estimatedRating <= 10) {
+                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
+                }
+            }
+            const rosterIds = [...freshPlayers, ...guestRoster];
+            // Never make more teams than players — otherwise a roster smaller than
+            // numberOfTeams (e.g. 3 players, 4 teams) leaves empty zones with an
+            // empty captainId. Need at least 2 players to form two teams.
+            if (rosterIds.length < 2)
+                return null;
+            const effTeams = Math.min(numberOfTeams, rosterIds.length);
+            const combinedRatings = { ...ratings, ...guestRatings };
+            // Size so nobody benches — mirrors the client `balanceTeams`.
+            const fitPerTeam = Math.max(perTeam, Math.ceil(rosterIds.length / effTeams));
+            const result = balanceTeamsV1(rosterIds, combinedRatings, effTeams, fitPerTeam);
+            const teams = buildDraftTeamsFromBalance(result.assignments, combinedRatings, effTeams, g.createdBy ?? 'system').filter((t) => t.playerIds.length > 0); // defensive: drop any empty zone
+            const draftTeams = {
+                method: 'snake',
+                numTeams: teams.length,
+                createdAt: Date.now(),
+                createdBy: g.createdBy ?? 'system',
+                teams,
+            };
+            tx.update(ref, {
+                draftTeams,
+                autoTeamsGeneratedAt: Date.now(),
+                autoTeamsGeneratedBy: 'system',
+                // Clear the schedule so this game drops OUT of the `autoTeamsAt <= now`
+                // query immediately — otherwise it stays in the result set (re-fetched
+                // every 5 min) from generation until kickoff. The latch above is the
+                // real guard; this keeps the cron's read set self-draining.
+                autoTeamsAt: admin.firestore.FieldValue.delete(),
+                teamBalanceMeta: {
+                    generatedAt: Date.now(),
+                    algorithm: 'rating_greedy_v1',
+                    unratedCount: result.unratedCount,
+                    teamRatings: result.teamRatings,
+                },
+                updatedAt: Date.now(),
+            });
+            return teams;
+        });
+        if (built) {
+            console.log(`[autoBalance] draftTeams seeded for ${ref.id}`);
+            await fanOutTeamsReadyPush(ref, ref.id, built);
+        }
+    }
+    catch (err) {
+        console.error('[autoBalance] generateDraftTeamsForGame failed', ref.id, err);
     }
 }
 // ─── Callable: bump /appConfig/{platform} (admin-gated) ────────────────
@@ -3625,6 +3981,49 @@ exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_A
         createdByUid: callerUid,
     });
     return { ok: true, result };
+});
+// ─── Callable: notify players their auto-balanced teams are ready ──────
+//
+// Admin-triggered from the teams screen after a manual auto-balance + review.
+// Fans out one personalized `teamsGenerated` push per registered player
+// ("אתה בקבוצה עם …"). Gated to the game's organiser / a group admin.
+exports.notifyTeamsReady = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    if (!request.auth?.uid) {
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    }
+    const callerUid = request.auth.uid;
+    const data = request.data;
+    const gameId = typeof data?.gameId === 'string' ? data.gameId : '';
+    if (!gameId || gameId.length > 128) {
+        throw new https_1.HttpsError('invalid-argument', 'invalid gameId');
+    }
+    const gameSnap = await db.collection('games').doc(gameId).get();
+    if (!gameSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'game does not exist');
+    }
+    const game = gameSnap.data();
+    // Authorize: organiser or a group admin.
+    let authorized = game.createdBy === callerUid;
+    if (!authorized && game.groupId) {
+        const grpSnap = await db.collection('groups').doc(game.groupId).get();
+        const grp = grpSnap.data();
+        authorized = !!grp?.adminIds?.includes(callerUid);
+    }
+    if (!authorized) {
+        throw new https_1.HttpsError('permission-denied', 'admin only');
+    }
+    // Debounce a double-tap: if we already fanned out within the last 30s,
+    // no-op. A deliberate re-notify after editing teams (later) still works.
+    if (typeof game.teamsNotifiedAt === 'number' &&
+        Date.now() - game.teamsNotifiedAt < 30000) {
+        return { ok: true, skipped: 'debounce' };
+    }
+    const teams = game.draftTeams?.teams ?? [];
+    if (teams.length === 0) {
+        throw new https_1.HttpsError('failed-precondition', 'no teams to notify');
+    }
+    await fanOutTeamsReadyPush(gameSnap.ref, gameId, teams);
+    return { ok: true };
 });
 // ─── Callable: ensure personal (hidden) community for orphan games ─────
 //
@@ -5884,6 +6283,7 @@ exports.cronEvery5Min = (0, scheduler_1.onSchedule)({ schedule: 'every 5 minutes
     await runSweep('flipPublicGames', runFlipPublicGames);
     await runSweep('cloneRecurringGames', runCloneRecurringGames);
     await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
+    await runSweep('expireStaleOffers', runExpireStaleOffers);
     await runSweep('sweepDueCampaigns', () => (0, adminUserPush_1.sweepDueCampaigns)(Date.now()));
 });
 // Every 15 minutes — reminders, nudges, shortage + filler matching.

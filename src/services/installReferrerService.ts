@@ -97,10 +97,16 @@ export function parseReferrerInvite(referrer: string): PendingInvite | null {
     if (source) {
       const gameId = params.g;
       const campaign = params.utm_campaign || params.c;
+      const linkId = params.l; // per-link attribution key
       const base = gameId
         ? ({ type: 'session', id: gameId } as const)
         : ({ type: 'app' } as const);
-      return { ...base, source, ...(campaign ? { campaign } : {}) };
+      return {
+        ...base,
+        source,
+        ...(campaign ? { campaign } : {}),
+        ...(linkId ? { linkId } : {}),
+      };
     }
   }
   return null;

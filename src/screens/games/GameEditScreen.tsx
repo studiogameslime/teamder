@@ -91,6 +91,8 @@ function gameToValues(g: Game): GameFormValues {
     registrationOpensAt: g.registrationOpensAt ?? 0,
     publicOpenAt: g.publicOpenAt ?? 0,
     guestsOpenAt: g.guestsOpenAt ?? 0,
+    autoTeamsAt: g.autoTeamsAt ?? 0,
+    autoTeamsMethod: g.autoTeamsMethod ?? 'rating',
     cancelDeadlineHours: g.cancelDeadlineHours,
     // For legacy games (saved before the filler fields existed):
     // default `acceptsFillers` to false (admin must opt in
@@ -295,6 +297,9 @@ export function GameEditScreen() {
         recurring: v.recurringGameEnabled,
         publicOpenAt: v.publicOpenAt > 0 ? v.publicOpenAt : undefined,
         guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined,
+        // null (not undefined) so turning the schedule OFF actually clears it.
+        autoTeamsAt: v.autoTeamsAt > 0 ? v.autoTeamsAt : null,
+        autoTeamsMethod: v.autoTeamsAt > 0 ? v.autoTeamsMethod : undefined,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         advancedMode: v.advancedMode,
@@ -350,6 +355,10 @@ export function GameEditScreen() {
         isOrphan
           ? undefined
           : myGroups.find((g) => g.id === game.groupId)?.name
+      }
+      internalRating={
+        !isOrphan &&
+        myGroups.find((g) => g.id === game.groupId)?.internalRating === true
       }
     />
   );

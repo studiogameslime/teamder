@@ -197,6 +197,17 @@ function CelebrationCard({
     ? he.achievementCelebrateOneOff
     : he.achievementCelebrateTier(tierHe);
 
+  // What earned THIS tier + what the NEXT tier needs. Skipped for one-off
+  // titles (no bronze→silver→gold climb). The current step is the threshold
+  // the user just crossed; the next step (if any) drives the "X more" line.
+  const tierIdx = item.def.tiers.findIndex((s) => s.tier === item.tier);
+  const currentStep = tierIdx >= 0 ? item.def.tiers[tierIdx] : null;
+  const nextStep =
+    tierIdx >= 0 ? item.def.tiers[tierIdx + 1] ?? null : null;
+  const remaining = nextStep
+    ? Math.max(1, nextStep.threshold - item.value)
+    : 0;
+
   // Sparkle positions around the medal.
   const sparkAt = [
     { top: 6, left: 30 },
@@ -262,6 +273,38 @@ function CelebrationCard({
         <Text style={styles.title}>{item.def.titleHe}</Text>
         <Text style={[styles.tier, { color: tierColor }]}>{headline}</Text>
       </Animated.View>
+
+      {/* What earned this tier + what the next tier needs. */}
+      {!item.def.oneOff && currentStep ? (
+        <Animated.View style={[styles.infoCard, textStyle]} pointerEvents="none">
+          <View style={styles.infoRow}>
+            <Ionicons name="checkmark-circle" size={16} color={tierColor} />
+            <Text style={styles.infoText}>
+              {he.achievementCelebrateEarned(
+                currentStep.threshold,
+                item.def.nounHe,
+              )}
+            </Text>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Ionicons
+              name={nextStep ? 'arrow-up-circle' : 'trophy'}
+              size={16}
+              color="rgba(255,255,255,0.8)"
+            />
+            <Text style={styles.infoTextMuted}>
+              {nextStep
+                ? he.achievementCelebrateNext(
+                    TIER_META[nextStep.tier].he,
+                    remaining,
+                    item.def.nounHe,
+                  )
+                : he.achievementCelebrateMaxed}
+            </Text>
+          </View>
+        </Animated.View>
+      ) : null}
 
       <Pressable style={styles.cta} onPress={onCta}>
         <Text style={styles.ctaText}>{he.achievementCelebrateCta}</Text>
@@ -382,6 +425,41 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
+  },
+  // Glassy info card — what earned this tier + what the next needs.
+  infoCard: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 16,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.xs,
+    alignSelf: 'center',
+    minWidth: 220,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  infoDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignSelf: 'stretch',
+  },
+  infoText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  infoTextMuted: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '700',
+    textAlign: 'center',
   },
   // Floating glassy pill rather than a solid button — keeps the airy feel.
   cta: {

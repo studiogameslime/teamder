@@ -26,11 +26,12 @@ import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
-import { colors, radius, spacing, typography, shadows } from '@/theme';
+import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { toGuestRosterId, type Game } from '@/types';
 import {
   previewPath,
+  balanceTeams,
   MIN_TEAMS,
   MAX_TEAMS,
   type DraftMethod,
@@ -55,6 +56,16 @@ export function DraftSetupScreen() {
   // default they often hit "המשך" without ever scrolling to the order options
   // below a long captain list. Null → "המשך" stays disabled until chosen.
   const [method, setMethod] = useState<DraftMethod | null>(null);
+  // Step 0: which split METHOD. null = the method picker is showing.
+  //   'auto'   → balanced by internal rating (internal-rating communities only)
+  //   'manual' → the captain draft (the classic flow)
+  //   'random' → random even split, no ratings
+  const [splitMode, setSplitMode] = useState<'auto' | 'manual' | 'random' | null>(
+    null,
+  );
+  // Team count for auto/random (the manual flow derives it from #captains).
+  const [autoNumTeams, setAutoNumTeams] = useState(MIN_TEAMS);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -146,6 +157,71 @@ export function DraftSetupScreen() {
     nav.navigate('DraftBoard', { gameId, captainIds, method });
   };
 
+  // "אוטומטי לפי דירוג" only makes sense where the admins keep internal
+  // ratings; elsewhere it would score everyone neutral (= random anyway).
+  const internalRating =
+    myCommunities.find((c) => c.id === game?.groupId)?.internalRating === true;
+  // Each team needs ≥1 player → cap the offered count at the roster size.
+  const maxTeams = Math.min(MAX_TEAMS, participants.length);
+
+  // Run an auto (rating) or random split, save it, and land on the editable
+  // draft summary so the admin can tweak before it's final.
+  const runGenerate = useCallback(async () => {
+    if (!game || !currentUser || generating) return;
+    const grp = myCommunities.find((c) => c.id === game.groupId);
+    const activeGuests = (game.guests ?? []).filter((gu) => !gu.waitlisted);
+    const playerIds = [
+      ...(game.players ?? []),
+      ...activeGuests.map((gu) => toGuestRosterId(gu.id)),
+    ];
+    // 'random' → no ratings (balanceTeams shuffles + splits evenly).
+    const ratings: Record<string, number> = {};
+    if (splitMode === 'auto') {
+      for (const uid of game.players ?? []) {
+        const r = grp?.adminRatings?.[uid];
+        if (typeof r === 'number' && r > 0) ratings[uid] = r;
+      }
+      for (const gu of activeGuests) {
+        if (typeof gu.estimatedRating === 'number' && gu.estimatedRating > 0) {
+          ratings[toGuestRosterId(gu.id)] = gu.estimatedRating;
+        }
+      }
+    }
+    setGenerating(true);
+    try {
+      const { result, unratedCount } = balanceTeams({
+        playerIds,
+        ratings,
+        numTeams: autoNumTeams,
+        format: game.format,
+        createdBy: currentUser.id,
+      });
+      await gameService.saveDraftTeams(game.id, result);
+      if (splitMode === 'auto' && unratedCount > 0) {
+        toast.info(he.autoBalanceUnrated(unratedCount));
+      }
+      nav.navigate('DraftBoard', {
+        gameId: game.id,
+        captainIds: result.teams.map((t) => t.captainId),
+        method: 'snake',
+        resume: true,
+      });
+    } catch (err) {
+      logError('draftGenerate', err, { gameId: game.id, splitMode });
+      toast.error(he.autoBalanceError);
+    } finally {
+      setGenerating(false);
+    }
+  }, [
+    game,
+    currentUser,
+    generating,
+    myCommunities,
+    splitMode,
+    autoNumTeams,
+    nav,
+  ]);
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.draftTitle} />
@@ -153,96 +229,200 @@ export function DraftSetupScreen() {
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.stepChip}>
-          <Text style={styles.stepText}>{he.draftStepLabel(1, 2)}</Text>
-        </View>
-        <Text style={styles.sectionTitle}>{he.draftSetupSubtitle}</Text>
+        {/* Step 0 — pick a split METHOD. */}
+        {splitMode === null ? (
+          <>
+            <Text style={styles.sectionTitle}>{he.draftMethodTitle}</Text>
+            {internalRating ? (
+              <MethodCard
+                icon="sparkles"
+                title={he.draftMethodAuto}
+                subtitle={he.draftMethodAutoSub}
+                onPress={() => setSplitMode('auto')}
+              />
+            ) : null}
+            <MethodCard
+              icon="people"
+              title={he.draftMethodManual}
+              subtitle={he.draftMethodManualSub}
+              onPress={() => setSplitMode('manual')}
+            />
+            <MethodCard
+              icon="shuffle"
+              title={he.draftMethodRandom}
+              subtitle={he.draftMethodRandomSub}
+              onPress={() => setSplitMode('random')}
+            />
+          </>
+        ) : splitMode === 'manual' ? (
+          <>
+            <BackToMethods onPress={() => setSplitMode(null)} />
+            <View style={styles.stepChip}>
+              <Text style={styles.stepText}>{he.draftStepLabel(1, 2)}</Text>
+            </View>
+            <Text style={styles.sectionTitle}>{he.draftSetupSubtitle}</Text>
 
-        {/* Players — tap to toggle captain */}
-        <View style={styles.list}>
-          {participants.map((u) => {
-            const capIndex = captainIds.indexOf(u.id);
-            const isCap = capIndex >= 0;
-            return (
-              <PressableScale
-                key={u.id}
-                onPress={() => toggleCaptain(u.id)}
-                style={[styles.playerRow, isCap && styles.playerRowActive]}
-              >
-                {/* PressableScale puts children inside a single Animated.View
-                    (no flexDirection) — so the row layout MUST live on this
-                    inner wrapper, not on the PressableScale style. */}
-                <View style={styles.playerRowInner}>
-                  {/* Identity grouped on the right (avatar · name · קפטן);
-                      the select check sits alone on the left. */}
-                  <View style={styles.playerIdentity}>
-                    <UserAvatar user={u} size={44} />
-                    <Text style={styles.playerName} numberOfLines={1}>
-                      {u.name}
-                    </Text>
-                    {isCap ? (
-                      <View style={styles.capBadge}>
-                        <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-                        <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
+            {/* Players — tap to toggle captain */}
+            <View style={styles.list}>
+              {participants.map((u) => {
+                const capIndex = captainIds.indexOf(u.id);
+                const isCap = capIndex >= 0;
+                return (
+                  <PressableScale
+                    key={u.id}
+                    onPress={() => toggleCaptain(u.id)}
+                    style={[styles.playerRow, isCap && styles.playerRowActive]}
+                  >
+                    <View style={styles.playerRowInner}>
+                      <View style={styles.playerIdentity}>
+                        <UserAvatar user={u} size={44} />
+                        <Text style={styles.playerName} numberOfLines={1}>
+                          {u.name}
+                        </Text>
+                        {isCap ? (
+                          <View style={styles.capBadge}>
+                            <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
+                            <Text style={styles.capBadgeText}>{he.draftCaptainBadge}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                    ) : null}
-                  </View>
-                  <View style={[styles.check, isCap && styles.checkOn]}>
-                    {isCap ? (
-                      <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                    ) : null}
-                  </View>
-                </View>
-              </PressableScale>
-            );
-          })}
-          {participants.length === 0 ? (
-            <Text style={styles.emptyHint}>{he.draftNotEnoughPlayers}</Text>
-          ) : null}
-        </View>
+                      <View style={[styles.check, isCap && styles.checkOn]}>
+                        {isCap ? (
+                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                        ) : null}
+                      </View>
+                    </View>
+                  </PressableScale>
+                );
+              })}
+              {participants.length === 0 ? (
+                <Text style={styles.emptyHint}>{he.draftNotEnoughPlayers}</Text>
+              ) : null}
+            </View>
 
-        {/* Draft order */}
-        <Text style={[styles.sectionTitle, styles.orderTitle]}>
-          {he.draftOrderTitle}
-        </Text>
-        <Text style={styles.orderSubtitle}>{he.draftOrderSubtitle}</Text>
+            {/* Draft order */}
+            <Text style={[styles.sectionTitle, styles.orderTitle]}>
+              {he.draftOrderTitle}
+            </Text>
+            <Text style={styles.orderSubtitle}>{he.draftOrderSubtitle}</Text>
 
-        <OrderOption
-          selected={method === 'snake'}
-          onPress={() => setMethod('snake')}
-          order={previewPath(previewTeams, 'snake')}
-          recommended
-        />
-        <OrderOption
-          selected={method === 'regular'}
-          onPress={() => setMethod('regular')}
-          order={previewPath(previewTeams, 'regular')}
-        />
+            <OrderOption
+              selected={method === 'snake'}
+              onPress={() => setMethod('snake')}
+              order={previewPath(previewTeams, 'snake')}
+              recommended
+            />
+            <OrderOption
+              selected={method === 'regular'}
+              onPress={() => setMethod('regular')}
+              order={previewPath(previewTeams, 'regular')}
+            />
 
-        {/* Teams-to-create info */}
-        <View style={styles.teamsInfo}>
-          <Ionicons name="people" size={18} color={colors.primary} />
-          <Text style={styles.teamsInfoText}>
-            {he.draftTeamsToCreate(numTeams || MIN_TEAMS)}
-          </Text>
-        </View>
-
+            {/* Teams-to-create info */}
+            <View style={styles.teamsInfo}>
+              <Ionicons name="people" size={18} color={colors.primary} />
+              <Text style={styles.teamsInfoText}>
+                {he.draftTeamsToCreate(numTeams || MIN_TEAMS)}
+              </Text>
+            </View>
+          </>
+        ) : (
+          /* auto / random — just pick how many teams */
+          <>
+            <BackToMethods onPress={() => setSplitMode(null)} />
+            <Text style={styles.sectionTitle}>{he.autoBalanceChooseTeams}</Text>
+            <View style={styles.countRow}>
+              {Array.from(
+                { length: Math.max(0, maxTeams - MIN_TEAMS + 1) },
+                (_, i) => MIN_TEAMS + i,
+              ).map((n) => {
+                const on = autoNumTeams === n;
+                return (
+                  <PressableScale
+                    key={n}
+                    onPress={() => setAutoNumTeams(n)}
+                    style={[styles.countPill, on && styles.countPillOn]}
+                  >
+                    <Text style={[styles.countPillText, on && styles.countPillTextOn]}>
+                      {n}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <Text style={styles.autoHint}>
+              {splitMode === 'auto'
+                ? he.draftMethodAutoSub
+                : he.draftMethodRandomSub}
+            </Text>
+          </>
+        )}
       </ScrollView>
 
-      {/* Sticky CTA. The hint lives HERE (not in the scroll) so the reason
-          "המשך" is disabled — including "בחרו סדר הגרלה" — is always visible
-          and nudges the manager to scroll down to the order options. */}
-      <View style={styles.footer}>
-        {hint ? <Text style={styles.footerHint}>{hint}</Text> : null}
-        <Button
-          title={he.draftContinue}
-          onPress={onContinue}
-          disabled={!canContinue}
-          fullWidth
-          size="lg"
-        />
-      </View>
+      {/* Sticky CTA — depends on the chosen method. The method picker itself
+          has no footer (the cards are the action). */}
+      {splitMode === 'manual' ? (
+        <View style={styles.footer}>
+          {hint ? <Text style={styles.footerHint}>{hint}</Text> : null}
+          <Button
+            title={he.draftContinue}
+            onPress={onContinue}
+            disabled={!canContinue}
+            fullWidth
+            size="lg"
+          />
+        </View>
+      ) : splitMode ? (
+        <View style={styles.footer}>
+          <Button
+            title={he.draftGenerateCta}
+            onPress={runGenerate}
+            disabled={participants.length < MIN_TEAMS || generating}
+            loading={generating}
+            fullWidth
+            size="lg"
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
+  );
+}
+
+/** A tappable card on the method picker. */
+function MethodCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale onPress={onPress} style={styles.methodCard}>
+      <View style={styles.methodInner}>
+        <View style={styles.methodIcon}>
+          <Ionicons name={icon} size={22} color={colors.primary} />
+        </View>
+        <View style={styles.methodText}>
+          <Text style={styles.methodTitle}>{title}</Text>
+          <Text style={styles.methodSub}>{subtitle}</Text>
+        </View>
+        <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+      </View>
+    </PressableScale>
+  );
+}
+
+/** "‹ חזרה לבחירת שיטה" link shown above a chosen method's content. */
+function BackToMethods({ onPress }: { onPress: () => void }) {
+  return (
+    <PressableScale onPress={onPress} style={styles.backRow}>
+      <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+      <Text style={styles.backText}>{he.draftMethodBack}</Text>
+    </PressableScale>
   );
 }
 
@@ -444,5 +624,71 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.sm,
+  },
+  // ── Method picker ──────────────────────────────────────────────────
+  methodCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.card,
+  },
+  methodInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  methodIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodText: { flex: 1, gap: 2 },
+  methodTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  methodSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  backText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
+  // ── Team-count pills (auto/random) ─────────────────────────────────
+  countRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  countPill: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countPillOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  countPillText: { ...typography.h2, color: colors.text, fontWeight: '800' },
+  countPillTextOn: { color: colors.primary },
+  autoHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.lg,
   },
 });

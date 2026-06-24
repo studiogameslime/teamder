@@ -42,6 +42,22 @@
       ]
     },
     {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "autoTeamsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recurring", "order": "ASCENDING" },
+        { "fieldPath": "startsAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "campaigns",
       "queryScope": "COLLECTION",
       "fields": [

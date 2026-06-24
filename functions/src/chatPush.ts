@@ -22,7 +22,7 @@
 import * as admin from 'firebase-admin';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 
-type ChatScope = 'game' | 'community';
+type ChatScope = 'game' | 'community' | 'dm';
 
 interface ChatMessageData {
   text?: string;
@@ -156,7 +156,13 @@ async function handleRecipient(
     const lastMessageAt =
       typeof msg.createdAt === 'number' ? msg.createdAt : Date.now();
 
-    // (b) increment + write the preview fields.
+    // (b) increment + write the preview fields. For DMs we also denormalise
+    // the sender's avatar onto the recipient's entry — in a 1-on-1 the sender
+    // IS the other participant, so the chats list can show their face.
+    const senderAvatarId =
+      typeof msg.senderAvatarId === 'string' ? msg.senderAvatarId : '';
+    const senderPhotoUrl =
+      typeof msg.senderPhotoUrl === 'string' ? msg.senderPhotoUrl : '';
     await unreadRef.set(
       {
         count: admin.firestore.FieldValue.increment(1),
@@ -166,6 +172,8 @@ async function handleRecipient(
         scope,
         parentId,
         title,
+        ...(scope === 'dm' && senderAvatarId ? { avatarId: senderAvatarId } : {}),
+        ...(scope === 'dm' && senderPhotoUrl ? { photoUrl: senderPhotoUrl } : {}),
       },
       { merge: true },
     );
@@ -228,6 +236,12 @@ async function handleChatMessage(
       const all = [...(g.players || [])];
       if (typeof g.createdBy === 'string' && g.createdBy) all.push(g.createdBy);
       recipients = Array.from(new Set(all));
+    } else if (scope === 'dm') {
+      // convId = sorted([uid1, uid2]).join('__'); the only recipient is the
+      // OTHER participant (the sender is filtered out below). The recipient
+      // sees the conversation titled by the sender's name.
+      recipients = parentId.split('__');
+      title = (typeof msg.senderName === 'string' ? msg.senderName : '').trim();
     } else {
       const snap = await db.collection('groups').doc(parentId).get();
       if (!snap.exists) return;
@@ -280,5 +294,15 @@ export const onCommunityChatMessage = onDocumentCreated(
       groupId,
       snap.data() as ChatMessageData,
     );
+  },
+);
+
+export const onDmChatMessage = onDocumentCreated(
+  'dmConversations/{convId}/messages/{msgId}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const convId = event.params.convId;
+    await handleChatMessage('dm', convId, snap.data() as ChatMessageData);
   },
 );

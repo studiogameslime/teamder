@@ -54,7 +54,8 @@ export type NotificationKind =
   | 'groupInvitation'
   | 'gameShortageWarning'
   | 'friendRequest'
-  | 'friendRequestAccepted';
+  | 'friendRequestAccepted'
+  | 'teamsGenerated';
 
 /** Logical kind of entity the notification is about. `user` is
  *  used for a few cross-user events (rare). */
@@ -129,6 +130,10 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // Friendship pings — one per (sender, recipient) pair per day is plenty.
   friendRequest: 24 * 60 * 60 * 1000,
   friendRequestAccepted: 24 * 60 * 60 * 1000,
+  // Teams-ready — server fans out one doc per player (distinct recipients →
+  // distinct dedupe keys) and latches re-spam via `teamsNotifiedAt`. This
+  // cooldown only guards an accidental client double-call.
+  teamsGenerated: 60 * 1000,
 };
 
 /** Pure helper. Returns the cooldown window for a given type
@@ -327,6 +332,14 @@ export function inferEntityFromPayload(
         entityType: 'user',
         entityId: recipientId,
         reason: 'friend-accepted',
+      };
+    case 'teamsGenerated':
+      // Per-player teams-ready push. Server fans these out directly (not via
+      // client dispatch); keyed by game so a re-publish dedupes per player.
+      return {
+        entityType: 'game',
+        entityId: gameId || recipientId,
+        reason: 'teams-generated',
       };
   }
 }

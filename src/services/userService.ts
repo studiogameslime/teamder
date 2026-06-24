@@ -355,6 +355,12 @@ export const userService = {
    * surface that needs to show "another player" — never falls back to the
    * current user. Returns null if the doc doesn't exist or the read fails.
    */
+  /** Toggle whether only friends may start a DM with me. */
+  async setDmFriendsOnly(uid: string, value: boolean): Promise<void> {
+    if (!uid || USE_MOCK_DATA) return;
+    await updateDoc(docs.user(uid), { dmFriendsOnly: value, updatedAt: Date.now() });
+  },
+
   async getUserById(uid: string): Promise<User | null> {
     if (!uid) return null;
     if (USE_MOCK_DATA) {
@@ -638,7 +644,7 @@ export const userService = {
   },
 
   async updateProfile(
-    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl'>>,
+    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl' | 'position'>>,
   ): Promise<User> {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
@@ -655,6 +661,7 @@ export const userService = {
     if (patch.name !== undefined) updates.name = patch.name;
     if (patch.avatarId !== undefined) updates.avatarId = patch.avatarId;
     if (patch.photoUrl !== undefined) updates.photoUrl = patch.photoUrl;
+    if (patch.position !== undefined) updates.position = patch.position;
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = Date.now();
       try {
@@ -838,6 +845,7 @@ async function applyAcquisitionIfFresh(newUserId: string): Promise<void> {
       acquisition: {
         source,
         ...(pending?.campaign ? { campaign: pending.campaign } : {}),
+        ...(pending?.linkId ? { linkId: pending.linkId } : {}),
         ...(gameId ? { gameId } : {}),
         at: Date.now(),
       },

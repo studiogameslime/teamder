@@ -99,6 +99,8 @@ function buildInitial(
     registrationOpensAt: 0,
     publicOpenAt: 0,
     guestsOpenAt: 0,
+    autoTeamsAt: 0,
+    autoTeamsMethod: 'rating',
     cancelDeadlineHours: undefined,
     // Cross-community fillers: ON by default for OPEN communities
     // (anyone can join the community already, so accepting fillers is
@@ -374,6 +376,8 @@ export function GameCreateScreen() {
         recurring: !isOrphan && v.recurringGameEnabled,
         publicOpenAt,
         guestsOpenAt,
+        autoTeamsAt: v.autoTeamsAt > 0 ? v.autoTeamsAt : undefined,
+        autoTeamsMethod: v.autoTeamsAt > 0 ? v.autoTeamsMethod : undefined,
         acceptsFillers: v.acceptsFillers,
         fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
         advancedMode: v.advancedMode,
@@ -507,6 +511,7 @@ export function GameCreateScreen() {
         communityName={
           isOrphan || extraTopSlot ? undefined : selectedGroup?.name
         }
+        internalRating={!isOrphan && selectedGroup?.internalRating === true}
         showInviteFriends
       />
       <ConfirmDialog

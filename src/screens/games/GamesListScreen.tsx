@@ -42,6 +42,7 @@ import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { RegistrationConflictModal } from '@/components/games/RegistrationConflictModal';
+import { AvailabilityNudgeModal } from '@/components/AvailabilityNudgeModal';
 import type { RegistrationConflict } from '@/services/gameService';
 import {
   MatchListCard,
@@ -63,7 +64,7 @@ import {
   type NearbyLocation,
 } from '@/utils/nearby';
 import { gameService } from '@/services/gameService';
-import { logError, logUnexpected } from '@/services/errorLog';
+import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { rcBool, useRemoteConfig } from '@/services/remoteConfigService';
 import {
@@ -91,6 +92,24 @@ export function GamesListScreen() {
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
+
+  // "Mark your available days" nudge — shown once (then snoozed 3 days) to a
+  // logged-in user who hasn't set any preferredDays, so the app can suggest
+  // matching games. Stays dismissed for good once they set their days.
+  const [availNudge, setAvailNudge] = useState(false);
+  const availNudgeCheckedRef = useRef(false);
+  useEffect(() => {
+    if (availNudgeCheckedRef.current || !user) return;
+    availNudgeCheckedRef.current = true;
+    if ((user.availability?.preferredDays?.length ?? 0) > 0) return;
+    (async () => {
+      const last = await storage.getAvailNudgeLastShownAt();
+      const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+      if (last && Date.now() - last < SNOOZE_MS) return;
+      setAvailNudge(true);
+      await storage.setAvailNudgeLastShownAt(Date.now());
+    })();
+  }, [user]);
 
   const scrollRef = useRef<ScrollView>(null);
   // React 19's useRef returns RefObject<T|null>; useScrollToTop's older
@@ -296,45 +315,58 @@ export function GamesListScreen() {
     setBusyGameId(game.id);
     try {
       if (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') {
-        await gameService.requestJoinGame(game.id, user.id);
+        // Surface the outcome — the card join was silent (user report), so a
+        // user who landed on the WAITLIST (e.g. a full game holding a spot for
+        // a pending promotion) had no idea they weren't actually in the roster.
+        const { bucket } = await gameService.requestJoinGame(game.id, user.id);
+        toast.success(
+          bucket === 'waitlist'
+            ? he.toastGameJoinedWaitlist
+            : bucket === 'pending'
+              ? he.toastGameJoinedPending
+              : he.toastGameJoined,
+        );
+        // The fair-queue reconciler seats the user ASYNC (a Cloud Function,
+        // ~1-2s). A single immediate reload races it, reads the pre-seating
+        // snapshot, and the card looks unchanged / the count doesn't move
+        // (user report) — unlike MatchDetails, which reflects it via its
+        // realtime listener. Optimistically patch the card in-place now (zero
+        // extra reads — this is the read-cost branch), then reconcile after
+        // the reconciler has had time to commit.
+        const me = user.id;
+        const patch = (g: Game): Game => {
+          if (g.id !== game.id) return g;
+          if (
+            g.players.includes(me) ||
+            g.waitlist.includes(me) ||
+            (g.pending ?? []).includes(me)
+          ) {
+            return g; // already reflected
+          }
+          const next: Game = {
+            ...g,
+            participantIds: Array.from(
+              new Set([...(g.participantIds ?? []), me]),
+            ),
+          };
+          if (bucket === 'players') next.players = [...g.players, me];
+          else if (bucket === 'waitlist') next.waitlist = [...g.waitlist, me];
+          else next.pending = [...(g.pending ?? []), me];
+          return next;
+        };
+        setMyGames((prev) => prev.map(patch));
+        setCommunityGames((prev) => prev.map(patch));
+        setOpenGames((prev) => prev.map(patch));
+        // Reconcile once the reconciler has committed (also re-categorises the
+        // game into "שלי"). Fire-and-forget; by then the server matches the
+        // optimistic state, so there's no flicker.
+        setTimeout(() => {
+          void reload();
+        }, 2500);
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
+        // Cancel is a direct write → an immediate reload reflects it.
         await gameService.cancelGameV2(game.id, user.id);
-      }
-      const fresh = await reload();
-      // Silent-failure guard: a successful join MUST leave the game visible
-      // somewhere the user can reach it (it moves into "שלי"). If it's in no
-      // list at all, it silently vanished — the exact orphan/personal-group
-      // case — so record it with full context even though nothing threw.
-      const inAnyList = (r: typeof fresh) =>
-        !!r &&
-        (r.mine.some((g) => g.id === game.id) ||
-          r.community.some((g) => g.id === game.id) ||
-          r.open.some((g) => g.id === game.id));
-      if (
-        (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') &&
-        fresh &&
-        !inAnyList(fresh)
-      ) {
-        // The immediate reload can race the just-committed join write
-        // (read-after-write): the game is provably ours but a stale query
-        // result doesn't surface it yet. Retry once after a short beat — a
-        // race self-heals (and the user sees the game appear); only a game
-        // STILL in no list after a fresh, propagated read is a real
-        // reachability gap worth flagging.
-        await new Promise((r) => setTimeout(r, 800));
-        const retry = await reload();
-        if (!inAnyList(retry)) {
-          logUnexpected('gameVanishedAfterJoin', {
-            screen: 'GamesListScreen',
-            gameId: game.id,
-            isOrphanContext: game.isOrphanContext ?? false,
-            visibility: game.visibility,
-            status: game.status,
-            groupId: game.groupId,
-            userId: user.id,
-            cta,
-          });
-        }
+        await reload();
       }
     } catch (err) {
       const code =
@@ -847,6 +879,20 @@ export function GamesListScreen() {
           nav.navigate('MatchDetails', { gameId: conflictGameId });
         }}
         onClose={() => setConflict(null)}
+      />
+
+      <AvailabilityNudgeModal
+        visible={availNudge}
+        onClose={() => setAvailNudge(false)}
+        onConfirm={() => {
+          setAvailNudge(false);
+          // AvailabilityEdit lives in the Profile tab's stack — the tab
+          // navigator is an ancestor, so this bubbles up correctly.
+          (nav as unknown as { navigate: (t: string, p?: unknown) => void }).navigate(
+            'ProfileTab',
+            { screen: 'AvailabilityEdit' },
+          );
+        }}
       />
 
       {/* Custom create-game chooser. Replaces the native Alert with

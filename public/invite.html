@@ -131,8 +131,18 @@
   var id = parts[1] || '';
   var qp = new URLSearchParams(location.search);
   var invitedBy = (qp.get('invitedBy') || '').trim();
-  // UTM acquisition params from the Pulse ad-link builder.
-  var source = (qp.get('s') || qp.get('utm_source') || '').trim();
+  // UTM acquisition params from the Pulse ad-link builder. The source is now
+  // carried as a short base64url token `b` (keeps Hebrew sources from blowing
+  // up the URL); decode it here, falling back to the legacy plain `s`.
+  function b64urlDecode(t) {
+    try {
+      var b = String(t || '').replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      return decodeURIComponent(escape(atob(b)));
+    } catch (_) { return ''; }
+  }
+  var bTok = (qp.get('b') || '').trim();
+  var source = (bTok ? b64urlDecode(bTok) : (qp.get('s') || qp.get('utm_source') || '')).trim();
   var campaign = (qp.get('c') || qp.get('utm_campaign') || '').trim();
   var gameTarget = (qp.get('g') || '').trim();
   var linkId = (qp.get('l') || '').trim();
@@ -222,6 +232,9 @@
       if (campaign) u.push('utm_campaign=' + encodeURIComponent(campaign));
       var gForRef = gameTarget || (type === 'session' ? id : '');
       if (gForRef) u.push('g=' + encodeURIComponent(gForRef));
+      // Carry the link id so the install attributes to THIS specific link
+      // (not just the source) — fixes "all WhatsApp links show the same count".
+      if (linkId) u.push('l=' + encodeURIComponent(linkId));
       ref = u.join('&');
     } else {
       ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);

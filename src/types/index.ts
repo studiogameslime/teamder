@@ -16,6 +16,9 @@
 
 export type UserId = string;
 
+/** Preferred playing position. */
+export type PlayerPosition = 'gk' | 'def' | 'mid' | 'att';
+
 export interface User {
   id: UserId;
   name: string;
@@ -90,6 +93,14 @@ export interface User {
    */
   friends?: UserId[];
 
+  /** When true, only friends may start a direct-message conversation with this
+   *  user. Default (undefined/false) = anyone can send a DM. */
+  dmFriendsOnly?: boolean;
+
+  /** Preferred playing position on the pitch (profile flavour + a setup
+   *  step on the home checklist). Undefined until the user picks one. */
+  position?: PlayerPosition;
+
   /**
    * The user's hidden "personal" community — created lazily on first
    * use of the "ללא קבוצה — משחק חד־פעמי" flow in GameCreate. All
@@ -156,6 +167,8 @@ export interface User {
     source: string;
     campaign?: string;
     gameId?: string;
+    /** Tracked-link id (`al_…`) for per-link attribution. */
+    linkId?: string;
     at: number;
   };
 
@@ -461,7 +474,13 @@ export type NotificationType =
    * Requester: the person you asked accepted your friend request. No
    * push is ever sent for a declined request (by design).
    */
-  | 'friendRequestAccepted';
+  | 'friendRequestAccepted'
+  /**
+   * Per-player push when balanced teams are generated (auto by internal
+   * rating, or admin-published). Body lists the player's teammates:
+   * "אתה בקבוצה עם …". Carries `gameId` → deep-links to MatchDetails.
+   */
+  | 'teamsGenerated';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on
@@ -488,7 +507,7 @@ export interface NotificationDoc {
 //   community chat → /groups/{groupId}/messages/{id} (community members only)
 // Access (read AND write) is members-only, enforced in firestore.rules.
 
-export type ChatScope = 'game' | 'community';
+export type ChatScope = 'game' | 'community' | 'dm';
 
 export interface ChatMessage {
   id: string;
@@ -520,6 +539,10 @@ export interface ChatUnreadEntry {
   scope: ChatScope;
   parentId: string;
   title: string;
+  /** DM rows only: the other participant's avatar, denormalised onto the
+   *  entry so the chats list can render their face without a user lookup. */
+  avatarId?: string;
+  photoUrl?: string;
 }
 
 /** ISO weekday: 0=Sunday, 6=Saturday. */
@@ -1278,6 +1301,11 @@ export interface Game {
   /** Captain-draft team split (חלוקת כוחות), set by the manager. */
   draftTeams?: DraftTeamsResult;
 
+  /** Members' reaction to the current team split: uid → 'like' | 'dislike'.
+   *  Each member writes only their own key (rules-enforced). The admin sees
+   *  the aggregate to gauge whether the teams feel fair. */
+  draftTeamFeedback?: Record<UserId, 'like' | 'dislike'>;
+
   /** Live "winner stays" rotation over `draftTeams` — which two teams play,
    *  who's waiting, and any borrowed fillers. Absent until the manager
    *  starts the rotation. */
@@ -1455,8 +1483,20 @@ export interface Game {
    * Default 60 when missing.
    */
   autoTeamGenerationMinutesBeforeStart?: number;
+  /**
+   * ms epoch wall-clock time at which to auto-generate balanced teams.
+   * Admin-picked in advanced create settings (validated `now < autoTeamsAt <
+   * startsAt`). When set, the scheduler fires once this passes (preferred over
+   * `autoTeamGenerationMinutesBeforeStart`). Internal-rating communities.
+   */
+  autoTeamsAt?: number;
+  /** How the scheduled split is built: 'rating' (internal admin ratings) or
+   *  'random'. Defaults to 'rating' when missing. Only meaningful with autoTeamsAt. */
+  autoTeamsMethod?: 'rating' | 'random';
   /** ms epoch — set by the scheduled function the first time teams are generated. */
   autoTeamsGeneratedAt?: number;
+  /** ms epoch — when the "teams are ready" push was fanned out (dedupe guard). */
+  teamsNotifiedAt?: number;
   /** Provenance marker so we can distinguish system-generated from coach-edited. */
   autoTeamsGeneratedBy?: 'system';
   /**

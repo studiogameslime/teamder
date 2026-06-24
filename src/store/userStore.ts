@@ -27,7 +27,7 @@ interface UserStore {
    *  requires a fresh login to delete). */
   deleteOwnAccount: (password?: string) => Promise<void>;
   updateProfile: (
-    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl'>>,
+    patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl' | 'position'>>,
   ) => Promise<void>;
 
   // Profile completion: true once name is set (covers the case where Google

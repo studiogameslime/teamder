@@ -32,7 +32,6 @@ import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen
 import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { PromoteOrphanScreen } from '@/screens/games/PromoteOrphanScreen';
-import { RatePlayersScreen } from '@/screens/games/RatePlayersScreen';
 import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type GameStackParamList = {
@@ -96,7 +95,6 @@ export type GameStackParamList = {
   PromoteOrphan: { groupId: string; gameId: string };
   /** Rate the registered players you played with — reached from the
    *  "דרג את חבריך מהמשחק" banner on a finished match. */
-  RatePlayers: { gameId: string };
 };
 
 const Stack = createNativeStackNavigator<GameStackParamList>();
@@ -127,7 +125,6 @@ export function GameStack() {
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="PromoteOrphan" component={PromoteOrphanScreen} />
-      <Stack.Screen name="RatePlayers" component={RatePlayersScreen} />
     </Stack.Navigator>
   );
 }

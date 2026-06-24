@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
-import { RatingStars } from '@/components/RatingStars';
+import { RatingScale } from '@/components/RatingScale';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -353,7 +353,7 @@ function AdminRatingSheet({
             {target ? he.communityAdminRatingTitle(target.name) : ''}
           </Text>
           <Text style={styles.sheetHint}>{he.communityAdminRatingHint}</Text>
-          <RatingStars value={value} onChange={setValue} size={36} />
+          <RatingScale value={value} onChange={setValue} max={10} />
           <View style={styles.sheetActions}>
             <Pressable
               onPress={() => onSave(null)}

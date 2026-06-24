@@ -72,7 +72,14 @@ function ctaForGame(
   // Approval-gated game the user hasn't requested yet → a "request to
   // join" button (the join policy lives in the button text now, not a tag).
   if (g.requiresApproval) return 'requestJoin';
-  const occupancy = g.players.length + (g.guests?.length ?? 0);
+  // A pending-promotion offer holds the open spot for the offered user, so the
+  // game is effectively full — a new joiner lands on the waitlist. Count that
+  // reservation here so the CTA says "waitlist" instead of a misleading "join"
+  // that silently waitlists them (mirrors requestJoinGame's seating logic).
+  const occupancy =
+    g.players.length +
+    (g.guests?.length ?? 0) +
+    (g.pendingPromotion?.uid ? 1 : 0);
   if (occupancy < g.maxPlayers) return 'join';
   return 'waitlist';
 }

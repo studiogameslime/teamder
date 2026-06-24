@@ -35,15 +35,26 @@ export function chatKeyFor(scope: ChatScope, parentId: string): string {
 }
 
 function messagesCol(scope: ChatScope, parentId: string) {
-  return scope === 'game' ? col.gameMessages(parentId) : col.groupMessages(parentId);
+  if (scope === 'game') return col.gameMessages(parentId);
+  if (scope === 'dm') return col.dmMessages(parentId);
+  return col.groupMessages(parentId);
 }
 
 function readsCol(scope: ChatScope, parentId: string) {
-  return scope === 'game' ? col.gameReads(parentId) : col.groupReads(parentId);
+  if (scope === 'game') return col.gameReads(parentId);
+  if (scope === 'dm') return col.dmReads(parentId);
+  return col.groupReads(parentId);
 }
 
 function typingCol(scope: ChatScope, parentId: string) {
-  return scope === 'game' ? col.gameTyping(parentId) : col.groupTyping(parentId);
+  if (scope === 'game') return col.gameTyping(parentId);
+  if (scope === 'dm') return col.dmTyping(parentId);
+  return col.groupTyping(parentId);
+}
+
+/** Deterministic conversation id for a DM pair (order-independent). */
+export function dmConvId(a: string, b: string): string {
+  return [a, b].sort().join('__');
 }
 
 /** A member currently typing in the chat. */
@@ -113,6 +124,59 @@ export const chatService = {
   },
 
   /**
+   * Ensure the DM conversation metadata doc exists (idempotent). Required
+   * before any message can be sent — the message rule reads `participants`
+   * off this doc. The CREATE is gated by firestore.rules (the recipient's
+   * `dmFriendsOnly`), so this throws permission-denied when a non-friend
+   * tries to open a DM with someone who restricted it.
+   */
+  async ensureDmConversation(me: UserId, other: UserId): Promise<string> {
+    const convId = dmConvId(me, other);
+    if (USE_MOCK_DATA) return convId;
+    await setDoc(
+      col.dmConversation(convId),
+      {
+        participants: [me, other].sort(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+    return convId;
+  },
+
+  /**
+   * Stamp MY own chats-list entry for a DM (count untouched) so the
+   * conversation shows in my list with the other person's name — the server
+   * only writes the OTHER side's unread entry.
+   */
+  async touchMyDmEntry(
+    meId: UserId,
+    convId: string,
+    other: Pick<User, 'name' | 'avatarId' | 'photoUrl'>,
+  ): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    try {
+      await setDoc(
+        doc(col.userChatUnread(meId), chatKeyFor('dm', convId)),
+        {
+          scope: 'dm',
+          parentId: convId,
+          title: other.name ?? '',
+          // Denormalise the other person's avatar so my chats list shows
+          // their face even before they send me anything.
+          ...(other.avatarId ? { avatarId: other.avatarId } : {}),
+          ...(other.photoUrl ? { photoUrl: other.photoUrl } : {}),
+          lastMessageAt: Date.now(),
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      logError('touchMyDmEntry', err, { convId });
+    }
+  },
+
+  /**
    * Delete a message. Rules permit this only for the message's own sender
    * OR the chat's moderator (game creator / community creator).
    */
@@ -150,6 +214,8 @@ export const chatService = {
             scope: (x.scope as ChatScope) ?? 'game',
             parentId: typeof x.parentId === 'string' ? x.parentId : '',
             title: typeof x.title === 'string' ? x.title : '',
+            avatarId: typeof x.avatarId === 'string' ? x.avatarId : undefined,
+            photoUrl: typeof x.photoUrl === 'string' ? x.photoUrl : undefined,
           };
         }),
       );

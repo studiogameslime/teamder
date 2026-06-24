@@ -28,6 +28,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FriendActionButton } from '@/components/profile/FriendActionButton';
+import { goToDirectChat } from '@/navigation/navigationRef';
+import { dmConvId } from '@/services/chatService';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -35,10 +37,8 @@ import { AchievementBadge } from '@/components/AchievementBadge';
 import { TIER_META } from '@/data/achievements';
 import { TrustMeter } from '@/components/TrustMeter';
 import { InfoTip } from '@/components/InfoTip';
-import { RatingModal } from '@/components/RatingModal';
 import { toast } from '@/components/Toast';
-import { ratingsService } from '@/services/ratingsService';
-import type { Group, GroupRatingSummary } from '@/types';
+import type { Group } from '@/types';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
@@ -298,7 +298,6 @@ export function PlayerCardScreen() {
               </View>
             ) : null}
 
-            <RatingSection viewerId={me?.id ?? null} ratedUser={user} />
             <AchievementsSection user={user} />
           </>
         ) : me ? (
@@ -353,86 +352,33 @@ function StatTile({
   );
 }
 
-/** 5-star row for a 0–5 rating. */
-function StarRow({ rating, size = 16 }: { rating: number; size?: number }) {
-  const filled = Math.round(rating);
-  return (
-    <View style={styles.starRow}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons
-          key={i}
-          name={i <= filled ? 'star' : 'star-outline'}
-          size={size}
-          color={i <= filled ? colors.warning : '#CBD5E1'}
-        />
-      ))}
-    </View>
-  );
-}
-
-/** Top profile card for the OTHER-player view: avatar + name + rating on the
- *  right, "הוסף לחברים" + "דרג שחקן" buttons on the left. */
+/** Top profile card for the OTHER-player view: avatar + name on the right,
+ *  "הוסף לחברים" on the left. (Player rating is internal-admin-only now and
+ *  lives in the community players screen, not on the global player card.) */
 function OtherTopCard({ user, viewerId }: { user: User; viewerId: string }) {
-  const [summary, setSummary] = useState<GroupRatingSummary | null>(null);
-  const [open, setOpen] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
-
-  useEffect(() => ratingsService.subscribeSummary(user.id, setSummary), [user.id]);
-  useEffect(() => {
-    let alive = true;
-    ratingsService.getMyVote(viewerId, user.id).then((v) => alive && setHasVoted(!!v));
-    return () => {
-      alive = false;
-    };
-  }, [viewerId, user.id]);
-
-  const count = summary?.count ?? 0;
-  const avg = count > 0 ? summary!.average : 0;
-
   return (
     <Card style={styles.topCard}>
       <View style={styles.topRow}>
-        {/* Identity unit (right): avatar on the far right, name + rating to
-            its left — matches the sketch. */}
         <View style={styles.topIdentity}>
           <PlayerIdentity user={user} size={62} />
           <View style={styles.topNameBlock}>
             <Text style={styles.topName} numberOfLines={1}>
               {user.name}
             </Text>
-            <View style={styles.topRatingRow}>
-              <Text style={styles.topRatingNum}>{count > 0 ? avg.toFixed(1) : '—'}</Text>
-              <StarRow rating={avg} size={14} />
-            </View>
-            <Text style={styles.topRatingCount}>
-              {count > 0 ? he.ratingCountBased(count) : he.ratingNone}
-            </Text>
           </View>
         </View>
-        {/* Buttons (left). */}
         <View style={styles.topButtons}>
           <FriendActionButton meId={viewerId} otherUserId={user.id} />
           <Button
-            title={hasVoted ? he.ratingButtonReRate : he.ratingButtonRate}
+            title={he.dmSendMessage}
             variant="outline"
             size="sm"
-            iconLeft="star-outline"
-            onPress={() => setOpen(true)}
+            iconLeft="chatbubble-outline"
+            onPress={() => goToDirectChat(dmConvId(viewerId, user.id))}
             fullWidth
           />
         </View>
       </View>
-      <RatingModal
-        visible={open}
-        raterUserId={viewerId}
-        ratedUserId={user.id}
-        ratedDisplayName={user.name}
-        onClose={() => setOpen(false)}
-        onChanged={async () => {
-          const v = await ratingsService.getMyVote(viewerId, user.id);
-          setHasVoted(!!v);
-        }}
-      />
     </Card>
   );
 }
@@ -697,170 +643,6 @@ function formatPairDate(ms: number): string {
     month: 'long',
     year: 'numeric',
   });
-}
-
-function RatingSection({
-  viewerId,
-  ratedUser,
-}: {
-  viewerId: string | null;
-  ratedUser: User;
-}) {
-  const [summary, setSummary] = useState<GroupRatingSummary | null>(null);
-  const [open, setOpen] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
-
-  // Live summary subscription so the badge re-renders right after a save.
-  useEffect(() => {
-    const unsub = ratingsService.subscribeSummary(ratedUser.id, setSummary);
-    return unsub;
-  }, [ratedUser.id]);
-
-  // Whether the viewer already cast a vote — drives the button label
-  // and the prefill in the modal.
-  useEffect(() => {
-    if (!viewerId || viewerId === ratedUser.id) {
-      setHasVoted(false);
-      return;
-    }
-    let alive = true;
-    ratingsService.getMyVote(viewerId, ratedUser.id).then((v) => {
-      if (alive) setHasVoted(!!v);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [viewerId, ratedUser.id]);
-
-  const isSelf = !!viewerId && viewerId === ratedUser.id;
-
-  return (
-    <View style={styles.ratingSection}>
-      <View style={styles.ratingTitleRow}>
-        <Text style={styles.achievementsTitle}>{he.ratingGlobalTitle}</Text>
-        <InfoTip title={he.tipRatingTitle} text={he.tipRatingText} />
-      </View>
-      {summary && summary.count > 0 ? (
-        <View style={styles.ratingHeader}>
-          <Ionicons
-            name="star"
-            size={20}
-            color={colors.warning}
-            style={{ marginEnd: 4 }}
-          />
-          <Text style={styles.ratingValue}>
-            {summary.average.toFixed(1)}
-          </Text>
-          <Text style={styles.ratingCount}>
-            {' · '}
-            {he.ratingCount(summary.count)}
-          </Text>
-        </View>
-      ) : (
-        <Text style={styles.emptyHint}>{he.ratingNone}</Text>
-      )}
-
-      {!isSelf && viewerId ? (
-        <Button
-          title={hasVoted ? he.ratingButtonReRate : he.ratingButtonRate}
-          variant="outline"
-          size="sm"
-          iconLeft="star-outline"
-          onPress={() => setOpen(true)}
-          fullWidth
-        />
-      ) : null}
-
-      <RatingModal
-        visible={open}
-        raterUserId={viewerId}
-        ratedUserId={ratedUser.id}
-        ratedDisplayName={ratedUser.name}
-        onClose={() => setOpen(false)}
-        onChanged={async () => {
-          // Force-refresh the local "have I voted?" flag so the button
-          // toggles between "rate" / "update rating" without delay.
-          if (viewerId) {
-            const v = await ratingsService.getMyVote(viewerId, ratedUser.id);
-            setHasVoted(!!v);
-          }
-        }}
-      />
-    </View>
-  );
-}
-
-function DisciplineSection({ user }: { user: User }) {
-  // Renamed conceptually to "Trust" — the old yellow/red counters
-  // were replaced with a single 0-100 reliability score (see
-  // `trustService`). The function name stays as `DisciplineSection`
-  // to keep call-site diffs minimal; the underlying data still comes
-  // from past terminal games + cancellations.
-  const [trust, setTrust] = useState<TrustSummary | null>(null);
-  const [trustError, setTrustError] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    setTrust(null);
-    setTrustError(false);
-    trustService
-      .getSummary(user.id)
-      .then((s) => {
-        if (alive) setTrust(s);
-      })
-      .catch((err) => {
-        if (__DEV__) {
-          console.warn('[playerCard] trust summary failed', err);
-        }
-        if (alive) setTrustError(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [user.id]);
-
-  return (
-    <View style={styles.disciplineSection}>
-      <View style={styles.disciplineHeader}>
-        <Text style={styles.achievementsTitle}>{he.trustMeterTitle}</Text>
-        <InfoTip title={he.tipTrustTitle} text={he.tipTrustText} />
-      </View>
-      {trustError ? (
-        <Text style={styles.disciplineUnavailable}>
-          {he.trustMeterUnavailable}
-        </Text>
-      ) : !trust ? (
-        <SoccerBallLoader size={20} />
-      ) : (
-        <View style={styles.trustWrap}>
-          <TrustMeter score={trust.score} tier={trust.tier} size="md" />
-          {trust.score === null ? (
-            <Text style={styles.disciplineCaption}>
-              {he.trustMeterCaptionEmpty}
-            </Text>
-          ) : (
-            <View style={styles.trustBreakdown}>
-              <Text style={styles.disciplineCaption}>
-                {he.trustBreakdownAttended(
-                  trust.breakdown.attended,
-                  trust.breakdown.registered,
-                )}
-              </Text>
-              {trust.breakdown.softCancels > 0 ? (
-                <Text style={styles.disciplineCaption}>
-                  {he.trustBreakdownSoftCancels(trust.breakdown.softCancels)}
-                </Text>
-              ) : null}
-              {trust.breakdown.hardCancels > 0 ? (
-                <Text style={styles.disciplineCaption}>
-                  {he.trustBreakdownHardCancels(trust.breakdown.hardCancels)}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
 }
 
 function AchievementsSection({ user }: { user: User }) {

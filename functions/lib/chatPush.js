@@ -53,7 +53,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 // Keep the persisted preview + push body bounded.
@@ -157,7 +157,11 @@ async function handleRecipient(uid, scope, parentId, title, msg) {
         const senderName = (msg.senderName || '').trim() || 'שחקן';
         const text = msg.text || '';
         const lastMessageAt = typeof msg.createdAt === 'number' ? msg.createdAt : Date.now();
-        // (b) increment + write the preview fields.
+        // (b) increment + write the preview fields. For DMs we also denormalise
+        // the sender's avatar onto the recipient's entry — in a 1-on-1 the sender
+        // IS the other participant, so the chats list can show their face.
+        const senderAvatarId = typeof msg.senderAvatarId === 'string' ? msg.senderAvatarId : '';
+        const senderPhotoUrl = typeof msg.senderPhotoUrl === 'string' ? msg.senderPhotoUrl : '';
         await unreadRef.set({
             count: admin.firestore.FieldValue.increment(1),
             lastMessageAt,
@@ -166,6 +170,8 @@ async function handleRecipient(uid, scope, parentId, title, msg) {
             scope,
             parentId,
             title,
+            ...(scope === 'dm' && senderAvatarId ? { avatarId: senderAvatarId } : {}),
+            ...(scope === 'dm' && senderPhotoUrl ? { photoUrl: senderPhotoUrl } : {}),
         }, { merge: true });
         // (c) muted?
         let muted = false;
@@ -219,6 +225,13 @@ async function handleChatMessage(scope, parentId, msg) {
                 all.push(g.createdBy);
             recipients = Array.from(new Set(all));
         }
+        else if (scope === 'dm') {
+            // convId = sorted([uid1, uid2]).join('__'); the only recipient is the
+            // OTHER participant (the sender is filtered out below). The recipient
+            // sees the conversation titled by the sender's name.
+            recipients = parentId.split('__');
+            title = (typeof msg.senderName === 'string' ? msg.senderName : '').trim();
+        }
         else {
             const snap = await db.collection('groups').doc(parentId).get();
             if (!snap.exists)
@@ -252,4 +265,11 @@ exports.onCommunityChatMessage = (0, firestore_1.onDocumentCreated)('groups/{gro
         return;
     const groupId = event.params.groupId;
     await handleChatMessage('community', groupId, snap.data());
+});
+exports.onDmChatMessage = (0, firestore_1.onDocumentCreated)('dmConversations/{convId}/messages/{msgId}', async (event) => {
+    const snap = event.data;
+    if (!snap)
+        return;
+    const convId = event.params.convId;
+    await handleChatMessage('dm', convId, snap.data());
 });

@@ -65,6 +65,18 @@ export function useSyncedTimer(
     if (liveMatch) void syncServerClock();
   }, [liveMatch]);
 
+  // Re-sync the server clock periodically WHILE a match is on screen. A single
+  // measurement at mount drifts over a long match (one device's wall clock can
+  // creep), desyncing the timer across phones. Re-probing every ~2 min (the
+  // service's own RESYNC window de-dupes the actual network call) corrects it.
+  // Cleared as soon as the live match ends / screen unmounts.
+  const hasLiveMatch = !!liveMatch;
+  useEffect(() => {
+    if (!hasLiveMatch) return;
+    const id = setInterval(() => void syncServerClock(), 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [hasLiveMatch]);
+
   // Snap to the latest server state on every change. This catches
   // pause / reset / external admin mutations immediately, not on the
   // next tick.

@@ -169,6 +169,12 @@ export interface GameFormValues {
   /** ms epoch — before this, non-admins can't add guests
    *  (Game.guestsOpenAt). 0 = no restriction. */
   guestsOpenAt: number;
+  /** ms epoch — when >0, teams are auto-generated at this time (Game.autoTeamsAt).
+   *  0 = off. Internal-rating communities only. */
+  autoTeamsAt: number;
+  /** How the scheduled split is built: 'rating' (by internal rating) or
+   *  'random'. Only consulted when autoTeamsAt > 0. */
+  autoTeamsMethod: 'rating' | 'random';
   /** Hours (number) or undefined for "no limit". */
   cancelDeadlineHours: number | undefined;
   /** When true, the game's roster is open to filler push to non-members
@@ -220,6 +226,9 @@ interface Props {
    *  details step (community games only) so the organiser always sees
    *  where it lands, even with a single community. */
   communityName?: string;
+  /** Whether the target community uses internal admin ratings. Gates the
+   *  "auto-generate teams" scheduler toggle (it balances by those ratings). */
+  internalRating?: boolean;
   /** Warn on leave when there are unsaved edits. On for the EDIT flow
    *  (where discarding silently loses real changes); off for create. */
   enableUnsavedGuard?: boolean;
@@ -239,6 +248,7 @@ export function GameWizardForm({
   quick = false,
   showInviteFriends = false,
   communityName,
+  internalRating = false,
   enableUnsavedGuard = false,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -339,6 +349,20 @@ export function GameWizardForm({
     return true;
   };
 
+  // Auto-team generation time must be in the future and before kickoff.
+  const validateAutoTeamsAt = (): boolean => {
+    if (!values.autoTeamsAt) return true;
+    if (values.autoTeamsAt >= values.startsAt) {
+      appAlert(he.error, he.wizardAutoTeamsBeforeKickoff);
+      return false;
+    }
+    if (values.autoTeamsAt <= Date.now()) {
+      appAlert(he.error, he.wizardAutoTeamsInPast);
+      return false;
+    }
+    return true;
+  };
+
   const finalizeSubmit = async () => {
     setBusy(true);
     // Arm the guard's bypass BEFORE submitting: a successful onSubmit
@@ -362,6 +386,7 @@ export function GameWizardForm({
 
   const submit = async () => {
     if (!validateRegistrationOpensAt()) return;
+    if (!validateAutoTeamsAt()) return;
     if (values.scheduledRegEnabled && values.registrationOpensAt > 0) {
       const now = Date.now();
       const delta = values.startsAt - values.registrationOpensAt;
@@ -424,6 +449,7 @@ export function GameWizardForm({
                 maxPlayers={maxPlayers}
                 quick={quick}
                 showInviteFriends={showInviteFriends}
+                internalRating={internalRating}
               />
             ) : null}
           </Animated.View>
@@ -770,12 +796,14 @@ function Step3({
   maxPlayers,
   quick,
   showInviteFriends,
+  internalRating,
 }: {
   values: GameFormValues;
   set: SetFn;
   maxPlayers: number;
   quick: boolean;
   showInviteFriends: boolean;
+  internalRating: boolean;
 }) {
   // Step 3 — "ניהול". Approval, recurring schedule, scheduled public-open
   // + guests-open, cancellation deadline, fillers, notes. (Visibility moved
@@ -885,6 +913,45 @@ function Step3({
                 required
               />
             </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {/* Auto-generate balanced teams at a chosen time (internal-rating
+          communities only). A CF balances the roster by the admins' internal
+          ratings at this time and pushes every player their team. */}
+      {!quick && internalRating ? (
+        <>
+          <ToggleRow
+            label={he.wizardAutoTeamsToggle}
+            info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
+            value={values.autoTeamsAt > 0}
+            onChange={(v) =>
+              set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
+            }
+          />
+          {values.autoTeamsAt > 0 ? (
+            <>
+              <View style={styles.section}>
+                <AppDateTimeField
+                  label={he.wizardAutoTeamsLabel}
+                  value={values.autoTeamsAt}
+                  onChange={(ms) => set('autoTeamsAt', ms)}
+                  required
+                />
+              </View>
+              <PillRow
+                label={he.wizardAutoTeamsMethodLabel}
+                options={[
+                  { value: 'rating', label: he.draftMethodAuto },
+                  { value: 'random', label: he.draftMethodRandom },
+                ]}
+                selected={values.autoTeamsMethod}
+                onSelect={(v) =>
+                  set('autoTeamsMethod', v as 'rating' | 'random')
+                }
+              />
+            </>
           ) : null}
         </>
       ) : null}

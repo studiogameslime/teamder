@@ -77,10 +77,10 @@ import { GameChampionship } from '@/components/match/GameChampionship';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
-import { ratingsService } from '@/services/ratingsService';
 import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import { useGameEvents } from '@/services/useGameEvents';
 import {
+  canAddGuest,
   canCancelRegistration,
   canEditGame,
   canEnterLive,
@@ -413,7 +413,6 @@ export function MatchDetailsScreen() {
   // place to surface the prompt again if the user navigated away
   // without acting. If we ever want it sticky, switch to AsyncStorage
   // keyed by gameId.
-  const [rateBannerDismissed, setRateBannerDismissed] = useState(false);
   // Measured height of the sticky bottom CTA bar so the ScrollView can pad its
   // content by exactly that much. The bar grows to TWO stacked buttons (share +
   // cancel), which a fixed 112px pad didn't clear — the last detail rows
@@ -450,6 +449,10 @@ export function MatchDetailsScreen() {
   const [cancelOtherBusy, setCancelOtherBusy] = useState(false);
   // Hamburger bottom-sheet visibility.
   const [menuOpen, setMenuOpen] = useState(false);
+  // "Notify teams ready" in-flight guard. MUST live here with the other
+  // hooks — above the notFound/accessBlocked early returns — or React throws
+  // "Rendered more hooks than during the previous render" once the game loads.
+  const [notifyingTeams, setNotifyingTeams] = useState(false);
   // Join celebration — a short confetti + flying-balls burst + success
   // haptic the moment the user actually lands IN the game (bucket
   // 'players'), OR right after they created the game. Self-clears.
@@ -703,65 +706,26 @@ export function MatchDetailsScreen() {
       setRegisteredRatingAvg(null);
       return;
     }
-    let alive = true;
     const eligible = (game.players ?? []).filter((uid) => !adminUids.has(uid));
-    if (eligible.length === 0) {
+    // Ratings are now the INTERNAL admin rating only (peer rating removed).
+    // Admin-only, and only for internal-rating communities — never surfaced to
+    // non-admins (it would leak the private ratings).
+    const grp = myCommunities.find((c) => c.id === game.groupId);
+    if (eligible.length === 0 || !grp?.internalRating || !isAdmin) {
       setRegisteredRatingAvg(null);
       return;
     }
-    const groupId = game.groupId;
-
-    // Internal-rating community → use the admins' ratings (carried on the
-    // group doc, no network) instead of the global peer-vote averages.
-    const grp = myCommunities.find((c) => c.id === groupId);
-    if (grp?.internalRating) {
-      // Internal ratings are ADMIN-ONLY — never surface the derived average to
-      // non-admins (it would leak the private ratings).
-      if (!isAdmin) {
-        setRegisteredRatingAvg(null);
-        return;
-      }
-      const vals = eligible
-        .map((uid) => grp.adminRatings?.[uid])
-        .filter((v): v is number => typeof v === 'number' && v > 0);
-      if (vals.length < 2) {
-        setRegisteredRatingAvg(null);
-        return;
-      }
-      setRegisteredRatingAvg({
-        average: vals.reduce((a, b) => a + b, 0) / vals.length,
-        ratedCount: vals.length,
-      });
+    const vals = eligible
+      .map((uid) => grp.adminRatings?.[uid])
+      .filter((v): v is number => typeof v === 'number' && v > 0);
+    if (vals.length < 2) {
+      setRegisteredRatingAvg(null);
       return;
     }
-
-    (async () => {
-      try {
-        const summaries = await Promise.all(
-          eligible.map((uid) =>
-            ratingsService.getSummary(uid).catch(() => null),
-          ),
-        );
-        if (!alive) return;
-        const rated = summaries.filter(
-          (s): s is NonNullable<typeof s> => !!s && s.count > 0,
-        );
-        if (rated.length < 2) {
-          setRegisteredRatingAvg(null);
-          return;
-        }
-        const sumOfAverages = rated.reduce((acc, s) => acc + s.average, 0);
-        setRegisteredRatingAvg({
-          average: sumOfAverages / rated.length,
-          ratedCount: rated.length,
-        });
-      } catch {
-        if (alive) setRegisteredRatingAvg(null);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+    setRegisteredRatingAvg({
+      average: vals.reduce((a, b) => a + b, 0) / vals.length,
+      ratedCount: vals.length,
+    });
   }, [game, adminUids, myCommunities, isAdmin]);
 
   const handlePrimary = async () => {
@@ -1187,6 +1151,36 @@ export function MatchDetailsScreen() {
    * fires for the first time (after the teams-full gate); no
    * separate "start evening" step exists anymore.
    */
+  // Claim a spot you've been OFFERED (head of waitlist). The accept lived
+  // only on the players screen + the push, so an offered user on THIS screen
+  // had no way to take it — a generic join no-oped (they're already on the
+  // waitlist) and the count reverted (user report). confirmSpotOffer is the
+  // real write (waitlist→players, offer cleared); we splice optimistically and
+  // the realtime listener confirms.
+  const handleConfirmSpotOffer = async () => {
+    if (!game || !user) return;
+    const me = user.id;
+    setGame((prev) => {
+      if (!prev || prev.players.includes(me)) return prev;
+      return {
+        ...prev,
+        players: [...prev.players, me],
+        waitlist: prev.waitlist.filter((id) => id !== me),
+        pendingPromotion: null,
+      };
+    });
+    try {
+      await gameService.confirmSpotOffer(game.id, me);
+      toast.success(he.toastGameJoined);
+    } catch (err) {
+      logError('confirmSpotOffer', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
+      toast.error(he.error);
+    }
+  };
+
   const handleGoLive = () => {
     if (!game) return;
     nav.navigate('LiveMatch', { gameId: game.id });
@@ -1282,25 +1276,21 @@ export function MatchDetailsScreen() {
       });
   };
 
-  // The right invite link for THIS game: public → direct session link;
-  // community/private → the public community link (actionable for non-members).
+  // The right invite link for THIS game: ALWAYS a direct session link to
+  // this specific game (user report 3uc6 — the share button was producing a
+  // community-join link instead of a link to the game itself). The recipient
+  // lands straight on this game's details; members open it as usual, and the
+  // link preview shows the game (not a generic "join community" card).
   const inviteLinkForGame = (): string =>
-    game.visibility === 'public'
-      ? deepLinkService.buildInviteUrl({
-          type: 'session',
-          id: game.id,
-          invitedBy: user?.id,
-        })
-      : deepLinkService.buildInviteUrl({
-          type: 'team',
-          id: game.groupId,
-          invitedBy: user?.id,
-        });
+    deepLinkService.buildInviteUrl({
+      type: 'session',
+      id: game.id,
+      invitedBy: user?.id,
+    });
 
-  // Share handler — works for ALL game types now (user report). Public games
-  // share a direct session link; community/private games share the COMMUNITY
-  // link instead, so a non-member recipient lands on the public community page
-  // (where they can request to join) rather than the dead "members only" wall.
+  // Share handler — works for ALL game types. Shares a direct link to THIS
+  // game plus the rich recruitment text (what / when / where / how many
+  // missing + join link), the same game-share style across the board.
   const handleShare = async () => {
     if (!isOpen(game) || game.startsAt <= Date.now()) return;
     try {
@@ -1430,21 +1420,65 @@ export function MatchDetailsScreen() {
     }
   };
 
+  const handleSetTeamFeedback = async (value: 'like' | 'dislike') => {
+    if (!user) return;
+    // Toggle off if tapping the same reaction again.
+    const current = game.draftTeamFeedback?.[user.id];
+    const next = current === value ? null : value;
+    try {
+      await gameService.setDraftTeamFeedback(game.id, user.id, next);
+      await reload();
+    } catch (err) {
+      logError('setDraftTeamFeedback', err, { gameId: game.id });
+      toast.error(he.error);
+    }
+  };
+
+  const handleNotifyTeams = async () => {
+    if (notifyingTeams) return; // guard double-tap → duplicate pushes
+    setNotifyingTeams(true);
+    try {
+      await gameService.notifyTeamsReady(game.id);
+      toast.success(he.autoBalanceNotifySent);
+    } catch (err) {
+      logError('notifyTeamsReady', err, { gameId: game.id });
+      toast.error(he.error);
+    } finally {
+      setNotifyingTeams(false);
+    }
+  };
+
   // Primary CTA — POSITIVE actions only. Cancel-registration is
   // intentionally NOT a primary anymore: it's a subtle outline-red
   // link below the quick actions so a stray tap can't accidentally
   // bail the user out of a game they meant to play.
   const primary = (() => {
     if (isTerminalGame(game)) return null;
+    // You've been OFFERED an open spot (head of waitlist) — the primary action
+    // is to CLAIM it, not a generic join. Takes priority over every other CTA
+    // (admin or player) so the offered user can actually take the seat here.
+    if (user && game.pendingPromotion?.uid === user.id) {
+      return {
+        title: he.matchDetailsAcceptOffer,
+        onPress: handleConfirmSpotOffer,
+        icon: 'checkmark-circle-outline' as const,
+      };
+    }
     if (isAdmin) {
+      // An admin who isn't in the roster (left, or never joined) still gets a
+      // JOIN button — same as a player (user report: "where did join go?").
+      // Without this, once the game filled past the "waiting for players"
+      // state the admin's CTA flipped to invite/go-live and there was no way
+      // to rejoin. Invite stays reachable via the header share icon. Skipped
+      // once the match is live (then the admin action is manage / go-live).
+      if (status === 'none' && sessionStatus !== 'active') {
+        return {
+          title: primaryLabel,
+          onPress: handlePrimary,
+          icon: 'person-add-outline' as const,
+        };
+      }
       if (sessionStatus === 'waiting_for_players') {
-        if (status === 'none') {
-          return {
-            title: he.matchDetailsJoin,
-            onPress: handlePrimary,
-            icon: 'person-add-outline' as const,
-          };
-        }
         return {
           title: he.sessionActionInvitePlayers,
           onPress: handleShare,
@@ -2157,6 +2191,87 @@ export function MatchDetailsScreen() {
                     />
                   ))}
               </View>
+              {/* Team feedback. Members react 👍/👎; the admin sees the
+                  aggregate and can (re)send the "teams ready" push. */}
+              {(() => {
+                const fb = game.draftTeamFeedback ?? {};
+                const likes = Object.values(fb).filter((v) => v === 'like').length;
+                const dislikes = Object.values(fb).filter(
+                  (v) => v === 'dislike',
+                ).length;
+                const mine = user ? fb[user.id] : undefined;
+                const isParticipant = !!user && game.players.includes(user.id);
+                return (
+                  <View style={styles.teamFbWrap}>
+                    {isParticipant ? (
+                      <View style={styles.teamFbRow}>
+                        <Text style={styles.teamFbPrompt}>
+                          {he.teamFeedbackPrompt}
+                        </Text>
+                        <View style={styles.teamFbBtns}>
+                          <Pressable
+                            onPress={() => void handleSetTeamFeedback('like')}
+                            style={[
+                              styles.teamFbBtn,
+                              mine === 'like' && styles.teamFbBtnLikeOn,
+                            ]}
+                            accessibilityRole="button"
+                          >
+                            <Ionicons
+                              name={mine === 'like' ? 'thumbs-up' : 'thumbs-up-outline'}
+                              size={18}
+                              color={mine === 'like' ? colors.success : colors.textMuted}
+                            />
+                          </Pressable>
+                          <Pressable
+                            onPress={() => void handleSetTeamFeedback('dislike')}
+                            style={[
+                              styles.teamFbBtn,
+                              mine === 'dislike' && styles.teamFbBtnDislikeOn,
+                            ]}
+                            accessibilityRole="button"
+                          >
+                            <Ionicons
+                              name={
+                                mine === 'dislike'
+                                  ? 'thumbs-down'
+                                  : 'thumbs-down-outline'
+                              }
+                              size={18}
+                              color={mine === 'dislike' ? colors.danger : colors.textMuted}
+                            />
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : null}
+                    {isAdmin ? (
+                      <View style={styles.teamFbAdminRow}>
+                        <Text style={styles.teamFbAgg}>
+                          {he.teamFeedbackAggregate(likes, dislikes)}
+                        </Text>
+                        <Pressable
+                          onPress={() => void handleNotifyTeams()}
+                          disabled={notifyingTeams}
+                          style={[
+                            styles.teamFbNotify,
+                            notifyingTeams && styles.teamFbNotifyBusy,
+                          ]}
+                          accessibilityRole="button"
+                        >
+                          <Ionicons
+                            name="notifications-outline"
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.teamFbNotifyText}>
+                            {he.autoBalanceNotifyPlayers}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
             </View>
           ) : null}
 
@@ -2231,15 +2346,15 @@ export function MatchDetailsScreen() {
             pendingCount={game.pending?.length ?? 0}
             onSeeAll={() => nav.navigate('MatchPlayers', { gameId: game.id })}
             // "הוסף אורח" lives as an inline text link next to the
-            // section header — only for admins, and only while the
-            // game is still in a state where guests can be added.
+            // section header. Admins can always add; registered players can
+            // too unless the game restricts it until a set time (the
+            // "הגבלת הוספת אורחים עד זמן מסוים" toggle). Hidden on any status
+            // where the server/rules would reject the write (GAME_NOT_OPEN).
             onAddGuest={
-              // Guests can only be added while registration is OPEN —
-              // the server (and firestore.rules) reject the write on any
-              // other status with GAME_NOT_OPEN. Previously the link
-              // showed on scheduled/locked/active games too, producing a
-              // stream of logged addGuest→GAME_NOT_OPEN errors.
-              isAdmin && isOpen(game)
+              canAddGuest(game, {
+                isOrganizerOrAdmin: isAdmin,
+                isParticipant: !!user && game.players.includes(user.id),
+              })
                 ? () => setGuestModalOpen(true)
                 : undefined
             }
@@ -2286,31 +2401,10 @@ export function MatchDetailsScreen() {
             }}
           />
 
-          {/* Community rules — free text from the community form, shown
-              to every participant. Amber tint = "behaviour expectations". */}
-          {communityRules ? (
-            <View style={styles.rulesCard}>
-              <View style={styles.rulesHeader}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={16}
-                  color="#B45309"
-                />
-                <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
-              </View>
-              {/* Collapsible (קרא עוד / הצג פחות) — same behaviour as the rules
-                  card on CommunityDetails, so a long rules block never fills
-                  the whole screen. */}
-              <CollapsibleContent>
-                <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
-              </CollapsibleContent>
-            </View>
-          ) : null}
-
-          {/* Waitlist preview — separate from the main participants
-              section so the user understands "these aren't in yet,
-              they're hoping for a spot". Hidden when the waitlist
-              is empty. Tap = navigate to the full players screen. */}
+          {/* Waitlist preview — sits directly UNDER the roster (per user
+              feedback) so "in" and "waiting for a spot" read as one block,
+              with the community rules below them. Hidden when empty. Tap =
+              navigate to the full players screen. */}
           {(game.waitlist?.length ?? 0) > 0 ? (
             <View style={styles.waitlistSection}>
               <Pressable
@@ -2351,6 +2445,28 @@ export function MatchDetailsScreen() {
                   );
                 })}
               </View>
+            </View>
+          ) : null}
+
+          {/* Community rules — free text from the community form, shown
+              to every participant. Amber tint = "behaviour expectations".
+              Sits below the roster + waitlist (per user feedback). */}
+          {communityRules ? (
+            <View style={styles.rulesCard}>
+              <View style={styles.rulesHeader}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={16}
+                  color="#B45309"
+                />
+                <Text style={styles.rulesTitle}>{he.communityRulesTitle}</Text>
+              </View>
+              {/* Collapsible (קרא עוד / הצג פחות) — same behaviour as the rules
+                  card on CommunityDetails, so a long rules block never fills
+                  the whole screen. */}
+              <CollapsibleContent>
+                <RichRulesText text={communityRules} baseStyle={styles.rulesBody} />
+              </CollapsibleContent>
             </View>
           ) : null}
 
@@ -2504,39 +2620,6 @@ export function MatchDetailsScreen() {
               },
             ]}
           />
-
-        {isFinished(game) &&
-        user &&
-        (game.players ?? []).includes(user.id) &&
-        !rateBannerDismissed &&
-        (game.players ?? []).some((p) => p !== user.id) ? (
-          <View style={styles.rateBanner}>
-            <Ionicons name="star-outline" size={20} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rateBannerTitle}>{he.rateBannerTitle}</Text>
-              <Text style={styles.rateBannerSub}>{he.rateBannerSub}</Text>
-            </View>
-            <Pressable
-              onPress={() => {
-                setRateBannerDismissed(true);
-                nav.navigate('RatePlayers', { gameId: game.id });
-              }}
-              style={({ pressed }) => [
-                styles.rateBannerCta,
-                pressed && { opacity: 0.85 },
-              ]}
-            >
-              <Text style={styles.rateBannerCtaText}>{he.rateBannerCta}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setRateBannerDismissed(true)}
-              hitSlop={8}
-              accessibilityLabel={he.rateBannerDismiss}
-            >
-              <Ionicons name="close" size={18} color={colors.textMuted} />
-            </Pressable>
-          </View>
-        ) : null}
 
         {/* Per-game championship — goals + assists tallied in THIS game,
             ranked by score (goal=2, assist=1). Only after the game is
@@ -3471,6 +3554,64 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   draftSectionList: { gap: spacing.sm },
+  teamFbWrap: {
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
+    paddingTop: spacing.sm,
+  },
+  teamFbRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  teamFbPrompt: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    flexShrink: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  teamFbBtns: { flexDirection: 'row', gap: spacing.sm },
+  teamFbBtn: {
+    width: 38,
+    height: 34,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamFbBtnLikeOn: {
+    borderColor: colors.success,
+    backgroundColor: 'rgba(34,197,94,0.10)',
+  },
+  teamFbBtnDislikeOn: {
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(239,68,68,0.10)',
+  },
+  teamFbAdminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  teamFbAgg: { ...typography.caption, color: colors.text, fontWeight: '800' },
+  teamFbNotify: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  teamFbNotifyText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  teamFbNotifyBusy: { opacity: 0.5 },
   draftTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   staleBadge: {
     minWidth: 20,

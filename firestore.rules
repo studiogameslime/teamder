@@ -722,6 +722,37 @@ service cloud.firestore {
           request.resource.data.ballBringerIds.size() <=
             resource.data.get('ballBringerIds', []).size() + 1
         ) ||
+        // ── Self like/dislike on the team split branch ────────────
+        // Any registered participant can write a 👍/👎 reaction to the
+        // teams — but ONLY under their OWN uid key. Single map field
+        // (plus updatedAt); the diff must touch only the caller's key.
+        (
+          affectedKeys().hasOnly(['draftTeamFeedback', 'updatedAt']) &&
+          request.auth.uid in resource.data.participantIds &&
+          request.resource.data.get('draftTeamFeedback', {})
+            .diff(resource.data.get('draftTeamFeedback', {}))
+            .affectedKeys().hasOnly([request.auth.uid])
+        ) ||
+        // ── Self ADD-GUEST branch ─────────────────────────────────
+        // A registered player may APPEND one guest to `guests` while the
+        // game is open — UNLESS the game restricts guest-adding until a set
+        // time (`guestsOpenAt`). When guestsOpenAt is 0/absent there is no
+        // restriction (any player can always add). Only `guests` (+updatedAt)
+        // may change, and the array must grow by exactly one while KEEPING
+        // every existing guest (`hasAll`) — so a player can add but can't
+        // remove or edit someone else's guest. Edits/removals stay in the
+        // admin branch below.
+        (
+          resource.data.status == 'open' &&
+          request.auth.uid in resource.data.players &&
+          affectedKeys().hasOnly(['guests', 'updatedAt']) &&
+          request.resource.data.guests is list &&
+          request.resource.data.guests.size() ==
+            resource.data.get('guests', []).size() + 1 &&
+          request.resource.data.guests.size() <= 100 &&
+          request.resource.data.guests.hasAll(resource.data.get('guests', [])) &&
+          request.time.toMillis() >= resource.data.get('guestsOpenAt', 0)
+        ) ||
         // ── Organizer / admin branch ──────────────────────────────
         // Can mutate ANYTHING except terminal lifecycle states AND
         // a small set of immutable fields:
@@ -968,6 +999,59 @@ service cloud.firestore {
     match /groups/{gid}/typing/{uid} {
       allow read: if isGroupMember(gid);
       allow write: if isSelf(uid) && isGroupMember(gid);
+    }
+
+    // ── /dmConversations/{convId} — 1-on-1 direct messages ───────────────
+    // convId = sorted([uidA, uidB]).join('__'); exactly two participants.
+    // Access is limited to those two. Starting a NEW conversation is gated by
+    // the OTHER user's `dmFriendsOnly` (default false = anyone may DM).
+    match /dmConversations/{convId} {
+      function dmParticipants() {
+        return get(/databases/$(database)/documents/dmConversations/$(convId))
+          .data.get('participants', []);
+      }
+      function isDmParticipant() {
+        return isSignedIn() && request.auth.uid in dmParticipants();
+      }
+      function otherOnCreate() {
+        return request.resource.data.participants[0] == request.auth.uid
+          ? request.resource.data.participants[1]
+          : request.resource.data.participants[0];
+      }
+      function otherAllowsMe(otherUid) {
+        return get(/databases/$(database)/documents/users/$(otherUid))
+                 .data.get('dmFriendsOnly', false) != true
+          || (request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid))
+                 .data.get('friends', []));
+      }
+      allow read: if isDmParticipant();
+      allow create: if isSignedIn()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && otherAllowsMe(otherOnCreate());
+      allow update: if isDmParticipant()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['participants', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        allow read: if isDmParticipant();
+        allow create: if isDmParticipant()
+          && request.resource.data.senderId == request.auth.uid
+          && isShortString(request.resource.data.text, 1000)
+          && request.resource.data.text.size() > 0;
+        allow update: if false;
+        allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      }
+      match /reads/{uid} {
+        allow read: if isDmParticipant();
+        allow write: if isSelf(uid) && isDmParticipant();
+      }
+      match /typing/{uid} {
+        allow read: if isDmParticipant();
+        allow write: if isSelf(uid) && isDmParticipant();
+      }
     }
 
     match /groups/{gid}/ratings/{ratedUid} {

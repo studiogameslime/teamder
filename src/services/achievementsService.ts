@@ -79,6 +79,9 @@ export interface AchievementListItem {
 export interface NewlyUnlocked {
   def: AchievementDef;
   tier: AchievementTier;
+  /** The metric value at unlock time — powers the "how many more to the next
+   *  tier" line in the celebration popup. */
+  value: number;
 }
 
 export const achievementsService = {
@@ -507,7 +510,7 @@ function diffUnlocks(
       unlockedAt: advanced ? now : prev?.unlockedAt ?? now,
     });
     if (advanced && !isMigration) {
-      newlyUnlocked.push({ def, tier: tierStep.tier });
+      newlyUnlocked.push({ def, tier: tierStep.tier, value });
     }
   }
 

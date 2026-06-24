@@ -43,6 +43,59 @@ const HOSTING_DOMAINS = new Set([
 /** Public hosting origin used when building share URLs. */
 const HOSTING_ORIGIN = 'https://teamderfc.web.app';
 
+const B64_INV: Record<string, number> = {};
+'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+  .split('')
+  .forEach((c, i) => {
+    B64_INV[c] = i;
+  });
+/**
+ * base64url (no padding) → UTF-8 string. Inverse of Pulse's `encodeSourceToken`
+ * (the short `b` source token in tracked links). Self-contained — Hermes has no
+ * atob/Buffer. Returns '' on malformed input.
+ */
+function decodeSourceToken(tok: string): string {
+  try {
+    const bytes: number[] = [];
+    let buf = 0;
+    let bits = 0;
+    for (const ch of tok) {
+      const v = B64_INV[ch];
+      if (v === undefined) continue;
+      buf = (buf << 6) | v;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        bytes.push((buf >> bits) & 0xff);
+      }
+    }
+    let out = '';
+    for (let i = 0; i < bytes.length; ) {
+      const b0 = bytes[i++];
+      if (b0 < 0x80) out += String.fromCharCode(b0);
+      else if (b0 < 0xe0) {
+        const b1 = bytes[i++];
+        out += String.fromCharCode(((b0 & 0x1f) << 6) | (b1 & 0x3f));
+      } else if (b0 < 0xf0) {
+        const b1 = bytes[i++];
+        const b2 = bytes[i++];
+        out += String.fromCharCode(((b0 & 0x0f) << 12) | ((b1 & 0x3f) << 6) | (b2 & 0x3f));
+      } else {
+        const b1 = bytes[i++];
+        const b2 = bytes[i++];
+        const b3 = bytes[i++];
+        const cp =
+          (((b0 & 0x07) << 18) | ((b1 & 0x3f) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f)) -
+          0x10000;
+        out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+      }
+    }
+    return out;
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Parse an invite URL in either supported form. Returns null for any
  * URL we don't recognise — the caller is expected to ignore those.
@@ -65,12 +118,20 @@ export function parseInviteUrl(url: string): PendingInvite | null {
     // record where the install came from. Independent of `invitedBy`.
     const str = (v: unknown): string | undefined =>
       typeof v === 'string' && v.length > 0 ? v : undefined;
-    const acq: { source?: string; campaign?: string } = {
-      source: str(parsed.queryParams?.s) ?? str(parsed.queryParams?.utm_source),
+    // Source now arrives as a short base64url token `b` (decoded here), with a
+    // fallback to the legacy plain `s`. `l` is the per-link attribution id.
+    const bTok = str(parsed.queryParams?.b);
+    const acq: { source?: string; campaign?: string; linkId?: string } = {
+      source:
+        (bTok ? decodeSourceToken(bTok) : undefined) ||
+        str(parsed.queryParams?.s) ||
+        str(parsed.queryParams?.utm_source),
       campaign: str(parsed.queryParams?.c) ?? str(parsed.queryParams?.utm_campaign),
+      linkId: str(parsed.queryParams?.l),
     };
     if (!acq.source) delete acq.source;
     if (!acq.campaign) delete acq.campaign;
+    if (!acq.linkId) delete acq.linkId;
 
     // Generic "invite to the app" link (no game/team target) —
     // teamder://app, footy://app, https://<host>/app, or the dedicated

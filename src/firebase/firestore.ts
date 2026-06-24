@@ -127,6 +127,7 @@ const userConverter: FirestoreDataConverter<User> = {
       name: u.name,
       email: u.email ?? null,
       avatarId: u.avatarId ?? null,
+      position: u.position ?? null,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt ?? Date.now(),
       onboardingCompleted: u.onboardingCompleted ?? false,
@@ -168,6 +169,7 @@ const userConverter: FirestoreDataConverter<User> = {
         : null,
       fcmTokens: u.fcmTokens ?? [],
       notificationPrefs: u.notificationPrefs ?? null,
+      dmFriendsOnly: u.dmFriendsOnly ?? false,
       newGameSubscriptions: u.newGameSubscriptions ?? [],
       personalGroupId: u.personalGroupId ?? null,
       jersey: u.jersey ?? null,
@@ -189,6 +191,7 @@ const userConverter: FirestoreDataConverter<User> = {
       name: d.name ?? '',
       email: d.email ?? undefined,
       avatarId: d.avatarId ?? undefined,
+      position: (d.position as User['position']) ?? undefined,
       // photoUrl kept readable for legacy docs; never written by new code.
       photoUrl: d.photoUrl ?? undefined,
       createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
@@ -217,6 +220,7 @@ const userConverter: FirestoreDataConverter<User> = {
       friends: Array.isArray(d.friends)
         ? d.friends.filter((s: unknown): s is string => typeof s === 'string')
         : undefined,
+      dmFriendsOnly: d.dmFriendsOnly === true,
       personalGroupId:
         typeof d.personalGroupId === 'string' && d.personalGroupId.length > 0
           ? d.personalGroupId
@@ -766,6 +770,18 @@ const joinRequestConverter: FirestoreDataConverter<GroupJoinRequestDoc> = {
 };
 
 // Safe-parse the saved captain-draft split (חלוקת כוחות).
+function readDraftTeamFeedback(
+  v: unknown,
+): Record<string, 'like' | 'dislike'> | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const out: Record<string, 'like' | 'dislike'> = {};
+  for (const [uid, val] of Object.entries(o)) {
+    if (val === 'like' || val === 'dislike') out[uid] = val;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
@@ -933,6 +949,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : null,
       liveMatch: g.liveMatch ?? null,
       draftTeams: g.draftTeams ?? null,
+      draftTeamFeedback: g.draftTeamFeedback ?? null,
       rotation: g.rotation ?? null,
       reminderSent: g.reminderSent ?? false,
       rateReminderSent: g.rateReminderSent ?? false,
@@ -949,6 +966,9 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       promotePromptSent: g.promotePromptSent === true,
       autoTeamGenerationMinutesBeforeStart:
         g.autoTeamGenerationMinutesBeforeStart ?? null,
+      autoTeamsAt: g.autoTeamsAt ?? null,
+      autoTeamsMethod: g.autoTeamsMethod ?? null,
+      teamsNotifiedAt: g.teamsNotifiedAt ?? null,
       autoTeamsGeneratedAt: g.autoTeamsGeneratedAt ?? null,
       autoTeamsGeneratedBy: g.autoTeamsGeneratedBy ?? null,
       teamsEditedManually: g.teamsEditedManually ?? false,
@@ -1133,6 +1153,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       liveMatch: readLiveMatch(d.liveMatch),
       draftTeams: readDraftTeams(d.draftTeams),
+      draftTeamFeedback: readDraftTeamFeedback(d.draftTeamFeedback),
       rotation: readRotation(d.rotation),
       reminderSent: d.reminderSent === true,
       rateReminderSent: d.rateReminderSent === true,
@@ -1153,6 +1174,16 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         d.autoTeamGenerationMinutesBeforeStart > 0
           ? d.autoTeamGenerationMinutesBeforeStart
           : undefined,
+      autoTeamsAt:
+        typeof d.autoTeamsAt === 'number' && d.autoTeamsAt > 0
+          ? d.autoTeamsAt
+          : undefined,
+      autoTeamsMethod:
+        d.autoTeamsMethod === 'rating' || d.autoTeamsMethod === 'random'
+          ? d.autoTeamsMethod
+          : undefined,
+      teamsNotifiedAt:
+        typeof d.teamsNotifiedAt === 'number' ? d.teamsNotifiedAt : undefined,
       autoTeamsGeneratedAt:
         typeof d.autoTeamsGeneratedAt === 'number'
           ? d.autoTeamsGeneratedAt
@@ -1195,7 +1226,7 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
     const rating =
       typeof o.estimatedRating === 'number' &&
       o.estimatedRating >= 1 &&
-      o.estimatedRating <= 5
+      o.estimatedRating <= 10
         ? o.estimatedRating
         : undefined;
     // OMIT the key when there's no rating instead of writing
@@ -1456,6 +1487,27 @@ export const col = {
     return collection(getFirebase().db, 'groups', groupId, 'messages').withConverter(
       chatMessageConverter,
     );
+  },
+  /** Direct (1-on-1) chat messages: /dmConversations/{convId}/messages/{id}. */
+  dmMessages(convId: string): CollectionReference<ChatMessage> {
+    return collection(
+      getFirebase().db,
+      'dmConversations',
+      convId,
+      'messages',
+    ).withConverter(chatMessageConverter);
+  },
+  /** Read receipts for a DM: /dmConversations/{convId}/reads/{uid}. */
+  dmReads(convId: string) {
+    return collection(getFirebase().db, 'dmConversations', convId, 'reads');
+  },
+  /** Typing indicators for a DM: /dmConversations/{convId}/typing/{uid}. */
+  dmTyping(convId: string) {
+    return collection(getFirebase().db, 'dmConversations', convId, 'typing');
+  },
+  /** A DM conversation metadata doc: /dmConversations/{convId}. */
+  dmConversation(convId: string) {
+    return doc(getFirebase().db, 'dmConversations', convId);
   },
   /** Per-community rating summaries: /groups/{gid}/ratings/{uid}. */
   ratings(groupId: GroupId) {

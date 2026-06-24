@@ -18,6 +18,7 @@ const KEYS = {
   // the OS-level rate limit. Stored once per device — shared across
   // the user's accounts so we don't prompt on a borrowed phone.
   STORE_REVIEW_LAST_SHOWN: 'footy.storeReview.lastShown',
+  AVAIL_NUDGE_LAST_SHOWN: 'footy.availNudge.lastShown',
   // Stash for an invite link (teamder://session/<id> or /team/<id>) the
   // user opened before they were authenticated. RootNavigator consumes
   // this after the post-sign-in onboarding completes.
@@ -61,6 +62,9 @@ const KEYS = {
 export interface AcquisitionTag {
   source?: string;
   campaign?: string;
+  /** The specific tracked-link id (`al_…`) the install came from, for
+   *  per-link attribution (distinguishes many links of the same source). */
+  linkId?: string;
 }
 
 export type PendingInvite =
@@ -124,6 +128,17 @@ export const storage = {
   },
   async setStoreReviewLastShownAt(ms: number): Promise<void> {
     await AsyncStorage.setItem(KEYS.STORE_REVIEW_LAST_SHOWN, String(ms));
+  },
+
+  /** Last time the "mark your available days" popup was shown (snooze guard). */
+  async getAvailNudgeLastShownAt(): Promise<number> {
+    const raw = await AsyncStorage.getItem(KEYS.AVAIL_NUDGE_LAST_SHOWN);
+    if (!raw) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  },
+  async setAvailNudgeLastShownAt(ms: number): Promise<void> {
+    await AsyncStorage.setItem(KEYS.AVAIL_NUDGE_LAST_SHOWN, String(ms));
   },
 
   async getPendingInvite(): Promise<PendingInvite | null> {

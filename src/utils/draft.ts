@@ -9,9 +9,24 @@
 // Everything here is pure + dynamic in the number of teams — no UI assumes
 // a fixed count.
 
-import type { DraftTeamsResult } from '@/types';
+import type { DraftTeamsResult, GameFormat, UserId } from '@/types';
 
 export type DraftMethod = 'snake' | 'regular';
+
+/**
+ * Players per team for a given format. Mirrors the server `perTeamSize`
+ * (functions/src/index.ts) so the client auto-balance lands on the same
+ * roster sizes. Default 5 for 5v5 / unknown.
+ */
+export function playersPerTeam(format?: GameFormat): number {
+  if (format === '4v4') return 4;
+  if (format === '6v6') return 6;
+  if (format === '7v7') return 7;
+  return 5;
+}
+
+/** Neutral rating for an unrated player — the middle of the 1..10 scale. */
+export const NEUTRAL_RATING = 5.5;
 
 /** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */
 export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'] as const;
@@ -82,4 +97,110 @@ export function reconstructPicks(draft: DraftTeamsResult): string[] {
     }
   }
   return picks;
+}
+
+/** In-place Fisher–Yates shuffle. */
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+export interface BalanceTeamsInput {
+  /** Roster ids: real uids + prefixed `guest:<id>`. */
+  playerIds: string[];
+  /** Roster id → 1..10 rating. A missing entry = unrated (scored NEUTRAL_RATING). */
+  ratings: Record<string, number>;
+  /** 2–4. */
+  numTeams: number;
+  /** Game format, for the nominal per-team size. */
+  format?: GameFormat;
+  createdBy: UserId;
+}
+
+export interface BalanceTeamsOutput {
+  result: DraftTeamsResult;
+  /** How many roster ids had no rating (scored as the neutral middle). */
+  unratedCount: number;
+}
+
+/**
+ * rating_greedy_v1 — split the roster into `numTeams` balanced teams by
+ * rating, returning a ready-to-save `DraftTeamsResult`. Client port of the
+ * server `balanceTeamsV1` (functions/src/index.ts), with two differences:
+ *  • It returns draft-shaped teams (captain = highest-rated member,
+ *    `playerIds[0]` = captain) instead of a flat zone map.
+ *  • `perTeam` is sized so NOBODY is benched
+ *    (`max(playersPerTeam(format), ceil(roster/numTeams))`), which keeps the
+ *    persist-then-resume round-trip through `reconstructPicks` exact.
+ *
+ * Unrated players (and guests without `estimatedRating`) are scored at the
+ * neutral middle, so they spread evenly. JS sort is stable, so the pre-sort
+ * shuffle survives within any tied-rating bucket → reruns differ.
+ */
+export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
+  const { playerIds, ratings, numTeams, format, createdBy } = input;
+  let unratedCount = 0;
+  const scored = playerIds.map((id) => {
+    const known = ratings[id];
+    if (typeof known === 'number' && known > 0) {
+      return { id, rating: known };
+    }
+    unratedCount += 1;
+    return { id, rating: NEUTRAL_RATING };
+  });
+
+  shuffleInPlace(scored);
+  scored.sort((a, b) => b.rating - a.rating);
+
+  // Size teams so everyone is placed (no bench) — the manual draft has no
+  // bench either, and a bench would break the reconstructPicks round-trip.
+  const perTeam = Math.max(
+    playersPerTeam(format),
+    Math.ceil(scored.length / Math.max(1, numTeams)),
+  );
+
+  const teams: { ids: string[]; total: number }[] = Array.from(
+    { length: numTeams },
+    () => ({ ids: [], total: 0 }),
+  );
+
+  for (const p of scored) {
+    const open = teams.filter((t) => t.ids.length < perTeam);
+    const pool = open.length > 0 ? open : teams; // safety: never drop a player
+    pool.sort((a, b) => {
+      if (a.total !== b.total) return a.total - b.total;
+      if (a.ids.length !== b.ids.length) return a.ids.length - b.ids.length;
+      return Math.random() - 0.5;
+    });
+    pool[0].ids.push(p.id);
+    pool[0].total += p.rating;
+  }
+
+  const ratingOf = (id: string) =>
+    typeof ratings[id] === 'number' && ratings[id] > 0
+      ? ratings[id]
+      : NEUTRAL_RATING;
+
+  const draftTeams = teams.map((t, index) => {
+    // Captain = the highest-rated member (ties → first after the stable sort).
+    const ordered = t.ids
+      .slice()
+      .sort((a, b) => ratingOf(b) - ratingOf(a));
+    return {
+      index,
+      captainId: ordered[0],
+      playerIds: ordered,
+    };
+  });
+
+  const result: DraftTeamsResult = {
+    method: 'snake',
+    numTeams,
+    createdAt: Date.now(),
+    createdBy,
+    teams: draftTeams,
+  };
+  return { result, unratedCount };
 }

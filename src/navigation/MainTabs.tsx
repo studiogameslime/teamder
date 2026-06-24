@@ -78,10 +78,10 @@ export function MainTabs() {
 
   return (
     <Tab.Navigator
-      // Land on Games (the core "what's happening / join a game" surface)
-      // instead of the Communities list, which read as a directory rather
-      // than a home. Tab order in the bar is unchanged.
-      initialRouteName="GameTab"
+      // Land on the Home tab (the player-card-turned-dashboard): greeting,
+      // next game, pending requests, setup checklist, tips + quick actions.
+      // It's the leading (right under RTL) tab, where "home" conventionally sits.
+      initialRouteName="ProfileTab"
       tabBar={(props) => <TabBarWithBanner {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -98,7 +98,7 @@ export function MainTabs() {
         tabBarIcon: ({ color, size, focused }) => {
           const icon: keyof typeof Ionicons.glyphMap = (() => {
             switch (route.name) {
-              case 'ProfileTab':      return 'person-outline';
+              case 'ProfileTab':      return 'home-outline';
               case 'CommunitiesTab':  return 'globe-outline';
               case 'GameTab':         return 'football-outline';
               case 'ChatTab':         return 'chatbubble-outline';
@@ -115,6 +115,15 @@ export function MainTabs() {
         },
       })}
     >
+      {/* Home — the leading (right under RTL) tab + the app's landing screen. */}
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileStack}
+        options={{ title: he.tabHome }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+        })}
+      />
       <Tab.Screen
         name="CommunitiesTab"
         component={CommunitiesStack}
@@ -143,14 +152,6 @@ export function MainTabs() {
           title: he.tabChat,
           tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined,
         }}
-        listeners={({ navigation, route }) => ({
-          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
-        })}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStack}
-        options={{ title: he.tabProfile }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => resetTabToRoot(e, navigation, route.name),
         })}

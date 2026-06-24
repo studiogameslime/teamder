@@ -177,9 +177,16 @@ export function canEditGame(game: Game, actor: ActorFlags): boolean {
 }
 
 export function canAddGuest(game: Game, actor: ActorFlags): boolean {
-  if (!actor.isOrganizerOrAdmin) return false;
   if (!isOpen(game) && !isLocked(game)) return false;
-  return true;
+  // Admin / organizer: always allowed.
+  if (actor.isOrganizerOrAdmin) return true;
+  // Everyone else must be a registered participant.
+  if (!actor.isParticipant) return false;
+  // The "הגבלת הוספת אורחים עד זמן מסוים" toggle: when set (guestsOpenAt > 0)
+  // non-admins may add guests only from that time onward. When unset (0/undef)
+  // there's NO restriction — any participant can always add a guest.
+  const openAt = game.guestsOpenAt ?? 0;
+  return Date.now() >= openAt;
 }
 
 export function canRemoveGuest(game: Game, actor: ActorFlags): boolean {

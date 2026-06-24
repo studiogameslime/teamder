@@ -632,6 +632,13 @@ export const he = {
   wizardGuestsOpenHint:
     'עד המועד שתבחר רק מנהל המשחק יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
   wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
+  wizardAutoTeamsToggle: 'יצירת כוחות אוטומטית',
+  wizardAutoTeamsHint:
+    'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
+  wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
+  wizardAutoTeamsMethodLabel: 'שיטת החלוקה',
+  wizardAutoTeamsBeforeKickoff: 'מועד יצירת הכוחות חייב להיות לפני תחילת המשחק',
+  wizardAutoTeamsInPast: 'מועד יצירת הכוחות חייב להיות בעתיד',
   wizardSectionAdvanced: 'הגדרות מתקדמות',
   wizardCancelDeadline: 'עד כמה שעות לפני אפשר לבטל הרשמה',
   wizardCancelDeadlineHint:
@@ -761,7 +768,7 @@ export const he = {
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'דרג את השחקן (1–5). דירוג פנימי — נראה למנהלים בלבד.',
+  communityAdminRatingHint: 'דרג את השחקן (1–10). דירוג פנימי — נראה למנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
   communityAdminRatingSet: 'דרג',
   // ── Community statistics screen ──
@@ -1353,6 +1360,42 @@ export const he = {
   achievementCelebrateTier: (tierHe: string) => `פתחת דרגת ${tierHe}!`,
   achievementCelebrateOneOff: 'תואר חדש נפתח!',
   achievementCelebrateCta: 'אדיר!',
+  // What earned this tier — the milestone you reached (e.g. "5 חברים").
+  achievementCelebrateEarned: (threshold: number, nounHe: string) =>
+    `הגעת ל-${threshold} ${nounHe}`,
+  // What the NEXT tier needs. `remaining` is how many more to go.
+  achievementCelebrateNext: (
+    tierHe: string,
+    remaining: number,
+    nounHe: string,
+  ) => `לדרגת ${tierHe}: עוד ${remaining} ${nounHe}`,
+  // Shown instead of the "next tier" line once gold (top tier) is reached.
+  achievementCelebrateMaxed: 'הדרגה הגבוהה ביותר — כל הכבוד!',
+
+  // ── Home screen (the player-card-turned-dashboard) ──────────────────
+  homeChecklistTitle: 'בוא נתחיל',
+  homeChecklistSubtitle: 'כמה צעדים קטנים כדי להפיק את המקסימום',
+  homeStepPhoto: 'הוספת תמונת פרופיל',
+  homeStepAvailability: 'סמן מתי אתה פנוי',
+  homeStepCommunity: 'הצטרף או פתח מועדון',
+  homeStepGame: 'הצטרף למשחק ראשון',
+  homeStepPosition: 'בחר עמדה מועדפת',
+  // Preferred-position picker (ProfileEdit) + labels.
+  positionLabel: 'עמדה מועדפת',
+  positionGk: 'שוער',
+  positionDef: 'הגנה',
+  positionMid: 'קישור',
+  positionAtt: 'התקפה',
+  homeDidYouKnowTitle: 'ידעת ש...',
+  homeTipAutoTeams: 'אפשר ליצור כוחות מאוזנים אוטומטית לפי דירוג השחקנים',
+  homeTipInternalRating: 'דירוג פנימי של שחקנים עוזר לאזן קבוצות הוגנות',
+  homeTipAvailability: 'סמן מתי אתה פנוי — ומנהלים יזמינו אותך למשחקים',
+  homeTipScheduled: 'אפשר לתזמן מראש מתי נפתחת ההרשמה למשחק',
+  homeTipCommunity: 'פתח מועדון כדי לנהל קבוצה קבועה עם דירוגים וכוחות',
+  homePendingRequests: (n: number) =>
+    `${n} ${n === 1 ? 'בקשת הצטרפות ממתינה' : 'בקשות הצטרפות ממתינות'} לאישור`,
+  homeCreateGame: 'צור משחק',
+  homeMarkAvailability: 'סמן זמינות',
   // ── Statistics screen ──
   statsScreenTitle: 'סטטיסטיקה',
   statsSectionNumbers: 'המספרים שלך',
@@ -1546,6 +1589,7 @@ export const he = {
   // Tabs
   tabGame: 'משחקים',
   tabProfile: 'כרטיס שחקן',
+  tabHome: 'בית',
   tabStats: 'סטטיסטיקה',
   tabHistory: 'היסטוריה',
 
@@ -1711,6 +1755,21 @@ export const he = {
   matchesSectionMineRegistered: 'משחקים שאתה רשום אליהם',
   // Matches screen redesign — hero / sections / empty card
   matchesHeroSubtitle: 'הצטרף למשחקים או צור משחק חדש',
+  // Personalised time-of-day greeting on the Matches hero.
+  greetingMorning: 'בוקר טוב',
+  greetingNoon: 'צהריים טובים',
+  greetingEvening: 'ערב טוב',
+  greetingNight: 'לילה טוב',
+  greetingWithName: (g: string, name: string) => `${g}, ${name}`,
+  // Availability nudge popup (shown to users who haven't marked their days).
+  availNudgeTitle: 'מתי בא לך לשחק?',
+  availNudgeBody:
+    'סמן את הימים שאתה פנוי לשחק — ונציע לך אוטומטית משחקים שמתאימים בדיוק לזמן שלך.',
+  availNudgePerk1: 'הצעות משחק לפי הימים שלך',
+  availNudgePerk2: 'מנהלים יראו שאתה פנוי ויזמינו אותך',
+  availNudgePerk3: 'פחות לפספס — יותר לשחק',
+  availNudgeCta: 'סמן את הימים שלי',
+  availNudgeLater: 'אחר כך',
   matchesSectionOpen: 'משחקים פתוחים',
   matchesSectionMine: 'המשחקים שלי',
   matchesEmptyCardTitle: 'לא מצאת משחק שמתאים?',
@@ -1730,6 +1789,7 @@ export const he = {
   matchDetailsManage: 'ניהול משחק',
   matchDetailsCancel: 'בטל הרשמה',
   matchDetailsJoin: 'הצטרף למשחק',
+  matchDetailsAcceptOffer: 'נפתח לך מקום — אשר הגעה',
   matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
   matchDetailsRegistrationOpensAt: (when: string) =>
     `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
@@ -2169,6 +2229,31 @@ export const he = {
   draftBackToEdit: 'חזרה לתיקון',
   draftSaveError: 'שמירת החלוקה נכשלה, נסו שוב',
 
+  // ── Auto-balanced teams (by internal rating) ──────────────────────
+  // Split-method picker (first step of חלוקת כוחות).
+  draftMethodTitle: 'איך לחלק כוחות?',
+  draftMethodAuto: 'אוטומטי לפי דירוג',
+  draftMethodAutoSub: 'איזון לפי הדירוג הפנימי. שחקן ללא דירוג ייחשב ממוצע.',
+  draftMethodManual: 'ידני לפי קפטנים',
+  draftMethodManualSub: 'בחרו קפטנים והגרילו תור-תור',
+  draftMethodRandom: 'אקראי',
+  draftMethodRandomSub: 'חלוקה אקראית ומאוזנת בגודל, ללא דירוג',
+  draftMethodBack: 'חזרה לבחירת שיטה',
+  draftGenerateCta: 'צור כוחות',
+  autoBalanceChooseTeams: 'בכמה קבוצות לחלק?',
+  autoBalanceTeamsOption: (n: number) => `${n} קבוצות`,
+  autoBalanceUnrated: (n: number) =>
+    n === 1
+      ? 'שחקן אחד ללא דירוג פנימי שובץ לפי דירוג ממוצע'
+      : `${n} שחקנים ללא דירוג פנימי שובצו לפי דירוג ממוצע`,
+  autoBalanceError: 'יצירת הכוחות האוטומטיים נכשלה, נסו שוב',
+  autoBalanceReady: 'הכוחות אוזנו לפי הדירוג הפנימי — אפשר לערוך לפני שמירה',
+  autoBalanceNotifyPlayers: 'שלח התראה לשחקנים',
+  autoBalanceNotifySent: 'נשלחה התראה לכל השחקנים',
+  teamFeedbackPrompt: 'הכוחות נראים מאוזנים?',
+  teamFeedbackAggregate: (likes: number, dislikes: number) =>
+    `${likes} 👍 · ${dislikes} 👎`,
+
   // ── Chat ──────────────────────────────────────────────────────────
   delete: 'מחק',
   tabChat: "צ'אטים",
@@ -2189,6 +2274,12 @@ export const he = {
   chatDeleteFailedBody: 'נסו שוב.',
   chatGameSubtitle: 'משתתפי המשחק',
   chatCommunitySubtitle: 'חברי המועדון',
+  // Direct (1-on-1) messages.
+  dmTitle: 'הודעה ישירה',
+  dmSubtitle: 'הודעה פרטית',
+  dmSendMessage: 'שלח הודעה',
+  dmRestricted: 'המשתמש מקבל הודעות מחברים בלבד.',
+  dmFriendsOnlyToggle: 'קבל הודעות רק מחברים',
   chatToday: 'היום',
   chatYesterday: 'אתמול',
   chatWhoRead: 'מי קרא',

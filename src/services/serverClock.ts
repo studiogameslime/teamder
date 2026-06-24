@@ -26,8 +26,10 @@ import { getFirebase } from '@/firebase/config';
 const OFFSET_STORAGE_KEY = '@teamder/serverClockOffset';
 /** How many probes per sync. We keep the lowest-RTT sample. */
 const PROBE_COUNT = 3;
-/** Re-sync if the cached offset is older than this. */
-const RESYNC_AFTER_MS = 5 * 60 * 1000;
+/** Re-sync if the cached offset is older than this. Kept tight (2 min) so a
+ *  long live match corrects clock drift between devices several times instead
+ *  of trusting a single measurement for the whole match. */
+const RESYNC_AFTER_MS = 2 * 60 * 1000;
 
 /** serverNow() - Date.now(), in ms. Hydrated from cache, refined by probes. */
 let offsetMs = 0;

@@ -36,24 +36,19 @@ import {
 import Constants from 'expo-constants';
 
 import { Button } from '@/components/Button';
-import {
-  ProfileHeroCard,
-  type HeroMetaItem,
-} from '@/components/profile/ProfileHeroCard';
-import { HeroStatsCard } from '@/components/profile/HeroStatsCard';
-import { RequestsBell } from '@/components/RequestsBell';
 import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
 import { currentAuthProviderId } from '@/firebase/auth';
-import { ProfileAvailabilityCard } from '@/components/profile/ProfileAvailabilityCard';
-import {
-  ProfileActivityCard,
-  buildProfileActivity,
-} from '@/components/profile/ProfileActivityCard';
 // DisciplineRow (trust meter) hidden from UI for now — see render site below.
 // import { DisciplineRow } from '@/components/profile/DisciplineRow';
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
+import { HomeGreetingHeader } from '@/components/home/HomeGreetingHeader';
+import {
+  OnboardingChecklist,
+  type ChecklistItem,
+} from '@/components/home/OnboardingChecklist';
+import { DidYouKnowCard, type Tip } from '@/components/home/DidYouKnowCard';
 import {
   HamburgerMenu,
   type HamburgerSection,
@@ -77,7 +72,7 @@ import {
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
-import { getAttendanceRate, getTeamCreatorId, type User } from '@/types';
+import { type User } from '@/types';
 
 // Support email + store URLs are remotely overridable via Remote Config
 // (keys support_email / store_url_ios / store_url_android, defaults in
@@ -351,50 +346,49 @@ export function ProfileScreen() {
   // Live played-games count (teams-drawn + game passed). Falls back to the
   // legacy stat only while the live count is still loading.
   const totalGames = playedCount ?? user.stats?.totalGames ?? 0;
-  const attendance = getAttendanceRate(user.stats);
 
-  // Hero meta row (under the name): communities · trust · location.
-  // Each entry is only shown when its data actually exists — no
-  // placeholder "0 קהילות" or a trust score for a user who never
-  // played. Order matches the mockup reading right-to-left.
-  // Per user feedback (Pulse SM3iGk): the "{n} מועדונים" and "{x}% אמין"
-  // chips were noise under the name — drop them and keep only the location.
-  const heroMeta: HeroMetaItem[] = [];
-  if (myCommunities.length > 0) {
-    heroMeta.push({
+  // ── Home: activation checklist + rotating feature tips ──────────────
+  // Each step's `done` comes from live state; the card hides once all done.
+  const checklistItems: ChecklistItem[] = [
+    {
+      key: 'photo',
+      label: he.homeStepPhoto,
+      icon: 'person-outline',
+      done: !!user.photoUrl,
+      onPress: () => nav.navigate('ProfileEdit'),
+    },
+    {
+      key: 'availability',
+      label: he.homeStepAvailability,
+      icon: 'calendar-outline',
+      done: (user.availability?.preferredDays?.length ?? 0) > 0,
+      onPress: () => nav.navigate('AvailabilityEdit'),
+    },
+    {
+      key: 'community',
+      label: he.homeStepCommunity,
       icon: 'people-outline',
-      text: he.profileMetaCommunities(myCommunities.length),
-    });
-  }
-  if (user.availability?.homeCity) {
-    heroMeta.push({
-      icon: 'location-outline',
-      text: user.availability.homeCity,
-    });
-  }
+      done: myCommunities.length > 0,
+      onPress: () => nav.navigate('CommunitiesTab'),
+    },
+    {
+      key: 'game',
+      label: he.homeStepGame,
+      icon: 'football-outline',
+      done: totalGames > 0 || myGames.length > 0,
+      onPress: () => nav.navigate('GameTab'),
+    },
+  ];
+  const checklistComplete = checklistItems.every((i) => i.done);
+  const homeTips: Tip[] = [
+    { text: he.homeTipAutoTeams, onPress: () => nav.navigate('CommunitiesTab') },
+    { text: he.homeTipInternalRating, onPress: () => nav.navigate('CommunitiesTab') },
+    { text: he.homeTipAvailability, onPress: () => nav.navigate('AvailabilityEdit') },
+    { text: he.homeTipScheduled, onPress: () => nav.navigate('GameTab', { screen: 'GameCreate' }) },
+    { text: he.homeTipCommunity, onPress: () => nav.navigate('CommunitiesTab') },
+  ];
 
   // The user's communities split into the ones they OPENED (founder) vs
-  // JOINED — used only to feed the unified recent-activity list below. The
-  // old separate "games I created / communities I opened / joined" sections
-  // were removed: everything now lives in one "פעילות אחרונה" feed.
-  const openedCommunities = myCommunities.filter(
-    (g) => getTeamCreatorId(g) === user.id,
-  );
-  const joinedCommunities = myCommunities.filter(
-    (g) => getTeamCreatorId(g) !== user.id,
-  );
-
-  // Recent-activity feed — merged from achievements unlocked, referrals,
-  // and the real timestamped events the screen already holds: games the
-  // user created / registered to, communities they opened / joined.
-  const activityItems = buildProfileActivity(user, referrals, {
-    createdGames,
-    registeredGames: myGames.filter((g) => g.createdBy !== user.id),
-    openedCommunities,
-    joinedCommunities,
-    userId: user.id,
-  });
-
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
     if (!user) return;
@@ -588,7 +582,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
@@ -602,47 +596,16 @@ export function ProfileScreen() {
           />
         }
       >
-        {/* ① HERO. ImageBackground stadium + dark gradient + the
-            top-bar buttons. Hamburger lives inside the hero so the
-            background image fills behind it. */}
-        <ProfileHeroCard
+        {/* ① Compact greeting header — replaces the big stadium hero. */}
+        <HomeGreetingHeader
           user={user}
-          name={user.name}
-          subtitle={he.profileSubtitlePlayer}
-          meta={heroMeta}
-          onMenuPress={() => setMenuOpen(true)}
-          onEditProfile={() => nav.navigate('ProfileEdit')}
-          headerRight={<RequestsBell bg="rgba(255,255,255,0.18)" color="#FFFFFF" />}
+          onMenu={() => setMenuOpen(true)}
+          onEdit={() => nav.navigate('ProfileEdit')}
         />
 
-        {/* ② Floating stats card overlapping the hero bottom. */}
-        <View style={styles.statsWrap}>
-          <HeroStatsCard
-            totalGames={totalGames}
-            goals={user.stats?.goals ?? 0}
-            friends={user.friends?.length ?? 0}
-            onGamesPress={() => nav.navigate('History')}
-            onFriendsPress={() => nav.navigate('Friends')}
-          />
-        </View>
-
         <View style={styles.body}>
-          {/* ③ Referral row — tap → list of who joined through you */}
-          {rcBool('feature_referrals') ? (
-            <ReferralCard
-              count={referralCount}
-              onPress={() => nav.navigate('Referrals')}
-            />
-          ) : null}
-
-          {/* ④ Trust/discipline meter hidden from UI for now — still computed
-              server-side, just not shown to users. */}
-          {/* <DisciplineRow userId={user.id} /> */}
-
-          {/* ⑤ Next-game card — the soonest game the user is in,
-              or an empty state that jumps to the Games tab. Replaced
-              the achievements rail (titles still live in the menu →
-              Achievements screen). */}
+          {/* ② Next-game card — the soonest game the user is in (or an
+              empty state that jumps to the Games tab). */}
           <ProfileNextGameCard
             game={nextGame}
             userId={user.id}
@@ -650,20 +613,69 @@ export function ProfileScreen() {
             onFindGame={() => nav.navigate('GameTab')}
           />
 
-          {/* ⑥ Availability summary — tap → AvailabilityEdit. */}
-          <ProfileAvailabilityCard
-            availability={user.availability}
-            onEdit={() => nav.navigate('AvailabilityEdit')}
-          />
+          {/* ③ Pending join requests — admins only, when there are any. */}
+          {isAdmin && pendingApprovals > 0 ? (
+            <Pressable
+              onPress={() => nav.navigate('Requests')}
+              style={({ pressed }) => [
+                styles.pendingBanner,
+                pressed && { opacity: 0.9 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="download-outline" size={20} color="#B45309" />
+              <Text style={styles.pendingText} numberOfLines={1}>
+                {he.homePendingRequests(pendingApprovals)}
+              </Text>
+              <Ionicons name="chevron-back" size={18} color="#B45309" />
+            </Pressable>
+          ) : null}
 
-          {/* ⑦ Recent activity — ONE unified feed: achievements, referrals,
-              games created / registered to, and communities opened / joined
-              (replaces the old separate per-collection sections). */}
-          <ProfileActivityCard items={activityItems} />
+          {/* ④ Activation checklist — hidden once every step is done. */}
+          {!checklistComplete ? (
+            <OnboardingChecklist items={checklistItems} />
+          ) : null}
 
-          {/* ⑧ PRIMARY CTA — invite friends. Blue accent (matches
-              the new profile palette) but uses the brand-Button for
-              consistency with the rest of the app. */}
+          {/* ⑤ Rotating "ידעת ש..." feature-discovery tip. */}
+          <DidYouKnowCard tips={homeTips} />
+
+          {/* ⑥ Quick actions — create a game / mark availability. */}
+          <View style={styles.ctaRow}>
+            <Pressable
+              onPress={() => nav.navigate('GameTab', { screen: 'GameCreate' })}
+              style={({ pressed }) => [
+                styles.ctaPrimary,
+                pressed && { opacity: 0.92 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.homeCreateGame}
+            >
+              <Ionicons name="football" size={18} color="#FFFFFF" />
+              <Text style={styles.ctaPrimaryText}>{he.homeCreateGame}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => nav.navigate('AvailabilityEdit')}
+              style={({ pressed }) => [
+                styles.ctaSecondary,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.homeMarkAvailability}
+            >
+              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+              <Text style={styles.ctaSecondaryText}>{he.homeMarkAvailability}</Text>
+            </Pressable>
+          </View>
+
+          {/* ⑦ Referral row — tap → list of who joined through you. */}
+          {rcBool('feature_referrals') ? (
+            <ReferralCard
+              count={referralCount}
+              onPress={() => nav.navigate('Referrals')}
+            />
+          ) : null}
+
+          {/* ⑧ Invite friends. */}
           <Pressable
             onPress={handleShareInvite}
             style={({ pressed }) => [
@@ -673,11 +685,7 @@ export function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.profileInviteFriendsCta}
           >
-            <Ionicons
-              name="share-social-outline"
-              size={18}
-              color="#FFFFFF"
-            />
+            <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
             <Text style={styles.inviteCtaText}>
               {he.profileInviteFriendsCta}
             </Text>
@@ -702,7 +710,7 @@ export function ProfileScreen() {
       {celebrate.length > 0 ? (
         <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} />
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -828,6 +836,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
   },
+  // Amber "pending join requests" banner (admins only).
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 14,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  pendingText: {
+    ...typography.body,
+    color: '#92400E',
+    fontWeight: '700',
+    flex: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Quick-action row: create game (filled green) + mark availability (outline).
+  ctaRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  ctaPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#16A34A',
+  },
+  ctaPrimaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  ctaSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  ctaSecondaryText: { color: colors.primary, fontSize: 15, fontWeight: '800' },
   // Bespoke invite CTA — bright royal blue (matches the new
   // profile palette) with a subtle shadow. Hand-rolled instead of
   // the brand-green Button so the screen's accent stays cohesive.

@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
+import { RatingScale } from './RatingScale';
 import { toast } from './Toast';
 import { logError } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
@@ -159,29 +160,11 @@ export function GuestModal({
 
           <View style={styles.field}>
             <Text style={styles.label}>{he.guestRatingLabel}</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const active = rating !== null && n <= rating;
-                return (
-                  <Pressable
-                    key={n}
-                    onPress={() => setRating(rating === n ? null : n)}
-                    hitSlop={6}
-                  >
-                    <Ionicons
-                      name={active ? 'star' : 'star-outline'}
-                      size={28}
-                      color={active ? colors.warning : colors.textMuted}
-                    />
-                  </Pressable>
-                );
-              })}
-              {rating !== null ? (
-                <Pressable onPress={() => setRating(null)} hitSlop={6}>
-                  <Text style={styles.clear}>{he.dtfClear}</Text>
-                </Pressable>
-              ) : null}
-            </View>
+            <RatingScale
+              value={rating ?? 0}
+              onChange={(n) => setRating(n === 0 ? null : n)}
+              max={10}
+            />
             <Text style={styles.helper}>{he.guestRatingHint}</Text>
           </View>
 
