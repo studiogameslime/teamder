@@ -101,6 +101,134 @@ function unionIds(...lists: string[][]): string[] {
 const ME = mockPlayers[6].id;
 
 export const mockGamesV2: Game[] = [
+  // 0a. DEMO — advanced live match mid-round. Seeds an active rotation with a
+  //     goal log (incl. an assist), a "went home" player with a timestamp, and
+  //     a win streak, so the live scoreboard + rotation panel render fully for
+  //     fix-verification screenshots.
+  {
+    id: 'gv2-live',
+    groupId: 'g1',
+    title: 'דמו — משחק חי',
+    startsAt: Date.now() - 1000 * 60 * 20,
+    fieldName: 'המגרש הקבוע',
+    fieldLat: 32.0853,
+    fieldLng: 34.7818,
+    maxPlayers: 10,
+    minPlayers: 8,
+    players: mockPlayers.slice(0, 10).map((p) => p.id), // p1..p10, ME=p7 included
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 10).map((p) => p.id), [], []),
+    ballHolderUserId: mockPlayers[2].id,
+    jerseysHolderUserId: mockPlayers[3].id,
+    status: 'open',
+    locked: false,
+    currentMatchIndex: 0,
+    matches: [],
+    weather: { tempC: 23, rainProb: 10 },
+    createdBy: mockPlayers[6].id, // ME organizes → admin can enter live
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 2,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 8,
+    cancelDeadlineHours: 12,
+    bringBall: true,
+    bringShirts: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 4,
+    advancedMode: true,
+    draftTeams: {
+      method: 'snake',
+      numTeams: 2,
+      createdAt: Date.now() - 1000 * 60 * 30,
+      createdBy: mockPlayers[6].id,
+      teams: [
+        { index: 0, captainId: 'p1', playerIds: ['p1', 'p2', 'p3', 'p4', 'p5'] },
+        { index: 1, captainId: 'p6', playerIds: ['p6', 'p7', 'p8', 'p9', 'p10'] },
+      ],
+      // אורי (p5) הלך הביתה מקבוצה א' לפני 12 דק׳ — מוצג עם השעה בפאנל.
+      leftHome: [{ playerId: 'p5', homeTeam: 0, at: Date.now() - 1000 * 60 * 12 }],
+    },
+    rotation: {
+      playing: [0, 1],
+      waiting: [],
+      loans: [],
+      wins: { '0': 2, '1': 1 }, // קבוצה א' ברצף 2 נצחונות (streak pill)
+      round: 2,
+      updatedAt: Date.now() - 1000 * 60 * 3,
+    },
+    liveMatch: {
+      phase: 'roundRunning',
+      startedAt: Date.now() - 1000 * 60 * 25,
+      assignments: {
+        p1: 'teamA', p2: 'teamA', p3: 'teamA', p4: 'teamA',
+        p6: 'teamB', p7: 'teamB', p8: 'teamB', p9: 'teamB', p10: 'teamB',
+      },
+      benchOrder: [],
+      scoreA: 2,
+      scoreB: 1,
+      goals: [
+        { id: 'mg1', team: 'A', scorerId: 'p1', assisterId: 'p2', minute: 4, at: Date.now() - 1000 * 60 * 6 },
+        { id: 'mg2', team: 'B', scorerId: 'p6', assisterId: null, minute: 11, at: Date.now() - 1000 * 60 * 4 },
+        { id: 'mg3', team: 'A', scorerId: 'p3', assisterId: 'p1', minute: 18, at: Date.now() - 1000 * 60 * 2 },
+      ],
+      winsByTeam: { A: 2, B: 1 },
+      roundNumber: 2,
+      timerRunning: true,
+      timerLastStartedAt: Date.now() - 1000 * 60 * 3,
+      timerAccumulatedMs: 0,
+    },
+  },
+  // 0b. DEMO — advanced timer-only game that already has a score but the clock
+  //     was reset to 00:00 (the "reset keeps goals" fix). Re-entering shows the
+  //     CTA as "המשך משחק" instead of "התחל" (continue-vs-start fix).
+  {
+    id: 'gv2-resume',
+    groupId: 'g1',
+    title: 'דמו — המשך משחק',
+    startsAt: Date.now() - 1000 * 60 * 40,
+    fieldName: 'המגרש הקבוע',
+    fieldLat: 32.0853,
+    fieldLng: 34.7818,
+    maxPlayers: 10,
+    minPlayers: 8,
+    players: mockPlayers.slice(0, 10).map((p) => p.id),
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 10).map((p) => p.id), [], []),
+    ballHolderUserId: mockPlayers[2].id,
+    jerseysHolderUserId: mockPlayers[3].id,
+    status: 'open',
+    locked: false,
+    currentMatchIndex: 0,
+    matches: [],
+    weather: { tempC: 23, rainProb: 10 },
+    createdBy: mockPlayers[6].id,
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 2,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 8,
+    cancelDeadlineHours: 12,
+    bringBall: true,
+    bringShirts: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 4,
+    advancedMode: true,
+    liveMatch: {
+      phase: 'roundEnded',
+      startedAt: Date.now() - 1000 * 60 * 50,
+      assignments: {},
+      benchOrder: [],
+      scoreA: 3,
+      scoreB: 2,
+      goals: [],
+      timerRunning: false,
+      timerLastStartedAt: null,
+      timerAccumulatedMs: 0, // reset to 00:00 → started=false → "המשך משחק"
+    },
+  },
   // 1. My Game — already registered, full 15/15 so the live match
   //    screen renders three full teams without a shuffle.
   {
