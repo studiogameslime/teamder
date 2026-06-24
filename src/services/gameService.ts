@@ -5475,11 +5475,11 @@ export const gameService = {
         timerControlledBy: userId,
         timerControlledByName: userName,
         timerEvents: [],
-        // Full match reset — wipe the score + goal log so the round truly
-        // starts over (not just the clock).
+        // Reset the clock + the mini-game SCORE, but KEEP `goals` — the
+        // per-player goal tally (the ball-icon badges) must survive a reset
+        // (user request). Goals stay credited to each scorer.
         scoreA: 0,
         scoreB: 0,
-        goals: [],
       };
       g.updatedAt = Date.now();
       return;
@@ -5496,11 +5496,11 @@ export const gameService = {
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
         'liveMatch.timerEvents': [],
-        // Full match reset — wipe the score + goal log so the round truly
-        // starts over (not just the clock).
+        // Reset the clock + the mini-game SCORE, but KEEP `goals` — the
+        // per-player goal tally (the ball-icon badges) must survive a reset
+        // (user request). Goals stay credited to each scorer.
         'liveMatch.scoreA': 0,
         'liveMatch.scoreB': 0,
-        'liveMatch.goals': [],
         updatedAt: serverNow(),
       });
     } catch (err) {

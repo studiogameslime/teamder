@@ -115,12 +115,26 @@ export async function handleSpotOfferAction(
       });
     }
   } catch (err) {
-    // Stale offer (admin already advanced, game cancelled, etc.):
-    // swallow. The user will see the current state next time they
-    // open the app.
-    logError('handleSpotOfferAction', err, { action, gameId });
+    // EXPECTED outcomes — the offer simply isn't actionable anymore (it
+    // passed/expired, was filled, the game closed, etc.). These are normal
+    // product behaviour, not failures, so don't log them as errors (was
+    // flooding the dev inbox — report 1o7twdp). The user sees the current
+    // state when they next open the app.
+    const code =
+      typeof (err as { code?: unknown })?.code === 'string'
+        ? (err as { code: string }).code
+        : (err as { message?: string })?.message ?? '';
+    const expected = [
+      'STALE_OFFER',
+      'GAME_NOT_OPEN',
+      'GAME_STARTED',
+      'GAME_LIVE',
+    ].includes(code);
+    if (!expected) {
+      logError('handleSpotOfferAction', err, { action, gameId });
+    }
     if (__DEV__) {
-      console.warn('[notifAction] spot offer failed', action, gameId, err);
+      console.warn('[notifAction] spot offer not actionable', action, gameId, code);
     }
   }
 }

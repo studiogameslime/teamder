@@ -184,6 +184,7 @@ export const groupService = {
     if (!uidA || !uidB || uidA === uidB) return [];
     if (USE_MOCK_DATA) {
       return Object.values(groupsById).filter((g) => {
+        if (g.isPersonal || g.hidden) return false; // never surface personal/hidden groups
         const ids = new Set([
           ...(Array.isArray(g.playerIds) ? g.playerIds : []),
           ...(Array.isArray(g.adminIds) ? g.adminIds : []),
@@ -222,6 +223,9 @@ export const groupService = {
       groups.push(doc.data());
     }
     return groups.filter((g) => {
+      // A user's hidden "personal" community (for one-time/orphan games) must
+      // never surface on the public player card (user report BuLHYz).
+      if (g.isPersonal || g.hidden) return false;
       const ids = new Set([
         ...(Array.isArray(g.playerIds) ? g.playerIds : []),
         ...(Array.isArray(g.adminIds) ? g.adminIds : []),

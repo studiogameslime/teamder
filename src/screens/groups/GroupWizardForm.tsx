@@ -270,7 +270,10 @@ export function GroupWizardForm({
             <RichRulesInput
               label={he.communityDetailsRules}
               value={values.rules}
-              onChangeText={(v) => set('rules', v)}
+              // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
+              // block can't fail submission with "rules too long" (report nfn19l).
+              maxLength={2000}
+              onChangeText={(v) => set('rules', v.slice(0, 2000))}
               placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
             />
 

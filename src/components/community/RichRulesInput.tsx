@@ -32,6 +32,9 @@ interface Props {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  /** Hard character cap (matches the server rule). Shows a counter as it
+   *  fills up so the user can't overshoot and hit a createGroup rejection. */
+  maxLength?: number;
 }
 
 export function RichRulesInput({
@@ -40,6 +43,7 @@ export function RichRulesInput({
   value,
   onChangeText,
   placeholder,
+  maxLength,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
@@ -113,10 +117,21 @@ export function RichRulesInput({
           multiline
           textAlignVertical="top"
           style={styles.input}
+          maxLength={maxLength}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
       </View>
+      {maxLength ? (
+        <Text
+          style={[
+            styles.counter,
+            value.length >= maxLength && styles.counterFull,
+          ]}
+        >
+          {value.length}/{maxLength}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -160,6 +175,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
   },
+  counter: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'left', // physical left = trailing edge under RTL
+    alignSelf: 'stretch',
+  },
+  counterFull: { color: colors.danger, fontWeight: '700' },
   label: {
     ...typography.label,
     color: colors.textMuted,

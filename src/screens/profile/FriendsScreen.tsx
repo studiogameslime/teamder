@@ -88,6 +88,18 @@ export function FriendsScreen() {
   const handleAccept = async (fromUserId: string) => {
     if (!me) return;
     setBusyId(fromUserId);
+    // Optimistically move the requester into the friends list NOW. The accept
+    // writes both users' `friends` arrays via a callable, but the immediate
+    // re-fetch can read the pre-write snapshot (read-after-write lag) and show
+    // "0 friends" until the next refresh (user report y9qW). Mirrors the
+    // optimistic splice in handleRemove.
+    const accepted = incoming.find((r) => r.request.fromUserId === fromUserId)?.user;
+    if (accepted) {
+      setFriends((prev) =>
+        prev.some((f) => f.id === accepted.id) ? prev : [...prev, accepted],
+      );
+      setIncoming((prev) => prev.filter((r) => r.request.fromUserId !== fromUserId));
+    }
     try {
       await friendsService.acceptRequest(fromUserId, me.id);
       successHaptic();
