@@ -273,6 +273,7 @@ export const he = {
 
   // Live match — v2 portrait layout
   liveStartMatch: 'התחל משחק',
+  liveResumeMatch: 'המשך משחק',
   liveTimerOfTotal: (total: number) => `מתוך ${total} דקות`,
   /** Label above the "+MM:SS" added-time counter shown once the configured
    *  duration is exceeded (the main clock freezes at the duration). */
@@ -373,6 +374,8 @@ export const he = {
   goalAssistPickTitle: (team: string) => `מי בישל? · ${team}`,
   goalAssistNone: 'אף אחד',
   goalOwnGoalShort: 'שער עצמי',
+  goalScorerWithAssist: (scorer: string, assister: string) =>
+    `${scorer} (בישול: ${assister})`,
   winnerPickCancel: 'ביטול',
   winnerPickConfirm: 'אישור',
   liveEndEvening: 'סיים ערב',
@@ -2209,6 +2212,8 @@ export const he = {
   draftNeedCaptains: 'בחרו 2–4 קפטנים כדי להמשיך',
   draftChooseOrder: 'בחרו סדר הגרלה כדי להמשיך',
   draftTooManyCaptains: 'אפשר עד 4 קבוצות — הסירו קפטן',
+  draftPickExactCaptains: (n: number) =>
+    `בחרו בדיוק ${n} קפטנים (כמספר הקבוצות במשחק)`,
   draftNotEnoughPlayers: 'אין מספיק שחקנים רשומים לחלוקה',
   draftBoardTurn: (letter: string) => `תורו של קפטן ${letter} לבחור`,
   draftAvailableTitle: 'שחקנים זמינים',

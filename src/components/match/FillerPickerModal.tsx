@@ -27,9 +27,13 @@ export interface FillRequestView {
 interface Props {
   request: FillRequestView | null;
   onConfirm: (chosenIds: string[]) => void;
+  /** Dismiss the picker without filling — aborts the round transition (the
+   *  admin can adjust teams manually). Prevents a stuck modal when the donor
+   *  pool can't satisfy `requiredCount` (user report). */
+  onCancel: () => void;
 }
 
-export function FillerPickerModal({ request, onConfirm }: Props) {
+export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
 
   // Reset to the recommendation each time a new request opens.
@@ -48,12 +52,27 @@ export function FillerPickerModal({ request, onConfirm }: Props) {
   };
 
   return (
-    <Modal visible={!!request} transparent animationType="slide">
+    <Modal
+      visible={!!request}
+      transparent
+      animationType="slide"
+      onRequestClose={onCancel}
+    >
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>
-            {request ? he.fillPickerTitle(request.teamLabel) : ''}
-          </Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>
+              {request ? he.fillPickerTitle(request.teamLabel) : ''}
+            </Text>
+            <Pressable
+              onPress={onCancel}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={he.cancel}
+            >
+              <Ionicons name="close" size={24} color={colors.textMuted} />
+            </Pressable>
+          </View>
           <Text style={[styles.subtitle, ready ? styles.subtitleOk : null]}>
             {he.fillPickerSelectCount(selected.length, required)}
           </Text>
@@ -105,11 +124,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxHeight: '80%',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
   title: {
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
+    flex: 1,
   },
   subtitle: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   subtitleOk: { color: colors.success, fontWeight: '700' },

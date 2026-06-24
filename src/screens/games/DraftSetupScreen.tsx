@@ -133,24 +133,30 @@ export function DraftSetupScreen() {
   }, []);
 
   const numTeams = captainIds.length;
-  const previewTeams = Math.min(MAX_TEAMS, Math.max(MIN_TEAMS, numTeams || MIN_TEAMS));
+  // The number of captains is fixed by the team count chosen at game creation
+  // (user request) — pick exactly this many, one per team. Clamp to the
+  // supported range as a guard for legacy/missing values.
+  const expectedCaptains = Math.min(
+    MAX_TEAMS,
+    Math.max(MIN_TEAMS, game?.numberOfTeams ?? MIN_TEAMS),
+  );
+  const previewTeams = expectedCaptains;
 
-  // Validation: 2–4 captains, and at least one non-captain to draft.
-  const tooFew = numTeams < MIN_TEAMS;
-  const tooMany = numTeams > MAX_TEAMS;
+  // Validation: exactly `expectedCaptains` captains, and at least one
+  // non-captain left to draft.
+  const tooFew = numTeams < expectedCaptains;
+  const tooMany = numTeams > expectedCaptains;
   const noPlayersLeft = numTeams >= participants.length && participants.length > 0;
-  const captainsOk = !tooFew && !tooMany && !noPlayersLeft;
+  const captainsOk = numTeams === expectedCaptains && !noPlayersLeft;
   const canContinue = captainsOk && method !== null;
 
-  const hint = tooMany
-    ? he.draftTooManyCaptains
-    : noPlayersLeft
-      ? he.draftNotEnoughPlayers
-      : tooFew
-        ? he.draftNeedCaptains
-        : method === null
-          ? he.draftChooseOrder
-          : null;
+  const hint = noPlayersLeft
+    ? he.draftNotEnoughPlayers
+    : tooFew || tooMany
+      ? he.draftPickExactCaptains(expectedCaptains)
+      : method === null
+        ? he.draftChooseOrder
+        : null;
 
   const onContinue = () => {
     if (!canContinue || !method) return;

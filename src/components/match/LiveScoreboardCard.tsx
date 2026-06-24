@@ -98,7 +98,13 @@ export function LiveScoreboardCard(props: Props) {
   const goalLabel = (g: (typeof goals)[number]): string => {
     if (g.ownGoal) return he.goalOwnGoalShort;
     if (!g.scorerId) return he.goalUnknownScorer;
-    return resolve(g.scorerId).displayName ?? '…';
+    const scorer = resolve(g.scorerId).displayName ?? '…';
+    // Surface the assist inline (user report: "why are there no assists?").
+    if (g.assisterId && g.assisterId !== g.scorerId) {
+      const assister = resolve(g.assisterId).displayName ?? '…';
+      return he.goalScorerWithAssist(scorer, assister);
+    }
+    return scorer;
   };
 
   return (

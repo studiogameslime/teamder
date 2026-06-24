@@ -213,6 +213,14 @@ export function AdvancedLiveMatchScreen() {
   const inLastMinute =
     timerRunning && totalMs > 0 && !inOvertime && remainingMs <= 60_000;
   const danger = inOvertime || inLastMinute;
+  // The match already has progress (score/goals/elapsed) even though the timer
+  // is currently stopped — e.g. after a reset, or re-entering a played evening.
+  // The start CTA then reads "המשך" (continue) instead of "התחל" (start a new
+  // game) (user request).
+  const hasLiveProgress =
+    (live?.goals?.length ?? 0) > 0 ||
+    (live?.scoreA ?? 0) > 0 ||
+    (live?.scoreB ?? 0) > 0;
 
   // Synced stoppages log — drives the "history of stops/resumes" chip + sheet.
   const stoppages = buildStoppages(live?.timerEvents, nowTick);
@@ -429,6 +437,16 @@ export function AdvancedLiveMatchScreen() {
     flow.current = null;
     setFillRequest(null);
     advanceFillFlow();
+  };
+
+  // Admin dismissed the fill picker (e.g. the donor pool can't satisfy the
+  // deficit, or it popped up unexpectedly). Abort the in-memory fill flow
+  // WITHOUT committing — the round result already recorded stands, and the
+  // admin can adjust the rosters manually from the rotation panel. Prevents a
+  // stuck modal (user report).
+  const onFillCancel = () => {
+    fillFlowRef.current = null;
+    setFillRequest(null);
   };
 
   // "סיים משחקון" → confirm first, naming the winner + who comes on next, so
@@ -661,6 +679,25 @@ export function AdvancedLiveMatchScreen() {
     transform: [{ scale: pulse.value }],
   }));
 
+  // ─── Flash the timer in the final minute ───────────────────────────────
+  const flash = useSharedValue(1);
+  useEffect(() => {
+    if (inLastMinute) {
+      flash.value = withRepeat(
+        withSequence(
+          withTiming(0.35, { duration: 350 }),
+          withTiming(1, { duration: 350 }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(flash);
+      flash.value = withTiming(1, { duration: 150 });
+    }
+  }, [inLastMinute, flash]);
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value }));
+
   // ─── Gentle haptics near time + at overtime ────────────────────────────
   // A single light tap when the final minute begins, a light tap on each of
   // the last 5 seconds (countdown feel), and one soft "warning" buzz the
@@ -682,8 +719,10 @@ export function AdvancedLiveMatchScreen() {
     }
     if (!inLastMinute) enteredLastMinRef.current = false;
     if (inLastMinute) {
+      // A small buzz on EVERY second of the final minute (user request — was
+      // only the last 5s). `inLastMinute` already bounds this to ≤60s.
       const sec = Math.ceil(remainingMs / 1000);
-      if (sec <= 5 && sec >= 1 && sec !== lastTickSecRef.current) {
+      if (sec >= 1 && sec !== lastTickSecRef.current) {
         lastTickSecRef.current = sec;
         lightHaptic();
       }
@@ -928,7 +967,7 @@ export function AdvancedLiveMatchScreen() {
             controllerName={showController ? timerView.controlledByName : null}
           />
         ) : (
-          <Animated.View style={[styles.timerCard, pulseStyle]}>
+          <Animated.View style={[styles.timerCard, pulseStyle, flashStyle]}>
             <Text
               style={[
                 styles.timerBig,
@@ -1077,7 +1116,9 @@ export function AdvancedLiveMatchScreen() {
                 accessibilityRole="button"
               >
                 <Ionicons name="play" size={26} color="#FFFFFF" />
-                <Text style={styles.primaryBtnText}>{he.liveStartMatch}</Text>
+                <Text style={styles.primaryBtnText}>
+                  {hasLiveProgress ? he.liveResumeMatch : he.liveStartMatch}
+                </Text>
               </Pressable>
             ) : timerRunning ? (
               <Pressable
@@ -1309,7 +1350,11 @@ export function AdvancedLiveMatchScreen() {
 
       {/* Team-completion picker — admin chooses who comes up to fill a short
           playing team (random order when both are short). */}
-      <FillerPickerModal request={fillRequest} onConfirm={onFillConfirm} />
+      <FillerPickerModal
+        request={fillRequest}
+        onConfirm={onFillConfirm}
+        onCancel={onFillCancel}
+      />
 
       {/* Overflow menu — reset rotation / end evening (rare destructive bits). */}
       <Modal

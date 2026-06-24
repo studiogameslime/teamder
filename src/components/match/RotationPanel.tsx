@@ -30,6 +30,12 @@ import type { DraftTeamsResult, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
+/** ms epoch → "HH:MM" for the "went home" departure time. */
+function hhmm(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 interface Props {
   draftTeams?: DraftTeamsResult;
   rotation?: MatchRotation;
@@ -97,6 +103,7 @@ export function RotationPanel({
       name: r.displayName ?? '…',
       avatarId: r.avatarId,
       photoUrl: r.photoUrl,
+      at: l.at,
     };
   });
 
@@ -327,6 +334,9 @@ export function RotationPanel({
                   <Text style={styles.waitMiniName} numberOfLines={1}>
                     {firstName(m.name)}
                   </Text>
+                  {m.at ? (
+                    <Text style={styles.wentHomeTime}>{hhmm(m.at)}</Text>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -462,6 +472,7 @@ const styles = StyleSheet.create({
   leftRoster: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   // Faded avatar so a departed player reads as "off" without losing identity.
   leftAvatar: { opacity: 0.55 },
+  wentHomeTime: { fontSize: 10, fontWeight: '600', color: colors.textMuted },
 
   waitMiniName: {
     fontSize: 11,

@@ -409,14 +409,18 @@ function effFillMode(
 }
 
 /**
- * Drafted teams with any id no longer on the roster removed — so a player who
- * CANCELLED after teams were drafted (but before "start evening") never enters
- * the live rotation as a ghost. `leftHome` players stay (they are still
- * registered; the rotation engine skips them separately).
+ * Drafted teams with any id no longer ACTIVE removed — so neither a player who
+ * CANCELLED after teams were drafted, NOR one who was marked "הלך הביתה", enters
+ * the live rotation as a ghost. Excluding `leftHome` here is what makes their
+ * team read as short so the next round offers a replacement from the bench
+ * (user report: marking someone went home didn't let me pick a sub).
  */
 function liveRosterTeams(
   g: { players?: string[]; guests?: { id: string; waitlisted?: boolean }[] },
-  draft: { teams: { index: number; playerIds: string[] }[] },
+  draft: {
+    teams: { index: number; playerIds: string[] }[];
+    leftHome?: { playerId: string }[];
+  },
 ): { index: number; playerIds: string[] }[] {
   const players = new Set(g.players ?? []);
   const guests = new Set(
@@ -424,8 +428,9 @@ function liveRosterTeams(
       .filter((gu) => !gu.waitlisted)
       .map((gu) => toGuestRosterId(gu.id)),
   );
+  const leftHome = new Set((draft.leftHome ?? []).map((x) => x.playerId));
   const inRoster = (id: string) =>
-    isGuestId(id) ? guests.has(id) : players.has(id);
+    !leftHome.has(id) && (isGuestId(id) ? guests.has(id) : players.has(id));
   return draft.teams.map((t) => ({
     index: t.index,
     playerIds: t.playerIds.filter(inRoster),
@@ -2854,7 +2859,7 @@ export const gameService = {
     }));
     const leftHome = [
       ...(draft.leftHome ?? []).filter((l) => l.playerId !== playerId),
-      { playerId, homeTeam },
+      { playerId, homeTeam, at: Date.now() },
     ];
     const newDraft = { ...draft, teams, leftHome };
     const patch: Record<string, unknown> = {

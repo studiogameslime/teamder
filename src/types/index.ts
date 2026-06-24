@@ -994,8 +994,9 @@ export interface DraftTeamsResult {
   fillMode?: FillMode;
   /** Players who left during the evening ("הלך הביתה"). They're removed from
    *  their team's roster so the rotation skips them; `homeTeam` is remembered
-   *  so an admin can restore them to the same team. */
-  leftHome?: { playerId: UserId; homeTeam: number }[];
+   *  so an admin can restore them to the same team. `at` = when they left
+   *  (ms epoch), shown in the live panel + the post-game summary. */
+  leftHome?: { playerId: UserId; homeTeam: number; at?: number }[];
 }
 
 /** A player currently completing a team that isn't their own. */
