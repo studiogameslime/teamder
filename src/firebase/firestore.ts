@@ -118,6 +118,10 @@ function readStats(d: DocumentData): UserStats | undefined {
     attended: typeof s.attended === 'number' ? s.attended : 0,
     cancelled: typeof s.cancelled === 'number' ? s.cancelled : 0,
     goals: typeof s.goals === 'number' ? s.goals : 0,
+    // Server-maintained (commitRoundStats), same as goals. Without these two
+    // the profile/championship assist + win tallies read back as 0.
+    assists: typeof s.assists === 'number' ? s.assists : 0,
+    wins: typeof s.wins === 'number' ? s.wins : 0,
   };
 }
 
@@ -162,9 +166,11 @@ const userConverter: FirestoreDataConverter<User> = {
             totalGames: u.stats.totalGames,
             attended: u.stats.attended,
             cancelled: u.stats.cancelled,
-            // Server-maintained (commitRoundStats). Serialize it so a full
-            // setDoc of a User object doesn't clobber the goal tally to 0.
+            // Server-maintained (commitRoundStats). Serialize them so a full
+            // setDoc of a User object doesn't clobber the tallies to 0.
             goals: u.stats.goals ?? 0,
+            assists: u.stats.assists ?? 0,
+            wins: u.stats.wins ?? 0,
           }
         : null,
       fcmTokens: u.fcmTokens ?? [],
@@ -617,6 +623,10 @@ function readLiveMatch(v: unknown): LiveMatchState | undefined {
             id: x.id,
             team: x.team,
             scorerId: typeof x.scorerId === 'string' ? x.scorerId : null,
+            // Keep the assister through deserialization — without this the
+            // assist is stripped on every read, so the round-end stats commit
+            // never sees it and per-player assist tallies stay 0 forever.
+            assisterId: typeof x.assisterId === 'string' ? x.assisterId : undefined,
             ownGoal: x.ownGoal === true ? true : undefined,
             minute: typeof x.minute === 'number' ? x.minute : 0,
             at: typeof x.at === 'number' ? x.at : 0,
