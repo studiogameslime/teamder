@@ -48,6 +48,22 @@ export function TeamScore({
     </View>
   );
 
+  // Disambiguate players who share a first name WITHIN this team (common in
+  // pickup groups) by appending a last-name initial — otherwise the live
+  // scoreboard + goal badges are ambiguous ("which גיא scored?").
+  const firstNameCounts = roster.reduce<Record<string, number>>((acc, m) => {
+    const f = firstName(m.name);
+    acc[f] = (acc[f] ?? 0) + 1;
+    return acc;
+  }, {});
+  const labelOf = (m: RosterMember): string => {
+    const f = firstName(m.name);
+    if ((firstNameCounts[f] ?? 0) < 2) return f;
+    const parts = m.name.trim().split(/\s+/);
+    const initial = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return initial ? `${f} ${initial}׳` : f;
+  };
+
   // ─── List layout (live scoreboard) ──────────────────────────────────────
   // Both teams use the IDENTICAL structure (not mirrored): in RTL the avatar
   // leads on the right, the name follows, and the rank sits on the left.
@@ -89,7 +105,7 @@ export function TeamScore({
                   avatar
                 )}
                 <Text style={styles.playerName} numberOfLines={1}>
-                  {firstName(m.name)}
+                  {labelOf(m)}
                 </Text>
                 {/* Goal count for this round (replaces the old rank number).
                     Uniform, flat stat chip — never a filled/tappable look. */}
@@ -143,7 +159,7 @@ export function TeamScore({
               {m.isFiller ? star : null}
             </View>
             <Text style={styles.playerNameGrid} numberOfLines={1}>
-              {firstName(m.name)}
+              {labelOf(m)}
             </Text>
           </View>
         ))}
