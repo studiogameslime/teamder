@@ -2505,11 +2505,19 @@ export const gameService = {
       // clock even on a device whose wall clock is skewed.
       at: serverNow(),
     };
+    // Whom to credit on the evening-long goal tally (badge): a real attributed
+    // scorer only (own goals / unknown credit no one).
+    const tallyId = !opts.ownGoal ? scorerId : null;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch) {
         m.liveMatch.goals = [...(m.liveMatch.goals ?? []), goal];
         if (opts.team === 'A') m.liveMatch.scoreA += 1; else m.liveMatch.scoreB += 1;
+        if (tallyId) {
+          const t = { ...(m.liveMatch.goalTally ?? {}) };
+          t[tallyId] = (t[tallyId] ?? 0) + 1;
+          m.liveMatch.goalTally = t;
+        }
       }
       return;
     }
@@ -2522,6 +2530,8 @@ export const gameService = {
       'liveMatch.goals': arrayUnion(goal),
       'liveMatch.scoreA': increment(opts.team === 'A' ? 1 : 0),
       'liveMatch.scoreB': increment(opts.team === 'B' ? 1 : 0),
+      // Evening-long per-player tally (drives the badge); survives round-end.
+      ...(tallyId ? { [`liveMatch.goalTally.${tallyId}`]: increment(1) } : {}),
       updatedAt: Date.now(),
     });
   },
@@ -2542,8 +2552,15 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch) {
+        const goneM = (m.liveMatch.goals ?? []).find((x) => x.id === goalId);
         const r = apply(m.liveMatch);
         if (r) { m.liveMatch.goals = r.goals; m.liveMatch.scoreA = r.scoreA; m.liveMatch.scoreB = r.scoreB; }
+        // Roll back the evening tally for the undone goal's scorer.
+        if (goneM && !goneM.ownGoal && goneM.scorerId && m.liveMatch.goalTally) {
+          const t = { ...m.liveMatch.goalTally };
+          t[goneM.scorerId] = Math.max(0, (t[goneM.scorerId] ?? 0) - 1);
+          m.liveMatch.goalTally = t;
+        }
       }
       return;
     }
@@ -2551,6 +2568,9 @@ export const gameService = {
     if (!cur?.liveMatch) return;
     const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
     if (!gone) return;
+    // Roll back the evening tally for the undone goal's scorer (own goals /
+    // unknown scorers were never tallied).
+    const untally = !gone.ownGoal && gone.scorerId ? gone.scorerId : null;
     // arrayRemove + increment(-1) compose ATOMICALLY at the field level with a
     // concurrent recordGoal (arrayUnion + increment(+1)) — unlike the old
     // read-modify-write, which overwrote the whole `goals` array and could drop
@@ -2561,6 +2581,7 @@ export const gameService = {
       'liveMatch.goals': arrayRemove(gone),
       'liveMatch.scoreA': increment(gone.team === 'A' ? -1 : 0),
       'liveMatch.scoreB': increment(gone.team === 'B' ? -1 : 0),
+      ...(untally ? { [`liveMatch.goalTally.${untally}`]: increment(-1) } : {}),
       updatedAt: Date.now(),
     });
   },
@@ -2651,11 +2672,14 @@ export const gameService = {
         const { httpsCallable } = require('firebase/functions');
         await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
-          // Idempotency key for the server's double-commit latch. `round` is the
-          // normal value; fall back to the rotation's `updatedAt` (stable for a
-          // given round, unique across rounds, identical on an SDK retry) so the
-          // latch ALWAYS applies — never null → no un-deduped double-credit.
-          roundId: rot.round ?? rot.updatedAt ?? null,
+          // Idempotency key for the server's double-commit latch. Combine the
+          // monotonic round number WITH the rotation's updatedAt: identical on
+          // an SDK retry of the same round (so the create() collides and dedupes),
+          // distinct across rounds (round increments each finalize). Never null
+          // and can't collide two different rounds the way a bare `updatedAt`
+          // fallback could — so the latch always applies and never silently
+          // drops or double-credits a round.
+          roundId: `${rot.round ?? 'r'}:${rot.updatedAt ?? 0}`,
           sideA,
           sideB,
           winnerSide: winnerSide ?? 'tie',
@@ -2796,10 +2820,20 @@ export const gameService = {
     const base = g?.rotation?.baseTeams;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) m.rotation = undefined;
+      if (m) {
+        m.rotation = undefined;
+        if (m.liveMatch) m.liveMatch = { ...m.liveMatch, goalTally: {} };
+      }
       return;
     }
-    const patch: Record<string, unknown> = { rotation: null, updatedAt: Date.now() };
+    // Resetting the rotation restarts the evening → clear the evening goal tally
+    // too (the per-round `resetTimer` deliberately keeps it; this full reset
+    // doesn't).
+    const patch: Record<string, unknown> = {
+      rotation: null,
+      'liveMatch.goalTally': {},
+      updatedAt: Date.now(),
+    };
     if (g?.draftTeams && base && base.length > 0) {
       patch.draftTeams = {
         ...g.draftTeams,

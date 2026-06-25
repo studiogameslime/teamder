@@ -301,16 +301,20 @@ export function AdvancedLiveMatchScreen() {
   // random pair when teams load.
   const [firstTwo, setFirstTwo] = useState<number[]>([]);
 
-  // Goals per player THIS round — shown in each roster row's badge (own goals
-  // credit no scorer, so they're excluded).
+  // Goals per player for the WHOLE evening — shown in each roster row's badge.
+  // Prefer the persistent `goalTally` (accumulates across rounds); fall back to
+  // summing the current round's log for legacy live states without the tally.
   const goalsByPlayer = useMemo(() => {
+    if (live?.goalTally && Object.keys(live.goalTally).length > 0) {
+      return live.goalTally;
+    }
     const acc: Record<string, number> = {};
     for (const g of live?.goals ?? []) {
       if (g.ownGoal || !g.scorerId) continue;
       acc[g.scorerId] = (acc[g.scorerId] ?? 0) + 1;
     }
     return acc;
-  }, [live?.goals]);
+  }, [live?.goalTally, live?.goals]);
 
   // One listener on the game doc delivers liveMatch + rotation + draftTeams.
   // Halves reads vs. separate subscribeLiveMatch + subscribeRotation on the

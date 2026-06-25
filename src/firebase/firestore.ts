@@ -639,6 +639,9 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
     scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,
     teamASlots: readSlots(o.teamASlots),
     teamBSlots: readSlots(o.teamBSlots),
+    // Evening-long goal tally (drives the badge). Same strip-on-read risk as
+    // the slots/round counter — without this it'd vanish on every read.
+    goalTally: readSlots(o.goalTally),
     roundNumber,
     winsByTeam: readWins(o.winsByTeam),
     // Synced match clock — three primitives every device uses to

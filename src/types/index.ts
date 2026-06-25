@@ -1697,6 +1697,14 @@ export interface LiveMatchState {
   teamASlots?: Record<UserId, number>;
   teamBSlots?: Record<UserId, number>;
   /**
+   * Per-player goal tally for the WHOLE evening (not just the current round) —
+   * drives the ball-icon badge. Unlike `goals` (the current round's log, which
+   * is cleared each round-end), this accumulates across all rounds and is only
+   * cleared when the rotation is reset / the evening ends. `recordGoal`
+   * increments it, `removeGoal` decrements it. Own goals credit no one.
+   */
+  goalTally?: Record<UserId, number>;
+  /**
    * Current round (משחקון) number. Increments after every "סיים משחקון".
    * Optional so legacy state without the field reads as round 1.
    */

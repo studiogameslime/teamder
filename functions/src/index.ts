@@ -3154,11 +3154,12 @@ export const onGameRotationChanged = onDocumentWritten(
           typeof u === 'string' &&
           u.length > 0 &&
           !u.startsWith('guest:') &&
-          // Defence-in-depth: a raw guest id (genGuestId → "<base36ts>-<rand>")
-          // contains a hyphen; a real Firebase Auth uid never does. Without
-          // this, a guest id that slipped the `guest:` prefix got `set(merge)`
-          // a phantom /users doc → a spurious "new user" push.
-          !u.includes('-'),
+          // Defence-in-depth: a raw legacy guest id (genGuestId →
+          // "<base36ts>-<rand>", all lowercase) must not get a phantom /users
+          // doc. Match that EXACT shape rather than "any hyphen", so a real
+          // Firebase uid (mixed-case, no hyphen — incl. email accounts) is
+          // never excluded.
+          !/^[0-9a-z]+-[0-9a-z]+$/.test(u),
       );
     const winners = reg(after.rotation.lastRoundWinners);
     const losers = reg(after.rotation.lastRoundLosers);
@@ -3167,10 +3168,10 @@ export const onGameRotationChanged = onDocumentWritten(
     const inc = admin.firestore.FieldValue.increment(1);
     const batch = db.batch();
 
-    // 1) Lifetime per-player wins.
-    for (const uid of winners) {
-      batch.set(db.collection('users').doc(uid), { stats: { wins: inc } }, { merge: true });
-    }
+    // 1) Lifetime per-player wins are NO LONGER written here — they're written
+    //    by commitRoundStats in the same latched batch as the community/game
+    //    win tallies, so the three win counters can't diverge. This trigger now
+    //    only maintains the same-team pair stats below.
 
     // 2) Pairwise "played together on the same team" + together W/L. One doc
     //    per unordered pair at pairStats/{a__b} (sorted), so a player card can
@@ -7891,11 +7892,18 @@ export const cronEvery60Min = onSchedule(
 // W/L + head-to-head against). Idempotency is the caller's concern — it sends
 // each finished round once.
 const GUEST_PREFIX = 'guest:';
-// A real Firebase Auth uid: not guest-prefixed AND no hyphen (a raw guest id
-// from genGuestId is "<base36ts>-<rand>"). The hyphen check stops a guest id
-// that slipped the prefix from `set(merge)`-creating a phantom /users doc.
+// Legacy raw guest id shape: genGuestId() → "<base36ts>-<rand>" (all lowercase
+// alphanumeric, exactly one hyphen). A real Firebase Auth uid is 28 MIXED-case
+// alphanumeric chars and never contains a hyphen — including email/password
+// accounts — so matching this exact shape (instead of "any hyphen") can never
+// misclassify a real user, even a hypothetical one with a hyphen.
+const RAW_GUEST_RE = /^[0-9a-z]+-[0-9a-z]+$/;
+// A real Firebase Auth uid: not guest-prefixed AND not a raw legacy guest id.
 const isReal = (id: string) =>
-  typeof id === 'string' && !id.startsWith(GUEST_PREFIX) && !id.includes('-');
+  typeof id === 'string' &&
+  id.length > 0 &&
+  !id.startsWith(GUEST_PREFIX) &&
+  !RAW_GUEST_RE.test(id);
 
 export const commitRoundStats = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
@@ -8056,7 +8064,15 @@ export const commitRoundStats = onCall(
         { merge: true },
       );
     };
-    for (const uid of roundWinners) tallyResult(uid, 'wins');
+    for (const uid of roundWinners) {
+      tallyResult(uid, 'wins');
+      // Lifetime per-player wins are written HERE — in the SAME idempotent,
+      // committedRounds-latched batch as the community/game win tallies —
+      // instead of the onGameRotationChanged trigger. That guarantees the
+      // three win counters (lifetime / community / game) can never diverge:
+      // they all commit together, or none of them on a failure.
+      batch.set(db.collection('users').doc(uid), { stats: { wins: inc(1) } }, { merge: true });
+    }
     for (const uid of roundLosers) tallyResult(uid, 'losses');
 
     // Directional pair assists: assistsAToB = sorted-first player assisted the
