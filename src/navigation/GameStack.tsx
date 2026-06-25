@@ -23,6 +23,7 @@ import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
+import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
@@ -63,6 +64,7 @@ export type GameStackParamList = {
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
   AvailablePlayers: { gameId: string };
+  AddMembers: { gameId: string };
   /** Full roster for one match — pulled out of MatchDetails. */
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */
@@ -116,6 +118,7 @@ export function GameStack() {
         name="AvailablePlayers"
         component={AvailablePlayersScreen}
       />
+      <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />

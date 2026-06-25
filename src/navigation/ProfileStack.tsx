@@ -28,6 +28,7 @@ import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
+import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
@@ -57,6 +58,7 @@ export type ProfileStackParamList = {
   MatchDetails: { gameId: string };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
+  AddMembers: { gameId: string };
   GameEdit: { gameId: string };
   LiveMatch: { gameId: string };
   // Reachable from MatchDetails' community-link icon.
@@ -94,6 +96,7 @@ export function ProfileStack() {
       <Stack.Screen name="Referrals" component={ReferralsListScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />

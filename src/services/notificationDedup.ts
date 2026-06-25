@@ -53,6 +53,7 @@ export type NotificationKind =
   | 'promotePrompt'
   | 'groupInvitation'
   | 'gameShortageWarning'
+  | 'addedToGame'
   | 'friendRequest'
   | 'friendRequestAccepted'
   | 'teamsGenerated';
@@ -127,6 +128,7 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // 12h is wider than the runs that detect shortage so a missed retry
   // doesn't spam the admin.
   gameShortageWarning: 12 * 60 * 60 * 1000,
+  addedToGame: 5 * 60 * 1000,
   // Friendship pings — one per (sender, recipient) pair per day is plenty.
   friendRequest: 24 * 60 * 60 * 1000,
   friendRequestAccepted: 24 * 60 * 60 * 1000,
@@ -260,6 +262,8 @@ export function inferEntityFromPayload(
         entityId: gameId || recipientId,
         reason: inviterId ? `inv-${inviterId}` : 'invite',
       };
+    case 'addedToGame':
+      return { entityType: 'game', entityId: gameId || recipientId, reason: 'added' };
     case 'playerCancelled':
       // Reason intentionally NOT keyed by cancellingUserId — we want
       // cancellations from different players to share a dedupeKey and

@@ -32,6 +32,7 @@ import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
+import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
@@ -58,6 +59,7 @@ export type CommunitiesStackParamList = {
   MatchDetails: { gameId: string };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
+  AddMembers: { gameId: string };
   GameEdit: { gameId: string };
   LiveMatch: { gameId: string };
   // Admin approvals are reachable from CommunityDetails' overflow
@@ -106,6 +108,7 @@ export function CommunitiesStack() {
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />

@@ -274,6 +274,7 @@ export function navigateForPush(
     case 'spotOpened':
     case 'spotOffered':
     case 'inviteToGame':
+    case 'addedToGame':
     case 'rateReminder':
     case 'gameFillingUp':
     case 'gameRsvpNudge':

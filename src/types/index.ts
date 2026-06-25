@@ -420,6 +420,7 @@ export type NotificationType =
   | 'gamePlayersJoined'
   | 'growthMilestone'
   | 'inviteToGame'
+  | 'addedToGame'
   | 'rateReminder'
   | 'gameFillingUp'
   /**

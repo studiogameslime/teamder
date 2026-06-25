@@ -2031,6 +2031,26 @@ export const he = {
   matchManageToggle: 'ניהול משחק',
   matchInviteAvailable: 'הזמן שחקנים פנויים',
   matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המשחק, באזור',
+  // Admin "register members from the community" flow (MatchDetails menu →
+  // AddMembersScreen).
+  matchMenuAddMembers: 'הוסף שחקנים מהמועדון',
+  addMembersTitle: 'הוספת שחקנים מהמועדון',
+  addMembersHint: 'בחרו חברי מועדון לרשום ישירות למשחק. הם יקבלו על כך התראה.',
+  addMembersHintSpots: (n: number) =>
+    n === 1
+      ? 'נשאר מקום אחד בהרכב — מעבר לזה השחקנים יתווספו לרשימת ההמתנה. הם יקבלו התראה.'
+      : n === 0
+        ? 'ההרכב מלא — השחקנים שתבחרו יתווספו לרשימת ההמתנה. הם יקבלו התראה.'
+        : `נשארו ${n} מקומות בהרכב — מעבר לזה השחקנים יתווספו לרשימת ההמתנה. הם יקבלו התראה.`,
+  addMembersEmpty: 'כל חברי המועדון כבר רשומים למשחק',
+  addMembersSubmit: (n: number) => (n === 1 ? 'רשום שחקן' : `רשום ${n} שחקנים`),
+  addMembersSubmitEmpty: 'בחרו שחקנים לרישום',
+  addMembersDone: (n: number) =>
+    n === 1 ? 'שחקן נרשם למשחק' : `${n} שחקנים נרשמו למשחק`,
+  addMembersDoneWaitlist: (players: number, waitlist: number) =>
+    `${players} נרשמו להרכב, ${waitlist} לרשימת ההמתנה`,
+  addMembersNoneAdded: 'אף שחקן לא נוסף (כבר רשומים)',
+  addMembersError: 'לא הצלחנו לרשום, נסו שוב',
   // Compact status helpers — used by MatchStatusCard
   matchStatusWaitingTitle: 'מחכים לשחקנים',
   matchStatusWaitingHelper: (n: number) => `חסרים עוד ${n} שחקנים`,

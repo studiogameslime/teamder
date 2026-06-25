@@ -2405,6 +2405,60 @@ export const gameService = {
     });
   },
 
+  /**
+   * Admin registers community members straight into a game (server-side
+   * `adminAddPlayers` callable → `players`, overflowing to `waitlist` when the
+   * game is full). Each added member gets an `addedToGame` push. Returns how
+   * many landed in each bucket. Admin-only (enforced server-side + by rules).
+   */
+  async adminAddMembers(
+    gameId: string,
+    userIds: string[],
+  ): Promise<{ addedToPlayers: number; addedToWaitlist: number }> {
+    if (!gameId || userIds.length === 0) {
+      return { addedToPlayers: 0, addedToWaitlist: 0 };
+    }
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      let added = 0;
+      let waited = 0;
+      if (m) {
+        const cap = m.maxPlayers && m.maxPlayers > 0 ? m.maxPlayers : Infinity;
+        const inRoster = new Set([
+          ...(m.players ?? []),
+          ...(m.waitlist ?? []),
+          ...(m.pending ?? []),
+        ]);
+        for (const uid of userIds) {
+          if (inRoster.has(uid)) continue;
+          inRoster.add(uid);
+          if ((m.players?.length ?? 0) < cap) {
+            m.players = [...(m.players ?? []), uid];
+            added += 1;
+          } else {
+            m.waitlist = [...(m.waitlist ?? []), uid];
+            waited += 1;
+          }
+        }
+        m.participantIds = Array.from(
+          new Set([...(m.players ?? []), ...(m.waitlist ?? []), ...(m.pending ?? [])]),
+        );
+      }
+      return { addedToPlayers: added, addedToWaitlist: waited };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const res = await httpsCallable(getFirebase().functions, 'adminAddPlayers')({
+      gameId,
+      userIds,
+    });
+    const d = (res?.data ?? {}) as { addedToPlayers?: number; addedToWaitlist?: number };
+    return {
+      addedToPlayers: d.addedToPlayers ?? 0,
+      addedToWaitlist: d.addedToWaitlist ?? 0,
+    };
+  },
+
   // ─── Live "winner stays" rotation ──────────────────────────────────────
   // Sits on top of draftTeams. All math is in the pure rotationEngine; these
   // methods just load the game, run the engine, and persist rotation (+ the

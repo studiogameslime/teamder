@@ -95,6 +95,7 @@ type NotificationType =
   | 'spotOffered'
   | 'growthMilestone'
   | 'inviteToGame'
+  | 'addedToGame'
   | 'rateReminder'
   | 'gameFillingUp'
   | 'gameRsvpNudge'
@@ -561,6 +562,19 @@ function buildMessage(
         body: when
           ? `${inviter} הזמין אותך ל${gameTitle} (${when})`
           : `${inviter} הזמין אותך ל${gameTitle}`,
+      };
+    }
+    case 'addedToGame': {
+      // Admin REGISTERED the player (not just invited) — copy reflects that
+      // they're already in, and on the waitlist when the game was full.
+      const adder = (payload.adderName as string) || 'מנהל המשחק';
+      const onWaitlist = payload.waitlisted === true;
+      const where = onWaitlist ? 'רשימת ההמתנה של' : '';
+      return {
+        title: onWaitlist ? 'נוספת לרשימת ההמתנה' : 'נרשמת למשחק!',
+        body: when
+          ? `${adder} רשם אותך ל${where}${gameTitle} (${when})`
+          : `${adder} רשם אותך ל${where}${gameTitle}`,
       };
     }
     case 'rateReminder':
@@ -4673,6 +4687,146 @@ export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, asy
 
   return { ok: true };
 });
+
+// ─── Callable: admin registers community members to a game ─────────────
+//
+// The organiser / a community admin picks members from their community and
+// registers them straight into the game (NOT just an invite — they're added
+// to `players`, overflowing to `waitlist` when the game is full). Each added
+// member gets an `addedToGame` push. Admin-only; targets must be members of
+// the game's community. Runs server-side (Admin SDK) so the roster write is
+// atomic + authoritative and the push fans out canonically.
+export const adminAddPlayers = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const callerUid = auth.uid;
+
+    const data = (request.data ?? {}) as { gameId?: unknown; userIds?: unknown };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const userIds = Array.isArray(data.userIds)
+      ? (data.userIds.filter((x) => typeof x === 'string' && x.length > 0) as string[])
+      : [];
+    if (gameId.length === 0 || gameId.length > 128) {
+      throw new HttpsError('invalid-argument', 'invalid gameId');
+    }
+    if (userIds.length === 0 || userIds.length > 40) {
+      throw new HttpsError('invalid-argument', 'userIds must be 1..40');
+    }
+    const targets = Array.from(new Set(userIds)); // dedupe
+
+    // Load game + caller's name.
+    const [gameSnap, callerSnap] = await Promise.all([
+      db.collection('games').doc(gameId).get(),
+      db.collection('users').doc(callerUid).get(),
+    ]);
+    if (!gameSnap.exists) {
+      throw new HttpsError('failed-precondition', 'game not found');
+    }
+    const game = gameSnap.data() as {
+      title?: string;
+      groupId?: string;
+      createdBy?: string;
+      status?: string;
+      startsAt?: number;
+      maxPlayers?: number;
+    };
+    if (game.status === 'finished' || game.status === 'cancelled') {
+      throw new HttpsError('failed-precondition', 'game is no longer open');
+    }
+    if (!game.groupId) {
+      throw new HttpsError('failed-precondition', 'game has no community');
+    }
+
+    // Permission: caller must be the organiser OR a community admin, and we
+    // also need the member set so we only add genuine community members.
+    const groupSnap = await db.collection('groups').doc(game.groupId).get();
+    if (!groupSnap.exists) {
+      throw new HttpsError('permission-denied', 'community missing');
+    }
+    const grp = groupSnap.data() as { playerIds?: string[]; adminIds?: string[] };
+    const adminIds = new Set(grp.adminIds ?? []);
+    const isAdmin = callerUid === game.createdBy || adminIds.has(callerUid);
+    if (!isAdmin) {
+      throw new HttpsError('permission-denied', 'admins only');
+    }
+    const memberIds = new Set<string>([...(grp.playerIds ?? []), ...(grp.adminIds ?? [])]);
+
+    // Transaction: append eligible targets to players (then waitlist when the
+    // game is full), keeping participantIds + joinedAt in sync.
+    const result = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(gameSnap.ref);
+      const g = fresh.data() as {
+        players?: string[];
+        waitlist?: string[];
+        pending?: string[];
+        participantIds?: string[];
+        joinedAt?: Record<string, number>;
+        maxPlayers?: number;
+      };
+      const players = [...(g.players ?? [])];
+      const waitlist = [...(g.waitlist ?? [])];
+      const pending = [...(g.pending ?? [])];
+      const joinedAt = { ...(g.joinedAt ?? {}) };
+      const cap = typeof g.maxPlayers === 'number' && g.maxPlayers > 0 ? g.maxPlayers : Infinity;
+      const inRoster = new Set<string>([...players, ...waitlist, ...pending]);
+      const now = Date.now();
+
+      const addedToPlayers: string[] = [];
+      const addedToWaitlist: string[] = [];
+      for (const uid of targets) {
+        if (!memberIds.has(uid)) continue; // not a community member → skip
+        if (inRoster.has(uid)) continue; // already registered → skip
+        inRoster.add(uid);
+        joinedAt[uid] = now;
+        if (players.length < cap) {
+          players.push(uid);
+          addedToPlayers.push(uid);
+        } else {
+          waitlist.push(uid);
+          addedToWaitlist.push(uid);
+        }
+      }
+      if (addedToPlayers.length === 0 && addedToWaitlist.length === 0) {
+        return { addedToPlayers, addedToWaitlist };
+      }
+      const participantIds = Array.from(new Set([...players, ...waitlist, ...pending]));
+      tx.update(gameSnap.ref, {
+        players,
+        waitlist,
+        participantIds,
+        joinedAt,
+        updatedAt: now,
+      });
+      return { addedToPlayers, addedToWaitlist };
+    });
+
+    // Push each newly-added member (one doc per recipient → per-player body).
+    const adderName = (callerSnap.data() as { name?: string } | undefined)?.name ?? '';
+    const title = typeof game.title === 'string' ? game.title : 'המשחק';
+    const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
+    const pushOne = (uid: string, waitlisted: boolean) =>
+      createNotificationOnce({
+        type: 'addedToGame',
+        recipientId: uid,
+        payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
+        createdByUid: callerUid,
+      }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+    await Promise.all([
+      ...result.addedToPlayers.map((uid) => pushOne(uid, false)),
+      ...result.addedToWaitlist.map((uid) => pushOne(uid, true)),
+    ]);
+
+    return {
+      ok: true,
+      addedToPlayers: result.addedToPlayers.length,
+      addedToWaitlist: result.addedToWaitlist.length,
+    };
+  },
+);
 
 // ─── Callable: notify game admin of player cancellation ────────────────
 //

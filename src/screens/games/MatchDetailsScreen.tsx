@@ -1696,6 +1696,23 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
+        // Register members straight from the community into the game (admin
+        // only, while open). Distinct from "invite" — these are added to the
+        // roster directly and get a push that they were registered.
+        ...(isAdmin && game.status === 'open'
+          ? [
+              {
+                id: 'addMembers',
+                label: he.matchMenuAddMembers,
+                icon: 'people-circle-outline' as const,
+                onPress: () =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'AddMembers',
+                    { gameId: game.id },
+                  ),
+              },
+            ]
+          : []),
         // ── Setting ────────────────────────────────────────────────
         // Visibility toggle — admin only, only when the game is
         // still in 'open' state (matches gameService.setVisibility
