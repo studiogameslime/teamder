@@ -132,6 +132,13 @@ const ADS_ENABLED = (process.env.EXPO_PUBLIC_ADMOB_ENABLED ?? '').trim() === '1'
 const SCREENSHOT_MODE =
   __DEV__ &&
   (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1';
+
+// Mock/demo builds carry no revenue and are used for demos + marketing
+// screenshots, so they never render ads. Production is NEVER a mock build, so
+// this can't disable real ad revenue (unlike SCREENSHOT_MODE it needs no
+// __DEV__ gate — EXPO_PUBLIC_FOOTY_FORCE_MOCK is the master mock switch).
+const IS_MOCK_BUILD = (process.env.EXPO_PUBLIC_FOOTY_FORCE_MOCK ?? '').trim() === '1';
+const HIDE_ADS = SCREENSHOT_MODE || IS_MOCK_BUILD;
 /**
  * Internal-testing escape hatch. When set to '1', the banner + app-open
  * ad unit IDs ALWAYS resolve to AdMob's test IDs even in release
@@ -407,7 +414,7 @@ export const adsService = {
     skip?: boolean;
     accountCreatedAt?: number;
   }): Promise<void> {
-    if (SCREENSHOT_MODE) return;
+    if (HIDE_ADS) return;
     if (opts?.skip) return;
     if (!ADS_ENABLED) return;
     if (appOpenShownThisSession) return;
@@ -501,7 +508,7 @@ export function BannerAd(): React.ReactElement | null {
     };
   }, [ready]);
 
-  if (SCREENSHOT_MODE) return null;
+  if (HIDE_ADS) return null;
   if (!ADS_ENABLED || !ready) return null;
   if (!bannerMaster) return null; // Pulse master kill-switch (appConfig/ads)
   if (!rcBool('banner_enabled')) return null; // remote kill-switch

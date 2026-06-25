@@ -3,121 +3,255 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Teamder · הזמנה</title>
-<meta name="description" content="הצטרף לקהילת כדורגל ב־Teamder" />
+<title>Teamder · מארגנים כדורגל בלי כאב ראש</title>
+<meta name="description" content="האפליקציה שמנהלת את משחק הכדורגל השבועי שלך — אישורי הגעה, תזכורות, מילוי מקום, קהילות וטיימר משחק. אתה רק מגיע לשחק." />
 <!-- Default OG placeholders. The serveCommunityPage CF rewrites
      these per-group when the page is fetched at /team/{id} so
      WhatsApp / Telegram / Facebook show the community's name + cover
      image as the link preview. Crawlers don't run JS, so SSR is the
      only way to get a per-community preview. -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Teamder · הזמנה" />
-<meta property="og:description" content="הצטרף לקהילת כדורגל ב־Teamder" />
+<meta property="og:title" content="Teamder · מארגנים כדורגל בלי כאב ראש" />
+<meta property="og:description" content="כל המשחק השבועי במקום אחד — אישורי הגעה, תזכורות ומילוי מקום. אתה רק מגיע לשחק." />
 <meta property="og:image" content="https://teamderfc.web.app/logo.png" />
 <meta property="og:locale" content="he_IL" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Teamder · הזמנה" />
-<meta name="twitter:description" content="הצטרף לקהילת כדורגל ב־Teamder" />
+<meta name="twitter:title" content="Teamder · מארגנים כדורגל בלי כאב ראש" />
+<meta name="twitter:description" content="כל המשחק השבועי במקום אחד — אישורי הגעה, תזכורות ומילוי מקום." />
 <meta name="twitter:image" content="https://teamderfc.web.app/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --blue:#3B82F6;
-    --blue-dark:#1D4ED8;
-    --gray:#6B7280;
-    --bg:#F9FAFB;
-    --surface:#FFFFFF;
+  :root{
+    --blue:#2563EB; --blue-d:#1D4ED8; --green:#22C55E; --green-d:#16A34A;
+    --ink:#0F2540; --muted:#5B6B82; --line:#E7EDF5;
+    --bg:#FFFFFF; --bg2:#F4F7FB;
   }
-  * { box-sizing:border-box; }
-  body {
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    background:var(--bg);
-    color:#111;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
-    padding:24px;
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family:'Assistant',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
   }
-  .card {
-    background:var(--surface);
-    border-radius:24px;
-    padding:36px 28px;
-    max-width:420px;
-    width:100%;
-    box-shadow:0 12px 48px rgba(0,0,0,0.08);
-    text-align:center;
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 22px; }
+  a{ color:inherit; text-decoration:none; }
+
+  /* top bar */
+  .nav{ position:sticky; top:0; z-index:30; background:rgba(255,255,255,0.86);
+    backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--line); }
+  .nav .row{ display:flex; align-items:center; justify-content:space-between; height:68px; }
+  .brand{ display:flex; align-items:center; gap:11px; }
+  .logo{ width:44px;height:44px;border-radius:13px;background:linear-gradient(150deg,var(--blue),var(--blue-d));
+    display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(29,78,216,0.30);}
+  .logo svg{ width:26px;height:26px; }
+  .brand b{ font-size:24px; font-weight:800; letter-spacing:-0.4px;}
+  .brand b span{ color:var(--green); }
+  .nav .get{ background:var(--blue); color:#fff; font-weight:700; font-size:16px; padding:10px 20px; border-radius:11px;}
+
+  /* hero */
+  .hero{ background:
+      radial-gradient(900px 460px at 88% -8%, #E9F0FF 0%, rgba(233,240,255,0) 62%),
+      linear-gradient(180deg,#FFFFFF, #F7F9FD); padding:54px 0 30px; overflow:hidden;}
+  .hero .grid{ display:grid; grid-template-columns:1.1fr 0.9fr; gap:40px; align-items:center;}
+  .kick{ display:inline-flex; align-items:center; gap:9px; background:#E7EEFF; color:var(--blue-d);
+    font-weight:700; font-size:18px; padding:8px 16px; border-radius:999px;}
+  .kick .dot{ width:9px;height:9px;border-radius:50%;background:var(--green);}
+  h1{ font-size:54px; line-height:1.08; font-weight:800; letter-spacing:-1.2px; margin:18px 0 0;}
+  h1 .b{ color:var(--blue); } h1 .g{ color:var(--green-d); }
+  .lead{ font-size:22px; color:var(--muted); font-weight:600; margin-top:16px; max-width:560px;}
+  .cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px;
+    font-family:inherit; font-weight:700; font-size:18px; padding:15px 26px; border-radius:14px;
+    border:none; cursor:pointer; }
+  .btn-primary{ background:var(--blue); color:#fff; box-shadow:0 12px 26px rgba(37,99,235,0.30);}
+  .btn-primary:hover{ background:var(--blue-d); }
+  .btn-ghost{ background:#fff; color:var(--ink); border:1.5px solid var(--line); }
+  .trust{ margin-top:18px; color:var(--muted); font-size:16px; font-weight:600; }
+
+  .phoneWrap{ display:flex; justify-content:center; }
+  .phone{ width:300px; padding:11px; background:#0c1220; border-radius:42px; position:relative;
+    box-shadow:0 40px 80px rgba(15,37,64,0.30); border:2px solid #1c2740;}
+  .phone .notch{ position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    width:104px; height:22px; background:#0c1220; border-radius:0 0 16px 16px; z-index:3;}
+  .phone .screen{ border-radius:33px; overflow:hidden; background:#0b1b3a; display:block;}
+  .phone img{ width:100%; display:block; }
+
+  /* pain strip */
+  .pain{ background:var(--ink); color:#fff; padding:34px 0;}
+  .pain .row{ display:flex; gap:26px; align-items:center; justify-content:center; flex-wrap:wrap;}
+  .pain .q{ font-size:24px; font-weight:800; }
+  .pain .chips{ display:flex; gap:12px; flex-wrap:wrap; }
+  .pain .chip{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
+    padding:9px 16px; border-radius:999px; font-size:17px; font-weight:600; color:#D6E2F5;}
+
+  /* features */
+  .sec{ padding:62px 0; }
+  .sec h2{ font-size:38px; font-weight:800; letter-spacing:-0.8px; text-align:center;}
+  .sec .subhead{ text-align:center; color:var(--muted); font-size:20px; font-weight:600; margin-top:10px;}
+  .feat{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px;}
+  .card{ background:#fff; border:1px solid var(--line); border-radius:20px; padding:24px;
+    transition:transform .15s ease, box-shadow .15s ease;}
+  .card:hover{ transform:translateY(-3px); box-shadow:0 18px 40px rgba(15,37,64,0.08);}
+  .ic{ width:54px;height:54px;border-radius:15px;display:flex;align-items:center;justify-content:center;
+    font-size:26px; margin-bottom:14px;}
+  .card h3{ font-size:21px; font-weight:800;}
+  .card p{ color:var(--muted); font-size:16.5px; font-weight:600; margin-top:6px; line-height:1.5;}
+
+  /* how */
+  .how{ background:var(--bg2); }
+  .steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px;}
+  .step{ text-align:center; padding:8px;}
+  .step .n{ width:56px;height:56px;border-radius:50%; margin:0 auto 14px;
+    background:linear-gradient(150deg,var(--blue),var(--blue-d)); color:#fff;
+    display:flex;align-items:center;justify-content:center; font-size:26px; font-weight:800;
+    box-shadow:0 12px 24px rgba(37,99,235,0.30);}
+  .step h3{ font-size:21px; font-weight:800;}
+  .step p{ color:var(--muted); font-size:16.5px; font-weight:600; margin-top:6px;}
+
+  /* final cta */
+  .final{ text-align:center; padding:70px 0; background:
+      radial-gradient(700px 360px at 50% 0%, #EAF1FF, rgba(234,241,255,0) 70%);}
+  .final h2{ font-size:40px; font-weight:800; letter-spacing:-0.8px;}
+  .final p{ color:var(--muted); font-size:20px; font-weight:600; margin-top:12px;}
+  .stores{ display:flex; gap:14px; justify-content:center; margin-top:26px; flex-wrap:wrap;}
+  .store{ display:inline-flex; align-items:center; gap:12px; background:var(--ink); color:#fff;
+    padding:14px 24px; border-radius:15px; font-weight:700; }
+  .store small{ display:block; font-size:13px; opacity:.75; font-weight:600;}
+  .store b{ font-size:19px; }
+  .store svg{ width:26px;height:26px; }
+
+  /* footer */
+  footer{ border-top:1px solid var(--line); padding:30px 0; }
+  footer .row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
+  footer .links{ display:flex; gap:20px; flex-wrap:wrap;}
+  footer a{ color:var(--muted); font-size:16px; font-weight:600;}
+  footer .cpy{ color:var(--muted); font-size:15px; }
+
+  @media (max-width:880px){
+    .hero .grid{ grid-template-columns:1fr; gap:26px; }
+    .phoneWrap{ order:-1; }
+    h1{ font-size:42px; }
+    .feat{ grid-template-columns:1fr 1fr; }
+    .steps{ grid-template-columns:1fr; }
+    .pain .row{ flex-direction:column; text-align:center; }
   }
-  .logo {
-    width:104px;
-    height:104px;
-    margin:0 auto 20px;
-    border-radius:28px;
-    background:var(--blue);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#fff;
-    font-size:54px;
-  }
-  h1 {
-    font-size:24px;
-    margin:0 0 10px;
-    font-weight:800;
-  }
-  p.sub {
-    color:var(--gray);
-    font-size:15px;
-    line-height:1.55;
-    margin:0 0 28px;
-  }
-  .btn {
-    display:block;
-    width:100%;
-    padding:15px 20px;
-    border-radius:14px;
-    border:none;
-    font-size:16px;
-    font-weight:700;
-    cursor:pointer;
-    margin-bottom:12px;
-    text-decoration:none;
-    text-align:center;
-    font-family:inherit;
-  }
-  .btn-primary { background:var(--blue); color:#fff; }
-  .btn-primary:hover, .btn-primary:active { background:var(--blue-dark); }
-  .btn-secondary {
-    background:transparent;
-    color:var(--blue);
-    border:2px solid var(--blue);
-  }
-  .note {
-    font-size:13px;
-    color:var(--gray);
-    margin-top:20px;
-    line-height:1.5;
+  @media (max-width:560px){
+    h1{ font-size:36px; } .lead{ font-size:19px; }
+    .feat{ grid-template-columns:1fr; }
+    .sec h2,.final h2{ font-size:30px; }
+    .btn{ flex:1; }
   }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo">⚽</div>
-  <h1 id="title">הוזמנת ל־Teamder</h1>
-  <p class="sub" id="subtitle">פתח את הקישור באפליקציה כדי להצטרף.</p>
-  <button class="btn btn-primary" id="openBtn" type="button">פתח באפליקציה</button>
-  <a class="btn btn-secondary" id="installBtn"
-     href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">
-    הורד את האפליקציה
-  </a>
-  <!-- The Play Store link's `referrer` query param is rewritten in JS
-       below to include the invite (e.g. invite_session_<id>). When the
-       app is installed via that link, Google Play forwards the value
-       to the app on first launch via the Play Install Referrer API,
-       so we can recover the invite context after a fresh install. -->
 
-  <p class="note">אם האפליקציה לא מותקנת, הורד אותה מהחנות וחזור לקישור ההזמנה.</p>
+<div class="nav">
+  <div class="wrap row">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z" fill="#fff"/></svg></div>
+      <b>Team<span>der</span></b>
+    </div>
+    <a class="get" href="#download">הורד את האפליקציה</a>
+  </div>
 </div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap grid">
+    <div>
+      <span class="kick"><span class="dot"></span>למארגני הכדורגל הקבוע</span>
+      <h1 id="title">כל המשחק השבועי שלך,<br><span class="b">בלי לרדוף</span> אחרי אף אחד.</h1>
+      <p class="lead" id="subtitle">מי בא, מי ביטל, מי מביא כדור — Teamder מנהל את זה במקומך. אתה רק מגיע לשחק.</p>
+      <div class="cta">
+        <button class="btn btn-primary" id="openBtn" type="button">פתח באפליקציה</button>
+        <a class="btn btn-ghost" id="installBtn"
+           href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">הורד את האפליקציה</a>
+      </div>
+      <div class="trust">חינם להורדה · אנדרואיד ו-iPhone · עברית מלאה</div>
+    </div>
+    <div class="phoneWrap">
+      <div class="phone">
+        <div class="screen"><img src="/app-preview.png" alt="מסך האפליקציה Teamder" /></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAIN -->
+<section class="pain">
+  <div class="wrap row">
+    <div class="q">מי שמארגן כדורגל מכיר את זה 👇</div>
+    <div class="chips">
+      <span class="chip">"מישהו בא היום?"</span>
+      <span class="chip">דני ביטל שעה לפני</span>
+      <span class="chip">40 הודעות בקבוצה</span>
+      <span class="chip">מי שילם, מי לא</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec">
+  <div class="wrap">
+    <h2>כל מה ש-Teamder עושה במקומך</h2>
+    <div class="subhead">כל הניהול של המשחק השבועי — במקום אחד, בלי וואטסאפ.</div>
+    <div class="feat">
+      <div class="card"><div class="ic" style="background:#E9FBEF;color:#16A34A">✓</div><h3>אישורי הגעה</h3><p>רואים בדיוק מי בא, מי בהמתנה ומי עוד לא ענה — בלי לספור הודעות.</p></div>
+      <div class="card"><div class="ic" style="background:#E7EEFF;color:#2563EB">⏰</div><h3>תזכורות אוטומטיות</h3><p>האפליקציה מזכירה לכולם לפני המשחק. אתה לא צריך לרדוף אחרי אף אחד.</p></div>
+      <div class="card"><div class="ic" style="background:#FEF3E2;color:#D97706">↻</div><h3>מילוי מקום</h3><p>מישהו ביטל? המקום מוצע אוטומטית לשחקן הבא, וההרכב נשאר מלא.</p></div>
+      <div class="card"><div class="ic" style="background:#EAF1FF;color:#1D4ED8">👥</div><h3>קהילות קבועות</h3><p>הקבוצה הקבועה שלך במקום אחד — חברים, היסטוריה ומשחקים חדשים.</p></div>
+      <div class="card"><div class="ic" style="background:#E9FBEF;color:#16A34A">🔁</div><h3>משחקים חוזרים</h3><p>משחק קבוע כל שבוע נפתח אוטומטית. לא צריך לפתוח מחדש כל פעם.</p></div>
+      <div class="card"><div class="ic" style="background:#E7EEFF;color:#2563EB">⏱️</div><h3>טיימר משחק מסונכרן</h3><p>טיימר אחד לכל המגרש — כולם רואים את אותו הזמן והתוצאה בזמן אמת.</p></div>
+      <div class="card"><div class="ic" style="background:#F1ECFF;color:#7C3AED">⌚</div><h3>גם לשעון חכם</h3><p>הטיימר והתוצאה ישר על היד — בלי לרוץ לטלפון באמצע המשחק.</p></div>
+      <div class="card"><div class="ic" style="background:#FEF3E2;color:#D97706">🛠️</div><h3>חלוקת קבוצות</h3><p>מחלקים כוחות מאוזנים בכמה לחיצות — ידני, לפי דירוג או אקראי.</p></div>
+      <div class="card"><div class="ic" style="background:#EAF1FF;color:#1D4ED8">📊</div><h3>סטטיסטיקות ודירוג</h3><p>גולים, בישולים, נצחונות ודירוג שחקנים — לכל מי שמתעניין במספרים.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="sec how">
+  <div class="wrap">
+    <h2>ככה זה עובד</h2>
+    <div class="subhead">שלוש דקות הקמה, ואז זה רץ לבד.</div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>פותחים קהילה</h3><p>יוצרים את הקבוצה הקבועה ומגדירים את המשחק השבועי.</p></div>
+      <div class="step"><div class="n">2</div><h3>מזמינים את החבר'ה</h3><p>שולחים קישור אחד. כל אחד מאשר הגעה בלחיצה.</p></div>
+      <div class="step"><div class="n">3</div><h3>באים לשחק</h3><p>תזכורות, מילוי מקום וחלוקת קבוצות — קורים לבד.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final" id="download">
+  <div class="wrap">
+    <h2>תהפוך את הערב כדורגל לפשוט</h2>
+    <p>הורד את Teamder ותפסיק לנהל את המשחק בוואטסאפ.</p>
+    <div class="stores">
+      <a class="store" id="storeAndroid" href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">
+        <svg viewBox="0 0 24 24" fill="#fff"><path d="M3.6 2.3 13 11.7l-9.4 9.4a1.7 1.7 0 0 1-.6-1.3V3.6c0-.5.2-1 .6-1.3Zm10.7 10.7 2.6 2.6-9 5.2 6.4-7.8Zm0-2.6L7.9 2.8l9 5.2-2.6 2.4Zm4 2.3 2.7-1.6c.9-.5.9-1.8 0-2.3L18.3 9.4 16 12l2.3 2.7Z"/></svg>
+        <span><small>הורד מ-</small><b>Google Play</b></span>
+      </a>
+      <a class="store" id="storeApple" href="https://apps.apple.com/app/id6775178022">
+        <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.7c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.5 2.2 2.6 2.1 1-.04 1.4-.7 2.7-.7 1.2 0 1.6.7 2.7.66 1.1-.02 1.8-1 2.5-2 .8-1.2 1.1-2.3 1.1-2.3s-2.1-.8-2.1-3.2ZM14.3 6c.6-.7 1-1.7.9-2.7-.8 0-1.9.5-2.5 1.2-.5.6-1 1.6-.9 2.6.9.1 1.8-.4 2.5-1.1Z"/></svg>
+        <span><small>הורד מ-</small><b>App Store</b></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z" fill="#fff"/></svg></div><b>Team<span>der</span></b></div>
+    <div class="links">
+      <a href="/privacy.html">מדיניות פרטיות</a>
+      <a href="/delete-account.html">מחיקת חשבון</a>
+    </div>
+    <div class="cpy">© Teamder · מארגנים כדורגל בלי כאב ראש</div>
+  </div>
+</footer>
 
 <script>
   // Hosting rewrites /session/* and /team/* to this single file, so we
@@ -171,15 +305,15 @@
 
   var titleEl = document.getElementById('title');
   var subEl = document.getElementById('subtitle');
+  // Personal invites get a contextual hero line. The generic acquisition
+  // entry (app/go — used by ads, the printed-field QR, etc.) KEEPS the
+  // default marketing headline so people see the full pitch.
   if (type === 'session') {
     titleEl.textContent = 'הוזמנת למשחק ב־Teamder';
     subEl.textContent = 'משחק שכונתי מחכה לך. ראה מי מגיע והצטרף בלחיצה אחת.';
   } else if (type === 'team') {
     titleEl.textContent = 'הוזמנת לקבוצה ב־Teamder';
     subEl.textContent = 'הצטרף לקבוצה קבועה וקבל עדכונים על משחקים חדשים.';
-  } else if (isApp) {
-    titleEl.textContent = 'הוזמנת ל־Teamder';
-    subEl.textContent = 'האפליקציה לארגון משחקי כדורגל בלי בלגן. הורד ובוא לשחק.';
   }
 
   // Build the query string carried into the app (deep link + clipboard),
@@ -240,9 +374,13 @@
       ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);
       if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
     }
-    installEl.href =
+    var storeHref =
       'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp' +
       '&referrer=' + encodeURIComponent(ref);
+    installEl.href = storeHref;
+    // Mirror the referrer onto the bottom "Google Play" store badge too.
+    var sa = document.getElementById('storeAndroid');
+    if (sa) sa.href = storeHref;
   }
 
   // iOS has no Play Install Referrer — point the install button at the
@@ -259,15 +397,6 @@
       iosInstallEl.href = 'https://apps.apple.com/app/id6775178022';
       if (valid) {
         iosInstallEl.addEventListener('click', function () {
-          // Fire-and-forget clipboard write of the canonical invite URL
-          // (location.href is https://teamderfc.web.app/<type>/<id>?invitedBy=<uid>,
-          // exactly what the app's parseInviteUrl() reads). We do NOT
-          // preventDefault and do NOT defer navigation: iOS Safari blocks
-          // any location change that runs AFTER an async clipboard promise
-          // resolves (the user gesture is already spent), which made the
-          // button appear dead. Letting the <a>'s own gesture-backed
-          // navigation to the App Store proceed keeps the button working;
-          // the synchronous write still rides along for attribution.
           try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(location.href);
@@ -281,14 +410,10 @@
   // "פתח באפליקציה" — try to open the installed app via the custom
   // scheme. If nothing takes over within a short window the app isn't
   // installed → send the user to the right store instead of leaving
-  // them stuck on Safari's "address invalid" dialog (iOS shows that for
-  // an unhandled `footy://`). visibilitychange firing means the app
-  // actually opened — cancel the store fallback so we don't redirect on
-  // top of it. (The proper long-term fix is Universal Links, which lets
-  // the https invite link open the app directly with no custom scheme.)
+  // them stuck on Safari's "address invalid" dialog.
   document.getElementById('openBtn').addEventListener('click', function () {
     var url = deepLink();
-    if (!url) return;
+    if (!url) { location.href = '#download'; return; }
     var ua2 = navigator.userAgent || '';
     var iOS = /iPhone|iPad|iPod/i.test(ua2);
     var installEl2 = document.getElementById('installBtn');
@@ -310,24 +435,11 @@
   });
 
   // ── Auto-redirect ────────────────────────────────────────────────
-  // Goal: skip this landing page entirely on mobile. If the app is
-  // installed, open it. If not, send the user straight to the store
-  // (with the install-referrer wired up below).
-  //
-  // Android: use an `intent://...` URL. Chrome resolves it natively:
-  // tries the `footy://` scheme via the declared package; if the app
-  // isn't installed, follows the `S.browser_fallback_url=` parameter
-  // to the Play Store. One redirect, no flicker, no JS timeout.
-  //
-  // iOS Safari: doesn't understand intent URLs. Best-effort fallback
-  // pattern: assign `location.href = footy://...`. If the app is
-  // installed, the OS hijacks navigation and we leave the page.
-  // Otherwise we land on a "page not found" non-event in Safari — so
-  // we set a short timer and, if the page is still alive after it
-  // fires, force-redirect to the App Store (APP_STORE_URL_IOS below).
-  //
-  // Desktop: no auto-redirect. The user might be reading the page
-  // on a laptop and a forced store-redirect is hostile there.
+  // Personal invites (session/team) fast-path into the app/store. The
+  // generic acquisition entry (app/go — ads + the printed-field QR) does
+  // NOT auto-redirect: we WANT those visitors to see the full landing
+  // page and its pitch, then tap download themselves (the install button
+  // already carries the attribution referrer).
   var ua = navigator.userAgent || '';
   var isAndroid = /Android/i.test(ua);
   var isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -337,15 +449,13 @@
 
   function autoRedirect() {
     if (!valid) return;
-    if (!isMobile) return;
+    if (isApp) return;       // ads / QR / generic — show the landing page
+    if (!isMobile) return;   // desktop — never force a redirect
     var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
     var path = pathPart + query;
     var installEl = document.getElementById('installBtn');
     var storeUrl = installEl ? installEl.href : null;
     if (isAndroid) {
-      // Chrome on Android handles the fallback internally — no JS
-      // timer needed. Other Android browsers fall back to the JS
-      // pattern below.
       var isChrome =
         /Chrome\/[0-9]/.test(ua) &&
         !/EdgA|EdgiOS|OPR|SamsungBrowser/.test(ua);
@@ -358,23 +468,12 @@
         location.replace(intentUrl);
         return;
       }
-      // Non-Chrome / in-app webview (WhatsApp, Instagram, Facebook, …):
-      // intent:// and custom-scheme deep links are unreliable in those
-      // embedded browsers, so go STRAIGHT to the Play Store (the install
-      // referrer is already baked into storeUrl). Reliable everywhere —
-      // no flicker, no deep-link error dialog.
       if (storeUrl) {
         location.replace(storeUrl);
         return;
       }
     }
-    // iOS: do NOT auto-redirect. The clipboard write that carries the
-    // inviter through a fresh install needs the user's tap on "install"
-    // (Safari blocks gesture-less clipboard writes), so we leave the page
-    // in place and let the visible buttons drive: "open in app" fires the
-    // deep link for installed users, "install" copies the invite then
-    // goes to the store. (Android is fully handled above; desktop is
-    // guarded out at the top — so only iOS reaches here.)
+    // iOS: do NOT auto-redirect (clipboard write needs the user's tap).
   }
 
   // Defer one tick so the install-referrer wiring above (which

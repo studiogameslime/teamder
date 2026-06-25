@@ -108,9 +108,9 @@ export const mockGamesV2: Game[] = [
   {
     id: 'gv2-live',
     groupId: 'g1',
-    title: 'דמו — משחק חי',
+    title: 'ליגת השכונה',
     startsAt: Date.now() - 1000 * 60 * 20,
-    fieldName: 'המגרש הקבוע',
+    fieldName: 'מגרש סינטטי · גני תקווה',
     fieldLat: 32.0853,
     fieldLng: 34.7818,
     maxPlayers: 10,
@@ -186,9 +186,9 @@ export const mockGamesV2: Game[] = [
   {
     id: 'gv2-resume',
     groupId: 'g1',
-    title: 'דמו — המשך משחק',
+    title: 'כדורגל רביעי',
     startsAt: Date.now() - 1000 * 60 * 40,
-    fieldName: 'המגרש הקבוע',
+    fieldName: 'מגרש קהילתי · רמת גן',
     fieldLat: 32.0853,
     fieldLng: 34.7818,
     maxPlayers: 10,
