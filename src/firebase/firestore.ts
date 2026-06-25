@@ -110,7 +110,8 @@ function readAvailability(d: DocumentData): UserAvailability | undefined {
   };
 }
 
-function readStats(d: DocumentData): UserStats | undefined {
+// Exported for unit tests (assist/win persistence regression). Pure function.
+export function readStats(d: DocumentData): UserStats | undefined {
   const s = d.stats;
   if (!s || typeof s !== 'object') return undefined;
   return {
@@ -544,7 +545,8 @@ const VALID_ZONES: LiveMatchZone[] = [
 ];
 const VALID_PHASES: LiveMatchPhase[] = ['organizing', 'live', 'finished'];
 
-function readLiveMatch(v: unknown): LiveMatchState | undefined {
+// Exported for unit tests (assist persistence regression). Pure function.
+export function readLiveMatch(v: unknown): LiveMatchState | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   const phase = VALID_PHASES.includes(o.phase as LiveMatchPhase)
