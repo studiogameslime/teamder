@@ -58,6 +58,37 @@ describe('nextFillNeeded', () => {
     expect(req!.team).toBe(1);
     expect(req!.donors[0]).toBe('c1'); // loser team 2's players come first
   });
+
+  it('on-field "went home": a playing team dropping below perTeam offers a bench donor', () => {
+    // 5,5,5 full; team 0 & 1 on the field, team 2 waiting. A player on the
+    // PLAYING team 0 leaves mid-evening → team 0 is 4/5. This is what
+    // gameService.prepareRefillPlaying feeds beginFillFlow.
+    const teams: RotationTeam[] = [
+      { index: 0, playerIds: ['a1', 'a2', 'a3', 'a4'] }, // a5 went home → short by 1
+      { index: 1, playerIds: ['b1', 'b2', 'b3', 'b4', 'b5'] },
+      { index: 2, playerIds: ['c1', 'c2', 'c3', 'c4', 'c5'] }, // waiting → donor pool
+    ];
+    const req = nextFillNeeded([0, 1], teams, [], PER, null);
+    expect(req!.team).toBe(0);
+    expect(req!.deficit).toBe(1);
+    expect(req!.donors).toEqual(['c1', 'c2', 'c3', 'c4', 'c5']);
+    // Borrowing one keeps the on-field roster at perTeam.
+    const filled = applyChosenFill(teams, [], 0, pickFirst(req!.donors, 1), 'temporary');
+    expect(rosterOf(0, filled.teams, filled.loans)).toHaveLength(PER);
+  });
+
+  it('on-field "went home" with no bench (2 teams): no donors → caller lets it play short', () => {
+    // 2-team evening: the player's team is short but there is NO off team to
+    // borrow from. nextFillNeeded still reports the deficit with an empty pool;
+    // the screen's advanceFillFlow then skips the (unsatisfiable) picker.
+    const teams: RotationTeam[] = [
+      { index: 0, playerIds: ['a1', 'a2', 'a3', 'a4'] }, // short by 1
+      { index: 1, playerIds: ['b1', 'b2', 'b3', 'b4', 'b5'] },
+    ];
+    const req = nextFillNeeded([0, 1], teams, [], PER, null);
+    expect(req!.team).toBe(0);
+    expect(req!.donors).toEqual([]); // nobody to borrow → play short
+  });
 });
 
 describe('applyChosenFill', () => {

@@ -2746,6 +2746,43 @@ export const gameService = {
     return { skeleton, draft, baseTeams };
   },
 
+  /** A player on a CURRENTLY-PLAYING team left mid-evening ("הלך הביתה") and
+   *  the team is now short. Build a fill skeleton for the two playing teams
+   *  using the CURRENT rotation (not a fresh start) so the admin can borrow a
+   *  replacement from the bench / waiting teams — reusing the same fill flow as
+   *  a round transition. Returns null when there's no active rotation or neither
+   *  playing team is short (e.g. a waiting-team player left, or the team was
+   *  over-full) — in which case no picker is needed. */
+  async prepareRefillPlaying(
+    gameId: string,
+  ): Promise<{ skeleton: RotationFillState; draft: DraftTeamsResult } | null> {
+    if (!gameId) return null;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    const rot = g?.rotation;
+    if (!g || !draft || !rot) return null;
+    const perTeam = playersPerTeamFor(g.format);
+    const fillMode = effFillMode(g, draft);
+    const teams: RotationTeam[] = draft.teams.map((t) => ({
+      index: t.index,
+      playerIds: [...t.playerIds],
+    }));
+    const [a, b] = rot.playing;
+    const loans = rot.loans ?? [];
+    const shortA = perTeam - effectiveRosterOf(a, teams, loans).length > 0;
+    const shortB = perTeam - effectiveRosterOf(b, teams, loans).length > 0;
+    if (!shortA && !shortB) return null; // no playing team needs filling
+    const skeleton: RotationFillState = {
+      teams,
+      playing: rot.playing,
+      perTeam,
+      fillMode,
+      loserFirst: null,
+      rotation: rot,
+    };
+    return { skeleton, draft };
+  },
+
   /** Commit round stats + clear scoreboard, then return the post-round
    *  skeleton (no persist). `{ outcome: null }` → a 2–3 team tie needs a
    *  manual winner; caller opens the picker and calls again with it. */

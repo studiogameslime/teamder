@@ -889,6 +889,13 @@ export function AdvancedLiveMatchScreen() {
           onPress: async () => {
             try {
               await gameService.markPlayerWentHome(gameId, player.id);
+              // If they were on a playing team that's now short, offer to borrow
+              // a replacement (same fill flow as a round transition). No-op when
+              // no playing team is short or a transition is already in flight.
+              if (!finalizingRef.current && !fillFlowRef.current && !winnerOpen) {
+                const refill = await gameService.prepareRefillPlaying(gameId);
+                if (refill) beginFillFlow(refill.skeleton, refill.draft);
+              }
             } catch (err) {
               logError('markPlayerWentHome', err, { gameId, playerId: player.id });
             }
