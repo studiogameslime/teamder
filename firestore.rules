@@ -553,7 +553,19 @@ service cloud.firestore {
         // game even if they're not a member — `sendGameInvite` adds them
         // to `invitedUserIds`. Without this an invitee tapping the push
         // hit the "members only" wall (user report).
-        request.auth.uid in resource.data.get('invitedUserIds', [])
+        request.auth.uid in resource.data.get('invitedUserIds', []) ||
+        // A FILLER CANDIDATE can read a community game that opted into
+        // outside fillers (`acceptsFillers`) — the organiser explicitly
+        // chose to advertise it to nearby non-members, who get a
+        // `fillerOpportunity` push. Without this, tapping the push body
+        // dead-ended on the "members only" wall (user report). They still
+        // can't JOIN directly — they express interest and the admin
+        // approves (the fillerInterests rule gates that). Private games
+        // stay hidden.
+        (
+          resource.data.get('acceptsFillers', false) == true &&
+          resource.data.visibility != 'private'
+        )
       );
 
       allow create: if isSignedIn() &&

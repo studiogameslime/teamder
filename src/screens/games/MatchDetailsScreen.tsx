@@ -77,6 +77,7 @@ import { GameChampionship } from '@/components/match/GameChampionship';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
+import { handleFillerOpportunityAction } from '@/services/notificationActionService';
 import { maybeRequestStoreReview } from '@/services/storeReviewService';
 import { useGameEvents } from '@/services/useGameEvents';
 import {
@@ -662,6 +663,39 @@ export function MatchDetailsScreen() {
     const grp = myCommunities.find((c) => c.id === game.groupId);
     return !!grp && grp.adminIds.includes(user.id);
   }, [user, game, myCommunities]);
+
+  // Filler candidate: a signed-in user who is NOT a member of this game's
+  // community and NOT already in the roster, viewing a game that opted into
+  // outside fillers. They can't join directly — they apply ("הגש מועמדות")
+  // and the admin approves. (They reached this readable screen via the rules
+  // exception for acceptsFillers games / a fillerOpportunity push.)
+  const isFillerCandidate = useMemo(() => {
+    if (!user || !game) return false;
+    if (game.acceptsFillers !== true) return false;
+    if (game.status !== 'open') return false;
+    const isMember = myCommunities.some((c) => c.id === game.groupId);
+    if (isMember) return false;
+    const inRoster =
+      (game.players ?? []).includes(user.id) ||
+      (game.waitlist ?? []).includes(user.id) ||
+      (game.pending ?? []).includes(user.id);
+    return !inRoster;
+  }, [user, game, myCommunities]);
+  // Local-only state for the in-screen filler apply button.
+  const [fillerState, setFillerState] = useState<'idle' | 'submitting' | 'sent'>('idle');
+  const onApplyAsFiller = async () => {
+    if (!game || fillerState !== 'idle') return;
+    setFillerState('submitting');
+    try {
+      await handleFillerOpportunityAction('EXPRESS_FILLER_INTEREST', game.id);
+      setFillerState('sent');
+      toast.success(he.fillerApplySent);
+    } catch (err) {
+      logError('matchDetails.applyAsFiller', err, { gameId: game.id });
+      setFillerState('idle');
+      toast.error(he.fillerApplyError);
+    }
+  };
 
   // Store-review trigger A: the organiser of this game is looking
   // at it and the roster has filled to capacity. That's the
@@ -2057,6 +2091,36 @@ export function MatchDetailsScreen() {
           chatUnread={chatUnread}
         />
 
+        {/* Filler-candidate banner — a non-member who reached this game via a
+            fillerOpportunity push. They can't join directly; they apply and the
+            admin approves. */}
+        {isFillerCandidate ? (
+          <View style={styles.fillerBanner}>
+            <Ionicons name="megaphone-outline" size={22} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fillerBannerTitle}>{he.fillerApplyTitle}</Text>
+              <Text style={styles.fillerBannerSub}>
+                {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
+              </Text>
+            </View>
+            {fillerState === 'sent' ? (
+              <View style={styles.fillerSentChip}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.fillerSentTxt}>{he.fillerApplySentChip}</Text>
+              </View>
+            ) : (
+              <Button
+                title={he.fillerApplyCta}
+                variant="primary"
+                size="sm"
+                loading={fillerState === 'submitting'}
+                disabled={fillerState === 'submitting'}
+                onPress={onApplyAsFiller}
+              />
+            )}
+          </View>
+        ) : null}
+
         {/* Floating stats strip — pulled UP via negative margin so
             it overlaps the bottom of the stadium hero. The hero
             already leaves a small `bg.paddingBottom` so the photo
@@ -3264,6 +3328,30 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
+  fillerBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceMuted,
+  },
+  fillerBannerTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  fillerBannerSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  fillerSentChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
+  fillerSentTxt: { ...typography.caption, color: colors.success, fontWeight: '700' },
   blockedSub: {
     ...typography.body,
     color: colors.textMuted,
