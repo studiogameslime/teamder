@@ -307,6 +307,7 @@ export const he = {
   rotationPlayingNow: 'משחקים עכשיו',
   rotationWonCta: 'ניצחה',
   rotationReset: 'אפס',
+  rotationResetMenu: 'אפס רוטציה',
   rotationResetConfirm: 'לאפס את הרוטציה? הקבוצות יחזרו למצב ההתחלתי.',
   rotationWaiting: 'ממתינות',
   // Scoreboard redesign
@@ -337,6 +338,7 @@ export const he = {
   fillPickerSelectCount: (chosen: number, required: number) =>
     `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
   fillPickerConfirm: 'אישור',
+  fillPickerEmptyPool: 'אין שחקנים זמינים להשלמה — סגרו וסדרו את הקבוצות ידנית',
   rotationPreviewLabel: 'מי נגד מי · הקבוצות יושלמו בלחיצת ״התחל משחקון״',
   rotationStartingTeams: 'קבוצות פותחות (אקראי)',
   rotationShuffle: 'ערבב',
@@ -376,6 +378,9 @@ export const he = {
   goalOwnGoalShort: 'שער עצמי',
   goalScorerWithAssist: (scorer: string, assister: string) =>
     `${scorer} (בישול: ${assister})`,
+  goalSaveFailed: 'לא הצלחנו לשמור את הגול, נסו שוב',
+  goalPickerEmptyRoster: 'אין שחקנים זמינים בקבוצה הזו',
+  goalAssistEmptyRoster: 'אין שחקנים אחרים לבישול',
   winnerPickCancel: 'ביטול',
   winnerPickConfirm: 'אישור',
   liveEndEvening: 'סיים ערב',

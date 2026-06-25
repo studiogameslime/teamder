@@ -7,10 +7,16 @@
 // for). Goal writes go through gameService; the score fans out via the live
 // listener.
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
+import { toast } from '@/components/Toast';
+
+// Wrap a sign/punctuation-bearing numeric in a bidi isolate so it can't be
+// reordered by the surrounding RTL paragraph (e.g. "+01:23" rendering as
+// "01:23+", or a minute "12'" flipping its apostrophe).
+const ltr = (s: string | number) => `⁦${s}⁩`;
 import {
   buildRoster,
   makeResolver,
@@ -59,11 +65,25 @@ export function LiveScoreboardCard(props: Props) {
   } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Synchronous guard: setBusy(true) only takes effect next render, so a fast
+  // double-tap (row vs "none" button) could fire two writes before the state
+  // flips. The ref blocks the second one in the same tick.
+  const busyRef = useRef(false);
 
   const resolve = useMemo(() => makeResolver(playersMap, guests), [playersMap, guests]);
+  // Players who left during the evening are off their team — exclude them from
+  // the scorer/assist pickers so a departed player can't be credited a goal.
+  const leftHome = useMemo(
+    () => new Set((draftTeams.leftHome ?? []).map((l) => l.playerId)),
+    [draftTeams.leftHome],
+  );
   const teams = useMemo(
-    () => draftTeams.teams.map((t) => ({ index: t.index, playerIds: t.playerIds })),
-    [draftTeams],
+    () =>
+      draftTeams.teams.map((t) => ({
+        index: t.index,
+        playerIds: t.playerIds.filter((id) => !leftHome.has(id)),
+      })),
+    [draftTeams, leftHome],
   );
   const [aIdx, bIdx] = rotation.playing;
   const rosterA = useMemo(() => buildRoster(aIdx, teams, rotation, resolve), [aIdx, teams, rotation, resolve]);
@@ -78,20 +98,28 @@ export function LiveScoreboardCard(props: Props) {
   ) => {
     setPickSide(null);
     setPendingAssist(null);
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute });
+    } catch (err) {
+      toast.error(he.goalSaveFailed);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
   const undo = async (goalId: string) => {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await gameService.removeGoal(gameId, goalId);
+    } catch (err) {
+      toast.error(he.goalSaveFailed);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -116,6 +144,7 @@ export function LiveScoreboardCard(props: Props) {
           score={live.scoreA}
           tint={teamColor(aIdx)}
           canEdit={canEdit}
+          busy={busy}
           onAdd={() => setPickSide('A')}
         />
 
@@ -129,7 +158,7 @@ export function LiveScoreboardCard(props: Props) {
             </Text>
           ) : null}
           {props.overtimeText ? (
-            <Text style={styles.overtime}>+{props.overtimeText}</Text>
+            <Text style={styles.overtime}>{ltr(`+${props.overtimeText}`)}</Text>
           ) : null}
           <View style={styles.statusRow}>
             {props.running ? <View style={styles.redDot} /> : null}
@@ -150,6 +179,7 @@ export function LiveScoreboardCard(props: Props) {
           score={live.scoreB}
           tint={teamColor(bIdx)}
           canEdit={canEdit}
+          busy={busy}
           onAdd={() => setPickSide('B')}
         />
       </View>
@@ -179,7 +209,7 @@ export function LiveScoreboardCard(props: Props) {
                         <Ionicons name="close" size={14} color={colors.textMuted} />
                       </Pressable>
                     ) : null}
-                    <Text style={styles.logMin}>{g.minute}'</Text>
+                    <Text style={styles.logMin}>{ltr(`${g.minute}'`)}</Text>
                     <View style={{ flex: 1 }} />
                     <Text style={styles.logName} numberOfLines={1}>
                       {goalLabel(g)}
@@ -233,12 +263,14 @@ function ScoreSide({
   score,
   tint,
   canEdit,
+  busy,
   onAdd,
 }: {
   label: string;
   score: number;
   tint: string;
   canEdit: boolean;
+  busy: boolean;
   onAdd: () => void;
 }) {
   return (
@@ -249,9 +281,11 @@ function ScoreSide({
       <Text style={[styles.sideScore, { color: tint }]}>{score}</Text>
       {canEdit ? (
         <Pressable
-          style={[styles.addBtn, { backgroundColor: tint }]}
+          style={[styles.addBtn, { backgroundColor: tint }, busy && styles.addBtnBusy]}
           onPress={onAdd}
+          disabled={busy}
           accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
         >
           <Ionicons name="football" size={15} color="#FFFFFF" />
           <Text style={styles.addBtnTxt} numberOfLines={1}>
@@ -286,6 +320,9 @@ function ScorerPicker({
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.sheetTitle}>{he.goalScorerPickTitle(teamLabel)}</Text>
           <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+            {roster.length === 0 ? (
+              <Text style={styles.emptyRoster}>{he.goalPickerEmptyRoster}</Text>
+            ) : null}
             {roster.map((m) => (
               <Pressable key={m.id} style={styles.scorerRow} onPress={() => onPick(m.id)}>
                 <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
@@ -335,6 +372,9 @@ function AssisterPicker({
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.sheetTitle}>{he.goalAssistPickTitle(teamLabel)}</Text>
           <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false}>
+            {roster.length === 0 ? (
+              <Text style={styles.emptyRoster}>{he.goalAssistEmptyRoster}</Text>
+            ) : null}
             {roster.map((m) => (
               <Pressable key={m.id} style={styles.scorerRow} onPress={() => onPick(m.id)}>
                 <UserAvatar user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }} size={34} />
@@ -377,7 +417,7 @@ const styles = StyleSheet.create({
   // ── Team score side ──
   side: { flex: 1, alignItems: 'center', gap: 4 },
   sideName: { ...typography.bodyBold, fontWeight: '800', textAlign: 'center' },
-  sideScore: { fontSize: 40, fontWeight: '900', lineHeight: 44 },
+  sideScore: { fontSize: 40, fontWeight: '900', lineHeight: 44, fontVariant: ['tabular-nums'] },
   addBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -388,6 +428,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignSelf: 'stretch',
   },
+  addBtnBusy: { opacity: 0.5 },
   addBtnTxt: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', flexShrink: 1 },
   // ── Timer center ──
   timerCol: { flex: 1.1, alignItems: 'center', gap: 2, paddingHorizontal: 2 },
@@ -428,6 +469,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   scorerName: { flex: 1, ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, fontWeight: '600' },
+  emptyRoster: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
   specialRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   specialBtn: {
     flex: 1,

@@ -78,6 +78,9 @@ export function FillerPickerModal({ request, onConfirm, onCancel }: Props) {
           </Text>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
+            {(request?.players ?? []).length === 0 ? (
+              <Text style={styles.emptyPool}>{he.fillPickerEmptyPool}</Text>
+            ) : null}
             {(request?.players ?? []).map((p) => {
               const on = selected.includes(p.id);
               return (
@@ -139,6 +142,12 @@ const styles = StyleSheet.create({
   },
   subtitle: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   subtitleOk: { color: colors.success, fontWeight: '700' },
+  emptyPool: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
   list: { alignSelf: 'stretch' },
   listInner: { gap: spacing.xs, paddingVertical: spacing.xs },
   row: {

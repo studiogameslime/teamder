@@ -254,7 +254,7 @@ export function RotationPanel({
                     <Text style={styles.waitCount}>
                       {he.rotationPlayersCount(roster.length)}
                       {winsOf(idx) > 0
-                        ? ` · 🏆 ${he.rotationWinsShort(winsOf(idx))}`
+                        ? ` · ⁦🏆 ${he.rotationWinsShort(winsOf(idx))}⁩`
                         : ''}
                     </Text>
                   </View>

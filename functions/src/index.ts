@@ -4082,6 +4082,12 @@ async function generateForGame(
       // can't be clobbered.
       if (data.autoTeamsGeneratedAt) return false;
       if (data.teamsEditedManually) return false;
+      // Never overwrite a liveMatch that's already past setup — this write
+      // replaces the WHOLE liveMatch object, so clobbering a live/finished one
+      // would wipe its score + goal log. Only generate onto a fresh/organizing
+      // slot.
+      const existingPhase = (data as { liveMatch?: { phase?: string } }).liveMatch?.phase;
+      if (existingPhase && existingPhase !== 'organizing') return false;
       const freshPlayers = data.players ?? players;
       const freshGuests = data.guests ?? [];
       if (freshPlayers.length === 0 && freshGuests.length === 0) return false;

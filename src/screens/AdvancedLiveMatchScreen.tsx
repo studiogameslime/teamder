@@ -119,23 +119,40 @@ function buildStoppages(
   if (!events || events.length === 0) {
     return { rows, totalStoppedMs: 0, ongoingStoppedMs: 0, stopCount: 0 };
   }
-  const sorted = [...events].sort((a, b) => a.at - b.at);
+  // Dedupe exact (type, at) collisions — two admins (or an SDK retry) can
+  // arrayUnion near-identical timer events, which would otherwise double-count
+  // a stoppage. Then walk in time order, ignoring events that don't match the
+  // current run/pause state (a stray 'resume' with no open 'pause', a 'pause'
+  // while already paused) so the pairing can't drift.
+  const seen = new Set<string>();
+  const sorted = [...events]
+    .sort((a, b) => a.at - b.at)
+    .filter((e) => {
+      const key = `${e.type}_${e.at}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   let lastRunStart: number | null = null;
   let lastPauseAt: number | null = null;
   let totalStoppedMs = 0;
   let stopCount = 0;
   for (const e of sorted) {
     if (e.type === 'start') {
+      // A 'start'/'resume' while already running is a duplicate signal — ignore.
+      if (lastRunStart != null && lastPauseAt == null) continue;
       rows.push({ type: 'start', at: e.at, byName: e.byName });
       lastRunStart = e.at;
       lastPauseAt = null;
     } else if (e.type === 'resume') {
-      const stoppedForMs = lastPauseAt != null ? Math.max(0, e.at - lastPauseAt) : 0;
+      if (lastPauseAt == null) continue; // no open stoppage → nothing to resume
+      const stoppedForMs = Math.max(0, e.at - lastPauseAt);
       totalStoppedMs += stoppedForMs;
       rows.push({ type: 'resume', at: e.at, byName: e.byName, stoppedForMs });
       lastRunStart = e.at;
       lastPauseAt = null;
     } else if (e.type === 'pause') {
+      if (lastPauseAt != null) continue; // already paused → not a new stoppage
       const ranForMs = lastRunStart != null ? Math.max(0, e.at - lastRunStart) : 0;
       rows.push({ type: 'pause', at: e.at, byName: e.byName, ranForMs });
       lastPauseAt = e.at;
@@ -391,12 +408,19 @@ export function AdvancedLiveMatchScreen() {
         flow.loserFirst,
       );
       if (req && req.team === team && req.deficit > 0) {
+        // No donors available at all → the team simply plays short this round
+        // rather than popping a picker that can never be satisfied (user
+        // report: stuck "מי מחליף?" modal, had to "continue with 4").
+        if (req.donors.length === 0) continue;
         flow.current = team;
+        // Never ask for more than the pool can supply — otherwise the confirm
+        // button stays permanently disabled.
+        const need = Math.min(req.deficit, req.donors.length);
         setFillRequest({
           teamLabel: teamName(team),
           players: req.donors.map(resolveFillPlayer),
-          recommendedIds: pickRandom(req.donors, req.deficit),
-          requiredCount: req.deficit,
+          recommendedIds: pickRandom(req.donors, need),
+          requiredCount: need,
         });
         return; // wait for the admin to confirm
       }
@@ -408,15 +432,16 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId) return;
     const rotation = { ...flow.rotationBase, loans: flow.working.loans };
     try {
+      // Commit the rotation AND zero the new round's clock in one atomic write
+      // (the clock reset used to be a second write — a window where a concurrent
+      // admin's timer-start could be lost). The next משחקון starts at 00:00.
       await gameService.commitFilledRotation(
         gameId,
         flow.draft,
         { rotation, teams: flow.working.teams },
         flow.baseTeams,
+        me ? { userId: me.id, userName: me.name ?? '' } : undefined,
       );
-      // New round is set up → zero the clock (paused) so the next משחקון starts
-      // fresh at 00:00 instead of carrying the previous round's running time.
-      if (me) await gameService.resetTimer(gameId, me.id, me.name ?? '');
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
@@ -453,6 +478,8 @@ export function AdvancedLiveMatchScreen() {
   // the admin doesn't accidentally end a round (and sees the rotation result).
   // A tie skips straight to the manual winner picker.
   const confirmEndRound = () => {
+    // Same re-entry guard as onEndRound — also covers the confirm-dialog path.
+    if (finalizingRef.current || fillFlowRef.current || winnerOpen) return;
     if (!rotation || !live) {
       void onEndRound();
       return;
@@ -482,7 +509,12 @@ export function AdvancedLiveMatchScreen() {
   };
 
   const onEndRound = async () => {
-    if (!gameId || !me || finalizingRef.current) return;
+    // Block re-entry while a round transition is already in flight: finalizing,
+    // the manual winner picker is open, or a fill flow is mid-way. Without this
+    // a second "סיים משחקון" tap (the ref clears in `finally` BEFORE the async
+    // fill flow finishes) re-runs prepareRoundResult and double-commits the
+    // round's goals/wins (user-facing stat corruption).
+    if (!gameId || !me || finalizingRef.current || fillFlowRef.current || winnerOpen) return;
     finalizingRef.current = true;
     try {
       // STOP (don't reset) the clock the moment the round ends — it shouldn't
@@ -981,7 +1013,9 @@ export function AdvancedLiveMatchScreen() {
             {inOvertime ? (
               <View style={styles.overtimePill}>
                 <Text style={styles.overtimePillText}>
-                  {he.liveTimerOvertime} +{formatTime(overtimeMs)}
+                  {/* Bidi-isolate the signed time so "+01:23" doesn't render
+                      as "01:23+" under the RTL paragraph. */}
+                  {he.liveTimerOvertime} {`⁦+${formatTime(overtimeMs)}⁩`}
                 </Text>
               </View>
             ) : null}
@@ -1374,7 +1408,7 @@ export function AdvancedLiveMatchScreen() {
                 }}
               >
                 <Ionicons name="refresh" size={20} color="#1D4ED8" />
-                <Text style={styles.menuItemText}>{he.rotationReset} רוטציה</Text>
+                <Text style={styles.menuItemText}>{he.rotationResetMenu}</Text>
               </Pressable>
             ) : null}
             <Pressable
@@ -1446,6 +1480,9 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontSize: 18,
     fontWeight: '800',
+    // Breathing room so a long Hebrew title doesn't butt against the back /
+    // overflow icons when it ellipsizes.
+    marginHorizontal: spacing.sm,
   },
   center: { flex: 1 },
   centerContent: {

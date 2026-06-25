@@ -2501,7 +2501,9 @@ export const gameService = {
       ...(assisterId ? { assisterId } : {}),
       ownGoal: opts.ownGoal ? true : undefined,
       minute: Math.max(0, Math.floor(opts.minute)),
-      at: Date.now(),
+      // serverNow() (not Date.now()) so goal ordering matches the synced match
+      // clock even on a device whose wall clock is skewed.
+      at: serverNow(),
     };
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
@@ -2772,12 +2774,16 @@ export const gameService = {
     draft: DraftTeamsResult,
     result: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
     baseTeams?: { index: number; playerIds: string[] }[],
+    // When set, the new round's clock is zeroed in the SAME write as the
+    // rotation commit — so a concurrent admin's timer-start can't slip in
+    // between two separate writes and get clobbered (or lost).
+    resetTimerBy?: { userId: string; userName: string },
   ): Promise<void> {
     if (!gameId) return;
     const rotation = baseTeams
       ? { ...result.rotation, baseTeams }
       : result.rotation;
-    await this._persistRotation(gameId, draft, { rotation, teams: result.teams });
+    await this._persistRotation(gameId, draft, { rotation, teams: result.teams }, resetTimerBy);
   },
 
   /** Clear the rotation (back to "not started"). In 'permanent' fill mode the
@@ -2814,6 +2820,7 @@ export const gameService = {
     gameId: string,
     draft: DraftTeamsResult,
     res: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
+    resetTimerBy?: { userId: string; userName: string },
   ): Promise<void> {
     const newDraft: DraftTeamsResult = {
       ...draft,
@@ -2831,14 +2838,38 @@ export const gameService = {
       if (m) {
         m.rotation = res.rotation;
         m.draftTeams = newDraft;
+        if (resetTimerBy && m.liveMatch) {
+          m.liveMatch = {
+            ...m.liveMatch,
+            timerRunning: false,
+            timerLastStartedAt: null,
+            timerAccumulatedMs: 0,
+            timerEvents: [],
+            scoreA: 0,
+            scoreB: 0,
+          };
+        }
       }
       return;
     }
-    await updateGameDoc(gameId, {
+    const patch: Record<string, unknown> = {
       rotation: res.rotation,
       draftTeams: newDraft,
       updatedAt: Date.now(),
-    });
+    };
+    if (resetTimerBy) {
+      // Zero the new round's clock + score atomically with the rotation.
+      // (Goals are kept — the per-player badge survives, same as resetTimer.)
+      patch['liveMatch.timerRunning'] = false;
+      patch['liveMatch.timerLastStartedAt'] = null;
+      patch['liveMatch.timerAccumulatedMs'] = 0;
+      patch['liveMatch.timerControlledBy'] = resetTimerBy.userId;
+      patch['liveMatch.timerControlledByName'] = resetTimerBy.userName;
+      patch['liveMatch.timerEvents'] = [];
+      patch['liveMatch.scoreA'] = 0;
+      patch['liveMatch.scoreB'] = 0;
+    }
+    await updateGameDoc(gameId, patch);
   },
 
   /** Mark a player as having left for the evening ("הלך הביתה"). Removes them
@@ -5539,12 +5570,32 @@ export const gameService = {
       if (!snap.exists()) return;
       const data = snap.data();
       if (data.status === 'finished' || data.status === 'cancelled') return;
+      // If the admin ends the evening WITHOUT first ending the running round,
+      // that round's goals/assists were never aggregated (they only live on
+      // liveMatch.goals, which we're about to freeze). Commit them now so the
+      // last round's scorers/assisters count. `data` is the RAW doc, so its
+      // goals still carry assisterId. Idempotent via the committedRounds latch.
+      const lm = data.liveMatch as import('@/types').LiveMatchState | undefined;
+      const rot = data.rotation as import('@/types').MatchRotation | undefined;
+      const draft = data.draftTeams as DraftTeamsResult | undefined;
+      if (lm && rot && draft && (lm.goals?.length ?? 0) > 0) {
+        const winnerSide: 'A' | 'B' | null =
+          (lm.scoreA ?? 0) > (lm.scoreB ?? 0)
+            ? 'A'
+            : (lm.scoreB ?? 0) > (lm.scoreA ?? 0)
+              ? 'B'
+              : null;
+        await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide).catch((err) => {
+          logError('endEvening.commitFinalRound', err, { gameId });
+        });
+      }
       const updates: Record<string, unknown> = {
         status: 'finished',
         updatedAt: Date.now(),
       };
       if (data.liveMatch) {
-        updates.liveMatch = { ...data.liveMatch, phase: 'finished' };
+        // Re-read isn't worth it; the commit above already zeroed goals/score.
+        updates.liveMatch = { ...data.liveMatch, goals: [], scoreA: 0, scoreB: 0, phase: 'finished' };
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateDoc(ref, updates as any);
