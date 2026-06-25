@@ -55,7 +55,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminAddPlayers = exports.sendGameInvite = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -469,6 +469,19 @@ function buildMessage(type, payload) {
                 body: when
                     ? `${inviter} הזמין אותך ל${gameTitle} (${when})`
                     : `${inviter} הזמין אותך ל${gameTitle}`,
+            };
+        }
+        case 'addedToGame': {
+            // Admin REGISTERED the player (not just invited) — copy reflects that
+            // they're already in, and on the waitlist when the game was full.
+            const adder = payload.adderName || 'מנהל המשחק';
+            const onWaitlist = payload.waitlisted === true;
+            const where = onWaitlist ? 'רשימת ההמתנה של' : '';
+            return {
+                title: onWaitlist ? 'נוספת לרשימת ההמתנה' : 'נרשמת למשחק!',
+                body: when
+                    ? `${adder} רשם אותך ל${where}${gameTitle} (${when})`
+                    : `${adder} רשם אותך ל${where}${gameTitle}`,
             };
         }
         case 'rateReminder':
@@ -2735,21 +2748,22 @@ exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}',
     const reg = (arr) => (arr ?? []).filter((u) => typeof u === 'string' &&
         u.length > 0 &&
         !u.startsWith('guest:') &&
-        // Defence-in-depth: a raw guest id (genGuestId → "<base36ts>-<rand>")
-        // contains a hyphen; a real Firebase Auth uid never does. Without
-        // this, a guest id that slipped the `guest:` prefix got `set(merge)`
-        // a phantom /users doc → a spurious "new user" push.
-        !u.includes('-'));
+        // Defence-in-depth: a raw legacy guest id (genGuestId →
+        // "<base36ts>-<rand>", all lowercase) must not get a phantom /users
+        // doc. Match that EXACT shape rather than "any hyphen", so a real
+        // Firebase uid (mixed-case, no hyphen — incl. email accounts) is
+        // never excluded.
+        !/^[0-9a-z]+-[0-9a-z]+$/.test(u));
     const winners = reg(after.rotation.lastRoundWinners);
     const losers = reg(after.rotation.lastRoundLosers);
     if (winners.length === 0 && losers.length === 0)
         return;
     const inc = admin.firestore.FieldValue.increment(1);
     const batch = db.batch();
-    // 1) Lifetime per-player wins.
-    for (const uid of winners) {
-        batch.set(db.collection('users').doc(uid), { stats: { wins: inc } }, { merge: true });
-    }
+    // 1) Lifetime per-player wins are NO LONGER written here — they're written
+    //    by commitRoundStats in the same latched batch as the community/game
+    //    win tallies, so the three win counters can't diverge. This trigger now
+    //    only maintains the same-team pair stats below.
     // 2) Pairwise "played together on the same team" + together W/L. One doc
     //    per unordered pair at pairStats/{a__b} (sorted), so a player card can
     //    read a single doc for "you & X".
@@ -3445,6 +3459,13 @@ async function generateForGame(ref, g) {
                 return false;
             if (data.teamsEditedManually)
                 return false;
+            // Never overwrite a liveMatch that's already past setup — this write
+            // replaces the WHOLE liveMatch object, so clobbering a live/finished one
+            // would wipe its score + goal log. Only generate onto a fresh/organizing
+            // slot.
+            const existingPhase = data.liveMatch?.phase;
+            if (existingPhase && existingPhase !== 'organizing')
+                return false;
             const freshPlayers = data.players ?? players;
             const freshGuests = data.guests ?? [];
             if (freshPlayers.length === 0 && freshGuests.length === 0)
@@ -3911,6 +3932,123 @@ exports.sendGameInvite = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHEC
         console.warn('[sendGameInvite] invitesSent bump failed', err);
     }
     return { ok: true };
+});
+// ─── Callable: admin registers community members to a game ─────────────
+//
+// The organiser / a community admin picks members from their community and
+// registers them straight into the game (NOT just an invite — they're added
+// to `players`, overflowing to `waitlist` when the game is full). Each added
+// member gets an `addedToGame` push. Admin-only; targets must be members of
+// the game's community. Runs server-side (Admin SDK) so the roster write is
+// atomic + authoritative and the push fans out canonically.
+exports.adminAddPlayers = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    }
+    const callerUid = auth.uid;
+    const data = (request.data ?? {});
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const userIds = Array.isArray(data.userIds)
+        ? data.userIds.filter((x) => typeof x === 'string' && x.length > 0)
+        : [];
+    if (gameId.length === 0 || gameId.length > 128) {
+        throw new https_1.HttpsError('invalid-argument', 'invalid gameId');
+    }
+    if (userIds.length === 0 || userIds.length > 40) {
+        throw new https_1.HttpsError('invalid-argument', 'userIds must be 1..40');
+    }
+    const targets = Array.from(new Set(userIds)); // dedupe
+    // Load game + caller's name.
+    const [gameSnap, callerSnap] = await Promise.all([
+        db.collection('games').doc(gameId).get(),
+        db.collection('users').doc(callerUid).get(),
+    ]);
+    if (!gameSnap.exists) {
+        throw new https_1.HttpsError('failed-precondition', 'game not found');
+    }
+    const game = gameSnap.data();
+    if (game.status === 'finished' || game.status === 'cancelled') {
+        throw new https_1.HttpsError('failed-precondition', 'game is no longer open');
+    }
+    if (!game.groupId) {
+        throw new https_1.HttpsError('failed-precondition', 'game has no community');
+    }
+    // Permission: caller must be the organiser OR a community admin, and we
+    // also need the member set so we only add genuine community members.
+    const groupSnap = await db.collection('groups').doc(game.groupId).get();
+    if (!groupSnap.exists) {
+        throw new https_1.HttpsError('permission-denied', 'community missing');
+    }
+    const grp = groupSnap.data();
+    const adminIds = new Set(grp.adminIds ?? []);
+    const isAdmin = callerUid === game.createdBy || adminIds.has(callerUid);
+    if (!isAdmin) {
+        throw new https_1.HttpsError('permission-denied', 'admins only');
+    }
+    const memberIds = new Set([...(grp.playerIds ?? []), ...(grp.adminIds ?? [])]);
+    // Transaction: append eligible targets to players (then waitlist when the
+    // game is full), keeping participantIds + joinedAt in sync.
+    const result = await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(gameSnap.ref);
+        const g = fresh.data();
+        const players = [...(g.players ?? [])];
+        const waitlist = [...(g.waitlist ?? [])];
+        const pending = [...(g.pending ?? [])];
+        const joinedAt = { ...(g.joinedAt ?? {}) };
+        const cap = typeof g.maxPlayers === 'number' && g.maxPlayers > 0 ? g.maxPlayers : Infinity;
+        const inRoster = new Set([...players, ...waitlist, ...pending]);
+        const now = Date.now();
+        const addedToPlayers = [];
+        const addedToWaitlist = [];
+        for (const uid of targets) {
+            if (!memberIds.has(uid))
+                continue; // not a community member → skip
+            if (inRoster.has(uid))
+                continue; // already registered → skip
+            inRoster.add(uid);
+            joinedAt[uid] = now;
+            if (players.length < cap) {
+                players.push(uid);
+                addedToPlayers.push(uid);
+            }
+            else {
+                waitlist.push(uid);
+                addedToWaitlist.push(uid);
+            }
+        }
+        if (addedToPlayers.length === 0 && addedToWaitlist.length === 0) {
+            return { addedToPlayers, addedToWaitlist };
+        }
+        const participantIds = Array.from(new Set([...players, ...waitlist, ...pending]));
+        tx.update(gameSnap.ref, {
+            players,
+            waitlist,
+            participantIds,
+            joinedAt,
+            updatedAt: now,
+        });
+        return { addedToPlayers, addedToWaitlist };
+    });
+    // Push each newly-added member (one doc per recipient → per-player body).
+    const adderName = callerSnap.data()?.name ?? '';
+    const title = typeof game.title === 'string' ? game.title : 'המשחק';
+    const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
+    const pushOne = (uid, waitlisted) => createNotificationOnce({
+        type: 'addedToGame',
+        recipientId: uid,
+        payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
+        createdByUid: callerUid,
+    }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+    await Promise.all([
+        ...result.addedToPlayers.map((uid) => pushOne(uid, false)),
+        ...result.addedToWaitlist.map((uid) => pushOne(uid, true)),
+    ]);
+    return {
+        ok: true,
+        addedToPlayers: result.addedToPlayers.length,
+        addedToWaitlist: result.addedToWaitlist.length,
+    };
 });
 // ─── Callable: notify game admin of player cancellation ────────────────
 //
@@ -6317,10 +6455,17 @@ exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minut
 // W/L + head-to-head against). Idempotency is the caller's concern — it sends
 // each finished round once.
 const GUEST_PREFIX = 'guest:';
-// A real Firebase Auth uid: not guest-prefixed AND no hyphen (a raw guest id
-// from genGuestId is "<base36ts>-<rand>"). The hyphen check stops a guest id
-// that slipped the prefix from `set(merge)`-creating a phantom /users doc.
-const isReal = (id) => typeof id === 'string' && !id.startsWith(GUEST_PREFIX) && !id.includes('-');
+// Legacy raw guest id shape: genGuestId() → "<base36ts>-<rand>" (all lowercase
+// alphanumeric, exactly one hyphen). A real Firebase Auth uid is 28 MIXED-case
+// alphanumeric chars and never contains a hyphen — including email/password
+// accounts — so matching this exact shape (instead of "any hyphen") can never
+// misclassify a real user, even a hypothetical one with a hyphen.
+const RAW_GUEST_RE = /^[0-9a-z]+-[0-9a-z]+$/;
+// A real Firebase Auth uid: not guest-prefixed AND not a raw legacy guest id.
+const isReal = (id) => typeof id === 'string' &&
+    id.length > 0 &&
+    !id.startsWith(GUEST_PREFIX) &&
+    !RAW_GUEST_RE.test(id);
 exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
@@ -6418,8 +6563,15 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), { groupId, userId: uid, [field]: inc(1), updatedAt: now }, { merge: true });
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${uid}`), { gameId, userId: uid, [field]: inc(1), updatedAt: now }, { merge: true });
     };
-    for (const uid of roundWinners)
+    for (const uid of roundWinners) {
         tallyResult(uid, 'wins');
+        // Lifetime per-player wins are written HERE — in the SAME idempotent,
+        // committedRounds-latched batch as the community/game win tallies —
+        // instead of the onGameRotationChanged trigger. That guarantees the
+        // three win counters (lifetime / community / game) can never diverge:
+        // they all commit together, or none of them on a failure.
+        batch.set(db.collection('users').doc(uid), { stats: { wins: inc(1) } }, { merge: true });
+    }
     for (const uid of roundLosers)
         tallyResult(uid, 'losses');
     // Directional pair assists: assistsAToB = sorted-first player assisted the

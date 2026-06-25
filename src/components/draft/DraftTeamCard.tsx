@@ -10,8 +10,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GrowIn, ShrinkOut } from './DraftScalePop';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
+import { Ionicons } from '@expo/vector-icons';
 import { teamName } from '@/utils/draft';
-import { teamColor } from '@/components/match/rotationView';
+import { teamColor, teamPaletteEntry } from '@/components/match/rotationView';
 
 export interface DraftUserLite {
   id: string;
@@ -35,6 +36,10 @@ interface Props {
   ghostMember?: DraftUserLite;
   /** Called when the ghost finishes shrinking, so the parent drops it. */
   onGhostDone?: () => void;
+  /** Admin-chosen team colour key — names the team by colour ("האדומים"). */
+  colorKey?: string;
+  /** Tap the colour swatch to change it (admin only). */
+  onPickColor?: () => void;
 }
 
 /** First token only — "מתן לוי" → "מתן", "Itay Davidi" → "Itay". */
@@ -52,11 +57,15 @@ export function DraftTeamCard({
   growMembers,
   ghostMember,
   onGhostDone,
+  colorKey,
+  onPickColor,
 }: Props) {
-  // Each team carries its own colour (red / blue / green / yellow). Tint the
-  // label + a leading accent bar so the teams are visually distinct at a
-  // glance (feat 7p1vkun), not all in the same brand blue.
-  const tColor = teamColor(index);
+  // Each team carries its own colour. When the admin chose one, the team is
+  // named by that colour in plural ("האדומים") and tinted it; otherwise the
+  // default per-index colour + name.
+  const chosen = teamPaletteEntry(colorKey);
+  const tColor = chosen ? chosen.hex : teamColor(index);
+  const tLabel = chosen ? chosen.plural : teamName(index);
   return (
     <View
       style={[
@@ -85,10 +94,20 @@ export function DraftTeamCard({
         ) : null}
       </View>
       <View style={styles.teamNameRow}>
-        <View style={[styles.teamDot, { backgroundColor: tColor }]} />
-        <Text style={[styles.teamName, { color: tColor }]}>
-          {teamName(index)}
-        </Text>
+        {onPickColor ? (
+          <Pressable
+            onPress={onPickColor}
+            hitSlop={8}
+            style={[styles.colorSwatch, { backgroundColor: tColor, borderColor: chosen?.light ? colors.border : tColor }]}
+            accessibilityRole="button"
+            accessibilityLabel="בחר צבע קבוצה"
+          >
+            <Ionicons name="color-palette" size={12} color={chosen?.light ? colors.textMuted : '#FFFFFF'} />
+          </Pressable>
+        ) : (
+          <View style={[styles.teamDot, { backgroundColor: tColor }]} />
+        )}
+        <Text style={[styles.teamName, { color: tColor }]}>{tLabel}</Text>
       </View>
     </View>
   );
@@ -156,6 +175,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   teamDot: { width: 8, height: 8, borderRadius: 4 },
+  colorSwatch: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   teamName: {
     ...typography.caption,
     fontWeight: '800',

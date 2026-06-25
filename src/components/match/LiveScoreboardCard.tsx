@@ -140,9 +140,9 @@ export function LiveScoreboardCard(props: Props) {
       {/* Top row: team A (right) · timer (center) · team B (left). */}
       <View style={styles.row}>
         <ScoreSide
-          label={teamName(aIdx)}
+          label={teamName(aIdx, draftTeams.teams)}
           score={live.scoreA}
-          tint={teamColor(aIdx)}
+          tint={teamColor(aIdx, draftTeams.teams)}
           canEdit={canEdit}
           busy={busy}
           onAdd={() => setPickSide('A')}
@@ -175,9 +175,9 @@ export function LiveScoreboardCard(props: Props) {
         </View>
 
         <ScoreSide
-          label={teamName(bIdx)}
+          label={teamName(bIdx, draftTeams.teams)}
           score={live.scoreB}
-          tint={teamColor(bIdx)}
+          tint={teamColor(bIdx, draftTeams.teams)}
           canEdit={canEdit}
           busy={busy}
           onAdd={() => setPickSide('B')}
@@ -215,7 +215,7 @@ export function LiveScoreboardCard(props: Props) {
                       {goalLabel(g)}
                     </Text>
                     <View
-                      style={[styles.logDot, { backgroundColor: g.team === 'A' ? teamColor(aIdx) : teamColor(bIdx) }]}
+                      style={[styles.logDot, { backgroundColor: g.team === 'A' ? teamColor(aIdx, draftTeams.teams) : teamColor(bIdx, draftTeams.teams) }]}
                     />
                   </View>
                 ))}
@@ -226,7 +226,7 @@ export function LiveScoreboardCard(props: Props) {
 
       <ScorerPicker
         visible={pickSide !== null}
-        teamLabel={pickSide === 'A' ? teamName(aIdx) : teamName(bIdx)}
+        teamLabel={pickSide === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)}
         roster={pickSide === 'A' ? rosterA : rosterB}
         onPick={(id) => {
           if (!pickSide) return;
@@ -241,7 +241,7 @@ export function LiveScoreboardCard(props: Props) {
 
       <AssisterPicker
         visible={pendingAssist !== null}
-        teamLabel={pendingAssist?.side === 'A' ? teamName(aIdx) : teamName(bIdx)}
+        teamLabel={pendingAssist?.side === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)}
         // The other players on the scorer's team — you can't assist your own goal.
         roster={(pendingAssist?.side === 'A' ? rosterA : rosterB).filter(
           (m) => m.id !== pendingAssist?.scorerId,

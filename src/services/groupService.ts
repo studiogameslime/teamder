@@ -969,11 +969,12 @@ export const groupService = {
     rating: number | null,
   ): Promise<void> {
     if (!groupId || !playerId) return;
+    // Decimal scale 0.5–5.0, one decimal place (e.g. 4.3). 0/null clears.
     const valid =
-      rating != null && Number.isInteger(rating) && rating >= 1 && rating <= 10;
+      rating != null && rating >= 0.5 && rating <= 5;
     const clear = rating == null || rating === 0;
     if (!valid && !clear) {
-      throw new Error('setAdminRating: rating must be 1–10 (or 0/null to clear)');
+      throw new Error('setAdminRating: rating must be 0.5–5.0 (or 0/null to clear)');
     }
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];

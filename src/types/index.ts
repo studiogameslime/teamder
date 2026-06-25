@@ -978,6 +978,10 @@ export interface DraftTeam {
   captainId: UserId;
   /** All members, captain first, then players in the order they were picked. */
   playerIds: UserId[];
+  /** Admin-chosen team colour key (see TEAM_PALETTE in rotationView). When set,
+   *  the team is named by its colour in plural ("האדומים") and tinted that
+   *  colour everywhere; absent → the default index-based name/colour. */
+  colorKey?: string;
 }
 /** How a borrowed filler behaves when a short team is completed during the
  *  live rotation. 'temporary' = the filler returns to their home team the

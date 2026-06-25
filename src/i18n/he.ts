@@ -144,6 +144,10 @@ export const he = {
   ratingTitle: 'דרג את {name}',
   ratingNoSelf: 'אי אפשר לדרג את עצמך',
   ratingNone: 'עדיין אין דירוגים',
+  ratingDragHint: 'גררו על הסרגל כדי לדרג (0.5–5.0)',
+  // Team colour picker (DraftBoard) — names the team by colour in plural.
+  teamColorTitle: 'בחרו צבע לקבוצה',
+  teamColorClear: 'ללא צבע (ברירת מחדל)',
   ratingInThisGroup: 'דירוג כללי',
   ratingGlobalTitle: 'דירוג כללי',
   ratingSaved: 'הדירוג נשמר',
@@ -776,7 +780,7 @@ export const he = {
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'דרג את השחקן (1–10). דירוג פנימי — נראה למנהלים בלבד.',
+  communityAdminRatingHint: 'דרג את השחקן (0.5–5.0). דירוג פנימי — נראה למנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
   communityAdminRatingSet: 'דרג',
   // ── Community statistics screen ──

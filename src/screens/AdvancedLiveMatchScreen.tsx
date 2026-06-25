@@ -64,8 +64,7 @@ import {
   type RotationFillState,
   type RotationTeam,
 } from '@/services/rotationEngine';
-import { teamName } from '@/utils/draft';
-import { teamColor } from '@/components/match/rotationView';
+import { teamName, teamColor } from '@/components/match/rotationView';
 import { useGameStore } from '@/store/gameStore';
 import { he } from '@/i18n/he';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -421,7 +420,7 @@ export function AdvancedLiveMatchScreen() {
         // button stays permanently disabled.
         const need = Math.min(req.deficit, req.donors.length);
         setFillRequest({
-          teamLabel: teamName(team),
+          teamLabel: teamName(team, draftTeams?.teams),
           players: req.donors.map(resolveFillPlayer),
           recommendedIds: pickRandom(req.donors, need),
           requiredCount: need,
@@ -501,9 +500,9 @@ export function AdvancedLiveMatchScreen() {
     }
     const next = rotation.waiting[0];
     appAlert(
-      he.rotationEndRoundConfirmTitle(teamName(winnerIdx)),
+      he.rotationEndRoundConfirmTitle(teamName(winnerIdx, draftTeams?.teams)),
       next != null
-        ? he.rotationEndRoundConfirmBody(teamName(next))
+        ? he.rotationEndRoundConfirmBody(teamName(next, draftTeams?.teams))
         : he.rotationEndRoundConfirmBodyNoNext,
       [
         { text: he.cancel, style: 'cancel' },
@@ -1098,7 +1097,7 @@ export function AdvancedLiveMatchScreen() {
                       ]}
                     >
                       <View
-                        style={[styles.teamDot, { backgroundColor: teamColor(idx) }]}
+                        style={[styles.teamDot, { backgroundColor: teamColor(idx, draftTeams?.teams) }]}
                       />
                       <Text
                         style={[
@@ -1106,7 +1105,7 @@ export function AdvancedLiveMatchScreen() {
                           selected && styles.teamChipTextPlaying,
                         ]}
                       >
-                        {teamName(idx)}
+                        {teamName(idx, draftTeams?.teams)}
                       </Text>
                       {selected ? (
                         <Ionicons name="checkmark-circle" size={13} color={colors.primary} />

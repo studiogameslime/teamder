@@ -5960,10 +5960,10 @@ export const gameService = {
       rating !== undefined &&
       (typeof rating !== 'number' ||
         !Number.isFinite(rating) ||
-        rating < 1 ||
-        rating > 10)
+        rating < 0.5 ||
+        rating > 5)
     ) {
-      throw new Error('addGuest: estimatedRating must be 1..10');
+      throw new Error('addGuest: estimatedRating must be 0.5..5.0');
     }
     // Firestore rejects writes that include `undefined` values
     // (`Unsupported field value`). Build the guest object WITHOUT
@@ -6074,10 +6074,10 @@ export const gameService = {
         if (
           typeof r !== 'number' ||
           !Number.isFinite(r) ||
-          r < 1 ||
-          r > 10
+          r < 0.5 ||
+          r > 5
         ) {
-          throw new Error('updateGuest: estimatedRating must be 1..10');
+          throw new Error('updateGuest: estimatedRating must be 0.5..5.0');
         }
         nextRating = r;
       }

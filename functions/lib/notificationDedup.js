@@ -42,6 +42,10 @@ const COOLDOWN_MS = {
     // re-promote (edit) doesn't double-ping.
     groupInvitation: 24 * 60 * 60 * 1000,
     gameShortageWarning: 12 * 60 * 60 * 1000,
+    // Admin registered a member to a game. Short cooldown so an admin
+    // re-adding (e.g. after a mistaken remove) doesn't double-ping, but the
+    // next genuine add still notifies.
+    addedToGame: 5 * 60 * 1000,
     // Friendship pings — one per (sender, recipient) pair per day is plenty.
     friendRequest: 24 * 60 * 60 * 1000,
     friendRequestAccepted: 24 * 60 * 60 * 1000,
@@ -131,6 +135,9 @@ function inferEntityFromPayload(type, recipientId, payload) {
                 entityId: gameId || recipientId,
                 reason: inviterId ? `inv-${inviterId}` : 'invite',
             };
+        case 'addedToGame':
+            // Admin registered this member to the game. One per (recipient, game).
+            return { entityType: 'game', entityId: gameId || recipientId, reason: 'added' };
         case 'playerCancelled':
             // recipientId here is the admin; entity is the game. Reason is
             // intentionally NOT keyed by cancellingUserId — we WANT

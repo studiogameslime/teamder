@@ -173,6 +173,7 @@ export function RotationPanel({
             <View style={styles.scoreCol}>
               <TeamScore
                 teamIdx={aIdx}
+                teams={draftTeams.teams}
                 roster={rosterA}
                 wins={winsOf(aIdx)}
                 align="right"
@@ -187,6 +188,7 @@ export function RotationPanel({
             <View style={styles.scoreCol}>
               <TeamScore
                 teamIdx={bIdx}
+                teams={draftTeams.teams}
                 roster={rosterB}
                 wins={winsOf(bIdx)}
                 align="left"
@@ -204,7 +206,7 @@ export function RotationPanel({
                 <View key={m.id} style={styles.legendRow}>
                   <Ionicons name="star" size={12} color="#1D4ED8" />
                   <Text style={styles.legendText}>
-                    {he.rotationFillerNamed(m.name, teamName(m.fromTeam as number))}
+                    {he.rotationFillerNamed(m.name, teamName(m.fromTeam as number, draftTeams?.teams))}
                   </Text>
                 </View>
               ))}
@@ -250,7 +252,7 @@ export function RotationPanel({
                     <Ionicons name="people" size={20} color={next ? colors.primary : '#94A3B8'} />
                   </View>
                   <View style={styles.waitText}>
-                    <Text style={[styles.waitName, { color: teamColor(idx) }]}>{teamName(idx)}</Text>
+                    <Text style={[styles.waitName, { color: teamColor(idx, draftTeams?.teams) }]}>{teamName(idx, draftTeams?.teams)}</Text>
                     <Text style={styles.waitCount}>
                       {he.rotationPlayersCount(roster.length)}
                       {winsOf(idx) > 0
@@ -358,9 +360,10 @@ export function RotationPanel({
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             {openTeam != null ? (
               <>
-                <Text style={styles.sheetTitle}>{teamName(openTeam)}</Text>
+                <Text style={styles.sheetTitle}>{teamName(openTeam, draftTeams?.teams)}</Text>
                 <TeamScore
                   teamIdx={openTeam}
+                  teams={draftTeams.teams}
                   roster={openRoster}
                   wins={0}
                   align="right"

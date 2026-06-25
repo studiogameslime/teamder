@@ -814,6 +814,9 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
         index: typeof r.index === 'number' ? r.index : 0,
         captainId,
         playerIds,
+        // Keep the admin-chosen colour through deserialization (else it'd be
+        // stripped on read and the team would lose its "האדומים" name/tint).
+        ...(typeof r.colorKey === 'string' ? { colorKey: r.colorKey } : {}),
       };
     })
     .filter((t): t is NonNullable<typeof t> => t !== null);
@@ -824,6 +827,9 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
         .map((l) => ({
           playerId: typeof l.playerId === 'string' ? l.playerId : '',
           homeTeam: typeof l.homeTeam === 'number' ? l.homeTeam : 0,
+          // Keep the departure time (drives the "הלך הביתה" timestamp); it was
+          // being stripped on read.
+          ...(typeof l.at === 'number' ? { at: l.at } : {}),
         }))
         .filter((l) => l.playerId)
     : undefined;

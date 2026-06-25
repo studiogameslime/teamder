@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
-import { RatingScale } from './RatingScale';
+import { RatingSlider } from './RatingSlider';
 import { toast } from './Toast';
 import { logError } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
@@ -160,10 +160,9 @@ export function GuestModal({
 
           <View style={styles.field}>
             <Text style={styles.label}>{he.guestRatingLabel}</Text>
-            <RatingScale
+            <RatingSlider
               value={rating ?? 0}
               onChange={(n) => setRating(n === 0 ? null : n)}
-              max={10}
             />
             <Text style={styles.helper}>{he.guestRatingHint}</Text>
           </View>

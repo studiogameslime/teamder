@@ -16,7 +16,8 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
-import { RatingScale } from '@/components/RatingScale';
+import { RatingSlider } from '@/components/RatingSlider';
+import { formatRating, isRated } from '@/utils/rating';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -353,7 +354,7 @@ function AdminRatingSheet({
             {target ? he.communityAdminRatingTitle(target.name) : ''}
           </Text>
           <Text style={styles.sheetHint}>{he.communityAdminRatingHint}</Text>
-          <RatingScale value={value} onChange={setValue} max={10} />
+          <RatingSlider value={value} onChange={setValue} />
           <View style={styles.sheetActions}>
             <Pressable
               onPress={() => onSave(null)}
@@ -456,7 +457,7 @@ function PlayerRow({
               <View style={[styles.chip, styles.ratingChip]}>
                 <Ionicons name="star" size={12} color={colors.warning} />
                 <Text style={[styles.chipText, styles.ratingChipText]}>
-                  {rating ? String(rating) : he.communityAdminRatingSet}
+                  {isRated(rating) ? formatRating(rating) : he.communityAdminRatingSet}
                 </Text>
               </View>
             </Pressable>

@@ -27,6 +27,8 @@ interface Props {
   variant?: 'list' | 'grid';
   /** Goals per player this round — shown in the list badge instead of a rank. */
   goalsByPlayer?: Record<string, number>;
+  /** Draft teams (carry the admin-chosen colour) so the name/tint reflect it. */
+  teams?: { index: number; colorKey?: string }[];
   /** Tap a player (list variant only) → reports the avatar's on-screen rect so
    *  the caller can anchor a popover menu beside them. */
   onPlayerPress?: (m: RosterMember, rect: MenuAnchor) => void;
@@ -40,6 +42,7 @@ export function TeamScore({
   avatarSize,
   variant = 'grid',
   goalsByPlayer,
+  teams,
   onPlayerPress,
 }: Props) {
   const star = (
@@ -72,7 +75,7 @@ export function TeamScore({
     return (
       <View style={styles.listCol}>
         <View style={styles.headerRow}>
-          <Text style={[styles.nameOnly, { color: teamColor(teamIdx) }]}>{teamName(teamIdx)}</Text>
+          <Text style={[styles.nameOnly, { color: teamColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
           <View style={styles.winsBox}>
             <Text style={styles.winsNum}>{wins}</Text>
             <Text style={styles.winsLabel}>{he.rotationWinsLabel}</Text>
@@ -138,7 +141,7 @@ export function TeamScore({
       <View style={styles.gridHeader}>
         <View style={styles.gridHeadRow}>
           {trophyFirst ? trophies : null}
-          <Text style={[styles.name, { color: teamColor(teamIdx) }]}>{teamName(teamIdx)}</Text>
+          <Text style={[styles.name, { color: teamColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
           {trophyFirst ? null : trophies}
         </View>
         {wins > 0 ? (

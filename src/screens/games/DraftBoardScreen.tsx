@@ -7,7 +7,8 @@
 // list. When everyone is placed it flips to a summary with "סיים".
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TEAM_PALETTE } from '@/components/match/rotationView';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -55,6 +56,10 @@ export function DraftBoardScreen() {
   /** uids in the order they were picked; team = order[k]. Captains excluded. */
   const [picks, setPicks] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  /** Admin-chosen colour key per team index ("red" → "האדומים"). */
+  const [teamColors, setTeamColors] = useState<Record<number, string>>({});
+  /** Team index whose colour picker is open (null = closed). */
+  const [pickerTeam, setPickerTeam] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -82,6 +87,12 @@ export function DraftBoardScreen() {
         // summary (and can still step back to edit).
         if (resume && g?.draftTeams) {
           setPicks(reconstructPicks(g.draftTeams));
+          // Restore any colours chosen on the saved draft.
+          const restored: Record<number, string> = {};
+          for (const t of g.draftTeams.teams) {
+            if (t.colorKey) restored[t.index] = t.colorKey;
+          }
+          if (Object.keys(restored).length) setTeamColors(restored);
         }
       } catch (err) {
         logError('draftBoardLoad', err, { gameId });
@@ -212,6 +223,7 @@ export function DraftBoardScreen() {
         index: t,
         captainId: captainIds[t],
         playerIds: [captainIds[t], ...membersOf(t)],
+        ...(teamColors[t] ? { colorKey: teamColors[t] } : {}),
       })),
     };
     setSaving(true);
@@ -251,6 +263,8 @@ export function DraftBoardScreen() {
                 captain={resolve(captainIds[t])}
                 members={membersOf(t).map(resolve)}
                 onPressUser={openCard}
+                colorKey={teamColors[t]}
+                onPickColor={readOnly ? undefined : () => setPickerTeam(t)}
               />
             ))}
           </View>
@@ -289,6 +303,69 @@ export function DraftBoardScreen() {
             </View>
           </View>
         )}
+
+        {/* Team colour picker — names the team by its colour in plural. */}
+        <Modal
+          visible={pickerTeam !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPickerTeam(null)}
+        >
+          <Pressable style={styles.pickerBackdrop} onPress={() => setPickerTeam(null)}>
+            <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.pickerTitle}>{he.teamColorTitle}</Text>
+              <View style={styles.pickerGrid}>
+                {TEAM_PALETTE.map((c) => {
+                  const taken = Object.entries(teamColors).some(
+                    ([idx, k]) => k === c.key && Number(idx) !== pickerTeam,
+                  );
+                  const selected = pickerTeam !== null && teamColors[pickerTeam] === c.key;
+                  return (
+                    <Pressable
+                      key={c.key}
+                      disabled={taken}
+                      onPress={() => {
+                        if (pickerTeam === null) return;
+                        setTeamColors((prev) => ({ ...prev, [pickerTeam]: c.key }));
+                        setPickerTeam(null);
+                      }}
+                      style={styles.pickerItem}
+                    >
+                      <View
+                        style={[
+                          styles.pickerSwatch,
+                          { backgroundColor: c.hex, opacity: taken ? 0.3 : 1 },
+                          selected && styles.pickerSwatchSel,
+                          c.light && styles.pickerSwatchLight,
+                        ]}
+                      >
+                        {selected ? (
+                          <Ionicons name="checkmark" size={20} color={c.light ? '#111' : '#fff'} />
+                        ) : null}
+                      </View>
+                      <Text style={styles.pickerLabel}>{c.plural}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {pickerTeam !== null && teamColors[pickerTeam] ? (
+                <Pressable
+                  style={styles.pickerClear}
+                  onPress={() => {
+                    setTeamColors((prev) => {
+                      const next = { ...prev };
+                      if (pickerTeam !== null) delete next[pickerTeam];
+                      return next;
+                    });
+                    setPickerTeam(null);
+                  }}
+                >
+                  <Text style={styles.pickerClearTxt}>{he.teamColorClear}</Text>
+                </Pressable>
+              ) : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -392,6 +469,17 @@ export function DraftBoardScreen() {
 }
 
 const styles = StyleSheet.create({
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  pickerSheet: { width: '100%', maxWidth: 380, backgroundColor: colors.bg, borderRadius: 22, padding: spacing.lg, gap: spacing.md },
+  pickerTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
+  pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.md },
+  pickerItem: { alignItems: 'center', gap: 6, width: 76 },
+  pickerSwatch: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
+  pickerSwatchSel: { borderColor: colors.text },
+  pickerSwatchLight: { borderWidth: 1, borderColor: colors.border },
+  pickerLabel: { ...typography.caption, color: colors.text, fontWeight: '700' },
+  pickerClear: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  pickerClearTxt: { ...typography.body, color: colors.textMuted, fontWeight: '700' },
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   stepChip: {
