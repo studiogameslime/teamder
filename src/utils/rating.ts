@@ -1,14 +1,14 @@
 // Internal community rating scale. Admins rate community members on a
-// decimal 0.5–5.0 scale (one decimal place, e.g. 4.3). "Unrated" is stored as
+// decimal 1.0–5.0 scale (one decimal place, e.g. 4.3). "Unrated" is stored as
 // 0 / undefined and rendered as an em dash. The same scale is used for a
 // guest's skill estimate. Drives the auto-balance algorithm, where an unrated
 // player counts as the neutral middle.
 
-export const RATING_MIN = 0.5;
+export const RATING_MIN = 1;
 export const RATING_MAX = 5;
 export const RATING_STEP = 0.1;
-/** Unrated players are scored at the neutral middle of 0–5 during balancing. */
-export const RATING_NEUTRAL = 2.5;
+/** Unrated players are scored at the neutral middle of 1–5 during balancing. */
+export const RATING_NEUTRAL = 3;
 
 /** True when `v` is a real rating (not unrated/empty). */
 export function isRated(v: number | null | undefined): boolean {

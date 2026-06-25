@@ -38,8 +38,8 @@ describe('rating scale', () => {
     expect(snapRating(-3)).toBe(RATING_MIN);
   });
 
-  it('neutral middle is the centre of 0–5', () => {
-    expect(RATING_NEUTRAL).toBe(2.5);
+  it('neutral middle is the centre of 1–5', () => {
+    expect(RATING_NEUTRAL).toBe(3);
   });
 });
 

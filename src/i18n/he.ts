@@ -144,7 +144,7 @@ export const he = {
   ratingTitle: 'דרג את {name}',
   ratingNoSelf: 'אי אפשר לדרג את עצמך',
   ratingNone: 'עדיין אין דירוגים',
-  ratingDragHint: 'גררו על הסרגל כדי לדרג (0.5–5.0)',
+  ratingDragHint: 'גררו על הסרגל כדי לדרג (1.0–5.0)',
   // Team colour picker (DraftBoard) — names the team by colour in plural.
   teamColorTitle: 'בחרו צבע לקבוצה',
   teamColorClear: 'ללא צבע (ברירת מחדל)',

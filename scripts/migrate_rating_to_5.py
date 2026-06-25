@@ -21,7 +21,9 @@ HDRS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
 
 def half(v):
-    return round(v / 2, 1)
+    # ÷2 onto the new 1.0–5.0 scale, one decimal, clamped to the [1, 5] range
+    # (old min 1 → 0.5 → 1).
+    return min(5.0, max(1.0, round(v / 2, 1)))
 
 
 def fetch(coll):

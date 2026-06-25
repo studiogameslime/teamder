@@ -3244,11 +3244,11 @@ function balanceTeamsV1(playerIds, ratings, numberOfTeams, perTeam) {
     let unratedCount = 0;
     const scored = playerIds.map((id) => {
         const known = ratings[id];
-        if (typeof known === 'number') {
+        if (typeof known === 'number' && known > 0) {
             return { id, rating: known, unrated: false };
         }
         unratedCount += 1;
-        return { id, rating: 5.5, unrated: true }; // neutral midpoint of 1..10
+        return { id, rating: 3, unrated: true }; // neutral midpoint of 1.0..5.0
     });
     // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
     // stable, so shuffled-order survives within any tied rating bucket.
@@ -3473,13 +3473,13 @@ async function generateForGame(ref, g) {
             // Compose the roster: real users keep their uid; guests are
             // encoded as `guest:<id>` so the roster id space is disjoint.
             // Their rating is `estimatedRating` when set, otherwise the
-            // neutral 3.0 (handled by balanceTeamsV1's unrated branch).
+            // neutral 3 (handled by balanceTeamsV1's unrated branch).
             const guestRoster = freshGuests.map((gu) => `${GUEST_ID_PREFIX}${gu.id}`);
             const guestRatings = {};
             for (const gu of freshGuests) {
                 if (typeof gu.estimatedRating === 'number' &&
                     gu.estimatedRating >= 1 &&
-                    gu.estimatedRating <= 10) {
+                    gu.estimatedRating <= 5) {
                     guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
                 }
             }
@@ -3661,7 +3661,7 @@ async function generateDraftTeamsForGame(ref, g) {
             for (const gu of freshGuests) {
                 if (typeof gu.estimatedRating === 'number' &&
                     gu.estimatedRating >= 1 &&
-                    gu.estimatedRating <= 10) {
+                    gu.estimatedRating <= 5) {
                     guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
                 }
             }

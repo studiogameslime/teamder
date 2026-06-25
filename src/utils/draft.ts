@@ -25,9 +25,8 @@ export function playersPerTeam(format?: GameFormat): number {
   return 5;
 }
 
-/** Neutral rating for an unrated player — the middle of the 1..10 scale. */
-// Unrated players score at the neutral middle of the 0.5–5.0 scale.
-export const NEUTRAL_RATING = 2.5;
+/** Neutral rating for an unrated player — the middle of the 1.0–5.0 scale. */
+export const NEUTRAL_RATING = 3;
 
 /** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */
 export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'] as const;

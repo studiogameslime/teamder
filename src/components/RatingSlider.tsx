@@ -1,8 +1,9 @@
-// RatingSlider — decimal internal-rating input on a 0.5–5.0 scale, one decimal
+// RatingSlider — decimal internal-rating input on a 1.0–5.0 scale, one decimal
 // (e.g. 4.3). A draggable/tappable track (built on PanResponder so it needs no
-// native slider module), a big value read-out, tick labels 0–5, and a
-// "לא דורג" clear that resets to unrated (0). The track itself is laid out LTR
-// (0 left → 5 right) so the position math stays simple under the app's RTL.
+// native slider module), a big value read-out, a row of 5 stars that fill to
+// match the value, tick labels 1–5, and a "לא דורג" clear that resets to
+// unrated (0). The track is laid out LTR (1 left → 5 right) so the position
+// math stays simple under the app's RTL.
 
 import React, { useRef, useState } from 'react';
 import {
@@ -13,6 +14,7 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, typography } from '@/theme';
 import { selectionHaptic } from '@/utils/haptics';
 import { RATING_MAX, RATING_MIN, formatRating, isRated, snapRating } from '@/utils/rating';
@@ -26,6 +28,10 @@ interface Props {
 }
 
 const THUMB = 26;
+const STAR = 30;
+const SPAN = RATING_MAX - RATING_MIN; // 4
+const STARS = [1, 2, 3, 4, 5];
+const TICKS = [1, 2, 3, 4, 5];
 
 export function RatingSlider({ value, onChange, readonly = false }: Props) {
   const [trackW, setTrackW] = useState(0);
@@ -36,7 +42,7 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
     const w = widthRef.current;
     if (w <= 0) return;
     const ratio = Math.min(1, Math.max(0, locationX / w));
-    onChange?.(snapRating(ratio * RATING_MAX));
+    onChange?.(snapRating(RATING_MIN + ratio * SPAN));
   };
 
   const pan = useRef(
@@ -52,8 +58,13 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
   ).current;
 
   // Filled fraction of the track (0 when unrated).
-  const frac = rated ? Math.min(1, Math.max(0, value / RATING_MAX)) : 0;
+  const frac = rated ? Math.min(1, Math.max(0, (value - RATING_MIN) / SPAN)) : 0;
   const fillW = trackW * frac;
+
+  // How much of star `s` is filled, 0..1 — fills continuously so every 0.1
+  // adds a sliver (e.g. 3.2 → the 4th star is 20% filled from the left).
+  const starFill = (s: number): number =>
+    rated ? Math.min(1, Math.max(0, value - (s - 1))) : 0;
 
   return (
     <View style={styles.wrap}>
@@ -76,7 +87,25 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
         ) : null}
       </View>
 
-      {/* Track (LTR: 0 left → 5 right) */}
+      {/* Stars — each fills continuously: an outline base with a clipped solid
+          star overlaid, revealed left→right in proportion to the value. */}
+      <View style={styles.stars}>
+        {STARS.map((s) => {
+          const f = starFill(s);
+          return (
+            <View key={s} style={styles.star}>
+              <Ionicons name="star-outline" size={STAR} color={colors.border} />
+              {f > 0 ? (
+                <View style={[styles.starFill, { width: STAR * f }]} pointerEvents="none">
+                  <Ionicons name="star" size={STAR} color={colors.primary} />
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Track (LTR: 1 left → 5 right) */}
       <View
         style={styles.trackArea}
         onLayout={(e) => {
@@ -86,18 +115,19 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
         }}
         {...pan.panHandlers}
       >
-        <View style={styles.track}>
+        <View style={styles.track} pointerEvents="none">
           {rated ? <View style={[styles.fill, { width: fillW }]} /> : null}
         </View>
         {rated ? (
           <View
+            pointerEvents="none"
             style={[styles.thumb, { left: Math.min(trackW - THUMB / 2, Math.max(-THUMB / 2, fillW - THUMB / 2)) }]}
           />
         ) : null}
       </View>
 
       <View style={styles.ticks}>
-        {[0, 1, 2, 3, 4, 5].map((t) => (
+        {TICKS.map((t) => (
           <Text key={t} style={styles.tick}>
             {t}
           </Text>
@@ -121,6 +151,9 @@ const styles = StyleSheet.create({
   outOf: { fontSize: 18, fontWeight: '700', color: colors.textMuted },
   clearBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
   clearTxt: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
+  stars: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  star: { width: STAR, height: STAR },
+  starFill: { position: 'absolute', top: 0, left: 0, height: STAR, overflow: 'hidden' },
   trackArea: { height: THUMB + 8, justifyContent: 'center' },
   track: { height: 10, borderRadius: 999, backgroundColor: colors.border, overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: colors.primary, borderRadius: 999 },

@@ -3844,7 +3844,7 @@ function shuffleInPlace<T>(arr: T[]): void {
  * rating_greedy_v1 — distribute registered players into N teams so the
  * sum of ratings per team is roughly equal.
  *
- * - Unrated players are scored at the neutral 2.5.
+ * - Unrated players are scored at the neutral 3.
  * - The whole list is shuffled BEFORE sorting so every run is
  *   non-deterministic when several players share a rating (Array.sort
  *   is stable in V8 since ES2019, so the shuffle order is preserved
@@ -3879,7 +3879,7 @@ function balanceTeamsV1(
       return { id, rating: known, unrated: false };
     }
     unratedCount += 1;
-    return { id, rating: 2.5, unrated: true }; // neutral midpoint of 0.5..5.0
+    return { id, rating: 3, unrated: true }; // neutral midpoint of 1.0..5.0
   });
 
   // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
@@ -4110,7 +4110,7 @@ async function generateForGame(
       // Compose the roster: real users keep their uid; guests are
       // encoded as `guest:<id>` so the roster id space is disjoint.
       // Their rating is `estimatedRating` when set, otherwise the
-      // neutral 2.5 (handled by balanceTeamsV1's unrated branch).
+      // neutral 3 (handled by balanceTeamsV1's unrated branch).
       const guestRoster: string[] = freshGuests.map(
         (gu) => `${GUEST_ID_PREFIX}${gu.id}`,
       );
@@ -4118,7 +4118,7 @@ async function generateForGame(
       for (const gu of freshGuests) {
         if (
           typeof gu.estimatedRating === 'number' &&
-          gu.estimatedRating >= 0.5 &&
+          gu.estimatedRating >= 1 &&
           gu.estimatedRating <= 5
         ) {
           guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
@@ -4347,7 +4347,7 @@ async function generateDraftTeamsForGame(
       for (const gu of freshGuests) {
         if (
           typeof gu.estimatedRating === 'number' &&
-          gu.estimatedRating >= 0.5 &&
+          gu.estimatedRating >= 1 &&
           gu.estimatedRating <= 5
         ) {
           guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
