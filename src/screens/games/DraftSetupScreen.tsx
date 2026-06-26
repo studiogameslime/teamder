@@ -89,6 +89,15 @@ export function DraftSetupScreen() {
           }
         }
         setGame(g);
+        // Seed the auto/random team count from the game's configured
+        // numberOfTeams (clamped to the supported range). Without this it stuck
+        // at 2 unless the admin tapped a pill, so a 4-team game silently split
+        // into 2 (B09).
+        if (typeof g?.numberOfTeams === 'number') {
+          setAutoNumTeams(
+            Math.min(MAX_TEAMS, Math.max(MIN_TEAMS, g.numberOfTeams)),
+          );
+        }
         if (g?.players?.length) hydratePlayers(g.players);
       } catch (err) {
         logError('draftSetupLoad', err, { gameId });

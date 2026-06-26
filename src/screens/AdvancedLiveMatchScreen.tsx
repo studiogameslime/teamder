@@ -48,7 +48,7 @@ import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
+import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, isGuestId } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
 import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
@@ -309,7 +309,10 @@ export function AdvancedLiveMatchScreen() {
     }
     const acc: Record<string, number> = {};
     for (const g of live?.goals ?? []) {
-      if (g.ownGoal || !g.scorerId) continue;
+      // Skip own goals, unknown scorers, AND guests — guests carry no stats and
+      // are dropped at commit, so the live badge must not credit them either
+      // (matches the goalTally path, which already excludes guests). N1.
+      if (g.ownGoal || !g.scorerId || isGuestId(g.scorerId)) continue;
       acc[g.scorerId] = (acc[g.scorerId] ?? 0) + 1;
     }
     return acc;
@@ -352,6 +355,9 @@ export function AdvancedLiveMatchScreen() {
   // `finalizingRef` blocks a double-fire (rapid taps / re-render) from
   // committing the round's stats twice.
   const finalizingRef = useRef(false);
+  // Latch around the "הלך הביתה" / "החזר למשחק" confirm so a rapid double-tap
+  // can't run markPlayerWentHome / a fill flow twice and race fillFlowRef (B25).
+  const homeActionRef = useRef(false);
   // Resolve a roster id (registered uid OR guest id) to a display card.
   const resolveFillPlayer = (
     id: string,
@@ -413,8 +419,13 @@ export function AdvancedLiveMatchScreen() {
       if (req && req.team === team && req.deficit > 0) {
         // No donors available at all → the team simply plays short this round
         // rather than popping a picker that can never be satisfied (user
-        // report: stuck "מי מחליף?" modal, had to "continue with 4").
-        if (req.donors.length === 0) continue;
+        // report: stuck "מי מחליף?" modal, had to "continue with 4"). Tell the
+        // admin instead of leaving them staring at a screen where nothing
+        // happened (B15).
+        if (req.donors.length === 0) {
+          toast.info(he.rotationFillNoDonor);
+          continue;
+        }
         flow.current = team;
         // Never ask for more than the pool can supply — otherwise the confirm
         // button stays permanently disabled.
@@ -475,6 +486,11 @@ export function AdvancedLiveMatchScreen() {
   const onFillCancel = () => {
     fillFlowRef.current = null;
     setFillRequest(null);
+    // The round's stats were already committed; aborting here leaves the
+    // rotation frozen. Advance its identity so the NEXT round-commit by the
+    // same teams gets a fresh idempotency key and isn't dropped as a duplicate
+    // (B03/B04). Fire-and-forget — a failure only risks the rare collision.
+    if (gameId) void gameService.nudgeRotationAfterFillCancel(gameId);
   };
 
   // "סיים משחקון" → confirm first, naming the winner + who comes on next, so
@@ -876,7 +892,11 @@ export function AdvancedLiveMatchScreen() {
   // "הלך הביתה" — remove a player for the rest of the evening. Only BETWEEN
   // rounds (the menu disables it while the clock runs), so guard here too.
   const onPlayerWentHome = (player: { id: string; name: string }) => {
-    if (!gameId || timerRunning) return;
+    // Only BETWEEN rounds, at a reset clock (00:00) — NOT mid-round, even when
+    // the clock is paused (timerMs > 0). The handler now enforces the SAME
+    // condition as the menu's `canMarkHome`, so a stale/disabled-button bypass
+    // can't sneak a removal into a paused round (B33).
+    if (!gameId || timerRunning || timerMs !== 0) return;
     appAlert(
       he.wentHomeConfirmTitle(player.name),
       he.wentHomeConfirmBody,
@@ -886,6 +906,8 @@ export function AdvancedLiveMatchScreen() {
           text: he.wentHomeConfirmOk,
           style: 'destructive',
           onPress: async () => {
+            if (homeActionRef.current) return; // double-tap guard (B25)
+            homeActionRef.current = true;
             try {
               await gameService.markPlayerWentHome(gameId, player.id);
               // If they were on a playing team that's now short, offer to borrow
@@ -897,15 +919,21 @@ export function AdvancedLiveMatchScreen() {
               }
             } catch (err) {
               logError('markPlayerWentHome', err, { gameId, playerId: player.id });
+            } finally {
+              homeActionRef.current = false;
             }
           },
         },
       ],
     );
   };
-  // "החזר למשחק" — bring a departed player back onto their team.
+  // "החזר למשחק" — bring a departed player back onto their team. Gated to the
+  // same between-rounds-at-00:00 window as "went home": bringing a player back
+  // mid-round (even paused) would change the on-field roster under a running
+  // mini-game, so it's blocked here exactly like canMarkHome (B33 + requirement
+  // "can't restore a player mid-match").
   const onRestorePlayer = (player: { id: string; name: string }) => {
-    if (!gameId || timerRunning) return;
+    if (!gameId || timerRunning || timerMs !== 0) return;
     appAlert(
       he.restoreConfirmTitle(player.name),
       he.restoreConfirmBody,
@@ -914,10 +942,14 @@ export function AdvancedLiveMatchScreen() {
         {
           text: he.restoreConfirmOk,
           onPress: async () => {
+            if (homeActionRef.current) return; // double-tap guard (B25)
+            homeActionRef.current = true;
             try {
               await gameService.restorePlayer(gameId, player.id);
             } catch (err) {
               logError('restorePlayer', err, { gameId, playerId: player.id });
+            } finally {
+              homeActionRef.current = false;
             }
           },
         },

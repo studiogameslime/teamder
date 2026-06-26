@@ -3861,6 +3861,19 @@ type BalanceZone =
   | 'teamE'
   | 'bench';
 
+/**
+ * Coerce any stored rating onto the live 1.0–5.0 scale. Admin ratings created
+ * before the 1–10 → 1–5 migration still sit in `adminRatings` / guest
+ * `estimatedRating` as 6–10 values. Reading them raw makes an old "8" tower
+ * over a neutral 3 and skews every auto-balance (B06/B07/B17). Anything above
+ * the 1–5 max is treated as the old scale and halved back; everything is
+ * clamped into [1,5]. Idempotent for already-migrated 1–5 values.
+ */
+function normalizeRating(v: number): number {
+  const r = v > 5 ? v / 2 : v;
+  return Math.min(5, Math.max(1, r));
+}
+
 function balanceTeamsV1(
   playerIds: string[],
   ratings: Record<string, number>,
@@ -3876,7 +3889,7 @@ function balanceTeamsV1(
   const scored = playerIds.map((id) => {
     const known = ratings[id];
     if (typeof known === 'number' && known > 0) {
-      return { id, rating: known, unrated: false };
+      return { id, rating: normalizeRating(known), unrated: false };
     }
     unratedCount += 1;
     return { id, rating: 3, unrated: true }; // neutral midpoint of 1.0..5.0
@@ -4006,6 +4019,11 @@ async function runScheduledAutoGenerateTeams(): Promise<void> {
     // Quick filters before paying for the transaction round-trip.
     if (g.autoTeamsGeneratedAt) continue;
     if (g.teamsEditedManually) continue;
+    // Manual teams ALWAYS win: a captain-draft / manual split writes
+    // `draftTeams`. The opt-in path already skips these; the legacy
+    // minutes-before path must too, or it seeds a SECOND, conflicting team
+    // model in `liveMatch.assignments` over the admin's split (B05/B16).
+    if (g.draftTeams) continue;
     if (!g.groupId) continue;
     // Opt-in `autoTeamsAt` games are owned by the wall-clock path below
     // (which writes draftTeams + pushes). Don't let the legacy
@@ -4097,6 +4115,9 @@ async function generateForGame(
       // can't be clobbered.
       if (data.autoTeamsGeneratedAt) return false;
       if (data.teamsEditedManually) return false;
+      // Re-check inside the transaction: a manual split may have landed between
+      // the outer query and here. Never seed liveMatch.assignments over it.
+      if (data.draftTeams) return false;
       // Never overwrite a liveMatch that's already past setup — this write
       // replaces the WHOLE liveMatch object, so clobbering a live/finished one
       // would wipe its score + goal log. Only generate onto a fresh/organizing
@@ -4116,12 +4137,15 @@ async function generateForGame(
       );
       const guestRatings: Record<string, number> = {};
       for (const gu of freshGuests) {
-        if (
-          typeof gu.estimatedRating === 'number' &&
-          gu.estimatedRating >= 1 &&
-          gu.estimatedRating <= 5
-        ) {
-          guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
+        // Accept any positive estimatedRating and normalise it onto 1–5.
+        // Previously a legacy 1–10 value (e.g. 7) was rejected here and scored
+        // as neutral, while the CLIENT used it raw — so the same roster split
+        // differently depending on who generated it (B07). Normalising both
+        // sides keeps them identical.
+        if (typeof gu.estimatedRating === 'number' && gu.estimatedRating > 0) {
+          guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = normalizeRating(
+            gu.estimatedRating,
+          );
         }
       }
       const rosterIds = [...freshPlayers, ...guestRoster];
@@ -4204,8 +4228,12 @@ function buildDraftTeamsFromBalance(
   createdBy: string,
 ): DraftTeamDoc[] {
   const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
+  // Unrated → neutral 3 (the 1–5 midpoint). The old default 5.5 sat ABOVE the
+  // 1–5 max, so on the new scale every unrated player out-sorted every rated
+  // one and wrongly became captain (B17). Rated values are normalised off any
+  // leftover 1–10 data (B06/B07).
   const ratingOf = (id: string) =>
-    typeof ratings[id] === 'number' && ratings[id] > 0 ? ratings[id] : 5.5;
+    typeof ratings[id] === 'number' && ratings[id] > 0 ? normalizeRating(ratings[id]) : 3;
   const teams: DraftTeamDoc[] = [];
   for (let i = 0; i < numberOfTeams; i++) {
     const zone = ZONES[i];
@@ -4272,7 +4300,13 @@ async function fanOutTeamsReadyPush(
         .filter((m) => m !== uid)
         .map((m) => firstNames[m])
         .filter((n): n is string => !!n);
-      const notifRef = db.collection('notifications').doc();
+      // Deterministic id per (game, player) so a second fan-out — the manual
+      // "notify" callable racing the scheduled path, or a retry — overwrites
+      // the same doc instead of creating a duplicate that fires a second push
+      // (onNotificationCreated only triggers on CREATE). N6.
+      const notifRef = db
+        .collection('notifications')
+        .doc(`${gameId}__teamsReady__${uid}`);
       batch.set(notifRef, {
         type: 'teamsGenerated',
         recipientId: uid,
@@ -4345,12 +4379,15 @@ async function generateDraftTeamsForGame(
       const guestRoster = freshGuests.map((gu) => `${GUEST_ID_PREFIX}${gu.id}`);
       const guestRatings: Record<string, number> = {};
       for (const gu of freshGuests) {
-        if (
-          typeof gu.estimatedRating === 'number' &&
-          gu.estimatedRating >= 1 &&
-          gu.estimatedRating <= 5
-        ) {
-          guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = gu.estimatedRating;
+        // Accept any positive estimatedRating and normalise it onto 1–5.
+        // Previously a legacy 1–10 value (e.g. 7) was rejected here and scored
+        // as neutral, while the CLIENT used it raw — so the same roster split
+        // differently depending on who generated it (B07). Normalising both
+        // sides keeps them identical.
+        if (typeof gu.estimatedRating === 'number' && gu.estimatedRating > 0) {
+          guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = normalizeRating(
+            gu.estimatedRating,
+          );
         }
       }
       const rosterIds = [...freshPlayers, ...guestRoster];
@@ -8100,6 +8137,14 @@ export const commitRoundStats = onCall(
 
     const A = (sideA ?? []).filter(isReal);
     const B = (sideB ?? []).filter(isReal);
+    // The set of players who actually played this round (both on-field sides).
+    // Goals + assists are credited ONLY to members of this set, exactly like
+    // rounds/wins/losses below — so a scorer or assister who isn't on either
+    // playing side (a stale/over-full roster, a departed player still named on
+    // a goal) can never be credited a goal/assist while being denied the
+    // matching "round played" (B12, B13). Keeps every per-round stat internally
+    // consistent: you played, or you got nothing.
+    const onField = new Set<string>([...A, ...B]);
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
     const batch = db.batch();
@@ -8121,6 +8166,7 @@ export const commitRoundStats = onCall(
     const byScorer: Record<string, number> = {};
     for (const g of goals ?? []) {
       if (g.ownGoal || !g.scorerId || !isReal(g.scorerId)) continue;
+      if (!onField.has(g.scorerId)) continue; // not on a playing side → skip
       byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
     }
     const totalGoalsThisRound = Object.values(byScorer).reduce((a, b) => a + b, 0);
@@ -8159,7 +8205,9 @@ export const commitRoundStats = onCall(
     const assistPairs: { assister: string; scorer: string }[] = [];
     for (const g of goals ?? []) {
       if (g.ownGoal || !g.scorerId || !isReal(g.scorerId)) continue;
+      if (!onField.has(g.scorerId)) continue; // scorer off the playing sides
       if (!g.assisterId || !isReal(g.assisterId) || g.assisterId === g.scorerId) continue;
+      if (!onField.has(g.assisterId)) continue; // assister not on a playing side (B12)
       byAssister[g.assisterId] = (byAssister[g.assisterId] ?? 0) + 1;
       assistPairs.push({ assister: g.assisterId, scorer: g.scorerId });
     }

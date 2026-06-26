@@ -2353,11 +2353,19 @@ export const gameService = {
     if (!gameId) return;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) m.draftTeams = draft ?? undefined;
+      if (m) {
+        m.draftTeams = draft ?? undefined;
+        m.teamsEditedManually = !!draft;
+      }
       return;
     }
     await updateGameDoc(gameId, {
       draftTeams: draft ?? null,
+      // Any client-side save is a deliberate human split (manual draft or the
+      // admin's auto-balance button) → mark it so the scheduled auto-generator
+      // never clobbers it (B05/B16). Clearing the draft (null) lifts the flag
+      // so a later scheduled generation can run again.
+      teamsEditedManually: draft ? true : false,
       updatedAt: Date.now(),
     });
   },
@@ -2560,8 +2568,11 @@ export const gameService = {
       at: serverNow(),
     };
     // Whom to credit on the evening-long goal tally (badge): a real attributed
-    // scorer only (own goals / unknown credit no one).
-    const tallyId = !opts.ownGoal ? scorerId : null;
+    // scorer only (own goals / unknown credit no one). Guests are excluded —
+    // the server filters them out of committed stats, so tallying a guest here
+    // made the live badge show a goal that vanishes from every stat (B24).
+    const tallyId =
+      !opts.ownGoal && scorerId && !isGuestId(scorerId) ? scorerId : null;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch) {
@@ -2609,8 +2620,9 @@ export const gameService = {
         const goneM = (m.liveMatch.goals ?? []).find((x) => x.id === goalId);
         const r = apply(m.liveMatch);
         if (r) { m.liveMatch.goals = r.goals; m.liveMatch.scoreA = r.scoreA; m.liveMatch.scoreB = r.scoreB; }
-        // Roll back the evening tally for the undone goal's scorer.
-        if (goneM && !goneM.ownGoal && goneM.scorerId && m.liveMatch.goalTally) {
+        // Roll back the evening tally for the undone goal's scorer (guests were
+        // never tallied — keep symmetric with recordGoal).
+        if (goneM && !goneM.ownGoal && goneM.scorerId && !isGuestId(goneM.scorerId) && m.liveMatch.goalTally) {
           const t = { ...m.liveMatch.goalTally };
           t[goneM.scorerId] = Math.max(0, (t[goneM.scorerId] ?? 0) - 1);
           m.liveMatch.goalTally = t;
@@ -2623,8 +2635,12 @@ export const gameService = {
     const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
     if (!gone) return;
     // Roll back the evening tally for the undone goal's scorer (own goals /
-    // unknown scorers were never tallied).
-    const untally = !gone.ownGoal && gone.scorerId ? gone.scorerId : null;
+    // unknown scorers / guests were never tallied — keep this symmetric with
+    // recordGoal so undoing a guest goal doesn't drive the tally negative).
+    const untally =
+      !gone.ownGoal && gone.scorerId && !isGuestId(gone.scorerId)
+        ? gone.scorerId
+        : null;
     // arrayRemove + increment(-1) compose ATOMICALLY at the field level with a
     // concurrent recordGoal (arrayUnion + increment(+1)) — unlike the old
     // read-modify-write, which overwrote the whole `goals` array and could drop
@@ -2951,7 +2967,13 @@ export const gameService = {
       ...draft,
       teams: res.teams.map((rt) => {
         const orig = draft.teams.find((t) => t.index === rt.index);
+        // Spread the ORIGINAL team first so per-team fields we don't touch —
+        // notably the admin-chosen `colorKey` ("האדומים"/"השחורים") — survive
+        // the rotation rewrite. Building a fresh {index,captainId,playerIds}
+        // dropped colorKey, so after the first round the names/tints reset to
+        // the generic palette (B08). Only index/captain/roster are overwritten.
         return {
+          ...(orig ?? {}),
           index: rt.index,
           captainId: orig?.captainId ?? rt.playerIds[0] ?? '',
           playerIds: rt.playerIds,
@@ -3042,31 +3064,131 @@ export const gameService = {
   },
 
   /** Restore a player who had gone home: put them back on their original team
-   *  and clear them from `draftTeams.leftHome`. They rejoin the next round. */
+   *  and clear them from `draftTeams.leftHome`. They rejoin the next round.
+   *
+   *  CRITICAL: if their spot was filled while they were gone, bringing them
+   *  back must UNDO that fill — otherwise the team ends up permanently
+   *  over-full (e.g. 6 in a 5-a-side), which corrupts every round's stats
+   *  (B01). Two fill shapes are reversed:
+   *   • temporary fill → a loan into the home team; drop one such loan so the
+   *     borrowed player returns to their own team.
+   *   • permanent fill → a donor was physically absorbed into the home team;
+   *     if the team is still over size after the restore, send the most-
+   *     recently-absorbed non-original member back to their base team.
+   */
   async restorePlayer(gameId: string, playerId: string): Promise<void> {
     if (!gameId || !playerId) return;
     const g = await this.getGameById(gameId);
     const draft = g?.draftTeams;
     if (!draft) return;
+    // Only restore someone who was actually marked "went home" — guards against
+    // a stray/double call silently dropping the player onto team 0 (B32).
     const entry = (draft.leftHome ?? []).find((l) => l.playerId === playerId);
-    const homeTeam = entry?.homeTeam ?? draft.teams[0]?.index ?? 0;
+    if (!entry) return;
+    const homeTeam = entry.homeTeam ?? draft.teams[0]?.index ?? 0;
     const hasHome = draft.teams.some((t) => t.index === homeTeam);
-    const teams = draft.teams.map((t) => {
-      // Re-add to the recorded home team, or to the first team if that team no
-      // longer exists (e.g. it had emptied out).
-      const target = hasHome ? t.index === homeTeam : t === draft.teams[0];
+    const targetIdx = hasHome ? homeTeam : draft.teams[0]?.index ?? 0;
+    let teams = draft.teams.map((t) => {
+      const target = t.index === targetIdx;
       return target && !t.playerIds.includes(playerId)
         ? { ...t, playerIds: [...t.playerIds, playerId] }
         : t;
     });
+
+    const rot = g?.rotation;
+    let loans = rot?.loans ?? [];
+    const perTeam = playersPerTeamFor(g!.format);
+
+    // Undo the fill that covered this player's vacated spot.
+    let loansChanged = false;
+    const coverIdx = loans.findIndex((l) => l.filledTeam === targetIdx);
+    if (coverIdx >= 0) {
+      // Temporary fill: drop one covering loan; that borrowed player is now
+      // back on their own team (rosterOf stops counting the loan).
+      loans = loans.filter((_, i) => i !== coverIdx);
+      loansChanged = true;
+    } else if (rot?.baseTeams && rot.baseTeams.length > 0) {
+      // Permanent fill: no loan to drop. If the team is now over size, an
+      // absorbed donor is the excess — return them to their base team. Count
+      // EVERYONE on the field (guests included) against perTeam so a guest
+      // filler also trips the check.
+      const effective = effectiveRosterOf(targetIdx, teams, loans);
+      if (effective.length > perTeam) {
+        const baseHere = new Set(
+          rot.baseTeams.find((b) => b.index === targetIdx)?.playerIds ?? [],
+        );
+        const tgt = teams.find((t) => t.index === targetIdx);
+        // An absorbed donor is a current member not in this team's base roster
+        // (and not the player we're restoring). Only act on one we can send
+        // HOME — never strip a player off the field with nowhere to put them
+        // (fail-safe: keeping size slightly high beats dropping a real player).
+        const filler = [...(tgt?.playerIds ?? [])]
+          .reverse()
+          .find(
+            (p) =>
+              !baseHere.has(p) &&
+              p !== playerId &&
+              !isGuestId(p) &&
+              rot.baseTeams!.some((b) => b.playerIds.includes(p)),
+          );
+        const fillerHome =
+          filler != null
+            ? rot.baseTeams.find((b) => b.playerIds.includes(filler))?.index
+            : undefined;
+        if (filler != null && fillerHome != null) {
+          teams = teams.map((t) => {
+            if (t.index === targetIdx)
+              return { ...t, playerIds: t.playerIds.filter((p) => p !== filler) };
+            if (t.index === fillerHome && !t.playerIds.includes(filler))
+              return { ...t, playerIds: [...t.playerIds, filler] };
+            return t;
+          });
+        }
+      }
+    }
+
     const leftHome = (draft.leftHome ?? []).filter((l) => l.playerId !== playerId);
     const newDraft = { ...draft, teams, leftHome };
+    const newRotation =
+      loansChanged && rot ? { ...rot, loans, updatedAt: Date.now() } : undefined;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
-      if (m) m.draftTeams = newDraft;
+      if (m) {
+        m.draftTeams = newDraft;
+        if (newRotation) m.rotation = newRotation;
+      }
       return;
     }
-    await updateGameDoc(gameId, { draftTeams: newDraft, updatedAt: Date.now() });
+    const patch: Record<string, unknown> = {
+      draftTeams: newDraft,
+      updatedAt: Date.now(),
+    };
+    if (newRotation) patch.rotation = newRotation;
+    await updateGameDoc(gameId, patch);
+  },
+
+  /**
+   * After a round's stats were committed but the fill picker was then CANCELLED
+   * (so the rotation never advanced), the same two teams may play another
+   * mini-game. Their next round-commit would reuse the SAME idempotency key
+   * (`round:updatedAt`, both frozen) and be rejected as a duplicate — silently
+   * dropping that round's goals/assists/wins (B03), and the same for a later
+   * `endEvening` (B04). Advancing `rotation.updatedAt` gives the next commit a
+   * fresh key. `rotation.round` is deliberately untouched, so the same-team
+   * pair-stats trigger (which latches on `round`) does NOT re-fire.
+   */
+  async nudgeRotationAfterFillCancel(gameId: string): Promise<void> {
+    if (!gameId) return;
+    const g = await this.getGameById(gameId);
+    const rot = g?.rotation;
+    if (!rot) return;
+    const newRotation = { ...rot, updatedAt: Date.now() };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) m.rotation = newRotation;
+      return;
+    }
+    await updateGameDoc(gameId, { rotation: newRotation, updatedAt: Date.now() });
   },
 
   /**

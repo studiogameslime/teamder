@@ -338,6 +338,10 @@ function readAchievements(v: unknown): UserAchievementState | undefined {
     playersCoached: typeof o.playersCoached === 'number' ? o.playersCoached : 0,
     friendsCount: typeof o.friendsCount === 'number' ? o.friendsCount : 0,
     goals: typeof o.goals === 'number' ? o.goals : 0,
+    // Mirror `goals` — was omitted, so achievements.assists always read 0 even
+    // when stored (B22). Harmless where assists are sourced from stats.assists,
+    // but keeps this converter from silently zeroing a real field.
+    assists: typeof o.assists === 'number' ? o.assists : 0,
     maxGamesWithPlayer:
       typeof o.maxGamesWithPlayer === 'number' ? o.maxGamesWithPlayer : 0,
     maxWinsWithPlayer:
@@ -805,11 +809,23 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
     .map((t) => {
       if (!t || typeof t !== 'object') return null;
       const r = t as Record<string, unknown>;
-      const captainId = typeof r.captainId === 'string' ? r.captainId : '';
       const playerIds = Array.isArray(r.playerIds)
         ? (r.playerIds.filter((x) => typeof x === 'string') as string[])
         : [];
-      if (!captainId || playerIds.length === 0) return null;
+      // Captain = stored captainId, or the first player as a fallback so the
+      // "playerIds[0] is captain" invariant holds for any non-empty team.
+      const captainId =
+        typeof r.captainId === 'string' && r.captainId
+          ? r.captainId
+          : playerIds[0] ?? '';
+      // Keep a team whose roster temporarily emptied out (everyone marked
+      // "הלך הביתה") as long as it still has a captainId — it's a real slot the
+      // live rotation references by index, and players can be restored into it.
+      // Dropping it here used to delete the team and, when it left fewer than 2,
+      // wipe the ENTIRE draftTeams (colours + leftHome included), breaking the
+      // rotation for the whole evening (B02). Only genuinely malformed entries
+      // (no captain AND no players) are discarded.
+      if (!captainId && playerIds.length === 0) return null;
       return {
         index: typeof r.index === 'number' ? r.index : 0,
         captainId,
@@ -820,7 +836,11 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
       };
     })
     .filter((t): t is NonNullable<typeof t> => t !== null);
-  if (teams.length < 2) return undefined;
+  // Only nuke the whole result when there's truly nothing left. A degraded
+  // 1-team draft is preserved (colours/leftHome survive, the admin can restore
+  // players) instead of vanishing to undefined and breaking every live control
+  // (B30). Starting a rotation still requires ≥2 teams downstream.
+  if (teams.length < 1) return undefined;
   const leftHome = Array.isArray(o.leftHome)
     ? o.leftHome
         .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')

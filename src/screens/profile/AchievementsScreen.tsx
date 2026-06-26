@@ -49,6 +49,9 @@ export function AchievementsScreen() {
   // counters for the unlock check. The persisted unlocked-id list
   // still wins, so a badge already earned stays earned.
   const [counters, setCounters] = useState<UserAchievementState | null>(null);
+  // Set if deriveCounters fails — then we fall back to the stored counters
+  // instead of waiting forever on the loader.
+  const [deriveFailed, setDeriveFailed] = useState(false);
   // Newly-reached tiers to celebrate (filled from persistDerivedUnlocks).
   const [celebrate, setCelebrate] = useState<NewlyUnlocked[]>([]);
 
@@ -100,8 +103,10 @@ export function AchievementsScreen() {
         if (alive && fresh.length) setCelebrate(fresh);
       })
       .catch(() => {
-        // Leave counters null → screen falls back to the stored
-        // counters via achievementsService.list as a last resort.
+        // Derivation failed → fall back to the stored counters via
+        // achievementsService.list as a last resort (flag so the loader
+        // doesn't spin forever).
+        if (alive) setDeriveFailed(true);
       });
     return () => {
       alive = false;
@@ -110,7 +115,12 @@ export function AchievementsScreen() {
     // teams* metrics on the next render.
   }, [localUser?.id, groups]);
 
-  if (!user) {
+  // Show the loader until the user is loaded AND the derived counters have
+  // resolved (or failed). Rendering the STORED counters first and then swapping
+  // to the derived ones made the screen flash a wrong set of badges for a frame
+  // before settling (user report). On a derivation failure we proceed with the
+  // stored counters as a fallback.
+  if (!user || (!counters && !deriveFailed)) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.profileSectionMyAchievements} />
@@ -121,15 +131,20 @@ export function AchievementsScreen() {
     );
   }
 
-  // Prefer the derived counters when ready. Fall back to the
-  // (possibly stale) stored counters only while the derivation is
-  // in flight — never lose the persisted unlocked list.
+  // Prefer the derived counters; fall back to the stored ones only if the
+  // derivation failed. Never lose the persisted unlocked list.
   const items = counters
     ? achievementsService.listFromCounters(user, counters)
     : achievementsService.list(user);
+  // Unlocked first, then by tier (gold → silver → bronze), so the strongest
+  // badges lead; locked ones keep their definition order at the end.
+  const tierRank = (t?: string | null) =>
+    t === 'gold' ? 0 : t === 'silver' ? 1 : t === 'bronze' ? 2 : 3;
   const ordered = [...items].sort((a, b) => {
-    if (a.unlocked === b.unlocked) return 0;
-    return a.unlocked ? -1 : 1;
+    if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+    if (a.unlocked && b.unlocked)
+      return tierRank(a.currentTier?.tier) - tierRank(b.currentTier?.tier);
+    return 0;
   });
   const unlockedCount = items.filter((i) => i.unlocked).length;
   const active = activeId ? items.find((i) => i.def.id === activeId) : null;

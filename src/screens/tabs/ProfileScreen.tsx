@@ -380,6 +380,12 @@ export function ProfileScreen() {
     },
   ];
   const checklistComplete = checklistItems.every((i) => i.done);
+  // Only judge the checklist once the data it reads has actually loaded —
+  // otherwise communities/games read empty on first paint, every step looks
+  // undone, and the "בוא נתחיל" activation card flashes for a frame before the
+  // real data hides it (user report). `groupsHydrated` covers communities;
+  // `playedCount !== null` covers games (null = still loading).
+  const homeDataReady = groupsHydrated && playedCount !== null;
   const homeTips: Tip[] = [
     { text: he.homeTipAutoTeams, onPress: () => nav.navigate('CommunitiesTab') },
     { text: he.homeTipInternalRating, onPress: () => nav.navigate('CommunitiesTab') },
@@ -631,8 +637,9 @@ export function ProfileScreen() {
             </Pressable>
           ) : null}
 
-          {/* ④ Activation checklist — hidden once every step is done. */}
-          {!checklistComplete ? (
+          {/* ④ Activation checklist — hidden once every step is done, and not
+              shown at all until the data loaded (prevents a first-paint flash). */}
+          {homeDataReady && !checklistComplete ? (
             <OnboardingChecklist items={checklistItems} />
           ) : null}
 

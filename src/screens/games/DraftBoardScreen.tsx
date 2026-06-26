@@ -86,7 +86,16 @@ export function DraftBoardScreen() {
         // Resuming a saved draft → reconstruct the picks so we land on the
         // summary (and can still step back to edit).
         if (resume && g?.draftTeams) {
-          setPicks(reconstructPicks(g.draftTeams));
+          // Drop anyone who left the game AFTER the draft was saved — the saved
+          // roster can drift from the live one, and a stale id would otherwise
+          // resume as a ghost member (or push a real player out of alignment).
+          // Newly-joined players simply stay in the draftable pool to assign
+          // (B19).
+          const live = new Set<string>([
+            ...(g.players ?? []),
+            ...(g.guests ?? []).map((gu) => toGuestRosterId(gu.id)),
+          ]);
+          setPicks(reconstructPicks(g.draftTeams).filter((id) => live.has(id)));
           // Restore any colours chosen on the saved draft.
           const restored: Record<number, string> = {};
           for (const t of g.draftTeams.teams) {

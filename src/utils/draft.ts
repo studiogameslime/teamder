@@ -28,6 +28,19 @@ export function playersPerTeam(format?: GameFormat): number {
 /** Neutral rating for an unrated player — the middle of the 1.0–5.0 scale. */
 export const NEUTRAL_RATING = 3;
 
+/**
+ * Coerce any stored rating onto the live 1.0–5.0 scale. Ratings created before
+ * the 1–10 → 1–5 migration still live in `adminRatings` / guest
+ * `estimatedRating` as 6–10 values; read raw they make an old "8" dwarf a
+ * neutral 3 and skew the split (B06/B07). Anything over the 1–5 max is treated
+ * as the old scale and halved, then clamped into [1,5]. Mirrors the server
+ * `normalizeRating` so client and scheduled splits agree. Idempotent on 1–5.
+ */
+export function normalizeRating(v: number): number {
+  const r = v > 5 ? v / 2 : v;
+  return Math.min(5, Math.max(1, r));
+}
+
 /** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */
 export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'] as const;
 export const MIN_TEAMS = 2;
@@ -140,12 +153,16 @@ export interface BalanceTeamsOutput {
  * shuffle survives within any tied-rating bucket → reruns differ.
  */
 export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
-  const { playerIds, ratings, numTeams, format, createdBy } = input;
+  const { playerIds, ratings, format, createdBy } = input;
+  // Never ask for more teams than there are players to fill them — an empty
+  // team would carry an undefined captain and get dropped by the converter,
+  // silently shrinking the count (B29). Mirrors the server clamp.
+  const numTeams = Math.max(1, Math.min(input.numTeams, playerIds.length));
   let unratedCount = 0;
   const scored = playerIds.map((id) => {
     const known = ratings[id];
     if (typeof known === 'number' && known > 0) {
-      return { id, rating: known };
+      return { id, rating: normalizeRating(known) };
     }
     unratedCount += 1;
     return { id, rating: NEUTRAL_RATING };
@@ -180,7 +197,7 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
 
   const ratingOf = (id: string) =>
     typeof ratings[id] === 'number' && ratings[id] > 0
-      ? ratings[id]
+      ? normalizeRating(ratings[id])
       : NEUTRAL_RATING;
 
   const draftTeams = teams.map((t, index) => {

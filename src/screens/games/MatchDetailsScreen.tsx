@@ -1837,6 +1837,11 @@ export function MatchDetailsScreen() {
     const g = (game.guests ?? []).find((x) => x.id === id);
     return { id, name: g?.name ?? '…' };
   };
+  // hh:mm for the "went home" summary (Israel locale).
+  const fmtHomeTime = (ms?: number) =>
+    typeof ms === 'number'
+      ? new Date(ms).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+      : '';
   // Remove a guest — triggered by the row's ✕ button (admin only), NOT
   // by tapping the row (tapping a player is reserved for opening their
   // card). `rosterId` is the synthetic `guest:<id>` token.
@@ -1877,6 +1882,12 @@ export function MatchDetailsScreen() {
   };
 
   const draftTeams = game.draftTeams;
+  // "Was this game actually played?" — the live timer was started at least once
+  // (set-once, never cleared) or the game is finished. Used to gate summary-only
+  // UI (who went home) so it never shows on a game that hasn't kicked off — you
+  // can't leave a game that never started.
+  const gameWasPlayed =
+    game.status === 'finished' || game.liveMatch?.startedAt != null;
 
   // Teams go "stale" when someone registered AFTER the split was saved —
   // i.e. a registered player isn't assigned to any team. We surface a "!"
@@ -2272,9 +2283,35 @@ export function MatchDetailsScreen() {
                     />
                   ))}
               </View>
-              {/* Team feedback. Members react 👍/👎; the admin sees the
-                  aggregate and can (re)send the "teams ready" push. */}
-              {(() => {
+              {/* "הלכו הביתה" summary — who left mid-evening and when, kept on
+                  draftTeams.leftHome (with its timestamp) so it survives into
+                  the finished-game recap. Shown ONLY for a game that was
+                  actually played (live-started or finished) — never on a
+                  pre-match/not-started game, where "went home" makes no sense. */}
+              {gameWasPlayed && (draftTeams.leftHome ?? []).length > 0 ? (
+                <View style={styles.leftHomeSummary}>
+                  <Text style={styles.leftHomeSummaryTitle}>
+                    {he.wentHomeSectionTitle}
+                  </Text>
+                  {[...(draftTeams.leftHome ?? [])]
+                    .sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
+                    .map((l) => (
+                      <View key={l.playerId} style={styles.leftHomeRow}>
+                        <Text style={styles.leftHomeName} numberOfLines={1}>
+                          {resolveDraftUser(l.playerId).name}
+                        </Text>
+                        {l.at ? (
+                          <Text style={styles.leftHomeTime}>{fmtHomeTime(l.at)}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                </View>
+              ) : null}
+              {/* Team feedback. Members react 👍/👎 to the PROPOSED teams BEFORE
+                  the game — a pre-match "are these balanced?" reaction. Hidden
+                  once the game is terminal (finished/cancelled): there's nothing
+                  left to react to or re-send. */}
+              {!isTerminalGame(game) && (() => {
                 const fb = game.draftTeamFeedback ?? {};
                 const likes = Object.values(fb).filter((v) => v === 'like').length;
                 const dislikes = Object.values(fb).filter(
@@ -3659,6 +3696,26 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   draftSectionList: { gap: spacing.sm },
+  leftHomeSummary: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    gap: 6,
+  },
+  leftHomeSummaryTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textMuted,
+    textAlign: 'right',
+  },
+  leftHomeRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  leftHomeName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'right' },
+  leftHomeTime: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   teamFbWrap: {
     marginTop: spacing.sm,
     gap: spacing.sm,

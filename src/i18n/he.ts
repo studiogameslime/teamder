@@ -350,6 +350,7 @@ export const he = {
   rotationPickStartingTeams: 'בחרו 2 קבוצות פותחות',
   rotationPickStartingHint: 'אלו 2 הקבוצות שיפתחו · השאר ממתינות בתור',
   rotationPickStartingNeedTwo: 'סמנו בדיוק 2 קבוצות כדי להתחיל',
+  rotationFillNoDonor: 'אין שחקן פנוי להשלמה — הקבוצה תשחק בחוסר',
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuWentHome: 'הלך הביתה',
