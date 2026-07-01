@@ -214,12 +214,14 @@ export function GroupWizardForm({
               onChangeText={(v) => set('name', v)}
               placeholder="לדוגמה: חמישי כדורגל"
               required
+              maxLength={80}
             />
             <InputField
               label={he.createGroupDescription}
               value={values.description}
               onChangeText={(v) => set('description', v)}
               multiline
+              maxLength={500}
             />
 
             {/* The open-join toggle defines membership behaviour

@@ -96,17 +96,17 @@ export function getFirebase(): {
   }
   if (!_app) {
     _app = getApps()[0] ?? initializeApp(firebaseConfig);
-    // Initialize Firestore with auto-detect long polling. The default
-    // WebChannel transport stalls under some networks / Android
-    // emulators, causing every read to time out after 10s with
-    // "Could not reach Cloud Firestore backend" — even though the
-    // device has working internet. Auto-detect falls back to HTTP
-    // long-polling when WebChannel fails, fixing offline-loops on
-    // restored sessions where the user is signed in via persisted
-    // Auth but the /users/{uid} read silently fails.
+    // Initialize Firestore with FORCED long polling. The default WebChannel
+    // streaming transport is unreliable in RN/Hermes — on Android emulators
+    // and some real-device networks the `Listen` stream errors ("transport
+    // errored" / "Could not reach Cloud Firestore backend"), which breaks
+    // every onSnapshot LISTENER (chat appeared as "אין גישה לצ'אט", live-match
+    // ticks stalled) while one-time getDocs still worked. `autoDetect` was
+    // meant to fall back but doesn't reliably catch the Listen-stream failure,
+    // so we force long-polling — robust everywhere, at a small latency cost.
     try {
       _db = initializeFirestore(_app, {
-        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
         // Drop `undefined` fields on write instead of throwing. The
         // liveMatch deserializer (firestore.ts) deliberately RE-EMITS
         // absent optionals as `undefined` keys (roundNumber, winsByTeam,

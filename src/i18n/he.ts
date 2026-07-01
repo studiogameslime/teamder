@@ -284,6 +284,7 @@ export const he = {
   liveTimerOvertime: 'תוספת זמן',
   liveTimerPause: 'השהה',
   liveTimerResume: 'המשך',
+  liveTimerStart: 'התחל',
   liveTimerReset: 'אפס',
   liveTimerResetConfirmTitle: 'לאפס את המשחק ולהתחיל מחדש?',
   liveTimerResetConfirmBody:
@@ -315,7 +316,9 @@ export const he = {
   rotationResetConfirm: 'לאפס את הרוטציה? הקבוצות יחזרו למצב ההתחלתי.',
   rotationWaiting: 'ממתינות',
   // Scoreboard redesign
-  rotationStreak: (n: number) => (n === 1 ? 'ניצחון רצוף' : `${n} ניצחונות רצוף`),
+  // Per-team WIN TALLY over the evening (cumulative, not a literal streak — both
+  // teams can have wins, so "ברצף" would be wrong here).
+  rotationStreak: (n: number) => (n === 1 ? 'ניצחון אחד' : `${n} ניצחונות`),
   rotationWinsLabel: 'ניצחונות',
   rotationActiveBadge: 'משחק פעיל עכשיו',
   rotationPlayingTeams: 'קבוצות במשחק',
@@ -351,6 +354,18 @@ export const he = {
   rotationPickStartingHint: 'אלו 2 הקבוצות שיפתחו · השאר ממתינות בתור',
   rotationPickStartingNeedTwo: 'סמנו בדיוק 2 קבוצות כדי להתחיל',
   rotationFillNoDonor: 'אין שחקן פנוי להשלמה — הקבוצה תשחק בחוסר',
+  // ── End-of-evening equipment handoff (who took the ball / jerseys) ──
+  equipmentHandoffTitle: 'מי לקח הביתה?',
+  equipmentHandoffHint: 'סמנו מי לקח את הכדור ואת הגופיות (אפשר כמה). יופיע על חברי המועדון עד הפעם הבאה.',
+  equipmentBall: 'כדור',
+  equipmentJerseys: 'גופיות',
+  equipmentSkip: 'דלג',
+  equipmentSave: 'שמור',
+  equipmentGuestsNote: 'אפשר לבחור רק חברי מועדון',
+  equipmentHolderBallA11y: 'מחזיק/ה את הכדור',
+  equipmentHolderJerseysA11y: 'מחזיק/ה את הגופיות',
+  equipmentHeldByBall: (names: string) => `⚽ הכדור אצל ${names}`,
+  equipmentHeldByJerseys: (names: string) => `👕 הגופיות אצל ${names}`,
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuWentHome: 'הלך הביתה',
@@ -645,7 +660,7 @@ export const he = {
   wizardGuestsOpenHint:
     'עד המועד שתבחר רק מנהל המשחק יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
   wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
-  wizardAutoTeamsToggle: 'יצירת כוחות אוטומטית',
+  wizardAutoTeamsToggle: 'תזמון יצירת כוחות אוטומטיים',
   wizardAutoTeamsHint:
     'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
   wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
@@ -781,7 +796,7 @@ export const he = {
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'דרג את השחקן (0.5–5.0). דירוג פנימי — נראה למנהלים בלבד.',
+  communityAdminRatingHint: 'דרג את השחקן (1.0–5.0). דירוג פנימי — נראה למנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
   communityAdminRatingSet: 'דרג',
   // ── Community statistics screen ──
@@ -794,6 +809,14 @@ export const he = {
   communityStatsSectionLeaders: 'מובילי המועדון',
   communityStatsSectionScorers: 'טבלת המבקיעים',
   communityStatsSectionFun: 'נתונים מעניינים',
+  // ── Club achievements & level ──
+  communityStatsSectionAchievements: 'הישגי המועדון',
+  clubLevelLabel: 'רמה',
+  clubLevelNextHint: (pts: number) => `עוד ${pts} נקודות לרמה הבאה`,
+  clubLevelMaxHint: 'רמת השיא הושגה 🏆',
+  clubAchievementProgress: (value: number, target: number) =>
+    `${value} / ${target}`,
+  clubAchievementGold: 'הושלם ✓',
   // hero tiles
   communityStatsGoals: 'גולים',
   communityStatsAssists: 'בישולים',
@@ -918,7 +941,9 @@ export const he = {
   guestNameLabel: 'שם האורח',
   guestNamePlaceholder: 'שם פרטי או כינוי',
   guestRatingLabel: 'דירוג משוער (לא חובה)',
-  guestRatingHint: 'אופציונלי — סימון רמת השחקן לעצמך, לא נחשף לאחרים.',
+  guestRatingHint: 'אופציונלי — עוזר לאזן את הכוחות. רק אתה (שצירפת) והמנהל רואים אותו.',
+  guestRatingNone: 'ללא דירוג',
+  guestRatingAdderOnly: 'רק מי שצירף את האורח יכול לערוך את הדירוג שלו.',
   guestBadge: 'אורח',
   guestRemove: 'הסר אורח',
   guestRemoveConfirmTitle: 'להסיר את האורח?',
@@ -1110,11 +1135,11 @@ export const he = {
   // Invite friends to an existing community
   communityMenuInviteFriends: 'הזמן חברים למועדון',
   communityInviteFriendsSend: (n: number) =>
-    n > 0 ? `שלח ${n} הזמנות` : 'בחר חברים להזמנה',
+    n > 1 ? `שלח ${n} הזמנות` : n === 1 ? 'שלח הזמנה' : 'בחר חברים להזמנה',
   communityInviteFriendsFailed: 'שליחת ההזמנות נכשלה. נסה שוב.',
   groupWizardSubmitFailed: 'יצירת המועדון נכשלה. נסה שוב.',
   communityInviteFriendsSent: (n: number) =>
-    n > 0 ? `נשלחו ${n} הזמנות` : 'אין חברים חדשים להזמין',
+    n > 1 ? `נשלחו ${n} הזמנות` : n === 1 ? 'נשלחה הזמנה' : 'אין חברים חדשים להזמין',
   communityStatsCreatedAt: 'תאריך הקמה',
   communityStatsMembers: 'סגל',
   communityStatsField: 'מגרש קבוע',
@@ -1391,7 +1416,8 @@ export const he = {
   homeStepPhoto: 'הוספת תמונת פרופיל',
   homeStepAvailability: 'סמן מתי אתה פנוי',
   homeStepCommunity: 'הצטרף או פתח מועדון',
-  homeStepGame: 'הצטרף למשחק ראשון',
+  homeStepGame: 'הצטרף או צור משחק ראשון',
+  homeStepInvite: 'הבא חבר למגרש',
   homeStepPosition: 'בחר עמדה מועדפת',
   // Preferred-position picker (ProfileEdit) + labels.
   positionLabel: 'עמדה מועדפת',
@@ -1550,6 +1576,8 @@ export const he = {
   validateRequired: 'יש להזין {field}',
   validateTooLong: '{field} ארוך מדי (עד {max} תווים)',
   validateOutOfRange: '{field} חייב להיות בין {min} ל-{max}',
+  validationErrorTitle: 'לא ניתן לשמור את המשחק',
+  gameOpenAfterKickoff: 'זמן פתיחת ההרשמה הציבורית / לאורחים חייב להיות לפני תחילת המשחק.',
   inviteRateLimited: 'שלחת יותר מדי הזמנות. נסה שוב מאוחר יותר.',
   inviteAlreadyJoined: 'השחקן כבר רשום למשחק.',
   inviteNotAllowed: 'אין לך הרשאה להזמין למשחק הזה.',
@@ -1742,7 +1770,7 @@ export const he = {
     n === 1 ? 'בקשה אחת ממתינה' : `${n} בקשות ממתינות`,
 
   // Compact match card on the Matches list
-  matchCardJoin: 'הצטרף',
+  matchCardJoin: 'אני מגיע',
   matchCardWaitlist: 'המתנה',
   matchCardLeave: 'בטל הרשמה',
   matchCardPlayersOf: (n: number, max: number) => `‎${n}/${max}‎ שחקנים`,
@@ -1978,6 +2006,17 @@ export const he = {
   communityStatsActiveMonth: 'פעילים החודש',
   communityStatsActiveYear: 'פעילים השנה',
   communityStatsVitalityTitle: 'מד חיים של המועדון',
+  // Fun-facts (נתונים מעניינים) — refreshed set.
+  communityStatsKingShare: 'נתח מלך השערים',
+  // Values kept short (number/percent only) so the value column stays a tidy,
+  // aligned strip and the label never gets squeezed/truncated — the label
+  // already carries the unit meaning (user report: "not organized").
+  communityStatsKingShareValue: (pct: number) => `${pct}%`,
+  communityStatsDuo: 'הצמד הקטלני',
+  communityStatsDuoValue: (n: number) => `${n} בישולים`,
+  communityStatsDrawRate: 'אחוז התיקו במשחקונים',
+  communityStatsStreak: 'רצף ההגעות הארוך ביותר',
+  communityStatsStreakValue: (n: number) => `${n} ערבים`,
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
   communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי גולים',
@@ -2267,6 +2306,16 @@ export const he = {
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
   matchCreateTeamsBannerSub: 'המשחק מתקרב — חלקו את השחקנים לקבוצות',
+  matchManageTeamsBannerTitle: 'נהל כוחות',
+  matchManageTeamsBannerSub: 'ערוך, אזן מחדש או חלק מחדש',
+  // Drag-and-drop teams editor
+  teamsEditTitle: 'עריכת הכוחות',
+  teamsEditHint: 'גררו שחקן אל שחקן בקבוצה אחרת כדי להחליף ביניהם',
+  teamsEditTeamName: (letter: string) => `קבוצה ${letter}`,
+  teamsEditFinish: 'סיים',
+  // Entry on the manage screen when teams already exist
+  draftEditExistingTitle: 'ערוך את הכוחות הקיימים',
+  draftEditExistingSub: 'גרור והחלף שחקנים בין הקבוצות',
   draftRedoMenu: 'חלק כוחות מחדש',
   draftUndo: 'בטל בחירה אחרונה',
   draftBackToEdit: 'חזרה לתיקון',
@@ -2308,6 +2357,7 @@ export const he = {
   chatNoAccess: 'אין לך גישה לצ׳אט הזה',
   chatEmpty: 'המגרש פנוי — שלחו את ההודעה הראשונה ⚽',
   chatInputPlaceholder: 'כתבו הודעה…',
+  chatSendA11y: 'שליחת הודעה',
   chatSendFailedTitle: 'ההודעה לא נשלחה',
   chatSendFailedBody: 'בדקו את החיבור ונסו שוב.',
   chatDeleteConfirmTitle: 'למחוק את ההודעה?',

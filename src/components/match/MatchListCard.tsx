@@ -21,7 +21,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Game, GameFormat, FieldType, UserId } from '@/types';
+import { Game, GameFormat, FieldType, UserId, activeGuestCount } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
@@ -78,7 +78,7 @@ function ctaForGame(
   // that silently waitlists them (mirrors requestJoinGame's seating logic).
   const occupancy =
     g.players.length +
-    (g.guests?.length ?? 0) +
+    activeGuestCount(g.guests) +
     (g.pendingPromotion?.uid ? 1 : 0);
   if (occupancy < g.maxPlayers) return 'join';
   return 'waitlist';
@@ -108,7 +108,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // The viewer manages this game (its creator) → show a "מנהל" badge.
   const isManager = !!userId && game.createdBy === userId;
   const fmt = formatLabel(game.format) ?? he.gameFormat5;
-  const occupancy = game.players.length + (game.guests?.length ?? 0);
+  const occupancy = game.players.length + activeGuestCount(game.guests);
 
   const isFull = occupancy >= game.maxPlayers;
   // Relative "time to kickoff" chip — nudges the user with how soon the game

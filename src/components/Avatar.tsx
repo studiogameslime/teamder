@@ -46,7 +46,9 @@ export function Avatar({
   const inner = size - ringWidth * 2;
 
   const def = getAvatarById(avatarId ?? undefined);
-  const initials = name.slice(0, 1);
+  // First GRAPHEME, not first UTF-16 unit — `slice(0,1)` on an emoji/astral
+  // name (e.g. "🦊דני") returns a lone surrogate that renders as "�".
+  const initials = Array.from(name ?? '')[0] ?? '';
 
   // Breathing ring — long cycle so it reads as "alive" not "loading".
   // Only animates when explicitly opted-in to keep the default Avatar

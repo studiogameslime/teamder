@@ -45,7 +45,7 @@ const HEBREW_MONTHS = [
 
 const ROW_H = 44;
 const VISIBLE_ROWS = 5;
-const MINUTE_STEP = 15;
+const MINUTE_STEP = 5;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 

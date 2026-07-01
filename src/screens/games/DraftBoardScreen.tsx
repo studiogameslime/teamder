@@ -32,7 +32,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
-import { colors, radius, spacing, typography, shadows } from '@/theme';
+import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
 import { toGuestRosterId, isGuestId } from '@/types';
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     flexShrink: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   pickBtn: {
     backgroundColor: colors.primary,

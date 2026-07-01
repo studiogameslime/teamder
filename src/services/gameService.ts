@@ -58,6 +58,7 @@ import {
 import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { waitForAuthRestore } from '@/firebase/auth';
 import { isStaleAfterStart } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
@@ -78,7 +79,8 @@ import {
   type RotationFillState,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
-import { optionalString, requireInt, requireString } from '@/utils/validate';
+import { failValidation, optionalString, requireInt, requireString } from '@/utils/validate';
+import { he } from '@/i18n/he';
 import { enforceRateLimit } from '@/services/rateLimitService';
 import { serverNow } from '@/services/serverClock';
 import { assignJoins, type RosterState } from '@/services/joinFairness';
@@ -803,6 +805,9 @@ export const gameService = {
     activeThisMonth: number;
     activeThisYear: number;
     topPlayers: Array<{ uid: UserId; attended: number }>;
+    /** Longest run of consecutive game-nights attended by a single player. */
+    longestStreak: number;
+    longestStreakUid: UserId | null;
   }> {
     const empty = {
       totalFinished: 0,
@@ -813,8 +818,27 @@ export const gameService = {
       activeThisMonth: 0,
       activeThisYear: 0,
       topPlayers: [] as Array<{ uid: UserId; attended: number }>,
+      longestStreak: 0,
+      longestStreakUid: null as UserId | null,
     };
-    if (USE_MOCK_DATA || !groupId) return empty;
+    if (!groupId) return empty;
+    if (USE_MOCK_DATA) {
+      // Demo numbers so the community stats + club-achievements UI render.
+      return {
+        totalFinished: 42,
+        totalCancelled: 3,
+        organizationRate: 0.93,
+        avgAttendance: 11,
+        thisMonthFinished: 4,
+        activeThisMonth: 14,
+        activeThisYear: 28,
+        topPlayers: mockPlayers
+          .slice(0, 5)
+          .map((p, i) => ({ uid: p.id, attended: 40 - i * 4 })),
+        longestStreak: 9,
+        longestStreakUid: mockPlayers[0].id,
+      };
+    }
     const q = query(
       col.games(),
       where('groupId', '==', groupId),
@@ -844,6 +868,9 @@ export const gameService = {
     // attended this month is on its way out, regardless of size.
     const activeMonth = new Set<UserId>();
     const activeYear = new Set<UserId>();
+    // Per finished night, the set of attendees — collected so we can compute
+    // the longest consecutive-attendance streak (the club's "most loyal" run).
+    const nights: Array<{ startsAt: number; attended: Set<UserId> }> = [];
     for (const doc of snap.docs) {
       const g = doc.data();
       if (g.status === 'cancelled') {
@@ -861,14 +888,36 @@ export const gameService = {
         typeof g.startsAt === 'number' && g.startsAt >= monthAgo;
       const within365 =
         typeof g.startsAt === 'number' && g.startsAt >= yearAgo;
+      const attendedSet = new Set<UserId>();
       for (const uid of players) {
         if (arrivals[uid] === 'no_show') continue;
         attendedHere += 1;
         attendedTally[uid] = (attendedTally[uid] ?? 0) + 1;
+        attendedSet.add(uid);
         if (within30) activeMonth.add(uid);
         if (within365) activeYear.add(uid);
       }
       attendanceSum += attendedHere;
+      nights.push({ startsAt: (g.startsAt as number) ?? 0, attended: attendedSet });
+    }
+    // Longest consecutive-night attendance streak. Walk nights oldest→newest;
+    // for each player a run of attended nights grows, a missed night resets it.
+    nights.sort((a, b) => a.startsAt - b.startsAt);
+    const run: Record<UserId, number> = {};
+    let longestStreak = 0;
+    let longestStreakUid: UserId | null = null;
+    for (const night of nights) {
+      // Reset anyone who didn't attend this night.
+      for (const uid of Object.keys(run)) {
+        if (!night.attended.has(uid)) run[uid] = 0;
+      }
+      for (const uid of night.attended) {
+        run[uid] = (run[uid] ?? 0) + 1;
+        if (run[uid] > longestStreak) {
+          longestStreak = run[uid];
+          longestStreakUid = uid;
+        }
+      }
     }
     const organizationRate =
       totalFinished + totalCancelled > 0
@@ -889,6 +938,8 @@ export const gameService = {
       activeThisMonth: activeMonth.size,
       activeThisYear: activeYear.size,
       topPlayers,
+      longestStreak,
+      longestStreakUid,
     };
   },
 
@@ -901,10 +952,33 @@ export const gameService = {
   async getCommunityChampionship(groupId: GroupId): Promise<{
     totalGoals: number;
     totalRounds: number;
+    /** Mini-games that ended in a tie (for the draw-rate fun fact). */
+    tiedRounds: number;
     players: ChampionshipRow[];
   }> {
-    const empty = { totalGoals: 0, totalRounds: 0, players: [] as ChampionshipRow[] };
-    if (USE_MOCK_DATA || !groupId) return empty;
+    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, players: [] as ChampionshipRow[] };
+    if (!groupId) return empty;
+    if (USE_MOCK_DATA) {
+      const players: ChampionshipRow[] = mockPlayers.slice(0, 8).map((p, i) => {
+        const games = 38 - i;
+        const wins = Math.max(0, 22 - i * 2);
+        return {
+          uid: p.id,
+          goals: Math.max(0, 58 - i * 7),
+          assists: Math.max(0, 26 - i * 3),
+          rounds: 150 - i * 12,
+          wins,
+          losses: Math.max(0, games - wins),
+          games,
+        };
+      });
+      return {
+        totalGoals: players.reduce((a, p) => a + p.goals, 0),
+        totalRounds: 210,
+        tiedRounds: 34,
+        players,
+      };
+    }
     const db = getFirebase().db;
     try {
       const [psSnap, csSnap] = await Promise.all([
@@ -917,14 +991,50 @@ export const gameService = {
         'goals',
       );
       const totalGoals = players.reduce((a, s) => a + s.goals, 0);
-      const totalRounds = csSnap.exists()
-        ? ((csSnap.data() as { rounds?: number }).rounds ?? 0)
-        : 0;
-      return { totalGoals, totalRounds, players };
+      const cs = csSnap.exists() ? (csSnap.data() as { rounds?: number; tiedRounds?: number }) : null;
+      const totalRounds = cs?.rounds ?? 0;
+      const tiedRounds = cs?.tiedRounds ?? 0;
+      return { totalGoals, totalRounds, tiedRounds, players };
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
       return empty;
+    }
+  },
+
+  /**
+   * The club's "deadly duo" — the assister→scorer pair with the most assists
+   * between them, across this club's games (`communityPairStats/{groupId}__*`).
+   * Direction is collapsed: we just surface the two players + their shared
+   * assist count. Returns null when no assist pairs exist yet.
+   */
+  async getCommunityDeadlyDuo(groupId: GroupId): Promise<{
+    uidA: UserId;
+    uidB: UserId;
+    assists: number;
+  } | null> {
+    if (!groupId) return null;
+    if (USE_MOCK_DATA) {
+      return { uidA: mockPlayers[0].id, uidB: mockPlayers[2].id, assists: 17 };
+    }
+    const db = getFirebase().db;
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'communityPairStats'), where('groupId', '==', groupId)),
+      );
+      let best: { uidA: UserId; uidB: UserId; assists: number } | null = null;
+      for (const d of snap.docs) {
+        const data = d.data() as { a?: string; b?: string; assists?: number };
+        const assists = data.assists ?? 0;
+        if (data.a && data.b && assists > (best?.assists ?? 0)) {
+          best = { uidA: data.a, uidB: data.b, assists };
+        }
+      }
+      return best;
+    } catch (err) {
+      logError('getCommunityDeadlyDuo', err, { groupId });
+      if (__DEV__) console.warn('[gameService] getCommunityDeadlyDuo failed', err);
+      return null;
     }
   },
 
@@ -1797,6 +1907,7 @@ export const gameService = {
     const title = requireString('title', input.title, {
       max: 120,
       label: 'שם המשחק',
+      sanitize: true,
     });
     const fieldName = requireString('fieldName', input.fieldName, {
       max: 200,
@@ -1840,6 +1951,14 @@ export const gameService = {
       };
       err.code = 'GAME_REG_AFTER_KICKOFF';
       throw err;
+    }
+    // Same invariant for the public-open flip / guests-open gate: both must
+    // fall before kickoff or they're meaningless.
+    if (typeof input.publicOpenAt === 'number' && input.publicOpenAt > 0 && input.publicOpenAt >= input.startsAt) {
+      failValidation('publicOpenAt', he.gameOpenAfterKickoff);
+    }
+    if (typeof input.guestsOpenAt === 'number' && input.guestsOpenAt > 0 && input.guestsOpenAt >= input.startsAt) {
+      failValidation('guestsOpenAt', he.gameOpenAfterKickoff);
     }
 
     // Overlap guard — block creating a second game in the same
@@ -2152,10 +2271,12 @@ export const gameService = {
       registrationOpensAt: number;
       /** Recurring weekly fixture toggle. */
       recurring: boolean;
-      /** ms-epoch community→public flip time. */
-      publicOpenAt: number;
-      /** ms-epoch before which non-admins can't add guests. */
-      guestsOpenAt: number;
+      /** ms-epoch community→public flip time. null clears the schedule
+       *  (turned off in the edit form — undefined would be stripped and
+       *  leave the stale value, so callers must pass null to clear). */
+      publicOpenAt: number | null;
+      /** ms-epoch before which non-admins can't add guests. null clears. */
+      guestsOpenAt: number | null;
       /** Toggle whether this game receives cross-community filler
        *  matching. Editable any time before the game starts. */
       acceptsFillers: boolean;
@@ -2179,6 +2300,26 @@ export const gameService = {
     // route visibility flips through that handler instead.
     if ('visibility' in patch) {
       throw new Error('updateGameV2: use setVisibility() to change visibility');
+    }
+    // Pre-flight shape validation (mirrors createGameV2) — the edit path
+    // previously spread the patch straight to Firestore, so an over-long
+    // title/notes or an out-of-range maxPlayers was only caught by rules
+    // and surfaced as a useless "permission denied". Validate the fields
+    // that are actually present in this patch and surface a Hebrew error.
+    if (typeof patch.title === 'string') {
+      patch.title = requireString('title', patch.title, { max: 120, label: 'שם המשחק', sanitize: true });
+    }
+    if (typeof patch.fieldName === 'string') {
+      patch.fieldName = requireString('fieldName', patch.fieldName, { max: 200, label: 'שם המגרש' });
+    }
+    if (patch.fieldAddress != null) {
+      patch.fieldAddress = optionalString('fieldAddress', patch.fieldAddress, { max: 300, label: 'כתובת המגרש' });
+    }
+    if (patch.notes != null) {
+      patch.notes = optionalString('notes', patch.notes, { max: 1000, label: 'הערות' });
+    }
+    if (patch.maxPlayers != null) {
+      patch.maxPlayers = requireInt('maxPlayers', patch.maxPlayers, { min: 2, max: 50, label: 'מספר שחקנים' });
     }
     // Pre-flight validation that needs the current doc — the overlap
     // check and the startsAt-vs-registrationOpensAt invariant. We
@@ -2257,6 +2398,15 @@ export const gameService = {
       };
       err.code = 'GAME_REG_AFTER_KICKOFF';
       throw err;
+    }
+    // Invariant: a public-open flip / guests-open gate scheduled AFTER
+    // kickoff is meaningless (the game has already started). Only a
+    // positive number is a real schedule — null/0 means "cleared".
+    if (typeof patch.publicOpenAt === 'number' && patch.publicOpenAt > 0 && patch.publicOpenAt >= nextStartsAt) {
+      failValidation('publicOpenAt', he.gameOpenAfterKickoff);
+    }
+    if (typeof patch.guestsOpenAt === 'number' && patch.guestsOpenAt > 0 && patch.guestsOpenAt >= nextStartsAt) {
+      failValidation('guestsOpenAt', he.gameOpenAfterKickoff);
     }
     // Overlap check: only if startsAt is actually being moved AND
     // the game is non-terminal (no point blocking edits to historical
@@ -2454,12 +2604,35 @@ export const gameService = {
       }
       return { addedToPlayers: added, addedToWaitlist: waited };
     }
+    // Make sure auth is actually ready before calling — right after an app
+    // UPDATE the persisted session is still restoring, so currentUser can be
+    // null for a beat. Calling the callable then sends NO token and the server
+    // rejects with `unauthenticated` (real report, 1.0.39). Wait for restore,
+    // then force a fresh token so it's attached to the call.
+    let user = getFirebase().auth.currentUser;
+    if (!user) user = await waitForAuthRestore();
+    if (!user) throw new Error('adminAddMembers: not signed in');
+    await user.getIdToken();
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { httpsCallable } = require('firebase/functions');
-    const res = await httpsCallable(getFirebase().functions, 'adminAddPlayers')({
-      gameId,
-      userIds,
-    });
+    const call = () =>
+      httpsCallable(getFirebase().functions, 'adminAddPlayers')({ gameId, userIds });
+    let res;
+    try {
+      res = await call();
+    } catch (err) {
+      // The callable sometimes reaches the server with NO auth token even
+      // though we're signed in (recurring `functions/unauthenticated`, real
+      // report on 1.0.40) — the SDK attached a stale/expired token. Force a
+      // FRESH token and retry ONCE before surfacing the failure.
+      const code = (err as { code?: string } | undefined)?.code;
+      if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
+        await user.getIdToken(true);
+        res = await call();
+      } else {
+        throw err;
+      }
+    }
     const d = (res?.data ?? {}) as { addedToPlayers?: number; addedToWaitlist?: number };
     return {
       addedToPlayers: d.addedToPlayers ?? 0,
@@ -2588,6 +2761,10 @@ export const gameService = {
     }
     const cur = await readTimerState(gameId);
     if (!cur?.liveMatch) return;
+    // Don't record a goal onto a closed evening — mirrors the timer guards.
+    // Without this, a second admin tapping "+goal" right after another admin
+    // ended the evening writes a phantom goal + tally onto a finished game.
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
     // arrayUnion + increment so two near-simultaneous goal entries don't clobber
     // each other (the old read-modify-write replaced the whole array and could
     // drop a concurrent goal). The goal log is the source of truth for stats.
@@ -2632,6 +2809,8 @@ export const gameService = {
     }
     const cur = await readTimerState(gameId);
     if (!cur?.liveMatch) return;
+    // Don't mutate goals on a closed evening (symmetric with recordGoal).
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
     const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
     if (!gone) return;
     // Roll back the evening tally for the undone goal's scorer (own goals /
@@ -2646,7 +2825,12 @@ export const gameService = {
     // read-modify-write, which overwrote the whole `goals` array and could drop
     // a concurrent goal, leaving the score and the goal log permanently out of
     // sync. arrayRemove matches by value, so a double-remove of the same goal
-    // is a no-op on the array (the score guard below keeps it from going wrong).
+    // is a no-op on the array. NOTE: the score increment has no server-side
+    // floor — only the `if (!gone) return` pre-read above prevents a re-decrement
+    // (sequential undo of an already-removed goal is a no-op). The live match is
+    // admin-only / single-actor, so two devices removing the SAME goal in the
+    // exact same read window (the only path to a negative score) isn't reachable
+    // in practice; a reset/commit recomputes the score from the goal log anyway.
     await updateDoc(docs.game(gameId), {
       'liveMatch.goals': arrayRemove(gone),
       'liveMatch.scoreA': increment(gone.team === 'A' ? -1 : 0),
@@ -4166,7 +4350,14 @@ export const gameService = {
       }
       const players = (data.players ?? []) as string[];
       const waitlist = (data.waitlist ?? []) as string[];
-      const occupancy = players.length + activeGuestCount(data.guests);
+      // A pending-promotion offer to ANOTHER user holds a seat — count it so an
+      // admin approving a pending request while an offer is outstanding lands
+      // the approved user on the WAITLIST instead of pushing past maxPlayers.
+      // (Mirrors joinGameV2/requestJoinGame's offerReservation.)
+      const pp = data.pendingPromotion as { uid?: string } | undefined;
+      const offerReservation = pp?.uid && pp.uid !== userId ? 1 : 0;
+      const occupancy =
+        players.length + activeGuestCount(data.guests) + offerReservation;
       const nextPending = pending.filter((id) => id !== userId);
       let bucket: 'players' | 'waitlist';
       const updates: Record<string, unknown> = {
@@ -5758,11 +5949,11 @@ export const gameService = {
         timerControlledBy: userId,
         timerControlledByName: userName,
         timerEvents: [],
-        // Reset the clock + the mini-game SCORE, but KEEP `goals` — the
-        // per-player goal tally (the ball-icon badges) must survive a reset
-        // (user request). Goals stay credited to each scorer.
+        // Clear the clock, mini-game SCORE, and round goal LOG together (badge
+        // = goalTally survives). See the real-path comment below.
         scoreA: 0,
         scoreB: 0,
+        goals: [],
       };
       g.updatedAt = Date.now();
       return;
@@ -5779,11 +5970,14 @@ export const gameService = {
         'liveMatch.timerControlledBy': userId,
         'liveMatch.timerControlledByName': userName,
         'liveMatch.timerEvents': [],
-        // Reset the clock + the mini-game SCORE, but KEEP `goals` — the
-        // per-player goal tally (the ball-icon badges) must survive a reset
-        // (user request). Goals stay credited to each scorer.
+        // Reset the clock + the mini-game SCORE *and* the round's goal LOG so
+        // the score (now 0-0) and `goals[]` stay consistent. Keeping the log
+        // while zeroing the score left phantom goals that the next round-end
+        // committed to stats. The evening-long per-player BADGE survives — it
+        // reads `liveMatch.goalTally`, which is NOT touched here.
         'liveMatch.scoreA': 0,
         'liveMatch.scoreB': 0,
+        'liveMatch.goals': [],
         updatedAt: serverNow(),
       });
     } catch (err) {
@@ -6179,7 +6373,7 @@ export const gameService = {
     gameId: string,
     callerId: UserId,
     guestId: string,
-    patch: { name?: string; estimatedRating?: number | null },
+    patch: { name?: string },
   ): Promise<GameGuest> {
     const apply = (g: GameGuest): GameGuest => {
       const nextName =
@@ -6188,30 +6382,12 @@ export const gameService = {
       if (nextName.length > 20) {
         throw new Error('updateGuest: name too long (>20)');
       }
-      let nextRating = g.estimatedRating;
-      if (patch.estimatedRating === null) {
-        nextRating = undefined;
-      } else if (patch.estimatedRating !== undefined) {
-        const r = patch.estimatedRating;
-        if (
-          typeof r !== 'number' ||
-          !Number.isFinite(r) ||
-          r < 1 ||
-          r > 5
-        ) {
-          throw new Error('updateGuest: estimatedRating must be 1.0..5.0');
-        }
-        nextRating = r;
-      }
-      // Same Firestore-undefined gotcha as addGuest: drop the key
-      // entirely when there's no rating instead of writing
-      // `estimatedRating: undefined`.
-      const { estimatedRating: _drop, ...rest } = g;
-      return {
-        ...rest,
-        name: nextName,
-        ...(nextRating !== undefined ? { estimatedRating: nextRating } : {}),
-      };
+      // The estimatedRating is intentionally NOT mutated here. A guest's
+      // rating belongs to the player who ADDED them and can only be changed
+      // via `setGuestRating` (adder-only). The admin/creator who reaches
+      // updateGuest manages the roster (rename / remove) but must never be
+      // able to overwrite the rating — they don't know the guest.
+      return { ...g, name: nextName };
     };
 
     if (USE_MOCK_DATA) {
@@ -6264,6 +6440,65 @@ export const gameService = {
     } catch (err) {
       logError('updateGuest', err, { gameId, callerId, guestId });
       if (__DEV__) console.warn('[gameService] updateGuest failed', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Set (or clear, with `null`) a guest's estimatedRating. Enforced
+   * adder-only: ONLY the player whose uid is the guest's `addedBy` may
+   * change it — not the admin. Goes through the `setGuestRating` callable
+   * (Firestore rules can't gate per-element ownership inside the `guests`
+   * array). Resolves when the write commits; the caller rebuilds the
+   * updated guest object locally for its optimistic splice.
+   */
+  async setGuestRating(
+    gameId: string,
+    callerId: UserId,
+    guestId: string,
+    rating: number | null,
+  ): Promise<void> {
+    if (
+      rating !== null &&
+      (typeof rating !== 'number' ||
+        !Number.isFinite(rating) ||
+        rating < 1 ||
+        rating > 5)
+    ) {
+      throw new Error('setGuestRating: rating must be 1.0..5.0 or null');
+    }
+
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) throw new Error('setGuestRating: game not found');
+      const idx = (g.guests ?? []).findIndex((x) => x.id === guestId);
+      if (idx < 0) throw new Error('setGuestRating: guest not found');
+      const guest = g.guests![idx];
+      // Mirror the server's adder-only gate in mock mode.
+      if (guest.addedBy !== callerId) throw new Error('PERMISSION_DENIED');
+      const { estimatedRating: _drop, ...rest } = guest;
+      const updated: GameGuest =
+        rating === null
+          ? { ...rest }
+          : { ...rest, estimatedRating: Math.round(rating * 10) / 10 };
+      g.guests = [
+        ...g.guests!.slice(0, idx),
+        updated,
+        ...g.guests!.slice(idx + 1),
+      ];
+      g.updatedAt = Date.now();
+      return;
+    }
+
+    try {
+      const { httpsCallable } = require('firebase/functions');
+      await httpsCallable(
+        getFirebase().functions,
+        'setGuestRating',
+      )({ gameId, guestId, rating });
+    } catch (err) {
+      logError('setGuestRating', err, { gameId, callerId, guestId });
+      if (__DEV__) console.warn('[gameService] setGuestRating failed', err);
       throw err;
     }
   },

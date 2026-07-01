@@ -378,6 +378,18 @@ export function ProfileScreen() {
       done: totalGames > 0 || myGames.length > 0,
       onPress: () => nav.navigate('GameTab'),
     },
+    {
+      key: 'invite',
+      label: he.homeStepInvite,
+      icon: 'person-add-outline',
+      // "Done" = someone actually joined through this user's invite link
+      // (referralCount counts /users with invitedBy === me), not merely that
+      // they tapped share — the meaningful signal the owner asked for.
+      done: (referralCount ?? 0) > 0,
+      onPress: () => {
+        void handleShareInvite();
+      },
+    },
   ];
   const checklistComplete = checklistItems.every((i) => i.done);
   // Only judge the checklist once the data it reads has actually loaded —
@@ -385,7 +397,12 @@ export function ProfileScreen() {
   // undone, and the "בוא נתחיל" activation card flashes for a frame before the
   // real data hides it (user report). `groupsHydrated` covers communities;
   // `playedCount !== null` covers games (null = still loading).
-  const homeDataReady = groupsHydrated && playedCount !== null;
+  // `referralCount !== null` covers the invite step (null = still loading);
+  // guests never load it (no /users doc) so they're exempt from that gate.
+  const homeDataReady =
+    groupsHydrated &&
+    playedCount !== null &&
+    (localUser?.isGuest || referralCount !== null);
   const homeTips: Tip[] = [
     { text: he.homeTipAutoTeams, onPress: () => nav.navigate('CommunitiesTab') },
     { text: he.homeTipInternalRating, onPress: () => nav.navigate('CommunitiesTab') },

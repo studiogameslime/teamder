@@ -8,7 +8,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
-import { RatingSlider } from '@/components/RatingSlider';
+import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { formatRating, isRated } from '@/utils/rating';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -274,6 +273,8 @@ export function CommunityPlayersScreen() {
                   isAdmin={group.adminIds.includes(u.id)}
                   stats={stats?.[u.id]}
                   showDivider={i > 0}
+                  holdsBall={(group.ballHolderIds ?? []).includes(u.id)}
+                  holdsJerseys={(group.jerseysHolderIds ?? []).includes(u.id)}
                   internalRating={internalRating}
                   rating={
                     ratingsHiddenFromMe ? undefined : group.adminRatings?.[u.id]
@@ -322,64 +323,6 @@ export function CommunityPlayersScreen() {
   );
 }
 
-/** Bottom-sheet editor for an admin-assigned player rating (1–5, or clear). */
-function AdminRatingSheet({
-  target,
-  current,
-  saving,
-  onClose,
-  onSave,
-}: {
-  target: User | null;
-  current: number;
-  saving: boolean;
-  onClose: () => void;
-  onSave: (rating: number | null) => void;
-}) {
-  const [value, setValue] = useState(current);
-  // Sync the local stars to the opened player's stored rating.
-  useEffect(() => {
-    setValue(current);
-  }, [current, target?.id]);
-  return (
-    <Modal
-      visible={!!target}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.sheetBackdrop} onPress={onClose}>
-        <Pressable style={styles.sheetCard} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.sheetTitle}>
-            {target ? he.communityAdminRatingTitle(target.name) : ''}
-          </Text>
-          <Text style={styles.sheetHint}>{he.communityAdminRatingHint}</Text>
-          <RatingSlider value={value} onChange={setValue} />
-          <View style={styles.sheetActions}>
-            <Pressable
-              onPress={() => onSave(null)}
-              disabled={saving}
-              style={({ pressed }) => [styles.sheetClear, pressed && { opacity: 0.6 }]}
-            >
-              <Text style={styles.sheetClearText}>{he.communityAdminRatingClear}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => onSave(value === 0 ? null : value)}
-              disabled={saving}
-              style={({ pressed }) => [
-                styles.sheetSave,
-                (saving) && { opacity: 0.6 },
-                pressed && { opacity: 0.85 },
-              ]}
-            >
-              <Text style={styles.sheetSaveText}>{he.save}</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
 
 function PlayerRow({
   user,
@@ -393,11 +336,16 @@ function PlayerRow({
   onLongPress,
   onManage,
   onRemove,
+  holdsBall,
+  holdsJerseys,
 }: {
   user: User;
   isAdmin: boolean;
   stats?: PlayerStats;
   showDivider: boolean;
+  /** Currently holds the club's ball / jerseys (from the end-evening handoff). */
+  holdsBall?: boolean;
+  holdsJerseys?: boolean;
   /** Community is in internal-rating mode → show the admins' rating. */
   internalRating?: boolean;
   /** The admin-assigned rating for this player, if set. */
@@ -440,6 +388,16 @@ function PlayerRow({
               <Text style={styles.adminBadgeText}>
                 {he.communityDetailsAdminBadge}
               </Text>
+            </View>
+          ) : null}
+          {holdsBall ? (
+            <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderBallA11y}>
+              <Ionicons name="football" size={13} color="#1D4ED8" />
+            </View>
+          ) : null}
+          {holdsJerseys ? (
+            <View style={styles.holderBadge} accessibilityLabel={he.equipmentHolderJerseysA11y}>
+              <Ionicons name="shirt" size={13} color="#7C3AED" />
             </View>
           ) : null}
         </View>
@@ -591,6 +549,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 11,
   },
+  holderBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -616,49 +582,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   // ── Admin-rating editor sheet ──
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheetCard: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.lg,
-    gap: spacing.md,
-    alignItems: 'center',
-  },
-  sheetTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  sheetHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  sheetActions: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: spacing.sm,
-    alignSelf: 'stretch',
-    marginTop: spacing.sm,
-  },
-  sheetSave: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  sheetSaveText: { ...typography.bodyBold, color: '#FFFFFF', fontWeight: '800' },
-  sheetClear: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  sheetClearText: { ...typography.body, color: colors.danger, fontWeight: '700' },
 });

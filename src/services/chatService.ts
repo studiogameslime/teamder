@@ -20,7 +20,8 @@ import {
 } from 'firebase/firestore';
 
 import { col } from '@/firebase/firestore';
-import { USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { waitForAuthRestore } from '@/firebase/auth';
 import { logError } from '@/services/errorLog';
 import type { ChatMessage, ChatScope, ChatUnreadEntry, User, UserId } from '@/types';
 
@@ -85,16 +86,40 @@ export const chatService = {
     onMessages: (messages: ChatMessage[]) => void,
     onError?: (err: unknown) => void,
   ): () => void {
+    // Window the MOST-RECENT messages: order newest→oldest at the query so
+    // `limit` keeps the latest WINDOW (asc+limit would pin the oldest WINDOW
+    // and a busy chat would never show recent messages), then reverse to
+    // oldest→newest for rendering.
     const q = query(
       messagesCol(scope, parentId),
-      orderBy('createdAt', 'asc'),
+      orderBy('createdAt', 'desc'),
       limit(WINDOW),
     );
-    return onSnapshot(
-      q,
-      (snap) => onMessages(snap.docs.map((d) => d.data())),
-      (err) => onError?.(err),
-    );
+    // Don't open the listener until auth is RESTORED. Right after an app
+    // update the persisted session is still loading, so a listener opened now
+    // carries no `request.auth` → the rules deny it → the screen sticks on
+    // "אין גישה לצ'אט" and never recovers (a denied listener doesn't re-auth).
+    // Wait for restore, then subscribe. Returned fn cancels either phase.
+    let real: (() => void) | null = null;
+    let cancelled = false;
+    (async () => {
+      const user =
+        getFirebase().auth.currentUser ?? (await waitForAuthRestore());
+      if (cancelled) return;
+      if (!user) {
+        onError?.(new Error('chat: not signed in'));
+        return;
+      }
+      real = onSnapshot(
+        q,
+        (snap) => onMessages(snap.docs.map((d) => d.data()).reverse()),
+        (err) => onError?.(err),
+      );
+    })();
+    return () => {
+      cancelled = true;
+      if (real) real();
+    };
   },
 
   /**
@@ -131,6 +156,12 @@ export const chatService = {
    * tries to open a DM with someone who restricted it.
    */
   async ensureDmConversation(me: UserId, other: UserId): Promise<string> {
+    // Guard against a self-DM: dmConvId(a,a) = "a__a" passes the rules'
+    // `participants.size()==2` check ([a,a].sort() is still 2) and would
+    // create a junk conversation doc that renders as a broken/locked chat.
+    if (!other || me === other) {
+      throw new Error('chat: cannot open a conversation with yourself');
+    }
     const convId = dmConvId(me, other);
     if (USE_MOCK_DATA) return convId;
     await setDoc(

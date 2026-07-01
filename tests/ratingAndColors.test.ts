@@ -30,12 +30,12 @@ describe('rating scale', () => {
     expect(isRated(3.2)).toBe(true);
   });
 
-  it('snaps to the 0.1 grid and clamps to [0.5, 5]', () => {
+  it('snaps to the 0.1 grid and clamps to [0, 5]', () => {
     expect(snapRating(4.27)).toBe(4.3);
     expect(snapRating(4.24)).toBe(4.2);
     expect(snapRating(7)).toBe(RATING_MAX); // 5
-    expect(snapRating(0.1)).toBe(RATING_MIN); // 0.5
-    expect(snapRating(-3)).toBe(RATING_MIN);
+    expect(snapRating(0.1)).toBe(0.1); // a valid low rating now (min is 0)
+    expect(snapRating(-3)).toBe(RATING_MIN); // 0
   });
 
   it('neutral middle is the centre of 1–5', () => {

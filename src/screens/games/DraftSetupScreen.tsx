@@ -20,6 +20,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
 import { DraftOrderPath } from '@/components/draft/DraftOrderPath';
+import { TeamsEditModal } from '@/components/match/TeamsEditModal';
 import { useGameStore } from '@/store/gameStore';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -66,6 +67,8 @@ export function DraftSetupScreen() {
   // Team count for auto/random (the manual flow derives it from #captains).
   const [autoNumTeams, setAutoNumTeams] = useState(MIN_TEAMS);
   const [generating, setGenerating] = useState(false);
+  // DnD "edit existing teams" modal (only when teams already exist).
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -134,6 +137,14 @@ export function DraftSetupScreen() {
     }));
     return [...players, ...guests];
   }, [game, playersMap]);
+
+  // Resolve any roster id (uid or guest:<id>) → display identity for the
+  // DnD editor. Falls back to a placeholder while the store hydrates.
+  const resolveRoster = useCallback(
+    (id: string) => participants.find((p) => p.id === id) ?? { id, name: '…' },
+    [participants],
+  );
+  const hasTeams = !!game?.draftTeams?.teams?.length;
 
   const toggleCaptain = useCallback((uid: string) => {
     setCaptainIds((prev) =>
@@ -247,7 +258,21 @@ export function DraftSetupScreen() {
         {/* Step 0 — pick a split METHOD. */}
         {splitMode === null ? (
           <>
-            <Text style={styles.sectionTitle}>{he.draftMethodTitle}</Text>
+            {/* Teams already exist → offer a direct edit (drag-and-drop swap)
+                above the "split again" methods. */}
+            {hasTeams ? (
+              <>
+                <MethodCard
+                  icon="git-compare"
+                  title={he.draftEditExistingTitle}
+                  subtitle={he.draftEditExistingSub}
+                  onPress={() => setEditOpen(true)}
+                />
+                <Text style={styles.orHint}>{he.draftMethodTitle}</Text>
+              </>
+            ) : (
+              <Text style={styles.sectionTitle}>{he.draftMethodTitle}</Text>
+            )}
             {internalRating ? (
               <MethodCard
                 icon="sparkles"
@@ -345,25 +370,13 @@ export function DraftSetupScreen() {
           /* auto / random — just pick how many teams */
           <>
             <BackToMethods onPress={() => setSplitMode(null)} />
-            <Text style={styles.sectionTitle}>{he.autoBalanceChooseTeams}</Text>
-            <View style={styles.countRow}>
-              {Array.from(
-                { length: Math.max(0, maxTeams - MIN_TEAMS + 1) },
-                (_, i) => MIN_TEAMS + i,
-              ).map((n) => {
-                const on = autoNumTeams === n;
-                return (
-                  <PressableScale
-                    key={n}
-                    onPress={() => setAutoNumTeams(n)}
-                    style={[styles.countPill, on && styles.countPillOn]}
-                  >
-                    <Text style={[styles.countPillText, on && styles.countPillTextOn]}>
-                      {n}
-                    </Text>
-                  </PressableScale>
-                );
-              })}
+            {/* No team-count picker — it's already set at game creation, so we
+                split into exactly that many ("למה אני אמור לבחור... כבר קבעתי"). */}
+            <View style={styles.teamsInfo}>
+              <Ionicons name="people" size={18} color={colors.primary} />
+              <Text style={styles.teamsInfoText}>
+                {he.draftTeamsToCreate(autoNumTeams)}
+              </Text>
             </View>
             <Text style={styles.autoHint}>
               {splitMode === 'auto'
@@ -398,6 +411,20 @@ export function DraftSetupScreen() {
             size="lg"
           />
         </View>
+      ) : null}
+
+      {game ? (
+        <TeamsEditModal
+          visible={editOpen}
+          game={game}
+          resolve={resolveRoster}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            setEditOpen(false);
+            toast.success(he.draftSaved);
+            nav.navigate('MatchDetails', { gameId });
+          }}
+        />
       ) : null}
     </SafeAreaView>
   );
@@ -498,6 +525,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.md,
   },
+  orHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
   list: { gap: spacing.sm },
   playerRow: {
     backgroundColor: colors.surface,
@@ -525,7 +560,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     flexShrink: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   capBadge: {
     flexDirection: 'row',

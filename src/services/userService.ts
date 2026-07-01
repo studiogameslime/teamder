@@ -17,6 +17,7 @@ import {
 import { Platform } from 'react-native';
 import { User } from '@/types';
 import { haversineKm } from '@/utils/geo';
+import { sanitizeDisplayString } from '@/utils/validate';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
@@ -90,7 +91,33 @@ export const userService = {
       return buildGuestUser(fbUser.uid);
     }
     const ref = docs.user(fbUser.uid);
-    const snap = await getDoc(ref);
+    // Race the network read with a timeout. On a cold start with NO offline
+    // persistence, an offline `getDoc` hangs (in-memory cache is empty) — and
+    // the boot awaits this, so the splash would spin forever (very common for
+    // this app: locker rooms / dead zones). On timeout we fall back to the
+    // AsyncStorage-cached user so a signed-in user still gets into the app; the
+    // live doc refreshes once the network returns.
+    let snap: import('firebase/firestore').DocumentSnapshot<User> | null = null;
+    try {
+      snap = await Promise.race([
+        getDoc(ref),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('getCurrentUser: read timeout')), 8000),
+        ),
+      ]);
+    } catch (err) {
+      if (__DEV__) console.warn('[auth] getCurrentUser read timed out', err);
+      const cachedJson = await storage.getAuthUserJson();
+      if (cachedJson) {
+        try {
+          const cached = JSON.parse(cachedJson) as User;
+          if (cached?.id === fbUser.uid) return cached;
+        } catch {
+          /* corrupt cache — fall through to null */
+        }
+      }
+      return null;
+    }
     if (snap.exists()) {
       // Presence ping — powers Pulse's platform / "inactive N days" segments.
       // Fire-and-forget; a failure here must never block sign-in.
@@ -646,6 +673,13 @@ export const userService = {
   async updateProfile(
     patch: Partial<Pick<User, 'name' | 'avatarId' | 'photoUrl' | 'position'>>,
   ): Promise<User> {
+    // Strip zero-width / bidi-override (U+202E) / control chars from the display
+    // name — blocks impersonation (a hidden suffix duplicating someone's name)
+    // and layout-reversal attacks. sanitizeDisplayString existed for exactly
+    // this but had no call-site until now.
+    if (typeof patch.name === 'string') {
+      patch = { ...patch, name: sanitizeDisplayString(patch.name) };
+    }
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('updateProfile: no current user');
@@ -657,15 +691,24 @@ export const userService = {
     if (!cur) throw new Error('updateProfile: no current user');
     const ref = docs.user(cur.id);
     const next: User = { ...cur, ...patch };
-    const updates: Partial<User> = {};
+    const updates: Record<string, unknown> = {};
     if (patch.name !== undefined) updates.name = patch.name;
     if (patch.avatarId !== undefined) updates.avatarId = patch.avatarId;
-    if (patch.photoUrl !== undefined) updates.photoUrl = patch.photoUrl;
+    // photoUrl: a present-but-empty value (switched to a built-in avatar) must
+    // CLEAR the field, not be skipped — otherwise the doc keeps a photoUrl
+    // pointing at a now-deleted Storage object and everyone else sees a broken
+    // image. `'photoUrl' in patch` distinguishes "clear it" from "don't touch".
+    if ('photoUrl' in patch) {
+      updates.photoUrl = patch.photoUrl ? patch.photoUrl : deleteField();
+    }
     if (patch.position !== undefined) updates.position = patch.position;
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = Date.now();
       try {
-        await updateDoc(ref, updates);
+        // `updates` carries a possible deleteField() sentinel (photo clear), so
+        // it's a dynamic map rather than a typed Partial<User> — cast like the
+        // other dynamic update-map call sites (e.g. updateGameDoc).
+        await updateDoc(ref, updates as never);
       } catch (e) {
         logError('updateProfile', e, {
           uid: cur.id,

@@ -306,6 +306,21 @@ service cloud.firestore {
             request.resource.data.pendingPlayerIds is list &&
             request.resource.data.pendingPlayerIds.size() <= 200
           )
+        ) &&
+        // Equipment-holder arrays (end-evening handoff) — admin-written, capped.
+        (
+          !('ballHolderIds' in request.resource.data) ||
+          (
+            request.resource.data.ballHolderIds is list &&
+            request.resource.data.ballHolderIds.size() <= 50
+          )
+        ) &&
+        (
+          !('jerseysHolderIds' in request.resource.data) ||
+          (
+            request.resource.data.jerseysHolderIds is list &&
+            request.resource.data.jerseysHolderIds.size() <= 50
+          )
         )
       ) || (
         // Self-add to pendingPlayerIds (community join request — closed group).
@@ -1023,7 +1038,14 @@ service cloud.firestore {
           .data.get('participants', []);
       }
       function isDmParticipant() {
-        return isSignedIn() && request.auth.uid in dmParticipants();
+        // convId == sorted([uidA, uidB]).join('__'), so the two uids are
+        // encoded in the id itself. Check that FIRST — it works even before the
+        // conversation doc exists (a brand-new DM with no messages yet), which
+        // otherwise made get().data fail and denied access ("אין גישה לצ׳אט").
+        return isSignedIn() && (
+          request.auth.uid in convId.split('__')
+          || request.auth.uid in dmParticipants()
+        );
       }
       function otherOnCreate() {
         return request.resource.data.participants[0] == request.auth.uid
@@ -1423,6 +1445,12 @@ service cloud.firestore {
       allow write: if false;
     }
     match /communityStats/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    // Per-community assist pairs — read by the club's "deadly duo" fun fact.
+    // Written server-side only (commitRoundStats).
+    match /communityPairStats/{doc} {
       allow read: if isSignedIn();
       allow write: if false;
     }

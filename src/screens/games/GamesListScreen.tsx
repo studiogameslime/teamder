@@ -35,6 +35,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
 import { MatchCardSkeleton } from '@/components/anim/MatchCardSkeleton';
+import { LivingIcon } from '@/components/anim/LivingIcon';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { Breathing } from '@/components/anim/Breathing';
 import { joinLocation } from '@/utils/format';
@@ -110,6 +111,17 @@ export function GamesListScreen() {
       await storage.setAvailNudgeLastShownAt(Date.now());
     })();
   }, [user]);
+
+  // Tracks the deferred post-join reconcile timer so it's cancelled on
+  // unmount — otherwise a quick navigate-away leaves a setTimeout that fires
+  // reload() (a setState) on an unmounted screen.
+  const reconcileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (reconcileTimerRef.current) clearTimeout(reconcileTimerRef.current);
+    },
+    [],
+  );
 
   const scrollRef = useRef<ScrollView>(null);
   // React 19's useRef returns RefObject<T|null>; useScrollToTop's older
@@ -360,7 +372,9 @@ export function GamesListScreen() {
         // Reconcile once the reconciler has committed (also re-categorises the
         // game into "שלי"). Fire-and-forget; by then the server matches the
         // optimistic state, so there's no flicker.
-        setTimeout(() => {
+        if (reconcileTimerRef.current) clearTimeout(reconcileTimerRef.current);
+        reconcileTimerRef.current = setTimeout(() => {
+          reconcileTimerRef.current = null;
           void reload();
         }, 2500);
       } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
@@ -763,7 +777,9 @@ export function GamesListScreen() {
               accessibilityRole="button"
               accessibilityLabel={he.matchesCreateFab}
             >
-              <Ionicons name="add" size={30} color="#FFFFFF" />
+              <LivingIcon motion="hop">
+                <Ionicons name="add" size={30} color="#FFFFFF" />
+              </LivingIcon>
             </Pressable>
           </Breathing>
 
@@ -1137,7 +1153,9 @@ function FullEmptyState({
               title={he.emptyHomePrimary}
               variant="primary"
               size="lg"
-              iconLeft="add-circle-outline"
+              // Plus on the visual LEFT of the label (user report). Under
+              // forceRTL the last row child renders left, so use iconRight.
+              iconRight="add-circle-outline"
               onPress={onCreate}
               fullWidth
             />

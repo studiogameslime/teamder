@@ -25,7 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
 
-export type LivingMotion = 'spin' | 'pulse' | 'bounce' | 'sway' | 'shine';
+export type LivingMotion = 'spin' | 'pulse' | 'bounce' | 'sway' | 'shine' | 'hop';
 
 interface Props {
   motion: LivingMotion;
@@ -100,6 +100,20 @@ export function LivingIcon({
           false,
         );
         break;
+      case 'hop':
+        // A quick jump-and-land, then a long REST before the next — so it
+        // catches the eye every few seconds instead of moving constantly.
+        // `speed` scales the rest (default ≈ a hop every ~10s).
+        v.value = withRepeat(
+          withSequence(
+            withTiming(1, { duration: 260, easing: Easing.out(Easing.quad) }),
+            withTiming(0, { duration: 340, easing: Easing.in(Easing.quad) }),
+            withTiming(0, { duration: 9400 * speed }),
+          ),
+          -1,
+          false,
+        );
+        break;
     }
     return () => cancelAnimation(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,6 +131,8 @@ export function LivingIcon({
         return { transform: [{ rotateZ: `${v.value * 9}deg` }] };
       case 'shine':
         return { opacity: 0.55 + v.value * 0.45 };
+      case 'hop':
+        return { transform: [{ translateY: -v.value * 9 }, { scale: 1 + v.value * 0.06 }] };
       default:
         return {};
     }

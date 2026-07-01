@@ -52,7 +52,10 @@ export function SignInScreen() {
         code === '8' || code.includes('internal') || msg.includes('internal') ||
         code === '7' || code.includes('network') || msg.includes('network') ||
         code === '12500' || code === '12502' || code.includes('play_services') ||
-        code.includes('in_progress') || msg.includes('in progress');
+        code.includes('in_progress') || msg.includes('in progress') ||
+        // Firestore read during sign-in while the device is offline — the user
+        // just had no connection; not a config bug. (error report 30.6)
+        code === 'unavailable' || msg.includes('offline');
       if (!cancelled && !transient) {
         logError('signInGoogleScreen', err, {
           screen: 'SignInScreen',
@@ -130,7 +133,11 @@ export function SignInScreen() {
     const code = e?.code ?? '';
     if (msg.includes('cancelled') || code.includes('cancelled')) return he.signInCancelled;
     if (msg.includes('OAuth client ID not configured')) return he.signInConfigMissing;
-    if (code === 'auth/network-request-failed' || msg.includes('network')) return he.signInNetworkError;
+    if (
+      code === 'auth/network-request-failed' || msg.includes('network') ||
+      code === 'unavailable' || msg.includes('offline')
+    )
+      return he.signInNetworkError;
     return he.signInFailed;
   }
 

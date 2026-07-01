@@ -37,6 +37,7 @@ import {
 } from '@/services/chatService';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
+import { logError } from '@/services/errorLog';
 import {
   ChatTermsModal,
   useChatTermsAccepted,
@@ -102,11 +103,21 @@ export function ChatView({
   const lastTypingWriteRef = useRef(0);
   const [menu, setMenu] = useState<{ message: ChatMessage; x: number; y: number } | null>(null);
   const [showTerms, setShowTerms] = useState(false);
+  // Bumped to re-subscribe after a TRANSIENT listener error (network /
+  // 'unavailable'), so a connectivity blip doesn't strand the chat forever.
+  const [retryTick, setRetryTick] = useState(0);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatRow>>(null);
 
+  // Fresh chat → reset to the initial loading state (spinner shows once).
   useEffect(() => {
     setLoading(true);
+    setDenied(false);
+    setRetryTick(0);
+  }, [scope, parentId]);
+
+  useEffect(() => {
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const unsub = chatService.subscribeMessages(
       scope,
       parentId,
@@ -115,14 +126,31 @@ export function ChatView({
         setLoading(false);
         setDenied(false);
       },
-      () => {
-        // Permission denied / lost membership.
-        setDenied(true);
+      (err) => {
+        // Only a genuine PERMISSION error means "no access". Everything else
+        // (offline / 'unavailable' / transport errored — common on flaky
+        // networks) is TRANSIENT: don't show the lock, retry a FEW times.
+        const code = (err as { code?: string } | undefined)?.code;
+        if (code === 'permission-denied') {
+          setDenied(true);
+          setLoading(false);
+          return;
+        }
+        logError('ChatView.subscribe', err, { scope, parentId });
         setLoading(false);
+        // Cap retries so a persistent error doesn't loop forever — which felt
+        // like the chat was "constantly refreshing". (We DON'T flip loading
+        // back to true on retry, so the list doesn't flicker.)
+        if (retryTick < 4) {
+          retryTimer = setTimeout(() => setRetryTick((n) => n + 1), 3000);
+        }
       },
     );
-    return unsub;
-  }, [scope, parentId]);
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      unsub();
+    };
+  }, [scope, parentId, retryTick]);
 
   // Per-chat mute state, my block list, read positions, and who's typing.
   useEffect(() => {
@@ -425,6 +453,8 @@ export function ChatView({
               style={[styles.sendBtn, !draft.trim() && styles.sendBtnDisabled]}
               onPress={send}
               disabled={!draft.trim() || sending}
+              accessibilityRole="button"
+              accessibilityLabel={he.chatSendA11y}
             >
               <Ionicons
                 name="send"
@@ -805,6 +835,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    // Give way to the timestamp column instead of squeezing it off-screen.
+    flexShrink: 1,
   },
   // Own bubble in pitch green; others in white with a thin field-line edge.
   // The squared "tail" corner faces the avatar (own = right under RTL →
@@ -825,8 +857,9 @@ const styles = StyleSheet.create({
   },
   messageText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
   messageTextMine: { color: '#FFFFFF' },
-  // Caret hint + timestamp, hugging the inner side of the bubble.
-  meta: { alignItems: 'center', gap: 0, marginBottom: 2 },
+  // Caret hint + timestamp, hugging the inner side of the bubble. flexShrink:0
+  // so a long message can't squeeze the time off-screen (was getting cut off).
+  meta: { alignItems: 'center', gap: 0, marginBottom: 2, flexShrink: 0 },
   time: {
     ...typography.caption,
     fontSize: 11,
@@ -880,7 +913,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: '#1B8A43',
     fontStyle: 'italic',
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   inputBar: {
     flexDirection: 'row',

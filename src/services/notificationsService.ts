@@ -370,6 +370,41 @@ export const notificationsService = {
   },
 
   /**
+   * Remove THIS device's push token from `uid`'s push subdoc. MUST run while
+   * `uid` is still authenticated (self-only rules). Called on sign-out / account
+   * deletion so the device's token doesn't linger on the old account — otherwise
+   * the NEXT user on the same phone keeps receiving the previous user's pushes
+   * (a privacy leak: lockscreen DM previews, game data). Best-effort.
+   */
+  async unregisterThisDevice(uid: UserId): Promise<void> {
+    if (USE_MOCK_DATA || !uid) return;
+    let Notifications: typeof import('expo-notifications') | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      Notifications = require('expo-notifications');
+    } catch {
+      Notifications = null;
+    }
+    if (!Notifications) return;
+    try {
+      const tokenObj = await Notifications.getDevicePushTokenAsync();
+      const token = tokenObj?.data;
+      if (typeof token !== 'string' || token.length === 0) return;
+      await setDoc(
+        docs.userPrivatePush(uid),
+        {
+          fcmTokens: arrayRemove(token),
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      // A token we can't fetch / a denied write shouldn't block sign-out.
+      if (__DEV__) console.warn('[notifications] unregisterThisDevice', err);
+    }
+  },
+
+  /**
    * Full request-permission + get-token + persist flow. Safe to call
    * multiple times (e.g. on every cold start after sign-in) — the
    * permission prompt only shows the first time, and the token write

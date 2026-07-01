@@ -14,10 +14,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Game, GameFormat, UserId } from '@/types';
+import { activeGuestCount } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
+import { BouncingBall } from '@/components/anim/BouncingBall';
 
 interface Props {
   game: Game | null;
@@ -77,7 +79,7 @@ function GameBody({
   userId: UserId;
   onOpenGame: (gameId: string) => void;
 }) {
-  const occupancy = game.players.length + (game.guests?.length ?? 0);
+  const occupancy = game.players.length + activeGuestCount(game.guests);
   const kickoff = relativeKickoff(game.startsAt);
   const kickoffSoon = !!kickoff && kickoff.startsWith('עוד');
   const status = statusForUser(game, userId);
@@ -149,7 +151,16 @@ function EmptyBody({ onFindGame }: { onFindGame: () => void }) {
   return (
     <View style={styles.emptyCard}>
       <View style={styles.emptyIconWrap}>
-        <Ionicons name="football-outline" size={26} color={ACCENT} />
+        {/* Mascot ball: hops + spins in the air every couple of seconds so the
+            empty card feels alive instead of a dead icon (user request). */}
+        <BouncingBall
+          size={26}
+          color={ACCENT}
+          amplitude={10}
+          cycleMs={760}
+          restMs={1900}
+          spin
+        />
       </View>
       <Text style={styles.emptyTitle}>{he.profileNextGameEmptyTitle}</Text>
       <Text style={styles.emptyBody}>{he.profileNextGameEmptyBody}</Text>

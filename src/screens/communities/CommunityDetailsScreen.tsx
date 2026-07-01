@@ -51,6 +51,8 @@ import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHer
 import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
+import { computeClubLevel } from '@/utils/clubLevel';
+import type { ClubMetrics } from '@/data/clubAchievements';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { GameHistoryRow } from '@/components/match/GameHistoryRow';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
@@ -111,6 +113,7 @@ export function CommunityDetailsScreen() {
   const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
     null,
   );
+  const [clubGoals, setClubGoals] = useState(0);
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -153,18 +156,25 @@ export function CommunityDetailsScreen() {
         }
         logEvent(AnalyticsEvent.GroupViewed, { groupId: g.id });
         const memberIds = Array.from(
-          new Set([...g.adminIds, ...g.playerIds, ...g.pendingPlayerIds]),
+          new Set([
+            ...(g.adminIds ?? []),
+            ...(g.playerIds ?? []),
+            ...(g.pendingPlayerIds ?? []),
+          ]),
         );
-        const [users, games, hist, cStats] = await Promise.all([
+        const [users, games, hist, cStats, champ] = await Promise.all([
           groupService.hydrateUsers(memberIds),
           gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
           gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
           gameService.getCommunityStats(g.id).catch(() => null),
+          // For the club-level chip (kept consistent with the stats screen).
+          gameService.getCommunityChampionship(g.id).catch(() => null),
         ]);
         setMembers(users);
         setUpcoming(games);
         setHistory(hist);
         setCommunityStats(cStats);
+        setClubGoals(champ?.totalGoals ?? 0);
       } catch (err) {
         logError('communityDetailsReload', err, {
           screen: 'CommunityDetailsScreen',
@@ -189,12 +199,16 @@ export function CommunityDetailsScreen() {
     reload();
   }, [reload]);
 
+  // NOTE: `?.` on playerIds/adminIds — a group snapshot can legitimately reach
+  // a fresh member without these arrays populated (partial/stale doc), and a
+  // bare `.includes` there throws during render → the whole screen crashes with
+  // "משהו השתבש" (user report: a new member couldn't open community details).
   const isMember = useMemo(
-    () => !!group && !!me && group.playerIds.includes(me.id),
+    () => !!group && !!me && (group.playerIds ?? []).includes(me.id),
     [group, me],
   );
   const isAdmin = useMemo(
-    () => !!group && !!me && group.adminIds.includes(me.id),
+    () => !!group && !!me && (group.adminIds ?? []).includes(me.id),
     [group, me],
   );
   // Only the CREATOR may delete the whole community — promoted admins
@@ -204,7 +218,7 @@ export function CommunityDetailsScreen() {
     () =>
       !!group &&
       !!me &&
-      me.id === (group.creatorId ?? group.adminIds[0]),
+      me.id === (group.creatorId ?? group.adminIds?.[0]),
     [group, me],
   );
   const phoneValid =
@@ -467,6 +481,26 @@ export function CommunityDetailsScreen() {
     communityStats?.totalFinished ??
     history.filter((h) => h.status === 'finished').length;
 
+  // Club level for the compact hero chip → taps through to the full club
+  // achievements on CommunityStats. Same metrics as that screen, so the level
+  // matches. Plain const (computeClubLevel is cheap) — kept below the early
+  // returns where hooks can't go.
+  const clubLevel = group
+    ? computeClubLevel({
+        gameNights: communityStats?.totalFinished ?? 0,
+        clubGoals,
+        members: group.playerIds?.length ?? 0,
+        ageYears: Math.floor(
+          (Date.now() - (group.createdAt ?? Date.now())) /
+            (365.25 * 24 * 3600 * 1000),
+        ),
+        activeThisMonth: communityStats?.activeThisMonth ?? 0,
+        organizationRatePct: Math.round(
+          (communityStats?.organizationRate ?? 0) * 100,
+        ),
+      } as ClubMetrics)
+    : null;
+
   // Hamburger menu — all admin / destructive / contact actions live
   // here. The ⋯ overflow opens the same sheet so users get one mental
   // model: "more actions live in the menu".
@@ -658,6 +692,34 @@ export function CommunityDetailsScreen() {
         </View>
 
         <View style={styles.body}>
+          {/* Club level chip → taps through to the full club achievements. */}
+          {clubLevel ? (
+            <Pressable
+              style={styles.clubLevelChip}
+              onPress={() =>
+                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                  'CommunityStats',
+                  { groupId: group.id },
+                )
+              }
+              accessibilityRole="button"
+            >
+              <View style={styles.clubLevelBadge}>
+                <Ionicons name="medal" size={16} color="#FFFFFF" />
+                <Text style={styles.clubLevelBadgeNum}>{clubLevel.level}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.clubLevelChipTitle} numberOfLines={1}>
+                  {he.clubLevelLabel} {clubLevel.level} · {clubLevel.tierName}
+                </Text>
+                <Text style={styles.clubLevelChipSub} numberOfLines={1}>
+                  {he.communityStatsSectionAchievements}
+                </Text>
+              </View>
+              <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+
           {/* Group description — free-text "about this group" copy
               the admin set in the create / edit wizard. Rendered
               prominently right after the stats so visitors see the
@@ -773,8 +835,8 @@ export function CommunityDetailsScreen() {
           {/* ⑤ Players preview */}
           <PlayersPreview
             total={group.playerIds?.length ?? 0}
-            members={members.filter((u) => group.playerIds.includes(u.id))}
-            adminIds={group.adminIds}
+            members={members.filter((u) => (group.playerIds ?? []).includes(u.id))}
+            adminIds={group.adminIds ?? []}
             onSeeAll={() =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                 'CommunityPlayers',
@@ -974,22 +1036,7 @@ function CommunityStatsSection({ stats }: { stats: CommunityStatsData | null }) 
           value={avg}
         />
       </View>
-
-      <Text
-        style={[statsSectionStyles.title, { marginTop: spacing.md }]}
-      >
-        {he.communityStatsVitalityTitle}
-      </Text>
-      <View style={statsSectionStyles.grid}>
-        <StatCell
-          label={he.communityStatsActiveMonth}
-          value={String(stats.activeThisMonth)}
-        />
-        <StatCell
-          label={he.communityStatsActiveYear}
-          value={String(stats.activeThisYear)}
-        />
-      </View>
+      {/* Club "vitality meter" (מד חיים) removed per owner request. */}
     </View>
   );
 }
@@ -1115,6 +1162,44 @@ const styles = StyleSheet.create({
   // operational section. Uses primaryLight as the accent so it reads
   // as a "first impression" surface — different from the white cards
   // below which feel transactional.
+  clubLevelChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  clubLevelBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  clubLevelBadgeNum: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  clubLevelChipTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  clubLevelChipSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   descriptionCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,

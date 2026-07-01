@@ -4,10 +4,11 @@
 // guest's skill estimate. Drives the auto-balance algorithm, where an unrated
 // player counts as the neutral middle.
 
-export const RATING_MIN = 1;
+// Slider runs 0–5 (owner request): the far-left is 0, the lowest rating.
+export const RATING_MIN = 0;
 export const RATING_MAX = 5;
 export const RATING_STEP = 0.1;
-/** Unrated players are scored at the neutral middle of 1–5 during balancing. */
+/** Unrated players are scored at the neutral middle during balancing. */
 export const RATING_NEUTRAL = 3;
 
 /** True when `v` is a real rating (not unrated/empty). */

@@ -29,6 +29,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
 import { BouncingBall } from '@/components/anim/BouncingBall';
+import { LivingIcon } from '@/components/anim/LivingIcon';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { Breathing } from '@/components/anim/Breathing';
 import { toast } from '@/components/Toast';
@@ -723,7 +724,9 @@ export function PublicGroupsFeedScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.communitiesCreateGroup}
           >
-            <Ionicons name="add" size={30} color="#FFFFFF" />
+            <LivingIcon motion="hop">
+              <Ionicons name="add" size={30} color="#FFFFFF" />
+            </LivingIcon>
           </Pressable>
         </Breathing>
       )}

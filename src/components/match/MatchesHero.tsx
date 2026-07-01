@@ -36,11 +36,9 @@ function greetingWord(hour: number): string {
 }
 
 export function MatchesHero() {
-  const name = useUserStore((st) => st.currentUser?.name) ?? '';
-  const firstName = name.trim().split(/\s+/)[0] || '';
-  const heading = firstName
-    ? he.greetingWithName(greetingWord(new Date().getHours()), firstName)
-    : he.gamesListTitle;
+  // The Games tab header is a section title ("משחקים"), not a greeting — the
+  // greeting belongs on Home. (Owner request: show "משחקים" up top here.)
+  const heading = he.gamesListTitle;
   return (
     <View style={styles.wrap}>
       <ImageBackground

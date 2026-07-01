@@ -27,17 +27,10 @@ import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { pickAndUploadAvatar, deleteUserPhoto } from '@/services/photoService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import type { PlayerPosition } from '@/types';
 
 const ACCENT = '#1E40AF';
 const ACCENT_SOFT = '#DBEAFE';
 
-const POSITION_OPTIONS: { value: PlayerPosition; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'gk', label: he.positionGk, icon: 'hand-left-outline' },
-  { value: 'def', label: he.positionDef, icon: 'shield-outline' },
-  { value: 'mid', label: he.positionMid, icon: 'sync-outline' },
-  { value: 'att', label: he.positionAtt, icon: 'flame-outline' },
-];
 
 export function ProfileEditScreen() {
   const nav = useNavigation();
@@ -47,9 +40,6 @@ export function ProfileEditScreen() {
   const [name, setName] = useState(user?.name ?? '');
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(user?.photoUrl);
   const [avatarId, setAvatarId] = useState<string | undefined>(user?.avatarId);
-  const [position, setPosition] = useState<PlayerPosition | undefined>(
-    user?.position,
-  );
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -63,8 +53,7 @@ export function ProfileEditScreen() {
     setName(user.name ?? '');
     setPhotoUrl(user.photoUrl);
     setAvatarId(user.avatarId);
-    setPosition(user.position);
-  }, [user?.id, user?.name, user?.photoUrl, user?.avatarId, user?.position]);
+  }, [user?.id, user?.name, user?.photoUrl, user?.avatarId]);
 
   if (!user) return null;
 
@@ -78,8 +67,7 @@ export function ProfileEditScreen() {
   const nameDirty = name.trim().length > 0 && name.trim() !== user.name;
   const photoDirty = photoUrl !== user.photoUrl;
   const avatarDirty = avatarId !== user.avatarId;
-  const positionDirty = position !== user.position;
-  const isDirty = nameDirty || photoDirty || avatarDirty || positionDirty;
+  const isDirty = nameDirty || photoDirty || avatarDirty;
   const canSave = !busy && !uploading && isDirty;
 
   // Catch back-navigation attempts when there are unsaved changes.
@@ -182,7 +170,6 @@ export function ProfileEditScreen() {
       if (nameDirty) patch.name = name.trim();
       if (photoDirty) patch.photoUrl = photoUrl;
       if (avatarDirty) patch.avatarId = avatarId;
-      if (positionDirty) patch.position = position;
       if (__DEV__) {
         console.log('[profileEdit] save start', {
           nameDirty,
@@ -205,7 +192,6 @@ export function ProfileEditScreen() {
         if (patch.name !== undefined) setName(patch.name);
         if (patch.photoUrl !== undefined) setPhotoUrl(patch.photoUrl);
         if (patch.avatarId !== undefined) setAvatarId(patch.avatarId);
-        if (patch.position !== undefined) setPosition(patch.position);
         // dirtyRef is computed from isDirty during render; force it
         // to false directly so the beforeRemove listener that fires
         // during nav.goBack() below can never see dirty=true.
@@ -269,31 +255,7 @@ export function ProfileEditScreen() {
           <Text style={styles.fieldError}>{he.profileNameRequired}</Text>
         ) : null}
 
-        <Text style={styles.label}>{he.positionLabel}</Text>
-        <View style={styles.positionRow}>
-          {POSITION_OPTIONS.map((opt) => {
-            const active = position === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                // Tap the active chip again to clear it.
-                onPress={() => setPosition(active ? undefined : opt.value)}
-                style={[styles.posChip, active && styles.posChipActive]}
-                accessibilityRole="button"
-                accessibilityLabel={opt.label}
-              >
-                <Ionicons
-                  name={opt.icon}
-                  size={16}
-                  color={active ? '#FFFFFF' : colors.textMuted}
-                />
-                <Text style={[styles.posChipText, active && styles.posChipTextActive]}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* Preferred-position selector removed per owner request. */}
 
         <Text style={styles.label}>{he.profilePhotoLabel}</Text>
         <Pressable

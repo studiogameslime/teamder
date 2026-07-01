@@ -37,6 +37,11 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { groupService } from '@/services/groupService';
+import {
+  EquipmentHandoffModal,
+  type EquipmentHolders,
+} from '@/components/match/EquipmentHandoffModal';
 import { logError } from '@/services/errorLog';
 import { lightHaptic, warningHaptic } from '@/utils/haptics';
 import {
@@ -182,6 +187,11 @@ export function AdvancedLiveMatchScreen() {
   const [live, setLive] = useState<LiveMatchState | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
+  // After ending a COMMUNITY evening, ask who took the ball / jerseys home.
+  const [handoff, setHandoff] = useState<{
+    players: { id: string; name: string; avatarId?: string; photoUrl?: string }[];
+    initial: EquipmentHolders;
+  } | null>(null);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
   // Interactive team-completion flow. The modal request is render state; the
@@ -574,18 +584,6 @@ export function AdvancedLiveMatchScreen() {
     }
   };
 
-  const onRotationStop = () => {
-    appAlert(he.rotationReset, he.rotationResetConfirm, [
-      { text: he.cancel, style: 'cancel' },
-      {
-        text: he.rotationReset,
-        style: 'destructive',
-        onPress: async () => {
-          if (gameId) await gameService.stopRotation(gameId).catch(() => {});
-        },
-      },
-    ]);
-  };
   // "התחל משחקון" — kick off a round: draft rotation + start the match clock
   // together so the live state goes straight to "running" (matches the design).
   const onStartRound = async () => {
@@ -694,19 +692,60 @@ export function AdvancedLiveMatchScreen() {
       ],
     );
   };
+  const leaveLiveScreen = () => {
+    if (nav.canGoBack()) nav.goBack();
+  };
   const onEndGame = async () => {
     if (!gameId) return;
     setEnding(true);
     try {
       await gameService.endEvening(gameId);
       setEndOpen(false);
-      if (nav.canGoBack()) nav.goBack();
+      // For a COMMUNITY game, ask who took the club's ball / jerseys home so
+      // the holders persist to the next game. Registered players only (a holder
+      // is a community-member state). One-off games just leave the screen.
+      const grpId = game?.groupId;
+      const grp = grpId ? myCommunities.find((g) => g.id === grpId) : undefined;
+      const registered = (game?.players ?? []).map(resolveFillPlayer);
+      // Only ask about equipment if the evening was ACTUALLY played (the timer
+      // started at least once). Ending a called-off game that no one played must
+      // not overwrite the community's real ball/jersey holder state.
+      const wasPlayed =
+        game?.status === 'finished' || game?.liveMatch?.startedAt != null;
+      if (grpId && registered.length > 0 && wasPlayed) {
+        setHandoff({
+          players: registered,
+          initial: {
+            ballHolderIds: grp?.ballHolderIds ?? [],
+            jerseysHolderIds: grp?.jerseysHolderIds ?? [],
+          },
+        });
+      } else {
+        leaveLiveScreen();
+      }
     } catch (err) {
       logError('endEvening', err, { gameId });
       if (__DEV__) console.warn('[live] endEvening failed', err);
+      leaveLiveScreen();
     } finally {
       setEnding(false);
     }
+  };
+  const onSaveHandoff = async (holders: EquipmentHolders) => {
+    const grpId = game?.groupId;
+    setHandoff(null);
+    if (grpId) {
+      try {
+        await groupService.setEquipmentHolders(grpId, holders);
+      } catch (err) {
+        logError('setEquipmentHolders', err, { gameId, grpId });
+      }
+    }
+    leaveLiveScreen();
+  };
+  const onSkipHandoff = () => {
+    setHandoff(null);
+    leaveLiveScreen();
   };
 
   // ─── Pulse while running ───────────────────────────────────────────────
@@ -975,11 +1014,11 @@ export function AdvancedLiveMatchScreen() {
         }
       : null;
 
-  // The admin team-selection control shows whenever a round isn't running and
-  // there are ≥2 teams — independent of `previewRotation` (which only exists
-  // once exactly two starters are picked), so the admin can still (de)select.
+  // The admin team-selection control (pick 2 starters / shuffle / waiting
+  // queue) only makes sense with MORE than 2 teams. With exactly 2 teams there's
+  // nothing to choose, shuffle, or queue — go straight to the match preview.
   const showStartCtrl =
-    !rotationActive && hasTeams && isAdmin && !!draftTeams && draftTeams.teams.length >= 2;
+    !rotationActive && hasTeams && isAdmin && !!draftTeams && draftTeams.teams.length > 2;
 
   return (
     <SafeAreaView style={styles.root}>
@@ -1272,7 +1311,9 @@ export function AdvancedLiveMatchScreen() {
                 onPress={timerStarted ? onTimerResume : onTimerStart}
               >
                 <Ionicons name="play" size={22} color="#1D4ED8" />
-                <Text style={styles.sideBtnText}>{he.liveTimerResume}</Text>
+                <Text style={styles.sideBtnText}>
+                  {timerStarted ? he.liveTimerResume : he.liveTimerStart}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -1432,7 +1473,17 @@ export function AdvancedLiveMatchScreen() {
         onCancel={onFillCancel}
       />
 
-      {/* Overflow menu — reset rotation / end evening (rare destructive bits). */}
+      {/* End-of-evening handoff — who took the ball / jerseys home (community
+          games only). Saved on the group so the next game knows. */}
+      <EquipmentHandoffModal
+        visible={!!handoff}
+        players={handoff?.players ?? []}
+        initial={handoff?.initial ?? { ballHolderIds: [], jerseysHolderIds: [] }}
+        onSave={onSaveHandoff}
+        onSkip={onSkipHandoff}
+      />
+
+      {/* Overflow menu — end evening (rare destructive bits). */}
       <Modal
         visible={menuOpen}
         transparent
@@ -1441,18 +1492,6 @@ export function AdvancedLiveMatchScreen() {
       >
         <Pressable style={styles.backdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuCard} onPress={() => undefined}>
-            {rotationActive ? (
-              <Pressable
-                style={styles.menuItem}
-                onPress={() => {
-                  setMenuOpen(false);
-                  onRotationStop();
-                }}
-              >
-                <Ionicons name="refresh" size={20} color="#1D4ED8" />
-                <Text style={styles.menuItemText}>{he.rotationResetMenu}</Text>
-              </Pressable>
-            ) : null}
             <Pressable
               style={styles.menuItem}
               onPress={() => {

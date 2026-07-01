@@ -818,21 +818,17 @@ export function MatchDetailsScreen() {
           const pending = (prev.pending ?? []).filter((id) => id !== user.id);
           // Match the server-side promote-from-waitlist behaviour so
           // the UI stays consistent even before the next snapshot.
-          let promotedPlayers = players;
-          if (
-            wasPlayer &&
-            waitlist.length > 0 &&
-            players.length < prev.maxPlayers
-          ) {
-            promotedPlayers = [...players, waitlist[0]];
-            waitlist = waitlist.slice(1);
-          }
+          // NOTE: do NOT optimistically promote waitlist[0] into players. The
+          // server uses an OFFER model (cancelGameV2 sets pendingPromotion and
+          // waits for the offered user to ACCEPT) — it never auto-seats them.
+          // Faking the promotion showed a waitlisted user as a confirmed player
+          // who hadn't accepted; the real offer/accept flow arrives by snapshot.
           const participantIds = (prev.participantIds ?? []).filter(
             (id) => id !== user.id,
           );
           return {
             ...prev,
-            players: promotedPlayers,
+            players,
             waitlist,
             pending,
             participantIds,
@@ -1127,15 +1123,27 @@ export function MatchDetailsScreen() {
   // is a real seat at the match, just without a /users record.
   const guestCount = activeGuestCount(game.guests);
   const totalParticipants = game.players.length + guestCount;
-  const isFull = totalParticipants >= game.maxPlayers;
+  // A pending-promotion offer holds the last open seat for the offered user, so
+  // a new joiner actually lands on the waitlist. Count that reservation so the
+  // primary CTA says "בקש להצטרף/רשימת המתנה" instead of a misleading "הצטרף"
+  // that silently waitlists them (mirrors requestJoinGame + MatchListCard).
+  const isFull =
+    totalParticipants + (game.pendingPromotion?.uid ? 1 : 0) >= game.maxPlayers;
 
   const primaryDestructive =
     status === 'joined' || status === 'waitlist' || status === 'pending';
 
+  // The creator/admin and explicitly-invited users bypass approval (the
+  // invite IS the approval — matches the server bucket logic), so they get a
+  // direct "join", never "request to join" (user report: the creator + an
+  // invited player both saw "בקש להצטרף" on a game they were invited to).
+  const isInvitedToGame =
+    !!user && (game.invitedUserIds ?? []).includes(user.id);
+  const needsApproval = game.requiresApproval === true && !isAdmin && !isInvitedToGame;
   const primaryLabel = (() => {
     if (primaryDestructive) return he.matchDetailsCancel;
-    if (isFull && !game.requiresApproval) return he.gameStatusWaitlist;
-    if (game.requiresApproval) return he.gameCardRequestJoin;
+    if (isFull && !needsApproval) return he.gameStatusWaitlist;
+    if (needsApproval) return he.gameCardRequestJoin;
     return he.matchDetailsJoin;
   })();
 
@@ -1459,12 +1467,22 @@ export function MatchDetailsScreen() {
     // Toggle off if tapping the same reaction again.
     const current = game.draftTeamFeedback?.[user.id];
     const next = current === value ? null : value;
+    // Optimistic local update — a full reload() here made the whole screen
+    // visibly "refresh"/jump on every tap (user report). Splice locally and
+    // only reload to recover if the write fails.
+    setGame((prev) => {
+      if (!prev) return prev;
+      const fb = { ...(prev.draftTeamFeedback ?? {}) };
+      if (next === null) delete fb[user.id];
+      else fb[user.id] = next;
+      return { ...prev, draftTeamFeedback: fb };
+    });
     try {
       await gameService.setDraftTeamFeedback(game.id, user.id, next);
-      await reload();
     } catch (err) {
       logError('setDraftTeamFeedback', err, { gameId: game.id });
       toast.error(he.error);
+      await reload();
     }
   };
 
@@ -1573,6 +1591,11 @@ export function MatchDetailsScreen() {
     if (primaryDestructive) return null;
     // Rejected users get no join CTA at all.
     if (wasRejected) return null;
+    // A non-member filler candidate must NOT get the direct "בקש להצטרף"
+    // sticky CTA — their only path is the "הגש מועמדות" banner above (the
+    // admin approves the filler interest). Showing both created two parallel
+    // request mechanisms for the same game.
+    if (isFillerCandidate) return null;
     return {
       title: primaryLabel,
       onPress: handlePrimary,
@@ -1834,7 +1857,10 @@ export function MatchDetailsScreen() {
     if (p) {
       return { id, name: p.displayName ?? '…', avatarId: p.avatarId, photoUrl: p.photoUrl };
     }
-    const g = (game.guests ?? []).find((x) => x.id === id);
+    // Team playerIds store guests PREFIXED (`guest:<id>`); strip it before
+    // matching the raw guest id, otherwise the name renders as "…".
+    const guestId = id.replace(/^guest:/, '');
+    const g = (game.guests ?? []).find((x) => x.id === guestId);
     return { id, name: g?.name ?? '…' };
   };
   // hh:mm for the "went home" summary (Israel locale).
@@ -1914,8 +1940,16 @@ export function MatchDetailsScreen() {
     msToKickoff > -2 * 60 * 60 * 1000 && // allow up to 2h after kickoff
     msToKickoff <= 24 * 60 * 60 * 1000;
 
+  // Teams already exist → the admin manages them (edit / rebalance / redo)
+  // from a "נהל כוחות" banner instead of "create".
+  const showManageTeamsBanner =
+    isAdmin && !!draftTeams && !isTerminalGame(game);
+
   const openDraftSetup = () => nav.navigate('DraftSetup', { gameId: game.id });
 
+  // Tapping the teams section just VIEWS the split (read-only) — no stray
+  // "סיים חלוקת כוחות" button on already-saved teams. Editing/rebalancing is
+  // done from the "נהל כוחות" banner → DraftSetup.
   const openDraftView = () => {
     if (!draftTeams) return;
     const captainIds = [...draftTeams.teams]
@@ -1926,7 +1960,7 @@ export function MatchDetailsScreen() {
       captainIds,
       method: draftTeams.method,
       resume: true,
-      readOnly: !isAdmin,
+      readOnly: true,
     });
   };
 
@@ -1943,6 +1977,11 @@ export function MatchDetailsScreen() {
   // waitlist/pending) for the on-screen preview. The "הצג הכל"
   // link surfaces the rest in MatchPlayersScreen.
   const ballBringers = new Set(game.ballBringerIds ?? []);
+  // Who currently holds the club's gear (from the group's end-evening handoff).
+  // Shown as a read-only badge so everyone knows who should bring it.
+  const equipmentGroup = myCommunities.find((g) => g.id === game.groupId);
+  const ballHolders = new Set(equipmentGroup?.ballHolderIds ?? []);
+  const jerseyHolders = new Set(equipmentGroup?.jerseysHolderIds ?? []);
   const participantEntries: ParticipantEntry[] = [
     ...(game.players ?? []).map((uid): ParticipantEntry => {
       const p = playersMap[uid];
@@ -1956,6 +1995,8 @@ export function MatchDetailsScreen() {
         arrival: game.arrivals?.[uid],
         bucket: 'players' as const,
         isBringingBall: ballBringers.has(uid),
+        holdsBall: ballHolders.has(uid),
+        holdsJerseys: jerseyHolders.has(uid),
         // Flag the auth user's own row so the participants section
         // renders a tappable inline ball toggle on it (and only on
         // it). Keeps the "אני מביא כדור" affordance above the fold
@@ -2199,22 +2240,8 @@ export function MatchDetailsScreen() {
             hasHalfTime={game.hasHalfTime}
           />
 
-          {/* Average rating of registered players — surfaces "what's
-              the typical level of folks here". Hosts (creator +
-              group admins) are excluded so the number reflects the
-              players you'd actually be matched WITH. Hidden when
-              there aren't at least 2 rated non-host players. */}
-          {registeredRatingAvg ? (
-            <View style={styles.avgRatingCard}>
-              <Ionicons name="star" size={18} color="#F59E0B" />
-              <Text style={styles.avgRatingValue}>
-                {registeredRatingAvg.average.toFixed(1)}
-              </Text>
-              <Text style={styles.avgRatingLabel}>
-                {he.matchDetailsAvgRatingLabel(registeredRatingAvg.ratedCount)}
-              </Text>
-            </View>
-          ) : null}
+          {/* (Average-rating badge removed per owner request — the internal
+              rating is admin-only and shouldn't surface a public average.) */}
 
           {/* "צרו כוחות" nudge — kickoff is close and no split exists yet.
               Without this, creating teams is buried in the ☰ menu. */}
@@ -2233,6 +2260,27 @@ export function MatchDetailsScreen() {
                 </Text>
                 <Text style={styles.createTeamsSub}>
                   {he.matchCreateTeamsBannerSub}
+                </Text>
+              </View>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            </Pressable>
+          ) : null}
+
+          {showManageTeamsBanner ? (
+            <Pressable
+              style={styles.createTeamsBanner}
+              onPress={openDraftSetup}
+              accessibilityRole="button"
+            >
+              <View style={styles.createTeamsIcon}>
+                <Ionicons name="options" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.createTeamsTitle}>
+                  {he.matchManageTeamsBannerTitle}
+                </Text>
+                <Text style={styles.createTeamsSub}>
+                  {he.matchManageTeamsBannerSub}
                 </Text>
               </View>
               <Ionicons name="chevron-back" size={20} color={colors.primary} />
@@ -3707,14 +3755,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: colors.textMuted,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
   },
   leftHomeRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  leftHomeName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'right' },
+  leftHomeName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, textAlign: RTL_LABEL_ALIGN },
   leftHomeTime: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   teamFbWrap: {
     marginTop: spacing.sm,

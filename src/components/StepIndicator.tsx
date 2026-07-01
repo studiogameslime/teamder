@@ -52,6 +52,11 @@ export function StepIndicator({ current, labels }: Props) {
   const rotationValue = useRef(0);
   const lastCurrent = useRef(current);
   const hasPlacedRef = useRef(false);
+  // Continuous idle roll: the ball on the CURRENT step keeps spinning slowly
+  // in place (one turn every ~2.8s) so the active step always feels "alive",
+  // not just during the slide between steps (user request). Composed on top
+  // of the transition `rotation` so both read as the same physical ball.
+  const idleSpin = useRef(new Animated.Value(0)).current;
 
   // Distance, in px along the writing direction, between two adjacent
   // step centers. With `flexDirection:'row'` and connectors that
@@ -113,6 +118,22 @@ export function StepIndicator({ current, labels }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, stepDistance]);
 
+  // Kick off the perpetual idle roll once, mirroring the writing direction so
+  // the in-place spin matches the way the ball rolls forward between steps.
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(idleSpin, {
+        toValue: dir,
+        duration: 2800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dir]);
+
   const onBarLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w !== barWidth) setBarWidth(w);
@@ -121,6 +142,10 @@ export function StepIndicator({ current, labels }: Props) {
   const rotate = rotation.interpolate({
     inputRange: [-36000, 36000],
     outputRange: ['-36000deg', '36000deg'],
+  });
+  const idleRotate = idleSpin.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-360deg', '360deg'],
   });
 
   return (
@@ -157,7 +182,7 @@ export function StepIndicator({ current, labels }: Props) {
           style={[
             styles.activeBall,
             {
-              transform: [{ translateX: x }, { rotate }],
+              transform: [{ translateX: x }, { rotate }, { rotate: idleRotate }],
             },
           ]}
         >

@@ -237,6 +237,12 @@ const STRICT_UNREAD_DEDUP: Partial<Record<DedupeKind, true>> = {
 // aggregated state ("3 שחקנים ביטלו" instead of just the first one).
 const AGGREGATE_ON_DUPLICATE: Partial<Record<DedupeKind, true>> = {
   playerCancelled: true,
+  // Admin "X joined" — fire ONE push immediately on the first joiner, then
+  // fold any further joiners within the 5-min dedupe bucket into the same
+  // unread doc (count + names) instead of a fresh push. Replaces the old
+  // 1-minute buffer that delayed even a single join (user report: Teamder
+  // lagged ~20s behind Pulse).
+  gamePlayersJoined: true,
 };
 
 // Build the aggregation update for a duplicate write of an
@@ -260,6 +266,26 @@ function buildAggregateUpdate(
     if (typeof payload.cancellingUserName === 'string') {
       update['payload.cancellingUserNames'] =
         admin.firestore.FieldValue.arrayUnion(payload.cancellingUserName);
+    }
+    return update;
+  }
+  if (type === 'gamePlayersJoined') {
+    // Fold a follow-on joiner into the existing unread "joined" notice:
+    // bump the count and append the id/name. `joinerIds`/`joinerNames`
+    // arrive as single values here (one joiner per roster-change event).
+    const update: Record<string, unknown> = {
+      'payload.count': admin.firestore.FieldValue.increment(1),
+      updatedAtMs: Date.now(),
+    };
+    if (typeof payload.joinerIds === 'string' && payload.joinerIds) {
+      update['payload.joinerIdList'] = admin.firestore.FieldValue.arrayUnion(
+        payload.joinerIds,
+      );
+    }
+    if (typeof payload.joinerNames === 'string' && payload.joinerNames) {
+      update['payload.joinerNameList'] = admin.firestore.FieldValue.arrayUnion(
+        payload.joinerNames,
+      );
     }
     return update;
   }
@@ -1065,8 +1091,18 @@ async function deliverBatch(
   const tokenToUser = new Map<string, string>();
   let skippedPref = 0;
   let skippedNoToken = 0;
+  // Map notification TYPE → the pref KEY that gates it. Most match 1:1, but
+  // 'approved'/'rejected' are two types governed by the single 'approvedRejected'
+  // toggle — without this map a user who turned that toggle OFF still got the
+  // pushes (the gate looked up a non-existent 'approved'/'rejected' key).
+  const prefKey =
+    type === 'approved' || type === 'rejected' ? 'approvedRejected' : type;
   for (const user of recipients) {
-    if (user.notificationPrefs?.[type] === false) {
+    if (
+      (user.notificationPrefs as Record<string, boolean> | undefined)?.[
+        prefKey
+      ] === false
+    ) {
       skippedPref++;
       continue;
     }
@@ -1471,24 +1507,31 @@ async function runSendGameReminders(): Promise<void> {
     if (g.status && g.status !== 'open' && g.status !== 'locked') continue;
     if (!g.players || g.players.length === 0) continue;
 
-    // Write the notification + flip reminderSent atomically. A failure
-    // mid-write at worst skips the reminder for this game; not double.
+    // Notify FIRST, then flip reminderSent — sequentially, so the latch is set
+    // ONLY after a successful notify (a failed notify leaves the flag unset and
+    // the next tick retries; createNotificationOnce dedupes so no double-push).
     ops.push(
-      createNotificationOnce({
-        type: 'gameReminder',
-        recipientId: doc.id, // fan-out marker
-        payload: {
-          gameId: doc.id,
-          gameTitle: g.title || 'המשחק',
-          startsAt: g.startsAt,
-        },
-      }),
+      (async () => {
+        await createNotificationOnce({
+          type: 'gameReminder',
+          recipientId: doc.id, // fan-out marker
+          payload: {
+            gameId: doc.id,
+            gameTitle: g.title || 'המשחק',
+            startsAt: g.startsAt,
+          },
+        });
+        await doc.ref.update({ reminderSent: true });
+      })(),
     );
-    ops.push(doc.ref.update({ reminderSent: true }));
   }
 
-  await Promise.all(ops);
-  console.log(`[sendGameReminders] dispatched ${ops.length / 2} reminder(s)`);
+  // allSettled: one game's failure must not abandon the rest of this tick.
+  const results = await Promise.allSettled(ops);
+  const ok = results.filter((r) => r.status === 'fulfilled').length;
+  console.log(
+    `[sendGameReminders] dispatched ${ok}/${ops.length} reminder(s)`,
+  );
 }
 
 // ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
@@ -1954,6 +1997,9 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
     const maxPlayers = typeof g.maxPlayers === 'number' ? (g.maxPlayers as number) : 15;
     const requiresApproval = g.requiresApproval === true;
     const createdBy = typeof g.createdBy === 'string' ? (g.createdBy as string) : '';
+    // Users who were explicitly INVITED to this game bypass approval (an
+    // invite IS the approval) — same exemption as the creator.
+    const invitedUserIds = new Set((g.invitedUserIds as string[]) ?? []);
     const joinedAt: Record<string, number> =
       g.joinedAt && typeof g.joinedAt === 'object'
         ? { ...(g.joinedAt as Record<string, number>) }
@@ -1984,8 +2030,9 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
           : waitlist.includes(r.uid)
             ? 'waitlist'
             : 'pending';
-      } else if (requiresApproval && r.uid !== createdBy) {
-        // The creator/manager joins their OWN game without approval.
+      } else if (requiresApproval && r.uid !== createdBy && !invitedUserIds.has(r.uid)) {
+        // Approval needed only for someone who is NEITHER the creator NOR an
+        // explicitly invited user. Invited / creator join directly.
         pending.push(r.uid);
         bucket = 'pending';
       } else if (occupancy < maxPlayers) {
@@ -2228,16 +2275,59 @@ async function runFlipScheduledGames(): Promise<void> {
 const RECURRING_CLONE_DELAY_MS = 3 * 60 * 60 * 1000; // 3h after kickoff
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Israel-local UTC offset (ms) at a given instant. +2h winter / +3h summer. */
+function israelOffsetMs(epoch: number): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jerusalem',
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(new Date(epoch))
+      .map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  const asUtc = Date.UTC(
+    +p.year,
+    +p.month - 1,
+    +p.day,
+    +p.hour,
+    +p.minute,
+    +p.second,
+  );
+  return asUtc - epoch;
+}
+
+/**
+ * Advance an instant by one week while preserving its Asia/Jerusalem WALL
+ * time. A flat `+WEEK_MS` would silently move a 20:00 fixture to 21:00 (spring)
+ * or 19:00 (autumn) across a DST boundary; here we correct by the offset delta
+ * so "every Thursday 20:00" stays 20:00 year-round.
+ */
+function addOneWeekSameWallTime(epoch: number): number {
+  const naive = epoch + WEEK_MS;
+  return naive + (israelOffsetMs(epoch) - israelOffsetMs(naive));
+}
+
 async function runCloneRecurringGames(): Promise<void> {
   const now = Date.now();
   // `recurring == true` accumulates EVERY weekly instance ever created (each
-  // clone is also recurring), so an unbounded scan grows forever. Only the most
-  // RECENT instances can be due to clone (a game clones ~3h after its kickoff,
-  // and once cloned it's latched via recurringNextCreatedAt). Order by newest
-  // kickoff + cap so we never re-read years of old, already-cloned instances.
+  // clone is also recurring). A game is only DUE to clone once kickoff+3h has
+  // passed, so range-filter `startsAt <= now-3h` AT THE QUERY: this excludes
+  // every future instance (the ones that were crowding the window) and returns
+  // only past-kickoff games. Ordered newest-past-first so a just-due game sits
+  // at the front and can never be pushed out of the cap. Range on the orderBy
+  // field reuses the existing (recurring, startsAt) composite index — no new
+  // index needed. The in-loop +3h guard below stays as defense-in-depth.
+  const dueCutoff = now - RECURRING_CLONE_DELAY_MS;
   const snap = await db
     .collection('games')
     .where('recurring', '==', true)
+    .where('startsAt', '<=', dueCutoff)
     .orderBy('startsAt', 'desc')
     .limit(100)
     .get();
@@ -2262,13 +2352,18 @@ async function runCloneRecurringGames(): Promise<void> {
     if (g.status === 'cancelled') continue; // a cancelled week doesn't recur
     if (now < g.startsAt + RECURRING_CLONE_DELAY_MS) continue; // wait 3h post-kickoff
 
+    // Advance kickoff by one week preserving Israel wall time (DST-safe), then
+    // shift every dependent window by the SAME delta so each keeps its exact
+    // offset from kickoff (e.g. "24h before") across a DST boundary.
+    const nextStartsAt = addOneWeekSameWallTime(g.startsAt);
+    const weekDelta = nextStartsAt - g.startsAt;
     const shift = (v: unknown): number | undefined =>
-      typeof v === 'number' && v > 0 ? v + WEEK_MS : undefined;
+      typeof v === 'number' && v > 0 ? v + weekDelta : undefined;
 
     // Faithful copy of the settings, with a reset roster + shifted times.
     const next: Record<string, unknown> = { ...g };
     next.id = '';
-    next.startsAt = g.startsAt + WEEK_MS;
+    next.startsAt = nextStartsAt;
     const nextReg = shift(g.registrationOpensAt);
     const nextPublic = shift(g.publicOpenAt);
     const nextGuests = shift(g.guestsOpenAt);
@@ -2293,6 +2388,7 @@ async function runCloneRecurringGames(): Promise<void> {
     next.matches = [];
     next.arrivals = {};
     next.cancellations = {};
+    next.joinedAt = {}; // per-player registration times — last week's are stale
     next.ballBringerIds = [];
     next.currentMatchIndex = 0;
     next.locked = false;
@@ -2318,6 +2414,16 @@ async function runCloneRecurringGames(): Promise<void> {
     delete next.fillingUpSent;
     delete next.publicOpenedAt;
     delete next.pinnedMessage;
+    // Per-instance state that must NOT ride into a fresh week (carried via the
+    // {...g} spread otherwise):
+    delete next.pendingPromotion; // last week's reserved-slot offer → phantom on an empty roster
+    delete next.rejectedPlayerIds; // don't silently pre-ban last week's rejected players
+    delete next.capacityNoticeSent; // stale latch would suppress the "full" notice once it refills
+    delete next.promotePromptSent;
+    delete next.ballHolderUserId; // legacy per-game holders (group-level holders are the live ones)
+    delete next.jerseysHolderUserId;
+    delete next.teams; // legacy Team[]; modern draftTeams already cleared above
+    delete next.weather; // stale forecast — refreshed on demand
     // Status: scheduled if registration hasn't opened yet, else open.
     const isDeferred = typeof nextReg === 'number' && nextReg > now;
     next.status = isDeferred ? 'scheduled' : 'open';
@@ -2327,8 +2433,28 @@ async function runCloneRecurringGames(): Promise<void> {
     next.updatedAt = now;
 
     try {
-      const ref = await db.collection('games').add(next);
-      await ref.update({ id: ref.id });
+      // Deterministic clone id (source + this week's kickoff) + create() —
+      // which FAILS if the doc already exists. This makes the clone idempotent
+      // independently of the latch: if two sweeps overlap, or one crashed
+      // after add() but before latching, the second create() throws
+      // ALREADY_EXISTS instead of producing a duplicate game for the week.
+      const cloneId = `${doc.id}_w${next.startsAt}`;
+      const ref = db.collection('games').doc(cloneId);
+      try {
+        await ref.create({ ...next, id: cloneId });
+      } catch (e) {
+        // ALREADY_EXISTS: this week's clone is already there (a prior partial
+        // run). Just (re)assert the latch and move on — no duplicate, no second
+        // notification. Match both the numeric gRPC code AND the string form
+        // (the SDK delivers either depending on the throw path — same dual
+        // check as createNotificationOnce / onJoinRequestCreated elsewhere).
+        const code = (e as { code?: number | string }).code;
+        if (code === 6 || code === 'already-exists') {
+          await doc.ref.update({ recurringNextCreatedAt: now, updatedAt: now });
+          continue;
+        }
+        throw e;
+      }
       await doc.ref.update({ recurringNextCreatedAt: now, updatedAt: now });
       // Notify the community now only if it opened immediately. A deferred
       // instance gets its push from flipScheduledGames when reg opens.
@@ -2524,15 +2650,23 @@ async function runExpireStaleOffers(): Promise<void> {
 }
 
 async function runCleanupStaleGames(): Promise<void> {
-  const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
+  // 3h past kickoff with no start → stale (owner request: a game whose time
+  // long passed and never started should be cleared).
+  const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
   const cutoff = Date.now() - STALE_AFTER_MS;
 
   // We only care about games that haven't reached a terminal state.
   // 'in' supports up to 30 values so three buckets fit fine.
+  // Bounded so a post-outage backlog can't fan out hundreds of concurrent
+  // batch commits + per-game rounds sub-queries in one invocation (timeout
+  // risk). Oldest-first so the most overdue games drain first; the hourly
+  // cron catches the rest over subsequent ticks.
   const snap = await db
     .collection('games')
     .where('status', 'in', ['open', 'locked', 'active'])
     .where('startsAt', '<', cutoff)
+    .orderBy('startsAt', 'asc')
+    .limit(200)
     .get();
 
   if (snap.empty) {
@@ -2565,14 +2699,14 @@ async function runCleanupStaleGames(): Promise<void> {
     // also accept any phase value that implies the round actually
     // ran. Without either signal the game was created and forgotten
     // — it shouldn't count toward stats, trust, or history.
-    const phase = g.liveMatch?.phase;
-    const wasActuallyPlayed =
-      typeof g.liveMatch?.startedAt === 'number' ||
-      phase === 'roundRunning' ||
-      phase === 'roundEnded' ||
-      phase === 'live';
-
-    const shouldDelete = isZombie || !wasActuallyPlayed;
+    // Only HARD-DELETE a truly-empty (zombie) game. A game with a real roster
+    // must NOT be deleted just because the in-app live timer was never tapped —
+    // many groups organize in the app but play offline, and deleting their
+    // game silently wiped the roster + history. Populated games fall through to
+    // the `else` branch and are FINISHED (archived). Whether the evening was
+    // actually played is no longer a DELETION signal — it gates the stats
+    // credit instead (see the games-played tally in onGameRosterChanged).
+    const shouldDelete = isZombie;
 
     if (shouldDelete) {
       // Nuke the game and any /rounds it owns. We use a chunked delete
@@ -2600,9 +2734,12 @@ async function runCleanupStaleGames(): Promise<void> {
     }
   }
 
-  await Promise.all(ops);
+  // allSettled (not all): one failing delete/finish must not abandon the rest
+  // of the sweep for this tick.
+  const results = await Promise.allSettled(ops);
+  const failed = results.filter((r) => r.status === 'rejected').length;
   console.log(
-    `[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}`
+    `[cleanupStaleGames] swept ${snap.size} stale games — deleted ${deleted} zombies, finished ${finished}, failed ${failed}`
   );
 }
 
@@ -2905,12 +3042,11 @@ export const onGroupPendingChanged = onDocumentWritten(
       const newJoiners = afterPlayers.filter((uid) => !prevSet.has(uid));
       const groupId = event.params.groupId;
       for (const uid of newJoiners) {
+        // Subscription default — idempotent (arrayUnion), and we WANT it to
+        // re-run on a genuine rejoin, so it stays outside the credit latch.
         try {
           await db.collection('users').doc(uid).set(
             {
-              achievements: {
-                teamsJoined: admin.firestore.FieldValue.increment(1),
-              },
               newGameSubscriptions:
                 admin.firestore.FieldValue.arrayUnion(groupId),
               updatedAt: Date.now(),
@@ -2919,8 +3055,84 @@ export const onGroupPendingChanged = onDocumentWritten(
           );
         } catch (err) {
           console.warn(
+            '[onGroupPendingChanged] subscription default failed',
+            uid,
+            err,
+          );
+        }
+        // teamsJoined — gated by a per-(group,uid) marker so at-least-once
+        // redelivery can't double-count (and a rejoin of the SAME community
+        // won't re-credit; teamsJoined counts distinct communities).
+        try {
+          const b = db.batch();
+          b.create(
+            db
+              .collection('groups')
+              .doc(groupId)
+              .collection('memberCredited')
+              .doc(uid),
+            { at: Date.now() },
+          );
+          b.set(
+            db.collection('users').doc(uid),
+            {
+              achievements: {
+                teamsJoined: admin.firestore.FieldValue.increment(1),
+              },
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          );
+          await b.commit();
+        } catch (err) {
+          const code = (err as { code?: number | string }).code;
+          if (code === 6 || code === 'already-exists') continue;
+          console.warn(
             '[onGroupPendingChanged] teamsJoined bump failed',
             uid,
+            err,
+          );
+        }
+      }
+    }
+
+    // Prune ball/jersey equipment holders who are no longer members — a
+    // holder who leaves (or is removed) would otherwise keep a dangling
+    // "מי מביא את הכדור" badge forever. The leaving client can't touch these
+    // admin-only fields (rules), so it has to happen here (Admin SDK). The
+    // update only fires when there's actually something to remove, so the
+    // re-trigger it causes finds nothing to prune and terminates.
+    if (Array.isArray(afterPlayers)) {
+      const memberSet = new Set(afterPlayers);
+      const ball = (after as { ballHolderIds?: string[] }).ballHolderIds ?? [];
+      const jerseys =
+        (after as { jerseysHolderIds?: string[] }).jerseysHolderIds ?? [];
+      const ballGone = ball.filter((u) => !memberSet.has(u));
+      const jerseysGone = jerseys.filter((u) => !memberSet.has(u));
+      if (ballGone.length || jerseysGone.length) {
+        try {
+          await db
+            .collection('groups')
+            .doc(event.params.groupId)
+            .update({
+              ...(ballGone.length
+                ? {
+                    ballHolderIds:
+                      admin.firestore.FieldValue.arrayRemove(...ballGone),
+                  }
+                : {}),
+              ...(jerseysGone.length
+                ? {
+                    jerseysHolderIds:
+                      admin.firestore.FieldValue.arrayRemove(...jerseysGone),
+                  }
+                : {}),
+              updatedAt: Date.now(),
+            });
+        } catch (err) {
+          console.warn(
+            '[onGroupPendingChanged] equipment holder prune failed',
+            event.params.groupId,
             err,
           );
         }
@@ -3210,13 +3422,45 @@ export const onGameRotationChanged = onDocumentWritten(
     addPairs(winners, 'winsTogether');
     addPairs(losers, 'lossesTogether');
 
+    // Idempotency latch: the round-counter check above only dedupes NEW vs OLD
+    // state within a single delivery. Cloud Functions is at-least-once, so a
+    // redelivered identical event passes that check again and would DOUBLE the
+    // pair increments. A per-round marker created IN THE SAME BATCH makes the
+    // whole commit fail (ALREADY_EXISTS) on any redelivery, so pairStats are
+    // written exactly once per round — mirrors commitRoundStats/committedRounds.
+    // The key MUST include the round timestamp, not just the round NUMBER: after
+    // an "אפס רוטציה" reset the round counter restarts at 1, so a number-only
+    // key (r1, r2…) would collide with the previous run and silently drop the
+    // restarted rounds' pair stats. lastRoundAt is monotonic per finalize, so
+    // `${round}_${lastRoundAt}` is unique across resets (matches committedRounds'
+    // `${round}:${updatedAt}` shape).
+    const roundKey =
+      typeof ar === 'number'
+        ? `r${ar}_${after.rotation.lastRoundAt ?? 0}`
+        : `t${after.rotation.lastRoundAt ?? 0}`;
+    batch.create(
+      db
+        .collection('games')
+        .doc(event.params.id)
+        .collection('pairRounds')
+        .doc(roundKey),
+      { at: Date.now() },
+    );
+
     try {
       await batch.commit();
       console.log(
         `[onGameRotationChanged] game ${event.params.id}: +win×${winners.length}, pairs W${winners.length}/L${losers.length}`,
       );
     } catch (err) {
-      console.warn('[onGameRotationChanged] increment failed', err);
+      const code = (err as { code?: number | string }).code;
+      if (code === 6 || code === 'already-exists') {
+        console.log(
+          `[onGameRotationChanged] round ${roundKey} already counted — skip (redelivery)`,
+        );
+      } else {
+        console.warn('[onGameRotationChanged] increment failed', err);
+      }
     }
   },
 );
@@ -3327,9 +3571,22 @@ export const onGameRosterChanged = onDocumentWritten(
     // Drives the community table's cumulative "games played" column. The
     // before→after status transition to 'finished' fires exactly once, so
     // this can't double-count. Uses the registered roster (players[]).
+    // Gated on "was actually played" (timer started / a round ran) so a game
+    // that the stale-cleanup FINISHES without ever being played in-app doesn't
+    // credit everyone a phantom game — same signal the cleanup uses.
+    const afterLm = after.liveMatch as
+      | { startedAt?: number; phase?: string }
+      | undefined;
+    const afterPhase = afterLm?.phase;
+    const finishWasPlayed =
+      typeof afterLm?.startedAt === 'number' ||
+      afterPhase === 'roundRunning' ||
+      afterPhase === 'roundEnded' ||
+      afterPhase === 'live';
     if (
       before?.status !== 'finished' &&
       after.status === 'finished' &&
+      finishWasPlayed &&
       after.groupId &&
       Array.isArray(after.players) &&
       after.players.length > 0
@@ -3349,8 +3606,27 @@ export const onGameRosterChanged = onDocumentWritten(
             { merge: true },
           );
         }
+        // Redelivery latch: at-least-once means this finish event can be
+        // delivered twice (same before→after), double-crediting everyone.
+        // A marker created IN THE SAME BATCH makes the second commit fail
+        // (ALREADY_EXISTS) → credited exactly once per game.
+        batch.create(
+          db
+            .collection('games')
+            .doc(event.params.gameId)
+            .collection('finishCredited')
+            .doc('once'),
+          { at: Date.now() },
+        );
         await batch.commit();
       } catch (err) {
+        const code = (err as { code?: number | string }).code;
+        if (code === 6 || code === 'already-exists') {
+          console.log(
+            '[onGameRosterChanged] games already credited — skip (redelivery)',
+            event.params.gameId,
+          );
+        } else
         console.error(
           '[onGameRosterChanged] games tally failed',
           event.params.gameId,
@@ -3507,7 +3783,20 @@ export const onGameRosterChanged = onDocumentWritten(
       );
       for (const uid of freshJoiners) {
         try {
-          await db.collection('users').doc(uid).set(
+          // Per-(game,uid) marker in the same batch makes the increment
+          // idempotent under at-least-once redelivery (and a cancel→rejoin of
+          // the SAME game won't re-credit — gamesJoined counts distinct games).
+          const b = db.batch();
+          b.create(
+            db
+              .collection('games')
+              .doc(event.params.gameId)
+              .collection('joinCredited')
+              .doc(uid),
+            { at: Date.now() },
+          );
+          b.set(
+            db.collection('users').doc(uid),
             {
               achievements: {
                 gamesJoined: admin.firestore.FieldValue.increment(1),
@@ -3516,7 +3805,10 @@ export const onGameRosterChanged = onDocumentWritten(
             },
             { merge: true },
           );
+          await b.commit();
         } catch (err) {
+          const code = (err as { code?: number | string }).code;
+          if (code === 6 || code === 'already-exists') continue;
           console.warn(
             '[onGameRosterChanged] gamesJoined bump failed',
             uid,
@@ -3526,73 +3818,59 @@ export const onGameRosterChanged = onDocumentWritten(
       }
     }
 
-    // ── Buffer new joiners for the consolidated admin push. We do this
-    // BEFORE the gameFillingUp early-returns so it runs on every
-    // join, regardless of capacity threshold or game status changes.
-    // The cron `flushPendingJoinerNotifs` reads the buffer when it
-    // expires and dispatches a single batched notification.
+    // ── Notify the community admins of new joiners IMMEDIATELY. We do this
+    // BEFORE the gameFillingUp early-returns so it runs on every join,
+    // regardless of capacity threshold or game status changes.
+    //
+    // Previously this buffered joiners for up to 1 minute and sent ONE
+    // consolidated push — but that delayed even a single join by the full
+    // window (Teamder lagged ~20s behind Pulse, user report). Instead we
+    // send right away and lean on `createNotificationOnce`'s dedupe: the
+    // first joiner in the 5-min bucket fires the push; any further joiners
+    // (while the notice is still unread) AGGREGATE into it (count + names)
+    // without a second push — so a join rush still collapses to one ping.
     if (after.status === 'open' && after.groupId) {
       const beforePlayers = new Set(before?.players ?? []);
       const newJoiners = (after.players ?? []).filter(
         (uid) => !beforePlayers.has(uid),
       );
       if (newJoiners.length > 0) {
-        const JOIN_BATCH_WINDOW_MS = 1 * 60 * 1000;
-        let needsTaskEnqueue = false;
-        let flushAtForTask = 0;
+        // Resolve display names (best-effort — push still fires without).
+        let joinerNames: string[] = [];
         try {
-          await db.runTransaction(async (tx) => {
-            const fresh = await tx.get(ref);
-            if (!fresh.exists) return;
-            const data = fresh.data() as {
-              pendingJoinerIds?: string[];
-              pendingJoinFlushAt?: number;
-            };
-            const merged = Array.from(
-              new Set([...(data.pendingJoinerIds ?? []), ...newJoiners]),
-            );
-            // First joiner in the window sets flushAt; subsequent
-            // joiners append without extending — bounded latency.
-            const existingFlushAt =
-              data.pendingJoinFlushAt && data.pendingJoinFlushAt > Date.now()
-                ? data.pendingJoinFlushAt
-                : 0;
-            const flushAt = existingFlushAt || Date.now() + JOIN_BATCH_WINDOW_MS;
-            // We only enqueue a Cloud Task when WE are the joiner who
-            // sets the window — subsequent joiners ride the same task.
-            // (If existingFlushAt was set, a task is already in flight
-            // for that game; appending to the buffer is enough.)
-            if (!existingFlushAt) {
-              needsTaskEnqueue = true;
-              flushAtForTask = flushAt;
-            }
-            tx.update(ref, {
-              pendingJoinerIds: merged,
-              pendingJoinFlushAt: flushAt,
-            });
+          const snaps = await db.getAll(
+            ...newJoiners.map((uid) => db.collection('users').doc(uid)),
+          );
+          joinerNames = snaps
+            .map((s) => {
+              if (!s.exists) return '';
+              const d = s.data() as { name?: string; displayName?: string };
+              return (d.name || d.displayName || '').trim();
+            })
+            .filter((n) => n.length > 0);
+        } catch (err) {
+          console.error('[onGameRosterChanged] joiner name lookup failed', err);
+        }
+        try {
+          await createNotificationOnce({
+            type: 'gamePlayersJoined',
+            recipientId: after.groupId,
+            payload: {
+              gameId: event.params.gameId,
+              groupId: after.groupId,
+              gameTitle: after.title || 'המשחק',
+              startsAt: after.startsAt ?? null,
+              joinerIds: newJoiners.join(','),
+              joinerNames: joinerNames.join(','),
+              count: newJoiners.length,
+            },
           });
         } catch (err) {
-          console.error('[onGameRosterChanged] joiner buffer txn failed', err);
-        }
-
-        // Enqueue the one-shot Cloud Task that will dispatch the
-        // consolidated push at flushAt. Replaces the every-1-minute
-        // cron that used to poll for these.
-        if (needsTaskEnqueue && flushAtForTask > 0) {
-          try {
-            const queue = getGcpFunctions().taskQueue(
-              'flushPendingJoinerNotifsTask',
-            );
-            await queue.enqueue(
-              { gameId: event.params.gameId },
-              { scheduleTime: new Date(flushAtForTask) },
-            );
-          } catch (err) {
-            console.error(
-              '[onGameRosterChanged] enqueue joiner-flush task failed',
-              err,
-            );
-          }
+          console.error(
+            '[onGameRosterChanged] gamePlayersJoined dispatch failed',
+            event.params.gameId,
+            err,
+          );
         }
       }
     }
@@ -4277,8 +4555,10 @@ function joinHebrewNames(names: string[]): string {
 
 /**
  * Fan out one `teamsGenerated` notification per registered player, each with
- * a personal body listing their same-team members. Guests get no push (no
- * account). Stamps `teamsNotifiedAt` so a later edit/re-save can't re-spam.
+ * a personal body listing their same-team members — registered teammates AND
+ * guests on that team (guests get no push of their own, but their names still
+ * appear in their teammates' lists). Stamps `teamsNotifiedAt` so a later
+ * edit/re-save can't re-spam.
  */
 async function fanOutTeamsReadyPush(
   ref: FirebaseFirestore.DocumentReference,
@@ -4291,15 +4571,38 @@ async function fanOutTeamsReadyPush(
   );
   const allReal = realByTeam.flat();
   if (allReal.length === 0) return;
+  // Resolve guest names (keyed `guest:<id>`) from the game doc so guests can be
+  // listed alongside registered teammates in each push body.
+  const guestNameById: Record<string, string> = {};
+  try {
+    const snap = await ref.get();
+    const guests = (snap.data() as { guests?: GuestDoc[] } | undefined)?.guests ?? [];
+    for (const gu of guests) {
+      const first = (gu.name || '').trim().split(' ')[0];
+      if (first) guestNameById[`${GUEST_ID_PREFIX}${gu.id}`] = first;
+    }
+  } catch (err) {
+    console.error('[teamsReady] failed to load guest names', gameId, err);
+  }
+  // Guest first-names per team, in roster order.
+  const guestNamesByTeam = teams.map((t) =>
+    t.playerIds
+      .filter((id) => id.startsWith(GUEST_ID_PREFIX))
+      .map((id) => guestNameById[id])
+      .filter((n): n is string => !!n),
+  );
   const firstNames = await loadFirstNames(allReal);
   const batch = db.batch();
   teams.forEach((t, ti) => {
     const mates = realByTeam[ti];
     mates.forEach((uid) => {
-      const teammateNames = mates
-        .filter((m) => m !== uid)
-        .map((m) => firstNames[m])
-        .filter((n): n is string => !!n);
+      const teammateNames = [
+        ...mates
+          .filter((m) => m !== uid)
+          .map((m) => firstNames[m])
+          .filter((n): n is string => !!n),
+        ...guestNamesByTeam[ti],
+      ];
       // Deterministic id per (game, player) so a second fan-out — the manual
       // "notify" callable racing the scheduled path, or a retry — overwrites
       // the same doc instead of creating a duplicate that fires a second push
@@ -4517,6 +4820,86 @@ export const updateAppConfig = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, as
 //   • `resource-exhausted` — server-side rate limit exceeded
 const INVITE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const INVITE_RATE_LIMIT_CAP = 30;
+
+/**
+ * setGuestRating — let the player who ADDED a guest set/clear that guest's
+ * `estimatedRating`. ONLY the adder (`guest.addedBy === caller`) may change a
+ * guest's rating: the community admin manages the roster (rename/remove) but
+ * deliberately CANNOT touch the rating, because they don't know the guest.
+ *
+ * Routed through a callable (rather than a client write + Firestore rule)
+ * because rules can't validate per-element ownership inside the `guests`
+ * array — only the admin SDK can read `guest.addedBy` and gate on it.
+ *
+ * Errors: `unauthenticated`, `invalid-argument`, `not-found`,
+ * `permission-denied` (caller is not the guest's adder).
+ */
+export const setGuestRating = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const uid = auth.uid;
+    const data = (request.data ?? {}) as {
+      gameId?: unknown;
+      guestId?: unknown;
+      rating?: unknown;
+    };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const guestId = typeof data.guestId === 'string' ? data.guestId : '';
+    if (!gameId || gameId.length > 128 || !guestId || guestId.length > 128) {
+      throw new HttpsError('invalid-argument', 'invalid gameId or guestId');
+    }
+    // rating: a number in [1,5] (one-decimal granularity) or null to clear.
+    let rating: number | null;
+    if (data.rating === null || data.rating === undefined) {
+      rating = null;
+    } else if (
+      typeof data.rating === 'number' &&
+      Number.isFinite(data.rating) &&
+      data.rating >= 1 &&
+      data.rating <= 5
+    ) {
+      rating = Math.round(data.rating * 10) / 10;
+    } else {
+      throw new HttpsError('invalid-argument', 'rating must be 1..5 or null');
+    }
+
+    const ref = db.collection('games').doc(gameId);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+      const g = snap.data() as { guests?: Array<Record<string, unknown>> };
+      const guests = Array.isArray(g.guests) ? g.guests : [];
+      const idx = guests.findIndex(
+        (x) => (x as { id?: string }).id === guestId,
+      );
+      if (idx < 0) throw new HttpsError('not-found', 'guest not found');
+      const guest = guests[idx] as {
+        addedBy?: string;
+        estimatedRating?: number;
+      };
+      if (guest.addedBy !== uid) {
+        throw new HttpsError(
+          'permission-denied',
+          'only the player who added this guest can rate them',
+        );
+      }
+      const updated: Record<string, unknown> = { ...guest };
+      if (rating === null) delete updated.estimatedRating;
+      else updated.estimatedRating = rating;
+      const next = [
+        ...guests.slice(0, idx),
+        updated,
+        ...guests.slice(idx + 1),
+      ];
+      tx.update(ref, { guests: next, updatedAt: Date.now() });
+    });
+    return { ok: true };
+  },
+);
 
 export const sendGameInvite = onCall({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
   // 1) Auth
@@ -5026,9 +5409,12 @@ export const ensurePersonalGroup = onCall(
       name?: string;
     };
 
-    // Fast path: already provisioned. Verify the group still exists —
-    // if it was deleted we re-provision rather than handing back a
-    // stale id that would 404 on the next read.
+    // Fast path: already provisioned. Verify the group still exists AND is
+    // still a personal group — if it was deleted, OR PROMOTED to a real
+    // community (isPersonal flipped to false), we re-provision rather than
+    // handing back its id. Otherwise the next one-off game would be created
+    // INSIDE that public community (its members, chat, feed) — the personal
+    // group id is never reset on promotion.
     if (
       typeof userData.personalGroupId === 'string' &&
       userData.personalGroupId.length > 0
@@ -5037,7 +5423,7 @@ export const ensurePersonalGroup = onCall(
         .collection('groups')
         .doc(userData.personalGroupId)
         .get();
-      if (existing.exists) {
+      if (existing.exists && existing.data()?.isPersonal === true) {
         return { groupId: userData.personalGroupId, created: false };
       }
     }
@@ -7021,9 +7407,22 @@ async function runFindFillerCandidates(): Promise<void> {
     if (pushesThisGame > 0) {
       // Persist the dedup history so the next run doesn't re-push
       // the same candidate. Merge with the existing map.
+      const pushedUids = Object.keys(newlyPushed);
       await doc.ref.set(
         {
           fillerPushHistory: { ...alreadyPushed, ...newlyPushed },
+          // Grant each pushed candidate PERMANENT read access to this game —
+          // the games read rule honours `invitedUserIds`, so tapping the
+          // fillerOpportunity push always reaches the "הגש מועמדות" CTA, even
+          // if `acceptsFillers` later toggles off (game filled / started).
+          // Without this the push dead-ended on the "משחק לסגל בלבד" wall
+          // (Pulse feat-1).
+          ...(pushedUids.length
+            ? {
+                invitedUserIds:
+                  admin.firestore.FieldValue.arrayUnion(...pushedUids),
+              }
+            : {}),
           updatedAt: now,
         },
         { merge: true },
@@ -7869,7 +8268,18 @@ export const onGameJoinedAlert = onDocumentUpdated('games/{id}', async (event) =
   if (!added.length) return;
   const who = await adminAlertUserName(added[0]);
   const extra = added.length > 1 ? ` +${added.length - 1}` : '';
-  await pushToAdmins('gameJoin', 'Teamder', `${who}${extra} נרשם למשחק 🙋`, { id: event.params.id });
+  // Name the game so the alert says WHICH game was joined. Titled (quick)
+  // games carry `title`; community games fall back to the field/location,
+  // then a generic "משחק".
+  const gameTitle = typeof after.title === 'string' ? after.title.trim() : '';
+  const gameField = typeof after.fieldName === 'string' ? after.fieldName.trim() : '';
+  const gameLabel = gameTitle || gameField || 'משחק';
+  await pushToAdmins(
+    'gameJoin',
+    'Teamder',
+    `${who}${extra} נרשם ל${gameLabel} 🙋`,
+    { id: event.params.id },
+  );
 });
 
 export const onCommunityCreatedAlert = onDocumentCreated('groups/{id}', async (event) => {
@@ -7892,6 +8302,49 @@ export const onCommunityJoinedAlert = onDocumentUpdated('groups/{id}', async (ev
   const who = await adminAlertUserName(added[0]);
   const extra = added.length > 1 ? ` +${added.length - 1}` : '';
   await pushToAdmins('communityJoin', 'Teamder', `${who}${extra} הצטרף למועדון ${after.name ?? ''} 👥`, { id: event.params.id });
+});
+
+// Founder alert: a user updated their availability (days / times / city /
+// invitable). Event-driven — fires only on THIS user's write, so NO scan and
+// NO Firestore reads on the common no-op path (it compares the before/after
+// snapshots it already has and early-returns when availability is unchanged).
+export const onAvailabilityUpdated = onDocumentUpdated('users/{uid}', async (event) => {
+  const before = event.data?.before.data() as
+    | { availability?: Record<string, unknown> }
+    | undefined;
+  const after = event.data?.after.data() as
+    | { availability?: Record<string, unknown>; name?: string }
+    | undefined;
+  if (!before || !after) return;
+  const a = after.availability;
+  if (!a || typeof a !== 'object') return;
+  // Signature only the MEANINGFUL fields (ignore coords/noise) so an unrelated
+  // profile write (lastActive, stats…) never triggers a spurious alert.
+  const sig = (x: Record<string, unknown> | undefined): string => {
+    const o = x ?? {};
+    return JSON.stringify({
+      d: (o.preferredDays as unknown[]) ?? [],
+      t: (o.preferredTimes as unknown[]) ?? [],
+      c: o.homeCity ?? '',
+      inv: o.isAvailableForInvites,
+      af: o.acceptsFillerPush,
+    });
+  };
+  if (sig(before.availability) === sig(a)) return;
+  const who =
+    after.name && after.name !== 'משתמש שהוסר' ? after.name : 'מישהו';
+  const days = Array.isArray(a.preferredDays)
+    ? (a.preferredDays as unknown[]).length
+    : 0;
+  const daysTxt = days > 0 ? ` (${days} ימים)` : '';
+  const city =
+    typeof a.homeCity === 'string' && a.homeCity ? ` · ${a.homeCity}` : '';
+  await pushToAdmins(
+    'availabilityUpdate',
+    'Teamder',
+    `${who} עדכן זמינות${daysTxt}${city} 🗓️`,
+    { uid: event.params.uid },
+  );
 });
 
 // New ERROR signature — /errors is fingerprint-aggregated, so onCreate fires
@@ -8137,6 +8590,18 @@ export const commitRoundStats = onCall(
 
     const A = (sideA ?? []).filter(isReal);
     const B = (sideB ?? []).filter(isReal);
+    // Bound the side sizes BEFORE building the batch. The against-pairs loop
+    // writes |A|×|B| docs; an unbounded (or forged) payload could blow the
+    // Firestore 500-op batch cap, failing commit() and losing the WHOLE round's
+    // stats. Real formats top out at 7-a-side, so 20 is generous headroom while
+    // keeping |A|×|B| (≤400) + per-player writes safely under 500.
+    const MAX_SIDE = 20;
+    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
+      throw new HttpsError(
+        'invalid-argument',
+        `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
+      );
+    }
     // The set of players who actually played this round (both on-field sides).
     // Goals + assists are credited ONLY to members of this set, exactly like
     // rounds/wins/losses below — so a scorer or assister who isn't on either
@@ -8193,7 +8658,14 @@ export const commitRoundStats = onCall(
     if (groupId) {
       batch.set(
         db.collection('communityStats').doc(groupId),
-        { groupId, rounds: inc(1), goals: inc(totalGoalsThisRound), updatedAt: now },
+        {
+          groupId,
+          rounds: inc(1),
+          goals: inc(totalGoalsThisRound),
+          // Ties get their own counter → drives the club's draw-rate fun fact.
+          tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
+          updatedAt: now,
+        },
         { merge: true },
       );
     }
@@ -8287,6 +8759,15 @@ export const commitRoundStats = onCall(
         { a: pa, b: pb, [field]: inc(1), updatedAt: now },
         { merge: true },
       );
+      // Per-COMMUNITY assist pair → drives the club's "deadly duo" fun fact.
+      // (pairStats is global/cross-group; this one is scoped to the club.)
+      if (groupId) {
+        batch.set(
+          db.collection('communityPairStats').doc(`${groupId}__${pairKey(assister, scorer)}`),
+          { groupId, a: pa, b: pb, assists: inc(1), updatedAt: now },
+          { merge: true },
+        );
+      }
     }
 
     // NOTE: same-team pairs (sameTeam / winsTogether / lossesTogether) are

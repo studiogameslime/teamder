@@ -48,7 +48,12 @@ import { reverseGeocodeCity } from '@/services/geocodeService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDayDate } from '@/utils/format';
+import {
+  formatDayDate,
+  HEBREW_DAYS_LONG,
+  formatTime,
+  formatDateShort,
+} from '@/utils/format';
 import { lightHaptic } from '@/utils/haptics';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
@@ -300,7 +305,11 @@ export function GameWizardForm({
     const anim = Animated.timing(fade, {
       toValue: 1,
       duration: 220,
-      useNativeDriver: true,
+      // JS-driven (not native): a native-driver opacity gets WEDGED at its
+      // last frame when an RN Modal (the date/time picker) opens/closes over
+      // the screen — which left the whole step body stuck invisible after
+      // picking a date ("שאר השדות נעלמים"). JS opacity is immune to that.
+      useNativeDriver: false,
     });
     anim.start();
     // Safety net: if the animation is interrupted (content swap on a heavy
@@ -832,38 +841,40 @@ function Step3({
 
           {/* (2) Scheduled registration open — defer when the game appears
               + opens for joins. Independent of recurring. */}
-          <ToggleRow
-            label={he.wizardScheduledRegToggle}
-            info={{ title: he.wizardScheduledRegToggle, text: he.wizardScheduledRegHint }}
-            value={values.scheduledRegEnabled}
-            onChange={(v) => {
-              set('scheduledRegEnabled', v);
-              // Reset the picker value when turning the toggle off so a
-              // stale registrationOpensAt doesn't survive into submit.
-              if (!v) set('registrationOpensAt', 0);
-              // Turning ON: commit the default immediately. The field below
-              // only DISPLAYS `registrationOpensAt || default`, so without
-              // this the user sees an auto-filled time while state stays 0 —
-              // and submit then rejects it as "no time chosen".
-              else if (!values.registrationOpensAt) {
-                set('registrationOpensAt', defaultRegOpensAt(values.startsAt));
-              }
-            }}
-          />
-          {values.scheduledRegEnabled ? (
-            <View style={styles.section}>
-              <AppDateTimeField
-                label={he.wizardRegOpensLabel}
-                info={{ title: he.wizardRegOpensLabel, text: he.wizardRegOpensHint }}
-                value={
-                  values.registrationOpensAt ||
-                  defaultRegOpensAt(values.startsAt)
-                }
-                onChange={(ms) => set('registrationOpensAt', ms)}
-                required
+          <ScheduleGroup
+            open={values.scheduledRegEnabled}
+            toggle={
+              <ToggleRow
+                label={he.wizardScheduledRegToggle}
+                info={{ title: he.wizardScheduledRegToggle, text: he.wizardScheduledRegHint }}
+                value={values.scheduledRegEnabled}
+                onChange={(v) => {
+                  set('scheduledRegEnabled', v);
+                  // Reset the picker value when turning the toggle off so a
+                  // stale registrationOpensAt doesn't survive into submit.
+                  if (!v) set('registrationOpensAt', 0);
+                  // Turning ON: commit the default immediately. The field below
+                  // only DISPLAYS `registrationOpensAt || default`, so without
+                  // this the user sees an auto-filled time while state stays 0 —
+                  // and submit then rejects it as "no time chosen".
+                  else if (!values.registrationOpensAt) {
+                    set('registrationOpensAt', defaultRegOpensAt(values.startsAt));
+                  }
+                }}
               />
-            </View>
-          ) : null}
+            }
+          >
+            <AppDateTimeField
+              label={he.wizardRegOpensLabel}
+              info={{ title: he.wizardRegOpensLabel, text: he.wizardRegOpensHint }}
+              value={
+                values.registrationOpensAt ||
+                defaultRegOpensAt(values.startsAt)
+              }
+              onChange={(ms) => set('registrationOpensAt', ms)}
+              required
+            />
+          </ScheduleGroup>
         </>
       ) : null}
 
@@ -872,48 +883,52 @@ function Step3({
           visibility at the chosen time. */}
       {!quick && values.visibility === 'community' ? (
         <>
-          <ToggleRow
-            label={he.wizardPublicOpenToggle}
-            info={{ title: he.wizardPublicOpenToggle, text: he.wizardPublicOpenHint }}
-            value={values.publicOpenAt > 0}
-            onChange={(v) =>
-              set('publicOpenAt', v ? values.startsAt - 4 * 60 * 60 * 1000 : 0)
-            }
-          />
-          {values.publicOpenAt > 0 ? (
-            <View style={styles.section}>
-              <AppDateTimeField
-                label={he.wizardPublicOpenLabel}
-                value={values.publicOpenAt}
-                onChange={(ms) => set('publicOpenAt', ms)}
-                required
+          <ScheduleGroup
+            open={values.publicOpenAt > 0}
+            toggle={
+              <ToggleRow
+                label={he.wizardPublicOpenToggle}
+                info={{ title: he.wizardPublicOpenToggle, text: he.wizardPublicOpenHint }}
+                value={values.publicOpenAt > 0}
+                onChange={(v) =>
+                  set('publicOpenAt', v ? values.startsAt - 4 * 60 * 60 * 1000 : 0)
+                }
               />
-            </View>
-          ) : null}
+            }
+          >
+            <AppDateTimeField
+              label={he.wizardPublicOpenLabel}
+              value={values.publicOpenAt}
+              onChange={(ms) => set('publicOpenAt', ms)}
+              required
+            />
+          </ScheduleGroup>
         </>
       ) : null}
 
       {/* Gate non-admin guest-adding until a chosen time (community games). */}
       {!quick ? (
         <>
-          <ToggleRow
-            label={he.wizardGuestsOpenToggle}
-            info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
-            value={values.guestsOpenAt > 0}
-            onChange={(v) =>
-              set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
-            }
-          />
-          {values.guestsOpenAt > 0 ? (
-            <View style={styles.section}>
-              <AppDateTimeField
-                label={he.wizardGuestsOpenLabel}
-                value={values.guestsOpenAt}
-                onChange={(ms) => set('guestsOpenAt', ms)}
-                required
+          <ScheduleGroup
+            open={values.guestsOpenAt > 0}
+            toggle={
+              <ToggleRow
+                label={he.wizardGuestsOpenToggle}
+                info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
+                value={values.guestsOpenAt > 0}
+                onChange={(v) =>
+                  set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
+                }
               />
-            </View>
-          ) : null}
+            }
+          >
+            <AppDateTimeField
+              label={he.wizardGuestsOpenLabel}
+              value={values.guestsOpenAt}
+              onChange={(ms) => set('guestsOpenAt', ms)}
+              required
+            />
+          </ScheduleGroup>
         </>
       ) : null}
 
@@ -922,37 +937,37 @@ function Step3({
           ratings at this time and pushes every player their team. */}
       {!quick && internalRating ? (
         <>
-          <ToggleRow
-            label={he.wizardAutoTeamsToggle}
-            info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
-            value={values.autoTeamsAt > 0}
-            onChange={(v) =>
-              set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
-            }
-          />
-          {values.autoTeamsAt > 0 ? (
-            <>
-              <View style={styles.section}>
-                <AppDateTimeField
-                  label={he.wizardAutoTeamsLabel}
-                  value={values.autoTeamsAt}
-                  onChange={(ms) => set('autoTeamsAt', ms)}
-                  required
-                />
-              </View>
-              <PillRow
-                label={he.wizardAutoTeamsMethodLabel}
-                options={[
-                  { value: 'rating', label: he.draftMethodAuto },
-                  { value: 'random', label: he.draftMethodRandom },
-                ]}
-                selected={values.autoTeamsMethod}
-                onSelect={(v) =>
-                  set('autoTeamsMethod', v as 'rating' | 'random')
+          <ScheduleGroup
+            open={values.autoTeamsAt > 0}
+            toggle={
+              <ToggleRow
+                label={he.wizardAutoTeamsToggle}
+                info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
+                value={values.autoTeamsAt > 0}
+                onChange={(v) =>
+                  set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
                 }
               />
-            </>
-          ) : null}
+            }
+          >
+            <AppDateTimeField
+              label={he.wizardAutoTeamsLabel}
+              value={values.autoTeamsAt}
+              onChange={(ms) => set('autoTeamsAt', ms)}
+              required
+            />
+            <PillRow
+              label={he.wizardAutoTeamsMethodLabel}
+              options={[
+                { value: 'rating', label: he.draftMethodAuto },
+                { value: 'random', label: he.draftMethodRandom },
+              ]}
+              selected={values.autoTeamsMethod}
+              onSelect={(v) =>
+                set('autoTeamsMethod', v as 'rating' | 'random')
+              }
+            />
+          </ScheduleGroup>
         </>
       ) : null}
 
@@ -994,6 +1009,67 @@ function Step3({
 
 // ─── Summary preview (Step 3 footer) ─────────────────────────────────────
 
+type SchedItem = { icon: keyof typeof Ionicons.glyphMap; text: string };
+
+// Smart, human-readable breakdown of everything that's been SCHEDULED — the
+// recurring cadence + each timed moment (registration open, public flip,
+// guests open, auto-teams) — phrased on its own weekday/time and ordered by
+// when it happens within the cycle. For a recurring game we say "כל יום רביעי
+// בשעה 20:00"; for a one-off, "ביום רביעי, 02.07 בשעה 20:00". Shown in the
+// create-summary popup so the user can sanity-check "what happens when".
+function buildSchedule(v: GameFormValues): SchedItem[] {
+  const rec = v.recurringGameEnabled;
+  const day = (ms: number) => HEBREW_DAYS_LONG[new Date(ms).getDay()];
+  // `from` → "משעה" (an ongoing window that opens FROM that time, e.g. adding
+  // guests / public access); otherwise "בשעה" (happens AT that moment).
+  const when = (ms: number, from = false) => {
+    const at = from ? 'משעה' : 'בשעה';
+    return rec
+      ? `כל ${day(ms)} ${at} ${formatTime(ms)}`
+      : `ב${day(ms)}, ${formatDateShort(ms)} ${at} ${formatTime(ms)}`;
+  };
+  const timed: (SchedItem & { ms: number })[] = [];
+  if (v.scheduledRegEnabled && v.registrationOpensAt > 0)
+    timed.push({ icon: 'timer-outline', text: `ההרשמה תיפתח ${when(v.registrationOpensAt)}`, ms: v.registrationOpensAt });
+  if (v.publicOpenAt > 0)
+    timed.push({ icon: 'globe-outline', text: `המשחק ייפתח לכל האפליקציה ${when(v.publicOpenAt, true)}`, ms: v.publicOpenAt });
+  if (v.guestsOpenAt > 0)
+    timed.push({ icon: 'person-add-outline', text: `אפשר יהיה להוסיף אורחים ${when(v.guestsOpenAt, true)}`, ms: v.guestsOpenAt });
+  if (v.autoTeamsAt > 0) {
+    const m = v.autoTeamsMethod === 'random' ? ' (אקראי)' : ' (לפי דירוג)';
+    timed.push({ icon: 'shuffle-outline', text: `הכוחות ייווצרו אוטומטית${m} ${when(v.autoTeamsAt)}`, ms: v.autoTeamsAt });
+  }
+  // Nothing scheduled and not recurring → no timeline.
+  if (timed.length === 0 && !rec) return [];
+  timed.sort((a, b) => a.ms - b.ms);
+  // Lead with the game itself as the anchor of the cycle, then the prep events
+  // in the order they fire.
+  const anchor: SchedItem = {
+    icon: 'football',
+    text: rec
+      ? `המשחק יתקיים כל ${day(v.startsAt)} בשעה ${formatTime(v.startsAt)}`
+      : `המשחק יתקיים ב${day(v.startsAt)}, ${formatDateShort(v.startsAt)} בשעה ${formatTime(v.startsAt)}`,
+  };
+  return [anchor, ...timed.map(({ icon, text }) => ({ icon, text }))];
+}
+
+function ScheduleTimeline({ items }: { items: SchedItem[] }) {
+  return (
+    <View style={styles.schedTimeline}>
+      <View style={styles.schedTimelineHead}>
+        <Ionicons name="calendar-number-outline" size={16} color={colors.primary} />
+        <Text style={styles.schedTimelineTitle}>לוח זמנים</Text>
+      </View>
+      {items.map((it, i) => (
+        <View key={i} style={styles.schedTimelineRow}>
+          <Ionicons name={it.icon} size={16} color={colors.primary} style={styles.schedTimelineIcon} />
+          <Text style={styles.schedTimelineText}>{it.text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function SummaryCard({
   values,
   maxPlayers,
@@ -1023,11 +1099,9 @@ function SummaryCard({
           values.startsAt - values.cancelDeadlineHours * 60 * 60 * 1000,
         )
       : null;
-  const recurringStr = values.recurringGameEnabled ? he.yes : null;
-  const regOpensStr =
-    values.scheduledRegEnabled && values.registrationOpensAt > 0
-      ? formatDateLong(values.registrationOpensAt)
-      : null;
+  // Smart "what happens when" timeline for recurring / scheduled games.
+  // Replaces the old flat "מחזור שבועי: כן" + "פתיחת הרשמה: <date>" rows.
+  const schedule = buildSchedule(values);
 
   const rows = (
     <>
@@ -1038,15 +1112,10 @@ function SummaryCard({
       <SummaryRow icon="location-outline" label={he.wizardSummaryWhere} value={placeLabel} />
       <SummaryRow icon="people-outline" label={he.wizardSummaryFormat} value={formatStr} />
       <SummaryRow icon="eye-outline" label={he.wizardSummaryVisibility} value={visibilityStr} />
-      {recurringStr ? (
-        <SummaryRow icon="repeat-outline" label={he.communityEditRecurringEnabled} value={recurringStr} />
-      ) : null}
-      {regOpensStr ? (
-        <SummaryRow icon="timer-outline" label={he.wizardRegOpensLabel} value={regOpensStr} />
-      ) : null}
       {cancelStr ? (
         <SummaryRow icon="time-outline" label={he.wizardCancelDeadlineLabel} value={cancelStr} />
       ) : null}
+      {schedule.length > 0 ? <ScheduleTimeline items={schedule} /> : null}
     </>
   );
 
@@ -1163,6 +1232,29 @@ function Pill({
   );
 }
 
+// Binds a scheduling toggle to the date-picker it reveals. When the toggle is
+// ON, the toggle row + its field(s) sit inside ONE tinted card, with the field
+// nested under the toggle (a start-side accent + a divider) — so it's obvious
+// which date belongs to which toggle instead of a flat list of disconnected
+// rows. When OFF, the toggle renders as a plain row (no card).
+function ScheduleGroup({
+  open,
+  toggle,
+  children,
+}: {
+  open: boolean;
+  toggle: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  if (!open) return <>{toggle}</>;
+  return (
+    <View style={styles.schedGroup}>
+      {toggle}
+      <View style={styles.schedNested}>{children}</View>
+    </View>
+  );
+}
+
 function ToggleRow({
   label,
   hint,
@@ -1238,6 +1330,69 @@ const styles = StyleSheet.create({
 
   // Step bodies
   section: { gap: spacing.xs, alignItems: 'stretch' },
+  // A scheduling toggle + the picker it reveals, bound into one tinted card so
+  // the date reads as a CHILD of its toggle (see ScheduleGroup).
+  schedGroup: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    // Bleed the card outward by its own horizontal padding so the toggle row
+    // INSIDE stays at the exact same x as the bare toggle rows above/below —
+    // i.e. all switches line up vertically. The card just extends behind them.
+    marginHorizontal: -spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
+  },
+  // The revealed field, indented under the toggle with a start-side accent +
+  // a divider (same nesting language as `advancedSub`).
+  schedNested: {
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+    paddingStart: spacing.md,
+    borderStartWidth: 3,
+    borderStartColor: colors.primary,
+    borderTopWidth: 1,
+    borderTopColor: colors.primaryLight,
+    gap: spacing.sm,
+  },
+  // "לוח זמנים" — the smart scheduled-events breakdown in the summary popup.
+  schedTimeline: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  schedTimelineHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  schedTimelineTitle: {
+    ...typography.label,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  schedTimelineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  schedTimelineIcon: {
+    marginTop: 3,
+  },
+  schedTimelineText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '500',
+    textAlign: RTL_LABEL_ALIGN,
+    flex: 1,
+    lineHeight: 24,
+  },
   // Indented container for advanced-mode sub-options — a subtle right border
   // (RTL) marks them as nested under the master toggle.
   advancedSub: {

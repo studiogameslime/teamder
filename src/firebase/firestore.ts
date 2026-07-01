@@ -84,6 +84,13 @@ function readAvailability(d: DocumentData): UserAvailability | undefined {
     : [];
   return {
     preferredDays: days,
+    // Time buckets were written but never read here → the user's chosen times
+    // reset to empty every time the availability screen reopened.
+    preferredTimes: Array.isArray(a.preferredTimes)
+      ? (a.preferredTimes.filter(
+          (t: unknown) => typeof t === 'string',
+        ) as UserAvailability['preferredTimes'])
+      : undefined,
     timeFrom: typeof a.timeFrom === 'string' ? a.timeFrom : undefined,
     timeTo: typeof a.timeTo === 'string' ? a.timeTo : undefined,
     preferredCity:
@@ -415,6 +422,8 @@ const groupConverter: FirestoreDataConverter<Group> = {
       internalRating: g.internalRating ?? null,
       hideInternalRating: g.hideInternalRating ?? null,
       adminRatings: g.adminRatings ?? null,
+      ballHolderIds: Array.isArray(g.ballHolderIds) ? g.ballHolderIds : null,
+      jerseysHolderIds: Array.isArray(g.jerseysHolderIds) ? g.jerseysHolderIds : null,
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
       preferredDays: g.preferredDays ?? [],
@@ -484,6 +493,12 @@ const groupConverter: FirestoreDataConverter<Group> = {
               ),
             ) as Record<string, number>)
           : undefined,
+      ballHolderIds: Array.isArray(d.ballHolderIds)
+        ? (d.ballHolderIds as unknown[]).filter((u): u is string => typeof u === 'string')
+        : undefined,
+      jerseysHolderIds: Array.isArray(d.jerseysHolderIds)
+        ? (d.jerseysHolderIds as unknown[]).filter((u): u is string => typeof u === 'string')
+        : undefined,
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,
@@ -1026,6 +1041,19 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? g.registrationOpensAt
           : null,
       openedNotificationSent: g.openedNotificationSent ?? false,
+      // Recurring auto-clone + scheduled visibility/guest gating — SAME
+      // round-trip class as registrationOpensAt above. Omitting these dropped
+      // them at write time (createGameV2 → addDoc → toFirestore), silently
+      // killing the weekly clone (CF queries `recurring==true`), the
+      // community→public flip (`publicOpenAt`), and the non-admin guest gate
+      // (`guestsOpenAt`). The mock create-path kept them, hiding it in tests.
+      recurring: g.recurring === true ? true : null,
+      recurringNextCreatedAt:
+        typeof g.recurringNextCreatedAt === 'number' ? g.recurringNextCreatedAt : null,
+      publicOpenAt: typeof g.publicOpenAt === 'number' ? g.publicOpenAt : null,
+      publicOpenedAt: typeof g.publicOpenedAt === 'number' ? g.publicOpenedAt : null,
+      guestsOpenAt: typeof g.guestsOpenAt === 'number' ? g.guestsOpenAt : null,
+      pendingPromotion: g.pendingPromotion ?? null,
       // Cross-community filler matching opt-in. Both fields round-
       // trip through the converter so the wizard's settings persist.
       // Default `acceptsFillers` to false for legacy game docs that
@@ -1134,6 +1162,13 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
             (u): u is string => typeof u === 'string',
           )
         : undefined,
+      // Users explicitly invited to this game — they bypass approval, so the
+      // join CTA reads "join" not "request to join" for them.
+      invitedUserIds: Array.isArray(d.invitedUserIds)
+        ? (d.invitedUserIds as unknown[]).filter(
+            (u): u is string => typeof u === 'string',
+          )
+        : undefined,
       ballHolderUserId: d.ballHolderUserId ?? undefined,
       jerseysHolderUserId: d.jerseysHolderUserId ?? undefined,
       ballBringerIds: Array.isArray(d.ballBringerIds)
@@ -1231,6 +1266,29 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           : undefined,
       autoTeamsGeneratedBy:
         d.autoTeamsGeneratedBy === 'system' ? 'system' : undefined,
+      recurring: d.recurring === true ? true : undefined,
+      recurringNextCreatedAt:
+        typeof d.recurringNextCreatedAt === 'number'
+          ? d.recurringNextCreatedAt
+          : undefined,
+      publicOpenAt:
+        typeof d.publicOpenAt === 'number' ? d.publicOpenAt : undefined,
+      publicOpenedAt:
+        typeof d.publicOpenedAt === 'number' ? d.publicOpenedAt : undefined,
+      guestsOpenAt:
+        typeof d.guestsOpenAt === 'number' ? d.guestsOpenAt : undefined,
+      pendingPromotion:
+        d.pendingPromotion &&
+        typeof d.pendingPromotion === 'object' &&
+        typeof d.pendingPromotion.uid === 'string'
+          ? {
+              uid: d.pendingPromotion.uid as string,
+              offeredAt:
+                typeof d.pendingPromotion.offeredAt === 'number'
+                  ? d.pendingPromotion.offeredAt
+                  : 0,
+            }
+          : undefined,
       teamsEditedManually: d.teamsEditedManually === true,
       teamBalanceMeta: readTeamBalanceMeta(d.teamBalanceMeta),
       guests: readGuests(d.guests),
@@ -1264,10 +1322,12 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
     if (!raw || typeof raw !== 'object') continue;
     const o = raw as Record<string, unknown>;
     if (typeof o.id !== 'string' || typeof o.name !== 'string') continue;
+    // Rating scale is 1.0–5.0. Reject out-of-range (incl. legacy 1–10 values)
+    // so a stale "8" never renders on a 1–5 scale — drop rather than show wrong.
     const rating =
       typeof o.estimatedRating === 'number' &&
       o.estimatedRating >= 1 &&
-      o.estimatedRating <= 10
+      o.estimatedRating <= 5
         ? o.estimatedRating
         : undefined;
     // OMIT the key when there's no rating instead of writing
@@ -1349,6 +1409,14 @@ const roundConverter: FirestoreDataConverter<MatchRound & { id: string; gameId: 
       startedAt: r.startedAt ?? null,
       endedAt: r.endedAt ?? null,
       winner: r.winner ?? null,
+      // Per-round history — previously dropped here (saveGame wrote them but the
+      // converter didn't serialize them), permanently losing the goal log,
+      // end-of-round rosters ("who played with whom"), and per-round score.
+      goals: Array.isArray(r.goals) ? r.goals : null,
+      teamAPlayerIds: Array.isArray(r.teamAPlayerIds) ? r.teamAPlayerIds : null,
+      teamBPlayerIds: Array.isArray(r.teamBPlayerIds) ? r.teamBPlayerIds : null,
+      scoreA: typeof r.scoreA === 'number' ? r.scoreA : null,
+      scoreB: typeof r.scoreB === 'number' ? r.scoreB : null,
     };
   },
   fromFirestore(snap) {
@@ -1365,6 +1433,15 @@ const roundConverter: FirestoreDataConverter<MatchRound & { id: string; gameId: 
       startedAt: d.startedAt ?? undefined,
       endedAt: d.endedAt ?? undefined,
       winner: d.winner ?? undefined,
+      goals: Array.isArray(d.goals) ? d.goals : undefined,
+      teamAPlayerIds: Array.isArray(d.teamAPlayerIds)
+        ? d.teamAPlayerIds.filter((x: unknown) => typeof x === 'string')
+        : undefined,
+      teamBPlayerIds: Array.isArray(d.teamBPlayerIds)
+        ? d.teamBPlayerIds.filter((x: unknown) => typeof x === 'string')
+        : undefined,
+      scoreA: typeof d.scoreA === 'number' ? d.scoreA : undefined,
+      scoreB: typeof d.scoreB === 'number' ? d.scoreB : undefined,
     };
   },
 };

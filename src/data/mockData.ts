@@ -132,7 +132,10 @@ export const mockGamesV2: Game[] = [
     format: '5v5',
     numberOfTeams: 2,
     fieldType: 'synthetic',
-    matchDurationMinutes: 8,
+    // 15-min round (not 8) so the live count-up clock keeps showing a clean
+    // value like 03:12 well past launch instead of slipping into red "+overtime"
+    // while footage is being captured.
+    matchDurationMinutes: 15,
     cancelDeadlineHours: 12,
     bringBall: true,
     bringShirts: true,
@@ -176,7 +179,8 @@ export const mockGamesV2: Game[] = [
       winsByTeam: { A: 2, B: 1 },
       roundNumber: 2,
       timerRunning: true,
-      timerLastStartedAt: Date.now() - 1000 * 60 * 3,
+      // clean, realistic running clock: 02:34 and counting up
+      timerLastStartedAt: Date.now() - (1000 * 60 * 2 + 1000 * 34),
       timerAccumulatedMs: 0,
     },
   },
@@ -230,12 +234,15 @@ export const mockGamesV2: Game[] = [
     },
   },
   // 1. My Game — already registered, full 15/15 so the live match
-  //    screen renders three full teams without a shuffle.
+  //    screen renders three full teams without a shuffle. Scheduled a couple
+  //    of weeks out so it doesn't time-clash with the joinable gv2-2 (which
+  //    is THIS Thursday) — keeps the "אני מגיע" hero join free of an
+  //    overlap-warning popup.
   {
     id: 'gv2-1',
     groupId: 'g1',
     title: 'חמישי כדורגל',
-    startsAt: nextThursdayAt(20, 0),
+    startsAt: inDays(13, 20, 0),
     fieldName: 'המגרש הקבוע',
     fieldLat: 32.0853,
     fieldLng: 34.7818,
@@ -264,27 +271,53 @@ export const mockGamesV2: Game[] = [
     bringShirts: true,
     notes: 'נא להגיע 10 דק׳ מראש לחימום',
     createdAt: Date.now() - 1000 * 60 * 60 * 48,
+    // 3-team split — for previewing the כוחות editor with three columns.
+    draftTeams: {
+      method: 'snake' as const,
+      numTeams: 3,
+      createdAt: Date.now() - 1000 * 60 * 25,
+      createdBy: ME,
+      teams: [
+        {
+          index: 0,
+          captainId: mockPlayers[0].id,
+          playerIds: [0, 1, 2, 3, 4].map((i) => mockPlayers[i].id),
+        },
+        {
+          index: 1,
+          captainId: mockPlayers[5].id,
+          playerIds: [5, 6, 7, 8, 9].map((i) => mockPlayers[i].id),
+        },
+        {
+          index: 2,
+          captainId: mockPlayers[10].id,
+          playerIds: [10, 11, 12, 13, 14].map((i) => mockPlayers[i].id),
+        },
+      ],
+    },
   },
-  // 2. From My Community — not yet joined, has open spots
+  // 2. From My Community — not yet joined, almost full (14/16). This is the
+  //    promo "hero" game: this Thursday, ME not registered → card shows the
+  //    "אני מגיע" join CTA, and joining takes it 14→15.
   {
     id: 'gv2-2',
     groupId: 'g1',
     title: 'חמישי כדורגל',
-    startsAt: inDays(10, 20, 0),
+    startsAt: nextThursdayAt(20, 0),
     fieldName: 'המגרש הקבוע',
     fieldLat: 32.0853,
     fieldLng: 34.7818,
-    maxPlayers: 15,
+    maxPlayers: 16,
     minPlayers: 10,
-    players: mockPlayers.slice(7, 14).map((p) => p.id), // 7 of 15
+    players: mockPlayers.slice(7, 21).map((p) => p.id), // 14 of 16, ME (idx 6) excluded
     waitlist: [],
     pending: [],
-    participantIds: unionIds(mockPlayers.slice(7, 14).map((p) => p.id), [], []),
+    participantIds: unionIds(mockPlayers.slice(7, 21).map((p) => p.id), [], []),
     status: 'open',
     locked: false,
     currentMatchIndex: 0,
     matches: [],
-    weather: { tempC: 21, rainProb: 30 },
+    weather: { tempC: 23, rainProb: 10 },
     createdBy: mockPlayers[0].id,
     visibility: 'community' as const,
     requiresApproval: false,
@@ -296,6 +329,62 @@ export const mockGamesV2: Game[] = [
     bringBall: false,
     bringShirts: false,
     createdAt: Date.now() - 1000 * 60 * 60 * 6,
+    // Two guests for the guest-rating demo: one ME added (→ editable rating),
+    // one another player added (→ ME, an admin, sees it read-only).
+    guests: [
+      {
+        id: 'guest-roi',
+        name: 'רועי',
+        estimatedRating: 4,
+        addedBy: ME,
+        createdAt: Date.now() - 1000 * 60 * 30,
+      },
+      {
+        id: 'guest-omer',
+        name: 'עומר',
+        estimatedRating: 3.5,
+        addedBy: mockPlayers[1].id,
+        createdAt: Date.now() - 1000 * 60 * 20,
+      },
+    ],
+    // 4-team split — for previewing the כוחות editor with four columns
+    // (includes both guests as chips).
+    draftTeams: {
+      method: 'snake' as const,
+      numTeams: 4,
+      createdAt: Date.now() - 1000 * 60 * 25,
+      createdBy: ME,
+      teams: [
+        {
+          index: 0,
+          captainId: mockPlayers[7].id,
+          playerIds: [7, 8, 9].map((i) => mockPlayers[i].id),
+        },
+        {
+          index: 1,
+          captainId: mockPlayers[10].id,
+          playerIds: [10, 11, 12].map((i) => mockPlayers[i].id),
+        },
+        {
+          index: 2,
+          captainId: mockPlayers[13].id,
+          playerIds: [
+            mockPlayers[13].id,
+            mockPlayers[14].id,
+            'guest:guest-roi',
+          ],
+        },
+        {
+          index: 3,
+          captainId: mockPlayers[15].id,
+          playerIds: [
+            mockPlayers[15].id,
+            mockPlayers[16].id,
+            'guest:guest-omer',
+          ],
+        },
+      ],
+    },
   },
   // 3. Open Game — public, in different city, requires approval
   {

@@ -37,7 +37,9 @@ export function HomeGreetingHeader({
         <Pressable onPress={onEdit} hitSlop={6}>
           <UserAvatar user={user} size={48} ring />
         </Pressable>
-        <Text style={styles.greeting} numberOfLines={1}>
+        {/* Wrap to a 2nd line instead of truncating to "…, מ…" on long
+            greeting+name combos (e.g. "צהריים טובים, מתן"). */}
+        <Text style={styles.greeting} numberOfLines={2}>
           {greeting} <Text>👋</Text>
         </Text>
       </View>

@@ -442,6 +442,10 @@ export function GameCreateScreen() {
         });
         return;
       }
+      if (e.code === 'VALIDATION_ERROR') {
+        setNotice({ title: he.validationErrorTitle, body: e.message });
+        return;
+      }
       throw err;
     }
   };

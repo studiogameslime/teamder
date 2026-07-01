@@ -18,9 +18,12 @@ export const mockCurrentUser: User = {
     isAvailableForInvites: true,
   },
   stats: {
-    totalGames: 26,
-    attended: 24,
-    cancelled: 2,
+    totalGames: 27,
+    attended: 24, // 24/27 ≈ 89% attendance
+    cancelled: 3,
+    wins: 19,
+    goals: 18,
+    assists: 11,
   },
 };
 
@@ -48,7 +51,7 @@ export const mockGroup: Group = {
   preferredHour: '20:00',
   costPerGame: 25,
   notes: 'מים ומגבת אישית. נוהג להגיע 10 דקות מראש לחימום.',
-  createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+  createdAt: Date.now() - 1000 * 60 * 60 * 24 * 800, // ~2.2y — demos club ותק
   updatedAt: Date.now() - 1000 * 60 * 60 * 24,
 };
 

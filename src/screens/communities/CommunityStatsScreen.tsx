@@ -21,7 +21,15 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
+import { AchievementBadge } from '@/components/AchievementBadge';
+import { appAlert } from '@/components/AppDialog';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import {
+  computeClubBadges,
+  type ClubMetrics,
+  type ClubBadge,
+} from '@/data/clubAchievements';
+import { computeClubLevel } from '@/utils/clubLevel';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services';
 import { groupService } from '@/services';
@@ -39,6 +47,7 @@ const MEDALS = ['#F4B73E', '#9AA4B2', '#CD7F32']; // gold / silver / bronze
 interface ChampData {
   totalGoals: number;
   totalRounds: number;
+  tiedRounds: number;
   players: ChampionshipRow[];
 }
 interface StatsData {
@@ -47,6 +56,13 @@ interface StatsData {
   avgAttendance: number;
   activeThisMonth: number;
   activeThisYear: number;
+  longestStreak: number;
+  longestStreakUid: string | null;
+}
+interface DeadlyDuo {
+  uidA: string;
+  uidB: string;
+  assists: number;
 }
 
 function firstName(name: string): string {
@@ -78,21 +94,34 @@ export function CommunityStatsScreen() {
   const { groupId } = useRoute<Params>().params;
   const [champ, setChamp] = useState<ChampData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [duo, setDuo] = useState<DeadlyDuo | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
   const [subtitle, setSubtitle] = useState<string>('');
+  // Members + founding date for the club achievements/level (the rest of the
+  // club metrics come from champ/stats already fetched).
+  const [clubMeta, setClubMeta] = useState<{ members: number; createdAt: number } | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [c, s, g] = await Promise.all([
+      const [c, s, g, d] = await Promise.all([
         gameService.getCommunityChampionship(groupId).catch(() => null),
         gameService.getCommunityStats(groupId).catch(() => null),
         groupService.get(groupId).catch(() => null),
+        gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
       ]);
       if (!alive) return;
-      if (g) setSubtitle(g.name);
-      setChamp(c ?? { totalGoals: 0, totalRounds: 0, players: [] });
+      if (g) {
+        setSubtitle(g.name);
+        setClubMeta({
+          members: g.playerIds?.length ?? 0,
+          createdAt: g.createdAt ?? Date.now(),
+        });
+      }
+      setChamp(c ?? { totalGoals: 0, totalRounds: 0, tiedRounds: 0, players: [] });
       setStats(
         s ?? {
           totalFinished: 0,
@@ -100,14 +129,20 @@ export function CommunityStatsScreen() {
           avgAttendance: 0,
           activeThisMonth: 0,
           activeThisYear: 0,
+          longestStreak: 0,
+          longestStreakUid: null,
         },
       );
-      // Resolve the players we'll actually show (top scorers + any leader).
+      setDuo(d);
+      // Resolve the players we'll actually show (top scorers + any leader +
+      // the deadly duo + the longest-streak holder).
       const ids = new Set<string>();
       (c?.players ?? []).slice(0, 10).forEach((r) => ids.add(r.uid));
       (c?.players ?? []).forEach((r) => {
         if (r.assists > 0 || r.wins > 0 || r.games > 0) ids.add(r.uid);
       });
+      if (d) { ids.add(d.uidA); ids.add(d.uidB); }
+      if (s?.longestStreakUid) ids.add(s.longestStreakUid);
       const fetched = await Promise.all(
         Array.from(ids).map((id) => userService.getUserById(id).catch(() => null)),
       );
@@ -130,26 +165,52 @@ export function CommunityStatsScreen() {
     const totalWins = players.reduce((a, p) => a + p.wins, 0);
     const totalGoals = champ?.totalGoals ?? 0;
     const totalRounds = champ?.totalRounds ?? 0;
+    const tiedRounds = champ?.tiedRounds ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
-    const deadliest =
-      leaderBy(
-        players.filter((p) => p.rounds >= 5 && p.goals > 0),
-        (p) => p.goals / p.rounds,
-      ) ?? null;
+    const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
+    const topScorer = players[0] ?? null; // already ranked by goals
+    const kingSharePct =
+      topScorer && totalGoals > 0 ? Math.round((topScorer.goals / totalGoals) * 100) : 0;
     return {
       players,
       totalGoals,
       totalRounds,
+      tiedRounds,
+      drawPct,
       totalAssists,
       totalWins,
       goalsPerMini,
-      topScorer: players[0] ?? null, // already ranked by goals
+      kingSharePct,
+      topScorer,
       topAssister: leaderBy(players, (p) => p.assists),
       topWinner: leaderBy(players, (p) => p.wins),
       mostLoyal: leaderBy(players, (p) => p.games),
-      deadliest,
     };
   }, [champ]);
+
+  // Club achievements + level — derived from the same aggregates, client-side.
+  const club = useMemo(() => {
+    const metrics: ClubMetrics = {
+      gameNights: stats?.totalFinished ?? 0,
+      clubGoals: champ?.totalGoals ?? 0,
+      members: clubMeta?.members ?? 0,
+      ageYears: clubMeta
+        ? Math.floor((Date.now() - clubMeta.createdAt) / (365.25 * 24 * 3600 * 1000))
+        : 0,
+      activeThisMonth: stats?.activeThisMonth ?? 0,
+      organizationRatePct: Math.round((stats?.organizationRate ?? 0) * 100),
+    };
+    return { badges: computeClubBadges(metrics), level: computeClubLevel(metrics) };
+  }, [stats, champ, clubMeta]);
+
+  const onBadgePress = (b: ClubBadge) => {
+    const target = b.next?.threshold ?? b.def.tiers[b.def.tiers.length - 1].threshold;
+    const progress =
+      b.tier && !b.next
+        ? he.clubAchievementGold
+        : he.clubAchievementProgress(b.value, target);
+    appAlert(b.def.titleHe, `${b.def.howHe}\n\n${progress}`);
+  };
 
   const name = (uid?: string) =>
     uid && people[uid] ? firstName(people[uid].name) : '—';
@@ -181,6 +242,32 @@ export function CommunityStatsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* ── רמת המועדון (למעלה, מעל הכל) ── */}
+          <Card style={styles.levelCard}>
+            <View style={styles.levelDisc}>
+              <Text style={styles.levelDiscLabel}>{he.clubLevelLabel}</Text>
+              <Text style={styles.levelDiscNum}>{club.level.level}</Text>
+            </View>
+            <View style={styles.levelInfo}>
+              <Text style={styles.levelTier} numberOfLines={1}>
+                {club.level.tierName}
+              </Text>
+              <View style={styles.levelBarTrack}>
+                <View
+                  style={[
+                    styles.levelBarFill,
+                    { width: `${Math.round(club.level.progressPct * 100)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.levelHint} numberOfLines={1}>
+                {club.level.pointsToNext == null
+                  ? he.clubLevelMaxHint
+                  : he.clubLevelNextHint(club.level.pointsToNext)}
+              </Text>
+            </View>
+          </Card>
+
           {/* ── המועדון במספרים ── */}
           <SectionTitle icon="bar-chart" text={he.communityStatsSectionNumbers} />
           <View style={styles.heroGrid}>
@@ -191,6 +278,24 @@ export function CommunityStatsScreen() {
             <HeroTile icon="flame" tint={colors.danger} value={stats?.activeThisMonth ?? 0} label={he.communityStatsActiveMonth} />
             <HeroTile icon="speedometer" tint={colors.warning} value={oneDecimal(derived.goalsPerMini)} label={he.communityStatsGoalsPerMini} />
           </View>
+
+          {/* ── הישגי המועדון (תארים) ── */}
+          <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
+          <Card style={styles.badgeCard}>
+            <View style={styles.badgeGrid}>
+              {club.badges.map((b) => (
+                <AchievementBadge
+                  key={b.def.id}
+                  def={b.def}
+                  tier={b.tier}
+                  size={64}
+                  showTierLabel
+                  onPress={() => onBadgePress(b)}
+                  style={styles.badgeItem}
+                />
+              ))}
+            </View>
+          </Card>
 
           {/* ── מובילי המועדון ── */}
           <SectionTitle icon="trophy" text={he.communityStatsSectionLeaders} />
@@ -229,82 +334,73 @@ export function CommunityStatsScreen() {
             />
           </View>
 
-          {/* ── טבלת המבקיעים ── */}
-          {derived.players.length > 0 ? (
-            <>
-              <SectionTitle icon="list" text={he.communityStatsSectionScorers} />
-              <Card style={styles.tableCard}>
-                {derived.players.slice(0, 10).map((p, i) => (
-                  <View key={p.uid} style={[styles.scorerRow, i > 0 && styles.scorerDivider]}>
-                    <View
-                      style={[
-                        styles.rankBadge,
-                        i < 3 && { backgroundColor: MEDALS[i] },
-                      ]}
-                    >
-                      <Text style={[styles.rankText, i < 3 && styles.rankTextMedal]}>
-                        {i + 1}
-                      </Text>
-                    </View>
-                    <UserAvatar user={resolved(p.uid)} size={34} />
-                    <Text style={styles.scorerName} numberOfLines={1}>
-                      {name(p.uid)}
-                    </Text>
-                    {p.assists > 0 ? (
-                      <View style={styles.assistPill}>
-                        <Ionicons name="git-network" size={11} color="#7C3AED" />
-                        <Text style={styles.assistPillText}>{p.assists}</Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.goalsPill}>
-                      <Ionicons name="football" size={12} color={colors.primary} />
-                      <Text style={styles.goalsPillText}>{p.goals}</Text>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            </>
-          ) : null}
+          {/* טבלת המבקיעים הוסרה — כפילות מול טבלת הליגה במסך פרטי המועדון. */}
 
           {/* ── נתונים מעניינים ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
-            {derived.deadliest ? (
+            {derived.topScorer && derived.totalGoals > 0 ? (
               <FunRow
-                icon="skull-outline"
+                icon="ribbon-outline"
+                tint={colors.warning}
+                parts={[
+                  { t: `${derived.kingSharePct}% `, em: 'num' },
+                  { t: 'מכמות השערים במועדון הכניס ' },
+                  { t: name(derived.topScorer.uid), em: 'name' },
+                ]}
+              />
+            ) : null}
+            {duo && duo.assists > 0 ? (
+              <FunRow
+                icon="git-network-outline"
+                tint="#7C3AED"
+                parts={[
+                  { t: name(duo.uidA), em: 'name' },
+                  { t: ' ו' },
+                  { t: name(duo.uidB), em: 'name' },
+                  { t: ' הם הצמד עם הכי הרבה בישולים משותפים (' },
+                  { t: `${duo.assists}`, em: 'num' },
+                  { t: ')' },
+                ]}
+              />
+            ) : null}
+            {derived.totalRounds > 0 ? (
+              <FunRow
+                icon="git-compare-outline"
+                tint={colors.info}
+                parts={[
+                  { t: `${derived.drawPct}% `, em: 'num' },
+                  { t: 'מהמשחקונים הסתיימו בתיקו' },
+                ]}
+              />
+            ) : null}
+            {stats && stats.longestStreak >= 2 ? (
+              <FunRow
+                icon="flame-outline"
                 tint={colors.danger}
-                label={he.communityStatsDeadliest}
-                who={name(derived.deadliest.uid)}
-                value={he.communityStatsDeadliestValue(
-                  oneDecimal(derived.deadliest.goals / derived.deadliest.rounds),
-                )}
+                parts={[
+                  { t: name(stats.longestStreakUid ?? undefined), em: 'name' },
+                  { t: ' הגיע ' },
+                  { t: `${stats.longestStreak} ערבים`, em: 'num' },
+                  { t: ' ברצף — הרצף הארוך במועדון' },
+                ]}
               />
             ) : null}
             <FunRow
               icon="checkmark-done-outline"
               tint={colors.success}
-              label={he.communityStatsOrgRate}
-              value={`${Math.round((stats?.organizationRate ?? 0) * 100)}%`}
-            />
-            <FunRow
-              icon="people-outline"
-              tint={colors.info}
-              label={he.communityStatsAvgAttendance}
-              value={he.communityStatsAvgAttendanceValue(
-                oneDecimal(stats?.avgAttendance ?? 0),
-              )}
-            />
-            <FunRow
-              icon="trophy-outline"
-              tint={colors.warning}
-              label={he.communityStatsTotalWins}
-              value={String(derived.totalWins)}
+              parts={[
+                { t: `${Math.round((stats?.organizationRate ?? 0) * 100)}% `, em: 'num' },
+                { t: 'מהמשחקים המתוכננים יצאו לפועל' },
+              ]}
             />
             <FunRow
               icon="calendar-outline"
               tint={colors.primary}
-              label={he.communityStatsActiveYear}
-              value={String(stats?.activeThisYear ?? 0)}
+              parts={[
+                { t: `${stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
+                { t: ' היו פעילים השנה' },
+              ]}
               last
             />
           </Card>
@@ -387,19 +483,20 @@ function LeaderCard({
   );
 }
 
+// One row = a single flowing sentence (not columns), with the stat number and
+// the player names emphasised inline (user request). `em:'num'` → bold + the
+// row tint; `em:'name'` → bold in the main text colour.
+type FunPart = { t: string; em?: 'num' | 'name' };
+
 function FunRow({
   icon,
   tint,
-  label,
-  who,
-  value,
+  parts,
   last,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   tint: string;
-  label: string;
-  who?: string;
-  value: string;
+  parts: FunPart[];
   last?: boolean;
 }) {
   return (
@@ -407,11 +504,22 @@ function FunRow({
       <View style={[styles.funIcon, { backgroundColor: tint + '1A' }]}>
         <Ionicons name={icon} size={16} color={tint} />
       </View>
-      <View style={styles.funTextWrap}>
-        <Text style={styles.funLabel} numberOfLines={1}>{label}</Text>
-        {who ? <Text style={styles.funWho} numberOfLines={1}>{who}</Text> : null}
-      </View>
-      <Text style={[styles.funValue, { color: tint }]}>{value}</Text>
+      <Text style={styles.funSentence}>
+        {parts.map((p, i) => (
+          <Text
+            key={i}
+            style={
+              p.em === 'num'
+                ? [styles.funEm, { color: tint }]
+                : p.em === 'name'
+                  ? styles.funEmName
+                  : undefined
+            }
+          >
+            {p.t}
+          </Text>
+        ))}
+      </Text>
     </View>
   );
 }
@@ -425,7 +533,9 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.md, gap: spacing.sm },
 
   sectionTitle: {
-    flexDirection: 'row-reverse',
+    // Under forceRTL, 'row' packs the first child (icon) to the RIGHT and
+    // anchors the whole header right. ('row-reverse' wrongly pushed it left.)
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: spacing.md,
@@ -478,11 +588,44 @@ const styles = StyleSheet.create({
 
   // fun facts
   funCard: { padding: 0, overflow: 'hidden' },
-  funRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  // `row` (not row-reverse): under forceRTL the first child (icon) sits on the
+  // visual RIGHT, with the sentence flowing to its left (user request).
+  funRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
   funDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   funIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  funTextWrap: { flex: 1, minWidth: 0 },
-  funLabel: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
-  funWho: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
-  funValue: { ...typography.body, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  funSentence: { ...typography.body, flex: 1, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, lineHeight: 24 },
+  funEm: { fontWeight: '900', fontVariant: ['tabular-nums'] },
+  funEmName: { fontWeight: '800', color: colors.text },
+
+  // club level + achievements
+  levelCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  levelDisc: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelDiscLabel: { ...typography.caption, color: '#FFFFFF', fontWeight: '700', opacity: 0.9, marginBottom: -4 },
+  levelDiscNum: { ...typography.h1, color: '#FFFFFF', fontWeight: '900', fontVariant: ['tabular-nums'] },
+  levelInfo: { flex: 1, minWidth: 0, gap: 6 },
+  levelTier: { ...typography.h3, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
+  levelBarTrack: { height: 10, borderRadius: 999, backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
+  levelBarFill: { height: '100%', borderRadius: 999, backgroundColor: colors.primary },
+  levelHint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
+  badgeCard: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
+  badgeGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: spacing.md,
+  },
+  badgeItem: { width: '33.3%' },
 });

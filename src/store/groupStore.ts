@@ -34,6 +34,12 @@ interface GroupStore {
    */
   subscribe: (userId: UserId) => () => void;
 
+  /** Wipe all per-user state (and tear down the live listener) on sign-out /
+   *  account switch, so the next account never sees the previous user's
+   *  communities. Resets `hydrated` to false so RootNavigator's splash gate
+   *  re-arms during the swap. */
+  reset: () => void;
+
   // Membership state derived from currentGroupId + groups arrays
   getMembership: (userId: UserId) => MembershipStatus;
   getCurrentGroup: () => Group | null;
@@ -118,6 +124,14 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
         groupsUnsub = null;
       }
     };
+  },
+
+  reset: () => {
+    if (groupsUnsub) {
+      groupsUnsub();
+      groupsUnsub = null;
+    }
+    set({ hydrated: false, currentGroupId: null, groups: [], pendingGroups: [] });
   },
 
   hydrate: async (userId) => {

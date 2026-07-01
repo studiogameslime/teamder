@@ -195,11 +195,15 @@ async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
     photo: users[i]?.photoUrl ?? '',
     role: uid === game.createdBy ? 'admin' : 'member',
   }));
-  const guests: WatchPlayer[] = (game.guests ?? []).map((g) => ({
-    name: g.name,
-    photo: '',
-    role: 'guest',
-  }));
+  // Only ACTIVE guests occupy a seat — a waitlisted guest isn't on the roster,
+  // so excluding them keeps the watch/widget count consistent with the app.
+  const guests: WatchPlayer[] = (game.guests ?? [])
+    .filter((g) => g.waitlisted !== true)
+    .map((g) => ({
+      name: g.name,
+      photo: '',
+      role: 'guest',
+    }));
   return [...real, ...guests];
 }
 

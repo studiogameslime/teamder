@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { User } from '@/types';
 import { userService } from '@/services';
+import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { useGroupStore } from '@/store/groupStore';
+import { useGameStore } from '@/store/gameStore';
 
 interface UserStore {
   // Bootstrap
@@ -106,14 +109,29 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
 
   signOut: async () => {
+    // Remove THIS device's push token from the account BEFORE auth is torn
+    // down — otherwise the next user on this phone keeps getting the previous
+    // user's pushes (privacy leak). Best-effort; never blocks sign-out.
+    const uid = get().currentUser?.id;
+    if (uid) await notificationsService.unregisterThisDevice(uid);
     await userService.signOut();
     set({ currentUser: null });
+    // Wipe per-user stores so the next account (incl. the common
+    // guest→register flow) never sees the previous user's communities/roster.
+    useGroupStore.getState().reset();
+    useGameStore.getState().reset();
     logEvent(AnalyticsEvent.SignOut);
   },
 
   deleteOwnAccount: async (password) => {
+    // Drop this device's token before the account is anonymized/deleted, so a
+    // deleted account doesn't keep receiving pushes on this device.
+    const uid = get().currentUser?.id;
+    if (uid) await notificationsService.unregisterThisDevice(uid);
     await userService.deleteOwnAccount(password);
     set({ currentUser: null });
+    useGroupStore.getState().reset();
+    useGameStore.getState().reset();
     logEvent(AnalyticsEvent.AccountDeleted);
   },
 

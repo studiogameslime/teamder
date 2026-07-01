@@ -45,6 +45,11 @@ export interface ParticipantEntry {
    *  bring-ball state inline (no extra section needed below the
    *  fold). Other rows render the read-only badge as before. */
   isCurrentUser?: boolean;
+  /** Currently holds the club's ball / jerseys at home (from the group's
+   *  end-evening handoff). Read-only badge next to the name — distinct from the
+   *  pre-game "אני מביא כדור" toggle on the trailing edge. */
+  holdsBall?: boolean;
+  holdsJerseys?: boolean;
 }
 
 interface Props {
@@ -237,37 +242,27 @@ function ParticipantRow({
             </Text>
           </View>
         ) : null}
+        {/* Who currently HOLDS the club's gear (read-only) — distinct from the
+            trailing "bring ball" toggle. */}
+        {entry.holdsBall ? (
+          <View
+            style={styles.holderBadge}
+            accessibilityLabel={he.equipmentHolderBallA11y}
+          >
+            <Ionicons name="football" size={13} color="#1D4ED8" />
+          </View>
+        ) : null}
+        {entry.holdsJerseys ? (
+          <View
+            style={styles.holderBadge}
+            accessibilityLabel={he.equipmentHolderJerseysA11y}
+          >
+            <Ionicons name="shirt" size={13} color="#7C3AED" />
+          </View>
+        ) : null}
       </View>
-      {canToggle ? (
-        <Pressable
-          onPress={(e) => {
-            // Inner press shouldn't bubble to the row's navigate-to-
-            // PlayerCard handler. RN doesn't auto-stop bubbling for
-            // Pressable so call the helper explicitly.
-            e.stopPropagation?.();
-            onToggleBringingBall?.(entry.id);
-          }}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.ballBadge,
-            !entry.isBringingBall && styles.ballBadgeInactive,
-            pressed && { opacity: 0.7 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.matchBringBallToggle}
-          accessibilityState={{ selected: !!entry.isBringingBall }}
-        >
-          <Ionicons
-            name={entry.isBringingBall ? 'football' : 'football-outline'}
-            size={14}
-            color={entry.isBringingBall ? '#1D4ED8' : colors.textMuted}
-          />
-        </Pressable>
-      ) : entry.isBringingBall ? (
-        <View style={styles.ballBadge}>
-          <Ionicons name="football" size={14} color="#1D4ED8" />
-        </View>
-      ) : null}
+      {/* (Bring-ball toggle removed per owner request — it cluttered the row,
+          especially on guest rows where it isn't actionable.) */}
       {entry.bucket === 'guest' ? null : (
         <StatusBadge bucket={entry.bucket} arrival={entry.arrival} />
       )}
@@ -468,6 +463,15 @@ const styles = StyleSheet.create({
   },
   guestBadgeText: {
     color: colors.textMuted,
+  },
+  // Small read-only "holds the club's ball/jerseys" chip next to the name.
+  holderBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tag: {
     flexDirection: 'row',

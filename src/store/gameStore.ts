@@ -56,6 +56,10 @@ interface GameStore {
   /** Auth uid; null until RootNavigator sets it after login. */
   currentUserId: PlayerId | null;
   setCurrentUserId: (id: PlayerId) => void;
+
+  /** Clear the cached players map + game + uid on sign-out / account switch so
+   *  the next account never sees the previous user's roster. No-op in mock. */
+  reset: () => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -69,6 +73,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentUserId: USE_MOCK_DATA ? mockPlayers[6]?.id ?? null : null,
 
   setCurrentUserId: (id) => set({ currentUserId: id }),
+
+  reset: () => {
+    if (USE_MOCK_DATA) return; // keep the demo seed intact
+    set({ players: {}, game: makeEmptyGame(), currentUserId: null });
+  },
 
   hydratePlayers: async (uids) => {
     if (USE_MOCK_DATA) return; // mockPlayers map is already populated

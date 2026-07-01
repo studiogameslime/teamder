@@ -152,6 +152,7 @@ export function RequestsScreen() {
                 key={request.id}
                 user={user}
                 busy={busy === `f:${request.fromUserId}`}
+                onOpenProfile={user ? () => nav.navigate('PlayerCard', { userId: user.id }) : undefined}
                 onApprove={() =>
                   act(`f:${request.fromUserId}`, () => friendsService.acceptRequest(request.fromUserId, me.id))
                 }
@@ -181,6 +182,7 @@ export function RequestsScreen() {
                 key={`${group.id}:${u.id}`}
                 user={u}
                 busy={busy === `g:${group.id}:${u.id}`}
+                onOpenProfile={() => nav.navigate('PlayerCard', { userId: u.id })}
                 onApprove={() => act(`g:${group.id}:${u.id}`, () => groupService.approveMember(group.id, u.id))}
                 onDecline={() => act(`g:${group.id}:${u.id}`, () => groupService.rejectMember(group.id, u.id))}
               />
@@ -206,6 +208,7 @@ export function RequestsScreen() {
                 key={`${game.id}:${u.id}`}
                 user={u}
                 busy={busy === `m:${game.id}:${u.id}`}
+                onOpenProfile={() => nav.navigate('PlayerCard', { userId: u.id })}
                 onApprove={() =>
                   act(`m:${game.id}:${u.id}`, async () => {
                     const r = await gameService.approveGameJoin(game.id, u.id);
@@ -238,7 +241,7 @@ function Section({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>{title} · {count}</Text>
+        <Text style={styles.sectionTitle} numberOfLines={1}>{title} · {count}</Text>
         {count > 1 ? (
           busy ? (
             <ActivityIndicator color={colors.primary} />
@@ -256,19 +259,27 @@ function Section({
 }
 
 function Row({
-  user, busy, onApprove, onDecline,
+  user, busy, onApprove, onDecline, onOpenProfile,
 }: {
   user: User | null;
   busy: boolean;
   onApprove: () => void;
   onDecline: () => void;
+  onOpenProfile?: () => void;
 }) {
   return (
     <View style={styles.row}>
-      <View style={styles.rowMain}>
+      {/* Avatar + name open the player's card (user report: they should be
+          tappable). Falls back to a plain View when we have no user id. */}
+      <Pressable
+        style={styles.rowMain}
+        onPress={onOpenProfile}
+        disabled={!onOpenProfile}
+        hitSlop={6}
+      >
         <Avatar avatarId={user?.avatarId} uri={user?.photoUrl} name={user?.name ?? '?'} size={44} />
         <Text style={styles.name} numberOfLines={1}>{user?.name ?? he.friendsUnknownUser}</Text>
-      </View>
+      </Pressable>
       {busy ? (
         <ActivityIndicator color={colors.primary} />
       ) : (
@@ -294,7 +305,7 @@ const styles = StyleSheet.create({
   emptyHint: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingHorizontal: spacing.lg },
   section: { marginBottom: spacing.lg },
   sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sectionTitle: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  sectionTitle: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN, flex: 1 },
   approveAllBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8 },
   approveAllTxt: { ...typography.bodyBold, color: colors.primary },
   // `row` (NOT row-reverse): under the app's RTL this lays the avatar+name out

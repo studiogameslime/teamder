@@ -358,17 +358,19 @@ function StatTile({
 function OtherTopCard({ user, viewerId }: { user: User; viewerId: string }) {
   return (
     <Card style={styles.topCard}>
-      <View style={styles.topRow}>
-        <View style={styles.topIdentity}>
-          <PlayerIdentity user={user} size={62} />
-          <View style={styles.topNameBlock}>
-            <Text style={styles.topName} numberOfLines={1}>
-              {user.name}
-            </Text>
-          </View>
+      <View style={styles.topIdentity}>
+        <PlayerIdentity user={user} size={62} />
+        <View style={styles.topNameBlock}>
+          <Text style={styles.topName} numberOfLines={1}>
+            {user.name}
+          </Text>
         </View>
-        <View style={styles.topButtons}>
+      </View>
+      <View style={styles.topButtons}>
+        <View style={styles.topButtonHalf}>
           <FriendActionButton meId={viewerId} otherUserId={user.id} />
+        </View>
+        <View style={styles.topButtonHalf}>
           <Button
             title={he.dmSendMessage}
             variant="outline"
@@ -835,15 +837,17 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   // ── Other-player top card ──
-  topCard: { padding: spacing.md },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  topCard: { padding: spacing.md, gap: spacing.md },
   topIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   topNameBlock: { alignItems: 'flex-start', gap: 3 },
   topName: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   topRatingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   topRatingNum: { ...typography.body, color: colors.text, fontWeight: '800' },
   topRatingCount: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
-  topButtons: { flex: 1, gap: spacing.sm, justifyContent: 'center' },
+  // Two compact action buttons side-by-side under the identity row, each
+  // taking half the width (was a full-width column that dwarfed the card).
+  topButtons: { flexDirection: 'row', gap: spacing.sm, alignItems: 'stretch' },
+  topButtonHalf: { flex: 1 },
   starRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 1 },
   // ── Shared-communities chips ──
   commCard: {

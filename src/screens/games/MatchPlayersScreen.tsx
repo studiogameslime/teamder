@@ -34,9 +34,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
+import { GuestModal } from '@/components/GuestModal';
+import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { formatRating, isRated } from '@/utils/rating';
 import { gameService } from '@/services/gameService';
+import { groupService } from '@/services/groupService';
 import { isTerminalGame } from '@/services/gameLifecycle';
 import { logError } from '@/services/errorLog';
 import { useGameStore } from '@/store/gameStore';
@@ -56,6 +60,12 @@ interface RosterEntry {
   isAdmin: boolean;
   arrival?: ArrivalStatus;
   isBringingBall?: boolean;
+  /** Holds the club's ball / jerseys (from the end-evening handoff). */
+  holdsBall?: boolean;
+  holdsJerseys?: boolean;
+  /** Admin internal rating (0 = unrated). Only carried for admin viewers in
+   *  internal-rating communities — members never receive it. */
+  rating?: number;
 }
 
 export function MatchPlayersScreen() {
@@ -70,6 +80,14 @@ export function MatchPlayersScreen() {
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyOffer, setBusyOffer] = useState(false);
+  // Guest being edited (rename by admin / rate by the adder).
+  const [editingGuest, setEditingGuest] = useState<GameGuest | null>(null);
+  // Admin internal-rating editor target (player id + name) + save spinner.
+  const [ratingTarget, setRatingTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [savingRating, setSavingRating] = useState(false);
 
   const reload = useCallback(async () => {
     if (!gameId) {
@@ -107,13 +125,34 @@ export function MatchPlayersScreen() {
     }, [reload]),
   );
 
+  // The game's community — source of admin set, internal ratings, and the
+  // club ball/jersey holders (all live via the groups store).
+  const group = useMemo(
+    () => (game ? groups.find((x) => x.id === game.groupId) : undefined),
+    [game, groups],
+  );
   // Resolve admin set for this game's group so we can flag the
   // organizer/coaches in the roster.
-  const adminIds = useMemo(() => {
-    if (!game) return new Set<string>();
-    const g = groups.find((x) => x.id === game.groupId);
-    return new Set<string>(g?.adminIds ?? []);
-  }, [game, groups]);
+  const adminIds = useMemo(
+    () => new Set<string>(group?.adminIds ?? []),
+    [group],
+  );
+  const internalRating = group?.internalRating === true;
+  const iAmAdmin = adminIds.has(currentUser?.id ?? '');
+  // Internal ratings are admin-only — show solely to admins, and only when the
+  // community runs in internal-rating mode (user report: admin couldn't see
+  // the ratings they'd assigned on the match roster).
+  const showRatings = internalRating && iAmAdmin;
+  // Club equipment holders (carried over from the end-evening handoff) so the
+  // roster surfaces who has the ball / jerseys, same as the community list.
+  const ballHolders = useMemo(
+    () => new Set<string>(group?.ballHolderIds ?? []),
+    [group?.ballHolderIds],
+  );
+  const jerseyHolders = useMemo(
+    () => new Set<string>(group?.jerseysHolderIds ?? []),
+    [group?.jerseysHolderIds],
+  );
 
   // Set of uids stamped as "I'm bringing a ball" on this game. Only
   // meaningful for users in `players[]` — waitlist / pending / cancelled
@@ -137,16 +176,28 @@ export function MatchPlayersScreen() {
           isAdmin: adminIds.has(uid),
           arrival: game?.arrivals?.[uid],
           isBringingBall: opts?.withBall ? ballBringers.has(uid) : false,
+          holdsBall: ballHolders.has(uid),
+          holdsJerseys: jerseyHolders.has(uid),
+          rating: showRatings ? group?.adminRatings?.[uid] : undefined,
         };
       });
     },
-    [playersMap, adminIds, game?.arrivals, ballBringers],
+    [
+      playersMap,
+      adminIds,
+      game?.arrivals,
+      ballBringers,
+      ballHolders,
+      jerseyHolders,
+      showRatings,
+      group?.adminRatings,
+    ],
   );
 
   // Admin-only: kick a registered player off the game. Confirms first,
   // then calls the service (which also offers the freed slot to the
   // head of the waitlist) and reloads the roster.
-  const isAdminViewer = adminIds.has(currentUser?.id ?? '');
+  const isAdminViewer = iAmAdmin;
   const handleRemovePlayer = useCallback(
     (uid: string, name: string) => {
       if (!game || !currentUser) return;
@@ -173,6 +224,34 @@ export function MatchPlayersScreen() {
       ]);
     },
     [game, currentUser, reload],
+  );
+
+  // Admin saves a player's internal rating. The groups store is live, so the
+  // chip refreshes from the snapshot — just close the sheet on success.
+  const saveAdminRating = useCallback(
+    async (playerId: string, rating: number | null) => {
+      if (!group || !currentUser) return;
+      setSavingRating(true);
+      try {
+        await groupService.setAdminRating(
+          group.id,
+          currentUser.id,
+          playerId,
+          rating,
+        );
+        setRatingTarget(null);
+      } catch (err) {
+        logError('matchPlayersSetRating', err, {
+          screen: 'MatchPlayersScreen',
+          groupId: group.id,
+          targetUserId: playerId,
+        });
+        toast.error(he.error);
+      } finally {
+        setSavingRating(false);
+      }
+    },
+    [group, currentUser],
   );
 
   if (loading && !game) {
@@ -266,15 +345,32 @@ export function MatchPlayersScreen() {
                       ? () => handleRemovePlayer(e.user.id, e.user.name)
                       : undefined
                   }
+                  onSetRating={
+                    showRatings
+                      ? () =>
+                          setRatingTarget({ id: e.user.id, name: e.user.name })
+                      : undefined
+                  }
                 />
               ))}
-              {guests.map((g, i) => (
-                <GuestRow
-                  key={g.id}
-                  guest={g}
-                  showDivider={i + playerEntries.length > 0}
-                />
-              ))}
+              {guests.map((g, i) => {
+                const isAdder = currentUser?.id === g.addedBy;
+                const canSeeRating = isAdder || isAdminViewer;
+                // The adder edits the rating; the admin can rename. Either
+                // reason opens the editor (the modal gates the fields).
+                const canEdit = isAdder || isAdminViewer;
+                return (
+                  <GuestRow
+                    key={g.id}
+                    guest={g}
+                    showDivider={i + playerEntries.length > 0}
+                    rating={canSeeRating ? g.estimatedRating : undefined}
+                    onPress={
+                      canEdit ? () => setEditingGuest(g) : undefined
+                    }
+                  />
+                );
+              })}
             </Card>
           )}
         </Section>
@@ -373,6 +469,12 @@ export function MatchPlayersScreen() {
                           }
                         : undefined
                     }
+                    onSetRating={
+                      showRatings
+                        ? () =>
+                            setRatingTarget({ id: e.user.id, name: e.user.name })
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -451,6 +553,12 @@ export function MatchPlayersScreen() {
                             )
                         : undefined
                     }
+                    onSetRating={
+                      showRatings
+                        ? () =>
+                            setRatingTarget({ id: e.user.id, name: e.user.name })
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -492,6 +600,47 @@ export function MatchPlayersScreen() {
           </Section>
         ) : null}
       </ScrollView>
+
+      {currentUser ? (
+        <GuestModal
+          visible={!!editingGuest}
+          gameId={game.id}
+          callerId={currentUser.id}
+          existing={editingGuest}
+          isAdmin={isAdminViewer}
+          onClose={() => setEditingGuest(null)}
+          onChanged={(action, saved) => {
+            // Reflect the change IMMEDIATELY (don't wait for the reload) so an
+            // edited guest rating updates on the spot, then refresh in bg.
+            setGame((g) =>
+              g
+                ? {
+                    ...g,
+                    guests:
+                      action === 'added'
+                        ? [...(g.guests ?? []), saved]
+                        : (g.guests ?? []).map((x) =>
+                            x.id === saved.id ? saved : x,
+                          ),
+                  }
+                : g,
+            );
+            reload();
+          }}
+        />
+      ) : null}
+
+      <AdminRatingSheet
+        target={ratingTarget}
+        current={
+          ratingTarget ? group?.adminRatings?.[ratingTarget.id] ?? 0 : 0
+        }
+        saving={savingRating}
+        onClose={() => setRatingTarget(null)}
+        onSave={(rating) =>
+          ratingTarget && saveAdminRating(ratingTarget.id, rating)
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -545,6 +694,7 @@ function PlayerRow({
   onApprove,
   onReject,
   onRemove,
+  onSetRating,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
@@ -557,8 +707,12 @@ function PlayerRow({
   onApprove?: () => void;
   onReject?: () => void;
   onRemove?: () => void;
+  /** Admin-only: open the internal-rating editor for this player. When
+   *  provided, the rating chip renders (showing the value, or "דרג"). */
+  onSetRating?: () => void;
 }) {
-  const { user, isAdmin, arrival, isBringingBall } = entry;
+  const { user, isAdmin, arrival, isBringingBall, holdsBall, holdsJerseys, rating } =
+    entry;
   // `onRemove` is NOT here on purpose — a plain "remove player" renders as
   // a compact inline icon on the row instead of a full-width pink bar, which
   // looked cluttered down a long roster (user report). The prominent
@@ -596,6 +750,22 @@ function PlayerRow({
             {isAdmin ? (
               <Tag label={he.matchPlayersAdminTag} tone="primary" />
             ) : null}
+            {holdsBall ? (
+              <View
+                style={styles.holderBadge}
+                accessibilityLabel={he.equipmentHolderBallA11y}
+              >
+                <Ionicons name="football" size={13} color="#1D4ED8" />
+              </View>
+            ) : null}
+            {holdsJerseys ? (
+              <View
+                style={styles.holderBadge}
+                accessibilityLabel={he.equipmentHolderJerseysA11y}
+              >
+                <Ionicons name="shirt" size={13} color="#7C3AED" />
+              </View>
+            ) : null}
           </View>
           {offerHint ? (
             <Text style={styles.offerHint}>{offerHint}</Text>
@@ -605,6 +775,23 @@ function PlayerRow({
             <Tag label={he.matchPlayersNoShowTag} tone="danger" inline />
           ) : null}
         </View>
+        {/* Admin-only internal-rating chip — shows the value (or "דרג"), taps
+            open the editor. A nested Pressable so it works inside the row. */}
+        {onSetRating ? (
+          <Pressable
+            onPress={onSetRating}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.ratingChip,
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Ionicons name="star" size={12} color={colors.warning} />
+            <Text style={styles.ratingChipText}>
+              {isRated(rating) ? formatRating(rating) : he.communityAdminRatingSet}
+            </Text>
+          </Pressable>
+        ) : null}
         {isBringingBall ? (
           <View style={styles.ballBadge}>
             <Ionicons name="football" size={14} color="#1D4ED8" />
@@ -714,8 +901,20 @@ function PlayerRow({
   );
 }
 
-function GuestRow({ guest, showDivider }: { guest: GameGuest; showDivider: boolean }) {
-  return (
+function GuestRow({
+  guest,
+  showDivider,
+  rating,
+  onPress,
+}: {
+  guest: GameGuest;
+  showDivider: boolean;
+  /** Shown only when the viewer is allowed to see it (adder or admin). */
+  rating?: number;
+  /** When set, the row is tappable to open the guest editor. */
+  onPress?: () => void;
+}) {
+  const body = (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
       <View style={styles.guestAvatar}>
         <Ionicons name="person" size={18} color={colors.textMuted} />
@@ -726,7 +925,27 @@ function GuestRow({ guest, showDivider }: { guest: GameGuest; showDivider: boole
         </Text>
         <Text style={styles.guestSub}>{he.matchPlayersGuestTag}</Text>
       </View>
+      {rating != null ? (
+        <View style={styles.guestRatingPill}>
+          <Ionicons name="star" size={13} color={colors.primary} />
+          <Text style={styles.guestRatingText}>{rating}</Text>
+        </View>
+      ) : null}
+      {onPress ? (
+        <Ionicons
+          name="create-outline"
+          size={18}
+          color={colors.textMuted}
+          style={styles.guestEditIcon}
+        />
+      ) : null}
     </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable onPress={onPress} android_ripple={{ color: colors.surfaceMuted }}>
+      {body}
+    </Pressable>
   );
 }
 
@@ -894,6 +1113,23 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
   },
+  guestRatingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceMuted,
+  },
+  guestRatingText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  guestEditIcon: {
+    marginStart: 6,
+  },
   tag: {
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -908,6 +1144,28 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  holderBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  ratingChipText: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '800',
   },
   tagText: {
     ...typography.caption,

@@ -62,13 +62,17 @@ export function AddMembersScreen() {
         const memberIds = Array.from(
           new Set([...(grp?.playerIds ?? []), ...(grp?.adminIds ?? [])]),
         );
-        // Exclude anyone already in the roster (players/waitlist/pending).
+        // Exclude anyone already in the roster (players/waitlist/pending) AND
+        // the current user — the admin shouldn't see themselves in the
+        // "add members" picker ("למה אני מופיע פה?").
         const inRoster = new Set([
           ...(g.players ?? []),
           ...(g.waitlist ?? []),
           ...(g.pending ?? []),
         ]);
-        const toLoad = memberIds.filter((id) => !inRoster.has(id));
+        const toLoad = memberIds.filter(
+          (id) => !inRoster.has(id) && id !== me?.id,
+        );
         const profiles = await Promise.all(
           toLoad.map((id) => userService.getUserById(id).catch(() => null)),
         );

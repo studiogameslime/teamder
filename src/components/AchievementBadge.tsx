@@ -11,7 +11,9 @@ import { TIER_META, type AchievementDef } from '@/data/achievements';
 import type { AchievementTier } from '@/types';
 
 interface Props {
-  def: AchievementDef;
+  /** Only the fields this badge actually renders — so both the personal
+   *  `AchievementDef` and the club `ClubAchievementDef` can be passed in. */
+  def: Pick<AchievementDef, 'icon' | 'titleHe' | 'oneOff'>;
   /** Current tier, or null when the badge is still locked. */
   tier: AchievementTier | null;
   /** Outer-ring diameter in dp. Default 72. */
@@ -60,8 +62,8 @@ export function AchievementBadge({
 
   const fg = unlocked ? '#FFFFFF' : colors.textMuted;
 
-  const content = (
-    <View style={[styles.root, style]}>
+  const body = (
+    <>
       <View
         style={[
           styles.ring,
@@ -89,23 +91,33 @@ export function AchievementBadge({
         <Text
           numberOfLines={2}
           allowFontScaling={false}
-          style={[styles.title, { width: size + 16 }, !unlocked && styles.titleLocked]}
+          style={[styles.title, !unlocked && styles.titleLocked]}
         >
           {def.titleHe}
         </Text>
       )}
       {showTierLabel && tier && !def.oneOff ? (
-        <Text allowFontScaling={false} style={[styles.tierLabel, { color: tint }]}>
+        <Text
+          numberOfLines={1}
+          allowFontScaling={false}
+          style={[styles.tierLabel, { color: tint }]}
+        >
           {TIER_META[tier].he}
         </Text>
       ) : null}
-    </View>
+    </>
   );
 
-  if (!onPress) return content;
+  // The `style` (e.g. a grid column width) must land on the OUTER element —
+  // the actual flex item — not the inner View, or the Pressable collapses to
+  // content width and the grid columns break.
+  if (!onPress) return <View style={[styles.root, style]}>{body}</View>;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && { opacity: 0.75 }]}>
-      {content}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.root, style, pressed && { opacity: 0.75 }]}
+    >
+      {body}
     </Pressable>
   );
 }
@@ -142,6 +154,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     textAlign: 'center',
+    alignSelf: 'stretch',
+    // Reserve two lines so 1-line and 2-line titles align across the grid
+    // (keeps every tier label on the same baseline).
+    lineHeight: 14,
+    minHeight: 28,
   },
   titleLocked: {
     color: colors.textMuted,

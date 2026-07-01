@@ -31,9 +31,14 @@ export function CollapsibleContent({
         }
       >
         <View
-          onLayout={(e) =>
-            setFullHeight((prev) => Math.max(prev, e.nativeEvent.layout.height))
-          }
+          onLayout={(e) => {
+            // Read the height SYNCHRONOUSLY here — reading e.nativeEvent inside
+            // the functional setState updater crashed ("Cannot read property
+            // 'layout' of null") because the event is recycled before the
+            // deferred updater runs. Capture the number, then use it.
+            const h = e.nativeEvent?.layout?.height ?? 0;
+            setFullHeight((prev) => Math.max(prev, h));
+          }}
         >
           {children}
         </View>

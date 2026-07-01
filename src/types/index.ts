@@ -803,6 +803,15 @@ export interface Group {
    * for non-admins. undefined/false → ratings are visible to all members.
    */
   hideInternalRating?: boolean;
+  /**
+   * Who currently has the club's gear at home — set from the "סיים ערב"
+   * (end-evening) handoff popup, so before the next game everyone sees who
+   * should bring it. Both are arrays (two people can each take a ball). Holders
+   * are community MEMBERS (guests are excluded). A missing/empty array = nobody
+   * recorded as holding it.
+   */
+  ballHolderIds?: UserId[];
+  jerseysHolderIds?: UserId[];
 
   createdAt: number;
   updatedAt?: number;
@@ -1191,6 +1200,8 @@ export interface Game {
    * Terminal: only an admin clears it.
    */
   rejectedPlayerIds?: UserId[];
+  /** Users explicitly invited to this game — they bypass approval. */
+  invitedUserIds?: UserId[];
   /**
    * Denormalized union of `players + waitlist + pending`. Lets the
    * "my games" query be a single `array-contains` instead of three

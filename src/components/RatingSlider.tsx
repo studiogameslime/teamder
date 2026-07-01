@@ -31,7 +31,9 @@ const THUMB = 26;
 const STAR = 30;
 const SPAN = RATING_MAX - RATING_MIN; // 4
 const STARS = [1, 2, 3, 4, 5];
-const TICKS = [1, 2, 3, 4, 5];
+// Track runs 0→5, so the tick labels must start at 0 (6 evenly-spaced marks
+// align with the track: 0 at the left edge, 5 at the right).
+const TICKS = [0, 1, 2, 3, 4, 5];
 
 export function RatingSlider({ value, onChange, readonly = false }: Props) {
   const [trackW, setTrackW] = useState(0);
@@ -69,9 +71,14 @@ export function RatingSlider({ value, onChange, readonly = false }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.head}>
+        {/* LRM marks (U+200E) bracket the LTR numeric run so "3.5 / 5" doesn't
+            reorder to "5 / 3.5" inside the RTL screen — same fix the count
+            strings in he.ts use. */}
         <Text style={[styles.value, !rated && styles.valueMuted]}>
+          {'‎'}
           {formatRating(value)}
           {rated ? <Text style={styles.outOf}> / {RATING_MAX}</Text> : null}
+          {'‎'}
         </Text>
         {rated && !readonly ? (
           <Pressable

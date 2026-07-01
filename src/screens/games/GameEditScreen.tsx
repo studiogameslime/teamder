@@ -292,11 +292,12 @@ export function GameEditScreen() {
         fieldLat: v.coords?.lat,
         fieldLng: v.coords?.lng,
         ruleTags: v.ruleTags,
-        // Recurring toggle + scheduling knobs. publicOpenAt/guestsOpenAt
-        // round-trip; 0 clears them (→ undefined via stripUndefined).
+        // Recurring toggle + scheduling knobs. Pass null (NOT undefined) to
+        // clear: undefined is dropped by stripUndefined and would leave the
+        // stale timestamp, so the CF would still flip/gate at the old time.
         recurring: v.recurringGameEnabled,
-        publicOpenAt: v.publicOpenAt > 0 ? v.publicOpenAt : undefined,
-        guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined,
+        publicOpenAt: v.publicOpenAt > 0 ? v.publicOpenAt : null,
+        guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : null,
         // null (not undefined) so turning the schedule OFF actually clears it.
         autoTeamsAt: v.autoTeamsAt > 0 ? v.autoTeamsAt : null,
         autoTeamsMethod: v.autoTeamsAt > 0 ? v.autoTeamsMethod : undefined,
@@ -326,6 +327,10 @@ export function GameEditScreen() {
       }
       if (e.code === 'GAME_REG_AFTER_KICKOFF') {
         appAlert(he.editGameRegAfterKickoffTitle, he.editGameRegAfterKickoffBody);
+        return;
+      }
+      if (e.code === 'VALIDATION_ERROR') {
+        appAlert(he.validationErrorTitle, e.message);
         return;
       }
       if (e.code === 'GAME_ALREADY_STARTED') {

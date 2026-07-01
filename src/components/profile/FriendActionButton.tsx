@@ -199,9 +199,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    marginTop: spacing.md,
-    // Stretch to the column so the label has the full width on one line
-    // (it was wrapping "אתם חברים" to two lines in the narrow card column).
+    // Stretch to fill its half-width slot so the label sits on one line.
     alignSelf: 'stretch',
   },
   active: { backgroundColor: colors.primary },

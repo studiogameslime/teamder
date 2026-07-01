@@ -326,7 +326,11 @@ export const groupService = {
     const name = requireString('name', input.name, {
       max: 80,
       label: 'שם המועדון',
+      sanitize: true,
     });
+    // Keep the rest of the function (and any input.name reader) on the
+    // sanitized value.
+    input.name = name;
     const description = optionalString('description', input.description, {
       max: 500,
       label: 'תיאור',
@@ -767,6 +771,34 @@ export const groupService = {
     }
     await updateDoc(docs.group(groupId), {
       pendingPlayerIds: arrayRemove(userId),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
+   * Set who currently holds the club's ball / jerseys — written from the
+   * "סיים ערב" handoff popup. Both are full arrays (two people can each take a
+   * ball). Admin-only by caller gating. The realtime group subscription
+   * propagates the change back to the store, so the holder badges update
+   * without a refetch. Holders should be community MEMBERS (guests excluded).
+   */
+  async setEquipmentHolders(
+    groupId: GroupId,
+    holders: { ballHolderIds: UserId[]; jerseysHolderIds: UserId[] },
+  ): Promise<void> {
+    if (!groupId) return;
+    if (USE_MOCK_DATA) {
+      const g = groupsById[groupId];
+      if (g) {
+        g.ballHolderIds = [...holders.ballHolderIds];
+        g.jerseysHolderIds = [...holders.jerseysHolderIds];
+        g.updatedAt = Date.now();
+      }
+      return;
+    }
+    await updateDoc(docs.group(groupId), {
+      ballHolderIds: holders.ballHolderIds,
+      jerseysHolderIds: holders.jerseysHolderIds,
       updatedAt: Date.now(),
     });
   },
