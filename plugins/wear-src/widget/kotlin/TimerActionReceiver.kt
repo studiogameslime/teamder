@@ -127,6 +127,13 @@ class TimerActionReceiver : BroadcastReceiver() {
             val wasRunning = live["timerRunning"] as? Boolean == true
             val acc = (live["timerAccumulatedMs"] as? Number)?.toLong() ?: 0L
             val lastStarted = (live["timerLastStartedAt"] as? Number)?.toLong() ?: 0L
+            // Read-append-write the stoppages log so a widget/watch-driven control
+            // stays consistent with the in-app timer (which logs every start/
+            // resume/pause). Without this, the "היסטוריית עצירות" diverged.
+            @Suppress("UNCHECKED_CAST")
+            val events =
+                (live["timerEvents"] as? List<Map<String, Any?>>)?.toMutableList()
+                    ?: mutableListOf()
 
             when (action) {
                 ACTION_START -> {
@@ -134,6 +141,15 @@ class TimerActionReceiver : BroadcastReceiver() {
                     newLive["timerRunning"] = true
                     newLive["timerLastStartedAt"] = now
                     newLive["timerAccumulatedMs"] = acc
+                    val isFirstStart = acc == 0L && events.isEmpty()
+                    events.add(
+                        mapOf(
+                            "type" to if (isFirstStart) "start" else "resume",
+                            "at" to now,
+                            "byName" to userName,
+                        ),
+                    )
+                    newLive["timerEvents"] = events
                 }
                 ACTION_PAUSE -> {
                     if (!wasRunning) return@runTransaction null
@@ -141,11 +157,15 @@ class TimerActionReceiver : BroadcastReceiver() {
                     newLive["timerRunning"] = false
                     newLive["timerLastStartedAt"] = null
                     newLive["timerAccumulatedMs"] = acc + elapsed
+                    events.add(mapOf("type" to "pause", "at" to now, "byName" to userName))
+                    newLive["timerEvents"] = events
                 }
                 ACTION_RESET -> {
                     newLive["timerRunning"] = false
                     newLive["timerLastStartedAt"] = null
                     newLive["timerAccumulatedMs"] = 0L
+                    // Reset clears the whole log (matches the in-app reset).
+                    newLive["timerEvents"] = emptyList<Any?>()
                 }
                 else -> return@runTransaction null
             }

@@ -1,5 +1,6 @@
 package com.studiogameslime.soccerapp.wear.model
 
+import android.os.SystemClock
 import org.json.JSONObject
 
 /**
@@ -28,6 +29,10 @@ fun parseWearState(json: String): WearGameState = try {
                     accumulatedMs = t.optLong("accumulatedMs"),
                     // clockOffsetMs lives at the payload root, not inside timer.
                     clockOffsetMs = o.optLong("clockOffsetMs", 0L),
+                    // Device-independent resolved elapsed + the watch's own
+                    // monotonic receive anchor. -1 = old phone (legacy path).
+                    baseElapsedMs = t.optLong("baseElapsedMs", -1L),
+                    parseAnchorRealtimeMs = SystemClock.elapsedRealtime(),
                 ),
                 gameId = o.optString("gameId"),
             )

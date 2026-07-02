@@ -8,13 +8,20 @@ package com.studiogameslime.soccerapp.wear.model
  */
 data class TimerState(
     val running: Boolean,
-    val lastStartedAt: Long, // epoch ms (SERVER time); 0 when never started
+    val lastStartedAt: Long, // epoch ms (SERVER time); 0 when never started — LEGACY
     val accumulatedMs: Long,
-    /** serverNow - localNow (ms), relayed from the phone. The watch adds it
-     *  to its own clock so it compares against the server-time `lastStartedAt`
-     *  in the same base — keeping the tile/app in lockstep with the phone
-     *  even if the watch clock is slightly off. 0 = no correction. */
+    /** serverNow - localNow (ms) measured on the PHONE. LEGACY/fallback only —
+     *  it corrects the phone's clock, not the watch's, so it can't be trusted
+     *  on the watch. Kept for old payloads that lack `baseElapsedMs`. */
     val clockOffsetMs: Long = 0L,
+    /** Fully-resolved elapsed ms at the moment the phone PUBLISHED this payload,
+     *  in NO device's clock base. -1 = absent (old phone → use the legacy path). */
+    val baseElapsedMs: Long = -1L,
+    /** The watch's OWN monotonic uptime (SystemClock.elapsedRealtime) captured
+     *  when this payload was parsed/received. Displayed elapsed while running =
+     *  baseElapsedMs + (elapsedRealtime() - parseAnchorRealtimeMs) — depends only
+     *  on the watch's monotonic clock, immune to wall-clock skew vs the phone. */
+    val parseAnchorRealtimeMs: Long = 0L,
 )
 
 /** One registered player, for the players-list drill-down. */

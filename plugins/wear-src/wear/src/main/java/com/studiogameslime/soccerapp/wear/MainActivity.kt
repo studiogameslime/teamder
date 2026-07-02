@@ -36,17 +36,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repo = WearStateRepository(applicationContext)
+        // Demo/preview states (tap to cycle) are DEBUG-ONLY. In a release build a
+        // real un-paired user must see the genuine Disconnected/Loading screen —
+        // NOT a fake running "חמישי כדורגל" match they can tap-cycle through.
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
             val real by repo.state
             var demo by remember { mutableIntStateOf(0) }
             val demoStates = remember { demoStates() }
-            val useReal =
+            val realReady =
                 real !is WearGameState.Disconnected && real !is WearGameState.Loading
+            // Show demo only in a debug build when there's no real state yet.
+            val useReal = realReady || !debuggable
             val shown = if (useReal) real else demoStates[demo % demoStates.size]
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(enabled = !useReal) { demo++ },
+                    .clickable(enabled = debuggable && !useReal) { demo++ },
             ) {
                 WearApp(
                     state = shown,

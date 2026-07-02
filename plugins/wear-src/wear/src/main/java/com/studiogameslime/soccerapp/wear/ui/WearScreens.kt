@@ -1,5 +1,6 @@
 package com.studiogameslime.soccerapp.wear.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -559,14 +560,35 @@ private fun BrandLogo() {
 }
 
 /**
- * Ticks the displayed elapsed time while the timer is running, recomputing
- * from the three relayed primitives + the wall clock — the exact same
- * formula the phone's `useSyncedTimer` uses, so the watch stays in lockstep.
+ * Ticks the displayed elapsed time while running. Counts up from the
+ * phone-resolved `baseElapsedMs` using the watch's OWN monotonic uptime
+ * (SystemClock.elapsedRealtime) — so it's immune to any wall-clock skew
+ * between the watch and the phone (the fix for the "stuck at 00:00" bug).
+ * Falls back to the legacy wall-clock formula only for old phones that don't
+ * send baseElapsedMs.
  */
 @Composable
 private fun rememberElapsedMs(timer: TimerState): Long {
-    // Tick on server time (local clock + relayed offset) so the watch app
-    // stays in lockstep with the phone even when the watch clock is skewed.
+    if (timer.baseElapsedMs < 0L) return legacyElapsedMs(timer) // old phone
+
+    // Monotonic tick: re-read elapsedRealtime() every 250ms while running.
+    var nowRt by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(timer.running, timer.baseElapsedMs, timer.parseAnchorRealtimeMs) {
+        while (timer.running) {
+            nowRt = SystemClock.elapsedRealtime()
+            delay(250)
+        }
+    }
+    return if (timer.running) {
+        timer.baseElapsedMs + (nowRt - timer.parseAnchorRealtimeMs).coerceAtLeast(0)
+    } else {
+        timer.baseElapsedMs.coerceAtLeast(0)
+    }
+}
+
+/** Legacy fallback (pre-baseElapsedMs phones): wall-clock reconstruction. */
+@Composable
+private fun legacyElapsedMs(timer: TimerState): Long {
     var now by remember {
         mutableLongStateOf(System.currentTimeMillis() + timer.clockOffsetMs)
     }

@@ -42,12 +42,20 @@ class WearStateRepository(private val appContext: Context) :
                         }
                     }
                 }
-                if (!found) state.value = WearGameState.Disconnected
+                // Only DOWNGRADE to Disconnected if we don't already have a real
+                // state. The async dataItems fetch can resolve AFTER onDataChanged
+                // has already delivered a Live item — clobbering it with a stale
+                // "no game" would flash "אין משחק רשום" over a live match.
+                if (!found && state.value is WearGameState.Loading) {
+                    state.value = WearGameState.Disconnected
+                }
             } finally {
                 buffer.release()
             }
         }.addOnFailureListener {
-            state.value = WearGameState.Disconnected
+            if (state.value is WearGameState.Loading) {
+                state.value = WearGameState.Disconnected
+            }
         }
     }
 
@@ -57,11 +65,12 @@ class WearStateRepository(private val appContext: Context) :
 
     override fun onDataChanged(events: DataEventBuffer) {
         for (event in events) {
-            if (event.type == DataEvent.TYPE_CHANGED &&
-                event.dataItem.uri.path == STATE_PATH
-            ) {
+            if (event.dataItem.uri.path != STATE_PATH) continue
+            if (event.type == DataEvent.TYPE_CHANGED) {
                 val json = DataMapItem.fromDataItem(event.dataItem).dataMap.getString(KEY_JSON)
                 if (json != null) state.value = parse(json)
+            } else if (event.type == DataEvent.TYPE_DELETED) {
+                state.value = WearGameState.Disconnected
             }
         }
     }

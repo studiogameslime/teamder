@@ -23,7 +23,7 @@ import { useEffect } from 'react';
 import { NativeModules, Platform } from 'react-native';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
-import { getServerOffsetMs, syncServerClock } from '@/services/serverClock';
+import { getServerOffsetMs, serverNow, syncServerClock } from '@/services/serverClock';
 import { userService } from '@/services/userService';
 import { useUserStore } from '@/store/userStore';
 import type { Game } from '@/types';
@@ -48,12 +48,26 @@ type WatchPayload = {
    *  cross-device skew. A constant correction, so it survives a stale
    *  cached payload (unlike a one-shot "server time now" stamp would). */
   clockOffsetMs: number;
+  /** True server time (ms) stamped at publish. The watch/widget measure THEIR
+   *  OWN offset from this on receipt (serverNowMs − their monotonic/wall clock)
+   *  instead of trusting the phone's offset against a clock that may not be the
+   *  watch's. Anchors the device-independent `baseElapsedMs` below. */
+  serverNowMs: number;
 } & (
   | {
       kind: 'live';
       gameId: string;
       title: string;
-      timer: { running: boolean; lastStartedAt: number; accumulatedMs: number };
+      timer: {
+        running: boolean;
+        lastStartedAt: number;
+        accumulatedMs: number;
+        /** Fully-resolved elapsed ms AT the publish instant (serverNowMs), in
+         *  NO device's clock base. The watch counts up from this using its own
+         *  MONOTONIC uptime — immune to wall-clock skew (the real fix for the
+         *  "timer stuck at 0" bug). */
+        baseElapsedMs: number;
+      };
       /** uid of the admin who last touched the timer (or '' when never). */
       controlledBy: string;
       /** Display name of the controller — used by the widget for the
@@ -113,16 +127,27 @@ export async function computeWatchPayload(
   );
   if (live && live.liveMatch) {
     const players = await resolveRoster(live);
+    const running = !!live.liveMatch.timerRunning;
+    const lastStartedAt = live.liveMatch.timerLastStartedAt ?? 0;
+    const accumulatedMs = live.liveMatch.timerAccumulatedMs ?? 0;
+    const nowServer = serverNow();
+    // Resolve elapsed to a device-independent base at the publish instant.
+    const baseElapsedMs =
+      running && lastStartedAt > 0
+        ? accumulatedMs + Math.max(0, nowServer - lastStartedAt)
+        : accumulatedMs;
     return {
       viewer,
       clockOffsetMs: getServerOffsetMs(),
+      serverNowMs: nowServer,
       kind: 'live',
       gameId: live.id,
       title: live.title,
       timer: {
-        running: !!live.liveMatch.timerRunning,
-        lastStartedAt: live.liveMatch.timerLastStartedAt ?? 0,
-        accumulatedMs: live.liveMatch.timerAccumulatedMs ?? 0,
+        running,
+        lastStartedAt,
+        accumulatedMs,
+        baseElapsedMs,
       },
       controlledBy: live.liveMatch.timerControlledBy ?? '',
       controlledByName: live.liveMatch.timerControlledByName ?? '',
@@ -151,6 +176,7 @@ export async function computeWatchPayload(
       return {
         viewer,
         clockOffsetMs: getServerOffsetMs(),
+        serverNowMs: serverNow(),
         kind: 'scheduled',
         gameId: upcoming.id,
         title: upcoming.title,
@@ -164,6 +190,7 @@ export async function computeWatchPayload(
     return {
       viewer,
       clockOffsetMs: getServerOffsetMs(),
+      serverNowMs: serverNow(),
       kind: 'upcoming',
       gameId: upcoming.id,
       title: upcoming.title,
@@ -176,7 +203,7 @@ export async function computeWatchPayload(
     };
   }
 
-  return { viewer, clockOffsetMs: getServerOffsetMs(), kind: 'notRegistered' };
+  return { viewer, clockOffsetMs: getServerOffsetMs(), serverNowMs: serverNow(), kind: 'notRegistered' };
 }
 
 /**
@@ -217,10 +244,11 @@ export async function publishWatchState(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bridge = (NativeModules as any).WatchBridge;
   if (!bridge?.publishState) return;
-  // Make sure this device's server-clock offset is measured so the value we
-  // relay to the widget + watch is correct. De-duped + cached, so this is a
-  // no-op network-wise once synced this session.
-  void syncServerClock();
+  // AWAIT the server-clock sync so the payload's serverNowMs / baseElapsedMs are
+  // anchored to true server time even on the very first (cold-start) publish —
+  // otherwise the first live payload could ship an offset of 0. De-duped +
+  // cached, so it's a no-op network-wise once synced this session.
+  await syncServerClock();
   try {
     await bridge.publishState(
       JSON.stringify(await computeWatchPayload(myGames, viewer)),

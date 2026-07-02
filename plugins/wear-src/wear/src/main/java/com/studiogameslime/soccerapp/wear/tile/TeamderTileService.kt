@@ -1,5 +1,6 @@
 package com.studiogameslime.soccerapp.wear.tile
 
+import android.os.SystemClock
 import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.DimensionBuilders.dp
@@ -298,14 +299,23 @@ class TeamderTileService : TileService() {
 
     // ── Formatting ────────────────────────────────────────────────────────
 
-    /** Reconstruct the displayed elapsed using the same formula every
-     *  device uses — phone, watch app, this tile — so they're identical. */
+    /** Displayed elapsed, counted up from the phone-resolved `baseElapsedMs`
+     *  using the watch's OWN monotonic uptime — immune to watch↔phone wall-clock
+     *  skew (same device-independent formula as the watch app + widget). Legacy
+     *  wall-clock fallback only for old phones that don't send baseElapsedMs. */
     private fun computeElapsedMs(t: TimerState): Long =
-        if (t.running && t.lastStartedAt > 0) {
-            // Compare against SERVER time (local clock + relayed offset) so
-            // the tile matches the phone even if the watch clock is skewed.
+        if (t.baseElapsedMs >= 0L) {
+            if (t.running) {
+                t.baseElapsedMs +
+                    (SystemClock.elapsedRealtime() - t.parseAnchorRealtimeMs)
+                        .coerceAtLeast(0)
+            } else {
+                t.baseElapsedMs.coerceAtLeast(0)
+            }
+        } else if (t.running && t.lastStartedAt > 0) {
             t.accumulatedMs +
                 (System.currentTimeMillis() + t.clockOffsetMs - t.lastStartedAt)
+                    .coerceAtLeast(0)
         } else {
             t.accumulatedMs
         }
@@ -349,11 +359,13 @@ class TeamderTileService : TileService() {
         // looking frozen on a stale "no game" for a quarter hour.
         private val IDLE_FRESHNESS_MS = TimeUnit.MINUTES.toMillis(5)
 
-        // Brand — matches WearScreens.kt (TeamderBlue / TeamderInk / white bg)
-        private const val COLOR_BG = 0xFFF9FAFB.toInt()
-        private const val COLOR_BLUE = 0xFF1E40AF.toInt()
-        private const val COLOR_INK = 0xFF1F2A44.toInt()
-        private const val COLOR_INK_SOFT = 0xFF64748B.toInt()
+        // Brand — ON-DARK palette, matching WearScreens.kt. Wear surfaces must
+        // be dark (Google rejected the white tile build vc1004); the tile is a
+        // separately-reviewed surface, so it uses the same black bg + light ink.
+        private const val COLOR_BG = 0xFF000000.toInt()
+        private const val COLOR_BLUE = 0xFF60A5FA.toInt()   // TeamderBlueOnDark
+        private const val COLOR_INK = 0xFFE2E8F0.toInt()    // TeamderInk (light)
+        private const val COLOR_INK_SOFT = 0xFF94A3B8.toInt()
 
         // Dimensions
         private const val DP_2 = 2f

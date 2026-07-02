@@ -1741,11 +1741,63 @@ async function reconcileGameJoins(gameId) {
             : {};
         let cancellationsChanged = false;
         let occupancy = players.length + guests + offer;
+        // Active red-card block: a member holding an ACTIVE red card in this game's
+        // community can't SELF-register (admins adding a player use a different path
+        // that bypasses this). Only new joiners are affected — anyone already in the
+        // roster stays. One grouped read; mirrors src/utils/cardState.isActiveRedCard.
+        const groupId = typeof g.groupId === 'string' ? g.groupId : '';
+        const redBlocked = new Set();
+        if (groupId) {
+            const grpSnap = await tx.get(db.collection('groups').doc(groupId));
+            const grpData = grpSnap.exists
+                ? grpSnap.data()
+                : null;
+            // The cards master switch suspends ALL card behaviour, enforcement
+            // included — skip the scan entirely when it's off (also spares the
+            // read on the vast majority of games that never enabled cards).
+            if (grpData?.cardsEnabled === true) {
+                const redValidityDays = grpData.redCardValidityDays;
+                const redSnap = await tx.get(db
+                    .collection('communityPlayerEvents')
+                    .where('groupId', '==', groupId)
+                    .where('type', '==', 'red')
+                    // Newest-first + bounded: an ACTIVE card is recent, so ordering by
+                    // `at desc` keeps it inside the window even if a long-lived club has
+                    // amassed >1000 (mostly expired/revoked) red docs. Backed by the
+                    // (groupId, type, at desc) composite index. Only runs when cards on.
+                    .orderBy('at', 'desc')
+                    .limit(1000));
+                for (const d of redSnap.docs) {
+                    const e = d.data();
+                    if (!e.userId || e.revoked)
+                        continue;
+                    // Prefer the expiry snapshotted at issue time; fall back to the live
+                    // group-validity computation for legacy cards that pre-date it.
+                    const exp = e.expiresAt !== undefined
+                        ? e.expiresAt
+                        : typeof redValidityDays === 'number' && redValidityDays > 0
+                            ? (e.at ?? 0) + redValidityDays * 86400000
+                            : null;
+                    const expired = exp !== null && now > exp;
+                    if (!expired)
+                        redBlocked.add(e.userId);
+                }
+            }
+        }
         for (const r of reqs) {
             if (rejected.includes(r.uid)) {
                 tx.update(r.ref, {
                     state: 'rejected',
                     reason: 'GAME_JOIN_REJECTED',
+                    assignedAt: now,
+                });
+                continue;
+            }
+            // New joiner with an active red card → blocked (already-in players stay).
+            if (!inAny.has(r.uid) && redBlocked.has(r.uid)) {
+                tx.update(r.ref, {
+                    state: 'rejected',
+                    reason: 'RED_CARD_ACTIVE',
                     assignedAt: now,
                 });
                 continue;
@@ -5040,6 +5092,15 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
     const internalRating = input.internalRating === true;
     // Only meaningful alongside internalRating — ratings become admin-private.
     const hideInternalRating = internalRating && input.hideInternalRating === true;
+    // Per-community cards feature. Master switch + optional validity in days
+    // (positive int; anything else = no expiry). Validity is preserved even
+    // when cardsEnabled is false so re-enabling restores the prior config.
+    const cardsEnabled = input.cardsEnabled === true;
+    const sanitizeValidity = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0
+        ? Math.min(Math.floor(v), 3650)
+        : null;
+    const yellowCardValidityDays = sanitizeValidity(input.yellowCardValidityDays);
+    const redCardValidityDays = sanitizeValidity(input.redCardValidityDays);
     // 3) Generate id + invite code. Server-controlled to prevent
     //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
     const groupRef = db.collection('groups').doc();
@@ -5070,6 +5131,12 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         groupDoc.rules = rulesText;
     if (maxMembers !== undefined)
         groupDoc.maxMembers = maxMembers;
+    if (cardsEnabled)
+        groupDoc.cardsEnabled = true;
+    if (yellowCardValidityDays !== null)
+        groupDoc.yellowCardValidityDays = yellowCardValidityDays;
+    if (redCardValidityDays !== null)
+        groupDoc.redCardValidityDays = redCardValidityDays;
     const publicDoc = {
         id: groupId,
         name,

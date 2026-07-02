@@ -143,13 +143,29 @@ class TeamderWidgetProvider : AppWidgetProvider() {
         // against server time too: local clock + the phone-measured offset
         // (clockOffsetMs). Without this, a device whose clock is skewed
         // would render a different elapsed time than the in-app screen.
+        // Prefer the phone-resolved, device-independent baseElapsedMs when the
+        // payload carries it (new phones). Paused → it's exact. Running → add the
+        // wall-clock delta since publish (serverNowMs) using THIS device's clock
+        // + offset; on the phone (same device that measured the offset) this is
+        // exact, and it's the best available correction elsewhere. Falls back to
+        // the legacy lastStartedAt reconstruction for old payloads. Always clamp:
+        // a negative elapsed would push the Chronometer base into the future and
+        // make it count DOWN toward 0.
         val clockOffsetMs = o.optLong("clockOffsetMs", 0L)
+        val baseElapsedMs = o.optLong("baseElapsedMs", -1L)
+        val serverNowMs = o.optLong("serverNowMs", 0L)
         val nowEpoch = System.currentTimeMillis() + clockOffsetMs
-        val elapsedNow = if (running && lastStartedAt > 0) {
+        val elapsedNow = if (baseElapsedMs >= 0L) {
+            if (running && serverNowMs > 0L) {
+                baseElapsedMs + (nowEpoch - serverNowMs)
+            } else {
+                baseElapsedMs
+            }
+        } else if (running && lastStartedAt > 0) {
             accumulatedMs + (nowEpoch - lastStartedAt)
         } else {
             accumulatedMs
-        }
+        }.coerceAtLeast(0L)
         val base = SystemClock.elapsedRealtime() - elapsedNow
         views.setChronometer(R.id.widget_timer, base, null, running)
         views.setViewVisibility(R.id.widget_timer, View.VISIBLE)
