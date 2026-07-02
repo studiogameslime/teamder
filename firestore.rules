@@ -755,7 +755,14 @@ service cloud.firestore {
         // (plus updatedAt); the diff must touch only the caller's key.
         (
           affectedKeys().hasOnly(['draftTeamFeedback', 'updatedAt']) &&
-          request.auth.uid in resource.data.participantIds &&
+          // Use .get(...,[]) with a `players` fallback: on games missing a
+          // `participantIds` field (older docs) the bare `uid in participantIds`
+          // threw → EVERY reaction denied (user report: setDraftTeamFeedback
+          // "insufficient permissions").
+          (
+            request.auth.uid in resource.data.get('participantIds', []) ||
+            request.auth.uid in resource.data.get('players', [])
+          ) &&
           request.resource.data.get('draftTeamFeedback', {})
             .diff(resource.data.get('draftTeamFeedback', {}))
             .affectedKeys().hasOnly([request.auth.uid])

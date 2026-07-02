@@ -1926,6 +1926,24 @@ export function MatchDetailsScreen() {
     !!draftTeams &&
     (game.players ?? []).some((uid) => !assignedIds.has(uid));
 
+  // The "הכוחות שחולקו" section is a RECORD of the starting split — it must NOT
+  // change when a player goes home or is substituted mid-match (user request).
+  // Once a rotation has started, `rotation.baseTeams` is the frozen snapshot of
+  // the starting rosters (preserved across rounds in gameService); before that,
+  // `draftTeams.teams` is the split as created. `draftTeams.teams` itself is the
+  // LIVE/working roster (mutated by went-home + permanent-fill), so it is used
+  // only by the live-match rotation panel, never for this fixed display.
+  const splitTeams = game.rotation?.baseTeams?.length
+    ? [...game.rotation.baseTeams]
+        .sort((a, b) => a.index - b.index)
+        .map((b) => ({
+          index: b.index,
+          // baseTeams keeps the original order → playerIds[0] is the captain.
+          captainId: b.playerIds[0] ?? '',
+          playerIds: b.playerIds,
+        }))
+    : draftTeams?.teams ?? [];
+
   // "צרו כוחות" nudge: admin, no split yet, enough draftable people, and
   // kickoff is close (≤24h away, not yet started). Otherwise the only path
   // to create teams is buried in the ☰ menu — easy to miss (feedback).
@@ -2313,7 +2331,7 @@ export function MatchDetailsScreen() {
                 <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
               ) : null}
               <View style={styles.draftSectionList}>
-                {[...draftTeams.teams]
+                {[...splitTeams]
                   .sort((a, b) => a.index - b.index)
                   .map((t) => (
                     <DraftTeamCard

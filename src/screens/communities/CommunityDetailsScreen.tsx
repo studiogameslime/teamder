@@ -857,7 +857,7 @@ export function CommunityDetailsScreen() {
           <CommunityStatsSection stats={communityStats} />
 
           {/* Goals championship — club-scoped scorers leaderboard. */}
-          <CommunityChampionship groupId={group.id} />
+          <CommunityChampionship groupId={group.id} memberIds={group.playerIds ?? []} />
 
           {/* Per-community game history — finished games, same row style as the
               player History tab (user report: history per community too). */}

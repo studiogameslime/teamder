@@ -153,7 +153,11 @@ export interface BalanceTeamsOutput {
  * shuffle survives within any tied-rating bucket → reruns differ.
  */
 export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
-  const { playerIds, ratings, format, createdBy } = input;
+  const { ratings, format, createdBy } = input;
+  // Dedupe the roster FIRST: a duplicate id (e.g. a player who slipped into
+  // `players` twice, or overlaps a guest) would otherwise be placed twice and
+  // land on two teams — the "why am I in my team twice?" bug (user report).
+  const playerIds = [...new Set(input.playerIds)];
   // Never ask for more teams than there are players to fill them — an empty
   // team would carry an undefined captain and get dropped by the converter,
   // silently shrinking the count (B29). Mirrors the server clamp.

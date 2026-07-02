@@ -851,6 +851,19 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
       };
     })
     .filter((t): t is NonNullable<typeof t> => t !== null);
+  // Dedupe players across teams: a corrupted split (bad rebalance / double-add)
+  // can list the same uid twice — within one team or across two — producing the
+  // "why am I in my team twice?" bug (user report). Keep each player only in the
+  // FIRST team (by index) they appear in, and once within it. Self-heals bad
+  // docs on read; new splits are also deduped at generation (balanceTeams).
+  const seenPlayers = new Set<string>();
+  for (const t of [...teams].sort((a, b) => a.index - b.index)) {
+    t.playerIds = t.playerIds.filter((p) => {
+      if (seenPlayers.has(p)) return false;
+      seenPlayers.add(p);
+      return true;
+    });
+  }
   // Only nuke the whole result when there's truly nothing left. A degraded
   // 1-team draft is preserved (colours/leftHome survive, the admin can restore
   // players) instead of vanishing to undefined and breaking every live control

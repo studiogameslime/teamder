@@ -949,7 +949,12 @@ export const gameService = {
    * player's global `stats.goals`. Plus the club totals: total goals + total
    * mini-games (`communityStats/{groupId}`).
    */
-  async getCommunityChampionship(groupId: GroupId): Promise<{
+  async getCommunityChampionship(
+    groupId: GroupId,
+    // When given, EVERY member appears in the table — members with no stats yet
+    // get a zero row (user request: show everyone, not just who has data).
+    memberIds?: string[],
+  ): Promise<{
     totalGoals: number;
     totalRounds: number;
     /** Mini-games that ended in a tie (for the draw-rate fun fact). */
@@ -972,11 +977,23 @@ export const gameService = {
           games,
         };
       });
+      // Show every club member: the first 8 carry stats, the rest get a zero
+      // row (mirrors the prod merge so the emulator demo lists everyone too).
+      const withZeros = [...players];
+      if (memberIds && memberIds.length) {
+        const have = new Set(players.map((p) => p.uid));
+        for (const uid of memberIds) {
+          if (uid && !have.has(uid)) {
+            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0 });
+            have.add(uid);
+          }
+        }
+      }
       return {
         totalGoals: players.reduce((a, p) => a + p.goals, 0),
         totalRounds: 210,
         tiedRounds: 34,
-        players,
+        players: withZeros,
       };
     }
     const db = getFirebase().db;
@@ -986,10 +1003,19 @@ export const gameService = {
         getDoc(doc(db, 'communityStats', groupId)),
       ]);
       // Community table ranks by cumulative goals (not per-game efficiency).
-      const players = rankChampionshipRows(
-        psSnap.docs.map((d) => d.data()),
-        'goals',
-      );
+      // Merge in every club member so the table lists ALL of them, not just
+      // those who already have a stat doc — members with no games yet get a
+      // zero row (kept via keepAll, sorted last).
+      const statRows = psSnap.docs.map((d) => d.data() as { userId?: string });
+      if (memberIds && memberIds.length) {
+        const have = new Set(statRows.map((r) => r.userId));
+        for (const uid of memberIds) {
+          if (uid && !have.has(uid)) {
+            statRows.push({ userId: uid } as { userId?: string });
+          }
+        }
+      }
+      const players = rankChampionshipRows(statRows, 'goals', !!(memberIds && memberIds.length));
       const totalGoals = players.reduce((a, s) => a + s.goals, 0);
       const cs = csSnap.exists() ? (csSnap.data() as { rounds?: number; tiedRounds?: number }) : null;
       const totalRounds = cs?.rounds ?? 0;

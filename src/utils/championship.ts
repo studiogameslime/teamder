@@ -48,8 +48,8 @@ export type ChampionshipSort = 'perGame' | 'goals';
 
 /**
  * Build the ranked rows from raw stat docs.
- * - 'perGame' (game table): drops players with no goals AND no assists; sorts
- *   by score-per-mini-game, then raw score.
+ * - 'perGame' (game table): keeps every player with a stat row (all who played,
+ *   incl. goalless); sorts by score-per-mini-game, then raw score.
  * - 'goals' (community table): keeps anyone with any activity (goals/games);
  *   sorts by goals, then wins, then games.
  * Final tie-break is uid so medals stay STABLE across reads.
@@ -65,6 +65,10 @@ export function rankChampionshipRows(
     games?: number;
   }>,
   sortBy: ChampionshipSort = 'perGame',
+  // When true, keep EVERY row (even all-zeros) instead of dropping the inactive
+  // — used by the community table to list all members, not just those with
+  // stats (user report). Zero-rows still rank last by the same sort.
+  keepAll = false,
 ): ChampionshipRow[] {
   const rows = docs.map((x) => ({
     uid: x.userId ?? '',
@@ -77,7 +81,7 @@ export function rankChampionshipRows(
   }));
   if (sortBy === 'goals') {
     return rows
-      .filter((r) => r.uid && (r.goals > 0 || r.games > 0 || r.wins > 0))
+      .filter((r) => r.uid && (keepAll || r.goals > 0 || r.games > 0 || r.wins > 0))
       .sort(
         (a, b) =>
           b.goals - a.goals ||
@@ -86,8 +90,12 @@ export function rankChampionshipRows(
           a.uid.localeCompare(b.uid),
       );
   }
+  // Game table: keep EVERY player who took the field (has a stat row), even
+  // with 0 goals/assists — the table should list all participants, not only
+  // scorers (user report). Scorers rank first; goalless players sink to the
+  // bottom (score 0) but still appear.
   return rows
-    .filter((r) => r.uid && (r.goals > 0 || r.assists > 0))
+    .filter((r) => r.uid)
     .sort(
       (a, b) =>
         perGameScore(b.goals, b.assists, b.rounds) -

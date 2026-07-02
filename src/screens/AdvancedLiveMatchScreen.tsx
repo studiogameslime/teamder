@@ -208,6 +208,8 @@ export function AdvancedLiveMatchScreen() {
     playing: [number, number];
     queue: number[];
     current: number | null;
+    // Mid-evening substitution → keep the running clock/score on final commit.
+    keepClock: boolean;
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // 1s ticker so the still-ongoing stoppage duration counts up while paused
@@ -385,6 +387,9 @@ export function AdvancedLiveMatchScreen() {
     skeleton: RotationFillState,
     draft: DraftTeamsResult,
     baseTeams?: { index: number; playerIds: string[] }[],
+    // Mid-evening substitution (went-home refill) → keep the running clock/score
+    // on commit. Round transitions (start/end) leave this false → clock zeroed.
+    keepClock = false,
   ) => {
     const working = {
       teams: skeleton.teams,
@@ -407,6 +412,7 @@ export function AdvancedLiveMatchScreen() {
       playing: skeleton.playing,
       queue,
       current: null,
+      keepClock,
     };
     advanceFillFlow();
   };
@@ -456,15 +462,16 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId) return;
     const rotation = { ...flow.rotationBase, loans: flow.working.loans };
     try {
-      // Commit the rotation AND zero the new round's clock in one atomic write
-      // (the clock reset used to be a second write — a window where a concurrent
-      // admin's timer-start could be lost). The next משחקון starts at 00:00.
+      // Commit the rotation. For a round transition we ALSO zero the new round's
+      // clock+score in the same atomic write (a concurrent admin's timer-start
+      // can't slip between two writes). For a mid-evening substitution
+      // (keepClock) we DON'T reset — the current משחקון keeps running.
       await gameService.commitFilledRotation(
         gameId,
         flow.draft,
         { rotation, teams: flow.working.teams },
         flow.baseTeams,
-        me ? { userId: me.id, userName: me.name ?? '' } : undefined,
+        !flow.keepClock && me ? { userId: me.id, userName: me.name ?? '' } : undefined,
       );
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });
@@ -928,14 +935,12 @@ export function AdvancedLiveMatchScreen() {
       'PlayerCard',
       game?.groupId ? { userId, groupId: game.groupId } : { userId },
     );
-  // "הלך הביתה" — remove a player for the rest of the evening. Only BETWEEN
-  // rounds (the menu disables it while the clock runs), so guard here too.
+  // "הלך הביתה" — remove a player for the rest of the evening. Allowed at any
+  // point in an active rotation (mid-round too, not just between משחקונים): if a
+  // playing team is left short we immediately offer a replacement, and the
+  // fill is committed WITHOUT resetting the running clock (keepClock).
   const onPlayerWentHome = (player: { id: string; name: string }) => {
-    // Only BETWEEN rounds, at a reset clock (00:00) — NOT mid-round, even when
-    // the clock is paused (timerMs > 0). The handler now enforces the SAME
-    // condition as the menu's `canMarkHome`, so a stale/disabled-button bypass
-    // can't sneak a removal into a paused round (B33).
-    if (!gameId || timerRunning || timerMs !== 0) return;
+    if (!gameId) return;
     appAlert(
       he.wentHomeConfirmTitle(player.name),
       he.wentHomeConfirmBody,
@@ -954,7 +959,10 @@ export function AdvancedLiveMatchScreen() {
               // no playing team is short or a transition is already in flight.
               if (!finalizingRef.current && !fillFlowRef.current && !winnerOpen) {
                 const refill = await gameService.prepareRefillPlaying(gameId);
-                if (refill) beginFillFlow(refill.skeleton, refill.draft);
+                // keepClock: this is a mid-evening substitution, not a round
+                // transition — the current משחקון's clock + score must keep
+                // running through the swap (don't zero them on commit).
+                if (refill) beginFillFlow(refill.skeleton, refill.draft, undefined, true);
               }
             } catch (err) {
               logError('markPlayerWentHome', err, { gameId, playerId: player.id });
@@ -966,13 +974,12 @@ export function AdvancedLiveMatchScreen() {
       ],
     );
   };
-  // "החזר למשחק" — bring a departed player back onto their team. Gated to the
-  // same between-rounds-at-00:00 window as "went home": bringing a player back
-  // mid-round (even paused) would change the on-field roster under a running
-  // mini-game, so it's blocked here exactly like canMarkHome (B33 + requirement
-  // "can't restore a player mid-match").
+  // "החזר למשחק" — bring a departed player back onto their team. Allowed
+  // mid-round too: `restorePlayer` re-adds them and undoes the fill that covered
+  // them (drops the loan / ejects the over-fill, B01) WITHOUT touching the
+  // timer, so the running round's clock is unaffected.
   const onRestorePlayer = (player: { id: string; name: string }) => {
-    if (!gameId || timerRunning || timerMs !== 0) return;
+    if (!gameId) return;
     appAlert(
       he.restoreConfirmTitle(player.name),
       he.restoreConfirmBody,
@@ -1204,11 +1211,10 @@ export function AdvancedLiveMatchScreen() {
               guests={game?.guests}
               goalsByPlayer={goalsByPlayer}
               isAdmin={isAdmin}
-              // Marking "went home" is only allowed when the clock is RESET —
-              // i.e. at 00:00 and not running (start of evening or between
-              // משחקונים). A paused mid-round clock (elapsed > 0) is NOT a
-              // valid moment.
-              canMarkHome={isAdmin && !timerRunning && timerMs === 0}
+              // Marking "went home" (and restoring) is allowed at any point in
+              // an active rotation — mid-round too. A mid-round removal offers an
+              // immediate replacement and keeps the clock running.
+              canMarkHome={isAdmin && rotationActive}
               onPlayerCard={openPlayerCard}
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}

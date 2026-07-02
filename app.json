@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.44",
+    "version": "1.0.45",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -84,7 +84,12 @@
       "expo-localization",
       "expo-apple-authentication",
       "@react-native-firebase/app",
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.559368532219-t9g2eli4n5l9tstsv10sibv7i8tbv0km"
+        }
+      ],
       [
         "expo-notifications",
         {

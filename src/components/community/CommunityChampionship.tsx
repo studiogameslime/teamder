@@ -15,17 +15,26 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { ChampionshipRow } from '@/utils/championship';
 
-export function CommunityChampionship({ groupId }: { groupId: string }) {
+export function CommunityChampionship({
+  groupId,
+  // The club's registered members — passed so the table lists EVERYONE, not
+  // only players who already have stats (members with no games show as zero).
+  memberIds,
+}: {
+  groupId: string;
+  memberIds?: string[];
+}) {
   const [data, setData] = useState<{
     totalGoals: number;
     totalRounds: number;
     players: ChampionshipRow[];
   } | null>(null);
 
+  const memberKey = (memberIds ?? []).join(',');
   useEffect(() => {
     let alive = true;
     gameService
-      .getCommunityChampionship(groupId)
+      .getCommunityChampionship(groupId, memberIds)
       .then((d) => {
         if (alive) setData(d);
       })
@@ -35,7 +44,8 @@ export function CommunityChampionship({ groupId }: { groupId: string }) {
     return () => {
       alive = false;
     };
-  }, [groupId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, memberKey]);
 
   if (!data || data.players.length === 0) return null;
 
