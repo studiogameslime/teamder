@@ -46,6 +46,8 @@ export const mockGroup: Group = {
   defaultMaxPlayers: 15,
   isOpen: false,           // admin-approval flow
   maxMembers: 40,
+  cardsEnabled: true,      // demo the cards feature (menu + timeline)
+  redCardValidityDays: 7,  // red expires after a week; yellow = no expiry
   contactPhone: '+972501234567',
   preferredDays: [4],
   preferredHour: '20:00',

@@ -5,13 +5,14 @@
 // members are selectable — a holder is a community-member state (guests excluded
 // upstream). "דלג" leaves the current holders unchanged.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { selectionHaptic } from '@/utils/haptics';
 import { he } from '@/i18n/he';
+import type { LastTakenMap } from '@/services/communityEventsService';
 
 export interface EquipmentHolders {
   ballHolderIds: string[];
@@ -24,21 +25,67 @@ interface Props {
   players: { id: string; name: string; avatarId?: string; photoUrl?: string }[];
   /** Current holders, used to pre-select the rows. */
   initial: EquipmentHolders;
+  /** When each player last took the ball/jerseys home (for the fairness hint). */
+  lastTaken?: LastTakenMap;
   onSave: (holders: EquipmentHolders) => void;
   onSkip: () => void;
 }
 
-export function EquipmentHandoffModal({ visible, players, initial, onSave, onSkip }: Props) {
+/** Compact "took last at DD.MM" line for a player. */
+function lastTakenHint(lt: { ball?: number; jerseys?: number } | undefined): string {
+  const short = (ms: number) => {
+    const d = new Date(ms);
+    const dm = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    // Append a 2-digit year for cross-season events so last year isn't confused
+    // with this year (getLastTakenMap can surface older handoffs).
+    const yr = d.getFullYear();
+    return yr === new Date().getFullYear() ? dm : `${dm}.${String(yr).slice(2)}`;
+  };
+  const parts: string[] = [];
+  if (lt?.ball) parts.push(`${he.equipmentBall} ${short(lt.ball)}`);
+  if (lt?.jerseys) parts.push(`${he.equipmentJerseys} ${short(lt.jerseys)}`);
+  return parts.length ? he.equipmentLastTook(parts.join(' · ')) : he.equipmentNeverTook;
+}
+
+export function EquipmentHandoffModal({ visible, players, initial, lastTaken, onSave, onSkip }: Props) {
   const [ball, setBall] = useState<string[]>([]);
   const [jerseys, setJerseys] = useState<string[]>([]);
 
-  // Re-seed from the current holders each time the sheet opens.
+  // Fairness rotation: 0 = never took (most overdue → suggested first).
+  const took = (id: string, item: 'ball' | 'jerseys') => lastTaken?.[id]?.[item] ?? 0;
+  const hasLastData = !!lastTaken && Object.keys(lastTaken).length > 0;
+
+  // Display order: whoever carried equipment (either item) least recently rises
+  // to the top, so the fair candidates are the first ones the admin sees.
+  const orderedPlayers = useMemo(() => {
+    if (!hasLastData) return players;
+    // Overdue on EITHER item floats a player up: min() means a never-took (0)
+    // on any single item sorts them first, even if they carried the other one.
+    const staleness = (id: string) => Math.min(took(id, 'ball'), took(id, 'jerseys'));
+    return [...players].sort((a, b) => staleness(a.id) - staleness(b.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, lastTaken, hasLastData]);
+
+  // Pre-select the FAIREST holders (took that item longest ago / never) instead
+  // of last week's holders — same count the club used before, so we rotate
+  // rather than re-assign the same people. Falls back to the current holders
+  // when there's no history yet.
   useEffect(() => {
-    if (visible) {
+    if (!visible) return;
+    if (!hasLastData) {
       setBall(initial.ballHolderIds ?? []);
       setJerseys(initial.jerseysHolderIds ?? []);
+      return;
     }
-  }, [visible, initial]);
+    const fairest = (item: 'ball' | 'jerseys', k: number) =>
+      [...players]
+        .sort((a, b) => took(a.id, item) - took(b.id, item))
+        .slice(0, Math.max(0, k))
+        .map((p) => p.id);
+    setBall(fairest('ball', initial.ballHolderIds?.length ?? 0));
+    setJerseys(fairest('jerseys', initial.jerseysHolderIds?.length ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, initial, lastTaken, players]);
 
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
@@ -78,15 +125,20 @@ export function EquipmentHandoffModal({ visible, players, initial, onSave, onSki
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
-            {players.map((p) => {
+            {orderedPlayers.map((p) => {
               const ballOn = ball.includes(p.id);
               const jerseyOn = jerseys.includes(p.id);
               return (
                 <View key={p.id} style={styles.row}>
                   <UserAvatar user={p} size={34} />
-                  <Text style={styles.name} numberOfLines={1}>
-                    {p.name}
-                  </Text>
+                  <View style={styles.nameCol}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                    <Text style={styles.lastTook} numberOfLines={1}>
+                      {lastTakenHint(lastTaken?.[p.id])}
+                    </Text>
+                  </View>
                   <Pressable
                     onPress={() => toggle(setBall, p.id)}
                     style={[styles.toggle, ballOn && styles.toggleBallOn]}
@@ -181,7 +233,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  name: { ...typography.bodyBold, color: colors.text, flex: 1, textAlign: RTL_LABEL_ALIGN },
+  nameCol: { flex: 1, minWidth: 0 },
+  name: { ...typography.bodyBold, color: colors.text, textAlign: RTL_LABEL_ALIGN },
+  lastTook: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
   toggle: {
     width: 38,
     height: 38,

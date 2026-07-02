@@ -13,14 +13,25 @@ import {
   StyleSheet,
   Text,
   View,
+  type GestureResponderEvent,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
+import {
+  PlayerActionMenu,
+  type PlayerMenuItem,
+  type PlayerMenuTarget,
+} from '@/components/match/PlayerActionMenu';
+import { IssueCardSheet } from '@/components/community/IssueCardSheet';
+import { CardCountBadges } from '@/components/community/CardCountBadges';
+import { communityEventsService } from '@/services';
+import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
 import { formatRating, isRated } from '@/utils/rating';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   RouteProp,
+  useFocusEffect,
   useNavigation,
   useRoute,
 } from '@react-navigation/native';
@@ -61,6 +72,12 @@ export function CommunityPlayersScreen() {
   // Admin-rating editor target (internalRating communities only).
   const [ratingTarget, setRatingTarget] = useState<User | null>(null);
   const [savingRating, setSavingRating] = useState(false);
+  // Admin player menu (tap a player) + the card-issue sheet it opens.
+  const [menuTarget, setMenuTarget] = useState<PlayerMenuTarget | null>(null);
+  const [cardTarget, setCardTarget] = useState<{ user: User; type: 'yellow' | 'red' } | null>(null);
+  const [savingCard, setSavingCard] = useState(false);
+  // Per-player ACTIVE yellow/red counts → the roster discipline badges.
+  const [cardCounts, setCardCounts] = useState<CardCountsMap>({});
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -70,15 +87,24 @@ export function CommunityPlayersScreen() {
       if (!g) {
         setMembers([]);
         setStats({});
+        setCardCounts({});
         return;
       }
       const ids = Array.from(new Set([...g.adminIds, ...g.playerIds]));
-      const [users, derived] = await Promise.all([
+      const iAmGroupAdmin = !!me && g.adminIds.includes(me.id);
+      const [users, derived, counts] = await Promise.all([
         groupService.hydrateUsers(ids),
         gameService.getCommunityPlayerStats(g.id, ids).catch(() => ({})),
+        // Card badges are admin-only and only when the club uses cards.
+        iAmGroupAdmin && g.cardsEnabled
+          ? communityEventsService
+              .getActiveCardCounts(g.id, g.yellowCardValidityDays, g.redCardValidityDays)
+              .catch(() => ({}))
+          : Promise.resolve({}),
       ]);
       setMembers(users);
       setStats(derived);
+      setCardCounts(counts);
     } catch (err) {
       logError('communityPlayersLoad', err, {
         screen: 'CommunityPlayersScreen',
@@ -88,11 +114,19 @@ export function CommunityPlayersScreen() {
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, me]);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // Refresh on focus so a card revoked from a player's timeline (which lowers
+  // the active-card count) is reflected in the roster badge on return.
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   // Viewer-is-admin gate. Only group admins see the "remove member"
   // affordance, and only on rows that aren't the creator / aren't
@@ -108,6 +142,72 @@ export function CommunityPlayersScreen() {
   const internalRating = group?.internalRating === true;
   const ratingsHiddenFromMe =
     internalRating && group?.hideInternalRating === true && !iAmAdmin;
+
+  // Admin taps a player → anchored menu (card / timeline / issue card). The
+  // anchor is a POINT at the touch location (the row has no measurable avatar
+  // here), which the popover positions itself below.
+  const openPlayerMenu = (u: User, e: GestureResponderEvent) => {
+    setMenuTarget({
+      player: { id: u.id, name: u.name, avatarId: u.avatarId, photoUrl: u.photoUrl },
+      anchor: { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, width: 0, height: 0 },
+    });
+  };
+
+  const goToCard = (u: User) =>
+    nav.navigate('PlayerCard', { userId: u.id, groupId });
+  const goToTimeline = (u: User) =>
+    nav.navigate('PlayerTimeline', { userId: u.id, groupId, name: u.name });
+
+  // Yellow/red card actions only appear when the club enabled the cards
+  // feature in its advanced settings. The player-card + timeline entries
+  // always show for admins.
+  const cardsOn = !!group?.cardsEnabled;
+  const menuItemsFor = (u: User): PlayerMenuItem[] => [
+    { key: 'card', icon: 'person-circle-outline', label: he.playerMenuCard, onPress: () => goToCard(u) },
+    { key: 'timeline', icon: 'time-outline', label: he.playerMenuTimeline, onPress: () => goToTimeline(u) },
+    ...(cardsOn
+      ? ([
+          { key: 'yellow', icon: 'card', label: he.cardYellow, color: colors.warning, onPress: () => setCardTarget({ user: u, type: 'yellow' }) },
+          { key: 'red', icon: 'card', label: he.cardRed, color: colors.danger, onPress: () => setCardTarget({ user: u, type: 'red' }) },
+        ] as PlayerMenuItem[])
+      : []),
+  ];
+
+  const menuUser = useMemo(
+    () => members.find((m) => m.id === menuTarget?.player.id) ?? null,
+    [members, menuTarget],
+  );
+
+  const saveCard = async (detail: string) => {
+    if (!me || !cardTarget) return;
+    setSavingCard(true);
+    try {
+      // Snapshot the club's CURRENT validity for this card type onto the event
+      // so a later config change can't rewrite this card's expiry (null = no
+      // expiry). Yellow uses yellowCardValidityDays, red uses redCardValidityDays.
+      const validityDays =
+        cardTarget.type === 'red'
+          ? group?.redCardValidityDays ?? null
+          : group?.yellowCardValidityDays ?? null;
+      await communityEventsService.logCardEvent(
+        groupId,
+        cardTarget.user.id,
+        cardTarget.type,
+        me.id,
+        detail,
+        validityDays,
+      );
+      toast.success(he.cardIssuedToast);
+      setCardTarget(null);
+      // Refresh so the new card immediately bumps the roster discipline badge.
+      reload();
+    } catch (err) {
+      logError('issueCommunityCard', err, { groupId, userId: cardTarget.user.id });
+      appAlert(he.error, 'לא הצלחנו לרשום את הכרטיס. נסה שוב.');
+    } finally {
+      setSavingCard(false);
+    }
+  };
 
   const saveAdminRating = useCallback(
     async (playerId: UserId, rating: number | null) => {
@@ -275,6 +375,7 @@ export function CommunityPlayersScreen() {
                   showDivider={i > 0}
                   holdsBall={(group.ballHolderIds ?? []).includes(u.id)}
                   holdsJerseys={(group.jerseysHolderIds ?? []).includes(u.id)}
+                  cardCounts={cardCounts[u.id]}
                   internalRating={internalRating}
                   rating={
                     ratingsHiddenFromMe ? undefined : group.adminRatings?.[u.id]
@@ -284,11 +385,10 @@ export function CommunityPlayersScreen() {
                       ? () => setRatingTarget(u)
                       : undefined
                   }
-                  onPress={() =>
-                    (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                      'PlayerCard',
-                      { userId: u.id, groupId: group.id },
-                    )
+                  onPress={(e) =>
+                    iAmAdmin
+                      ? openPlayerMenu(u, e)
+                      : nav.navigate('PlayerCard', { userId: u.id, groupId: group.id })
                   }
                   onLongPress={
                     canManage
@@ -319,6 +419,20 @@ export function CommunityPlayersScreen() {
         onClose={() => setRatingTarget(null)}
         onSave={(rating) => ratingTarget && saveAdminRating(ratingTarget.id, rating)}
       />
+
+      <PlayerActionMenu
+        target={menuTarget}
+        items={menuUser ? menuItemsFor(menuUser) : []}
+        onClose={() => setMenuTarget(null)}
+      />
+      <IssueCardSheet
+        visible={!!cardTarget}
+        playerName={cardTarget?.user.name ?? ''}
+        cardType={cardTarget?.type ?? null}
+        saving={savingCard}
+        onSave={saveCard}
+        onClose={() => (savingCard ? null : setCardTarget(null))}
+      />
     </SafeAreaView>
   );
 }
@@ -338,6 +452,7 @@ function PlayerRow({
   onRemove,
   holdsBall,
   holdsJerseys,
+  cardCounts,
 }: {
   user: User;
   isAdmin: boolean;
@@ -346,13 +461,15 @@ function PlayerRow({
   /** Currently holds the club's ball / jerseys (from the end-evening handoff). */
   holdsBall?: boolean;
   holdsJerseys?: boolean;
+  /** Admin-only: active yellow/red card counts → discipline badges. */
+  cardCounts?: CardCounts;
   /** Community is in internal-rating mode → show the admins' rating. */
   internalRating?: boolean;
   /** The admin-assigned rating for this player, if set. */
   rating?: number;
   /** Admin-only: open the rating editor for this player. */
   onSetRating?: () => void;
-  onPress: () => void;
+  onPress: (e: GestureResponderEvent) => void;
   /** Optional admin action — long-press opens the manage/remove dialog.
    *  Undefined for rows the viewer can't act on. */
   onLongPress?: () => void;
@@ -400,6 +517,7 @@ function PlayerRow({
               <Ionicons name="shirt" size={13} color="#7C3AED" />
             </View>
           ) : null}
+          <CardCountBadges counts={cardCounts} />
         </View>
         <View style={styles.statsRow}>
           <StatChip

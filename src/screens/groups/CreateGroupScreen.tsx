@@ -61,14 +61,27 @@ export function CreateGroupScreen() {
         isOpen: v.isOpen,
         internalRating: v.internalRating,
         hideInternalRating: v.internalRating ? v.hideInternalRating : undefined,
+        cardsEnabled: v.cardsEnabled,
+        // Persist validity regardless of the master switch — cardsEnabled gates
+        // enforcement, so keeping the days lets a later re-enable restore config
+        // instead of resurrecting/immortalizing cards via a nulled expiry.
+        yellowCardValidityDays: (() => {
+          const n = parseInt(v.yellowCardValidityDays, 10);
+          return Number.isFinite(n) && n > 0 ? n : null;
+        })(),
+        redCardValidityDays: (() => {
+          const n = parseInt(v.redCardValidityDays, 10);
+          return Number.isFinite(n) && n > 0 ? n : null;
+        })(),
         rules: v.rules.trim() || undefined,
         contactPhone: phone || undefined,
         city: cityVal || undefined,
         lat: coords?.lat,
         lng: coords?.lng,
-        maxMembers: Number.isFinite(parsedMaxMembers)
-          ? parsedMaxMembers
-          : undefined,
+        maxMembers:
+          Number.isFinite(parsedMaxMembers) && parsedMaxMembers > 0
+            ? parsedMaxMembers
+            : undefined,
         // Random cover from the built-in gallery — the admin can switch
         // to another gallery image or upload their own afterwards.
         coverImageId: pickRandomCoverId(),

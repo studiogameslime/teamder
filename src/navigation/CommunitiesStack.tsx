@@ -29,6 +29,7 @@ import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersSc
 import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
 import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -53,6 +54,8 @@ export type CommunitiesStackParamList = {
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
   PlayerCard: { userId: string; groupId?: string };
+  /** Admin-only per-community player timeline (cards + equipment handoffs). */
+  PlayerTimeline: { userId: string; groupId: string; name?: string };
   // Match-detail chain — same routes as GameStack, deliberately
   // duplicated so back-navigation from MatchDetails returns to
   // CommunityDetails rather than jumping the user to the Games tab.
@@ -107,6 +110,7 @@ export function CommunitiesStack() {
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />

@@ -42,3 +42,8 @@ credentials.json
 credentials/
 qa_emulator_run/
 firebase-debug.log
+
+# local junk
+firestore-debug.log
+AUDIT-REPORT*.md
+audit-screenshots/

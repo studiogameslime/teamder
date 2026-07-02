@@ -38,6 +38,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
+import { communityEventsService } from '@/services/communityEventsService';
 import {
   EquipmentHandoffModal,
   type EquipmentHolders,
@@ -191,6 +192,7 @@ export function AdvancedLiveMatchScreen() {
   const [handoff, setHandoff] = useState<{
     players: { id: string; name: string; avatarId?: string; photoUrl?: string }[];
     initial: EquipmentHolders;
+    lastTaken?: import('@/services/communityEventsService').LastTakenMap;
   } | null>(null);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
@@ -720,12 +722,18 @@ export function AdvancedLiveMatchScreen() {
       const wasPlayed =
         game?.status === 'finished' || game?.liveMatch?.startedAt != null;
       if (grpId && registered.length > 0 && wasPlayed) {
+        // "Last took" hints so the admin can hand off fairly (who took it
+        // longest ago). Non-blocking — an empty map just hides the hints.
+        const lastTaken = await communityEventsService
+          .getLastTakenMap(grpId)
+          .catch(() => ({}));
         setHandoff({
           players: registered,
           initial: {
             ballHolderIds: grp?.ballHolderIds ?? [],
             jerseysHolderIds: grp?.jerseysHolderIds ?? [],
           },
+          lastTaken,
         });
       } else {
         leaveLiveScreen();
@@ -744,6 +752,13 @@ export function AdvancedLiveMatchScreen() {
     if (grpId) {
       try {
         await groupService.setEquipmentHolders(grpId, holders);
+        // Log timestamped events so the timeline + next "last took" hint update.
+        await communityEventsService.logEquipmentEvents(
+          grpId,
+          gameId ?? '',
+          holders.ballHolderIds,
+          holders.jerseysHolderIds,
+        );
       } catch (err) {
         logError('setEquipmentHolders', err, { gameId, grpId });
       }
@@ -1485,6 +1500,7 @@ export function AdvancedLiveMatchScreen() {
         visible={!!handoff}
         players={handoff?.players ?? []}
         initial={handoff?.initial ?? { ballHolderIds: [], jerseysHolderIds: [] }}
+        lastTaken={handoff?.lastTaken}
         onSave={onSaveHandoff}
         onSkip={onSkipHandoff}
       />

@@ -56,6 +56,11 @@ export function CommunityEditScreen() {
       isOpen: original.isOpen ?? false,
       internalRating: original.internalRating ?? false,
       hideInternalRating: original.hideInternalRating ?? false,
+      cardsEnabled: original.cardsEnabled ?? false,
+      yellowCardValidityDays:
+        original.yellowCardValidityDays != null ? String(original.yellowCardValidityDays) : '',
+      redCardValidityDays:
+        original.redCardValidityDays != null ? String(original.redCardValidityDays) : '',
       rules: original.rules ?? '',
       contactPhone: original.contactPhone ?? '',
       city: original.city ?? '',
@@ -90,6 +95,10 @@ export function CommunityEditScreen() {
 
   const submit = async (v: GroupFormValues) => {
     const parsedMembers = parseInt(v.maxMembers, 10);
+    const toDays = (s: string): number | null => {
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
     try {
       await groupService.updateGroupMetadata(original.id, me.id, {
         name: v.name.trim(),
@@ -97,6 +106,12 @@ export function CommunityEditScreen() {
         isOpen: v.isOpen,
         internalRating: v.internalRating,
         hideInternalRating: v.internalRating ? v.hideInternalRating : false,
+        cardsEnabled: v.cardsEnabled,
+        // Preserve validity even when cards are disabled — the master switch
+        // gates enforcement, so keeping the days lets a re-enable restore the
+        // prior config instead of nulling (which would immortalize open reds).
+        yellowCardValidityDays: toDays(v.yellowCardValidityDays),
+        redCardValidityDays: toDays(v.redCardValidityDays),
         rules: v.rules.trim() || undefined,
         contactPhone: v.contactPhone.trim() || undefined,
         city: v.city.trim() || undefined,

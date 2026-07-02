@@ -41,6 +41,9 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { formatRating, isRated } from '@/utils/rating';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
+import { communityEventsService } from '@/services/communityEventsService';
+import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
+import { CardCountBadges } from '@/components/community/CardCountBadges';
 import { isTerminalGame } from '@/services/gameLifecycle';
 import { logError } from '@/services/errorLog';
 import { useGameStore } from '@/store/gameStore';
@@ -63,6 +66,8 @@ interface RosterEntry {
   /** Holds the club's ball / jerseys (from the end-evening handoff). */
   holdsBall?: boolean;
   holdsJerseys?: boolean;
+  /** Admin-only: active yellow/red card counts for this club → badges. */
+  cardCounts?: CardCounts;
   /** Admin internal rating (0 = unrated). Only carried for admin viewers in
    *  internal-rating communities — members never receive it. */
   rating?: number;
@@ -154,6 +159,35 @@ export function MatchPlayersScreen() {
     [group?.jerseysHolderIds],
   );
 
+  // Admin-only discipline badges: active yellow/red card counts for this club.
+  // Loaded only when the viewer is an admin and the club uses cards.
+  const [cardCounts, setCardCounts] = useState<CardCountsMap>({});
+  // Depend on PRIMITIVES, not the `group` object — the groups store hands out a
+  // fresh reference on every snapshot, and `[group]` would refetch 200 card
+  // docs each time. These primitives only change when they actually change.
+  const groupIdForCards = group?.id;
+  const cardsEnabledForCards = group?.cardsEnabled === true;
+  const yellowValidity = group?.yellowCardValidityDays;
+  const redValidity = group?.redCardValidityDays;
+  useEffect(() => {
+    if (!groupIdForCards || !iAmAdmin || !cardsEnabledForCards) {
+      setCardCounts({});
+      return;
+    }
+    let alive = true;
+    communityEventsService
+      .getActiveCardCounts(groupIdForCards, yellowValidity, redValidity)
+      .then((c) => {
+        if (alive) setCardCounts(c);
+      })
+      .catch(() => {
+        if (alive) setCardCounts({});
+      });
+    return () => {
+      alive = false;
+    };
+  }, [groupIdForCards, cardsEnabledForCards, yellowValidity, redValidity, iAmAdmin]);
+
   // Set of uids stamped as "I'm bringing a ball" on this game. Only
   // meaningful for users in `players[]` — waitlist / pending / cancelled
   // entries never carry the badge (matches the MatchDetails preview).
@@ -178,6 +212,7 @@ export function MatchPlayersScreen() {
           isBringingBall: opts?.withBall ? ballBringers.has(uid) : false,
           holdsBall: ballHolders.has(uid),
           holdsJerseys: jerseyHolders.has(uid),
+          cardCounts: cardCounts[uid],
           rating: showRatings ? group?.adminRatings?.[uid] : undefined,
         };
       });
@@ -189,6 +224,7 @@ export function MatchPlayersScreen() {
       ballBringers,
       ballHolders,
       jerseyHolders,
+      cardCounts,
       showRatings,
       group?.adminRatings,
     ],
@@ -711,7 +747,7 @@ function PlayerRow({
    *  provided, the rating chip renders (showing the value, or "דרג"). */
   onSetRating?: () => void;
 }) {
-  const { user, isAdmin, arrival, isBringingBall, holdsBall, holdsJerseys, rating } =
+  const { user, isAdmin, arrival, isBringingBall, holdsBall, holdsJerseys, cardCounts, rating } =
     entry;
   // `onRemove` is NOT here on purpose — a plain "remove player" renders as
   // a compact inline icon on the row instead of a full-width pink bar, which
@@ -766,6 +802,7 @@ function PlayerRow({
                 <Ionicons name="shirt" size={13} color="#7C3AED" />
               </View>
             ) : null}
+            <CardCountBadges counts={cardCounts} />
           </View>
           {offerHint ? (
             <Text style={styles.offerHint}>{offerHint}</Text>

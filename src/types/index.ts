@@ -286,6 +286,41 @@ export interface UserDisciplineState {
   events: DisciplineEvent[];
 }
 
+/**
+ * A per-COMMUNITY, per-player timeline event (collection `communityPlayerEvents`).
+ * Separate from the global `UserDisciplineState` above — this one is scoped to a
+ * single club and is admin-only. Powers the player timeline, the "last took"
+ * hints in the equipment popup, and the active-red-card registration block.
+ */
+export type CommunityEventType = 'yellow' | 'red' | 'ball' | 'jerseys';
+
+export interface CommunityPlayerEvent {
+  id: string;
+  groupId: GroupId;
+  userId: UserId;
+  type: CommunityEventType;
+  /** When it happened (epoch ms). */
+  at: number;
+  /**
+   * Expiry SNAPSHOTTED at issue time (epoch ms), for cards only. Computed from
+   * the community's yellow/redCardValidityDays when the card is issued, so a
+   * later change to the club's validity config does NOT retroactively rewrite
+   * this card's active/expired state. `null` = no expiry (issued while the club
+   * had no validity set). Absent on legacy cards + on ball/jerseys events —
+   * callers fall back to the live group-validity computation in that case. */
+  expiresAt?: number | null;
+  /** Admin who issued a card / recorded the handoff. */
+  issuedBy?: UserId;
+  /** The game this ball/jersey handoff belongs to (cards omit it). */
+  gameId?: string;
+  /** Free-text note on a card (shown on the timeline). */
+  detail?: string;
+  /** A revoked card stays on the timeline marked "בוטל" but stops counting. */
+  revoked?: boolean;
+  revokedBy?: UserId;
+  revokedAt?: number;
+}
+
 export const defaultDisciplineState: UserDisciplineState = {
   yellowCards: 0,
   redCards: 0,
@@ -812,6 +847,19 @@ export interface Group {
    */
   ballHolderIds?: UserId[];
   jerseysHolderIds?: UserId[];
+
+  /**
+   * Card validity (per community, set in the create/edit form). How many days a
+   * card stays "active/relevant" after it was issued; after that it's shown as
+   * "expired" on the player timeline but kept for history. `null`/undefined =
+   * no expiry (stays active until revoked). Yellow is display-only; an ACTIVE
+   * red card blocks the player from registering to this club's games.
+   */
+  yellowCardValidityDays?: number | null;
+  redCardValidityDays?: number | null;
+  /** Master switch for the per-community cards feature. When false/undefined,
+   *  admins can't issue yellow/red cards and the validity fields are moot. */
+  cardsEnabled?: boolean;
 
   createdAt: number;
   updatedAt?: number;

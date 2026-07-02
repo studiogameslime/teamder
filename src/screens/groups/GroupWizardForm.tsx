@@ -1,22 +1,21 @@
-// Single-step form shared by Create / Edit Community.
-//
-// (Was a 2-step wizard; collapsed to ONE scrollable screen per user
-// feedback — all fields now live on a single page with one submit
-// button at the bottom. The `revertSignal`/`revertToStep` plumbing is
-// kept for back-compat with CommunityEditScreen; on a single page the
-// "jump to step" is a no-op but the field revert still runs.)
+// Two-step wizard shared by Create / Edit Community (rolling-ball
+// StepIndicator, mirroring the create-game flow):
+//   • Step 1 "פרטים"  — name, city, contact phone, description, rules.
+//   • Step 2 "מתקדם"  — open/private toggle, max members, internal-rating
+//                        toggle (+ hide-rating), cards master toggle and
+//                        (when on) the yellow/red validity fields.
+// `revertSignal`/`revertToStep` are functional again: on a server-side
+// rejection the host bumps the signal and the wizard jumps to the named
+// step and re-syncs the listed fields (used for GROUP_MAX_BELOW_CURRENT →
+// step 2, where the maxMembers field lives).
 //
 // Responsibility split:
 //   • Community owns identity + membership behaviour ONLY. It is NOT
 //     tied to a fixed field, format, schedule, or recurring config.
 //     All those are per-Game settings now.
-//
-// Fields: name, description, open/private toggle, rules (rich text),
-// contact phone, general city, max members. All free fields are
-// optional; name + phone + city are enforced. The form is rendered
-// identically in create and edit — the host screen wraps it with a
-// different `submitLabel` and `initial` payload (empty for create,
-// hydrated from the existing group for edit).
+// All free fields are optional; name + city are enforced (phone valid if
+// typed). The form is rendered identically in create and edit — the host
+// screen wraps it with a different `submitLabel` and `initial` payload.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -37,6 +36,7 @@ import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { InfoTip } from '@/components/InfoTip';
+import { StepIndicator } from '@/components/StepIndicator';
 import { RichRulesInput } from '@/components/community/RichRulesInput';
 import { searchCities } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
@@ -57,6 +57,16 @@ export interface GroupFormValues {
    *  meaningful when `internalRating` is on. Stored as Group.hideInternalRating. */
   hideInternalRating: boolean;
 
+  /** Master switch for the per-community cards feature (yellow/red). When off,
+   *  admins can't issue cards and the validity fields are hidden. Stored on the
+   *  group as cardsEnabled. */
+  cardsEnabled: boolean;
+  /** Card validity in days (as text; empty = no expiry). Stored on the group as
+   *  yellow/redCardValidityDays. Yellow is display-only; an active red blocks
+   *  registration. */
+  yellowCardValidityDays: string;
+  redCardValidityDays: string;
+
   // Info
   rules: string;
   contactPhone: string;
@@ -71,6 +81,9 @@ export const EMPTY_GROUP_FORM_VALUES: GroupFormValues = {
   isOpen: false,
   internalRating: false,
   hideInternalRating: false,
+  cardsEnabled: false,
+  yellowCardValidityDays: '',
+  redCardValidityDays: '',
   rules: '',
   contactPhone: '',
   city: '',
@@ -114,6 +127,9 @@ export function GroupWizardForm({
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GroupFormValues>(initial);
+  // Two-step wizard (rolling-ball indicator, like the create-game flow):
+  // step 1 "פרטים" (identity/contact) + step 2 "מתקדם" (rating + cards).
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Unsaved-changes guard (edit flow): dirty = any field differs from initial.
   const savingRef = useRef(false);
@@ -136,11 +152,11 @@ export function GroupWizardForm({
 
   // Parent-driven partial revert. Triggered by ticking `revertSignal`.
   // We deliberately ignore the first render (signal===undefined or 0
-  // on mount) so the form doesn't snap back on initial display.
-  // `revertToStep` is retained on the Props for back-compat but is a
-  // no-op now that everything lives on one page.
+  // on mount) so the form doesn't snap back on initial display. Jumps
+  // back to the requested step so the user lands on the rejected field.
   useEffect(() => {
     if (!revertSignal) return;
+    if (revertToStep) setStep(revertToStep);
     if (revertFields && revertFields.length > 0) {
       setValues((s) => {
         const next = { ...s };
@@ -170,7 +186,23 @@ export function GroupWizardForm({
   const cityValid = values.city.trim().length > 0;
 
   const nameValid = values.name.trim().length > 0;
-  const canSubmit = nameValid && phoneOk && cityValid && !busy;
+  // Everything required lives on step 1 (name + city; phone valid if typed).
+  const step1Valid = nameValid && cityValid && phoneOk;
+  const canSubmit = step1Valid && !busy;
+
+  // Which required step-1 fields are still missing — surfaced under the
+  // "המשך" button so a disabled button isn't a silent dead-end.
+  const step1Missing: string[] = [];
+  if (!nameValid) step1Missing.push(he.groupCreateName);
+  if (!cityValid) step1Missing.push(he.createGroupCity);
+
+  const goNext = () => {
+    if (step === 1 && !step1Valid) return;
+    if (step < 2) setStep(2);
+  };
+  const goBack = () => {
+    if (step > 1) setStep(1);
+  };
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -198,125 +230,209 @@ export function GroupWizardForm({
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* Pinned rolling-ball step indicator (same component as the
+            create-game wizard). "פרטים" holds the everyday identity +
+            contact fields; "מתקדם" holds the internal-rating + cards config
+            so the create screen isn't a wall of options. */}
+        <View style={styles.stickyHeader}>
+          <StepIndicator
+            current={step}
+            labels={[he.groupFormTabDetails, he.groupFormTabAdvanced]}
+          />
+        </View>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Single-page form: identity + membership + rules + contact,
-              all on one scroll. Only `name` is structurally required;
-              phone + city are enforced before submit too. NO
-              field/format/schedule fields — those are per-Game now. */}
           <View style={styles.body}>
-            <InputField
-              label={he.groupCreateName}
-              value={values.name}
-              onChangeText={(v) => set('name', v)}
-              placeholder="לדוגמה: חמישי כדורגל"
-              required
-              maxLength={80}
-            />
-            <InputField
-              label={he.createGroupDescription}
-              value={values.description}
-              onChangeText={(v) => set('description', v)}
-              multiline
-              maxLength={500}
-            />
+            {step === 1 ? (
+              <>
+                <InputField
+                  label={he.groupCreateName}
+                  value={values.name}
+                  onChangeText={(v) => set('name', v)}
+                  placeholder="לדוגמה: חמישי כדורגל"
+                  required
+                  maxLength={80}
+                />
+                <AutocompleteInput
+                  label={he.createGroupCity}
+                  required
+                  value={values.city}
+                  onChange={(v) => set('city', v)}
+                  onSelect={(v) => set('city', v)}
+                  placeholder={he.createGroupCityPlaceholder}
+                  fetchSuggestions={fetchCities}
+                />
+                <View>
+                  <InputField
+                    label={he.createGroupContactPhone}
+                    info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
+                    value={values.contactPhone}
+                    onChangeText={(v) => set('contactPhone', v)}
+                    placeholder={he.createGroupContactPhonePlaceholder}
+                    keyboardType="phone-pad"
+                  />
+                  {phoneError ? (
+                    <Text style={styles.hintError}>
+                      {he.createGroupContactPhoneInvalid}
+                    </Text>
+                  ) : null}
+                </View>
 
-            {/* The open-join toggle defines membership behaviour
-                (auto-approve vs admin gate) — the most consequential
-                decision at create time. */}
-            <ToggleCard
-              label={he.createGroupIsOpen}
-              info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
-              value={values.isOpen}
-              onValueChange={(v) => set('isOpen', v)}
-            />
+                <InputField
+                  label={he.createGroupDescription}
+                  value={values.description}
+                  onChangeText={(v) => set('description', v)}
+                  multiline
+                  maxLength={500}
+                />
 
-            {/* Internal rating — admins set player skill levels themselves
-                instead of the peer-voting system. The chosen rating is what
-                the community / match-details surfaces display. */}
-            <ToggleCard
-              label={he.createGroupInternalRating}
-              info={{
-                title: he.createGroupInternalRating,
-                text: he.createGroupInternalRatingHint,
-              }}
-              value={values.internalRating}
-              onValueChange={(v) => {
-                set('internalRating', v);
-                // Turning internal rating off makes "hide" meaningless — reset
-                // it so a stale `true` doesn't get persisted.
-                if (!v) set('hideInternalRating', false);
-              }}
-            />
+                {/* Code-of-conduct (rich text: **bold** + bullets). Stored
+                    as the raw markdown-lite string; RichRulesText renders
+                    it on the community details screen. */}
+                <RichRulesInput
+                  label={he.communityDetailsRules}
+                  value={values.rules}
+                  // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
+                  // block can't fail submission with "rules too long" (report nfn19l).
+                  maxLength={2000}
+                  onChangeText={(v) => set('rules', v.slice(0, 2000))}
+                  placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
+                />
+              </>
+            ) : (
+              <>
+                {/* Open-join toggle — membership behaviour (auto-approve vs
+                    admin gate). Lives in "מתקדם" alongside the other
+                    membership/rating switches. */}
+                <ToggleCard
+                  label={he.createGroupIsOpen}
+                  info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
+                  value={values.isOpen}
+                  onValueChange={(v) => set('isOpen', v)}
+                />
 
-            {/* Hide-internal-rating — only relevant when internal rating is on.
-                Makes the admins' ratings private to admins (members see nothing). */}
-            {values.internalRating ? (
-              <ToggleCard
-                label={he.createGroupHideInternalRating}
-                info={{
-                  title: he.createGroupHideInternalRating,
-                  text: he.createGroupHideInternalRatingHint,
-                }}
-                value={values.hideInternalRating}
-                onValueChange={(v) => set('hideInternalRating', v)}
-              />
-            ) : null}
+                {/* Community-wide member cap. Lives on step 2 so the
+                    GROUP_MAX_BELOW_CURRENT revert (revertToStep={2}) lands on a
+                    real field. Empty = no explicit cap (server default). */}
+                <InputField
+                  label={he.createGroupMaxMembers}
+                  value={values.maxMembers}
+                  onChangeText={(v) => set('maxMembers', v.replace(/[^0-9]/g, '').slice(0, 4))}
+                  keyboardType="number-pad"
+                  placeholder="40"
+                />
 
-            {/* Code-of-conduct (rich text: **bold** + bullets). Stored
-                as the raw markdown-lite string; RichRulesText renders
-                it on the community details screen. */}
-            <RichRulesInput
-              label={he.communityDetailsRules}
-              value={values.rules}
-              // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
-              // block can't fail submission with "rules too long" (report nfn19l).
-              maxLength={2000}
-              onChangeText={(v) => set('rules', v.slice(0, 2000))}
-              placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
-            />
+                {/* Internal rating — admins set player skill levels themselves
+                    instead of the peer-voting system. The chosen rating is what
+                    the community / match-details surfaces display. */}
+                <ToggleCard
+                  label={he.createGroupInternalRating}
+                  info={{
+                    title: he.createGroupInternalRating,
+                    text: he.createGroupInternalRatingHint,
+                  }}
+                  value={values.internalRating}
+                  onValueChange={(v) => {
+                    set('internalRating', v);
+                    // Turning internal rating off makes "hide" meaningless — reset
+                    // it so a stale `true` doesn't get persisted.
+                    if (!v) set('hideInternalRating', false);
+                  }}
+                />
 
-            <View>
-              <InputField
-                label={he.createGroupContactPhone}
-                info={{ title: he.createGroupContactPhone, text: he.createGroupContactPhoneHint }}
-                value={values.contactPhone}
-                onChangeText={(v) => set('contactPhone', v)}
-                placeholder={he.createGroupContactPhonePlaceholder}
-                keyboardType="phone-pad"
-              />
-              {phoneError ? (
-                <Text style={styles.hintError}>
-                  {he.createGroupContactPhoneInvalid}
-                </Text>
-              ) : null}
-            </View>
-            <AutocompleteInput
-              label={he.createGroupCity}
-              required
-              value={values.city}
-              onChange={(v) => set('city', v)}
-              onSelect={(v) => set('city', v)}
-              placeholder={he.createGroupCityPlaceholder}
-              fetchSuggestions={fetchCities}
-            />
+                {/* Hide-internal-rating — only relevant when internal rating is on.
+                    Makes the admins' ratings private to admins (members see nothing). */}
+                {values.internalRating ? (
+                  <ToggleCard
+                    label={he.createGroupHideInternalRating}
+                    info={{
+                      title: he.createGroupHideInternalRating,
+                      text: he.createGroupHideInternalRatingHint,
+                    }}
+                    value={values.hideInternalRating}
+                    onValueChange={(v) => set('hideInternalRating', v)}
+                  />
+                ) : null}
+
+                {/* Cards master toggle — when on, admins can issue yellow/red
+                    cards from the community player menu. The validity fields
+                    only appear once it's enabled. */}
+                <ToggleCard
+                  label={he.cardsToggleLabel}
+                  info={{ title: he.cardsToggleLabel, text: he.cardsToggleHint }}
+                  value={values.cardsEnabled}
+                  onValueChange={(v) => set('cardsEnabled', v)}
+                />
+
+                {values.cardsEnabled ? (
+                  <View style={styles.cardsFields}>
+                    <Text style={styles.cardsHint}>{he.cardValidityDaysHint}</Text>
+                    {/* Card validity (days) — empty = no expiry. Yellow is
+                        display-only; an ACTIVE red card blocks a member from
+                        registering to games. */}
+                    <InputField
+                      label={he.redCardValidityLabel}
+                      value={values.redCardValidityDays}
+                      onChangeText={(v) => set('redCardValidityDays', v.replace(/[^0-9]/g, '').slice(0, 4))}
+                      placeholder={he.cardValidityNoExpiry}
+                      keyboardType="number-pad"
+                    />
+                    <InputField
+                      label={he.yellowCardValidityLabel}
+                      value={values.yellowCardValidityDays}
+                      onChangeText={(v) => set('yellowCardValidityDays', v.replace(/[^0-9]/g, '').slice(0, 4))}
+                      placeholder={he.cardValidityNoExpiry}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                ) : null}
+              </>
+            )}
           </View>
         </ScrollView>
 
+        {/* Tell the user WHY "המשך" is disabled — otherwise the grey
+            button just silently does nothing on tap. */}
+        {step === 1 && !step1Valid && step1Missing.length > 0 ? (
+          <Text style={styles.missingHint}>
+            {he.gameWizardMissingFields(step1Missing.join(', '))}
+          </Text>
+        ) : null}
+
         <View style={styles.footer}>
-          <View style={{ flex: 1 }}>
+          {step > 1 ? (
             <Button
-              title={submitLabel}
-              variant="primary"
+              title={he.wizardStepBack}
+              variant="outline"
               size="lg"
-              fullWidth
-              onPress={submit}
-              loading={busy}
-              disabled={!canSubmit}
+              onPress={goBack}
+              disabled={busy}
             />
+          ) : null}
+          <View style={{ flex: 1 }}>
+            {step < 2 ? (
+              <Button
+                title={he.wizardStepNext}
+                variant="primary"
+                size="lg"
+                fullWidth
+                onPress={goNext}
+                disabled={busy || !step1Valid}
+              />
+            ) : (
+              <Button
+                title={submitLabel}
+                variant="primary"
+                size="lg"
+                fullWidth
+                onPress={submit}
+                loading={busy}
+                disabled={!canSubmit}
+              />
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -373,6 +489,24 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: spacing.xl },
   body: { padding: spacing.lg, gap: spacing.md },
+
+  stickyHeader: {
+    backgroundColor: colors.surface,
+  },
+  missingHint: {
+    ...typography.caption,
+    color: colors.danger,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
+
+  cardsFields: { gap: spacing.md },
+  cardsHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
 
   hintError: {
     ...typography.caption,

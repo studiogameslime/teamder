@@ -717,6 +717,65 @@ service cloud.firestore {
             request.resource.data.participantIds.hasAll(
               request.resource.data.pending
             )
+          ) &&
+          // ── ONLY-THE-CALLER-CHANGES ────────────────────────────────
+          //    On top of the ±1 identity guards above (which pin any single-
+          //    slot add/remove to the caller), these close the remaining holes
+          //    so this client branch can ONLY: self-cancel, or accept an
+          //    outstanding spot offer (gameService.confirmSpotOffer,
+          //    waitlist→players). Every other JOIN goes through
+          //    games/{id}/joinRequests + the reconciler — the ONLY place the
+          //    active-red-card block is enforceable. Guards are ordered so the
+          //    O(n) hasAll only runs on a SIZE-NEUTRAL write (always an attack);
+          //    legit cancel/offer change a size and short-circuit, keeping the
+          //    rule cheap on big rosters. `.get(...,[])` tolerates legacy games.
+          //
+          // (a) No duplicate uid may be injected into a roster array (the dup-
+          //     survivor trick [X,Y]→[Y,Y] frees a participantIds slot).
+          request.resource.data.players.size() ==
+            request.resource.data.players.toSet().size() &&
+          request.resource.data.waitlist.size() ==
+            request.resource.data.waitlist.toSet().size() &&
+          request.resource.data.pending.size() ==
+            request.resource.data.pending.toSet().size() &&
+          // (b) A size-NEUTRAL write may not change membership — blocks the
+          //     eviction-swap [X,Y]→[A,Y]. (Legit writes change a size.)
+          (
+            request.resource.data.players.size() !=
+              resource.data.get('players', []).size() ||
+            resource.data.get('players', []).hasAll(request.resource.data.players)
+          ) &&
+          (
+            request.resource.data.waitlist.size() !=
+              resource.data.get('waitlist', []).size() ||
+            resource.data.get('waitlist', []).hasAll(request.resource.data.waitlist)
+          ) &&
+          (
+            request.resource.data.pending.size() !=
+              resource.data.get('pending', []).size() ||
+            resource.data.get('pending', []).hasAll(request.resource.data.pending)
+          ) &&
+          // (c) The caller may NOT self-add to waitlist/pending — joining those
+          //     buckets also goes through the reconciler.
+          (
+            !(request.auth.uid in request.resource.data.waitlist) ||
+            (request.auth.uid in resource.data.get('waitlist', []))
+          ) &&
+          (
+            !(request.auth.uid in request.resource.data.pending) ||
+            (request.auth.uid in resource.data.get('pending', []))
+          ) &&
+          // (d) A self-ADD to players is allowed ONLY as a spot-offer accept
+          //     (caller is the current pendingPromotion offeree). A red-carded
+          //     user can never reach the waitlist, so can never be offered.
+          (
+            !(request.auth.uid in request.resource.data.players) ||
+            (request.auth.uid in resource.data.get('players', [])) ||
+            (
+              resource.data.get('pendingPromotion', {}) is map &&
+              resource.data.get('pendingPromotion', {}).get('uid', '') ==
+                request.auth.uid
+            )
           )
         ) ||
         // ── Self-toggle "אני מביא כדור" branch ────────────────────
@@ -1332,6 +1391,46 @@ service cloud.firestore {
     match /communityShowcase/{groupId} {
       allow read: if true;
       allow write: if false;
+    }
+
+    // ── /communityPlayerEvents/{id} — per-community player timeline ─────
+    // Admin-only log of yellow/red cards + ball/jerseys handoffs, scoped to a
+    // single club. Powers the player timeline, the equipment "last took" hints,
+    // and the active-red-card registration block. Only THAT community's admins
+    // may read/write/revoke — regular members can't see it. (The join-gate red
+    // card check runs server-side via the Admin SDK, which bypasses rules.)
+    match /communityPlayerEvents/{id} {
+      // Admins see the whole club timeline; a member may read their OWN events
+      // (needed for the client red-card pre-empt on the join screen).
+      allow read: if isGroupAdmin(resource.data.groupId) ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isGroupAdmin(request.resource.data.groupId) &&
+        request.resource.data.type in ['yellow', 'red', 'ball', 'jerseys'] &&
+        request.resource.data.groupId is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.at is number &&
+        // Can't meaningfully forward-date an event (which would skew a card's
+        // expiry). `at` is a device-clock stamp, so allow a generous 1h skew
+        // so a fast client clock never drops a legit card/equipment write.
+        request.resource.data.at <= request.time.toMillis() + 3600000 &&
+        // Cards must be attributed to the issuing admin; a fresh card can't
+        // arrive already-revoked. Ball/jerseys carry no issuedBy.
+        (
+          request.resource.data.type in ['ball', 'jerseys'] ||
+          (
+            request.resource.data.issuedBy == request.auth.uid &&
+            !('revoked' in request.resource.data && request.resource.data.revoked == true)
+          )
+        );
+      // Revoke only: a cancelled card stays on the timeline, marked "בוטל".
+      // Values are pinned so an admin can't un-revoke or spoof the actor.
+      allow update: if isGroupAdmin(resource.data.groupId) &&
+        affectedKeys().hasOnly(['revoked', 'revokedBy', 'revokedAt']) &&
+        request.resource.data.revoked == true &&
+        request.resource.data.revokedBy == request.auth.uid &&
+        request.resource.data.revokedAt is number;
+      // Append-only + revoke-only: history is never hard-deleted.
+      allow delete: if false;
     }
 
     // ── /errors/{fingerprint} — client error/crash reports ─────────────

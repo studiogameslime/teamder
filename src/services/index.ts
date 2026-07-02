@@ -6,3 +6,4 @@ export { storage } from './storage';
 export { AnalyticsEvent, logEvent } from './analyticsService';
 export { adsService } from './adsService';
 export { BannerAd } from './adsService';
+export { communityEventsService } from './communityEventsService';

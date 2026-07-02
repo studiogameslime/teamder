@@ -116,6 +116,7 @@ import { he } from '@/i18n/he';
 import { formatDateShortYear, formatDayDate } from '@/utils/format';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { communityEventsService } from '@/services/communityEventsService';
 import { useGameStore } from '@/store/gameStore';
 import { useChatStore } from '@/store/chatStore';
 import { chatKeyFor } from '@/services/chatService';
@@ -390,6 +391,10 @@ export function MatchDetailsScreen() {
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
   const playersMap = useGameStore((s) => s.players);
+  // An active red card in this game's community blocks self-registration
+  // (enforced server-side too). We check once so the join CTA can pre-empt it
+  // with a clear message instead of a delayed rejection.
+  const [redBlocked, setRedBlocked] = useState(false);
   // Unread count for THIS game's chat → drives the badge on the header
   // chat icon (mirrors the badge on the chats-list tab).
   const chatUnread = useChatStore(
@@ -404,6 +409,30 @@ export function MatchDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
+
+  // Check the viewer's red-card status for this community once (self only).
+  useEffect(() => {
+    const gid = game?.groupId;
+    if (!gid || !user) {
+      setRedBlocked(false);
+      return;
+    }
+    let alive = true;
+    const grp = myCommunities.find((c) => c.id === gid);
+    // The master switch suspends all card behaviour — skip the check (and the
+    // Firestore read) entirely when the club's cards feature is off.
+    communityEventsService
+      .hasActiveRedCard(gid, user.id, grp?.redCardValidityDays, !!grp?.cardsEnabled)
+      .then((blocked) => {
+        if (alive) setRedBlocked(blocked);
+      })
+      .catch(() => {
+        if (alive) setRedBlocked(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [game?.groupId, user, myCommunities]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Open when the user taps "cancel" and we're already past the
   // cancel-deadline window. Soft-confirm — the cancellation is
@@ -791,6 +820,12 @@ export function MatchDetailsScreen() {
               : he.communityNextGameLocked,
           );
         } else toast.info(he.matchDetailsClosedForRegistration);
+        return;
+      }
+      // Active red card in this community → blocked from self-registering
+      // (the server rejects it too; this pre-empts with a clear message).
+      if (redBlocked) {
+        toast.info(he.redCardBlockToast);
         return;
       }
     } else if (!canCancelRegistration(game)) {

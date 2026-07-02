@@ -421,6 +421,9 @@ const groupConverter: FirestoreDataConverter<Group> = {
       isOpen: g.isOpen ?? null,
       internalRating: g.internalRating ?? null,
       hideInternalRating: g.hideInternalRating ?? null,
+      yellowCardValidityDays: g.yellowCardValidityDays ?? null,
+      redCardValidityDays: g.redCardValidityDays ?? null,
+      cardsEnabled: g.cardsEnabled ?? null,
       adminRatings: g.adminRatings ?? null,
       ballHolderIds: Array.isArray(g.ballHolderIds) ? g.ballHolderIds : null,
       jerseysHolderIds: Array.isArray(g.jerseysHolderIds) ? g.jerseysHolderIds : null,
@@ -485,6 +488,11 @@ const groupConverter: FirestoreDataConverter<Group> = {
         typeof d.hideInternalRating === 'boolean'
           ? d.hideInternalRating
           : undefined,
+      yellowCardValidityDays:
+        typeof d.yellowCardValidityDays === 'number' ? d.yellowCardValidityDays : null,
+      redCardValidityDays:
+        typeof d.redCardValidityDays === 'number' ? d.redCardValidityDays : null,
+      cardsEnabled: typeof d.cardsEnabled === 'boolean' ? d.cardsEnabled : undefined,
       adminRatings:
         d.adminRatings && typeof d.adminRatings === 'object'
           ? (Object.fromEntries(

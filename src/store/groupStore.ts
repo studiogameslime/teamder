@@ -55,6 +55,9 @@ interface GroupStore {
     isOpen?: boolean;
     internalRating?: boolean;
     hideInternalRating?: boolean;
+    yellowCardValidityDays?: number | null;
+    redCardValidityDays?: number | null;
+    cardsEnabled?: boolean;
     // Info
     rules?: string;
     contactPhone?: string;

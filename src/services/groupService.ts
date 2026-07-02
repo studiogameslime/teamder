@@ -286,6 +286,12 @@ export const groupService = {
     /** When true (with internalRating), ratings are hidden from regular
      *  members — admins-only signal. */
     hideInternalRating?: boolean;
+    /** Card validity in days (null = no expiry). An active red card blocks a
+     *  member from registering to this club's games. */
+    yellowCardValidityDays?: number | null;
+    redCardValidityDays?: number | null;
+    /** Master switch for the per-community cards feature. */
+    cardsEnabled?: boolean;
     // ── Info (Step 2 of the wizard) ───────────────────────────────
     /** Code-of-conduct text shown on the community page. */
     rules?: string;
@@ -353,6 +359,9 @@ export const groupService = {
       isOpen: input.isOpen,
       internalRating: input.internalRating,
       hideInternalRating: input.internalRating ? input.hideInternalRating : undefined,
+      yellowCardValidityDays: input.yellowCardValidityDays ?? undefined,
+      redCardValidityDays: input.redCardValidityDays ?? undefined,
+      cardsEnabled: input.cardsEnabled ?? undefined,
       contactPhone: input.contactPhone,
       rules: input.rules,
       coverImageId: input.coverImageId,
@@ -404,6 +413,9 @@ export const groupService = {
         contactPhone: baseGroup.contactPhone,
         city: baseGroup.city,
         maxMembers: baseGroup.maxMembers,
+        cardsEnabled: baseGroup.cardsEnabled,
+        yellowCardValidityDays: baseGroup.yellowCardValidityDays,
+        redCardValidityDays: baseGroup.redCardValidityDays,
       })) as { data?: { ok?: boolean; groupId?: string } };
       groupId = res?.data?.groupId ?? '';
       if (!groupId) {
@@ -1055,6 +1067,9 @@ export const groupService = {
         | 'isOpen'
         | 'internalRating'
         | 'hideInternalRating'
+        | 'yellowCardValidityDays'
+        | 'redCardValidityDays'
+        | 'cardsEnabled'
         | 'rules'
         | 'contactPhone'
         | 'city'
@@ -1101,6 +1116,9 @@ export const groupService = {
       'isOpen',
       'internalRating',
       'hideInternalRating',
+      'yellowCardValidityDays',
+      'redCardValidityDays',
+      'cardsEnabled',
       'rules',
       'contactPhone',
       'city',
