@@ -114,6 +114,17 @@ const NORMALIZED_BANNED: readonly string[] = BANNED_WORDS.map((w) =>
  * into longer strings. This errs slightly toward catching more — acceptable
  * for a first-line client filter where the real recourse is report/block.
  */
+// A SHORT Hebrew root (≤4 letters, no latin) is too ambiguous for substring
+// matching — it hides inside innocent words (בנזין⊃זין, הומור⊃הומו,
+// אחראי⊃חרא, מגזין⊃זין). For these we require an EXACT token match only;
+// normalization still catches padded/punctuated forms (זייןןן!→זין). Longer
+// Hebrew roots + all English keep substring matching (padded/affixed evasion
+// matters there and false positives are rare).
+const HEB_LETTER = /[א-ת]/;
+function isShortHebrewRoot(w: string): boolean {
+  return w.length <= 4 && HEB_LETTER.test(w) && !/[a-z]/.test(w);
+}
+
 export function containsProfanity(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   const norm = normalize(text);
@@ -130,9 +141,12 @@ export function containsProfanity(text: string): boolean {
       if (norm.includes(banned)) return true;
       continue;
     }
-    // Single-word: substring match against each token. Requiring it to live
-    // inside a token (rather than across the whole string) avoids matching
-    // across word boundaries while still catching padded/affixed forms.
+    // Short Hebrew root → exact token only (checked above) — no substring, or
+    // it would over-block innocent words that merely contain the letters.
+    if (isShortHebrewRoot(banned)) continue;
+    // Longer single-word root: substring match against each token. Living
+    // inside a token (not across the whole string) avoids cross-word matches
+    // while still catching padded/affixed forms.
     for (const tok of tokens) {
       if (tok.includes(banned)) return true;
     }

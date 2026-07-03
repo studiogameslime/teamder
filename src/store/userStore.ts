@@ -113,7 +113,16 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // down — otherwise the next user on this phone keeps getting the previous
     // user's pushes (privacy leak). Best-effort; never blocks sign-out.
     const uid = get().currentUser?.id;
-    if (uid) await notificationsService.unregisterThisDevice(uid);
+    // Best-effort token removal, but NEVER block sign-out on it: a Firestore
+    // write does not resolve while offline (the promise stays pending until
+    // server-ack), so awaiting it would hang the whole sign-out in a dead zone.
+    // Race a short timeout — removes the token when online, proceeds otherwise.
+    if (uid) {
+      await Promise.race([
+        notificationsService.unregisterThisDevice(uid).catch(() => {}),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]);
+    }
     await userService.signOut();
     set({ currentUser: null });
     // Wipe per-user stores so the next account (incl. the common
@@ -127,7 +136,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
     // Drop this device's token before the account is anonymized/deleted, so a
     // deleted account doesn't keep receiving pushes on this device.
     const uid = get().currentUser?.id;
-    if (uid) await notificationsService.unregisterThisDevice(uid);
+    // Best-effort + timeout-raced (see signOut) so an offline delete can't hang.
+    if (uid) {
+      await Promise.race([
+        notificationsService.unregisterThisDevice(uid).catch(() => {}),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]);
+    }
     await userService.deleteOwnAccount(password);
     set({ currentUser: null });
     useGroupStore.getState().reset();

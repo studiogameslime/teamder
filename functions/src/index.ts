@@ -3180,7 +3180,15 @@ export const onGroupPendingChanged = onDocumentWritten(
         (after as { jerseysHolderIds?: string[] }).jerseysHolderIds ?? [];
       const ballGone = ball.filter((u) => !memberSet.has(u));
       const jerseysGone = jerseys.filter((u) => !memberSet.has(u));
-      if (ballGone.length || jerseysGone.length) {
+      // Also prune adminRatings for departed members — otherwise a stale
+      // admin-assigned rating lingers and silently re-applies (and feeds
+      // rating-based auto-teams) if the person ever re-joins the community.
+      const adminRatings =
+        (after as { adminRatings?: Record<string, unknown> }).adminRatings ?? {};
+      const ratingsGone = Object.keys(adminRatings).filter(
+        (u) => !memberSet.has(u),
+      );
+      if (ballGone.length || jerseysGone.length || ratingsGone.length) {
         try {
           await db
             .collection('groups')
@@ -3198,11 +3206,17 @@ export const onGroupPendingChanged = onDocumentWritten(
                       admin.firestore.FieldValue.arrayRemove(...jerseysGone),
                   }
                 : {}),
+              ...Object.fromEntries(
+                ratingsGone.map((u) => [
+                  `adminRatings.${u}`,
+                  admin.firestore.FieldValue.delete(),
+                ]),
+              ),
               updatedAt: Date.now(),
             });
         } catch (err) {
           console.warn(
-            '[onGroupPendingChanged] equipment holder prune failed',
+            '[onGroupPendingChanged] equipment/rating holder prune failed',
             event.params.groupId,
             err,
           );

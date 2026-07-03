@@ -4852,10 +4852,20 @@ export const gameService = {
       const participantIds = Array.from(
         new Set([...players, ...waitlist, ...pending]),
       );
-      const cancellations = {
-        ...((data.cancellations as Record<string, number> | undefined) ?? {}),
-        [userId]: Date.now(),
-      };
+      // Only stamp a cancellation if the user actually HAD a registration
+      // (player / waitlist / pending). Otherwise — e.g. an RSVP-nudge recipient
+      // who was never registered tapping "לא בא" — we'd fabricate a cancellation
+      // for a slot that never existed, polluting the "ביטלו השתתפות" list.
+      const wasParticipant =
+        wasInPlayers ||
+        (data.waitlist ?? []).includes(userId) ||
+        (data.pending ?? []).includes(userId);
+      const cancellations = wasParticipant
+        ? {
+            ...((data.cancellations as Record<string, number> | undefined) ?? {}),
+            [userId]: Date.now(),
+          }
+        : ((data.cancellations as Record<string, number> | undefined) ?? {});
       // Only include pendingPromotion in the diff if it actually
       // changed — Firestore rules whitelist `affectedKeys()` and a
       // no-op `null → null` write would still register as a change
