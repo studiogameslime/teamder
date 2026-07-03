@@ -7,7 +7,7 @@
 // total (server-side, via the addRetroGoal callable) and NEVER touches any
 // mini-game score or winner. See the addRetroGoal callable for the full model.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -54,6 +54,11 @@ export function RetroGoalsSheet({
   const [mode, setMode] = useState<Mode>('list');
   const [pendingScorer, setPendingScorer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Synchronous re-entrancy latch: `busy` state doesn't flip until the next
+  // render, so a rapid double-tap (esp. the no-assist row) could fire two
+  // saves — each minting a fresh retroGoalId, defeating the server's dedupe
+  // marker and double-crediting the goal. The ref blocks the second in-tick.
+  const savingRef = useRef(false);
 
   const nameOf = useCallback(
     (id: string) => roster.find((r) => r.id === id)?.name ?? he.genericUserName,
@@ -74,7 +79,8 @@ export function RetroGoalsSheet({
   }, [visible, reload]);
 
   const saveGoal = async (scorerId: string, assisterId: string | null) => {
-    if (busy) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     setBusy(true);
     try {
       await gameService.addRetroGoal(gameId, scorerId, assisterId, genRetroId());
@@ -88,12 +94,14 @@ export function RetroGoalsSheet({
       logError('addRetroGoal', err, { gameId, scorerId });
       toast.error(he.retroActionFailed);
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   };
 
   const removeGoal = async (id: string) => {
-    if (busy) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     setBusy(true);
     try {
       await gameService.removeRetroGoal(gameId, id);
@@ -105,6 +113,7 @@ export function RetroGoalsSheet({
       logError('removeRetroGoal', err, { gameId, retroGoalId: id });
       toast.error(he.retroActionFailed);
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   };
@@ -169,7 +178,11 @@ export function RetroGoalsSheet({
               </Text>
               <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false}>
                 {mode === 'assister' ? (
-                  <Pressable style={styles.pickRow} onPress={() => saveGoal(pendingScorer as string, null)}>
+                  <Pressable
+                    style={styles.pickRow}
+                    disabled={busy}
+                    onPress={() => saveGoal(pendingScorer as string, null)}
+                  >
                     <View style={styles.noneIcon}>
                       <Ionicons name="remove" size={18} color={colors.textMuted} />
                     </View>

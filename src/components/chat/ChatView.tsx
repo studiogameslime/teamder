@@ -112,6 +112,11 @@ export function ChatView({
   // True while the user is scrolled to (near) the bottom — gates auto-scroll so
   // a new message doesn't yank them away while they read older messages.
   const nearBottomRef = useRef(true);
+  // Synchronous double-send guard. `sending` state can't block a same-frame
+  // double-tap (both onPress closures read the same pre-clear `draft`), so a
+  // ref debounces it. Reset shortly after — NOT tied to the server ack, which
+  // never resolves offline (that was the composer-freeze bug we fixed).
+  const sendGuardRef = useRef(false);
 
   // Fresh chat → reset to the initial loading state (spinner shows once).
   useEffect(() => {
@@ -213,7 +218,7 @@ export function ChatView({
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || !me || sending) return;
+    if (!text || !me || sending || sendGuardRef.current) return;
     // Terms gate — must accept the chat rules before posting (store-safety).
     if (termsAccepted === false) {
       setShowTerms(true);
@@ -224,6 +229,10 @@ export function ChatView({
       toast.error(he.chatProfanityBlocked);
       return;
     }
+    sendGuardRef.current = true;
+    setTimeout(() => {
+      sendGuardRef.current = false;
+    }, 400);
     setSending(true);
     setDraft('');
     // Sending your own message always jumps you to the newest — even if you'd
