@@ -24,6 +24,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
 import { appAlert } from '@/components/AppDialog';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { CountUp } from '@/components/anim/CountUp';
 import {
   computeClubBadges,
   type ClubMetrics,
@@ -448,7 +449,14 @@ function HeroTile({
       <View style={[styles.heroIcon, { backgroundColor: tint + '1A' }]}>
         <Ionicons name={icon} size={18} color={tint} />
       </View>
-      <Text style={styles.heroValue}>{value}</Text>
+      {/* Numbers count up (0 → value) as the stats resolve — a small entrance
+          that makes the tiles feel alive. Pre-formatted strings (e.g. the
+          one-decimal average) render as-is. */}
+      {typeof value === 'number' ? (
+        <CountUp to={value} durationMs={800} style={styles.heroValue} />
+      ) : (
+        <Text style={styles.heroValue}>{value}</Text>
+      )}
       <Text style={styles.heroLabel} numberOfLines={1}>{label}</Text>
     </Card>
   );

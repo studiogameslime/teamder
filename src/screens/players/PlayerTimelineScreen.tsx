@@ -3,13 +3,18 @@
 // menu ("ציר זמן"). Cards show their detail + state (active/expired/revoked);
 // an admin can long-press a card to revoke it (kept, marked "בוטל").
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '@/components/PressableScale';
 import { successHaptic } from '@/utils/haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -80,9 +85,14 @@ export function PlayerTimelineScreen() {
     }
   }, [groupId, userId, name]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  // Reload on focus (not just mount) so returning to the timeline re-reads
+  // events AND re-stamps `now` — a card that aged past its validity while the
+  // admin was elsewhere then reads "פג תוקף" instead of a stale "פעיל".
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   const isAdmin = !!me && !!group && group.adminIds.includes(me.id);
   const now = useMemo(() => Date.now(), [events]);
