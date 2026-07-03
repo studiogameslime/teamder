@@ -7,8 +7,14 @@
 // for). Goal writes go through gameService; the score fans out via the live
 // listener.
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { toast } from '@/components/Toast';
@@ -278,7 +284,8 @@ function ScoreSide({
       <Text style={[styles.sideName, { color: tint }]} numberOfLines={1}>
         {label}
       </Text>
-      <Text style={[styles.sideScore, { color: tint }]}>{score}</Text>
+      <AnimatedScore score={score} tint={tint} />
+
       {canEdit ? (
         <Pressable
           style={[styles.addBtn, { backgroundColor: tint }, busy && styles.addBtnBusy]}
@@ -395,6 +402,28 @@ function AssisterPicker({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+/** The big score number, with a quick scale-bounce whenever it changes so a
+ *  goal reads as an event instead of a silent number swap. */
+function AnimatedScore({ score, tint }: { score: number; tint: string }) {
+  const scale = useSharedValue(1);
+  const prev = useRef(score);
+  useEffect(() => {
+    if (score !== prev.current) {
+      scale.value = withSequence(
+        withTiming(1.35, { duration: 130 }),
+        withTiming(1, { duration: 200 }),
+      );
+      prev.current = score;
+    }
+  }, [score, scale]);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.Text style={[styles.sideScore, { color: tint }, animStyle]}>
+      {score}
+    </Animated.Text>
   );
 }
 

@@ -221,13 +221,16 @@ export function ProfileScreen() {
       }
       let alive = true;
       gameService
-        .getMyGames(uid)
+        // getMyLiveOrUpcomingGames (NOT getMyGames): the latter is
+        // status==='open' only, so a game the user is registered to that went
+        // 'active' (live), 'locked', or was created 'scheduled' fell out — and
+        // the home card wrongly showed the empty "find a game" state to a user
+        // who IS in a game. Same source of truth the Games tab uses.
+        .getMyLiveOrUpcomingGames(uid)
         .then((mine) => {
           if (!alive) return;
-          // getMyGames already returns the user's open, non-stale games
-          // sorted by startsAt ascending — the first IS the soonest
-          // (a game that just kicked off but isn't stale still counts
-          // as "the game to show"; its kickoff chip simply hides).
+          // Sorted by startsAt ascending — a live game (past startsAt) sorts
+          // first, otherwise the soonest upcoming. The first IS the game to show.
           setNextGame(mine[0] ?? null);
           setMyGames(mine);
           // Same list, filtered to the ones the user CREATED — powers

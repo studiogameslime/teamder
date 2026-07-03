@@ -517,7 +517,8 @@ function PlainLiveMatchScreen() {
               {inOvertime ? (
                 <>
                   <Text style={styles.overtimeLabel}>{he.liveTimerOvertime}</Text>
-                  <Text style={styles.overtimeText}>+{formatTime(overtimeMs)}</Text>
+                  {/* LTR-isolate so the '+' stays on the visual left under RTL. */}
+                  <Text style={styles.overtimeText}>{`⁦+${formatTime(overtimeMs)}⁩`}</Text>
                 </>
               ) : (
                 <Text style={styles.timerOfTotal}>

@@ -80,7 +80,11 @@ function GameBody({
   onOpenGame: (gameId: string) => void;
 }) {
   const occupancy = game.players.length + activeGuestCount(game.guests);
-  const kickoff = relativeKickoff(game.startsAt);
+  // Hide the kickoff chip when it would just repeat the day label (both
+  // resolve to "מחר" for a tomorrow game) — same guard MatchListCard uses.
+  const rawKickoff = relativeKickoff(game.startsAt);
+  const kickoff =
+    rawKickoff && rawKickoff !== formatGameDay(game.startsAt) ? rawKickoff : '';
   const kickoffSoon = !!kickoff && kickoff.startsWith('עוד');
   const status = statusForUser(game, userId);
 

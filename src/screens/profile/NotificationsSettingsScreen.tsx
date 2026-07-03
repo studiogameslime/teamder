@@ -18,7 +18,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
@@ -413,6 +412,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
-  label: { ...typography.body, color: colors.text, fontWeight: '600' },
-  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  label: { ...typography.body, color: colors.text, fontWeight: '600', textAlign: RTL_LABEL_ALIGN },
+  sub: { ...typography.caption, color: colors.textMuted, marginTop: 2, textAlign: RTL_LABEL_ALIGN },
 });

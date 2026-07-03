@@ -85,10 +85,16 @@ function ctaForGame(
 }
 
 function formatLabel(f: GameFormat | undefined): string | null {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '5v5') return he.gameFormat5;
-  if (f === '6v6') return he.gameFormat6;
-  if (f === '7v7') return he.gameFormat7;
+  // Cast to string so a legacy/bad runtime value (outside the union) is handled
+  // instead of narrowing to `never` — the type says it can't happen, data can.
+  const s = f as string | undefined;
+  if (s === '4v4') return he.gameFormat4;
+  if (s === '5v5') return he.gameFormat5;
+  if (s === '6v6') return he.gameFormat6;
+  if (s === '7v7') return he.gameFormat7;
+  // Unknown/legacy "NvN" → derive generically (e.g. "8v8" → "8×8") instead of
+  // silently defaulting to a wrong "5×5".
+  if (typeof s === 'string' && /^\d+v\d+$/.test(s)) return s.replace('v', '×');
   return null;
 }
 
@@ -107,8 +113,14 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const cta = ctaForGame(game, status);
   // The viewer manages this game (its creator) → show a "מנהל" badge.
   const isManager = !!userId && game.createdBy === userId;
-  const fmt = formatLabel(game.format) ?? he.gameFormat5;
-  const occupancy = game.players.length + activeGuestCount(game.guests);
+  const fmt = formatLabel(game.format);
+  // ONE effective occupancy that includes a pending-promotion reservation, so
+  // the capacity tag (מלא / מקומות אחרונים), isFull, spotsLeft AND the CTA all
+  // agree — previously the tag showed a free spot while the button said waitlist.
+  const occupancy =
+    game.players.length +
+    activeGuestCount(game.guests) +
+    (game.pendingPromotion?.uid ? 1 : 0);
 
   const isFull = occupancy >= game.maxPlayers;
   // Relative "time to kickoff" chip — nudges the user with how soon the game
@@ -138,7 +150,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   } else if (spotsLeft > 0 && spotsLeft <= 3) {
     tags.push({ label: he.matchStatusLastSpots(spotsLeft), tone: 'warning' });
   }
-  tags.push({ label: fmt, tone: 'accent' });
+  if (fmt) tags.push({ label: fmt, tone: 'accent' });
   if (game.fieldType) {
     tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
   }

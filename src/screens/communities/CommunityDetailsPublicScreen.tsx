@@ -107,14 +107,13 @@ export function CommunityDetailsPublicScreen() {
     }
   }, [groupId]);
 
+  // Single load path — useFocusEffect handles both initial focus and return;
+  // a separate useEffect(reload) double-loaded on open.
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload])
   );
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   // If the user is already a member, bounce to the private full screen.
   // (They might land here via a shared link or after backgrounding the

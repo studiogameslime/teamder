@@ -108,6 +108,9 @@ export function ChatView({
   const [retryTick, setRetryTick] = useState(0);
   const { accepted: termsAccepted, accept: acceptTerms } = useChatTermsAccepted();
   const listRef = useRef<FlatList<ChatRow>>(null);
+  // True while the user is scrolled to (near) the bottom — gates auto-scroll so
+  // a new message doesn't yank them away while they read older messages.
+  const nearBottomRef = useRef(true);
 
   // Fresh chat → reset to the initial loading state (spinner shows once).
   useEffect(() => {
@@ -187,9 +190,10 @@ export function ChatView({
     chatService.setMuted(me.id, scope, parentId, !muted).catch(() => {});
   };
 
-  // Stick to the newest message as they arrive.
+  // Stick to the newest message as they arrive — but only if the user is
+  // already at the bottom, so an incoming message doesn't interrupt reading.
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (messages.length === 0 || !nearBottomRef.current) return;
     const t = setTimeout(() => {
       listRef.current?.scrollToEnd({ animated: true });
     }, 80);
@@ -428,7 +432,24 @@ export function ChatView({
                 />
               )
             }
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+            onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } =
+                e.nativeEvent;
+              // Distance from the bottom; treat within ~80px as "at bottom".
+              const fromBottom =
+                contentSize.height -
+                (contentOffset.y + layoutMeasurement.height);
+              nearBottomRef.current = fromBottom < 80;
+            }}
+            scrollEventThrottle={64}
+            onContentSizeChange={() => {
+              // Only auto-scroll to the newest message when the user is already
+              // at the bottom — otherwise a new message would yank them away
+              // from the history they're reading. Initial mount starts at bottom.
+              if (nearBottomRef.current) {
+                listRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
           />
         )}
 
@@ -581,8 +602,9 @@ function MessageRow({
   );
   // The meta column hugs the bubble's INNER side: a caret (the visible
   // hint that a message has actions — tap it, or long-press the bubble)
-  // above the send time. For my own (right-aligned) message the layout is
-  // [avatar | bubble | meta]; for others it's [meta | bubble | avatar].
+  // above the send time. My own (right-aligned) messages DON'T show my avatar
+  // (like every mainstream chat — it just wastes bubble width): [bubble | meta].
+  // Others' messages keep the sender avatar: [meta | bubble | avatar].
   const meta = (
     <Pressable onPress={onOpenMenu} hitSlop={6} style={styles.meta}>
       <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
@@ -591,7 +613,7 @@ function MessageRow({
   );
   return (
     <View style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
-      {mine ? avatar : meta}
+      {mine ? null : meta}
       {bubble}
       {mine ? meta : avatar}
     </View>

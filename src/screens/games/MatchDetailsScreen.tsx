@@ -899,11 +899,19 @@ export function MatchDetailsScreen() {
           return next;
         });
         // Celebrate the win: a real seat in the game (not waitlist/
-        // pending) gets a success haptic + a short confetti burst.
+        // pending) gets a success haptic + a short confetti burst. A
+        // waitlist/pending join was previously SILENT here (user just saw the
+        // CTA flip) — surface the same bucket-aware toast the Games tab shows,
+        // so someone who landed on the waitlist knows they aren't confirmed.
         if (result.bucket === 'players') {
           successHaptic();
           setCelebrate(true);
           setTimeout(() => setCelebrate(false), 1600);
+          toast.success(he.toastGameJoined);
+        } else if (result.bucket === 'waitlist') {
+          toast.info(he.toastGameJoinedWaitlist);
+        } else {
+          toast.info(he.toastGameJoinedPending);
         }
         // Silent-failure guard: a successful join MUST leave the user in
         // the roster the UI now holds (players ∪ waitlist ∪ pending ∪

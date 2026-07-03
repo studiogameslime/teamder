@@ -190,14 +190,13 @@ export function CommunityDetailsScreen() {
     [groupId, me],
   );
 
+  // Single load path — useFocusEffect covers the initial focus AND refresh on
+  // return; a separate useEffect(reload) double-loaded the whole page on open.
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload]),
   );
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   // NOTE: `?.` on playerIds/adminIds — a group snapshot can legitimately reach
   // a fresh member without these arrays populated (partial/stale doc), and a
@@ -323,7 +322,8 @@ export function CommunityDetailsScreen() {
 
   const handleLeave = () => {
     if (!group || !me) return;
-    if (group.adminIds.includes(me.id) && group.adminIds.length === 1) {
+    const admins = group.adminIds ?? [];
+    if (admins.includes(me.id) && admins.length === 1) {
       appAlert(he.error, he.communityDetailsLeaveLastAdmin);
       return;
     }
@@ -1163,7 +1163,9 @@ const styles = StyleSheet.create({
   // as a "first impression" surface — different from the white cards
   // below which feel transactional.
   clubLevelChip: {
-    flexDirection: 'row-reverse',
+    // `row` under forceRTL → the medal (first child) leads on the visual RIGHT,
+    // the chevron trails on the left (was row-reverse → medal on the wrong side).
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.surface,
@@ -1175,7 +1177,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   clubLevelBadge: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.primary,

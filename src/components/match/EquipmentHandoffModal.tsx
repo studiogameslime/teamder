@@ -224,7 +224,10 @@ const styles = StyleSheet.create({
   list: { alignSelf: 'stretch' },
   listInner: { gap: spacing.xs, paddingVertical: spacing.xs },
   row: {
-    flexDirection: 'row-reverse',
+    // `row` (not row-reverse): under forceRTL the first child (avatar+name)
+    // sits on the visual RIGHT — matching ScorerPicker + the participants list;
+    // the ball/jersey toggles trail on the left.
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.sm,

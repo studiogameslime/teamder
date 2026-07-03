@@ -44,7 +44,7 @@ import {
   type EquipmentHolders,
 } from '@/components/match/EquipmentHandoffModal';
 import { logError } from '@/services/errorLog';
-import { lightHaptic, warningHaptic } from '@/utils/haptics';
+import { lightHaptic, successHaptic, warningHaptic } from '@/utils/haptics';
 import {
   canEnterLive,
   isCancelled as isCancelledHelper,
@@ -369,6 +369,9 @@ export function AdvancedLiveMatchScreen() {
   // `finalizingRef` blocks a double-fire (rapid taps / re-render) from
   // committing the round's stats twice.
   const finalizingRef = useRef(false);
+  // Latch around the timer/round START so a rapid double-tap can't run
+  // prepareStartRotation / beginFillFlow twice and clobber fillFlowRef.
+  const startingRef = useRef(false);
   // Latch around the "הלך הביתה" / "החזר למשחק" confirm so a rapid double-tap
   // can't run markPlayerWentHome / a fill flow twice and race fillFlowRef (B25).
   const homeActionRef = useRef(false);
@@ -596,7 +599,8 @@ export function AdvancedLiveMatchScreen() {
   // "התחל משחקון" — kick off a round: draft rotation + start the match clock
   // together so the live state goes straight to "running" (matches the design).
   const onStartRound = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || startingRef.current) return;
+    startingRef.current = true;
     try {
       // Build the start skeleton (no persist). The admin then completes the two
       // playing teams via the picker; the rotation is committed at the end.
@@ -611,6 +615,8 @@ export function AdvancedLiveMatchScreen() {
     } catch (err) {
       logError('liveStartRound', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startRound failed', err);
+    } finally {
+      startingRef.current = false;
     }
   };
 
@@ -647,7 +653,8 @@ export function AdvancedLiveMatchScreen() {
 
   // ─── Timer controls (flow through Firestore transactions) ──────────────
   const onTimerStart = async () => {
-    if (!gameId || !me) return;
+    if (!gameId || !me || startingRef.current) return;
+    startingRef.current = true;
     try {
       // First press flips Game.status→'active' and stamps
       // liveMatch.startedAt (and creates liveMatch if absent — required
@@ -657,6 +664,8 @@ export function AdvancedLiveMatchScreen() {
     } catch (err) {
       logError('liveTimerStart', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startTimer failed', err);
+    } finally {
+      startingRef.current = false;
     }
   };
   const onTimerPause = async () => {
@@ -752,6 +761,7 @@ export function AdvancedLiveMatchScreen() {
     if (grpId) {
       try {
         await groupService.setEquipmentHolders(grpId, holders);
+        successHaptic();
         // Log timestamped events so the timeline + next "last took" hint update.
         await communityEventsService.logEquipmentEvents(
           grpId,
@@ -1086,7 +1096,10 @@ export function AdvancedLiveMatchScreen() {
             rotation={rotation}
             playersMap={playersMap}
             guests={game?.guests}
-            minute={Math.floor(timerMs / 60000)}
+            // Goal minute from the CAPPED clock so it matches the frozen
+            // '+MM:SS' scoreboard in overtime (was raw timerMs, which kept
+            // climbing while the displayed clock was pinned).
+            minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000)}
             canEdit={isAdmin}
             totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}

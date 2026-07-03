@@ -4,7 +4,9 @@
 // an admin can long-press a card to revoke it (kept, marked "בוטל").
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from '@/components/PressableScale';
+import { successHaptic } from '@/utils/haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -110,6 +112,7 @@ export function PlayerTimelineScreen() {
         onPress: async () => {
           try {
             await communityEventsService.revokeCard(ev.id, me.id);
+            successHaptic();
             toast.success(he.cardRevokedToast);
             reload();
           } catch (err) {
@@ -149,9 +152,10 @@ export function PlayerTimelineScreen() {
             const stateLabel =
               state === 'revoked' ? he.cardStateRevoked : state === 'expired' ? he.cardStateExpired : null;
             const dimmed = state !== 'active';
+            const canRevoke = isCard && isAdmin && !ev.revoked;
             return (
-              <Pressable
-                onLongPress={isCard && isAdmin && !ev.revoked ? () => onRevoke(ev) : undefined}
+              <PressableScale
+                onLongPress={canRevoke ? () => onRevoke(ev) : undefined}
                 delayLongPress={400}
                 style={styles.row}
               >
@@ -194,7 +198,7 @@ export function PlayerTimelineScreen() {
                   </View>
                   {ev.detail ? <Text style={styles.detail}>{ev.detail}</Text> : null}
                 </View>
-              </Pressable>
+              </PressableScale>
             );
           }}
         />

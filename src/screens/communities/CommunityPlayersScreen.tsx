@@ -16,6 +16,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
+import { successHaptic, warningHaptic } from '@/utils/haptics';
 import { AdminRatingSheet } from '@/components/AdminRatingSheet';
 import {
   PlayerActionMenu,
@@ -116,12 +117,9 @@ export function CommunityPlayersScreen() {
     }
   }, [groupId, me]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  // Refresh on focus so a card revoked from a player's timeline (which lowers
-  // the active-card count) is reflected in the roster badge on return.
+  // Single load path: useFocusEffect fires on the initial focus AND on return,
+  // so it also refreshes the roster badge after a card is revoked from a
+  // player's timeline. (A separate useEffect(reload) would double-load on open.)
   useFocusEffect(
     useCallback(() => {
       reload();
@@ -168,7 +166,14 @@ export function CommunityPlayersScreen() {
     ...(cardsOn
       ? ([
           { key: 'yellow', icon: 'card', label: he.cardYellow, color: colors.warning, onPress: () => setCardTarget({ user: u, type: 'yellow' }) },
-          { key: 'red', icon: 'card', label: he.cardRed, color: colors.danger, onPress: () => setCardTarget({ user: u, type: 'red' }) },
+          // A red card BLOCKS registration — confirm first (yellow stays one-tap).
+          { key: 'red', icon: 'card', label: he.cardRed, color: colors.danger, onPress: () => {
+            warningHaptic();
+            appAlert(he.cardRedConfirmTitle, he.cardRedConfirmBody(u.name), [
+              { text: he.cancel, style: 'cancel' },
+              { text: he.cardRed, style: 'destructive', onPress: () => setCardTarget({ user: u, type: 'red' }) },
+            ]);
+          } },
         ] as PlayerMenuItem[])
       : []),
   ];
@@ -197,13 +202,14 @@ export function CommunityPlayersScreen() {
         detail,
         validityDays,
       );
+      successHaptic();
       toast.success(he.cardIssuedToast);
       setCardTarget(null);
       // Refresh so the new card immediately bumps the roster discipline badge.
       reload();
     } catch (err) {
       logError('issueCommunityCard', err, { groupId, userId: cardTarget.user.id });
-      appAlert(he.error, 'לא הצלחנו לרשום את הכרטיס. נסה שוב.');
+      appAlert(he.error, he.cardIssueFailed);
     } finally {
       setSavingCard(false);
     }

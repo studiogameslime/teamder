@@ -39,6 +39,24 @@ import type { ChatStackParamList } from '@/navigation/ChatStack';
 
 type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatsList'>;
 
+/** Last-activity time for a chat row: today → HH:MM, yesterday → אתמול,
+ *  otherwise DD.MM. */
+function relativeChatTime(ms: number): string {
+  const d = new Date(ms);
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+  if (sameDay(d, now)) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (sameDay(d, y)) return 'אתמול';
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 type Row = {
   kind: 'community' | 'game' | 'dm';
   id: string;
@@ -179,7 +197,17 @@ export function ChatsListScreen() {
     ),
     ...myGames.map((g) => toRow('game', g.id, g.title)),
     ...dmRows,
-  ].sort((a, b) => b.sortAt - a.sortAt); // most-recently-active first
+  ].sort((a, b) => {
+    // Group order (communities → games → DMs) so a freshly-joined community
+    // with no messages isn't buried under stale/old DMs; recency sorts WITHIN
+    // each group, unread rises to the top of its group.
+    const rank = (k: Row['kind']) => (k === 'community' ? 0 : k === 'game' ? 1 : 2);
+    if (rank(a.kind) !== rank(b.kind)) return rank(a.kind) - rank(b.kind);
+    if ((b.unread > 0 ? 1 : 0) !== (a.unread > 0 ? 1 : 0)) {
+      return (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0);
+    }
+    return b.sortAt - a.sortAt;
+  });
 
   const open = (row: Row) => {
     if (row.kind === 'community') {
@@ -239,12 +267,17 @@ export function ChatsListScreen() {
                 </View>
               )}
               <View style={styles.rowBody}>
-                <Text
-                  style={[styles.rowTitle, item.unread > 0 && styles.rowTitleUnread]}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
+                <View style={styles.rowTitleLine}>
+                  <Text
+                    style={[styles.rowTitle, item.unread > 0 && styles.rowTitleUnread]}
+                    numberOfLines={1}
+                  >
+                    {item.title}
+                  </Text>
+                  {item.sortAt > 0 ? (
+                    <Text style={styles.rowTime}>{relativeChatTime(item.sortAt)}</Text>
+                  ) : null}
+                </View>
                 <Text style={styles.rowSub} numberOfLines={1}>
                   {item.preview ||
                     (item.kind === 'community'
@@ -300,7 +333,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowBody: { flex: 1 },
-  rowTitle: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
+  rowTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rowTime: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
+  rowTitle: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, flex: 1 },
   rowTitleUnread: { fontWeight: '900' },
   rowSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   unreadBadge: {

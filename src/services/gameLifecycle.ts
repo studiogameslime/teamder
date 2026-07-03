@@ -282,7 +282,10 @@ export function isVisibleInMyGames(game: Game): boolean {
 
 /** Discovery list — only currently-joinable games. */
 export function isVisibleInOpenGames(game: Game): boolean {
-  return isOpen(game) && !hasStarted(game);
+  // Keep a just-kicked-off game in discovery while it's STILL JOINABLE (the 1h
+  // late-registration grace) — hiding it at exactly startsAt made the "join
+  // late" window unreachable by browsing.
+  return isOpen(game) && (!hasStarted(game) || canJoinGame(game));
 }
 
 /** History tab — only ended games (finished or cancelled). */

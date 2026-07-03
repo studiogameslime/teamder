@@ -375,6 +375,10 @@ export const he = {
   playerMenuTimeline: 'ציר זמן',
   cardYellow: 'כרטיס צהוב',
   cardRed: 'כרטיס אדום',
+  cardRedConfirmTitle: 'להנפיק כרטיס אדום?',
+  cardRedConfirmBody: (name: string) =>
+    `כרטיס אדום פעיל יחסום את ${name} מהרשמה למשחקים חדשים במועדון — עד שיפוג או שתבטל אותו.`,
+  cardIssueFailed: 'לא הצלחנו לרשום את הכרטיס. נסה שוב.',
   issueCardTitle: (name: string, cardLabel: string) => `${cardLabel} ל${name}`,
   cardDetailLabel: 'פירוט (אופציונלי)',
   cardDetailPlaceholder: 'למשל: איחר 20 דק׳ / התנהגות',
@@ -2413,6 +2417,7 @@ export const he = {
   dmSubtitle: 'הודעה פרטית',
   dmSendMessage: 'שלח הודעה',
   dmRestricted: 'המשתמש מקבל הודעות מחברים בלבד.',
+  dmLoadError: 'לא הצלחנו לפתוח את הצ׳אט. בדוק את החיבור ונסה שוב.',
   dmFriendsOnlyToggle: 'קבל הודעות רק מחברים',
   chatToday: 'היום',
   chatYesterday: 'אתמול',
