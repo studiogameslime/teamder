@@ -222,6 +222,11 @@ export function CommunityStatsScreen() {
     (stats?.totalFinished ?? 0) === 0 &&
     derived.players.length === 0;
 
+  // Leaders/goal-based tiles only make sense once goals have been recorded —
+  // otherwise every card is a "—". A club with finished evenings but no scoring
+  // still shows the attendance/evenings tiles + achievements, just not leaders.
+  const hasScoring = derived.totalGoals > 0 && derived.players.length > 0;
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.communityStatsScreenTitle} subtitle={subtitle || undefined} />
@@ -297,7 +302,9 @@ export function CommunityStatsScreen() {
             </View>
           </Card>
 
-          {/* ── מובילי המועדון ── */}
+          {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
+          {hasScoring ? (
+          <>
           <SectionTitle icon="trophy" text={he.communityStatsSectionLeaders} />
           <View style={styles.leadersGrid}>
             <LeaderCard
@@ -333,6 +340,8 @@ export function CommunityStatsScreen() {
               tint={colors.success}
             />
           </View>
+          </>
+          ) : null}
 
           {/* טבלת המבקיעים הוסרה — כפילות מול טבלת הליגה במסך פרטי המועדון. */}
 

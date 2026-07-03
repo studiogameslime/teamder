@@ -669,7 +669,12 @@ export function ProfileScreen() {
           {/* ⑥ Quick actions — create a game / mark availability. */}
           <View style={styles.ctaRow}>
             <Pressable
-              onPress={() => nav.navigate('GameTab', { screen: 'GameCreate' })}
+              onPress={() =>
+                nav.navigate('GameTab', {
+                  screen: 'GamesList',
+                  params: { openCreate: true },
+                })
+              }
               style={({ pressed }) => [
                 styles.ctaPrimary,
                 pressed && { opacity: 0.92 },

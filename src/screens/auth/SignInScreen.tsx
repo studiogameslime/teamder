@@ -32,10 +32,15 @@ export function SignInScreen() {
   const signInGuest = useUserStore((s) => s.signInAsGuest);
   const nav =
     useNavigation<NativeStackNavigationProp<AuthStackParamList, 'SignIn'>>();
-  const [busy, setBusy] = useState(false);
+  // Which provider is in flight — so the spinner shows in the BUTTON the user
+  // actually tapped (Apple/Email/Guest previously gave no loading feedback).
+  const [busyProvider, setBusyProvider] = useState<
+    'google' | 'apple' | 'guest' | null
+  >(null);
+  const busy = busyProvider !== null;
 
   const handlePress = async () => {
-    setBusy(true);
+    setBusyProvider('google');
     try {
       await signIn();
     } catch (err) {
@@ -67,14 +72,14 @@ export function SignInScreen() {
       if (__DEV__) console.warn('[signIn] failed', err);
       appAlert(he.error, friendlySignInError(err));
     } finally {
-      setBusy(false);
+      setBusyProvider(null);
     }
   };
 
   // Sign in with Apple — required by App Store Guideline 4.8 alongside
   // Google. iOS-only; the native button is hidden on Android.
   const handleApple = async () => {
-    setBusy(true);
+    setBusyProvider('apple');
     try {
       await signInApple();
     } catch (err) {
@@ -107,14 +112,14 @@ export function SignInScreen() {
         appAlert(he.error, friendlySignInError(err));
       }
     } finally {
-      setBusy(false);
+      setBusyProvider(null);
     }
   };
 
   // Browse as guest — anonymous session so users can explore communities +
   // games without registering (App Store guideline 5.1.1(v)).
   const handleGuest = async () => {
-    setBusy(true);
+    setBusyProvider('guest');
     try {
       await signInGuest();
     } catch (err) {
@@ -122,7 +127,7 @@ export function SignInScreen() {
       logError('signInGuestScreen', err, { screen: 'SignInScreen' });
       appAlert(he.error, he.signInFailed);
     } finally {
-      setBusy(false);
+      setBusyProvider(null);
     }
   };
 
@@ -167,7 +172,7 @@ export function SignInScreen() {
           accessibilityRole="button"
           accessibilityLabel={he.signInGoogle}
         >
-          {busy ? (
+          {busyProvider === 'google' ? (
             <ActivityIndicator color={ACCENT} />
           ) : (
             <>
@@ -192,8 +197,14 @@ export function SignInScreen() {
             accessibilityRole="button"
             accessibilityLabel={he.signInApple}
           >
-            <Ionicons name="logo-apple" size={20} color={ACCENT} />
-            <Text style={styles.ctaText}>{he.signInApple}</Text>
+            {busyProvider === 'apple' ? (
+              <ActivityIndicator color={ACCENT} />
+            ) : (
+              <>
+                <Ionicons name="logo-apple" size={20} color={ACCENT} />
+                <Text style={styles.ctaText}>{he.signInApple}</Text>
+              </>
+            )}
           </Pressable>
         )}
         {/* Email + password — a third option for users without (or who
@@ -225,7 +236,11 @@ export function SignInScreen() {
           accessibilityRole="button"
           accessibilityLabel={he.signInGuest}
         >
-          <Text style={styles.guestText}>{he.signInGuest}</Text>
+          {busyProvider === 'guest' ? (
+            <ActivityIndicator color={colors.textMuted} />
+          ) : (
+            <Text style={styles.guestText}>{he.signInGuest}</Text>
+          )}
         </Pressable>
         <Text style={styles.privacy}>{he.signInPrivacy}</Text>
       </View>

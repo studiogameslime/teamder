@@ -3,14 +3,16 @@
 // match-details screen.
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 
 import { ChatView } from '@/components/chat/ChatView';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { gameService } from '@/services/gameService';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-import { colors } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
+import { he } from '@/i18n/he';
 import type { Game } from '@/types';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 
@@ -41,9 +43,14 @@ export function GameChatScreen() {
   }, [gameId]);
 
   if (loading) {
+    // Keep a header (with back button) while the game resolves, so the user
+    // is never stranded on a bare spinner with no way back.
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={styles.flex}>
+        <ScreenHeader title={he.chatLoadingTitle} />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
       </View>
     );
   }
@@ -63,6 +70,19 @@ export function GameChatScreen() {
     ...(grp?.adminIds ?? []),
   ];
 
+  // Game couldn't be resolved (deleted, or no read access) — show a friendly
+  // fallback with a way back instead of an empty-titled chat that can't load.
+  if (!game) {
+    return (
+      <View style={styles.flex}>
+        <ScreenHeader title={he.chatOpenGame} />
+        <View style={styles.center}>
+          <Text style={styles.emptyText}>{he.chatGameUnavailable}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <ChatView
       scope="game"
@@ -76,5 +96,7 @@ export function GameChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.xl },
+  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
 });

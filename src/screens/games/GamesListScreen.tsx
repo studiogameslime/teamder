@@ -16,6 +16,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -29,8 +30,10 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   useFocusEffect,
   useNavigation,
+  useRoute,
   useScrollToTop,
 } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Button } from '@/components/Button';
@@ -90,6 +93,7 @@ type Tab = 'mine' | 'open';
 export function GamesListScreen() {
   useRemoteConfig(); // re-render when feature flags activate
   const nav = useNavigation<Nav>();
+  const route = useRoute<RouteProp<GameStackParamList, 'GamesList'>>();
   const user = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -133,6 +137,8 @@ export function GamesListScreen() {
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
+  // Guards the map button while it geocodes cities (spinner + no re-fire).
+  const [mapBusy, setMapBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   // Tracks pull-to-refresh ONLY. The native RefreshControl spinner
   // and our SoccerBallLoader used to share `loading`, which made
@@ -292,6 +298,18 @@ export function GamesListScreen() {
     if (!ensureNotGuest(he.guestRegisterCreate)) return;
     setCreateSheetVisible(true);
   };
+
+  // Home quick-action ("צור משחק") routes here with openCreate:true so the
+  // same chooser the FAB shows opens — one consistent create entry point
+  // instead of the home CTA jumping straight into the quick-game wizard.
+  useEffect(() => {
+    if (route.params?.openCreate) {
+      handleCreate();
+      // Clear the param so returning to the tab later doesn't re-pop it.
+      nav.setParams({ openCreate: undefined } as never);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.openCreate]);
 
   // Returns true if "now" is inside the cancel-deadline danger
   // window (e.g. < 12h before kickoff with a 12h deadline). The
@@ -497,7 +515,11 @@ export function GamesListScreen() {
         <View style={{ flex: 1 }} />
         {/* Map view — opens the games map next to the filter. */}
         <Pressable
+          disabled={mapBusy}
           onPress={async () => {
+            if (mapBusy) return;
+            setMapBusy(true);
+            try {
             const now = new Date();
             const sameDay = (a: Date, b: Date) =>
               a.getFullYear() === b.getFullYear() &&
@@ -630,15 +652,26 @@ export function GamesListScreen() {
               ];
             });
             nav.navigate('GamesMap', { mode: 'games', items, overlay });
+            } catch (err) {
+              logError('gamesMapGeocode', err, { screen: 'GamesListScreen' });
+              toast.info(he.mapLoadError);
+            } finally {
+              setMapBusy(false);
+            }
           }}
           style={({ pressed }) => [
             styles.filterBtn,
             pressed && { opacity: 0.85 },
+            mapBusy && { opacity: 0.6 },
           ]}
           accessibilityRole="button"
           accessibilityLabel={he.mapButtonLabel}
         >
-          <Ionicons name="map-outline" size={20} color="#1E40AF" />
+          {mapBusy ? (
+            <ActivityIndicator size="small" color="#1E40AF" />
+          ) : (
+            <Ionicons name="map-outline" size={20} color="#1E40AF" />
+          )}
         </Pressable>
         <Pressable
           onPress={() => {

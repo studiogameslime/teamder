@@ -83,7 +83,9 @@ export function BlockedUsersScreen() {
           <Card style={styles.listCard}>
             {ids.map((uid, i) => {
               const p = playersMap[uid];
-              const name = p?.displayName ?? '...';
+              // Neutral placeholder while resolving (never feed '...' into the
+              // avatar/name or the unblock confirm dialog).
+              const name = p?.displayName ?? he.genericUserName;
               return (
                 <View key={uid} style={[styles.row, i > 0 && styles.rowDivider]}>
                   <UserAvatar

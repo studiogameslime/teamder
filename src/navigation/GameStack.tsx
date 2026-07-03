@@ -36,7 +36,8 @@ import { PromoteOrphanScreen } from '@/screens/games/PromoteOrphanScreen';
 import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
 
 export type GameStackParamList = {
-  GamesList: undefined;
+  /** `openCreate` (from the home quick-action) pops the create-game chooser. */
+  GamesList: undefined | { openCreate?: boolean };
   Requests: undefined;
   /** Full-screen map of open public games (mode: 'games'). */
   GamesMap: MapScreenParams;

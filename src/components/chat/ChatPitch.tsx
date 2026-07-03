@@ -9,6 +9,7 @@ import React from 'react';
 import { Dimensions, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { SoccerBall } from '../SoccerBall';
+import { Breathing } from '../anim/Breathing';
 
 const LINE = 'rgba(255,255,255,0.85)';
 
@@ -63,7 +64,10 @@ export function EmptyPitch({ width = 200, style }: { width?: number; style?: Vie
         <Rect x={W - 36} y={H / 2 - 22} width={22} height={44} stroke={LINE} strokeWidth={2} fill="none" />
       </Svg>
       <View style={styles.pitchBall} pointerEvents="none">
-        <SoccerBall size={Math.round(width * 0.2)} />
+        {/* Gentle idle float so the empty chat feels alive, not frozen. */}
+        <Breathing mode="bob" amount={5} periodMs={2200}>
+          <SoccerBall size={Math.round(width * 0.2)} />
+        </Breathing>
       </View>
     </View>
   );
