@@ -7,7 +7,7 @@
 // listener is denied (e.g. the user lost membership mid-session) we fall
 // to a "no access" state rather than showing a broken empty list.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -24,8 +24,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { setActiveChat } from '@/services/activeChat';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -185,6 +186,16 @@ export function ChatView({
     chatService.writeReadReceipt(scope, parentId, me).catch(() => {});
   }, [me?.id, scope, parentId, denied, messages.length]);
 
+  // Mark this chat as the foreground-active one while it's focused, so an
+  // incoming push for THIS chat is suppressed (no banner for the conversation
+  // you're already reading). Cleared on blur/unmount.
+  useFocusEffect(
+    useCallback(() => {
+      setActiveChat(`${scope}__${parentId}`);
+      return () => setActiveChat(null);
+    }, [scope, parentId]),
+  );
+
   const toggleMute = () => {
     if (!me) return;
     chatService.setMuted(me.id, scope, parentId, !muted).catch(() => {});
@@ -223,15 +234,18 @@ export function ChatView({
     listRef.current?.scrollToEnd({ animated: true });
     lastTypingWriteRef.current = 0;
     chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
-    try {
-      await chatService.sendMessage(scope, parentId, me, text);
-    } catch {
-      // Restore the draft so the user doesn't lose what they typed.
-      setDraft(text);
+    // Fire-and-forget — do NOT await the server ack. Firestore durably queues
+    // the write and the onSnapshot local echo renders the message instantly,
+    // so the composer is free again immediately. Awaiting would freeze it
+    // while OFFLINE: addDoc's promise stays pending until reconnect, leaving
+    // `sending` stuck true so no further message could be sent. Only a genuine
+    // server REJECTION restores the draft + alerts.
+    chatService.sendMessage(scope, parentId, me, text).catch(() => {
+      // Restore only if the box is still empty (user hasn't started a new one).
+      setDraft((cur) => cur || text);
       appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
-    } finally {
-      setSending(false);
-    }
+    });
+    setSending(false);
   };
 
   // Signal "typing" as the user edits — throttled to a write every ~2.5s.

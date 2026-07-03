@@ -445,6 +445,7 @@ export const he = {
   goalScorerWithAssist: (scorer: string, assister: string) =>
     `${scorer} (בישול: ${assister})`,
   goalSaveFailed: 'לא הצלחנו לשמור את הגול, נסו שוב',
+  roundFinalizeFailed: 'לא הצלחנו לסיים את המשחקון, נסו שוב (הגולים נשמרו)',
   goalPickerEmptyRoster: 'אין שחקנים זמינים בקבוצה הזו',
   goalAssistEmptyRoster: 'אין שחקנים אחרים לבישול',
   winnerPickCancel: 'ביטול',

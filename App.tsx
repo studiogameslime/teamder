@@ -44,19 +44,38 @@ LogBox.ignoreLogs([
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Notifications = require('expo-notifications');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { isActiveChatNotification } = require('@/services/activeChat');
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
+    handleNotification: async (notification: {
+      request?: { content?: { data?: unknown } };
+    }) => {
+      // Suppress the heads-up banner for the chat the user is ALREADY viewing —
+      // otherwise two people chatting live each get a banner per message (the
+      // server re-arms its one-push gate every time the open chat resets its
+      // unread to 0). Other notifications behave as before.
+      if (isActiveChatNotification(notification?.request?.content?.data)) {
+        return {
+          shouldShowBanner: false,
+          shouldShowList: false,
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      }
       // expo-notifications split `shouldShowAlert` into the more
       // granular `shouldShowBanner` (head-up alert) +
       // `shouldShowList` (notification center) in newer SDKs. We set
       // both true to mirror the old `shouldShowAlert: true` behaviour
       // — and keep the legacy field too so older SDKs still honour it.
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+      return {
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      };
+    },
   });
   // Register the GAME_REMINDER category — when a `gameReminder`
   // push arrives with `categoryIdentifier: 'GAME_REMINDER'` in its

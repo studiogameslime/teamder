@@ -360,6 +360,8 @@ export function AdvancedLiveMatchScreen() {
     try {
       await gameService.recordWinner(gameId, me.id, teamIndex);
     } catch (err) {
+      logError('liveRecordWinner', err, { gameId, userId: me.id });
+      toast.error(he.roundFinalizeFailed);
       if (__DEV__) console.warn('[live] recordWinner failed', err);
     }
   };
@@ -573,6 +575,7 @@ export function AdvancedLiveMatchScreen() {
       beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
+      toast.error(he.roundFinalizeFailed);
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
     } finally {
       finalizingRef.current = false;
@@ -590,6 +593,7 @@ export function AdvancedLiveMatchScreen() {
       if (res && res.outcome !== null) beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
+      toast.error(he.roundFinalizeFailed);
       if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
     } finally {
       finalizingRef.current = false;
@@ -728,8 +732,14 @@ export function AdvancedLiveMatchScreen() {
       // Only ask about equipment if the evening was ACTUALLY played (the timer
       // started at least once). Ending a called-off game that no one played must
       // not overwrite the community's real ball/jersey holder state.
+      // Read from the LIVE-synced state, not the `game` snapshot: `game` is
+      // fetched once on mount and never refreshed by the listener, so in the
+      // common flow (open screen before kickoff → start → play → end) its
+      // startedAt is still null and the handoff prompt would be skipped.
       const wasPlayed =
-        game?.status === 'finished' || game?.liveMatch?.startedAt != null;
+        game?.status === 'finished' ||
+        live?.startedAt != null ||
+        (live?.goals?.length ?? 0) > 0;
       if (grpId && registered.length > 0 && wasPlayed) {
         // "Last took" hints so the admin can hand off fairly (who took it
         // longest ago). Non-blocking — an empty map just hides the hints.

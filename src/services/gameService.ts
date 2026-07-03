@@ -59,7 +59,7 @@ import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
-import { isStaleAfterStart } from '@/services/gameLifecycle';
+import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
@@ -3018,16 +3018,25 @@ export const gameService = {
             ownGoal: !!gl.ownGoal,
           })),
         });
+        // Clear the scoreboard ONLY after the stats commit succeeded. Doing it
+        // unconditionally (as before) meant a failed/​swallowed commit — an
+        // offline blip or App Check hiccup at round/evening end — still wiped
+        // liveMatch.goals, so that round's goals/assists/wins were aggregated
+        // nowhere and lost for good. Now the goal log survives a failed commit
+        // and the round can be retried (the server's roundId latch dedupes).
+        await updateDoc(docs.game(gameId), {
+          'liveMatch.scoreA': 0,
+          'liveMatch.scoreB': 0,
+          'liveMatch.goals': [],
+          updatedAt: now,
+        });
       } catch (err) {
         logError('commitRoundStats', err, { gameId });
         if (__DEV__) console.warn('[gameService] commitRoundStats failed', err);
+        // Rethrow so the caller keeps the goal log intact instead of clearing
+        // it on top of a failed commit.
+        throw err;
       }
-      await updateDoc(docs.game(gameId), {
-        'liveMatch.scoreA': 0,
-        'liveMatch.scoreB': 0,
-        'liveMatch.goals': [],
-        updatedAt: now,
-      });
     } else {
       const m =
         mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
@@ -3892,7 +3901,11 @@ export const gameService = {
     if (!snap.exists()) throw new Error('requestJoinGame: game not found');
     const data = snap.data();
     if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
-    if (data.startsAt && data.startsAt < Date.now()) {
+    // Honor the SAME 1h post-kickoff grace the UI (canJoinGame) offers — else
+    // "אני מגיע" is enabled for an hour after kickoff but every write here
+    // rejects, making the late-join feature unreachable. Live games are still
+    // blocked by the GAME_LIVE check below.
+    if (data.startsAt && data.startsAt + LATE_REG_GRACE_MS < Date.now()) {
       throw new Error('GAME_STARTED');
     }
     if (data.liveMatch?.phase === 'live') throw new Error('GAME_LIVE');
@@ -4108,9 +4121,11 @@ export const gameService = {
       // Lifecycle gate (mirrors firestore.rules — fail fast client-side
       // with a typed error so the UI can show a friendly message).
       if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
-      if (data.startsAt && data.startsAt < Date.now()) {
+      // Same 1h grace as canJoinGame / requestJoinGame (see note there). Only
+      // truly past-grace (or live) joins are rejected.
+      if (data.startsAt && data.startsAt + LATE_REG_GRACE_MS < Date.now()) {
         // Track the rare-but-interesting case of a stale UI letting
-        // a user attempt to join after kickoff — usually a deep link
+        // a user attempt to join well after kickoff — usually a deep link
         // or stale list cache.
         logEvent(AnalyticsEvent.GameStartedJoinAttempt, {
           gameId,
@@ -6094,6 +6109,11 @@ export const gameService = {
       const lm = data.liveMatch as import('@/types').LiveMatchState | undefined;
       const rot = data.rotation as import('@/types').MatchRotation | undefined;
       const draft = data.draftTeams as DraftTeamsResult | undefined;
+      // Did the final round's stats commit succeed? If it FAILED (offline blip
+      // at night's end), we must NOT wipe the goal log below — otherwise the
+      // last round's goals/assists/wins are lost forever. Preserve them so a
+      // later retry (the committedRounds latch dedupes) can still aggregate.
+      let finalRoundCommitted = true;
       if (lm && rot && draft && (lm.goals?.length ?? 0) > 0) {
         const winnerSide: 'A' | 'B' | null =
           (lm.scoreA ?? 0) > (lm.scoreB ?? 0)
@@ -6101,17 +6121,24 @@ export const gameService = {
             : (lm.scoreB ?? 0) > (lm.scoreA ?? 0)
               ? 'B'
               : null;
-        await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide).catch((err) => {
+        try {
+          await this._commitRoundStatsAndClear(gameId, lm, rot, draft, winnerSide);
+        } catch (err) {
+          finalRoundCommitted = false;
           logError('endEvening.commitFinalRound', err, { gameId });
-        });
+        }
       }
       const updates: Record<string, unknown> = {
         status: 'finished',
         updatedAt: Date.now(),
       };
       if (data.liveMatch) {
-        // Re-read isn't worth it; the commit above already zeroed goals/score.
-        updates.liveMatch = { ...data.liveMatch, goals: [], scoreA: 0, scoreB: 0, phase: 'finished' };
+        updates.liveMatch = finalRoundCommitted
+          ? // Commit succeeded (it already zeroed goals/score) → freeze empty.
+            { ...data.liveMatch, goals: [], scoreA: 0, scoreB: 0, phase: 'finished' }
+          : // Commit FAILED → keep the goal log/score so nothing is lost; only
+            // flip the phase to finished.
+            { ...data.liveMatch, phase: 'finished' };
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateDoc(ref, updates as any);

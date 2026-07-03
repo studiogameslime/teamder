@@ -529,7 +529,15 @@ const groupConverter: FirestoreDataConverter<Group> = {
           : undefined,
       isPersonal: d.isPersonal === true,
       hidden: d.hidden === true,
-      createdAt: d.createdAt ?? 0,
+      // Guard like the sibling converters (user/game/etc.): a missing/0 or
+      // non-numeric createdAt must NOT become 0 — clubLevel would read that as
+      // "founded 1970", compute a ~56-year age, and slam the club to max level
+      // ("אגדה") with a 01.01.1970 founding date. Treat anything invalid as
+      // "just founded".
+      createdAt:
+        typeof d.createdAt === 'number' && d.createdAt > 0
+          ? d.createdAt
+          : Date.now(),
       updatedAt: d.updatedAt ?? undefined,
     };
   },

@@ -112,7 +112,7 @@ export function hasStarted(game: Game): boolean {
 //     surfaces in this window before kickoff. Pressing it earlier
 //     never made sense — the screen would launch into the live flow
 //     hours before the actual game.
-const LATE_REG_GRACE_MS = 60 * 60 * 1000;
+export const LATE_REG_GRACE_MS = 60 * 60 * 1000;
 const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 const START_EVENING_LEAD_MS = 30 * 60 * 1000;
 
@@ -177,7 +177,11 @@ export function canEditGame(game: Game, actor: ActorFlags): boolean {
 }
 
 export function canAddGuest(game: Game, actor: ActorFlags): boolean {
-  if (!isOpen(game) && !isLocked(game)) return false;
+  // Open-only: the write path (gameService.addGuest + firestore.rules) rejects
+  // GAME_NOT_OPEN on any non-open status for EVERYONE (admins included), so a
+  // 'locked' game must not offer the add-guest affordance the write would then
+  // refuse. (Was allowing 'locked' → UI offered an action that always failed.)
+  if (!isOpen(game)) return false;
   // Admin / organizer: always allowed.
   if (actor.isOrganizerOrAdmin) return true;
   // Everyone else must be a registered participant.
