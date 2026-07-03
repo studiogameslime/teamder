@@ -134,6 +134,40 @@ const MY_GAMES_WINDOW_MS = 48 * 60 * 60 * 1000;
 const myGamesFloor = (): number => Date.now() - MY_GAMES_WINDOW_MS;
 
 /**
+ * Cold-start auth-race guard for Firestore reads.
+ *
+ * On a cold start (e.g. right after an app update restart) the persisted
+ * session is restored — so `auth.currentUser` is already set — a few
+ * milliseconds BEFORE the ID token has attached to the Firestore channel. A
+ * query fired in that window reaches the rules with `request.auth == null`
+ * and fails `permission-denied`, even though the query itself is valid. It
+ * then self-recovers on the next read.
+ *
+ * This wraps a read: on `permission-denied` WHILE a user session exists, it
+ * forces the token (which propagates it to the Firestore channel), waits a
+ * beat, and retries ONCE. A genuine "not signed in", or any non-permission
+ * error, rethrows immediately — so we never paper over a real rules bug.
+ */
+async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    const user = getFirebase().auth.currentUser;
+    if (code === 'permission-denied' && user) {
+      try {
+        await user.getIdToken();
+      } catch {
+        /* ignore — the retry below surfaces any real failure */
+      }
+      await new Promise((r) => setTimeout(r, 300));
+      return await run();
+    }
+    throw err;
+  }
+}
+
+/**
  * Tiny per-user cache for the my-games lists. Absorbs repeated reads when the
  * user flips between the Games / Profile / Player-card tabs in quick
  * succession (each used to re-run the queries). Short TTL so it stays fresh;
@@ -1313,18 +1347,22 @@ export const gameService = {
     // `all`, a single PERMISSION_DENIED would blank the entire list.
     const floor = myGamesFloor();
     const [participatingResult, createdResult] = await Promise.allSettled([
-      getDocs(
-        query(
-          col.games(),
-          where('participantIds', 'array-contains', userId),
-          where('startsAt', '>=', floor),
+      withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('participantIds', 'array-contains', userId),
+            where('startsAt', '>=', floor),
+          ),
         ),
       ),
-      getDocs(
-        query(
-          col.games(),
-          where('createdBy', '==', userId),
-          where('startsAt', '>=', floor),
+      withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('createdBy', '==', userId),
+            where('startsAt', '>=', floor),
+          ),
         ),
       ),
     ]);
@@ -1412,18 +1450,22 @@ export const gameService = {
     // mirrors getMyGames — a single failing query never blanks the result.
     const floor = myGamesFloor();
     const [participatingResult, createdResult] = await Promise.allSettled([
-      getDocs(
-        query(
-          col.games(),
-          where('participantIds', 'array-contains', userId),
-          where('startsAt', '>=', floor),
+      withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('participantIds', 'array-contains', userId),
+            where('startsAt', '>=', floor),
+          ),
         ),
       ),
-      getDocs(
-        query(
-          col.games(),
-          where('createdBy', '==', userId),
-          where('startsAt', '>=', floor),
+      withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('createdBy', '==', userId),
+            where('startsAt', '>=', floor),
+          ),
         ),
       ),
     ]);
@@ -1620,8 +1662,10 @@ export const gameService = {
     const snaps = (
       await Promise.all(
         chunks.map((c) =>
-          getDocs(
-            query(col.games(), where('groupId', 'in', c), where('status', '==', 'open')),
+          withAuthRaceRetry(() =>
+            getDocs(
+              query(col.games(), where('groupId', 'in', c), where('status', '==', 'open')),
+            ),
           ).catch(
             (err: { code?: string }) => {
               if (err?.code !== 'permission-denied') {
@@ -1805,12 +1849,17 @@ export const gameService = {
     // (visibility, status, startsAt) composite index.
     let snap;
     try {
-      snap = await getDocs(
-        query(
-          col.games(),
-          where('visibility', '==', 'public'),
-          where('status', '==', 'open'),
-          where('startsAt', '>', now),
+      // Wrapped so a cold-start auth race (token not yet attached →
+      // permission-denied on the very first read after an update restart)
+      // retries once instead of surfacing a failed load.
+      snap = await withAuthRaceRetry(() =>
+        getDocs(
+          query(
+            col.games(),
+            where('visibility', '==', 'public'),
+            where('status', '==', 'open'),
+            where('startsAt', '>', now),
+          ),
         ),
       );
     } catch (err) {
