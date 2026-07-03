@@ -2161,7 +2161,13 @@ async function runCloneRecurringGames() {
         delete next.reminderSent;
         delete next.rateReminderSent;
         delete next.rsvpNudgeSent;
+        // The real shortage-warning latch is `shortageWarningSentAt` (runSendShortage
+        // Warnings guards on it). The old `shortageWarningSent` delete missed the
+        // 'At', so the clone inherited last week's timestamp via {...g} and the
+        // warning never fired again for a recurring game. (`fillingUpSent` was
+        // likewise dead — its real latch `capacityNoticeSent` is cleared below.)
         delete next.shortageWarningSent;
+        delete next.shortageWarningSentAt;
         delete next.fillingUpSent;
         delete next.publicOpenedAt;
         delete next.pinnedMessage;
@@ -2725,8 +2731,26 @@ exports.onGroupPendingChanged = (0, firestore_1.onDocumentWritten)('groups/{grou
     // fresh join" semantics elsewhere.
     if (Array.isArray(afterPlayers)) {
         const prevSet = new Set(beforePlayers ?? []);
+        const afterSet = new Set(afterPlayers);
         const newJoiners = afterPlayers.filter((uid) => !prevSet.has(uid));
         const groupId = event.params.groupId;
+        // Symmetric cleanup: members who LEFT (or were removed) must lose their
+        // new-game push subscription for this community — otherwise an ex-member
+        // keeps getting "משחק חדש" pushes for a club they quit, and the opt-out
+        // bell (on CommunityDetailsScreen) is no longer reachable to them.
+        // arrayRemove is a no-op when the groupId isn't present.
+        const departed = (beforePlayers ?? []).filter((uid) => !afterSet.has(uid));
+        for (const uid of departed) {
+            try {
+                await db.collection('users').doc(uid).set({
+                    newGameSubscriptions: admin.firestore.FieldValue.arrayRemove(groupId),
+                    updatedAt: Date.now(),
+                }, { merge: true });
+            }
+            catch (err) {
+                console.warn('[onGroupPendingChanged] unsubscribe on leave failed', uid, err);
+            }
+        }
         for (const uid of newJoiners) {
             // Subscription default — idempotent (arrayUnion), and we WANT it to
             // re-run on a genuine rejoin, so it stays outside the credit latch.
@@ -2993,76 +3017,14 @@ exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}',
         if (a <= b)
             return;
     }
-    const reg = (arr) => (arr ?? []).filter((u) => typeof u === 'string' &&
-        u.length > 0 &&
-        !u.startsWith('guest:') &&
-        // Defence-in-depth: a raw legacy guest id (genGuestId →
-        // "<base36ts>-<rand>", all lowercase) must not get a phantom /users
-        // doc. Match that EXACT shape rather than "any hyphen", so a real
-        // Firebase uid (mixed-case, no hyphen — incl. email accounts) is
-        // never excluded.
-        !/^[0-9a-z]+-[0-9a-z]+$/.test(u));
-    const winners = reg(after.rotation.lastRoundWinners);
-    const losers = reg(after.rotation.lastRoundLosers);
-    if (winners.length === 0 && losers.length === 0)
-        return;
-    const inc = admin.firestore.FieldValue.increment(1);
-    const batch = db.batch();
-    // 1) Lifetime per-player wins are NO LONGER written here — they're written
-    //    by commitRoundStats in the same latched batch as the community/game
-    //    win tallies, so the three win counters can't diverge. This trigger now
-    //    only maintains the same-team pair stats below.
-    // 2) Pairwise "played together on the same team" + together W/L. One doc
-    //    per unordered pair at pairStats/{a__b} (sorted), so a player card can
-    //    read a single doc for "you & X".
-    const pairKey = (x, y) => [x, y].sort().join('__');
-    const addPairs = (team, field) => {
-        for (let i = 0; i < team.length; i++) {
-            for (let j = i + 1; j < team.length; j++) {
-                batch.set(db.collection('pairStats').doc(pairKey(team[i], team[j])), {
-                    a: [team[i], team[j]].sort()[0],
-                    b: [team[i], team[j]].sort()[1],
-                    sameTeam: inc,
-                    [field]: inc,
-                }, { merge: true });
-            }
-        }
-    };
-    addPairs(winners, 'winsTogether');
-    addPairs(losers, 'lossesTogether');
-    // Idempotency latch: the round-counter check above only dedupes NEW vs OLD
-    // state within a single delivery. Cloud Functions is at-least-once, so a
-    // redelivered identical event passes that check again and would DOUBLE the
-    // pair increments. A per-round marker created IN THE SAME BATCH makes the
-    // whole commit fail (ALREADY_EXISTS) on any redelivery, so pairStats are
-    // written exactly once per round — mirrors commitRoundStats/committedRounds.
-    // The key MUST include the round timestamp, not just the round NUMBER: after
-    // an "אפס רוטציה" reset the round counter restarts at 1, so a number-only
-    // key (r1, r2…) would collide with the previous run and silently drop the
-    // restarted rounds' pair stats. lastRoundAt is monotonic per finalize, so
-    // `${round}_${lastRoundAt}` is unique across resets (matches committedRounds'
-    // `${round}:${updatedAt}` shape).
-    const roundKey = typeof ar === 'number'
-        ? `r${ar}_${after.rotation.lastRoundAt ?? 0}`
-        : `t${after.rotation.lastRoundAt ?? 0}`;
-    batch.create(db
-        .collection('games')
-        .doc(event.params.id)
-        .collection('pairRounds')
-        .doc(roundKey), { at: Date.now() });
-    try {
-        await batch.commit();
-        console.log(`[onGameRotationChanged] game ${event.params.id}: +win×${winners.length}, pairs W${winners.length}/L${losers.length}`);
-    }
-    catch (err) {
-        const code = err.code;
-        if (code === 6 || code === 'already-exists') {
-            console.log(`[onGameRotationChanged] round ${roundKey} already counted — skip (redelivery)`);
-        }
-        else {
-            console.warn('[onGameRotationChanged] increment failed', err);
-        }
-    }
+    // No-op. Same-team pair stats (sameTeam / winsTogether / lossesTogether) are
+    // now written by commitRoundStats in its committedRounds-latched batch (the
+    // sameTeamPairs loop), on EVERY committed round — including a directly-ended
+    // evening and 4-team ties, which this rotation-ADVANCE trigger used to MISS
+    // (making winsTogether/sameTeam diverge from the against record). This
+    // trigger's only remaining job was that pair write, so it now does nothing;
+    // left as an empty handler to avoid changing the deployed function set.
+    return;
 });
 // ─── Realtime trigger: "almost full" FOMO push ─────────────────────────
 /**
@@ -3143,8 +3105,16 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         after.players.length > 0) {
         try {
             const gid = after.groupId;
+            // Exclude no-shows — the same rule the attendance‑based counts use
+            // (isAttendedGame / avgAttendance / attendedTogether). Without this, the
+            // community "games played" column + the 'הכי נאמן' (most‑loyal) leader
+            // credited nights a player registered for but skipped, diverging from
+            // the player's own Statistics screen (which strips no‑shows).
+            const arrivals = after.arrivals ?? {};
             const batch = db.batch();
             for (const uid of after.players) {
+                if (arrivals[uid] === 'no_show')
+                    continue;
                 batch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), {
                     groupId: gid,
                     userId: uid,
@@ -7150,6 +7120,32 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
                 updatedAt: now,
             }, { merge: true });
         }
+    // Same-team pairs — "played together" + won/lost together. MOVED here from
+    // the onGameRotationChanged trigger so it's written on EVERY committed round
+    // in the SAME idempotency-latched batch as goals/assists/against. The old
+    // trigger fired only when the rotation ADVANCED, so a directly-ended evening
+    // (endEvening commits the final round WITHOUT advancing) and a 4-team tie
+    // (which empties lastRoundWinners/Losers) silently dropped same-team — making
+    // winsTogether/sameTeam diverge from the against record for the same rounds.
+    const sameTeamPairs = (team, won, lost) => {
+        for (let i = 0; i < team.length; i++) {
+            for (let j = i + 1; j < team.length; j++) {
+                const [pa, pb] = [team[i], team[j]].sort();
+                batch.set(db.collection('pairStats').doc(pairKey(team[i], team[j])), {
+                    a: pa,
+                    b: pb,
+                    sameTeam: inc(1),
+                    ...(won ? { winsTogether: inc(1) } : {}),
+                    ...(lost ? { lossesTogether: inc(1) } : {}),
+                    updatedAt: now,
+                }, { merge: true });
+            }
+        }
+    };
+    // A tie (winnerSide==='tie') credits sameTeam for both sides with NO
+    // together-win/loss — a case the old rotation trigger couldn't represent.
+    sameTeamPairs(A, aWon, bWon);
+    sameTeamPairs(B, bWon, aWon);
     await batch.commit();
     return { ok: true, scorers: Object.keys(byScorer).length };
 });
