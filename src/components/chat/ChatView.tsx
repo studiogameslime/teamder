@@ -215,6 +215,12 @@ export function ChatView({
     }
     setSending(true);
     setDraft('');
+    // Sending your own message always jumps you to the newest — even if you'd
+    // scrolled up to read history. Without this, the auto-scroll (gated on
+    // nearBottomRef) skips your just-sent message and it lands off-screen,
+    // looking like the send failed.
+    nearBottomRef.current = true;
+    listRef.current?.scrollToEnd({ animated: true });
     lastTypingWriteRef.current = 0;
     chatService.setTyping(scope, parentId, { id: me.id, name: me.name }, false).catch(() => {});
     try {

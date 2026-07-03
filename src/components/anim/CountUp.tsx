@@ -14,6 +14,10 @@ import { Text, type TextStyle } from 'react-native';
 
 interface Props {
   to: number;
+  /** Starting value for the FIRST animation. Defaults to `to` (so the number
+   *  renders static until `to` later changes — TrustMeter's behavior). Pass
+   *  `from={0}` to play a 0→value count-up on mount. */
+  from?: number;
   durationMs?: number;
   /** Number of decimal places to render. Default 0. */
   decimals?: number;
@@ -26,6 +30,7 @@ interface Props {
 
 export function CountUp({
   to,
+  from,
   durationMs = 700,
   decimals = 0,
   prefix = '',
@@ -33,8 +38,9 @@ export function CountUp({
   style,
   allowFontScaling = false,
 }: Props) {
-  const [value, setValue] = useState(to);
-  const fromRef = useRef(to);
+  const initial = from ?? to;
+  const [value, setValue] = useState(initial);
+  const fromRef = useRef(initial);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef(0);
 

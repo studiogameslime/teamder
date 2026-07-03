@@ -454,7 +454,7 @@ function HeroTile({
           that makes the tiles feel alive. Pre-formatted strings (e.g. the
           one-decimal average) render as-is. */}
       {typeof value === 'number' ? (
-        <CountUp to={value} durationMs={800} style={styles.heroValue} />
+        <CountUp from={0} to={value} durationMs={800} style={styles.heroValue} />
       ) : (
         <Text style={styles.heroValue}>{value}</Text>
       )}
