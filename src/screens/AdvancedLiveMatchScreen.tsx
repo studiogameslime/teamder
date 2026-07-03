@@ -371,6 +371,13 @@ export function AdvancedLiveMatchScreen() {
   // `finalizingRef` blocks a double-fire (rapid taps / re-render) from
   // committing the round's stats twice.
   const finalizingRef = useRef(false);
+  // Latch that spans the ASYNC rotation commit at the end of the fill flow.
+  // finalizingRef clears in onEndRound's synchronous finally (before the fill
+  // flow's await resolves) and fillFlowRef is nulled just before the commit, so
+  // without this a fast second "סיים משחקון" tap during the ~commit round‑trip
+  // re-runs onEndRound against an already-cleared score (read as a tie) and
+  // corrupts the rotation. Held true across commitFilledRotation.
+  const committingRef = useRef(false);
   // Latch around the timer/round START so a rapid double-tap can't run
   // prepareStartRotation / beginFillFlow twice and clobber fillFlowRef.
   const startingRef = useRef(false);
@@ -468,6 +475,7 @@ export function AdvancedLiveMatchScreen() {
     fillFlowRef.current = null;
     if (!gameId) return;
     const rotation = { ...flow.rotationBase, loans: flow.working.loans };
+    committingRef.current = true;
     try {
       // Commit the rotation. For a round transition we ALSO zero the new round's
       // clock+score in the same atomic write (a concurrent admin's timer-start
@@ -483,6 +491,8 @@ export function AdvancedLiveMatchScreen() {
     } catch (err) {
       logError('liveCommitFilledRotation', err, { gameId });
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
+    } finally {
+      committingRef.current = false;
     }
   };
 
@@ -522,7 +532,7 @@ export function AdvancedLiveMatchScreen() {
   // A tie skips straight to the manual winner picker.
   const confirmEndRound = () => {
     // Same re-entry guard as onEndRound — also covers the confirm-dialog path.
-    if (finalizingRef.current || fillFlowRef.current || winnerOpen) return;
+    if (finalizingRef.current || committingRef.current || fillFlowRef.current || winnerOpen) return;
     if (!rotation || !live) {
       void onEndRound();
       return;
@@ -557,7 +567,7 @@ export function AdvancedLiveMatchScreen() {
     // a second "סיים משחקון" tap (the ref clears in `finally` BEFORE the async
     // fill flow finishes) re-runs prepareRoundResult and double-commits the
     // round's goals/wins (user-facing stat corruption).
-    if (!gameId || !me || finalizingRef.current || fillFlowRef.current || winnerOpen) return;
+    if (!gameId || !me || finalizingRef.current || committingRef.current || fillFlowRef.current || winnerOpen) return;
     finalizingRef.current = true;
     try {
       // STOP (don't reset) the clock the moment the round ends — it shouldn't
@@ -603,7 +613,7 @@ export function AdvancedLiveMatchScreen() {
   // "התחל משחקון" — kick off a round: draft rotation + start the match clock
   // together so the live state goes straight to "running" (matches the design).
   const onStartRound = async () => {
-    if (!gameId || !me || startingRef.current) return;
+    if (!gameId || !me || startingRef.current || committingRef.current) return;
     startingRef.current = true;
     try {
       // Build the start skeleton (no persist). The admin then completes the two
@@ -657,7 +667,7 @@ export function AdvancedLiveMatchScreen() {
 
   // ─── Timer controls (flow through Firestore transactions) ──────────────
   const onTimerStart = async () => {
-    if (!gameId || !me || startingRef.current) return;
+    if (!gameId || !me || startingRef.current || committingRef.current) return;
     startingRef.current = true;
     try {
       // First press flips Game.status→'active' and stamps

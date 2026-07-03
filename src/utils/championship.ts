@@ -81,7 +81,14 @@ export function rankChampionshipRows(
   }));
   if (sortBy === 'goals') {
     return rows
-      .filter((r) => r.uid && (keepAll || r.goals > 0 || r.games > 0 || r.wins > 0))
+      // Keep anyone with ANY contribution — include assists so a pure
+      // playmaker (assists>0, goals/wins/games=0) isn't dropped, which would
+      // hide the real top-assister and under-count the club's assist total.
+      .filter(
+        (r) =>
+          r.uid &&
+          (keepAll || r.goals > 0 || r.assists > 0 || r.games > 0 || r.wins > 0),
+      )
       .sort(
         (a, b) =>
           b.goals - a.goals ||
