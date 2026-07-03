@@ -36,6 +36,7 @@ import {
 import { MapWebView, type MapMarker } from '@/components/map/MapWebView';
 import { DatePickerModal } from '@/components/DateTimeFields';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { logError } from '@/services/errorLog';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -373,10 +374,7 @@ export function MapScreen() {
             pinEmoji={mode === 'communities' ? '' : '⚽'}
           />
         ) : (
-          <View style={styles.empty}>
-            <Ionicons name="map-outline" size={56} color={colors.textMuted} />
-            <Text style={styles.emptyText}>{he.mapEmpty}</Text>
-          </View>
+          <EmptyState icon="map-outline" title={he.mapEmpty} />
         )}
 
         {/* Legend — games: colour by date; communities: membership. */}
@@ -652,18 +650,6 @@ const styles = StyleSheet.create({
   },
   chipTextActive: { color: '#FFFFFF' },
   mapWrap: { flex: 1, backgroundColor: '#eaf2fb' },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    padding: spacing.xl,
-  },
-  emptyText: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
   legend: {
     position: 'absolute',
     bottom: spacing.lg,

@@ -6,10 +6,10 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { GameHistoryRow } from '@/components/match/GameHistoryRow';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { gameService } from '@/services/gameService';
@@ -50,11 +50,11 @@ export function CommunityHistoryScreen() {
           <Text style={styles.muted}>{he.communityStatsLoading}</Text>
         </View>
       ) : games.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="time-outline" size={56} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>{he.communityHistoryEmptyTitle}</Text>
-          <Text style={styles.emptyBody}>{he.communityHistoryEmptyBody}</Text>
-        </View>
+        <EmptyState
+          icon="time-outline"
+          title={he.communityHistoryEmptyTitle}
+          hint={he.communityHistoryEmptyBody}
+        />
       ) : (
         <FlatList
           data={games}
@@ -77,7 +77,5 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   muted: { ...typography.body, color: colors.textMuted },
-  emptyTitle: { ...typography.h3, color: colors.text, fontWeight: '800', marginTop: spacing.sm },
-  emptyBody: { ...typography.body, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
   list: { padding: spacing.md, gap: spacing.sm },
 });

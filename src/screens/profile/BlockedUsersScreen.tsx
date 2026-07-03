@@ -6,9 +6,9 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
@@ -72,11 +72,11 @@ export function BlockedUsersScreen() {
           <SoccerBallLoader size={40} />
         </View>
       ) : ids.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="happy-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>{he.blockedEmptyTitle}</Text>
-          <Text style={styles.emptyHint}>{he.blockedEmptyHint}</Text>
-        </View>
+        <EmptyState
+          icon="happy-outline"
+          title={he.blockedEmptyTitle}
+          hint={he.blockedEmptyHint}
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.intro}>{he.blockedIntro}</Text>
@@ -115,8 +115,6 @@ export function BlockedUsersScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
-  emptyTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
-  emptyHint: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
   intro: { ...typography.body, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   listCard: { padding: 0, overflow: 'hidden' },

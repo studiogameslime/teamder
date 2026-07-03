@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -98,10 +99,7 @@ export function StatisticsScreen() {
           <SoccerBallLoader size={40} />
         </View>
       ) : !hasData ? (
-        <View style={styles.center}>
-          <Ionicons name="stats-chart-outline" size={56} color={colors.textMuted} />
-          <Text style={styles.empty}>{he.statsScreenEmpty}</Text>
-        </View>
+        <EmptyState icon="stats-chart-outline" title={he.statsScreenEmpty} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {/* ── Numbers ─────────────────────────────────────────────── */}
@@ -264,7 +262,6 @@ function firstName(name: string): string {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
-  empty: { ...typography.body, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
   content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl },
   section: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   sectionGap: { marginTop: spacing.lg },

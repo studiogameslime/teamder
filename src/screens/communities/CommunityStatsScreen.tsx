@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AchievementBadge } from '@/components/AchievementBadge';
@@ -238,11 +239,11 @@ export function CommunityStatsScreen() {
           <Text style={styles.loadingText}>{he.communityStatsLoading}</Text>
         </View>
       ) : isEmpty ? (
-        <View style={styles.center}>
-          <Ionicons name="stats-chart-outline" size={56} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>{he.communityStatsEmptyTitle}</Text>
-          <Text style={styles.emptyBody}>{he.communityStatsEmptyBody}</Text>
-        </View>
+        <EmptyState
+          icon="stats-chart-outline"
+          title={he.communityStatsEmptyTitle}
+          hint={he.communityStatsEmptyBody}
+        />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -545,8 +546,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },
-  emptyTitle: { ...typography.h3, color: colors.text, fontWeight: '800', marginTop: spacing.sm },
-  emptyBody: { ...typography.body, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
   scroll: { padding: spacing.md, gap: spacing.sm },
 
   sectionTitle: {

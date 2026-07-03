@@ -16,6 +16,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { UserAvatar } from '@/components/UserAvatar';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -137,10 +138,7 @@ export function AddMembersScreen() {
           <SoccerBallLoader />
         </View>
       ) : members.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="people-outline" size={46} color={colors.textMuted} />
-          <Text style={styles.emptyText}>{he.addMembersEmpty}</Text>
-        </View>
+        <EmptyState icon="people-outline" title={he.addMembersEmpty} />
       ) : (
         <>
           <Text style={styles.hint}>
@@ -196,7 +194,6 @@ export function AddMembersScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
-  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   hint: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   list: { padding: spacing.lg, gap: spacing.sm },
   row: {

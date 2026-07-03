@@ -10,8 +10,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
@@ -96,6 +98,48 @@ export function LiveScoreboardCard(props: Props) {
   const rosterB = useMemo(() => buildRoster(bIdx, teams, rotation, resolve), [bIdx, teams, rotation, resolve]);
   const goals = live.goals ?? [];
 
+  // ── Goal flash: a brief tinted wash over the whole card when a score ticks
+  // up, so a goal reads as a card-wide event (not just the number bouncing).
+  const flash = useSharedValue(0);
+  const [flashTint, setFlashTint] = useState(colors.primary);
+  const prevA = useRef(live.scoreA);
+  const prevB = useRef(live.scoreB);
+  useEffect(() => {
+    const aUp = live.scoreA > prevA.current;
+    const bUp = live.scoreB > prevB.current;
+    if (aUp || bUp) {
+      setFlashTint(aUp ? teamColor(aIdx, draftTeams.teams) : teamColor(bIdx, draftTeams.teams));
+      flash.value = withSequence(
+        withTiming(1, { duration: 120 }),
+        withTiming(0, { duration: 560 }),
+      );
+    }
+    prevA.current = live.scoreA;
+    prevB.current = live.scoreB;
+  }, [live.scoreA, live.scoreB, aIdx, bIdx, draftTeams.teams, flash]);
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value * 0.16 }));
+
+  // ── Danger pulse: the timer breathes in the final-minute red state so the
+  // "time almost up" cue is felt, not just coloured.
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (props.danger && props.running) {
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.06, { duration: 450 }),
+          withTiming(1, { duration: 450 }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(1, { duration: 200 });
+    }
+    return () => cancelAnimation(pulse);
+  }, [props.danger, props.running, pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   const addGoal = async (
     team: 'A' | 'B',
     scorerId: string | null,
@@ -143,6 +187,11 @@ export function LiveScoreboardCard(props: Props) {
 
   return (
     <View style={styles.card}>
+      {/* Goal flash — tinted wash pinned to the card, behind the content. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.flashOverlay, { backgroundColor: flashTint }, flashStyle]}
+      />
       {/* Top row: team A (right) · timer (center) · team B (left). */}
       <View style={styles.row}>
         <ScoreSide
@@ -155,9 +204,12 @@ export function LiveScoreboardCard(props: Props) {
         />
 
         <View style={styles.timerCol}>
-          <Text style={[styles.timer, props.danger && styles.timerDanger]} numberOfLines={1}>
+          <Animated.Text
+            style={[styles.timer, props.danger && styles.timerDanger, pulseStyle]}
+            numberOfLines={1}
+          >
             {props.timerText}
-          </Text>
+          </Animated.Text>
           {props.totalMinutes ? (
             <Text style={styles.ofTotal}>
               {he.liveTimerOfTotal(props.totalMinutes)}
@@ -436,12 +488,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.sm,
+    overflow: 'hidden', // clip the goal-flash overlay to the rounded corners
     shadowColor: '#0B1220',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  flashOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: radius.lg },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // ── Team score side ──
   side: { flex: 1, alignItems: 'center', gap: 4 },

@@ -24,6 +24,7 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
@@ -228,11 +229,11 @@ export function ChatsListScreen() {
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader title={he.chatsListTitle} />
       {rows.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="chatbubbles-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>{he.chatsListEmpty}</Text>
-          <Text style={styles.emptyHint}>{he.chatsListEmptyHint}</Text>
-        </View>
+        <EmptyState
+          icon="chatbubbles-outline"
+          title={he.chatsListEmpty}
+          hint={he.chatsListEmptyHint}
+        />
       ) : (
         <FlatList
           data={rows}
@@ -306,9 +307,6 @@ export function ChatsListScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
-  emptyTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: 'center' },
-  emptyHint: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   listContent: { padding: spacing.md, gap: spacing.xs },
   row: {
     flexDirection: 'row',

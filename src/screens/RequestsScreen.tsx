@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { Avatar } from '@/components/Avatar';
 import { appAlert } from '@/components/AppDialog';
@@ -130,11 +131,12 @@ export function RequestsScreen() {
         }
       >
         {empty ? (
-          <View style={styles.emptyWrap}>
-            <Ionicons name="checkmark-done-circle-outline" size={56} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>{he.requestsEmpty}</Text>
-            <Text style={styles.emptyHint}>{he.requestsEmptyHint}</Text>
-          </View>
+          <EmptyState
+            icon="checkmark-done-circle-outline"
+            title={he.requestsEmpty}
+            hint={he.requestsEmptyHint}
+            fill={false}
+          />
         ) : null}
 
         {/* ── Friend requests ── */}
@@ -300,9 +302,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.md, paddingBottom: spacing.xl },
-  emptyWrap: { alignItems: 'center', paddingVertical: spacing.xl * 2, gap: spacing.sm },
-  emptyTitle: { ...typography.h3, color: colors.text, textAlign: 'center' },
-  emptyHint: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingHorizontal: spacing.lg },
   section: { marginBottom: spacing.lg },
   sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   sectionTitle: { ...typography.h3, color: colors.text, textAlign: RTL_LABEL_ALIGN, flex: 1 },

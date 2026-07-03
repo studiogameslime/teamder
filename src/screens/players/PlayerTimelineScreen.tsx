@@ -18,6 +18,7 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
@@ -146,10 +147,7 @@ export function PlayerTimelineScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title={he.timelineTitle(displayName || '')} />
       {visibleEvents.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="time-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyText}>{he.timelineEmpty}</Text>
-        </View>
+        <EmptyState icon="time-outline" title={he.timelineEmpty} />
       ) : (
         <FlatList
           data={visibleEvents}
@@ -220,7 +218,6 @@ export function PlayerTimelineScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
-  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
   list: { padding: spacing.md },
   row: {
     // `row` (NOT row-reverse): under forceRTL the first child (the icon) sits on
