@@ -488,7 +488,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.sm,
-    overflow: 'hidden', // clip the goal-flash overlay to the rounded corners
+    // NOTE: no `overflow:'hidden'` here — it would clip the iOS shadow. The
+    // goal-flash overlay clips its own corners via its matching borderRadius.
     shadowColor: '#0B1220',
     shadowOpacity: 0.06,
     shadowRadius: 10,
