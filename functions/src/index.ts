@@ -8897,3 +8897,202 @@ export const commitRoundStats = onCall(
     return { ok: true, scorers: Object.keys(byScorer).length };
   },
 );
+
+// ── Retro goals ─────────────────────────────────────────────────────────────
+// Admin-only, AFTER a game is finished: credit a MISSED goal to a player's
+// totals WITHOUT touching any mini-game score / winner / rotation (those are
+// frozen — the rotation already physically happened). A retro goal is a pure
+// STAT correction, detached from any round: it bumps the scorer's goals (and an
+// optional assister's assists) across the SAME four stores commitRoundStats
+// writes — users.stats, communityPlayerStats, gamePlayerStats, communityStats —
+// so every leaderboard / profile / club-total reconciles for free. It NEVER
+// writes wins, pair stats, rounds, or liveMatch.* — so it cannot move a result
+// or create a "2:1 but the other team won" display.
+//
+// Idempotency + undo: each retro goal is a doc at games/{gameId}/retroGoals/
+// {retroGoalId}. addRetroGoal create()s that marker in the SAME batch as the
+// increments (a retry collides → no double-count); removeRetroGoal is gated on
+// the marker EXISTING (so a decrement is only ever the inverse of a real add).
+async function loadRetroGameContext(
+  uid: string | undefined,
+  gameId?: string,
+): Promise<{ game: Record<string, unknown>; groupId: string }> {
+  if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+  if (!gameId) throw new HttpsError('invalid-argument', 'gameId required');
+  const snap = await db.collection('games').doc(gameId).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+  const game = snap.data() as Record<string, unknown>;
+  // Post-match only — a retro goal is a correction to a finished evening.
+  if (game.status !== 'finished') {
+    throw new HttpsError('failed-precondition', 'game is not finished');
+  }
+  const groupId = game.groupId as string | undefined;
+  if (!groupId) throw new HttpsError('failed-precondition', 'game has no community');
+  const grpSnap = await db.collection('groups').doc(groupId).get();
+  const grp = grpSnap.data() as Record<string, unknown> | undefined;
+  // Personal / one-off hidden groups are excluded: promoteOrphanToGroup HARD-
+  // resets their stats, which would orphan a retro marker + its counters.
+  if (!grp || grp.isPersonal === true) {
+    throw new HttpsError('failed-precondition', 'retro goals are only for real communities');
+  }
+  const adminIds = (grp.adminIds as string[] | undefined) ?? [];
+  const isAdmin = game.createdBy === uid || adminIds.includes(uid);
+  if (!isAdmin) throw new HttpsError('permission-denied', 'community admin only');
+  return { game, groupId };
+}
+
+const isAlreadyExists = (err: unknown): boolean => {
+  const e = err as { code?: number | string; message?: string };
+  return (
+    e?.code === 6 ||
+    e?.code === 'already-exists' ||
+    (typeof e?.message === 'string' && e.message.includes('ALREADY_EXISTS'))
+  );
+};
+
+export const addRetroGoal = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    const { gameId, scorerId, assisterId, retroGoalId } = (request.data ?? {}) as {
+      gameId?: string;
+      scorerId?: string;
+      assisterId?: string | null;
+      retroGoalId?: string;
+    };
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    if (!retroGoalId) throw new HttpsError('invalid-argument', 'retroGoalId required');
+    if (!scorerId || !isReal(scorerId)) {
+      throw new HttpsError('invalid-argument', 'a real (non-guest) scorer is required');
+    }
+    // Assister optional; ignore a guest / self-assist rather than failing.
+    const assister =
+      assisterId && isReal(assisterId) && assisterId !== scorerId ? assisterId : null;
+    const { game, groupId } = await loadRetroGameContext(uid, gameId);
+    // Scorer (and assister) must be on the game's registered roster — includes
+    // players who went home (they stay in players[]); excludes guests already.
+    const players = (game.players as string[] | undefined) ?? [];
+    if (!players.includes(scorerId)) {
+      throw new HttpsError('invalid-argument', 'scorer is not on this game roster');
+    }
+    if (assister && !players.includes(assister)) {
+      throw new HttpsError('invalid-argument', 'assister is not on this game roster');
+    }
+    const inc = (n: number) => admin.firestore.FieldValue.increment(n);
+    const now = Date.now();
+    const batch = db.batch();
+    // Idempotency marker + audit (create → collides on retry/double-tap).
+    batch.create(
+      db.collection('games').doc(gameId as string).collection('retroGoals').doc(retroGoalId),
+      { scorerId, assisterId: assister, addedBy: uid, at: now },
+    );
+    // Goal → the SAME four stores commitRoundStats writes (no rounds/wins/pairs).
+    batch.set(db.collection('users').doc(scorerId), { stats: { goals: inc(1) } }, { merge: true });
+    batch.set(
+      db.collection('communityPlayerStats').doc(`${groupId}__${scorerId}`),
+      { groupId, userId: scorerId, goals: inc(1), updatedAt: now },
+      { merge: true },
+    );
+    batch.set(
+      db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
+      { gameId, userId: scorerId, goals: inc(1), updatedAt: now },
+      { merge: true },
+    );
+    batch.set(
+      db.collection('communityStats').doc(groupId),
+      { groupId, goals: inc(1), updatedAt: now },
+      { merge: true },
+    );
+    if (assister) {
+      batch.set(
+        db.collection('users').doc(assister),
+        { stats: { assists: inc(1) } },
+        { merge: true },
+      );
+      batch.set(
+        db.collection('communityPlayerStats').doc(`${groupId}__${assister}`),
+        { groupId, userId: assister, assists: inc(1), updatedAt: now },
+        { merge: true },
+      );
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
+        { gameId, userId: assister, assists: inc(1), updatedAt: now },
+        { merge: true },
+      );
+    }
+    try {
+      await batch.commit();
+    } catch (err) {
+      // Marker already existed → this exact retro goal was already applied.
+      // Treat as success (idempotent) instead of double-counting.
+      if (isAlreadyExists(err)) return { ok: true, duplicate: true };
+      throw err;
+    }
+    return { ok: true };
+  },
+);
+
+export const removeRetroGoal = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    const { gameId, retroGoalId } = (request.data ?? {}) as {
+      gameId?: string;
+      retroGoalId?: string;
+    };
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    if (!retroGoalId) throw new HttpsError('invalid-argument', 'retroGoalId required');
+    const { groupId } = await loadRetroGameContext(uid, gameId);
+    const inc = (n: number) => admin.firestore.FieldValue.increment(n);
+    const now = Date.now();
+    const markerRef = db
+      .collection('games')
+      .doc(gameId as string)
+      .collection('retroGoals')
+      .doc(retroGoalId);
+    await db.runTransaction(async (tx) => {
+      const m = await tx.get(markerRef);
+      if (!m.exists) return; // already removed / never existed → no-op
+      const d = m.data() as { scorerId?: string; assisterId?: string | null };
+      const scorerId = d.scorerId;
+      const assister = d.assisterId ?? null;
+      tx.delete(markerRef);
+      if (scorerId && isReal(scorerId)) {
+        tx.set(db.collection('users').doc(scorerId), { stats: { goals: inc(-1) } }, { merge: true });
+        tx.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${scorerId}`),
+          { goals: inc(-1), updatedAt: now },
+          { merge: true },
+        );
+        tx.set(
+          db.collection('gamePlayerStats').doc(`${gameId}__${scorerId}`),
+          { goals: inc(-1), updatedAt: now },
+          { merge: true },
+        );
+        tx.set(
+          db.collection('communityStats').doc(groupId),
+          { goals: inc(-1), updatedAt: now },
+          { merge: true },
+        );
+      }
+      if (assister && isReal(assister)) {
+        tx.set(
+          db.collection('users').doc(assister),
+          { stats: { assists: inc(-1) } },
+          { merge: true },
+        );
+        tx.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${assister}`),
+          { assists: inc(-1), updatedAt: now },
+          { merge: true },
+        );
+        tx.set(
+          db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
+          { assists: inc(-1), updatedAt: now },
+          { merge: true },
+        );
+      }
+    });
+    return { ok: true };
+  },
+);

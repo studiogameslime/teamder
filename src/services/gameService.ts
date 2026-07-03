@@ -49,6 +49,7 @@ import {
   LiveMatchState,
   MatchRound,
   Player,
+  RetroGoal,
   Team,
   DraftTeamsResult,
   TeamColor,
@@ -1117,6 +1118,65 @@ export const gameService = {
       if (__DEV__) console.warn('[gameService] getGameChampionship failed', err);
       return { players: [] };
     }
+  },
+
+  // ── Retro goals (admin-only, after a game is finished) ───────────────────
+  // Credit a missed goal to a player's totals WITHOUT touching any mini-game
+  // score/winner. All writes to the stat stores happen server-side in the
+  // addRetroGoal / removeRetroGoal callables (mirroring commitRoundStats); the
+  // client only invokes them + reads the audit list for the manage sheet.
+
+  /** List the retro goals recorded for a finished game (newest first). */
+  async getRetroGoals(gameId: string): Promise<RetroGoal[]> {
+    if (USE_MOCK_DATA || !gameId) return [];
+    try {
+      const snap = await getDocs(collection(docs.game(gameId), 'retroGoals'));
+      return snap.docs
+        .map((d) => {
+          const x = d.data();
+          return {
+            id: d.id,
+            scorerId: x.scorerId as string,
+            assisterId: (x.assisterId ?? null) as string | null,
+            addedBy: x.addedBy as string,
+            at: Number(x.at ?? 0),
+          };
+        })
+        .sort((a, b) => b.at - a.at);
+    } catch (err) {
+      logError('getRetroGoals', err, { gameId });
+      if (__DEV__) console.warn('[gameService] getRetroGoals failed', err);
+      return [];
+    }
+  },
+
+  /** Add a retro goal. `retroGoalId` is client-generated → idempotency key. */
+  async addRetroGoal(
+    gameId: string,
+    scorerId: string,
+    assisterId: string | null,
+    retroGoalId: string,
+  ): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    await httpsCallable(getFirebase().functions, 'addRetroGoal')({
+      gameId,
+      scorerId,
+      assisterId,
+      retroGoalId,
+    });
+  },
+
+  /** Undo a retro goal (decrements the same stats it credited). */
+  async removeRetroGoal(gameId: string, retroGoalId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    await httpsCallable(getFirebase().functions, 'removeRetroGoal')({
+      gameId,
+      retroGoalId,
+    });
   },
 
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {

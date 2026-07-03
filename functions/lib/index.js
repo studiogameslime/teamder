@@ -983,7 +983,11 @@ async function deliverBatch(type, recipients, message, data) {
     // the "אני בא / לא בא" pair; `spotOffered` uses its own
     // "אישור הגעה / ויתור" pair.
     let categoryIdentifier;
-    if (type === 'gameReminder' || type === 'gameRsvpNudge') {
+    if (type === 'gameRsvpNudge') {
+        // The RSVP nudge is literally "are you coming?" → keep the אני בא / לא בא
+        // buttons. The plain gameReminder no longer carries buttons: a reminder
+        // for a game you're ALREADY registered to shouldn't offer a one-tap "לא
+        // בא" that silently cancels the registration from the lock screen.
         categoryIdentifier = 'GAME_REMINDER';
     }
     else if (type === 'newGameInCommunity') {
@@ -1696,7 +1700,12 @@ async function reconcileGameJoins(gameId) {
         // (the client surfaces a friendly message off the request doc state).
         const liveMatch = g.liveMatch;
         const notOpen = g.status !== 'open';
-        const started = typeof g.startsAt === 'number' && g.startsAt < now;
+        // Honor the same 1h post-kickoff grace the client offers (canJoinGame /
+        // LATE_REG_GRACE_MS) so a late-but-within-grace join the UI allowed isn't
+        // rejected server-side. Live games are still blocked by `live` below.
+        const LATE_REG_GRACE_MS = 60 * 60 * 1000;
+        const started = typeof g.startsAt === 'number' &&
+            g.startsAt + LATE_REG_GRACE_MS < now;
         const live = liveMatch?.phase === 'live';
         if (notOpen || started || live) {
             const reason = notOpen ? 'GAME_NOT_OPEN' : started ? 'GAME_STARTED' : 'GAME_LIVE';

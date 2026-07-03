@@ -1127,6 +1127,18 @@ export interface RoundGoal {
   at: number; // epoch ms
 }
 
+/** A goal added retroactively by a community admin AFTER a game finished —
+ *  a pure stat correction (credits the scorer's goals + an optional assister's
+ *  assists), detached from any mini-game score or winner. Stored at
+ *  games/{gameId}/retroGoals/{id}; written only by the addRetroGoal callable. */
+export interface RetroGoal {
+  id: string;
+  scorerId: UserId;
+  assisterId: UserId | null;
+  addedBy: UserId;
+  at: number; // epoch ms
+}
+
 export interface MatchRound {
   index: number;
   teamA: TeamColor;

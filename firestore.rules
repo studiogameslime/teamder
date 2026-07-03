@@ -1013,6 +1013,18 @@ service cloud.firestore {
         allow write: if isSelf(uid) && isGamePlayer(id);
       }
 
+      // ── /games/{id}/retroGoals/{retroGoalId} — post-match goal fixes ──
+      // Written ONLY by the addRetroGoal / removeRetroGoal callables (Admin
+      // SDK, which bypasses rules). Read by the game creator / a community
+      // admin so the "השלם גולים" sheet can list + undo them. No client writes.
+      match /retroGoals/{retroGoalId} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == gameDoc(id).createdBy ||
+          isGroupAdmin(gameDoc(id).groupId)
+        );
+        allow write: if false;
+      }
+
       // ── /games/{id}/joinRequests/{uid} — FAIR registration ──────────
       // Each user writes ONE request doc (their OWN), stamped with a
       // server-synced tap time. Writing separate docs means zero contention,

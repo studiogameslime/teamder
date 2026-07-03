@@ -16,9 +16,12 @@ import type { ChampionshipRow } from '@/utils/championship';
 export function GameChampionship({
   gameId,
   groupId,
+  /** Bump to force a refetch (e.g. after an admin adds/undoes a retro goal). */
+  refreshKey,
 }: {
   gameId: string;
   groupId?: string;
+  refreshKey?: number;
 }) {
   const [players, setPlayers] = useState<ChampionshipRow[] | null>(null);
 
@@ -35,7 +38,7 @@ export function GameChampionship({
     return () => {
       alive = false;
     };
-  }, [gameId]);
+  }, [gameId, refreshKey]);
 
   if (!players || players.length === 0) return null;
 

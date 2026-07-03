@@ -74,6 +74,7 @@ import {
 import { FillerInterestsSection } from '@/components/match/FillerInterestsSection';
 import { PinnedAdminMessageCard } from '@/components/match/PinnedAdminMessageCard';
 import { GameChampionship } from '@/components/match/GameChampionship';
+import { RetroGoalsSheet } from '@/components/match/RetroGoalsSheet';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
 import { logError, logUnexpected } from '@/services/errorLog';
@@ -692,6 +693,24 @@ export function MatchDetailsScreen() {
     const grp = myCommunities.find((c) => c.id === game.groupId);
     return !!grp && grp.adminIds.includes(user.id);
   }, [user, game, myCommunities]);
+
+  // Retro-goals manager (admin-only, finished game): the "השלם גולים" sheet +
+  // a key we bump to refetch the evening-scorers table after an add/undo.
+  const [retroOpen, setRetroOpen] = useState(false);
+  const [retroRefreshKey, setRetroRefreshKey] = useState(0);
+  const retroRoster = useMemo(
+    () =>
+      (game?.players ?? []).map((id) => {
+        const p = playersMap[id];
+        return {
+          id,
+          name: p?.displayName ?? he.genericUserName,
+          avatarId: p?.avatarId,
+          photoUrl: p?.photoUrl,
+        };
+      }),
+    [game?.players, playersMap],
+  );
 
   // Filler candidate: a signed-in user who is NOT a member of this game's
   // community and NOT already in the roster, viewing a game that opted into
@@ -2848,11 +2867,29 @@ export function MatchDetailsScreen() {
             ]}
           />
 
+        {/* Admin-only: complete a goal missed during the evening. Sits ABOVE
+            the scorers table — that's where the admin notices a missing goal. */}
+        {isFinished(game) && isAdmin ? (
+          <Pressable
+            style={({ pressed }) => [styles.retroBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => setRetroOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={he.retroEntryCta}
+          >
+            <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+            <Text style={styles.retroBtnText}>{he.retroEntryCta}</Text>
+          </Pressable>
+        ) : null}
+
         {/* Per-game championship — goals + assists tallied in THIS game,
             ranked by score (goal=2, assist=1). Only after the game is
             finished. Renders nothing for games with no recorded stats. */}
         {isFinished(game) ? (
-          <GameChampionship gameId={game.id} groupId={game.groupId} />
+          <GameChampionship
+            gameId={game.id}
+            groupId={game.groupId}
+            refreshKey={retroRefreshKey}
+          />
         ) : null}
         </View>
       </ScrollView>
@@ -3066,6 +3103,16 @@ export function MatchDetailsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {game ? (
+        <RetroGoalsSheet
+          visible={retroOpen}
+          gameId={game.id}
+          roster={retroRoster}
+          onClose={() => setRetroOpen(false)}
+          onChanged={() => setRetroRefreshKey((k) => k + 1)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -3233,6 +3280,21 @@ function InfoCell({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  // "השלם גול שהוחמץ" — admin action above the finished-game scorers table.
+  retroBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: colors.surface,
+  },
+  retroBtnText: { ...typography.body, color: colors.primary, fontWeight: '800' },
   // Full-screen, centred, non-interactive layer for the join confetti
   // burst. zIndex keeps it above the scroll content + sticky CTA.
   confettiLayer: {
