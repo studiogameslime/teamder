@@ -985,7 +985,17 @@ export function CommunityDetailsScreen() {
             <Text style={styles.inviteSheetTitle}>
               {he.communityMenuInviteFriends}
             </Text>
-            <FriendsInvitePicker selected={inviteIds} onChange={setInviteIds} />
+            <FriendsInvitePicker
+              selected={inviteIds}
+              onChange={setInviteIds}
+              // Don't suggest friends already in the community (member, pending,
+              // or admin) — inviting them again is a no-op that confused users.
+              exclude={[
+                ...(group?.playerIds ?? []),
+                ...(group?.pendingPlayerIds ?? []),
+                ...(group?.adminIds ?? []),
+              ]}
+            />
             <Button
               title={he.communityInviteFriendsSend(inviteIds.length)}
               onPress={handleSendInvites}

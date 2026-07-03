@@ -28,12 +28,20 @@ import type { User } from '@/types';
 interface Props {
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** Ids to hide from the list — e.g. friends already in the community (members,
+   *  pending, admins) so we don't suggest inviting someone who's already in. */
+  exclude?: string[];
 }
 
-export function FriendsInvitePicker({ selected, onChange }: Props) {
+export function FriendsInvitePicker({ selected, onChange, exclude }: Props) {
   const me = useUserStore((s) => s.currentUser);
   const [friends, setFriends] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const excludeSet = React.useMemo(() => new Set(exclude ?? []), [exclude]);
+  const visibleFriends = React.useMemo(
+    () => friends.filter((f) => !excludeSet.has(f.id)),
+    [friends, excludeSet],
+  );
 
   useEffect(() => {
     logEvent(AnalyticsEvent.FriendPickerOpened);
@@ -74,7 +82,7 @@ export function FriendsInvitePicker({ selected, onChange }: Props) {
       <Text style={styles.label}>{he.wizardInviteFriends}</Text>
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
-      ) : friends.length === 0 ? (
+      ) : visibleFriends.length === 0 ? (
         <Text style={styles.empty}>{he.wizardInviteFriendsEmpty}</Text>
       ) : (
         <ScrollView
@@ -82,7 +90,7 @@ export function FriendsInvitePicker({ selected, onChange }: Props) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.row}
         >
-          {friends.map((f) => {
+          {visibleFriends.map((f) => {
             const on = selected.includes(f.id);
             return (
               <Pressable
