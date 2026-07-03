@@ -44,8 +44,8 @@ android {
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
-    versionCode 1023
-    versionName "1.0.26"
+    versionCode 1024
+    versionName "1.0.27"
   }
 
   buildFeatures {
@@ -134,4 +134,8 @@ dependencies {
   implementation "androidx.wear.protolayout:protolayout-material:1.2.0"
   // Guava ListenableFuture — Tile request callbacks return it.
   implementation "com.google.guava:guava:33.0.0-android"
+  // Ongoing Activity — REQUIRED by Wear App Quality: while a live-match timer is
+  // running the app must surface it as an ongoing activity (watch-face indicator
+  // + recents launcher chip). Google rejected vc1023 for missing this.
+  implementation "androidx.wear:wear-ongoing:1.0.0"
 }

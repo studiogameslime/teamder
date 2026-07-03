@@ -6,6 +6,9 @@
     <!-- Reads the live-match doc + user games over the network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Ongoing Activity notification for a running live-match timer (Wear
+         App Quality requirement — watch-face indicator + recents chip). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Declared to match the app-level "uses advertising ID" declaration
          in Play Console (the phone app uses AdMob). The watch shows no ads
          and never reads the ad id, but the artifact must carry the

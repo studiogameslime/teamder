@@ -2,6 +2,7 @@ package com.studiogameslime.soccerapp.wear
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,6 +36,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ask once for notification permission so the live-match Ongoing Activity
+        // (watch-face indicator + recents chip) can actually post on Wear OS 4+.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
         repo = WearStateRepository(applicationContext)
         // Demo/preview states (tap to cycle) are DEBUG-ONLY. In a release build a
         // real un-paired user must see the genuine Disconnected/Loading screen —
