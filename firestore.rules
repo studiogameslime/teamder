@@ -331,6 +331,12 @@ service cloud.firestore {
         request.resource.data.pendingPlayerIds.size() ==
           resource.data.pendingPlayerIds.size() + 1 &&
         request.auth.uid in request.resource.data.pendingPlayerIds &&
+        // Nobody else may be dropped or swapped in. Without this, a "+1 in
+        // size" write could remove an existing entry and inject a stranger
+        // (net +1 still passes the size check) — a membership hijack.
+        request.resource.data.pendingPlayerIds.hasAll(
+          resource.data.pendingPlayerIds
+        ) &&
         // Capacity gate.
         (
           !('maxMembers' in resource.data) ||
@@ -349,7 +355,15 @@ service cloud.firestore {
         !(request.auth.uid in request.resource.data.pendingPlayerIds) &&
         affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
         request.resource.data.pendingPlayerIds.size() ==
-          resource.data.pendingPlayerIds.size() - 1
+          resource.data.pendingPlayerIds.size() - 1 &&
+        // Anti-hijack (robust form): every NON-caller entry from the old list
+        // must survive in the new one. With size==old−1 this pins the write to
+        // "remove exactly the caller" — blocking both stranger-injection AND the
+        // duplicate-padding eviction ([a,v,b]→[b,b]) that the set-membership
+        // old.hasAll(new) form missed (audit #6 residual).
+        request.resource.data.pendingPlayerIds.hasAll(
+          resource.data.pendingPlayerIds.removeAll([request.auth.uid])
+        )
       ) || (
         // Self-add to playerIds (auto-join — open group).
         isSignedIn() &&
@@ -360,6 +374,9 @@ service cloud.firestore {
         request.resource.data.playerIds.size() ==
           resource.data.playerIds.size() + 1 &&
         request.auth.uid in request.resource.data.playerIds &&
+        // Nobody else may be dropped or swapped in — see pending branch. This
+        // closes the one-write "kick a member + inject a stranger" hijack.
+        request.resource.data.playerIds.hasAll(resource.data.playerIds) &&
         (
           !('maxMembers' in resource.data) ||
           resource.data.maxMembers <= 0 ||
@@ -372,7 +389,15 @@ service cloud.firestore {
         !(request.auth.uid in request.resource.data.playerIds) &&
         affectedKeys().hasOnly(['playerIds', 'updatedAt']) &&
         request.resource.data.playerIds.size() ==
-          resource.data.playerIds.size() - 1
+          resource.data.playerIds.size() - 1 &&
+        // Anti-hijack (robust form): every NON-caller player from the old list
+        // must survive in the new one. With size==old−1 this pins the write to
+        // "remove exactly the caller" — blocking both stranger-injection AND the
+        // duplicate-padding eviction ([a,v,b]→[b,b]) that the set-membership
+        // old.hasAll(new) form missed (audit #1 residual).
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        )
       ) || (
         // Self-leave (admin who is also a player): a co-admin who
         // wants to walk away. Removes self from BOTH adminIds and
@@ -389,6 +414,11 @@ service cloud.firestore {
           !('creatorId' in resource.data) ||
           request.auth.uid != resource.data.creatorId
         ) &&
+        // At least one admin must remain. Rules re-evaluate against the
+        // serialized committed doc, so if two of the last admins leave
+        // concurrently the second now sees size()==1 and is DENIED — the
+        // group can never be left with zero admins (orphaned).
+        resource.data.adminIds.size() > 1 &&
         affectedKeys().hasOnly(['adminIds', 'playerIds', 'updatedAt']) &&
         // adminIds shrank by exactly 1, and the missing entry is the
         // caller — i.e. nobody else got booted in the same write.
@@ -405,6 +435,41 @@ service cloud.firestore {
         request.resource.data.playerIds.hasAll(
           resource.data.playerIds.removeAll([request.auth.uid])
         )
+      ) || (
+        // Creator self-leave WITH ownership handoff. The founder is blocked
+        // from the plain co-admin leave above; without a handoff path they
+        // could never leave, and leaving without one would orphan ownership
+        // (delete + admin-rotation are gated on creatorId). Here the creator
+        // walks away ONLY by transferring creatorId to a remaining admin in
+        // the SAME write.
+        isSignedIn() &&
+        'creatorId' in resource.data &&
+        request.auth.uid == resource.data.creatorId &&
+        request.auth.uid in resource.data.adminIds &&
+        !(request.auth.uid in request.resource.data.adminIds) &&
+        affectedKeys().hasOnly(
+          ['adminIds', 'playerIds', 'creatorId', 'updatedAt']
+        ) &&
+        // New owner is a remaining admin, not the departing creator.
+        request.resource.data.creatorId != request.auth.uid &&
+        request.resource.data.creatorId in request.resource.data.adminIds &&
+        // adminIds shrank by exactly the caller — nobody else booted.
+        request.resource.data.adminIds.size() ==
+          resource.data.adminIds.size() - 1 &&
+        request.resource.data.adminIds.hasAll(
+          resource.data.adminIds.removeAll([request.auth.uid])
+        ) &&
+        request.resource.data.playerIds.size() >=
+          resource.data.playerIds.size() - 1 &&
+        request.resource.data.playerIds.size() <=
+          resource.data.playerIds.size() &&
+        request.resource.data.playerIds.hasAll(
+          resource.data.playerIds.removeAll([request.auth.uid])
+        ) &&
+        // ...and NO new uid enters playerIds — the size band [old−1,old] alone
+        // let the departing creator swap a stranger in for themselves (remove
+        // self + add X = size unchanged). new⊆old blocks planting a non-member.
+        resource.data.playerIds.hasAll(request.resource.data.playerIds)
       );
 
       // Delete the whole community: CREATOR ONLY. Promoted admins can
@@ -666,14 +731,24 @@ service cloud.firestore {
             request.resource.data.players.size() ==
               resource.data.players.size() + 1
               ? request.auth.uid in request.resource.data.players &&
-                !(request.auth.uid in resource.data.players)
+                !(request.auth.uid in resource.data.players) &&
+                // Anti-hijack: every prior player preserved → the one added is
+                // the caller, nobody else injected (audit #2).
+                request.resource.data.players.hasAll(resource.data.players)
               : true
           ) &&
           (
             request.resource.data.players.size() ==
               resource.data.players.size() - 1
               ? !(request.auth.uid in request.resource.data.players) &&
-                request.auth.uid in resource.data.players
+                request.auth.uid in resource.data.players &&
+                // Anti-hijack (cheap form): every NEW player already existed in
+                // the old roster. With size==old−1 and the caller removed, the
+                // one dropped entry IS the caller and no stranger was swapped in
+                // (audit #2). `old.hasAll(new)` costs one hasAll — avoids the
+                // per-element removeAll that pushed this heavy rule past the
+                // 1000-expression evaluation limit for large rosters.
+                resource.data.players.hasAll(request.resource.data.players)
               : true
           ) &&
           request.resource.data.players.size() >=
@@ -684,14 +759,16 @@ service cloud.firestore {
             request.resource.data.waitlist.size() ==
               resource.data.waitlist.size() + 1
               ? request.auth.uid in request.resource.data.waitlist &&
-                !(request.auth.uid in resource.data.waitlist)
+                !(request.auth.uid in resource.data.waitlist) &&
+                request.resource.data.waitlist.hasAll(resource.data.waitlist)
               : true
           ) &&
           (
             request.resource.data.waitlist.size() ==
               resource.data.waitlist.size() - 1
               ? !(request.auth.uid in request.resource.data.waitlist) &&
-                request.auth.uid in resource.data.waitlist
+                request.auth.uid in resource.data.waitlist &&
+                resource.data.waitlist.hasAll(request.resource.data.waitlist)
               : true
           ) &&
           request.resource.data.waitlist.size() >=
@@ -702,14 +779,16 @@ service cloud.firestore {
             request.resource.data.pending.size() ==
               resource.data.pending.size() + 1
               ? request.auth.uid in request.resource.data.pending &&
-                !(request.auth.uid in resource.data.pending)
+                !(request.auth.uid in resource.data.pending) &&
+                request.resource.data.pending.hasAll(resource.data.pending)
               : true
           ) &&
           (
             request.resource.data.pending.size() ==
               resource.data.pending.size() - 1
               ? !(request.auth.uid in request.resource.data.pending) &&
-                request.auth.uid in resource.data.pending
+                request.auth.uid in resource.data.pending &&
+                resource.data.pending.hasAll(request.resource.data.pending)
               : true
           ) &&
           request.resource.data.pending.size() >=
@@ -1144,8 +1223,20 @@ service cloud.firestore {
           ? request.resource.data.participants[1]
           : request.resource.data.participants[0];
       }
+      // The OTHER participant, derived from convId (works even when the
+      // conversation doc was never created — the bypass path).
+      function dmOther() {
+        return convId.split('__')[0] == request.auth.uid
+          ? convId.split('__')[1]
+          : convId.split('__')[0];
+      }
       function otherAllowsMe(otherUid) {
-        return get(/databases/$(database)/documents/users/$(otherUid))
+        // Guard the get() with exists(): a recipient whose /users doc is missing
+        // (never created / mid-provisioning) previously made `.data` null →
+        // hard-DENY of a legitimate DM. A user with no doc can't have opted into
+        // dmFriendsOnly, so treat "no doc" as "allows me".
+        return !exists(/databases/$(database)/documents/users/$(otherUid))
+          || get(/databases/$(database)/documents/users/$(otherUid))
                  .data.get('dmFriendsOnly', false) != true
           || (request.auth.uid in get(/databases/$(database)/documents/users/$(otherUid))
                  .data.get('friends', []));
@@ -1166,7 +1257,12 @@ service cloud.firestore {
         allow create: if isDmParticipant()
           && request.resource.data.senderId == request.auth.uid
           && isShortString(request.resource.data.text, 1000)
-          && request.resource.data.text.size() > 0;
+          && request.resource.data.text.size() > 0
+          // Enforce friends-only HERE too, not just on the conversation-doc
+          // create. A sender can skip ensureDmConversation() and write straight
+          // to messages/ (convId is deterministic), bypassing the gate — so the
+          // recipient's dmFriendsOnly / friends list must be checked per message.
+          && otherAllowsMe(dmOther());
         allow update: if false;
         allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
       }
@@ -1252,6 +1348,21 @@ service cloud.firestore {
         request.resource.data.recipientId.size() <= 128 &&
         request.resource.data.type is string &&
         clientNotifTypeAllowed(request.resource.data.type) &&
+        // Trustworthy sender identity. When present it MUST equal the caller's
+        // uid; the fan-out Cloud Function then verifies this uid is actually a
+        // community admin / organiser before mass-pushing (blocks forged
+        // "official" notifications). TOLERANT of absence for now: clients
+        // already in the stores don't send this field yet, and denying them
+        // would silently drop their legitimate approval/cancel pushes. Once
+        // the createdByUid-stamping client is adopted, flip this to a hard
+        // `== request.auth.uid` requirement (see releaseLog follow-up).
+        (
+          !('createdByUid' in request.resource.data) ||
+          request.resource.data.createdByUid == request.auth.uid
+        ) &&
+        // `srv` is the server-origin trust marker — clients must never set it
+        // (it would let them bypass the fan-out sender check).
+        !('srv' in request.resource.data) &&
         request.resource.data.delivered == false &&
         // Top-level field cap. The legitimate notif shape is
         // {type, recipientId, entityType, entityId, reason,
@@ -1550,6 +1661,14 @@ service cloud.firestore {
     // Create-only by the reporter; reads/edits handled by the admin SA
     // (surfaced in Pulse). Mirrors the /feedback pattern.
     match /chatReports/{id} {
+      // The 1.0.50 client routes reports through the `reportChatMessage` callable
+      // (Admin SDK), which stores the REAL author/text — so `allow write: if
+      // false` is the target end-state that closes the report-forgery hole
+      // (audit #7). BUT the currently-INSTALLED client (≤1.0.49) still writes
+      // this doc DIRECTLY, so flipping to false now would break abuse-reporting
+      // for every user until they update. DEFERRED: flip to `if false` in a
+      // FOLLOW-UP rules deploy once 1.0.50 is widely adopted. Until then keep the
+      // validated create so legitimate reporting keeps working.
       allow read, update, delete: if false;
       allow create: if isSignedIn() &&
         request.resource.data.reporterId == request.auth.uid &&

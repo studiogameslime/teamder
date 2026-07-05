@@ -91,6 +91,8 @@ function buildInitial(
     // inside the group unless the admin explicitly opens them.
     visibility: g?.isOpen === true ? 'public' : 'community',
     requiresApproval: false,
+    waitlistApprovalRequired: true,
+    waitlistApprovalTimeout: '20',
     // Recurring is now an in-form toggle. Pre-set it ON when the
     // route param flagged a recurring entry; otherwise default OFF
     // and the registrationOpensAt picker stays hidden.
@@ -359,6 +361,9 @@ export function GameCreateScreen() {
         autoTeamGenerationMinutesBeforeStart: 60,
         visibility: v.visibility,
         requiresApproval: v.requiresApproval,
+        waitlistApprovalRequired: v.waitlistApprovalRequired,
+        waitlistApprovalTimeoutMinutes:
+          Math.max(2, Math.min(120, Number(v.waitlistApprovalTimeout) || 20)),
         bringBall: v.bringBall,
         bringShirts: v.bringShirts,
         notes: v.notes.trim() || undefined,

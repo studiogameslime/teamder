@@ -86,6 +86,9 @@ function gameToValues(g: Game): GameFormValues {
           ].filter((s) => s.length > 0),
     visibility: g.visibility ?? 'community',
     requiresApproval: !!g.requiresApproval,
+    // Absent = manual (offer) by default; only explicit false is auto.
+    waitlistApprovalRequired: g.waitlistApprovalRequired !== false,
+    waitlistApprovalTimeout: String(g.waitlistApprovalTimeoutMinutes ?? 20),
     recurringGameEnabled: g.recurring === true,
     scheduledRegEnabled: isRecurringEdit,
     registrationOpensAt: g.registrationOpensAt ?? 0,
@@ -282,6 +285,9 @@ export function GameEditScreen() {
             ? parsedDuration
             : undefined,
         requiresApproval: v.requiresApproval,
+        waitlistApprovalRequired: v.waitlistApprovalRequired,
+        waitlistApprovalTimeoutMinutes:
+          Math.max(2, Math.min(120, Number(v.waitlistApprovalTimeout) || 20)),
         bringBall: v.bringBall,
         bringShirts: v.bringShirts,
         notes: v.notes.trim() || undefined,

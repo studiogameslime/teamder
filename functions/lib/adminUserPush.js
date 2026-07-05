@@ -220,7 +220,14 @@ async function tokensFor(db, uid, rootTokens) {
 async function processCampaign(id, nowMs) {
     const db = admin.firestore();
     const ref = db.collection('campaigns').doc(id);
+    const rateRef = db.collection('adminConfig').doc(RATE_DOC);
     const claim = await db.runTransaction(async (tx) => {
+        // ── ALL READS FIRST ── Firestore transactions require every read to
+        // precede every write. The rate-record read used to sit AFTER the
+        // tx.update(ref, …) claim write below, so for every real (non-test)
+        // broadcast the transaction threw "reads must be executed before all
+        // writes", the campaign stayed `queued`, and the 5-min sweep re-scanned
+        // all users forever (the read-quota blowup). Hoisted here.
         const snap = await tx.get(ref);
         if (!snap.exists)
             return { go: false };
@@ -230,6 +237,7 @@ async function processCampaign(id, nowMs) {
         if (typeof c.sendAt === 'number' && c.sendAt > nowMs + 60000) {
             return { go: false }; // not due — cron revisits
         }
+        const rateSnap = c.testUserId ? null : await tx.get(rateRef);
         // Safety net: a campaign that keeps landing back in `queued` (claim
         // failure, external re-queue, etc.) must NOT be re-processed forever — that
         // re-scans all users on every 5-min sweep (this is exactly what blew past
@@ -242,14 +250,13 @@ async function processCampaign(id, nowMs) {
             });
             return { go: false };
         }
-        // Claim the campaign (idempotent: only one worker flips queued→sending).
-        // No global rate gate — the per-user cap below is the real guard. We
-        // still record the send timestamp for an informational "sent today".
+        // ── WRITES ── Claim the campaign (idempotent: only one worker flips
+        // queued→sending). No global rate gate — the per-user cap below is the
+        // real guard. We still record the send timestamp for "sent today".
         tx.update(ref, { status: 'sending', processedAt: nowMs, attempts: attempts + 1 });
         // Test sends don't touch the global rate record (they're not broadcasts).
-        if (!c.testUserId) {
-            const rateRef = db.collection('adminConfig').doc(RATE_DOC);
-            const sends = ((await tx.get(rateRef)).data()?.sends ?? []).filter((t) => nowMs - t < DAY);
+        if (rateSnap) {
+            const sends = (rateSnap.data()?.sends ?? []).filter((t) => nowMs - t < DAY);
             tx.set(rateRef, { sends: [...sends, nowMs] }, { merge: true });
         }
         return { go: true, c };
@@ -414,9 +421,17 @@ async function recordCampaignMetric(campaignId, event) {
     const field = METRIC_FIELD[event];
     if (!campaignId || !field)
         return;
-    await admin
-        .firestore()
-        .collection('campaigns')
-        .doc(campaignId)
-        .set({ metrics: { [field]: admin.firestore.FieldValue.increment(1) } }, { merge: true });
+    // update() (not set-merge) so a metric write to a NON-existent campaign
+    // FAILS instead of creating a junk /campaigns doc — a client could otherwise
+    // pass a random campaignId to litter the collection.
+    try {
+        await admin
+            .firestore()
+            .collection('campaigns')
+            .doc(campaignId)
+            .update({ [`metrics.${field}`]: admin.firestore.FieldValue.increment(1) });
+    }
+    catch {
+        // NOT_FOUND (campaign doesn't exist) → ignore the bogus metric.
+    }
 }

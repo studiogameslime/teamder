@@ -40,7 +40,11 @@ export function perGameScore(
   rounds: number,
 ): number {
   const s = championshipScore(goals, assists);
-  return rounds > 0 ? s / rounds : s;
+  // rounds === 0 → no per-game efficiency (e.g. a player with only retro goals,
+  // which credit goals but no round). Returning the RAW score here wrongly
+  // ranked them ABOVE efficient per-game scorers; 0 keeps them out of the
+  // per-game medals until they actually play a round.
+  return rounds > 0 ? s / rounds : 0;
 }
 
 /** How a championship row list is ranked. */

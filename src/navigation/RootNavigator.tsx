@@ -212,6 +212,17 @@ export function RootNavigator() {
     hydratePlayers,
   ]);
 
+  // Live listener on the signed-in user's own /users doc → keeps currentUser
+  // fresh with every server-derived change (stats, rating, friends,
+  // achievements). Keyed on the ID only so a profile EDIT doesn't tear down
+  // and re-attach the listener. Root fix for the "stale store" bug class.
+  const subscribeCurrentUser = useUserStore((s) => s.subscribeCurrentUser);
+  const currentUserId = currentUser?.id;
+  useEffect(() => {
+    if (!currentUserId) return;
+    return subscribeCurrentUser(currentUserId);
+  }, [currentUserId, subscribeCurrentUser]);
+
   // Phase E.2: register the device's push token once we have a user. The
   // helper is idempotent and quietly no-ops when the native module isn't
   // linked (Expo Go, fresh dev clients before rebuild) or when the user

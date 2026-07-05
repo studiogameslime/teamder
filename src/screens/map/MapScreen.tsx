@@ -13,7 +13,7 @@
 // loaded it (plus an optional overlay set for the toggle), so the map never
 // re-fetches and works in mock mode identically.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -191,6 +191,15 @@ export function MapScreen() {
       return true;
     });
   }, [items, query, chip, isGames, openOnly, customDate]);
+
+  // Clear the bottom detail card when its pin is no longer in the filtered set
+  // (search/date/open-only/overlay change) — otherwise the card lingered and
+  // "open details" navigated to an item the current filter had hidden.
+  useEffect(() => {
+    if (selected && !filtered.some((i) => i.id === selected.id)) {
+      setSelected(null);
+    }
+  }, [filtered, selected]);
 
   // The markers actually rendered: filtered primary + (optionally) the
   // overlay layer (dimmed to a neutral tone so it reads as secondary).

@@ -67,10 +67,12 @@ function chatKeyFor(scope, parentId) {
     return `${scope}__${parentId}`;
 }
 // FCM dead-token codes worth pruning (mirrors adminPush.ts + deliverBatch).
+// Only codes that mean the token is permanently dead. 'invalid-argument' is
+// often a message-level rejection, not a per-token one — pruning on it would
+// delete valid tokens on one bad payload.
 const DEAD_TOKEN_CODES = new Set([
     'messaging/registration-token-not-registered',
     'messaging/invalid-registration-token',
-    'messaging/invalid-argument',
 ]);
 /**
  * Read a single user's fcmTokens from /users/{uid}/private/push and send
@@ -126,54 +128,64 @@ async function sendChatPush(uid, title, body, data) {
  * here is logged and swallowed so one bad recipient never fails the
  * whole fan-out.
  */
-async function handleRecipient(uid, scope, parentId, title, msg) {
+async function handleRecipient(uid, scope, parentId, title, msg, isBlocked) {
     const db = admin.firestore();
     const chatKey = chatKeyFor(scope, parentId);
     try {
-        // (0) Blocked sender? If this recipient has blocked the message's sender,
-        // skip them entirely — no push AND no unread bump. (Skipping the unread
-        // bump matters: otherwise a blocked message's 0→1 transition would consume
-        // the "push only on zero→one" trigger and silence the next real message.)
-        const senderId = typeof msg.senderId === 'string' ? msg.senderId : '';
-        if (senderId) {
-            const blockedSnap = await db
-                .collection('users')
-                .doc(uid)
-                .collection('blocked')
-                .doc(senderId)
-                .get();
-            if (blockedSnap.exists)
-                return;
-        }
+        // (0) Blocked sender? Resolved ONCE per message in handleChatMessage via a
+        // single batched getAll (instead of one get per recipient). If this
+        // recipient blocked the message's sender, skip them entirely — no push AND
+        // no unread bump. (Skipping the unread bump matters: otherwise a blocked
+        // message's 0→1 transition would consume the "push only on zero→one"
+        // trigger and silence the next real message.)
+        if (isBlocked)
+            return;
         const unreadRef = db
             .collection('users')
             .doc(uid)
             .collection('chatUnread')
             .doc(chatKey);
-        // (a) was the counter zero before this message?
-        const existing = await unreadRef.get();
-        const data = existing.data();
-        const wasZero = !existing.exists || (data?.count ?? 0) === 0;
         const senderName = (msg.senderName || '').trim() || 'שחקן';
         const text = msg.text || '';
         const lastMessageAt = typeof msg.createdAt === 'number' ? msg.createdAt : Date.now();
-        // (b) increment + write the preview fields. For DMs we also denormalise
-        // the sender's avatar onto the recipient's entry — in a 1-on-1 the sender
-        // IS the other participant, so the chats list can show their face.
+        // For DMs we also denormalise the sender's avatar onto the recipient's
+        // entry — in a 1-on-1 the sender IS the other participant.
         const senderAvatarId = typeof msg.senderAvatarId === 'string' ? msg.senderAvatarId : '';
         const senderPhotoUrl = typeof msg.senderPhotoUrl === 'string' ? msg.senderPhotoUrl : '';
-        await unreadRef.set({
-            count: admin.firestore.FieldValue.increment(1),
-            lastMessageAt,
-            lastText: truncate(text),
-            lastSenderName: senderName,
-            scope,
-            parentId,
-            title,
-            ...(scope === 'dm' && senderAvatarId ? { avatarId: senderAvatarId } : {}),
-            ...(scope === 'dm' && senderPhotoUrl ? { photoUrl: senderPhotoUrl } : {}),
-        }, { merge: true });
-        // (c) muted?
+        // (a)+(b) atomically: read the prior count AND increment in ONE
+        // transaction, so a rapid burst of messages to the same recipient can't
+        // each read count==0 before the others' increments land — only the true
+        // 0→1 transition returns wasZero=true, so exactly one push fires ("one push
+        // until opened"). Without the transaction, parallel onDocumentCreated
+        // invocations all saw wasZero and pushed duplicates.
+        const wasZero = await db.runTransaction(async (tx) => {
+            const existing = await tx.get(unreadRef);
+            const data = existing.data();
+            const priorZero = !existing.exists || (data?.count ?? 0) === 0;
+            tx.set(unreadRef, {
+                count: admin.firestore.FieldValue.increment(1),
+                lastMessageAt,
+                lastText: truncate(text),
+                lastSenderName: senderName,
+                scope,
+                parentId,
+                title,
+                ...(scope === 'dm' && senderAvatarId ? { avatarId: senderAvatarId } : {}),
+                ...(scope === 'dm' && senderPhotoUrl ? { photoUrl: senderPhotoUrl } : {}),
+            }, { merge: true });
+            return priorZero;
+        });
+        // (c) push only on the zero→one transition. When it wasn't a 0→1
+        // transition we will NOT push regardless of mute state, so we skip the
+        // chatSettings read entirely. In an active chat most recipients already
+        // hold an un-opened message (count>0), so this eliminates the vast majority
+        // of per-recipient settings reads. Muted recipients still had their unread
+        // count bumped by the transaction above, exactly as before — muting only
+        // suppresses the push, never the badge count.
+        if (!wasZero)
+            return;
+        // (d) muted? Only reached for the rare genuine 0→1 recipient — read their
+        // mute setting now (not for everyone) and stay quiet if muted.
         let muted = false;
         try {
             const settings = await db
@@ -187,9 +199,9 @@ async function handleRecipient(uid, scope, parentId, title, msg) {
         catch (err) {
             console.warn('[chatPush] settings read failed', { uid, chatKey }, err);
         }
-        // (d) push only on the zero→one transition, and only if not muted.
-        if (!wasZero || muted)
+        if (muted)
             return;
+        // (e) read the FCM token + push ONLY for this genuine recipient.
         const body = truncate(`${senderName}: ${text}`);
         await sendChatPush(uid, title, body, {
             type: 'chatMessage',
@@ -231,6 +243,24 @@ async function handleChatMessage(scope, parentId, msg) {
             // sees the conversation titled by the sender's name.
             recipients = parentId.split('__');
             title = (typeof msg.senderName === 'string' ? msg.senderName : '').trim();
+            // Defense-in-depth for the friends-only gate. Even though the message
+            // rule now enforces it, suppress the push if the recipient restricts
+            // DMs to friends and the sender isn't one — a message that slipped
+            // through (legacy client / rules race) must not still buzz the victim.
+            const other = recipients.find((uid) => typeof uid === 'string' && uid && uid !== senderId);
+            if (other) {
+                try {
+                    const uSnap = await db.collection('users').doc(other).get();
+                    const u = uSnap.data();
+                    if (u?.dmFriendsOnly === true &&
+                        !(u.friends || []).includes(senderId)) {
+                        return; // recipient blocks non-friend DMs
+                    }
+                }
+                catch (err) {
+                    console.warn('[chatPush] dm friends-only check failed', err);
+                }
+            }
         }
         else {
             const snap = await db.collection('groups').doc(parentId).get();
@@ -249,7 +279,25 @@ async function handleChatMessage(scope, parentId, msg) {
     const targets = recipients.filter((uid) => typeof uid === 'string' && uid && uid !== senderId);
     if (targets.length === 0)
         return;
-    await Promise.all(targets.map((uid) => handleRecipient(uid, scope, parentId, title, msg)));
+    // PREFETCH (once per message, not once per recipient): resolve "did this
+    // recipient block the sender?" for ALL targets in a single getAll round-trip
+    // instead of a separate get inside every handleRecipient. Same billed reads,
+    // but one round-trip and a single place to reason about the block gate.
+    const blocked = new Set();
+    if (senderId) {
+        try {
+            const blockedRefs = targets.map((uid) => db.collection('users').doc(uid).collection('blocked').doc(senderId));
+            const snaps = await db.getAll(...blockedRefs);
+            snaps.forEach((s, i) => {
+                if (s.exists)
+                    blocked.add(targets[i]);
+            });
+        }
+        catch (err) {
+            console.warn('[chatPush] blocked prefetch failed', { scope, parentId }, err);
+        }
+    }
+    await Promise.all(targets.map((uid) => handleRecipient(uid, scope, parentId, title, msg, blocked.has(uid))));
 }
 // ─── Triggers ──────────────────────────────────────────────────────────
 exports.onGameChatMessage = (0, firestore_1.onDocumentCreated)('games/{gameId}/messages/{msgId}', async (event) => {

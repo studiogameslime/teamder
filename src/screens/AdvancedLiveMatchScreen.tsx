@@ -595,7 +595,18 @@ export function AdvancedLiveMatchScreen() {
   // Tie resolved manually in the picker → that side is recorded as the winner.
   const onTieWinner = async (teamIndex: number) => {
     setWinnerOpen(false);
-    if (!gameId || !me || !rotation || finalizingRef.current) return;
+    // Full re-entrancy guard (mirrors onEndRound) — not just finalizingRef — so
+    // a second confirmation can't double-commit the tie while a fill/commit is
+    // already running.
+    if (
+      !gameId ||
+      !me ||
+      !rotation ||
+      finalizingRef.current ||
+      committingRef.current ||
+      fillFlowRef.current
+    )
+      return;
     const side: 'A' | 'B' = teamIndex === rotation.playing[0] ? 'A' : 'B';
     finalizingRef.current = true;
     try {

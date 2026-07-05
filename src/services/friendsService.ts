@@ -256,30 +256,54 @@ export const friendsService = {
   /** Accepted friends resolved to User objects. */
   async listFriends(uid: UserId): Promise<User[]> {
     const ids = await this.listFriendIds(uid);
-    const users = await Promise.all(ids.map((id) => userService.getUserById(id)));
-    return users.filter((u): u is User => !!u);
+    // allSettled, not all: if ONE friend's user-doc read throws (deleted /
+    // blocked / rules-restricted account) Promise.all would reject and the
+    // ENTIRE list would fail. Skip the bad entry instead.
+    const results = await Promise.allSettled(
+      ids.map((id) => userService.getUserById(id)),
+    );
+    return results
+      .filter(
+        (r): r is PromiseFulfilledResult<User | null> =>
+          r.status === 'fulfilled',
+      )
+      .map((r) => r.value)
+      .filter((u): u is User => !!u);
   },
 
   /** Pending requests sent TO me, each paired with the sender. */
   async listIncomingRequests(uid: UserId): Promise<FriendRequestWithUser[]> {
     const reqs = await this.queryRequests('toUserId', uid);
-    return Promise.all(
+    // One unresolvable sender must not fail the whole inbox — drop it.
+    const results = await Promise.allSettled(
       reqs.map(async (request) => ({
         request,
         user: await userService.getUserById(request.fromUserId),
       })),
     );
+    return results
+      .filter(
+        (r): r is PromiseFulfilledResult<FriendRequestWithUser> =>
+          r.status === 'fulfilled',
+      )
+      .map((r) => r.value);
   },
 
   /** Pending requests I sent, each paired with the target. */
   async listOutgoingRequests(uid: UserId): Promise<FriendRequestWithUser[]> {
     const reqs = await this.queryRequests('fromUserId', uid);
-    return Promise.all(
+    const results = await Promise.allSettled(
       reqs.map(async (request) => ({
         request,
         user: await userService.getUserById(request.toUserId),
       })),
     );
+    return results
+      .filter(
+        (r): r is PromiseFulfilledResult<FriendRequestWithUser> =>
+          r.status === 'fulfilled',
+      )
+      .map((r) => r.value);
   },
 
   /**

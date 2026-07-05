@@ -21,7 +21,6 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocFromCache,
   getDocs,
   increment,
   limit,
@@ -286,18 +285,15 @@ async function readTimerState(
   gameId: string,
 ): Promise<{ status?: GameStatus; liveMatch?: LiveMatchState } | null> {
   const ref = docs.game(gameId);
+  // Read FRESH from the server, never cache-first. This function feeds the
+  // start/pause/reset accumulator math; a stale cached timerLastStartedAt /
+  // timerAccumulatedMs (offline blip or listener lag on a second device) made
+  // the shared clock jump forward or lose elapsed time. Timer presses are
+  // infrequent, so the extra round-trip is worth the correctness.
   let data: Record<string, unknown> | null = null;
-  try {
-    const cached = await getDocFromCache(ref);
-    if (cached.exists()) data = cached.data();
-  } catch {
-    // Not in cache yet — fall through to a network read.
-  }
-  if (!data) {
-    const fresh = await getDoc(ref);
-    if (!fresh.exists()) return null;
-    data = fresh.data();
-  }
+  const fresh = await getDoc(ref);
+  if (!fresh.exists()) return null;
+  data = fresh.data();
   return {
     status: data.status as GameStatus | undefined,
     liveMatch: data.liveMatch as LiveMatchState | undefined,
@@ -429,6 +425,64 @@ async function findOverlappingGameInGroup(
  *  size each playing team is filled up to). Defaults to 5. */
 function playersPerTeamFor(format: GameFormat | undefined): number {
   return format === '4v4' ? 4 : format === '6v6' ? 6 : format === '7v7' ? 7 : 5;
+}
+
+/**
+ * Prune a departed player (self-cancel or admin-remove) out of the drawn
+ * teams + live rotation so they don't linger as a "ghost" on a team and get
+ * counted as on-field by the rotation / round-stat math. Returns ONLY the
+ * fields that actually change, to merge into the same roster write (so the
+ * removal is atomic with the players/waitlist filter). No-op fields absent.
+ */
+function pruneMemberFromTeams(
+  data: Record<string, unknown>,
+  uid: string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const draft = data.draftTeams as DraftTeamsResult | undefined;
+  if (draft?.teams) {
+    const inTeams = draft.teams.some((t) => (t.playerIds ?? []).includes(uid));
+    const inLeftHome = (draft.leftHome ?? []).some((l) => l.playerId === uid);
+    if (inTeams || inLeftHome) {
+      out.draftTeams = {
+        ...draft,
+        teams: draft.teams.map((t) => ({
+          ...t,
+          playerIds: (t.playerIds ?? []).filter((p) => p !== uid),
+        })),
+        ...(inLeftHome
+          ? { leftHome: (draft.leftHome ?? []).filter((l) => l.playerId !== uid) }
+          : {}),
+      };
+    }
+  }
+  const rotation = data.rotation as
+    | import('@/types').MatchRotation
+    | undefined;
+  if (rotation) {
+    const inLoans = (rotation.loans ?? []).some((l) => l.playerId === uid);
+    const inBase = (rotation.baseTeams ?? []).some((t) =>
+      (t.playerIds ?? []).includes(uid),
+    );
+    if (inLoans || inBase) {
+      out.rotation = {
+        ...rotation,
+        ...(inLoans
+          ? { loans: (rotation.loans ?? []).filter((l) => l.playerId !== uid) }
+          : {}),
+        ...(inBase
+          ? {
+              baseTeams: (rotation.baseTeams ?? []).map((t) => ({
+                ...t,
+                playerIds: (t.playerIds ?? []).filter((p) => p !== uid),
+              })),
+            }
+          : {}),
+        updatedAt: Date.now(),
+      };
+    }
+  }
+  return out;
 }
 
 /**
@@ -1080,18 +1134,24 @@ export const gameService = {
     }
     const db = getFirebase().db;
     try {
+      // Only the single top pair is needed — let Firestore find it with
+      // orderBy+limit(1) instead of reading EVERY pair doc (communityPairStats
+      // grows ~O(members²)) and maxing client-side. Needs composite index
+      // (groupId ASC, assists DESC).
       const snap = await getDocs(
-        query(collection(db, 'communityPairStats'), where('groupId', '==', groupId)),
+        query(
+          collection(db, 'communityPairStats'),
+          where('groupId', '==', groupId),
+          orderBy('assists', 'desc'),
+          limit(1),
+        ),
       );
-      let best: { uidA: UserId; uidB: UserId; assists: number } | null = null;
-      for (const d of snap.docs) {
-        const data = d.data() as { a?: string; b?: string; assists?: number };
-        const assists = data.assists ?? 0;
-        if (data.a && data.b && assists > (best?.assists ?? 0)) {
-          best = { uidA: data.a, uidB: data.b, assists };
-        }
-      }
-      return best;
+      const d = snap.docs[0];
+      if (!d) return null;
+      const data = d.data() as { a?: string; b?: string; assists?: number };
+      const assists = data.assists ?? 0;
+      if (!data.a || !data.b || assists <= 0) return null;
+      return { uidA: data.a, uidB: data.b, assists };
     } catch (err) {
       logError('getCommunityDeadlyDuo', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityDeadlyDuo failed', err);
@@ -1967,6 +2027,8 @@ export const gameService = {
     autoTeamsMethod?: 'rating' | 'random';
     visibility: 'public' | 'community';
     requiresApproval: boolean;
+    waitlistApprovalRequired?: boolean;
+    waitlistApprovalTimeoutMinutes?: number;
     bringBall: boolean;
     bringShirts: boolean;
     notes?: string;
@@ -2095,6 +2157,16 @@ export const gameService = {
     if (typeof input.guestsOpenAt === 'number' && input.guestsOpenAt > 0 && input.guestsOpenAt >= input.startsAt) {
       failValidation('guestsOpenAt', he.gameOpenAfterKickoff);
     }
+    // A game must not go app-wide PUBLIC before its own community registration
+    // even opens — the flip cron (visibility=='community' && publicOpenAt<=now)
+    // would surface a still-'scheduled', hidden-from-members game to strangers.
+    if (
+      typeof input.registrationOpensAt === 'number' && input.registrationOpensAt > 0 &&
+      typeof input.publicOpenAt === 'number' && input.publicOpenAt > 0 &&
+      input.publicOpenAt < input.registrationOpensAt
+    ) {
+      failValidation('publicOpenAt', he.gamePublicBeforeReg);
+    }
 
     // Overlap guard — block creating a second game in the same
     // community within ±OVERLAP_WINDOW_MS of an existing one. Catches
@@ -2160,6 +2232,11 @@ export const gameService = {
       createdBy: input.createdBy,
       visibility: input.visibility,
       requiresApproval: input.requiresApproval,
+      // Default = manual (the head confirms) — preserves the app's existing
+      // offer behaviour; only an explicit `false` switches a game to auto.
+      waitlistApprovalRequired: input.waitlistApprovalRequired ?? true,
+      waitlistApprovalTimeoutMinutes:
+        input.waitlistApprovalTimeoutMinutes ?? 20,
       format: input.format,
       numberOfTeams: input.numberOfTeams,
       cancelDeadlineHours: input.cancelDeadlineHours,
@@ -2385,6 +2462,8 @@ export const gameService = {
       matchDurationMinutes: number;
       visibility: 'public' | 'community';
       requiresApproval: boolean;
+      waitlistApprovalRequired: boolean;
+      waitlistApprovalTimeoutMinutes: number;
       bringBall: boolean;
       bringShirts: boolean;
       notes: string;
@@ -2542,6 +2621,15 @@ export const gameService = {
     }
     if (typeof patch.guestsOpenAt === 'number' && patch.guestsOpenAt > 0 && patch.guestsOpenAt >= nextStartsAt) {
       failValidation('guestsOpenAt', he.gameOpenAfterKickoff);
+    }
+    // registration must open before public (see createGameV2) — guard when both
+    // are set in this edit.
+    if (
+      typeof patch.registrationOpensAt === 'number' && patch.registrationOpensAt > 0 &&
+      typeof patch.publicOpenAt === 'number' && patch.publicOpenAt > 0 &&
+      patch.publicOpenAt < patch.registrationOpensAt
+    ) {
+      failValidation('publicOpenAt', he.gamePublicBeforeReg);
     }
     // Overlap check: only if startsAt is actually being moved AND
     // the game is non-terminal (no point blocking edits to historical
@@ -3629,11 +3717,13 @@ export const gameService = {
     // the function falls back to them when the game is already gone.
     let recipientUids: string[] = [];
     let gameTitle = '';
+    let capturedGroupId = '';
     const captureRoster = (g?: {
       players?: string[];
       waitlist?: string[];
       pending?: string[];
       title?: string;
+      groupId?: string;
     }) => {
       if (!g) return;
       recipientUids = Array.from(
@@ -3644,6 +3734,9 @@ export const gameService = {
         ]),
       );
       gameTitle = g.title ?? '';
+      // Stash groupId so the fan-out CF can authorise the sender (community
+      // admin) even after the game doc is deleted below.
+      if (g.groupId) capturedGroupId = g.groupId;
     };
     if (USE_MOCK_DATA) {
       const idx = mockGamesV2.findIndex((x) => x.id === gameId);
@@ -3666,19 +3759,25 @@ export const gameService = {
         throw err;
       }
     }
-    notificationsService.dispatch({
-      type: 'gameCanceledOrUpdated',
-      recipientId: gameId,
-      payload: {
-        gameId,
-        action: 'deleted',
-        gameTitle,
-        recipientUids,
-        editorUid: USE_MOCK_DATA
-          ? ''
-          : getFirebase().auth.currentUser?.uid ?? '',
-      },
-    });
+    // The "game deleted" push is minted SERVER-SIDE (onGameRosterChanged's
+    // delete branch, srv:true) from the real last-known roster — a client
+    // dispatch here can't be authorised once the doc is gone AND would win the
+    // dedup race, blocking the server's authorised mint (audit #9). Mock mode
+    // has no server trigger, so it still dispatches locally.
+    if (USE_MOCK_DATA) {
+      notificationsService.dispatch({
+        type: 'gameCanceledOrUpdated',
+        recipientId: gameId,
+        payload: {
+          gameId,
+          groupId: capturedGroupId,
+          action: 'deleted',
+          gameTitle,
+          recipientUids,
+          editorUid: '',
+        },
+      });
+    }
     logEvent(AnalyticsEvent.GameFinished, { gameId, deleted: true });
   },
 
@@ -4739,10 +4838,19 @@ export const gameService = {
         g.waitlist.length > 0 &&
         occupancy < g.maxPlayers
       ) {
-        offeredUid = g.waitlist[0];
-        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+        if (g.waitlistApprovalRequired === false) {
+          // AUTO: admit the waitlist head straight in.
+          const promoted = g.waitlist.shift();
+          if (promoted) g.players.push(promoted);
+        } else {
+          // MANUAL/default: offer to the head (push + confirm).
+          offeredUid = g.waitlist[0];
+          g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+        }
       }
-      g.participantIds = (g.participantIds ?? []).filter((id) => id !== userId);
+      g.participantIds = Array.from(
+        new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+      );
       g.cancellations = { ...(g.cancellations ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       // Silent-failure guard: a cancel must REMOVE the user from every
@@ -4832,19 +4940,14 @@ export const gameService = {
         (data.pendingPromotion as { uid?: string }).uid === userId
           ? null
           : (data.pendingPromotion ?? null);
-      const guestsArr = Array.isArray(data.guests) ? data.guests : [];
-      const occupancy =
-        players.length + activeGuestCount(guestsArr) + (pendingPromotion ? 1 : 0);
-      let offeredUid: string | null = null;
-      if (
-        wasInPlayers &&
-        !pendingPromotion &&
-        waitlist.length > 0 &&
-        occupancy < (data.maxPlayers ?? 15)
-      ) {
-        offeredUid = waitlist[0];
-        pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
-      }
+      // NOTE: waitlist promotion (auto-admit or offer) and team-pruning are NOT
+      // done here. A self-cancel writes as the cancelling user, whose Firestore
+      // rule permits changing ONLY their own roster membership — it may not move
+      // a waitlisted stranger into players[] (audit #5) nor touch
+      // draftTeams/rotation (audit #4), so doing either here would make the
+      // whole withdrawal permission-denied. The `onGameRosterChanged` server
+      // trigger now owns both — idempotently, on every roster shrink. Here we
+      // only remove the caller and clear an offer that named them (above).
 
       // Rebuild from post-cancel arrays so the rule invariant holds
       // even when the stored union was stale (a stale union can happen
@@ -4877,6 +4980,8 @@ export const gameService = {
         participantIds,
         cancellations,
         updatedAt: Date.now(),
+        // Team-pruning moved to the server (onGameRosterChanged): the self-cancel
+        // rule whitelist forbids draftTeams/rotation keys (audit #4).
       };
       const offerChanged =
         JSON.stringify(data.pendingPromotion ?? null) !==
@@ -4912,7 +5017,6 @@ export const gameService = {
         Date.now() >
           data.startsAt - data.cancelDeadlineHours * 60 * 60 * 1000;
       return {
-        offeredUid,
         title: data.title ?? '',
         createdBy: typeof data.createdBy === 'string' ? data.createdBy : '',
         wasInPlayers,
@@ -4944,24 +5048,17 @@ export const gameService = {
       throw e;
     }
 
-    if (result.offeredUid) {
-      notificationsService.dispatch({
-        type: 'spotOffered',
-        recipientId: result.offeredUid,
-        payload: {
-          gameId,
-          gameTitle: result.title,
-          startsAt: result.startsAt,
-        },
-      });
-    }
+    // Waitlist promotion (auto-admit or offer) + its spotOpened/spotOffered push
+    // are now emitted server-side by onGameRosterChanged when the freed seat is
+    // detected — a cross-user roster write isn't permitted from the canceller's
+    // client (audit #4/#5).
     if (result.wasInPlayers && result.createdBy && result.createdBy !== userId) {
       notificationsService.notifyPlayerCancelled({ gameId });
     }
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
       promoted: false,
-      offered: !!result.offeredUid,
+      offered: false,
     });
     if (result.isLate && result.wasInPlayers) {
       const hoursToKickoff = (result.startsAt - Date.now()) / (60 * 60 * 1000);
@@ -5034,11 +5131,16 @@ export const gameService = {
         g.waitlist.length > 0 &&
         occupancy < g.maxPlayers
       ) {
-        offeredUid = g.waitlist[0];
-        g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+        if (g.waitlistApprovalRequired === false) {
+          const promoted = g.waitlist.shift();
+          if (promoted) g.players.push(promoted);
+        } else {
+          offeredUid = g.waitlist[0];
+          g.pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+        }
       }
-      g.participantIds = (g.participantIds ?? []).filter(
-        (id) => id !== targetUserId,
+      g.participantIds = Array.from(
+        new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
       );
       g.liveMatch = stripFromLive(g.liveMatch);
       g.updatedAt = Date.now();
@@ -5100,14 +5202,20 @@ export const gameService = {
         const occupancy =
           players.length + activeGuestCount(guests) + (pendingPromotion ? 1 : 0);
         let offeredUid: string | null = null;
+        let autoPromotedUid: string | null = null;
         if (
           wasInPlayers &&
           !pendingPromotion &&
           waitlist.length > 0 &&
           occupancy < (data.maxPlayers ?? 15)
         ) {
-          offeredUid = waitlist[0];
-          pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+          if (data.waitlistApprovalRequired === false) {
+            autoPromotedUid = waitlist.shift() ?? null; // AUTO: admit straight in
+            if (autoPromotedUid) players.push(autoPromotedUid);
+          } else {
+            offeredUid = waitlist[0]; // MANUAL/default: offer + confirm
+            pendingPromotion = { uid: offeredUid, offeredAt: Date.now() };
+          }
         }
 
         const participantIds = Array.from(
@@ -5120,6 +5228,10 @@ export const gameService = {
           pending,
           participantIds,
           ...(nextLive ? { liveMatch: nextLive } : {}),
+          // stripFromLive only cleans the LEGACY live model; prune the
+          // advanced-mode drawn teams + rotation too so an admin-removed
+          // player doesn't stay a ghost on their team.
+          ...pruneMemberFromTeams(data, targetUserId),
           updatedAt: Date.now(),
         };
         const offerChanged =
@@ -5132,6 +5244,7 @@ export const gameService = {
         tx.update(ref, update as any);
         return {
           offeredUid,
+          autoPromotedUid,
           title: data.title ?? '',
           startsAt: typeof data.startsAt === 'number' ? data.startsAt : 0,
         };
@@ -5153,10 +5266,24 @@ export const gameService = {
         },
       });
     }
+    if (result.autoPromotedUid) {
+      notificationsService.dispatch({
+        type: 'spotOpened',
+        recipientId: result.autoPromotedUid,
+        payload: {
+          gameId,
+          gameTitle: result.title,
+          startsAt: result.startsAt,
+        },
+      });
+    }
+    // DIRECTED "you were removed" push — to the kicked player ONLY. Without
+    // `directedTo` this fan-out type notified the whole remaining roster and
+    // told the removed player nothing (audit #12).
     notificationsService.dispatch({
       type: 'gameCanceledOrUpdated',
       recipientId: targetUserId,
-      payload: { gameId, gameTitle: result.title },
+      payload: { gameId, gameTitle: result.title, directedTo: targetUserId },
     });
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
@@ -5850,21 +5977,28 @@ export const gameService = {
       ) {
         return;
       }
-      const liveMatch = {
-        ...(data.liveMatch ?? {
-          phase: 'organizing',
-          assignments: {},
-          benchOrder: [],
-          scoreA: 0,
-          scoreB: 0,
-        }),
-        phase: 'roundReady' as const,
-      };
-      await updateDoc(ref, {
-        status: 'active',
-        liveMatch,
-        updatedAt: Date.now(),
-      });
+      const hasLive = data.liveMatch && typeof data.liveMatch === 'object';
+      if (!hasLive) {
+        await updateDoc(ref, {
+          status: 'active',
+          liveMatch: {
+            phase: 'roundReady' as const,
+            assignments: {},
+            benchOrder: [],
+            scoreA: 0,
+            scoreB: 0,
+          },
+          updatedAt: Date.now(),
+        });
+      } else {
+        // Field path only — don't rewrite the whole liveMatch from a stale
+        // read (would clobber a concurrent goal / timer press).
+        await updateDoc(ref, {
+          status: 'active',
+          'liveMatch.phase': 'roundReady',
+          updatedAt: Date.now(),
+        });
+      }
     } catch (err) {
       logError('startEvening', err, { gameId });
       if (__DEV__) console.warn('[gameService] startEvening failed', err);
@@ -5915,23 +6049,38 @@ export const gameService = {
       if (!snap.exists()) return;
       const data = snap.data();
       if (data.status === 'finished' || data.status === 'cancelled') return;
-      const prev = data.liveMatch ?? {
-        phase: 'organizing' as const,
-        assignments: {},
-        benchOrder: [],
-        scoreA: 0,
-        scoreB: 0,
-      };
-      const liveMatch = {
-        ...prev,
-        phase: 'roundRunning' as const,
-        startedAt: prev.startedAt ?? Date.now(),
-      };
-      await updateDoc(ref, {
-        status: 'active',
-        liveMatch,
-        updatedAt: Date.now(),
-      });
+      const hasLive =
+        data.liveMatch && typeof data.liveMatch === 'object';
+      if (!hasLive) {
+        // First start — no concurrent timer/goals to clobber, so it's safe
+        // to seed the initial liveMatch object.
+        await updateDoc(ref, {
+          status: 'active',
+          liveMatch: {
+            phase: 'roundRunning' as const,
+            assignments: {},
+            benchOrder: [],
+            scoreA: 0,
+            scoreB: 0,
+            startedAt: Date.now(),
+          },
+          updatedAt: Date.now(),
+        });
+      } else {
+        // liveMatch already exists — write ONLY the fields this method owns
+        // via field paths. Rewriting the whole liveMatch object from this
+        // stale snapshot was the clock-jump vector: a timer toggle / goal
+        // that landed on another device between the read and this write got
+        // reverted to the stale values.
+        const prevStartedAt = (data.liveMatch as { startedAt?: number })
+          .startedAt;
+        await updateDoc(ref, {
+          status: 'active',
+          'liveMatch.phase': 'roundRunning',
+          ...(prevStartedAt ? {} : { 'liveMatch.startedAt': Date.now() }),
+          updatedAt: Date.now(),
+        });
+      }
     } catch (err) {
       logError('markGameStarted', err, { gameId });
       if (__DEV__) console.warn('[gameService] markGameStarted failed', err);
@@ -6203,12 +6352,18 @@ export const gameService = {
         updatedAt: Date.now(),
       };
       if (data.liveMatch) {
-        updates.liveMatch = finalRoundCommitted
-          ? // Commit succeeded (it already zeroed goals/score) → freeze empty.
-            { ...data.liveMatch, goals: [], scoreA: 0, scoreB: 0, phase: 'finished' }
-          : // Commit FAILED → keep the goal log/score so nothing is lost; only
-            // flip the phase to finished.
-            { ...data.liveMatch, phase: 'finished' };
+        // Field paths only — never rewrite the whole liveMatch from a stale
+        // read (a last-second goal/timer press between the read above and
+        // this write would be lost).
+        updates['liveMatch.phase'] = 'finished';
+        if (finalRoundCommitted) {
+          // Commit succeeded (it already zeroed goals/score) → freeze empty.
+          updates['liveMatch.goals'] = [];
+          updates['liveMatch.scoreA'] = 0;
+          updates['liveMatch.scoreB'] = 0;
+        }
+        // Commit FAILED → keep the goal log/score so nothing is lost; only
+        // the phase flip above applies.
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await updateDoc(ref, updates as any);
@@ -6261,9 +6416,12 @@ export const gameService = {
       data = snap.data();
       const prev = (data.arrivals ?? {})[userId] ?? 'unknown';
       if (prev === status) return { changed: false };
-      // updateDoc bypasses the converter; see `setLiveMatch` note.
+      // Field-path write — touch ONLY this player's arrivals key. Rewriting
+      // the whole `arrivals` map from a stale getDoc dropped a concurrent
+      // arrival (two admins marking different players at once) and could
+      // revive a player removed between the read and the write.
       await updateDoc(ref, {
-        arrivals: { ...(data.arrivals ?? {}), [userId]: status },
+        [`arrivals.${userId}`]: status,
         updatedAt: Date.now(),
       });
     } catch (err) {
@@ -6448,10 +6606,10 @@ export const gameService = {
       rating !== undefined &&
       (typeof rating !== 'number' ||
         !Number.isFinite(rating) ||
-        rating < 1 ||
+        rating <= 0 ||
         rating > 5)
     ) {
-      throw new Error('addGuest: estimatedRating must be 1.0..5.0');
+      throw new Error('addGuest: estimatedRating must be within (0, 5]');
     }
     // Firestore rejects writes that include `undefined` values
     // (`Unsupported field value`). Build the guest object WITHOUT
@@ -6634,10 +6792,10 @@ export const gameService = {
       rating !== null &&
       (typeof rating !== 'number' ||
         !Number.isFinite(rating) ||
-        rating < 1 ||
+        rating <= 0 ||
         rating > 5)
     ) {
-      throw new Error('setGuestRating: rating must be 1.0..5.0 or null');
+      throw new Error('setGuestRating: rating must be within (0, 5] or null');
     }
 
     if (USE_MOCK_DATA) {

@@ -53,6 +53,7 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { toast } from '@/components/Toast';
 import { he } from '@/i18n/he';
 import type { ArrivalStatus, Game, GameGuest, User, UserId } from '@/types';
+import { activeGuestCount } from '@/types';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList, 'MatchPlayers'>;
@@ -71,6 +72,16 @@ interface RosterEntry {
   /** Admin internal rating (0 = unrated). Only carried for admin viewers in
    *  internal-rating communities — members never receive it. */
   rating?: number;
+  /** When this player registered (ms) — shown as a small line under the name. */
+  joinedAt?: number;
+}
+
+/** Compact "DD.MM · HH:MM" stamp for the small under-name registration line. */
+function formatJoinStamp(ms?: number): string {
+  if (!ms || !Number.isFinite(ms)) return '';
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} · ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 export function MatchPlayersScreen() {
@@ -106,7 +117,14 @@ export function MatchPlayersScreen() {
       setGame(g);
       if (g) {
         const uids = Array.from(
-          new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+          new Set([
+            ...g.players,
+            ...g.waitlist,
+            ...(g.pending ?? []),
+            // Cancelled players too — without them their user docs are never
+            // fetched, so the "ביטלו השתתפות" rows fell back to a "..." name.
+            ...Object.keys(g.cancellations ?? {}),
+          ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
       }
@@ -214,6 +232,7 @@ export function MatchPlayersScreen() {
           holdsJerseys: jerseyHolders.has(uid),
           cardCounts: cardCounts[uid],
           rating: showRatings ? group?.adminRatings?.[uid] : undefined,
+          joinedAt: game?.joinedAt?.[uid],
         };
       });
     },
@@ -221,6 +240,7 @@ export function MatchPlayersScreen() {
       playersMap,
       adminIds,
       game?.arrivals,
+      game?.joinedAt,
       ballBringers,
       ballHolders,
       jerseyHolders,
@@ -314,7 +334,16 @@ export function MatchPlayersScreen() {
   const playerEntries = buildEntries(game.players ?? [], { withBall: true });
   const waitlistEntries = buildEntries(game.waitlist ?? []);
   const pendingEntries = buildEntries(game.pending ?? []);
-  const guests = game.guests ?? [];
+  // Only ACTIVE (non-waitlisted) guests count toward the registered roster —
+  // a waitlisted guest shown as confirmed made the count exceed capacity
+  // (e.g. 13/12), inconsistent with MatchDetails (which uses activeGuestCount).
+  const guests = (game.guests ?? []).filter((g) => !g.waitlisted);
+  // Guests added while the game was FULL are stored with waitlisted:true.
+  // They belong in the waitlist section (mirrors MatchDetailsScreen, which
+  // buckets them as 'waitlist'), NOT the registered roster — otherwise they
+  // render nowhere and can't be renamed / rated / removed here, so the adder
+  // assumes the add failed and re-adds → duplicate guests.
+  const waitlistGuests = (game.guests ?? []).filter((g) => g.waitlisted);
   // Anyone who joined and then cancelled. Sort newest-first so the
   // admin sees fresh drop-outs at the top of the section. EXCLUDE anyone
   // who's currently back in the roster — a stale `cancellations[uid]` entry
@@ -370,6 +399,11 @@ export function MatchPlayersScreen() {
                   entry={e}
                   showDivider={i > 0}
                   onPress={() => goToCard(e.user.id)}
+                  metaLine={
+                    e.joinedAt
+                      ? `${he.matchPlayersJoinedAt} ${formatJoinStamp(e.joinedAt)}`
+                      : undefined
+                  }
                   // Admin-only kick. Hidden once the game is terminal
                   // (finished / cancelled — read-only) and never offered
                   // for the game's own organizer to avoid removing the
@@ -411,10 +445,10 @@ export function MatchPlayersScreen() {
           )}
         </Section>
 
-        {waitlistEntries.length > 0 ? (
+        {waitlistEntries.length > 0 || waitlistGuests.length > 0 ? (
           <Section
             title={he.matchPlayersSectionWaitlist}
-            count={String(waitlistEntries.length)}
+            count={String(waitlistEntries.length + waitlistGuests.length)}
           >
             <Card style={styles.listCard}>
               {waitlistEntries.map((e, i) => {
@@ -428,8 +462,15 @@ export function MatchPlayersScreen() {
                     entry={e}
                     showDivider={i > 0}
                     onPress={() => goToCard(e.user.id)}
-                    toneRight={
-                      isOffered ? he.matchPlayersOfferPendingTag : he.matchPlayersWaitlistTag
+                    // Status moved BELOW the name (small) to declutter the row —
+                    // "המתנה" for a plain waitlister, "ממתין לאישור" + register
+                    // time for the one holding an offer. No side tag.
+                    metaLine={
+                      isOffered
+                        ? he.matchPlayersOfferPendingTag
+                        : `${he.matchPlayersWaitlistTag}${
+                            e.joinedAt ? ` · ${formatJoinStamp(e.joinedAt)}` : ''
+                          }`
                     }
                     offerHint={
                       isOffered && game.pendingPromotion
@@ -511,6 +552,27 @@ export function MatchPlayersScreen() {
                             setRatingTarget({ id: e.user.id, name: e.user.name })
                         : undefined
                     }
+                  />
+                );
+              })}
+              {/* Waitlisted guests — added while the game was full. Rendered
+                  here (not in the registered roster) with the same rename/rate
+                  affordances active guests get, so the adder/admin can manage
+                  them instead of blindly re-adding a duplicate. */}
+              {waitlistGuests.map((g, i) => {
+                const isAdder = currentUser?.id === g.addedBy;
+                const canSeeRating = isAdder || isAdminViewer;
+                // The adder edits the rating; the admin can rename. Either
+                // reason opens the editor (the modal gates the fields).
+                const canEdit = isAdder || isAdminViewer;
+                return (
+                  <GuestRow
+                    key={g.id}
+                    guest={g}
+                    showDivider={i + waitlistEntries.length > 0}
+                    rating={canSeeRating ? g.estimatedRating : undefined}
+                    waitlisted
+                    onPress={canEdit ? () => setEditingGuest(g) : undefined}
                   />
                 );
               })}
@@ -731,12 +793,15 @@ function PlayerRow({
   onReject,
   onRemove,
   onSetRating,
+  metaLine,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
   onPress: () => void;
   toneRight?: string;
   offerHint?: string;
+  /** Small muted line under the name — status ("המתנה") + join date/time. */
+  metaLine?: string;
   onConfirmOffer?: () => void;
   onPassOffer?: () => void;
   onAdminAdvance?: () => void;
@@ -805,11 +870,18 @@ function PlayerRow({
             <CardCountBadges counts={cardCounts} />
           </View>
           {offerHint ? (
-            <Text style={styles.offerHint}>{offerHint}</Text>
+            <Text style={styles.offerHint} numberOfLines={1}>
+              {offerHint}
+            </Text>
           ) : arrival === 'late' ? (
             <Tag label={he.matchPlayersLateTag} tone="warning" inline />
           ) : arrival === 'no_show' ? (
             <Tag label={he.matchPlayersNoShowTag} tone="danger" inline />
+          ) : null}
+          {metaLine ? (
+            <Text style={styles.metaLine} numberOfLines={1}>
+              {metaLine}
+            </Text>
           ) : null}
         </View>
         {/* Admin-only internal-rating chip — shows the value (or "דרג"), taps
@@ -943,6 +1015,7 @@ function GuestRow({
   showDivider,
   rating,
   onPress,
+  waitlisted,
 }: {
   guest: GameGuest;
   showDivider: boolean;
@@ -950,6 +1023,8 @@ function GuestRow({
   rating?: number;
   /** When set, the row is tappable to open the guest editor. */
   onPress?: () => void;
+  /** Guest sits on the waitlist (added while full) — tag it accordingly. */
+  waitlisted?: boolean;
 }) {
   const body = (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
@@ -960,7 +1035,11 @@ function GuestRow({
         <Text style={styles.name} numberOfLines={1}>
           {guest.name}
         </Text>
-        <Text style={styles.guestSub}>{he.matchPlayersGuestTag}</Text>
+        <Text style={styles.guestSub}>
+          {waitlisted
+            ? `${he.matchPlayersGuestTag} · ${he.matchPlayersWaitlistTag}`
+            : he.matchPlayersGuestTag}
+        </Text>
       </View>
       {rating != null ? (
         <View style={styles.guestRatingPill}>
@@ -1074,6 +1153,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: RTL_LABEL_ALIGN,
   },
+  // Small muted line under the name: status ("המתנה") + registration date/time.
+  metaLine: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 1,
+  },
   offerActions: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -1136,6 +1222,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     fontWeight: '600',
+    // Let the "ממתין לאישור" tag shrink so it doesn't crush the name/offer
+    // column down to ~2 chars (which forced the name to "ב...." and the offer
+    // hint to wrap vertically). Caps its footprint on a narrow row.
+    flexShrink: 1,
+    maxWidth: 96,
   },
   guestAvatar: {
     width: 36,

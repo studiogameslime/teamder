@@ -15,9 +15,10 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
+
+import { httpsCallable } from 'firebase/functions';
 
 import { col } from '@/firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
@@ -401,21 +402,18 @@ export const chatService = {
   // ── Report (store-safety) ──────────────────────────────────────────────
 
   async reportMessage(
-    reporterId: UserId,
+    _reporterId: UserId,
     scope: ChatScope,
     parentId: string,
     message: ChatMessage,
   ): Promise<void> {
-    await addDoc(col.chatReports(), {
-      reporterId,
-      scope,
-      parentId,
-      messageId: message.id,
-      messageText: message.text.slice(0, 2000),
-      senderId: message.senderId,
-      senderName: message.senderName,
-      createdAt: serverTimestamp(),
-      createdAtMs: Date.now(),
-    });
+    if (USE_MOCK_DATA) return;
+    // IDs only — the server loads the real message and writes the report with
+    // its authoritative text/author. Sending client-supplied messageText /
+    // senderId would let a reporter frame an innocent user with fabricated
+    // content, so those are no longer trusted (rules now deny direct writes).
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'reportChatMessage');
+    await fn({ scope, parentId, messageId: message.id });
   },
 };

@@ -114,6 +114,21 @@ export async function handleSpotOfferAction(
         passedSpot: true,
       });
     }
+    // The confirm/pass ran in the BACKGROUND (no app launch) — post a local
+    // notification so the user still sees the result. Best-effort.
+    try {
+      const Notifications = await import('expo-notifications');
+      const body =
+        action === 'CONFIRM_SPOT'
+          ? 'אישרת הגעה — נכנסת למשחק! נתראה במגרש ⚽'
+          : 'ויתרת על המקום. ההצעה תעבור לבא בתור';
+      await Notifications.scheduleNotificationAsync({
+        content: { title: 'Teamder', body, data: { type: 'gameReminder', gameId } },
+        trigger: null,
+      });
+    } catch {
+      // ignore — confirmation is a nicety, not required for the action
+    }
   } catch (err) {
     // EXPECTED outcomes — the offer simply isn't actionable anymore (it
     // passed/expired, was filled, the game closed, etc.). These are normal

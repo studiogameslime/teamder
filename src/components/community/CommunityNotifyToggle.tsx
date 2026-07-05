@@ -8,7 +8,7 @@
 // left, the bell icon is the LAST child so it sits on the visual right
 // next to the label. Tapping anywhere on the row toggles the switch.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { BallSwitch } from '@/components/anim/BallSwitch';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,9 @@ export function CommunityNotifyToggle({ subscribed, onChange }: Props) {
   // Local mirror so the Switch animates immediately while the parent
   // persists asynchronously.
   const [on, setOn] = useState(subscribed);
+  // Re-sync if the source-of-truth prop changes (e.g. a failed persist that the
+  // store later corrects) — otherwise the switch could display the wrong state.
+  useEffect(() => setOn(subscribed), [subscribed]);
 
   const flip = (next: boolean) => {
     setOn(next);

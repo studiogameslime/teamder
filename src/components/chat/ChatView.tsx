@@ -7,7 +7,7 @@
 // listener is denied (e.g. the user lost membership mid-session) we fall
 // to a "no access" state rather than showing a broken empty list.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -101,6 +101,10 @@ export function ChatView({
   const [readers, setReaders] = useState<ChatReader[]>([]);
   const [typers, setTypers] = useState<ChatTyper[]>([]);
   const [, setTick] = useState(0); // forces typing freshness re-eval
+  // Memoize the row model so the 2.5s typing-freshness tick (and any other
+  // re-render) does NOT rebuild the whole message list array — that gave the
+  // FlatList a fresh `data` reference every render and re-rendered the list.
+  const chatRows = useMemo(() => buildChatRows(messages), [messages]);
   const lastTypingWriteRef = useRef(0);
   const [menu, setMenu] = useState<{ message: ChatMessage; x: number; y: number } | null>(null);
   const [showTerms, setShowTerms] = useState(false);
@@ -441,7 +445,7 @@ export function ChatView({
         ) : (
           <FlatList
             ref={listRef}
-            data={buildChatRows(messages)}
+            data={chatRows}
             keyExtractor={(row) => row.key}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) =>

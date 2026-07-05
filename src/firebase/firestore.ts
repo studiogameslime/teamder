@@ -181,7 +181,12 @@ const userConverter: FirestoreDataConverter<User> = {
             wins: u.stats.wins ?? 0,
           }
         : null,
-      fcmTokens: u.fcmTokens ?? [],
+      // fcmTokens are NO LONGER written to the world-readable /users doc —
+      // they live in the self-only /users/{uid}/private/push subdoc (written by
+      // notificationsService, read server-side by loadUsers). Writing them here
+      // re-leaked every device's push token to any signed-in user on each
+      // profile save. A one-off migration deletes the legacy field from
+      // existing docs. (fromFirestore still reads it for backward compat.)
       notificationPrefs: u.notificationPrefs ?? null,
       dmFriendsOnly: u.dmFriendsOnly ?? false,
       newGameSubscriptions: u.newGameSubscriptions ?? [],
@@ -1351,11 +1356,12 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
     if (!raw || typeof raw !== 'object') continue;
     const o = raw as Record<string, unknown>;
     if (typeof o.id !== 'string' || typeof o.name !== 'string') continue;
-    // Rating scale is 1.0–5.0. Reject out-of-range (incl. legacy 1–10 values)
-    // so a stale "8" never renders on a 1–5 scale — drop rather than show wrong.
+    // Rating scale is 0–5 (sub-1 allowed for a very weak guest). Reject
+    // out-of-range (incl. legacy 1–10 values) so a stale "8" never renders on a
+    // 0–5 scale — drop rather than show wrong. 0/absent = unrated.
     const rating =
       typeof o.estimatedRating === 'number' &&
-      o.estimatedRating >= 1 &&
+      o.estimatedRating > 0 &&
       o.estimatedRating <= 5
         ? o.estimatedRating
         : undefined;

@@ -459,6 +459,10 @@ export function MatchDetailsScreen() {
   // or never was) vs. exists-but-rules-deny. Drives the "המשחק לא
   // נמצא" fallback screen with a button back to the main tab.
   const [notFound, setNotFound] = useState(false);
+  // A transient load failure (network) that isn't ACCESS_BLOCKED or notFound.
+  // Without this the screen kept `game` null while `loading` flipped false →
+  // the SoccerBallLoader spun forever with no error/retry.
+  const [loadError, setLoadError] = useState(false);
   // Conflict modal — set when joinGameV2 throws REGISTRATION_CONFLICT,
   // OR when the user taps "join" while preCheckConflict is already set.
   // Either way the same modal renders.
@@ -530,6 +534,7 @@ export function MatchDetailsScreen() {
     setGame(null);
     setAccessBlocked(false);
     setNotFound(false);
+    setLoadError(false);
     setLoading(true);
   }, [gameId]);
 
@@ -550,6 +555,7 @@ export function MatchDetailsScreen() {
       setLoading(true);
     }
     try {
+      setLoadError(false);
       const g = await gameService.getGameById(gameId);
       // null === doc genuinely doesn't exist (deleted / never was).
       // ACCESS_BLOCKED was thrown above and is handled in the catch
@@ -593,6 +599,9 @@ export function MatchDetailsScreen() {
         userId: user?.id,
       });
       if (__DEV__) console.warn('[matchDetails] reload failed', err);
+      // Only trip the error screen when we have NOTHING to show. A failed
+      // pull-to-refresh over an already-loaded game keeps the game visible.
+      if (!game) setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1163,6 +1172,37 @@ export function MatchDetailsScreen() {
     );
   }
 
+  // Network (or other non-blocked) failure with nothing to show — offer a
+  // retry instead of an eternal spinner.
+  if (loadError && !game) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.matchDetailsTitle} />
+        <View style={styles.center}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={48}
+            color={colors.textMuted}
+          />
+          <Text style={styles.blockedTitle}>
+            {he.matchDetailsLoadErrorTitle}
+          </Text>
+          <Text style={styles.blockedSub}>{he.matchDetailsLoadErrorBody}</Text>
+          <Button
+            title={he.gameRetry}
+            variant="primary"
+            size="lg"
+            fullWidth
+            onPress={() => {
+              setLoadError(false);
+              reload();
+            }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (loading || !game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -1185,6 +1225,14 @@ export function MatchDetailsScreen() {
   // is a real seat at the match, just without a /users record.
   const guestCount = activeGuestCount(game.guests);
   const totalParticipants = game.players.length + guestCount;
+  // Occupancy INCLUDING a pending-promotion reservation, for the hero "X/max"
+  // counter only — so a full-but-awaiting-confirmation game reads e.g. 14/14
+  // (matching MatchListCard) instead of 13/14, which looked like there was a
+  // free spot while people were correctly waitlisted (user confusion).
+  const heroOccupancy = Math.min(
+    game.maxPlayers,
+    totalParticipants + (game.pendingPromotion?.uid ? 1 : 0),
+  );
   // A pending-promotion offer holds the last open seat for the offered user, so
   // a new joiner actually lands on the waitlist. Count that reservation so the
   // primary CTA says "בקש להצטרף/רשימת המתנה" instead of a misleading "הצטרף"
@@ -2260,7 +2308,7 @@ export function MatchDetailsScreen() {
             that overlap zone. */}
         <View style={styles.statsFloat}>
           <MatchStatsStrip
-            registered={totalParticipants}
+            registered={heroOccupancy}
             capacity={game.maxPlayers}
             durationMinutes={game.matchDurationMinutes}
             startsAt={game.startsAt}

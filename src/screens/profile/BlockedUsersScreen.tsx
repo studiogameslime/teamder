@@ -38,7 +38,17 @@ export function BlockedUsersScreen() {
       setIds(list);
       if (list.length > 0) hydratePlayers(list);
     });
-    return unsub;
+    // Fallback: subscribeBlocked swallows a listener error internally and never
+    // calls back, which left `ids` null and the loader spinning forever. If
+    // nothing emits shortly, fall to the empty state instead of hanging.
+    const t = setTimeout(
+      () => setIds((cur) => (cur === null ? [] : cur)),
+      6000,
+    );
+    return () => {
+      unsub();
+      clearTimeout(t);
+    };
   }, [me?.id, hydratePlayers]);
 
   const onUnblock = (uid: string, name: string) => {

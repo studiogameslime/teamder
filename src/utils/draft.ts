@@ -38,7 +38,10 @@ export const NEUTRAL_RATING = 3;
  */
 export function normalizeRating(v: number): number {
   const r = v > 5 ? v / 2 : v;
-  return Math.min(5, Math.max(1, r));
+  // Floor at 0 (not 1): the live scale is 0–5 and sub-1 ratings are real —
+  // flooring to 1 would collapse a genuinely weakest 0.4 into a 1.0 and defeat
+  // the sub-1 rating feature at balance time.
+  return Math.min(5, Math.max(0, r));
 }
 
 /** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */

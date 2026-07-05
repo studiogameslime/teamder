@@ -91,25 +91,10 @@ try {
   // on the next app launch. The handler below dismisses the
   // notification explicitly so the user doesn't see a stale card
   // after the RSVP has been recorded.
-  Notifications.setNotificationCategoryAsync('GAME_REMINDER', [
-    {
-      identifier: 'JOIN_GAME',
-      buttonTitle: 'אני בא',
-      // Background action (no app launch) → records instantly instead of
-      // the ~3s foreground spin-up the user reported. A confirming local
-      // notification is posted from the handler so feedback isn't lost.
-      options: { opensAppToForeground: false },
-    },
-    {
-      identifier: 'CANCEL_GAME',
-      buttonTitle: 'לא בא',
-      options: { opensAppToForeground: true, isDestructive: true },
-    },
-  ]).catch(() => {
-    // Best-effort — older expo-notifications versions throw; the
-    // worst case is the buttons don't render and the user taps
-    // through to the app, which is the existing behaviour.
-  });
+  // NOTE: the `gameRsvpNudge` push no longer carries action buttons — it's a
+  // plain tap-to-open reminder now (the GAME_REMINDER category was removed per
+  // product decision). JOIN_GAME still exists for the new-game announcement
+  // below; CANCEL_GAME is retired.
   // New-game announcement (registration just opened for the community).
   // A SINGLE "אני מגיע" → JOIN_GAME. We dropped the "לא מגיע" button: the
   // recipient isn't registered yet, so a decline had no real meaning (user
@@ -131,31 +116,21 @@ try {
   Notifications.setNotificationCategoryAsync('SPOT_OFFER', [
     {
       identifier: 'CONFIRM_SPOT',
+      // Background action (no app launch) → confirms the spot instantly; the
+      // handler posts a local confirmation so the user still gets feedback.
       buttonTitle: 'מאשר/ת',
-      options: { opensAppToForeground: true },
+      options: { opensAppToForeground: false },
     },
     {
       identifier: 'PASS_SPOT',
       buttonTitle: 'ויתור',
-      options: { opensAppToForeground: true, isDestructive: true },
+      options: { opensAppToForeground: false, isDestructive: true },
     },
   ]).catch(() => {});
-  // Cross-community filler opportunity. Tapping "מעוניין" submits
-  // the candidate's interest via `submitFillerInterest` — admin
-  // gets a push from the on-create trigger and reviews the profile
-  // before approving. Tapping "לא הפעם" is a silent dismiss.
-  Notifications.setNotificationCategoryAsync('FILLER_OPPORTUNITY', [
-    {
-      identifier: 'EXPRESS_FILLER_INTEREST',
-      buttonTitle: 'מעוניין',
-      options: { opensAppToForeground: true },
-    },
-    {
-      identifier: 'DISMISS_FILLER',
-      buttonTitle: 'לא הפעם',
-      options: { opensAppToForeground: true, isDestructive: true },
-    },
-  ]).catch(() => {});
+  // NOTE: the cross-community filler opportunity push (`fillerOpportunity`)
+  // deliberately has NO action-button category — tapping the push opens the
+  // game screen where the candidate expresses interest. The old "לא הפעם"
+  // button was a silent no-op and "מעוניין" was redundant with tap-to-open.
 } catch {
   // expo-notifications native module not available — no-op.
 }
@@ -691,6 +666,10 @@ export default function App() {
         );
         await handleSpotOfferAction(action, gameId);
         await dismissNotificationSafely(notifId);
+        // Background action (opensAppToForeground:false) — the handler posts a
+        // local confirmation; don't drag the app to MatchDetails behind the
+        // user's back, so DON'T fall through to navigation.
+        return;
       }
       if (action === 'DISMISS_NEW_GAME') {
         // "לא מגיע" on a new-game announcement → just clear the card, no
@@ -698,19 +677,10 @@ export default function App() {
         await dismissNotificationSafely(notifId);
         return;
       }
-      if (
-        action === 'EXPRESS_FILLER_INTEREST' ||
-        action === 'DISMISS_FILLER'
-      ) {
-        const gameId = typeof data.gameId === 'string' ? data.gameId : '';
-        if (!gameId) return;
-        const { handleFillerOpportunityAction } = await import(
-          '@/services/notificationActionService'
-        );
-        await handleFillerOpportunityAction(action, gameId);
-        await dismissNotificationSafely(notifId);
-        return;
-      }
+      // (The `fillerOpportunity` push no longer carries action buttons — a
+      // plain tap falls through to navigation, opening the game screen where
+      // the candidate expresses interest. The in-app "מעוניין" button still
+      // calls handleFillerOpportunityAction directly.)
       // Wait for the navigator to be ready. A COLD start runs through
       // the splash (+ a possible app-open ad) + Firebase auth restore
       // before the navigator mounts — easily 10-20s. The old 3s cap gave

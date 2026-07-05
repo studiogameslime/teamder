@@ -121,6 +121,15 @@ interface NotificationDoc {
   recipientId: string;
   payload?: Record<string, unknown>;
   delivered?: boolean;
+  /** Authenticated creator uid. The /notifications rules require a
+   *  client-created doc, IF it sets createdByUid, to set it to the signed-in
+   *  uid. Used to authorise fan-out sends (see isFanoutSenderAuthorized). */
+  createdByUid?: string;
+  /** Server-origin marker. Set ONLY by createNotificationOnce (Admin SDK,
+   *  rules bypassed). The rules FORBID clients from setting it, so a truthy
+   *  value proves the doc was minted server-side and can be trusted for
+   *  fan-out without a per-sender admin check. */
+  srv?: boolean;
 }
 
 interface UserDoc {
@@ -293,6 +302,83 @@ function buildAggregateUpdate(
 }
 
 /**
+ * Remove a set of uids from a game's drawn `draftTeams` and live `rotation` so a
+ * player who left (self-cancel) doesn't linger as a ghost on a team — the
+ * server-side twin of the client `pruneMemberFromTeams`. Returns only the keys
+ * that actually change (empty object = nothing to prune).
+ */
+function pruneUidsFromTeamsSrv(
+  d: Record<string, unknown>,
+  gone: Set<string>,
+): Record<string, unknown> {
+  if (gone.size === 0) return {};
+  const out: Record<string, unknown> = {};
+  const draft = d.draftTeams as
+    | { teams?: { playerIds?: string[] }[]; leftHome?: { playerId?: string }[] }
+    | undefined;
+  if (draft?.teams) {
+    const inTeams = draft.teams.some((t) =>
+      (t.playerIds ?? []).some((p) => gone.has(p)),
+    );
+    const inLeftHome = (draft.leftHome ?? []).some(
+      (l) => l.playerId && gone.has(l.playerId),
+    );
+    if (inTeams || inLeftHome) {
+      out.draftTeams = {
+        ...draft,
+        teams: draft.teams.map((t) => ({
+          ...t,
+          playerIds: (t.playerIds ?? []).filter((p) => !gone.has(p)),
+        })),
+        ...(inLeftHome
+          ? {
+              leftHome: (draft.leftHome ?? []).filter(
+                (l) => !(l.playerId && gone.has(l.playerId)),
+              ),
+            }
+          : {}),
+      };
+    }
+  }
+  const rotation = d.rotation as
+    | {
+        loans?: { playerId?: string }[];
+        baseTeams?: { playerIds?: string[] }[];
+      }
+    | undefined;
+  if (rotation) {
+    const inLoans = (rotation.loans ?? []).some(
+      (l) => l.playerId && gone.has(l.playerId),
+    );
+    const inBase = (rotation.baseTeams ?? []).some((t) =>
+      (t.playerIds ?? []).some((p) => gone.has(p)),
+    );
+    if (inLoans || inBase) {
+      out.rotation = {
+        ...rotation,
+        ...(inLoans
+          ? {
+              loans: (rotation.loans ?? []).filter(
+                (l) => !(l.playerId && gone.has(l.playerId)),
+              ),
+            }
+          : {}),
+        ...(inBase
+          ? {
+              baseTeams: (rotation.baseTeams ?? []).map((t) => ({
+                ...t,
+                playerIds: (t.playerIds ?? []).filter((p) => !gone.has(p)),
+              })),
+            }
+          : {}),
+        updatedAt: Date.now(),
+      };
+    }
+  }
+  return out;
+}
+
+/**
  * All server-side notification writes funnel through here.
  *
  * Two layers of dedupe:
@@ -399,6 +485,9 @@ async function createNotificationOnce(input: {
     read: false,
     delivered: false,
     createdByUid: input.createdByUid ?? '',
+    // Server-origin marker — trusted by isFanoutSenderAuthorized. Clients are
+    // forbidden by the /notifications rules from setting `srv`.
+    srv: true,
     schemaVersion: NOTIFICATION_SCHEMA_VERSION,
   };
 
@@ -553,6 +642,14 @@ function buildMessage(
       // softer "המשחק עודכן" wording so a stray dispatch never tells
       // players the game was cancelled when it wasn't.
       const action = typeof payload.action === 'string' ? payload.action : '';
+      // DIRECTED removal (admin kicked THIS player) → tell them plainly, not
+      // the generic "game updated" (audit #12 follow-up).
+      if (payload.directedTo) {
+        return {
+          title: 'הוסרת מהמשחק',
+          body: `הוסרת מ${gameTitle} על ידי המנהל.`,
+        };
+      }
       if (action === 'cancelled' || action === 'deleted') {
         return {
           title: 'המשחק בוטל',
@@ -891,43 +988,119 @@ function formatHebrewWhen(ms: number): string {
 async function loadUsers(uids: string[]): Promise<UserDoc[]> {
   if (uids.length === 0) return [];
   const unique = Array.from(new Set(uids));
-  const userRefs = unique.map((u) => db.collection('users').doc(u));
-  const privateRefs = unique.map((u) =>
-    db.collection('users').doc(u).collection('private').doc('push'),
-  );
-  // One getAll call for both sets — cheaper than two round-trips.
-  const all = await db.getAll(...userRefs, ...privateRefs);
-  const half = unique.length;
   const out: UserDoc[] = [];
-  for (let i = 0; i < half; i++) {
-    const userSnap = all[i];
-    const privSnap = all[i + half];
-    if (!userSnap.exists) continue;
-    const root = userSnap.data() as UserDoc;
-    const uid = userSnap.id;
-    if (privSnap.exists) {
-      const priv = privSnap.data() as {
-        fcmTokens?: string[];
-        notificationPrefs?: UserDoc['notificationPrefs'];
-      };
-      out.push({
-        ...root,
-        uid,
-        fcmTokens: priv.fcmTokens ?? root.fcmTokens,
-        notificationPrefs:
-          priv.notificationPrefs ?? root.notificationPrefs,
-      });
-    } else {
-      out.push({ ...root, uid });
+  // Chunk the getAll. A big fan-out (e.g. a 300-subscriber community's
+  // newGameInCommunity push) built ONE getAll of 2×N refs → a giant gRPC
+  // message at risk of the size cap / timeout. ≤150 uids (≤300 refs) per call.
+  const CHUNK = 150;
+  for (let start = 0; start < unique.length; start += CHUNK) {
+    const slice = unique.slice(start, start + CHUNK);
+    const userRefs = slice.map((u) => db.collection('users').doc(u));
+    const privateRefs = slice.map((u) =>
+      db.collection('users').doc(u).collection('private').doc('push'),
+    );
+    const all = await db.getAll(...userRefs, ...privateRefs);
+    const half = slice.length;
+    for (let i = 0; i < half; i++) {
+      const userSnap = all[i];
+      const privSnap = all[i + half];
+      if (!userSnap.exists) continue;
+      const root = userSnap.data() as UserDoc;
+      const uid = userSnap.id;
+      if (privSnap.exists) {
+        const priv = privSnap.data() as {
+          fcmTokens?: string[];
+          notificationPrefs?: UserDoc['notificationPrefs'];
+        };
+        out.push({
+          ...root,
+          uid,
+          fcmTokens: priv.fcmTokens ?? root.fcmTokens,
+          notificationPrefs:
+            priv.notificationPrefs ?? root.notificationPrefs,
+        });
+      } else {
+        out.push({ ...root, uid });
+      }
     }
   }
   return out;
+}
+
+// Notification types that fan a SINGLE client write out to MANY recipients.
+// These are the mass-spoof vector: without a sender check, any signed-in
+// user could write one `newGameInCommunity` doc for a community they don't
+// belong to and blast every subscriber a push with attacker-chosen text.
+const FANOUT_NOTIF_TYPES = new Set<string>([
+  'newGameInCommunity',
+  'gameCanceledOrUpdated',
+  'gamePlayersJoined',
+  'gameFillingUp',
+]);
+
+// Verify the CLAIMED sender of a fan-out notification is actually allowed to
+// address that audience. createdByUid is trustworthy: the rules force a
+// client doc to carry createdByUid == the authenticated uid, and server
+// (Admin SDK) docs pass '' — which we trust as system-originated.
+async function isFanoutSenderAuthorized(
+  notif: NotificationDoc,
+): Promise<boolean> {
+  // Trust ONLY docs minted server-side (Admin SDK sets srv:true; clients are
+  // forbidden by rules from setting it). Previously an EMPTY createdByUid was
+  // trusted as "system" — but the rules tolerate a missing createdByUid, so an
+  // attacker could OMIT it and get a free fan-out. srv is unspoofable.
+  if (notif.srv === true) return true;
+  const createdBy = notif.createdByUid ?? '';
+  // No verifiable sender (client omitted createdByUid) → cannot authorise a
+  // fan-out. Deliver to nobody. (Legit new clients always stamp createdByUid.)
+  if (createdBy === '') return false;
+  const payload = notif.payload || {};
+  const groupId =
+    (payload.groupId as string) ||
+    (notif.type === 'newGameInCommunity' ? notif.recipientId : '') ||
+    '';
+  const gameId = (payload.gameId as string) || '';
+  // Community admin? (covers newGameInCommunity, gamePlayersJoined,
+  // gameFillingUp, and cancel/delete where groupId is stamped.)
+  if (groupId) {
+    const grp = await db.collection('groups').doc(groupId).get();
+    const admins = (grp.data()?.adminIds as string[] | undefined) ?? [];
+    if (admins.includes(createdBy)) return true;
+  }
+  // Game organiser (or an admin of the game's community).
+  if (gameId) {
+    const g = await db.collection('games').doc(gameId).get();
+    const gd = g.data() as
+      | { createdBy?: string; groupId?: string }
+      | undefined;
+    if (gd?.createdBy === createdBy) return true;
+    if (gd?.groupId) {
+      const grp = await db.collection('groups').doc(gd.groupId).get();
+      const admins = (grp.data()?.adminIds as string[] | undefined) ?? [];
+      if (admins.includes(createdBy)) return true;
+    }
+  }
+  return false;
 }
 
 async function resolveRecipients(
   notif: NotificationDoc
 ): Promise<UserDoc[]> {
   const payload = notif.payload || {};
+
+  // Sender-authorisation gate for fan-out types. An unverifiable or
+  // unauthorised sender fans out to NOBODY (the whole exploit is one
+  // spoofed write → mass push).
+  if (FANOUT_NOTIF_TYPES.has(notif.type)) {
+    if (!(await isFanoutSenderAuthorized(notif))) {
+      console.warn('[resolveRecipients] fan-out blocked: unauthorised sender', {
+        type: notif.type,
+        createdBy: notif.createdByUid ?? '',
+        recipientId: notif.recipientId,
+      });
+      return [];
+    }
+  }
 
   if (notif.type === 'newGameInCommunity') {
     const groupId = (payload.groupId as string) || notif.recipientId;
@@ -975,6 +1148,17 @@ async function resolveRecipients(
   ) {
     const gameId = (payload.gameId as string) || notif.recipientId;
     if (!gameId) return [];
+    // DIRECTED variant: an admin removing ONE player sends a "you were removed"
+    // push meant for that single uid — NOT a roster-wide fan-out. Without this
+    // the whole remaining roster got a spurious "game updated" push and the
+    // kicked player got nothing (audit #12).
+    if (
+      notif.type === 'gameCanceledOrUpdated' &&
+      typeof payload.directedTo === 'string' &&
+      payload.directedTo
+    ) {
+      return loadUsers([payload.directedTo as string]);
+    }
     const gSnap = await db.collection('games').doc(gameId).get();
     // When the game doc is gone (gameCanceledOrUpdated action='deleted'
     // hard-deletes it), fall back to the roster the client captured on
@@ -1096,7 +1280,15 @@ async function deliverBatch(
   // toggle — without this map a user who turned that toggle OFF still got the
   // pushes (the gate looked up a non-existent 'approved'/'rejected' key).
   const prefKey =
-    type === 'approved' || type === 'rejected' ? 'approvedRejected' : type;
+    type === 'approved' || type === 'rejected'
+      ? 'approvedRejected'
+      : // friendRequest + friendRequestAccepted share the single 'friendRequest'
+        // toggle; without this a user who muted friend-requests still received
+        // the "your request was accepted" push (no 'friendRequestAccepted' key
+        // exists, so the gate never matched).
+        type === 'friendRequest' || type === 'friendRequestAccepted'
+        ? 'friendRequest'
+        : type;
   for (const user of recipients) {
     if (
       (user.notificationPrefs as Record<string, boolean> | undefined)?.[
@@ -1141,22 +1333,18 @@ async function deliverBatch(
   // the "אני בא / לא בא" pair; `spotOffered` uses its own
   // "אישור הגעה / ויתור" pair.
   let categoryIdentifier: string | undefined;
-  if (type === 'gameRsvpNudge') {
-    // The RSVP nudge is literally "are you coming?" → keep the אני בא / לא בא
-    // buttons. The plain gameReminder no longer carries buttons: a reminder
-    // for a game you're ALREADY registered to shouldn't offer a one-tap "לא
-    // בא" that silently cancels the registration from the lock screen.
-    categoryIdentifier = 'GAME_REMINDER';
-  } else if (type === 'newGameInCommunity') {
+  if (type === 'newGameInCommunity') {
     // Registration-just-opened announcement → "מגיע" (join) / "לא מגיע"
     // (dismiss). NOT the reminder category, whose "לא בא" cancels a
     // registration the recipient doesn't have yet.
     categoryIdentifier = 'NEW_GAME_RSVP';
   } else if (type === 'spotOffered') {
     categoryIdentifier = 'SPOT_OFFER';
-  } else if (type === 'fillerOpportunity') {
-    categoryIdentifier = 'FILLER_OPPORTUNITY';
   }
+  // `fillerOpportunity` intentionally carries NO action buttons: the old
+  // "לא הפעם" was a silent no-op (identical to just dismissing the push) and
+  // the one-tap "מעוניין" was redundant — tapping the push opens the game
+  // screen where the candidate can express interest. Plain tap-to-open only.
 
   // When a categoryIdentifier is set, action buttons must render on
   // both platforms. Android requires special handling: if the FCM
@@ -1177,10 +1365,14 @@ async function deliverBatch(
   // Tokens FCM reports as permanently invalid → pruned from their owner
   // after the send loop.
   const deadTokens = new Set<string>();
+  // Prune ONLY on codes that mean the token itself is permanently dead.
+  // 'messaging/invalid-argument' is frequently a MESSAGE-level rejection
+  // (oversized/invalid payload), not a per-token one — treating it as a dead
+  // token let a single bad message delete the valid tokens of every recipient
+  // in the chunk, silently disabling their push until a cold-start re-register.
   const DEAD_TOKEN_CODES = new Set([
     'messaging/registration-token-not-registered',
     'messaging/invalid-registration-token',
-    'messaging/invalid-argument',
   ]);
   for (let i = 0; i < all.length; i += 500) {
     const chunk = all.slice(i, i + 500);
@@ -1393,7 +1585,16 @@ export const onNotificationCreated = onDocumentCreated(
       typeof notif.payload?.gameId === 'string'
     ) {
       const gameId = notif.payload.gameId as string;
-      const latchRef = db.collection('gameUpdateLatches').doc(gameId);
+      // Namespace the latch by action CATEGORY so a genuine cancellation is
+      // never deduped against a preceding edit. Before, both shared one
+      // per-game latch: editing a game then cancelling it within 60s made
+      // the cancel push get dropped as a "duplicate" — players never learned
+      // the game was cancelled. Edit-vs-edit and cancel-vs-cancel still dedup.
+      const latchCategory =
+        notif.payload?.action === 'updated' ? 'update' : 'cancel';
+      const latchRef = db
+        .collection('gameUpdateLatches')
+        .doc(`${gameId}__${latchCategory}`);
       const latch = await latchRef.get();
       const now = Date.now();
       const lastAt = latch.exists
@@ -1597,7 +1798,13 @@ async function runSendRsvpNudges(): Promise<void> {
     if (g.status !== 'open') continue;
     if (!g.groupId) continue;
     const playersCount = g.players?.length ?? 0;
-    const guestsCount = g.guests?.length ?? 0;
+    // Only ACTIVE guests occupy a seat — counting waitlisted guests raw made a
+    // game with open seats look full and skipped the RSVP fill nudge (audit
+    // #18 class, missed site). Match reconcileGameJoins/adminAddPlayers.
+    const guestsCount = Array.isArray(g.guests)
+      ? (g.guests as { waitlisted?: boolean }[]).filter((x) => !x?.waitlisted)
+          .length
+      : 0;
     if (g.maxPlayers && playersCount + guestsCount >= g.maxPlayers) continue;
 
     // Pull the parent group to enumerate its members.
@@ -2001,7 +2208,14 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
     const pending = [...((g.pending as string[]) ?? [])];
     const inAny = new Set([...players, ...waitlist, ...pending]);
     const rejected = (g.rejectedPlayerIds as string[]) ?? [];
-    const guests = Array.isArray(g.guests) ? (g.guests as unknown[]).length : 0;
+    // Only ACTIVE (non-waitlisted) guests occupy a seat — a waitlisted guest's
+    // flag is never cleared, so counting them raw (the old `.length`) made the
+    // reconciler see a full game and wrongly waitlist a real joiner even after a
+    // seat freed (audit #18). Matches every other capacity site.
+    const guests = Array.isArray(g.guests)
+      ? (g.guests as { waitlisted?: boolean }[]).filter((x) => !x?.waitlisted)
+          .length
+      : 0;
     const offer = (g.pendingPromotion as { uid?: string } | null)?.uid ? 1 : 0;
     const maxPlayers = typeof g.maxPlayers === 'number' ? (g.maxPlayers as number) : 15;
     const requiresApproval = g.requiresApproval === true;
@@ -2107,6 +2321,9 @@ async function reconcileGameJoins(gameId: string): Promise<void> {
         pending.push(r.uid);
         bucket = 'pending';
       } else if (occupancy < maxPlayers) {
+        // Free spot → seat directly. (A pending offer already counts toward
+        // `occupancy`, so while the waitlist head is being asked to confirm the
+        // seat is reserved and outsiders fall through to the waitlist below.)
         players.push(r.uid);
         occupancy += 1;
         bucket = 'players';
@@ -2300,12 +2517,18 @@ async function flipScheduledGameOnce(
 
 async function runFlipScheduledGames(): Promise<void> {
   const now = Date.now();
-  // Equality query — auto-indexed, no composite needed. The
-  // registrationOpensAt + openedNotificationSent filters run
-  // client-side.
+  // Push the due-filter into the QUERY. Before, this read EVERY
+  // status=='scheduled' game every 5 min (every future/recurring game sits in
+  // 'scheduled' until registration opens) and filtered client-side — so the
+  // scan grew with upcoming activity (~28K reads/day). The range filter on
+  // registrationOpensAt excludes future/missing ones, so only DUE games are
+  // read. Flipped games leave the 'scheduled' set. Needs composite index
+  // (status ASC, registrationOpensAt ASC).
   const snap = await db
     .collection('games')
     .where('status', '==', 'scheduled')
+    .where('registrationOpensAt', '<=', now)
+    .limit(200)
     .get();
 
   if (snap.empty) {
@@ -2577,11 +2800,22 @@ async function flipPublicGameOnce(gameId: string): Promise<'flipped' | 'skip'> {
     publicOpenAt?: number;
     publicOpenedAt?: number;
     status?: string;
+    registrationOpensAt?: number;
   };
   if (g.visibility !== 'community') return 'skip'; // already public / private
   if (g.publicOpenedAt) return 'skip'; // idempotency latch
   if (typeof g.publicOpenAt !== 'number' || g.publicOpenAt > now) return 'skip';
   if (g.status === 'cancelled' || g.status === 'finished') return 'skip';
+  // Never expose a game to the whole public before its OWN community members can
+  // even see/register for it: skip while still 'scheduled' (registration not yet
+  // open) or while registrationOpensAt is in the future — a stray/edited
+  // publicOpenAt < registrationOpensAt must not leapfrog members (audit #15).
+  if (g.status === 'scheduled') return 'skip';
+  if (
+    typeof g.registrationOpensAt === 'number' &&
+    g.registrationOpensAt > now
+  )
+    return 'skip';
   await ref.update({
     visibility: 'public',
     publicOpenedAt: now,
@@ -2592,9 +2826,19 @@ async function flipPublicGameOnce(gameId: string): Promise<'flipped' | 'skip'> {
 
 async function runFlipPublicGames(): Promise<void> {
   const now = Date.now();
+  // Push the due-filter into the QUERY. Before, this read EVERY
+  // visibility=='community' game every 5 min and filtered client-side —
+  // community games that never go public (no/far-future publicOpenAt) stayed
+  // in the set forever, so the scan grew unbounded (~86K reads/day). A range
+  // filter on publicOpenAt excludes games with no publicOpenAt or a future one
+  // (Firestore range queries skip docs missing the field), so only DUE games
+  // are read. Flipped games leave the set (visibility becomes 'public').
+  // Needs composite index (visibility ASC, publicOpenAt ASC).
   const snap = await db
     .collection('games')
     .where('visibility', '==', 'community')
+    .where('publicOpenAt', '<=', now)
+    .limit(200)
     .get();
   if (snap.empty) return;
   let flipped = 0;
@@ -2644,16 +2888,21 @@ async function runFlipPublicGames(): Promise<void> {
 // head is offered (or the offer is cleared when no one's left / the game is
 // full). The existing onGameRosterChanged trigger sends the spotOffered push on
 // the uid change, so we don't dispatch it here.
-const PROMO_OFFER_TTL_MS = 20 * 60 * 1000; // 20 minutes to respond to an offer
+const PROMO_OFFER_TTL_MS = 20 * 60 * 1000; // default 20 min to respond to an offer
+// Smallest offer window a game may configure — used as the QUERY floor so the
+// sweep catches every potentially-due offer; the exact per-game window is
+// applied inside the transaction.
+const MIN_OFFER_TTL_MS = 2 * 60 * 1000;
 
 async function runExpireStaleOffers(): Promise<void> {
-  const cutoff = Date.now() - PROMO_OFFER_TTL_MS;
-  // Single-field range filter (auto-indexed); games with no offer lack this
-  // field and games with a fresh offer have offeredAt >= cutoff, so only stale
-  // offers match. Status is re-checked per game below.
+  const nowMs = Date.now();
+  // Query by the MINIMUM window so we catch every possibly-due offer; the exact
+  // per-game window (waitlistApprovalTimeoutMinutes, default 20m) is applied in
+  // the transaction below.
+  const queryCutoff = nowMs - MIN_OFFER_TTL_MS;
   const snap = await db
     .collection('games')
-    .where('pendingPromotion.offeredAt', '<', cutoff)
+    .where('pendingPromotion.offeredAt', '<', queryCutoff)
     .limit(50)
     .get();
 
@@ -2676,16 +2925,24 @@ async function runExpireStaleOffers(): Promise<void> {
           pending?: string[];
           guests?: { waitlisted?: boolean }[];
           maxPlayers?: number;
+          waitlistApprovalTimeoutMinutes?: number;
           pendingPromotion?: { uid?: string; offeredAt?: number } | null;
         };
         if (d.status !== 'open') return;
         const offer = d.pendingPromotion;
+        // This game's configured confirm window (default 20m).
+        const gameTtlMs =
+          typeof d.waitlistApprovalTimeoutMinutes === 'number' &&
+          d.waitlistApprovalTimeoutMinutes > 0
+            ? d.waitlistApprovalTimeoutMinutes * 60 * 1000
+            : PROMO_OFFER_TTL_MS;
         // Re-check inside the txn — the offer may have been accepted/advanced
-        // (or refreshed) since the query read.
+        // (or refreshed) since the query read, and must be past THIS game's
+        // window (not just the query floor) to expire.
         if (
           !offer?.uid ||
           typeof offer.offeredAt !== 'number' ||
-          offer.offeredAt >= cutoff
+          offer.offeredAt >= nowMs - gameTtlMs
         ) {
           return;
         }
@@ -2856,9 +3113,14 @@ async function runDailyCleanup(): Promise<void> {
   let notifsDeleted = 0;
   try {
     const cutoff = now - NOTIFICATIONS_TTL_MS;
+    // Query the numeric `createdAtMs` mirror, NOT `createdAt`. Every notif
+    // writes createdAt as a Firestore Timestamp; Timestamps sort in a
+    // different type-group than a plain number, so `createdAt < <number>`
+    // matched ZERO docs and the sweep never deleted anything (the collection
+    // grew unbounded). Both write paths populate createdAtMs as a number.
     const snap = await db
       .collection('notifications')
-      .where('createdAt', '<', cutoff)
+      .where('createdAtMs', '<', cutoff)
       .limit(BATCH_LIMIT)
       .get();
     if (!snap.empty) {
@@ -3402,8 +3664,10 @@ export const onGameTimerChanged = onDocumentWritten(
     const users = await loadUsers(recipients);
     const tokens = new Set<string>();
     for (const u of users) {
-      // Skip iOS — no Android-style home widget / Wear tile there.
-      if (u.platform === 'ios') continue;
+      // Only Android has the home widget / Wear tile this silent sync feeds.
+      // Gate on `=== 'android'` (not `!== 'ios'`): a user whose platform was
+      // never stamped (undefined) is NOT Android, so don't wake them.
+      if (u.platform !== 'android') continue;
       (u.fcmTokens || []).forEach((t) => {
         if (typeof t === 'string' && t.length > 0) tokens.add(t);
       });
@@ -3535,9 +3799,13 @@ export const onGameRosterChanged = onDocumentWritten(
           capacityNoticeSent?: boolean;
           arrivals?: Record<string, string>;
           pending?: string[];
+          waitlist?: string[];
           pendingPromotion?: { uid?: string; offeredAt?: number } | null;
           registrationOpensAt?: number;
           publicOpenAt?: number;
+          title?: string;
+          groupId?: string;
+          createdBy?: string;
         }
       | undefined;
     const after = event.data?.after?.data() as
@@ -3564,7 +3832,55 @@ export const onGameRosterChanged = onDocumentWritten(
         }
       | undefined;
 
-    if (!after) return; // doc deleted
+    if (!after) {
+      // ── Game DELETED → mint the cancellation push SERVER-SIDE ────────────
+      // A hard-delete removes the game doc, so the client's own
+      // gameCanceledOrUpdated dispatch can't be authorised (the fan-out gate
+      // reads the now-missing doc → deliver to nobody), and every registered
+      // player was left showing a game that no longer exists (audit #9). Mint
+      // it here from `before` with srv:true (unspoofable, no gate needed) using
+      // the real last-known roster. Fires exactly once per delete.
+      // Don't spam a "game cancelled" push when a FINISHED / already-cancelled
+      // game is deleted (cleanup) — its participants already played / were told.
+      const delStatus = before?.status;
+      if (before && delStatus !== 'finished' && delStatus !== 'cancelled') {
+        // Self-exclude the game creator: the person deleting is virtually always
+        // the organiser, and they don't need "your game was cancelled" for their
+        // own action (spam sensitivity). A co-admin delete still notifies them.
+        const deleter = before.createdBy ?? '';
+        const roster = Array.from(
+          new Set([
+            ...(before.players ?? []),
+            ...(before.waitlist ?? []),
+            ...(before.pending ?? []),
+          ]),
+        ).filter((uid) => uid !== deleter);
+        if (roster.length > 0) {
+          try {
+            // createNotificationOnce mints with srv:true internally → the
+            // fan-out gate trusts it without a createdByUid check.
+            await createNotificationOnce({
+              type: 'gameCanceledOrUpdated',
+              recipientId: event.params.gameId,
+              payload: {
+                gameId: event.params.gameId,
+                title: before.title ?? '',
+                action: 'deleted',
+                recipientUids: roster,
+                groupId: before.groupId ?? '',
+              },
+            });
+          } catch (err) {
+            console.error(
+              '[onGameRosterChanged] delete cancellation push failed',
+              event.params.gameId,
+              err,
+            );
+          }
+        }
+      }
+      return;
+    }
 
     const ref = event.data!.after.ref;
 
@@ -3600,6 +3916,150 @@ export const onGameRosterChanged = onDocumentWritten(
           event.params.gameId,
           err,
         );
+      }
+    }
+
+    // ── Server-owned waitlist promotion + team-prune on roster shrink ──────
+    // A self-cancel writes as the cancelling user, whose Firestore rule permits
+    // changing ONLY their own membership — it may NOT move a waitlisted stranger
+    // into players[] (audit #5) nor touch draftTeams/rotation (audit #4). So
+    // when a player slot frees, the promotion (auto-admit or offer) AND pruning
+    // the departed player from any drawn teams/rotation happen HERE.
+    //
+    // Idempotent + convergent: the transaction only writes when something
+    // actually changes, and each promotion fills exactly one seat, so a re-fire
+    // stops once no seat is free / nothing is left to prune. An admin path that
+    // already promoted client-side is therefore a no-op here (no free seat).
+    const beforePlayers = before?.players ?? [];
+    const afterPlayers = after.players ?? [];
+    const rosterShrank =
+      JSON.stringify(beforePlayers) !== JSON.stringify(afterPlayers) ||
+      JSON.stringify(before?.waitlist ?? []) !==
+        JSON.stringify(after.waitlist ?? []) ||
+      JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []);
+    // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
+    // PRUNE a departed ghost from drawn teams / live rotation for any game still
+    // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
+    // who leaves a live game must not linger on a team. Only a finished /
+    // cancelled game is skipped.
+    const afterStatus = after.status;
+    const pruneOk =
+      afterStatus === undefined ||
+      afterStatus === 'open' ||
+      afterStatus === 'scheduled' ||
+      afterStatus === 'locked' ||
+      afterStatus === 'active';
+    // PROMOTE a waitlist head into a freed seat only while the game is still
+    // registration-relevant — NOT once it's live ('active'). 'locked' still
+    // promotes (a no-show freeing a seat near kickoff should be backfilled),
+    // matching the admin removePlayer path.
+    const promoteOk =
+      afterStatus === undefined ||
+      afterStatus === 'open' ||
+      afterStatus === 'scheduled' ||
+      afterStatus === 'locked';
+    if (rosterShrank && pruneOk) {
+      // uids that were players before and are no longer in ANY roster array now.
+      const stillHere = new Set<string>([
+        ...afterPlayers,
+        ...(after.waitlist ?? []),
+        ...(after.pending ?? []),
+      ]);
+      const departed = new Set<string>(
+        beforePlayers.filter((p) => !stillHere.has(p)),
+      );
+      let promotedUid: string | null = null;
+      let promotedTitle = '';
+      let promotedStartsAt = 0;
+      try {
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref);
+          if (!snap.exists) return;
+          const d = snap.data() as Record<string, unknown>;
+          const players = Array.isArray(d.players)
+            ? [...(d.players as string[])]
+            : [];
+          const waitlist = Array.isArray(d.waitlist)
+            ? [...(d.waitlist as string[])]
+            : [];
+          const pending = Array.isArray(d.pending)
+            ? [...(d.pending as string[])]
+            : [];
+          const guests = Array.isArray(d.guests)
+            ? (d.guests as { waitlisted?: boolean }[])
+            : [];
+          const activeGuests = guests.filter((g) => !g?.waitlisted).length;
+          const updates: Record<string, unknown> = {};
+
+          // (a) Prune the departed player(s) from drawn teams / live rotation.
+          Object.assign(updates, pruneUidsFromTeamsSrv(d, departed));
+
+          // (b) Fill a freed player seat from the waitlist head — unless an
+          //     offer already reserves it. Only while the game is still
+          //     registration-relevant (promoteOk); a live 'active' game prunes
+          //     ghosts (above) but never backfills a seat mid-play.
+          const ppUid = (d.pendingPromotion as { uid?: string } | null)?.uid;
+          const occupancy = players.length + activeGuests + (ppUid ? 1 : 0);
+          if (
+            promoteOk &&
+            !ppUid &&
+            waitlist.length > 0 &&
+            occupancy < ((d.maxPlayers as number) ?? 15)
+          ) {
+            if (d.waitlistApprovalRequired === false) {
+              // AUTO: admit the head straight in.
+              const head = waitlist.shift() as string;
+              players.push(head);
+              promotedUid = head;
+              promotedTitle = typeof d.title === 'string' ? d.title : '';
+              promotedStartsAt =
+                typeof d.startsAt === 'number' ? d.startsAt : 0;
+              updates.players = players;
+              updates.waitlist = waitlist;
+              updates.participantIds = Array.from(
+                new Set([...players, ...waitlist, ...pending]),
+              );
+            } else {
+              // MANUAL / default: OFFER the seat to the head (the spotOffered
+              // push fires on the next fire, when pendingPromotion.uid changes).
+              updates.pendingPromotion = {
+                uid: waitlist[0],
+                offeredAt: Date.now(),
+              };
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            updates.updatedAt = Date.now();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tx.update(ref, updates as any);
+          }
+        });
+      } catch (err) {
+        console.error(
+          '[onGameRosterChanged] promote/prune failed',
+          event.params.gameId,
+          err,
+        );
+      }
+      if (promotedUid) {
+        try {
+          await createNotificationOnce({
+            type: 'spotOpened',
+            recipientId: promotedUid,
+            payload: {
+              gameId: event.params.gameId,
+              title: promotedTitle,
+              startsAt: promotedStartsAt,
+            },
+          });
+        } catch (err) {
+          console.error(
+            '[onGameRosterChanged] spotOpened push failed',
+            event.params.gameId,
+            err,
+          );
+        }
       }
     }
 
@@ -3735,7 +4195,12 @@ export const onGameRosterChanged = onDocumentWritten(
                 // distinct.
                 entityType: 'game',
                 entityId: event.params.gameId,
-                reason: 'game-join-request',
+                // Key the dedupe by REQUESTER too — otherwise two different
+                // players requesting the SAME game within the cooldown window
+                // collapse into one push and the admin never learns about the
+                // second (they sit unseen in pending). Mirrors the community
+                // path's `req-${requesterId}`.
+                reason: `game-join-request-${requesterId}`,
                 payload: {
                   gameId: event.params.gameId,
                   groupId: after.groupId,
@@ -3925,10 +4390,16 @@ export const onGameRosterChanged = onDocumentWritten(
     const max = after.maxPlayers ?? 0;
     if (max <= 0) return;
 
+    // Count only ACTIVE guests toward occupancy — a waitlisted guest doesn't
+    // hold a seat, so counting them raw could cross the "last spots" threshold
+    // early or wrongly suppress at max (audit #18 class, missed site).
+    const activeG = (gs: unknown): number =>
+      Array.isArray(gs)
+        ? (gs as { waitlisted?: boolean }[]).filter((x) => !x?.waitlisted).length
+        : 0;
     const beforeCount =
-      (before?.players?.length ?? 0) + (before?.guests?.length ?? 0);
-    const afterCount =
-      (after.players?.length ?? 0) + (after.guests?.length ?? 0);
+      (before?.players?.length ?? 0) + activeG(before?.guests);
+    const afterCount = (after.players?.length ?? 0) + activeG(after.guests);
 
     const threshold = Math.ceil(max * 0.9);
     const crossed = beforeCount < threshold && afterCount >= threshold;
@@ -4030,6 +4501,7 @@ export const onVoteWritten = onDocumentWritten(
       ratedUserId,
       countDelta,
       sumDelta,
+      event.id,
     );
   },
 );
@@ -4074,6 +4546,7 @@ export const onVoteWrittenLegacy = onDocumentWritten(
       ratedUserId,
       countDelta,
       sumDelta,
+      event.id,
     );
   },
 );
@@ -4084,21 +4557,37 @@ async function applyVoteDelta(
   ratedUserId: string,
   countDelta: number,
   sumDelta: number,
+  eventId?: string,
 ): Promise<void> {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(summaryRef);
-    const cur =
+    const data =
       snap.exists && snap.data()
-        ? (snap.data() as { count?: number; sum?: number })
-        : { count: 0, sum: 0 };
-    const newCount = Math.max(0, (cur.count ?? 0) + countDelta);
-    const newSum = Math.max(0, (cur.sum ?? 0) + sumDelta);
+        ? (snap.data() as {
+            count?: number;
+            sum?: number;
+            appliedEvents?: string[];
+          })
+        : { count: 0, sum: 0, appliedEvents: [] as string[] };
+    // Idempotency latch. onDocumentWritten is at-least-once: a redelivery /
+    // retry of the SAME event carries the SAME event.id and identical
+    // before/after snapshots, so it would recompute and re-apply the same
+    // delta — double-counting a vote. Skip if we've already applied this id.
+    const applied = Array.isArray(data.appliedEvents) ? data.appliedEvents : [];
+    if (eventId && applied.includes(eventId)) return;
+    const newCount = Math.max(0, (data.count ?? 0) + countDelta);
+    const newSum = Math.max(0, (data.sum ?? 0) + sumDelta);
     const newAvg = newCount > 0 ? Math.round((newSum / newCount) * 10) / 10 : 0;
+    // Keep only the most recent ids so the doc can't grow unbounded.
+    const nextApplied = eventId
+      ? [...applied, eventId].slice(-30)
+      : applied;
     tx.set(summaryRef, {
       userId: ratedUserId,
       count: newCount,
       sum: newSum,
       average: newAvg,
+      appliedEvents: nextApplied,
       updatedAt: Date.now(),
     });
   });
@@ -4193,7 +4682,10 @@ type BalanceZone =
  */
 function normalizeRating(v: number): number {
   const r = v > 5 ? v / 2 : v;
-  return Math.min(5, Math.max(1, r));
+  // Floor at 0 (not 1): the live scale is 0–5 and sub-1 ratings are real, so
+  // flooring to 1 would erase the sub-1 resolution at balance time. Mirrors the
+  // client `normalizeRating` in src/utils/draft.ts.
+  return Math.min(5, Math.max(0, r));
 }
 
 function balanceTeamsV1(
@@ -4421,7 +4913,25 @@ async function generateForGame(
     // stays small and fast (transactions retry; we don't want to
     // re-read every rating doc each retry).
     const players = g.players ?? [];
-    const ratings = await loadGroupRatings(g.groupId!, players);
+    // Ratings live on the group's `adminRatings` map since the peer-vote system
+    // was removed. Reading the dead `groups/{id}/ratings` subcollection returns
+    // {} → everyone neutral → effectively random teams despite admin ratings
+    // (audit #14). Branch on internalRating like generateDraftTeamsForGame does;
+    // fall back to the legacy subcollection only for non-internal groups.
+    const grpSnap = await db.collection('groups').doc(g.groupId!).get();
+    const grpData = grpSnap.data() as
+      | { internalRating?: boolean; adminRatings?: Record<string, number> }
+      | undefined;
+    let ratings: Record<string, number>;
+    if (grpData?.internalRating) {
+      ratings = {};
+      for (const uid of players) {
+        const r = grpData.adminRatings?.[uid];
+        if (typeof r === 'number' && r > 0) ratings[uid] = r;
+      }
+    } else {
+      ratings = await loadGroupRatings(g.groupId!, players);
+    }
     const perTeam = perTeamSize(g.format);
     const numberOfTeams =
       typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
@@ -4896,19 +5406,20 @@ export const setGuestRating = onCall(
     if (!gameId || gameId.length > 128 || !guestId || guestId.length > 128) {
       throw new HttpsError('invalid-argument', 'invalid gameId or guestId');
     }
-    // rating: a number in [1,5] (one-decimal granularity) or null to clear.
+    // rating: a number in (0,5] (one-decimal granularity, sub-1 allowed) or
+    // null to clear. The slider's far-left 0 means unrated → treated as clear.
     let rating: number | null;
-    if (data.rating === null || data.rating === undefined) {
+    if (data.rating === null || data.rating === undefined || data.rating === 0) {
       rating = null;
     } else if (
       typeof data.rating === 'number' &&
       Number.isFinite(data.rating) &&
-      data.rating >= 1 &&
+      data.rating > 0 &&
       data.rating <= 5
     ) {
       rating = Math.round(data.rating * 10) / 10;
     } else {
-      throw new HttpsError('invalid-argument', 'rating must be 1..5 or null');
+      throw new HttpsError('invalid-argument', 'rating must be within (0,5] or null');
     }
 
     const ref = db.collection('games').doc(gameId);
@@ -4940,6 +5451,255 @@ export const setGuestRating = onCall(
         ...guests.slice(idx + 1),
       ];
       tx.update(ref, { guests: next, updatedAt: Date.now() });
+    });
+    return { ok: true };
+  },
+);
+
+// Full account deletion — server-side, atomic-per-step, run to completion.
+// The client calls this ONLY after a successful re-auth, then signs out; the
+// callable does ALL cleanup and deletes the Auth user last. This fixes two
+// bugs in the old client-only flow: (1) a re-auth CANCEL used to leave the
+// user already swept out of every game (partial destruction); now nothing
+// happens unless this callable is reached. (2) deletion never removed the
+// user from COMMUNITIES, bricking a sole-admin community forever and leaking
+// the social graph; now communities, games, friends and chat names are all
+// cleaned here.
+export const deleteMyAccount = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required');
+    }
+    const uid = auth.uid;
+    const now = Date.now();
+
+    // ── 1) Communities ── remove uid from every group's arrays; hand off or
+    // dissolve ownership so no community is left orphaned.
+    try {
+      const seenGroups = new Set<string>();
+      for (const field of ['adminIds', 'playerIds', 'pendingPlayerIds']) {
+        const snap = await db
+          .collection('groups')
+          .where(field, 'array-contains', uid)
+          .get();
+        for (const gd of snap.docs) {
+          if (seenGroups.has(gd.id)) continue;
+          seenGroups.add(gd.id);
+          const g = gd.data() as {
+            adminIds?: string[];
+            playerIds?: string[];
+            pendingPlayerIds?: string[];
+            creatorId?: string;
+          };
+          const admins = (g.adminIds ?? []).filter((x) => x !== uid);
+          const players = (g.playerIds ?? []).filter((x) => x !== uid);
+          const pending = (g.pendingPlayerIds ?? []).filter((x) => x !== uid);
+          const isCreator = (g.creatorId ?? (g.adminIds ?? [])[0]) === uid;
+          if (isCreator && admins.length === 0 && players.length === 0) {
+            // Sole member/owner → dissolve the community + its games + mirror.
+            const games = await db
+              .collection('games')
+              .where('groupId', '==', gd.id)
+              .get();
+            let b = db.batch();
+            let n = 0;
+            const bump = async () => {
+              if (++n >= 450) { await b.commit(); b = db.batch(); n = 0; }
+            };
+            for (const game of games.docs) { b.delete(game.ref); await bump(); }
+            b.delete(db.collection('groupsPublic').doc(gd.id)); await bump();
+            b.delete(db.collection('communityShowcase').doc(gd.id)); await bump();
+            b.delete(gd.ref);
+            await b.commit();
+          } else {
+            const update: Record<string, unknown> = {
+              adminIds: admins,
+              playerIds: players,
+              pendingPlayerIds: pending,
+              updatedAt: now,
+            };
+            if (isCreator) {
+              // Hand ownership to a remaining admin, else promote the oldest
+              // remaining player to admin+creator.
+              if (admins.length > 0) {
+                update.creatorId = admins[0];
+              } else {
+                update.adminIds = [players[0]];
+                update.creatorId = players[0];
+              }
+            }
+            await gd.ref.update(update);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[deleteMyAccount] community sweep failed', uid, err);
+    }
+
+    // ── 2) Games ── remove uid from every game roster.
+    try {
+      const games = await db
+        .collection('games')
+        .where('participantIds', 'array-contains', uid)
+        .get();
+      for (const gd of games.docs) {
+        const g = gd.data() as {
+          players?: string[];
+          waitlist?: string[];
+          pending?: string[];
+        };
+        const players = (g.players ?? []).filter((x) => x !== uid);
+        const waitlist = (g.waitlist ?? []).filter((x) => x !== uid);
+        const pending = (g.pending ?? []).filter((x) => x !== uid);
+        await gd.ref.update({
+          players,
+          waitlist,
+          pending,
+          participantIds: Array.from(new Set([...players, ...waitlist, ...pending])),
+          updatedAt: now,
+        });
+      }
+    } catch (err) {
+      console.error('[deleteMyAccount] game sweep failed', uid, err);
+    }
+
+    // ── 3) Friends ── bilateral removal.
+    try {
+      const meSnap = await db.collection('users').doc(uid).get();
+      const myFriends = (meSnap.data()?.friends as string[] | undefined) ?? [];
+      for (const fid of myFriends) {
+        await db
+          .collection('users')
+          .doc(fid)
+          .update({ friends: admin.firestore.FieldValue.arrayRemove(uid) })
+          .catch(() => {});
+      }
+    } catch (err) {
+      console.error('[deleteMyAccount] friends cleanup failed', uid, err);
+    }
+
+    // ── 4) Chat display name ── anonymise the user's name on ALL their messages
+    // so deletion actually erases the PII. Paginated past the old single-batch
+    // 450 cap: a prolific poster kept their real name/avatar on every older
+    // message forever after a "permanent deletion" (GDPR/store gap, audit #17).
+    // Loop over startAfter batches until exhausted; bounded by a generous cap so
+    // a runaway can't spin forever.
+    try {
+      const PAGE = 450;
+      const MAX_BATCHES = 200; // up to 90k messages — far beyond any real user
+      let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+      for (let i = 0; i < MAX_BATCHES; i++) {
+        let q = db
+          .collectionGroup('messages')
+          .where('senderId', '==', uid)
+          .orderBy('__name__')
+          .limit(PAGE);
+        if (cursor) q = q.startAfter(cursor);
+        const msgs = await q.get();
+        if (msgs.empty) break;
+        const b = db.batch();
+        msgs.docs.forEach((m) =>
+          b.update(m.ref, {
+            senderName: 'משתמש שהוסר',
+            senderAvatarId: '',
+            senderPhotoUrl: '',
+          }),
+        );
+        await b.commit();
+        if (msgs.size < PAGE) break; // last page
+        cursor = msgs.docs[msgs.docs.length - 1];
+      }
+    } catch (err) {
+      // A missing collection-group index just means we skip this best-effort step.
+      console.warn('[deleteMyAccount] chat anonymise skipped', uid, err);
+    }
+
+    // ── 5) Anonymise the /users doc, then delete the Auth user LAST.
+    try {
+      await db.collection('users').doc(uid).set(
+        {
+          name: 'משתמש שהוסר',
+          email: admin.firestore.FieldValue.delete(),
+          photoUrl: admin.firestore.FieldValue.delete(),
+          deletedAt: now,
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
+    }
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (err) {
+      console.error('[deleteMyAccount] auth delete failed', uid, err);
+      throw new HttpsError('internal', 'account data cleared but auth delete failed');
+    }
+    return { ok: true };
+  },
+);
+
+// Report a chat message. IDs only — the server loads the REAL message and
+// stores its actual text/author on the report. Previously the client wrote
+// the report doc directly with client-supplied messageText/senderId, so a
+// reporter could fabricate abusive text and frame an innocent user in the
+// moderation queue. Now the report content is authoritative.
+export const reportChatMessage = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) {
+      throw new HttpsError('unauthenticated', 'sign-in required to report');
+    }
+    const data = (request.data ?? {}) as {
+      scope?: unknown;
+      parentId?: unknown;
+      messageId?: unknown;
+    };
+    const scope = typeof data.scope === 'string' ? data.scope : '';
+    const parentId = typeof data.parentId === 'string' ? data.parentId : '';
+    const messageId =
+      typeof data.messageId === 'string' ? data.messageId : '';
+    if (
+      !parentId ||
+      parentId.length > 128 ||
+      !messageId ||
+      messageId.length > 128 ||
+      !['game', 'community', 'dm'].includes(scope)
+    ) {
+      throw new HttpsError('invalid-argument', 'invalid report target');
+    }
+    const collByScope: Record<string, string> = {
+      game: 'games',
+      community: 'groups',
+      dm: 'dmConversations',
+    };
+    const msgSnap = await db
+      .collection(collByScope[scope])
+      .doc(parentId)
+      .collection('messages')
+      .doc(messageId)
+      .get();
+    if (!msgSnap.exists) {
+      throw new HttpsError('not-found', 'message not found');
+    }
+    const m = msgSnap.data() as {
+      text?: unknown;
+      senderId?: unknown;
+      senderName?: unknown;
+    };
+    await db.collection('chatReports').add({
+      reporterId: auth.uid,
+      scope,
+      parentId,
+      messageId,
+      // Authoritative — copied from the real message, not the caller.
+      messageText: String(m.text ?? '').slice(0, 2000),
+      senderId: typeof m.senderId === 'string' ? m.senderId : '',
+      senderName: typeof m.senderName === 'string' ? m.senderName : '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAtMs: Date.now(),
     });
     return { ok: true };
   },
@@ -5230,12 +5990,22 @@ export const adminAddPlayers = onCall(
         participantIds?: string[];
         joinedAt?: Record<string, number>;
         maxPlayers?: number;
+        guests?: { waitlisted?: boolean }[];
+        pendingPromotion?: { uid?: string } | null;
       };
       const players = [...(g.players ?? [])];
       const waitlist = [...(g.waitlist ?? [])];
       const pending = [...(g.pending ?? [])];
       const joinedAt = { ...(g.joinedAt ?? {}) };
       const cap = typeof g.maxPlayers === 'number' && g.maxPlayers > 0 ? g.maxPlayers : Infinity;
+      // Occupancy must count ACTIVE guests and a live promotion offer — not just
+      // players.length — or an admin add would over-fill past maxPlayers when
+      // guests/an offer already hold the remaining seats (audit #19).
+      const activeGuests = Array.isArray(g.guests)
+        ? g.guests.filter((x) => !x?.waitlisted).length
+        : 0;
+      const offerHeld = g.pendingPromotion?.uid ? 1 : 0;
+      let occupancy = players.length + activeGuests + offerHeld;
       const inRoster = new Set<string>([...players, ...waitlist, ...pending]);
       const now = Date.now();
 
@@ -5246,8 +6016,9 @@ export const adminAddPlayers = onCall(
         if (inRoster.has(uid)) continue; // already registered → skip
         inRoster.add(uid);
         joinedAt[uid] = now;
-        if (players.length < cap) {
+        if (occupancy < cap) {
           players.push(uid);
+          occupancy += 1;
           addedToPlayers.push(uid);
         } else {
           waitlist.push(uid);
@@ -5339,6 +6110,10 @@ export const notifyPlayerCancelled = onCall(
       createdBy?: string;
       title?: string;
       startsAt?: number;
+      players?: string[];
+      waitlist?: string[];
+      pending?: string[];
+      cancellations?: Record<string, number>;
     };
     const adminUid = game.createdBy;
     if (!adminUid) {
@@ -5348,6 +6123,19 @@ export const notifyPlayerCancelled = onCall(
     }
     if (adminUid === callerUid) {
       return { ok: true, skipped: 'self-cancel' };
+    }
+    // Only a real participant may fire a cancel notification. The cancel flow
+    // removes the player from the roster BEFORE calling this, so accept either
+    // a current roster membership OR a just-stamped cancellations[uid] entry.
+    // Without this, an attacker could enumerate gameIds and spam every
+    // organiser with fake "X cancelled" pushes.
+    const related =
+      (game.players ?? []).includes(callerUid) ||
+      (game.waitlist ?? []).includes(callerUid) ||
+      (game.pending ?? []).includes(callerUid) ||
+      !!(game.cancellations && game.cancellations[callerUid]);
+    if (!related) {
+      return { ok: true, skipped: 'not-a-participant' };
     }
     const cancellingUserName =
       (userSnap.exists &&
@@ -5697,12 +6485,26 @@ export const promoteOrphanToGroup = onCall(
           keep.set(x.userId, { goals, assists, rounds, wins, losses, games: 1 });
           totalGoals += goals;
         }
-        const batch = db.batch();
+        // Chunked commits — a personal group accumulates a communityPlayerStats
+        // row per distinct player across every one-off game, which can exceed
+        // the 500-op batch cap. A single batch would throw and silently leave
+        // the stats commingled (the exact bug this reset fixes).
+        let batch = db.batch();
+        let opCount = 0;
+        const bump = async () => {
+          opCount++;
+          if (opCount >= 450) {
+            await batch.commit();
+            batch = db.batch();
+            opCount = 0;
+          }
+        };
         // Drop every commingled row that doesn't belong to the promoting game.
         for (const d of cpsSnap.docs) {
           const x = d.data() as { userId?: string };
           if (x.userId && keep.has(x.userId)) continue;
           batch.delete(d.ref);
+          await bump();
         }
         // Overwrite the kept players with EXACTLY this game's tally.
         for (const [uid, v] of keep) {
@@ -5717,12 +6519,18 @@ export const promoteOrphanToGroup = onCall(
             games: v.games,
             updatedAt: now,
           });
+          await bump();
         }
-        // Club totals = this game's mini-games (committed rounds) + goals.
+        // Club totals = this game's mini-games (committed rounds) + goals +
+        // ties (so the new club's draw-rate fun fact isn't stuck at 0%).
+        const tiedRounds = roundsSnap.docs.filter(
+          (d) => (d.data() as { winnerSide?: string }).winnerSide === 'tie',
+        ).length;
         batch.set(db.collection('communityStats').doc(groupId), {
           groupId,
           rounds: roundsSnap.size,
           goals: totalGoals,
+          tiedRounds,
           updatedAt: now,
         });
         await batch.commit();
@@ -6616,13 +7424,25 @@ async function recomputeCommunityShowcase(
 
   const recentGames: ShowcaseRecentGame[] = recentGamesRaw.slice(0, 5);
 
+  // Privacy: the showcase doc is world-readable (unauthenticated share
+  // preview). Do NOT expose the EXACT field address to the open internet —
+  // city + field NAME are enough for a preview; the precise address is a
+  // physical-safety concern. And for CLOSED communities, publish NO member
+  // roster / name leaderboard publicly — only aggregate stats. Open
+  // communities keep the player showcase (that's the marketing feature).
+  const publicMembers = group.isOpen ? members : [];
+  const publicTopAttenders = group.isOpen ? topAttenders : [];
+  // Closed communities also must NOT leak their recent game titles or the field
+  // NAME publicly — only aggregate counts. (Open communities keep them as part
+  // of the marketing showcase.)
+  const publicRecentGames = group.isOpen ? recentGames : [];
   const showcase: ShowcaseDoc = {
     groupId,
     name: group.name ?? 'מועדון',
     description: group.description ?? null,
     city: group.city ?? null,
-    fieldName: group.fieldName ?? null,
-    fieldAddress: group.fieldAddress ?? null,
+    fieldName: group.isOpen ? (group.fieldName ?? null) : null,
+    fieldAddress: null,
     isOpen: !!group.isOpen,
     foundedAt: group.createdAt ?? now,
     totalGamesFinished: totalFinished,
@@ -6633,9 +7453,9 @@ async function recomputeCommunityShowcase(
     totalMembers: memberIds.length,
     activeMembersThisMonth: activeMonth.size,
     activeMembersThisYear: activeYear.size,
-    topAttenders,
-    recentGames,
-    members,
+    topAttenders: publicTopAttenders,
+    recentGames: publicRecentGames,
+    members: publicMembers,
     updatedAt: now,
   };
 
@@ -6716,6 +7536,18 @@ export const updateShowcaseOnGameChange = onDocumentWritten(
     // Only recompute when the doc is/was terminal — that's the only
     // shape that contributes to showcase aggregates.
     if (!beforeTerminal && !afterTerminal) return;
+    // Edit to an ALREADY-terminal game (retro-goal, arrival fix, an unrelated
+    // field edit): only recompute if a field the showcase actually reads
+    // changed. Otherwise every such write triggered a ~250-read aggregation.
+    if (beforeTerminal && afterTerminal) {
+      const b = event.data?.before?.data() as Record<string, unknown> | undefined;
+      const a = event.data?.after?.data() as Record<string, unknown> | undefined;
+      const showcaseKeys = ['status', 'players', 'arrivals', 'title', 'startsAt'];
+      const changed = showcaseKeys.some(
+        (k) => JSON.stringify(b?.[k]) !== JSON.stringify(a?.[k]),
+      );
+      if (!changed) return;
+    }
     try {
       await recomputeCommunityShowcase(groupId);
     } catch (err) {
@@ -8194,15 +9026,26 @@ export const inviteFriendsToGroup = onCall(
       adminIds?: string[];
       playerIds?: string[];
       pendingPlayerIds?: string[];
+      isOpen?: boolean;
+      maxMembers?: number;
     };
-    const members = new Set([
+    // Authorization: only APPROVED members (admins + players) may invite —
+    // NOT someone merely sitting in pendingPlayerIds. Before, a user could
+    // self-add to a closed group's pending queue and immediately invite their
+    // friends into it, acting as an inviter for a community they hadn't joined.
+    const approvedMembers = new Set([
       ...(g.adminIds || []),
       ...(g.playerIds || []),
-      ...(g.pendingPlayerIds || []),
     ]);
-    if (!members.has(uid)) {
+    if (!approvedMembers.has(uid)) {
       throw new HttpsError('permission-denied', 'not a member of this group');
     }
+    // For the "already in group" exclusion below, pending counts too (don't
+    // re-invite someone with a request already in flight).
+    const members = new Set([
+      ...approvedMembers,
+      ...(g.pendingPlayerIds || []),
+    ]);
     const inviterSnap = await db.collection('users').doc(uid).get();
     const inviterData = inviterSnap.data() as {
       friends?: string[];
@@ -8217,12 +9060,29 @@ export const inviteFriendsToGroup = onCall(
     const toInvite = friendIds.filter(
       (fid) => inviterFriends.has(fid) && !members.has(fid),
     );
-    const room = Math.max(0, 200 - (g.pendingPlayerIds?.length || 0));
+    // Enforce the community's member cap. The old cap (200 − pendingCount) both
+    // used a fixed 200 and measured the WRONG array (pending) for open groups —
+    // where invitees land straight in playerIds — so an open club could be
+    // pushed well past maxMembers, after which the admin could no longer edit it
+    // (GROUP_MAX_BELOW_CURRENT). Count everyone already in the community and cap
+    // by maxMembers (hard-limited to 500 for the gRPC/arrayUnion safety) (#8).
+    const maxMembers =
+      typeof g.maxMembers === 'number' && g.maxMembers > 0
+        ? Math.min(g.maxMembers, 500)
+        : 500;
+    const currentCount =
+      (g.playerIds?.length || 0) + (g.pendingPlayerIds?.length || 0);
+    const room = Math.max(0, maxMembers - currentCount);
     const accepted = toInvite.slice(0, room);
     if (accepted.length === 0) return { invited: 0 };
+    // OPEN community → add invitees straight to playerIds (they'd auto-join
+    // anyway). Dropping them into pendingPlayerIds instead created membership
+    // drift (a user could end up in BOTH lists once they self-joined) and made
+    // admins get a bogus "wants to join" push for a member's invitee.
     await groupRef.set(
       {
-        pendingPlayerIds: admin.firestore.FieldValue.arrayUnion(...accepted),
+        [g.isOpen ? 'playerIds' : 'pendingPlayerIds']:
+          admin.firestore.FieldValue.arrayUnion(...accepted),
         updatedAt: Date.now(),
       },
       { merge: true },
@@ -8650,14 +9510,41 @@ export const commitRoundStats = onCall(
     }
     if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
 
-    const A = (sideA ?? []).filter(isReal);
-    const B = (sideB ?? []).filter(isReal);
-    // Bound the side sizes BEFORE building the batch. The against-pairs loop
-    // writes |A|×|B| docs; an unbounded (or forged) payload could blow the
-    // Firestore 500-op batch cap, failing commit() and losing the WHOLE round's
-    // stats. Real formats top out at 7-a-side, so 20 is generous headroom while
-    // keeping |A|×|B| (≤400) + per-player writes safely under 500.
-    const MAX_SIDE = 20;
+    // Bind the credited sides to the game's ACTUAL registered roster. Without
+    // this an admin of a throwaway game could name ANY uid on a side and
+    // credit — or DEFAME — that person's GLOBAL profile stats. The same
+    // roster guard addRetroGoal already applies. (Faking your OWN stats inside
+    // your own real game is still possible; touching a non-participant's
+    // numbers is not.) Goals/assists are filtered through onField below, so a
+    // scorer/assister off the roster is dropped automatically.
+    const roster = new Set<string>([
+      ...((game.players as string[] | undefined) ?? []),
+      ...((game.waitlist as string[] | undefined) ?? []),
+    ]);
+    // Build the sides deduped AND disjoint: a uid may appear at most once, and
+    // never on both sides. Without this a duplicated/both-sides uid (a client
+    // team-assignment bug or forged payload) was credited a WIN and a LOSS in
+    // the same round, plus a self-pair (uid vs uid) polluting nemesis/duo.
+    const seen = new Set<string>();
+    const A: string[] = [];
+    const B: string[] = [];
+    for (const id of sideA ?? []) {
+      if (isReal(id) && roster.has(id) && !seen.has(id)) { seen.add(id); A.push(id); }
+    }
+    for (const id of sideB ?? []) {
+      if (isReal(id) && roster.has(id) && !seen.has(id)) { seen.add(id); B.push(id); }
+    }
+    // Bound the side sizes BEFORE building the batch. Per round this batch writes
+    // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
+    // per-player tallies + the latch — all in ONE atomic batch. Worst case at
+    // n-per-side ≈ 2n² + ~13n; that crosses Firestore's 500-op cap around n≈13,
+    // where commit() throws and — because the committedRounds latch is in the
+    // SAME batch — every retry re-fails identically (permanent loss of the
+    // round's stats). Real football tops out at 11-a-side, so 11 covers every
+    // legitimate format with worst-case ≈ 400 ops (safe margin), and a larger
+    // (unreal / forged) round fails fast with a clear error instead of a silent
+    // batch overflow. [Was 20 — that allowed the overflow.]
+    const MAX_SIDE = 11;
     if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
       throw new HttpsError(
         'invalid-argument',

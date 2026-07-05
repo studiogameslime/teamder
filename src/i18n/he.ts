@@ -145,7 +145,7 @@ export const he = {
   ratingTitle: 'דרג את {name}',
   ratingNoSelf: 'אי אפשר לדרג את עצמך',
   ratingNone: 'עדיין אין דירוגים',
-  ratingDragHint: 'גררו על הסרגל כדי לדרג (1.0–5.0)',
+  ratingDragHint: 'גררו על הסרגל כדי לדרג (0.0–5.0)',
   // Team colour picker (DraftBoard) — names the team by colour in plural.
   teamColorTitle: 'בחרו צבע לקבוצה',
   teamColorClear: 'ללא צבע (ברירת מחדל)',
@@ -646,6 +646,12 @@ export const he = {
     'כשמופעל — המשחק פתוח ומוצג בלשונית המשחקים גם למי שאינם במועדון. כבוי — המשחק סגור לחברי המועדון בלבד.',
   createGameRequiresApproval: 'הצטרפות דורשת אישור',
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
+  createGameWaitlistApproval: 'קידום מרשימת המתנה דורש אישור השחקן',
+  createGameWaitlistApprovalHint:
+    'כשמופעל (ברירת מחדל) — כשמתפנה מקום, הראשון בהמתנה מקבל התראה וצריך לאשר שהוא מגיע תוך פרק הזמן שתקבע; אם לא אישר, ההצעה עוברת לבא בתור. המקום שמור עד אז (מי שנרשם חדש נכנס לסוף ההמתנה). כשמכובה — הראשון בהמתנה נכנס אוטומטית בלי לאשר.',
+  createGameWaitlistTimeout: 'זמן לאישור (דקות)',
+  createGameWaitlistTimeoutHint:
+    'כמה דקות יש לשחקן שקיבל את המקום לאשר, לפני שההצעה עוברת לבא בתור.',
   createGameNotes: 'הערות (לא חובה)',
   createGameBringBall: 'מישהו צריך להביא כדור',
   createGameBringShirts: 'מישהו צריך להביא גופיות',
@@ -666,6 +672,8 @@ export const he = {
   matchDetailsDeletedTitle: 'המשחק כבר לא קיים',
   matchDetailsDeletedBody:
     'המשחק נמחק או הוסר. אפשר לחזור לרשימת המשחקים ולמצוא משחק אחר.',
+  matchDetailsLoadErrorTitle: 'לא הצלחנו לטעון את המשחק',
+  matchDetailsLoadErrorBody: 'בדוק את החיבור לאינטרנט ונסה שוב.',
   communityDetailsDeletedTitle: 'המועדון כבר לא קיים',
   communityDetailsDeletedBody:
     'המועדון נמחק על ידי המנהל. אפשר לחזור לרשימת המועדונים ולחפש מועדון אחר.',
@@ -857,7 +865,7 @@ export const he = {
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
   communityAdminRatingTitle: (name: string) => `דירוג ${name}`,
-  communityAdminRatingHint: 'דרג את השחקן (1.0–5.0). דירוג פנימי — נראה למנהלים בלבד.',
+  communityAdminRatingHint: 'דרג את השחקן (0.0–5.0). דירוג פנימי — נראה למנהלים בלבד.',
   communityAdminRatingClear: 'נקה דירוג',
   communityAdminRatingSet: 'דרג',
   // ── Community statistics screen ──
@@ -1639,6 +1647,7 @@ export const he = {
   validateOutOfRange: '{field} חייב להיות בין {min} ל-{max}',
   validationErrorTitle: 'לא ניתן לשמור את המשחק',
   gameOpenAfterKickoff: 'זמן פתיחת ההרשמה הציבורית / לאורחים חייב להיות לפני תחילת המשחק.',
+  gamePublicBeforeReg: 'הפתיחה לכולם חייבת להיות אחרי פתיחת ההרשמה לחברי המועדון.',
   inviteRateLimited: 'שלחת יותר מדי הזמנות. נסה שוב מאוחר יותר.',
   inviteAlreadyJoined: 'השחקן כבר רשום למשחק.',
   inviteNotAllowed: 'אין לך הרשאה להזמין למשחק הזה.',
@@ -2012,6 +2021,7 @@ export const he = {
   matchPlayersSectionGuests: 'אורחים',
   matchPlayersAdminTag: 'מנהל',
   matchPlayersWaitlistTag: 'המתנה',
+  matchPlayersJoinedAt: 'נרשם',
   matchPlayersPendingTag: 'ממתין',
   matchPlayersGuestTag: 'אורח',
   matchPlayersLateTag: 'באיחור',

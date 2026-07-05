@@ -121,6 +121,11 @@ const NORMALIZED_BANNED: readonly string[] = BANNED_WORDS.map((w) =>
 // Hebrew roots + all English keep substring matching (padded/affixed evasion
 // matters there and false positives are rare).
 const HEB_LETTER = /[א-ת]/;
+// Banned Hebrew words that are a substring of a common innocent word → only an
+// EXACT token match counts (never substring). Kept separate from the ≤4-letter
+// short-root rule because these are longer (5+) but still over-match.
+const EXACT_TOKEN_ONLY = new Set(['זונה', 'זונות']);
+
 function isShortHebrewRoot(w: string): boolean {
   return w.length <= 4 && HEB_LETTER.test(w) && !/[a-z]/.test(w);
 }
@@ -144,6 +149,11 @@ export function containsProfanity(text: string): boolean {
     // Short Hebrew root → exact token only (checked above) — no substring, or
     // it would over-block innocent words that merely contain the letters.
     if (isShortHebrewRoot(banned)) continue;
+    // Hebrew words that are a substring of a common INNOCENT word — require an
+    // exact token match (already checked above), never substring. e.g. "זונות"
+    // ⊂ "מזונות" (alimony/foodstuffs), "זונה" ⊂ "מזונה". Without this the
+    // innocent word was silently blocked.
+    if (EXACT_TOKEN_ONLY.has(banned)) continue;
     // Longer single-word root: substring match against each token. Living
     // inside a token (not across the whole string) avoids cross-word matches
     // while still catching padded/affixed forms.

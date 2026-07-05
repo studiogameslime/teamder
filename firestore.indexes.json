@@ -4,6 +4,30 @@
       "collectionGroup": "games",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "visibility",  "order": "ASCENDING" },
+        { "fieldPath": "publicOpenAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",             "order": "ASCENDING" },
+        { "fieldPath": "registrationOpensAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "communityPairStats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "order": "ASCENDING" },
+        { "fieldPath": "assists", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "games",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "startsAt",       "order": "ASCENDING" }
       ]
@@ -187,6 +211,14 @@
         { "order": "DESCENDING", "queryScope": "COLLECTION" },
         { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
         { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "senderId",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
       ]
     }
   ]

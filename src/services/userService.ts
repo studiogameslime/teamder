@@ -21,7 +21,8 @@ import { sanitizeDisplayString } from '@/utils/validate';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
-import { USE_MOCK_DATA } from '@/firebase/config';
+import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { httpsCallable } from 'firebase/functions';
 import {
   deleteCurrentFirebaseUser,
   signInAnonymously as fbSignInAnonymously,
@@ -122,7 +123,11 @@ export const userService = {
       // Presence ping — powers Pulse's platform / "inactive N days" segments.
       // Fire-and-forget; a failure here must never block sign-in.
       void touchPresence(fbUser.uid);
-      return snap.data();
+      const existing = snap.data();
+      // Refresh the offline fallback snapshot so the NEXT dead-zone cold start
+      // can restore this user instead of bouncing to SignIn.
+      await cacheAuthUser(existing);
+      return existing;
     }
     // Lazily (re-)create with a random built-in avatar — handles two
     // cases: (a) brand-new sign-in where signInWithGoogle's setDoc
@@ -148,6 +153,7 @@ export const userService = {
     }
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
+    await cacheAuthUser(fresh);
     return fresh;
   },
 
@@ -166,7 +172,11 @@ export const userService = {
     const fbUser = await fbSignInWithGoogle();
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+    if (snap.exists()) {
+      const existing = snap.data();
+      await cacheAuthUser(existing);
+      return existing;
+    }
     const fresh: User = {
       id: fbUser.uid,
       name: fbUser.displayName ?? '',
@@ -196,6 +206,7 @@ export const userService = {
     }
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
+    await cacheAuthUser(fresh);
     return fresh;
   },
 
@@ -208,7 +219,11 @@ export const userService = {
     const { user: fbUser, fullName } = await fbSignInWithApple();
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+    if (snap.exists()) {
+      const existing = snap.data();
+      await cacheAuthUser(existing);
+      return existing;
+    }
     const fresh: User = {
       id: fbUser.uid,
       // Apple hands the name back only on the first authorization
@@ -235,6 +250,7 @@ export const userService = {
     }
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
+    await cacheAuthUser(fresh);
     return fresh;
   },
 
@@ -252,7 +268,11 @@ export const userService = {
     const fbUser = await fbSignInWithEmail(email, password);
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+    if (snap.exists()) {
+      const existing = snap.data();
+      await cacheAuthUser(existing);
+      return existing;
+    }
     const fresh: User = {
       id: fbUser.uid,
       name: fbUser.displayName ?? '',
@@ -272,6 +292,7 @@ export const userService = {
       }
       throw err;
     }
+    await cacheAuthUser(fresh);
     return fresh;
   },
 
@@ -290,7 +311,11 @@ export const userService = {
     const fbUser = await fbSignUpWithEmail(email, password);
     const ref = docs.user(fbUser.uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+    if (snap.exists()) {
+      const existing = snap.data();
+      await cacheAuthUser(existing);
+      return existing;
+    }
     const fresh: User = {
       id: fbUser.uid,
       name: '',
@@ -312,6 +337,7 @@ export const userService = {
     }
     await applyInviteAttributionIfFresh(fresh.id);
     await applyAcquisitionIfFresh(fresh.id);
+    await cacheAuthUser(fresh);
     return fresh;
   },
 
@@ -367,7 +393,7 @@ export const userService = {
       });
       throw e;
     }
-    return {
+    const next: User = {
       ...cur,
       name: trimmedName,
       ...(patch.avatarId ? { avatarId: patch.avatarId } : {}),
@@ -375,6 +401,8 @@ export const userService = {
       onboardingCompleted: true,
       updatedAt,
     };
+    await cacheAuthUser(next);
+    return next;
   },
 
   /**
@@ -545,7 +573,7 @@ export const userService = {
    * Step 3: clear local AsyncStorage so the app boots into the
    * sign-in screen.
    */
-  async deleteOwnAccount(password?: string): Promise<void> {
+  async deleteOwnAccount(_password?: string): Promise<void> {
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (cur) {
@@ -575,88 +603,27 @@ export const userService = {
     //     side at delivery time; sequencing matters only for the
     //     window between sweep and anonymise.)
 
-    // Idempotent push gate: if a previous attempt already notified
-    // admins (latch in AsyncStorage), suppress notifications on this
-    // run. The sweep itself is naturally idempotent (a second
-    // transaction simply reads no-op state and writes nothing).
-    const alreadyNotified = await storage.wasDeleteSweepNotified(cur.id);
+    // Full deletion is done SERVER-SIDE by the deleteMyAccount callable (Admin
+    // SDK): it removes the user from every community (handing off or dissolving
+    // sole-owned ones so none is orphaned), every game roster, both sides of
+    // every friendship, anonymises their name in chat, wipes the /users doc,
+    // and deletes the Auth user LAST. This replaces the old client flow that
+    // (a) swept games BEFORE a client re-auth that the user could CANCEL —
+    // leaving them kicked from every game with no account deleted — and
+    // (b) never touched community memberships. Admin deleteUser needs no
+    // recent login, so there is no re-auth step to cancel.
+    const { functions } = getFirebase();
+    const fn = httpsCallable(functions, 'deleteMyAccount');
+    await fn({});
+    // The Auth user is gone (token now invalid) — sign out locally + clear
+    // storage so the app boots to sign-in.
     try {
-      await gameService.leaveAllGamesForAccountDeletion(cur.id, {
-        suppressNotifications: alreadyNotified,
-      });
-      if (!alreadyNotified) {
-        // Latch the marker so a retry of deleteOwnAccount doesn't
-        // re-fire the per-admin pushes. Cleared after auth-delete
-        // succeeds so future sign-ins start fresh.
-        await storage.setDeleteSweepNotified(cur.id);
-      }
-    } catch (err) {
-      logError('deleteAccountGameSweep', err, { uid: cur.id });
-      if (__DEV__) console.warn('[deleteAccount] game sweep failed', err);
+      await signOutFirebase();
+    } catch {
+      /* token already invalidated by the server-side delete — expected */
     }
-
-    // Cache fields that anonymisation will overwrite, so we can
-    // restore on failure. Only round-trip the keys we touch — no
-    // need to copy the entire doc.
-    const restorePayload: Record<string, unknown> = {
-      name: cur.name,
-      onboardingCompleted: cur.onboardingCompleted ?? true,
-    };
-    if (cur.email !== undefined) restorePayload.email = cur.email;
-    if (cur.photoUrl !== undefined) restorePayload.photoUrl = cur.photoUrl;
-    if (cur.avatarId !== undefined) restorePayload.avatarId = cur.avatarId;
-    if (cur.jersey !== undefined) restorePayload.jersey = cur.jersey;
-    if (cur.availability !== undefined)
-      restorePayload.availability = cur.availability;
-    if (cur.fcmTokens !== undefined) restorePayload.fcmTokens = cur.fcmTokens;
-    if (cur.notificationPrefs !== undefined)
-      restorePayload.notificationPrefs = cur.notificationPrefs;
-    if (cur.newGameSubscriptions !== undefined)
-      restorePayload.newGameSubscriptions = cur.newGameSubscriptions;
-
-    const ref = docs.user(cur.id);
-    try {
-      await updateDoc(ref, {
-        name: 'משתמש שהוסר',
-        email: deleteField(),
-        photoUrl: deleteField(),
-        avatarId: deleteField(),
-        jersey: deleteField(),
-        availability: deleteField(),
-        fcmTokens: deleteField(),
-        notificationPrefs: deleteField(),
-        newGameSubscriptions: deleteField(),
-        onboardingCompleted: false,
-        updatedAt: Date.now(),
-      });
-    } catch (e) {
-      logError('deleteAccount', e, { uid: cur.id });
-      throw e;
-    }
-    try {
-      await deleteCurrentFirebaseUser(password);
-    } catch (err) {
-      logError('deleteAccount', err, { uid: cur.id });
-      // Auth deletion failed — restore the profile so the user
-      // isn't stuck in a "anonymised but signed-in" limbo.
-      // The user can retry deleteOwnAccount safely. The
-      // sweep-notified latch stays SET so the retry's sweep won't
-      // re-spam admins.
-      try {
-        await updateDoc(ref, {
-          ...restorePayload,
-          updatedAt: Date.now(),
-        });
-      } catch (restoreErr) {
-        logError('deleteAccountRestore', restoreErr, { uid: cur.id });
-        if (__DEV__)
-          console.warn('[deleteAccount] restore after auth fail failed', restoreErr);
-      }
-      throw err;
-    }
-    // Auth-delete succeeded — clear the latch so this device starts
-    // fresh next time someone signs in.
     await storage.clearDeleteSweepNotified();
+    await storage.setAuthUserJson(null);
     await storage.setCurrentGroupId(null);
   },
 
@@ -667,6 +634,9 @@ export const userService = {
       return;
     }
     await signOutFirebase();
+    // Clear the offline fallback snapshot so the NEXT user on this device can
+    // never be restored as the previous account (cross-account leak guard).
+    await storage.setAuthUserJson(null);
     await storage.setCurrentGroupId(null);
   },
 
@@ -717,6 +687,7 @@ export const userService = {
         throw e;
       }
     }
+    await cacheAuthUser(next);
     return next;
   },
 
@@ -808,6 +779,31 @@ export const userService = {
     }
   },
 };
+
+/**
+ * Persist a snapshot of the signed-in REAL-mode user to AsyncStorage. This is
+ * the offline cold-start fallback: when a dead-zone launch makes the /users
+ * getDoc time out, getCurrentUser restores THIS snapshot so an already-
+ * authenticated user still gets into the app instead of being bounced to
+ * SignIn. Before this the `authUserJson` key was only ever written under
+ * USE_MOCK_DATA, so the fallback was dead code in prod (cachedJson was always
+ * null → getCurrentUser returned null → SignIn for a real user).
+ *
+ * Cross-account safe: getCurrentUser only restores the snapshot when its `id`
+ * matches the restored Firebase uid, and signOut / deleteOwnAccount clear the
+ * key — so account A's snapshot can never surface for account B. Best-effort:
+ * a cache-write failure must never break sign-in.
+ */
+async function cacheAuthUser(user: User): Promise<void> {
+  try {
+    // Never cache a runtime-only guest — it has no /users doc to refresh from
+    // and must always re-resolve from Firebase anonymous auth.
+    if (user.isGuest) return;
+    await storage.setAuthUserJson(JSON.stringify(user));
+  } catch (err) {
+    if (__DEV__) console.warn('[userService] cacheAuthUser failed', err);
+  }
+}
 
 /**
  * Best-effort invite attribution. Called once per *fresh* user

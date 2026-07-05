@@ -87,7 +87,9 @@ export function StatisticsScreen() {
     return () => {
       alive = false;
     };
-  }, [localUser?.id, localUser?.stats?.goals]);
+    // assists must be a dep too — the effect reads it, so an assists-only
+    // server bump (no goal change) otherwise left the assist tile stale.
+  }, [localUser?.id, localUser?.stats?.goals, localUser?.stats?.assists]);
 
   const hasData = !!stats && stats.attendedGames > 0;
 
@@ -230,7 +232,10 @@ function PersonCard({
         </View>
         <View style={styles.personText}>
           <Text style={styles.personTitle}>{title}</Text>
-          {stat && person ? (
+          {stat ? (
+            // Show the EARNED stat even if the partner's user doc failed to
+            // resolve (deleted / fetch error) — previously a legit superlative
+            // rendered as "no data" just because `person` was null.
             <Text style={styles.personSub} numberOfLines={1}>
               {sub(stat.count)}
             </Text>

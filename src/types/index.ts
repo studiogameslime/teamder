@@ -1319,6 +1319,18 @@ export interface Game {
   visibility?: 'community' | 'public';
   /** When true, joining is a request that the creator must approve. */
   requiresApproval?: boolean;
+  /** Waitlist promotion mode.
+   *  - `true` / absent (DEFAULT): when a spot frees, the waitlist HEAD gets a
+   *    push and must CONFIRM they're coming within `waitlistApprovalTimeoutMinutes`;
+   *    if they don't, the offer advances to the next in line. The held spot is
+   *    reserved (it counts toward occupancy), so outsiders fall to the waitlist.
+   *  - `false`: AUTO — the waitlist head is admitted straight into the game with
+   *    no confirmation. */
+  waitlistApprovalRequired?: boolean;
+  /** Minutes the offered waitlist head has to confirm before the offer advances
+   *  to the next player. Only meaningful when waitlistApprovalRequired !== false.
+   *  Default 20. */
+  waitlistApprovalTimeoutMinutes?: number;
   /** Match format. Drives team-size + player count suggestions. */
   format?: GameFormat;
   /** Number of teams (2–5). maxPlayers = playersPerTeam(format) * numberOfTeams. */

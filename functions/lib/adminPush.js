@@ -50,6 +50,33 @@ async function pushToAdmins(type, title, body, data = {}) {
     catch {
         /* default enabled */
     }
+    // Flood guard: collapse a burst of the SAME alert type to at most one push
+    // per window. Without this, an unauthenticated /errors write-loop, a
+    // self-toggled availability loop, or scripted game/community creates could
+    // flood the founder's device and rack up send cost at ~zero attacker cost.
+    // Distinct legitimate events of one type are sparse enough to pass; a flood
+    // is capped. Different types use different latches, so mixed real activity
+    // is unaffected.
+    const THROTTLE_MS = 20000;
+    try {
+        const latchRef = db.collection('adminPushLatches').doc(type);
+        const dropped = await db.runTransaction(async (tx) => {
+            const snap = await tx.get(latchRef);
+            const last = Number(snap.data()?.lastSentAt) || 0;
+            const now = Date.now();
+            if (now - last < THROTTLE_MS)
+                return true; // within window → drop
+            tx.set(latchRef, { lastSentAt: now, type }, { merge: true });
+            return false;
+        });
+        if (dropped)
+            return;
+    }
+    catch (err) {
+        // Fail-open: a throttle-check failure shouldn't silently swallow a real
+        // alert. Worst case is one un-throttled send.
+        console.warn('[pushToAdmins] throttle check failed', err);
+    }
     let tokens = [];
     try {
         const cfg = await db.collection('adminConfig').doc('push').get();
@@ -70,8 +97,9 @@ async function pushToAdmins(type, title, body, data = {}) {
         });
         const dead = tokens.filter((_, i) => {
             const c = res.responses[i]?.error?.code;
-            return (c === 'messaging/registration-token-not-registered' ||
-                c === 'messaging/invalid-argument');
+            // Only prune permanently-dead tokens; 'invalid-argument' can be a
+            // message-level error and must not delete otherwise-valid tokens.
+            return c === 'messaging/registration-token-not-registered';
         });
         if (dead.length) {
             await db

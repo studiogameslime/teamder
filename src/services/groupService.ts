@@ -13,6 +13,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  documentId,
   getDoc,
   getDocs,
   onSnapshot,
@@ -849,6 +850,9 @@ export const groupService = {
     // Capacity recheck — race-safe via a transaction so two admins
     // approving simultaneously can't push the group past maxMembers.
     const { db, auth } = getFirebase();
+    // Whether the user was ALREADY a member before this call (double-tap /
+    // redelivery) — used to suppress a duplicate "approved" push below.
+    let wasAlreadyMember = false;
     try {
       await runTransaction(db, async (tx) => {
         const gSnap = await tx.get(docs.group(groupId));
@@ -857,6 +861,7 @@ export const groupService = {
         }
         const g = gSnap.data();
         const already = (g.playerIds ?? []).includes(userId);
+        wasAlreadyMember = already;
         if (
           !already &&
           typeof g.maxMembers === 'number' &&
@@ -937,12 +942,16 @@ export const groupService = {
     }
     // Symmetric to rejectMember — push the requester a "your
     // community-join request was approved" notification so they see
-    // confirmation without having to refresh the app.
-    notificationsService.dispatch({
-      type: 'approved',
-      recipientId: userId,
-      payload: { groupId, groupName: g.name },
-    });
+    // confirmation without having to refresh the app. Skip it when the user
+    // was ALREADY a member (double-tap / redelivery) so we don't fire a
+    // duplicate "approved" push.
+    if (!wasAlreadyMember) {
+      notificationsService.dispatch({
+        type: 'approved',
+        recipientId: userId,
+        payload: { groupId, groupName: g.name },
+      });
+    }
     return g;
   },
 
@@ -1013,12 +1022,14 @@ export const groupService = {
     rating: number | null,
   ): Promise<void> {
     if (!groupId || !playerId) return;
-    // Decimal scale 1.0–5.0, one decimal place (e.g. 4.3). 0/null clears.
+    // Decimal scale 0–5, one decimal place (e.g. 4.3 or a sub-1 0.5). The
+    // slider's far-left is 0 = unrated (clear); any positive value up to 5 is a
+    // real rating — including below 1, so a very weak player can be scored.
     const valid =
-      rating != null && rating >= 1 && rating <= 5;
+      rating != null && rating > 0 && rating <= 5;
     const clear = rating == null || rating === 0;
     if (!valid && !clear) {
-      throw new Error('setAdminRating: rating must be 1.0–5.0 (or 0/null to clear)');
+      throw new Error('setAdminRating: rating must be within (0, 5] (or 0/null to clear)');
     }
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];
@@ -1314,6 +1325,13 @@ export const groupService = {
       g.pendingPlayerIds = (g.pendingPlayerIds ?? []).filter(
         (id) => id !== userId,
       );
+      // If the departing member was the creator, hand ownership to another
+      // admin so the group is never left ownerless (delete/admin-rotation
+      // are gated on creatorId).
+      const creatorLeftMock = (g.creatorId ?? undefined) === userId;
+      if (creatorLeftMock && g.adminIds.length > 0) {
+        g.creatorId = g.adminIds[0];
+      }
       g.updatedAt = Date.now();
       // Silent-failure guard: user must be gone from members.
       if (g.playerIds.includes(userId) || g.adminIds.includes(userId)) {
@@ -1332,10 +1350,37 @@ export const groupService = {
     }
     if (!snap.exists()) throw new Error('leaveGroup: group not found');
     const g = snap.data();
-    const isLastAdmin =
-      g.adminIds.includes(userId) && g.adminIds.length === 1;
+    const admins: string[] = g.adminIds ?? [];
+    const isLastAdmin = admins.includes(userId) && admins.length === 1;
     if (isLastAdmin) {
       throw new Error('LAST_ADMIN');
+    }
+    // Creator leaving: must hand ownership to a remaining admin in the SAME
+    // write (the rules require it; without a handoff the founder could never
+    // leave and the group would be permanently un-deletable). If the creator
+    // is somehow the only admin we already threw LAST_ADMIN above.
+    const isCreator = (g.creatorId ?? admins[0]) === userId;
+    const remainingAdmins = admins.filter((id) => id !== userId);
+    if (isCreator && remainingAdmins.length === 0) {
+      throw new Error('LAST_ADMIN');
+    }
+    if (isCreator) {
+      try {
+        // NOTE: only [adminIds, playerIds, creatorId, updatedAt] — the
+        // creator-handoff rules branch requires exactly this key set, so we
+        // must NOT also touch pendingPlayerIds here (a creator can't be
+        // pending in their own group anyway).
+        await updateDoc(ref, {
+          adminIds: arrayRemove(userId),
+          playerIds: arrayRemove(userId),
+          creatorId: remainingAdmins[0],
+          updatedAt: Date.now(),
+        });
+      } catch (e) {
+        logError('leaveGroup', e, { groupId, userId, phase: 'creatorHandoff' });
+        throw e;
+      }
+      return;
     }
     // Single-doc write only. The /groupsPublic.memberCount mirror
     // used to be bumped here in a batch, but the hardened Storage /
@@ -1619,6 +1664,13 @@ export const groupService = {
       if (__DEV__)
         console.warn('[groupService] preflight read for member list failed', err);
     }
+    // If ANY child (game / join-request) delete fails, we must NOT delete the
+    // parent group doc — the child-cleanup rules authorise via isGroupAdmin,
+    // which reads that very doc. Deleting the parent while children remain
+    // would strand them permanently (no future write could authorise their
+    // removal). Instead we abort so the user can retry a still-authorised
+    // delete. Tracks that condition:
+    let childFailed = false;
     // 1) Find all games in this community. We notify each affected
     // user (player / waitlist / pending) and then delete the game doc
     // outright. We don't filter by status — even a 'finished' game
@@ -1641,12 +1693,14 @@ export const groupService = {
         try {
           await deleteDoc(docs.game(game.id));
         } catch (err) {
+          childFailed = true;
           logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
           if (__DEV__)
             console.warn('[groupService] game cascade delete failed', game.id, err);
         }
       }
     } catch (err) {
+      childFailed = true;
       logError('deleteGroup', err, { groupId, phase: 'gameCascade' });
       if (__DEV__) console.warn('[groupService] game cascade lookup failed', err);
     }
@@ -1668,14 +1722,22 @@ export const groupService = {
             decidedBy: callerId,
           });
         } catch (err) {
+          childFailed = true;
           logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
           if (__DEV__)
             console.warn('[groupService] joinRequest reject failed', rd.id, err);
         }
       }
     } catch (err) {
+      childFailed = true;
       logError('deleteGroup', err, { groupId, phase: 'joinRequestCleanup' });
       if (__DEV__) console.warn('[groupService] joinRequest cleanup failed', err);
+    }
+    // Abort BEFORE deleting the parent if any child cleanup failed — deleting
+    // the group doc now would orphan the surviving children beyond recovery
+    // (their delete rules need this doc to authorise). The user can retry.
+    if (childFailed) {
+      throw new Error('GROUP_DELETE_INCOMPLETE');
     }
     // 3) Canonical group doc — must precede the public mirror so the
     // mirror's "fall-through" delete rule fires.
@@ -1731,14 +1793,22 @@ export const groupService = {
         };
       });
     }
-    let fetched;
+    // Batch by documentId 'in' (max 30 ids/query) instead of one getDoc per
+    // id. A 200-member roster went from 200 billed reads to ~7 queries.
+    const chunk = <T,>(arr: T[], n: number): T[][] => {
+      const out: T[][] = [];
+      for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+      return out;
+    };
+    let fetched: User[] = [];
     try {
-      fetched = await Promise.all(
-        userIds.map(async (id) => {
-          const snap = await getDoc(docs.user(id));
-          return snap.exists() ? snap.data() : null;
-        })
+      const chunks = chunk(userIds, 30);
+      const results = await Promise.all(
+        chunks.map((ids) =>
+          getDocs(query(col.users(), where(documentId(), 'in', ids))),
+        ),
       );
+      fetched = results.flatMap((snap) => snap.docs.map((d) => d.data()));
     } catch (err) {
       logError('hydrateUsers', err, { userCount: userIds.length });
       if (__DEV__) console.warn('[groupService] hydrateUsers failed', err);

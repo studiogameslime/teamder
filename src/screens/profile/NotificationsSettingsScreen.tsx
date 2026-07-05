@@ -131,6 +131,31 @@ export function NotificationsSettingsScreen() {
     };
   }, []);
 
+  // Hydrate the toggles from the SELF-ONLY private/push doc — the source of
+  // truth savePreferences writes to. currentUser.notificationPrefs (root doc)
+  // no longer carries them, so without this the screen would show stale
+  // defaults and every save would look like it reverted. Also mirror into the
+  // store so the isDirty comparison baseline matches what's persisted.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const saved = await notificationsService.loadPreferences(user.id);
+      if (cancelled || !saved) return;
+      const merged = { ...defaultNotificationPrefs, ...saved };
+      setPrefs(merged);
+      useUserStore.setState((s) =>
+        s.currentUser
+          ? { currentUser: { ...s.currentUser, notificationPrefs: merged } }
+          : {},
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Unsaved-changes guard: leaving with un-persisted toggle changes now
   // prompts (save / discard / cancel) instead of silently dropping them,
   // matching ProfileEdit. isDirty compares the draft to the saved store

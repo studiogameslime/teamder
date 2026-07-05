@@ -21,6 +21,12 @@ import { groupService } from '@/services';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
 
+// Per-uid last-hydrated timestamp so a cached player is REFRESHED after a TTL
+// instead of being pinned for the whole session (a rename / avatar change used
+// to show stale on every roster until sign-out). Cleared on reset().
+const playerHydratedAt = new Map<string, number>();
+const PLAYER_HYDRATE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * Empty Game placeholder. The redesigned screens query games via
  * `gameService` and never write back through this store, so the only
@@ -76,6 +82,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   reset: () => {
     if (USE_MOCK_DATA) return; // keep the demo seed intact
+    playerHydratedAt.clear();
     set({ players: {}, game: makeEmptyGame(), currentUserId: null });
   },
 
@@ -83,7 +90,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (USE_MOCK_DATA) return; // mockPlayers map is already populated
     if (uids.length === 0) return;
     const existing = get().players;
-    const missing = uids.filter((id) => !existing[id]);
+    const now = Date.now();
+    // Fetch a uid if it's not cached OR its cache is older than the TTL.
+    const missing = uids.filter(
+      (id) =>
+        !existing[id] ||
+        now - (playerHydratedAt.get(id) ?? 0) > PLAYER_HYDRATE_TTL_MS,
+    );
     if (missing.length === 0) return;
     try {
       const users = await groupService.hydrateUsers(missing);
@@ -97,6 +110,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             avatarId: u.avatarId,
             photoUrl: u.photoUrl,
           };
+          playerHydratedAt.set(u.id, now);
         }
         return { players: next };
       });

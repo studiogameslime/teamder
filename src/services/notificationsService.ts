@@ -211,6 +211,11 @@ export const notificationsService = {
         payload: input.payload,
         createdAt: serverTimestamp(),
         createdAtMs: now,
+        // Trustworthy sender identity — the rules force this to equal the
+        // authenticated uid, so the fan-out CF can verify the sender is
+        // actually a community admin / organiser before mass-pushing
+        // (blocks spoofed "official" notifications).
+        createdByUid: getFirebase().auth.currentUser?.uid ?? '',
         cooldownMs: cooldownMsFor(input.type),
         read: false,
         delivered: false,
@@ -288,6 +293,27 @@ export const notificationsService = {
    * Finding #1). The CF reads via Admin SDK and merges with the
    * legacy root-doc copy for users who haven't migrated yet.
    */
+  /**
+   * Read the user's saved notification prefs from the SELF-ONLY
+   * /users/{uid}/private/push doc — the same place savePreferences writes
+   * and the CF reads. The root /users doc no longer carries prefs (they were
+   * moved to the private subdoc to stop other signed-in users seeing which
+   * notifications you muted), so the settings screen must hydrate from here
+   * or it shows stale/default toggles even after a successful save.
+   */
+  async loadPreferences(uid: UserId): Promise<NotificationPrefs | null> {
+    if (USE_MOCK_DATA) return null;
+    try {
+      const snap = await getDoc(docs.userPrivatePush(uid));
+      const data = snap.exists() ? snap.data() : null;
+      const prefs = data?.notificationPrefs as NotificationPrefs | undefined;
+      return prefs ?? null;
+    } catch (err) {
+      logError('loadNotificationPreferences', err, { uid });
+      return null;
+    }
+  },
+
   async savePreferences(uid: UserId, prefs: NotificationPrefs): Promise<void> {
     if (USE_MOCK_DATA) {
       // The userStore's currentUser holds the truth in mock mode; the
@@ -308,6 +334,10 @@ export const notificationsService = {
     } catch (err) {
       logError('saveNotificationPreferences', err, { uid });
       if (__DEV__) console.warn('[notifications] savePreferences failed', err);
+      // Rethrow so the settings screen's catch surfaces the failure instead
+      // of falsely showing "saved". Swallowing it made a denied/failed write
+      // look successful while the user kept getting pushed.
+      throw err;
     }
   },
 

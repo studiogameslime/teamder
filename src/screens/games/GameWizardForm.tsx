@@ -156,6 +156,12 @@ export interface GameFormValues {
   // Step 3 — Game Management
   visibility: 'public' | 'community';
   requiresApproval: boolean;
+  /** On (default) = the freed spot is OFFERED to the waitlist head, who must
+   *  confirm within `waitlistApprovalTimeout` minutes (else it advances).
+   *  Off = auto-admit the head with no confirmation. */
+  waitlistApprovalRequired: boolean;
+  /** Minutes to confirm an offer (string for the text input). */
+  waitlistApprovalTimeout: string;
   /** Recurring weekly fixture — auto-clones each week (Game.recurring).
    *  Independent of the registration-open scheduling below. */
   recurringGameEnabled: boolean;
@@ -825,6 +831,24 @@ function Step3({
         value={values.requiresApproval}
         onChange={(v) => set('requiresApproval', v)}
       />
+
+      <ToggleRow
+        label={he.createGameWaitlistApproval}
+        info={{ title: he.createGameWaitlistApproval, text: he.createGameWaitlistApprovalHint }}
+        value={values.waitlistApprovalRequired}
+        onChange={(v) => set('waitlistApprovalRequired', v)}
+      />
+      {values.waitlistApprovalRequired ? (
+        <View style={styles.section}>
+          <InputField
+            label={he.createGameWaitlistTimeout}
+            info={{ text: he.createGameWaitlistTimeoutHint }}
+            value={values.waitlistApprovalTimeout}
+            onChangeText={(t) => set('waitlistApprovalTimeout', t)}
+            keyboardType="number-pad"
+          />
+        </View>
+      ) : null}
 
       {/* Two INDEPENDENT community-game options (hidden for quick one-offs):
           (1) recurring weekly fixture, (2) scheduled registration open.

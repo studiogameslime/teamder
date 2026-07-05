@@ -246,7 +246,10 @@ export function DraftBoardScreen() {
     } finally {
       setSaving(false);
     }
-  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav]);
+    // teamColors MUST be here — the summary screen sets colours AFTER this
+    // callback was memoised, so without it `finish` saved the stale (empty)
+    // colours and the user's picks silently vanished.
+  }, [currentUser, method, numTeams, captainIds, membersOf, gameId, nav, teamColors]);
 
   // ── Summary view ────────────────────────────────────────────────────
   if (done) {
