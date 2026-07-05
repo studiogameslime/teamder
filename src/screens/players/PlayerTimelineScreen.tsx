@@ -4,7 +4,7 @@
 // an admin can long-press a card to revoke it (kept, marked "בוטל").
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '@/components/PressableScale';
 import { successHaptic } from '@/utils/haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,7 +27,8 @@ import { groupService } from '@/services';
 import { userService } from '@/services';
 import { logError } from '@/services/errorLog';
 import { useUserStore } from '@/store/userStore';
-import { cardState } from '@/utils/cardState';
+import { cardState, effectiveExpiry, DAY_MS } from '@/utils/cardState';
+import { formatTime, formatDayDate } from '@/utils/format';
 import { RefereeCard, CARD_YELLOW, CARD_RED } from '@/components/community/CardCountBadges';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -36,6 +37,16 @@ import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'PlayerTimeline'>;
 type Params = RouteProp<CommunitiesStackParamList, 'PlayerTimeline'>;
+
+// A timeline entry is either a real discipline/equipment event, or a synthetic
+// membership milestone derived from the group (join / admin-promotion dates).
+type TLEntry =
+  | { src: 'event'; ev: CommunityPlayerEvent }
+  | { src: 'membership'; mkind: 'joined' | 'admin'; at: number };
+const entryAt = (e: TLEntry): number => (e.src === 'event' ? e.ev.at : e.at);
+type TimelineItem =
+  | { kind: 'header'; ts: number }
+  | { kind: 'entry'; entry: TLEntry };
 
 const EVENT_META: Record<
   CommunityPlayerEvent['type'],
@@ -110,6 +121,36 @@ export function PlayerTimelineScreen() {
     [events, cardsOn],
   );
 
+  // Merge real events with the synthetic membership milestones (join / admin
+  // dates from the group), sort newest-first, then interleave "יום … " day
+  // headers so the spine breaks into day groups.
+  const listData = useMemo<TimelineItem[]>(() => {
+    const entries: TLEntry[] = visibleEvents.map((ev) => ({ src: 'event', ev }));
+    const joinedTs = group?.joinedAt?.[userId];
+    if (typeof joinedTs === 'number' && joinedTs > 0) {
+      entries.push({ src: 'membership', mkind: 'joined', at: joinedTs });
+    }
+    const adminTs = group?.adminSince?.[userId];
+    if (typeof adminTs === 'number' && adminTs > 0) {
+      entries.push({ src: 'membership', mkind: 'admin', at: adminTs });
+    }
+    entries.sort((a, b) => entryAt(b) - entryAt(a));
+
+    const out: TimelineItem[] = [];
+    let lastDay = '';
+    for (const entry of entries) {
+      const at = entryAt(entry);
+      const d = new Date(at);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (key !== lastDay) {
+        out.push({ kind: 'header', ts: at });
+        lastDay = key;
+      }
+      out.push({ kind: 'entry', entry });
+    }
+    return out;
+  }, [visibleEvents, group?.joinedAt, group?.adminSince, userId]);
+
   const validityFor = (type: CommunityPlayerEvent['type']) =>
     type === 'red' ? group?.redCardValidityDays : type === 'yellow' ? group?.yellowCardValidityDays : null;
 
@@ -143,116 +184,272 @@ export function PlayerTimelineScreen() {
     );
   }
 
+  // One timeline event → a rail node (right, on the spine) + a card (left).
+  const renderEvent = (ev: CommunityPlayerEvent, isLast: boolean) => {
+    const meta = EVENT_META[ev.type];
+    // Ball/jerseys marks cleared via "נהל ציוד" read "החזיר …" instead of the
+    // default "לקח … הביתה".
+    const title =
+      ev.returned && ev.type === 'ball'
+        ? he.timelineEventBallReturned
+        : ev.returned && ev.type === 'jerseys'
+          ? he.timelineEventJerseysReturned
+          : meta.label;
+    const isCard = ev.type === 'yellow' || ev.type === 'red';
+    const state = isCard ? cardState(ev, validityFor(ev.type), now) : 'active';
+    const stateLabel =
+      state === 'revoked' ? he.cardStateRevoked : state === 'expired' ? he.cardStateExpired : null;
+    const dimmed = state !== 'active';
+    const accent = isCard ? (ev.type === 'red' ? CARD_RED : CARD_YELLOW) : meta.color;
+    // Validity line — only when the card actually has an expiry (club set a
+    // validity in days). Active → "בתוקף עד … · עוד N ימים"; expired → "פג …".
+    const exp = isCard ? effectiveExpiry(ev, validityFor(ev.type)) : null;
+    let validityText: string | null = null;
+    if (isCard && exp !== null && !ev.revoked) {
+      if (state === 'active') {
+        const daysLeft = Math.ceil((exp - now) / DAY_MS);
+        validityText = `${he.cardValidUntil(fmtDate(exp))} · ${he.cardDaysLeft(daysLeft)}`;
+      } else if (state === 'expired') {
+        validityText = he.cardExpiredOn(fmtDate(exp));
+      }
+    }
+    const canRevoke = isCard && isAdmin && !ev.revoked;
+    // Explicit "בטל כרטיס" button on ACTIVE cards — long-press wasn't
+    // discoverable (user report). Long-press stays as a shortcut.
+    const showRevokeBtn = canRevoke && state === 'active';
+    return (
+      <View style={styles.eventRow}>
+        {/* Spine rail — the vertical line + the colored node + time. First
+            child so it lands on the visual RIGHT under forceRTL. */}
+        <View style={styles.rail}>
+          <View style={[styles.railLine, isLast && styles.railLineLast]} />
+          <View style={styles.node}>
+            {isCard ? (
+              <RefereeCard color={accent} w={18} h={24} radius={4} struck={dimmed} />
+            ) : (
+              <View style={[styles.nodeCircle, { borderColor: accent, backgroundColor: accent + '1A' }]}>
+                <Ionicons name={meta.icon} size={15} color={accent} />
+              </View>
+            )}
+          </View>
+          <Text style={styles.railTime}>{formatTime(ev.at)}</Text>
+        </View>
+
+        {/* Card — full remaining width on the LEFT, colored accent on its
+            rail-side edge. */}
+        <PressableScale
+          onLongPress={canRevoke ? () => onRevoke(ev) : undefined}
+          delayLongPress={400}
+          style={styles.card}
+        >
+          <View style={[styles.cardAccent, { backgroundColor: accent, opacity: dimmed ? 0.45 : 1 }]} />
+          <View style={styles.cardBody}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, dimmed && styles.strike]} numberOfLines={1}>
+                {title}
+              </Text>
+              {stateLabel ? (
+                <View style={[styles.tag, state === 'revoked' ? styles.tagRevoked : styles.tagExpired]}>
+                  <Text style={styles.tagText}>{stateLabel}</Text>
+                </View>
+              ) : null}
+            </View>
+            {ev.detail ? <Text style={styles.detail}>{ev.detail}</Text> : null}
+            {validityText ? (
+              <View style={styles.validityRow}>
+                <Ionicons
+                  name="hourglass-outline"
+                  size={13}
+                  color={state === 'expired' ? colors.textMuted : colors.primary}
+                />
+                <Text
+                  style={[styles.validityText, state === 'expired' && { color: colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  {validityText}
+                </Text>
+              </View>
+            ) : null}
+            {showRevokeBtn ? (
+              <Pressable
+                onPress={() => onRevoke(ev)}
+                hitSlop={6}
+                style={({ pressed }) => [styles.revokeBtn, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel={he.cardRevoke}
+              >
+                <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                <Text style={styles.revokeBtnText}>{he.cardRevoke}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </PressableScale>
+      </View>
+    );
+  };
+
+  // Synthetic membership milestone (join / admin promotion) → same spine +
+  // card shape, primary-tinted, no detail/validity/revoke.
+  const renderMembership = (mkind: 'joined' | 'admin', at: number, isLast: boolean) => {
+    const isAdminEvent = mkind === 'admin';
+    const accent = colors.primary;
+    return (
+      <View style={styles.eventRow}>
+        <View style={styles.rail}>
+          <View style={[styles.railLine, isLast && styles.railLineLast]} />
+          <View style={styles.node}>
+            <View style={[styles.nodeCircle, { borderColor: accent, backgroundColor: accent + '1A' }]}>
+              <Ionicons name={isAdminEvent ? 'shield-checkmark' : 'person-add'} size={15} color={accent} />
+            </View>
+          </View>
+          <Text style={styles.railTime}>{formatTime(at)}</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={[styles.cardAccent, { backgroundColor: accent }]} />
+          <View style={styles.cardBody}>
+            <Text style={styles.title} numberOfLines={1}>
+              {isAdminEvent ? he.timelineBecameAdmin : he.timelineJoinedCommunity}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderEntry = (entry: TLEntry, isLast: boolean) =>
+    entry.src === 'membership'
+      ? renderMembership(entry.mkind, entry.at, isLast)
+      : renderEvent(entry.ev, isLast);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title={he.timelineTitle(displayName || '')} />
-      {visibleEvents.length === 0 ? (
+      {listData.length === 0 ? (
         <EmptyState icon="time-outline" title={he.timelineEmpty} />
       ) : (
         <FlatList
-          data={visibleEvents}
-          keyExtractor={(e) => e.id}
+          data={listData}
+          keyExtractor={(it) =>
+            it.kind === 'header'
+              ? `h-${it.ts}`
+              : it.entry.src === 'event'
+                ? it.entry.ev.id
+                : `m-${it.entry.mkind}`
+          }
           contentContainerStyle={styles.list}
-          renderItem={({ item: ev }) => {
-            const meta = EVENT_META[ev.type];
-            // Ball/jerseys marks cleared via "נהל ציוד" read "החזיר …" instead
-            // of the default "לקח … הביתה".
-            const title =
-              ev.returned && ev.type === 'ball'
-                ? he.timelineEventBallReturned
-                : ev.returned && ev.type === 'jerseys'
-                  ? he.timelineEventJerseysReturned
-                  : meta.label;
-            const isCard = ev.type === 'yellow' || ev.type === 'red';
-            const state = isCard ? cardState(ev, validityFor(ev.type), now) : 'active';
-            const stateLabel =
-              state === 'revoked' ? he.cardStateRevoked : state === 'expired' ? he.cardStateExpired : null;
-            const dimmed = state !== 'active';
-            const canRevoke = isCard && isAdmin && !ev.revoked;
-            return (
-              <PressableScale
-                onLongPress={canRevoke ? () => onRevoke(ev) : undefined}
-                delayLongPress={400}
-                style={styles.row}
-              >
-                {isCard ? (
-                  // Card events use the SAME referee-card shape as the roster
-                  // badges. Expired/revoked keep the FULL colour with a diagonal
-                  // slash (dimming it just washed the red out to pink).
-                  <View style={styles.iconWrap}>
-                    <RefereeCard
-                      color={ev.type === 'red' ? CARD_RED : CARD_YELLOW}
-                      w={26}
-                      h={34}
-                      radius={6}
-                      struck={dimmed}
-                    />
-                  </View>
-                ) : (
-                  <View style={[styles.iconWrap, { backgroundColor: meta.color + '22' }]}>
-                    <Ionicons name={meta.icon} size={20} color={meta.color} />
-                  </View>
-                )}
-                <View style={styles.body}>
-                  {/* Title row: title (+ state tag) on the right, date on the
-                      left of the same line. */}
-                  <View style={styles.titleRow}>
-                    <View style={styles.titleGroup}>
-                      <Text
-                        style={[styles.title, dimmed && styles.strike]}
-                        numberOfLines={1}
-                      >
-                        {title}
-                      </Text>
-                      {stateLabel ? (
-                        <View style={[styles.tag, state === 'revoked' ? styles.tagRevoked : styles.tagExpired]}>
-                          <Text style={styles.tagText}>{stateLabel}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.date}>{fmtDate(ev.at)}</Text>
-                  </View>
-                  {ev.detail ? <Text style={styles.detail}>{ev.detail}</Text> : null}
-                </View>
-              </PressableScale>
-            );
-          }}
+          renderItem={({ item, index }) =>
+            item.kind === 'header' ? (
+              <DayHeader ts={item.ts} />
+            ) : (
+              renderEntry(item.entry, index === listData.length - 1)
+            )
+          }
         />
       )}
     </SafeAreaView>
   );
 }
 
+// Day-group separator on the spine — a centered "יום … " pill with a hairline
+// rule on each side.
+function DayHeader({ ts }: { ts: number }) {
+  return (
+    <View style={styles.dayHeader}>
+      <View style={styles.dayRule} />
+      <View style={styles.dayPill}>
+        <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
+        <Text style={styles.dayPillText}>
+          {formatDayDate(ts, { day: 'long', withYear: true })}
+        </Text>
+      </View>
+      <View style={styles.dayRule} />
+    </View>
+  );
+}
+
+const RAIL_W = 54;
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
-  list: { padding: spacing.md },
-  row: {
-    // `row` (NOT row-reverse): under forceRTL the first child (the icon) sits on
-    // the visual RIGHT, matching the roster row + the requested "icon on the
-    // right" layout. row-reverse would flip it to the LEFT (RTL bug class).
+  list: { paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  // ── Day header ──
+  dayHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.sm,
+  },
+  dayRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
+  dayPill: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  dayPillText: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
+  // ── Event row = rail (right) + card (left) ──
+  eventRow: {
+    // `row` (NOT row-reverse): first child (rail) lands on the visual RIGHT
+    // under forceRTL, so the spine runs down the right and cards extend left.
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  rail: { width: RAIL_W, alignItems: 'center', paddingTop: spacing.md },
+  // Continuous vertical spine, drawn behind the node down the rail's center.
+  railLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    // Centered in the RAIL_W-wide rail (physical `left`, unaffected by RTL).
+    left: RAIL_W / 2 - 1,
+    width: 2,
+    backgroundColor: colors.divider,
+  },
+  // The last node has no line below it.
+  railLineLast: { bottom: '50%' },
+  node: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nodeCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  railTime: { ...typography.caption, color: colors.textMuted, fontWeight: '700', marginTop: 4 },
+  card: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginStart: spacing.sm,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, minWidth: 0 },
+  // Colored accent on the card's rail-side edge (first child → visual RIGHT).
+  cardAccent: { width: 4, alignSelf: 'stretch' },
+  cardBody: { flex: 1, minWidth: 0, padding: spacing.md },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
-  },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexShrink: 1,
-    minWidth: 0,
   },
   title: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
   strike: { color: colors.textMuted, textDecorationLine: 'line-through' },
@@ -261,5 +458,29 @@ const styles = StyleSheet.create({
   tagRevoked: { backgroundColor: colors.danger + '22' },
   tagText: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
   detail: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, marginTop: 4 },
-  date: { ...typography.caption, color: colors.textMuted, flexShrink: 0 },
+  // Validity ("בתוקף עד …") line — icon on the visual right under RTL.
+  validityRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 4,
+  },
+  validityText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  // Explicit revoke affordance on active cards (replaces the hidden long-press
+  // as the primary action).
+  revokeBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.danger + '55',
+    backgroundColor: colors.danger + '11',
+  },
+  revokeBtnText: { ...typography.caption, color: colors.danger, fontWeight: '800' },
 });

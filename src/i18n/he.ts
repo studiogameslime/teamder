@@ -400,12 +400,21 @@ export const he = {
   cardStateActive: 'פעיל',
   cardStateExpired: 'פג תוקף',
   cardStateRevoked: 'בוטל',
+  // Card validity line on the timeline — shown only when the card has an expiry
+  // (the club set a validity in days). Computed from the card's date + validity.
+  cardValidUntil: (date: string) => `בתוקף עד ${date}`,
+  cardDaysLeft: (n: number) =>
+    n <= 0 ? 'מסתיים היום' : n === 1 ? 'עוד יום' : `עוד ${n} ימים`,
+  cardExpiredOn: (date: string) => `פג תוקף ב-${date}`,
   timelineTitle: (name: string) => `ציר זמן · ${name}`,
   timelineEmpty: 'אין עדיין אירועים לשחקן הזה במועדון.',
   timelineEventYellow: 'כרטיס צהוב',
   timelineEventRed: 'כרטיס אדום',
   timelineEventBall: 'לקח כדור הביתה',
   timelineEventJerseys: 'לקח גופיות הביתה',
+  // Membership milestones synthesized from group.joinedAt / group.adminSince.
+  timelineJoinedCommunity: 'הצטרף למועדון',
+  timelineBecameAdmin: 'מונה למנהל',
   // Manual "נהל ציוד" mark removal — the admin cleared the holder mark.
   timelineEventBallReturned: 'החזיר את הכדור',
   timelineEventJerseysReturned: 'החזיר את הגופיות',

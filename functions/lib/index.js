@@ -55,8 +55,8 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.removeRetroGoal = exports.addRetroGoal = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = void 0;
+exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.removeRetroGoal = exports.addRetroGoal = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -7498,6 +7498,43 @@ exports.onCommunityJoinedAlert = (0, firestore_1.onDocumentUpdated)('groups/{id}
     const who = await adminAlertUserName(added[0]);
     const extra = added.length > 1 ? ` +${added.length - 1}` : '';
     await (0, adminPush_1.pushToAdmins)('communityJoin', 'Teamder', `${who}${extra} הצטרף למועדון ${after.name ?? ''} 👥`, { id: event.params.id });
+});
+// Stamp the real join / admin-promotion dates on the group as members and
+// admins are ADDED, so the per-community player timeline can show "הצטרף
+// למועדון" / "מונה למנהל" with an accurate date. Runs server-side (Admin SDK,
+// bypasses rules) so it covers EVERY membership path — including the open-
+// community self-join whose security rule only permits touching `playerIds`.
+//
+// Idempotent + loop-safe: only fills a MISSING entry (never overwrites), and
+// writes nothing when there's nothing new — so the write it makes doesn't
+// re-trigger itself into a loop (the second pass finds the uid already in the
+// previous `playerIds`, so it's not "newly added", and the entry already set).
+exports.stampMembershipDates = (0, firestore_1.onDocumentUpdated)('groups/{id}', async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after)
+        return;
+    const now = Date.now();
+    const joinedAt = { ...(after.joinedAt ?? {}) };
+    const adminSince = { ...(after.adminSince ?? {}) };
+    let changed = false;
+    const hadPlayers = new Set(before.playerIds ?? []);
+    for (const uid of after.playerIds ?? []) {
+        if (!hadPlayers.has(uid) && joinedAt[uid] === undefined) {
+            joinedAt[uid] = now;
+            changed = true;
+        }
+    }
+    const hadAdmins = new Set(before.adminIds ?? []);
+    for (const uid of after.adminIds ?? []) {
+        if (!hadAdmins.has(uid) && adminSince[uid] === undefined) {
+            adminSince[uid] = now;
+            changed = true;
+        }
+    }
+    if (!changed)
+        return;
+    await event.data.after.ref.update({ joinedAt, adminSince });
 });
 // Founder alert: a user updated their availability (days / times / city /
 // invitable). Event-driven — fires only on THIS user's write, so NO scan and

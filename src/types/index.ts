@@ -722,6 +722,12 @@ export interface Group {
   adminIds: UserId[];
   playerIds: UserId[];          // approved community members
   pendingPlayerIds: UserId[];   // waiting for admin approval to join the COMMUNITY
+  /** When each member joined / each admin was promoted (uid → ms). Stamped
+   *  server-side by the `stampMembershipDates` CF as members/admins are added
+   *  (going forward — members who joined before it existed have no entry).
+   *  Powers the "הצטרף למועדון" / "מונה למנהל" timeline entries. */
+  joinedAt?: Record<UserId, number>;
+  adminSince?: Record<UserId, number>;
   inviteCode: string;           // short token for code-based join
   /**
    * @deprecated Per-game roster cap moved to Game.maxPlayers. The

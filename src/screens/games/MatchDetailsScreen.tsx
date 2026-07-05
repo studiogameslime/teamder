@@ -617,6 +617,45 @@ export function MatchDetailsScreen() {
     }, [reload]),
   );
 
+  // Live subscription so a server-side change updates the screen in place —
+  // most importantly the scheduled→open registration flip written at the
+  // publicOpenAt time. Without it, a user sitting on MatchDetails when
+  // registration opened had to leave and come back before the join button
+  // unlocked (user report). Also keeps the roster/waitlist live as others join.
+  useEffect(() => {
+    if (!gameId) return;
+    const unsub = gameService.subscribeGame(
+      gameId,
+      (g) => {
+        if (g) {
+          setGame(g);
+          setNotFound(false);
+          setAccessBlocked(false);
+          setLoadError(false);
+          setLoading(false);
+          const uids = Array.from(
+            new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
+          );
+          if (uids.length > 0) hydratePlayers(uids);
+        } else {
+          // Deleted while watching.
+          setGame(null);
+          setNotFound(true);
+          setLoading(false);
+        }
+      },
+      (code) => {
+        if (code === 'ACCESS_BLOCKED') {
+          setGame(null);
+          setAccessBlocked(true);
+          setLoading(false);
+        }
+        // Other (transient) errors: keep whatever's shown; focus-reload retries.
+      },
+    );
+    return unsub;
+  }, [gameId, hydratePlayers]);
+
   // Pre-check for a registration conflict so the join CTA can render
   // disabled with a helper text before the user even taps. Only runs
   // for users who are NOT already in the target game (no point telling

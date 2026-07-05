@@ -583,6 +583,48 @@ export const gameService = {
     }
   },
 
+  /**
+   * Live subscription to a single game doc. Fires `onData` with the mapped
+   * Game on every server change (null when the doc is deleted / doesn't
+   * exist), and `onError('ACCESS_BLOCKED')` when rules deny the read. Returns
+   * an unsubscribe handle. Mock mode has no realtime — it emits the current
+   * snapshot once and returns a no-op unsubscribe.
+   *
+   * Powers the live registration-open flip on MatchDetails: the scheduled→open
+   * status change is written server-side at publicOpenAt, so a one-shot fetch
+   * left a user sitting on the screen unable to register until they left and
+   * came back (user report). This pushes the flip in real time.
+   */
+  subscribeGame(
+    gameId: string,
+    onData: (game: Game | null) => void,
+    onError?: (code: string) => void,
+  ): () => void {
+    if (!gameId) return () => {};
+    if (USE_MOCK_DATA) {
+      const found = mockGamesV2.find((g) => g.id === gameId);
+      onData(found ? ({ ...found, matches: [] } as Game) : null);
+      return () => {};
+    }
+    return onSnapshot(
+      docs.game(gameId),
+      (snap) => {
+        if (!snap.exists()) {
+          onData(null);
+          return;
+        }
+        onData({ ...snap.data(), matches: [] });
+      },
+      (err) => {
+        const code =
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? (err as { code: string }).code
+            : '';
+        onError?.(code === 'permission-denied' ? 'ACCESS_BLOCKED' : code || 'error');
+      },
+    );
+  },
+
   async getActiveGameForGroup(groupId: GroupId): Promise<Game | null> {
     if (USE_MOCK_DATA) return ensureMockGame();
 

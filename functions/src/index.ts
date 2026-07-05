@@ -9226,6 +9226,53 @@ export const onCommunityJoinedAlert = onDocumentUpdated('groups/{id}', async (ev
   await pushToAdmins('communityJoin', 'Teamder', `${who}${extra} הצטרף למועדון ${after.name ?? ''} 👥`, { id: event.params.id });
 });
 
+// Stamp the real join / admin-promotion dates on the group as members and
+// admins are ADDED, so the per-community player timeline can show "הצטרף
+// למועדון" / "מונה למנהל" with an accurate date. Runs server-side (Admin SDK,
+// bypasses rules) so it covers EVERY membership path — including the open-
+// community self-join whose security rule only permits touching `playerIds`.
+//
+// Idempotent + loop-safe: only fills a MISSING entry (never overwrites), and
+// writes nothing when there's nothing new — so the write it makes doesn't
+// re-trigger itself into a loop (the second pass finds the uid already in the
+// previous `playerIds`, so it's not "newly added", and the entry already set).
+export const stampMembershipDates = onDocumentUpdated('groups/{id}', async (event) => {
+  const before = event.data?.before.data() as
+    | { playerIds?: string[]; adminIds?: string[] }
+    | undefined;
+  const after = event.data?.after.data() as
+    | {
+        playerIds?: string[];
+        adminIds?: string[];
+        joinedAt?: Record<string, number>;
+        adminSince?: Record<string, number>;
+      }
+    | undefined;
+  if (!before || !after) return;
+
+  const now = Date.now();
+  const joinedAt: Record<string, number> = { ...(after.joinedAt ?? {}) };
+  const adminSince: Record<string, number> = { ...(after.adminSince ?? {}) };
+  let changed = false;
+
+  const hadPlayers = new Set(before.playerIds ?? []);
+  for (const uid of after.playerIds ?? []) {
+    if (!hadPlayers.has(uid) && joinedAt[uid] === undefined) {
+      joinedAt[uid] = now;
+      changed = true;
+    }
+  }
+  const hadAdmins = new Set(before.adminIds ?? []);
+  for (const uid of after.adminIds ?? []) {
+    if (!hadAdmins.has(uid) && adminSince[uid] === undefined) {
+      adminSince[uid] = now;
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  await event.data!.after.ref.update({ joinedAt, adminSince });
+});
+
 // Founder alert: a user updated their availability (days / times / city /
 // invitable). Event-driven — fires only on THIS user's write, so NO scan and
 // NO Firestore reads on the common no-op path (it compares the before/after

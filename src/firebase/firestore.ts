@@ -422,6 +422,10 @@ const groupConverter: FirestoreDataConverter<Group> = {
       // pendingPlayerIds is stored as the source of truth for the community-
       // membership pending list. groupJoinRequests are the audit trail.
       pendingPlayerIds: g.pendingPlayerIds,
+      // Membership dates — owned/written by the stampMembershipDates CF;
+      // preserved here so a full-doc write doesn't clear the CF's stamps.
+      joinedAt: g.joinedAt ?? null,
+      adminSince: g.adminSince ?? null,
       inviteCode: g.inviteCode,
       isOpen: g.isOpen ?? null,
       internalRating: g.internalRating ?? null,
@@ -485,6 +489,10 @@ const groupConverter: FirestoreDataConverter<Group> = {
       adminIds: d.adminIds ?? [],
       playerIds: d.playerIds ?? [],
       pendingPlayerIds: d.pendingPlayerIds ?? [],
+      joinedAt:
+        d.joinedAt && typeof d.joinedAt === 'object' ? d.joinedAt : undefined,
+      adminSince:
+        d.adminSince && typeof d.adminSince === 'object' ? d.adminSince : undefined,
       inviteCode: d.inviteCode ?? '',
       isOpen: typeof d.isOpen === 'boolean' ? d.isOpen : undefined,
       internalRating:

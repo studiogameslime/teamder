@@ -42,6 +42,14 @@ export const mockGroup: Group = {
   adminIds: [mockCurrentUser.id],
   playerIds: mockPlayers.slice(0, 23).map((p) => p.id),
   pendingPlayerIds: mockPlayers.slice(23, 25).map((p) => p.id),
+  // Demo the timeline membership milestones — join dates spread over time,
+  // plus the admin's promotion date (stamped in prod by stampMembershipDates).
+  joinedAt: Object.fromEntries(
+    mockPlayers
+      .slice(0, 23)
+      .map((p, i) => [p.id, Date.now() - 1000 * 60 * 60 * 24 * (700 - i * 18)]),
+  ),
+  adminSince: { [mockCurrentUser.id]: Date.now() - 1000 * 60 * 60 * 24 * 600 },
   inviteCode: 'ELIN10',
   defaultMaxPlayers: 15,
   isOpen: false,           // admin-approval flow
