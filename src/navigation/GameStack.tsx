@@ -65,7 +65,7 @@ export type GameStackParamList = {
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
   AvailablePlayers: { gameId: string };
-  AddMembers: { gameId: string };
+  AddMembers: { gameId: string; reserve?: boolean };
   /** Full roster for one match — pulled out of MatchDetails. */
   MatchPlayers: { gameId: string };
   /** Admin-only "ניהול משחק" surface. */

@@ -25,18 +25,23 @@ import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import { toast } from '@/components/Toast';
 import type { Game, User } from '@/types';
+import { activeGuestCount } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { selectionHaptic } from '@/utils/haptics';
 
-type RouteParams = { AddMembers: { gameId: string } };
+type RouteParams = { AddMembers: { gameId: string; reserve?: boolean } };
 
 export function AddMembersScreen() {
   const route = useRoute<RouteProp<RouteParams, 'AddMembers'>>();
   const nav = useNavigation<any>();
   const { gameId } = route.params;
+  // "Reserve" mode = the same picker opened on a not-yet-open (scheduled) game,
+  // where the admin pre-secures spots for chosen regulars before registration
+  // opens. Only the copy changes; the server op (adminAddPlayers) is identical.
+  const reserve = route.params.reserve === true;
   const me = useUserStore((s) => s.currentUser);
   const myCommunities = useGroupStore((s) => s.groups);
 
@@ -92,7 +97,27 @@ export function AddMembersScreen() {
     };
   }, [gameId, me, myCommunities]);
 
+  const spotsLeft = useMemo(() => {
+    if (!game || !game.maxPlayers) return Infinity;
+    // Real remaining roster spots = cap − players − active guests − a held
+    // promotion offer (all of which occupy a seat), matching the server.
+    return Math.max(
+      0,
+      game.maxPlayers -
+        (game.players?.length ?? 0) -
+        activeGuestCount(game.guests) -
+        (game.pendingPromotion?.uid ? 1 : 0),
+    );
+  }, [game]);
+
   const toggle = (id: string) => {
+    // In RESERVE mode (scheduled game, before registration opens) don't let the
+    // admin pick more than the free spots — reserving into the waitlist would
+    // fire a confusing "you're on the waitlist" push before the doors open.
+    if (reserve && !selected.has(id) && selected.size >= spotsLeft) {
+      toast.info(he.reserveSpotsCapReached(spotsLeft));
+      return;
+    }
     selectionHaptic();
     setSelected((prev) => {
       const next = new Set(prev);
@@ -101,11 +126,6 @@ export function AddMembersScreen() {
       return next;
     });
   };
-
-  const spotsLeft = useMemo(() => {
-    if (!game || !game.maxPlayers) return Infinity;
-    return Math.max(0, game.maxPlayers - (game.players?.length ?? 0));
-  }, [game]);
 
   const onSubmit = async () => {
     const ids = Array.from(selected);
@@ -119,7 +139,9 @@ export function AddMembersScreen() {
       } else if (res.addedToWaitlist > 0) {
         toast.success(he.addMembersDoneWaitlist(res.addedToPlayers, res.addedToWaitlist));
       } else {
-        toast.success(he.addMembersDone(res.addedToPlayers));
+        toast.success(
+          reserve ? he.reserveSpotsDone(res.addedToPlayers) : he.addMembersDone(res.addedToPlayers),
+        );
       }
       if (nav.canGoBack()) nav.goBack();
     } catch (err) {
@@ -132,7 +154,7 @@ export function AddMembersScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <ScreenHeader title={he.addMembersTitle} />
+      <ScreenHeader title={reserve ? he.reserveSpotsTitle : he.addMembersTitle} />
       {loading ? (
         <View style={styles.center}>
           <SoccerBallLoader />
@@ -142,9 +164,13 @@ export function AddMembersScreen() {
       ) : (
         <>
           <Text style={styles.hint}>
-            {Number.isFinite(spotsLeft)
-              ? he.addMembersHintSpots(spotsLeft)
-              : he.addMembersHint}
+            {reserve
+              ? Number.isFinite(spotsLeft)
+                ? he.reserveSpotsHintCount(spotsLeft)
+                : he.reserveSpotsHint
+              : Number.isFinite(spotsLeft)
+                ? he.addMembersHintSpots(spotsLeft)
+                : he.addMembersHint}
           </Text>
           <FlatList
             data={members}
@@ -174,7 +200,9 @@ export function AddMembersScreen() {
             <Button
               title={
                 selected.size > 0
-                  ? he.addMembersSubmit(selected.size)
+                  ? reserve
+                    ? he.reserveSpotsSubmit(selected.size)
+                    : he.addMembersSubmit(selected.size)
                   : he.addMembersSubmitEmpty
               }
               variant="primary"

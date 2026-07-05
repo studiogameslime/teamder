@@ -284,6 +284,65 @@ export function MatchPlayersScreen() {
     [game, currentUser, reload],
   );
 
+  // Admin roster management (feature): move players between roster ↔ waitlist
+  // and reorder the waitlist queue. Sends the desired full arrays to the server
+  // (adminReorderRoster validates it's the same set + capacity). Optimistic so
+  // the row jumps immediately; a failure re-reads the truth.
+  const applyRoster = useCallback(
+    async (players: string[], waitlist: string[]) => {
+      if (!game) return;
+      setGame((g) => (g ? { ...g, players, waitlist } : g));
+      try {
+        await gameService.adminReorderRoster(game.id, players, waitlist);
+        await reload();
+      } catch (err) {
+        logError('matchPlayersReorder', err, { screen: 'MatchPlayersScreen', gameId: game.id });
+        toast.error(String((err as Error)?.message ?? err));
+        await reload();
+      }
+    },
+    [game, reload],
+  );
+  const moveToWaitlist = useCallback(
+    (uid: string) => {
+      if (!game) return;
+      applyRoster(
+        (game.players ?? []).filter((id) => id !== uid),
+        [...(game.waitlist ?? []), uid],
+      );
+    },
+    [game, applyRoster],
+  );
+  const moveToRoster = useCallback(
+    (uid: string) => {
+      if (!game) return;
+      const activeGuests = activeGuestCount(game.guests);
+      const offerHeld = game.pendingPromotion?.uid ? 1 : 0;
+      const cap = game.maxPlayers && game.maxPlayers > 0 ? game.maxPlayers : Infinity;
+      if ((game.players?.length ?? 0) + activeGuests + offerHeld >= cap) {
+        toast.info(he.matchPlayersRosterFull);
+        return;
+      }
+      applyRoster(
+        [...(game.players ?? []), uid],
+        (game.waitlist ?? []).filter((id) => id !== uid),
+      );
+    },
+    [game, applyRoster],
+  );
+  const reorderWaitlist = useCallback(
+    (uid: string, dir: 'up' | 'down') => {
+      if (!game) return;
+      const wl = [...(game.waitlist ?? [])];
+      const i = wl.indexOf(uid);
+      const j = dir === 'up' ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= wl.length) return;
+      [wl[i], wl[j]] = [wl[j], wl[i]];
+      applyRoster(game.players ?? [], wl);
+    },
+    [game, applyRoster],
+  );
+
   if (loading && !game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -383,6 +442,15 @@ export function MatchPlayersScreen() {
           },
           ...(canRemove
             ? ([
+                {
+                  key: 'toWaitlist',
+                  icon: 'arrow-down-circle-outline',
+                  label: he.playerMenuMoveToWaitlist,
+                  onPress: () => {
+                    setMenuTarget(null);
+                    moveToWaitlist(uid);
+                  },
+                },
                 {
                   key: 'remove',
                   icon: 'person-remove-outline',
@@ -567,6 +635,24 @@ export function MatchPlayersScreen() {
                         : undefined
                     }
                     showRating={showRatings}
+                    // Admin roster management: reorder the waitlist queue +
+                    // promote to the roster. Hidden on the row currently holding
+                    // an offer (its confirm/pass/advance actions take priority).
+                    onMoveUp={
+                      isAdminViewer && !isOffered && i > 0
+                        ? () => reorderWaitlist(e.user.id, 'up')
+                        : undefined
+                    }
+                    onMoveDown={
+                      isAdminViewer && !isOffered && i < waitlistEntries.length - 1
+                        ? () => reorderWaitlist(e.user.id, 'down')
+                        : undefined
+                    }
+                    onMoveToRoster={
+                      isAdminViewer && !isOffered
+                        ? () => moveToRoster(e.user.id)
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -796,6 +882,9 @@ function PlayerRow({
   onApprove,
   onReject,
   onOpenMenu,
+  onMoveUp,
+  onMoveDown,
+  onMoveToRoster,
   showRating,
   metaLine,
 }: {
@@ -814,6 +903,10 @@ function PlayerRow({
   onReject?: () => void;
   /** Open the player's ⋮ action menu (card / remove) anchored at the tap. */
   onOpenMenu?: (e: GestureResponderEvent) => void;
+  /** Admin roster management on a waitlist row: reorder the queue + promote. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onMoveToRoster?: () => void;
   /** Admin-only: show the (display-only) rating chip. Rating is NOT editable
    *  from the match roster — only from the community players list. */
   showRating?: boolean;
@@ -988,6 +1081,46 @@ function PlayerRow({
           ) : null}
         </View>
       ) : null}
+      {/* Admin waitlist controls — reorder the queue (↑/↓) + promote to the
+          roster ("להרכב"). Only on waitlist rows without an active offer. */}
+      {(onMoveUp || onMoveDown || onMoveToRoster) && !showOfferActions ? (
+        <View style={styles.moveControls}>
+          {onMoveToRoster ? (
+            <Pressable
+              onPress={onMoveToRoster}
+              hitSlop={6}
+              style={({ pressed }) => [styles.moveToRosterBtn, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveToRoster}
+            >
+              <Ionicons name="arrow-up-circle-outline" size={15} color={colors.primary} />
+              <Text style={styles.moveToRosterText}>{he.matchPlayersMoveToRoster}</Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.reorderCol}>
+            <Pressable
+              onPress={onMoveUp}
+              disabled={!onMoveUp}
+              hitSlop={4}
+              style={({ pressed }) => [styles.reorderBtn, !onMoveUp && { opacity: 0.3 }, pressed && { opacity: 0.5 }]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveUp}
+            >
+              <Ionicons name="chevron-up" size={16} color={colors.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              disabled={!onMoveDown}
+              hitSlop={4}
+              style={({ pressed }) => [styles.reorderBtn, !onMoveDown && { opacity: 0.3 }, pressed && { opacity: 0.5 }]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveDown}
+            >
+              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
       {/* ⋮ action menu — opens player card / remove. A separate Pressable
           (outside the row-body tap) so it doesn't also navigate. Hidden while
           offer/approve buttons stack below. */}
@@ -1140,6 +1273,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
+  },
+  // Admin waitlist reorder / promote controls.
+  moveControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  moveToRosterBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary + '55',
+    backgroundColor: colors.primary + '11',
+  },
+  moveToRosterText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  reorderCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reorderBtn: {
+    width: 26,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,

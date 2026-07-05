@@ -1125,9 +1125,35 @@ async function resolveRecipients(
     // subcollection (fcmTokens + notificationPrefs) is merged in.
     // The query returns only the root user doc, which post-migration
     // has empty / stale fcmTokens.
-    const uids = snap.docs
+    let uids = snap.docs
       .map((d) => d.id)
       .filter((uid) => uid !== createdBy);
+    // Exclude anyone ALREADY on this game's roster — most importantly the
+    // regulars an admin pre-RESERVED on a scheduled game: without this they got
+    // a spurious "new game in the community!" push when registration opened,
+    // even though they were already registered.
+    const gameIdForNew =
+      typeof payload.gameId === 'string' ? payload.gameId : '';
+    if (gameIdForNew) {
+      try {
+        const gSnap = await db.collection('games').doc(gameIdForNew).get();
+        if (gSnap.exists) {
+          const gd = gSnap.data() as {
+            players?: string[];
+            waitlist?: string[];
+            pending?: string[];
+          };
+          const inRoster = new Set<string>([
+            ...(gd.players ?? []),
+            ...(gd.waitlist ?? []),
+            ...(gd.pending ?? []),
+          ]);
+          uids = uids.filter((uid) => !inRoster.has(uid));
+        }
+      } catch (err) {
+        console.warn('[newGameInCommunity] roster exclude failed', err);
+      }
+    }
     // Always include the organiser on a registration-open push, even if
     // they never toggled the community's new-game subscription — they
     // scheduled the game and expect the "registration opened" ping.
@@ -4002,6 +4028,13 @@ export const onGameRosterChanged = onDocumentWritten(
           const occupancy = players.length + activeGuests + (ppUid ? 1 : 0);
           if (
             promoteOk &&
+            // Only backfill a seat freed by a REAL departure (cancel / no-show
+            // / removal). An admin who MOVES a player players→waitlist via
+            // adminReorderRoster leaves them in the waitlist, so they're NOT in
+            // `departed` — without this gate the trigger would auto-promote (or
+            // re-offer) the seat the admin just deliberately opened, reverting
+            // the manual roster action.
+            departed.size > 0 &&
             !ppUid &&
             waitlist.length > 0 &&
             occupancy < ((d.maxPlayers as number) ?? 15)
@@ -6063,6 +6096,105 @@ export const adminAddPlayers = onCall(
   },
 );
 
+// ─── Callable: admin reorders / moves players between roster & waitlist ──
+// Full roster management (feature). The client sends the DESIRED players[] and
+// waitlist[] (after a drag / move / reorder); the server validates it's the
+// SAME set of participants — pure reorder/repartition, never an add or remove
+// (those have their own guarded ops) — enforces capacity, and writes. Reorder
+// of the waitlist matters: waitlist[0] is who gets offered a freed spot next.
+export const adminReorderRoster = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth?.uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const callerUid = auth.uid;
+    const data = (request.data ?? {}) as {
+      gameId?: unknown;
+      players?: unknown;
+      waitlist?: unknown;
+    };
+    const gameId = typeof data.gameId === 'string' ? data.gameId : '';
+    const asIds = (v: unknown): string[] =>
+      Array.isArray(v)
+        ? (v.filter((x) => typeof x === 'string' && x.length > 0) as string[])
+        : [];
+    const nextPlayers = asIds(data.players);
+    const nextWaitlist = asIds(data.waitlist);
+    if (gameId.length === 0 || gameId.length > 128) {
+      throw new HttpsError('invalid-argument', 'invalid gameId');
+    }
+    if (nextPlayers.length + nextWaitlist.length > 500) {
+      throw new HttpsError('invalid-argument', 'roster too large');
+    }
+
+    const gameSnap = await db.collection('games').doc(gameId).get();
+    if (!gameSnap.exists) throw new HttpsError('failed-precondition', 'game not found');
+    const game = gameSnap.data() as { groupId?: string; createdBy?: string; status?: string };
+    if (game.status === 'finished' || game.status === 'cancelled') {
+      throw new HttpsError('failed-precondition', 'game is no longer editable');
+    }
+    if (!game.groupId) throw new HttpsError('failed-precondition', 'game has no community');
+    const groupSnap = await db.collection('groups').doc(game.groupId).get();
+    const grp = (groupSnap.data() ?? {}) as { adminIds?: string[] };
+    const isAdmin =
+      callerUid === game.createdBy || (grp.adminIds ?? []).includes(callerUid);
+    if (!isAdmin) throw new HttpsError('permission-denied', 'admins only');
+
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(gameSnap.ref);
+      const g = fresh.data() as {
+        players?: string[];
+        waitlist?: string[];
+        pending?: string[];
+        maxPlayers?: number;
+        guests?: { waitlisted?: boolean }[];
+        pendingPromotion?: { uid?: string } | null;
+      };
+      // No duplicates within/across the two target lists.
+      const uniq = new Set([...nextPlayers, ...nextWaitlist]);
+      if (uniq.size !== nextPlayers.length + nextWaitlist.length) {
+        throw new HttpsError('invalid-argument', 'duplicate uid in roster');
+      }
+      // Same multiset as before — reorder/repartition only, no add/remove.
+      const oldSet = [...(g.players ?? []), ...(g.waitlist ?? [])].sort();
+      const newSet = [...nextPlayers, ...nextWaitlist].sort();
+      if (
+        oldSet.length !== newSet.length ||
+        oldSet.some((v, i) => v !== newSet[i])
+      ) {
+        throw new HttpsError('failed-precondition', 'roster set changed — reorder only');
+      }
+      // Capacity: players + active guests + a held promotion offer must fit.
+      // BUT if the admin's reorder itself promotes the offered uid into
+      // players[], the offer is being fulfilled — don't double-count its
+      // reserved seat, and clear the now-stale pendingPromotion so it can't
+      // later re-add the uid (duplicate).
+      const cap =
+        typeof g.maxPlayers === 'number' && g.maxPlayers > 0 ? g.maxPlayers : Infinity;
+      const activeGuests = Array.isArray(g.guests)
+        ? g.guests.filter((x) => !x?.waitlisted).length
+        : 0;
+      const offeredUid = g.pendingPromotion?.uid;
+      const offerFulfilled = !!offeredUid && nextPlayers.includes(offeredUid);
+      const offerHeld = offeredUid && !nextPlayers.includes(offeredUid) ? 1 : 0;
+      if (nextPlayers.length + activeGuests + offerHeld > cap) {
+        throw new HttpsError('failed-precondition', 'over capacity');
+      }
+      const participantIds = Array.from(
+        new Set([...nextPlayers, ...nextWaitlist, ...(g.pending ?? [])]),
+      );
+      tx.update(gameSnap.ref, {
+        players: nextPlayers,
+        waitlist: nextWaitlist,
+        participantIds,
+        updatedAt: Date.now(),
+        ...(offerFulfilled ? { pendingPromotion: null } : {}),
+      });
+    });
+    return { ok: true };
+  },
+);
+
 // ─── Callable: notify game admin of player cancellation ────────────────
 //
 // Moved off the client write path so we can:
@@ -6931,6 +7063,11 @@ export const createGroupCallable = onCall(
       adminIds: [uid],
       playerIds: [uid],
       pendingPlayerIds: [],
+      // Stamp the founder's membership + admin dates at creation (the
+      // stampMembershipDates CF only sees LATER additions, not the initial
+      // create), so the founder's timeline shows הצטרף/מונה like everyone else.
+      joinedAt: { [uid]: createdAt },
+      adminSince: { [uid]: createdAt },
       inviteCode: genInviteCode(),
       isOpen,
       internalRating,
@@ -9251,26 +9388,27 @@ export const stampMembershipDates = onDocumentUpdated('groups/{id}', async (even
   if (!before || !after) return;
 
   const now = Date.now();
-  const joinedAt: Record<string, number> = { ...(after.joinedAt ?? {}) };
-  const adminSince: Record<string, number> = { ...(after.adminSince ?? {}) };
-  let changed = false;
+  const existingJoined = after.joinedAt ?? {};
+  const existingAdmin = after.adminSince ?? {};
+  // Write ONLY the newly-added keys via dotted field paths, so a concurrent
+  // write to a sibling key isn't clobbered by a whole-map overwrite (lost
+  // update). Field-path updates merge into the map.
+  const patch: Record<string, number> = {};
 
   const hadPlayers = new Set(before.playerIds ?? []);
   for (const uid of after.playerIds ?? []) {
-    if (!hadPlayers.has(uid) && joinedAt[uid] === undefined) {
-      joinedAt[uid] = now;
-      changed = true;
+    if (!hadPlayers.has(uid) && existingJoined[uid] === undefined) {
+      patch[`joinedAt.${uid}`] = now;
     }
   }
   const hadAdmins = new Set(before.adminIds ?? []);
   for (const uid of after.adminIds ?? []) {
-    if (!hadAdmins.has(uid) && adminSince[uid] === undefined) {
-      adminSince[uid] = now;
-      changed = true;
+    if (!hadAdmins.has(uid) && existingAdmin[uid] === undefined) {
+      patch[`adminSince.${uid}`] = now;
     }
   }
-  if (!changed) return;
-  await event.data!.after.ref.update({ joinedAt, adminSince });
+  if (Object.keys(patch).length === 0) return;
+  await event.data!.after.ref.update(patch);
 });
 
 // Founder alert: a user updated their availability (days / times / city /

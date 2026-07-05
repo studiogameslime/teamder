@@ -2056,6 +2056,12 @@ export const he = {
   matchPlayersOfferAdvanceConfirm: 'להעביר את ההצעה לשחקן הבא ברשימת ההמתנה?',
   matchPlayersOfferConfirmCta: 'אישור הגעה',
   matchPlayersOfferPassCta: 'ויתור',
+  // Admin roster management (move / reorder).
+  playerMenuMoveToWaitlist: 'העבר להמתנה',
+  matchPlayersMoveToRoster: 'להרכב',
+  matchPlayersMoveUp: 'העלה בתור',
+  matchPlayersMoveDown: 'הורד בתור',
+  matchPlayersRosterFull: 'ההרכב מלא — פנה מקום קודם',
   matchPlayersApproveCta: 'אשר',
   matchPlayersRejectCta: 'דחה',
   matchPlayersApproveDone: 'הבקשה אושרה',
@@ -2194,6 +2200,20 @@ export const he = {
     `${players} נרשמו להרכב, ${waitlist} לרשימת ההמתנה`,
   addMembersNoneAdded: 'אף שחקן לא נוסף (כבר רשומים)',
   addMembersError: 'לא הצלחנו לרשום, נסו שוב',
+  // Reserve-spots flavor (same picker, on a scheduled game before registration
+  // opens) — the admin pre-secures spots for chosen regulars.
+  matchMenuReserveSpots: 'שריין מקומות',
+  reserveSpotsTitle: 'שריון מקומות מראש',
+  reserveSpotsHint: 'ההרשמה עוד לא נפתחה. בחרו שחקנים שיישָׁמר להם מקום בהרכב — הם ייכנסו אוטומטית ויקבלו התראה.',
+  reserveSpotsSubmit: (n: number) => (n === 1 ? 'שריין מקום' : `שריין ${n} מקומות`),
+  reserveSpotsDone: (n: number) =>
+    n === 1 ? 'שוריין מקום לשחקן' : `שוריין מקום ל-${n} שחקנים`,
+  reserveSpotsCapReached: (n: number) =>
+    n === 1 ? 'נשאר מקום אחד לשריון' : `אפשר לשריין עד ${n} מקומות`,
+  reserveSpotsHintCount: (n: number) =>
+    n === 1
+      ? 'ההרשמה עוד לא נפתחה. נשאר מקום אחד לשריון — בחרו למי לשמור אותו.'
+      : `ההרשמה עוד לא נפתחה. אפשר לשריין עד ${n} מקומות — בחרו למי לשמור אותם. הם ייכנסו אוטומטית ויקבלו התראה.`,
   // Filler candidate (non-member) apply CTA on MatchDetails.
   fillerApplyTitle: 'המשחק מחפש שחקנים להשלמה',
   fillerApplySub: 'הגש מועמדות — מנהל המשחק יאשר אותך ידנית.',

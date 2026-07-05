@@ -85,13 +85,18 @@ interface UseGameEventsOptions {
    *  the caller can mirror remote roster / status changes into its
    *  own state without issuing a second read. */
   onUpdate?: (game: Game) => void;
+  /** Called when the live listener hits a permission-denied error — i.e. the
+   *  viewer lost read access mid-view (e.g. an admin removed them). Lets the
+   *  screen pivot to a blocked state immediately instead of waiting for the
+   *  next focus-reload. */
+  onAccessBlocked?: () => void;
 }
 
 export function useGameEvents(
   gameId: string | undefined,
   opts: UseGameEventsOptions = {},
 ): void {
-  const { onUpdate } = opts;
+  const { onUpdate, onAccessBlocked } = opts;
 
   // Holds the last observed snapshot data so we can diff against the
   // next one. Lives on a ref (not state) — we don't want re-renders.
@@ -116,6 +121,10 @@ export function useGameEvents(
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
+  const onAccessBlockedRef = useRef<typeof onAccessBlocked>(onAccessBlocked);
+  useEffect(() => {
+    onAccessBlockedRef.current = onAccessBlocked;
+  }, [onAccessBlocked]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -252,6 +261,15 @@ export function useGameEvents(
         prevRef.current = curr;
       },
       (err) => {
+        // Lost read access mid-view (admin removed the viewer) → let the
+        // screen pivot to the blocked state live, not just on the next focus.
+        const code =
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? (err as { code: string }).code
+            : '';
+        if (code === 'permission-denied') {
+          onAccessBlockedRef.current?.();
+        }
         logError('useGameEventsSnapshot', err, { gameId });
         if (__DEV__) console.warn('[useGameEvents] snapshot error', err);
       }

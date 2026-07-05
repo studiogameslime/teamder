@@ -583,48 +583,6 @@ export const gameService = {
     }
   },
 
-  /**
-   * Live subscription to a single game doc. Fires `onData` with the mapped
-   * Game on every server change (null when the doc is deleted / doesn't
-   * exist), and `onError('ACCESS_BLOCKED')` when rules deny the read. Returns
-   * an unsubscribe handle. Mock mode has no realtime — it emits the current
-   * snapshot once and returns a no-op unsubscribe.
-   *
-   * Powers the live registration-open flip on MatchDetails: the scheduled→open
-   * status change is written server-side at publicOpenAt, so a one-shot fetch
-   * left a user sitting on the screen unable to register until they left and
-   * came back (user report). This pushes the flip in real time.
-   */
-  subscribeGame(
-    gameId: string,
-    onData: (game: Game | null) => void,
-    onError?: (code: string) => void,
-  ): () => void {
-    if (!gameId) return () => {};
-    if (USE_MOCK_DATA) {
-      const found = mockGamesV2.find((g) => g.id === gameId);
-      onData(found ? ({ ...found, matches: [] } as Game) : null);
-      return () => {};
-    }
-    return onSnapshot(
-      docs.game(gameId),
-      (snap) => {
-        if (!snap.exists()) {
-          onData(null);
-          return;
-        }
-        onData({ ...snap.data(), matches: [] });
-      },
-      (err) => {
-        const code =
-          typeof (err as { code?: unknown })?.code === 'string'
-            ? (err as { code: string }).code
-            : '';
-        onError?.(code === 'permission-denied' ? 'ACCESS_BLOCKED' : code || 'error');
-      },
-    );
-  },
-
   async getActiveGameForGroup(groupId: GroupId): Promise<Game | null> {
     if (USE_MOCK_DATA) return ensureMockGame();
 
@@ -742,16 +700,18 @@ export const gameService = {
     for (const uid of userIds) acc[uid] = { gamesPlayed: 0 };
     if (USE_MOCK_DATA || userIds.length === 0) return acc;
 
-    const q = query(
-      col.games(),
-      where('groupId', '==', groupId),
-      where('status', '==', 'finished'),
-      orderBy('startsAt', 'desc'),
-      limit(50),
-    );
+    // Read the server `communityPlayerStats` rollup (same source as the
+    // championship table + the player's Statistics screen). Its `games` field
+    // is incremented per finished game with NO-SHOWS EXCLUDED and is unbounded
+    // — so this chip now agrees with every other games-played surface (it used
+    // to scan the last 50 finished games and count no-shows, which both
+    // over-counted and saturated). One groupId query, cheaper than the scan.
+    const db = getFirebase().db;
     let snap;
     try {
-      snap = await getDocs(q);
+      snap = await getDocs(
+        query(collection(db, 'communityPlayerStats'), where('groupId', '==', groupId)),
+      );
     } catch (err) {
       if (isPermissionDenied(err)) return acc; // deleted group / non-member
       logError('getCommunityPlayerStats', err, {
@@ -761,14 +721,13 @@ export const gameService = {
       if (__DEV__) {
         console.warn('[gameService] getCommunityPlayerStats failed', err);
       }
-      throw err;
+      return acc; // degrade to zeros rather than breaking the whole roster load
     }
     const requestedSet = new Set(userIds);
-    for (const doc of snap.docs) {
-      const g = doc.data();
-      const players: UserId[] = Array.isArray(g.players) ? g.players : [];
-      for (const uid of players) {
-        if (requestedSet.has(uid)) acc[uid].gamesPlayed += 1;
+    for (const d of snap.docs) {
+      const row = d.data() as { userId?: string; games?: number };
+      if (row.userId && requestedSet.has(row.userId)) {
+        acc[row.userId] = { gamesPlayed: Number(row.games ?? 0) };
       }
     }
     return acc;
@@ -847,9 +806,13 @@ export const gameService = {
       throw err;
     }
     const acc = { ...zero };
+    const nowMs = Date.now();
     for (const doc of snap.docs) {
       const g = doc.data();
       if (g.status !== 'finished') continue;
+      // Guard against a 'finished'-but-future game (same rule as the canonical
+      // isAttendedGame) so the pair card can't drift from the Statistics screen.
+      if (typeof g.startsAt === 'number' && g.startsAt >= nowMs) continue;
       if (groupId && g.groupId !== groupId) continue;
       const players = (g.players ?? []) as UserId[];
       if (!players.includes(uidA) || !players.includes(uidB)) continue;
@@ -2903,6 +2866,54 @@ export const gameService = {
       addedToPlayers: d.addedToPlayers ?? 0,
       addedToWaitlist: d.addedToWaitlist ?? 0,
     };
+  },
+
+  /**
+   * Admin reorder / move players between roster and waitlist. The caller passes
+   * the DESIRED full players[] + waitlist[] (after a move/reorder); the server
+   * validates it's the same participant set (no add/remove) + capacity, then
+   * writes. Reordering the waitlist controls who's offered a freed spot next.
+   */
+  async adminReorderRoster(
+    gameId: string,
+    players: string[],
+    waitlist: string[],
+  ): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.players = [...players];
+        m.waitlist = [...waitlist];
+        m.participantIds = Array.from(
+          new Set([...players, ...waitlist, ...(m.pending ?? [])]),
+        );
+      }
+      return;
+    }
+    let user = getFirebase().auth.currentUser;
+    if (!user) user = await waitForAuthRestore();
+    if (!user) throw new Error('adminReorderRoster: not signed in');
+    await user.getIdToken();
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const call = () =>
+      httpsCallable(getFirebase().functions, 'adminReorderRoster')({
+        gameId,
+        players,
+        waitlist,
+      });
+    try {
+      await call();
+    } catch (err) {
+      const code = (err as { code?: string } | undefined)?.code;
+      if (code === 'functions/unauthenticated' || code === 'unauthenticated') {
+        await user.getIdToken(true);
+        await call();
+      } else {
+        throw err;
+      }
+    }
   },
 
   // ─── Live "winner stays" rotation ──────────────────────────────────────
@@ -6670,8 +6681,11 @@ export const gameService = {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('addGuest: game not found');
       await assertCanAddGuest(g, callerId);
-      // Full game → queue the guest on the waitlist instead of refusing.
-      const occupancy = g.players.length + activeGuestCount(g.guests);
+      // Full game → queue the guest on the waitlist instead of refusing. Count
+      // a held promotion offer as an occupied seat (like every other admission
+      // path) so a guest can't steal a seat reserved for the offered waitlister.
+      const occupancy =
+        g.players.length + activeGuestCount(g.guests) + (g.pendingPromotion?.uid ? 1 : 0);
       const wlGuest = occupancy >= g.maxPlayers ? { ...guest, waitlisted: true } : guest;
       g.guests = [...(g.guests ?? []), wlGuest];
       g.updatedAt = Date.now();
@@ -6714,9 +6728,13 @@ export const gameService = {
         if (data.status !== 'open') throw new Error('GAME_NOT_OPEN');
         const playersLen = (data.players ?? []).length;
         const guestsLen = activeGuestCount(data.guests);
+        // A held promotion offer reserves a seat — count it so a guest can't
+        // steal the seat and push the roster past maxPlayers when the offered
+        // waitlister later confirms (matches joinGameV2 / adminAddPlayers).
+        const offerReservation = (data.pendingPromotion as { uid?: string } | undefined)?.uid ? 1 : 0;
         // Full game → add the guest as waitlisted (queued) rather than
         // refusing. Waitlisted guests don't occupy an active slot.
-        const full = playersLen + guestsLen >= (data.maxPlayers ?? 15);
+        const full = playersLen + guestsLen + offerReservation >= (data.maxPlayers ?? 15);
         savedGuest = full ? { ...guest, waitlisted: true } : guest;
         tx.update(ref, {
           guests: [...(data.guests ?? []), savedGuest],

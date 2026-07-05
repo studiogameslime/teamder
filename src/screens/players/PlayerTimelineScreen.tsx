@@ -207,7 +207,14 @@ export function PlayerTimelineScreen() {
     let validityText: string | null = null;
     if (isCard && exp !== null && !ev.revoked) {
       if (state === 'active') {
-        const daysLeft = Math.ceil((exp - now) / DAY_MS);
+        // Calendar-day difference (not raw ms/ceil) so the expiry DAY reads
+        // "מסתיים היום", the day before "עוד יום", etc. — matching the date shown.
+        const dayStart = (t: number) => {
+          const d = new Date(t);
+          d.setHours(0, 0, 0, 0);
+          return d.getTime();
+        };
+        const daysLeft = Math.round((dayStart(exp) - dayStart(now)) / DAY_MS);
         validityText = `${he.cardValidUntil(fmtDate(exp))} · ${he.cardDaysLeft(daysLeft)}`;
       } else if (state === 'expired') {
         validityText = he.cardExpiredOn(fmtDate(exp));
@@ -382,7 +389,9 @@ const styles = StyleSheet.create({
   },
   dayRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
   dayPill: {
-    flexDirection: 'row-reverse',
+    // `row` under forceRTL puts the first child (calendar icon) on the visual
+    // RIGHT (leading), matching the eventRow convention.
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.surfaceMuted,
@@ -458,9 +467,10 @@ const styles = StyleSheet.create({
   tagRevoked: { backgroundColor: colors.danger + '22' },
   tagText: { ...typography.caption, color: colors.textMuted, fontWeight: '700' },
   detail: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN, marginTop: 4 },
-  // Validity ("בתוקף עד …") line — icon on the visual right under RTL.
+  // Validity ("בתוקף עד …") line — icon on the visual right under RTL ('row'
+  // puts the first child on the right under forceRTL).
   validityRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 5,
@@ -470,7 +480,7 @@ const styles = StyleSheet.create({
   // Explicit revoke affordance on active cards (replaces the hidden long-press
   // as the primary action).
   revokeBtn: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 5,

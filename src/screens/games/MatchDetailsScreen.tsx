@@ -519,6 +519,13 @@ export function MatchDetailsScreen() {
       },
       [hydratePlayers],
     ),
+    // Viewer lost access mid-view (removed from the community) → pivot live to
+    // the blocked screen instead of waiting for the next focus-reload.
+    onAccessBlocked: React.useCallback(() => {
+      setGame(null);
+      setAccessBlocked(true);
+      setLoading(false);
+    }, []),
   });
 
   // Clear stale state the instant `gameId` flips. React Navigation
@@ -617,44 +624,12 @@ export function MatchDetailsScreen() {
     }, [reload]),
   );
 
-  // Live subscription so a server-side change updates the screen in place —
-  // most importantly the scheduled→open registration flip written at the
-  // publicOpenAt time. Without it, a user sitting on MatchDetails when
-  // registration opened had to leave and come back before the join button
-  // unlocked (user report). Also keeps the roster/waitlist live as others join.
-  useEffect(() => {
-    if (!gameId) return;
-    const unsub = gameService.subscribeGame(
-      gameId,
-      (g) => {
-        if (g) {
-          setGame(g);
-          setNotFound(false);
-          setAccessBlocked(false);
-          setLoadError(false);
-          setLoading(false);
-          const uids = Array.from(
-            new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
-          );
-          if (uids.length > 0) hydratePlayers(uids);
-        } else {
-          // Deleted while watching.
-          setGame(null);
-          setNotFound(true);
-          setLoading(false);
-        }
-      },
-      (code) => {
-        if (code === 'ACCESS_BLOCKED') {
-          setGame(null);
-          setAccessBlocked(true);
-          setLoading(false);
-        }
-        // Other (transient) errors: keep whatever's shown; focus-reload retries.
-      },
-    );
-    return unsub;
-  }, [gameId, hydratePlayers]);
+  // NOTE: the live game subscription lives in useGameEvents (above) — its
+  // onUpdate already mirrors every server change (incl. the scheduled→open
+  // registration flip) into setGame, so a user sitting on the screen sees the
+  // join button unlock without leaving/re-entering. A second onSnapshot here
+  // would just double the realtime read cost; the real "looks stale" symptom
+  // was the focus-reload blanking the screen (fixed at the render gate below).
 
   // Pre-check for a registration conflict so the join CTA can render
   // disabled with a helper text before the user even taps. Only runs
@@ -1244,7 +1219,24 @@ export function MatchDetailsScreen() {
     );
   }
 
-  if (loading || !game) {
+  // Loader only on the INITIAL load (no data yet). A focus-reload while the
+  // live subscription already holds `game` must NOT blank the screen to a
+  // spinner (that flash was the real "looks stale until you re-enter" symptom).
+  if (loading && !game) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.matchDetailsTitle} />
+        <View style={styles.center}>
+          <SoccerBallLoader size={48} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No error branch matched but `game` is momentarily null (e.g. mid-reload
+  // right after a gameId switch) — show the loader rather than crash. Also
+  // narrows `game` to non-null for the render below.
+  if (!game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <ScreenHeader title={he.matchDetailsTitle} />
@@ -1353,17 +1345,20 @@ export function MatchDetailsScreen() {
   const handleConfirmSpotOffer = async () => {
     if (!game || !user) return;
     const me = user.id;
-    setGame((prev) => {
-      if (!prev || prev.players.includes(me)) return prev;
-      return {
-        ...prev,
-        players: [...prev.players, me],
-        waitlist: prev.waitlist.filter((id) => id !== me),
-        pendingPromotion: null,
-      };
-    });
     try {
       await gameService.confirmSpotOffer(game.id, me);
+      // Splice locally only AFTER the write commits — an in-flight snapshot
+      // from useGameEvents would otherwise clobber a pre-await optimistic
+      // update back to the pre-accept state (CTA flickered back, user report).
+      setGame((prev) => {
+        if (!prev || prev.players.includes(me)) return prev;
+        return {
+          ...prev,
+          players: [...prev.players, me],
+          waitlist: prev.waitlist.filter((id) => id !== me),
+          pendingPromotion: null,
+        };
+      });
       toast.success(he.toastGameJoined);
     } catch (err) {
       logError('confirmSpotOffer', err, {
@@ -1905,18 +1900,23 @@ export function MatchDetailsScreen() {
             ]
           : []),
         // Register members straight from the community into the game (admin
-        // only, while open). Distinct from "invite" — these are added to the
-        // roster directly and get a push that they were registered.
-        ...(isAdmin && game.status === 'open'
+        // only). Distinct from "invite" — these are added to the roster
+        // directly and get a push. On an OPEN game it reads "הוסף שחקנים"; on a
+        // still-SCHEDULED game (registration not open yet) the SAME flow is
+        // framed as "שריין מקומות" — pre-securing spots for regulars before the
+        // doors open (the adminAddPlayers callable already allows scheduled).
+        ...(isAdmin && (game.status === 'open' || isScheduled(game))
           ? [
               {
                 id: 'addMembers',
-                label: he.matchMenuAddMembers,
-                icon: 'people-circle-outline' as const,
+                label: isScheduled(game) ? he.matchMenuReserveSpots : he.matchMenuAddMembers,
+                icon: isScheduled(game)
+                  ? ('bookmark-outline' as const)
+                  : ('people-circle-outline' as const),
                 onPress: () =>
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'AddMembers',
-                    { gameId: game.id },
+                    { gameId: game.id, reserve: isScheduled(game) },
                   ),
               },
             ]
