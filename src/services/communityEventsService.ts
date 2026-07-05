@@ -137,6 +137,43 @@ export const communityEventsService = {
     }
   },
 
+  /**
+   * Log a single manual equipment change from the "נהל ציוד" sheet — an admin
+   * marking a player as holding (received) or clearing the mark (returned) the
+   * club's ball / jerseys. Recorded on the player's timeline. `issuedBy` is
+   * carried for attribution (ball/jerseys don't require it in rules).
+   */
+  async logEquipmentChange(
+    groupId: GroupId,
+    userId: UserId,
+    type: 'ball' | 'jerseys',
+    issuedBy: UserId,
+    returned: boolean,
+  ): Promise<void> {
+    if (!groupId || !userId) return;
+    const now = Date.now();
+    const ref = USE_MOCK_DATA ? null : doc(collection(getFirebase().db, COL));
+    const ev: CommunityPlayerEvent = {
+      id: ref ? ref.id : genId(),
+      groupId,
+      userId,
+      type,
+      at: now,
+      issuedBy,
+      ...(returned ? { returned: true } : {}),
+    };
+    if (USE_MOCK_DATA) {
+      mockEvents.unshift(ev);
+      return;
+    }
+    try {
+      await setDoc(ref!, ev);
+    } catch (err) {
+      logError('logEquipmentChange', err, { groupId, userId, type });
+      throw err;
+    }
+  },
+
   /** Full timeline for one player in one community, newest first. */
   async getPlayerTimeline(groupId: GroupId, userId: UserId): Promise<CommunityPlayerEvent[]> {
     if (!groupId || !userId) return [];

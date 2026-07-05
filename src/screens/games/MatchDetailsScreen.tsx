@@ -853,7 +853,9 @@ export function MatchDetailsScreen() {
       // Active red card in this community → blocked from self-registering
       // (the server rejects it too; this pre-empts with a clear message).
       if (redBlocked) {
-        toast.info(he.redCardBlockToast);
+        // A red card is a hard block on registering — show it in the red
+        // error style, not the neutral blue info toast (user report).
+        toast.error(he.redCardBlockToast);
         return;
       }
     } else if (!canCancelRegistration(game)) {

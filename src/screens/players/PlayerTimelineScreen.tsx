@@ -155,6 +155,14 @@ export function PlayerTimelineScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item: ev }) => {
             const meta = EVENT_META[ev.type];
+            // Ball/jerseys marks cleared via "נהל ציוד" read "החזיר …" instead
+            // of the default "לקח … הביתה".
+            const title =
+              ev.returned && ev.type === 'ball'
+                ? he.timelineEventBallReturned
+                : ev.returned && ev.type === 'jerseys'
+                  ? he.timelineEventJerseysReturned
+                  : meta.label;
             const isCard = ev.type === 'yellow' || ev.type === 'red';
             const state = isCard ? cardState(ev, validityFor(ev.type), now) : 'active';
             const stateLabel =
@@ -194,7 +202,7 @@ export function PlayerTimelineScreen() {
                         style={[styles.title, dimmed && styles.strike]}
                         numberOfLines={1}
                       >
-                        {meta.label}
+                        {title}
                       </Text>
                       {stateLabel ? (
                         <View style={[styles.tag, state === 'revoked' ? styles.tagRevoked : styles.tagExpired]}>

@@ -24,7 +24,16 @@ import {
   type PlayerMenuTarget,
 } from '@/components/match/PlayerActionMenu';
 import { IssueCardSheet } from '@/components/community/IssueCardSheet';
-import { CardCountBadges } from '@/components/community/CardCountBadges';
+import {
+  ManageEquipmentSheet,
+  type EquipmentFlags,
+} from '@/components/community/ManageEquipmentSheet';
+import {
+  CardCountBadges,
+  RefereeCard,
+  CARD_YELLOW,
+  CARD_RED,
+} from '@/components/community/CardCountBadges';
 import { communityEventsService } from '@/services';
 import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
 import { formatRating, isRated } from '@/utils/rating';
@@ -77,6 +86,9 @@ export function CommunityPlayersScreen() {
   const [menuTarget, setMenuTarget] = useState<PlayerMenuTarget | null>(null);
   const [cardTarget, setCardTarget] = useState<{ user: User; type: 'yellow' | 'red' } | null>(null);
   const [savingCard, setSavingCard] = useState(false);
+  // Equipment (ball / jerseys) sheet target + save-in-flight flag.
+  const [equipTarget, setEquipTarget] = useState<User | null>(null);
+  const [savingEquip, setSavingEquip] = useState(false);
   // Per-player ACTIVE yellow/red counts → the roster discipline badges.
   const [cardCounts, setCardCounts] = useState<CardCountsMap>({});
 
@@ -160,23 +172,45 @@ export function CommunityPlayersScreen() {
   // feature in its advanced settings. The player-card + timeline entries
   // always show for admins.
   const cardsOn = !!group?.cardsEnabled;
-  const menuItemsFor = (u: User): PlayerMenuItem[] => [
-    { key: 'card', icon: 'person-circle-outline', label: he.playerMenuCard, onPress: () => goToCard(u) },
-    { key: 'timeline', icon: 'time-outline', label: he.playerMenuTimeline, onPress: () => goToTimeline(u) },
-    ...(cardsOn
-      ? ([
-          { key: 'yellow', icon: 'card', label: he.cardYellow, color: colors.warning, onPress: () => setCardTarget({ user: u, type: 'yellow' }) },
-          // A red card BLOCKS registration — confirm first (yellow stays one-tap).
-          { key: 'red', icon: 'card', label: he.cardRed, color: colors.danger, onPress: () => {
-            warningHaptic();
-            appAlert(he.cardRedConfirmTitle, he.cardRedConfirmBody(u.name), [
-              { text: he.cancel, style: 'cancel' },
-              { text: he.cardRed, style: 'destructive', onPress: () => setCardTarget({ user: u, type: 'red' }) },
-            ]);
-          } },
-        ] as PlayerMenuItem[])
-      : []),
-  ];
+  // ONE ⋮ menu per row with every action (no row-tap, no chevron). Card shows
+  // for everyone; the admin/creator actions are gated. Rating is edited ONLY
+  // here (the row chip is display-only).
+  const menuItemsFor = (u: User): PlayerMenuItem[] => {
+    const isMe = me?.id === u.id;
+    const targetIsCreator = (group?.creatorId ?? group?.adminIds?.[0]) === u.id;
+    const canManage = iAmCreator && !isMe;
+    const removable = iAmAdmin && !iAmCreator && !isMe && !targetIsCreator;
+    return [
+      { key: 'card', icon: 'person-circle-outline', label: he.playerMenuCard, onPress: () => goToCard(u) },
+      ...(iAmAdmin
+        ? ([{ key: 'timeline', icon: 'time-outline', label: he.playerMenuTimeline, onPress: () => goToTimeline(u) }] as PlayerMenuItem[])
+        : []),
+      ...(internalRating && iAmAdmin
+        ? ([{ key: 'rate', icon: 'star-outline', label: he.playerMenuRate, color: colors.warning, onPress: () => setRatingTarget(u) }] as PlayerMenuItem[])
+        : []),
+      ...(cardsOn && iAmAdmin
+        ? ([
+            { key: 'yellow', iconNode: <RefereeCard color={CARD_YELLOW} w={14} h={19} radius={3} />, label: he.cardYellow, color: colors.warning, onPress: () => setCardTarget({ user: u, type: 'yellow' }) },
+            // A red card BLOCKS registration — confirm first (yellow stays one-tap).
+            { key: 'red', iconNode: <RefereeCard color={CARD_RED} w={14} h={19} radius={3} />, label: he.cardRed, color: colors.danger, onPress: () => {
+              warningHaptic();
+              appAlert(he.cardRedConfirmTitle, he.cardRedConfirmBody(u.name), [
+                { text: he.cancel, style: 'cancel' },
+                { text: he.cardRed, style: 'destructive', onPress: () => setCardTarget({ user: u, type: 'red' }) },
+              ]);
+            } },
+          ] as PlayerMenuItem[])
+        : []),
+      ...(iAmAdmin
+        ? ([{ key: 'equipment', icon: 'cube-outline', label: he.playerMenuManageEquipment, onPress: () => setEquipTarget(u) }] as PlayerMenuItem[])
+        : []),
+      ...(canManage
+        ? ([{ key: 'manage', icon: 'settings-outline', label: he.communityManageMember, onPress: () => handleManageMember(u) }] as PlayerMenuItem[])
+        : removable
+          ? ([{ key: 'remove', icon: 'person-remove-outline', label: he.communityRemoveMember, color: colors.danger, onPress: () => handleRemoveMember(u) }] as PlayerMenuItem[])
+          : []),
+    ];
+  };
 
   const menuUser = useMemo(
     () => members.find((m) => m.id === menuTarget?.player.id) ?? null,
@@ -214,6 +248,63 @@ export function CommunityPlayersScreen() {
       setSavingCard(false);
     }
   };
+
+  // Persist this player's equipment flags. Holders are independent arrays
+  // (several people can each hold a ball / jerseys), so we only add/remove
+  // THIS player's id — never disturbing anyone else's mark. Optimistically
+  // splice the group so the roster badges flip immediately; the realtime
+  // subscription confirms it.
+  const saveEquipment = useCallback(
+    async (target: User, flags: EquipmentFlags) => {
+      if (!group || !me) return;
+      setSavingEquip(true);
+      const ballWas = (group.ballHolderIds ?? []).includes(target.id);
+      const jerseysWas = (group.jerseysHolderIds ?? []).includes(target.id);
+      const toggle = (arr: UserId[] | undefined, on: boolean): UserId[] => {
+        const set = new Set(arr ?? []);
+        if (on) set.add(target.id);
+        else set.delete(target.id);
+        return Array.from(set);
+      };
+      const ballHolderIds = toggle(group.ballHolderIds, flags.ball);
+      const jerseysHolderIds = toggle(group.jerseysHolderIds, flags.jerseys);
+      try {
+        await groupService.setEquipmentHolders(group.id, {
+          ballHolderIds,
+          jerseysHolderIds,
+        });
+        // Record each actual change on the player's timeline — received when
+        // marked, returned when cleared. Best-effort: a timeline write failure
+        // shouldn't undo the (already-saved) holder change.
+        const logs: Promise<void>[] = [];
+        if (flags.ball !== ballWas) {
+          logs.push(
+            communityEventsService.logEquipmentChange(
+              group.id, target.id, 'ball', me.id, !flags.ball,
+            ),
+          );
+        }
+        if (flags.jerseys !== jerseysWas) {
+          logs.push(
+            communityEventsService.logEquipmentChange(
+              group.id, target.id, 'jerseys', me.id, !flags.jerseys,
+            ),
+          );
+        }
+        await Promise.allSettled(logs);
+        setGroup((g) => (g ? { ...g, ballHolderIds, jerseysHolderIds } : g));
+        setEquipTarget(null);
+        successHaptic();
+        toast.success(he.equipmentUpdatedToast);
+      } catch (err) {
+        logError('setEquipmentHolders', err, { groupId, userId: target.id });
+        toast.error(he.equipmentUpdateFailed);
+      } finally {
+        setSavingEquip(false);
+      }
+    },
+    [group, me, groupId],
+  );
 
   const saveAdminRating = useCallback(
     async (playerId: UserId, rating: number | null) => {
@@ -364,14 +455,6 @@ export function CommunityPlayersScreen() {
             </Text>
           }
           renderItem={({ item: u, index: i }) => {
-            const isMe = me?.id === u.id;
-            const targetIsCreator =
-              (group.creatorId ?? group.adminIds[0]) === u.id;
-            // Creator → full management menu (promote / demote / remove)
-            // on every row but their own. Non-creator admin → remove only.
-            const canManage = iAmCreator && !isMe;
-            const removable =
-              iAmAdmin && !iAmCreator && !isMe && !targetIsCreator;
             return (
               <View style={i === 0 ? styles.listCard : null}>
                 <PlayerRow
@@ -386,27 +469,12 @@ export function CommunityPlayersScreen() {
                   rating={
                     ratingsHiddenFromMe ? undefined : group.adminRatings?.[u.id]
                   }
-                  onSetRating={
-                    internalRating && iAmAdmin
-                      ? () => setRatingTarget(u)
-                      : undefined
-                  }
-                  onPress={(e) =>
-                    iAmAdmin
-                      ? openPlayerMenu(u, e)
-                      : nav.navigate('PlayerCard', { userId: u.id, groupId: group.id })
-                  }
-                  onLongPress={
-                    canManage
-                      ? () => handleManageMember(u)
-                      : removable
-                        ? () => handleRemoveMember(u)
-                        : undefined
-                  }
-                  onManage={canManage ? () => handleManageMember(u) : undefined}
-                  onRemove={
-                    removable ? () => handleRemoveMember(u) : undefined
-                  }
+                  // Show the rating chip to admins (display-only); editing is
+                  // via the "דרג" menu item, not a chip tap.
+                  showRating={internalRating && iAmAdmin && !ratingsHiddenFromMe}
+                  // ONLY the ⋮ opens the menu — the row body is not tappable and
+                  // there's no chevron (user request).
+                  onOpenMenu={(e) => openPlayerMenu(u, e)}
                 />
               </View>
             );
@@ -439,6 +507,17 @@ export function CommunityPlayersScreen() {
         onSave={saveCard}
         onClose={() => (savingCard ? null : setCardTarget(null))}
       />
+      <ManageEquipmentSheet
+        visible={!!equipTarget}
+        playerName={equipTarget?.name ?? ''}
+        initial={{
+          ball: !!equipTarget && (group?.ballHolderIds ?? []).includes(equipTarget.id),
+          jerseys: !!equipTarget && (group?.jerseysHolderIds ?? []).includes(equipTarget.id),
+        }}
+        saving={savingEquip}
+        onSave={(flags) => equipTarget && saveEquipment(equipTarget, flags)}
+        onClose={() => (savingEquip ? null : setEquipTarget(null))}
+      />
     </SafeAreaView>
   );
 }
@@ -451,11 +530,8 @@ function PlayerRow({
   showDivider,
   internalRating,
   rating,
-  onSetRating,
-  onPress,
-  onLongPress,
-  onManage,
-  onRemove,
+  showRating,
+  onOpenMenu,
   holdsBall,
   holdsJerseys,
   cardCounts,
@@ -473,33 +549,14 @@ function PlayerRow({
   internalRating?: boolean;
   /** The admin-assigned rating for this player, if set. */
   rating?: number;
-  /** Admin-only: open the rating editor for this player. */
-  onSetRating?: () => void;
-  onPress: (e: GestureResponderEvent) => void;
-  /** Optional admin action — long-press opens the manage/remove dialog.
-   *  Undefined for rows the viewer can't act on. */
-  onLongPress?: () => void;
-  /** Creator-only "manage member" menu (promote / demote / remove),
-   *  rendered as a visible ⋯ button. Takes precedence over onRemove. */
-  onManage?: () => void;
-  /** Remove action (non-creator admins) as a VISIBLE trash button. */
-  onRemove?: () => void;
+  /** Admin-only: show the (display-only) rating chip. Editing is via the menu. */
+  showRating?: boolean;
+  /** Open the player's ⋮ action menu (the ONLY interaction — no row tap). */
+  onOpenMenu: (e: GestureResponderEvent) => void;
 }) {
   const games = stats?.gamesPlayed ?? 0;
   return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={500}
-      style={({ pressed }) => [
-        styles.row,
-        showDivider && styles.rowDivider,
-        pressed && { backgroundColor: colors.surfaceMuted },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={user.name}
-      accessibilityHint={onLongPress ? he.communityRemoveMember : undefined}
-    >
+    <View style={[styles.row, showDivider && styles.rowDivider]}>
       <PlayerIdentity user={user} size="sm" />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
@@ -530,55 +587,30 @@ function PlayerRow({
             icon="football-outline"
             text={he.communityPlayerGames(games)}
           />
-          {/* Internal rating is ADMIN-ONLY: the "דרג" chip shows solely to
-              admins (onSetRating is provided). Members never see it — not even
-              read-only — so the rating stays internal. When internal rating is
-              off entirely, no chip at all. */}
-          {internalRating && onSetRating ? (
-            <Pressable onPress={onSetRating} hitSlop={6}>
-              <View style={[styles.chip, styles.ratingChip]}>
-                <Ionicons name="star" size={12} color={colors.warning} />
-                <Text style={[styles.chipText, styles.ratingChipText]}>
-                  {isRated(rating) ? formatRating(rating) : he.communityAdminRatingSet}
-                </Text>
-              </View>
-            </Pressable>
+          {/* Internal rating is ADMIN-ONLY and DISPLAY-ONLY here: the chip shows
+              the value (or "לא דורג"), but tapping does nothing — rating is
+              edited from the "דרג" item in the player's ⋮ menu. Members never
+              see it; when internal rating is off, no chip at all. */}
+          {internalRating && showRating ? (
+            <View style={[styles.chip, styles.ratingChip]}>
+              <Ionicons name="star" size={12} color={colors.warning} />
+              <Text style={[styles.chipText, styles.ratingChipText]}>
+                {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
+              </Text>
+            </View>
           ) : null}
         </View>
       </View>
-      {onManage ? (
-        <Pressable
-          onPress={onManage}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.removeBtn,
-            pressed && { opacity: 0.6 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.communityManageMember}
-        >
-          <Ionicons
-            name="ellipsis-vertical"
-            size={20}
-            color={colors.textMuted}
-          />
-        </Pressable>
-      ) : onRemove ? (
-        <Pressable
-          onPress={onRemove}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.removeBtn,
-            pressed && { opacity: 0.6 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={he.communityRemoveMember}
-        >
-          <Ionicons name="person-remove-outline" size={20} color={colors.danger} />
-        </Pressable>
-      ) : null}
-      <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-    </Pressable>
+      <Pressable
+        onPress={onOpenMenu}
+        hitSlop={10}
+        style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.6 }]}
+        accessibilityRole="button"
+        accessibilityLabel="אפשרויות שחקן"
+      >
+        <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+      </Pressable>
+    </View>
   );
 }
 

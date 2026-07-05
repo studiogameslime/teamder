@@ -15,6 +15,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  type GestureResponderEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -35,7 +36,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Card } from '@/components/Card';
 import { GuestModal } from '@/components/GuestModal';
-import { AdminRatingSheet } from '@/components/AdminRatingSheet';
+import {
+  PlayerActionMenu,
+  type PlayerMenuItem,
+  type PlayerMenuTarget,
+} from '@/components/match/PlayerActionMenu';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { formatRating, isRated } from '@/utils/rating';
@@ -98,12 +103,9 @@ export function MatchPlayersScreen() {
   const [busyOffer, setBusyOffer] = useState(false);
   // Guest being edited (rename by admin / rate by the adder).
   const [editingGuest, setEditingGuest] = useState<GameGuest | null>(null);
-  // Admin internal-rating editor target (player id + name) + save spinner.
-  const [ratingTarget, setRatingTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [savingRating, setSavingRating] = useState(false);
+  // Player ⋮ action menu (open player card / remove). Rating is NOT here — it
+  // lives only in the community players list.
+  const [menuTarget, setMenuTarget] = useState<PlayerMenuTarget | null>(null);
 
   const reload = useCallback(async () => {
     if (!gameId) {
@@ -282,34 +284,6 @@ export function MatchPlayersScreen() {
     [game, currentUser, reload],
   );
 
-  // Admin saves a player's internal rating. The groups store is live, so the
-  // chip refreshes from the snapshot — just close the sheet on success.
-  const saveAdminRating = useCallback(
-    async (playerId: string, rating: number | null) => {
-      if (!group || !currentUser) return;
-      setSavingRating(true);
-      try {
-        await groupService.setAdminRating(
-          group.id,
-          currentUser.id,
-          playerId,
-          rating,
-        );
-        setRatingTarget(null);
-      } catch (err) {
-        logError('matchPlayersSetRating', err, {
-          screen: 'MatchPlayersScreen',
-          groupId: group.id,
-          targetUserId: playerId,
-        });
-        toast.error(he.error);
-      } finally {
-        setSavingRating(false);
-      }
-    },
-    [group, currentUser],
-  );
-
   if (loading && !game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -375,6 +349,56 @@ export function MatchPlayersScreen() {
       { userId: uid, groupId: game.groupId },
     );
 
+  const openPlayerMenu = (
+    p: { id: string; name: string; avatarId?: string; photoUrl?: string },
+    e: GestureResponderEvent,
+  ) =>
+    setMenuTarget({
+      player: p,
+      anchor: { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, width: 0, height: 0 },
+    });
+
+  // Menu items for the currently-open target: player card (always) + remove
+  // (admin, non-terminal game, not the organizer, and only for a REGISTERED
+  // player — waitlist/pending removal keeps its own offer/pass actions).
+  const menuItems: PlayerMenuItem[] = menuTarget
+    ? (() => {
+        const uid = menuTarget.player.id;
+        const name = menuTarget.player.name;
+        const isRegistered = (game.players ?? []).includes(uid);
+        const canRemove =
+          isAdminViewer &&
+          !isTerminalGame(game) &&
+          game.createdBy !== uid &&
+          isRegistered;
+        return [
+          {
+            key: 'card',
+            icon: 'person-circle-outline',
+            label: he.playerMenuCard,
+            onPress: () => {
+              setMenuTarget(null);
+              goToCard(uid);
+            },
+          },
+          ...(canRemove
+            ? ([
+                {
+                  key: 'remove',
+                  icon: 'person-remove-outline',
+                  label: he.playerMenuRemove,
+                  color: colors.danger,
+                  onPress: () => {
+                    setMenuTarget(null);
+                    handleRemovePlayer(uid, name);
+                  },
+                },
+              ] as PlayerMenuItem[])
+            : []),
+        ] as PlayerMenuItem[];
+      })()
+    : [];
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.matchPlayersScreenTitle} />
@@ -398,29 +422,25 @@ export function MatchPlayersScreen() {
                   key={e.user.id}
                   entry={e}
                   showDivider={i > 0}
-                  onPress={() => goToCard(e.user.id)}
                   metaLine={
                     e.joinedAt
                       ? `${he.matchPlayersJoinedAt} ${formatJoinStamp(e.joinedAt)}`
                       : undefined
                   }
-                  // Admin-only kick. Hidden once the game is terminal
-                  // (finished / cancelled — read-only) and never offered
-                  // for the game's own organizer to avoid removing the
-                  // host from their own match.
-                  onRemove={
-                    isAdminViewer &&
-                    !isTerminalGame(game) &&
-                    game.createdBy !== e.user.id
-                      ? () => handleRemovePlayer(e.user.id, e.user.name)
-                      : undefined
+                  // ⋮ menu is the ONLY interaction — no row-body tap, no chevron.
+                  // Menu → player card + (admin) remove.
+                  onOpenMenu={(ev) =>
+                    openPlayerMenu(
+                      {
+                        id: e.user.id,
+                        name: e.user.name,
+                        avatarId: e.user.avatarId,
+                        photoUrl: e.user.photoUrl,
+                      },
+                      ev,
+                    )
                   }
-                  onSetRating={
-                    showRatings
-                      ? () =>
-                          setRatingTarget({ id: e.user.id, name: e.user.name })
-                      : undefined
-                  }
+                  showRating={showRatings}
                 />
               ))}
               {guests.map((g, i) => {
@@ -546,12 +566,7 @@ export function MatchPlayersScreen() {
                           }
                         : undefined
                     }
-                    onSetRating={
-                      showRatings
-                        ? () =>
-                            setRatingTarget({ id: e.user.id, name: e.user.name })
-                        : undefined
-                    }
+                    showRating={showRatings}
                   />
                 );
               })}
@@ -651,12 +666,7 @@ export function MatchPlayersScreen() {
                             )
                         : undefined
                     }
-                    onSetRating={
-                      showRatings
-                        ? () =>
-                            setRatingTarget({ id: e.user.id, name: e.user.name })
-                        : undefined
-                    }
+                    showRating={showRatings}
                   />
                 );
               })}
@@ -728,16 +738,10 @@ export function MatchPlayersScreen() {
         />
       ) : null}
 
-      <AdminRatingSheet
-        target={ratingTarget}
-        current={
-          ratingTarget ? group?.adminRatings?.[ratingTarget.id] ?? 0 : 0
-        }
-        saving={savingRating}
-        onClose={() => setRatingTarget(null)}
-        onSave={(rating) =>
-          ratingTarget && saveAdminRating(ratingTarget.id, rating)
-        }
+      <PlayerActionMenu
+        target={menuTarget}
+        items={menuItems}
+        onClose={() => setMenuTarget(null)}
       />
     </SafeAreaView>
   );
@@ -791,13 +795,14 @@ function PlayerRow({
   onAdminAdvance,
   onApprove,
   onReject,
-  onRemove,
-  onSetRating,
+  onOpenMenu,
+  showRating,
   metaLine,
 }: {
   entry: RosterEntry;
   showDivider: boolean;
-  onPress: () => void;
+  /** Row-body tap. Omitted for registered players (⋮ is the only interaction). */
+  onPress?: () => void;
   toneRight?: string;
   offerHint?: string;
   /** Small muted line under the name — status ("המתנה") + join date/time. */
@@ -807,10 +812,11 @@ function PlayerRow({
   onAdminAdvance?: () => void;
   onApprove?: () => void;
   onReject?: () => void;
-  onRemove?: () => void;
-  /** Admin-only: open the internal-rating editor for this player. When
-   *  provided, the rating chip renders (showing the value, or "דרג"). */
-  onSetRating?: () => void;
+  /** Open the player's ⋮ action menu (card / remove) anchored at the tap. */
+  onOpenMenu?: (e: GestureResponderEvent) => void;
+  /** Admin-only: show the (display-only) rating chip. Rating is NOT editable
+   *  from the match roster — only from the community players list. */
+  showRating?: boolean;
 }) {
   const { user, isAdmin, arrival, isBringingBall, holdsBall, holdsJerseys, cardCounts, rating } =
     entry;
@@ -835,11 +841,12 @@ function PlayerRow({
     >
       <Pressable
         onPress={onPress}
+        disabled={!onPress}
         style={({ pressed }) => [
           styles.rowBodyPressable,
-          pressed && { opacity: 0.6 },
+          pressed && onPress && { opacity: 0.6 },
         ]}
-        accessibilityRole="button"
+        accessibilityRole={onPress ? 'button' : undefined}
         accessibilityLabel={user.name}
       >
         <PlayerIdentity user={user} size="sm" />
@@ -884,22 +891,15 @@ function PlayerRow({
             </Text>
           ) : null}
         </View>
-        {/* Admin-only internal-rating chip — shows the value (or "דרג"), taps
-            open the editor. A nested Pressable so it works inside the row. */}
-        {onSetRating ? (
-          <Pressable
-            onPress={onSetRating}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.ratingChip,
-              pressed && { opacity: 0.6 },
-            ]}
-          >
+        {/* Admin-only internal-rating chip — DISPLAY ONLY. The rating is set
+            from the community players list (its ⋮ menu), never from here. */}
+        {showRating ? (
+          <View style={styles.ratingChip}>
             <Ionicons name="star" size={12} color={colors.warning} />
             <Text style={styles.ratingChipText}>
-              {isRated(rating) ? formatRating(rating) : he.communityAdminRatingSet}
+              {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
             </Text>
-          </Pressable>
+          </View>
         ) : null}
         {isBringingBall ? (
           <View style={styles.ballBadge}>
@@ -911,7 +911,6 @@ function PlayerRow({
             {toneRight}
           </Text>
         ) : null}
-        <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
       </Pressable>
       {showOfferActions ? (
         <View style={styles.offerActions}>
@@ -989,21 +988,21 @@ function PlayerRow({
           ) : null}
         </View>
       ) : null}
-      {/* Compact inline remove — a small icon at the row's end instead of a
-          full-width bar (only shown when there are no offer/approve actions
-          stacking below). */}
-      {onRemove && !showOfferActions ? (
+      {/* ⋮ action menu — opens player card / remove. A separate Pressable
+          (outside the row-body tap) so it doesn't also navigate. Hidden while
+          offer/approve buttons stack below. */}
+      {onOpenMenu && !showOfferActions ? (
         <Pressable
-          onPress={onRemove}
+          onPress={onOpenMenu}
           hitSlop={8}
           style={({ pressed }) => [
             styles.inlineRemoveBtn,
             pressed && { opacity: 0.6 },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="הסר שחקן"
+          accessibilityLabel="אפשרויות שחקן"
         >
-          <Ionicons name="person-remove-outline" size={18} color={colors.danger} />
+          <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
         </Pressable>
       ) : null}
     </View>

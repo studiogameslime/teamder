@@ -17,7 +17,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { RefereeCard } from '@/components/community/CardCountBadges';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -58,7 +58,9 @@ export function IssueCardSheet({
             <View style={styles.grip} />
             <View style={styles.titleRow}>
               <View style={[styles.chip, { backgroundColor: accent }]}>
-                <Ionicons name="card" size={16} color="#FFF" />
+                {/* White referee-card shape on the tinted chip — the old
+                    Ionicons "card" read as a credit card (user report). */}
+                <RefereeCard color="#FFF" w={13} h={18} radius={3} />
               </View>
               <Text style={styles.title} numberOfLines={2}>
                 {he.issueCardTitle(playerName, cardLabel)}
@@ -77,15 +79,9 @@ export function IssueCardSheet({
               textAlign={RTL_LABEL_ALIGN === 'left' ? 'right' : 'left'}
             />
 
+            {/* Save on the LEFT, Cancel on the RIGHT (user report). The row is
+                row-reverse, so Save is listed first here to land on the left. */}
             <View style={styles.actions}>
-              <Button
-                title={he.cancel}
-                variant="outline"
-                size="lg"
-                style={styles.actionBtn}
-                disabled={saving}
-                onPress={onClose}
-              />
               <Button
                 title={he.save}
                 variant={isRed ? 'danger' : 'primary'}
@@ -93,6 +89,14 @@ export function IssueCardSheet({
                 style={styles.actionBtn}
                 loading={saving}
                 onPress={() => onSave(detail)}
+              />
+              <Button
+                title={he.cancel}
+                variant="outline"
+                size="lg"
+                style={styles.actionBtn}
+                disabled={saving}
+                onPress={onClose}
               />
             </View>
           </Pressable>

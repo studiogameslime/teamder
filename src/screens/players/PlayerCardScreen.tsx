@@ -572,6 +572,20 @@ function PairStatsSection({
               label={he.pairStatsAttended}
               value={String(stats.attendedTogether)}
             />
+            {/* Reliability read: of the games you both registered for, how
+                often you both actually showed. Derived — no extra query. */}
+            {stats.registeredTogether > 0 ? (
+              <>
+                <View style={styles.h2hDivider} />
+                <H2hCountRow
+                  icon="trending-up-outline"
+                  label={he.pairStatsAttendRate}
+                  value={`${Math.round(
+                    (stats.attendedTogether / stats.registeredTogether) * 100,
+                  )}%`}
+                />
+              </>
+            ) : null}
             {stats.sameTeam > 0 ? (
               <>
                 <View style={styles.h2hDivider} />

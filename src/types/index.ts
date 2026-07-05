@@ -313,6 +313,10 @@ export interface CommunityPlayerEvent {
   issuedBy?: UserId;
   /** The game this ball/jersey handoff belongs to (cards omit it). */
   gameId?: string;
+  /** Ball/jerseys only: true when the mark was REMOVED (player returned the
+   *  equipment) rather than added. Absent/false = received. Drives the
+   *  "קיבל" vs "החזיר" timeline wording. */
+  returned?: boolean;
   /** Free-text note on a card (shown on the timeline). */
   detail?: string;
   /** A revoked card stays on the timeline marked "בוטל" but stops counting. */

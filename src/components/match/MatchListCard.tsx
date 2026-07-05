@@ -25,6 +25,7 @@ import { Game, GameFormat, FieldType, UserId, activeGuestCount } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
+import { canJoinGame, isScheduled, isTerminal } from '@/services/gameLifecycle';
 import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
@@ -145,10 +146,19 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   // right, reading right-to-left as the primary facets.
   const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = [];
   const spotsLeft = Math.max(0, game.maxPlayers - occupancy);
+  // Registration closed while the game is still upcoming — locked by an admin
+  // or past the late-join cutoff. Excludes 'scheduled' (shows its own "opens
+  // at" hint) and terminal games. A full game stays joinable-to-waitlist, so
+  // canJoinGame is still true there → no false "closed" on a full open game.
+  const registrationClosed =
+    !isScheduled(game) && !isTerminal(game) && !canJoinGame(game);
   if (isFull) {
     tags.push({ label: he.matchStatusFull, tone: 'danger' });
   } else if (spotsLeft > 0 && spotsLeft <= 3) {
     tags.push({ label: he.matchStatusLastSpots(spotsLeft), tone: 'warning' });
+  }
+  if (registrationClosed) {
+    tags.push({ label: he.matchTagRegistrationClosed, tone: 'warning' });
   }
   if (fmt) tags.push({ label: fmt, tone: 'accent' });
   if (game.fieldType) {

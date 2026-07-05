@@ -12,6 +12,7 @@ import {
   Dimensions,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -35,7 +36,10 @@ export interface PlayerMenuTarget {
 
 export interface PlayerMenuItem {
   key: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
+  /** Custom leading glyph, rendered instead of `icon` (e.g. a referee-card
+   *  rectangle where an Ionicons glyph would read as a credit card). */
+  iconNode?: React.ReactNode;
   label: string;
   /** Optional muted second line (e.g. why an item is disabled). */
   sublabel?: string;
@@ -95,17 +99,26 @@ export function PlayerActionMenu({
   if (!target) return null;
 
   const screen = Dimensions.get('window');
-  // Rough card height: header (~58) + each item (~50). Used only for the
-  // above/below flip decision.
-  const estH = 64 + items.length * 52;
+  // Rough card height: header (~64) + each item (~52). Drives the flip decision
+  // and the on-screen clamp below. Capped to what the screen can show — a tall
+  // menu (card/timeline/yellow/red/remove) then scrolls instead of overflowing.
+  const maxH = screen.height - MARGIN * 2;
+  const estH = Math.min(64 + items.length * 52, maxH);
   const a = target.anchor;
   const centerX = a.x + a.width / 2;
   let left = centerX - CARD_W / 2;
   left = Math.max(MARGIN, Math.min(left, screen.width - CARD_W - MARGIN));
   const caretLeft = Math.max(18, Math.min(centerX - left, CARD_W - 18));
-  // Prefer below the avatar; flip above if there isn't room.
-  const below = a.y + a.height + 10 + estH < screen.height - MARGIN;
-  const top = below ? a.y + a.height + 10 : a.y - 10 - estH;
+  // Prefer below the anchor, but flip above when there's more room there — a
+  // player near the bottom of a long roster otherwise opened a menu that ran
+  // off the bottom edge and clipped its last item(s).
+  const spaceBelow = screen.height - MARGIN - (a.y + a.height + 10);
+  const spaceAbove = a.y - 10 - MARGIN;
+  const below = spaceBelow >= estH || spaceBelow >= spaceAbove;
+  let top = below ? a.y + a.height + 10 : a.y - 10 - estH;
+  // Final safety clamp: never let the card start off-screen or extend past the
+  // bottom margin, regardless of the flip decision or an under-estimated height.
+  top = Math.max(MARGIN, Math.min(top, screen.height - MARGIN - estH));
 
   const stop = (e: GestureResponderEvent) => e.stopPropagation();
 
@@ -139,34 +152,46 @@ export function PlayerActionMenu({
 
           <View style={styles.divider} />
 
-          {items.map((it) => {
-            const tint = it.disabled ? colors.textMuted : it.color ?? colors.primary;
-            return (
-              <Pressable
-                key={it.key}
-                style={({ pressed }) => [
-                  styles.item,
-                  pressed && !it.disabled && styles.itemPressed,
-                ]}
-                onPress={() => {
-                  if (it.disabled) return;
-                  onClose();
-                  it.onPress();
-                }}
-                disabled={it.disabled}
-              >
-                <Ionicons name={it.icon} size={20} color={tint} />
-                <View style={styles.itemTextWrap}>
-                  <Text style={[styles.itemLabel, { color: it.disabled ? colors.textMuted : colors.text }]}>
-                    {it.label}
-                  </Text>
-                  {it.sublabel ? (
-                    <Text style={styles.itemSub}>{it.sublabel}</Text>
+          {/* Items scroll if the menu is taller than the screen allows (small
+              devices + a 5-item menu), so the last item is never clipped. */}
+          <ScrollView
+            style={{ maxHeight: maxH - 76 }}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+          >
+            {items.map((it) => {
+              const tint = it.disabled ? colors.textMuted : it.color ?? colors.primary;
+              return (
+                <Pressable
+                  key={it.key}
+                  style={({ pressed }) => [
+                    styles.item,
+                    pressed && !it.disabled && styles.itemPressed,
+                  ]}
+                  onPress={() => {
+                    if (it.disabled) return;
+                    onClose();
+                    it.onPress();
+                  }}
+                  disabled={it.disabled}
+                >
+                  {it.iconNode ? (
+                    <View style={styles.iconSlot}>{it.iconNode}</View>
+                  ) : it.icon ? (
+                    <Ionicons name={it.icon} size={20} color={tint} />
                   ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
+                  <View style={styles.itemTextWrap}>
+                    <Text style={[styles.itemLabel, { color: it.disabled ? colors.textMuted : colors.text }]}>
+                      {it.label}
+                    </Text>
+                    {it.sublabel ? (
+                      <Text style={styles.itemSub}>{it.sublabel}</Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -237,6 +262,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   itemPressed: { backgroundColor: colors.surfaceMuted },
+  // Fixed 20-wide slot so a custom glyph (referee card) lines up with the
+  // Ionicons (size 20) used by the other rows.
+  iconSlot: { width: 20, alignItems: 'center', justifyContent: 'center' },
   itemTextWrap: { flex: 1, minWidth: 0 },
   itemLabel: {
     ...typography.body,

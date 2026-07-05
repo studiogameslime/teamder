@@ -374,6 +374,15 @@ export const he = {
   playerMenuRestore: 'החזר למשחק',
   // ── Community player menu + timeline + cards ──
   playerMenuTimeline: 'ציר זמן',
+  playerMenuRate: 'דרג שחקן',
+  playerMenuRemove: 'הסר מהמשחק',
+  // Equipment (club ball / jerseys) — admin marks who currently holds them.
+  playerMenuManageEquipment: 'נהל ציוד',
+  manageEquipmentTitle: (name: string) => `ציוד אצל ${name}`,
+  manageEquipmentSubtitle: 'סמן איזה ציוד של המועדון מוחזק אצל השחקן הזה.',
+  equipmentUpdatedToast: 'סימוני הציוד עודכנו',
+  equipmentUpdateFailed: 'לא הצלחנו לעדכן את הציוד. נסה שוב.',
+  ratingNotRated: 'לא דורג',
   cardYellow: 'כרטיס צהוב',
   cardRed: 'כרטיס אדום',
   cardRedConfirmTitle: 'להנפיק כרטיס אדום?',
@@ -397,6 +406,9 @@ export const he = {
   timelineEventRed: 'כרטיס אדום',
   timelineEventBall: 'לקח כדור הביתה',
   timelineEventJerseys: 'לקח גופיות הביתה',
+  // Manual "נהל ציוד" mark removal — the admin cleared the holder mark.
+  timelineEventBallReturned: 'החזיר את הכדור',
+  timelineEventJerseysReturned: 'החזיר את הגופיות',
   equipmentLastTook: (d: string) => `לקח לאחרונה ${d}`,
   equipmentNeverTook: 'עוד לא לקח',
   redCardValidityLabel: 'תוקף כרטיס אדום (בימים)',
@@ -1853,6 +1865,10 @@ export const he = {
   matchTagOpenToAll: 'פתוח לכולם',
   matchTagCommunityOnly: 'סגור למועדון',
   matchTagQuickClosed: 'משחק מהיר',
+  // Registration is no longer open (locked by an admin, or the late-join
+  // window passed) while the game itself is still upcoming — flags that you
+  // can't sign up right now (user report).
+  matchTagRegistrationClosed: 'הרשמה סגורה',
   // Urgency chip — surfaced when the game is full or nearly full so users
   // see scarcity at a glance, independent of their own registration state.
   matchStatusLastSpots: (n: number) =>
@@ -2048,6 +2064,9 @@ export const he = {
   // tile shown. The pair card uses this same order.
   pairStatsRegistered: 'נרשמתם יחד',
   pairStatsAttended: 'הגעתם יחד',
+  // Share of the games you BOTH signed up for that you BOTH actually showed to
+  // — derived from registered/attended-together, an at-a-glance reliability read.
+  pairStatsAttendRate: 'הגעתם יחד מתוך ההרשמות',
   pairAssistedThem: 'בישלת לו',
   pairAssistedYou: 'הוא בישל לך',
   pairStatsSameTeam: 'באותה קבוצה',
