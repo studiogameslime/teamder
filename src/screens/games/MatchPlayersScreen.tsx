@@ -945,7 +945,7 @@ function PlayerRow({
         <PlayerIdentity user={user} size="sm" />
         <View style={styles.rowBody}>
           <View style={styles.nameRow}>
-            <Text style={styles.name} numberOfLines={2}>
+            <Text style={styles.name} numberOfLines={1}>
               {user.name}
             </Text>
             {isAdmin ? (
@@ -1164,7 +1164,7 @@ function GuestRow({
         <Ionicons name="person" size={18} color={colors.textMuted} />
       </View>
       <View style={styles.rowBody}>
-        <Text style={styles.name} numberOfLines={2}>
+        <Text style={styles.name} numberOfLines={1}>
           {guest.name}
         </Text>
         <Text style={styles.guestSub}>
@@ -1374,13 +1374,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    // Name stays full on ONE line; the badges (admin / late / holders / cards)
+    // wrap to the next line when there's no room — never crush the name.
+    flexWrap: 'wrap',
   },
   name: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
-    flexShrink: 1,
+    // Don't shrink — badges wrap first. Cap at row width so a screen-wide name
+    // clips gracefully instead of overflowing.
+    flexShrink: 0,
+    maxWidth: '100%',
   },
   toneRight: {
     ...typography.caption,

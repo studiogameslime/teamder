@@ -560,7 +560,7 @@ function PlayerRow({
       <PlayerIdentity user={user} size="sm" />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={2}>
+          <Text style={styles.name} numberOfLines={1}>
             {user.name}
           </Text>
           {isAdmin ? (
@@ -685,13 +685,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    // The name is never truncated: it stays full on ONE line, and the badges
+    // (admin / ball / jerseys / cards) WRAP to the next line when there isn't
+    // room for both — instead of crushing the name to "ב…".
+    flexWrap: 'wrap',
   },
   name: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
     textAlign: RTL_LABEL_ALIGN,
-    flexShrink: 1,
+    // Don't shrink — force the badges to wrap first. Cap at the row width so a
+    // genuinely screen-wide name still clips gracefully rather than overflowing.
+    flexShrink: 0,
+    maxWidth: '100%',
   },
   adminBadge: {
     paddingHorizontal: spacing.sm,
