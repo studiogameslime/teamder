@@ -2682,7 +2682,13 @@ export function MatchDetailsScreen() {
             // rendered every entry inline, which buried the next-game
             // CTA below a long scrolling list of names.
             maxRows={3}
-            members={[...participantEntries].reverse().slice(0, 3)}
+            // Roster preview = the ACTIVE roster only. Exclude waitlisted guests
+            // (bucket 'waitlist') so a "המתנה"-tagged row never leaks into
+            // "ההרכב" (user report) — the waitlist has its own preview below.
+            members={[...participantEntries]
+              .filter((e) => e.bucket === 'players' || e.bucket === 'guest')
+              .reverse()
+              .slice(0, 3)}
             isAdminViewer={isAdmin}
             pendingCount={game.pending?.length ?? 0}
             onSeeAll={() => nav.navigate('MatchPlayers', { gameId: game.id })}
@@ -2746,33 +2752,48 @@ export function MatchDetailsScreen() {
               feedback) so "in" and "waiting for a spot" read as one block,
               with the community rules below them. Hidden when empty. Tap =
               navigate to the full players screen. */}
-          {(game.waitlist?.length ?? 0) > 0 ? (
-            <View style={styles.waitlistSection}>
-              <Pressable
-                onPress={() =>
-                  nav.navigate('MatchPlayers', { gameId: game.id })
-                }
-                style={styles.waitlistHeader}
-              >
-                <Text style={styles.waitlistTitle}>
-                  {he.matchDetailsWaitlistTitle}{' '}
-                  <Text style={styles.waitlistCount}>
-                    ({game.waitlist.length})
+          {(() => {
+            // Unified waitlist preview = regular waitlisted players PLUS
+            // waitlisted guests (added while full). Guests live in game.guests
+            // with waitlisted:true — they must appear here (and in the count),
+            // otherwise filtering them out of the roster made them vanish.
+            const waitlistPreview: { key: string; name: string }[] = [
+              ...(game.waitlist ?? []).map((uid) => ({
+                key: uid,
+                name: playersMap[uid]?.displayName ?? '…',
+              })),
+              ...(game.guests ?? [])
+                .filter((g) => g.waitlisted)
+                .map((g) => ({
+                  key: toGuestRosterId(g.id),
+                  name: `${g.name} · ${he.guestBadge}`,
+                })),
+            ];
+            if (waitlistPreview.length === 0) return null;
+            return (
+              <View style={styles.waitlistSection}>
+                <Pressable
+                  onPress={() =>
+                    nav.navigate('MatchPlayers', { gameId: game.id })
+                  }
+                  style={styles.waitlistHeader}
+                >
+                  <Text style={styles.waitlistTitle}>
+                    {he.matchDetailsWaitlistTitle}{' '}
+                    <Text style={styles.waitlistCount}>
+                      ({waitlistPreview.length})
+                    </Text>
                   </Text>
-                </Text>
-                <Ionicons
-                  name="chevron-back"
-                  size={18}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-              <View style={styles.waitlistCard}>
-                {game.waitlist.slice(0, 3).map((uid, i) => {
-                  const p = playersMap[uid];
-                  const name = p?.displayName ?? '…';
-                  return (
+                  <Ionicons
+                    name="chevron-back"
+                    size={18}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+                <View style={styles.waitlistCard}>
+                  {waitlistPreview.slice(0, 3).map((w, i) => (
                     <View
-                      key={uid}
+                      key={w.key}
                       style={[
                         styles.waitlistRow,
                         i > 0 && styles.waitlistRowDivider,
@@ -2780,14 +2801,14 @@ export function MatchDetailsScreen() {
                     >
                       <Text style={styles.waitlistOrder}>{i + 1}.</Text>
                       <Text style={styles.waitlistName} numberOfLines={1}>
-                        {name}
+                        {w.name}
                       </Text>
                     </View>
-                  );
-                })}
+                  ))}
+                </View>
               </View>
-            </View>
-          ) : null}
+            );
+          })()}
 
           {/* Community rules — free text from the community form, shown
               to every participant. Amber tint = "behaviour expectations".

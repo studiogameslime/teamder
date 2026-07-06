@@ -45,6 +45,7 @@ import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { formatRating, isRated } from '@/utils/rating';
 import { gameService } from '@/services/gameService';
+import { useGameEvents } from '@/services/useGameEvents';
 import { groupService } from '@/services/groupService';
 import { communityEventsService } from '@/services/communityEventsService';
 import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
@@ -149,6 +150,29 @@ export function MatchPlayersScreen() {
       reload();
     }, [reload]),
   );
+
+  // Live subscription — keep the roster + guests in sync WITHOUT a
+  // leave-and-return. A guest rating set by the adder (or an add / remove /
+  // reorder from another device) now reflects on the spot (user report: guest
+  // rating "didn't sync"). Mirrors MatchDetailsScreen's live listener; the
+  // `prev ? g : prev` guard avoids clobbering the very first load.
+  useGameEvents(gameId, {
+    onUpdate: useCallback(
+      (g: Game) => {
+        setGame((prev) => (prev ? g : prev));
+        const uids = Array.from(
+          new Set([
+            ...g.players,
+            ...g.waitlist,
+            ...(g.pending ?? []),
+            ...Object.keys(g.cancellations ?? {}),
+          ]),
+        );
+        if (uids.length > 0) hydratePlayers(uids);
+      },
+      [hydratePlayers],
+    ),
+  });
 
   // The game's community — source of admin set, internal ratings, and the
   // club ball/jersey holders (all live via the groups store).
