@@ -2426,6 +2426,7 @@ export const he = {
   draftViewMenu: 'הצג חלוקת כוחות',
   draftEditMenu: 'ערוך חלוקת כוחות',
   draftTeamsSectionTitle: 'הכוחות שחולקו',
+  draftExportWhatsapp: 'ייצא לוואטסאפ',
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
   matchCreateTeamsBannerSub: 'המשחק מתקרב — חלקו את השחקנים לקבוצות',

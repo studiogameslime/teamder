@@ -40,6 +40,10 @@ interface Props {
   colorKey?: string;
   /** Tap the colour swatch to change it (admin only). */
   onPickColor?: () => void;
+  /** Average internal rating of the team. Shown as a small ⭐ badge next to the
+   *  team name ONLY when provided — the caller decides visibility (internal
+   *  rating on, and either not hidden or the viewer is an admin). */
+  teamRating?: number;
 }
 
 /** First token only — "מתן לוי" → "מתן", "Itay Davidi" → "Itay". */
@@ -59,6 +63,7 @@ export function DraftTeamCard({
   onGhostDone,
   colorKey,
   onPickColor,
+  teamRating,
 }: Props) {
   // Each team carries its own colour. When the admin chose one, the team is
   // named by that colour in plural ("האדומים") and tinted it; otherwise the
@@ -108,6 +113,12 @@ export function DraftTeamCard({
           <View style={[styles.teamDot, { backgroundColor: tColor }]} />
         )}
         <Text style={[styles.teamName, { color: tColor }]}>{tLabel}</Text>
+        {typeof teamRating === 'number' ? (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={11} color={colors.primary} />
+            <Text style={styles.ratingText}>{teamRating.toFixed(1)}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -187,6 +198,22 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '800',
     color: colors.primary,
+  },
+  ratingBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  ratingText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
   },
   chips: {
     // row-reverse so the captain starts at the LEFT and members flow

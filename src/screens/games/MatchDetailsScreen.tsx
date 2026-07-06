@@ -115,6 +115,7 @@ import {
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDateShortYear, formatDayDate } from '@/utils/format';
+import { teamName } from '@/utils/draft';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { communityEventsService } from '@/services/communityEventsService';
@@ -2110,6 +2111,50 @@ export function MatchDetailsScreen() {
         }))
     : draftTeams?.teams ?? [];
 
+  // ── Team internal-rating (average) + WhatsApp export ──────────────────────
+  const teamsGrp = myCommunities.find((c) => c.id === game.groupId);
+  // Same visibility as the individual rating: internal rating on, and either
+  // NOT hidden or the viewer is an admin (user request — when the internal
+  // rating is hidden in the community settings, only admins see the team score).
+  const teamRatingsVisible =
+    !!teamsGrp?.internalRating && (!teamsGrp?.hideInternalRating || isAdmin);
+  const ratingForRosterId = (id: string): number | undefined => {
+    if (id.startsWith('guest:')) {
+      const gid = id.slice('guest:'.length);
+      return (game.guests ?? []).find((g) => g.id === gid)?.estimatedRating;
+    }
+    return teamsGrp?.adminRatings?.[id];
+  };
+  const teamAvgRating = (playerIds: string[]): number | undefined => {
+    if (!teamRatingsVisible) return undefined;
+    const vals = playerIds
+      .map(ratingForRosterId)
+      .filter((v): v is number => typeof v === 'number' && v > 0);
+    if (vals.length === 0) return undefined;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+
+  // Export the split to WhatsApp as plain text — names only, NO team or
+  // individual ratings (user request).
+  const handleExportTeams = async () => {
+    const dots = ['🔵', '🔴', '🟢', '🟡'];
+    const body = [...splitTeams]
+      .sort((a, b) => a.index - b.index)
+      .map((t, i) => {
+        const names = t.playerIds
+          .map((id) => resolveDraftUser(id).name.trim().split(/\s+/)[0])
+          .filter(Boolean)
+          .join(', ');
+        return `${dots[i % dots.length]} ${teamName(t.index)}\n${names}`;
+      })
+      .join('\n\n');
+    try {
+      await Share.share({ message: `${game.title}\n\n${body}` });
+    } catch {
+      /* user dismissed the share sheet */
+    }
+  };
+
   // "צרו כוחות" nudge: admin, no split yet, enough draftable people, and
   // kickoff is close (≤24h away, not yet started). Otherwise the only path
   // to create teams is buried in the ☰ menu — easy to miss (feedback).
@@ -2496,6 +2541,7 @@ export function MatchDetailsScreen() {
                       index={t.index}
                       captain={resolveDraftUser(t.captainId)}
                       members={t.playerIds.slice(1).map(resolveDraftUser)}
+                      teamRating={teamAvgRating(t.playerIds)}
                       onPressUser={(id) => {
                         if ((game.guests ?? []).some((g) => g.id === id)) return;
                         nav.navigate('PlayerCard', {
@@ -2506,6 +2552,20 @@ export function MatchDetailsScreen() {
                     />
                   ))}
               </View>
+              <Pressable
+                onPress={handleExportTeams}
+                style={styles.exportTeamsBtn}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="share-social-outline"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={styles.exportTeamsText}>
+                  {he.draftExportWhatsapp}
+                </Text>
+              </Pressable>
               {/* "הלכו הביתה" summary — who left mid-evening and when, kept on
                   draftTeams.leftHome (with its timestamp) so it survives into
                   the finished-game recap. Shown ONLY for a game that was
@@ -3983,6 +4043,23 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   draftSectionList: { gap: spacing.sm },
+  exportTeamsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  exportTeamsText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '700',
+  },
   leftHomeSummary: {
     marginTop: spacing.sm,
     padding: spacing.sm,
