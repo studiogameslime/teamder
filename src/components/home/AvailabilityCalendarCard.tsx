@@ -5,8 +5,9 @@
 // starts a quick game for it. Fail-soft: if there's no data / no location, it
 // renders a gentle prompt or nothing — it must never crash the home screen.
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import {
@@ -58,16 +59,21 @@ export function AvailabilityCalendarCard({
   const [data, setData] = useState<AvailabilityCounts | null>(null);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    availabilityFeedService
-      .getAvailabilityCounts()
-      .then((d) => alive && setData(d))
-      .catch(() => alive && setFailed(true));
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // Refetch on every focus (not just first mount) so that returning from the
+  // availability screen — which calls invalidate() on save — refreshes the
+  // counts. The 15-min service cache makes an unchanged refocus a no-op.
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      availabilityFeedService
+        .getAvailabilityCounts()
+        .then((d) => alive && setData(d))
+        .catch(() => alive && setFailed(true));
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
 
   if (failed) return null; // never crash the home screen
   if (!data) return null; // still loading — no skeleton needed, it's below the fold

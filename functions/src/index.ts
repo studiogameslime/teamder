@@ -2634,6 +2634,57 @@ function israelOffsetMs(epoch: number): number {
 }
 
 /**
+ * Asia/Jerusalem wall-clock parts for an instant. The Functions runtime clock
+ * is UTC, so raw Date#getHours()/getDay() are 2–3h off Israel time — use this
+ * whenever we bucket an epoch into a local day / hour-window.
+ */
+const IL_WEEKDAY: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+function israelParts(epoch: number): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  weekday: number;
+} {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jerusalem',
+      hourCycle: 'h23',
+      weekday: 'short',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+    })
+      .formatToParts(new Date(epoch))
+      .map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  return {
+    year: +p.year,
+    month: +p.month,
+    day: +p.day,
+    hour: +p.hour,
+    weekday: IL_WEEKDAY[p.weekday] ?? 0,
+  };
+}
+
+/** Epoch of Asia/Jerusalem local midnight for the calendar date containing
+ *  `epoch` (DST-safe). */
+function israelMidnight(epoch: number): number {
+  const p = israelParts(epoch);
+  const utcMid = Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0);
+  return utcMid - israelOffsetMs(utcMid);
+}
+
+/**
  * Advance an instant by one week while preserving its Asia/Jerusalem WALL
  * time. A flat `+WEEK_MS` would silently move a 20:00 fixture to 21:00 (spring)
  * or 19:00 (autumn) across a DST boundary; here we correct by the offset delta
@@ -8083,6 +8134,9 @@ const FILLER_WINDOW_EARLIEST_HOURS = 3;
 const FILLER_WINDOW_LATEST_HOURS = 12;
 /** Max candidates pushed per game per matcher run. */
 const FILLER_PUSH_LIMIT_PER_GAME = 10;
+/** Default availability radius (km) when a user hasn't set one. Shared by the
+ *  count (availabilityCounts) and the pulse so both apply the SAME geo test. */
+const DEFAULT_AVAIL_RADIUS_KM = 25;
 /** Latch on the "no candidates" fallback push so we don't spam the
  *  admin every 30 minutes. */
 const FILLER_NO_CANDIDATES_COOLDOWN_MS = 6 * FILLER_HOUR_MS;
@@ -8402,6 +8456,15 @@ async function runFindFillerCandidates(): Promise<void> {
     // so the user still gets some coverage.
     const gameCoords = await getCityCoords(city);
 
+    // Declared-availability keys (Asia/Jerusalem) — only push to candidates who
+    // marked this weekday + window free, matching the pulse + the home count so
+    // we don't spam people about slots they never chose.
+    const gameIlSweep =
+      typeof game.startsAt === 'number' ? israelParts(game.startsAt) : null;
+    const gameWeekdaySweep = gameIlSweep?.weekday;
+    const gameWindowSweep = gameIlSweep ? hourToAvailWindow(gameIlSweep.hour) : null;
+    const sweepTodayKey = fillerDayKey(now);
+
     // Candidate query: opted-in users only — loaded once per run and reused
     // across all shortage games (see candidateDocs above). The pool is small
     // (only users who toggled on `acceptsFillerPush`), so filtering by distance
@@ -8462,16 +8525,45 @@ async function runFindFillerCandidates(): Promise<void> {
           availabilityRadiusKm?: number;
           cities?: string[];
           preferredCity?: string;
+          preferredDays?: number[];
+          preferredTimes?: string[];
+          fillerPushDay?: string;
+          fillerPushCount?: number;
         };
       };
       const av = userData.availability ?? {};
+
+      // Declared-availability match (empty arrays = "any"), same as the pulse.
+      const pdaysS = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+      if (
+        gameWeekdaySweep !== undefined &&
+        pdaysS.length > 0 &&
+        !pdaysS.includes(gameWeekdaySweep)
+      ) {
+        continue;
+      }
+      const ptimesS = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+      if (
+        gameWindowSweep &&
+        ptimesS.length > 0 &&
+        !ptimesS.includes(gameWindowSweep)
+      ) {
+        continue;
+      }
+
+      // Best-effort daily-cap pre-filter (authoritative reservation is the txn
+      // below) — avoids a transaction for obviously-capped candidates.
+      const usedTodayS =
+        av.fillerPushDay === sweepTodayKey ? av.fillerPushCount ?? 0 : 0;
+      if (usedTodayS >= FILLER_DAILY_CAP) continue;
+
       const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
       if (!userCity) continue;
       const radiusKm =
         typeof av.availabilityRadiusKm === 'number' &&
         av.availabilityRadiusKm > 0
           ? av.availabilityRadiusKm
-          : 20;
+          : DEFAULT_AVAIL_RADIUS_KM;
       let withinRange = false;
       if (
         gameCoords &&
@@ -8605,9 +8697,14 @@ async function reserveFillerPush(
     return await db.runTransaction(async (tx) => {
       const s = await tx.get(uref);
       const av = (s.data()?.availability ?? {}) as {
+        acceptsFillerPush?: boolean;
         fillerPushDay?: string;
         fillerPushCount?: number;
       };
+      // Re-check opt-in on the FRESH doc — the candidate pool is cached up to a
+      // few minutes, so a user who just toggled filler pushes off must not be
+      // pushed on stale data.
+      if (av.acceptsFillerPush !== true) return false;
       const used = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
       if (used >= FILLER_DAILY_CAP) return false;
       tx.set(
@@ -8659,10 +8756,12 @@ async function runFillerPulseBatch(
 
   // The game's own weekday + window — we only invite players who declared
   // they're free THEN, so the invite population matches the home-calendar
-  // count (and we don't spam people about slots they never marked).
-  const gameDate = new Date(startsAt);
-  const gameWeekday = gameDate.getDay();
-  const gameWindow = hourToAvailWindow(gameDate.getHours());
+  // count (and we don't spam people about slots they never marked). Computed in
+  // Asia/Jerusalem (the runtime clock is UTC, 2–3h off) so the window matches
+  // the client, which set startsAt from the device's local wall clock.
+  const gameIl = israelParts(startsAt);
+  const gameWeekday = gameIl.weekday;
+  const gameWindow = hourToAvailWindow(gameIl.hour);
 
   // Opted-in candidate pool — shared, cached snapshot (see getFillerCandidatePool).
   const candidateDocs = await getFillerCandidatePool();
@@ -8739,7 +8838,7 @@ async function runFillerPulseBatch(
     const radiusKm =
       typeof av.availabilityRadiusKm === 'number' && av.availabilityRadiusKm > 0
         ? av.availabilityRadiusKm
-        : 20;
+        : DEFAULT_AVAIL_RADIUS_KM;
     let withinRange = false;
     if (
       gameCoords &&
@@ -8816,18 +8915,26 @@ export const fillerPulseTask = onTaskDispatched(
   async (req) => {
     const gameId = (req.data as { gameId?: string } | undefined)?.gameId;
     if (!gameId) return;
-    try {
-      const res = await runFillerPulseBatch(gameId);
-      if (res?.rescheduleInMs) {
-        await getGcpFunctions()
-          .taskQueue('fillerPulseTask')
-          .enqueue(
-            { gameId },
-            { scheduleTime: new Date(Date.now() + res.rescheduleInMs) },
-          );
+    // NOTE: we deliberately do NOT swallow errors here — a throw lets
+    // onTaskDispatched retry per retryConfig instead of silently killing the
+    // self-rescheduling chain. runFillerPulseBatch already catches its own
+    // per-recipient txn errors, so only genuinely transient failures propagate.
+    const res = await runFillerPulseBatch(gameId);
+    if (res?.rescheduleInMs) {
+      await getGcpFunctions()
+        .taskQueue('fillerPulseTask')
+        .enqueue(
+          { gameId },
+          { scheduleTime: new Date(Date.now() + res.rescheduleInMs) },
+        );
+    } else {
+      // Chain finished (full / exhausted / out-of-window / terminal) → drop the
+      // create-once marker so fillerPulseChains doesn't grow unbounded.
+      try {
+        await db.collection('fillerPulseChains').doc(gameId).delete();
+      } catch {
+        /* best-effort cleanup */
       }
-    } catch (err) {
-      console.error('[fillerPulseTask] batch failed', gameId, err);
     }
   },
 );
@@ -8873,6 +8980,13 @@ async function maybeStartFillerPulse(
       .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 15 * 1000) });
   } catch (err) {
     console.error('[maybeStartFillerPulse] enqueue failed', gameId, err);
+    // Roll back the marker so the chain isn't permanently blocked — the sweep
+    // (or a later trigger) can still start it.
+    try {
+      await db.collection('fillerPulseChains').doc(gameId).delete();
+    } catch {
+      /* best-effort */
+    }
   }
 }
 
@@ -9078,7 +9192,7 @@ export const availabilityCounts = onCall(
     const radiusKm =
       typeof me.availabilityRadiusKm === 'number' && me.availabilityRadiusKm > 0
         ? me.availabilityRadiusKm
-        : 25;
+        : DEFAULT_AVAIL_RADIUS_KM;
     // The caller's own city — threaded into the quick-game prefill so a game
     // opened from the calendar has a city, without which the pulse engine
     // (which geocodes game.city) would invite nobody.
@@ -9089,20 +9203,18 @@ export const availabilityCounts = onCall(
     }
     const myLoc = { lat: me.homeCityLat, lng: me.homeCityLng };
 
-    // Build today..+6 at LOCAL start-of-day. Each weekday appears exactly once
-    // in a 7-day span, so weekday → dayIndex is a clean map.
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Build today..+6 at Asia/Jerusalem local midnight (the runtime clock is
+    // UTC, 2–3h off, so raw setHours(0) would give the wrong day boundary). Each
+    // weekday appears exactly once in a 7-day span → weekday → dayIndex is clean.
+    const nowMs = Date.now();
+    const todayMidnight = israelMidnight(nowMs);
     const days = Array.from({ length: 7 }, (_, i) => {
-      // Step by CALENDAR day (setDate), not fixed 24h — a DST transition makes
-      // some local days 23/25h long, and adding 86_400_000ms would drift the
-      // boundary into the wrong day.
-      const d = new Date(todayStart.getTime());
-      d.setDate(d.getDate() + i);
-      d.setHours(0, 0, 0, 0);
+      // Snap each day to its true Israel midnight — a +i*24h guess can drift an
+      // hour across a DST boundary, so re-derive the local date for the guess.
+      const dateMs = israelMidnight(todayMidnight + i * 86_400_000 + 3_600_000);
       return {
-        dateMs: d.getTime(),
-        weekday: d.getDay(),
+        dateMs,
+        weekday: israelParts(dateMs).weekday,
         isToday: i === 0,
         windows: { morning: 0, noon: 0, evening: 0, night: 0 } as Record<
           AvailWindow,
@@ -9115,11 +9227,8 @@ export const availabilityCounts = onCall(
 
     // Who's ALREADY registered to a game in each (dayIndex, window) — so a
     // committed player isn't counted as free. Keyed `${dayIndex}:${window}`.
-    const rangeStart = todayStart.getTime();
-    const lastDayEnd = new Date(todayStart.getTime());
-    lastDayEnd.setDate(lastDayEnd.getDate() + 7);
-    lastDayEnd.setHours(0, 0, 0, 0);
-    const rangeEnd = lastDayEnd.getTime();
+    const rangeStart = days[0].dateMs;
+    const rangeEnd = days[6].dateMs + 26 * 3_600_000; // past the last local day
     const gamesSnap = await db
       .collection('games')
       .where('startsAt', '>=', rangeStart)
@@ -9136,13 +9245,13 @@ export const availabilityCounts = onCall(
       if (gd.status === 'cancelled' || gd.status === 'finished') continue;
       const sa = gd.startsAt;
       if (typeof sa !== 'number') continue;
-      const gd0 = new Date(sa);
-      const di = weekdayToIndex.get(gd0.getDay());
+      const gil = israelParts(sa);
+      const di = weekdayToIndex.get(gil.weekday);
       if (di === undefined) continue;
       const dayStart = days[di].dateMs;
       const dayEnd = di < 6 ? days[di + 1].dateMs : rangeEnd;
-      if (sa < dayStart || sa >= dayEnd) continue; // exact date (DST-safe)
-      const key = `${di}:${hourToAvailWindow(gd0.getHours())}`;
+      if (sa < dayStart || sa >= dayEnd) continue; // exact local date
+      const key = `${di}:${hourToAvailWindow(gil.hour)}`;
       let set = registered.get(key);
       if (!set) registered.set(key, (set = new Set<string>()));
       for (const p of [...(gd.players ?? []), ...(gd.participantIds ?? [])]) {
@@ -9159,13 +9268,22 @@ export const availabilityCounts = onCall(
       const a = (u.data().availability ?? {}) as {
         homeCityLat?: number;
         homeCityLng?: number;
+        availabilityRadiusKm?: number;
         preferredDays?: number[];
         preferredTimes?: string[];
       };
       if (typeof a.homeCityLat !== 'number' || typeof a.homeCityLng !== 'number') {
         continue;
       }
-      if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
+      // Filter by the CANDIDATE's own radius (not the viewer's) so the count
+      // matches who the pulse would actually invite — the pulse tests
+      // haversine(candidate, game) ≤ candidate radius, and a calendar quick game
+      // is created in the viewer's city (game ≈ myLoc).
+      const candRadius =
+        typeof a.availabilityRadiusKm === 'number' && a.availabilityRadiusKm > 0
+          ? a.availabilityRadiusKm
+          : DEFAULT_AVAIL_RADIUS_KM;
+      if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > candRadius) {
         continue;
       }
       // Empty preferredDays / preferredTimes = "available any day / any window"
