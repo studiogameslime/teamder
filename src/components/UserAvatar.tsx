@@ -21,9 +21,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { SvgXml } from 'react-native-svg';
 import { AVATARS, getAvatarById } from '@/data/avatars';
-import { getIllustratedById, autoIllustratedFor } from '@/data/avatarsIllustrated';
 import type { User } from '@/types';
 
 interface Props {
@@ -65,31 +63,8 @@ export function UserAvatar({ user, size, style, ring }: Props) {
     );
   }
 
-  // 2) Illustrated avatar — either explicitly chosen, or the deterministic
-  //    default for anyone without a photo/legacy avatar. This is the primary
-  //    look now; the emoji-disc palette below stays only so legacy avatarIds
-  //    keep rendering.
-  const legacyEmoji = getAvatarById(user?.avatarId);
-  const illustrated =
-    getIllustratedById(user?.avatarId) ??
-    (legacyEmoji ? undefined : autoIllustratedFor(user?.id ?? ''));
-  if (illustrated) {
-    return (
-      <View
-        style={[
-          styles.disc,
-          { width: size, height: size, borderRadius: radius },
-          ringStyle,
-          style,
-        ]}
-      >
-        <SvgXml xml={illustrated.svg} width={size} height={size} />
-      </View>
-    );
-  }
-
-  // 3) Legacy emoji-disc avatar (only reached for old avatarIds like 'a05').
-  const def = legacyEmoji ?? autoAvatarFor(user?.id ?? '');
+  // 2) Picked built-in avatar.
+  const def = getAvatarById(user?.avatarId) ?? autoAvatarFor(user?.id ?? '');
   return (
     <View
       style={[
