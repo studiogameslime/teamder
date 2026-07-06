@@ -560,7 +560,7 @@ function PlayerRow({
       <PlayerIdentity user={user} size="sm" />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {user.name}
           </Text>
           {isAdmin ? (
