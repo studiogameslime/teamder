@@ -2681,7 +2681,14 @@ function israelParts(epoch: number): {
 function israelMidnight(epoch: number): number {
   const p = israelParts(epoch);
   const utcMid = Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0);
-  return utcMid - israelOffsetMs(utcMid);
+  // utcMid's Israel wall time is 02:00–03:00 (midnight + offset), which on the
+  // spring-forward day sits AFTER the 02:00 transition — so sampling the offset
+  // at utcMid would use the post-transition (+3) offset and land an hour into
+  // the previous date. Refine once: re-sample the offset at the first estimate,
+  // which is at ~local midnight, giving the correct offset for both DST days.
+  let E = utcMid - israelOffsetMs(utcMid);
+  E = utcMid - israelOffsetMs(E);
+  return E;
 }
 
 /**
@@ -8663,6 +8670,11 @@ async function runFindFillerCandidates(): Promise<void> {
 // home availability calendar creates — and delivers invites far faster.
 // The two share `fillerPushHistory`, so no user is ever double-pushed, and
 // the sweep remains the safety net if the pulse stops early.
+// Master switch for the on-demand pulse engine. Default OFF so deploying the
+// code does NOT start pushing to real users on prod — the existing 15-min sweep
+// keeps working unchanged. Flip to true (and redeploy) to activate the fast
+// pulse once the availability feature ships to clients.
+const PULSE_ENGINE_ENABLED = false;
 const PULSE_BATCH = 10;
 const PULSE_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes between batches
 const PULSE_STOP_BEFORE_MS = 30 * 60 * 1000; // stop pulsing 30 min pre-kickoff
@@ -8915,6 +8927,7 @@ export const fillerPulseTask = onTaskDispatched(
   async (req) => {
     const gameId = (req.data as { gameId?: string } | undefined)?.gameId;
     if (!gameId) return;
+    if (!PULSE_ENGINE_ENABLED) return; // master switch — stop any in-flight chain
     // NOTE: we deliberately do NOT swallow errors here — a throw lets
     // onTaskDispatched retry per retryConfig instead of silently killing the
     // self-rescheduling chain. runFillerPulseBatch already catches its own
@@ -8953,6 +8966,7 @@ async function maybeStartFillerPulse(
     maxPlayers?: number;
   },
 ): Promise<void> {
+  if (!PULSE_ENGINE_ENABLED) return; // master switch — off on prod until enabled
   if (g.acceptsFillers !== true) return;
   if (g.status && g.status !== 'open') return;
   const startsAt = typeof g.startsAt === 'number' ? g.startsAt : 0;
@@ -9275,15 +9289,13 @@ export const availabilityCounts = onCall(
       if (typeof a.homeCityLat !== 'number' || typeof a.homeCityLng !== 'number') {
         continue;
       }
-      // Filter by the CANDIDATE's own radius (not the viewer's) so the count
-      // matches who the pulse would actually invite — the pulse tests
-      // haversine(candidate, game) ≤ candidate radius, and a calendar quick game
-      // is created in the viewer's city (game ≈ myLoc).
-      const candRadius =
-        typeof a.availabilityRadiusKm === 'number' && a.availabilityRadiusKm > 0
-          ? a.availabilityRadiusKm
-          : DEFAULT_AVAIL_RADIUS_KM;
-      if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > candRadius) {
+      // Filter by the VIEWER's radius — per the spec the calendar shows "players
+      // available within MY radius", which also keeps the "רדיוס X ק״מ" chip
+      // honest (it labels exactly this threshold). This is a deliberately
+      // different lens from the pulse (which invites players whose OWN radius
+      // reaches the game): the count is an approximate "who's around me" signal,
+      // not a precise invite-count.
+      if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
         continue;
       }
       // Empty preferredDays / preferredTimes = "available any day / any window"
