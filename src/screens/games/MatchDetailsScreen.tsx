@@ -1901,18 +1901,17 @@ export function MatchDetailsScreen() {
           : []),
         // Register members straight from the community into the game (admin
         // only). Distinct from "invite" — these are added to the roster
-        // directly and get a push. On an OPEN game it reads "הוסף שחקנים"; on a
-        // still-SCHEDULED game (registration not open yet) the SAME flow is
-        // framed as "שריין מקומות" — pre-securing spots for regulars before the
-        // doors open (the adminAddPlayers callable already allows scheduled).
-        ...(isAdmin && (game.status === 'open' || isScheduled(game))
+        // directly and get a push. ONE unified entry ("צרף חברים מהמועדון"),
+        // always available while the game isn't finished/cancelled (the
+        // adminAddPlayers callable allows every non-terminal status). When
+        // registration hasn't opened yet the flow still reserves the spots
+        // under the hood (`reserve`), it's just no longer a separate menu item.
+        ...(isAdmin && !isFinished(game) && !isCancelled(game)
           ? [
               {
                 id: 'addMembers',
-                label: isScheduled(game) ? he.matchMenuReserveSpots : he.matchMenuAddMembers,
-                icon: isScheduled(game)
-                  ? ('bookmark-outline' as const)
-                  : ('people-circle-outline' as const),
+                label: he.matchMenuAddMembers,
+                icon: 'people-circle-outline' as const,
                 onPress: () =>
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'AddMembers',

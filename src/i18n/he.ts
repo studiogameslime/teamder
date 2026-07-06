@@ -2182,7 +2182,7 @@ export const he = {
   matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המשחק, באזור',
   // Admin "register members from the community" flow (MatchDetails menu →
   // AddMembersScreen).
-  matchMenuAddMembers: 'הוסף שחקנים מהמועדון',
+  matchMenuAddMembers: 'צרף חברים מהמועדון',
   addMembersTitle: 'הוספת שחקנים מהמועדון',
   addMembersHint: 'בחרו חברי מועדון לרשום ישירות למשחק. הם יקבלו על כך התראה.',
   addMembersHintSpots: (n: number) =>
