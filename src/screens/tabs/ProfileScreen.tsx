@@ -44,6 +44,7 @@ import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
 import { HomeGreetingHeader } from '@/components/home/HomeGreetingHeader';
+import { AvailabilityCalendarCard } from '@/components/home/AvailabilityCalendarCard';
 import {
   OnboardingChecklist,
   type ChecklistItem,
@@ -637,6 +638,27 @@ export function ProfileScreen() {
             userId={user.id}
             onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
             onFindGame={() => nav.navigate('GameTab')}
+          />
+
+          {/* Availability calendar — how many players are free to play near you,
+              per window. Tap a window to open a quick game. Self-isolating: it
+              renders null on error, so it can never break the home screen. */}
+          <AvailabilityCalendarCard
+            onCreateGame={(dateMs, window) =>
+              (nav as { navigate: (s: string, p?: unknown) => void }).navigate(
+                'GameTab',
+                {
+                  screen: 'GameCreate',
+                  params: {
+                    quick: true,
+                    prefillDateMs: dateMs,
+                    prefillWindow: window,
+                    inviteAvailable: true,
+                  },
+                },
+              )
+            }
+            onSetAvailability={() => nav.navigate('AvailabilityEdit')}
           />
 
           {/* ③ Pending join requests — admins only, when there are any. */}

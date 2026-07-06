@@ -1612,6 +1612,17 @@ export const he = {
   availabilityCardTitle: 'אנחנו נמצא לך משחקים מתאימים!',
   availabilityCardBody:
     'בחר את הימים, הזמן והאזור שבו תרצה לשחק. נמצא לך משחקים פתוחים עם שחקנים חסרים בסביבה שלך, ונזמין אותך כשמישהו פותח משחק בחלון שסימנת. שחקנים אחרים באזור יראו כמה אנשים פנויים בכל חלון (רק המספר — לא מי) כדי לעודד פתיחת משחקים.',
+  // Home "פנויים לשחק לידך" calendar
+  availFeedTitle: '⚽ פנויים לשחק לידך',
+  availFeedSub: 'כמה שחקנים פנויים בכל חלון — ולא רשומים למשחק',
+  availFeedRadius: (km: number) => `רדיוס ${km} ק״מ`,
+  availFeedHottest: 'הכי חם:',
+  availFeedCreateCta: 'פתח משחק ⚡',
+  availFeedTapHint: 'לחצו על חלון כדי לפתוח משחק ולהזמין את הפנויים',
+  availFeedPromptTitle: 'רוצה לראות מי פנוי לשחק לידך?',
+  availFeedPromptBody:
+    'הגדר את האזור והזמנים שנוח לך — ונראה לך כמה שחקנים פנויים בכל חלון, כדי לפתוח משחק בקלות.',
+  availFeedPromptCta: 'הגדר זמינות',
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
   availabilityDayLetter: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'],
