@@ -54,6 +54,9 @@ interface Props {
   /** Fires after an admin removes the guest, so the parent can splice it out
    *  of local state. Removal works for active AND waitlisted guests. */
   onRemoved?: (guest: GameGuest) => void | Promise<void>;
+  /** Pre-built "צורף ע״י X · <date>" line (edit mode). The parent resolves the
+   *  adder's name + formats the date; shown as a small caption under the title. */
+  addedByLabel?: string;
 }
 
 export function GuestModal({
@@ -65,6 +68,7 @@ export function GuestModal({
   onClose,
   onChanged,
   onRemoved,
+  addedByLabel,
 }: Props) {
   const [name, setName] = useState('');
   const [rating, setRating] = useState<number | null>(null);
@@ -230,6 +234,9 @@ export function GuestModal({
           <Text style={styles.title}>
             {existing ? he.guestEditTitle : he.guestAddTitle}
           </Text>
+          {isEdit && addedByLabel ? (
+            <Text style={styles.addedBy}>{addedByLabel}</Text>
+          ) : null}
 
           <View style={styles.field}>
             <Text style={styles.label}>
@@ -341,6 +348,12 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  addedBy: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: -spacing.xs,
   },
   field: {
     gap: spacing.xs,

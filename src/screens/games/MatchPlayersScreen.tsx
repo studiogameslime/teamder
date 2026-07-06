@@ -46,6 +46,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { formatRating, isRated } from '@/utils/rating';
 import { gameService } from '@/services/gameService';
 import { useGameEvents } from '@/services/useGameEvents';
+import { formatDateTimeFull } from '@/utils/format';
 import { groupService } from '@/services/groupService';
 import { communityEventsService } from '@/services/communityEventsService';
 import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
@@ -826,6 +827,15 @@ export function MatchPlayersScreen() {
           callerId={currentUser.id}
           existing={editingGuest}
           isAdmin={isAdminViewer}
+          addedByLabel={
+            editingGuest
+              ? he.guestAddedByLine(
+                  playersMap[editingGuest.addedBy]?.displayName ??
+                    he.communityDetailsAdminBadge,
+                  formatDateTimeFull(editingGuest.createdAt),
+                )
+              : undefined
+          }
           onClose={() => setEditingGuest(null)}
           onChanged={(action, saved) => {
             // Reflect the change IMMEDIATELY (don't wait for the reload) so an

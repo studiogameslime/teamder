@@ -1047,6 +1047,7 @@ export const he = {
   guestRemoveConfirmBody: (name: string) =>
     `${name} יוסר מהמשחק (כולל מרשימת ההמתנה). אפשר להוסיף שוב בכל עת.`,
   guestRemovedToast: 'האורח הוסר מהמשחק',
+  guestAddedByLine: (name: string, when: string) => `צורף ע״י ${name} · ${when}`,
   communityDetailsAdminBadge: 'מנהל',
   communityEditTitle: 'עריכת מועדון',
   communityEditNoPermission: 'רק מנהל יכול לערוך את המועדון',
