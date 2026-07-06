@@ -20,8 +20,9 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
 import { InputField } from '@/components/InputField';
 import { Button } from '@/components/Button';
+import { SvgXml } from 'react-native-svg';
 import { UserAvatar } from '@/components/UserAvatar';
-import { AVATARS } from '@/data/avatars';
+import { ADVENTURER_AVATARS } from '@/data/avatarsAdventurer';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -286,7 +287,7 @@ export function ProfileEditScreen() {
           <View style={styles.orDividerLine} />
         </View>
         <View style={styles.avatarGrid}>
-          {AVATARS.map((a) => (
+          {ADVENTURER_AVATARS.map((a) => (
             <Pressable
               key={a.id}
               onPress={() => handlePickAvatar(a.id)}
@@ -297,8 +298,8 @@ export function ProfileEditScreen() {
               accessibilityRole="button"
               accessibilityLabel={`avatar-${a.id}`}
             >
-              <View style={[styles.avatarDot, { backgroundColor: a.bg }]}>
-                <Text style={styles.avatarGlyph}>{a.glyph}</Text>
+              <View style={styles.avatarDot}>
+                <SvgXml xml={a.svg} width="100%" height="100%" />
               </View>
             </Pressable>
           ))}
@@ -421,9 +422,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarGlyph: {
-    fontSize: 26,
-    textAlign: 'center',
+    overflow: 'hidden',
   },
 });
