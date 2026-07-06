@@ -23,7 +23,12 @@ const MEDALS = ['#F4B73E', '#9AA4B2', '#CD7F32']; // gold / silver / bronze
 const ROW_H = 56;
 const HEADER_H = 34;
 const STAT_W = 66;
-const NAME_W = 116;
+// Wide enough for a real first name (e.g. "מקסימיליאן", ~10 chars) to show in
+// full next to the 30px avatar without clipping to "מקסימילי…". After the
+// avatar (30) + horizontal padding/gap (~30) the name gets the remaining ~140,
+// enough for the longest real Hebrew first names. The stat grid to the left
+// scrolls, so a wider name column costs nothing but viewport width.
+const NAME_W = 172;
 
 function firstName(name: string): string {
   const t = (name || '').trim().split(/\s+/)[0];
