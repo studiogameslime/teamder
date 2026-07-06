@@ -34,6 +34,7 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { userService } from '@/services';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { availabilityFeedService } from '@/services/availabilityFeedService';
 import { storage } from '@/services/storage';
 import { docs } from '@/firebase/firestore';
 import { USE_MOCK_DATA } from '@/firebase/config';
@@ -94,7 +95,10 @@ export function AvailabilityEditScreen() {
   const [times, setTimes] = useState<TimeBucket[]>(initial.preferredTimes ?? []);
   const [pin, setPin] = useState(initialPin);
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
-  const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush === true);
+  // Default ON (user request): nearby-game invites are the point of setting
+  // availability. Only an EXPLICIT `false` keeps it off, so existing opt-outs
+  // are respected while everyone else (undefined) defaults in.
+  const [notify, setNotify] = useState<boolean>(initial.acceptsFillerPush !== false);
   const [locationEnabled, setLocationEnabled] = useState(initialLocationEnabled);
   // Whether the OS already granted foreground location. When it has, the
   // "אשרו שיתוף מיקום" framing is misleading (nothing to grant) — the copy
@@ -110,7 +114,7 @@ export function AvailabilityEditScreen() {
     pin.lat !== initialPin.lat ||
     pin.lng !== initialPin.lng ||
     radiusKm !== initialRadius ||
-    notify !== (initial.acceptsFillerPush === true) ||
+    notify !== (initial.acceptsFillerPush !== false) ||
     locationEnabled !== initialLocationEnabled;
   const savingRef = useUnsavedChangesGuard({ isDirty, onSave: () => save() });
 
@@ -207,6 +211,9 @@ export function AvailabilityEditScreen() {
         acceptsFillerPush: locationEnabled ? notify : false,
       };
       await persistAvailability(user.id, next, coords);
+      // The viewer's radius/location just changed → drop the home-calendar
+      // cache so the "פנויים לשחק לידך" counts refresh on the next open.
+      availabilityFeedService.invalidate();
       logEvent(AnalyticsEvent.AvailabilitySet, {
         days: days.join(','),
         times: times.join(','),

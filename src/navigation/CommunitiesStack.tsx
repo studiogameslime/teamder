@@ -82,6 +82,9 @@ export type CommunitiesStackParamList = {
         numberOfTeams?: number;
         recurring?: boolean;
         quick?: boolean;
+        prefillDateMs?: number;
+        prefillWindow?: import('@/types').TimeBucket;
+        inviteAvailable?: boolean;
       };
 };
 

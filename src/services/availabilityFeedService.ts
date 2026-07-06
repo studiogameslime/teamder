@@ -69,19 +69,46 @@ function buildMock(): AvailabilityCounts {
   return { radiusKm: 25, hasLocation: true, days };
 }
 
+// Short in-memory cache. The callable aggregates across all opted-in users +
+// every game in a 7-day window, so it's read-heavy; the home card mounts on
+// every tab focus. A 5-minute TTL collapses those repeated opens into one
+// server call without the numbers ever feeling stale (availability changes on
+// the order of hours, not seconds). Cleared on a fresh app launch.
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let cached: { at: number; value: AvailabilityCounts } | null = null;
+let inFlight: Promise<AvailabilityCounts> | null = null;
+
 export const availabilityFeedService = {
   async getAvailabilityCounts(): Promise<AvailabilityCounts> {
     if (USE_MOCK_DATA) return buildMock();
-    try {
-      const { functions } = getFirebase();
-      const fn = httpsCallable(functions, 'availabilityCounts');
-      const res = await fn({});
-      return res.data as AvailabilityCounts;
-    } catch (err) {
-      logError('getAvailabilityCounts', err, {});
-      // Fail-soft: an empty (no-location) result so the home card hides itself
-      // rather than crashing the home screen.
-      return { radiusKm: 0, hasLocation: false, days: [] };
-    }
+    const now = Date.now();
+    if (cached && now - cached.at < CACHE_TTL_MS) return cached.value;
+    // De-dupe concurrent callers (e.g. two screens mounting at once) onto a
+    // single in-flight request.
+    if (inFlight) return inFlight;
+    inFlight = (async () => {
+      try {
+        const { functions } = getFirebase();
+        const fn = httpsCallable(functions, 'availabilityCounts');
+        const res = await fn({});
+        const value = res.data as AvailabilityCounts;
+        cached = { at: Date.now(), value };
+        return value;
+      } catch (err) {
+        logError('getAvailabilityCounts', err, {});
+        // Fail-soft: an empty (no-location) result so the home card hides
+        // itself rather than crashing the home screen. NOT cached — a
+        // transient error shouldn't suppress the card for 5 minutes.
+        return { radiusKm: 0, hasLocation: false, days: [] };
+      } finally {
+        inFlight = null;
+      }
+    })();
+    return inFlight;
+  },
+  /** Drop the cache — call after the viewer edits their availability so the
+   *  radius/counts refresh on the next home open. */
+  invalidate() {
+    cached = null;
   },
 };

@@ -55,6 +55,9 @@ function buildInitial(
      *  types a real name instead of seeing the hidden personal group's
      *  placeholder. */
     quick?: boolean;
+    /** Started from the home "פנויים לשחק לידך" calendar → force acceptsFillers
+     *  ON so the pulse-invite engine recruits the available players. */
+    inviteAvailable?: boolean;
   },
 ): GameFormValues {
   // Pre-fill the city from the community's general city. NO field /
@@ -107,13 +110,13 @@ function buildInitial(
     autoTeamsAt: 0,
     autoTeamsMethod: 'rating',
     cancelDeadlineHours: undefined,
-    // Cross-community fillers: ON by default for OPEN communities
-    // (anyone can join the community already, so accepting fillers is
-    // consistent), OFF for closed communities (admins of private
-    // communities should opt in explicitly). Default minimum trust
-    // is 70 — filters out low-reliability candidates without being
-    // too strict.
-    acceptsFillers: g?.isOpen === true,
+    // Cross-community fillers: ON BY DEFAULT (user request — activates the
+    // "invite nearby available players when short" engine so the games feed
+    // fills). It only ever fires when the roster is BELOW the shortage
+    // threshold, and every filler still needs admin approval — so admins of
+    // private communities can leave it on safely, or turn it off per game.
+    // Forced on when the game was started from the availability calendar.
+    acceptsFillers: true,
     fillerMinTrust: 70,
     notes: '',
     bringBall: true,
@@ -256,14 +259,28 @@ export function GameCreateScreen() {
   // Reset the form whenever the user picks a different community so the
   // pre-filled values (title, fieldName, address) match.
   const [initialKey, setInitialKey] = useState(0);
+  // From the home availability calendar: turn (start-of-day + window) into a
+  // concrete kickoff time. Default hour per window; the user can still edit it.
+  const WINDOW_HOUR: Record<import('@/types').TimeBucket, number> = {
+    morning: 9,
+    noon: 13,
+    evening: 19,
+    night: 22,
+  };
+  const prefillStartsAt =
+    typeof params.prefillDateMs === 'number' && params.prefillWindow
+      ? params.prefillDateMs +
+        (WINDOW_HOUR[params.prefillWindow] ?? 19) * 3_600_000
+      : undefined;
   const initial = useMemo(
     () =>
       buildInitial(selectedGroup ?? myCommunities[0], {
-        startsAt: params.startsAt,
+        startsAt: prefillStartsAt ?? params.startsAt,
         format: params.format,
         numberOfTeams: params.numberOfTeams,
         recurring: isRecurring,
         quick: isOrphan,
+        inviteAvailable: params.inviteAvailable === true,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedGroup?.id, initialKey, isRecurring],

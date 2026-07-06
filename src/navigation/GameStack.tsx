@@ -56,6 +56,11 @@ export type GameStackParamList = {
          *  (no-community) game — the screen auto-provisions the hidden
          *  personal group. Triggered from the "+" quick-game choice. */
         quick?: boolean;
+        /** From the home availability calendar: start-of-day + window to
+         *  pre-fill the kickoff, and a flag to force acceptsFillers on. */
+        prefillDateMs?: number;
+        prefillWindow?: import('@/types').TimeBucket;
+        inviteAvailable?: boolean;
       };
   /** Edit metadata of an existing game. Only the organizer should reach this. */
   GameEdit: { gameId: string };
