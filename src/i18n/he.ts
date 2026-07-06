@@ -1044,6 +1044,9 @@ export const he = {
   guestErrorGameNotOpen: 'המשחק אינו פתוח להרשמה — אי אפשר להוסיף אורחים',
   guestErrorPermission: 'רק מנהל יכול לערוך אורחים',
   guestErrorGeneric: 'הפעולה נכשלה',
+  guestRemoveConfirmBody: (name: string) =>
+    `${name} יוסר מהמשחק (כולל מרשימת ההמתנה). אפשר להוסיף שוב בכל עת.`,
+  guestRemovedToast: 'האורח הוסר מהמשחק',
   communityDetailsAdminBadge: 'מנהל',
   communityEditTitle: 'עריכת מועדון',
   communityEditNoPermission: 'רק מנהל יכול לערוך את המועדון',

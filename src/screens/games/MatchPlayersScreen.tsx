@@ -821,6 +821,19 @@ export function MatchPlayersScreen() {
             );
             reload();
           }}
+          onRemoved={(removed) => {
+            // Splice the guest out immediately (active or waitlisted), then
+            // refresh in the background.
+            setGame((g) =>
+              g
+                ? {
+                    ...g,
+                    guests: (g.guests ?? []).filter((x) => x.id !== removed.id),
+                  }
+                : g,
+            );
+            reload();
+          }}
         />
       ) : null}
 

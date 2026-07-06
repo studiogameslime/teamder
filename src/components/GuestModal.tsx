@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
 import { RatingSlider } from './RatingSlider';
+import { appAlert } from './AppDialog';
 import { toast } from './Toast';
 import { logError } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
@@ -50,6 +51,9 @@ interface Props {
     action: 'added' | 'updated',
     guest: GameGuest,
   ) => void | Promise<void>;
+  /** Fires after an admin removes the guest, so the parent can splice it out
+   *  of local state. Removal works for active AND waitlisted guests. */
+  onRemoved?: (guest: GameGuest) => void | Promise<void>;
 }
 
 export function GuestModal({
@@ -60,6 +64,7 @@ export function GuestModal({
   isAdmin,
   onClose,
   onChanged,
+  onRemoved,
 }: Props) {
   const [name, setName] = useState('');
   const [rating, setRating] = useState<number | null>(null);
@@ -162,6 +167,46 @@ export function GuestModal({
     }
   };
 
+  // Admins can remove a guest entirely (active OR waitlisted). removeGuest is
+  // permission-checked server-side; we gate the button on admin here.
+  const canRemove = isEdit && !!isAdmin && !!existing;
+  const handleRemove = () => {
+    if (!existing || !callerId) return;
+    appAlert(
+      he.guestRemoveConfirmTitle,
+      he.guestRemoveConfirmBody(existing.name),
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.guestRemove,
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await gameService.removeGuest(gameId, callerId, existing.id);
+              toast.success(he.guestRemovedToast);
+              if (onRemoved) await onRemoved(existing);
+              onClose();
+            } catch (err) {
+              const msg = (err as Error).message ?? '';
+              logError('removeGuest', err, {
+                screen: 'GuestModal',
+                gameId,
+                callerId,
+                guestId: existing.id,
+              });
+              if (msg === 'PERMISSION_DENIED') {
+                toast.error(he.guestErrorPermission);
+              } else toast.error(he.guestErrorGeneric);
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -233,6 +278,18 @@ export function GuestModal({
                 </>
               )}
             </View>
+          ) : null}
+
+          {canRemove ? (
+            <Pressable
+              onPress={handleRemove}
+              disabled={busy}
+              style={styles.removeRow}
+              android_ripple={{ color: '#FEE2E2' }}
+            >
+              <Ionicons name="trash-outline" size={17} color={colors.danger} />
+              <Text style={styles.removeText}>{he.guestRemove}</Text>
+            </Pressable>
           ) : null}
 
           <View style={styles.footer}>
@@ -335,5 +392,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  removeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: '#FEE2E2',
+  },
+  removeText: {
+    ...typography.body,
+    color: colors.danger,
+    fontWeight: '700',
   },
 });
