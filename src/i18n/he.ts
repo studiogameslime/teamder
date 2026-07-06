@@ -669,10 +669,10 @@ export const he = {
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
   createGameWaitlistApproval: 'קידום מרשימת המתנה דורש אישור השחקן',
   createGameWaitlistApprovalHint:
-    'כשמופעל (ברירת מחדל) — כשמתפנה מקום, הראשון בהמתנה מקבל התראה וצריך לאשר שהוא מגיע תוך פרק הזמן שתקבע; אם לא אישר, ההצעה עוברת לבא בתור. המקום שמור עד אז (מי שנרשם חדש נכנס לסוף ההמתנה). כשמכובה — הראשון בהמתנה נכנס אוטומטית בלי לאשר.',
+    'כשמופעל — כשמתפנה מקום, הראשון בהמתנה מקבל התראה וצריך לאשר שהוא מגיע תוך פרק הזמן שתקבע; אם לא אישר, ההצעה עוברת להבא בתור. כשמכובה (ברירת מחדל) — הראשון בהמתנה נכנס אוטומטית בלי לאשר.',
   createGameWaitlistTimeout: 'זמן לאישור (דקות)',
   createGameWaitlistTimeoutHint:
-    'כמה דקות יש לשחקן שקיבל את המקום לאשר, לפני שההצעה עוברת לבא בתור.',
+    'כמה דקות יש לשחקן שקיבל את המקום לאשר, לפני שההצעה עוברת להבא בתור.',
   createGameNotes: 'הערות (לא חובה)',
   createGameBringBall: 'מישהו צריך להביא כדור',
   createGameBringShirts: 'מישהו צריך להביא גופיות',
@@ -2052,7 +2052,7 @@ export const he = {
   matchPlayersLateTag: 'באיחור',
   matchPlayersNoShowTag: 'לא הופיע',
   matchPlayersOfferPendingTag: 'ממתין לאישור',
-  matchPlayersOfferAdvanceCta: 'העבר לבא בתור',
+  matchPlayersOfferAdvanceCta: 'העבר להבא בתור',
   matchPlayersOfferAdvanceConfirm: 'להעביר את ההצעה לשחקן הבא ברשימת ההמתנה?',
   matchPlayersOfferConfirmCta: 'אישור הגעה',
   matchPlayersOfferPassCta: 'ויתור',

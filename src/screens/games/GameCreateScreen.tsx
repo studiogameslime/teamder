@@ -91,7 +91,10 @@ function buildInitial(
     // inside the group unless the admin explicitly opens them.
     visibility: g?.isOpen === true ? 'public' : 'community',
     requiresApproval: false,
-    waitlistApprovalRequired: true,
+    // Default OFF (user request): the first in the waitlist enters automatically
+    // when a spot frees, without a confirm step. Admins can turn confirm back on
+    // per game. Existing games are unaffected (their stored value is respected).
+    waitlistApprovalRequired: false,
     waitlistApprovalTimeout: '20',
     // Recurring is now an in-form toggle. Pre-set it ON when the
     // route param flagged a recurring entry; otherwise default OFF

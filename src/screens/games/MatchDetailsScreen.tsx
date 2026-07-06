@@ -348,16 +348,10 @@ function buildStatusCardProps(args: {
     };
   }
   if (!primary) {
-    // No positive primary action — usually waiting + already
-    // registered. Show the cancel pill so users still have an exit.
-    if (primaryDestructive) {
-      return {
-        title,
-        subtitle: waitingSubtitle,
-        kind: 'cancel',
-        primaryLabel: he.matchCancelRegistrationLink,
-      };
-    }
+    // No positive primary action — usually waiting + already registered.
+    // Cancel is intentionally NOT surfaced here (nor in the sticky bar):
+    // the only exit is the ☰ menu's "יציאה מהמשחק" (user request — drop the
+    // giant "בטל הרשמה" button, keep cancelling menu-only).
     return { title, subtitle: waitingSubtitle, kind: 'none' };
   }
   // Admin session-action wins as a positive primary even when the
@@ -2266,18 +2260,9 @@ export function MatchDetailsScreen() {
         tone: 'primary',
       };
     }
-    if (
-      primaryDestructive &&
-      canCancelRegistration(game) &&
-      !isTerminalGame(game)
-    ) {
-      return {
-        label: he.matchDetailsCancel,
-        icon: 'close-circle-outline',
-        onPress: handlePrimary,
-        tone: 'destructive',
-      };
-    }
+    // Cancel/leave is intentionally NOT a sticky button anymore (user request):
+    // the giant red "בטל הרשמה" is gone; the only exit is the ☰ menu's
+    // "יציאה מהמשחק" (shown under the same primaryDestructive+canCancel gate).
     if (primary && primary.onPress !== handleShare) {
       return {
         label: primary.title,
