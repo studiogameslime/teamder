@@ -459,8 +459,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    // The state chip (בוטל / פג תוקף) wraps below the event label rather than
+    // crushing it — same rule we use for names.
+    flexWrap: 'wrap',
   },
-  title: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, flexShrink: 1 },
+  title: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN, flexShrink: 0, maxWidth: '100%' },
   strike: { color: colors.textMuted, textDecorationLine: 'line-through' },
   tag: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   tagExpired: { backgroundColor: colors.surfaceMuted },

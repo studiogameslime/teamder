@@ -553,13 +553,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     flexShrink: 1,
+    // The captain chip wraps below the name when there's no room, instead of
+    // crushing the name to fit them both on one line.
+    flexWrap: 'wrap',
   },
   playerRowActive: { borderColor: colors.primary },
   playerName: {
     ...typography.body,
     color: colors.text,
     fontWeight: '700',
-    flexShrink: 1,
+    // Never shrink the name — the captain chip wraps first.
+    flexShrink: 0,
+    maxWidth: '100%',
     textAlign: RTL_LABEL_ALIGN,
   },
   capBadge: {
