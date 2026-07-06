@@ -867,10 +867,32 @@ export function MatchDetailsScreen() {
       // Active red card in this community → blocked from self-registering
       // (the server rejects it too; this pre-empts with a clear message).
       if (redBlocked) {
-        // A red card is a hard block on registering — show it in the red
-        // error style, not the neutral blue info toast (user report).
-        toast.error(he.redCardBlockToast);
-        return;
+        // The `redBlocked` flag comes from a ONE-SHOT read on mount — it does
+        // NOT live-update. If an admin revokes the card while this screen stays
+        // open, the stale flag would keep blocking until the user leaves and
+        // re-enters (user report). Re-verify against the server at tap time:
+        // only block if the card is STILL active; otherwise fall through and
+        // let them register. On a read error keep the block (server is the
+        // backstop) so we never wrongly let a carded player in.
+        const gid = game.groupId;
+        const grp = gid ? myCommunities.find((c) => c.id === gid) : undefined;
+        const stillBlocked = gid
+          ? await communityEventsService
+              .hasActiveRedCard(
+                gid,
+                user.id,
+                grp?.redCardValidityDays,
+                !!grp?.cardsEnabled,
+              )
+              .catch(() => true)
+          : false;
+        setRedBlocked(stillBlocked);
+        if (stillBlocked) {
+          // A red card is a hard block on registering — show it in the red
+          // error style, not the neutral blue info toast (user report).
+          toast.error(he.redCardBlockToast);
+          return;
+        }
       }
     } else if (!canCancelRegistration(game)) {
       // Mid-round cancel — block. Other terminal states already
