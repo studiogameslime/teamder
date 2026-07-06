@@ -93,6 +93,7 @@ type NotificationType =
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
   | 'spotOffered'
+  | 'guestPromoted'          // → the adder: "האורח שלך נכנס להרכב"
   | 'growthMilestone'
   | 'inviteToGame'
   | 'addedToGame'
@@ -666,6 +667,16 @@ function buildMessage(
         title: 'נפתח לך מקום במשחק!',
         body: `מישהו ביטל ב${gameTitle} — אתה רשום כעת.`,
       };
+    case 'guestPromoted': {
+      // → the player who ADDED the guest (guests have no account to notify).
+      const gName = (payload.guestName as string) || 'האורח שלך';
+      return {
+        title: 'האורח שלך נכנס להרכב!',
+        body: when
+          ? `${gName} עלה מרשימת ההמתנה להרכב ב${gameTitle} (${when}).`
+          : `${gName} עלה מרשימת ההמתנה להרכב ב${gameTitle}.`,
+      };
+    }
     case 'spotOffered':
       // Confirmation-required variant of spotOpened. The user is the
       // head of the waitlist and a slot just opened — they have to
@@ -3943,6 +3954,51 @@ export const onGameRosterChanged = onDocumentWritten(
           err,
         );
       }
+    }
+
+    // ── Guest promoted from the waitlist → notify the player who ADDED them ──
+    // Guests have no account to push, so when a waitlisted guest becomes active
+    // (admin "להרכב", or a freed seat), the adder gets the heads-up. Gated on the
+    // waitlisted:true→false transition per guest; createNotificationOnce dedupes.
+    try {
+      const beforeGuests = (before?.guests ?? []) as Array<{
+        id?: string;
+        waitlisted?: boolean;
+      }>;
+      const afterGuests = (after.guests ?? []) as Array<{
+        id?: string;
+        name?: string;
+        waitlisted?: boolean;
+        addedBy?: string;
+      }>;
+      const wasWaitlisted = new Map(
+        beforeGuests.map((g) => [g.id, g.waitlisted === true]),
+      );
+      for (const g of afterGuests) {
+        if (
+          g.id &&
+          g.addedBy &&
+          wasWaitlisted.get(g.id) === true &&
+          g.waitlisted !== true
+        ) {
+          await createNotificationOnce({
+            type: 'guestPromoted',
+            recipientId: g.addedBy,
+            payload: {
+              gameId: event.params.gameId,
+              title: after.title ?? '',
+              startsAt: after.startsAt,
+              guestName: g.name ?? '',
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.error(
+        '[onGameRosterChanged] guestPromoted push failed',
+        event.params.gameId,
+        err,
+      );
     }
 
     // ── Server-owned waitlist promotion + team-prune on roster shrink ──────

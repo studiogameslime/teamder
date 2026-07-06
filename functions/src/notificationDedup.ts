@@ -14,6 +14,7 @@ export type NotificationKind =
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
   | 'spotOffered'
+  | 'guestPromoted'
   | 'growthMilestone'
   | 'inviteToGame'
   | 'rateReminder'
@@ -55,6 +56,7 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   rejected: 60 * 60 * 1000,
   spotOffered: 60 * 1000,
   spotOpened: 60 * 1000,
+  guestPromoted: 60 * 1000,
   // Aggregation window for `playerCancelled`. Within 5 min of the FIRST
   // cancellation push, subsequent cancellations on the same game merge
   // into the same doc (count + names) without re-firing the trigger.
@@ -180,6 +182,14 @@ export function inferEntityFromPayload(
         entityType: 'game',
         entityId: gameId || recipientId,
         reason: type,
+      };
+    case 'guestPromoted':
+      return {
+        entityType: 'game',
+        entityId: gameId || recipientId,
+        reason: `guest-promoted-${
+          typeof payload.guestName === 'string' ? payload.guestName : ''
+        }`,
       };
     case 'inviteToGame':
       return {

@@ -39,6 +39,7 @@ export type NotificationKind =
   | 'gameCanceledOrUpdated'
   | 'spotOpened'
   | 'spotOffered'
+  | 'guestPromoted'
   | 'growthMilestone'
   | 'inviteToGame'
   | 'rateReminder'
@@ -103,6 +104,8 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // diverge naturally.
   spotOffered: 60 * 1000,
   spotOpened: 60 * 1000,
+  // Guest promoted → the adder. One per guest×game; short cooldown.
+  guestPromoted: 60 * 1000,
   // Cancellation alerts — admin-facing, must surface fast. Short
   // cooldown so the first ping in a sequence wins; subsequent
   // cancellations for OTHER players use a different dedupeKey
@@ -255,6 +258,16 @@ export function inferEntityFromPayload(
         entityType: 'game',
         entityId: gameId || recipientId,
         reason: type,
+      };
+    case 'guestPromoted':
+      // Keyed by the promoted guest so two different guests promoted in the
+      // same game (to the same adder) each notify.
+      return {
+        entityType: 'game',
+        entityId: gameId || recipientId,
+        reason: `guest-promoted-${
+          typeof payload.guestName === 'string' ? payload.guestName : ''
+        }`,
       };
     case 'inviteToGame':
       return {

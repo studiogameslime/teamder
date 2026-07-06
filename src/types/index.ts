@@ -451,6 +451,9 @@ export type NotificationType =
    * they pass / time out, the admin can advance to the next person.
    */
   | 'spotOffered'
+  /** Sent to the player who ADDED a guest, when that waitlisted guest is
+   *  promoted into the active roster (guests have no account to notify). */
+  | 'guestPromoted'
   /**
    * Batched admin notification — N players who locked in attendance
    * within a short window are consolidated into one push. See

@@ -273,6 +273,7 @@ export function navigateForPush(
     case 'gameCanceledOrUpdated':
     case 'spotOpened':
     case 'spotOffered':
+    case 'guestPromoted':
     case 'inviteToGame':
     case 'addedToGame':
     case 'rateReminder':
