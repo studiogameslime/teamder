@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { AVATARS, getAvatarById } from '@/data/avatars';
-import { getAdventurerById, autoAdventurerFor } from '@/data/avatarsAdventurer';
+import { getIllustratedById, autoIllustratedFor } from '@/data/avatarsIllustrated';
 import type { User } from '@/types';
 
 interface Props {
@@ -65,15 +65,15 @@ export function UserAvatar({ user, size, style, ring }: Props) {
     );
   }
 
-  // 2) Illustrated Adventurer avatar — either explicitly chosen, or the
-  //    deterministic default for anyone without a photo/legacy avatar. This is
-  //    the primary look now; the emoji-disc palette below stays only so legacy
-  //    avatarIds keep rendering.
+  // 2) Illustrated avatar — either explicitly chosen, or the deterministic
+  //    default for anyone without a photo/legacy avatar. This is the primary
+  //    look now; the emoji-disc palette below stays only so legacy avatarIds
+  //    keep rendering.
   const legacyEmoji = getAvatarById(user?.avatarId);
-  const adventurer =
-    getAdventurerById(user?.avatarId) ??
-    (legacyEmoji ? undefined : autoAdventurerFor(user?.id ?? ''));
-  if (adventurer) {
+  const illustrated =
+    getIllustratedById(user?.avatarId) ??
+    (legacyEmoji ? undefined : autoIllustratedFor(user?.id ?? ''));
+  if (illustrated) {
     return (
       <View
         style={[
@@ -83,7 +83,7 @@ export function UserAvatar({ user, size, style, ring }: Props) {
           style,
         ]}
       >
-        <SvgXml xml={adventurer.svg} width={size} height={size} />
+        <SvgXml xml={illustrated.svg} width={size} height={size} />
       </View>
     );
   }

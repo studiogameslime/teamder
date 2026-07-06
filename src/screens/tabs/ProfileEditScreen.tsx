@@ -22,7 +22,7 @@ import { InputField } from '@/components/InputField';
 import { Button } from '@/components/Button';
 import { SvgXml } from 'react-native-svg';
 import { UserAvatar } from '@/components/UserAvatar';
-import { ADVENTURER_AVATARS } from '@/data/avatarsAdventurer';
+import { ILLUSTRATED_AVATARS } from '@/data/avatarsIllustrated';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -287,7 +287,7 @@ export function ProfileEditScreen() {
           <View style={styles.orDividerLine} />
         </View>
         <View style={styles.avatarGrid}>
-          {ADVENTURER_AVATARS.map((a) => (
+          {ILLUSTRATED_AVATARS.map((a) => (
             <Pressable
               key={a.id}
               onPress={() => handlePickAvatar(a.id)}
