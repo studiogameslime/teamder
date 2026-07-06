@@ -6967,6 +6967,65 @@ export const gameService = {
     }
     logEvent(AnalyticsEvent.GuestRemoved, { gameId });
   },
+
+  /**
+   * Admin: rewrite the guests array to a new ORDER and/or waitlisted flags —
+   * used to reorder waitlisted guests and to promote a waitlisted guest into the
+   * active roster ("להרכב"). Reorder-only: the incoming set MUST hold exactly the
+   * same guest ids (no add/remove — that's addGuest/removeGuest). Admin-gated.
+   */
+  async adminReorderGuests(
+    gameId: string,
+    callerId: UserId,
+    nextGuests: GameGuest[],
+  ): Promise<void> {
+    const sameSet = (a: GameGuest[], b: GameGuest[]): boolean => {
+      if (a.length !== b.length) return false;
+      const ida = new Set(a.map((g) => g.id));
+      return b.every((g) => ida.has(g.id));
+    };
+    if (USE_MOCK_DATA) {
+      const g = mockGamesV2.find((x) => x.id === gameId);
+      if (!g) return;
+      await assertGuestPermission(g.createdBy, g.groupId, callerId);
+      if (!sameSet(g.guests ?? [], nextGuests)) {
+        throw new Error('adminReorderGuests: guest set changed');
+      }
+      g.guests = nextGuests;
+      g.updatedAt = Date.now();
+      return;
+    }
+    const ref = docs.game(gameId);
+    const { db } = getFirebase();
+    try {
+      const snapForPerm = await getDoc(ref);
+      if (!snapForPerm.exists()) return;
+      const permData = snapForPerm.data();
+      await assertGuestPermission(permData.createdBy, permData.groupId, callerId);
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const current = (data.guests ?? []) as GameGuest[];
+        // Same-set guard — reject if a stale client tries to add/remove here.
+        if (!sameSet(current, nextGuests)) {
+          throw new Error('GUEST_SET_CHANGED');
+        }
+        // Capacity guard for any newly-active (promoted) guest.
+        const activeGuests = nextGuests.filter((x) => !x.waitlisted).length;
+        const players = (data.players ?? []).length;
+        const maxPlayers = (data.maxPlayers as number) ?? 15;
+        if (players + activeGuests > maxPlayers) {
+          throw new Error('GAME_FULL');
+        }
+        tx.update(ref, { guests: nextGuests, updatedAt: Date.now() });
+      });
+    } catch (err) {
+      logError('adminReorderGuests', err, { gameId, callerId });
+      if (__DEV__) console.warn('[gameService] adminReorderGuests failed', err);
+      throw err;
+    }
+  },
 };
 
 /**

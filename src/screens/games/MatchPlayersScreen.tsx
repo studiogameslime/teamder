@@ -368,6 +368,50 @@ export function MatchPlayersScreen() {
     [game, applyRoster],
   );
 
+  // Guest waitlist: promote a waitlisted guest into the active roster, or
+  // reorder guests within the waitlisted-guest sub-list. Both rewrite the
+  // guests[] array via adminReorderGuests (optimistic; reload on failure).
+  const persistGuests = useCallback(
+    (nextGuests: GameGuest[]) => {
+      if (!game || !currentUser) return;
+      setGame((g) => (g ? { ...g, guests: nextGuests } : g));
+      gameService
+        .adminReorderGuests(game.id, currentUser.id, nextGuests)
+        .catch(() => reload());
+    },
+    [game, currentUser, reload],
+  );
+  const promoteGuestToRoster = useCallback(
+    (guestId: string) => {
+      if (!game) return;
+      persistGuests(
+        (game.guests ?? []).map((g) =>
+          g.id === guestId ? { ...g, waitlisted: false } : g,
+        ),
+      );
+    },
+    [game, persistGuests],
+  );
+  const reorderWaitlistGuest = useCallback(
+    (guestId: string, dir: 'up' | 'down') => {
+      if (!game) return;
+      const guests = [...(game.guests ?? [])];
+      // Positions (in the full array) of the waitlisted guests, in order.
+      const wlPos = guests
+        .map((g, i) => (g.waitlisted ? i : -1))
+        .filter((i) => i >= 0);
+      const pos = guests.findIndex((g) => g.id === guestId);
+      const at = wlPos.indexOf(pos);
+      const to = dir === 'up' ? at - 1 : at + 1;
+      if (at < 0 || to < 0 || to >= wlPos.length) return;
+      const a = wlPos[at];
+      const b = wlPos[to];
+      [guests[a], guests[b]] = [guests[b], guests[a]];
+      persistGuests(guests);
+    },
+    [game, persistGuests],
+  );
+
   if (loading && !game) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -691,6 +735,12 @@ export function MatchPlayersScreen() {
                 // The adder edits the rating; the admin can rename. Either
                 // reason opens the editor (the modal gates the fields).
                 const canEdit = isAdder || isAdminViewer;
+                // Admin waitlist controls for guests — mirror the regular
+                // waitlist rows: promote into the roster ("להרכב", only when a
+                // seat is free) + reorder ↑/↓ within the waitlisted guests.
+                const rosterFull =
+                  (game.players?.length ?? 0) + activeGuestCount(game.guests) >=
+                  (game.maxPlayers ?? 15);
                 return (
                   <GuestRow
                     key={g.id}
@@ -699,6 +749,21 @@ export function MatchPlayersScreen() {
                     rating={canSeeRating ? g.estimatedRating : undefined}
                     waitlisted
                     onPress={canEdit ? () => setEditingGuest(g) : undefined}
+                    onPromote={
+                      isAdminViewer && !rosterFull
+                        ? () => promoteGuestToRoster(g.id)
+                        : undefined
+                    }
+                    onMoveUp={
+                      isAdminViewer && i > 0
+                        ? () => reorderWaitlistGuest(g.id, 'up')
+                        : undefined
+                    }
+                    onMoveDown={
+                      isAdminViewer && i < waitlistGuests.length - 1
+                        ? () => reorderWaitlistGuest(g.id, 'down')
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -1195,6 +1260,9 @@ function GuestRow({
   rating,
   onPress,
   waitlisted,
+  onMoveUp,
+  onMoveDown,
+  onPromote,
 }: {
   guest: GameGuest;
   showDivider: boolean;
@@ -1204,9 +1272,14 @@ function GuestRow({
   onPress?: () => void;
   /** Guest sits on the waitlist (added while full) — tag it accordingly. */
   waitlisted?: boolean;
+  /** Waitlisted-guest admin controls (mirror the regular waitlist rows). */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onPromote?: () => void;
 }) {
-  const body = (
-    <View style={[styles.row, showDivider && styles.rowDivider]}>
+  const hasControls = !!(onMoveUp || onMoveDown || onPromote);
+  const inner = (
+    <>
       <View style={styles.guestAvatar}>
         <Ionicons name="person" size={18} color={colors.textMuted} />
       </View>
@@ -1226,7 +1299,76 @@ function GuestRow({
           <Text style={styles.guestRatingText}>{rating}</Text>
         </View>
       ) : null}
+    </>
+  );
+  return (
+    <View style={[styles.row, showDivider && styles.rowDivider]}>
       {onPress ? (
+        <Pressable
+          style={styles.guestTapArea}
+          onPress={onPress}
+          android_ripple={{ color: colors.surfaceMuted }}
+        >
+          {inner}
+        </Pressable>
+      ) : (
+        <View style={styles.guestTapArea}>{inner}</View>
+      )}
+      {hasControls ? (
+        <View style={styles.moveControls}>
+          {onPromote ? (
+            <Pressable
+              onPress={onPromote}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.moveToRosterBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveToRoster}
+            >
+              <Ionicons
+                name="arrow-up-circle-outline"
+                size={15}
+                color={colors.primary}
+              />
+              <Text style={styles.moveToRosterText}>
+                {he.matchPlayersMoveToRoster}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.reorderCol}>
+            <Pressable
+              onPress={onMoveUp}
+              disabled={!onMoveUp}
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.reorderBtn,
+                !onMoveUp && { opacity: 0.3 },
+                pressed && { opacity: 0.5 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveUp}
+            >
+              <Ionicons name="chevron-up" size={16} color={colors.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              disabled={!onMoveDown}
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.reorderBtn,
+                !onMoveDown && { opacity: 0.3 },
+                pressed && { opacity: 0.5 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={he.matchPlayersMoveDown}
+            >
+              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        </View>
+      ) : onPress ? (
         <Ionicons
           name="create-outline"
           size={18}
@@ -1235,12 +1377,6 @@ function GuestRow({
         />
       ) : null}
     </View>
-  );
-  if (!onPress) return body;
-  return (
-    <Pressable onPress={onPress} android_ripple={{ color: colors.surfaceMuted }}>
-      {body}
-    </Pressable>
   );
 }
 
@@ -1358,6 +1494,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   rowBody: { flex: 1, gap: 4 },
+  guestTapArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
   offerHint: {
     ...typography.caption,
     color: '#3B82F6',
