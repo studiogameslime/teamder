@@ -644,7 +644,7 @@ export function ProfileScreen() {
               per window. Tap a window to open a quick game. Self-isolating: it
               renders null on error, so it can never break the home screen. */}
           <AvailabilityCalendarCard
-            onCreateGame={(dateMs, window) =>
+            onCreateGame={(dateMs, window, city) =>
               (nav as { navigate: (s: string, p?: unknown) => void }).navigate(
                 'GameTab',
                 {
@@ -653,6 +653,7 @@ export function ProfileScreen() {
                     quick: true,
                     prefillDateMs: dateMs,
                     prefillWindow: window,
+                    prefillCity: city ?? undefined,
                     inviteAvailable: true,
                   },
                 },

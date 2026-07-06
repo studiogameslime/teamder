@@ -84,6 +84,7 @@ export type CommunitiesStackParamList = {
         quick?: boolean;
         prefillDateMs?: number;
         prefillWindow?: import('@/types').TimeBucket;
+        prefillCity?: string;
         inviteAvailable?: boolean;
       };
 };

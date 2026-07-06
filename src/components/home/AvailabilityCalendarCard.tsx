@@ -45,8 +45,13 @@ export function AvailabilityCalendarCard({
   onCreateGame,
   onSetAvailability,
 }: {
-  /** Start a quick game for a given day + window. */
-  onCreateGame: (dateMs: number, window: TimeBucket) => void;
+  /** Start a quick game for a given day + window, seeded with the viewer's
+   *  city so the pulse engine can find nearby players. */
+  onCreateGame: (
+    dateMs: number,
+    window: TimeBucket,
+    city: string | null,
+  ) => void;
   /** Viewer hasn't set a home location yet → send them to the availability screen. */
   onSetAvailability: () => void;
 }) {
@@ -66,6 +71,7 @@ export function AvailabilityCalendarCard({
 
   if (failed) return null; // never crash the home screen
   if (!data) return null; // still loading — no skeleton needed, it's below the fold
+  if (data.error) return null; // transient fetch error — hide, don't mis-prompt
 
   // No location set → gentle prompt instead of an empty grid.
   if (!data.hasLocation) {
@@ -131,7 +137,7 @@ export function AvailabilityCalendarCard({
                 <Pressable
                   key={w}
                   style={[styles.cell, CELL_STYLE[lv]]}
-                  onPress={() => onCreateGame(day.dateMs, w)}
+                  onPress={() => onCreateGame(day.dateMs, w, data.viewerCity ?? null)}
                   accessibilityRole="button"
                   accessibilityLabel={`${dl.top} ${WINDOW_LABEL[w]} ${n}`}
                 >
@@ -156,7 +162,9 @@ export function AvailabilityCalendarCard({
           </Text>
           <Pressable
             style={styles.heroCta}
-            onPress={() => onCreateGame(hero!.dateMs, hero!.window)}
+            onPress={() =>
+              onCreateGame(hero!.dateMs, hero!.window, data.viewerCity ?? null)
+            }
           >
             <Text style={styles.heroCtaText}>{he.availFeedCreateCta}</Text>
           </Pressable>

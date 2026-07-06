@@ -60,6 +60,9 @@ export type GameStackParamList = {
          *  pre-fill the kickoff, and a flag to force acceptsFillers on. */
         prefillDateMs?: number;
         prefillWindow?: import('@/types').TimeBucket;
+        /** Viewer's city — seeds the quick game so the pulse engine has a
+         *  location to match nearby players against. */
+        prefillCity?: string;
         inviteAvailable?: boolean;
       };
   /** Edit metadata of an existing game. Only the organizer should reach this. */

@@ -8087,6 +8087,37 @@ const FILLER_PUSH_LIMIT_PER_GAME = 10;
  *  admin every 30 minutes. */
 const FILLER_NO_CANDIDATES_COOLDOWN_MS = 6 * FILLER_HOUR_MS;
 
+// Shared, module-level cache of the opted-in candidate pool. The pool is
+// IDENTICAL for every caller (only the per-caller radius filter differs) and
+// is read by three hot paths: the availabilityCounts callable (home screen),
+// every pulse batch (every 2 min per active game), and the 15-min sweep.
+// Re-reading the whole `acceptsFillerPush==true` collection on each would be a
+// severe read-cost regression on this branch. A warm Cloud Functions instance
+// reuses this cache across invocations, collapsing the dominant scan to at
+// most once per TTL per instance. Staleness ≤ TTL is fine — a freshly opted-in
+// user simply isn't counted/invited for a couple of minutes.
+const CANDIDATE_POOL_TTL_MS = 3 * 60 * 1000;
+let candidatePoolCache: {
+  at: number;
+  docs: FirebaseFirestore.QueryDocumentSnapshot[];
+} | null = null;
+async function getFillerCandidatePool(): Promise<
+  FirebaseFirestore.QueryDocumentSnapshot[]
+> {
+  const now = Date.now();
+  if (candidatePoolCache && now - candidatePoolCache.at < CANDIDATE_POOL_TTL_MS) {
+    return candidatePoolCache.docs;
+  }
+  const docs = (
+    await db
+      .collection('users')
+      .where('availability.acceptsFillerPush', '==', true)
+      .get()
+  ).docs;
+  candidatePoolCache = { at: now, docs };
+  return docs;
+}
+
 const TRUST_WINDOW_MS = 90 * FILLER_DAY_MS;
 const TRUST_MIN_GAMES = 3;
 const TRUST_SOFT_PENALTY = 3;
@@ -8376,12 +8407,7 @@ async function runFindFillerCandidates(): Promise<void> {
     // (only users who toggled on `acceptsFillerPush`), so filtering by distance
     // in code is cheaper than a geo index for the MVP.
     if (!candidateDocs) {
-      candidateDocs = (
-        await db
-          .collection('users')
-          .where('availability.acceptsFillerPush', '==', true)
-          .get()
-      ).docs;
+      candidateDocs = await getFillerCandidatePool();
     }
 
     // Exclude users already in the community or game.
@@ -8467,6 +8493,12 @@ async function runFindFillerCandidates(): Promise<void> {
       // (Trust filtering removed — candidates are matched purely by
       // availability + geography now. Trust is still computed
       // elsewhere but no longer gates the filler pool.)
+
+      // Respect the per-user daily cap, shared atomically with the pulse
+      // engine so a player never receives more than FILLER_DAILY_CAP filler
+      // pushes across BOTH matchers in a day.
+      const reserved = await reserveFillerPush(uid, fillerDayKey(now));
+      if (!reserved) continue;
 
       // Dispatch the opportunity notification. Recipient = uid,
       // single-recipient delivery via the existing
@@ -8559,6 +8591,38 @@ function fillerDayKey(ms: number): string {
 // Run ONE pulse batch for a single game. Returns a reschedule delay when
 // the game should be pulsed again, or null when pulsing must stop (full /
 // exhausted / out of window / terminal).
+// Atomically reserve one daily filler-push slot for a recipient. Returns true
+// if the reservation succeeded (recipient was under FILLER_DAILY_CAP for today
+// and the counter was incremented), false if already capped or on txn error
+// (fail-closed — never over-push). The transaction serialises overlapping
+// pulse batches so the cap holds under concurrency.
+async function reserveFillerPush(
+  uid: string,
+  todayKey: string,
+): Promise<boolean> {
+  const uref = db.collection('users').doc(uid);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const s = await tx.get(uref);
+      const av = (s.data()?.availability ?? {}) as {
+        fillerPushDay?: string;
+        fillerPushCount?: number;
+      };
+      const used = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
+      if (used >= FILLER_DAILY_CAP) return false;
+      tx.set(
+        uref,
+        { availability: { fillerPushDay: todayKey, fillerPushCount: used + 1 } },
+        { merge: true },
+      );
+      return true;
+    });
+  } catch (err) {
+    console.error('[reserveFillerPush] txn failed', uid, err);
+    return false;
+  }
+}
+
 async function runFillerPulseBatch(
   gameId: string,
 ): Promise<{ rescheduleInMs: number } | null> {
@@ -8593,13 +8657,15 @@ async function runFillerPulseBatch(
   if (!city) return null;
   const gameCoords = await getCityCoords(city);
 
-  // Opted-in candidate pool (small — only users who toggled acceptsFillerPush).
-  const candidateDocs = (
-    await db
-      .collection('users')
-      .where('availability.acceptsFillerPush', '==', true)
-      .get()
-  ).docs;
+  // The game's own weekday + window — we only invite players who declared
+  // they're free THEN, so the invite population matches the home-calendar
+  // count (and we don't spam people about slots they never marked).
+  const gameDate = new Date(startsAt);
+  const gameWeekday = gameDate.getDay();
+  const gameWindow = hourToAvailWindow(gameDate.getHours());
+
+  // Opted-in candidate pool — shared, cached snapshot (see getFillerCandidatePool).
+  const candidateDocs = await getFillerCandidatePool();
 
   // Exclude community members and anyone already tied to the game.
   let memberSet = new Set<string>();
@@ -8626,13 +8692,16 @@ async function runFillerPulseBatch(
   const alreadyPushed = game.fillerPushHistory ?? {};
   const todayKey = fillerDayKey(now);
 
-  // Build the eligible pool (geo + not-member + not-in-game + not-already-
-  // pushed + under daily cap), in RANDOM order, capped at PULSE_BATCH.
-  const eligible: Array<{ uid: string; nextCount: number }> = [];
+  // Build the eligible pool (geo + declared-availability match + not-member +
+  // not-in-game + not-already-pushed + best-effort under daily cap), in RANDOM
+  // order, capped at PULSE_BATCH. The daily cap is enforced AUTHORITATIVELY at
+  // push time via a transaction (reserveFillerPush); the check here is only a
+  // best-effort pre-filter off the cached snapshot to avoid needless txns.
+  const eligibleUids: string[] = [];
   const pool = candidateDocs.slice();
   shuffleInPlace(pool);
   for (const userDoc of pool) {
-    if (eligible.length >= PULSE_BATCH) break;
+    if (eligibleUids.length >= PULSE_BATCH) break;
     const uid = userDoc.id;
     if (memberSet.has(uid)) continue;
     if (inGame.has(uid)) continue;
@@ -8646,14 +8715,22 @@ async function runFillerPulseBatch(
         availabilityRadiusKm?: number;
         cities?: string[];
         preferredCity?: string;
+        preferredDays?: number[];
+        preferredTimes?: string[];
         fillerPushDay?: string;
         fillerPushCount?: number;
       };
     };
     const av = userData.availability ?? {};
 
-    // Daily cap — a player receives at most FILLER_DAILY_CAP filler pushes
-    // per calendar day across ALL games (counter resets on a new day).
+    // Declared-availability match — only invite players who marked THIS
+    // weekday and window free (empty arrays = "any", mirroring the count).
+    const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+    if (pdays.length > 0 && !pdays.includes(gameWeekday)) continue;
+    const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+    if (ptimes.length > 0 && !ptimes.includes(gameWindow)) continue;
+
+    // Best-effort daily-cap pre-filter (authoritative check is in the txn).
     const usedToday = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
     if (usedToday >= FILLER_DAILY_CAP) continue;
 
@@ -8677,15 +8754,21 @@ async function runFillerPulseBatch(
     }
     if (!withinRange) continue;
 
-    eligible.push({ uid, nextCount: usedToday + 1 });
+    eligibleUids.push(uid);
   }
 
   // Pool exhausted for now → stop. The scheduled sweep is the safety net
   // if new candidates opt in or move into range later.
-  if (eligible.length === 0) return null;
+  if (eligibleUids.length === 0) return null;
 
   const newlyPushed: Record<string, number> = {};
-  for (const { uid, nextCount } of eligible) {
+  for (const uid of eligibleUids) {
+    // Reserve a daily-cap slot ATOMICALLY. Overlapping batches (or a
+    // re-delivered task) can't push the same recipient past FILLER_DAILY_CAP
+    // because the read-check-increment runs inside one transaction. On a full
+    // cap or a txn error, reserve() returns false and we skip the push.
+    const reserved = await reserveFillerPush(uid, todayKey);
+    if (!reserved) continue;
     await createNotificationOnce({
       type: 'fillerOpportunity',
       recipientId: uid,
@@ -8699,16 +8782,11 @@ async function runFillerPulseBatch(
       },
     });
     newlyPushed[uid] = now;
-    // Bump the recipient's daily filler-push counter (merge preserves the
-    // rest of the availability map; nested-map merge updates only these two).
-    await db
-      .collection('users')
-      .doc(uid)
-      .set(
-        { availability: { fillerPushDay: todayKey, fillerPushCount: nextCount } },
-        { merge: true },
-      );
   }
+
+  // Every eligible candidate was capped (or reservation failed) → nothing was
+  // pushed. Stop rather than reschedule forever on an un-pushable pool.
+  if (Object.keys(newlyPushed).length === 0) return null;
 
   // Persist dedup history + grant the pushed users read access to the game
   // (same as the sweep — the games read rule honours invitedUserIds so the
@@ -8777,6 +8855,17 @@ async function maybeStartFillerPulse(
   const players = g.players ?? [];
   const maxPlayers = g.maxPlayers ?? 0;
   if (maxPlayers <= 0 || players.length >= maxPlayers) return;
+  // Create-once marker: the creation trigger is at-least-once, so a duplicate
+  // delivery must NOT fork a second (permanent, self-rescheduling) pulse
+  // chain. `.create()` throws ALREADY_EXISTS if a chain is already running.
+  try {
+    await db
+      .collection('fillerPulseChains')
+      .doc(gameId)
+      .create({ startedAt: Date.now() });
+  } catch {
+    return; // a chain already exists for this game
+  }
   try {
     await getGcpFunctions()
       .taskQueue('fillerPulseTask')
@@ -8979,6 +9068,9 @@ export const availabilityCounts = onCall(
     // prompt instead of an empty grid.
     const meSnap = await db.collection('users').doc(uid).get();
     const me = (meSnap.data()?.availability ?? {}) as {
+      homeCity?: string;
+      preferredCity?: string;
+      cities?: string[];
       homeCityLat?: number;
       homeCityLng?: number;
       availabilityRadiusKm?: number;
@@ -8987,8 +9079,13 @@ export const availabilityCounts = onCall(
       typeof me.availabilityRadiusKm === 'number' && me.availabilityRadiusKm > 0
         ? me.availabilityRadiusKm
         : 25;
+    // The caller's own city — threaded into the quick-game prefill so a game
+    // opened from the calendar has a city, without which the pulse engine
+    // (which geocodes game.city) would invite nobody.
+    const viewerCity =
+      (me.homeCity ?? me.preferredCity ?? me.cities?.[0] ?? '').trim() || null;
     if (typeof me.homeCityLat !== 'number' || typeof me.homeCityLng !== 'number') {
-      return { radiusKm, hasLocation: false, days: [] };
+      return { radiusKm, hasLocation: false, viewerCity, days: [] };
     }
     const myLoc = { lat: me.homeCityLat, lng: me.homeCityLng };
 
@@ -8997,7 +9094,12 @@ export const availabilityCounts = onCall(
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(todayStart.getTime() + i * 86_400_000);
+      // Step by CALENDAR day (setDate), not fixed 24h — a DST transition makes
+      // some local days 23/25h long, and adding 86_400_000ms would drift the
+      // boundary into the wrong day.
+      const d = new Date(todayStart.getTime());
+      d.setDate(d.getDate() + i);
+      d.setHours(0, 0, 0, 0);
       return {
         dateMs: d.getTime(),
         weekday: d.getDay(),
@@ -9014,7 +9116,10 @@ export const availabilityCounts = onCall(
     // Who's ALREADY registered to a game in each (dayIndex, window) — so a
     // committed player isn't counted as free. Keyed `${dayIndex}:${window}`.
     const rangeStart = todayStart.getTime();
-    const rangeEnd = rangeStart + 7 * 86_400_000;
+    const lastDayEnd = new Date(todayStart.getTime());
+    lastDayEnd.setDate(lastDayEnd.getDate() + 7);
+    lastDayEnd.setHours(0, 0, 0, 0);
+    const rangeEnd = lastDayEnd.getTime();
     const gamesSnap = await db
       .collection('games')
       .where('startsAt', '>=', rangeStart)
@@ -9035,7 +9140,8 @@ export const availabilityCounts = onCall(
       const di = weekdayToIndex.get(gd0.getDay());
       if (di === undefined) continue;
       const dayStart = days[di].dateMs;
-      if (sa < dayStart || sa >= dayStart + 86_400_000) continue; // exact date
+      const dayEnd = di < 6 ? days[di + 1].dateMs : rangeEnd;
+      if (sa < dayStart || sa >= dayEnd) continue; // exact date (DST-safe)
       const key = `${di}:${hourToAvailWindow(gd0.getHours())}`;
       let set = registered.get(key);
       if (!set) registered.set(key, (set = new Set<string>()));
@@ -9044,12 +9150,11 @@ export const availabilityCounts = onCall(
       }
     }
 
-    // Candidate pool — opted-in users (matches who'd actually be pushable).
-    const usersSnap = await db
-      .collection('users')
-      .where('availability.acceptsFillerPush', '==', true)
-      .get();
-    for (const u of usersSnap.docs) {
+    // Candidate pool — opted-in users (matches who'd actually be pushable),
+    // from the shared cached snapshot so the home screen doesn't re-scan the
+    // whole collection on every load.
+    const usersDocs = await getFillerCandidatePool();
+    for (const u of usersDocs) {
       if (u.id === uid) continue;
       const a = (u.data().availability ?? {}) as {
         homeCityLat?: number;
@@ -9063,8 +9168,12 @@ export const availabilityCounts = onCall(
       if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
         continue;
       }
-      const pdays = Array.isArray(a.preferredDays) ? a.preferredDays : [];
-      // No preferred times set → treat as available in every window.
+      // Empty preferredDays / preferredTimes = "available any day / any window"
+      // — mirrors the pulse engine's candidate filter so the count reflects the
+      // same population that would actually be invited.
+      const pdaysRaw = Array.isArray(a.preferredDays) ? a.preferredDays : [];
+      const pdays =
+        pdaysRaw.length > 0 ? pdaysRaw : days.map((d) => d.weekday);
       const ptimes =
         Array.isArray(a.preferredTimes) && a.preferredTimes.length > 0
           ? (a.preferredTimes as string[])
@@ -9080,7 +9189,7 @@ export const availabilityCounts = onCall(
       }
     }
 
-    return { radiusKm, hasLocation: true, days };
+    return { radiusKm, hasLocation: true, viewerCity, days };
   },
 );
 

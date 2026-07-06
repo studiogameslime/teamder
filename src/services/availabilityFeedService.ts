@@ -31,8 +31,14 @@ export interface AvailabilityCounts {
   radiusKm: number;
   /** Whether the viewer has set a home location; false → prompt to set it. */
   hasLocation: boolean;
+  /** The viewer's own city — seeds the quick-game so the pulse engine has a
+   *  location to match nearby players against. Null when unknown. */
+  viewerCity?: string | null;
   /** today + next 6 days, in order. */
   days: AvailabilityDayCounts[];
+  /** Set on a transient fetch error → the card renders nothing (rather than
+   *  wrongly prompting an already-located user to set their location). */
+  error?: boolean;
 }
 
 function startOfDay(ms: number): number {
@@ -66,7 +72,7 @@ function buildMock(): AvailabilityCounts {
       windows: { morning: m, noon: n, evening: e, night: ni },
     });
   }
-  return { radiusKm: 25, hasLocation: true, days };
+  return { radiusKm: 25, hasLocation: true, viewerCity: 'תל אביב', days };
 }
 
 // Short in-memory cache. The callable aggregates across all opted-in users +
@@ -74,9 +80,13 @@ function buildMock(): AvailabilityCounts {
 // every tab focus. A 5-minute TTL collapses those repeated opens into one
 // server call without the numbers ever feeling stale (availability changes on
 // the order of hours, not seconds). Cleared on a fresh app launch.
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 15 * 60 * 1000;
 let cached: { at: number; value: AvailabilityCounts } | null = null;
 let inFlight: Promise<AvailabilityCounts> | null = null;
+// Bumped by invalidate(). An in-flight request captures the epoch at start and
+// only writes to `cached` if it hasn't changed — so a save that lands mid-fetch
+// doesn't re-cache the now-stale result for another full TTL.
+let epoch = 0;
 
 export const availabilityFeedService = {
   async getAvailabilityCounts(): Promise<AvailabilityCounts> {
@@ -86,20 +96,23 @@ export const availabilityFeedService = {
     // De-dupe concurrent callers (e.g. two screens mounting at once) onto a
     // single in-flight request.
     if (inFlight) return inFlight;
+    const startEpoch = epoch;
     inFlight = (async () => {
       try {
         const { functions } = getFirebase();
         const fn = httpsCallable(functions, 'availabilityCounts');
         const res = await fn({});
         const value = res.data as AvailabilityCounts;
-        cached = { at: Date.now(), value };
+        // Only cache if no invalidate() raced in while we were fetching.
+        if (epoch === startEpoch) cached = { at: Date.now(), value };
         return value;
       } catch (err) {
         logError('getAvailabilityCounts', err, {});
-        // Fail-soft: an empty (no-location) result so the home card hides
-        // itself rather than crashing the home screen. NOT cached — a
-        // transient error shouldn't suppress the card for 5 minutes.
-        return { radiusKm: 0, hasLocation: false, days: [] };
+        // Fail-soft but DISTINGUISHABLE: `error:true` tells the card to render
+        // nothing (not the "set your location" prompt, which would be wrong for
+        // an already-located user). Not cached — a transient error shouldn't
+        // suppress the card for a full TTL.
+        return { radiusKm: 0, hasLocation: false, days: [], error: true };
       } finally {
         inFlight = null;
       }
@@ -107,8 +120,10 @@ export const availabilityFeedService = {
     return inFlight;
   },
   /** Drop the cache — call after the viewer edits their availability so the
-   *  radius/counts refresh on the next home open. */
+   *  radius/counts refresh on the next home open. Also invalidates any
+   *  in-flight request so it won't re-cache a pre-edit result. */
   invalidate() {
     cached = null;
+    epoch += 1;
   },
 };

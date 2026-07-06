@@ -58,6 +58,9 @@ function buildInitial(
     /** Started from the home "פנויים לשחק לידך" calendar → force acceptsFillers
      *  ON so the pulse-invite engine recruits the available players. */
     inviteAvailable?: boolean;
+    /** Viewer's city, threaded from the availability calendar → seeds the game
+     *  city so the pulse engine (which geocodes game.city) has a location. */
+    prefillCity?: string;
   },
 ): GameFormValues {
   // Pre-fill the city from the community's general city. NO field /
@@ -72,7 +75,10 @@ function buildInitial(
   // forced the admin to re-tap the suggestion every time which was
   // pure friction with no payoff — the saved value is, by
   // construction, already canonical.
-  const presetCity = (g?.city ?? '').trim();
+  // Quick games from the availability calendar carry the viewer's city (the
+  // orphan/personal group has none). Without it the pulse engine can't match
+  // nearby players, so seed it here; otherwise fall back to the community city.
+  const presetCity = (overrides?.prefillCity ?? g?.city ?? '').trim();
   return {
     title: overrides?.quick ? '' : g?.name ?? '',
     startsAt: overrides?.startsAt ?? nextThursday20(),
@@ -110,13 +116,17 @@ function buildInitial(
     autoTeamsAt: 0,
     autoTeamsMethod: 'rating',
     cancelDeadlineHours: undefined,
-    // Cross-community fillers: ON BY DEFAULT (user request — activates the
-    // "invite nearby available players when short" engine so the games feed
-    // fills). It only ever fires when the roster is BELOW the shortage
-    // threshold, and every filler still needs admin approval — so admins of
-    // private communities can leave it on safely, or turn it off per game.
-    // Forced on when the game was started from the availability calendar.
-    acceptsFillers: true,
+    // Cross-community fillers: default ON for the DISCOVERABLE flows —
+    // availability-calendar quick games, one-off (orphan) pickup games, and
+    // OPEN communities — since those are meant to reach strangers and fill the
+    // feed. Closed/private communities stay OFF by default (their games would
+    // otherwise become world-readable + stranger-invitable via invitedUserIds);
+    // their admins opt in per game. The engine only fires below the shortage
+    // threshold and every filler still needs admin approval.
+    acceptsFillers:
+      overrides?.inviteAvailable === true ||
+      overrides?.quick === true ||
+      g?.isOpen === true,
     fillerMinTrust: 70,
     notes: '',
     bringBall: true,
@@ -175,10 +185,11 @@ export function GameCreateScreen() {
         playerIds: [user.id],
         pendingPlayerIds: [],
         inviteCode: '',
-        // Quick games default to PRIVATE (invite-only): isOpen:false →
-        // buildInitial seeds visibility='community' (relabelled "פרטי"
-        // in quick mode) and acceptsFillers=false. The organizer can
-        // flip to public in step 3 to enable fillers.
+        // Quick games default to PRIVATE visibility (isOpen:false →
+        // buildInitial seeds visibility='community', relabelled "פרטי" in
+        // quick mode). Fillers, however, default ON for quick games (see
+        // buildInitial's acceptsFillers) so the pulse engine recruits nearby
+        // players — that's the whole point of the availability-calendar flow.
         isOpen: false,
         isPersonal: true,
         hidden: true,
@@ -269,8 +280,14 @@ export function GameCreateScreen() {
   };
   const prefillStartsAt =
     typeof params.prefillDateMs === 'number' && params.prefillWindow
-      ? params.prefillDateMs +
-        (WINDOW_HOUR[params.prefillWindow] ?? 19) * 3_600_000
+      ? (() => {
+          // Set the hour via the local wall clock (setHours), not by adding
+          // fixed ms — a DST transition would otherwise shift the kickoff by
+          // an hour off the intended window.
+          const d = new Date(params.prefillDateMs);
+          d.setHours(WINDOW_HOUR[params.prefillWindow] ?? 19, 0, 0, 0);
+          return d.getTime();
+        })()
       : undefined;
   const initial = useMemo(
     () =>
@@ -281,6 +298,7 @@ export function GameCreateScreen() {
         recurring: isRecurring,
         quick: isOrphan,
         inviteAvailable: params.inviteAvailable === true,
+        prefillCity: params.prefillCity,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedGroup?.id, initialKey, isRecurring],
