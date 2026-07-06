@@ -27,9 +27,7 @@ export function HomeGreetingHeader({
   onEdit: () => void;
 }) {
   const firstName = (user.name ?? '').trim().split(/\s+/)[0] || '';
-  const greeting = firstName
-    ? he.greetingWithName(greetingWord(new Date().getHours()), firstName)
-    : greetingWord(new Date().getHours());
+  const word = greetingWord(new Date().getHours());
   return (
     <View style={styles.row}>
       {/* Leading (right under RTL): greeting + avatar. */}
@@ -37,11 +35,18 @@ export function HomeGreetingHeader({
         <Pressable onPress={onEdit} hitSlop={6}>
           <UserAvatar user={user} size={48} ring />
         </Pressable>
-        {/* Wrap to a 2nd line instead of truncating to "…, מ…" on long
-            greeting+name combos (e.g. "צהריים טובים, מתן"). */}
-        <Text style={styles.greeting} numberOfLines={2}>
-          {greeting} <Text>👋</Text>
-        </Text>
+        {/* Greeting word on top, the name on its OWN line below it (never
+            crammed onto one line / truncated). */}
+        <View style={styles.greetTextCol}>
+          <Text style={styles.greeting} numberOfLines={1}>
+            {word} <Text>👋</Text>
+          </Text>
+          {firstName ? (
+            <Text style={styles.name} numberOfLines={1}>
+              {firstName}
+            </Text>
+          ) : null}
+        </View>
       </View>
       {/* Trailing (left): menu + edit. */}
       <View style={styles.actions}>
@@ -72,12 +77,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     flexShrink: 1,
   },
+  greetTextCol: {
+    flexShrink: 1,
+  },
   greeting: {
+    ...typography.body,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  name: {
     ...typography.h2,
     color: colors.text,
     fontWeight: '900',
     textAlign: RTL_LABEL_ALIGN,
-    flexShrink: 1,
   },
   actions: {
     flexDirection: 'row',
