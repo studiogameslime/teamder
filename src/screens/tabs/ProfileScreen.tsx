@@ -729,25 +729,29 @@ export function ProfileScreen() {
             />
           ) : null}
 
-          {!availCardEnabled ? null : markedAvailability ? (
+          {markedAvailability ? (
             // availability marked → show who's free nearby (organize a game).
-            <AvailabilityCalendarCard
-              onCreateGame={(dateMs, window, city) =>
-                (
-                  nav as { navigate: (s: string, p?: unknown) => void }
-                ).navigate('GameTab', {
-                  screen: 'GameCreate',
-                  params: {
-                    quick: true,
-                    prefillDateMs: dateMs,
-                    prefillWindow: window,
-                    prefillCity: city ?? undefined,
-                    inviteAvailable: true,
-                  },
-                })
-              }
-              onSetAvailability={() => nav.navigate('AvailabilityEdit')}
-            />
+            // The Pulse switch hides ONLY this calendar view (availCardEnabled);
+            // the "set availability" prompt below is unaffected.
+            availCardEnabled ? (
+              <AvailabilityCalendarCard
+                onCreateGame={(dateMs, window, city) =>
+                  (
+                    nav as { navigate: (s: string, p?: unknown) => void }
+                  ).navigate('GameTab', {
+                    screen: 'GameCreate',
+                    params: {
+                      quick: true,
+                      prefillDateMs: dateMs,
+                      prefillWindow: window,
+                      prefillCity: city ?? undefined,
+                      inviteAvailable: true,
+                    },
+                  })
+                }
+                onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+              />
+            ) : null
           ) : (
             // not marked → drive the key action, even when a game exists.
             <AvailabilityPromptCard

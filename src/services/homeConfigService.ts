@@ -7,9 +7,10 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 
-/** Master switch for the home "פנויים לשחק לידך" availability surface
- *  (calendar + the "set availability" prompt). appConfig/features
- *  .availabilityCardEnabled === false → hide it for everyone. */
+/** Master switch for the home "פנויים לשחק לידך" availability CALENDAR view
+ *  (the weekly heatmap only — NOT the "set availability" prompt shown to users
+ *  who haven't marked availability). appConfig/features.availabilityCardEnabled
+ *  === false → hide the calendar for everyone. */
 export async function getAvailabilityCardEnabled(): Promise<boolean> {
   if (USE_MOCK_DATA) return true;
   try {
