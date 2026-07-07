@@ -80,6 +80,19 @@
         "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
         "track": "wear:internal"
       }
+    },
+    "production-ios-local": {
+      "ios": {
+        "ascAppId": "6775178022",
+        "appleTeamId": "M7R8M498Z9",
+        "ascApiKeyPath": "/Users/matan/.teamder-update-watch/AuthKey_SQBY46Q3DC.p8",
+        "ascApiKeyId": "SQBY46Q3DC",
+        "ascApiKeyIssuerId": "0938f882-34aa-42d5-af5d-cab509cac969"
+      },
+      "android": {
+        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "track": "production"
+      }
     }
   }
 }
