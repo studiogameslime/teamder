@@ -1,7 +1,7 @@
 // availabilityFeedService — powers the home-screen "פנויים לשחק לידך" calendar.
 //
 // Returns, for today + the next 6 days, how many players are available in each
-// time-window (morning/noon/evening/night) WITHIN THE VIEWER'S radius and NOT
+// time-window (morning/noon/evening) WITHIN THE VIEWER'S radius and NOT
 // already registered to a game in that window. Counts only — never identities
 // (privacy: the availability screen discloses this).
 //
@@ -14,7 +14,7 @@ import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import type { TimeBucket, WeekdayIndex } from '@/types';
 import { logError } from './errorLog';
 
-export const TIME_WINDOWS: TimeBucket[] = ['morning', 'noon', 'evening', 'night'];
+export const TIME_WINDOWS: TimeBucket[] = ['morning', 'noon', 'evening'];
 
 export interface AvailabilityDayCounts {
   /** Start-of-day epoch ms for this calendar day. */
@@ -50,26 +50,26 @@ function startOfDay(ms: number): number {
 function buildMock(): AvailabilityCounts {
   const todayStart = startOfDay(Date.now());
   // Demo counts keyed by weekday so it looks stable/realistic (evening busiest,
-  // a Thursday-evening peak of 8, quiet Shabbat nights).
-  const byWeekday: Record<number, [number, number, number, number]> = {
-    0: [0, 1, 5, 2], // Sun
-    1: [1, 0, 5, 2], // Mon
-    2: [0, 1, 4, 1], // Tue
-    3: [2, 0, 6, 3], // Wed
-    4: [1, 2, 8, 4], // Thu
-    5: [3, 4, 2, 0], // Fri
-    6: [5, 6, 1, 0], // Sat
+  // a Thursday-evening peak of 8).
+  const byWeekday: Record<number, [number, number, number]> = {
+    0: [0, 1, 5], // Sun
+    1: [1, 0, 5], // Mon
+    2: [0, 1, 4], // Tue
+    3: [2, 0, 6], // Wed
+    4: [1, 2, 8], // Thu
+    5: [3, 4, 2], // Fri
+    6: [5, 6, 1], // Sat
   };
   const days: AvailabilityDayCounts[] = [];
   for (let i = 0; i < 7; i++) {
     const dateMs = todayStart + i * 86_400_000;
     const weekday = new Date(dateMs).getDay() as WeekdayIndex;
-    const [m, n, e, ni] = byWeekday[weekday] ?? [0, 0, 0, 0];
+    const [m, n, e] = byWeekday[weekday] ?? [0, 0, 0];
     days.push({
       dateMs,
       weekday,
       isToday: i === 0,
-      windows: { morning: m, noon: n, evening: e, night: ni },
+      windows: { morning: m, noon: n, evening: e },
     });
   }
   return { radiusKm: 25, hasLocation: true, viewerCity: 'תל אביב', days };

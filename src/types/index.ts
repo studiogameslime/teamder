@@ -592,7 +592,7 @@ export interface ChatUnreadEntry {
 export type WeekdayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Coarse time-of-day buckets the user prefers to play in. */
-export type TimeBucket = 'morning' | 'noon' | 'evening' | 'night';
+export type TimeBucket = 'morning' | 'noon' | 'evening';
 
 export interface UserAvailability {
   /** Days the user is generally available, e.g. [4] = Thursday. */

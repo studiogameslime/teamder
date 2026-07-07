@@ -9177,13 +9177,14 @@ export const onFillerInterestCreated = onDocumentCreated(
 // each time-window WITHIN THE CALLER'S radius and NOT already registered to a
 // game in that window. Counts only — no identities leave the server (privacy).
 // Reuses the same acceptsFillerPush pool + haversine as the filler matcher.
-const AVAIL_WINDOWS = ['morning', 'noon', 'evening', 'night'] as const;
+const AVAIL_WINDOWS = ['morning', 'noon', 'evening'] as const;
 type AvailWindow = (typeof AVAIL_WINDOWS)[number];
 function hourToAvailWindow(hour: number): AvailWindow {
   if (hour >= 5 && hour < 11) return 'morning';
   if (hour >= 11 && hour < 16) return 'noon';
-  if (hour >= 16 && hour < 22) return 'evening';
-  return 'night';
+  // Evening absorbs the old "night" band — every hour from 16:00 through the
+  // small hours (…–04:59) buckets to evening now that night is gone.
+  return 'evening';
 }
 
 export const availabilityCounts = onCall(
@@ -9230,7 +9231,7 @@ export const availabilityCounts = onCall(
         dateMs,
         weekday: israelParts(dateMs).weekday,
         isToday: i === 0,
-        windows: { morning: 0, noon: 0, evening: 0, night: 0 } as Record<
+        windows: { morning: 0, noon: 0, evening: 0 } as Record<
           AvailWindow,
           number
         >,

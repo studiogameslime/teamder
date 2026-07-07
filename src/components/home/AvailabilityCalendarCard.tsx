@@ -23,7 +23,6 @@ const WINDOW_LABEL: Record<TimeBucket, string> = {
   morning: he.availabilityTimeMorning,
   noon: he.availabilityTimeNoon,
   evening: he.availabilityTimeEvening,
-  night: he.availabilityTimeNight,
 };
 
 // Count → heat level (drives the cell colour).

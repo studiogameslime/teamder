@@ -276,7 +276,6 @@ export function GameCreateScreen() {
     morning: 9,
     noon: 13,
     evening: 19,
-    night: 22,
   };
   const prefillStartsAt =
     typeof params.prefillDateMs === 'number' && params.prefillWindow

@@ -58,7 +58,6 @@ const TIME_BUCKETS: {
   { key: 'morning', label: he.availabilityTimeMorning, icon: 'sunny-outline' },
   { key: 'noon', label: he.availabilityTimeNoon, icon: 'sunny' },
   { key: 'evening', label: he.availabilityTimeEvening, icon: 'partly-sunny-outline' },
-  { key: 'night', label: he.availabilityTimeNight, icon: 'moon-outline' },
 ];
 
 export function AvailabilityEditScreen() {
