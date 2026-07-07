@@ -95,18 +95,19 @@ try {
   // plain tap-to-open reminder now (the GAME_REMINDER category was removed per
   // product decision). JOIN_GAME still exists for the new-game announcement
   // below; CANCEL_GAME is retired.
-  // New-game announcement (registration just opened for the community).
-  // A SINGLE "אני מגיע" → JOIN_GAME. We dropped the "לא מגיע" button: the
-  // recipient isn't registered yet, so a decline had no real meaning (user
-  // feedback). `opensAppToForeground: true` is deliberate — a background
-  // (no-launch) action on a killed app never reaches the JS handler, so the
-  // old button "did nothing"; opening the app guarantees the join runs and
-  // lands the user on the game so they SEE they're in.
+  // "אני מגיע" → JOIN_GAME. `opensAppToForeground: false` (user request): the
+  // join runs in the BACKGROUND without launching the app, and the handler
+  // posts a local confirmation so the user still sees the result. requestJoinGame
+  // is idempotent (already-registered → instant no-op) so a reminder "confirm"
+  // tap is instant and safe. Tradeoff: on a FULLY-KILLED app the OS defers the
+  // response to the next launch (expo-notifications has no headless task here) —
+  // harmless for a reminder (the user is already in), and the deferred join still
+  // runs when they next open the app.
   Notifications.setNotificationCategoryAsync('NEW_GAME_RSVP', [
     {
       identifier: 'JOIN_GAME',
       buttonTitle: 'אני מגיע',
-      options: { opensAppToForeground: true },
+      options: { opensAppToForeground: false },
     },
   ]).catch(() => {});
   // Waitlist promotion offer: someone cancelled, head of waitlist
@@ -650,14 +651,12 @@ export default function App() {
         );
         await handleGameReminderAction(action, gameId);
         await dismissNotificationSafely(notifId);
-        // JOIN_GAME from a REMINDER is a background action
-        // (opensAppToForeground:false) — don't drag the app to MatchDetails
-        // behind the user's back; the handler already posted a local
-        // confirmation. But the NEW-GAME announcement ("אני מגיע") opens the
-        // app on purpose, so fall through to navigation → land on the game
-        // and show the user they're registered. CANCEL_GAME also falls
-        // through (destructive → show the result).
-        if (action === 'JOIN_GAME' && type !== 'newGameInCommunity') return;
+        // JOIN_GAME is now a BACKGROUND action (opensAppToForeground:false) —
+        // the handler already registered the user and posted a local
+        // confirmation, so DON'T drag the app to MatchDetails behind their
+        // back. CANCEL_GAME (retired from the category) still falls through to
+        // show the result on the rare legacy push.
+        if (action === 'JOIN_GAME') return;
       } else if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
         const gameId = typeof data.gameId === 'string' ? data.gameId : '';
         if (!gameId) return;

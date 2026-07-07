@@ -45,7 +45,7 @@ export async function handleGameReminderAction(
         const Notifications = await import('expo-notifications');
         const body =
           res.bucket === 'players'
-            ? 'נרשמת למשחק! נתראה במגרש ⚽'
+            ? 'אתה רשום למשחק — נתראה במגרש ⚽'
             : res.bucket === 'waitlist'
               ? 'נכנסת לרשימת ההמתנה — נעדכן אם יתפנה מקום'
               : 'הבקשה נשלחה — ממתינה לאישור המנהל';
