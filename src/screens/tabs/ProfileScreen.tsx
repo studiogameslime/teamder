@@ -57,6 +57,7 @@ import {
 } from '@/components/profile/HamburgerMenu';
 import { gameService, userService } from '@/services';
 import { getInboxCount } from '@/services/requestsService';
+import { getAvailabilityCardEnabled } from '@/services/homeConfigService';
 import { dayDiff } from '@/utils/format';
 import {
   achievementsService,
@@ -131,6 +132,9 @@ export function ProfileScreen() {
   // NOT admin-only (friend requests reach every user). Async → fetched on
   // focus. See requestsService.getInboxCount.
   const [inboxCount, setInboxCount] = useState(0);
+  // Pulse master switch (appConfig/features.availabilityCardEnabled) — off hides
+  // the whole home availability surface. Defaults true (fail-open).
+  const [availCardEnabled, setAvailCardEnabled] = useState(true);
   // Open, non-stale games the user CREATED (createdBy === me). Derived
   // from the same getMyGames fetch that powers nextGame — no extra
   // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
@@ -278,6 +282,19 @@ export function ProfileScreen() {
         alive = false;
       };
     }, [localUser?.id]),
+  );
+
+  // Pulse master switch for the home availability surface — refreshed on focus.
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+      getAvailabilityCardEnabled().then((on) => {
+        if (alive) setAvailCardEnabled(on);
+      });
+      return () => {
+        alive = false;
+      };
+    }, []),
   );
 
   // Live "games played" count — refreshed on focus so it reflects a game
@@ -712,7 +729,7 @@ export function ProfileScreen() {
             />
           ) : null}
 
-          {markedAvailability ? (
+          {!availCardEnabled ? null : markedAvailability ? (
             // availability marked → show who's free nearby (organize a game).
             <AvailabilityCalendarCard
               onCreateGame={(dateMs, window, city) =>
