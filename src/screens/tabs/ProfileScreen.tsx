@@ -699,19 +699,21 @@ export function ProfileScreen() {
             </Pressable>
           ) : null}
 
-          {/* ② The "hero" — exactly one primary card, by state (see the
-              hasCloseGame / markedAvailability derivation above). We never
-              stack the next-game card AND the availability card. */}
+          {/* ② The hero(es). A live/near game leads (when there is one), and
+              the availability hero ALWAYS follows below it — the screen's whole
+              job is to keep nudging the user to mark availability and organize
+              the NEXT game, even when they already have one lined up. */}
           {hasCloseGame ? (
-            // state 1 — a live/near game: show it (and only it).
             <ProfileNextGameCard
               game={nextGame}
               userId={user.id}
               onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
               onFindGame={() => nav.navigate('GameTab')}
             />
-          ) : markedAvailability ? (
-            // state 2 — no near game but availability marked: who's free nearby.
+          ) : null}
+
+          {markedAvailability ? (
+            // availability marked → show who's free nearby (organize a game).
             <AvailabilityCalendarCard
               onCreateGame={(dateMs, window, city) =>
                 (
@@ -730,7 +732,7 @@ export function ProfileScreen() {
               onSetAvailability={() => nav.navigate('AvailabilityEdit')}
             />
           ) : (
-            // state 3 — no near game, no availability: drive the key action.
+            // not marked → drive the key action, even when a game exists.
             <AvailabilityPromptCard
               onSetAvailability={() => nav.navigate('AvailabilityEdit')}
             />
