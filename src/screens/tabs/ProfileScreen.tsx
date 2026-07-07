@@ -461,7 +461,6 @@ export function ProfileScreen() {
     !!nextGame && dayDiff(nextGame.startsAt) <= CLOSE_GAME_DAYS;
   const markedAvailability =
     (user.availability?.preferredDays?.length ?? 0) > 0;
-  const showAvailabilityPrompt = !hasCloseGame && !markedAvailability;
 
   // The user's communities split into the ones they OPENED (founder) vs
   // Pre-compute the share invite handler once.
@@ -737,18 +736,9 @@ export function ProfileScreen() {
             />
           )}
 
-          {/* ④ Activation checklist — hidden once every step is done, and not
-              shown until data loaded (prevents a first-paint flash). Also
-              suppressed in state 3, where the big availability prompt IS the
-              activation driver and the checklist would just compete with it. */}
-          {homeDataReady && !checklistComplete && !showAvailabilityPrompt ? (
-            <OnboardingChecklist items={checklistItems} />
-          ) : null}
-
-          {/* ⑤ Rotating "ידעת ש..." feature-discovery tip. */}
-          <DidYouKnowCard tips={homeTips} />
-
-          {/* ⑥ Quick actions — create a game / mark availability. */}
+          {/* Quick actions — create a game / mark availability. High up (right
+              under the hero) because the whole screen exists to nudge the user
+              to mark availability and open games. */}
           <View style={styles.ctaRow}>
             <Pressable
               onPress={() =>
@@ -780,6 +770,18 @@ export function ProfileScreen() {
               <Text style={styles.ctaSecondaryText}>{he.homeMarkAvailability}</Text>
             </Pressable>
           </View>
+
+          {/* Activation checklist — ALWAYS shown while incomplete (once data
+              loaded, to avoid a first-paint flash), but positioned low: below
+              the hero and the primary create/mark actions, since those are more
+              relevant than a setup nudge. */}
+          {homeDataReady && !checklistComplete ? (
+            <OnboardingChecklist items={checklistItems} />
+          ) : null}
+
+          {/* Rotating "ידעת ש..." feature-discovery tip — passive, so it sits
+              below the actionable content. */}
+          <DidYouKnowCard tips={homeTips} />
 
           {/* ⑦ Referral row — tap → list of who joined through you. */}
           {rcBool('feature_referrals') ? (
