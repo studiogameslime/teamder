@@ -1527,6 +1527,10 @@ export const he = {
   homeTipCommunity: 'פתח מועדון כדי לנהל קבוצה קבועה עם דירוגים וכוחות',
   homePendingRequests: (n: number) =>
     `${n} ${n === 1 ? 'בקשת הצטרפות ממתינה' : 'בקשות הצטרפות ממתינות'} לאישור`,
+  // Generic (mixes friend / community-join / game-join requests) for the
+  // top-of-home inbox banner.
+  homePendingInbox: (n: number) =>
+    `${n} ${n === 1 ? 'בקשה ממתינה' : 'בקשות ממתינות'} לך`,
   homeCreateGame: 'צור משחק',
   homeMarkAvailability: 'סמן זמינות',
   // ── Statistics screen ──

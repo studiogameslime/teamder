@@ -45,6 +45,7 @@ import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigServic
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
 import { HomeGreetingHeader } from '@/components/home/HomeGreetingHeader';
 import { AvailabilityCalendarCard } from '@/components/home/AvailabilityCalendarCard';
+import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
 import {
   OnboardingChecklist,
   type ChecklistItem,
@@ -55,6 +56,8 @@ import {
   type HamburgerSection,
 } from '@/components/profile/HamburgerMenu';
 import { gameService, userService } from '@/services';
+import { getInboxCount } from '@/services/requestsService';
+import { dayDiff } from '@/utils/format';
 import {
   achievementsService,
   type NewlyUnlocked,
@@ -122,6 +125,12 @@ export function ProfileScreen() {
   // next-game card that replaced the achievements rail. Null = none
   // upcoming (or still loading on first paint).
   const [nextGame, setNextGame] = useState<Game | null>(null);
+  // Unified count of incoming requests the user must act on — friend
+  // requests + community-join requests (admin) + game-join requests
+  // (creator). Drives the top-of-home "pending requests" banner, which is
+  // NOT admin-only (friend requests reach every user). Async → fetched on
+  // focus. See requestsService.getInboxCount.
+  const [inboxCount, setInboxCount] = useState(0);
   // Open, non-stale games the user CREATED (createdBy === me). Derived
   // from the same getMyGames fetch that powers nextGame — no extra
   // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
@@ -241,6 +250,29 @@ export function ProfileScreen() {
         .catch(() => {
           // Leave the previous value — a transient fetch error
           // shouldn't blank an already-shown game.
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id]),
+  );
+
+  // Unified incoming-requests count for the top banner — refreshed on focus
+  // so approving/declining elsewhere (or a new friend request) is reflected.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid || localUser?.isGuest) {
+        setInboxCount(0);
+        return;
+      }
+      let alive = true;
+      getInboxCount(uid)
+        .then((n) => {
+          if (alive) setInboxCount(n);
+        })
+        .catch(() => {
+          /* transient — keep the previous count */
         });
       return () => {
         alive = false;
@@ -414,6 +446,22 @@ export function ProfileScreen() {
     { text: he.homeTipScheduled, onPress: () => nav.navigate('GameTab', { screen: 'GameCreate' }) },
     { text: he.homeTipCommunity, onPress: () => nav.navigate('CommunitiesTab') },
   ];
+
+  // ── Home "hero" selection ──────────────────────────────────────────────
+  // Exactly ONE primary card sits at the top, the most relevant to the user's
+  // current state — so we never stack two "organize a game" cards, and never
+  // show an empty card when a focused action fits better.
+  //   • state 1 — a game within the next week  → the next-game card
+  //   • state 2 — no near game + marked availability → the availability calendar
+  //   • state 3 — no near game + not marked    → a big "set availability" prompt
+  const CLOSE_GAME_DAYS = 7;
+  // dayDiff(startsAt) = calendar days until kickoff (negative/0 = live/today).
+  // A live or upcoming-within-a-week game counts as "close".
+  const hasCloseGame =
+    !!nextGame && dayDiff(nextGame.startsAt) <= CLOSE_GAME_DAYS;
+  const markedAvailability =
+    (user.availability?.preferredDays?.length ?? 0) > 0;
+  const showAvailabilityPrompt = !hasCloseGame && !markedAvailability;
 
   // The user's communities split into the ones they OPENED (founder) vs
   // Pre-compute the share invite handler once.
@@ -631,39 +679,11 @@ export function ProfileScreen() {
         />
 
         <View style={styles.body}>
-          {/* ② Next-game card — the soonest game the user is in (or an
-              empty state that jumps to the Games tab). */}
-          <ProfileNextGameCard
-            game={nextGame}
-            userId={user.id}
-            onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
-            onFindGame={() => nav.navigate('GameTab')}
-          />
-
-          {/* Availability calendar — how many players are free to play near you,
-              per window. Tap a window to open a quick game. Self-isolating: it
-              renders null on error, so it can never break the home screen. */}
-          <AvailabilityCalendarCard
-            onCreateGame={(dateMs, window, city) =>
-              (nav as { navigate: (s: string, p?: unknown) => void }).navigate(
-                'GameTab',
-                {
-                  screen: 'GameCreate',
-                  params: {
-                    quick: true,
-                    prefillDateMs: dateMs,
-                    prefillWindow: window,
-                    prefillCity: city ?? undefined,
-                    inviteAvailable: true,
-                  },
-                },
-              )
-            }
-            onSetAvailability={() => nav.navigate('AvailabilityEdit')}
-          />
-
-          {/* ③ Pending join requests — admins only, when there are any. */}
-          {isAdmin && pendingApprovals > 0 ? (
+          {/* ① Pending requests banner — FIRST, for every user (not just
+              admins): it now counts friend requests + community-join requests
+              + game-join requests via the unified inbox. Time-sensitive, so it
+              sits above the hero. */}
+          {inboxCount > 0 ? (
             <Pressable
               onPress={() => nav.navigate('Requests')}
               style={({ pressed }) => [
@@ -674,15 +694,54 @@ export function ProfileScreen() {
             >
               <Ionicons name="download-outline" size={20} color="#B45309" />
               <Text style={styles.pendingText} numberOfLines={1}>
-                {he.homePendingRequests(pendingApprovals)}
+                {he.homePendingInbox(inboxCount)}
               </Text>
               <Ionicons name="chevron-back" size={18} color="#B45309" />
             </Pressable>
           ) : null}
 
+          {/* ② The "hero" — exactly one primary card, by state (see the
+              hasCloseGame / markedAvailability derivation above). We never
+              stack the next-game card AND the availability card. */}
+          {hasCloseGame ? (
+            // state 1 — a live/near game: show it (and only it).
+            <ProfileNextGameCard
+              game={nextGame}
+              userId={user.id}
+              onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
+              onFindGame={() => nav.navigate('GameTab')}
+            />
+          ) : markedAvailability ? (
+            // state 2 — no near game but availability marked: who's free nearby.
+            <AvailabilityCalendarCard
+              onCreateGame={(dateMs, window, city) =>
+                (
+                  nav as { navigate: (s: string, p?: unknown) => void }
+                ).navigate('GameTab', {
+                  screen: 'GameCreate',
+                  params: {
+                    quick: true,
+                    prefillDateMs: dateMs,
+                    prefillWindow: window,
+                    prefillCity: city ?? undefined,
+                    inviteAvailable: true,
+                  },
+                })
+              }
+              onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+            />
+          ) : (
+            // state 3 — no near game, no availability: drive the key action.
+            <AvailabilityPromptCard
+              onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+            />
+          )}
+
           {/* ④ Activation checklist — hidden once every step is done, and not
-              shown at all until the data loaded (prevents a first-paint flash). */}
-          {homeDataReady && !checklistComplete ? (
+              shown until data loaded (prevents a first-paint flash). Also
+              suppressed in state 3, where the big availability prompt IS the
+              activation driver and the checklist would just compete with it. */}
+          {homeDataReady && !checklistComplete && !showAvailabilityPrompt ? (
             <OnboardingChecklist items={checklistItems} />
           ) : null}
 
