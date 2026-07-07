@@ -207,7 +207,7 @@ export function AvailablePlayersScreen() {
           <Text style={styles.pulseTitle}>{he.sendPulseTitle}</Text>
           <Text style={styles.pulseExplain}>{he.sendPulseExplain}</Text>
           <Button
-            title={pulseSent ? he.sendPulseStarted : he.sendPulseCta}
+            title={pulseSent ? he.sendPulseSentBtn : he.sendPulseCta}
             variant={pulseSent ? 'outline' : 'primary'}
             fullWidth
             loading={pulsing}
