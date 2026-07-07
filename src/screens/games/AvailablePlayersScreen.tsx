@@ -21,6 +21,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PlayerIdentity } from '@/components/PlayerIdentity';
 import { Button } from '@/components/Button';
+import { appAlert } from '@/components/AppDialog';
 import { userService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
@@ -47,6 +48,9 @@ export function AvailablePlayersScreen() {
   const [loading, setLoading] = useState(true);
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+  // "Send to everyone available, in pulses" — manual filler-pulse trigger.
+  const [pulsing, setPulsing] = useState(false);
+  const [pulseSent, setPulseSent] = useState(false);
 
   // Resolve the city for filtering: prefer the community's city.
   const city = useMemo(() => {
@@ -158,9 +162,60 @@ export function AvailablePlayersScreen() {
     }
   };
 
+  const REASON_MSG: Record<string, string> = {
+    TOO_LATE: he.sendPulseTooLate,
+    TOO_EARLY: he.sendPulseTooEarly,
+    GAME_FULL: he.sendPulseFull,
+    NO_CITY: he.sendPulseNoCity,
+    GAME_NOT_OPEN: he.sendPulseNotOpen,
+  };
+
+  const sendToAll = () => {
+    if (!game || pulsing || pulseSent) return;
+    appAlert(he.sendPulseTitle, he.sendPulseConfirm, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.sendPulseCta,
+        onPress: async () => {
+          setPulsing(true);
+          try {
+            const res = await gameService.startFillerPulse(game.id);
+            if (res.started) {
+              setPulseSent(true);
+              toast.success(
+                res.alreadyRunning ? he.sendPulseAlready : he.sendPulseStarted,
+              );
+            } else {
+              toast.error(REASON_MSG[res.reason ?? ''] ?? he.sendPulseError);
+            }
+          } catch (err) {
+            logError('startFillerPulse', err, { gameId: game.id });
+            toast.error(he.sendPulseError);
+          } finally {
+            setPulsing(false);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.availablePlayersTitle} />
+      {game ? (
+        <View style={styles.pulseCard}>
+          <Text style={styles.pulseTitle}>{he.sendPulseTitle}</Text>
+          <Text style={styles.pulseExplain}>{he.sendPulseExplain}</Text>
+          <Button
+            title={pulseSent ? he.sendPulseStarted : he.sendPulseCta}
+            variant={pulseSent ? 'outline' : 'primary'}
+            fullWidth
+            loading={pulsing}
+            disabled={pulseSent}
+            onPress={sendToAll}
+          />
+        </View>
+      ) : null}
       {loading ? (
         <SoccerBallLoader size={40} style={{ marginTop: spacing.lg }} />
       ) : !game ? (
@@ -229,6 +284,28 @@ function formatHour(ms: number): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  pulseCard: {
+    margin: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pulseTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  pulseExplain: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'right',
+    lineHeight: 19,
+  },
   list: { padding: spacing.lg, gap: 0 },
   row: {
     flexDirection: 'row',

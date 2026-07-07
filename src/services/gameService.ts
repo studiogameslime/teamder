@@ -2792,6 +2792,31 @@ export const gameService = {
   },
 
   /**
+   * Manual "send to everyone available, in pulses" — an admin kicks off the
+   * filler-pulse engine for a game on demand (from the invite screen). The
+   * server sends fillerOpportunity pushes to nearby opted-in available players
+   * in batches of 10 every 2 minutes until the game fills / the pool runs out /
+   * 30 min before kickoff. Each player gets ONE push (fillerPushHistory dedupe)
+   * + a 3/day cap. Returns a structured result the UI maps to a message.
+   */
+  async startFillerPulse(
+    gameId: string,
+  ): Promise<{ started: boolean; reason?: string; alreadyRunning?: boolean }> {
+    if (USE_MOCK_DATA) return { started: true };
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { httpsCallable } = require('firebase/functions');
+    const res = await httpsCallable(
+      getFirebase().functions,
+      'startGameFillerPulse',
+    )({ gameId });
+    return (res.data ?? { started: false }) as {
+      started: boolean;
+      reason?: string;
+      alreadyRunning?: boolean;
+    };
+  },
+
+  /**
    * Admin registers community members straight into a game (server-side
    * `adminAddPlayers` callable → `players`, overflowing to `waitlist` when the
    * game is full). Each added member gets an `addedToGame` push. Returns how

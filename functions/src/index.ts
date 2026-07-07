@@ -8964,7 +8964,9 @@ export const fillerPulseTask = onTaskDispatched(
   async (req) => {
     const gameId = (req.data as { gameId?: string } | undefined)?.gameId;
     if (!gameId) return;
-    if (!PULSE_ENGINE_ENABLED) return; // master switch — stop any in-flight chain
+    // No PULSE_ENGINE_ENABLED gate here — the flag only controls the AUTOMATIC
+    // on-creation pulse (maybeStartFillerPulse). A chain that's already running
+    // (auto, once enabled, OR a manual admin "send to all") should complete.
     // NOTE: we deliberately do NOT swallow errors here — a throw lets
     // onTaskDispatched retry per retryConfig instead of silently killing the
     // self-rescheduling chain. runFillerPulseBatch already catches its own
@@ -9040,6 +9042,81 @@ async function maybeStartFillerPulse(
     }
   }
 }
+
+// Manual "send to everyone available, in pulses" — an admin triggers the pulse
+// engine for a game on demand (from the game's invite screen). Unlike the
+// automatic on-creation pulse (maybeStartFillerPulse, gated by
+// PULSE_ENGINE_ENABLED), this is an explicit admin action, so it always runs.
+// Returns a structured result the client maps to a friendly message.
+export const startGameFillerPulse = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const gameId = (request.data as { gameId?: string } | undefined)?.gameId;
+    if (!gameId) throw new HttpsError('invalid-argument', 'gameId required');
+
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+    const game = snap.data() as {
+      createdBy?: string;
+      groupId?: string;
+      status?: string;
+      startsAt?: number;
+      players?: string[];
+      maxPlayers?: number;
+      acceptsFillers?: boolean;
+      city?: string;
+    };
+
+    // Authorize: game creator OR a community admin.
+    let isAdmin = game.createdBy === uid;
+    if (!isAdmin && game.groupId) {
+      const grp = (
+        await db.collection('groups').doc(game.groupId).get()
+      ).data() as { adminIds?: string[] } | undefined;
+      isAdmin = (grp?.adminIds ?? []).includes(uid);
+    }
+    if (!isAdmin) throw new HttpsError('permission-denied', 'admins only');
+
+    // Preconditions → structured reasons (client shows a friendly message).
+    if (game.status && game.status !== 'open') return { started: false, reason: 'GAME_NOT_OPEN' };
+    if (!game.city) return { started: false, reason: 'NO_CITY' };
+    const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
+    const lead = startsAt - Date.now();
+    if (!startsAt || lead <= PULSE_STOP_BEFORE_MS) return { started: false, reason: 'TOO_LATE' };
+    if (lead > PULSE_MAX_LEAD_MS) return { started: false, reason: 'TOO_EARLY' };
+    const players = game.players ?? [];
+    const maxPlayers = game.maxPlayers ?? 0;
+    if (maxPlayers > 0 && players.length >= maxPlayers) return { started: false, reason: 'GAME_FULL' };
+
+    // Make sure the engine will accept fillers for this game.
+    if (game.acceptsFillers !== true) {
+      await ref.set({ acceptsFillers: true, updatedAt: Date.now() }, { merge: true });
+    }
+    // Create-once marker + enqueue the first batch. If a chain is already
+    // running (auto or a prior manual tap), report that instead of forking.
+    try {
+      await db
+        .collection('fillerPulseChains')
+        .doc(gameId)
+        .create({ startedAt: Date.now(), manual: true });
+    } catch {
+      return { started: true, alreadyRunning: true };
+    }
+    try {
+      await getGcpFunctions()
+        .taskQueue('fillerPulseTask')
+        .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 2000) });
+    } catch (err) {
+      console.error('[startGameFillerPulse] enqueue failed', gameId, err);
+      await db.collection('fillerPulseChains').doc(gameId).delete().catch(() => undefined);
+      throw new HttpsError('internal', 'could not start');
+    }
+    return { started: true };
+  },
+);
 
 // ─── Scheduled: admin shortage warning (T-2h) ──────────────────────────
 //
