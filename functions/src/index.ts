@@ -1715,19 +1715,64 @@ export const onNotificationCreated = onDocumentCreated(
   }
 );
 
-// ─── Scheduled: 1h-before reminders ────────────────────────────────────
+// ─── Game reminder — EXACTLY 1h before kickoff ─────────────────────────
+// Primary path: a precise Cloud Task fires at startsAt−60min (enqueued in
+// enqueueGameMoments). The cron below is a SAFETY NET only — it never fires
+// earlier than ~1h before, so it can't produce the old "1h07m early" reminder.
+const REMINDER_LEAD_MS = 60 * 60 * 1000;
+
+// Send the 1h reminder for a single game, with the reminderSent latch. Shared
+// by the precise task and the safety-net cron. Returns true if it dispatched.
+async function sendGameReminderForGame(
+  gameId: string,
+  opts?: { enforceLead?: boolean },
+): Promise<boolean> {
+  const ref = db.collection('games').doc(gameId);
+  const snap = await ref.get();
+  if (!snap.exists) return false;
+  const g = snap.data() as {
+    title?: string;
+    startsAt?: number;
+    status?: string;
+    reminderSent?: boolean;
+    players?: string[];
+  };
+  if (g.reminderSent) return false;
+  if (g.status && g.status !== 'open' && g.status !== 'locked') return false;
+  if (!g.players || g.players.length === 0) return false;
+  // Precise-task path: only fire if we're actually ~1h before the CURRENT
+  // kickoff. Guards against a stale task whose game was rescheduled after the
+  // task was enqueued (Cloud Tasks can't be cancelled) — the new time's task
+  // will fire correctly instead. The cron safety net skips this check.
+  if (opts?.enforceLead) {
+    const sa = typeof g.startsAt === 'number' ? g.startsAt : 0;
+    if (Math.abs(sa - REMINDER_LEAD_MS - Date.now()) > 6 * 60 * 1000) {
+      return false;
+    }
+  }
+  // Notify FIRST, then flip the latch — so a failed notify leaves the flag
+  // unset and the caller/next tick retries; createNotificationOnce dedupes.
+  await createNotificationOnce({
+    type: 'gameReminder',
+    recipientId: gameId, // fan-out marker → g.players
+    payload: { gameId, gameTitle: g.title || 'המשחק', startsAt: g.startsAt },
+  });
+  await ref.update({ reminderSent: true });
+  return true;
+}
 
 async function runSendGameReminders(): Promise<void> {
-  // Look for games starting in [now+50, now+70] minutes that haven't
-  // had a reminder dispatched yet. The 20-minute window covers slack
-  // around our 15-minute cadence — a game is found in exactly one run.
+  // SAFETY NET: catch unreminded games starting within the next 59 minutes —
+  // i.e. games whose precise T-60 task never fired (task failure) or that were
+  // CREATED less than an hour before kickoff (no time to schedule the task).
+  // Upper bound < 60min guarantees the cron never fires a reminder EARLIER than
+  // an hour before, so the precise task owns the exact-1h case.
   const now = Date.now();
-  const lower = now + 50 * 60 * 1000;
-  const upper = now + 70 * 60 * 1000;
+  const upper = now + 59 * 60 * 1000;
 
   const snap = await db
     .collection('games')
-    .where('startsAt', '>=', lower)
+    .where('startsAt', '>=', now)
     .where('startsAt', '<', upper)
     .get();
 
@@ -1736,44 +1781,15 @@ async function runSendGameReminders(): Promise<void> {
     return;
   }
 
-  const ops: Promise<unknown>[] = [];
-  for (const doc of snap.docs) {
-    const g = doc.data() as {
-      title?: string;
-      startsAt?: number;
-      status?: string;
-      reminderSent?: boolean;
-      players?: string[];
-    };
-    if (g.reminderSent) continue;
-    if (g.status && g.status !== 'open' && g.status !== 'locked') continue;
-    if (!g.players || g.players.length === 0) continue;
+  const ops = snap.docs
+    .filter((doc) => (doc.data() as { reminderSent?: boolean }).reminderSent !== true)
+    .map((doc) => sendGameReminderForGame(doc.id));
 
-    // Notify FIRST, then flip reminderSent — sequentially, so the latch is set
-    // ONLY after a successful notify (a failed notify leaves the flag unset and
-    // the next tick retries; createNotificationOnce dedupes so no double-push).
-    ops.push(
-      (async () => {
-        await createNotificationOnce({
-          type: 'gameReminder',
-          recipientId: doc.id, // fan-out marker
-          payload: {
-            gameId: doc.id,
-            gameTitle: g.title || 'המשחק',
-            startsAt: g.startsAt,
-          },
-        });
-        await doc.ref.update({ reminderSent: true });
-      })(),
-    );
-  }
-
-  // allSettled: one game's failure must not abandon the rest of this tick.
   const results = await Promise.allSettled(ops);
-  const ok = results.filter((r) => r.status === 'fulfilled').length;
-  console.log(
-    `[sendGameReminders] dispatched ${ok}/${ops.length} reminder(s)`,
-  );
+  const ok = results.filter(
+    (r) => r.status === 'fulfilled' && r.value === true,
+  ).length;
+  console.log(`[sendGameReminders] safety-net dispatched ${ok} reminder(s)`);
 }
 
 // ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
@@ -2089,6 +2105,12 @@ export const scheduledGameMomentTask = onTaskDispatched(
       } else if (moment === 'publicOpen') {
         const r = await flipPublicGameOnce(gameId);
         console.log(`[scheduledGameMomentTask] publicOpen ${gameId} → ${r}`);
+      } else if (moment === 'reminder1h') {
+        // Fires at exactly startsAt−60min. The helper re-checks status /
+        // players / the reminderSent latch, so a cancelled or emptied game
+        // (or one already reminded by the safety-net cron) sends nothing.
+        const r = await sendGameReminderForGame(gameId, { enforceLead: true });
+        console.log(`[scheduledGameMomentTask] reminder1h ${gameId} → ${r}`);
       } else {
         console.warn(`[scheduledGameMomentTask] unknown moment '${moment}'`);
       }
@@ -2114,13 +2136,14 @@ const MAX_TASK_HORIZON_MS = 25 * 24 * 60 * 60 * 1000;
 async function enqueueGameMoments(
   gameId: string,
   before:
-    | { registrationOpensAt?: number; publicOpenAt?: number }
+    | { registrationOpensAt?: number; publicOpenAt?: number; startsAt?: number }
     | undefined,
   after: {
     status?: string;
     visibility?: string;
     registrationOpensAt?: number;
     publicOpenAt?: number;
+    startsAt?: number;
   },
 ): Promise<void> {
   const now = Date.now();
@@ -2150,6 +2173,20 @@ async function enqueueGameMoments(
     pub !== before?.publicOpenAt
   ) {
     ops.push({ moment: 'publicOpen', at: pub });
+  }
+
+  // reminder1h — fire the "game starts in an hour" reminder at EXACTLY
+  // startsAt−60min. Only when that instant is still in the future (a game
+  // created <1h before kickoff falls to the safety-net cron) and within the
+  // task horizon, and only when the kickoff time itself is new/changed.
+  const sa = after.startsAt;
+  if (
+    typeof sa === 'number' &&
+    sa - REMINDER_LEAD_MS > now + 1000 &&
+    sa - REMINDER_LEAD_MS < horizon &&
+    sa !== before?.startsAt
+  ) {
+    ops.push({ moment: 'reminder1h', at: sa - REMINDER_LEAD_MS });
   }
 
   if (ops.length === 0) return;
@@ -9180,11 +9217,9 @@ export const onFillerInterestCreated = onDocumentCreated(
 const AVAIL_WINDOWS = ['morning', 'noon', 'evening'] as const;
 type AvailWindow = (typeof AVAIL_WINDOWS)[number];
 function hourToAvailWindow(hour: number): AvailWindow {
-  if (hour >= 5 && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 16) return 'noon';
-  // Evening absorbs the old "night" band — every hour from 16:00 through the
-  // small hours (…–04:59) buckets to evening now that night is gone.
-  return 'evening';
+  if (hour >= 7 && hour < 12) return 'morning'; // 07:00–11:59
+  if (hour >= 12 && hour < 18) return 'noon'; // 12:00–17:59
+  return 'evening'; // 18:00–06:59 (also absorbs the small hours)
 }
 
 export const availabilityCounts = onCall(
