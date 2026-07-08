@@ -806,12 +806,35 @@ function buildMessage(
           body: `שחקן מחק את חשבונו והוסר מהמשחקים: ${list}.`,
         };
       }
+      // Name the canceller in the body (organiser request — the generic
+      // "שחקן ביטל" wasn't actionable). Prefer the aggregated distinct-name
+      // list (arrayUnion, so already deduped); fall back to the single name,
+      // and only to the generic "שחקן" when no name was captured.
+      const names = Array.isArray(payload.cancellingUserNames)
+        ? (payload.cancellingUserNames as unknown[]).filter(
+            (s): s is string => typeof s === 'string' && s.length > 0,
+          )
+        : [];
+      const singleName =
+        typeof payload.cancellingUserName === 'string' &&
+        payload.cancellingUserName.length > 0
+          ? payload.cancellingUserName
+          : '';
+      const count = typeof payload.count === 'number' ? payload.count : 1;
+      const plural = names.length >= 2 || count > 1;
+      const who =
+        names.length >= 2
+          ? names.length === 2
+            ? `${names[0]} ו-${names[1]}`
+            : `${names.slice(0, 2).join(', ')} ועוד ${names.length - 2}`
+          : names[0] || singleName || 'שחקן';
+      const verb = plural ? 'ביטלו' : 'ביטל';
       const promoted = typeof payload.promotedUserId === 'string';
       return {
-        title: 'שחקן ביטל השתתפות',
+        title: plural ? 'שחקנים ביטלו השתתפות' : 'שחקן ביטל השתתפות',
         body: promoted
-          ? `שחקן ביטל ב${gameTitle} — שחקן מרשימת ההמתנה אוּשר במקומו.`
-          : `שחקן ביטל ב${gameTitle}. כדאי לחפש מחליף.`,
+          ? `${who} ${verb} ב${gameTitle} — שחקן מרשימת ההמתנה אוּשר במקומו.`
+          : `${who} ${verb} ב${gameTitle}. כדאי לחפש מחליף.`,
       };
     }
     case 'growthMilestone': {
@@ -2803,8 +2826,43 @@ async function runCloneRecurringGames(): Promise<void> {
     // Scheduled auto-teams time shifts +7d like the others; keep autoTeamsMethod
     // (copied via spread). The GENERATED outputs/latches are cleared below so
     // next week re-generates fresh instead of inheriting last week's teams.
-    if (nextAutoTeams !== undefined) next.autoTeamsAt = nextAutoTeams;
-    else delete next.autoTeamsAt;
+    //
+    // BUT `autoTeamsAt` is CONSUMED — `runDueAutoTeamsAt` deletes it the moment
+    // the split generates (~1h before kickoff), which is BEFORE this clone runs
+    // (3h AFTER kickoff). So for any recurring game that actually generated its
+    // teams, `g.autoTeamsAt` is already gone here and the shift above yields
+    // undefined — silently dropping the schedule for every future week (the
+    // admin picks "auto teams 1h before" once and it evaporates after week 1).
+    // Reconstruct it from the SAME lead-before-kickoff: `autoTeamsMethod`
+    // survives generation (only `autoTeamsAt` is deleted), so its presence means
+    // the game opted in; `autoTeamsGeneratedAt` records when it fired, giving the
+    // original lead (startsAt − generatedAt) to re-apply against next kickoff.
+    const gExtra = g as {
+      autoTeamsMethod?: string;
+      autoTeamsGeneratedAt?: number;
+      autoTeamGenerationMinutesBeforeStart?: number;
+    };
+    if (nextAutoTeams !== undefined) {
+      next.autoTeamsAt = nextAutoTeams;
+    } else if (gExtra.autoTeamsMethod) {
+      // Opted into scheduled teams, but autoTeamsAt was consumed. Re-derive the
+      // lead from when it generated; fall back to the configured minutes-before
+      // (or 60') if that's missing.
+      const genAt = gExtra.autoTeamsGeneratedAt;
+      const leadMs =
+        typeof genAt === 'number' && genAt > 0 && genAt < g.startsAt
+          ? g.startsAt - genAt
+          : (gExtra.autoTeamGenerationMinutesBeforeStart ?? 60) * 60 * 1000;
+      const reAutoTeams = nextStartsAt - leadMs;
+      // Only if it lands in the future and before next kickoff (sanity).
+      if (reAutoTeams > now && reAutoTeams < nextStartsAt) {
+        next.autoTeamsAt = reAutoTeams;
+      } else {
+        delete next.autoTeamsAt;
+      }
+    } else {
+      delete next.autoTeamsAt;
+    }
     // Fresh roster + per-instance transient state.
     next.players = [];
     next.waitlist = [];

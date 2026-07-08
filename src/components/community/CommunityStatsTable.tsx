@@ -77,13 +77,17 @@ export function CommunityStatsTable({
   // unit with wins/losses (you can't win more rounds than you played). An
   // evening has several rounds, so evenings would read oddly next to wins
   // ("10 games, 20 wins"). Goals first — it's the ranking metric.
+  // Column order follows the scoring story (RTL, right→left): goals →
+  // assists (the two point sources) → wins → losses (outcomes) → then
+  // appearances + mini-games. Matches the "ניקוד" sort the table now uses
+  // (goal 2pts + assist 1pt) so the eye reads the point-drivers first.
   const cols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
     { key: 'goals', label: he.champColGoals, primary: true },
-    { key: 'games', label: he.champColAppearances }, // evenings attended
-    { key: 'rounds', label: he.champColMiniGames }, // mini-games played
+    { key: 'assists', label: he.champColAssists },
     { key: 'wins', label: he.champColWins },
     { key: 'losses', label: he.champColLosses },
-    { key: 'assists', label: he.champColAssists },
+    { key: 'games', label: he.champColAppearances }, // evenings attended
+    { key: 'rounds', label: he.champColMiniGames }, // mini-games played
   ];
 
   return (

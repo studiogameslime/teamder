@@ -37,6 +37,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { InputField } from '@/components/InputField';
+import { FormSectionHeader } from '@/components/FormSectionHeader';
 import { RuleTagsInput } from '@/components/RuleTagsInput';
 import { AppDateTimeField } from '@/components/DateTimeFields';
 import { StepIndicator } from '@/components/StepIndicator';
@@ -607,6 +608,7 @@ function Step1({
   const [locOpen, setLocOpen] = useState(false);
   return (
     <View style={styles.stack}>
+      <FormSectionHeader title={he.wizardSectionDetails} first />
       {/* Quick game → name input. Community game → read-only target line. */}
       {quick ? (
         <InputField
@@ -693,6 +695,7 @@ function Step1({
           A single ON/OFF toggle (per Eliran's feedback): ON → open to
           everyone (public), OFF → community/invite-only. Clearer than two
           competing pills, and the tooltip spells out both states. */}
+      <FormSectionHeader title={he.wizardSectionVisibility} />
       <ToggleRow
         label={he.createGameIsPublic}
         info={{ title: he.createGameIsPublic, text: he.createGameIsPublicHint }}
@@ -718,6 +721,7 @@ function Step2({
   // logistics concern, not a match rule.
   return (
     <View style={styles.stack}>
+      <FormSectionHeader title={he.wizardSectionFormat} first />
       <PillRow
         label={he.createGameFormat}
         options={FORMATS.map((f) => ({ value: f, label: formatLabel(f) }))}
@@ -779,6 +783,7 @@ function Step2({
         </>
       ) : null}
 
+      <FormSectionHeader title={he.wizardSectionDurationRules} />
       <View style={styles.section}>
         <InputField
           label={he.createGameMatchDuration}
@@ -825,6 +830,7 @@ function Step3({
   // to step 1.) Ends with the summary card.
   return (
     <View style={styles.stack}>
+      <FormSectionHeader title={he.wizardSectionCharacteristics} first />
       <ToggleRow
         label={he.createGameRequiresApproval}
         info={{ title: he.createGameRequiresApproval, text: he.createGameRequiresApprovalHint }}
@@ -849,6 +855,8 @@ function Step3({
           />
         </View>
       ) : null}
+
+      <FormSectionHeader title={he.wizardSectionAvailability} />
 
       {/* Two INDEPENDENT community-game options (hidden for quick one-offs):
           (1) recurring weekly fixture, (2) scheduled registration open.

@@ -52,12 +52,19 @@ export function AvailablePlayersScreen() {
   const [pulsing, setPulsing] = useState(false);
   const [pulseSent, setPulseSent] = useState(false);
 
-  // Resolve the city for filtering: prefer the community's city.
-  const city = useMemo(() => {
-    if (!game) return undefined;
-    const g = myCommunities.find((c) => c.id === game.groupId);
-    return g?.city || undefined;
-  }, [game, myCommunities]);
+  // Stable key of the viewer's communities (id + the fields that affect the
+  // availability query). Keying the loader on THIS string instead of the raw
+  // `myCommunities` array stops a full reload every time an unrelated store
+  // update hands back a new array reference — which is what made the page
+  // "refresh after each invite" (the invite CF bumps a doc, a listener churns
+  // the store, and the old `[me, myCommunities, city]` deps re-fired the load).
+  const communitiesKey = useMemo(
+    () =>
+      myCommunities
+        .map((c) => `${c.id}:${c.city ?? ''}:${c.lat ?? ''}:${c.lng ?? ''}`)
+        .join('|'),
+    [myCommunities],
+  );
 
   useEffect(() => {
     if (!gameId || !me) return;
@@ -82,6 +89,12 @@ export function AvailablePlayersScreen() {
           setCandidates([]);
           return;
         }
+        // Seed the "already invited" set from the game's server-recorded
+        // invitees (the CF arrayUnions each recipient into `invitedUserIds`).
+        // Without this the local `invitedIds` reset every time the screen
+        // remounted, so a player already invited looked invitable again on
+        // return (user report).
+        setInvitedIds(new Set(g.invitedUserIds ?? []));
         const day = new Date(g.startsAt).getDay();
         const hour = formatHour(g.startsAt);
         const exclude = [
@@ -98,10 +111,12 @@ export function AvailablePlayersScreen() {
         const grp = myCommunities.find((c) => c.id === g.groupId);
         const gameLat = g.fieldLat ?? grp?.lat;
         const gameLng = g.fieldLng ?? grp?.lng;
+        // Resolve the filter city from the just-loaded game's community.
+        const cityResolved = grp?.city || undefined;
         const list = await userService.findAvailablePlayers({
           day,
           hour,
-          city,
+          city: cityResolved,
           gameLat,
           gameLng,
           excludeIds: exclude,
@@ -112,7 +127,6 @@ export function AvailablePlayersScreen() {
           screen: 'AvailablePlayersScreen',
           gameId,
           userId: me.id,
-          city,
         });
         if (__DEV__) console.warn('[availablePlayers] load failed', err);
       } finally {
@@ -122,7 +136,11 @@ export function AvailablePlayersScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, me, myCommunities, city]);
+    // Keyed on stable primitives — NOT the raw `me`/`myCommunities` objects —
+    // so a store-reference churn (e.g. after sending an invite) can't re-trigger
+    // a full reload. `me`/`myCommunities` are read fresh inside when it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, me?.id, communitiesKey]);
 
   const invite = async (target: User) => {
     if (!game || !me || invitingId) return;
@@ -299,11 +317,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '900',
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   pulseExplain: {
     ...typography.caption,
     color: colors.textMuted,
     textAlign: 'right',
+    writingDirection: 'rtl',
     lineHeight: 19,
   },
   list: { padding: spacing.lg, gap: 0 },

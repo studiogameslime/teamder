@@ -128,6 +128,10 @@ export function MatchPlayersScreen() {
             // Cancelled players too — without them their user docs are never
             // fetched, so the "ביטלו השתתפות" rows fell back to a "..." name.
             ...Object.keys(g.cancellations ?? {}),
+            // Same for admin-removed players ("הוסרו ע״י מנהל") + the admins
+            // who removed them, so "הוסר ע״י <name>" resolves a real name.
+            ...Object.keys(g.adminRemovals ?? {}),
+            ...Object.values(g.adminRemovedBy ?? {}),
           ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
@@ -167,6 +171,8 @@ export function MatchPlayersScreen() {
             ...g.waitlist,
             ...(g.pending ?? []),
             ...Object.keys(g.cancellations ?? {}),
+            ...Object.keys(g.adminRemovals ?? {}),
+            ...Object.values(g.adminRemovedBy ?? {}),
           ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
@@ -464,6 +470,28 @@ export function MatchPlayersScreen() {
     return buildEntries(uids).map((e) => ({
       ...e,
       cancelledAt: map[e.user.id] ?? 0,
+    }));
+  })();
+  // Players an admin kicked via "הסר שחקן" (adminRemovals map). Kept separate
+  // from cancellations — these never count against a player's discipline. Same
+  // filter: drop anyone currently back in the roster, and anyone who ALSO has a
+  // self-cancel entry (that takes precedence, shown above) so nobody lists twice.
+  const removedEntries = (() => {
+    const map = game.adminRemovals ?? {};
+    const cancelled = game.cancellations ?? {};
+    const active = new Set<string>([
+      ...(game.players ?? []),
+      ...(game.waitlist ?? []),
+      ...(game.pending ?? []),
+    ]);
+    const uids = Object.keys(map)
+      .filter((uid) => !active.has(uid) && cancelled[uid] === undefined)
+      .sort((a, b) => (map[b] ?? 0) - (map[a] ?? 0));
+    const removedBy = game.adminRemovedBy ?? {};
+    return buildEntries(uids).map((e) => ({
+      ...e,
+      removedAt: map[e.user.id] ?? 0,
+      removedByUid: removedBy[e.user.id],
     }));
   })();
   const lateCancelThresholdMs =
@@ -877,6 +905,43 @@ export function MatchPlayersScreen() {
                     offerHint={he.matchPlayersCancelledAgo(
                       formatRelative(e.cancelledAt),
                     )}
+                  />
+                );
+              })}
+            </Card>
+          </Section>
+        ) : null}
+
+        {removedEntries.length > 0 ? (
+          <Section
+            title={he.matchPlayersSectionRemoved}
+            count={String(removedEntries.length)}
+          >
+            <Card style={styles.listCard}>
+              {removedEntries.map((e, i) => {
+                const isSelf =
+                  !!e.removedByUid && e.removedByUid === e.user.id;
+                const removerName = e.removedByUid
+                  ? playersMap[e.removedByUid]?.displayName
+                  : undefined;
+                const when = formatRelative(e.removedAt);
+                const hint = isSelf
+                  ? he.matchPlayersSelfRemovedAgo(when)
+                  : removerName
+                    ? he.matchPlayersRemovedByAgo(removerName, when)
+                    : he.matchPlayersRemovedAgo(when);
+                return (
+                  <PlayerRow
+                    key={e.user.id}
+                    entry={e}
+                    showDivider={i > 0}
+                    onPress={() => goToCard(e.user.id)}
+                    toneRight={
+                      isSelf
+                        ? he.matchPlayersSelfRemovedTag
+                        : he.matchPlayersRemovedTag
+                    }
+                    offerHint={hint}
                   />
                 );
               })}

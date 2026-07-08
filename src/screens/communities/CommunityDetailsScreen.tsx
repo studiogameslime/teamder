@@ -54,7 +54,6 @@ import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
 import { computeClubLevel } from '@/utils/clubLevel';
 import type { ClubMetrics } from '@/data/clubAchievements';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
-import { GameHistoryRow } from '@/components/match/GameHistoryRow';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
@@ -95,6 +94,14 @@ type CommunityStatsData = Awaited<
   ReturnType<typeof gameService.getCommunityStats>
 >;
 
+// Marketing/ad screenshot layout — driven by EXPO_PUBLIC_SCREENSHOT_MODE=1
+// (same flag the mock banner / ad suppression use). When on, the community
+// page shows ONLY the club's numbers + champions table (no level/titles, no
+// operational cards) so a clean promo screenshot can be captured. NEVER true
+// in a real store build → the app itself is unchanged.
+const SCREENSHOT_MODE =
+  (process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1';
+
 export function CommunityDetailsScreen() {
   const nav = useNavigation<Nav>();
   const params = useRoute<Params>().params;
@@ -108,8 +115,9 @@ export function CommunityDetailsScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [upcoming, setUpcoming] = useState<Game[]>([]);
+  // Loaded only as the pre-stats fallback for the "מפגשים שנערכו" count; the
+  // inline history LIST was removed (it duplicated the ⋯-menu history screen).
   const [history, setHistory] = useState<GameSummary[]>([]);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
     null,
   );
@@ -692,6 +700,18 @@ export function CommunityDetailsScreen() {
         </View>
 
         <View style={styles.body}>
+          {SCREENSHOT_MODE ? (
+            /* Ad layout: club numbers on top, champions table below — nothing
+               else (level/titles/next-game/players are hidden for the promo). */
+            <>
+              <CommunityStatsSection stats={communityStats} />
+              <CommunityChampionship
+                groupId={group.id}
+                memberIds={group.playerIds ?? []}
+              />
+            </>
+          ) : (
+          <>
           {/* Club level chip → taps through to the full club achievements. */}
           {clubLevel ? (
             <Pressable
@@ -859,42 +879,11 @@ export function CommunityDetailsScreen() {
           {/* Goals championship — club-scoped scorers leaderboard. */}
           <CommunityChampionship groupId={group.id} memberIds={group.playerIds ?? []} />
 
-          {/* Per-community game history — finished games, same row style as the
-              player History tab (user report: history per community too). */}
-          {(() => {
-            const finished = history.filter((h) => h.status === 'finished');
-            if (finished.length === 0) return null;
-            const shown = historyExpanded ? finished : finished.slice(0, 5);
-            return (
-              <View style={styles.historySection}>
-                <Text style={styles.historyTitle}>{he.communityHistoryTitle}</Text>
-                <View style={{ gap: spacing.sm }}>
-                  {shown.map((h) => (
-                    <GameHistoryRow
-                      key={h.id}
-                      item={h}
-                      onPress={() =>
-                        nav.navigate('MatchDetails', { gameId: h.id })
-                      }
-                    />
-                  ))}
-                </View>
-                {finished.length > 5 ? (
-                  <Pressable
-                    onPress={() => setHistoryExpanded((v) => !v)}
-                    style={styles.historyToggle}
-                  >
-                    <Text style={styles.historyToggleText}>
-                      {historyExpanded
-                        ? he.communityHistoryShowLess
-                        : he.communityHistorySeeAll(finished.length)}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            );
-          })()}
-
+          {/* The per-community game-history list used to render here, but it
+              duplicated the same list already reachable from the ⋯ menu's
+              "היסטוריית משחקים" (→ CommunityHistory). Removed at the owner's
+              request; `history` is still loaded above solely as the pre-stats
+              fallback for the "מפגשים שנערכו" count (matchesHeld). */}
 
           {/* WhatsApp contact CTA — visible to non-admin members (and
               non-members on this private view) when the community has
@@ -919,6 +908,8 @@ export function CommunityDetailsScreen() {
           {isMember || isAdmin ? (
             <CommunityShareInviteCta onPress={handleInvite} />
           ) : null}
+          </>
+          )}
         </View>
       </ScrollView>
 
@@ -1128,19 +1119,6 @@ function nextOccurrence(g: Group): number | null {
   return target.getTime();
 }
 const styles = StyleSheet.create({
-  historySection: { gap: spacing.sm, marginTop: spacing.lg },
-  historyTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  historyToggle: { alignItems: 'center', paddingVertical: spacing.sm },
-  historyToggleText: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '700',
-  },
   root: { flex: 1, backgroundColor: colors.bg },
   celebrationLayer: {
     ...StyleSheet.absoluteFillObject,

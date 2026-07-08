@@ -1055,6 +1055,8 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rsvpNudgeSent: g.rsvpNudgeSent ?? false,
       arrivals: g.arrivals ?? null,
       cancellations: g.cancellations ?? null,
+      adminRemovals: g.adminRemovals ?? null,
+      adminRemovedBy: g.adminRemovedBy ?? null,
       joinedAt: g.joinedAt ?? null,
       pinnedMessage:
         typeof g.pinnedMessage === 'string' && g.pinnedMessage.length > 0
@@ -1280,6 +1282,8 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       arrivals: readArrivals(d.arrivals),
       cancellations: readCancellations(d.cancellations),
       // readCancellations is a generic uid→positive-ms map reader; reuse it.
+      adminRemovals: readCancellations(d.adminRemovals),
+      adminRemovedBy: readUidMap(d.adminRemovedBy),
       joinedAt: readCancellations(d.joinedAt),
       pinnedMessage:
         typeof d.pinnedMessage === 'string' && d.pinnedMessage.length > 0
@@ -1415,6 +1419,16 @@ function readCancellations(v: unknown): Record<string, number> | undefined {
     // Defensive: only accept positive ms timestamps. Drop garbage so a
     // single bad entry can't blow up the discipline snapshot.
     if (typeof val === 'number' && val > 0) out[k] = val;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+// Generic uid→uid map reader (e.g. adminRemovedBy: removed-uid → remover-uid).
+function readUidMap(v: unknown): Record<string, string> | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'string' && val.length > 0) out[k] = val;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }

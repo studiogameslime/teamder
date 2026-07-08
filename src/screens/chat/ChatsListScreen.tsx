@@ -2,8 +2,8 @@
 // access to: their communities + the games they're registered in. Tapping
 // a row opens that chat.
 //
-// Phase 1: sorted communities-then-games. Recency sorting + unread badges
-// arrive in phase 2 once the per-user chat index exists.
+// Rows (communities + games + DMs) are sorted purely by recency — the chat
+// with the most recent message is first; unread badges show per row.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -199,15 +199,19 @@ export function ChatsListScreen() {
     ...myGames.map((g) => toRow('game', g.id, g.title)),
     ...dmRows,
   ].sort((a, b) => {
-    // Group order (communities → games → DMs) so a freshly-joined community
-    // with no messages isn't buried under stale/old DMs; recency sorts WITHIN
-    // each group, unread rises to the top of its group.
-    const rank = (k: Row['kind']) => (k === 'community' ? 0 : k === 'game' ? 1 : 2);
-    if (rank(a.kind) !== rank(b.kind)) return rank(a.kind) - rank(b.kind);
+    // Pure recency across ALL chat kinds: the chat with the most recent
+    // message is first (user request — the old communities→games→DMs grouping
+    // buried a fresh DM under week-old community chats). Chats with no messages
+    // yet (sortAt 0) sink to the bottom.
+    if (b.sortAt !== a.sortAt) return b.sortAt - a.sortAt;
+    // Stable, readable tie-break for the no-activity tail: unread first, then
+    // communities → games → DMs, then title.
     if ((b.unread > 0 ? 1 : 0) !== (a.unread > 0 ? 1 : 0)) {
       return (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0);
     }
-    return b.sortAt - a.sortAt;
+    const rank = (k: Row['kind']) => (k === 'community' ? 0 : k === 'game' ? 1 : 2);
+    if (rank(a.kind) !== rank(b.kind)) return rank(a.kind) - rank(b.kind);
+    return (a.title || '').localeCompare(b.title || '', 'he');
   });
 
   const open = (row: Row) => {

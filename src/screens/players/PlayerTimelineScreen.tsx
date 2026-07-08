@@ -78,6 +78,8 @@ export function PlayerTimelineScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [events, setEvents] = useState<CommunityPlayerEvent[] | null>(null);
   const [displayName, setDisplayName] = useState(name ?? '');
+  // Name of whoever approved this member's join (from the join-request audit).
+  const [approverName, setApproverName] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -91,6 +93,15 @@ export function PlayerTimelineScreen() {
         const u = await userService.getUserById(userId).catch(() => null);
         if (u) setDisplayName(u.name ?? '');
       }
+      // Resolve who approved the join → shown on the "joined" milestone.
+      groupService
+        .getMemberApprover(groupId, userId)
+        .then(async (a) => {
+          if (!a) return setApproverName(null);
+          const u = await userService.getUserById(a.by).catch(() => null);
+          setApproverName(u?.name ?? null);
+        })
+        .catch(() => setApproverName(null));
     } catch (err) {
       logError('playerTimelineLoad', err, { groupId, userId });
       setEvents([]);
@@ -317,6 +328,11 @@ export function PlayerTimelineScreen() {
             <Text style={styles.title} numberOfLines={1}>
               {isAdminEvent ? he.timelineBecameAdmin : he.timelineJoinedCommunity}
             </Text>
+            {!isAdminEvent && approverName ? (
+              <Text style={styles.detail} numberOfLines={1}>
+                {he.timelineApprovedBy(approverName)}
+              </Text>
+            ) : null}
           </View>
         </View>
       </View>

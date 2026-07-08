@@ -28,9 +28,13 @@ import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
+import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
 import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
 import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
+import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { PromoteOrphanScreen } from '@/screens/games/PromoteOrphanScreen';
 import { MapScreen, type MapScreenParams } from '@/screens/map/MapScreen';
@@ -91,11 +95,21 @@ export type GameStackParamList = {
     readOnly?: boolean;
   };
   PlayerCard: { userId: string; groupId?: string };
+  /** Admin-only per-community player timeline — reachable from
+   *  CommunityPlayers (opened via the community-link icon). */
+  PlayerTimeline: { userId: string; groupId: string; name?: string };
   /** Reachable from MatchDetails' community-link icon. Same component
-   *  as in CommunitiesStack — instances are per-stack. */
+   *  as in CommunitiesStack — instances are per-stack. The full set of
+   *  screens CommunityDetails links to is duplicated below so that drilling
+   *  from a community opened in THIS stack stays in-stack (a route missing
+   *  here makes navigate() silently no-op — that's the bug where "רשימת
+   *  השחקנים" did nothing when the club was opened from the Games tab). */
   CommunityDetails: { groupId: string };
+  CommunityEdit: { groupId: string };
+  CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
+  AdminApproval: undefined;
   /** Reachable from MatchDetails' overflow menu. Pushed in-stack so
    *  back returns to the match. */
   History: undefined;
@@ -132,9 +146,13 @@ export function GameStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
+      <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
+      <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="PromoteOrphan" component={PromoteOrphanScreen} />
     </Stack.Navigator>

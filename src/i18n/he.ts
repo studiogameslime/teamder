@@ -414,6 +414,7 @@ export const he = {
   timelineEventJerseys: 'לקח גופיות הביתה',
   // Membership milestones synthesized from group.joinedAt / group.adminSince.
   timelineJoinedCommunity: 'הצטרף למועדון',
+  timelineApprovedBy: (name: string) => `אושר ע״י ${name}`,
   timelineBecameAdmin: 'מונה למנהל',
   // Manual "נהל ציוד" mark removal — the admin cleared the holder mark.
   timelineEventBallReturned: 'החזיר את הכדור',
@@ -690,6 +691,17 @@ export const he = {
   createGameWaitlistTimeoutHint:
     'כמה דקות יש לשחקן שקיבל את המקום לאשר, לפני שההצעה עוברת להבא בתור.',
   createGameNotes: 'הערות (לא חובה)',
+  // Section headers that split the create-game wizard + create-community form
+  // into labeled groups (bold title + hairline rule).
+  wizardSectionDetails: 'פרטי המשחק',
+  wizardSectionFormat: 'פורמט המשחק',
+  wizardSectionDurationRules: 'משך וחוקים',
+  wizardSectionCharacteristics: 'מאפייני משחק',
+  wizardSectionAvailability: 'זמינות משחק',
+  groupSectionIdentity: 'פרטי המועדון',
+  groupSectionLocation: 'מיקום ויצירת קשר',
+  groupSectionAccess: 'הצטרפות והרשאות',
+  groupSectionRating: 'דירוג וכרטיסים',
   createGameBringBall: 'מישהו צריך להביא כדור',
   createGameBringShirts: 'מישהו צריך להביא גופיות',
   createGameSubmit: 'יצירת משחק',
@@ -2108,6 +2120,17 @@ export const he = {
   matchPlayersCancelledTag: 'ביטל',
   matchPlayersCancelledLateTag: 'ביטול מאוחר',
   matchPlayersCancelledAgo: (text: string) => `ביטל ${text}`,
+  // Players an admin removed via "הסר שחקן" (distinct from a self-cancel —
+  // these never count against the player's discipline record).
+  matchPlayersSectionRemoved: 'הוסרו ע״י מנהל',
+  matchPlayersRemovedTag: 'הוסר',
+  matchPlayersSelfRemovedTag: 'עזב',
+  matchPlayersRemovedAgo: (text: string) => `הוסר ${text}`,
+  // With the remover's name ("הוסר ע״י יוסי לפני שעה").
+  matchPlayersRemovedByAgo: (name: string, text: string) =>
+    `הוסר ע״י ${name} ${text}`,
+  // Admin removed themselves ("הסיר את עצמו לפני שעה").
+  matchPlayersSelfRemovedAgo: (text: string) => `הסיר את עצמו ${text}`,
   pairStatsTitle: (name: string) => `אתה ו${name}`,
   // Order matters — registration happens before attendance, so the
   // labels read more naturally in Hebrew when "נרשמתם" is the first
@@ -2159,7 +2182,11 @@ export const he = {
   communityStatsStreakValue: (n: number) => `${n} ערבים`,
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
-  communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי גולים',
+  communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניקוד',
+  // Tapping the (i) next to the title explains the scoring + tie-breaks.
+  communityChampInfoTitle: 'איך מחושב הדירוג?',
+  communityChampInfoBody:
+    'הטבלה ממוינת לפי ניקוד: גול שווה 2 נקודות, בישול שווה נקודה אחת. אם הניקוד שווה, השוויון נשבר לפי מספר הניצחונות; ואם גם הניצחונות שווים — לפי מספר ההופעות.',
   communityChampTotalGoals: 'סך הגולים',
   communityChampTotalRounds: 'משחקונים',
   // Per-game championship (shown once the game is finished).

@@ -55,8 +55,8 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.onFillerInterestCreated = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.removeRetroGoal = exports.addRetroGoal = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = void 0;
+exports.onAvailabilityUpdated = exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.removeRetroGoal = exports.addRetroGoal = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -539,6 +539,16 @@ function buildMessage(type, payload) {
                 title: 'נפתח לך מקום במשחק!',
                 body: `מישהו ביטל ב${gameTitle} — אתה רשום כעת.`,
             };
+        case 'guestPromoted': {
+            // → the player who ADDED the guest (guests have no account to notify).
+            const gName = payload.guestName || 'האורח שלך';
+            return {
+                title: 'האורח שלך נכנס להרכב!',
+                body: when
+                    ? `${gName} עלה מרשימת ההמתנה להרכב ב${gameTitle} (${when}).`
+                    : `${gName} עלה מרשימת ההמתנה להרכב ב${gameTitle}.`,
+            };
+        }
         case 'spotOffered':
             // Confirmation-required variant of spotOpened. The user is the
             // head of the waitlist and a slot just opened — they have to
@@ -662,12 +672,31 @@ function buildMessage(type, payload) {
                     body: `שחקן מחק את חשבונו והוסר מהמשחקים: ${list}.`,
                 };
             }
+            // Name the canceller in the body (organiser request — the generic
+            // "שחקן ביטל" wasn't actionable). Prefer the aggregated distinct-name
+            // list (arrayUnion, so already deduped); fall back to the single name,
+            // and only to the generic "שחקן" when no name was captured.
+            const names = Array.isArray(payload.cancellingUserNames)
+                ? payload.cancellingUserNames.filter((s) => typeof s === 'string' && s.length > 0)
+                : [];
+            const singleName = typeof payload.cancellingUserName === 'string' &&
+                payload.cancellingUserName.length > 0
+                ? payload.cancellingUserName
+                : '';
+            const count = typeof payload.count === 'number' ? payload.count : 1;
+            const plural = names.length >= 2 || count > 1;
+            const who = names.length >= 2
+                ? names.length === 2
+                    ? `${names[0]} ו-${names[1]}`
+                    : `${names.slice(0, 2).join(', ')} ועוד ${names.length - 2}`
+                : names[0] || singleName || 'שחקן';
+            const verb = plural ? 'ביטלו' : 'ביטל';
             const promoted = typeof payload.promotedUserId === 'string';
             return {
-                title: 'שחקן ביטל השתתפות',
+                title: plural ? 'שחקנים ביטלו השתתפות' : 'שחקן ביטל השתתפות',
                 body: promoted
-                    ? `שחקן ביטל ב${gameTitle} — שחקן מרשימת ההמתנה אוּשר במקומו.`
-                    : `שחקן ביטל ב${gameTitle}. כדאי לחפש מחליף.`,
+                    ? `${who} ${verb} ב${gameTitle} — שחקן מרשימת ההמתנה אוּשר במקומו.`
+                    : `${who} ${verb} ב${gameTitle}. כדאי לחפש מחליף.`,
             };
         }
         case 'growthMilestone': {
@@ -1478,52 +1507,68 @@ exports.onNotificationCreated = (0, firestore_1.onDocumentCreated)('notification
         },
     });
 });
-// ─── Scheduled: 1h-before reminders ────────────────────────────────────
+// ─── Game reminder — EXACTLY 1h before kickoff ─────────────────────────
+// Primary path: a precise Cloud Task fires at startsAt−60min (enqueued in
+// enqueueGameMoments). The cron below is a SAFETY NET only — it never fires
+// earlier than ~1h before, so it can't produce the old "1h07m early" reminder.
+const REMINDER_LEAD_MS = 60 * 60 * 1000;
+// Send the 1h reminder for a single game, with the reminderSent latch. Shared
+// by the precise task and the safety-net cron. Returns true if it dispatched.
+async function sendGameReminderForGame(gameId, opts) {
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        return false;
+    const g = snap.data();
+    if (g.reminderSent)
+        return false;
+    if (g.status && g.status !== 'open' && g.status !== 'locked')
+        return false;
+    if (!g.players || g.players.length === 0)
+        return false;
+    // Precise-task path: only fire if we're actually ~1h before the CURRENT
+    // kickoff. Guards against a stale task whose game was rescheduled after the
+    // task was enqueued (Cloud Tasks can't be cancelled) — the new time's task
+    // will fire correctly instead. The cron safety net skips this check.
+    if (opts?.enforceLead) {
+        const sa = typeof g.startsAt === 'number' ? g.startsAt : 0;
+        if (Math.abs(sa - REMINDER_LEAD_MS - Date.now()) > 6 * 60 * 1000) {
+            return false;
+        }
+    }
+    // Notify FIRST, then flip the latch — so a failed notify leaves the flag
+    // unset and the caller/next tick retries; createNotificationOnce dedupes.
+    await createNotificationOnce({
+        type: 'gameReminder',
+        recipientId: gameId, // fan-out marker → g.players
+        payload: { gameId, gameTitle: g.title || 'המשחק', startsAt: g.startsAt },
+    });
+    await ref.update({ reminderSent: true });
+    return true;
+}
 async function runSendGameReminders() {
-    // Look for games starting in [now+50, now+70] minutes that haven't
-    // had a reminder dispatched yet. The 20-minute window covers slack
-    // around our 15-minute cadence — a game is found in exactly one run.
+    // SAFETY NET: catch unreminded games starting within the next 59 minutes —
+    // i.e. games whose precise T-60 task never fired (task failure) or that were
+    // CREATED less than an hour before kickoff (no time to schedule the task).
+    // Upper bound < 60min guarantees the cron never fires a reminder EARLIER than
+    // an hour before, so the precise task owns the exact-1h case.
     const now = Date.now();
-    const lower = now + 50 * 60 * 1000;
-    const upper = now + 70 * 60 * 1000;
+    const upper = now + 59 * 60 * 1000;
     const snap = await db
         .collection('games')
-        .where('startsAt', '>=', lower)
+        .where('startsAt', '>=', now)
         .where('startsAt', '<', upper)
         .get();
     if (snap.empty) {
         console.log('[sendGameReminders] no candidate games');
         return;
     }
-    const ops = [];
-    for (const doc of snap.docs) {
-        const g = doc.data();
-        if (g.reminderSent)
-            continue;
-        if (g.status && g.status !== 'open' && g.status !== 'locked')
-            continue;
-        if (!g.players || g.players.length === 0)
-            continue;
-        // Notify FIRST, then flip reminderSent — sequentially, so the latch is set
-        // ONLY after a successful notify (a failed notify leaves the flag unset and
-        // the next tick retries; createNotificationOnce dedupes so no double-push).
-        ops.push((async () => {
-            await createNotificationOnce({
-                type: 'gameReminder',
-                recipientId: doc.id, // fan-out marker
-                payload: {
-                    gameId: doc.id,
-                    gameTitle: g.title || 'המשחק',
-                    startsAt: g.startsAt,
-                },
-            });
-            await doc.ref.update({ reminderSent: true });
-        })());
-    }
-    // allSettled: one game's failure must not abandon the rest of this tick.
+    const ops = snap.docs
+        .filter((doc) => doc.data().reminderSent !== true)
+        .map((doc) => sendGameReminderForGame(doc.id));
     const results = await Promise.allSettled(ops);
-    const ok = results.filter((r) => r.status === 'fulfilled').length;
-    console.log(`[sendGameReminders] dispatched ${ok}/${ops.length} reminder(s)`);
+    const ok = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+    console.log(`[sendGameReminders] safety-net dispatched ${ok} reminder(s)`);
 }
 // ─── Scheduled: 5h-before "did you forget to RSVP?" nudge ───────────────
 /**
@@ -1803,6 +1848,13 @@ exports.scheduledGameMomentTask = (0, tasks_1.onTaskDispatched)({
             const r = await flipPublicGameOnce(gameId);
             console.log(`[scheduledGameMomentTask] publicOpen ${gameId} → ${r}`);
         }
+        else if (moment === 'reminder1h') {
+            // Fires at exactly startsAt−60min. The helper re-checks status /
+            // players / the reminderSent latch, so a cancelled or emptied game
+            // (or one already reminded by the safety-net cron) sends nothing.
+            const r = await sendGameReminderForGame(gameId, { enforceLead: true });
+            console.log(`[scheduledGameMomentTask] reminder1h ${gameId} → ${r}`);
+        }
         else {
             console.warn(`[scheduledGameMomentTask] unknown moment '${moment}'`);
         }
@@ -1845,6 +1897,17 @@ async function enqueueGameMoments(gameId, before, after) {
         pub < horizon &&
         pub !== before?.publicOpenAt) {
         ops.push({ moment: 'publicOpen', at: pub });
+    }
+    // reminder1h — fire the "game starts in an hour" reminder at EXACTLY
+    // startsAt−60min. Only when that instant is still in the future (a game
+    // created <1h before kickoff falls to the safety-net cron) and within the
+    // task horizon, and only when the kickoff time itself is new/changed.
+    const sa = after.startsAt;
+    if (typeof sa === 'number' &&
+        sa - REMINDER_LEAD_MS > now + 1000 &&
+        sa - REMINDER_LEAD_MS < horizon &&
+        sa !== before?.startsAt) {
+        ops.push({ moment: 'reminder1h', at: sa - REMINDER_LEAD_MS });
     }
     if (ops.length === 0)
         return;
@@ -2261,6 +2324,54 @@ function israelOffsetMs(epoch) {
     return asUtc - epoch;
 }
 /**
+ * Asia/Jerusalem wall-clock parts for an instant. The Functions runtime clock
+ * is UTC, so raw Date#getHours()/getDay() are 2–3h off Israel time — use this
+ * whenever we bucket an epoch into a local day / hour-window.
+ */
+const IL_WEEKDAY = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+};
+function israelParts(epoch) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem',
+        hourCycle: 'h23',
+        weekday: 'short',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+    })
+        .formatToParts(new Date(epoch))
+        .map((x) => [x.type, x.value]));
+    return {
+        year: +p.year,
+        month: +p.month,
+        day: +p.day,
+        hour: +p.hour,
+        weekday: IL_WEEKDAY[p.weekday] ?? 0,
+    };
+}
+/** Epoch of Asia/Jerusalem local midnight for the calendar date containing
+ *  `epoch` (DST-safe). */
+function israelMidnight(epoch) {
+    const p = israelParts(epoch);
+    const utcMid = Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0);
+    // utcMid's Israel wall time is 02:00–03:00 (midnight + offset), which on the
+    // spring-forward day sits AFTER the 02:00 transition — so sampling the offset
+    // at utcMid would use the post-transition (+3) offset and land an hour into
+    // the previous date. Refine once: re-sample the offset at the first estimate,
+    // which is at ~local midnight, giving the correct offset for both DST days.
+    let E = utcMid - israelOffsetMs(utcMid);
+    E = utcMid - israelOffsetMs(E);
+    return E;
+}
+/**
  * Advance an instant by one week while preserving its Asia/Jerusalem WALL
  * time. A flat `+WEEK_MS` would silently move a 20:00 fixture to 21:00 (spring)
  * or 19:00 (autumn) across a DST boundary; here we correct by the offset delta
@@ -2332,10 +2443,41 @@ async function runCloneRecurringGames() {
         // Scheduled auto-teams time shifts +7d like the others; keep autoTeamsMethod
         // (copied via spread). The GENERATED outputs/latches are cleared below so
         // next week re-generates fresh instead of inheriting last week's teams.
-        if (nextAutoTeams !== undefined)
+        //
+        // BUT `autoTeamsAt` is CONSUMED — `runDueAutoTeamsAt` deletes it the moment
+        // the split generates (~1h before kickoff), which is BEFORE this clone runs
+        // (3h AFTER kickoff). So for any recurring game that actually generated its
+        // teams, `g.autoTeamsAt` is already gone here and the shift above yields
+        // undefined — silently dropping the schedule for every future week (the
+        // admin picks "auto teams 1h before" once and it evaporates after week 1).
+        // Reconstruct it from the SAME lead-before-kickoff: `autoTeamsMethod`
+        // survives generation (only `autoTeamsAt` is deleted), so its presence means
+        // the game opted in; `autoTeamsGeneratedAt` records when it fired, giving the
+        // original lead (startsAt − generatedAt) to re-apply against next kickoff.
+        const gExtra = g;
+        if (nextAutoTeams !== undefined) {
             next.autoTeamsAt = nextAutoTeams;
-        else
+        }
+        else if (gExtra.autoTeamsMethod) {
+            // Opted into scheduled teams, but autoTeamsAt was consumed. Re-derive the
+            // lead from when it generated; fall back to the configured minutes-before
+            // (or 60') if that's missing.
+            const genAt = gExtra.autoTeamsGeneratedAt;
+            const leadMs = typeof genAt === 'number' && genAt > 0 && genAt < g.startsAt
+                ? g.startsAt - genAt
+                : (gExtra.autoTeamGenerationMinutesBeforeStart ?? 60) * 60 * 1000;
+            const reAutoTeams = nextStartsAt - leadMs;
+            // Only if it lands in the future and before next kickoff (sanity).
+            if (reAutoTeams > now && reAutoTeams < nextStartsAt) {
+                next.autoTeamsAt = reAutoTeams;
+            }
+            else {
+                delete next.autoTeamsAt;
+            }
+        }
+        else {
             delete next.autoTeamsAt;
+        }
         // Fresh roster + per-instance transient state.
         next.players = [];
         next.waitlist = [];
@@ -3368,6 +3510,35 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         catch (err) {
             console.error('[onGameRosterChanged] spotOffered push failed', event.params.gameId, err);
         }
+    }
+    // ── Guest promoted from the waitlist → notify the player who ADDED them ──
+    // Guests have no account to push, so when a waitlisted guest becomes active
+    // (admin "להרכב", or a freed seat), the adder gets the heads-up. Gated on the
+    // waitlisted:true→false transition per guest; createNotificationOnce dedupes.
+    try {
+        const beforeGuests = (before?.guests ?? []);
+        const afterGuests = (after.guests ?? []);
+        const wasWaitlisted = new Map(beforeGuests.map((g) => [g.id, g.waitlisted === true]));
+        for (const g of afterGuests) {
+            if (g.id &&
+                g.addedBy &&
+                wasWaitlisted.get(g.id) === true &&
+                g.waitlisted !== true) {
+                await createNotificationOnce({
+                    type: 'guestPromoted',
+                    recipientId: g.addedBy,
+                    payload: {
+                        gameId: event.params.gameId,
+                        title: after.title ?? '',
+                        startsAt: after.startsAt,
+                        guestName: g.name ?? '',
+                    },
+                });
+            }
+        }
+    }
+    catch (err) {
+        console.error('[onGameRosterChanged] guestPromoted push failed', event.params.gameId, err);
     }
     // ── Server-owned waitlist promotion + team-prune on roster shrink ──────
     // A self-cancel writes as the cancelling user, whose Firestore rule permits
@@ -6577,9 +6748,35 @@ const FILLER_WINDOW_EARLIEST_HOURS = 3;
 const FILLER_WINDOW_LATEST_HOURS = 12;
 /** Max candidates pushed per game per matcher run. */
 const FILLER_PUSH_LIMIT_PER_GAME = 10;
+/** Default availability radius (km) when a user hasn't set one. Shared by the
+ *  count (availabilityCounts) and the pulse so both apply the SAME geo test. */
+const DEFAULT_AVAIL_RADIUS_KM = 25;
 /** Latch on the "no candidates" fallback push so we don't spam the
  *  admin every 30 minutes. */
 const FILLER_NO_CANDIDATES_COOLDOWN_MS = 6 * FILLER_HOUR_MS;
+// Shared, module-level cache of the opted-in candidate pool. The pool is
+// IDENTICAL for every caller (only the per-caller radius filter differs) and
+// is read by three hot paths: the availabilityCounts callable (home screen),
+// every pulse batch (every 2 min per active game), and the 15-min sweep.
+// Re-reading the whole `acceptsFillerPush==true` collection on each would be a
+// severe read-cost regression on this branch. A warm Cloud Functions instance
+// reuses this cache across invocations, collapsing the dominant scan to at
+// most once per TTL per instance. Staleness ≤ TTL is fine — a freshly opted-in
+// user simply isn't counted/invited for a couple of minutes.
+const CANDIDATE_POOL_TTL_MS = 3 * 60 * 1000;
+let candidatePoolCache = null;
+async function getFillerCandidatePool() {
+    const now = Date.now();
+    if (candidatePoolCache && now - candidatePoolCache.at < CANDIDATE_POOL_TTL_MS) {
+        return candidatePoolCache.docs;
+    }
+    const docs = (await db
+        .collection('users')
+        .where('availability.acceptsFillerPush', '==', true)
+        .get()).docs;
+    candidatePoolCache = { at: now, docs };
+    return docs;
+}
 const TRUST_WINDOW_MS = 90 * FILLER_DAY_MS;
 const TRUST_MIN_GAMES = 3;
 const TRUST_SOFT_PENALTY = 3;
@@ -6806,15 +7003,19 @@ async function runFindFillerCandidates() {
         // distance to candidates — fall back to a name-equality match
         // so the user still gets some coverage.
         const gameCoords = await getCityCoords(city);
+        // Declared-availability keys (Asia/Jerusalem) — only push to candidates who
+        // marked this weekday + window free, matching the pulse + the home count so
+        // we don't spam people about slots they never chose.
+        const gameIlSweep = typeof game.startsAt === 'number' ? israelParts(game.startsAt) : null;
+        const gameWeekdaySweep = gameIlSweep?.weekday;
+        const gameWindowSweep = gameIlSweep ? hourToAvailWindow(gameIlSweep.hour) : null;
+        const sweepTodayKey = fillerDayKey(now);
         // Candidate query: opted-in users only — loaded once per run and reused
         // across all shortage games (see candidateDocs above). The pool is small
         // (only users who toggled on `acceptsFillerPush`), so filtering by distance
         // in code is cheaper than a geo index for the MVP.
         if (!candidateDocs) {
-            candidateDocs = (await db
-                .collection('users')
-                .where('availability.acceptsFillerPush', '==', true)
-                .get()).docs;
+            candidateDocs = await getFillerCandidatePool();
         }
         // Exclude users already in the community or game.
         let memberSet = new Set();
@@ -6859,13 +7060,31 @@ async function runFindFillerCandidates() {
             //     before geocoding has populated, and unknown cities.
             const userData = userDoc.data();
             const av = userData.availability ?? {};
+            // Declared-availability match (empty arrays = "any"), same as the pulse.
+            const pdaysS = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+            if (gameWeekdaySweep !== undefined &&
+                pdaysS.length > 0 &&
+                !pdaysS.includes(gameWeekdaySweep)) {
+                continue;
+            }
+            const ptimesS = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+            if (gameWindowSweep &&
+                ptimesS.length > 0 &&
+                !ptimesS.includes(gameWindowSweep)) {
+                continue;
+            }
+            // Best-effort daily-cap pre-filter (authoritative reservation is the txn
+            // below) — avoids a transaction for obviously-capped candidates.
+            const usedTodayS = av.fillerPushDay === sweepTodayKey ? av.fillerPushCount ?? 0 : 0;
+            if (usedTodayS >= FILLER_DAILY_CAP)
+                continue;
             const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
             if (!userCity)
                 continue;
             const radiusKm = typeof av.availabilityRadiusKm === 'number' &&
                 av.availabilityRadiusKm > 0
                 ? av.availabilityRadiusKm
-                : 20;
+                : DEFAULT_AVAIL_RADIUS_KM;
             let withinRange = false;
             if (gameCoords &&
                 typeof av.homeCityLat === 'number' &&
@@ -6883,6 +7102,12 @@ async function runFindFillerCandidates() {
             // (Trust filtering removed — candidates are matched purely by
             // availability + geography now. Trust is still computed
             // elsewhere but no longer gates the filler pool.)
+            // Respect the per-user daily cap, shared atomically with the pulse
+            // engine so a player never receives more than FILLER_DAILY_CAP filler
+            // pushes across BOTH matchers in a day.
+            const reserved = await reserveFillerPush(uid, fillerDayKey(now));
+            if (!reserved)
+                continue;
             // Dispatch the opportunity notification. Recipient = uid,
             // single-recipient delivery via the existing
             // onNotificationCreated pipeline.
@@ -6931,6 +7156,377 @@ async function runFindFillerCandidates() {
     }
     console.log(`[findFillerCandidates] scanned ${snap.size} games, processed ${processed} shortage games, pushed ${pushed} opportunities, ${fallbackPushed} fallback admin pushes`);
 }
+// ─── Pulse-invite engine (on-demand, accelerated filler matcher) ───────
+//
+// When a game is created (or its roster drops) short-handed AND within the
+// recruitment window, we fire batches of `fillerOpportunity` pushes to
+// nearby available players — PULSE_BATCH at a time, every PULSE_INTERVAL,
+// until the game FILLS, the candidate pool is EXHAUSTED, or kickoff is
+// within PULSE_STOP_BEFORE. Each batch is a self-rescheduling Cloud Task.
+//
+// This COMPLEMENTS the 15-minute `runFindFillerCandidates` sweep (which
+// only covers the 3–12h window and pushes slowly): the pulse also covers
+// imminent (<3h) games — exactly the "quick game for tonight" case the
+// home availability calendar creates — and delivers invites far faster.
+// The two share `fillerPushHistory`, so no user is ever double-pushed, and
+// the sweep remains the safety net if the pulse stops early.
+// Master switch for the on-demand pulse engine. Default OFF so deploying the
+// code does NOT start pushing to real users on prod — the existing 15-min sweep
+// keeps working unchanged. Flip to true (and redeploy) to activate the fast
+// pulse once the availability feature ships to clients.
+const PULSE_ENGINE_ENABLED = false;
+const PULSE_BATCH = 10;
+const PULSE_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes between batches
+const PULSE_STOP_BEFORE_MS = 30 * 60 * 1000; // stop pulsing 30 min pre-kickoff
+const PULSE_MAX_LEAD_MS = FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS; // 12h
+const FILLER_DAILY_CAP = 3; // max filler pushes a player receives per calendar day
+// Local YYYYMMDD key (server timezone) for the per-user daily push cap.
+function fillerDayKey(ms) {
+    const d = new Date(ms);
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+}
+// (Invites are sent in RANDOM order — the shared `shuffleInPlace` helper
+// above — so no candidate is systematically favoured across pulses.)
+// Run ONE pulse batch for a single game. Returns a reschedule delay when
+// the game should be pulsed again, or null when pulsing must stop (full /
+// exhausted / out of window / terminal).
+// Atomically reserve one daily filler-push slot for a recipient. Returns true
+// if the reservation succeeded (recipient was under FILLER_DAILY_CAP for today
+// and the counter was incremented), false if already capped or on txn error
+// (fail-closed — never over-push). The transaction serialises overlapping
+// pulse batches so the cap holds under concurrency.
+async function reserveFillerPush(uid, todayKey) {
+    const uref = db.collection('users').doc(uid);
+    try {
+        return await db.runTransaction(async (tx) => {
+            const s = await tx.get(uref);
+            const av = (s.data()?.availability ?? {});
+            // Re-check opt-in on the FRESH doc — the candidate pool is cached up to a
+            // few minutes, so a user who just toggled filler pushes off must not be
+            // pushed on stale data.
+            if (av.acceptsFillerPush !== true)
+                return false;
+            const used = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
+            if (used >= FILLER_DAILY_CAP)
+                return false;
+            tx.set(uref, { availability: { fillerPushDay: todayKey, fillerPushCount: used + 1 } }, { merge: true });
+            return true;
+        });
+    }
+    catch (err) {
+        console.error('[reserveFillerPush] txn failed', uid, err);
+        return false;
+    }
+}
+async function runFillerPulseBatch(gameId) {
+    const now = Date.now();
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        return null;
+    const game = snap.data();
+    // Stop conditions — re-checked every batch so a game that filled or
+    // moved past the window between pulses is dropped immediately.
+    if (game.acceptsFillers !== true)
+        return null;
+    if (game.status !== 'open')
+        return null;
+    const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
+    if (!startsAt)
+        return null;
+    const lead = startsAt - now;
+    if (lead <= PULSE_STOP_BEFORE_MS)
+        return null; // too close to kickoff
+    if (lead > PULSE_MAX_LEAD_MS)
+        return null; // too far out — sweep handles it
+    const players = game.players ?? [];
+    const maxPlayers = game.maxPlayers ?? 0;
+    if (maxPlayers <= 0)
+        return null;
+    if (players.length >= maxPlayers)
+        return null; // FULL → stop
+    const city = typeof game.city === 'string' ? game.city.trim() : '';
+    if (!city)
+        return null;
+    const gameCoords = await getCityCoords(city);
+    // The game's own weekday + window — we only invite players who declared
+    // they're free THEN, so the invite population matches the home-calendar
+    // count (and we don't spam people about slots they never marked). Computed in
+    // Asia/Jerusalem (the runtime clock is UTC, 2–3h off) so the window matches
+    // the client, which set startsAt from the device's local wall clock.
+    const gameIl = israelParts(startsAt);
+    const gameWeekday = gameIl.weekday;
+    const gameWindow = hourToAvailWindow(gameIl.hour);
+    // Opted-in candidate pool — shared, cached snapshot (see getFillerCandidatePool).
+    const candidateDocs = await getFillerCandidatePool();
+    // Exclude community members and anyone already tied to the game.
+    let memberSet = new Set();
+    if (game.groupId) {
+        const gSnap = await db.collection('groups').doc(game.groupId).get();
+        if (gSnap.exists) {
+            const grp = gSnap.data();
+            memberSet = new Set([
+                ...(grp.playerIds ?? []),
+                ...(grp.adminIds ?? []),
+                ...(grp.pendingPlayerIds ?? []),
+            ]);
+        }
+    }
+    const inGame = new Set([
+        ...(game.players ?? []),
+        ...(game.waitlist ?? []),
+        ...(game.pending ?? []),
+    ]);
+    const alreadyPushed = game.fillerPushHistory ?? {};
+    const todayKey = fillerDayKey(now);
+    // Build the eligible pool (geo + declared-availability match + not-member +
+    // not-in-game + not-already-pushed + best-effort under daily cap), in RANDOM
+    // order, capped at PULSE_BATCH. The daily cap is enforced AUTHORITATIVELY at
+    // push time via a transaction (reserveFillerPush); the check here is only a
+    // best-effort pre-filter off the cached snapshot to avoid needless txns.
+    const eligibleUids = [];
+    const pool = candidateDocs.slice();
+    shuffleInPlace(pool);
+    for (const userDoc of pool) {
+        if (eligibleUids.length >= PULSE_BATCH)
+            break;
+        const uid = userDoc.id;
+        if (memberSet.has(uid))
+            continue;
+        if (inGame.has(uid))
+            continue;
+        if (alreadyPushed[uid])
+            continue;
+        const userData = userDoc.data();
+        const av = userData.availability ?? {};
+        // Declared-availability match — only invite players who marked THIS
+        // weekday and window free (empty arrays = "any", mirroring the count).
+        const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+        if (pdays.length > 0 && !pdays.includes(gameWeekday))
+            continue;
+        const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+        if (ptimes.length > 0 && !ptimes.includes(gameWindow))
+            continue;
+        // Best-effort daily-cap pre-filter (authoritative check is in the txn).
+        const usedToday = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
+        if (usedToday >= FILLER_DAILY_CAP)
+            continue;
+        const userCity = av.homeCity ?? av.preferredCity ?? av.cities?.[0];
+        if (!userCity)
+            continue;
+        const radiusKm = typeof av.availabilityRadiusKm === 'number' && av.availabilityRadiusKm > 0
+            ? av.availabilityRadiusKm
+            : DEFAULT_AVAIL_RADIUS_KM;
+        let withinRange = false;
+        if (gameCoords &&
+            typeof av.homeCityLat === 'number' &&
+            typeof av.homeCityLng === 'number') {
+            withinRange =
+                haversineKm({ lat: av.homeCityLat, lng: av.homeCityLng }, gameCoords) <=
+                    radiusKm;
+        }
+        else {
+            withinRange = normaliseCityKey(userCity) === normaliseCityKey(city);
+        }
+        if (!withinRange)
+            continue;
+        eligibleUids.push(uid);
+    }
+    // Pool exhausted for now → stop. The scheduled sweep is the safety net
+    // if new candidates opt in or move into range later.
+    if (eligibleUids.length === 0)
+        return null;
+    const newlyPushed = {};
+    for (const uid of eligibleUids) {
+        // Reserve a daily-cap slot ATOMICALLY. Overlapping batches (or a
+        // re-delivered task) can't push the same recipient past FILLER_DAILY_CAP
+        // because the read-check-increment runs inside one transaction. On a full
+        // cap or a txn error, reserve() returns false and we skip the push.
+        const reserved = await reserveFillerPush(uid, todayKey);
+        if (!reserved)
+            continue;
+        await createNotificationOnce({
+            type: 'fillerOpportunity',
+            recipientId: uid,
+            payload: {
+                gameId,
+                groupId: game.groupId,
+                gameTitle: game.title,
+                startsAt: game.startsAt,
+                city,
+                shortBy: maxPlayers - players.length,
+            },
+        });
+        newlyPushed[uid] = now;
+    }
+    // Every eligible candidate was capped (or reservation failed) → nothing was
+    // pushed. Stop rather than reschedule forever on an un-pushable pool.
+    if (Object.keys(newlyPushed).length === 0)
+        return null;
+    // Persist dedup history + grant the pushed users read access to the game
+    // (same as the sweep — the games read rule honours invitedUserIds so the
+    // push always reaches the "הגש מועמדות" CTA).
+    const pushedUids = Object.keys(newlyPushed);
+    await ref.set({
+        fillerPushHistory: { ...alreadyPushed, ...newlyPushed },
+        invitedUserIds: admin.firestore.FieldValue.arrayUnion(...pushedUids),
+        updatedAt: now,
+    }, { merge: true });
+    // We pushed at least one — schedule another batch. The next run re-checks
+    // all stop conditions, so a filled / exhausted / out-of-window game halts
+    // on its own.
+    return { rescheduleInMs: PULSE_INTERVAL_MS };
+}
+// Cloud Task: run a pulse batch, then self-reschedule until done.
+exports.fillerPulseTask = (0, tasks_1.onTaskDispatched)({
+    retryConfig: { maxAttempts: 3, minBackoffSeconds: 30 },
+    rateLimits: { maxConcurrentDispatches: 6 },
+}, async (req) => {
+    const gameId = req.data?.gameId;
+    if (!gameId)
+        return;
+    // No PULSE_ENGINE_ENABLED gate here — the flag only controls the AUTOMATIC
+    // on-creation pulse (maybeStartFillerPulse). A chain that's already running
+    // (auto, once enabled, OR a manual admin "send to all") should complete.
+    // NOTE: we deliberately do NOT swallow errors here — a throw lets
+    // onTaskDispatched retry per retryConfig instead of silently killing the
+    // self-rescheduling chain. runFillerPulseBatch already catches its own
+    // per-recipient txn errors, so only genuinely transient failures propagate.
+    const res = await runFillerPulseBatch(gameId);
+    if (res?.rescheduleInMs) {
+        await (0, functions_1.getFunctions)()
+            .taskQueue('fillerPulseTask')
+            .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + res.rescheduleInMs) });
+    }
+    else {
+        // Chain finished (full / exhausted / out-of-window / terminal) → drop the
+        // create-once marker so fillerPulseChains doesn't grow unbounded.
+        try {
+            await db.collection('fillerPulseChains').doc(gameId).delete();
+        }
+        catch {
+            /* best-effort cleanup */
+        }
+    }
+});
+// Kick off a pulse for a freshly-created game when it wants fillers and is
+// imminent enough. Called from onGameCreatedAlert. Games created further
+// than PULSE_MAX_LEAD_MS out are left to the scheduled sweep, which picks
+// them up once they enter the 3–12h window.
+async function maybeStartFillerPulse(gameId, g) {
+    if (!PULSE_ENGINE_ENABLED)
+        return; // master switch — off on prod until enabled
+    if (g.acceptsFillers !== true)
+        return;
+    if (g.status && g.status !== 'open')
+        return;
+    const startsAt = typeof g.startsAt === 'number' ? g.startsAt : 0;
+    if (!startsAt)
+        return;
+    const lead = startsAt - Date.now();
+    if (lead <= PULSE_STOP_BEFORE_MS || lead > PULSE_MAX_LEAD_MS)
+        return;
+    const players = g.players ?? [];
+    const maxPlayers = g.maxPlayers ?? 0;
+    if (maxPlayers <= 0 || players.length >= maxPlayers)
+        return;
+    // Create-once marker: the creation trigger is at-least-once, so a duplicate
+    // delivery must NOT fork a second (permanent, self-rescheduling) pulse
+    // chain. `.create()` throws ALREADY_EXISTS if a chain is already running.
+    try {
+        await db
+            .collection('fillerPulseChains')
+            .doc(gameId)
+            .create({ startedAt: Date.now() });
+    }
+    catch {
+        return; // a chain already exists for this game
+    }
+    try {
+        await (0, functions_1.getFunctions)()
+            .taskQueue('fillerPulseTask')
+            // Small delay lets the creation transaction settle before the first read.
+            .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 15 * 1000) });
+    }
+    catch (err) {
+        console.error('[maybeStartFillerPulse] enqueue failed', gameId, err);
+        // Roll back the marker so the chain isn't permanently blocked — the sweep
+        // (or a later trigger) can still start it.
+        try {
+            await db.collection('fillerPulseChains').doc(gameId).delete();
+        }
+        catch {
+            /* best-effort */
+        }
+    }
+}
+// Manual "send to everyone available, in pulses" — an admin triggers the pulse
+// engine for a game on demand (from the game's invite screen). Unlike the
+// automatic on-creation pulse (maybeStartFillerPulse, gated by
+// PULSE_ENGINE_ENABLED), this is an explicit admin action, so it always runs.
+// Returns a structured result the client maps to a friendly message.
+exports.startGameFillerPulse = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const gameId = request.data?.gameId;
+    if (!gameId)
+        throw new https_1.HttpsError('invalid-argument', 'gameId required');
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        throw new https_1.HttpsError('not-found', 'game not found');
+    const game = snap.data();
+    // Authorize: game creator OR a community admin.
+    let isAdmin = game.createdBy === uid;
+    if (!isAdmin && game.groupId) {
+        const grp = (await db.collection('groups').doc(game.groupId).get()).data();
+        isAdmin = (grp?.adminIds ?? []).includes(uid);
+    }
+    if (!isAdmin)
+        throw new https_1.HttpsError('permission-denied', 'admins only');
+    // Preconditions → structured reasons (client shows a friendly message).
+    if (game.status && game.status !== 'open')
+        return { started: false, reason: 'GAME_NOT_OPEN' };
+    if (!game.city)
+        return { started: false, reason: 'NO_CITY' };
+    const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
+    const lead = startsAt - Date.now();
+    if (!startsAt || lead <= PULSE_STOP_BEFORE_MS)
+        return { started: false, reason: 'TOO_LATE' };
+    if (lead > PULSE_MAX_LEAD_MS)
+        return { started: false, reason: 'TOO_EARLY' };
+    const players = game.players ?? [];
+    const maxPlayers = game.maxPlayers ?? 0;
+    if (maxPlayers > 0 && players.length >= maxPlayers)
+        return { started: false, reason: 'GAME_FULL' };
+    // Make sure the engine will accept fillers for this game.
+    if (game.acceptsFillers !== true) {
+        await ref.set({ acceptsFillers: true, updatedAt: Date.now() }, { merge: true });
+    }
+    // Create-once marker + enqueue the first batch. If a chain is already
+    // running (auto or a prior manual tap), report that instead of forking.
+    try {
+        await db
+            .collection('fillerPulseChains')
+            .doc(gameId)
+            .create({ startedAt: Date.now(), manual: true });
+    }
+    catch {
+        return { started: true, alreadyRunning: true };
+    }
+    try {
+        await (0, functions_1.getFunctions)()
+            .taskQueue('fillerPulseTask')
+            .enqueue({ gameId }, { scheduleTime: new Date(Date.now() + 2000) });
+    }
+    catch (err) {
+        console.error('[startGameFillerPulse] enqueue failed', gameId, err);
+        await db.collection('fillerPulseChains').doc(gameId).delete().catch(() => undefined);
+        throw new https_1.HttpsError('internal', 'could not start');
+    }
+    return { started: true };
+});
 // ─── Scheduled: admin shortage warning (T-2h) ──────────────────────────
 //
 // Fires once per game at roughly 2 hours before kickoff, when the
@@ -7068,6 +7664,132 @@ exports.onFillerInterestCreated = (0, firestore_1.onDocumentCreated)('games/{gam
 // are CF-level (rules can't validate "caller is admin of the game's
 // community" on a sub-collection write that doesn't touch the
 // game doc).
+// ── availabilityCounts — powers the home "פנויים לשחק לידך" calendar ─────────
+// For today + the next 6 days, count how many opted-in players are available in
+// each time-window WITHIN THE CALLER'S radius and NOT already registered to a
+// game in that window. Counts only — no identities leave the server (privacy).
+// Reuses the same acceptsFillerPush pool + haversine as the filler matcher.
+const AVAIL_WINDOWS = ['morning', 'noon', 'evening'];
+function hourToAvailWindow(hour) {
+    if (hour >= 7 && hour < 12)
+        return 'morning'; // 07:00–11:59
+    if (hour >= 12 && hour < 18)
+        return 'noon'; // 12:00–17:59
+    return 'evening'; // 18:00–06:59 (also absorbs the small hours)
+}
+exports.availabilityCounts = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    // Caller's home + radius. No coords → the client shows the "set location"
+    // prompt instead of an empty grid.
+    const meSnap = await db.collection('users').doc(uid).get();
+    const me = (meSnap.data()?.availability ?? {});
+    const radiusKm = typeof me.availabilityRadiusKm === 'number' && me.availabilityRadiusKm > 0
+        ? me.availabilityRadiusKm
+        : DEFAULT_AVAIL_RADIUS_KM;
+    // The caller's own city — threaded into the quick-game prefill so a game
+    // opened from the calendar has a city, without which the pulse engine
+    // (which geocodes game.city) would invite nobody.
+    const viewerCity = (me.homeCity ?? me.preferredCity ?? me.cities?.[0] ?? '').trim() || null;
+    if (typeof me.homeCityLat !== 'number' || typeof me.homeCityLng !== 'number') {
+        return { radiusKm, hasLocation: false, viewerCity, days: [] };
+    }
+    const myLoc = { lat: me.homeCityLat, lng: me.homeCityLng };
+    // Build today..+6 at Asia/Jerusalem local midnight (the runtime clock is
+    // UTC, 2–3h off, so raw setHours(0) would give the wrong day boundary). Each
+    // weekday appears exactly once in a 7-day span → weekday → dayIndex is clean.
+    const nowMs = Date.now();
+    const todayMidnight = israelMidnight(nowMs);
+    const days = Array.from({ length: 7 }, (_, i) => {
+        // Snap each day to its true Israel midnight — a +i*24h guess can drift an
+        // hour across a DST boundary, so re-derive the local date for the guess.
+        const dateMs = israelMidnight(todayMidnight + i * 86400000 + 3600000);
+        return {
+            dateMs,
+            weekday: israelParts(dateMs).weekday,
+            isToday: i === 0,
+            windows: { morning: 0, noon: 0, evening: 0 },
+        };
+    });
+    const weekdayToIndex = new Map();
+    days.forEach((d, i) => weekdayToIndex.set(d.weekday, i));
+    // Who's ALREADY registered to a game in each (dayIndex, window) — so a
+    // committed player isn't counted as free. Keyed `${dayIndex}:${window}`.
+    const rangeStart = days[0].dateMs;
+    const rangeEnd = days[6].dateMs + 26 * 3600000; // past the last local day
+    const gamesSnap = await db
+        .collection('games')
+        .where('startsAt', '>=', rangeStart)
+        .where('startsAt', '<', rangeEnd)
+        .get();
+    const registered = new Map();
+    for (const g of gamesSnap.docs) {
+        const gd = g.data();
+        if (gd.status === 'cancelled' || gd.status === 'finished')
+            continue;
+        const sa = gd.startsAt;
+        if (typeof sa !== 'number')
+            continue;
+        const gil = israelParts(sa);
+        const di = weekdayToIndex.get(gil.weekday);
+        if (di === undefined)
+            continue;
+        const dayStart = days[di].dateMs;
+        const dayEnd = di < 6 ? days[di + 1].dateMs : rangeEnd;
+        if (sa < dayStart || sa >= dayEnd)
+            continue; // exact local date
+        const key = `${di}:${hourToAvailWindow(gil.hour)}`;
+        let set = registered.get(key);
+        if (!set)
+            registered.set(key, (set = new Set()));
+        for (const p of [...(gd.players ?? []), ...(gd.participantIds ?? [])]) {
+            set.add(p);
+        }
+    }
+    // Candidate pool — opted-in users (matches who'd actually be pushable),
+    // from the shared cached snapshot so the home screen doesn't re-scan the
+    // whole collection on every load.
+    const usersDocs = await getFillerCandidatePool();
+    for (const u of usersDocs) {
+        if (u.id === uid)
+            continue;
+        const a = (u.data().availability ?? {});
+        if (typeof a.homeCityLat !== 'number' || typeof a.homeCityLng !== 'number') {
+            continue;
+        }
+        // Filter by the VIEWER's radius — per the spec the calendar shows "players
+        // available within MY radius", which also keeps the "רדיוס X ק״מ" chip
+        // honest (it labels exactly this threshold). This is a deliberately
+        // different lens from the pulse (which invites players whose OWN radius
+        // reaches the game): the count is an approximate "who's around me" signal,
+        // not a precise invite-count.
+        if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
+            continue;
+        }
+        // Empty preferredDays / preferredTimes = "available any day / any window"
+        // — mirrors the pulse engine's candidate filter so the count reflects the
+        // same population that would actually be invited.
+        const pdaysRaw = Array.isArray(a.preferredDays) ? a.preferredDays : [];
+        const pdays = pdaysRaw.length > 0 ? pdaysRaw : days.map((d) => d.weekday);
+        const ptimes = Array.isArray(a.preferredTimes) && a.preferredTimes.length > 0
+            ? a.preferredTimes
+            : [...AVAIL_WINDOWS];
+        for (const wd of pdays) {
+            const di = weekdayToIndex.get(wd);
+            if (di === undefined)
+                continue;
+            for (const w of ptimes) {
+                if (!AVAIL_WINDOWS.includes(w))
+                    continue;
+                if (registered.get(`${di}:${w}`)?.has(u.id))
+                    continue; // already playing
+                days[di].windows[w] += 1;
+            }
+        }
+    }
+    return { radiusKm, hasLocation: true, viewerCity, days };
+});
 exports.submitFillerInterest = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const auth = request.auth;
     if (!auth?.uid) {
@@ -7567,6 +8289,9 @@ exports.onGameCreatedAlert = (0, firestore_1.onDocumentCreated)('games/{id}', as
         return;
     const who = g.createdBy ? await adminAlertUserName(g.createdBy) : 'מישהו';
     await (0, adminPush_1.pushToAdmins)('gameCreate', 'Teamder', `${who} יצר משחק חדש ⚽`, { id: event.params.id });
+    // If the new game wants fillers and is imminent, start the pulse-invite
+    // engine so nearby available players get invited right away.
+    await maybeStartFillerPulse(event.params.id, g);
 });
 exports.onGameJoinedAlert = (0, firestore_1.onDocumentUpdated)('games/{id}', async (event) => {
     const before = event.data?.before.data();

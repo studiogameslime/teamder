@@ -23,6 +23,7 @@ import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
@@ -30,8 +31,11 @@ import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
+import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
+import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
 import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
 import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistoryScreen';
 import { ReferralsListScreen } from '@/screens/profile/ReferralsListScreen';
@@ -45,6 +49,9 @@ export type ProfileStackParamList = {
   NotificationsSettings: undefined;
   BlockedUsers: undefined;
   PlayerCard: { userId: string; groupId?: string };
+  /** Admin-only per-community player timeline — reachable from
+   *  CommunityPlayers (opened via a MatchDetails community-link). */
+  PlayerTimeline: { userId: string; groupId: string; name?: string };
   AdminApproval: undefined;
   History: undefined;
   Achievements: undefined;
@@ -61,10 +68,31 @@ export type ProfileStackParamList = {
   AddMembers: { gameId: string };
   GameEdit: { gameId: string };
   LiveMatch: { gameId: string };
-  // Reachable from MatchDetails' community-link icon.
+  // Reachable from MatchDetails' community-link icon. The full set of
+  // screens CommunityDetails links to is duplicated here so drilling from a
+  // community opened in THIS stack stays in-stack — a route missing here
+  // makes navigate() silently no-op (the "רשימת השחקנים does nothing" bug
+  // when the club is opened from the Profile tab).
   CommunityDetails: { groupId: string };
+  CommunityEdit: { groupId: string };
+  CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
   CommunityHistory: { groupId: string };
+  // CommunityDetails' "צור מחזור שבועי" opens the game-create wizard.
+  GameCreate:
+    | undefined
+    | {
+        groupId?: string;
+        startsAt?: number;
+        format?: import('@/types').GameFormat;
+        numberOfTeams?: number;
+        recurring?: boolean;
+        quick?: boolean;
+        prefillDateMs?: number;
+        prefillWindow?: import('@/types').TimeBucket;
+        prefillCity?: string;
+        inviteAvailable?: boolean;
+      };
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -88,6 +116,7 @@ export function ProfileStack() {
         component={NotificationsSettingsScreen}
       />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
@@ -102,8 +131,11 @@ export function ProfileStack() {
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
+      <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />
       <Stack.Screen name="CommunityHistory" component={CommunityHistoryScreen} />
+      <Stack.Screen name="GameCreate" component={GameCreateScreen} />
     </Stack.Navigator>
   );
 }

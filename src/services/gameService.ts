@@ -1109,7 +1109,7 @@ export const gameService = {
           }
         }
       }
-      const players = rankChampionshipRows(statRows, 'goals', !!(memberIds && memberIds.length));
+      const players = rankChampionshipRows(statRows, 'points', !!(memberIds && memberIds.length));
       const totalGoals = players.reduce((a, s) => a + s.goals, 0);
       const cs = csSnap.exists() ? (csSnap.data() as { rounds?: number; tiedRounds?: number }) : null;
       const totalRounds = cs?.rounds ?? 0;
@@ -4269,6 +4269,9 @@ export const gameService = {
         const { [userId]: _drop, ...rest } = g.cancellations;
         g.cancellations = Object.keys(rest).length > 0 ? rest : undefined;
       }
+      // Stamp the current registration time (mirrors the live tx path) — a
+      // re-join overwrites any stale timestamp from a cancelled registration.
+      g.joinedAt = { ...(g.joinedAt ?? {}), [userId]: Date.now() };
       g.updatedAt = Date.now();
       // Silent-failure guard: the join must have placed the user in
       // exactly one bucket. None → no-op join, surface it.
@@ -4451,7 +4454,13 @@ export const gameService = {
         data.joinedAt && typeof data.joinedAt === 'object'
           ? { ...(data.joinedAt as Record<string, number>) }
           : {};
-      if (joinedMap[userId] === undefined) joinedMap[userId] = Date.now();
+      // Always (re)stamp the CURRENT registration time. Reaching here means a
+      // genuine (re)join — the idempotency guard above already returned for
+      // anyone still registered — so a leftover timestamp from a
+      // since-cancelled registration is stale and must be overwritten (user
+      // report: after cancel + re-join the roster still showed the FIRST join
+      // date instead of the new one).
+      joinedMap[userId] = Date.now();
       updates.joinedAt = joinedMap;
       // Clear any prior cancellation timestamp on re-join — see the
       // mock branch comment for the rationale (stale timestamps
@@ -5220,6 +5229,13 @@ export const gameService = {
       g.participantIds = Array.from(
         new Set([...g.players, ...g.waitlist, ...(g.pending ?? [])]),
       );
+      // Record the admin removal (separate from `cancellations` — see the
+      // Game.adminRemovals doc) so the removed player surfaces in the
+      // "הוסרו ע״י מנהל" section instead of silently vanishing.
+      if (wasInPlayers) {
+        g.adminRemovals = { ...(g.adminRemovals ?? {}), [targetUserId]: Date.now() };
+        g.adminRemovedBy = { ...(g.adminRemovedBy ?? {}), [targetUserId]: callerId };
+      }
       g.liveMatch = stripFromLive(g.liveMatch);
       g.updatedAt = Date.now();
       if (offeredUid) {
@@ -5312,6 +5328,23 @@ export const gameService = {
           ...pruneMemberFromTeams(data, targetUserId),
           updatedAt: Date.now(),
         };
+        // Record the admin removal (separate from `cancellations` — see the
+        // Game.adminRemovals doc) so the removed player surfaces in the
+        // "הוסרו ע״י מנהל" section instead of silently vanishing. Only stamp
+        // when they were an actual player; a waitlist/pending prune isn't a
+        // removal worth surfacing.
+        if (wasInPlayers) {
+          const existingRemovals =
+            data.adminRemovals && typeof data.adminRemovals === 'object'
+              ? (data.adminRemovals as Record<string, number>)
+              : {};
+          update.adminRemovals = { ...existingRemovals, [targetUserId]: Date.now() };
+          const existingRemovedBy =
+            data.adminRemovedBy && typeof data.adminRemovedBy === 'object'
+              ? (data.adminRemovedBy as Record<string, string>)
+              : {};
+          update.adminRemovedBy = { ...existingRemovedBy, [targetUserId]: callerId };
+        }
         const offerChanged =
           JSON.stringify(data.pendingPromotion ?? null) !==
           JSON.stringify(pendingPromotion ?? null);

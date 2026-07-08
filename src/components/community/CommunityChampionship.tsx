@@ -6,11 +6,12 @@
 // and the shared ChampionshipTable. Renders nothing until there's data.
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { gameService } from '@/services';
+import { appAlert } from '@/components/AppDialog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { ChampionshipRow } from '@/utils/championship';
@@ -51,7 +52,23 @@ export function CommunityChampionship({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{he.communityChampTitle}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{he.communityChampTitle}</Text>
+        <Pressable
+          onPress={() =>
+            appAlert(he.communityChampInfoTitle, he.communityChampInfoBody)
+          }
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={he.communityChampInfoTitle}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color={colors.textMuted}
+          />
+        </Pressable>
+      </View>
       <Text style={styles.note}>{he.communityChampNote}</Text>
 
       <View style={styles.totals}>
@@ -74,6 +91,12 @@ export function CommunityChampionship({
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, marginTop: spacing.md },
+  titleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 6,
+  },
   title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: -2 },
   totals: { flexDirection: 'row', gap: spacing.sm },

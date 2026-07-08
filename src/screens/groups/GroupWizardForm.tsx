@@ -34,6 +34,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
+import { FormSectionHeader } from '@/components/FormSectionHeader';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { InfoTip } from '@/components/InfoTip';
 import { StepIndicator } from '@/components/StepIndicator';
@@ -248,6 +249,10 @@ export function GroupWizardForm({
           <View style={styles.body}>
             {step === 1 ? (
               <>
+                {/* Identity first (name → description → rules), then the
+                    location/contact block — grouped under headers so the form
+                    reads as labeled sections. */}
+                <FormSectionHeader title={he.groupSectionIdentity} first />
                 <InputField
                   label={he.groupCreateName}
                   value={values.name}
@@ -256,6 +261,29 @@ export function GroupWizardForm({
                   required
                   maxLength={80}
                 />
+
+                <InputField
+                  label={he.createGroupDescription}
+                  value={values.description}
+                  onChangeText={(v) => set('description', v)}
+                  multiline
+                  maxLength={500}
+                />
+
+                {/* Code-of-conduct (rich text: **bold** + bullets). Stored
+                    as the raw markdown-lite string; RichRulesText renders
+                    it on the community details screen. */}
+                <RichRulesInput
+                  label={he.communityDetailsRules}
+                  value={values.rules}
+                  // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
+                  // block can't fail submission with "rules too long" (report nfn19l).
+                  maxLength={2000}
+                  onChangeText={(v) => set('rules', v.slice(0, 2000))}
+                  placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
+                />
+
+                <FormSectionHeader title={he.groupSectionLocation} />
                 <AutocompleteInput
                   label={he.createGroupCity}
                   required
@@ -280,33 +308,13 @@ export function GroupWizardForm({
                     </Text>
                   ) : null}
                 </View>
-
-                <InputField
-                  label={he.createGroupDescription}
-                  value={values.description}
-                  onChangeText={(v) => set('description', v)}
-                  multiline
-                  maxLength={500}
-                />
-
-                {/* Code-of-conduct (rich text: **bold** + bullets). Stored
-                    as the raw markdown-lite string; RichRulesText renders
-                    it on the community details screen. */}
-                <RichRulesInput
-                  label={he.communityDetailsRules}
-                  value={values.rules}
-                  // Hard-cap at 2000 (the createGroup rule's limit) so a long rules
-                  // block can't fail submission with "rules too long" (report nfn19l).
-                  maxLength={2000}
-                  onChangeText={(v) => set('rules', v.slice(0, 2000))}
-                  placeholder={'לדוגמה:\n- מגיעים בזמן\n- **אסור** לעשן במגרש'}
-                />
               </>
             ) : (
               <>
                 {/* Open-join toggle — membership behaviour (auto-approve vs
                     admin gate). Lives in "מתקדם" alongside the other
                     membership/rating switches. */}
+                <FormSectionHeader title={he.groupSectionAccess} first />
                 <ToggleCard
                   label={he.createGroupIsOpen}
                   info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
@@ -325,6 +333,7 @@ export function GroupWizardForm({
                   placeholder="40"
                 />
 
+                <FormSectionHeader title={he.groupSectionRating} />
                 {/* Internal rating — admins set player skill levels themselves
                     instead of the peer-voting system. The chosen rating is what
                     the community / match-details surfaces display. */}

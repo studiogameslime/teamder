@@ -955,6 +955,34 @@ export const groupService = {
     return g;
   },
 
+  /**
+   * Who approved this member's join into the group — read from the
+   * `groupJoinRequests` audit trail (`decidedBy` on the approved request).
+   * Returns null when there's no record (legacy members, self-joins to an
+   * open community, or mock mode). Queried by `userId` alone (single-field
+   * auto-index) and filtered client-side, so it needs no composite index.
+   */
+  async getMemberApprover(
+    groupId: GroupId,
+    userId: UserId,
+  ): Promise<{ by: UserId; at: number } | null> {
+    if (USE_MOCK_DATA) return null;
+    try {
+      const snap = await getDocs(
+        query(col.joinRequests(), where('userId', '==', userId)),
+      );
+      const r = snap.docs
+        .map((d) => d.data())
+        .find(
+          (x) => x.groupId === groupId && x.status === 'approved' && !!x.decidedBy,
+        );
+      return r && r.decidedBy ? { by: r.decidedBy, at: r.decidedAt ?? 0 } : null;
+    } catch (e) {
+      if (__DEV__) console.warn('[getMemberApprover] failed', e);
+      return null;
+    }
+  },
+
   async rejectMember(groupId: GroupId, userId: UserId): Promise<Group> {
     if (USE_MOCK_DATA) {
       const g = groupsById[groupId];

@@ -34,7 +34,11 @@ export function LiveCountdown({ startsAt }: Props) {
 
   if (!urgent) {
     const rel = relativeKickoff(startsAt, nowMs);
-    if (!rel) return null;
+    // Only show the DURATION forms ("עוד 20 דק׳", "עוד 9 שעות"). The day-word
+    // forms ("מחר", "בעוד יומיים", "בעוד N ימים") duplicate the date row right
+    // above this chip — the hero showed "מחר" twice (user report). Those start
+    // with "בעוד"/"מחר", not "עוד ", so this filters them out cleanly.
+    if (!rel || !rel.startsWith('עוד ')) return null;
     return (
       <View style={styles.calmChip}>
         <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.85)" />

@@ -1554,6 +1554,25 @@ export interface Game {
   cancellations?: Record<UserId, number>;
 
   /**
+   * Per-player admin-removal timestamp (ms epoch), keyed by user id.
+   * Written by `removePlayer` when an organiser/admin kicks a player via
+   * "הסר שחקן" (including an admin removing themselves). Deliberately kept
+   * SEPARATE from `cancellations`: an admin removal is not the player's own
+   * no-show, so it must never feed the discipline / late-cancel snapshot.
+   * Powers the "הוסרו ע״י מנהל" section on the match screen so removed
+   * players don't just silently vanish from the roster. Entries linger on
+   * re-join (the UI filters out anyone currently back in the roster).
+   */
+  adminRemovals?: Record<UserId, number>;
+
+  /**
+   * Companion to `adminRemovals`: maps the removed player's uid → the uid of
+   * the admin who removed them (so the UI can show "הוסר ע״י <name>"). When the
+   * remover equals the removed uid, an admin removed themselves.
+   */
+  adminRemovedBy?: Record<UserId, UserId>;
+
+  /**
    * Map of uid → ms epoch of when each player registered for this game.
    * Written on `joinGameV2` so the admin panel can show an accurate
    * "joined X ago" instead of falling back to the game's creation time.
