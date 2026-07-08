@@ -36,6 +36,20 @@ LogBox.ignoreLogs([
   'googleMobileAds/error-code-no-fill',
 ]);
 
+// A single notification-action tap can be DELIVERED more than once:
+//   • On a cold start, `addNotificationResponseReceivedListener` AND
+//     `getLastNotificationResponseAsync` both surface the same response.
+//   • `getLastNotificationResponseAsync` re-delivers the same "last
+//     response" again every time the response effect remounts.
+// Each delivery re-ran the side-effect (confirm spot / join / cancel) and
+// posted another local confirmation, so users saw "אישרת הגעה — נכנסת
+// למשחק" 2–3 times for one tap (report: "ליעוז קיבל 3 פעמים"). The final
+// state is correct (the writes are idempotent) — only the confirmation
+// push is spammed. Dedupe by source-notification id + action so a given
+// action tap runs its side-effect exactly once per JS context. Module
+// scope (not component state) so it survives effect remounts.
+const handledActionTaps = new Set<string>();
+
 // Foreground notification behavior. Without this, a push that arrives
 // while the user has the app open is delivered silently to the JS
 // side and never shows as a banner. Lazy-required + try/catch so we
@@ -636,6 +650,27 @@ export default function App() {
       // body itself) carry `actionIdentifier === 'expo.modules.notifications.actions.DEFAULT'`
       // — fall through to the navigation flow for those.
       const action = response.actionIdentifier ?? '';
+      // Guard action-button taps against duplicate delivery (see
+      // `handledActionTaps` above). Only the buttons with side-effects are
+      // deduped; a plain body tap (DEFAULT) falls through to navigation,
+      // which is idempotent and safe to re-run. Keyed by the source
+      // notification id + action so the SAME tap replayed via a second
+      // delivery / remount is collapsed, while a genuinely new tap on a
+      // fresh notification still gets through.
+      const SIDE_EFFECT_ACTIONS = [
+        'JOIN_GAME',
+        'CANCEL_GAME',
+        'CONFIRM_SPOT',
+        'PASS_SPOT',
+        'DISMISS_NEW_GAME',
+      ];
+      if (SIDE_EFFECT_ACTIONS.includes(action)) {
+        const tapKey = `${notifId ?? ''}|${action}|${
+          typeof data.gameId === 'string' ? data.gameId : ''
+        }`;
+        if (handledActionTaps.has(tapKey)) return;
+        handledActionTaps.add(tapKey);
+      }
       // For JOIN/CANCEL and SPOT actions: run the side-effect, dismiss
       // the notification, then FALL THROUGH to the navigation block
       // below so the app lands on MatchDetails for the affected game.
