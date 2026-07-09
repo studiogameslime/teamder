@@ -10119,19 +10119,39 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
   // (organic signups just wait out the window).
   let inviterId: string | undefined;
   let campaign: string | undefined;
+  let linkId: string | undefined;
+  let source: string | undefined;
   for (const waitMs of [3000, 5000, 6000]) {
     await new Promise((r) => setTimeout(r, waitMs));
     const d = (await db.collection('users').doc(uid).get()).data();
     const v = d?.invitedBy;
     if (typeof v === 'string' && v && v !== uid) inviterId = v;
-    const acq = d?.acquisition as { campaign?: string } | undefined;
+    const acq = d?.acquisition as
+      | { campaign?: string; linkId?: string; source?: string }
+      | undefined;
     if (acq?.campaign && typeof acq.campaign === 'string') campaign = acq.campaign;
-    if (inviterId || campaign) break;
+    if (acq?.linkId && typeof acq.linkId === 'string') linkId = acq.linkId;
+    if (acq?.source && typeof acq.source === 'string') source = acq.source;
+    if (inviterId || campaign || linkId) break;
   }
 
-  // Build the "via" suffix: a personal referral wins; otherwise a campaign.
+  // Build the "via" suffix. A tracked Pulse link (carries a `linkId`) wins —
+  // show its friendly name ("דרך קישור מגרשי כדורגל") rather than a person,
+  // because these installs came from a distribution link we created, not a
+  // personal invite. Then a personal referral, then a bare campaign/source.
   let via = '';
-  if (inviterId) {
+  if (linkId) {
+    let linkName: string | null = null;
+    try {
+      const link = (await db.collection('adLinks').doc(linkId).get()).data();
+      const n = link?.name;
+      if (typeof n === 'string' && n.trim()) linkName = n.trim();
+    } catch {
+      // ignore — fall back to the source token decoded from the link
+    }
+    if (!linkName && source) linkName = source;
+    via = linkName ? ` · דרך קישור ${linkName}` : ' · דרך קישור';
+  } else if (inviterId) {
     try {
       const inv = (await db.collection('users').doc(inviterId).get()).data();
       const invName =
@@ -10142,6 +10162,8 @@ export const onNewUserJoined = onDocumentCreated('users/{uid}', async (event) =>
     }
   } else if (campaign) {
     via = ` · דרך קמפיין ${campaign}`;
+  } else if (source) {
+    via = ` · דרך קישור ${source}`;
   }
 
   await pushToAdmins(

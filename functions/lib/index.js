@@ -8242,6 +8242,8 @@ exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', asyn
     // (organic signups just wait out the window).
     let inviterId;
     let campaign;
+    let linkId;
+    let source;
     for (const waitMs of [3000, 5000, 6000]) {
         await new Promise((r) => setTimeout(r, waitMs));
         const d = (await db.collection('users').doc(uid).get()).data();
@@ -8251,12 +8253,34 @@ exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', asyn
         const acq = d?.acquisition;
         if (acq?.campaign && typeof acq.campaign === 'string')
             campaign = acq.campaign;
-        if (inviterId || campaign)
+        if (acq?.linkId && typeof acq.linkId === 'string')
+            linkId = acq.linkId;
+        if (acq?.source && typeof acq.source === 'string')
+            source = acq.source;
+        if (inviterId || campaign || linkId)
             break;
     }
-    // Build the "via" suffix: a personal referral wins; otherwise a campaign.
+    // Build the "via" suffix. A tracked Pulse link (carries a `linkId`) wins —
+    // show its friendly name ("דרך קישור מגרשי כדורגל") rather than a person,
+    // because these installs came from a distribution link we created, not a
+    // personal invite. Then a personal referral, then a bare campaign/source.
     let via = '';
-    if (inviterId) {
+    if (linkId) {
+        let linkName = null;
+        try {
+            const link = (await db.collection('adLinks').doc(linkId).get()).data();
+            const n = link?.name;
+            if (typeof n === 'string' && n.trim())
+                linkName = n.trim();
+        }
+        catch {
+            // ignore — fall back to the source token decoded from the link
+        }
+        if (!linkName && source)
+            linkName = source;
+        via = linkName ? ` · דרך קישור ${linkName}` : ' · דרך קישור';
+    }
+    else if (inviterId) {
         try {
             const inv = (await db.collection('users').doc(inviterId).get()).data();
             const invName = inv?.name && inv.name !== 'משתמש שהוסר' ? inv.name : null;
@@ -8268,6 +8292,9 @@ exports.onNewUserJoined = (0, firestore_1.onDocumentCreated)('users/{uid}', asyn
     }
     else if (campaign) {
         via = ` · דרך קמפיין ${campaign}`;
+    }
+    else if (source) {
+        via = ` · דרך קישור ${source}`;
     }
     await (0, adminPush_1.pushToAdmins)('newUser', 'Teamder', `מישהו נרשם לאפליקציה! 🎉 (${name})${via}`, { uid });
 });
