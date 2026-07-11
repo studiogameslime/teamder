@@ -73,7 +73,7 @@ export function ChampionshipTable({
         </View>
         <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGoals}</Text>
         <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColAssists}</Text>
-        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColGames}</Text>
+        <Text numberOfLines={1} style={[styles.stat, styles.headerStat]}>{he.champColMiniGames}</Text>
         <Text numberOfLines={1} style={[styles.stat, styles.headerScore]}>{he.champColScore}</Text>
       </View>
 

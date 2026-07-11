@@ -224,7 +224,10 @@ export function ChatView({
     const text = draft.trim();
     if (!text || !me || sending || sendGuardRef.current) return;
     // Terms gate — must accept the chat rules before posting (store-safety).
-    if (termsAccepted === false) {
+    // Guard on `!== true` (not `=== false`): while the accepted flag is still
+    // loading it is `null`, and `=== false` let a never-accepted user post in
+    // that window. Anything but a definite `true` shows the terms first.
+    if (termsAccepted !== true) {
       setShowTerms(true);
       return;
     }

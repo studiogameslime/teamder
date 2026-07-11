@@ -139,7 +139,11 @@ export function AdminApprovalScreen() {
       );
       toast.info(he.toastMemberRejected);
     } catch (err) {
+      // Was fully swallowed (only a __DEV__ warn) — the admin got no feedback
+      // and the row lingered, so a failed reject looked like it worked.
+      logError('adminReject', err, { groupId: row.group.id, userId: row.user.id });
       if (__DEV__) console.warn('[reject] failed', err);
+      toast.error('הדחייה נכשלה, נסו שוב');
     } finally {
       setBusyKey(null);
     }

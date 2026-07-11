@@ -213,9 +213,14 @@ function inferEntityFromPayload(type, recipientId, payload) {
                 reason: 'friend-request',
             };
         case 'friendRequestAccepted':
+            // Key on the ACCEPTER (payload.fromUserId), not the recipient. Keying on
+            // recipientId collapsed two different people accepting the same user's
+            // requests within the 24h cooldown into one bucket — so the 2nd accepter's
+            // "אישר את בקשתך" push was silently dropped, and it also blocked a
+            // legitimate re-friend of the same pair inside the window.
             return {
                 entityType: 'user',
-                entityId: recipientId,
+                entityId: fromUserId || recipientId,
                 reason: 'friend-accepted',
             };
     }

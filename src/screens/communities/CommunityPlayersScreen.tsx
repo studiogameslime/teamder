@@ -179,7 +179,12 @@ export function CommunityPlayersScreen() {
     const isMe = me?.id === u.id;
     const targetIsCreator = (group?.creatorId ?? group?.adminIds?.[0]) === u.id;
     const canManage = iAmCreator && !isMe;
-    const removable = iAmAdmin && !iAmCreator && !isMe && !targetIsCreator;
+    // A non-creator admin cannot remove a peer admin: the server rejects it
+    // (removeMember's arrayRemove(adminIds) trips the creator-only rule) and
+    // the user just got a permission error. Hide the action for admin targets.
+    const targetIsAdmin = !!group?.adminIds?.includes(u.id);
+    const removable =
+      iAmAdmin && !iAmCreator && !isMe && !targetIsCreator && !targetIsAdmin;
     return [
       { key: 'card', icon: 'person-circle-outline', label: he.playerMenuCard, onPress: () => goToCard(u) },
       ...(iAmAdmin

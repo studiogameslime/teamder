@@ -334,32 +334,33 @@ export const friendsService = {
       }
       return 'none';
     }
-    try {
-      const outSnap = await getDoc(
-        docs.friendRequest(friendRequestId(uid, otherId)),
-      );
-      if (outSnap.exists() && outSnap.data().status === 'pending') return 'outgoing';
-      // They declined my outgoing request → don't let me spam another.
-      if (outSnap.exists() && outSnap.data().status === 'declined') {
-        return 'rejected';
+    // `get()` on a NON-EXISTENT friendRequest returns 'permission-denied'
+    // (the rule reads resource.data, which is null) — that's just "no pending
+    // request", the normal case. Each read gets its OWN try/catch: otherwise a
+    // denial on the OUTGOING read (the common case when only an INCOMING
+    // request exists) would skip the incoming read entirely, making the
+    // 'incoming' state unreachable — so "אשר בקשה" never showed on the player
+    // card and tapping created a duplicate reverse request.
+    const readReq = async (id: string) => {
+      try {
+        return await getDoc(docs.friendRequest(id));
+      } catch (e) {
+        const code = (e as { code?: string })?.code;
+        if (code !== 'permission-denied') {
+          logError('getFriendRelationship', e, { uid, otherId });
+        }
+        if (__DEV__) {
+          console.warn('[friends] getRelationship request read failed', e);
+        }
+        return null;
       }
-      const inSnap = await getDoc(
-        docs.friendRequest(friendRequestId(otherId, uid)),
-      );
-      if (inSnap.exists() && inSnap.data().status === 'pending') return 'incoming';
-    } catch (e) {
-      // `get()` on a NON-EXISTENT friendRequest returns 'permission-denied'
-      // (the rule reads resource.data, which is null) — that's just "no
-      // pending request", the normal case. Treat it silently; only surface a
-      // genuinely unexpected failure.
-      const code = (e as { code?: string })?.code;
-      if (code !== 'permission-denied') {
-        logError('getFriendRelationship', e, { uid, otherId });
-      }
-      if (__DEV__) {
-        console.warn('[friends] getRelationship request read failed', e);
-      }
-    }
+    };
+    const outSnap = await readReq(friendRequestId(uid, otherId));
+    if (outSnap?.exists() && outSnap.data().status === 'pending') return 'outgoing';
+    // They declined my outgoing request → don't let me spam another.
+    if (outSnap?.exists() && outSnap.data().status === 'declined') return 'rejected';
+    const inSnap = await readReq(friendRequestId(otherId, uid));
+    if (inSnap?.exists() && inSnap.data().status === 'pending') return 'incoming';
     return 'none';
   },
 

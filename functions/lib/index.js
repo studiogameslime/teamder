@@ -5069,10 +5069,13 @@ exports.sendGameInvite = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHEC
         throw new https_1.HttpsError('invalid-argument', 'cannot invite yourself');
     }
     // 3) Server-side rate limit. Single transactional read+write so two
-    //    fast invocations can't both pass under the cap.
+    //    fast invocations can't both pass under the cap. The counter lives in
+    //    /serverRateLimits (deny-all from the client) so a malicious client
+    //    cannot reset it the way it could for /rateLimits (same hardening as
+    //    createGroupCallable).
     const limitRef = db
-        .collection('rateLimits')
-        .doc(`${senderUid}_inviteToGame_v2`); // distinct id from client counter
+        .collection('serverRateLimits')
+        .doc(`${senderUid}_inviteToGame`);
     await db.runTransaction(async (tx) => {
         const snap = await tx.get(limitRef);
         const now = Date.now();
@@ -7924,7 +7927,17 @@ exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK
             return;
         }
         // Decide bucket: players if there's room, otherwise waitlist.
-        const goesToPlayers = maxPlayers > 0 && players.length < maxPlayers;
+        // Occupancy must count ACTIVE guests and a live promotion offer — not
+        // just players.length — or approving a filler would over-fill past
+        // maxPlayers when guests/an offer already hold the remaining seats
+        // (audit #19; same fix as adminAddPlayers / reconcileGameJoins).
+        const gameCap = game;
+        const activeGuests = Array.isArray(gameCap.guests)
+            ? gameCap.guests.filter((x) => !x?.waitlisted).length
+            : 0;
+        const offerHeld = gameCap.pendingPromotion?.uid ? 1 : 0;
+        const occupancy = players.length + activeGuests + offerHeld;
+        const goesToPlayers = maxPlayers > 0 && occupancy < maxPlayers;
         const newPlayers = goesToPlayers
             ? [...players, candidateUid]
             : players;

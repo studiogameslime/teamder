@@ -343,11 +343,12 @@ export function inferEntityFromPayload(
         reason: 'friend-request',
       };
     case 'friendRequestAccepted':
-      // Keyed by the recipient (the accepter), who is the "other" party
-      // from the sender's perspective.
+      // Key on the ACCEPTER (payload.fromUserId), not the recipient. Keying on
+      // recipientId collapsed two different accepters of the same user's
+      // requests into one 24h bucket, dropping the 2nd accept push.
       return {
         entityType: 'user',
-        entityId: recipientId,
+        entityId: fromUserId || recipientId,
         reason: 'friend-accepted',
       };
     case 'teamsGenerated':
