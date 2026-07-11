@@ -372,7 +372,14 @@ export function GameWizardForm({
       appAlert(he.error, he.wizardAutoTeamsBeforeKickoff);
       return false;
     }
-    if (values.autoTeamsAt <= Date.now()) {
+    // Only enforce "must be in the future" when the user actually set or moved
+    // the time. An existing game whose scheduled auto-teams moment already
+    // passed (teams were generated) must still be editable for other fields —
+    // this check used to block every edit (e.g. fixing the notes).
+    if (
+      values.autoTeamsAt !== initial.autoTeamsAt &&
+      values.autoTeamsAt <= Date.now()
+    ) {
       appAlert(he.error, he.wizardAutoTeamsInPast);
       return false;
     }

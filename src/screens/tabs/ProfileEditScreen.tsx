@@ -146,9 +146,9 @@ export function ProfileEditScreen() {
   };
 
   const handlePickAvatar = (id: string) => {
-    if (photoUrl) {
-      deleteUserPhoto(user.id);
-    }
+    // Do NOT delete the Storage photo here — if the user then cancels, the
+    // profile doc still points at a now-deleted file and the avatar breaks for
+    // everyone. The old file is cleaned up in `save()` after it succeeds.
     setPhotoUrl(undefined);
     setAvatarId(id);
     logEvent(AnalyticsEvent.AvatarChanged, {
@@ -182,6 +182,12 @@ export function ProfileEditScreen() {
       if (Object.keys(patch).length > 0) {
         await updateProfile(patch);
         if (__DEV__) console.log('[profileEdit] save resolved');
+        // Now that the save succeeded, clean up the old Storage photo if the
+        // user switched away from it (photo → avatar). Deferred to here so a
+        // cancelled edit never leaves a broken avatar. Best-effort.
+        if (user.photoUrl && !photoUrl) {
+          deleteUserPhoto(user.id).catch(() => {});
+        }
         // Explicitly snap local form state to the saved values RIGHT
         // NOW. The local-state-sync useEffect would do this when the
         // store update propagates, but that's an extra render cycle

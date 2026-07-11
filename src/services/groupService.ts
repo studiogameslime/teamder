@@ -16,6 +16,7 @@ import {
   documentId,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -262,8 +263,9 @@ export const groupService = {
       where('normalizedName', '>=', norm),
       where('normalizedName', '<=', norm + '\uf8ff'),
       orderBy('normalizedName'),
-      // Hard cap so a typo doesn't stream the whole collection
-      // (limit() on the query)
+      // Hard cap so a typo doesn't stream the whole collection (the comment
+      // here promised a cap that was never actually applied).
+      limit(30),
     );
     let snap;
     try {
