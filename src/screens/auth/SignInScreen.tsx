@@ -70,7 +70,11 @@ export function SignInScreen() {
       }
       // Map known errors to friendly Hebrew. Log raw error to console.
       if (__DEV__) console.warn('[signIn] failed', err);
-      appAlert(he.error, friendlySignInError(err));
+      // Don't pop an error dialog when the USER cancelled the Google chooser
+      // (matches the Apple path below) — cancelling isn't a failure.
+      if (!cancelled) {
+        appAlert(he.error, friendlySignInError(err));
+      }
     } finally {
       setBusyProvider(null);
     }

@@ -959,8 +959,13 @@ export const groupService = {
    * Who approved this member's join into the group — read from the
    * `groupJoinRequests` audit trail (`decidedBy` on the approved request).
    * Returns null when there's no record (legacy members, self-joins to an
-   * open community, or mock mode). Queried by `userId` alone (single-field
-   * auto-index) and filtered client-side, so it needs no composite index.
+   * open community, or mock mode). Queried by `groupId` (single-field auto-
+   * index) and filtered client-side. Scoping by groupId (not userId) is
+   * REQUIRED: a userId query spans every community the member ever requested,
+   * and if any of those is a group the viewer doesn't admin, Firestore denies
+   * the whole list — so the approver silently never showed for members of
+   * more than one community. All docs here are in ONE group the (admin) viewer
+   * may read.
    */
   async getMemberApprover(
     groupId: GroupId,
@@ -969,12 +974,12 @@ export const groupService = {
     if (USE_MOCK_DATA) return null;
     try {
       const snap = await getDocs(
-        query(col.joinRequests(), where('userId', '==', userId)),
+        query(col.joinRequests(), where('groupId', '==', groupId)),
       );
       const r = snap.docs
         .map((d) => d.data())
         .find(
-          (x) => x.groupId === groupId && x.status === 'approved' && !!x.decidedBy,
+          (x) => x.userId === userId && x.status === 'approved' && !!x.decidedBy,
         );
       return r && r.decidedBy ? { by: r.decidedBy, at: r.decidedAt ?? 0 } : null;
     } catch (e) {

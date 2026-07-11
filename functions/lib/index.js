@@ -7882,6 +7882,9 @@ exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK
     // Run the entire roster mutation inside a transaction so two
     // concurrent admin approvals can't both push the roster past
     // maxPlayers, and the interest doc + game doc stay in sync.
+    // Captured out of the transaction so the push below tells the truth
+    // (was hardcoded to 'players' even when the approve landed on waitlist).
+    let landedInPlayers = false;
     await db.runTransaction(async (tx) => {
         const gameRef = db.collection('games').doc(gameId);
         const interestRef = gameRef
@@ -7938,6 +7941,7 @@ exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK
         const offerHeld = gameCap.pendingPromotion?.uid ? 1 : 0;
         const occupancy = players.length + activeGuests + offerHeld;
         const goesToPlayers = maxPlayers > 0 && occupancy < maxPlayers;
+        landedInPlayers = goesToPlayers;
         const newPlayers = goesToPlayers
             ? [...players, candidateUid]
             : players;
@@ -7974,12 +7978,11 @@ exports.approveFiller = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK
             recipientId: candidateUid,
             payload: {
                 gameId,
-                // The approved-handler in `buildMessage` reads `bucket`
-                // and renders a different body for waitlist vs players.
-                // We fetch the latest interest doc to get the bucket
-                // we just wrote — keeps the push payload truthful even
-                // if the interest moves to waitlist by capacity.
-                bucket: 'players',
+                // The approved-handler in `buildMessage` reads `bucket` and renders
+                // a different body for waitlist vs players — use the ACTUAL bucket
+                // the transaction assigned (was hardcoded 'players', so a filler
+                // approved onto a full game's waitlist got a false "you're in").
+                bucket: landedInPlayers ? 'players' : 'waitlist',
             },
             createdByUid: callerUid,
         });

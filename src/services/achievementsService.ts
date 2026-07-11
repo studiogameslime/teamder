@@ -497,20 +497,23 @@ function diffUnlocks(
   for (const def of ACHIEVEMENTS) {
     const value = counters[def.metric] ?? 0;
     const { current: tierStep } = resolveTier(def, value);
-    if (!tierStep) continue; // nothing reached yet
     const prev = prevById[def.id];
     const prevOrder = prev?.tier ? TIER_META[prev.tier].order : 0;
-    const curOrder = TIER_META[tierStep.tier].order;
-    // Same tier as before → keep its original unlock time. Higher tier (or
-    // brand new) → stamp now and flag it for a celebration.
-    const advanced = curOrder > prevOrder;
-    next.push({
-      id: def.id,
-      tier: tierStep.tier,
-      unlockedAt: advanced ? now : prev?.unlockedAt ?? now,
-    });
-    if (advanced && !isMigration) {
-      newlyUnlocked.push({ def, tier: tierStep.tier, value });
+    const curOrder = tierStep ? TIER_META[tierStep.tier].order : 0;
+    // Achievements are EARNED and NEVER revoked. The source counters are
+    // cumulative (games/goals/teams/referrals only grow), so a derived value
+    // that is LOWER than a previously-unlocked tier can only mean a transient
+    // read failure (offline / token refresh) or a cold-open before data has
+    // hydrated — NOT a real regression. Keep the higher of prev vs. current so
+    // such a blip can never delete a badge from the DB (was a data-loss bug).
+    if (curOrder <= prevOrder) {
+      if (prev?.tier) next.push(prev); // keep the earned badge as-is
+      continue;
+    }
+    // Advanced to a higher tier (or brand new) → stamp now + celebrate.
+    next.push({ id: def.id, tier: tierStep!.tier, unlockedAt: now });
+    if (!isMigration) {
+      newlyUnlocked.push({ def, tier: tierStep!.tier, value });
     }
   }
 
