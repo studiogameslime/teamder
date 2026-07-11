@@ -489,7 +489,14 @@ export const userService = {
       const a = u.availability;
       if (!a) return false;
       if (a.isAvailableForInvites === false) return false;
-      if (!Array.isArray(a.preferredDays) || !a.preferredDays.includes(opts.day as never)) {
+      // Empty/unset preferredDays = "available any day" (matches the backend
+      // filler matcher). Only exclude when the player DID pick days and this
+      // one isn't among them.
+      if (
+        Array.isArray(a.preferredDays) &&
+        a.preferredDays.length > 0 &&
+        !a.preferredDays.includes(opts.day as never)
+      ) {
         return false;
       }
       // ── Location: RADIUS-based (the whole point of `availabilityRadiusKm`).
@@ -517,8 +524,18 @@ export const userService = {
           return false;
         }
       }
-      if (opts.hour && a.timeFrom && a.timeTo) {
-        if (opts.hour < a.timeFrom || opts.hour > a.timeTo) return false;
+      // Time window: honour the player's chosen windows (preferredTimes:
+      // morning/noon/evening). Empty = any time. The legacy timeFrom/timeTo
+      // fields are no longer written by the availability screen, so the old
+      // check never fired — players were offered games outside their window.
+      if (typeof opts.hour === 'number') {
+        const times = Array.isArray(a.preferredTimes) ? a.preferredTimes : [];
+        if (times.length > 0) {
+          const h = opts.hour;
+          const window =
+            h >= 7 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'noon' : 'evening';
+          if (!times.includes(window as never)) return false;
+        }
       }
       return true;
     };

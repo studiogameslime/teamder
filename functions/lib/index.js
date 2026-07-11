@@ -6077,6 +6077,16 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         : null;
     const yellowCardValidityDays = sanitizeValidity(input.yellowCardValidityDays);
     const redCardValidityDays = sanitizeValidity(input.redCardValidityDays);
+    // Location (for the "nearby" discovery radius) + cover image. The client
+    // builds these but they used to be dropped here, so every new community
+    // had no coordinates (radius filter fell back to city-name) and a blank
+    // cover on its discovery card.
+    const geo = input;
+    const validCoord = (v) => typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+    const lat = validCoord(geo.lat);
+    const lng = validCoord(geo.lng);
+    const hasGeo = lat !== undefined && lng !== undefined;
+    const coverImageId = pickShortString(geo.coverImageId, 200, 'coverImageId', false);
     // 3) Generate id + invite code. Server-controlled to prevent
     //    duplicate-code attacks (Audit Finding #2 / Sec #9 followup).
     const groupRef = db.collection('groups').doc();
@@ -6118,6 +6128,12 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         groupDoc.yellowCardValidityDays = yellowCardValidityDays;
     if (redCardValidityDays !== null)
         groupDoc.redCardValidityDays = redCardValidityDays;
+    if (hasGeo) {
+        groupDoc.lat = lat;
+        groupDoc.lng = lng;
+    }
+    if (coverImageId !== undefined)
+        groupDoc.coverImageId = coverImageId;
     const publicDoc = {
         id: groupId,
         name,
@@ -6135,6 +6151,12 @@ exports.createGroupCallable = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP
         publicDoc.contactPhone = contactPhone;
     if (maxMembers !== undefined)
         publicDoc.maxMembers = maxMembers;
+    if (hasGeo) {
+        publicDoc.lat = lat;
+        publicDoc.lng = lng;
+    }
+    if (coverImageId !== undefined)
+        publicDoc.coverImageId = coverImageId;
     // 4) Atomic dual-write of canonical + public projection.
     const batch = db.batch();
     batch.set(groupRef, groupDoc);

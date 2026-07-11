@@ -419,6 +419,11 @@ export const groupService = {
         cardsEnabled: baseGroup.cardsEnabled,
         yellowCardValidityDays: baseGroup.yellowCardValidityDays,
         redCardValidityDays: baseGroup.redCardValidityDays,
+        // Were dropped here → every new community had no coordinates (nearby
+        // radius fell back to city) and a blank discovery-card cover.
+        lat: baseGroup.lat,
+        lng: baseGroup.lng,
+        coverImageId: baseGroup.coverImageId,
       })) as { data?: { ok?: boolean; groupId?: string } };
       groupId = res?.data?.groupId ?? '';
       if (!groupId) {

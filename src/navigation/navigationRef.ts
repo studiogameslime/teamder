@@ -238,8 +238,12 @@ export function navigateForPush(
         return true;
       }
       if (groupId) {
+        // A REJECTED user is NOT a member, so the members-only CommunityDetails
+        // (reads /groups) would be permission-denied → a broken/blank page.
+        // Send them to the public screen (reads /groupsPublic). An APPROVED
+        // user is now a member and gets the full screen.
         nav.navigate('CommunitiesTab', {
-          screen: 'CommunityDetails',
+          screen: type === 'rejected' ? 'CommunityDetailsPublic' : 'CommunityDetails',
           initial: false,
           params: { groupId },
         });
