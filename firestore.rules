@@ -721,6 +721,25 @@ service cloud.firestore {
             // "joined X ago" in the admin panel; client-written, best-effort).
             'joinedAt'
           ]) &&
+          // pendingPromotion is SERVER-managed. A client may only CLEAR its own
+          // offer (null) or leave it unchanged — never SET it. Otherwise a
+          // client could forge pendingPromotion.uid=self and then self-add to
+          // players, bypassing the reconciler, red-card block and capacity.
+          (
+            request.resource.data.get('pendingPromotion', null) == null ||
+            request.resource.data.get('pendingPromotion', null) ==
+              resource.data.get('pendingPromotion', null)
+          ) &&
+          // cancellations / joinedAt are uid-keyed maps; a self-write may only
+          // touch the CALLER'S OWN key (was ungated → a griefer could inject
+          // cancellations[victim] to suppress the victim's reminder, or forge
+          // another player's joinedAt).
+          request.resource.data.get('cancellations', {})
+            .diff(resource.data.get('cancellations', {}))
+            .affectedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.get('joinedAt', {})
+            .diff(resource.data.get('joinedAt', {}))
+            .affectedKeys().hasOnly([request.auth.uid]) &&
           // ── Per-array delta: each may change by at most ±1, and
           //    if it grew, the auth user is the new entry; if it
           //    shrank, the auth user is the missing entry.
@@ -881,6 +900,16 @@ service cloud.firestore {
           request.auth.uid in resource.data.participantIds &&
           request.resource.data.ballBringerIds is list &&
           request.resource.data.ballBringerIds.size() <= 100 &&
+          // A same-size write must be a NO-OP (equal arrays): the ±1 ternaries
+          // below don't fire when the size is unchanged, so without this a
+          // participant could SWAP — drop someone else's flag and add their
+          // own — forging the "brings ball" marker for other people.
+          (
+            request.resource.data.ballBringerIds.size() !=
+              resource.data.get('ballBringerIds', []).size() ||
+            request.resource.data.ballBringerIds ==
+              resource.data.get('ballBringerIds', [])
+          ) &&
           // Delta = ±1, and the moved uid is the caller's own.
           (
             request.resource.data.ballBringerIds.size() ==
