@@ -356,11 +356,14 @@ export const friendsService = {
       }
     };
     const outSnap = await readReq(friendRequestId(uid, otherId));
+    const inSnap = await readReq(friendRequestId(otherId, uid));
     if (outSnap?.exists() && outSnap.data().status === 'pending') return 'outgoing';
+    // A fresh INCOMING request wins over a STALE declined-outgoing one:
+    // otherwise an old 'declined' A→B doc would mask a new B→A request and
+    // 'אשר בקשה' would never show (the incoming state stayed unreachable).
+    if (inSnap?.exists() && inSnap.data().status === 'pending') return 'incoming';
     // They declined my outgoing request → don't let me spam another.
     if (outSnap?.exists() && outSnap.data().status === 'declined') return 'rejected';
-    const inSnap = await readReq(friendRequestId(otherId, uid));
-    if (inSnap?.exists() && inSnap.data().status === 'pending') return 'incoming';
     return 'none';
   },
 

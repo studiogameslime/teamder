@@ -356,7 +356,10 @@ export const userService = {
     avatarId?: string;
     photoUrl?: string;
   }): Promise<User> {
-    const trimmedName = patch.name.trim();
+    // Sanitize here too — this is the PRIMARY path where every new user sets
+    // their name. updateProfile sanitizes on later edits, but onboarding used
+    // to only trim(), letting bidi/zero-width/impersonation chars persist.
+    const trimmedName = sanitizeDisplayString(patch.name);
     if (!trimmedName) throw new Error('completeOnboarding: name is required');
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();

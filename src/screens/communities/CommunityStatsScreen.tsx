@@ -170,7 +170,11 @@ export function CommunityStatsScreen() {
     const tiedRounds = champ?.tiedRounds ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
     const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
-    const topScorer = players[0] ?? null; // already ranked by goals
+    // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
+    // necessarily the top scorer — pick the max-goals player explicitly.
+    const topScorer = players.length
+      ? players.reduce((best, p) => (p.goals > best.goals ? p : best))
+      : null;
     const kingSharePct =
       topScorer && totalGoals > 0 ? Math.round((topScorer.goals / totalGoals) * 100) : 0;
     return {

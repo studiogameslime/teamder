@@ -229,6 +229,10 @@ export function RootNavigator() {
   // declines the permission prompt — push features stay non-blocking.
   useEffect(() => {
     if (!currentUser) return;
+    // Skip guests: an anonymous session shouldn't trigger the OS push-permission
+    // prompt (App Store 5.1.1 friction) and would only register an orphan token
+    // under a throwaway uid. Real push starts after a real sign-up.
+    if (currentUser.isGuest) return;
     notificationsService
       .requestAndRegisterPushToken(currentUser.id)
       .catch((err) => {
