@@ -204,20 +204,29 @@ export const eveningSummaryService = {
 
     try {
       const db = getFirebase().db;
+      // The core reads (game, per-game stat, name) drive the always-present
+      // sections. The phase-2/3/4 reads (roundHistory, physical) are OPTIONAL —
+      // an old game predating them, or a denied/failed read, must degrade to
+      // "no contribution / no physical", never fail or crash the whole summary.
       const [game, statSnap, roundSnap, physSnap, name] = await Promise.all([
-        gameService.getGameById(gameId),
-        getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)),
-        getDocs(collection(db, 'games', gameId, 'roundHistory')),
-        getDoc(doc(db, 'games', gameId, 'physical', uid)),
-        viewerName
+        gameService.getGameById(gameId).catch(() => null),
+        getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)).catch(() => null),
+        getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
+        getDoc(doc(db, 'games', gameId, 'physical', uid)).catch(() => null),
+        (viewerName
           ? Promise.resolve(viewerName)
-          : userService.getUserById(uid).then((u) => u?.name ?? ''),
+          : userService.getUserById(uid).then((u) => u?.name ?? '')
+        ).catch(() => ''),
       ]);
 
-      const row = readStatRow(statSnap.exists() ? statSnap.data() : undefined);
+      const row = readStatRow(
+        statSnap && statSnap.exists() ? statSnap.data() : undefined,
+      );
 
-      // phase 2 — derive from round history
-      const rounds = roundSnap.docs.map((d) => d.data() as RoundHistoryDoc);
+      // phase 2 — derive from round history (empty for old games)
+      const rounds = roundSnap
+        ? roundSnap.docs.map((d) => d.data() as RoundHistoryDoc)
+        : [];
       const rs = reduceRounds(uid, rounds);
 
       // phase 3/4 — the wearable doc (may not exist)
@@ -225,7 +234,7 @@ export const eveningSummaryService = {
       let fun: FunNumbers | null = null;
       let radar: RadarShape | null = null;
       let heatmap: EveningHeatmap | null = null;
-      if (physSnap.exists()) {
+      if (physSnap && physSnap.exists()) {
         const pd = physSnap.data() as PhysicalDoc;
         physical = toPhysical(pd);
         fun = computeFun(pd);

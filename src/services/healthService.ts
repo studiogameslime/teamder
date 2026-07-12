@@ -42,17 +42,15 @@ interface RawSession {
   route?: Array<{ lat: number; lng: number }>;
 }
 
-// Resolve the native health binding WITHOUT a static import (the module may not
-// be present in the current build). Returns null when absent.
+// Resolve the native health binding. The bindings (react-native-health-connect /
+// react-native-health) are NOT installed yet — the physical/heatmap feature is
+// a deferred follow-up (withHealth plugin is de-registered). We must therefore
+// NOT `require()` them: a static require of a missing module is a Metro/Hermes
+// footgun that can hard-crash at runtime (it only bites in real mode — mock
+// short-circuits before this runs, which is why it slipped past emulator QA).
+// Returns null unconditionally until the bindings are actually installed; then
+// restore the guarded require here in the SAME change that adds the deps.
 function nativeHealth(): unknown | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    if (Platform.OS === 'android') return require('react-native-health-connect');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    if (Platform.OS === 'ios') return require('react-native-health');
-  } catch {
-    return null;
-  }
   return null;
 }
 
