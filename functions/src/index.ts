@@ -10701,6 +10701,60 @@ export const commitRoundStats = onCall(
       byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
     }
     const totalGoalsThisRound = Object.values(byScorer).reduce((a, b) => a + b, 0);
+
+    // ── Phase-2 evening-summary data (roundHistory + team goal split) ────────
+    // Credited team goals per side → drives each player's per-evening
+    // contribution% (their goals ÷ their team's goals). The actual mini-game
+    // score (incl. own goals, which credit the OPPONENT) is stored separately
+    // for roundHistory display / GF-GA.
+    const creditedForSide = (side: string[]) =>
+      side.reduce((s, id) => s + (byScorer[id] ?? 0), 0);
+    const creditedA = creditedForSide(A);
+    const creditedB = creditedForSide(B);
+    let scoreA = 0;
+    let scoreB = 0;
+    for (const g of goals ?? []) {
+      if (!g.scorerId || !isReal(g.scorerId) || !onField.has(g.scorerId)) continue;
+      const onA = A.includes(g.scorerId);
+      const onB = B.includes(g.scorerId);
+      if (!onA && !onB) continue;
+      // An own goal credits the OTHER team's score.
+      const forA = g.ownGoal ? onB : onA;
+      if (forA) scoreA++;
+      else scoreB++;
+    }
+    // Build the round-history doc (written AFTER the stats batch commits — see
+    // below). It is deliberately kept OUT of the atomic batch: (a) it would add
+    // an op to a batch that is already near Firestore's 500-write cap for a full
+    // 11-a-side round, and (b) an unbounded goals[] array could push the doc
+    // toward the 1 MiB limit and abort the latched stats batch. The goal log is
+    // length-capped for the same reason. It is a display convenience, not a
+    // stat of record, so a rare write failure loses only summary richness.
+    const roundHistoryDoc =
+      roundId !== undefined && roundId !== null
+        ? {
+            roundId: String(roundId),
+            teamA: A,
+            teamB: B,
+            scoreA,
+            scoreB,
+            winnerSide,
+            goals: (goals ?? [])
+              .filter((g) => g.scorerId && isReal(g.scorerId) && onField.has(g.scorerId))
+              .slice(0, 100)
+              .map((g) => ({
+                scorerId: g.scorerId as string,
+                assisterId:
+                  g.assisterId && isReal(g.assisterId) && onField.has(g.assisterId)
+                    ? g.assisterId
+                    : null,
+                ownGoal: !!g.ownGoal,
+                team: A.includes(g.scorerId as string) ? 'A' : 'B',
+              })),
+            at: now,
+          }
+        : null;
+
     for (const [scorer, n] of Object.entries(byScorer)) {
       batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
       if (groupId)
@@ -10776,9 +10830,21 @@ export const commitRoundStats = onCall(
           { groupId, userId: uid, rounds: inc(1), updatedAt: now },
           { merge: true },
         );
+      // Per-GAME rounds + this player's team goals for/against this round.
+      // teamGoalsFor is the contribution% denominator (player.goals ÷ team.goals
+      // over the evening); teamGoalsAgainst rounds out GF/GA. Folded into the
+      // existing per-game write so it adds no extra Firestore op.
+      const onA = A.includes(uid);
       batch.set(
         db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
-        { gameId, userId: uid, rounds: inc(1), updatedAt: now },
+        {
+          gameId,
+          userId: uid,
+          rounds: inc(1),
+          teamGoalsFor: inc(onA ? creditedA : creditedB),
+          teamGoalsAgainst: inc(onA ? creditedB : creditedA),
+          updatedAt: now,
+        },
         { merge: true },
       );
     }
@@ -10902,7 +10968,152 @@ export const commitRoundStats = onCall(
     sameTeamPairs(B, bWon, aWon);
 
     await batch.commit();
+
+    // Round-history write, OUTSIDE the atomic stats batch (op-count + doc-size
+    // safety). Runs only after the batch commits, so on an idempotent retry the
+    // batch throws ALREADY_EXISTS first and we never reach here — no duplicate.
+    // Best-effort: a failure here loses only summary richness, never a stat.
+    if (roundHistoryDoc) {
+      try {
+        await db
+          .collection('games')
+          .doc(gameId)
+          .collection('roundHistory')
+          .doc(roundHistoryDoc.roundId)
+          .set(roundHistoryDoc);
+      } catch (err) {
+        console.warn('roundHistory write failed', gameId, roundId, err);
+      }
+    }
+
     return { ok: true, scorers: Object.keys(byScorer).length };
+  },
+);
+
+// ── Physical stats (wearables) ───────────────────────────────────────────────
+// A player's own post-game physical metrics + running heatmap, ingested from
+// their watch / Health Connect / HealthKit (NOT the phone's sensors) and stored
+// at games/{gameId}/physical/{uid}. Client rules keep this collection
+// write:false, so this callable is the ONLY write path — it hard-binds the doc
+// id to the CALLER's uid, so nobody can post physical data under someone else's
+// name. All numbers are clamped to sane bounds; heatGrid is length-capped.
+export const saveGamePhysical = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    const { gameId, metrics } = (request.data ?? {}) as {
+      gameId?: string;
+      metrics?: Record<string, unknown>;
+    };
+    if (!gameId || !metrics || typeof metrics !== 'object') {
+      throw new HttpsError('invalid-argument', 'gameId + metrics required');
+    }
+    const snap = await db.collection('games').doc(gameId).get();
+    if (!snap.exists) throw new HttpsError('not-found', 'game not found');
+    const game = snap.data() as Record<string, unknown>;
+    // Only someone who actually played (registered roster) may post metrics.
+    const roster = new Set<string>([
+      ...((game.players as string[] | undefined) ?? []),
+      ...((game.waitlist as string[] | undefined) ?? []),
+    ]);
+    if (!roster.has(uid)) {
+      throw new HttpsError('permission-denied', 'not a participant');
+    }
+
+    // Clamp a numeric field to [0, max] (drops NaN/negatives/absurd values).
+    const num = (v: unknown, max: number): number => {
+      const n = typeof v === 'number' && Number.isFinite(v) ? v : 0;
+      return Math.max(0, Math.min(max, n));
+    };
+    const src = String((metrics as { source?: unknown }).source ?? 'wear');
+    const source = ['wear', 'healthkit', 'healthconnect'].includes(src) ? src : 'wear';
+    const zonesIn = (metrics.hrZones ?? {}) as Record<string, unknown>;
+
+    // Heat grid: bounded rows/cols, values clamped to 0..1, length must match.
+    const rows = Math.max(0, Math.min(40, Math.round(num(metrics.gridRows, 40))));
+    const cols = Math.max(0, Math.min(40, Math.round(num(metrics.gridCols, 40))));
+    const rawGrid = Array.isArray(metrics.heatGrid) ? metrics.heatGrid : [];
+    let heatGrid: number[] = [];
+    if (rows > 0 && cols > 0 && rawGrid.length === rows * cols && rawGrid.length <= 1600) {
+      heatGrid = rawGrid.map((v) => num(v, 1));
+    }
+
+    const doc = {
+      gameId,
+      userId: uid,
+      distanceM: num(metrics.distanceM, 50_000),
+      topSpeedKmh: num(metrics.topSpeedKmh, 45),
+      avgSpeedKmh: num(metrics.avgSpeedKmh, 45),
+      sprints: Math.round(num(metrics.sprints, 500)),
+      steps: Math.round(num(metrics.steps, 100_000)),
+      calories: Math.round(num(metrics.calories, 10_000)),
+      maxHr: Math.round(num(metrics.maxHr, 230)),
+      avgHr: Math.round(num(metrics.avgHr, 230)),
+      effortScore: Math.round(num(metrics.effortScore, 100)),
+      hrZones: {
+        light: Math.round(num(zonesIn.light, 300)),
+        moderate: Math.round(num(zonesIn.moderate, 300)),
+        intense: Math.round(num(zonesIn.intense, 300)),
+        peak: Math.round(num(zonesIn.peak, 300)),
+      },
+      source,
+      ...(heatGrid.length ? { heatGrid, gridRows: rows, gridCols: cols } : {}),
+      updatedAt: Date.now(),
+    };
+    await db
+      .collection('games')
+      .doc(gameId)
+      .collection('physical')
+      .doc(uid)
+      .set(doc, { merge: true });
+    return { ok: true };
+  },
+);
+
+// ── Pitch calibration (heatmap) ──────────────────────────────────────────────
+// Stores the community's real-world pitch rectangle (4 GPS corners) on the
+// group doc so every future game's heatmap normalizes into the same fixed
+// rectangle (calibrated ONCE per field, reused forever). Any member of the
+// community may (re)calibrate. Corners are validated as 4 finite lat/lng pairs.
+export const savePitchCalibration = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign in required');
+    const { groupId, corners } = (request.data ?? {}) as {
+      groupId?: string;
+      corners?: Array<{ lat?: unknown; lng?: unknown }>;
+    };
+    if (!groupId || !Array.isArray(corners) || corners.length !== 4) {
+      throw new HttpsError('invalid-argument', 'groupId + 4 corners required');
+    }
+    const clean = corners.map((c) => {
+      const lat = typeof c?.lat === 'number' && Number.isFinite(c.lat) ? c.lat : NaN;
+      const lng = typeof c?.lng === 'number' && Number.isFinite(c.lng) ? c.lng : NaN;
+      if (
+        Number.isNaN(lat) || Number.isNaN(lng) ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180
+      ) {
+        throw new HttpsError('invalid-argument', 'invalid corner coords');
+      }
+      return { lat, lng };
+    });
+    const grp = await db.collection('groups').doc(groupId).get();
+    if (!grp.exists) throw new HttpsError('not-found', 'group not found');
+    // Admin-only: pitchCalibration lives on the admin-gated group doc and is
+    // reused by EVERY future game's heatmap, so a single bad write would corrupt
+    // the whole community's heatmaps. Match the admin gate the group doc uses
+    // everywhere else (creator or adminIds) — not plain membership.
+    const isAdmin =
+      grp.data()?.creatorId === uid ||
+      ((grp.data()?.adminIds as string[] | undefined) ?? []).includes(uid);
+    if (!isAdmin) throw new HttpsError('permission-denied', 'admin only');
+    await db.collection('groups').doc(groupId).set(
+      { pitchCalibration: { corners: clean, by: uid, at: Date.now() } },
+      { merge: true },
+    );
+    return { ok: true };
   },
 );
 

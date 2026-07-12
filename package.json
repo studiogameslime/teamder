@@ -49,6 +49,7 @@
     "expo-location": "~18.1.6",
     "expo-notifications": "~0.31.5",
     "expo-screen-capture": "~7.2.0",
+    "expo-sharing": "~13.1.5",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
     "expo-store-review": "~8.1.5",

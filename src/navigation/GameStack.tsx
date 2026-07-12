@@ -21,6 +21,8 @@ import { RequestsScreen } from '@/screens/RequestsScreen';
 import { GameCreateScreen } from '@/screens/games/GameCreateScreen';
 import { GameEditScreen } from '@/screens/games/GameEditScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
+import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
+import { PitchCalibrationScreen } from '@/screens/pitch/PitchCalibrationScreen';
 import { LiveMatchScreen } from '@/screens/LiveMatchScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
@@ -73,6 +75,9 @@ export type GameStackParamList = {
   GameEdit: { gameId: string };
   /** Read-mostly view of one match. */
   MatchDetails: { gameId: string };
+  /** Shareable personal "סיכום הערב" for a finished game. Registered in
+   *  GameStack + ProfileStack + CommunitiesStack (shared screen). */
+  EveningSummary: { gameId: string };
   /** v2 — live-match screen takes the gameId of the game it manages. */
   LiveMatch: { gameId: string };
   /** Phase 9 — find invitable players for a specific game. */
@@ -105,6 +110,10 @@ export type GameStackParamList = {
    *  here makes navigate() silently no-op — that's the bug where "רשימת
    *  השחקנים" did nothing when the club was opened from the Games tab). */
   CommunityDetails: { groupId: string };
+  /** Pitch calibration — reachable from CommunityDetails' admin menu, which is
+   *  hosted in this stack too, so it must be registered here (cross-stack
+   *  navigate() no-ops otherwise). */
+  PitchCalibration: { groupId: string };
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
@@ -136,6 +145,7 @@ export function GameStack() {
       <Stack.Screen name="GameCreate" component={GameCreateScreen} />
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen
         name="AvailablePlayers"
@@ -148,6 +158,7 @@ export function GameStack() {
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen name="PitchCalibration" component={PitchCalibrationScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />

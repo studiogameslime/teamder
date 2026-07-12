@@ -3067,6 +3067,22 @@ export function MatchDetailsScreen() {
             refreshKey={retroRefreshKey}
           />
         ) : null}
+
+        {/* Personal shareable "סיכום הערב" — only for a PARTICIPANT of a
+            finished game (a non-participant has no per-player stats and would
+            hit a permission-denied on the roundHistory read). */}
+        {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
+          <Pressable
+            onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
+            style={({ pressed }) => [
+              styles.summaryCta,
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <Ionicons name="sparkles" size={18} color="#fff" />
+            <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
+          </Pressable>
+        ) : null}
         </View>
       </ScrollView>
 
@@ -3456,6 +3472,18 @@ function InfoCell({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  // "סיכום הערב שלי" — shareable summary CTA below the finished-game table.
+  summaryCta: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+  },
+  summaryCtaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   // "השלם גול שהוחמץ" — admin action above the finished-game scorers table.
   retroBtn: {
     flexDirection: 'row-reverse',

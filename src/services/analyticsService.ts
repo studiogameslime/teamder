@@ -56,6 +56,8 @@ export const AnalyticsEvent = {
   GameStarted: 'game_started',
   GameFinished: 'game_finished',
   GameViewed: 'game_viewed',
+  /** Player shared their post-game "סיכום הערב" card as an image. */
+  SummaryShared: 'summary_shared',
   ArrivalMarked: 'arrival_marked',
   GuestAdded: 'guest_added',
   GuestRemoved: 'guest_removed',

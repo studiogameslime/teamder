@@ -491,6 +491,20 @@ export const he = {
   liveEndEveningBody:
     'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
   liveEndEveningConfirm: 'כן, סיים את הערב',
+  // Evening summary card + sharing
+  summaryTitle: 'סיכום הערב',
+  summaryCta: 'סיכום הערב שלי',
+  summaryShareCta: 'שתף את סיכום הערב ⚡',
+  summaryShareTitle: 'שיתוף סיכום הערב',
+  summaryShareUnavailable: 'שיתוף לא זמין במכשיר הזה',
+  summaryShareFailed: 'השיתוף נכשל, נסו שוב',
+  summaryUnavailable: 'אין עדיין סיכום למשחק הזה',
+  // Pitch calibration (heatmap)
+  pitchTitle: 'כיול מגרש',
+  pitchFinish: 'סיים כיול',
+  pitchGpsFailed: 'לא הצלחנו לקרוא מיקום GPS, נסו שוב',
+  pitchSaved: 'המגרש כויל ונשמר ✓',
+  pitchSaveFailed: 'שמירת הכיול נכשלה, נסו שוב',
   availablePlayersTitle: 'שחקנים פנויים',
   availablePlayersEmpty: 'לא נמצאו שחקנים פנויים שמתאימים למשחק הזה',
   // "Send to everyone available, in pulses" (manual filler-pulse trigger).

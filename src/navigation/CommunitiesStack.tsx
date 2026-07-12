@@ -31,6 +31,8 @@ import { CommunityHistoryScreen } from '@/screens/communities/CommunityHistorySc
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
+import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
+import { PitchCalibrationScreen } from '@/screens/pitch/PitchCalibrationScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
@@ -60,6 +62,9 @@ export type CommunitiesStackParamList = {
   // duplicated so back-navigation from MatchDetails returns to
   // CommunityDetails rather than jumping the user to the Games tab.
   MatchDetails: { gameId: string };
+  EveningSummary: { gameId: string };
+  /** One-time pitch calibration (4 GPS corners) for a community's heatmap. */
+  PitchCalibration: { groupId: string };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
   AddMembers: { gameId: string };
@@ -116,6 +121,8 @@ export function CommunitiesStack() {
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
+      <Stack.Screen name="PitchCalibration" component={PitchCalibrationScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
       <Stack.Screen name="AvailablePlayers" component={AvailablePlayersScreen} />

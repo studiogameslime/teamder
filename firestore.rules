@@ -1133,6 +1133,24 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // ── /games/{id}/roundHistory/{roundId} — per-mini-game roster+result ──
+      // Written ONLY by commitRoundStats (Admin SDK, bypasses rules). Read by
+      // any game participant so the "סיכום הערב" card can derive contribution%,
+      // streaks and the best mini-game. No client writes.
+      match /roundHistory/{roundId} {
+        allow read: if isGamePlayer(id);
+        allow write: if false;
+      }
+
+      // ── /games/{id}/physical/{uid} — per-player wearable metrics + heatmap ──
+      // Written ONLY by the client's own device via a callable / the sync
+      // pipeline (Admin SDK). Read by any game participant (the summary card +
+      // future "who ran the most" views). No direct client writes here.
+      match /physical/{uid} {
+        allow read: if isGamePlayer(id);
+        allow write: if false;
+      }
+
       // ── /games/{id}/joinRequests/{uid} — FAIR registration ──────────
       // Each user writes ONE request doc (their OWN), stamped with a
       // server-synced tap time. Writing separate docs means zero contention,

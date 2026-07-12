@@ -538,6 +538,16 @@ export function CommunityDetailsScreen() {
                 icon: 'repeat-outline' as const,
                 onPress: handleCreateRecurring,
               },
+              {
+                id: 'calibratePitch',
+                label: he.pitchTitle,
+                icon: 'location-outline' as const,
+                onPress: () =>
+                  (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                    'PitchCalibration',
+                    { groupId: group.id },
+                  ),
+              },
             ]
           : []),
         ...(isAdmin && group.pendingPlayerIds.length > 0
