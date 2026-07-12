@@ -2321,11 +2321,15 @@ export function MatchDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      {celebrate ? (
-        <View pointerEvents="none" style={styles.confettiLayer}>
+      {/* Confetti host stays permanently mounted (pointerEvents:'none' → never
+          hit-tested) and only its INNER overlay toggles. Mounting/unmounting a
+          zIndex'd absoluteFill View over the ScrollView left a stale native
+          touch region on Fabric — "no button works until I scroll". */}
+      <View pointerEvents="none" style={styles.confettiLayer}>
+        {celebrate ? (
           <CelebrationOverlay onDone={() => setCelebrate(false)} />
-        </View>
-      ) : null}
+        ) : null}
+      </View>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -3094,6 +3098,9 @@ export function MatchDetailsScreen() {
           meaningful contextual action — see `ctaState`. */}
       {ctaState ? (
         <View
+          // box-none: the absolute bar itself isn't touchable (only its button
+          // child), so its hit-rect can't swallow taps meant for the scroll.
+          pointerEvents="box-none"
           onLayout={(e) => setCtaHeight(e.nativeEvent.layout.height)}
           style={[
             styles.stickyCta,

@@ -6,8 +6,8 @@
 //     a 3-up avatar grid with names.
 // A blue star badge marks a borrowed filler. Shared by both surfaces.
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RTL_LABEL_ALIGN } from '@/theme';
@@ -17,6 +17,26 @@ import { MeasurablePressable, type MenuAnchor } from '@/components/match/PlayerA
 
 const GOLD = '#F4B73E';
 const TEAM_BLUE = '#2563EB';
+
+/** Pulsing opacity — marks the swap-target candidates during "החלפה". */
+function Blink({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const op = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!active) {
+      op.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(op, { toValue: 0.25, duration: 450, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 1, duration: 450, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, op]);
+  return <Animated.View style={{ opacity: op }}>{children}</Animated.View>;
+}
 
 interface Props {
   teamIdx: number;
@@ -32,6 +52,9 @@ interface Props {
   /** Tap a player (list variant only) → reports the avatar's on-screen rect so
    *  the caller can anchor a popover menu beside them. */
   onPlayerPress?: (m: RosterMember, rect: MenuAnchor) => void;
+  /** "החלפה" mode: blink every candidate (all but the picked source). */
+  swapMode?: boolean;
+  swapSourceId?: string | null;
 }
 
 export function TeamScore({
@@ -44,6 +67,8 @@ export function TeamScore({
   goalsByPlayer,
   teams,
   onPlayerPress,
+  swapMode,
+  swapSourceId,
 }: Props) {
   const star = (
     <View style={styles.star}>
@@ -84,15 +109,18 @@ export function TeamScore({
         <View style={styles.list}>
           {roster.map((m) => {
             const goals = goalsByPlayer?.[m.id] ?? 0;
+            const isSource = swapMode && m.id === swapSourceId;
             const avatar = (
-              <View>
-                <UserAvatar
-                  user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
-                  size={size}
-                  ring
-                />
-                {m.isFiller ? star : null}
-              </View>
+              <Blink active={!!swapMode && !isSource}>
+                <View style={isSource ? styles.swapSource : undefined}>
+                  <UserAvatar
+                    user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                    size={size}
+                    ring
+                  />
+                  {m.isFiller ? star : null}
+                </View>
+              </Blink>
             );
             return (
               <View key={m.id} style={styles.playerRow}>
@@ -211,6 +239,11 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   list: { gap: 6 },
+  swapSource: {
+    borderRadius: 999,
+    borderWidth: 2.5,
+    borderColor: '#1D4ED8',
+  },
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',

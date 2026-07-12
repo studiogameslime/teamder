@@ -1059,6 +1059,24 @@ export function AdvancedLiveMatchScreen() {
     );
   };
 
+  // "החלפה" — swap two on-field players between their teams. No confirm dialog:
+  // picking a source + a target IS the confirmation. Guarded against a
+  // double-fire like the other roster mutations.
+  const onSwapPlayers = (aId: string, bId: string) => {
+    if (!gameId || !aId || !bId || aId === bId) return;
+    if (homeActionRef.current) return;
+    homeActionRef.current = true;
+    void (async () => {
+      try {
+        await gameService.swapPlayers(gameId, aId, bId);
+      } catch (err) {
+        logError('swapPlayers', err, { gameId, aId, bId });
+      } finally {
+        homeActionRef.current = false;
+      }
+    })();
+  };
+
   // Before the round starts, synthesize a PREVIEW rotation (the chosen two
   // teams play, the rest wait) so the admin sees "who's vs who / who waits" up
   // front. Completion (filling teams) happens on start.
@@ -1277,6 +1295,7 @@ export function AdvancedLiveMatchScreen() {
               onPlayerCard={openPlayerCard}
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}
+              onSwapPlayers={onSwapPlayers}
             />
           ) : null}
         </View>

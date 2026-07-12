@@ -3518,6 +3518,51 @@ export const gameService = {
    *  or borrows them) and records their home team in `draftTeams.leftHome` so an
    *  admin can restore them later. Any active loan referencing them is dropped.
    *  Caller gates this to BETWEEN rounds (timer not running). */
+  /** Swap two players between their teams (or reorder within one team) — a live
+   *  "החלפה". Exchanges them in draftTeams.teams[].playerIds, keeps captains
+   *  valid, and drops any loan referencing either player so rosterOf resolves
+   *  cleanly to their new home. Mirrors markPlayerWentHome's write shape. */
+  async swapPlayers(gameId: string, aId: string, bId: string): Promise<void> {
+    if (!gameId || !aId || !bId || aId === bId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!draft) return;
+    const teams = draft.teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
+    const ta = teams.find((t) => t.playerIds.includes(aId));
+    const tb = teams.find((t) => t.playerIds.includes(bId));
+    if (!ta || !tb) return;
+    // Exchange (also handles same-team: swaps the two list positions).
+    ta.playerIds[ta.playerIds.indexOf(aId)] = bId;
+    tb.playerIds[tb.playerIds.indexOf(bId)] = aId;
+    // Keep every captain a member of their own team.
+    for (const t of teams) {
+      if (t.captainId && !t.playerIds.includes(t.captainId)) {
+        t.captainId = t.playerIds[0] ?? t.captainId;
+      }
+    }
+    const newDraft = { ...draft, teams, teamsEditedManually: true };
+    const patch: Record<string, unknown> = {
+      draftTeams: newDraft,
+      updatedAt: Date.now(),
+    };
+    if (g?.rotation?.loans?.some((l) => l.playerId === aId || l.playerId === bId)) {
+      patch.rotation = {
+        ...g.rotation,
+        loans: g.rotation.loans.filter((l) => l.playerId !== aId && l.playerId !== bId),
+        updatedAt: Date.now(),
+      };
+    }
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.draftTeams = newDraft;
+        if (patch.rotation) m.rotation = patch.rotation as import('@/types').MatchRotation;
+      }
+      return;
+    }
+    await updateGameDoc(gameId, patch);
+  },
+
   async markPlayerWentHome(gameId: string, playerId: string): Promise<void> {
     if (!gameId || !playerId) return;
     const g = await this.getGameById(gameId);

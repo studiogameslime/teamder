@@ -369,6 +369,9 @@ export const he = {
   equipmentHeldByJerseys: (names: string) => `👕 הגופיות אצל ${names}`,
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
+  playerMenuSwap: 'החלפה',
+  swapPickTarget: 'בחרו שחקן להחלפה',
+  swapCancel: 'ביטול',
   playerMenuWentHome: 'הלך הביתה',
   playerMenuWentHomeHint: 'זמין רק במהלך ערב פעיל',
   playerMenuRestore: 'החזר למשחק',

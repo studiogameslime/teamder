@@ -27,7 +27,7 @@ import {
   type RosterMember,
 } from '@/components/match/rotationView';
 import type { DraftTeamsResult, MatchRotation } from '@/types';
-import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, radius, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 /** ms epoch → "HH:MM" for the "went home" departure time. */
@@ -54,6 +54,8 @@ interface Props {
   onPlayerWentHome?: (player: { id: string; name: string }) => void;
   /** Restore a player who had gone home. */
   onRestorePlayer?: (player: { id: string; name: string }) => void;
+  /** Swap two on-field players ("החלפה"). */
+  onSwapPlayers?: (aId: string, bId: string) => void;
 }
 
 type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
@@ -69,9 +71,17 @@ export function RotationPanel({
   onPlayerCard,
   onPlayerWentHome,
   onRestorePlayer,
+  onSwapPlayers,
 }: Props) {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
+  // Non-null while "החלפה" is active: the id of the picked source player.
+  const [swapSource, setSwapSource] = useState<string | null>(null);
+  const handleSwapTap = (id: string) => {
+    if (!swapSource) return;
+    if (id !== swapSource) onSwapPlayers?.(swapSource, id);
+    setSwapSource(null);
+  };
 
   if (!draftTeams || draftTeams.teams.length < 2 || !rotation) return null;
 
@@ -144,6 +154,15 @@ export function RotationPanel({
       if (cardItem) out.push(cardItem);
     } else {
       if (cardItem) out.push(cardItem);
+      if (isAdmin && onSwapPlayers) {
+        out.push({
+          key: 'swap',
+          icon: 'swap-horizontal',
+          label: he.playerMenuSwap,
+          color: colors.primary,
+          onPress: () => setSwapSource(p.id),
+        });
+      }
       if (isAdmin) {
         out.push({
           key: 'home',
@@ -168,6 +187,15 @@ export function RotationPanel({
           <Text style={styles.sectionHeaderText}>{he.rotationPlayingTeams}</Text>
           <Ionicons name="football" size={16} color={colors.primary} />
         </View>
+        {swapSource ? (
+          <Pressable onPress={() => setSwapSource(null)} style={styles.swapBanner}>
+            <Ionicons name="swap-horizontal" size={16} color="#1D4ED8" />
+            <Text style={styles.swapBannerText}>{he.swapPickTarget}</Text>
+            <View style={styles.swapCancelBtn}>
+              <Text style={styles.swapCancelText}>{he.swapCancel}</Text>
+            </View>
+          </Pressable>
+        ) : null}
         <Card style={styles.scoreCard}>
           <View style={styles.scoreRow}>
             <View style={styles.scoreCol}>
@@ -180,8 +208,14 @@ export function RotationPanel({
                 variant="list"
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
-                  onPlayerCard ? (m, rect) => openMenu(m, rect, 'active') : undefined
+                  swapSource
+                    ? (m) => handleSwapTap(m.id)
+                    : onPlayerCard
+                      ? (m, rect) => openMenu(m, rect, 'active')
+                      : undefined
                 }
+                swapMode={!!swapSource}
+                swapSourceId={swapSource}
               />
             </View>
             <View style={styles.divider} />
@@ -195,8 +229,14 @@ export function RotationPanel({
                 variant="list"
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
-                  onPlayerCard ? (m, rect) => openMenu(m, rect, 'active') : undefined
+                  swapSource
+                    ? (m) => handleSwapTap(m.id)
+                    : onPlayerCard
+                      ? (m, rect) => openMenu(m, rect, 'active')
+                      : undefined
                 }
+                swapMode={!!swapSource}
+                swapSourceId={swapSource}
               />
             </View>
           </View>
@@ -392,6 +432,31 @@ const styles = StyleSheet.create({
   },
   sectionHeaderText: { ...typography.body, color: colors.text, fontWeight: '800' },
   scoreCard: { padding: spacing.md, gap: spacing.sm },
+  swapBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radius.lg,
+    backgroundColor: '#EAF1FF',
+    borderWidth: 1,
+    borderColor: '#BFD3FF',
+  },
+  swapBannerText: {
+    flex: 1,
+    ...typography.caption,
+    color: '#1D4ED8',
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  swapCancelBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#1D4ED8',
+  },
+  swapCancelText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   scoreRow: { flexDirection: 'row', alignItems: 'stretch' },
   scoreCol: { flex: 1, minWidth: 0 },
   divider: {

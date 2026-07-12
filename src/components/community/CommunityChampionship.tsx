@@ -92,7 +92,9 @@ export function CommunityChampionship({
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, marginTop: spacing.md },
   titleRow: {
-    flexDirection: 'row-reverse',
+    // Under forceRTL, 'row' makes the main-axis start the visual RIGHT, so
+    // flex-start packs the title flush-right (was 'row-reverse' → left).
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 6,
