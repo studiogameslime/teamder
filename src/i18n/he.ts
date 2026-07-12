@@ -502,6 +502,7 @@ export const he = {
   summaryShareUnavailable: 'שיתוף לא זמין במכשיר הזה',
   summaryShareFailed: 'השיתוף נכשל, נסו שוב',
   summaryUnavailable: 'אין עדיין סיכום למשחק הזה',
+  summaryNoPlay: 'לא שיחקת משחקונים בערב הזה, אז אין סיכום להציג 🙂',
   // Pitch calibration (heatmap)
   pitchTitle: 'כיול מגרש',
   pitchFinish: 'סיים כיול',
@@ -2199,11 +2200,11 @@ export const he = {
   communityStatsStreakValue: (n: number) => `${n} ערבים`,
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
-  communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניקוד',
+  communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניצחונות, אז גולים, אז בישולים',
   // Tapping the (i) next to the title explains the scoring + tie-breaks.
   communityChampInfoTitle: 'איך מחושב הדירוג?',
   communityChampInfoBody:
-    'הטבלה ממוינת לפי ניקוד: גול שווה 2 נקודות, בישול שווה נקודה אחת. אם הניקוד שווה, השוויון נשבר לפי מספר הניצחונות; ואם גם הניצחונות שווים — לפי מספר ההופעות.',
+    'הטבלה ממוינת לפי מספר הניצחונות. אם מספר הניצחונות שווה, השוויון נשבר לפי מספר הגולים; ואם גם הגולים שווים — לפי מספר הבישולים.',
   communityChampTotalGoals: 'סך הגולים',
   communityChampTotalRounds: 'משחקונים',
   // Per-game championship (shown once the game is finished).
@@ -2501,7 +2502,7 @@ export const he = {
   draftViewMenu: 'הצג חלוקת כוחות',
   draftEditMenu: 'ערוך חלוקת כוחות',
   draftTeamsSectionTitle: 'הכוחות שחולקו',
-  draftExportWhatsapp: 'ייצא לוואטסאפ',
+  draftExportWhatsapp: 'ייצא כוחות לווטצאפ',
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
   matchCreateTeamsBannerSub: 'המשחק מתקרב — חלקו את השחקנים לקבוצות',

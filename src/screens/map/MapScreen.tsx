@@ -366,25 +366,29 @@ export function MapScreen() {
         </View>
       ) : null}
 
-      {/* Map + floating overlays. */}
+      {/* Map + floating overlays. The WebView mounts IMMEDIATELY (even before
+          markers load) so the basemap opens right away and pins fill in as data
+          arrives — instead of showing a blank "no results" until everything is
+          ready (report: "the map takes a few seconds to open"). */}
       <View style={styles.mapWrap}>
-        {markers.length > 0 ? (
-          <MapWebView
-            onClusterPress={onClusterPress}
-            markers={markers}
-            center={center}
-            focusOn={focusOn}
-            onMarkerPress={onMarkerPress}
-            // Clean, natural basemap (no heavy blue wash) so it matches the
-            // app's other maps (the OpenFreeMap radius/picker maps).
-            tintAlpha={0}
-            // Ball pins on the games map; communities use plain blue/white
-            // membership circles (no glyph) + a legend.
-            pinEmoji={mode === 'communities' ? '' : '⚽'}
-          />
-        ) : (
-          <EmptyState icon="map-outline" title={he.mapEmpty} />
-        )}
+        <MapWebView
+          onClusterPress={onClusterPress}
+          markers={markers}
+          center={center}
+          focusOn={focusOn}
+          onMarkerPress={onMarkerPress}
+          // Clean, natural basemap (no heavy blue wash) so it matches the
+          // app's other maps (the OpenFreeMap radius/picker maps).
+          tintAlpha={0}
+          // Ball pins on the games map; communities use plain blue/white
+          // membership circles (no glyph) + a legend.
+          pinEmoji={mode === 'communities' ? '' : '⚽'}
+        />
+        {markers.length === 0 ? (
+          <View pointerEvents="none" style={styles.mapEmptyOverlay}>
+            <EmptyState icon="map-outline" title={he.mapEmpty} />
+          </View>
+        ) : null}
 
         {/* Legend — games: colour by date; communities: membership. */}
         {isGames ? (
@@ -659,6 +663,11 @@ const styles = StyleSheet.create({
   },
   chipTextActive: { color: '#FFFFFF' },
   mapWrap: { flex: 1, backgroundColor: '#eaf2fb' },
+  mapEmptyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   legend: {
     position: 'absolute',
     bottom: spacing.lg,

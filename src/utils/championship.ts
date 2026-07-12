@@ -84,8 +84,8 @@ export function rankChampionshipRows(
     games: typeof x.games === 'number' ? x.games : 0,
   }));
   if (sortBy === 'goals' || sortBy === 'points') {
-    // 'points' (community table): cumulative score (goal×2 + assist×1),
-    //   tie-broken by wins, then appearances (games) — per user request.
+    // 'points' (community table): sort by WINS, then goals, then assists
+    //   (per user request — the club table ranks by success first).
     // 'goals': raw goals, then wins, then games (legacy).
     return rows
       // Keep anyone with ANY contribution — include assists so a pure
@@ -98,10 +98,9 @@ export function rankChampionshipRows(
       )
       .sort((a, b) =>
         sortBy === 'points'
-          ? championshipScore(b.goals, b.assists) -
-              championshipScore(a.goals, a.assists) ||
-            b.wins - a.wins ||
-            b.games - a.games ||
+          ? b.wins - a.wins ||
+            b.goals - a.goals ||
+            b.assists - a.assists ||
             a.uid.localeCompare(b.uid)
           : b.goals - a.goals ||
             b.wins - a.wins ||

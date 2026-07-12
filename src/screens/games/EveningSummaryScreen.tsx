@@ -97,6 +97,17 @@ export function EveningSummaryScreen() {
     }
   }
 
+  // The player registered but never actually took the field (winner-stays: sat
+  // out every mini-game, or the evening ended with no rounds). A fabricated 6.0
+  // "score" is confusing ("על מה קיבלתי 6?"), so show a plain no-play message.
+  const noPlay =
+    !!model &&
+    model.rounds === 0 &&
+    model.wins === 0 &&
+    model.losses === 0 &&
+    model.goals === 0 &&
+    model.assists === 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader title={he.summaryTitle} />
@@ -104,9 +115,11 @@ export function EveningSummaryScreen() {
         <View style={styles.center}>
           <SoccerBallLoader />
         </View>
-      ) : !model ? (
+      ) : !model || noPlay ? (
         <View style={styles.center}>
-          <Text style={styles.empty}>{he.summaryUnavailable}</Text>
+          <Text style={styles.empty}>
+            {noPlay ? he.summaryNoPlay : he.summaryUnavailable}
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
