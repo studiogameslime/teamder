@@ -68,16 +68,18 @@ export function AddMembersScreen() {
         const memberIds = Array.from(
           new Set([...(grp?.playerIds ?? []), ...(grp?.adminIds ?? [])]),
         );
-        // Exclude anyone already in the roster (players/waitlist/pending) AND
-        // the current user — the admin shouldn't see themselves in the
-        // "add members" picker ("למה אני מופיע פה?").
+        // Exclude anyone already in the roster (players/waitlist/pending).
+        // Normally we also hide the admin themselves ("למה אני מופיע פה?"), but
+        // in RESERVE mode (before registration opens) the admin has no normal
+        // way to join yet, so they must be able to reserve their OWN spot too —
+        // keep self in the list there.
         const inRoster = new Set([
           ...(g.players ?? []),
           ...(g.waitlist ?? []),
           ...(g.pending ?? []),
         ]);
         const toLoad = memberIds.filter(
-          (id) => !inRoster.has(id) && id !== me?.id,
+          (id) => !inRoster.has(id) && (reserve || id !== me?.id),
         );
         const profiles = await Promise.all(
           toLoad.map((id) => userService.getUserById(id).catch(() => null)),
