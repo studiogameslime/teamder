@@ -1142,6 +1142,15 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // ── /games/{id}/committedRounds/{roundId} — one doc per committed round ──
+      // The idempotency latch, written by commitRoundStats. Its COUNT is the
+      // evening's TOTAL mini-games (even for old games predating roundHistory),
+      // so the summary can show "played X of Y". Read-only for participants.
+      match /committedRounds/{roundId} {
+        allow read: if isGamePlayer(id);
+        allow write: if false;
+      }
+
       // ── /games/{id}/physical/{uid} — per-player wearable metrics + heatmap ──
       // Written ONLY by the client's own device via a callable / the sync
       // pipeline (Admin SDK). Read by any game participant (the summary card +

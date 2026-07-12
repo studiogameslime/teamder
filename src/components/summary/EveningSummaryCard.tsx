@@ -200,6 +200,17 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     const zoneTotal =
       p ? p.hrZones.light + p.hrZones.moderate + p.hrZones.intense + p.hrZones.peak : 0;
     const gritDistance = p ? ` · רצת ${p.distanceKm} ק״מ` : '';
+    // In winner-stays the player sits some mini-games out, so show played-of-
+    // total when the total is known and larger than what they played.
+    const showTotal = model.totalKnown && model.totalRounds > model.rounds;
+    const roundsMeta = showTotal
+      ? `${model.rounds} מתוך ${model.totalRounds}`
+      : `${model.rounds}`;
+    const gritRounds = showTotal
+      ? `${model.rounds} מתוך ${model.totalRounds} המשחקונים`
+      : model.totalKnown
+        ? `את כל ${model.rounds} המשחקונים`
+        : `${model.rounds} משחקונים`;
     return (
       <View ref={ref} collapsable={false} style={styles.card}>
         {/* brand */}
@@ -225,7 +236,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
               {model.playerName}
             </Text>
             <Text style={styles.meta} numberOfLines={1}>
-              {model.rounds} משחקונים · {model.dateLabel} · {model.communityName}
+              {roundsMeta} משחקונים · {model.dateLabel} · {model.communityName}
             </Text>
           </View>
         </View>
@@ -328,8 +339,8 @@ export const EveningSummaryCard = forwardRef<View, Props>(
         <View style={[styles.strip, styles.stripLime]}>
           <Text style={styles.stripIco}>💪</Text>
           <Text style={styles.stripTxt}>
-            עבדת קשה — שיחקת את{' '}
-            <Text style={styles.stripBoldLime}>כל {model.rounds} המשחקונים</Text>
+            עבדת קשה — שיחקת{' '}
+            <Text style={styles.stripBoldLime}>{gritRounds}</Text>
             {gritDistance}
           </Text>
         </View>

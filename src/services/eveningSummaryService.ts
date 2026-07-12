@@ -61,7 +61,13 @@ export interface EveningSummaryModel {
   playerName: string;
   dateLabel: string;
   communityName: string;
+  /** mini-games the player was on the field for. */
   rounds: number;
+  /** total mini-games in the evening (≥ rounds); player sat the rest out. */
+  totalRounds: number;
+  /** whether the evening total is actually KNOWN (roundHistory exists). Old
+   *  games predating roundHistory can't know it — don't claim "played all". */
+  totalKnown: boolean;
   wins: number;
   losses: number;
   winRate: number;
@@ -166,6 +172,8 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     dateLabel: 'יום רביעי, 8.7',
     communityName: 'מכבי חולון',
     rounds,
+    totalRounds: 12,
+    totalKnown: true,
     wins,
     losses,
     winRate: Math.round((wins / (wins + losses)) * 100),
@@ -248,6 +256,10 @@ export const eveningSummaryService = {
       const decided = row.wins + row.losses;
       const winShare = row.rounds > 0 ? row.wins / row.rounds : 0;
       const t = pickTitle(row.goals, row.assists, winShare, row.rounds);
+      // Evening total = number of roundHistory docs (one per committed mini-
+      // game). Accurate for games from this feature onward; OLD games have no
+      // roundHistory, so we fall back to the played count (total unknowable).
+      const totalRounds = Math.max(rounds.length, row.rounds);
 
       return {
         gameId,
@@ -256,6 +268,8 @@ export const eveningSummaryService = {
         dateLabel: formatDateLabel(game?.startsAt),
         communityName: game?.title || 'המשחק',
         rounds: row.rounds,
+        totalRounds,
+        totalKnown: rounds.length > 0,
         wins: row.wins,
         losses: row.losses,
         winRate: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
