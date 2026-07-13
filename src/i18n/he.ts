@@ -504,6 +504,12 @@ export const he = {
   summaryUnavailable: 'אין עדיין סיכום למשחק הזה',
   summaryNoPlay: 'לא שיחקת משחקונים בערב הזה, אז אין סיכום להציג 🙂',
   summaryConnectWatch: 'חבר שעון לנתונים פיזיים 🏃',
+  // ── Player comparison (head-to-head) ──
+  compareTitle: 'השוואה',
+  compareCta: 'השווה אליי',
+  compareShareCta: 'שתף השוואה ⚡',
+  compareShareTitle: 'שיתוף השוואת שחקנים',
+  compareUnavailable: 'אין מספיק נתונים להשוואה עדיין',
   // Pitch calibration (heatmap)
   pitchTitle: 'כיול מגרש',
   pitchFinish: 'סיים כיול',

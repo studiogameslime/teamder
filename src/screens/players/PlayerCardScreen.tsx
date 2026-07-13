@@ -304,6 +304,27 @@ export function PlayerCardScreen() {
           // ── Other-player card (per the owner's sketch) ──
           <>
             <OtherTopCard user={user} viewerId={me.id} />
+            {/* Head-to-head comparison — community-scoped (needs a groupId to
+                read both players' cumulative club stats). Opens the shareable
+                compare card. */}
+            {groupId ? (
+              <Pressable
+                onPress={() =>
+                  (nav as { navigate: (s: string, p: object) => void }).navigate(
+                    'PlayerCompare',
+                    { groupId, otherUid: user.id, otherName: user.name },
+                  )
+                }
+                style={({ pressed }) => [
+                  styles.compareCta,
+                  pressed && { opacity: 0.9 },
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons name="podium-outline" size={18} color="#fff" />
+                <Text style={styles.compareCtaTxt}>{he.compareCta}</Text>
+              </Pressable>
+            ) : null}
             {/* H2H "played together" must be GLOBAL (all communities) to agree
                 with the Statistics screen's "השותף הקבוע" — scoping it to the
                 rating group made a card opened from one community show "no
@@ -852,6 +873,16 @@ const styles = StyleSheet.create({
   },
   // ── Other-player top card ──
   topCard: { padding: spacing.md, gap: spacing.md },
+  compareCta: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#1E40AF',
+    borderRadius: 14,
+    paddingVertical: 13,
+  },
+  compareCtaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   topIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   topNameBlock: { alignItems: 'flex-start', gap: 3 },
   topName: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },

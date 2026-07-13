@@ -29,6 +29,7 @@ import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
 import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
 import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
@@ -99,6 +100,7 @@ export type GameStackParamList = {
     readOnly?: boolean;
   };
   PlayerCard: { userId: string; groupId?: string };
+  PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
    *  CommunityPlayers (opened via the community-link icon). */
   PlayerTimeline: { userId: string; groupId: string; name?: string };
@@ -151,6 +153,7 @@ export function GameStack() {
       <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
       <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />

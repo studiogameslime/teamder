@@ -11,6 +11,7 @@ import { GameChatScreen } from '@/screens/chat/GameChatScreen';
 import { CommunityChatScreen } from '@/screens/chat/CommunityChatScreen';
 import { DirectChatScreen } from '@/screens/chat/DirectChatScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 
 export type ChatStackParamList = {
   ChatsList: undefined;
@@ -18,6 +19,7 @@ export type ChatStackParamList = {
   CommunityChat: { groupId: string };
   DirectChat: { convId: string };
   PlayerCard: { userId: string; groupId?: string };
+  PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
 };
 
 const Stack = createNativeStackNavigator<ChatStackParamList>();
@@ -33,6 +35,7 @@ export function ChatStack() {
       <Stack.Screen name="CommunityChat" component={CommunityChatScreen} />
       <Stack.Screen name="DirectChat" component={DirectChatScreen} />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
     </Stack.Navigator>
   );
 }

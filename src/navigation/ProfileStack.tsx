@@ -23,6 +23,7 @@ import { AchievementsScreen } from '@/screens/profile/AchievementsScreen';
 import { StatisticsScreen } from '@/screens/profile/StatisticsScreen';
 import { FriendsScreen } from '@/screens/profile/FriendsScreen';
 import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
+import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
@@ -50,6 +51,7 @@ export type ProfileStackParamList = {
   NotificationsSettings: undefined;
   BlockedUsers: undefined;
   PlayerCard: { userId: string; groupId?: string };
+  PlayerCompare: { groupId: string; otherUid: string; otherName?: string };
   /** Admin-only per-community player timeline — reachable from
    *  CommunityPlayers (opened via a MatchDetails community-link). */
   PlayerTimeline: { userId: string; groupId: string; name?: string };
@@ -118,6 +120,7 @@ export function ProfileStack() {
         component={NotificationsSettingsScreen}
       />
       <Stack.Screen name="PlayerCard" component={PlayerCardScreen} />
+      <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
