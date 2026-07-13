@@ -3087,6 +3087,26 @@ export function MatchDetailsScreen() {
             <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
           </Pressable>
         ) : null}
+
+        {/* Cancel registration — a plain (non-floating) red button at the very
+            bottom of the content, for a registered user still inside the
+            cancellation window (user request). Same gate + handler as the ☰
+            menu's "יציאה מהמשחק"; the floating CTA still shows the contextual
+            primary action, this is the always-visible explicit exit. */}
+        {primaryDestructive && canCancelRegistration(game) ? (
+          <Pressable
+            onPress={handlePrimary}
+            style={({ pressed }) => [
+              styles.cancelRegBtn,
+              pressed && { opacity: 0.9 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={he.matchDetailsCancel}
+          >
+            <Ionicons name="close-circle-outline" size={18} color="#fff" />
+            <Text style={styles.cancelRegBtnText}>{he.matchDetailsCancel}</Text>
+          </Pressable>
+        ) : null}
         </View>
       </ScrollView>
 
@@ -3491,6 +3511,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   summaryCtaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  cancelRegBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colors.danger,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+  },
+  cancelRegBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   // "השלם גול שהוחמץ" — admin action above the finished-game scorers table.
   retroBtn: {
     flexDirection: 'row-reverse',
