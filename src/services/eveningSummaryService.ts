@@ -24,10 +24,12 @@ import {
   reduceRounds,
   computeFun,
   computeRadar,
+  computeHeatZones,
   type RoundHistoryDoc,
   type PhysicalDoc,
   type FunNumbers,
   type RadarShape,
+  type HeatZones,
 } from '@/utils/eveningStats';
 import type { UserId } from '@/types';
 
@@ -44,6 +46,13 @@ export interface EveningPhysical {
   effortScore: number;
   hrZones: { light: number; moderate: number; intense: number; peak: number };
   source: string;
+}
+
+export interface EveningHeatmap {
+  grid: number[];
+  rows: number;
+  cols: number;
+  zones: HeatZones;
 }
 
 export interface EveningSummaryModel {
@@ -77,6 +86,7 @@ export interface EveningSummaryModel {
   fun: FunNumbers | null;
   // phase 4
   radar: RadarShape | null;
+  heatmap: EveningHeatmap | null;
 }
 
 const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -146,7 +156,15 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     effortScore: 82,
     hrZones: { light: 11, moderate: 14, intense: 9, peak: 7 },
     source: 'wear',
+    gridRows: 6,
+    gridCols: 4,
+    // A heat-heavy attacking half (top rows).
+    heatGrid: [
+      0.9, 1.0, 0.8, 0.6, 0.7, 0.9, 0.7, 0.5, 0.5, 0.6, 0.5, 0.4, 0.3, 0.4,
+      0.3, 0.2, 0.15, 0.2, 0.15, 0.1, 0.05, 0.1, 0.05, 0.05,
+    ],
   };
+  const zones = computeHeatZones(physicalDoc.heatGrid, physicalDoc.gridRows, physicalDoc.gridCols);
   return {
     gameId,
     uid,
@@ -172,6 +190,14 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     physical: toPhysical(physicalDoc),
     fun: computeFun(physicalDoc),
     radar: computeRadar(physicalDoc, goals, assists),
+    heatmap: zones
+      ? {
+          grid: physicalDoc.heatGrid ?? [],
+          rows: physicalDoc.gridRows ?? 0,
+          cols: physicalDoc.gridCols ?? 0,
+          zones,
+        }
+      : null,
   };
 }
 
@@ -215,11 +241,16 @@ export const eveningSummaryService = {
       let physical: EveningPhysical | null = null;
       let fun: FunNumbers | null = null;
       let radar: RadarShape | null = null;
+      let heatmap: EveningHeatmap | null = null;
       if (physSnap && physSnap.exists()) {
         const pd = physSnap.data() as PhysicalDoc;
         physical = toPhysical(pd);
         fun = computeFun(pd);
         radar = computeRadar(pd, row.goals, row.assists);
+        const zones = computeHeatZones(pd.heatGrid, pd.gridRows, pd.gridCols);
+        if (zones && pd.heatGrid && pd.gridRows && pd.gridCols) {
+          heatmap = { grid: pd.heatGrid, rows: pd.gridRows, cols: pd.gridCols, zones };
+        }
       }
 
       const decided = row.wins + row.losses;
@@ -254,6 +285,7 @@ export const eveningSummaryService = {
         physical,
         fun,
         radar,
+        heatmap,
       };
     } catch (err) {
       logError('getEveningSummary', err, { gameId, uid });

@@ -28,6 +28,7 @@ import { AdminApprovalScreen } from '@/screens/groups/AdminApprovalScreen';
 import { HistoryScreen } from '@/screens/tabs/HistoryScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
+import { PitchCalibrationScreen } from '@/screens/pitch/PitchCalibrationScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
 import { AddMembersScreen } from '@/screens/games/AddMembersScreen';
@@ -76,6 +77,7 @@ export type ProfileStackParamList = {
   // makes navigate() silently no-op (the "רשימת השחקנים does nothing" bug
   // when the club is opened from the Profile tab).
   CommunityDetails: { groupId: string };
+  PitchCalibration: { groupId: string };
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
@@ -134,6 +136,7 @@ export function ProfileStack() {
       <Stack.Screen name="GameEdit" component={GameEditScreen} />
       <Stack.Screen name="LiveMatch" component={LiveMatchScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen name="PitchCalibration" component={PitchCalibrationScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />

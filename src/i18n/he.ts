@@ -503,7 +503,6 @@ export const he = {
   summaryShareFailed: 'השיתוף נכשל, נסו שוב',
   summaryUnavailable: 'אין עדיין סיכום למשחק הזה',
   summaryNoPlay: 'לא שיחקת משחקונים בערב הזה, אז אין סיכום להציג 🙂',
-  summaryConnectWatch: 'חבר שעון לנתונים פיזיים 🏃',
   // Pitch calibration (heatmap)
   pitchTitle: 'כיול מגרש',
   pitchFinish: 'סיים כיול',

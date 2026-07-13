@@ -93,6 +93,54 @@ function EffortRing({ score }: { score: number }) {
   );
 }
 
+// ── heat pitch — soft overlapping blobs (a real-looking heatmap) ─────────────
+function HeatPitch({ grid, rows, cols }: { grid: number[]; rows: number; cols: number }) {
+  const W = 104;
+  const H = 132;
+  const cw = W / cols;
+  const ch = H / rows;
+  const blobR = Math.max(cw, ch) * 1.35;
+  const blobs = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = Math.max(0, Math.min(1, grid[r * cols + c] || 0));
+      if (v <= 0.08) continue;
+      blobs.push(
+        <Circle
+          key={`${r}-${c}`}
+          cx={(c + 0.5) * cw}
+          cy={(r + 0.5) * ch}
+          r={blobR}
+          fill="url(#blob)"
+          opacity={Math.min(1, 0.22 + v * 0.78)}
+        />,
+      );
+    }
+  }
+  return (
+    <Svg width={W} height={H}>
+      <Defs>
+        <LinearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#1F9D4D" />
+          <Stop offset="1" stopColor="#178A41" />
+        </LinearGradient>
+        <RadialGradient id="blob" cx="50%" cy="50%" r="50%">
+          <Stop offset="0" stopColor="#FF3B30" stopOpacity="0.9" />
+          <Stop offset="55%" stopColor="#FBBF24" stopOpacity="0.45" />
+          <Stop offset="100%" stopColor="#FBBF24" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width={W} height={H} rx={8} fill="url(#grass)" />
+      {blobs}
+      <G stroke="rgba(255,255,255,0.55)" strokeWidth={1.2} fill="none">
+        <Rect x={1} y={1} width={W - 2} height={H - 2} rx={8} />
+        <Line x1={0} y1={H / 2} x2={W} y2={H / 2} />
+        <Circle cx={W / 2} cy={H / 2} r={12} />
+      </G>
+    </Svg>
+  );
+}
+
 // ── DNA radar ───────────────────────────────────────────────────────────────
 const RADAR_AXES: Array<{ key: 'attack' | 'speed' | 'run' | 'stamina' | 'assist'; label: string }> = [
   { key: 'attack', label: 'התקפה' },
@@ -341,6 +389,26 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         ) : null}
 
+        {/* heatmap */}
+        {model.heatmap ? (
+          <View style={styles.viz}>
+            <HeatPitch grid={model.heatmap.grid} rows={model.heatmap.rows} cols={model.heatmap.cols} />
+            <View style={styles.vizText}>
+              <Text style={styles.vizTitle}>🗺️ מפת-חום · איפה חיית</Text>
+              <View style={styles.vChips}>
+                <View style={styles.vChip}>
+                  <Text style={styles.vChipTxt}>{model.heatmap.zones.attack}% התקפה</Text>
+                </View>
+                <View style={styles.vChip}>
+                  <Text style={styles.vChipTxt}>{model.heatmap.zones.middle}% אמצע</Text>
+                </View>
+                <View style={styles.vChip}>
+                  <Text style={styles.vChipTxt}>{model.heatmap.zones.defense}% הגנה</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {/* radar / DNA */}
         {model.radar ? (

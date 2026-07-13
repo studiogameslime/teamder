@@ -117,7 +117,6 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "buildToolsVersion": "34.0.0"
@@ -133,9 +132,7 @@
       "./plugins/withScreenCapture.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
-      "./plugins/withRemoveAlwaysLocation.js",
-      "react-native-health-connect",
-      "./plugins/withHealth.js"
+      "./plugins/withRemoveAlwaysLocation.js"
     ],
     "experiments": {
       "typedRoutes": false
