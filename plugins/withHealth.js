@@ -59,11 +59,13 @@ function withHealthAndroid(config) {
   return withAndroidManifest(config, (cfg) => {
     // cfg.modResults is the WRAPPER { manifest: {...} }. uses-permission and
     // <queries> are children of the <manifest> node — writing them on the
-    // wrapper corrupts the XML root. getMainApplicationOrThrow, however, takes
-    // the wrapper (it reads .manifest.application internally).
+    // wrapper corrupts the XML root.
     const root = cfg.modResults;
     const manifest = root.manifest;
-    // 1) READ permissions (uses-permission entries).
+    // 1) READ permissions (uses-permission entries). The library's own config
+    //    plugin (react-native-health-connect/app.plugin.js) adds ONLY the
+    //    permissions-rationale intent-filter — NOT these READ grants, so we add
+    //    them here.
     manifest['uses-permission'] = manifest['uses-permission'] ?? [];
     const have = new Set(
       manifest['uses-permission'].map((p) => p.$?.['android:name']),
@@ -85,40 +87,18 @@ function withHealthAndroid(config) {
         package: [{ $: { 'android:name': 'com.google.android.apps.healthdata' } }],
       });
     }
-    // 3) A permissions-rationale intent-filter on the main activity, required
-    //    by Health Connect to show WHY the app wants the data.
-    const app = AndroidConfig.Manifest.getMainApplicationOrThrow(root);
-    const activity = (app.activity ?? []).find(
-      (a) => a.$?.['android:name'] === '.MainActivity',
-    );
-    if (activity) {
-      activity['intent-filter'] = activity['intent-filter'] ?? [];
-      const hasRationale = activity['intent-filter'].some((f) =>
-        (f.action ?? []).some(
-          (act) =>
-            act.$?.['android:name'] ===
-            'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE',
-        ),
-      );
-      if (!hasRationale) {
-        activity['intent-filter'].push({
-          action: [
-            {
-              $: {
-                'android:name':
-                  'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE',
-              },
-            },
-          ],
-        });
-      }
-    }
+    // NOTE: the permissions-rationale intent-filter is intentionally NOT added
+    // here — the library's plugin already pushes it. Adding a second identical
+    // filter would just duplicate it.
     return cfg;
   });
 }
 
+// Android-only for now. iOS (withHealthIos) is deferred: HealthKit needs the
+// capability enabled on the Apple App ID + a regenerated provisioning profile
+// first. Restore `config = withHealthIos(config)` here in the same change that
+// provisions the iOS capability.
 function withHealth(config) {
-  config = withHealthIos(config);
   config = withHealthAndroid(config);
   return config;
 }

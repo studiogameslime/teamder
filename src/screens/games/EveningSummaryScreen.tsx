@@ -26,6 +26,7 @@ import {
   type EveningSummaryModel,
 } from '@/services/eveningSummaryService';
 import { physicalSyncService } from '@/services/physicalSyncService';
+import { healthService } from '@/services/healthService';
 import { useUserStore } from '@/store/userStore';
 import { toast } from '@/components/Toast';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
@@ -44,6 +45,9 @@ export function EveningSummaryScreen() {
   const [model, setModel] = useState<EveningSummaryModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  // Bumped to re-run the load after a manual "connect watch" grant.
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -65,7 +69,28 @@ export function EveningSummaryScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, currentUser?.id, currentUser?.name]);
+  }, [gameId, currentUser?.id, currentUser?.name, reload]);
+
+  // Manual "connect watch" — for a player who dismissed the first-time Health
+  // Connect prompt. Force the permission sheet, then re-sync + reload so the
+  // physical panel fills in. Only surfaced when a wearable binding exists but
+  // no physical data came back.
+  async function onConnectWatch() {
+    if (connecting) return;
+    setConnecting(true);
+    try {
+      const ok = await healthService.ensurePermissions(true);
+      if (ok) {
+        await physicalSyncService.syncForGame(gameId).catch(() => false);
+        setReload((n) => n + 1);
+      }
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  const showConnectWatch =
+    !loading && !!model && !model.physical && healthService.isAvailable();
 
   async function onShare() {
     if (!cardRef.current || sharing) return;
@@ -124,6 +149,22 @@ export function EveningSummaryScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <EveningSummaryCard ref={cardRef} model={model} />
+          {showConnectWatch ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.connectBtn,
+                pressed && { opacity: 0.9 },
+              ]}
+              onPress={onConnectWatch}
+              disabled={connecting}
+            >
+              {connecting ? (
+                <ActivityIndicator color="#1E40AF" />
+              ) : (
+                <Text style={styles.connectTxt}>{he.summaryConnectWatch}</Text>
+              )}
+            </Pressable>
+          ) : null}
           <Pressable
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
             onPress={onShare}
@@ -159,4 +200,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   shareTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  connectBtn: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#1E40AF',
+    backgroundColor: '#EEF2FF',
+  },
+  connectTxt: { color: '#1E40AF', fontSize: 14, fontWeight: '800' },
 });

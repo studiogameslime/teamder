@@ -27,6 +27,9 @@ export const physicalSyncService = {
   async syncForGame(gameId: string): Promise<boolean> {
     if (!gameId || USE_MOCK_DATA) return false;
     if (!healthService.isAvailable()) return false;
+    // Ensure Health Connect access before reading — prompts the permission
+    // sheet the first time, then stays silent (declined users aren't nagged).
+    if (!(await healthService.ensurePermissions())) return false;
     try {
       const db = getFirebase().db;
       const snap = await getDoc(doc(db, 'games', gameId));

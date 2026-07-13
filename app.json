@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.59",
+    "version": "1.0.60",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -132,7 +132,9 @@
       "./plugins/withScreenCapture.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
-      "./plugins/withRemoveAlwaysLocation.js"
+      "./plugins/withRemoveAlwaysLocation.js",
+      "react-native-health-connect",
+      "./plugins/withHealth.js"
     ],
     "experiments": {
       "typedRoutes": false
