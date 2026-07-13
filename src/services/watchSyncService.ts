@@ -240,7 +240,11 @@ export async function publishWatchState(
   myGames: Game[],
   viewer: Viewer,
 ): Promise<void> {
-  if (USE_MOCK_DATA || Platform.OS !== 'android') return;
+  if (USE_MOCK_DATA) return;
+  // Same `WatchBridge` native module name on BOTH platforms: Android relays via
+  // the Wear Data Layer, iOS via WatchConnectivity (WCSession) to the Apple
+  // Watch app. The check below no-ops on any build that doesn't ship the bridge
+  // (e.g. iOS before the watch target is added), so this is safe to run on iOS.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bridge = (NativeModules as any).WatchBridge;
   if (!bridge?.publishState) return;
