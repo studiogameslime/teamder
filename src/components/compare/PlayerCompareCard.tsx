@@ -112,15 +112,17 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
             </View>
           ) : null}
 
-          <View style={styles.verdictPill}>
-            <Text style={styles.verdictPillTxt}>
-              {youLead
-                ? '👑 אתה מוביל'
-                : theyLead
-                  ? `${b.name} מוביל`
-                  : '🤝 תיקו'}
-            </Text>
-          </View>
+          {headToHead ? (
+            <View style={styles.verdictPill}>
+              <Text style={styles.verdictPillTxt}>
+                {headToHead.aWins > headToHead.bWins
+                  ? '👑 אתה מוביל בראש-בראש'
+                  : headToHead.bWins > headToHead.aWins
+                    ? `👑 ${b.name} מוביל בראש-בראש`
+                    : '🤝 ראש-בראש שקול'}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* metrics */}
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
   vs: { color: 'rgba(255,255,255,0.9)', fontWeight: '900', fontSize: 15 },
   h2h: { alignItems: 'center', marginTop: 12 },
   h2hLbl: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5 },
-  h2hScore: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 14 },
+  h2hScore: { flexDirection: 'row', alignItems: 'baseline', gap: 14 },
   h2hNum: { color: '#fff', fontWeight: '900', fontSize: 44 },
   h2hWin: { color: C.gold },
   h2hDash: { color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '800' },
