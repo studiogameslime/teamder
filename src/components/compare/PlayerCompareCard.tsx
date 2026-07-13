@@ -82,15 +82,33 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
 
           <View style={styles.players}>
             <View style={styles.pl}>
-              <Avatar avatarId={a.avatarId} uri={a.photo} name={a.name} size={62} />
+              <Avatar
+                avatarId={a.avatarId}
+                uri={a.photo}
+                name={a.name}
+                size={62}
+                showRing
+                ringColor="#60A5FA"
+              />
               <Text style={styles.nm}>{a.name}</Text>
-              <Text style={styles.sub}>אתה</Text>
+              <View style={[styles.teamChip, { backgroundColor: '#60A5FA' }]}>
+                <Text style={styles.teamChipTxt}>אתה</Text>
+              </View>
             </View>
             <Text style={styles.vs}>VS</Text>
             <View style={styles.pl}>
-              <Avatar avatarId={b.avatarId} uri={b.photo} name={b.name} size={62} />
+              <Avatar
+                avatarId={b.avatarId}
+                uri={b.photo}
+                name={b.name}
+                size={62}
+                showRing
+                ringColor="#F87171"
+              />
               <Text style={styles.nm}>{b.name}</Text>
-              <Text style={styles.sub}> </Text>
+              <View style={[styles.teamChip, { backgroundColor: '#F87171' }]}>
+                <Text style={styles.teamChipTxt}>יריב</Text>
+              </View>
             </View>
           </View>
 
@@ -199,6 +217,13 @@ const styles = StyleSheet.create({
   pl: { alignItems: 'center', gap: 5, flex: 1 },
   nm: { color: '#fff', fontWeight: '800', fontSize: 15 },
   sub: { color: 'rgba(255,255,255,0.8)', fontSize: 11 },
+  teamChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 99,
+    marginTop: 1,
+  },
+  teamChipTxt: { color: '#fff', fontSize: 11, fontWeight: '800' },
   vs: { color: 'rgba(255,255,255,0.9)', fontWeight: '900', fontSize: 15 },
   h2h: { alignItems: 'center', marginTop: 12 },
   h2hLbl: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5 },
