@@ -234,19 +234,44 @@ async function resolveRoster(game: Game): Promise<WatchPlayer[]> {
   return [...real, ...guests];
 }
 
+type WatchBridgeLike = {
+  publishState: (json: string) => Promise<void>;
+  /** iOS Expo module only — true when a Teamder Apple Watch is paired+installed. */
+  isWatchPaired?: () => boolean;
+} | null;
+
+/** Resolve the platform's WatchBridge, or null when this build doesn't ship it.
+ *  Android → classic NativeModules.WatchBridge; iOS → the local Expo module. */
+function resolveWatchBridge(): WatchBridgeLike {
+  if (Platform.OS === 'android') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const b = (NativeModules as any).WatchBridge;
+    return b?.publishState ? b : null;
+  }
+  if (Platform.OS === 'ios') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+      const { getWatchBridge } = require('../../modules/watch-bridge');
+      return getWatchBridge();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /** Serialize + hand the payload to the native bridge. Safe no-op when the
- *  bridge isn't available (iOS / mock / pre-bridge build). */
+ *  bridge isn't available (mock / pre-bridge build). */
 export async function publishWatchState(
   myGames: Game[],
   viewer: Viewer,
 ): Promise<void> {
   if (USE_MOCK_DATA) return;
-  // Same `WatchBridge` native module name on BOTH platforms: Android relays via
-  // the Wear Data Layer, iOS via WatchConnectivity (WCSession) to the Apple
-  // Watch app. The check below no-ops on any build that doesn't ship the bridge
-  // (e.g. iOS before the watch target is added), so this is safe to run on iOS.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bridge = (NativeModules as any).WatchBridge;
+  // The `WatchBridge` relay differs per platform: Android is a classic RN native
+  // module (Wear Data Layer, plugins/wear-src), iOS is a local Expo module
+  // (WatchConnectivity → Apple Watch, modules/watch-bridge). Both expose the
+  // same publishState(json). No-ops on any build without the bridge.
+  const bridge = resolveWatchBridge();
   if (!bridge?.publishState) return;
   // AWAIT the server-clock sync so the payload's serverNowMs / baseElapsedMs are
   // anchored to true server time even on the very first (cold-start) publish —
@@ -290,9 +315,20 @@ export function useWatchSync(userId: string | null): void {
   const userName = useUserStore((s) => s.currentUser?.name ?? '');
 
   useEffect(() => {
-    if (!userId || USE_MOCK_DATA || Platform.OS !== 'android') return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (!(NativeModules as any).WatchBridge?.publishState) return;
+    if (!userId || USE_MOCK_DATA) return;
+    const bridge = resolveWatchBridge();
+    if (!bridge?.publishState) return;
+    // iOS: only run the Firestore listener when a Teamder Apple Watch is
+    // actually paired + installed — the vast majority of iOS users have no
+    // watch, and this branch is about cutting needless reads. Android's Wear
+    // relay stays as-is (its Data Layer is a no-op without a watch anyway).
+    if (
+      Platform.OS === 'ios' &&
+      bridge.isWatchPaired &&
+      !bridge.isWatchPaired()
+    ) {
+      return;
+    }
     let alive = true;
     const viewer: Viewer = { id: userId, name: userName };
     const unsub = gameService.subscribeMyLiveOrUpcomingGames(

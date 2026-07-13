@@ -138,7 +138,8 @@
       "./plugins/withFmtConstevalFix.js",
       "./plugins/withRemoveAlwaysLocation.js",
       "react-native-health-connect",
-      "./plugins/withHealth.js"
+      "./plugins/withHealth.js",
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": false
