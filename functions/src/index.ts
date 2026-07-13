@@ -115,7 +115,10 @@ type NotificationType =
   | 'friendRequest'          // → recipient: "X רוצה להתחבר אליך"
   | 'friendRequestAccepted'  // → sender: "X אישר את בקשת החברות"
   // Auto-balanced teams ready (per-player: "אתה בקבוצה עם …")
-  | 'teamsGenerated';
+  | 'teamsGenerated'
+  // Evening finished → per-player "your night summary is ready" push.
+  // Carries `gameId` → deep-links to the EveningSummary card.
+  | 'eveningSummary';
 
 interface NotificationDoc {
   type: NotificationType;
@@ -946,6 +949,13 @@ function buildMessage(
           : 'הכוחות חולקו — לחץ לצפייה בקבוצות',
       };
     }
+    case 'eveningSummary':
+      // Fired once per player when the evening finishes. Tapping opens the
+      // shareable EveningSummary card for this game (gameId in the payload).
+      return {
+        title: 'סיכום הערב שלך מוכן! 🏆',
+        body: `${gameTitle} נגמר — לחץ לצפייה בגולים, בישולים והציון שלך`,
+      };
     default:
       return null;
   }
@@ -4375,6 +4385,46 @@ export const onGameRosterChanged = onDocumentWritten(
         } else
         console.error(
           '[onGameRosterChanged] games tally failed',
+          event.params.gameId,
+          err,
+        );
+      }
+
+      // ── Evening-summary push ────────────────────────────────────────
+      // The night is over → hand each player who actually showed up a
+      // push that deep-links to their personal, shareable "סיכום הערב"
+      // card. No-shows are excluded (same rule as the games tally). One
+      // per (player, game) via createNotificationOnce's dedupe, so a
+      // status re-write can't double-ping.
+      try {
+        const arrivalsForSummary =
+          (after.arrivals as Record<string, string> | undefined) ?? {};
+        const summaryOps: Promise<unknown>[] = [];
+        for (const uid of after.players) {
+          if (arrivalsForSummary[uid] === 'no_show') continue;
+          summaryOps.push(
+            createNotificationOnce({
+              type: 'eveningSummary',
+              recipientId: uid,
+              entityType: 'game',
+              entityId: event.params.gameId,
+              reason: 'evening-summary',
+              payload: { gameId: event.params.gameId },
+            }),
+          );
+        }
+        const summaryResults = await Promise.allSettled(summaryOps);
+        const summaryFailed = summaryResults.filter(
+          (r) => r.status === 'rejected',
+        ).length;
+        if (summaryFailed > 0) {
+          console.warn(
+            `[onGameRosterChanged] ${summaryFailed}/${summaryResults.length} eveningSummary push(es) failed for game ${event.params.gameId}`,
+          );
+        }
+      } catch (err) {
+        console.error(
+          '[onGameRosterChanged] eveningSummary fan-out failed',
           event.params.gameId,
           err,
         );

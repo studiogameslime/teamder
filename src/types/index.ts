@@ -523,7 +523,12 @@ export type NotificationType =
    * rating, or admin-published). Body lists the player's teammates:
    * "אתה בקבוצה עם …". Carries `gameId` → deep-links to MatchDetails.
    */
-  | 'teamsGenerated';
+  | 'teamsGenerated'
+  /**
+   * Per-player push when the evening finishes: "סיכום הערב שלך מוכן".
+   * Carries `gameId` → deep-links to the shareable EveningSummary card.
+   */
+  | 'eveningSummary';
 
 /**
  * Document shape for /notifications/{id}. The client writes these on

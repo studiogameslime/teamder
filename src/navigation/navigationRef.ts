@@ -316,6 +316,20 @@ export function navigateForPush(
       });
       return true;
 
+    case 'eveningSummary':
+      // The night is over — open the player's shareable "סיכום הערב"
+      // card for that game. Registered in GameStack (+ Communities/Profile),
+      // so route through GameTab with GamesList beneath it as a back target.
+      if (gameId) {
+        nav.navigate('GameTab', {
+          screen: 'EveningSummary',
+          initial: false,
+          params: { gameId },
+        });
+        return true;
+      }
+      return false;
+
     case 'groupDeleted':
       // The community is gone — there's no destination doc to deep-
       // link into. Drop the user on the communities feed where they

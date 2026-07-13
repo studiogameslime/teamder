@@ -800,6 +800,13 @@ function buildMessage(type, payload) {
                     : 'הכוחות חולקו — לחץ לצפייה בקבוצות',
             };
         }
+        case 'eveningSummary':
+            // Fired once per player when the evening finishes. Tapping opens the
+            // shareable EveningSummary card for this game (gameId in the payload).
+            return {
+                title: 'סיכום הערב שלך מוכן! 🏆',
+                body: `${gameTitle} נגמר — לחץ לצפייה בגולים, בישולים והציון שלך`,
+            };
         default:
             return null;
     }
@@ -3730,6 +3737,36 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
             }
             else
                 console.error('[onGameRosterChanged] games tally failed', event.params.gameId, err);
+        }
+        // ── Evening-summary push ────────────────────────────────────────
+        // The night is over → hand each player who actually showed up a
+        // push that deep-links to their personal, shareable "סיכום הערב"
+        // card. No-shows are excluded (same rule as the games tally). One
+        // per (player, game) via createNotificationOnce's dedupe, so a
+        // status re-write can't double-ping.
+        try {
+            const arrivalsForSummary = after.arrivals ?? {};
+            const summaryOps = [];
+            for (const uid of after.players) {
+                if (arrivalsForSummary[uid] === 'no_show')
+                    continue;
+                summaryOps.push(createNotificationOnce({
+                    type: 'eveningSummary',
+                    recipientId: uid,
+                    entityType: 'game',
+                    entityId: event.params.gameId,
+                    reason: 'evening-summary',
+                    payload: { gameId: event.params.gameId },
+                }));
+            }
+            const summaryResults = await Promise.allSettled(summaryOps);
+            const summaryFailed = summaryResults.filter((r) => r.status === 'rejected').length;
+            if (summaryFailed > 0) {
+                console.warn(`[onGameRosterChanged] ${summaryFailed}/${summaryResults.length} eveningSummary push(es) failed for game ${event.params.gameId}`);
+            }
+        }
+        catch (err) {
+            console.error('[onGameRosterChanged] eveningSummary fan-out failed', event.params.gameId, err);
         }
     }
     // Precise push scheduling — (re)enqueue one-shot Cloud Tasks for this

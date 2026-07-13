@@ -31,7 +31,8 @@ export type NotificationKind =
   | 'gameShortageWarning'
   | 'addedToGame'
   | 'friendRequest'
-  | 'friendRequestAccepted';
+  | 'friendRequestAccepted'
+  | 'eveningSummary';
 
 export type NotificationEntity = 'game' | 'group' | 'user';
 
@@ -83,6 +84,10 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // Friendship pings — one per (sender, recipient) pair per day is plenty.
   friendRequest: 24 * 60 * 60 * 1000,
   friendRequestAccepted: 24 * 60 * 60 * 1000,
+  // One evening-summary push per (player, game). Long window so a late
+  // status re-write (e.g. an admin reopening then re-finishing) can't
+  // double-ping the same recipient for the same night.
+  eveningSummary: 24 * 60 * 60 * 1000,
 };
 
 export function cooldownMsFor(type: NotificationKind): number {
@@ -277,6 +282,14 @@ export function inferEntityFromPayload(
         entityType: 'user',
         entityId: fromUserId || recipientId,
         reason: 'friend-accepted',
+      };
+    case 'eveningSummary':
+      // Per-player end-of-evening summary push. Keyed by game so each player
+      // gets exactly one summary per night.
+      return {
+        entityType: 'game',
+        entityId: gameId || recipientId,
+        reason: 'evening-summary',
       };
   }
 }

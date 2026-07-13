@@ -57,7 +57,8 @@ export type NotificationKind =
   | 'addedToGame'
   | 'friendRequest'
   | 'friendRequestAccepted'
-  | 'teamsGenerated';
+  | 'teamsGenerated'
+  | 'eveningSummary';
 
 /** Logical kind of entity the notification is about. `user` is
  *  used for a few cross-user events (rare). */
@@ -139,6 +140,9 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // distinct dedupe keys) and latches re-spam via `teamsNotifiedAt`. This
   // cooldown only guards an accidental client double-call.
   teamsGenerated: 60 * 1000,
+  // Evening summary — server fans out one doc per player when the night
+  // finishes. One per (player, game); long window guards a status re-write.
+  eveningSummary: 24 * 60 * 60 * 1000,
 };
 
 /** Pure helper. Returns the cooldown window for a given type
@@ -358,6 +362,14 @@ export function inferEntityFromPayload(
         entityType: 'game',
         entityId: gameId || recipientId,
         reason: 'teams-generated',
+      };
+    case 'eveningSummary':
+      // Per-player end-of-evening summary push. Server-fanned; keyed by game
+      // so one summary per player per night.
+      return {
+        entityType: 'game',
+        entityId: gameId || recipientId,
+        reason: 'evening-summary',
       };
   }
 }
