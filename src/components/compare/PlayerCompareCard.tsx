@@ -34,9 +34,12 @@ function fmt(v: number, f: CompareMetric['format']): string {
 }
 
 function MetricRow({ m }: { m: CompareMetric }) {
-  const max = Math.max(m.a, m.b, 1);
-  const aW = `${Math.round((m.a / max) * 100)}%` as DimensionValue;
-  const bW = `${Math.round((m.b / max) * 100)}%` as DimensionValue;
+  // One continuous bar split by the SHARE each player holds of the total, so
+  // the wider colour = the bigger stat. You (blue) sit on the right, the other
+  // player (slate) on the left — matching the numbers above.
+  const total = m.a + m.b || 1;
+  const aShare = `${(m.a / total) * 100}%` as DimensionValue;
+  const bShare = `${(m.b / total) * 100}%` as DimensionValue;
   const aWin = m.winner === 'a';
   const bWin = m.winner === 'b';
   return (
@@ -52,14 +55,10 @@ function MetricRow({ m }: { m: CompareMetric }) {
           {bWin ? ' ●' : ''}
         </Text>
       </View>
-      {/* diverging bar: LTR track — left half = other (slate), right half = you (blue) */}
       <View style={styles.bar}>
-        <View style={styles.barSeg}>
-          <View style={[styles.fillLeft, { width: bW }]} />
-        </View>
-        <View style={styles.barSeg}>
-          <View style={[styles.fillRight, { width: aW }]} />
-        </View>
+        {/* first child → right (you, blue); second → left (other, slate) */}
+        <View style={[styles.barYou, { width: aShare }]} />
+        <View style={[styles.barThem, { width: bShare }]} />
       </View>
     </View>
   );
@@ -242,31 +241,15 @@ const styles = StyleSheet.create({
   valHim: { textAlign: 'left', color: C.slate },
   valWin: { color: C.green },
   rlbl: { fontSize: 12, color: C.muted, textAlign: 'center', flex: 1.4 },
-  bar: { flexDirection: 'row', height: 7, gap: 3 },
-  barSeg: {
-    flex: 1,
-    height: '100%',
-    backgroundColor: C.slateTint,
+  bar: {
+    flexDirection: 'row',
+    height: 8,
     borderRadius: 99,
     overflow: 'hidden',
+    backgroundColor: C.slateTint,
   },
-  // left half fills from its right edge (other player), right half from its left (you)
-  fillLeft: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: C.slate,
-    borderRadius: 99,
-  },
-  fillRight: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: C.blue,
-    borderRadius: 99,
-  },
+  barYou: { height: '100%', backgroundColor: C.blue },
+  barThem: { height: '100%', backgroundColor: C.slate },
 
   together: {
     backgroundColor: C.blueTint,
