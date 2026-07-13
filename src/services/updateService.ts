@@ -90,9 +90,25 @@ export async function openStore(): Promise<void> {
       return;
     }
     if (Platform.OS === 'ios') {
-      if (!IOS_APP_STORE_URL) return; // no App Store id wired yet
-      const canOpen = await Linking.canOpenURL(IOS_APP_STORE_URL);
-      await Linking.openURL(canOpen ? IOS_APP_STORE_URL : IOS_APP_STORE_WEB_FALLBACK);
+      // itms-apps:// opens the App Store APP directly, but iOS only allows it if
+      // the scheme is in LSApplicationQueriesSchemes. Do NOT gate on
+      // canOpenURL() — for a non-whitelisted scheme it REJECTS (not returns
+      // false), which was caught below and skipped the fallback entirely, so the
+      // store never opened (user report: "openStore failed · Add itms-apps to
+      // LSApplicationQueriesSchemes"). Instead: try the scheme, and on ANY
+      // failure fall back to the https App Store link — which ALSO opens the
+      // App Store app (universal link) and never needs whitelisting.
+      if (IOS_APP_STORE_URL) {
+        try {
+          await Linking.openURL(IOS_APP_STORE_URL);
+          return;
+        } catch {
+          /* scheme blocked / failed — fall through to the https link */
+        }
+      }
+      if (IOS_APP_STORE_WEB_FALLBACK) {
+        await Linking.openURL(IOS_APP_STORE_WEB_FALLBACK);
+      }
       return;
     }
   } catch (err) {
