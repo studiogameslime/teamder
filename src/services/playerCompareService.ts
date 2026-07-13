@@ -1,9 +1,12 @@
-// playerCompareService — builds the head-to-head comparison model for two
-// players within a community. Pure aggregation over existing sources:
+// playerCompareService — builds the comparison model for two players within a
+// single community. STRICTLY per-community: every figure comes from that club's
+// own rollup, never the player's app-wide totals.
 //   • getCommunityChampionship  → each player's cumulative goals/assists/
-//     wins/losses/games/rounds (communityPlayerStats rollup).
-//   • getPairStats              → true head-to-head (winsAgainst/lossesAgainst,
-//     opposing sides) + "together" record (winsTogether/lossesTogether).
+//     wins/losses/games/rounds (communityPlayerStats, filtered by groupId).
+// No head-to-head / "together" here on purpose: those live only in the GLOBAL
+// pairStats doc (cross-community) — there's no per-community wins/against/
+// together aggregate yet — so surfacing them would leak app-wide data into a
+// per-community card. (A per-community h2h needs a backend rollup; TODO.)
 // No new backend. The screen captures the card to a PNG and shares it, exactly
 // like the evening summary.
 
@@ -46,10 +49,6 @@ export interface ComparisonModel {
   a: ComparePlayer;
   b: ComparePlayer;
   metrics: CompareMetric[];
-  /** Opposing-sides record between them (from the viewer's POV). null = never. */
-  headToHead: { aWins: number; bWins: number; total: number } | null;
-  /** Same-team record. null = never played together. */
-  together: { wins: number; losses: number; pct: number; total: number } | null;
   verdict: { leader: 'a' | 'b' | 'tie'; aLeads: number; bLeads: number; total: number };
 }
 
@@ -109,9 +108,8 @@ export const playerCompareService = {
   ): Promise<ComparisonModel | null> {
     if (!groupId || !uidA || !uidB || uidA === uidB) return null;
     try {
-      const [champ, pair, ua, ub] = await Promise.all([
+      const [champ, ua, ub] = await Promise.all([
         gameService.getCommunityChampionship(groupId).catch(() => null),
-        gameService.getPairStats(uidA, uidB, groupId).catch(() => null),
         userService.getUserById(uidA).catch(() => null),
         userService.getUserById(uidB).catch(() => null),
       ]);
@@ -142,30 +140,6 @@ export const playerCompareService = {
         metric('rounds', 'משחקונים', a.rounds, b.rounds, 'int'),
       ];
 
-      // Head-to-head (opposing sides). winsAgainst = uidA's side beat uidB's.
-      const h2hTotal =
-        (pair?.winsAgainst ?? 0) + (pair?.lossesAgainst ?? 0);
-      const headToHead =
-        h2hTotal > 0
-          ? {
-              aWins: pair?.winsAgainst ?? 0,
-              bWins: pair?.lossesAgainst ?? 0,
-              total: h2hTotal,
-            }
-          : null;
-
-      // Together (same team).
-      const togTotal = (pair?.winsTogether ?? 0) + (pair?.lossesTogether ?? 0);
-      const together =
-        togTotal > 0
-          ? {
-              wins: pair?.winsTogether ?? 0,
-              losses: pair?.lossesTogether ?? 0,
-              pct: Math.round(((pair?.winsTogether ?? 0) / togTotal) * 100),
-              total: togTotal,
-            }
-          : null;
-
       const aLeads = metrics.filter((m) => m.winner === 'a').length;
       const bLeads = metrics.filter((m) => m.winner === 'b').length;
       const verdict = {
@@ -178,7 +152,7 @@ export const playerCompareService = {
         total: metrics.length,
       };
 
-      return { a, b, metrics, headToHead, together, verdict };
+      return { a, b, metrics, verdict };
     } catch (err) {
       logError('getComparison', err, { groupId, uidA, uidB });
       return null;

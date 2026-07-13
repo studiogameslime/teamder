@@ -34,17 +34,17 @@ function fmt(v: number, f: CompareMetric['format']): string {
   return String(v);
 }
 
-function MetricRow({ m }: { m: CompareMetric }) {
+function MetricRow({ m, last }: { m: CompareMetric; last?: boolean }) {
   // One continuous bar split by the SHARE each player holds of the total, so
   // the wider colour = the bigger stat. You (blue) sit on the right, the other
-  // player (slate) on the left — matching the numbers above.
+  // player (red) on the left — matching the numbers above.
   const total = m.a + m.b || 1;
   const aShare = `${(m.a / total) * 100}%` as DimensionValue;
   const bShare = `${(m.b / total) * 100}%` as DimensionValue;
   const aWin = m.winner === 'a';
   const bWin = m.winner === 'b';
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, last && styles.rowLast]}>
       <View style={styles.rvals}>
         <Text style={[styles.val, styles.valYou, aWin && styles.valWin]}>
           {aWin ? '● ' : ''}
@@ -57,7 +57,8 @@ function MetricRow({ m }: { m: CompareMetric }) {
         </Text>
       </View>
       <View style={styles.bar}>
-        {/* first child → right (you, blue); second → left (other, slate) */}
+        {/* first child → right (you, blue); second → left (opponent, red).
+            minWidth keeps a shutout (0) still showing a sliver of each side. */}
         <View style={[styles.barYou, { width: aShare }]} />
         <View style={[styles.barThem, { width: bShare }]} />
       </View>
@@ -67,9 +68,10 @@ function MetricRow({ m }: { m: CompareMetric }) {
 
 export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
   function PlayerCompareCard({ model }, ref) {
-    const { a, b, metrics, headToHead, together, verdict } = model;
+    const { a, b, metrics, verdict } = model;
     const youLead = verdict.leader === 'a';
-    const theyLead = verdict.leader === 'b';
+    const tie = verdict.leader === 'tie';
+    const leadCount = youLead ? verdict.aLeads : verdict.bLeads;
 
     return (
       <View ref={ref} collapsable={false} style={styles.card}>
@@ -88,10 +90,10 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
                 name={a.name}
                 size={62}
                 showRing
-                ringColor="#60A5FA"
+                ringColor="#93C5FD"
               />
               <Text style={styles.nm}>{a.name}</Text>
-              <View style={[styles.teamChip, { backgroundColor: '#60A5FA' }]}>
+              <View style={[styles.teamChip, { backgroundColor: C.blue }]}>
                 <Text style={styles.teamChipTxt}>אתה</Text>
               </View>
             </View>
@@ -106,76 +108,31 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
                 ringColor="#F87171"
               />
               <Text style={styles.nm}>{b.name}</Text>
-              <View style={[styles.teamChip, { backgroundColor: '#F87171' }]}>
+              <View style={[styles.teamChip, { backgroundColor: C.red }]}>
                 <Text style={styles.teamChipTxt}>יריב</Text>
               </View>
             </View>
           </View>
 
-          {headToHead ? (
-            <View style={styles.h2h}>
-              <Text style={styles.h2hLbl}>🥊 ראש-בראש · קבוצות יריבות</Text>
-              <View style={styles.h2hScore}>
-                <Text style={[styles.h2hNum, headToHead.aWins >= headToHead.bWins && styles.h2hWin]}>
-                  {headToHead.aWins}
-                </Text>
-                <Text style={styles.h2hDash}>–</Text>
-                <Text style={[styles.h2hNum, headToHead.bWins > headToHead.aWins && styles.h2hWin]}>
-                  {headToHead.bWins}
-                </Text>
-              </View>
-              <Text style={styles.h2hFoot}>
-                {headToHead.total} משחקונים אחד נגד השני
-              </Text>
-            </View>
-          ) : null}
-
-          {headToHead ? (
-            <View style={styles.verdictPill}>
-              <Text style={styles.verdictPillTxt}>
-                {headToHead.aWins > headToHead.bWins
-                  ? '👑 אתה מוביל בראש-בראש'
-                  : headToHead.bWins > headToHead.aWins
-                    ? `👑 ${b.name} מוביל בראש-בראש`
-                    : '🤝 ראש-בראש שקול'}
-              </Text>
-            </View>
-          ) : null}
+          {/* verdict headline — who leads more of the per-community metrics */}
+          <View style={styles.verdictHead}>
+            <Text style={styles.verdictHeadTop}>
+              {tie ? '🤝 שקול' : youLead ? '👑 אתה מוביל' : `👑 ${b.name} מוביל`}
+            </Text>
+            <Text style={styles.verdictHeadSub}>
+              {tie
+                ? `כל אחד מוביל ב-${verdict.aLeads} מתוך ${verdict.total} קטגוריות`
+                : `ב-${leadCount} מתוך ${verdict.total} קטגוריות במועדון 🔥`}
+            </Text>
+          </View>
         </View>
 
         {/* metrics */}
         <View style={styles.metrics}>
-          <Text style={styles.metricsTitle}>📊 סטטיסטיקה במועדון</Text>
-          {metrics.map((m) => (
-            <MetricRow key={m.key} m={m} />
+          <Text style={styles.metricsTitle}>📊 סטטיסטיקה</Text>
+          {metrics.map((m, i) => (
+            <MetricRow key={m.key} m={m} last={i === metrics.length - 1} />
           ))}
-        </View>
-
-        {/* together */}
-        {together ? (
-          <View style={styles.together}>
-            <Text style={styles.togetherBig}>{together.pct}%</Text>
-            <Text style={styles.togetherTxt}>
-              <Text style={styles.togetherBold}>🤝 כשאתם באותה קבוצה</Text>
-              {'\n'}
-              ניצחתם ב-{together.wins} מתוך {together.total} משחקונים משותפים
-            </Text>
-          </View>
-        ) : null}
-
-        {/* verdict */}
-        <View style={styles.verdict}>
-          <Text style={styles.verdictTxt}>
-            {verdict.leader === 'tie'
-              ? `תיקו — כל אחד מוביל ב-${verdict.aLeads} קטגוריות`
-              : `${youLead ? 'אתה' : b.name} מוביל ב-`}
-            {verdict.leader !== 'tie' ? (
-              <Text style={styles.verdictNum}>
-                {youLead ? verdict.aLeads : verdict.bLeads} מתוך {verdict.total}
-              </Text>
-            ) : null}
-            {verdict.leader !== 'tie' ? ' קטגוריות 🔥' : ''}
-          </Text>
         </View>
       </View>
     );
@@ -216,7 +173,6 @@ const styles = StyleSheet.create({
   },
   pl: { alignItems: 'center', gap: 5, flex: 1 },
   nm: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  sub: { color: 'rgba(255,255,255,0.8)', fontSize: 11 },
   teamChip: {
     paddingHorizontal: 10,
     paddingVertical: 2,
@@ -225,21 +181,14 @@ const styles = StyleSheet.create({
   },
   teamChipTxt: { color: '#fff', fontSize: 11, fontWeight: '800' },
   vs: { color: 'rgba(255,255,255,0.9)', fontWeight: '900', fontSize: 15 },
-  h2h: { alignItems: 'center', marginTop: 12 },
-  h2hLbl: { color: 'rgba(255,255,255,0.85)', fontSize: 11.5 },
-  h2hScore: { flexDirection: 'row', alignItems: 'baseline', gap: 14 },
-  h2hNum: { color: '#fff', fontWeight: '900', fontSize: 44 },
-  h2hWin: { color: C.gold },
-  h2hDash: { color: 'rgba(255,255,255,0.6)', fontSize: 24, fontWeight: '800' },
-  h2hFoot: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
-  verdictPill: {
-    marginTop: 10,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 99,
+  verdictHead: { alignItems: 'center', marginTop: 14 },
+  verdictHeadTop: { color: '#fff', fontWeight: '900', fontSize: 26 },
+  verdictHeadSub: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 3,
   },
-  verdictPillTxt: { color: '#fff', fontWeight: '700', fontSize: 12.5 },
 
   metrics: {
     backgroundColor: C.card,
@@ -256,48 +205,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   row: { paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: C.line },
+  rowLast: { borderBottomWidth: 0 },
   rvals: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  val: { fontWeight: '800', fontSize: 18, flex: 1 },
+  val: { fontWeight: '900', fontSize: 20, flex: 1 },
   valYou: { textAlign: 'right', color: C.blue },
   valHim: { textAlign: 'left', color: C.red },
   valWin: { color: C.green },
   rlbl: { fontSize: 12, color: C.muted, textAlign: 'center', flex: 1.4 },
   bar: {
     flexDirection: 'row',
-    height: 8,
+    height: 9,
     borderRadius: 99,
     overflow: 'hidden',
     backgroundColor: C.slateTint,
+    gap: 2,
   },
-  barYou: { height: '100%', backgroundColor: C.blue },
-  barThem: { height: '100%', backgroundColor: C.red },
-
-  together: {
-    backgroundColor: C.blueTint,
-    borderRadius: 16,
-    padding: 13,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 12,
-  },
-  togetherBig: { color: C.blue, fontWeight: '900', fontSize: 26 },
-  togetherTxt: { color: C.ink, fontSize: 12.5, lineHeight: 18, flex: 1 },
-  togetherBold: { fontWeight: '800' },
-
-  verdict: {
-    backgroundColor: C.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.blue,
-    borderStyle: 'dashed',
-    padding: 12,
-    alignItems: 'center',
-  },
-  verdictTxt: { fontWeight: '800', fontSize: 14, color: C.ink, textAlign: 'center' },
-  verdictNum: { color: C.blue },
+  barYou: { height: '100%', minWidth: 4, borderRadius: 99, backgroundColor: C.blue },
+  barThem: { height: '100%', minWidth: 4, borderRadius: 99, backgroundColor: C.red },
 });
