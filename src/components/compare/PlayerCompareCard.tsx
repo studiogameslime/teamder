@@ -25,6 +25,7 @@ const C = {
   slateTint: '#EEF1F5',
   green: '#16A34A',
   gold: '#FFE9A8',
+  red: '#DC2626',
 };
 
 function fmt(v: number, f: CompareMetric['format']): string {
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   },
   val: { fontWeight: '800', fontSize: 18, flex: 1 },
   valYou: { textAlign: 'right', color: C.blue },
-  valHim: { textAlign: 'left', color: C.slate },
+  valHim: { textAlign: 'left', color: C.red },
   valWin: { color: C.green },
   rlbl: { fontSize: 12, color: C.muted, textAlign: 'center', flex: 1.4 },
   bar: {
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.slateTint,
   },
   barYou: { height: '100%', backgroundColor: C.blue },
-  barThem: { height: '100%', backgroundColor: C.slate },
+  barThem: { height: '100%', backgroundColor: C.red },
 
   together: {
     backgroundColor: C.blueTint,
