@@ -26,6 +26,8 @@ const {
   AndroidConfig,
 } = require('expo/config-plugins');
 
+// No READ_EXERCISE / READ_EXERCISE_ROUTE: the GPS heatmap was dropped, and
+// READ_EXERCISE_ROUTE is the Health Connect permission Google scrutinises most.
 const HC_READ_PERMISSIONS = [
   'android.permission.health.READ_STEPS',
   'android.permission.health.READ_DISTANCE',
@@ -33,8 +35,6 @@ const HC_READ_PERMISSIONS = [
   'android.permission.health.READ_ACTIVE_CALORIES_BURNED',
   'android.permission.health.READ_TOTAL_CALORIES_BURNED',
   'android.permission.health.READ_SPEED',
-  'android.permission.health.READ_EXERCISE',
-  'android.permission.health.READ_EXERCISE_ROUTE',
 ];
 
 function withHealthIos(config) {

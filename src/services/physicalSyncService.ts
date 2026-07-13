@@ -1,20 +1,18 @@
-// physicalSyncService — after a game, reads the player's wearable session,
-// derives the heatmap (using the community's pitch calibration to drop
-// off-pitch/bench time), and uploads it via the saveGamePhysical callable.
+// physicalSyncService — after a game, reads the player's wearable session and
+// uploads the physical metrics via the saveGamePhysical callable.
 //
 // Safe no-op when there's no wearable binding (healthService.isAvailable() is
 // false) or in mock mode — so it can be fired-and-forgotten from the summary
 // screen without guards at the call site.
+//
+// NOTE: the GPS heatmap was dropped (no ExerciseRoute permission), so no route/
+// pitch-calibration processing happens here anymore — just the physical metrics.
 
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { healthService } from '@/services/healthService';
-import { pitchCalibrationService } from '@/services/pitchCalibrationService';
-import { routeToHeatGrid, normalizeToPitch } from '@/utils/physical';
 import { logError } from '@/services/errorLog';
 
-const HEAT_ROWS = 6;
-const HEAT_COLS = 4;
 const DEFAULT_WINDOW_MS = 3 * 60 * 60 * 1000; // fallback pre-kickoff span
 // A pickup evening never runs longer than this. The Game doc has no reliable
 // end timestamp, so we CAP the read window at kickoff + this span — otherwise
@@ -34,7 +32,7 @@ export const physicalSyncService = {
       const db = getFirebase().db;
       const snap = await getDoc(doc(db, 'games', gameId));
       if (!snap.exists()) return false;
-      const g = snap.data() as { startsAt?: number; endedAt?: number; groupId?: string };
+      const g = snap.data() as { startsAt?: number; endedAt?: number };
       const now = Date.now();
       const from = typeof g.startsAt === 'number' ? g.startsAt : now - DEFAULT_WINDOW_MS;
       const rawEnd = typeof g.endedAt === 'number' ? g.endedAt : now;
@@ -43,23 +41,6 @@ export const physicalSyncService = {
 
       const session = await healthService.readSession(from, to);
       if (!session) return false;
-
-      // Heatmap: normalize the GPS route into the calibrated pitch (points that
-      // fall outside the rectangle — the sideline/bench — are dropped).
-      let heat: { heatGrid: number[]; gridRows: number; gridCols: number } | null = null;
-      const corners = await pitchCalibrationService.loadCorners(g.groupId);
-      if (corners && session.route.length) {
-        const pts = session.route
-          .map((p) => normalizeToPitch(p, corners))
-          .filter((p): p is { x: number; y: number } => !!p);
-        if (pts.length) {
-          heat = {
-            heatGrid: routeToHeatGrid(pts, HEAT_ROWS, HEAT_COLS),
-            gridRows: HEAT_ROWS,
-            gridCols: HEAT_COLS,
-          };
-        }
-      }
 
       const metrics = {
         distanceM: session.distanceM,
@@ -73,7 +54,6 @@ export const physicalSyncService = {
         effortScore: session.effortScore,
         hrZones: session.hrZones,
         source: session.source,
-        ...(heat ?? {}),
       };
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require

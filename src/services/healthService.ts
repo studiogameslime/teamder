@@ -25,8 +25,6 @@ export interface HealthSession {
   hrZones: HrZoneMinutes;
   /** 0..100 objective effort score. */
   effortScore: number;
-  /** GPS route (if the device recorded one) — feeds the heatmap. */
-  route: Array<{ lat: number; lng: number }>;
   source: 'wear' | 'healthkit' | 'healthconnect';
 }
 
@@ -40,7 +38,6 @@ interface RawSession {
   avgSpeedKmh?: number;
   sprints?: number;
   hrSamples?: Array<{ bpm: number; ms: number }>;
-  route?: Array<{ lat: number; lng: number }>;
 }
 
 // The native binding's surface. Typed loosely (`any` at the read sites) so we
@@ -49,6 +46,8 @@ type HealthConnect = typeof import('react-native-health-connect');
 
 // Health Connect READ scopes — must mirror plugins/withHealth.js
 // (HC_READ_PERMISSIONS) so a granted permission maps to a manifest entry.
+// NOTE: no ExerciseSession / ExerciseRoute — the GPS heatmap was dropped, and
+// READ_EXERCISE_ROUTE is the permission Google reviews most strictly.
 const READ_PERMISSIONS = [
   { accessType: 'read', recordType: 'Distance' },
   { accessType: 'read', recordType: 'Steps' },
@@ -56,7 +55,6 @@ const READ_PERMISSIONS = [
   { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
   { accessType: 'read', recordType: 'TotalCaloriesBurned' },
   { accessType: 'read', recordType: 'Speed' },
-  { accessType: 'read', recordType: 'ExerciseSession' },
 ] as const;
 
 const SDK_AVAILABLE = 3; // SdkAvailabilityStatus.SDK_AVAILABLE
@@ -129,13 +127,12 @@ async function readRawSession(
     }
   };
 
-  const [dist, steps, hr, active, speed, sessions] = await Promise.all([
+  const [dist, steps, hr, active, speed] = await Promise.all([
     read('Distance'),
     read('Steps'),
     read('HeartRate'),
     read('ActiveCaloriesBurned'),
     read('Speed'),
-    read('ExerciseSession'),
   ]);
 
   const distanceM = dist.reduce((s, r) => s + (r.distance?.inMeters ?? 0), 0);
@@ -176,29 +173,6 @@ async function readRawSession(
     : 0;
   const sprints = speeds.filter((mps) => mps >= SPRINT_MPS).length;
 
-  // GPS route from exercise session(s) overlapping the window. The route may be
-  // inline on the record, or gated behind requestExerciseRoute(id) (a one-time
-  // per-session consent for READ_EXERCISE_ROUTE).
-  const route: Array<{ lat: number; lng: number }> = [];
-  for (const s of sessions) {
-    let pts: Array<{ latitude: number; longitude: number }> | undefined =
-      s.exerciseRoute?.route;
-    if (!pts && s.metadata?.id) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const er: any = await (hc as any).requestExerciseRoute(s.metadata.id);
-        pts = er?.route;
-      } catch {
-        /* route not shared — skip */
-      }
-    }
-    for (const p of pts ?? []) {
-      if (typeof p.latitude === 'number' && typeof p.longitude === 'number') {
-        route.push({ lat: p.latitude, lng: p.longitude });
-      }
-    }
-  }
-
   // Nothing worth showing → treat as "no session" so the caller doesn't upload
   // a hollow all-zeros doc.
   if (!distanceM && !stepCount && !calories && hrSamples.length === 0) {
@@ -215,7 +189,6 @@ async function readRawSession(
     avgSpeedKmh,
     sprints,
     hrSamples,
-    route,
   };
 }
 
@@ -281,7 +254,6 @@ export const healthService = {
         sprints: raw.sprints ?? 0,
         hrZones,
         effortScore,
-        route: raw.route ?? [],
         source: Platform.OS === 'ios' ? 'healthkit' : 'healthconnect',
       };
     } catch (err) {
