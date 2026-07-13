@@ -14,7 +14,7 @@
 // switches it replaces.
 
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -120,13 +120,20 @@ const styles = StyleSheet.create({
   ball: {
     width: BALL,
     height: BALL,
-    // Soft shadow so the ball reads as sitting ON the track. iOS only — the
-    // Android `elevation` shadow does NOT follow `transform: translateX`, so it
-    // stayed at the ball's layout (centre) position while the ball rolled away,
-    // leaving a ghost circle peeking out the far end of the track (user report).
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
+    // Soft shadow so the ball reads as sitting ON the track — iOS ONLY.
+    // On Android the shadow (elevation historically, and now the iOS-style
+    // shadow* props under Fabric/RN0.79) does NOT follow `transform:
+    // translateX`: it stays anchored at the ball's LAYOUT centre while the
+    // ball rolls away, leaving a faint ghost circle beside it (recurring
+    // user report). Gating the whole shadow to iOS removes the ghost.
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 1 },
+      },
+      default: {},
+    }),
   },
 });

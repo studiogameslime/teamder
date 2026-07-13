@@ -2,11 +2,13 @@
 // subscription toggle. Layout under forceRTL:
 //
 //   [Switch] ………………………… "עדכנו אותי על משחקים חדשים במועדון" [🔔]
-//   ↑ leading                                    trailing ↑
+//   ↑ trailing                                    leading ↑
 //
-// The Switch is the LEFT (leading) child so it sits on the visual
-// left, the bell icon is the LAST child so it sits on the visual right
-// next to the label. Tapping anywhere on the row toggles the switch.
+// Under forceRTL a `flexDirection: 'row'` renders children right-to-left,
+// so the FIRST child sits on the visual RIGHT and the LAST on the visual
+// LEFT. Per user request we swapped them: the bell (🔔) is now the first
+// child → visual RIGHT next to its label; the Switch is the last child →
+// visual LEFT. Tapping anywhere on the row toggles the switch.
 
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
@@ -45,18 +47,18 @@ export function CommunityNotifyToggle({ subscribed, onChange }: Props) {
       accessibilityRole="switch"
       accessibilityState={{ checked: on }}
     >
+      <View style={styles.iconDisc}>
+        <Ionicons name="notifications" size={18} color={ACCENT} />
+      </View>
+      <Text style={styles.label} numberOfLines={2}>
+        {he.communityNotifyDesignTitle}
+      </Text>
       <BallSwitch
         value={on}
         onValueChange={flip}
         trackColor={{ false: '#E2E8F0', true: ACCENT }}
         thumbColor="#FFFFFF"
       />
-      <Text style={styles.label} numberOfLines={2}>
-        {he.communityNotifyDesignTitle}
-      </Text>
-      <View style={styles.iconDisc}>
-        <Ionicons name="notifications" size={18} color={ACCENT} />
-      </View>
     </Pressable>
   );
 }

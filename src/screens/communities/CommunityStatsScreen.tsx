@@ -379,7 +379,7 @@ export function CommunityStatsScreen() {
                 ]}
               />
             ) : null}
-            {derived.totalRounds > 0 ? (
+            {derived.totalRounds > 0 && derived.drawPct > 0 ? (
               <FunRow
                 icon="git-compare-outline"
                 tint={colors.info}

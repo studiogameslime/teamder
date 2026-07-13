@@ -149,7 +149,11 @@ export function LocationSearchSheet({
   };
 
   const confirm = () => {
-    if (!picked) return;
+    // Block confirm until the tapped point's address has finished resolving —
+    // otherwise the user locks in a generic "מיקום על המפה" label before the
+    // real street/city settles (user report: "עד שהכפתור לא מתייצב על העיר
+    // שלא יהיה לחיץ").
+    if (!picked || resolving) return;
     onSelect({
       label: picked.label || he.locationOnMap,
       lat: picked.lat,
@@ -257,7 +261,11 @@ export function LocationSearchSheet({
                   </Text>
                 )}
               </View>
-              <Pressable style={styles.primaryBtn} onPress={confirm}>
+              <Pressable
+                style={[styles.primaryBtn, resolving && styles.primaryBtnDisabled]}
+                onPress={confirm}
+                disabled={resolving}
+              >
                 <Text style={styles.primaryBtnText}>{he.locationConfirm}</Text>
               </Pressable>
             </>
@@ -348,6 +356,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
+  primaryBtnDisabled: { opacity: 0.5 },
   primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center' },
   hintText: { ...typography.body, color: colors.textMuted, flex: 1, textAlign: RTL_LABEL_ALIGN },

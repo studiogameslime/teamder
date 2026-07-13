@@ -23,7 +23,17 @@ function Blink({ active, children }: { active: boolean; children: React.ReactNod
   const op = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!active) {
-      op.setValue(1);
+      // Drive back to full opacity via the NATIVE driver. A bare
+      // `op.setValue(1)` can leave a native-driven view stuck at its last
+      // looped opacity when the loop is torn down mid-cycle — the avatars
+      // then stay dimmed after the swap ends (user report). A short timing
+      // forces the native side back to 1.
+      op.stopAnimation();
+      Animated.timing(op, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
       return;
     }
     const loop = Animated.loop(

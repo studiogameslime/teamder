@@ -268,25 +268,6 @@ export function GameFilterSheet({
                           ? he.gameFiltersNearbyEnableHint
                           : he.gameFiltersNearbyPermissionHint}
                       </Text>
-                      <Pressable
-                        onPress={() => onChange({ ...filters, nearby: true })}
-                        style={({ pressed }) => [
-                          styles.nearbyAllowBtn,
-                          pressed && { opacity: 0.9 },
-                        ]}
-                        accessibilityRole="button"
-                      >
-                        <Ionicons
-                          name="navigate-outline"
-                          size={16}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.nearbyAllowText}>
-                          {locationGranted
-                            ? he.gameFiltersNearbyEnable
-                            : he.gameFiltersNearbyAllow}
-                        </Text>
-                      </Pressable>
                     </>
                   )}
                 </View>
@@ -303,6 +284,31 @@ export function GameFilterSheet({
                   </View>
                 )}
               </View>
+
+              {/* The enable/allow CTA sits full-width BELOW the row (not
+                  squeezed beside the 120px map, where its label wrapped and
+                  collided with the slider — user report "צפוף"). */}
+              {!filters.nearby ? (
+                <Pressable
+                  onPress={() => onChange({ ...filters, nearby: true })}
+                  style={({ pressed }) => [
+                    styles.nearbyAllowBtn,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                  accessibilityRole="button"
+                >
+                  <Ionicons
+                    name="navigate-outline"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.nearbyAllowText}>
+                    {locationGranted
+                      ? he.gameFiltersNearbyEnable
+                      : he.gameFiltersNearbyAllow}
+                  </Text>
+                </Pressable>
+              ) : null}
 
               <View style={styles.sliderLabels}>
                 <Text style={styles.sliderEnd}>{he.gameFiltersKm(RADIUS_MIN)}</Text>

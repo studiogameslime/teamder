@@ -94,11 +94,12 @@ function buildInitial(
     advancedFillMode: 'temporary',
     advancedTieMode: 'bothOut',
     ruleTags: [],
-    // Open communities default to public games (anyone can discover
-    // and join). Closed/private communities default to community-only
-    // — matches user expectation that a private group's games stay
-    // inside the group unless the admin explicitly opens them.
-    visibility: g?.isOpen === true ? 'public' : 'community',
+    // Default to PUBLIC ("פתוח לכולם") — the app's whole point is to fill
+    // games by reaching people, so a new game should be discoverable unless
+    // it belongs to an EXPLICITLY closed/private community (isOpen === false),
+    // where games stay inside the group until the admin opens them. (User
+    // request: the "פתוח לכולם" toggle should be ON by default.)
+    visibility: g?.isOpen === false ? 'community' : 'public',
     requiresApproval: false,
     // Default OFF (user request): the first in the waitlist enters automatically
     // when a spot frees, without a confirm step. Admins can turn confirm back on
