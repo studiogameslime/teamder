@@ -84,8 +84,11 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
 
           <View style={styles.players}>
             <View style={styles.pl}>
+              {/* Prefer a real uploaded photo when the user has one; Avatar
+                  otherwise ignores `uri` whenever an avatarId is set (user
+                  report: "show my photo if I have one"). */}
               <Avatar
-                avatarId={a.avatarId}
+                avatarId={a.photo ? undefined : a.avatarId}
                 uri={a.photo}
                 name={a.name}
                 size={62}
@@ -100,7 +103,7 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
             <Text style={styles.vs}>VS</Text>
             <View style={styles.pl}>
               <Avatar
-                avatarId={b.avatarId}
+                avatarId={b.photo ? undefined : b.avatarId}
                 uri={b.photo}
                 name={b.name}
                 size={62}
@@ -117,7 +120,7 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
           {/* verdict headline — who leads more of the per-community metrics */}
           <View style={styles.verdictHead}>
             <Text style={styles.verdictHeadTop}>
-              {tie ? '🤝 שקול' : youLead ? '👑 אתה מוביל' : `👑 ${b.name} מוביל`}
+              {tie ? '🤝 שקול' : youLead ? 'אתה מוביל 👑' : `${b.name} מוביל 👑`}
             </Text>
             <Text style={styles.verdictHeadSub}>
               {tie
