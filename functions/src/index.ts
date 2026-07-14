@@ -1198,6 +1198,25 @@ async function resolveRecipients(
         console.warn('[newGameInCommunity] roster exclude failed', err);
       }
     }
+    // Defense-in-depth: only CURRENT members of the community get the push.
+    // `newGameSubscriptions` can be STALE for an ex-member — they left before
+    // the unsubscribe-on-leave cleanup existed, or via a path that didn't fire
+    // onGroupPendingChanged — and the games are members-only, so an ex-member's
+    // push is a dead end ("לסגל בלבד" on tap, user report: Linoy Levi). Intersect
+    // the subscribers with the group's live roster. Fail OPEN (skip the filter)
+    // if the group read fails or returns empty, so a transient hiccup can't
+    // silence a legitimate community-wide push.
+    try {
+      const grpSnap = await db.collection('groups').doc(groupId).get();
+      const members = new Set<string>(
+        (grpSnap.data() as { playerIds?: string[] } | undefined)?.playerIds ?? [],
+      );
+      if (members.size > 0) {
+        uids = uids.filter((uid) => members.has(uid));
+      }
+    } catch (err) {
+      console.warn('[newGameInCommunity] membership filter failed', groupId, err);
+    }
     // Always include the organiser on a registration-open push, even if
     // they never toggled the community's new-game subscription — they
     // scheduled the game and expect the "registration opened" ping.
