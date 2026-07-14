@@ -9,11 +9,12 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import com.studiogameslime.soccerapp.wear.model.WearGameState
-import com.studiogameslime.soccerapp.wear.model.parseWearState
+import com.studiogameslime.soccerapp.wear.model.parseWearStateFresh
 
 /** Data Layer path the phone publishes the current state to. */
 private const val STATE_PATH = "/teamder/state"
 private const val KEY_JSON = "json"
+private const val KEY_TS = "ts"
 
 /**
  * Listens to the Data Layer item the phone publishes and exposes it as a
@@ -35,9 +36,10 @@ class WearStateRepository(private val appContext: Context) :
                 var found = false
                 for (item in buffer) {
                     if (item.uri.path == STATE_PATH) {
-                        val json = DataMapItem.fromDataItem(item).dataMap.getString(KEY_JSON)
+                        val dataMap = DataMapItem.fromDataItem(item).dataMap
+                        val json = dataMap.getString(KEY_JSON)
                         if (json != null) {
-                            state.value = parse(json)
+                            state.value = parse(json, dataMap.getLong(KEY_TS, 0L))
                             found = true
                         }
                     }
@@ -67,13 +69,15 @@ class WearStateRepository(private val appContext: Context) :
         for (event in events) {
             if (event.dataItem.uri.path != STATE_PATH) continue
             if (event.type == DataEvent.TYPE_CHANGED) {
-                val json = DataMapItem.fromDataItem(event.dataItem).dataMap.getString(KEY_JSON)
-                if (json != null) state.value = parse(json)
+                val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+                val json = dataMap.getString(KEY_JSON)
+                if (json != null) state.value = parse(json, dataMap.getLong(KEY_TS, 0L))
             } else if (event.type == DataEvent.TYPE_DELETED) {
                 state.value = WearGameState.Disconnected
             }
         }
     }
 
-    private fun parse(json: String): WearGameState = parseWearState(json)
+    private fun parse(json: String, tsMs: Long): WearGameState =
+        parseWearStateFresh(json, tsMs)
 }

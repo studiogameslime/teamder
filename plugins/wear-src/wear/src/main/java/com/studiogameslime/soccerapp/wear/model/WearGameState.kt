@@ -51,6 +51,10 @@ sealed interface WearGameState {
         val title: String,
         val timer: TimerState,
         val gameId: String = "",
+        /** Whether the viewer may control the timer. The watch hides the
+         *  Start/Pause/Reset row when false — a non-controller's command is
+         *  rejected by the phone anyway, so the buttons would be dead taps. */
+        val canControl: Boolean = false,
     ) : WearGameState
 
     /** Registered to an UPCOMING game → next-game card + details, with a

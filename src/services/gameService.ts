@@ -1695,7 +1695,14 @@ export const gameService = {
       cb(
         merged
           .filter((g) => LIVE_STATUSES.includes(g.status))
-          .filter((g) => !isStaleAfterStart(g))
+          // Drop games long past kickoff — EXCEPT one with a still-running live
+          // match. Otherwise a match that runs past the stale window (or whose
+          // kickoff was hours ago) would vanish from the watch/widget mid-game.
+          .filter(
+            (g) =>
+              !isStaleAfterStart(g) ||
+              (g.liveMatch != null && g.liveMatch.phase !== 'finished'),
+          )
           .sort((a, b) => a.startsAt - b.startsAt),
       );
     };

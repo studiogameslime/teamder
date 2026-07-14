@@ -199,19 +199,23 @@ private fun StopwatchScreen(
         //   never started   → [Play]
         // Each tap sends a MessageClient command to the phone, which runs
         // the same Firestore mutation as the widget / in-app controls.
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (state.timer.running) {
-                TimerButton(PauseIcon, "השהה") {
-                    onTimerCommand("pause", state.gameId)
-                }
-            } else {
-                TimerButton(Icons.Filled.PlayArrow, "הפעל") {
-                    onTimerCommand("start", state.gameId)
-                }
-                if (elapsed > 0L) {
-                    TimerButton(Icons.Filled.Refresh, "אפס") {
-                        onTimerCommand("reset", state.gameId)
+        // Only the controller sees buttons — a non-admin's command is rejected
+        // by the phone, so showing buttons would just be dead taps.
+        if (state.canControl) {
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (state.timer.running) {
+                    TimerButton(PauseIcon, "השהה") {
+                        onTimerCommand("pause", state.gameId)
+                    }
+                } else {
+                    TimerButton(Icons.Filled.PlayArrow, "הפעל") {
+                        onTimerCommand("start", state.gameId)
+                    }
+                    if (elapsed > 0L) {
+                        TimerButton(Icons.Filled.Refresh, "אפס") {
+                            onTimerCommand("reset", state.gameId)
+                        }
                     }
                 }
             }

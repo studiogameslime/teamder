@@ -1,11 +1,13 @@
 package com.studiogameslime.soccerapp.widget
 
 import android.content.Context
+import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.firebase.messaging.RemoteMessage
 import expo.modules.notifications.service.ExpoFirebaseMessagingService
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 /**
  * Custom FCM service so a server-sent `type:"timerSync"` data message
@@ -84,14 +86,20 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     TeamderPlayersWidgetProvider.requestRefresh(context)
 
     // Mirror to the paired watch (same path/keys WatchBridgeModule uses).
+    // AWAIT the write: onMessageReceived runs on a background thread and the
+    // process may be reaped the instant this method returns — a fire-and-forget
+    // putDataItem would be dropped before the Data Layer flushes it.
     try {
       val req = PutDataMapRequest.create("/teamder/state").apply {
         dataMap.putString("json", json)
         dataMap.putLong("ts", System.currentTimeMillis())
       }.asPutDataRequest().setUrgent()
-      Wearable.getDataClient(context).putDataItem(req)
+      Tasks.await(
+        Wearable.getDataClient(context).putDataItem(req),
+        5, TimeUnit.SECONDS,
+      )
     } catch (_: Exception) {
-      // No paired watch / Wearable unavailable — widget still updated above.
+      // No paired watch / Wearable unavailable / timeout — widget still updated.
     }
   }
 }

@@ -188,14 +188,17 @@ class TimerActionReceiver : BroadcastReceiver() {
                 // timer change driven from the phone widget — without this,
                 // controlling the timer from the widget left the watch stale
                 // (the JS watch-sync only runs while the app is alive).
-                publishToWatch(context)
+                // Keep the goAsync window open until the Data Layer write
+                // actually flushes — finishing immediately can reap the process
+                // before the async putDataItem completes, dropping the update.
+                publishToWatch(context) { pending.finish() }
             } else {
                 // Transaction ran but was a no-op (game finished / not live /
                 // idempotent). Tell the user so the tap isn't a silent miss.
                 Log.w(TAG, "timer mutation no-op for action=$action gameId=$gameId")
                 toast(context, "לא ניתן לעדכן את הטיימר כרגע")
+                pending.finish()
             }
-            pending.finish()
         }.addOnFailureListener { e ->
             Log.w(TAG, "timer mutation failed for action=$action gameId=$gameId", e)
             // Most common cause: the viewer isn't the game's admin/creator,
@@ -234,18 +237,26 @@ class TimerActionReceiver : BroadcastReceiver() {
      * with a new timestamp (the Data Layer dedups identical content). The
      * watch's TileUpdateListenerService picks this up and re-renders.
      */
-    private fun publishToWatch(context: Context) {
+    private fun publishToWatch(context: Context, onDone: () -> Unit) {
         try {
             val json = context.getSharedPreferences(
                 TeamderWidgetProvider.PREFS, Context.MODE_PRIVATE,
-            ).getString(TeamderWidgetProvider.KEY_JSON, null) ?: return
+            ).getString(TeamderWidgetProvider.KEY_JSON, null)
+            if (json == null) {
+                onDone()
+                return
+            }
             val request = PutDataMapRequest.create("/teamder/state").apply {
                 dataMap.putString("json", json)
                 dataMap.putLong("ts", System.currentTimeMillis())
             }.asPutDataRequest().setUrgent()
+            // onDone (→ pending.finish()) fires only once the write completes,
+            // so the receiver stays alive long enough for the flush.
             Wearable.getDataClient(context).putDataItem(request)
+                .addOnCompleteListener { onDone() }
         } catch (_: Exception) {
             // Best-effort — no paired watch, or Play Services unavailable.
+            onDone()
         }
     }
 

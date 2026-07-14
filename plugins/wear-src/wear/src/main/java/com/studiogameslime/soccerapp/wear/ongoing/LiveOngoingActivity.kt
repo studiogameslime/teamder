@@ -31,6 +31,10 @@ object LiveOngoingActivity {
 
     private const val CHANNEL_ID = "live_match"
     private const val NOTIF_ID = 4711
+    /** Auto-dismiss the ongoing notification if it isn't refreshed within this
+     *  window (longer than any match; the phone re-publishes a live match ~every
+     *  60s). Prevents a leaked, forever-counting timer when the phone dies. */
+    private const val ONGOING_TTL_MS = 3L * 60L * 60L * 1000L // 3h
 
     fun update(context: Context, state: WearGameState) {
         if (state !is WearGameState.Live) {
@@ -72,6 +76,13 @@ object LiveOngoingActivity {
                 .setContentText(if (t.running) "המשחק רץ" else "מושהה")
                 .setOngoing(true)
                 .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+                // Self-dismiss safeguard: if the phone dies mid-match and never
+                // publishes a terminal state, no event ever arrives to clear()
+                // this un-swipeable ongoing notification — it would count forever.
+                // Every refresh (each /teamder/state event + the phone's ~60s
+                // re-publish) re-applies this timeout, so it only fires after a
+                // long gap with NO updates = the phone is gone.
+                .setTimeoutAfter(ONGOING_TTL_MS)
                 .setContentIntent(touch)
 
         val ongoing =

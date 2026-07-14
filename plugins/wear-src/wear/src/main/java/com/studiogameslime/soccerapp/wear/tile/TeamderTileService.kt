@@ -29,7 +29,7 @@ import com.studiogameslime.soccerapp.wear.MainActivity
 import com.studiogameslime.soccerapp.wear.R
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
-import com.studiogameslime.soccerapp.wear.model.parseWearState
+import com.studiogameslime.soccerapp.wear.model.parseWearStateFresh
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -125,9 +125,11 @@ class TeamderTileService : TileService() {
             for (i in 0 until buffer.count) {
                 val item = buffer[i]
                 if (item.uri.path == STATE_PATH) {
-                    val json = DataMapItem.fromDataItem(item)
-                        .dataMap.getString(KEY_JSON)
-                    if (json != null) result = parseWearState(json)
+                    val dataMap = DataMapItem.fromDataItem(item).dataMap
+                    val json = dataMap.getString(KEY_JSON)
+                    if (json != null) {
+                        result = parseWearStateFresh(json, dataMap.getLong(KEY_TS, 0L))
+                    }
                 }
             }
         } finally {
@@ -175,6 +177,11 @@ class TeamderTileService : TileService() {
         val elapsed = computeElapsedMs(s.timer)
         val timerColor = if (s.timer.running) COLOR_BLUE else COLOR_INK
         val statusText = if (s.timer.running) STATUS_RUNNING else STATUS_PAUSED
+        // A tile can only re-render on its freshness interval (60s while live),
+        // so a ticking mm:ss would show seconds that are up to a minute stale.
+        // While running we therefore show minute resolution; a PAUSED value is
+        // static, so we can show the exact mm:ss.
+        val timerText = if (s.timer.running) formatMinutes(elapsed) else formatMmSs(elapsed)
 
         return cardBox(
             Column.Builder()
@@ -183,7 +190,7 @@ class TeamderTileService : TileService() {
                 .addContent(spacer(DP_4))
                 .addContent(textLine(s.title, TEXT_SP_TITLE, true, COLOR_INK, 1))
                 .addContent(spacer(DP_4))
-                .addContent(textLine(formatMmSs(elapsed), TEXT_SP_TIMER, true, timerColor, 1))
+                .addContent(textLine(timerText, TEXT_SP_TIMER, true, timerColor, 1))
                 .addContent(spacer(DP_4))
                 .addContent(textLine(statusText, TEXT_SP_STATUS, false, COLOR_BLUE, 1))
                 .build()
@@ -325,6 +332,13 @@ class TeamderTileService : TileService() {
         return "%02d:%02d".format(total / 60, total % 60)
     }
 
+    /** Minute-resolution timer for the tile (it refreshes only ~every 60s, so a
+     *  ticking mm:ss would show stale seconds). e.g. 743_000ms → "12׳". */
+    private fun formatMinutes(ms: Long): String {
+        val mins = (ms / 60_000).coerceAtLeast(0)
+        return "$mins׳"
+    }
+
     /** Human relative time for an upcoming game's startsAt. */
     private fun relativeTime(startsAtMs: Long): String {
         val diffMs = startsAtMs - System.currentTimeMillis()
@@ -345,6 +359,7 @@ class TeamderTileService : TileService() {
         // Data layer
         private const val STATE_PATH = "/teamder/state"
         private const val KEY_JSON = "json"
+        private const val KEY_TS = "ts"
         private const val DATA_TIMEOUT_S = 5L
 
         // Tile bookkeeping

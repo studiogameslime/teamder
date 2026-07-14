@@ -19,7 +19,7 @@
 // Everything here is best-effort and Android-only: on iOS, in mock mode,
 // or on a build without the native module, it silently no-ops.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NativeModules, Platform } from 'react-native';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { gameService } from '@/services/gameService';
@@ -68,6 +68,11 @@ type WatchPayload = {
          *  "timer stuck at 0" bug). */
         baseElapsedMs: number;
       };
+      /** Whether the VIEWER may control this timer. The watch hides Start/Pause/
+       *  Reset when false so a non-controller never taps a button the phone will
+       *  reject server-side (a silent dead tap). Conservative: the game creator.
+       *  Community co-admins control from the phone. */
+      canControl: boolean;
       /** uid of the admin who last touched the timer (or '' when never). */
       controlledBy: string;
       /** Display name of the controller — used by the widget for the
@@ -149,6 +154,7 @@ export async function computeWatchPayload(
         accumulatedMs,
         baseElapsedMs,
       },
+      canControl: live.createdBy === viewer.id,
       controlledBy: live.liveMatch.timerControlledBy ?? '',
       controlledByName: live.liveMatch.timerControlledByName ?? '',
       startsAt: live.startsAt,
@@ -260,6 +266,10 @@ function resolveWatchBridge(): WatchBridgeLike {
   return null;
 }
 
+/** Highest serverNowMs we've written to the Data Layer this session — guards
+ *  against a slower, older publish landing after a newer one (see below). */
+let lastPublishedServerNow = 0;
+
 /** Serialize + hand the payload to the native bridge. Safe no-op when the
  *  bridge isn't available (mock / pre-bridge build). */
 export async function publishWatchState(
@@ -279,9 +289,15 @@ export async function publishWatchState(
   // cached, so it's a no-op network-wise once synced this session.
   await syncServerClock();
   try {
-    await bridge.publishState(
-      JSON.stringify(await computeWatchPayload(myGames, viewer)),
-    );
+    const payload = await computeWatchPayload(myGames, viewer);
+    // Out-of-order guard: two concurrent publishes (e.g. a snapshot + the
+    // periodic refresh) can resolve in the wrong order and overwrite the Data
+    // Layer item with an OLDER payload, freezing the watch on a stale timer.
+    // serverNowMs is monotonic per publish, so drop anything older than the
+    // newest we've already written.
+    if (payload.serverNowMs < lastPublishedServerNow) return;
+    lastPublishedServerNow = payload.serverNowMs;
+    await bridge.publishState(JSON.stringify(payload));
   } catch (err) {
     // Best-effort relay to the Wear OS companion — a failure here is almost
     // always environmental (no watch paired, Data Layer busy) and never
@@ -313,6 +329,9 @@ export function useWatchSync(userId: string | null): void {
   // Pull the viewer's name from the user store so the native widget can
   // stamp `timerControlledByName` natively (mirroring the JS path).
   const userName = useUserStore((s) => s.currentUser?.name ?? '');
+  // Bumped when an iOS watch pairs AFTER mount, to re-run the effect and start
+  // publishing without needing an app restart.
+  const [pairTick, setPairTick] = useState(0);
 
   useEffect(() => {
     if (!userId || USE_MOCK_DATA) return;
@@ -327,22 +346,53 @@ export function useWatchSync(userId: string | null): void {
       bridge.isWatchPaired &&
       !bridge.isWatchPaired()
     ) {
-      return;
+      // Not paired yet — poll so pairing LATER kicks off publishing (the check
+      // was previously one-shot at mount, so a watch paired mid-session never
+      // synced until an app restart).
+      let cancelled = false;
+      const poll = setInterval(() => {
+        if (cancelled) return;
+        if (bridge.isWatchPaired && bridge.isWatchPaired()) {
+          clearInterval(poll);
+          setPairTick((t) => t + 1);
+        }
+      }, 60_000);
+      return () => {
+        cancelled = true;
+        clearInterval(poll);
+      };
     }
     let alive = true;
     const viewer: Viewer = { id: userId, name: userName };
+    let latestGames: Game[] = [];
     const unsub = gameService.subscribeMyLiveOrUpcomingGames(
       userId,
       (games) => {
         if (!alive) return;
+        latestGames = games;
         // Fire-and-forget — publishWatchState is best-effort and any
         // hiccup is recovered by the next snapshot.
         void publishWatchState(games, viewer);
       },
     );
+    // While a live match is on, re-publish every 60s even without a Firestore
+    // write. A running timer produces no game-doc changes, so without this the
+    // watch's server-clock offset never re-syncs and the Data-Layer freshness
+    // timestamp goes stale (which the watch now uses to detect a dead phone).
+    const refresh = setInterval(() => {
+      if (!alive) return;
+      const hasLive = latestGames.some(
+        (g) => g.liveMatch != null && g.liveMatch.phase !== 'finished',
+      );
+      if (hasLive) void publishWatchState(latestGames, viewer);
+    }, 60_000);
     return () => {
       alive = false;
+      clearInterval(refresh);
       unsub();
+      // Clear the watch on logout / unmount so a persisted Data-Layer item
+      // can't strand the PREVIOUS account's live game on the watch face.
+      void publishWatchState([], viewer);
     };
-  }, [userId, userName]);
+  }, [userId, userName, pairTick]);
 }
