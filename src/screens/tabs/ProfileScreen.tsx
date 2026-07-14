@@ -67,6 +67,7 @@ import { AchievementCelebration } from '@/components/AchievementCelebration';
 import type { Game } from '@/types';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { deepLinkService } from '@/services/deepLinkService';
+import { createShortInviteUrl } from '@/services/inviteLinkService';
 import {
   colors,
   radius,
@@ -486,7 +487,11 @@ export function ProfileScreen() {
     // Generic "invite to the app" — lands on the home/download page and
     // credits the inviter (invitedBy), WITHOUT pushing a specific
     // community/game. The old behaviour shared the user's first community.
-    const link = deepLinkService.buildAppInviteUrl(user.id);
+    const link = await createShortInviteUrl({
+      type: 'app',
+      invitedBy: user.id,
+      fallbackLong: deepLinkService.buildAppInviteUrl(user.id),
+    });
     try {
       const result = await Share.share({
         title: he.inviteShareSubject,

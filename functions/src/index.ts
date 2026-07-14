@@ -8279,6 +8279,85 @@ export const serveCommunityPage = onRequest(
   },
 );
 
+/**
+ * Resolves a SHORT invite link `/i/<code>` → the real target. Reads
+ * `inviteLinks/{code}` = {type, targetId, invitedBy}, serves the SAME invite
+ * landing template with OG injected AND `window.__INVITE__` set, so the short
+ * link keeps full attribution (install referrer / clipboard) + WhatsApp preview.
+ * A pure alias — no redirect, so the short URL stays in the address bar.
+ */
+export const serveInviteCode = onRequest(
+  { region: 'us-central1', memory: '256MiB' },
+  async (req, res) => {
+    try {
+      const raw = (req.path || '').replace(/^\/+/, '');
+      const parts = raw.split('/').filter(Boolean);
+      const code = (parts[0] === 'i' ? parts[1] : parts[0]) || '';
+
+      let type = 'app';
+      let targetId = '';
+      let invitedBy = '';
+      if (code) {
+        const snap = await db.collection('inviteLinks').doc(code).get();
+        if (snap.exists) {
+          const d = snap.data() as {
+            type?: string;
+            targetId?: string;
+            invitedBy?: string;
+          };
+          if (d.type === 'session' || d.type === 'team' || d.type === 'app') {
+            type = d.type;
+          }
+          targetId = typeof d.targetId === 'string' ? d.targetId : '';
+          invitedBy = typeof d.invitedBy === 'string' ? d.invitedBy : '';
+          // Count the click (per short link). Fire-and-forget.
+          snap.ref
+            .set(
+              { clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() },
+              { merge: true },
+            )
+            .catch(() => {});
+        }
+      }
+
+      // OG preview for a community target (mirrors serveCommunityPage).
+      let summary: ShowcaseSummary | null = null;
+      if (type === 'team' && targetId) {
+        summary = await loadShowcaseSummary(targetId).catch(() => null);
+      }
+      const html = loadTemplate(INVITE_TEMPLATE_PATH);
+      const { title, description } = buildMetaBlock(summary);
+      const rendered = injectMeta(
+        html,
+        title,
+        description,
+        summary?.coverPhotoUrl ?? null,
+      );
+      // Inject the resolved target BEFORE the page's inline script runs, so
+      // invite.html reads window.__INVITE__ instead of the (target-less) path.
+      const inject = `<script>window.__INVITE__=${JSON.stringify({
+        type,
+        id: targetId,
+        invitedBy,
+      })};</script>`;
+      const out = rendered.replace('</head>', `${inject}</head>`);
+
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      // Short cache — the click counter + resolved target should stay fresh.
+      res.set('Cache-Control', 'public, max-age=60, s-maxage=60');
+      res.status(200).send(out);
+    } catch (err) {
+      console.error('[serveInviteCode] render failed', err);
+      try {
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.status(200).send(loadTemplate(INVITE_TEMPLATE_PATH));
+      } catch {
+        res.status(500).send('internal error');
+      }
+    }
+  },
+);
+
 async function revokeDisciplineCardsFor(
   uid: string,
   gameId: string,

@@ -1679,6 +1679,21 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
     }
 
+    // ── /inviteLinks/{code} — short share links (/i/<code>) ──
+    // A signed-in user creates a short link that attributes to THEMSELVES; it
+    // maps {type, targetId, invitedBy} for the serveInviteCode CF to resolve.
+    // Clients never read/update/delete (the CF reads via the admin SA); a client
+    // can only mint a new code crediting itself, never spoof another inviter.
+    match /inviteLinks/{code} {
+      allow read, update, delete: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.invitedBy == request.auth.uid &&
+        (request.resource.data.type == 'session' ||
+          request.resource.data.type == 'team' ||
+          request.resource.data.type == 'app') &&
+        isShortString(request.resource.data.targetId, 200);
+    }
+
     // ── /campaigns/{id} — admin marketing campaigns (push + in-app popup) ──
     // Authored ONLY by the admin panel's service account (bypasses rules).
     // The app reads popup campaigns to decide what to show; push campaigns

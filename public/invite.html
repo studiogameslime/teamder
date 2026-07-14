@@ -254,15 +254,20 @@
 <script>
   // Hosting rewrites /session/* and /team/* to this single file, so we
   // recover the original target via location.pathname.
+  // Short links (/i/<code>) can't carry the target in the path — the
+  // serveInviteCode CF resolves the code and injects window.__INVITE__ with the
+  // real {type,id,invitedBy}; prefer it when present.
+  var INV = window.__INVITE__ || {};
   var parts = location.pathname.split('/').filter(Boolean);
-  var type = parts[0] === 'session' ? 'session'
+  var type = INV.type ? INV.type
+           : parts[0] === 'session' ? 'session'
            : parts[0] === 'team' ? 'team'
            : parts[0] === 'app' ? 'app'
            : parts[0] === 'go' ? 'go'
            : null;
-  var id = parts[1] || '';
+  var id = INV.id || parts[1] || '';
   var qp = new URLSearchParams(location.search);
-  var invitedBy = (qp.get('invitedBy') || '').trim();
+  var invitedBy = (INV.invitedBy || qp.get('invitedBy') || '').trim();
   // UTM acquisition params from the Pulse ad-link builder. The source is now
   // carried as a short base64url token `b` (keeps Hebrew sources from blowing
   // up the URL); decode it here, falling back to the legacy plain `s`.

@@ -95,6 +95,7 @@ import {
   isTerminal as isTerminalGame,
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
+import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { ensureNotGuest } from '@/utils/guestGate';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
@@ -1326,10 +1327,15 @@ export function MatchDetailsScreen() {
     if (!isOpen(game)) return;
     if (game.startsAt <= Date.now()) return;
     try {
-      const link = deepLinkService.buildInviteUrl({
+      const link = await createShortInviteUrl({
         type: 'session',
         id: game.id,
         invitedBy: user?.id,
+        fallbackLong: deepLinkService.buildInviteUrl({
+          type: 'session',
+          id: game.id,
+          invitedBy: user?.id,
+        }),
       });
       const result = await Share.share({
         title: game.title,
@@ -1499,7 +1505,12 @@ export function MatchDetailsScreen() {
   const handleShare = async () => {
     if (!isOpen(game) || game.startsAt <= Date.now()) return;
     try {
-      const link = inviteLinkForGame();
+      const link = await createShortInviteUrl({
+        type: 'session',
+        id: game.id,
+        invitedBy: user?.id,
+        fallbackLong: inviteLinkForGame(),
+      });
       // Use the RICH recruitment text (what / when / where / how many
       // missing + join link) — the same content the old bottom WhatsApp
       // button used. The header share icon is now the single share entry

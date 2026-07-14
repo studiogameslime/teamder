@@ -65,6 +65,7 @@ import { logError } from '@/services/errorLog';
 import { pickAndUploadGroupCover } from '@/services/photoService';
 import { gameService } from '@/services/gameService';
 import { deepLinkService } from '@/services/deepLinkService';
+import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { notificationsService } from '@/services/notificationsService';
 import {
@@ -361,10 +362,15 @@ export function CommunityDetailsScreen() {
   const handleInvite = async () => {
     if (!group) return;
     try {
-      const link = deepLinkService.buildInviteUrl({
+      const link = await createShortInviteUrl({
         type: 'team',
         id: group.id,
         invitedBy: me?.id,
+        fallbackLong: deepLinkService.buildInviteUrl({
+          type: 'team',
+          id: group.id,
+          invitedBy: me?.id,
+        }),
       });
       const result = await Share.share({
         title: he.inviteShareSubject,

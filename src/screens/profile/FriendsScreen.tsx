@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { deepLinkService } from '@/services/deepLinkService';
+import { createShortInviteUrl } from '@/services/inviteLinkService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -312,7 +313,11 @@ export function FriendsScreen() {
                       // credits me as the inviter via invitedBy + the install
                       // referrer/clipboard). Was a raw store link with NO
                       // attribution — a share that never counted as an invite.
-                      const link = deepLinkService.buildAppInviteUrl(me?.id);
+                      const link = await createShortInviteUrl({
+                        type: 'app',
+                        invitedBy: me?.id,
+                        fallbackLong: deepLinkService.buildAppInviteUrl(me?.id),
+                      });
                       await Share.share({
                         title: he.inviteShareSubject,
                         message: he.profileInviteShareBody(link),

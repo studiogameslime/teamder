@@ -29,6 +29,10 @@
         {
           "source": "/c/**",
           "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        },
+        {
+          "source": "/i/**",
+          "function": { "functionId": "serveInviteCode", "region": "us-central1" }
         }
       ],
       "headers": [
@@ -62,6 +66,10 @@
         {
           "source": "/c/**",
           "function": { "functionId": "serveCommunityPage", "region": "us-central1" }
+        },
+        {
+          "source": "/i/**",
+          "function": { "functionId": "serveInviteCode", "region": "us-central1" }
         }
       ],
       "headers": [
