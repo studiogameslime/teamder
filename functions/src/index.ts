@@ -4196,11 +4196,24 @@ export const onGameRosterChanged = onDocumentWritten(
     // already promoted client-side is therefore a no-op here (no free seat).
     const beforePlayers = before?.players ?? [];
     const afterPlayers = after.players ?? [];
+    // An ACTIVE guest occupies a real seat, so removing one frees a seat exactly
+    // like a player leaving. It must trigger the same waitlist promotion (user
+    // report [4ldH]: "removed someone from a full game, the waitlisted person got
+    // no notification"). The guest was being removed via the guests[] array,
+    // which the old rosterShrank check ignored entirely.
+    const beforeActiveGuests = ((before?.guests ?? []) as { waitlisted?: boolean }[]).filter(
+      (g) => !g?.waitlisted,
+    ).length;
+    const afterActiveGuests = ((after.guests ?? []) as { waitlisted?: boolean }[]).filter(
+      (g) => !g?.waitlisted,
+    ).length;
+    const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
     const rosterShrank =
       JSON.stringify(beforePlayers) !== JSON.stringify(afterPlayers) ||
       JSON.stringify(before?.waitlist ?? []) !==
         JSON.stringify(after.waitlist ?? []) ||
-      JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []);
+      JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []) ||
+      guestSeatFreed;
     // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
     // PRUNE a departed ghost from drawn teams / live rotation for any game still
     // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
@@ -4272,7 +4285,7 @@ export const onGameRosterChanged = onDocumentWritten(
             // `departed` — without this gate the trigger would auto-promote (or
             // re-offer) the seat the admin just deliberately opened, reverting
             // the manual roster action.
-            departed.size > 0 &&
+            (departed.size > 0 || guestSeatFreed) &&
             !ppUid &&
             waitlist.length > 0 &&
             occupancy < ((d.maxPlayers as number) ?? 15)

@@ -3078,6 +3078,11 @@ export function MatchDetailsScreen() {
             gameId={game.id}
             groupId={game.groupId}
             refreshKey={retroRefreshKey}
+            // Everyone who showed up (not a no-show) is listed even with no
+            // stats — they "were in the evening" (report [cetR]).
+            attendedUids={(game.players ?? []).filter(
+              (uid) => game.arrivals?.[uid] !== 'no_show',
+            )}
           />
         ) : null}
 

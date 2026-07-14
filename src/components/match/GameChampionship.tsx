@@ -18,17 +18,21 @@ export function GameChampionship({
   groupId,
   /** Bump to force a refetch (e.g. after an admin adds/undoes a retro goal). */
   refreshKey,
+  /** Attendees of the evening — listed even with no stats (report [cetR]). */
+  attendedUids,
 }: {
   gameId: string;
   groupId?: string;
   refreshKey?: number;
+  attendedUids?: string[];
 }) {
   const [players, setPlayers] = useState<ChampionshipRow[] | null>(null);
+  const attendedKey = (attendedUids ?? []).join(',');
 
   useEffect(() => {
     let alive = true;
     gameService
-      .getGameChampionship(gameId)
+      .getGameChampionship(gameId, attendedUids)
       .then((d) => {
         if (alive) setPlayers(d.players);
       })
@@ -38,7 +42,8 @@ export function GameChampionship({
     return () => {
       alive = false;
     };
-  }, [gameId, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, refreshKey, attendedKey]);
 
   if (!players || players.length === 0) return null;
 

@@ -1170,22 +1170,32 @@ export const gameService = {
    * score = goals×2 + assists×1. Shown on MatchDetails once the game is
    * finished. Games that finished before this collection existed return [].
    */
-  async getGameChampionship(gameId: string): Promise<{ players: ChampionshipRow[] }> {
+  async getGameChampionship(
+    gameId: string,
+    // Players who were in the evening (attended). Anyone here without a stat row
+    // is merged in as a zero-row so the table lists EVERYONE who was there, not
+    // only those who scored/won (user report [cetR]: show attendees who "were in
+    // the evening" even with no stats).
+    attendedUids?: string[],
+  ): Promise<{ players: ChampionshipRow[] }> {
     if (USE_MOCK_DATA || !gameId) return { players: [] };
     const db = getFirebase().db;
     try {
       const snap = await getDocs(
         query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId)),
       );
+      const statRows = snap.docs.map((d) => d.data() as { userId?: string });
+      if (attendedUids && attendedUids.length) {
+        const have = new Set(statRows.map((r) => r.userId));
+        for (const uid of attendedUids) {
+          if (uid && !have.has(uid)) statRows.push({ userId: uid });
+        }
+      }
       // 'points' + keepAll: rank the game table the SAME way as the community
-      // table (wins → goals → assists), keeping every player who took the field
-      // (keepAll, so an all-zero field player isn't dropped).
+      // table (wins → goals → assists), keeping every attendee (keepAll, so an
+      // all-zero row isn't dropped).
       return {
-        players: rankChampionshipRows(
-          snap.docs.map((d) => d.data()),
-          'points',
-          true,
-        ),
+        players: rankChampionshipRows(statRows, 'points', true),
       };
     } catch (err) {
       logError('getGameChampionship', err, { gameId });
