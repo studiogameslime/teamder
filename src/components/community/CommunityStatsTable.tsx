@@ -39,10 +39,14 @@ export function CommunityStatsTable({
   players,
   groupId,
   limit = 30,
+  /** Drop the "הופעות" (evenings attended) column — the per-game table reuses
+   *  this table but appearances are meaningless for a single game. */
+  hideAppearances = false,
 }: {
   players: ChampionshipRow[];
   groupId?: string;
   limit?: number;
+  hideAppearances?: boolean;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
@@ -75,20 +79,19 @@ export function CommunityStatsTable({
   // rest. Scroll the strip to reveal the others.
   // Mini-games (rounds), NOT evenings, as the "played" count — so it shares a
   // unit with wins/losses (you can't win more rounds than you played). An
-  // evening has several rounds, so evenings would read oddly next to wins
-  // ("10 games, 20 wins"). Goals first — it's the ranking metric.
-  // Column order follows the scoring story (RTL, right→left): goals →
-  // assists (the two point sources) → wins → losses (outcomes) → then
-  // appearances + mini-games. Matches the "ניקוד" sort the table now uses
-  // (goal 2pts + assist 1pt) so the eye reads the point-drivers first.
-  const cols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
-    { key: 'goals', label: he.champColGoals, primary: true },
+  // Column order (RTL, right→left, next to the name column): wins → goals →
+  // assists → then the outcomes/counts (losses → appearances → mini-games).
+  // Wins lead — it's the headline stat the owner wants read first — followed by
+  // the two point sources (goals, assists).
+  const allCols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
+    { key: 'wins', label: he.champColWins, primary: true },
+    { key: 'goals', label: he.champColGoals },
     { key: 'assists', label: he.champColAssists },
-    { key: 'wins', label: he.champColWins },
     { key: 'losses', label: he.champColLosses },
     { key: 'games', label: he.champColAppearances }, // evenings attended
     { key: 'rounds', label: he.champColMiniGames }, // mini-games played
   ];
+  const cols = allCols.filter((c) => !(hideAppearances && c.key === 'games'));
 
   return (
     <Card style={styles.table}>

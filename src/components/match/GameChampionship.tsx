@@ -7,7 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ChampionshipTable } from '@/components/community/ChampionshipTable';
+import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
 import { gameService } from '@/services';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -46,7 +46,8 @@ export function GameChampionship({
     <View style={styles.wrap}>
       <Text style={styles.title}>{he.gameChampTitle}</Text>
       <Text style={styles.note}>{he.gameChampNote}</Text>
-      <ChampionshipTable players={players} groupId={groupId} />
+      {/* Same table + sort as the community table, minus the appearances column. */}
+      <CommunityStatsTable players={players} groupId={groupId} hideAppearances />
     </View>
   );
 }

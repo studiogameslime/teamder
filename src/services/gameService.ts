@@ -1177,7 +1177,16 @@ export const gameService = {
       const snap = await getDocs(
         query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId)),
       );
-      return { players: rankChampionshipRows(snap.docs.map((d) => d.data())) };
+      // 'points' + keepAll: rank the game table the SAME way as the community
+      // table (wins → goals → assists), keeping every player who took the field
+      // (keepAll, so an all-zero field player isn't dropped).
+      return {
+        players: rankChampionshipRows(
+          snap.docs.map((d) => d.data()),
+          'points',
+          true,
+        ),
+      };
     } catch (err) {
       logError('getGameChampionship', err, { gameId });
       if (__DEV__) console.warn('[gameService] getGameChampionship failed', err);

@@ -167,6 +167,11 @@ export function CommunityPlayersScreen() {
     nav.navigate('PlayerCard', { userId: u.id, groupId });
   const goToTimeline = (u: User) =>
     nav.navigate('PlayerTimeline', { userId: u.id, groupId, name: u.name });
+  // Head-to-head comparison — anchored to THIS community's groupId (unambiguous
+  // here, unlike the player card which had to guess the group). Per-community
+  // stats vs the viewer.
+  const goToCompare = (u: User) =>
+    nav.navigate('PlayerCompare', { groupId, otherUid: u.id, otherName: u.name });
 
   // Yellow/red card actions only appear when the club enabled the cards
   // feature in its advanced settings. The player-card + timeline entries
@@ -187,6 +192,10 @@ export function CommunityPlayersScreen() {
       iAmAdmin && !iAmCreator && !isMe && !targetIsCreator && !targetIsAdmin;
     return [
       { key: 'card', icon: 'person-circle-outline', label: he.playerMenuCard, onPress: () => goToCard(u) },
+      // Compare THIS player to me (any member can) — but not myself.
+      ...(!isMe
+        ? ([{ key: 'compare', icon: 'podium-outline', label: he.compareCta, onPress: () => goToCompare(u) }] as PlayerMenuItem[])
+        : []),
       ...(iAmAdmin
         ? ([{ key: 'timeline', icon: 'time-outline', label: he.playerMenuTimeline, onPress: () => goToTimeline(u) }] as PlayerMenuItem[])
         : []),
