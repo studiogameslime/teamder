@@ -96,6 +96,11 @@ export function RotationPanel({
     temporary ? r : r.map((m) => ({ ...m, isFiller: false, fromTeam: undefined }));
   const rosterA = clean(buildRoster(aIdx, teams, rotation, resolve));
   const rosterB = clean(buildRoster(bIdx, teams, rotation, resolve));
+  // In swap mode, only OTHER teams are valid targets — swapping two players
+  // within the same team is pointless, so the source's OWN team must not blink
+  // (user report [KSV6]). Figure out which on-field team the source sits on.
+  const sourceOnA = !!swapSource && rosterA.some((m) => m.id === swapSource);
+  const sourceOnB = !!swapSource && rosterB.some((m) => m.id === swapSource);
   const winsOf = (i: number) => rotation.wins?.[String(i)] ?? 0;
 
   // Filler legend — name the specific player(s) + their home team, so it's
@@ -208,13 +213,13 @@ export function RotationPanel({
                 variant="list"
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
-                  swapSource
+                  swapSource && !sourceOnA
                     ? (m) => handleSwapTap(m.id)
                     : onPlayerCard
                       ? (m, rect) => openMenu(m, rect, 'active')
                       : undefined
                 }
-                swapMode={!!swapSource}
+                swapMode={!!swapSource && !sourceOnA}
                 swapSourceId={swapSource}
               />
             </View>
@@ -229,13 +234,13 @@ export function RotationPanel({
                 variant="list"
                 goalsByPlayer={goalsByPlayer}
                 onPlayerPress={
-                  swapSource
+                  swapSource && !sourceOnB
                     ? (m) => handleSwapTap(m.id)
                     : onPlayerCard
                       ? (m, rect) => openMenu(m, rect, 'active')
                       : undefined
                 }
-                swapMode={!!swapSource}
+                swapMode={!!swapSource && !sourceOnB}
                 swapSourceId={swapSource}
               />
             </View>
@@ -268,11 +273,14 @@ export function RotationPanel({
             return (
               <Pressable
                 key={idx}
-                onPress={() => setOpenTeam(idx)}
+                // During a swap, tapping the card must NOT open the team picker —
+                // the swap target is a specific avatar below (user report [KSV6]).
+                onPress={swapSource ? undefined : () => setOpenTeam(idx)}
                 style={({ pressed }) => [
                   styles.waitCard,
                   next && styles.waitCardNext,
-                  pressed && { opacity: 0.9 },
+                  !!swapSource && styles.waitCardSwap,
+                  pressed && !swapSource && { opacity: 0.9 },
                 ]}
               >
                 {/* Corner tab — "הבאה בתור" (blue) / "אחריה" (gray). */}
@@ -306,8 +314,25 @@ export function RotationPanel({
 
                 <View style={styles.waitRoster}>
                   {roster.slice(0, 6).map((m) => (
-                    <View key={m.id} style={styles.waitMini}>
-                      {onPlayerCard ? (
+                    <View
+                      key={m.id}
+                      style={[styles.waitMini, !!swapSource && styles.waitMiniSwap]}
+                    >
+                      {swapSource ? (
+                        // Swap target — a waiting player can come in for the
+                        // picked on-field player.
+                        <Pressable
+                          onPress={() => handleSwapTap(m.id)}
+                          hitSlop={4}
+                          accessibilityLabel={m.name}
+                        >
+                          <UserAvatar
+                            user={{ id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl }}
+                            size={32}
+                            ring
+                          />
+                        </Pressable>
+                      ) : onPlayerCard ? (
                         <MeasurablePressable
                           onMeasured={(rect) => openMenu(m, rect, 'active')}
                           hitSlop={4}
@@ -495,6 +520,17 @@ const styles = StyleSheet.create({
   waitCardNext: {
     borderColor: '#BFDBFE',
     backgroundColor: '#EFF6FF',
+  },
+  // Swap mode: highlight the waiting cards as valid targets (report [KSV6]).
+  waitCardSwap: {
+    borderColor: '#1D4ED8',
+    borderWidth: 2,
+    backgroundColor: '#EFF4FF',
+  },
+  waitMiniSwap: {
+    borderRadius: 12,
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 3,
   },
   // Corner tab (top-start). RN flips physical right→visual-left under RTL, so
   // `right: 0` pins it to the visual top-LEFT corner like the design.
