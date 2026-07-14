@@ -193,7 +193,15 @@ export function GameEditScreen() {
       (game.players?.length ?? 0) +
       (game.guests?.length ?? 0) +
       (game.pending?.length ?? 0);
-    if (newMaxPlayers < registeredCount) {
+    const currentMax =
+      typeof game.maxPlayers === 'number' ? game.maxPlayers : newMaxPlayers;
+    // Only block when the admin is actually REDUCING capacity below who's
+    // already in. A pre-existing over-capacity state (e.g. a guest added over
+    // the cap) must NOT block an unrelated edit that keeps/raises capacity —
+    // otherwise the whole save is refused (and any other change, like toggling
+    // waitlist-approval, is silently lost). Reported by Eliran (8 in roster + 1
+    // waiting, editing something unrelated).
+    if (newMaxPlayers < currentMax && newMaxPlayers < registeredCount) {
       appAlert(
         he.editGameCapacityTooLowTitle,
         he.editGameCapacityTooLowBody(registeredCount, newMaxPlayers),

@@ -132,6 +132,7 @@ export function MatchPlayersScreen() {
             // who removed them, so "הוסר ע״י <name>" resolves a real name.
             ...Object.keys(g.adminRemovals ?? {}),
             ...Object.values(g.adminRemovedBy ?? {}),
+            ...(g.guests ?? []).map((gu) => gu.addedBy),
           ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
@@ -173,6 +174,7 @@ export function MatchPlayersScreen() {
             ...Object.keys(g.cancellations ?? {}),
             ...Object.keys(g.adminRemovals ?? {}),
             ...Object.values(g.adminRemovedBy ?? {}),
+            ...(g.guests ?? []).map((gu) => gu.addedBy),
           ]),
         );
         if (uids.length > 0) hydratePlayers(uids);
@@ -620,6 +622,9 @@ export function MatchPlayersScreen() {
                     guest={g}
                     showDivider={i + playerEntries.length > 0}
                     rating={canSeeRating ? g.estimatedRating : undefined}
+                    addedByName={
+                      playersMap[g.addedBy]?.displayName
+                    }
                     onPress={
                       canEdit ? () => setEditingGuest(g) : undefined
                     }
@@ -776,6 +781,9 @@ export function MatchPlayersScreen() {
                     showDivider={i + waitlistEntries.length > 0}
                     rating={canSeeRating ? g.estimatedRating : undefined}
                     waitlisted
+                    addedByName={
+                      playersMap[g.addedBy]?.displayName
+                    }
                     onPress={canEdit ? () => setEditingGuest(g) : undefined}
                     onPromote={
                       isAdminViewer && !rosterFull
@@ -1325,6 +1333,7 @@ function GuestRow({
   rating,
   onPress,
   waitlisted,
+  addedByName,
   onMoveUp,
   onMoveDown,
   onPromote,
@@ -1337,6 +1346,9 @@ function GuestRow({
   onPress?: () => void;
   /** Guest sits on the waitlist (added while full) — tag it accordingly. */
   waitlisted?: boolean;
+  /** Display name of the member who added this guest — shown so everyone sees
+   *  who's responsible for the guest (user report [3MZk]). */
+  addedByName?: string;
   /** Waitlisted-guest admin controls (mirror the regular waitlist rows). */
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -1352,10 +1364,11 @@ function GuestRow({
         <Text style={styles.name} numberOfLines={1}>
           {guest.name}
         </Text>
-        <Text style={styles.guestSub}>
+        <Text style={styles.guestSub} numberOfLines={1}>
           {waitlisted
             ? `${he.matchPlayersGuestTag} · ${he.matchPlayersWaitlistTag}`
             : he.matchPlayersGuestTag}
+          {addedByName ? ` · צירף: ${addedByName}` : ''}
         </Text>
       </View>
       {rating != null ? (

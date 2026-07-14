@@ -2335,6 +2335,8 @@ export const he = {
   // history surface (no per-game history screen yet).
   matchMenuHistory: 'היסטוריית משחקים',
   matchMenuLeave: 'יציאה מהמשחק',
+  leaveGameConfirmTitle: 'לבטל את ההרשמה?',
+  leaveGameConfirmBody: 'ההרשמה שלך למשחק תבוטל. תמיד אפשר להירשם שוב כל עוד יש מקום.',
   // Registration conflict — surfaced in the modal that blocks a join
   // when the user is already registered to a game within ±4h of the
   // target. The helper variant is for the inline disabled-CTA hint.

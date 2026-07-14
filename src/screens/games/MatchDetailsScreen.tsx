@@ -1970,7 +1970,16 @@ export function MatchDetailsScreen() {
                 id: 'leave',
                 label: he.matchMenuLeave,
                 icon: 'exit-outline' as const,
-                onPress: handlePrimary,
+                // Confirm before cancelling registration (user report [tycM]).
+                onPress: () =>
+                  appAlert(he.leaveGameConfirmTitle, he.leaveGameConfirmBody, [
+                    { text: he.cancel, style: 'cancel' },
+                    {
+                      text: he.matchMenuLeave,
+                      style: 'destructive',
+                      onPress: handlePrimary,
+                    },
+                  ]),
                 tone: 'danger' as const,
               },
             ]
