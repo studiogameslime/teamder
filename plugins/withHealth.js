@@ -28,10 +28,14 @@ const {
 
 // No READ_EXERCISE / READ_EXERCISE_ROUTE: the GPS heatmap was dropped, and
 // READ_EXERCISE_ROUTE is the Health Connect permission Google scrutinises most.
+// READ_HEART_RATE dropped 2026-07-14: Google's Jan-2026 policy requires each
+// health data type to be "essential to the app's primary function". Heart-rate
+// is the single hardest to justify for a game-ORGANISING app and the most
+// scrutinised, so we ask only for the movement/effort metrics the post-game
+// summary actually needs. (No READ_EXERCISE / READ_EXERCISE_ROUTE either.)
 const HC_READ_PERMISSIONS = [
   'android.permission.health.READ_STEPS',
   'android.permission.health.READ_DISTANCE',
-  'android.permission.health.READ_HEART_RATE',
   'android.permission.health.READ_ACTIVE_CALORIES_BURNED',
   'android.permission.health.READ_TOTAL_CALORIES_BURNED',
   'android.permission.health.READ_SPEED',

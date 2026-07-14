@@ -48,10 +48,13 @@ type HealthConnect = typeof import('react-native-health-connect');
 // (HC_READ_PERMISSIONS) so a granted permission maps to a manifest entry.
 // NOTE: no ExerciseSession / ExerciseRoute — the GPS heatmap was dropped, and
 // READ_EXERCISE_ROUTE is the permission Google reviews most strictly.
+// HeartRate dropped 2026-07-14 — see plugins/withHealth.js: hardest to justify
+// as "essential" for a game-organising app under Google's Jan-2026 health policy.
+// Kept in sync with HC_READ_PERMISSIONS so a granted permission always maps to a
+// requested record type.
 const READ_PERMISSIONS = [
   { accessType: 'read', recordType: 'Distance' },
   { accessType: 'read', recordType: 'Steps' },
-  { accessType: 'read', recordType: 'HeartRate' },
   { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
   { accessType: 'read', recordType: 'TotalCaloriesBurned' },
   { accessType: 'read', recordType: 'Speed' },
@@ -140,10 +143,9 @@ async function readRawSession(
     }
   };
 
-  const [dist, steps, hr, active, speed] = await Promise.all([
+  const [dist, steps, active, speed] = await Promise.all([
     read('Distance'),
     read('Steps'),
-    read('HeartRate'),
     read('ActiveCaloriesBurned'),
     read('Speed'),
   ]);
@@ -155,20 +157,9 @@ async function readRawSession(
     0,
   );
 
-  const hrSamples: Array<{ bpm: number; ms: number }> = [];
-  for (const r of hr) {
-    for (const smp of r.samples ?? []) {
-      const bpm = smp.beatsPerMinute;
-      const ms = Date.parse(smp.time);
-      if (typeof bpm === 'number' && bpm > 0 && !Number.isNaN(ms)) {
-        hrSamples.push({ bpm, ms });
-      }
-    }
-  }
-  const avgHr = hrSamples.length
-    ? Math.round(hrSamples.reduce((s, x) => s + x.bpm, 0) / hrSamples.length)
-    : 0;
-  const maxHr = hrSamples.reduce((m, x) => Math.max(m, x.bpm), 0);
+  // Heart-rate dropped (see READ_PERMISSIONS) — kept as 0 for type/display compat.
+  const avgHr = 0;
+  const maxHr = 0;
 
   const speeds: number[] = [];
   for (const r of speed) {
@@ -188,7 +179,7 @@ async function readRawSession(
 
   // Nothing worth showing → treat as "no session" so the caller doesn't upload
   // a hollow all-zeros doc.
-  if (!distanceM && !stepCount && !calories && hrSamples.length === 0) {
+  if (!distanceM && !stepCount && !calories && speeds.length === 0) {
     return null;
   }
 
@@ -201,7 +192,9 @@ async function readRawSession(
     topSpeedKmh,
     avgSpeedKmh,
     sprints,
-    hrSamples,
+    // hrSamples omitted — heart-rate dropped; hrZones/effort resolve to empty
+    // until the effort score is re-based on movement metrics when Health is
+    // re-enabled (currently gated off pending the Google health declaration).
   };
 }
 
