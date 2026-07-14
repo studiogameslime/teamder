@@ -120,7 +120,7 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
           {/* verdict headline — who leads more of the per-community metrics */}
           <View style={styles.verdictHead}>
             <Text style={styles.verdictHeadTop}>
-              {tie ? '🤝 שקול' : youLead ? 'אתה מוביל 👑' : `${b.name} מוביל 👑`}
+              {tie ? 'שקול 🤝' : youLead ? 'אתה מוביל 👑' : `${b.name} מוביל 👑`}
             </Text>
             <Text style={styles.verdictHeadSub}>
               {tie

@@ -455,15 +455,34 @@ function H2hRecordRow({
 }
 
 /** Date row: [calendar] label … date. */
-function H2hDateRow({ label, value }: { label: string; value: string }) {
-  return (
+function H2hDateRow({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  /** When set, the row is tappable and shows a chevron to open that game. */
+  onPress?: () => void;
+}) {
+  const body = (
     <View style={styles.h2hRow}>
       <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.h2hRowIcon} />
       <Text style={[styles.h2hLabel, styles.h2hFlex]} numberOfLines={1}>
         {label}
       </Text>
       <Text style={styles.h2hDate}>{value}</Text>
+      {onPress ? (
+        <Ionicons name="chevron-back" size={18} color={colors.primary} />
+      ) : null}
     </View>
+  );
+  return onPress ? (
+    <Pressable onPress={onPress} accessibilityRole="button">
+      {body}
+    </Pressable>
+  ) : (
+    body
   );
 }
 
@@ -520,6 +539,7 @@ function PairStatsSection({
     attendedTogether: 0,
     firstSharedAt: null as number | null,
     lastSharedAt: null as number | null,
+    lastSharedGameId: null as string | null,
     sameTeam: 0,
     winsTogether: 0,
     lossesTogether: 0,
@@ -531,6 +551,7 @@ function PairStatsSection({
   };
   const [stats, setStats] = useState<typeof ZERO>(ZERO);
   const [sharedGroups, setSharedGroups] = useState<Group[]>([]);
+  const pairNav = useNavigation<{ navigate: (s: string, p: object) => void }>();
 
   useEffect(() => {
     let alive = true;
@@ -634,6 +655,14 @@ function PairStatsSection({
                 <H2hDateRow
                   label={he.pairStatsLastShared}
                   value={formatPairDate((stats.lastSharedAt ?? stats.firstSharedAt) as number)}
+                  onPress={
+                    stats.lastSharedGameId
+                      ? () =>
+                          pairNav.navigate('MatchDetails', {
+                            gameId: stats.lastSharedGameId,
+                          })
+                      : undefined
+                  }
                 />
               </>
             ) : null}

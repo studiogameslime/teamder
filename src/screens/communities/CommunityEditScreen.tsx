@@ -94,7 +94,6 @@ export function CommunityEditScreen() {
   }
 
   const submit = async (v: GroupFormValues) => {
-    const parsedMembers = parseInt(v.maxMembers, 10);
     const toDays = (s: string): number | null => {
       const n = parseInt(s, 10);
       return Number.isFinite(n) && n > 0 ? n : null;
@@ -115,9 +114,10 @@ export function CommunityEditScreen() {
         rules: v.rules.trim() || undefined,
         contactPhone: v.contactPhone.trim() || undefined,
         city: v.city.trim() || undefined,
-        maxMembers: Number.isFinite(parsedMembers) && parsedMembers > 0
-          ? parsedMembers
-          : undefined,
+        // maxMembers is intentionally NOT sent — the field was removed from the
+        // form (report [3EG3]). Re-sending the form default (40) here would trip
+        // GROUP_MAX_BELOW_CURRENT and lock an admin out of editing an uncapped /
+        // over-40 community. Omitting the key preserves the stored cap untouched.
       });
       logEvent(AnalyticsEvent.GroupSettingsEdited, { groupId: original.id });
       await reloadGroups(me.id);

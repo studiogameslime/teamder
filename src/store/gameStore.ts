@@ -92,10 +92,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const existing = get().players;
     const now = Date.now();
     // Fetch a uid if it's not cached OR its cache is older than the TTL.
+    // Guard against falsy ids: a single undefined/'' (e.g. a malformed guest
+    // with no addedBy) would otherwise reach the Firestore `in`-query and reject
+    // the WHOLE batch, blanking every roster name to "…".
     const missing = uids.filter(
       (id) =>
-        !existing[id] ||
-        now - (playerHydratedAt.get(id) ?? 0) > PLAYER_HYDRATE_TTL_MS,
+        !!id &&
+        (!existing[id] ||
+          now - (playerHydratedAt.get(id) ?? 0) > PLAYER_HYDRATE_TTL_MS),
     );
     if (missing.length === 0) return;
     try {

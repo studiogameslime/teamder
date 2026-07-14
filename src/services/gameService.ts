@@ -758,6 +758,9 @@ export const gameService = {
     attendedTogether: number;
     firstSharedAt: number | null;
     lastSharedAt: number | null;
+    /** id of the most-recent game the pair shared — for the "open game" jump on
+     *  the player card's last-shared row. */
+    lastSharedGameId: string | null;
     /** Rounds the pair played on the SAME team (from the live rotation). */
     sameTeam: number;
     winsTogether: number;
@@ -776,6 +779,7 @@ export const gameService = {
       attendedTogether: 0,
       firstSharedAt: null as number | null,
       lastSharedAt: null as number | null,
+      lastSharedGameId: null as string | null,
       sameTeam: 0,
       winsTogether: 0,
       lossesTogether: 0,
@@ -832,6 +836,7 @@ export const gameService = {
         }
         if (acc.lastSharedAt == null || ts > acc.lastSharedAt) {
           acc.lastSharedAt = ts;
+          acc.lastSharedGameId = doc.id;
         }
       }
     }
@@ -1185,10 +1190,16 @@ export const gameService = {
         query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId)),
       );
       const statRows = snap.docs.map((d) => d.data() as { userId?: string });
-      if (attendedUids && attendedUids.length) {
+      // Merge attendees as zero-rows ONLY for games that actually have stats —
+      // a legacy pre-stats game (no docs at all) should stay empty (return null
+      // in the component) rather than render an all-zero table.
+      if (statRows.length > 0 && attendedUids && attendedUids.length) {
         const have = new Set(statRows.map((r) => r.userId));
         for (const uid of attendedUids) {
-          if (uid && !have.has(uid)) statRows.push({ userId: uid });
+          if (uid && !have.has(uid)) {
+            statRows.push({ userId: uid });
+            have.add(uid);
+          }
         }
       }
       // 'points' + keepAll: rank the game table the SAME way as the community
