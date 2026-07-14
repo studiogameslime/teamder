@@ -64,11 +64,24 @@ const SPRINT_MPS = 5.3;
 // automatically — a manual re-connect can pass forcePrompt to bypass it.
 const DECLINED_KEY = 'health.hc.declined';
 
+// ⚠️ HEALTH CONNECT IS GATED OFF. The react-native-health-connect PACKAGE is
+// still bundled, but its config plugin (plugins/withHealth.js + the library's
+// own plugin) was REMOVED from app.json to clear Google Play's health-
+// declaration gate. That plugin is what registers the permission-delegate
+// activity in the manifest, so calling the native module's requestPermission /
+// initialize WITHOUT it throws an UNCATCHABLE native exception → the app closes.
+// It took down the evening summary on open (EveningSummaryScreen →
+// physicalSyncService.syncForGame → ensurePermissions → requestPermission).
+// Keep this false until BOTH the config plugin is restored AND Google's health
+// declaration is approved. Flipping it back to true re-enables everything.
+const HEALTH_ENABLED = false;
+
 // Resolve the native binding once. react-native-health-connect is Android-only;
 // on iOS we return null (HealthKit not wired yet). A guarded require means a
 // build WITHOUT the native module still runs (returns null) instead of crashing.
 let hcModule: HealthConnect | null | undefined;
 function nativeHealth(): HealthConnect | null {
+  if (!HEALTH_ENABLED) return null;
   if (Platform.OS !== 'android') return null;
   if (hcModule !== undefined) return hcModule;
   try {
