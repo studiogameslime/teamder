@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.63",
+    "version": "1.0.64",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -137,6 +137,8 @@
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
       "./plugins/withRemoveAlwaysLocation.js",
+      "react-native-health-connect",
+      "./plugins/withHealth.js",
       "@bacons/apple-targets"
     ],
     "experiments": {
