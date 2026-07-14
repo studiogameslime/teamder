@@ -11,7 +11,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
