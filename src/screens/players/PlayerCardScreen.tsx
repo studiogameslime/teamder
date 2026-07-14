@@ -454,15 +454,17 @@ function H2hRecordRow({
         </Text>
         <Text style={styles.h2hSub}>{he.pairStatsRoundsCount(rounds)}</Text>
       </View>
-      {/* Losses (red) on the right, wins (green) on the far left. */}
+      {/* RTL: wins (green) first → right/inner (next to the label), losses
+          (red) → left. Reads ניצחת · הפסדת in the natural Hebrew order. */}
       <View style={styles.wlStats}>
-        <View style={styles.wlStat}>
-          <Text style={[styles.wlNum, { color: colors.danger }]}>{losses}</Text>
-          <Text style={[styles.wlLabel, { color: colors.danger }]}>{lostLabel}</Text>
-        </View>
         <View style={styles.wlStat}>
           <Text style={[styles.wlNum, { color: colors.success }]}>{wins}</Text>
           <Text style={[styles.wlLabel, { color: colors.success }]}>{wonLabel}</Text>
+        </View>
+        <View style={styles.wlDivider} />
+        <View style={styles.wlStat}>
+          <Text style={[styles.wlNum, { color: colors.danger }]}>{losses}</Text>
+          <Text style={[styles.wlLabel, { color: colors.danger }]}>{lostLabel}</Text>
         </View>
       </View>
     </View>
@@ -922,7 +924,7 @@ const styles = StyleSheet.create({
   commName: { ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   // ── Head-to-head card ──
   h2hCard: { padding: spacing.md, gap: 0 },
-  h2hTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
+  h2hTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
   h2hTitle: { ...typography.h3, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   h2hDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   h2hRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, minHeight: 56 },
@@ -933,9 +935,18 @@ const styles = StyleSheet.create({
   h2hSub: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN },
   h2hBigNum: { ...typography.h2, color: colors.primary, fontWeight: '900' },
   h2hDate: { ...typography.body, color: colors.text, fontWeight: '700' },
-  wlStats: { flexDirection: 'row', gap: spacing.md },
-  wlStat: { alignItems: 'center', minWidth: 34 },
-  wlNum: { ...typography.h3, fontWeight: '900' },
+  wlStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+  },
+  wlStat: { alignItems: 'center', minWidth: 40 },
+  wlDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border },
+  wlNum: { ...typography.h3, fontWeight: '900', lineHeight: 24 },
   wlLabel: { ...typography.caption, fontWeight: '700' },
   pairTitleRow: {
     flexDirection: 'row-reverse',

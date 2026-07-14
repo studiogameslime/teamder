@@ -2156,7 +2156,9 @@ export const he = {
     `הוסר ע״י ${name} ${text}`,
   // Admin removed themselves ("הסיר את עצמו לפני שעה").
   matchPlayersSelfRemovedAgo: (text: string) => `הסיר את עצמו ${text}`,
-  pairStatsTitle: (name: string) => `אתה ו${name}`,
+  // Wrap the name in a bidi isolate (FSI…PDI) so a Latin name ("Eliran Tzabari")
+  // can't reorder the Hebrew around it — otherwise "אתה ו" + a LTR name jumbles.
+  pairStatsTitle: (name: string) => `אתה ו⁨${name}⁩`,
   // Order matters — registration happens before attendance, so the
   // labels read more naturally in Hebrew when "נרשמתם" is the first
   // tile shown. The pair card uses this same order.
