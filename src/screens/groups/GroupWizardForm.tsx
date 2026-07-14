@@ -322,16 +322,10 @@ export function GroupWizardForm({
                   onValueChange={(v) => set('isOpen', v)}
                 />
 
-                {/* Community-wide member cap. Lives on step 2 so the
-                    GROUP_MAX_BELOW_CURRENT revert (revertToStep={2}) lands on a
-                    real field. Empty = no explicit cap (server default). */}
-                <InputField
-                  label={he.createGroupMaxMembers}
-                  value={values.maxMembers}
-                  onChangeText={(v) => set('maxMembers', v.replace(/[^0-9]/g, '').slice(0, 4))}
-                  keyboardType="number-pad"
-                  placeholder="40"
-                />
+                {/* Community-wide member cap field REMOVED (user request) — the
+                    value still flows through `values.maxMembers` (loaded from the
+                    existing community on edit, default on create) so removing the
+                    input doesn't reset an existing cap. */}
 
                 <FormSectionHeader title={he.groupSectionRating} />
                 {/* Internal rating — admins set player skill levels themselves

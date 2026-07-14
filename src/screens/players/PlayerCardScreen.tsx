@@ -473,7 +473,9 @@ function CommunityChips({ groups }: { groups: Group[] }) {
     <View style={styles.commCard}>
       <View style={styles.commHeadRow}>
         <Ionicons name="people" size={16} color={colors.primary} />
-        <Text style={styles.commHeader}>{he.pairStatsSharedCommunities}</Text>
+        <Text style={styles.commHeader}>
+          {he.pairStatsSharedCommunities} ({groups.length})
+        </Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.commScroll}>
         {groups.map((g) => (
@@ -864,7 +866,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  commHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  commHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   commHeader: { ...typography.bodyBold, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
   commScroll: { flexDirection: 'row-reverse', gap: spacing.sm, paddingVertical: 2 },
   commChip: {
