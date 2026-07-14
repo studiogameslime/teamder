@@ -137,8 +137,6 @@
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
       "./plugins/withRemoveAlwaysLocation.js",
-      "react-native-health-connect",
-      "./plugins/withHealth.js",
       "@bacons/apple-targets"
     ],
     "experiments": {
