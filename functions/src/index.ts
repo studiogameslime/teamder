@@ -2943,6 +2943,12 @@ async function runCloneRecurringGames(): Promise<void> {
     delete next.jerseysHolderUserId;
     delete next.teams; // legacy Team[]; modern draftTeams already cleared above
     delete next.weather; // stale forecast — refreshed on demand
+    // Invitations are per-INSTANCE: each weekly game has its own invite list, so
+    // last week's invitees must not ride in via {...g} — otherwise the coach sees
+    // them as "already invited" on the fresh game and can't re-invite them (user
+    // report [DXo4]).
+    delete next.invitedUserIds;
+    delete next.invitesSent;
     // Status: scheduled if registration hasn't opened yet, else open.
     const isDeferred = typeof nextReg === 'number' && nextReg > now;
     next.status = isDeferred ? 'scheduled' : 'open';
