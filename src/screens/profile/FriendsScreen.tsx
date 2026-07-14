@@ -309,13 +309,11 @@ export function FriendsScreen() {
                 <Pressable
                   onPress={async () => {
                     try {
-                      // Device-correct store link — the old
-                      // https://teamder.app domain isn't connected, so it
-                      // was a dead link on every platform.
-                      const link =
-                        Platform.OS === 'ios'
-                          ? 'https://apps.apple.com/app/id6775178022'
-                          : 'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+                      // Attributed app-invite link (lands on invite.html →
+                      // credits me as the inviter via invitedBy + the install
+                      // referrer/clipboard). Was a raw store link with NO
+                      // attribution — a share that never counted as an invite.
+                      const link = deepLinkService.buildAppInviteUrl(me?.id);
                       await Share.share({
                         title: he.inviteShareSubject,
                         message: he.profileInviteShareBody(link),
