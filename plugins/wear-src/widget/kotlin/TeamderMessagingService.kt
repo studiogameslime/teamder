@@ -57,6 +57,21 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     val controlledBy = data["timerControlledBy"] ?: ""
     val controlledByName = data["timerControlledByName"] ?: ""
     val title = data["gameTitle"] ?: ""
+    // Server send time (server epoch) — used for both the clock anchor below and
+    // the out-of-order guard next.
+    val msgServerNow = data["serverNowMs"]?.toLongOrNull()
+
+    // Out-of-order guard: onGameTimerChanged fires an FCM per timer change and
+    // FCM delivery is NOT ordered — a delayed older timerSync arriving after a
+    // newer one would re-assert a STALE running/paused state on the widget +
+    // watch (the JS path has publishSeq for this; the FCM path had nothing).
+    // Drop any message older than the newest we've applied FOR THIS GAME. Scoped
+    // by gameId so switching games doesn't wrongly block the new one.
+    val lastSyncGame = prefs.getString(KEY_LAST_SYNC_GAME, null)
+    val lastSyncMs = prefs.getLong(KEY_LAST_SYNC_MS, 0L)
+    if (msgServerNow != null && lastSyncGame == gameId && msgServerNow < lastSyncMs) {
+      return
+    }
 
     // Merge into the existing payload when it's the SAME game so we keep the
     // roster / viewer / measured clock offset the JS layer wrote. Otherwise
@@ -99,7 +114,6 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
       // the fold. offset = serverNowMs(send) − deviceNow(receive). The cached
       // JS-measured offset (RTT-corrected) is more accurate, so only derive from
       // the message when there's no cached offset.
-      val msgServerNow = data["serverNowMs"]?.toLongOrNull()
       if (state.optLong("clockOffsetMs", 0L) == 0L && msgServerNow != null) {
         state.put("clockOffsetMs", msgServerNow - System.currentTimeMillis())
       }
@@ -131,7 +145,14 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     }
 
     val json = state.toString()
-    prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, json).apply()
+    // Persist the applied message's server time + game so the guard above can
+    // drop a later-arriving OLDER message. Keep the previous marker if this
+    // message carried no serverNowMs (older sender), so we never regress to 0.
+    prefs.edit()
+      .putString(TeamderWidgetProvider.KEY_JSON, json)
+      .putLong(KEY_LAST_SYNC_MS, msgServerNow ?: lastSyncMs)
+      .putString(KEY_LAST_SYNC_GAME, gameId)
+      .apply()
     TeamderWidgetProvider.requestRefresh(context)
     TeamderPlayersWidgetProvider.requestRefresh(context)
 
@@ -151,5 +172,12 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     } catch (_: Exception) {
       // No paired watch / Wearable unavailable / timeout — widget still updated.
     }
+  }
+
+  companion object {
+    // Newest applied timerSync's server time + its game, for the out-of-order
+    // guard. Stored in the widget prefs file (same as KEY_JSON).
+    private const val KEY_LAST_SYNC_MS = "timerSyncLastServerMs"
+    private const val KEY_LAST_SYNC_GAME = "timerSyncLastGameId"
   }
 }
