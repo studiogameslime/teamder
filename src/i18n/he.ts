@@ -1688,27 +1688,32 @@ export const he = {
   availabilityTimeNoon: 'צהריים',
   availabilityTimeEvening: 'ערב',
   availabilityTimeNight: 'לילה',
-  availabilityAreaTitle: 'אזור חיפוש',
+  availabilityAreaTitle: 'אזור הבית הקבוע שלך',
+  availabilityAreaHint:
+    'סמן על המפה או חפש עיר. זה אזור קבוע — נשאר גם אם תיסע לחופשה, ולא נלקח מהמיקום הנוכחי.',
+  availabilitySearchCity: 'חפש עיר / אזור',
+  availabilityUseCurrent: 'השתמש במיקום הנוכחי שלי',
+  availabilityHomeAreaLabel: (city: string) => `אזור הבית: ${city}`,
   availabilityRangeTitle: 'טווח חיפוש',
   availabilityRangeValue: (km: number) => `${km} ק"מ`,
   availabilityNotifTitle: 'קבל התראות',
   availabilityNotifHint: 'שלח לי התראה כשיש משחקים עם חסרים באזור שלי',
   availabilitySavePrefs: 'שמור העדפות',
-  // Location gate — the whole feature is location-based, so it's off
-  // until the user grants location permission.
-  availabilityLocationToggle: 'איתור משחקים לפי המיקום שלי',
+  // Home-area gate — the feature is anchored to a FIXED home area the user
+  // sets (on a map / by city), NOT their live GPS. Off until they enable it.
+  availabilityLocationToggle: 'הגדרת אזור הבית שלי',
   availabilityLocationToggleHint:
-    'נדרשת הרשאת מיקום כדי למצוא לך משחקים באזור שלך.',
-  availabilityLocationLockedTitle: 'אפשרו שיתוף מיקום',
+    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך משחקים פתוחים לידו.',
+  availabilityLocationLockedTitle: 'הפעל כדי להגדיר אזור',
   availabilityLocationLockedHint:
-    'הפיצר הזה מוצא לך משחקים לפי המיקום שלך. הפעילו את המתג למעלה ואשרו שיתוף מיקום כדי להגדיר ימים, שעות וטווח חיפוש.',
-  // Variants shown when location permission is ALREADY granted — there's
-  // nothing to approve, so we don't ask; just flip the toggle.
-  availabilityLocationLockedTitleGranted: 'הפעילו איתור לפי מיקום',
+    'הפעל את המתג למעלה כדי לסמן על המפה (או לחפש עיר) את אזור הבית הקבוע שלך, ולהגדיר ימים, שעות וטווח חיפוש.',
+  // Kept for compatibility with the existing granted/not-granted branches;
+  // both now say the same (the feature no longer depends on GPS permission).
+  availabilityLocationLockedTitleGranted: 'הפעל כדי להגדיר אזור',
   availabilityLocationLockedHintGranted:
-    'הפיצר הזה מוצא לך משחקים לפי המיקום שלך. הפעילו את המתג למעלה כדי להגדיר ימים, שעות וטווח חיפוש.',
+    'הפעל את המתג למעלה כדי לסמן על המפה (או לחפש עיר) את אזור הבית הקבוע שלך, ולהגדיר ימים, שעות וטווח חיפוש.',
   availabilityLocationToggleHintGranted:
-    'נמצא לך משחקים באזור שלך לפי המיקום הנוכחי.',
+    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך משחקים פתוחים לידו.',
 
   // Post sign-in onboarding — single profile-customisation step.
   // The welcome + "how it works" intermediate screens were removed

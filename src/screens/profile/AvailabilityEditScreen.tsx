@@ -28,6 +28,10 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { RangeSlider } from '@/components/RangeSlider';
 import { AvailabilityRadiusMap } from '@/components/availability/AvailabilityRadiusMap';
 import { AvailabilityRadiusMapModal } from '@/components/availability/AvailabilityRadiusMapModal';
+import {
+  LocationSearchSheet,
+  type LocationResult,
+} from '@/components/games/LocationSearchSheet';
 import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -106,6 +110,9 @@ export function AvailabilityEditScreen() {
   const [gpsBusy, setGpsBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
+  // City/area search sheet + a display label for the resolved home area.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [cityLabel, setCityLabel] = useState<string>(initial.homeCity ?? '');
 
   const isDirty =
     JSON.stringify(days) !== JSON.stringify(initial.preferredDays ?? []) ||
@@ -140,27 +147,38 @@ export function AvailabilityEditScreen() {
     };
   }, []);
 
-  // Master toggle. Turning it ON requires location permission; if the user
-  // refuses we flip it straight back off (the feature is useless without
-  // location). Turning it OFF just disables the feature.
-  const handleToggleLocation = async (next: boolean) => {
-    if (!next) {
-      setLocationEnabled(false);
-      return;
-    }
+  // Master toggle. Just enables/disables the feature — it does NOT capture
+  // live GPS. The home area is a FIXED point the user sets explicitly on the
+  // map, by city search, or via the explicit "use my current location" button.
+  // (Previously this grabbed getCurrentPositionAsync and froze whatever the
+  // GPS happened to be — which anchored availability to a vacation spot when
+  // enabled abroad.)
+  const handleToggleLocation = (next: boolean) => {
+    setLocationEnabled(next);
+  };
+
+  // Explicit, opt-in GPS: only fires on a deliberate tap, never automatically.
+  // A convenience for someone setting this up while physically at home.
+  const handleUseCurrentLocation = async () => {
     setGpsBusy(true);
     try {
       const r = await resolveNearbyLocation(initial.homeCity);
       if (r.granted) {
         if (r.latLng) setPin(r.latLng);
-        setLocationEnabled(true);
+        if (r.city) setCityLabel(r.city);
       } else {
-        setLocationEnabled(false);
         promptLocationDenied(r.canAskAgain);
       }
     } finally {
       setGpsBusy(false);
     }
+  };
+
+  // City/area search result → move the fixed home pin there.
+  const handleCityPicked = (res: LocationResult) => {
+    setPin({ lat: res.lat, lng: res.lng });
+    if (res.label) setCityLabel(res.label);
+    setSearchOpen(false);
   };
 
   const toggleDay = useCallback((d: WeekdayIndex) => {
@@ -271,16 +289,12 @@ export function AvailabilityEditScreen() {
                 : he.availabilityLocationToggleHint}
             </Text>
           </View>
-          {gpsBusy ? (
-            <SoccerBallLoader size={22} />
-          ) : (
-            <BallSwitch
-              value={locationEnabled}
-              onValueChange={handleToggleLocation}
-              trackColor={{ false: colors.border, true: ACCENT }}
-              thumbColor="#fff"
-            />
-          )}
+          <BallSwitch
+            value={locationEnabled}
+            onValueChange={handleToggleLocation}
+            trackColor={{ false: colors.border, true: ACCENT }}
+            thumbColor="#fff"
+          />
         </View>
 
         {!locationEnabled ? (
@@ -357,14 +371,41 @@ export function AvailabilityEditScreen() {
           })}
         </View>
 
-        {/* Search area (map) */}
-        <SectionHeader icon="locate-outline" title={he.availabilityAreaTitle} />
+        {/* Fixed home area (map) — set explicitly, never from live GPS. */}
+        <SectionHeader icon="home-outline" title={he.availabilityAreaTitle} />
+        <Text style={styles.areaHint}>{he.availabilityAreaHint}</Text>
+        <View style={styles.areaBtnRow}>
+          <Pressable
+            onPress={() => setSearchOpen(true)}
+            style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
+          >
+            <Ionicons name="search" size={16} color={ACCENT} />
+            <Text style={styles.areaBtnText}>{he.availabilitySearchCity}</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleUseCurrentLocation}
+            disabled={gpsBusy}
+            style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
+          >
+            {gpsBusy ? (
+              <SoccerBallLoader size={16} />
+            ) : (
+              <Ionicons name="locate" size={16} color={ACCENT} />
+            )}
+            <Text style={styles.areaBtnText}>{he.availabilityUseCurrent}</Text>
+          </Pressable>
+        </View>
         <AvailabilityRadiusMap
           center={pin}
           radiusKm={radiusKm}
           onPick={(lat, lng) => setPin({ lat, lng })}
           onExpand={() => setMapExpanded(true)}
         />
+        {cityLabel ? (
+          <Text style={styles.areaCityLabel}>
+            {he.availabilityHomeAreaLabel(cityLabel)}
+          </Text>
+        ) : null}
 
         {/* Range slider */}
         <View style={styles.rangeHeader}>
@@ -438,6 +479,15 @@ export function AvailabilityEditScreen() {
         onClose={() => setMapExpanded(false)}
         onPick={(lat, lng) => setPin({ lat, lng })}
         onRadiusChange={setRadiusKm}
+      />
+
+      {/* City / area search — sets the FIXED home pin (reuses the game
+          wizard's picker: text search or pin-drop, always yields coords). */}
+      <LocationSearchSheet
+        visible={searchOpen}
+        initialCoords={pin}
+        onClose={() => setSearchOpen(false)}
+        onSelect={handleCityPicked}
       />
     </SafeAreaView>
   );
@@ -572,6 +622,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     textAlign: RTL_LABEL_ALIGN,
+  },
+
+  // Fixed home-area controls (search / current-location buttons + labels)
+  areaHint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 2,
+    marginBottom: spacing.sm,
+  },
+  areaBtnRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  areaBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  areaBtnText: { fontSize: 13, fontWeight: '700', color: ACCENT },
+  areaCityLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: spacing.sm,
   },
 
   // Day chips — 7 equal cells in one row
