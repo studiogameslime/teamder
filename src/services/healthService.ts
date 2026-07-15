@@ -67,17 +67,18 @@ const SPRINT_MPS = 5.3;
 // automatically — a manual re-connect can pass forcePrompt to bypass it.
 const DECLINED_KEY = 'health.hc.declined';
 
-// ⚠️ HEALTH CONNECT IS GATED OFF. The react-native-health-connect PACKAGE is
-// still bundled, but its config plugin (plugins/withHealth.js + the library's
-// own plugin) was REMOVED from app.json to clear Google Play's health-
-// declaration gate. That plugin is what registers the permission-delegate
-// activity in the manifest, so calling the native module's requestPermission /
-// initialize WITHOUT it throws an UNCATCHABLE native exception → the app closes.
-// It took down the evening summary on open (EveningSummaryScreen →
-// physicalSyncService.syncForGame → ensurePermissions → requestPermission).
-// Keep this false until BOTH the config plugin is restored AND Google's health
-// declaration is approved. Flipping it back to true re-enables everything.
-const HEALTH_ENABLED = false;
+// HEALTH CONNECT ENABLED. The config plugins are BACK in app.json
+// (react-native-health-connect + plugins/withHealth.js), which register the
+// permission-delegate activity + READ permissions in the manifest — so calling
+// the native module's requestPermission / initialize is now safe (the earlier
+// crash was because the plugin had been stripped while this flag/code stayed).
+// Google's "Health apps" content declaration is now completable on the account
+// (proven 2026-07-15), so this ships the ORIGINAL plan: read the player's
+// session from Health Connect — the Android hub that ANY wearable (Samsung
+// Health, Garmin, Fitbit, Xiaomi, Wear OS…) syncs into — independent of the
+// Teamder watch app. ⚠️ Requires the health.* permission descriptions in the
+// Play declaration + Google's Health Connect review at submit time.
+const HEALTH_ENABLED = true;
 
 // Resolve the native binding once. react-native-health-connect is Android-only;
 // on iOS we return null (HealthKit not wired yet). A guarded require means a
