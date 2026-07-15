@@ -29,7 +29,14 @@ class WearStateRepository(private val appContext: Context) :
 
     private val dataClient: DataClient by lazy { Wearable.getDataClient(appContext) }
 
+    /** Reset each start(); set when onDataChanged delivers a fresh item. Guards
+     *  the resume-fetch downgrade below against the add-between-fetch-and-event
+     *  race (don't clobber a Live that onDataChanged just delivered). */
+    @Volatile
+    private var sawChangeSinceStart = false
+
     fun start() {
+        sawChangeSinceStart = false
         dataClient.addListener(this)
         dataClient.dataItems.addOnSuccessListener { buffer ->
             try {
@@ -44,11 +51,13 @@ class WearStateRepository(private val appContext: Context) :
                         }
                     }
                 }
-                // Only DOWNGRADE to Disconnected if we don't already have a real
-                // state. The async dataItems fetch can resolve AFTER onDataChanged
-                // has already delivered a Live item — clobbering it with a stale
-                // "no game" would flash "אין משחק רשום" over a live match.
-                if (!found && state.value is WearGameState.Loading) {
+                // The item is gone (unpaired / signed out while we were detached,
+                // so the TYPE_DELETED event never reached us). Downgrade the stale
+                // Live/Upcoming to Disconnected — but ONLY if onDataChanged hasn't
+                // just delivered a fresh item, which would mean the item was added
+                // between this fetch's snapshot and now (clobbering it would flash
+                // "אין משחק רשום" over a live match).
+                if (!found && !sawChangeSinceStart) {
                     state.value = WearGameState.Disconnected
                 }
             } finally {
@@ -71,7 +80,10 @@ class WearStateRepository(private val appContext: Context) :
             if (event.type == DataEvent.TYPE_CHANGED) {
                 val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
                 val json = dataMap.getString(KEY_JSON)
-                if (json != null) state.value = parse(json, dataMap.getLong(KEY_TS, 0L))
+                if (json != null) {
+                    sawChangeSinceStart = true
+                    state.value = parse(json, dataMap.getLong(KEY_TS, 0L))
+                }
             } else if (event.type == DataEvent.TYPE_DELETED) {
                 state.value = WearGameState.Disconnected
             }

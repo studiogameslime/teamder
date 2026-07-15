@@ -11,7 +11,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { healthService } from '@/services/healthService';
-import { getServerOffsetMs } from '@/services/serverClock';
+import { getServerOffsetMs, syncServerClock } from '@/services/serverClock';
 import { logError } from '@/services/errorLog';
 
 const DEFAULT_WINDOW_MS = 3 * 60 * 60 * 1000; // fallback pre-kickoff span
@@ -50,6 +50,13 @@ export const physicalSyncService = {
       // convert back to local (subtract the clock offset), clamp each window to a
       // sane span + to now, drop invalid, then COALESCE overlaps so no window is
       // read (and summed) twice.
+      //
+      // Prime the offset FIRST: a summary opened from the end-of-evening push cold-
+      // launches straight here without ever mounting a timer screen, so
+      // getServerOffsetMs() would still be 0 and the windows would be shifted off
+      // the real wearable data by the device's clock skew. syncServerClock()
+      // hydrates the persisted game-day offset (and refreshes) — best-effort.
+      await syncServerClock().catch(() => 0);
       const offset = getServerOffsetMs();
       const sorted = (
         Array.isArray(g.liveMatch?.activeIntervals) ? g.liveMatch!.activeIntervals : []

@@ -182,7 +182,15 @@ export function computeRadar(
   const attack = Math.min(1, (goals * 2 + assists) / 8);
   const run = Math.min(1, (p.distanceM ?? 0) / 8000);
   const speed = Math.min(1, (p.topSpeedKmh ?? 0) / 28);
-  const stamina = Math.min(1, (p.effortScore ?? 0) / 100);
+  // Stamina = HR-derived effort when available; but the Health Connect path
+  // doesn't read HR (effortScore is always 0), which pinned this axis to the
+  // radar's center for everyone. Fall back to step VOLUME (a movement metric we
+  // DO read) so the "מנוע"/engine axis reflects real activity. Prefers effort
+  // if it ever returns (HR re-enabled) so no re-work is needed then.
+  const stamina =
+    (p.effortScore ?? 0) > 0
+      ? Math.min(1, (p.effortScore ?? 0) / 100)
+      : Math.min(1, (p.steps ?? 0) / 7000);
   const assist = Math.min(1, assists / 4);
   const axes: Array<[keyof typeof RADAR_LABEL, number]> = [
     ['attack', attack],

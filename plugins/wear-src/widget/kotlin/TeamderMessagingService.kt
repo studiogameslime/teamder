@@ -69,40 +69,66 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
         JSONObject().apply { put("clockOffsetMs", 0L) }
       }
 
-    state.put("kind", "live")
-    state.put("gameId", gameId)
-    if (title.isNotEmpty()) state.put("title", title)
-    state.put("controlledBy", controlledBy)
-    state.put("controlledByName", controlledByName)
-    val timer = state.optJSONObject("timer") ?: JSONObject()
-    timer.put("running", running)
-    timer.put("lastStartedAt", lastStartedAt)
-    timer.put("accumulatedMs", accumulatedMs)
-    // CRITICAL: re-stamp the resolved base + publish instant, exactly like the
-    // widget-tap path (TimerActionReceiver.applyOptimisticPrefsUpdate). This FCM
-    // merges into a payload the JS layer published earlier (root serverNowMs +
-    // nested timer.baseElapsedMs from that publish); once the app is killed the
-    // JS re-publish loop stops, so those fields go STALE. The watch fold
-    // (watchServerNow − serverNowMs) and the widget fold (nowEpoch − serverNowMs)
-    // would then add the whole age-of-last-publish to the timer — a paused-then-
-    // remotely-started clock jumps forward by that gap. Re-stamp so the fold
-    // starts at ~0. baseElapsedMs is the elapsed AT this instant: for a running
-    // timer that's accumulatedMs + (nowServer − lastStartedAt) (the FCM arrives
-    // AFTER the remote start, so fold that gap in); paused → just accumulatedMs.
-    // Written to BOTH the ROOT (widget reads it there) and NESTED timer (the
-    // watch's parseWearState reads it there).
-    val clockOffsetMs = state.optLong("clockOffsetMs", 0L)
-    val nowServer = System.currentTimeMillis() + clockOffsetMs
-    val baseElapsed =
-      if (running && lastStartedAt > 0L) {
-        accumulatedMs + (nowServer - lastStartedAt).coerceAtLeast(0L)
-      } else {
-        accumulatedMs
+    val gameEnded = data["gameEnded"] == "true"
+    if (gameEnded) {
+      // Game finished/cancelled: clear the live card so a killed-app widget/tile
+      // doesn't stay frozen on it (ending while paused changes no timer primitive,
+      // so this is the only signal these surfaces get). Downgrade to
+      // 'notRegistered' — the same terminal state the JS layer publishes on
+      // logout, which both the widget and the watch treat as "no live game".
+      // Only touch OUR game's payload: if a DIFFERENT live game is showing, leave
+      // it (the fresh-minimal `state` picked above would otherwise clobber it).
+      if (existing != null && existing.optString("gameId") != gameId) return
+      state.put("kind", "notRegistered")
+      state.put("gameId", gameId)
+      state.remove("timer")
+      state.remove("baseElapsedMs")
+      state.remove("serverNowMs")
+    } else {
+      state.put("kind", "live")
+      state.put("gameId", gameId)
+      if (title.isNotEmpty()) state.put("title", title)
+      state.put("controlledBy", controlledBy)
+      state.put("controlledByName", controlledByName)
+      val timer = state.optJSONObject("timer") ?: JSONObject()
+      timer.put("running", running)
+      timer.put("lastStartedAt", lastStartedAt)
+      timer.put("accumulatedMs", accumulatedMs)
+      // For a minimal/fresh payload (no JS-measured offset — clockOffsetMs is 0),
+      // anchor to the server's send time so a skewed DEVICE clock doesn't corrupt
+      // the fold. offset = serverNowMs(send) − deviceNow(receive). The cached
+      // JS-measured offset (RTT-corrected) is more accurate, so only derive from
+      // the message when there's no cached offset.
+      val msgServerNow = data["serverNowMs"]?.toLongOrNull()
+      if (state.optLong("clockOffsetMs", 0L) == 0L && msgServerNow != null) {
+        state.put("clockOffsetMs", msgServerNow - System.currentTimeMillis())
       }
-    timer.put("baseElapsedMs", baseElapsed)
-    state.put("timer", timer)
-    state.put("baseElapsedMs", baseElapsed)
-    state.put("serverNowMs", nowServer)
+      // CRITICAL: re-stamp the resolved base + publish instant, exactly like the
+      // widget-tap path (TimerActionReceiver.applyOptimisticPrefsUpdate). This FCM
+      // merges into a payload the JS layer published earlier (root serverNowMs +
+      // nested timer.baseElapsedMs from that publish); once the app is killed the
+      // JS re-publish loop stops, so those fields go STALE. The watch fold
+      // (watchServerNow − serverNowMs) and the widget fold (nowEpoch − serverNowMs)
+      // would then add the whole age-of-last-publish to the timer — a paused-then-
+      // remotely-started clock jumps forward by that gap. Re-stamp so the fold
+      // starts at ~0. baseElapsedMs is the elapsed AT this instant: for a running
+      // timer that's accumulatedMs + (nowServer − lastStartedAt) (the FCM arrives
+      // AFTER the remote start, so fold that gap in); paused → just accumulatedMs.
+      // Written to BOTH the ROOT (widget reads it there) and NESTED timer (the
+      // watch's parseWearState reads it there).
+      val clockOffsetMs = state.optLong("clockOffsetMs", 0L)
+      val nowServer = System.currentTimeMillis() + clockOffsetMs
+      val baseElapsed =
+        if (running && lastStartedAt > 0L) {
+          accumulatedMs + (nowServer - lastStartedAt).coerceAtLeast(0L)
+        } else {
+          accumulatedMs
+        }
+      timer.put("baseElapsedMs", baseElapsed)
+      state.put("timer", timer)
+      state.put("baseElapsedMs", baseElapsed)
+      state.put("serverNowMs", nowServer)
+    }
 
     val json = state.toString()
     prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, json).apply()

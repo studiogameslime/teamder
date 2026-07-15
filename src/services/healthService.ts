@@ -63,6 +63,11 @@ const READ_PERMISSIONS = [
 const SDK_AVAILABLE = 3; // SdkAvailabilityStatus.SDK_AVAILABLE
 // A speed sample at/above this (≈19 km/h) counts as a sprint.
 const SPRINT_MPS = 5.3;
+// Reject implausible Speed samples before they poison top-speed / sprints.
+// The fastest humans peak ~12.4 m/s; anything above ~12 m/s (≈43 km/h) from a
+// wrist GPS is noise (a single glitch sample would otherwise show as "144 קמ״ש"
+// on the share card). ~12 m/s leaves headroom above a real sprint.
+const MAX_PLAUSIBLE_MPS = 12;
 // Persist a "user declined Health Connect" flag so we prompt at most once
 // automatically — a manual re-connect can pass forcePrompt to bypass it.
 const DECLINED_KEY = 'health.hc.declined';
@@ -189,19 +194,22 @@ async function readRawSession(
     }
   };
 
-  const [dist, steps, active, speed] = await Promise.all([
+  const [dist, steps, active, activeTotal, speed] = await Promise.all([
     read('Distance'),
     read('Steps'),
     read('ActiveCaloriesBurned'),
+    read('TotalCaloriesBurned'),
     read('Speed'),
   ]);
 
   const distanceM = dist.reduce((s, r) => s + (r.distance?.inMeters ?? 0), 0);
   const stepCount = steps.reduce((s, r) => s + (r.count ?? 0), 0);
-  const calories = active.reduce(
-    (s, r) => s + (r.energy?.inKilocalories ?? 0),
-    0,
-  );
+  // Prefer ActiveCaloriesBurned; fall back to TotalCaloriesBurned for the many
+  // bands (some Garmin/Fitbit/Xiaomi profiles) that only write Total — else
+  // calories stayed a permanent 0 for them despite a granted permission.
+  const activeCal = active.reduce((s, r) => s + (r.energy?.inKilocalories ?? 0), 0);
+  const totalCal = activeTotal.reduce((s, r) => s + (r.energy?.inKilocalories ?? 0), 0);
+  const calories = activeCal > 0 ? activeCal : totalCal;
 
   // Heart-rate dropped (see READ_PERMISSIONS) — kept as 0 for type/display compat.
   const avgHr = 0;
@@ -211,7 +219,7 @@ async function readRawSession(
   for (const r of speed) {
     for (const smp of r.samples ?? []) {
       const mps = smp.speed?.inMetersPerSecond;
-      if (typeof mps === 'number' && mps >= 0) speeds.push(mps);
+      if (typeof mps === 'number' && mps >= 0 && mps <= MAX_PLAUSIBLE_MPS) speeds.push(mps);
     }
   }
   const topSpeedKmh = speeds.length
@@ -359,10 +367,11 @@ export const healthService = {
           return [];
         }
       };
-      const [dist, stepRecs, active, speed] = await Promise.all([
+      const [dist, stepRecs, active, activeTotal, speed] = await Promise.all([
         read('Distance'),
         read('Steps'),
         read('ActiveCaloriesBurned'),
+        read('TotalCaloriesBurned'),
         read('Speed'),
       ]);
 
@@ -384,9 +393,12 @@ export const healthService = {
 
       const distanceM = clippedSum(dist, (r) => r.distance?.inMeters ?? 0);
       const steps = clippedSum(stepRecs, (r) => r.count ?? 0);
-      const calories = clippedSum(active, (r) => r.energy?.inKilocalories ?? 0);
+      // Prefer ActiveCaloriesBurned; fall back to TotalCaloriesBurned for bands
+      // that only write Total (else calories = 0 despite a granted permission).
+      const activeCal = clippedSum(active, (r) => r.energy?.inKilocalories ?? 0);
+      const calories = activeCal > 0 ? activeCal : clippedSum(activeTotal, (r) => r.energy?.inKilocalories ?? 0);
 
-      // Speed samples: keep only samples whose timestamp falls inside a window.
+      // Speed samples: keep only in-window samples with a plausible magnitude.
       const inWindow = (ms: number): boolean =>
         windows.some((w) => ms >= w.from && ms < w.to);
       const samples: Array<{ ms: number; mps: number }> = [];
@@ -394,7 +406,10 @@ export const healthService = {
         for (const smp of r.samples ?? []) {
           const mps = smp.speed?.inMetersPerSecond;
           const ms = smp.time ? Date.parse(smp.time) : NaN;
-          if (typeof mps === 'number' && mps >= 0 && Number.isFinite(ms) && inWindow(ms)) {
+          if (
+            typeof mps === 'number' && mps >= 0 && mps <= MAX_PLAUSIBLE_MPS &&
+            Number.isFinite(ms) && inWindow(ms)
+          ) {
             samples.push({ ms, mps });
           }
         }

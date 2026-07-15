@@ -3864,6 +3864,7 @@ export const onGameTimerChanged = onDocumentWritten(
           participantIds?: string[];
           players?: string[];
           title?: string;
+          status?: string;
         }
       | undefined;
     if (!after) return;
@@ -3871,13 +3872,19 @@ export const onGameTimerChanged = onDocumentWritten(
     const a = after.liveMatch ?? {};
     const b = before?.liveMatch ?? {};
 
-    // Only fire when a timer primitive actually changed — not on every
-    // roster write.
+    // Fire on a timer-primitive change (start/pause/reset) OR when the game
+    // TRANSITIONS to finished/cancelled. The latter matters because ending an
+    // evening while the timer is already paused changes no timer primitive — so
+    // without this branch the killed-app widget/tile would stay stuck on the
+    // last 'live' card forever (its own JS re-publish is dead).
     const changed =
       (a.timerRunning ?? null) !== (b.timerRunning ?? null) ||
       (a.timerLastStartedAt ?? null) !== (b.timerLastStartedAt ?? null) ||
       (a.timerAccumulatedMs ?? null) !== (b.timerAccumulatedMs ?? null);
-    if (!changed) return;
+    const isOver = after.status === 'finished' || after.status === 'cancelled';
+    const wasOver = before?.status === 'finished' || before?.status === 'cancelled';
+    const endedNow = isOver && !wasOver;
+    if (!changed && !endedNow) return;
 
     const recipients = Array.isArray(after.participantIds)
       ? after.participantIds
@@ -3907,11 +3914,18 @@ export const onGameTimerChanged = onDocumentWritten(
       timerAccumulatedMs: String(a.timerAccumulatedMs ?? 0),
       timerControlledBy: String(a.timerControlledBy ?? ''),
       timerControlledByName: String(a.timerControlledByName ?? ''),
+      // Server wall clock at send time. Lets a killed-app recipient with NO
+      // cached payload anchor the timer to server time (offset = serverNowMs −
+      // deviceNow) instead of trusting a possibly-skewed device clock.
+      serverNowMs: String(Date.now()),
       // NOT `title`/`message`/`body`: those keys make expo-notifications
       // render a visible notification on clients that DON'T have the native
       // TeamderMessagingService yet (pre-1.0.21). `gameTitle` is inert there
       // — the message stays silent — and the native service reads this key.
       gameTitle: String(after.title ?? ''),
+      // On game end, tell the native handler to CLEAR the live widget/tile
+      // instead of re-writing a 'live' card (which would freeze on screen).
+      ...(endedNow ? { gameEnded: 'true' } : {}),
     };
 
     const all = Array.from(tokens);
@@ -10809,14 +10823,20 @@ export const commitRoundStats = onCall(
     // never on both sides. Without this a duplicated/both-sides uid (a client
     // team-assignment bug or forged payload) was credited a WIN and a LOSS in
     // the same round, plus a self-pair (uid vs uid) polluting nemesis/duo.
+    // Exclude players marked no-show: setArrival can flip a still-assigned player
+    // to 'no_show' at any time, and the games-count / showcase already strip them
+    // — so crediting them rounds/wins/goals here (while games:0 elsewhere) left a
+    // self-contradictory table (rounds=3, games=0). Skip them on both sides; since
+    // onField = A∪B gates goals/assists too, their stats drop out consistently.
+    const arrivals = (game.arrivals as Record<string, string> | undefined) ?? {};
     const seen = new Set<string>();
     const A: string[] = [];
     const B: string[] = [];
     for (const id of sideA ?? []) {
-      if (isReal(id) && roster.has(id) && !seen.has(id)) { seen.add(id); A.push(id); }
+      if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) { seen.add(id); A.push(id); }
     }
     for (const id of sideB ?? []) {
-      if (isReal(id) && roster.has(id) && !seen.has(id)) { seen.add(id); B.push(id); }
+      if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) { seen.add(id); B.push(id); }
     }
     // Bound the side sizes BEFORE building the batch. Per round this batch writes
     // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
@@ -11220,6 +11240,32 @@ export const saveGamePhysical = onCall(
       const n = prevZones[k];
       return typeof n === 'number' && Number.isFinite(n) ? n : 0;
     };
+
+    // Anti-forgery: bound movement metrics by the REAL timer-active duration the
+    // server already trusts (liveMatch.activeIntervals, the same windows the
+    // honest client scoped its Health Connect read to). A human can't out-run
+    // ~12 m/s, out-step ~4/s, or out-sprint ~1 per 8 s — so anything beyond that
+    // for the known active seconds is fabricated. Only clamp when the duration is
+    // known (activeMs>0); legacy games with no intervals keep the static caps.
+    const lm = (game.liveMatch ?? {}) as {
+      activeIntervals?: Array<{ s?: unknown; e?: unknown }>;
+    };
+    let activeMs = 0;
+    if (Array.isArray(lm.activeIntervals)) {
+      for (const iv of lm.activeIntervals) {
+        const s = typeof iv?.s === 'number' ? iv.s : NaN;
+        const e = typeof iv?.e === 'number' ? iv.e : NaN;
+        if (Number.isFinite(s) && Number.isFinite(e) && e > s) activeMs += e - s;
+      }
+    }
+    const activeSec = activeMs / 1000;
+    const capDist = activeSec > 0 ? 12 * activeSec : Infinity;
+    const capSteps = activeSec > 0 ? 4 * activeSec : Infinity;
+    const capSprints = activeSec > 0 ? Math.ceil(activeSec / 8) : Infinity;
+    // Clamp incoming AND the max-merged result so a value forged before this
+    // guard (already stored high) can't survive via keepMax.
+    const bounded = (cap: number, k: string, incoming: number): number =>
+      Math.min(cap, keepMax(k, Math.min(cap, incoming)));
     const src = String((metrics as { source?: unknown }).source ?? 'wear');
     const source = ['wear', 'healthkit', 'healthconnect'].includes(src) ? src : 'wear';
     const zonesIn = (metrics.hrZones ?? {}) as Record<string, unknown>;
@@ -11236,11 +11282,11 @@ export const saveGamePhysical = onCall(
     const doc = {
       gameId,
       userId: uid,
-      distanceM: keepMax('distanceM', num(metrics.distanceM, 50_000)),
+      distanceM: bounded(capDist, 'distanceM', num(metrics.distanceM, 50_000)),
       topSpeedKmh: keepMax('topSpeedKmh', num(metrics.topSpeedKmh, 45)),
       avgSpeedKmh: keepMax('avgSpeedKmh', num(metrics.avgSpeedKmh, 45)),
-      sprints: Math.round(keepMax('sprints', num(metrics.sprints, 500))),
-      steps: Math.round(keepMax('steps', num(metrics.steps, 100_000))),
+      sprints: Math.round(bounded(capSprints, 'sprints', num(metrics.sprints, 500))),
+      steps: Math.round(bounded(capSteps, 'steps', num(metrics.steps, 100_000))),
       calories: Math.round(keepMax('calories', num(metrics.calories, 10_000))),
       maxHr: Math.round(keepMax('maxHr', num(metrics.maxHr, 230))),
       avgHr: Math.round(keepMax('avgHr', num(metrics.avgHr, 230))),

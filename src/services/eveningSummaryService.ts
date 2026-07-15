@@ -93,6 +93,11 @@ interface GameStatRow {
   wins: number;
   losses: number;
   rounds: number;
+  teamGoalsFor: number;
+  teamGoalsAgainst: number;
+  /** whether gamePlayerStats carried the authoritative team-goals fields (they
+   *  were added with this feature; older per-game docs lack them). */
+  hasTeamGoals: boolean;
 }
 
 function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
@@ -103,6 +108,9 @@ function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
     wins: n(data?.wins),
     losses: n(data?.losses),
     rounds: n(data?.rounds),
+    teamGoalsFor: n(data?.teamGoalsFor),
+    teamGoalsAgainst: n(data?.teamGoalsAgainst),
+    hasTeamGoals: typeof data?.teamGoalsFor === 'number',
   };
 }
 
@@ -229,6 +237,31 @@ export const eveningSummaryService = {
       // game). Accurate for games from this feature onward; OLD games have no
       // roundHistory, so we fall back to the played count (total unknowable).
       const totalRounds = Math.max(rounds.length, row.rounds);
+      // roundHistory docs are written best-effort (outside the atomic stats
+      // batch), so some can be missing while gamePlayerStats.rounds (the
+      // player's authoritative played count) is complete. If roundHistory shows
+      // FEWER of this player's rounds than they actually played, the log is
+      // incomplete and its total can't be trusted — so don't claim the total is
+      // "known" (which would make the card assert "played ALL N" to a player who
+      // sat rounds out).
+      const totalKnown = rounds.length > 0 && rs.playedRounds >= row.rounds;
+
+      // Contribution % + GF/GA: prefer the AUTHORITATIVE gamePlayerStats team
+      // goals (committed in the atomic round batch) over the best-effort
+      // roundHistory reduction, which under-counts when a roundHistory write
+      // failed. touched = the player's own goals+assists (also authoritative).
+      const touchedAuth = row.goals + row.assists;
+      const contribution = row.hasTeamGoals
+        ? row.teamGoalsFor > 0
+          ? {
+              pct: Math.min(100, Math.round((touchedAuth / row.teamGoalsFor) * 100)),
+              touched: touchedAuth,
+              teamGoals: row.teamGoalsFor,
+            }
+          : null
+        : rs.contribution;
+      const teamGoalsFor = row.hasTeamGoals ? row.teamGoalsFor : rs.teamGoalsFor;
+      const teamGoalsAgainst = row.hasTeamGoals ? row.teamGoalsAgainst : rs.teamGoalsAgainst;
 
       return {
         gameId,
@@ -238,7 +271,7 @@ export const eveningSummaryService = {
         communityName: game?.title || 'המשחק',
         rounds: row.rounds,
         totalRounds,
-        totalKnown: rounds.length > 0,
+        totalKnown,
         wins: row.wins,
         losses: row.losses,
         winRate: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
@@ -247,10 +280,10 @@ export const eveningSummaryService = {
         score: eveningScore(row.goals, row.assists, row.wins, row.rounds),
         title: t.title,
         titleEmoji: t.emoji,
-        contribution: rs.contribution,
+        contribution,
         heldPitch: rs.heldPitch,
-        teamGoalsFor: rs.teamGoalsFor,
-        teamGoalsAgainst: rs.teamGoalsAgainst,
+        teamGoalsFor,
+        teamGoalsAgainst,
         physical,
         fun,
         radar,

@@ -51,8 +51,12 @@ class TileUpdateListenerService : WearableListenerService() {
             }
         }
         // The state item was removed (session ended / signed out) → drop the
-        // ongoing activity.
+        // ongoing activity AND re-render the tile to its placeholder immediately
+        // (otherwise the stale live/upcoming card lingers up to the freshness
+        // interval — ~5 min for an idle tile).
         if (deleted) {
+            TileService.getUpdater(applicationContext)
+                .requestUpdate(TeamderTileService::class.java)
             LiveOngoingActivity.update(applicationContext, WearGameState.Disconnected)
         }
     }

@@ -151,7 +151,23 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     const p = model.physical;
     const zoneTotal =
       p ? p.hrZones.light + p.hrZones.moderate + p.hrZones.intense + p.hrZones.peak : 0;
-    const gritDistance = p ? ` · רצת ${p.distanceKm} ק״מ` : '';
+    const gritDistance = p && p.distanceKm > 0 ? ` · רצת ${p.distanceKm} ק״מ` : '';
+    // A wearable that logs only some record types leaves the rest at 0. Show a
+    // fun row only when its underlying metric is real — otherwise the card read
+    // "שרפת 0 פיצות" / "0 טעינות" (see the physical-panel per-tile guards below).
+    const funRows: Array<{ icon: string; text: string }> = model.fun
+      ? [
+          model.fun.pizzas > 0
+            ? { icon: '🍕', text: `שרפת ${model.fun.pizzas} פיצות של אנרגיה` }
+            : null,
+          model.fun.fieldLengths > 0
+            ? { icon: '📏', text: `רצת ${model.fun.fieldLengths} אורכי-מגרש` }
+            : null,
+          model.fun.phoneCharges > 0
+            ? { icon: '🔋', text: `מספיק ל-${model.fun.phoneCharges} טעינות טלפון` }
+            : null,
+        ].filter((r): r is { icon: string; text: string } => r !== null)
+      : [];
     // In winner-stays the player sits some mini-games out, so show played-of-
     // total when the total is known and larger than what they played.
     const showTotal = model.totalKnown && model.totalRounds > model.rounds;
@@ -313,10 +329,20 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                   without this guard the ring renders "0 מאמץ" (empty) and the HR
                   tile shows a permanent "0" — hide both instead. */}
               {p.effortScore > 0 ? <EffortRing score={p.effortScore} /> : null}
+              {/* Each tile renders only when its metric is real. A band that logs
+                  distance but no Speed samples yields topSpeed/sprints = 0; showing
+                  those hard zeros produced an impossible "avg > max" reading and
+                  misleading "0"s. Same guard the HR/effort tiles already use. */}
               <View style={styles.wMetrics}>
-                <WMetric label="מרחק ריצה" value={`${p.distanceKm}`} unit=" ק״מ" color={C.green} />
-                <WMetric label="מהירות שיא" value={`${p.topSpeedKmh}`} unit=" קמ״ש" color={C.cyan} />
-                <WMetric label="ספרינטים" value={`${p.sprints}`} color={C.ink} />
+                {p.distanceKm > 0 ? (
+                  <WMetric label="מרחק ריצה" value={`${p.distanceKm}`} unit=" ק״מ" color={C.green} />
+                ) : null}
+                {p.topSpeedKmh > 0 ? (
+                  <WMetric label="מהירות שיא" value={`${p.topSpeedKmh}`} unit=" קמ״ש" color={C.cyan} />
+                ) : null}
+                {p.sprints > 0 ? (
+                  <WMetric label="ספרינטים" value={`${p.sprints}`} color={C.ink} />
+                ) : null}
                 {p.maxHr > 0 ? (
                   <WMetric label="דופק מקסימלי" value={`${p.maxHr}`} color={C.red} />
                 ) : null}
@@ -339,11 +365,13 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                 </View>
               </View>
             ) : null}
-            <View style={styles.wFoot}>
-              <WFoot value={`${p.avgSpeedKmh}`} label="מהירות ממוצעת" />
-              <WFoot value={`${p.steps}`} label="צעדים" />
-              <WFoot value={`${p.calories}`} label="קלוריות" />
-            </View>
+            {p.avgSpeedKmh > 0 || p.steps > 0 || p.calories > 0 ? (
+              <View style={styles.wFoot}>
+                {p.avgSpeedKmh > 0 ? <WFoot value={`${p.avgSpeedKmh}`} label="מהירות ממוצעת" /> : null}
+                {p.steps > 0 ? <WFoot value={`${p.steps}`} label="צעדים" /> : null}
+                {p.calories > 0 ? <WFoot value={`${p.calories}`} label="קלוריות" /> : null}
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -363,13 +391,13 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         ) : null}
 
-        {/* funny numbers */}
-        {model.fun ? (
+        {/* funny numbers — only the rows whose metric is real */}
+        {funRows.length > 0 ? (
           <View style={styles.fun}>
             <Text style={styles.funTitle}>😄 מספרים מהערב</Text>
-            <FunRow first icon="🍕" text={`שרפת ${model.fun.pizzas} פיצות של אנרגיה`} />
-            <FunRow icon="📏" text={`רצת ${model.fun.fieldLengths} אורכי-מגרש`} />
-            <FunRow icon="🔋" text={`מספיק ל-${model.fun.phoneCharges} טעינות טלפון`} />
+            {funRows.map((r, i) => (
+              <FunRow key={r.icon} first={i === 0} icon={r.icon} text={r.text} />
+            ))}
           </View>
         ) : null}
       </View>
