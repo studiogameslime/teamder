@@ -63,23 +63,6 @@ class WatchBridgeModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    /**
-     * Drain physical sessions the Galaxy Watch recorded (via Wear Health
-     * Services) and relayed to `WearPhysicalService`, which queued them in
-     * SharedPreferences. Returns the JSON array string `[{gameId, metrics}]`
-     * (or "[]"), clearing the queue. The JS side (physicalSyncService
-     * .drainWatchPhysical) persists each via the saveGamePhysical callable,
-     * signed as the authenticated user — the only auth'd write path.
-     */
-    @ReactMethod
-    fun consumePendingPhysical(promise: Promise) {
-        try {
-            promise.resolve(WearPhysicalService.drain(reactContext))
-        } catch (e: Exception) {
-            promise.reject("PHYSICAL_DRAIN_FAILED", e)
-        }
-    }
-
     companion object {
         private const val STATE_PATH = "/teamder/state"
         private const val KEY_JSON = "json"

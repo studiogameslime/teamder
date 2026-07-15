@@ -44,8 +44,8 @@ android {
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
-    versionCode 1026
-    versionName "1.0.29"
+    versionCode 1027
+    versionName "1.0.30"
   }
 
   buildFeatures {
@@ -138,18 +138,4 @@ dependencies {
   // running the app must surface it as an ongoing activity (watch-face indicator
   // + recents launcher chip). Google rejected vc1023 for missing this.
   implementation "androidx.wear:wear-ongoing:1.0.0"
-
-  // Wear Health Services — records the live match with the WATCH'S OWN sensors
-  // (steps / distance / calories / heart-rate) via ExerciseClient. This reads
-  // sensors under the normal BODY_SENSORS / ACTIVITY_RECOGNITION runtime
-  // permissions — NOT the android.permission.health.* Health-Connect permissions
-  // — so it does NOT trip Google Play's Health-apps declaration gate. GPS is off,
-  // so no ACCESS_FINE_LOCATION / Location-declaration gate. See
-  // health/ExerciseRecorderService.kt.
-  // NOTE (untestable here): if this exact version is unresolved at build time,
-  // bump to the latest androidx.health:health-services-client (the callback API
-  // — setUpdateCallback / ExerciseUpdateCallback / latestMetrics.getData — is
-  // stable across rc/1.1.x); the metric-extraction lines are the only ones to
-  // re-verify against the resolved version, on a real Galaxy Watch.
-  implementation "androidx.health:health-services-client:1.1.0-alpha03"
 }

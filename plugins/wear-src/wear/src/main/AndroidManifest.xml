@@ -15,19 +15,6 @@
          permission so it's consistent with the app declaration. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
-    <!-- Wear Health Services match recording (health/ExerciseRecorderService).
-         These are the NORMAL sensor runtime permissions — NOT the
-         android.permission.health.* Health-Connect permissions — so they do
-         NOT trigger Google Play's Health-apps declaration gate. -->
-    <uses-permission android:name="android.permission.BODY_SENSORS" />
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    <!-- NOTE: no ACCESS_FINE_LOCATION — GPS is off (setIsGpsEnabled(false)) so we
-         avoid Google Play's Location-permission declaration gate. Distance is
-         step-derived. -->
-    <!-- Foreground service so the exercise keeps recording with the screen off. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
-
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -84,28 +71,6 @@
              would look frozen on the tile. -->
         <service
             android:name=".tile.TileUpdateListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data
-                    android:scheme="wear"
-                    android:host="*"
-                    android:pathPrefix="/teamder/state" />
-            </intent-filter>
-        </service>
-
-        <!-- Records the live match with Health Services (own sensors). Not
-             exported: started only by our own PhysicalStateListenerService /
-             MainActivity. type=health so it can hold the exercise foreground. -->
-        <service
-            android:name=".health.ExerciseRecorderService"
-            android:exported="false"
-            android:foregroundServiceType="health" />
-
-        <!-- Starts/stops the recorder off the phone's /teamder/state publishes,
-             even while the watch app is closed (Play Services binds it). -->
-        <service
-            android:name=".health.PhysicalStateListenerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />

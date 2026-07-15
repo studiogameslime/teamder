@@ -38,8 +38,6 @@ const PLAYERS_REMOTE_VIEWS_SERVICE =
   'com.studiogameslime.soccerapp.widget.PlayersRemoteViewsService';
 const WEAR_COMMAND_SERVICE =
   'com.studiogameslime.soccerapp.watch.WearTimerCommandService';
-const WEAR_PHYSICAL_SERVICE =
-  'com.studiogameslime.soccerapp.watch.WearPhysicalService';
 
 function copyWearSources(config) {
   return withDangerousMod(config, [
@@ -301,39 +299,6 @@ function registerWidgetReceiver(config) {
                   'android:scheme': 'wear',
                   'android:host': '*',
                   'android:pathPrefix': '/teamder/timer-command',
-                },
-              },
-            ],
-          },
-        ],
-      });
-    }
-
-    // WearableListenerService — receives the physical session the watch
-    // recorded (Wear Health Services) at the end of a match. Same wiring as
-    // the timer-command service, scoped to the /teamder/physical path.
-    if (!hasService(WEAR_PHYSICAL_SERVICE)) {
-      app.service.push({
-        $: {
-          'android:name': WEAR_PHYSICAL_SERVICE,
-          'android:exported': 'true',
-        },
-        'intent-filter': [
-          {
-            action: [
-              {
-                $: {
-                  'android:name':
-                    'com.google.android.gms.wearable.MESSAGE_RECEIVED',
-                },
-              },
-            ],
-            data: [
-              {
-                $: {
-                  'android:scheme': 'wear',
-                  'android:host': '*',
-                  'android:pathPrefix': '/teamder/physical',
                 },
               },
             ],

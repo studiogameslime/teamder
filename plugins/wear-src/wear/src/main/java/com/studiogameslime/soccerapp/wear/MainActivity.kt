@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.wear.remote.interactions.RemoteActivityHelper
 import com.studiogameslime.soccerapp.wear.data.WearCommandSender
 import com.studiogameslime.soccerapp.wear.data.WearStateRepository
-import com.studiogameslime.soccerapp.wear.health.ExerciseRecorderService
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
 import com.studiogameslime.soccerapp.wear.model.WearPlayer
@@ -38,25 +36,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ask once for the permissions the app needs:
-        //   • POST_NOTIFICATIONS — the live-match Ongoing Activity (watch-face
-        //     indicator + recents chip) + the recorder's foreground notification.
-        //   • BODY_SENSORS / ACTIVITY_RECOGNITION — Health Services match
-        //     recording (heart-rate / steps / step-derived distance / calories).
-        //     NORMAL sensor runtime permissions, NOT the android.permission.health.*
-        //     Health-Connect ones — no Play health gate. GPS is off, so no
-        //     ACCESS_FINE_LOCATION and no Location-declaration gate either.
-        val wanted = mutableListOf(
-            android.Manifest.permission.BODY_SENSORS,
-            android.Manifest.permission.ACTIVITY_RECOGNITION,
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            wanted += android.Manifest.permission.POST_NOTIFICATIONS
+        // Ask once for notification permission so the live-match Ongoing Activity
+        // (watch-face indicator + recents chip) can actually post on Wear OS 4+.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-        val toRequest = wanted.filter {
-            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        }
-        if (toRequest.isNotEmpty()) requestPermissions(toRequest.toTypedArray(), 1)
         repo = WearStateRepository(applicationContext)
         // Demo/preview states (tap to cycle) are DEBUG-ONLY. In a release build a
         // real un-paired user must see the genuine Disconnected/Loading screen —
@@ -72,26 +59,6 @@ class MainActivity : ComponentActivity() {
             // Show demo only in a debug build when there's no real state yet.
             val useReal = realReady || !debuggable
             val shown = if (useReal) real else demoStates[demo % demoStates.size]
-            // Drive the Health Services recorder off the DISPLAYED state. In a
-            // release build this is ALWAYS the real relayed state (useReal is
-            // always true when !debuggable), so behaviour is unchanged in prod;
-            // in a debug build it also lets the demo Live state exercise the
-            // recorder, so the foreground-service is demonstrable on an emulator
-            // with no paired phone (Play FGS-permissions video). Live → record;
-            // a real non-live state → stop; Loading/Disconnected → leave as-is.
-            LaunchedEffect(shown) {
-                when (val s = shown) {
-                    is WearGameState.Live ->
-                        if (s.gameId.isNotBlank()) {
-                            ExerciseRecorderService.start(applicationContext, s.gameId)
-                        }
-                    is WearGameState.Upcoming,
-                    is WearGameState.Scheduled,
-                    WearGameState.NotRegistered ->
-                        ExerciseRecorderService.stop(applicationContext)
-                    else -> Unit // Loading / Disconnected → leave as-is
-                }
-            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -139,9 +106,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private fun demoStates(): List<WearGameState> = listOf(
-    // 1. Live — game running, big stopwatch. gameId set so the (debug-only)
-    //    demo also drives the Health Services recorder → the FGS notification
-    //    shows for the Play "Foreground service permissions" demo video.
+    // 1. Live — game running, big stopwatch.
     WearGameState.Live(
         title = "חמישי כדורגל",
         timer = TimerState(
@@ -150,8 +115,6 @@ private fun demoStates(): List<WearGameState> = listOf(
             lastStartedAt = System.currentTimeMillis() - 728_000L,
             accumulatedMs = 0L,
         ),
-        gameId = "DEMOGAME",
-        canControl = true,
     ),
     // 2. Live — paused (e.g. half-time). Same elapsed, but frozen.
     WearGameState.Live(
