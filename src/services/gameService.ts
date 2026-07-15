@@ -6456,6 +6456,16 @@ export const gameService = {
       if (!prev) return;
       g.liveMatch = {
         ...prev,
+        // Preserve the minutes actually played: if the clock was running, close
+        // the open active-interval before zeroing so those timer-active minutes
+        // still count toward the physical/health read (mirror pauseTimer).
+        activeIntervals:
+          prev.timerRunning && prev.timerLastStartedAt
+            ? [
+                ...(prev.activeIntervals ?? []),
+                { s: prev.timerLastStartedAt, e: Date.now() },
+              ]
+            : prev.activeIntervals,
         timerRunning: false,
         timerLastStartedAt: null,
         timerAccumulatedMs: 0,
@@ -6476,7 +6486,11 @@ export const gameService = {
       const cur = await readTimerState(gameId);
       if (!cur || !cur.liveMatch) return;
       if (cur.status === 'finished' || cur.status === 'cancelled') return;
-      await updateDoc(ref, {
+      const lm = cur.liveMatch as {
+        timerRunning?: boolean;
+        timerLastStartedAt?: number | null;
+      };
+      const patch: Record<string, unknown> = {
         'liveMatch.timerRunning': false,
         'liveMatch.timerLastStartedAt': null,
         'liveMatch.timerAccumulatedMs': 0,
@@ -6492,7 +6506,20 @@ export const gameService = {
         'liveMatch.scoreB': 0,
         'liveMatch.goals': [],
         updatedAt: serverNow(),
-      });
+      };
+      // Preserve the minutes actually played: if the clock was running when
+      // reset was tapped, close the open active-interval before zeroing so those
+      // timer-active minutes still count toward the physical/health read (mirror
+      // pauseTimer/endEvening). Without this, resetting mid-round silently drops
+      // the played window from liveMatch.activeIntervals.
+      if (lm.timerRunning && lm.timerLastStartedAt) {
+        patch['liveMatch.activeIntervals'] = arrayUnion({
+          s: lm.timerLastStartedAt,
+          e: serverNow(),
+        });
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateDoc(ref, patch as any);
     } catch (err) {
       logError('resetTimer', err, { gameId, userId });
       if (__DEV__) console.warn('[gameService] resetTimer failed', err);

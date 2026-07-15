@@ -67,6 +67,51 @@ const SPRINT_MPS = 5.3;
 // automatically — a manual re-connect can pass forcePrompt to bypass it.
 const DECLINED_KEY = 'health.hc.declined';
 
+// Total overlap (ms) between [s,e] and the (sorted, coalesced) active windows.
+function overlapMs(
+  s: number,
+  e: number,
+  intervals: Array<{ from: number; to: number }>,
+): number {
+  let ov = 0;
+  for (const iv of intervals) {
+    const lo = Math.max(s, iv.from);
+    const hi = Math.min(e, iv.to);
+    if (hi > lo) ov += hi - lo;
+  }
+  return ov;
+}
+
+// Parse a Health Connect record's [start,end] epoch ms. Interval records carry
+// startTime/endTime; instantaneous samples carry `time`. Returns null if unusable.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function recTimes(r: any): { s: number; e: number } | null {
+  const s = r?.startTime ? Date.parse(r.startTime) : r?.time ? Date.parse(r.time) : NaN;
+  const e = r?.endTime ? Date.parse(r.endTime) : s;
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e < s) return null;
+  return { s, e };
+}
+
+// Count sprint BURSTS (rising edges into the sprint state), not raw samples —
+// so the number doesn't scale with the device's sampling rate (a 6 s sprint
+// sampled at 1 Hz must count as ONE sprint, not six). Samples MUST be in time
+// order.
+function countSprintBursts(mpsInOrder: number[]): number {
+  let n = 0;
+  let inSprint = false;
+  for (const mps of mpsInOrder) {
+    if (mps >= SPRINT_MPS) {
+      if (!inSprint) {
+        n += 1;
+        inSprint = true;
+      }
+    } else {
+      inSprint = false;
+    }
+  }
+  return n;
+}
+
 // HEALTH CONNECT ENABLED. The config plugins are BACK in app.json
 // (react-native-health-connect + plugins/withHealth.js), which register the
 // permission-delegate activity + READ permissions in the manifest — so calling
@@ -176,7 +221,9 @@ async function readRawSession(
     ? Math.round((speeds.reduce((s, x) => s + x, 0) / speeds.length) * 3.6 * 10) /
       10
     : 0;
-  const sprints = speeds.filter((mps) => mps >= SPRINT_MPS).length;
+  // speeds is built in record/sample order (Health Connect returns records
+  // chronologically), so rising-edge counting yields sprint bursts, not samples.
+  const sprints = countSprintBursts(speeds);
 
   // Nothing worth showing → treat as "no session" so the caller doesn't upload
   // a hollow all-zeros doc.
@@ -271,10 +318,17 @@ export const healthService = {
 
   /**
    * Read + aggregate metrics across MULTIPLE [from,to] windows — the exact
-   * minutes the live-match timer was running (see physicalSyncService). Sums
-   * distance/steps/calories/sprints, takes the max top-speed, and derives
-   * average speed from total distance ÷ total active time (so pauses between
-   * intervals never dilute it). null when no device / nothing recorded.
+   * minutes the live-match timer was running (see physicalSyncService).
+   *
+   * CRITICAL: we read the wearable records for the WHOLE span [min..max] ONCE
+   * and CLIP each record's contribution to the portion overlapping the active
+   * windows — we do NOT re-read per window. Health Connect's `between` filter
+   * returns every record that OVERLAPS a window, unclipped, so reading per
+   * window and summing counted any record spanning a pause boundary (or a single
+   * whole-session record) once PER window — inflating distance/steps/calories by
+   * up to the number of rounds. Clipping by time-overlap fixes that while still
+   * scoping to timer-active minutes. Average speed = total distance ÷ total
+   * active time. null when no device / nothing recorded.
    */
   async readSessionMulti(
     intervals: Array<{ from: number; to: number }>,
@@ -283,28 +337,76 @@ export const healthService = {
     if (!native) return null;
     try {
       if (!(await ensureReady(native))) return null;
-      let distanceM = 0;
-      let steps = 0;
-      let calories = 0;
-      let sprints = 0;
-      let topSpeedKmh = 0;
-      let activeMs = 0;
-      let any = false;
-      for (const iv of intervals) {
-        if (!(iv.to > iv.from)) continue;
-        const raw = await readRawSession(native, iv.from, iv.to);
-        if (!raw) continue;
-        // Count active time only for windows that actually returned data — else
-        // an empty window inflates the denominator and understates avg speed.
-        activeMs += iv.to - iv.from;
-        any = true;
-        distanceM += raw.distanceM ?? 0;
-        steps += raw.steps ?? 0;
-        calories += raw.calories ?? 0;
-        sprints += raw.sprints ?? 0;
-        topSpeedKmh = Math.max(topSpeedKmh, raw.topSpeedKmh ?? 0);
+      const windows = intervals.filter((iv) => iv.to > iv.from);
+      if (windows.length === 0) return null;
+      const spanFrom = Math.min(...windows.map((w) => w.from));
+      const spanTo = Math.max(...windows.map((w) => w.to));
+      const activeMs = windows.reduce((s, w) => s + (w.to - w.from), 0);
+
+      const hc = native as HealthConnect;
+      const timeRangeFilter = {
+        operator: 'between',
+        startTime: new Date(spanFrom).toISOString(),
+        endTime: new Date(spanTo).toISOString(),
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const read = async (recordType: string): Promise<any[]> => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const res: any = await (hc.readRecords as any)(recordType, { timeRangeFilter });
+          return res?.records ?? [];
+        } catch {
+          return [];
+        }
+      };
+      const [dist, stepRecs, active, speed] = await Promise.all([
+        read('Distance'),
+        read('Steps'),
+        read('ActiveCaloriesBurned'),
+        read('Speed'),
+      ]);
+
+      // Sum an interval-record scalar, clipped to its overlap with the active
+      // windows (value × overlap⁄duration; a zero-duration record counts fully
+      // only if its instant falls inside a window).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clippedSum = (records: any[], valOf: (r: any) => number): number =>
+        records.reduce((sum, r) => {
+          const t = recTimes(r);
+          if (!t) return sum;
+          const v = valOf(r);
+          if (!(typeof v === 'number') || !(v >= 0)) return sum;
+          const ov = overlapMs(t.s, t.e, windows);
+          if (ov <= 0) return sum;
+          const dur = t.e - t.s;
+          return sum + (dur > 0 ? v * (ov / dur) : v);
+        }, 0);
+
+      const distanceM = clippedSum(dist, (r) => r.distance?.inMeters ?? 0);
+      const steps = clippedSum(stepRecs, (r) => r.count ?? 0);
+      const calories = clippedSum(active, (r) => r.energy?.inKilocalories ?? 0);
+
+      // Speed samples: keep only samples whose timestamp falls inside a window.
+      const inWindow = (ms: number): boolean =>
+        windows.some((w) => ms >= w.from && ms < w.to);
+      const samples: Array<{ ms: number; mps: number }> = [];
+      for (const r of speed) {
+        for (const smp of r.samples ?? []) {
+          const mps = smp.speed?.inMetersPerSecond;
+          const ms = smp.time ? Date.parse(smp.time) : NaN;
+          if (typeof mps === 'number' && mps >= 0 && Number.isFinite(ms) && inWindow(ms)) {
+            samples.push({ ms, mps });
+          }
+        }
       }
-      if (!any) return null;
+      samples.sort((a, b) => a.ms - b.ms);
+      const topSpeedKmh = samples.length
+        ? Math.round(Math.max(...samples.map((s) => s.mps)) * 3.6 * 10) / 10
+        : 0;
+      const sprints = countSprintBursts(samples.map((s) => s.mps));
+
+      if (!distanceM && !steps && !calories && samples.length === 0) return null;
+
       const avgSpeedKmh =
         activeMs > 0
           ? Math.round((distanceM / (activeMs / 1000)) * 3.6 * 10) / 10
@@ -330,6 +432,25 @@ export const healthService = {
         n: intervals.length,
       });
       return null;
+    }
+  },
+
+  /**
+   * True when the Health Connect READ permission is already granted (does NOT
+   * prompt). Lets the UI hide the "connect watch" CTA once the user has granted
+   * access but simply has no wearable feeding data — otherwise the button is a
+   * permanent, un-satisfiable prompt for every Android user without a band.
+   */
+  async arePermissionsGranted(): Promise<boolean> {
+    const hc = nativeHealth();
+    if (!hc) return false;
+    try {
+      if (!(await ensureReady(hc))) return false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const granted: any[] = await hc.getGrantedPermissions();
+      return granted.some((g) => g?.accessType === 'read');
+    } catch {
+      return false;
     }
   },
 };

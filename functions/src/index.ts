@@ -11187,11 +11187,38 @@ export const saveGamePhysical = onCall(
     if (!roster.has(uid)) {
       throw new HttpsError('permission-denied', 'not a participant');
     }
+    // Server-side guard (defense-in-depth; the client already gates on this):
+    // only a FINISHED game accepts physical metrics. A mid-game/replayed call
+    // would otherwise land partial data — and, via the non-destructive merge
+    // below, could pin a low value before the evening even ends. Legacy games
+    // with no status are still accepted (mirrors the client's gate).
+    const gameStatus = game.status as string | undefined;
+    if (gameStatus && gameStatus !== 'finished') {
+      throw new HttpsError('failed-precondition', 'game not finished');
+    }
 
     // Clamp a numeric field to [0, max] (drops NaN/negatives/absurd values).
     const num = (v: unknown, max: number): number => {
       const n = typeof v === 'number' && Number.isFinite(v) ? v : 0;
       return Math.max(0, Math.min(max, n));
+    };
+
+    // Non-destructive merge: re-opening the summary after a permission was
+    // revoked (or a partial Health Connect read) would otherwise write 0 over a
+    // good stored value. A single finished game's totals only ever grow across
+    // re-syncs, so keep the MAX of stored vs incoming per numeric field — a
+    // degraded read can never lower a previously-recorded metric.
+    const ref = db.collection('games').doc(gameId).collection('physical').doc(uid);
+    const prev = ((await ref.get()).data() ?? {}) as Record<string, unknown>;
+    const prevNum = (k: string): number => {
+      const n = prev[k];
+      return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+    };
+    const keepMax = (k: string, incoming: number): number => Math.max(prevNum(k), incoming);
+    const prevZones = (prev.hrZones ?? {}) as Record<string, unknown>;
+    const prevZone = (k: string): number => {
+      const n = prevZones[k];
+      return typeof n === 'number' && Number.isFinite(n) ? n : 0;
     };
     const src = String((metrics as { source?: unknown }).source ?? 'wear');
     const source = ['wear', 'healthkit', 'healthconnect'].includes(src) ? src : 'wear';
@@ -11209,31 +11236,26 @@ export const saveGamePhysical = onCall(
     const doc = {
       gameId,
       userId: uid,
-      distanceM: num(metrics.distanceM, 50_000),
-      topSpeedKmh: num(metrics.topSpeedKmh, 45),
-      avgSpeedKmh: num(metrics.avgSpeedKmh, 45),
-      sprints: Math.round(num(metrics.sprints, 500)),
-      steps: Math.round(num(metrics.steps, 100_000)),
-      calories: Math.round(num(metrics.calories, 10_000)),
-      maxHr: Math.round(num(metrics.maxHr, 230)),
-      avgHr: Math.round(num(metrics.avgHr, 230)),
-      effortScore: Math.round(num(metrics.effortScore, 100)),
+      distanceM: keepMax('distanceM', num(metrics.distanceM, 50_000)),
+      topSpeedKmh: keepMax('topSpeedKmh', num(metrics.topSpeedKmh, 45)),
+      avgSpeedKmh: keepMax('avgSpeedKmh', num(metrics.avgSpeedKmh, 45)),
+      sprints: Math.round(keepMax('sprints', num(metrics.sprints, 500))),
+      steps: Math.round(keepMax('steps', num(metrics.steps, 100_000))),
+      calories: Math.round(keepMax('calories', num(metrics.calories, 10_000))),
+      maxHr: Math.round(keepMax('maxHr', num(metrics.maxHr, 230))),
+      avgHr: Math.round(keepMax('avgHr', num(metrics.avgHr, 230))),
+      effortScore: Math.round(keepMax('effortScore', num(metrics.effortScore, 100))),
       hrZones: {
-        light: Math.round(num(zonesIn.light, 300)),
-        moderate: Math.round(num(zonesIn.moderate, 300)),
-        intense: Math.round(num(zonesIn.intense, 300)),
-        peak: Math.round(num(zonesIn.peak, 300)),
+        light: Math.round(Math.max(prevZone('light'), num(zonesIn.light, 300))),
+        moderate: Math.round(Math.max(prevZone('moderate'), num(zonesIn.moderate, 300))),
+        intense: Math.round(Math.max(prevZone('intense'), num(zonesIn.intense, 300))),
+        peak: Math.round(Math.max(prevZone('peak'), num(zonesIn.peak, 300))),
       },
       source,
       ...(heatGrid.length ? { heatGrid, gridRows: rows, gridCols: cols } : {}),
       updatedAt: Date.now(),
     };
-    await db
-      .collection('games')
-      .doc(gameId)
-      .collection('physical')
-      .doc(uid)
-      .set(doc, { merge: true });
+    await ref.set(doc, { merge: true });
     return { ok: true };
   },
 );

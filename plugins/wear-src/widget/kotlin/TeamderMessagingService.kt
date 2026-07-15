@@ -78,7 +78,31 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     timer.put("running", running)
     timer.put("lastStartedAt", lastStartedAt)
     timer.put("accumulatedMs", accumulatedMs)
+    // CRITICAL: re-stamp the resolved base + publish instant, exactly like the
+    // widget-tap path (TimerActionReceiver.applyOptimisticPrefsUpdate). This FCM
+    // merges into a payload the JS layer published earlier (root serverNowMs +
+    // nested timer.baseElapsedMs from that publish); once the app is killed the
+    // JS re-publish loop stops, so those fields go STALE. The watch fold
+    // (watchServerNow − serverNowMs) and the widget fold (nowEpoch − serverNowMs)
+    // would then add the whole age-of-last-publish to the timer — a paused-then-
+    // remotely-started clock jumps forward by that gap. Re-stamp so the fold
+    // starts at ~0. baseElapsedMs is the elapsed AT this instant: for a running
+    // timer that's accumulatedMs + (nowServer − lastStartedAt) (the FCM arrives
+    // AFTER the remote start, so fold that gap in); paused → just accumulatedMs.
+    // Written to BOTH the ROOT (widget reads it there) and NESTED timer (the
+    // watch's parseWearState reads it there).
+    val clockOffsetMs = state.optLong("clockOffsetMs", 0L)
+    val nowServer = System.currentTimeMillis() + clockOffsetMs
+    val baseElapsed =
+      if (running && lastStartedAt > 0L) {
+        accumulatedMs + (nowServer - lastStartedAt).coerceAtLeast(0L)
+      } else {
+        accumulatedMs
+      }
+    timer.put("baseElapsedMs", baseElapsed)
     state.put("timer", timer)
+    state.put("baseElapsedMs", baseElapsed)
+    state.put("serverNowMs", nowServer)
 
     val json = state.toString()
     prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, json).apply()

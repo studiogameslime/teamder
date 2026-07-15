@@ -174,6 +174,20 @@ class TimerActionReceiver : BroadcastReceiver() {
                     }
                 }
                 ACTION_RESET -> {
+                    // Preserve the minutes actually played: if the clock was
+                    // running when reset was tapped, close the open active-interval
+                    // before zeroing so those timer-active minutes still count
+                    // toward the physical/health read (mirror ACTION_PAUSE +
+                    // gameService.resetTimer). Without this a mid-round reset from
+                    // the widget/watch silently drops the played window.
+                    if (wasRunning && lastStarted > 0) {
+                        @Suppress("UNCHECKED_CAST")
+                        val intervals =
+                            (live["activeIntervals"] as? List<Map<String, Any?>>)?.toMutableList()
+                                ?: mutableListOf()
+                        intervals.add(mapOf("s" to lastStarted, "e" to now))
+                        newLive["activeIntervals"] = intervals
+                    }
                     newLive["timerRunning"] = false
                     newLive["timerLastStartedAt"] = null
                     newLive["timerAccumulatedMs"] = 0L

@@ -48,6 +48,9 @@ export function EveningSummaryScreen() {
   const [connecting, setConnecting] = useState(false);
   // Bumped to re-run the load after a manual "connect watch" grant.
   const [reload, setReload] = useState(0);
+  // null = unknown; false = HC available but not yet granted (so a connect tap
+  // is meaningful); true = granted (hide the CTA — no more permission to gain).
+  const [healthGranted, setHealthGranted] = useState<boolean | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -72,26 +75,50 @@ export function EveningSummaryScreen() {
     };
   }, [gameId, currentUser?.id, currentUser?.name, reload]);
 
+  // Resolve whether the Health Connect READ permission is already granted, so we
+  // only show the "connect watch" CTA when a tap can actually change something.
+  // Without this, every Android user with no wearable feeding Health Connect saw
+  // a permanent, un-satisfiable button (model.physical stays null forever).
+  useEffect(() => {
+    let alive = true;
+    if (!healthService.isAvailable()) {
+      setHealthGranted(false);
+      return undefined;
+    }
+    healthService
+      .arePermissionsGranted()
+      .then((g) => {
+        if (alive) setHealthGranted(g);
+      })
+      .catch(() => {
+        if (alive) setHealthGranted(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [reload]);
+
   // Manual "connect watch" — for a player who dismissed the first-time Health
-  // Connect prompt. Force the permission sheet, then re-sync + reload so the
-  // physical panel fills in. Only surfaced when a wearable binding exists but
-  // no physical data came back.
+  // Connect prompt. Force the permission sheet, then reload so the physical
+  // panel fills in (the load effect re-runs syncForGame — no need to sync here
+  // too, which would double every Health Connect read + saveGamePhysical write).
   async function onConnectWatch() {
     if (connecting) return;
     setConnecting(true);
     try {
       const ok = await healthService.ensurePermissions(true);
-      if (ok) {
-        await physicalSyncService.syncForGame(gameId).catch(() => false);
-        setReload((n) => n + 1);
-      }
+      if (ok) setReload((n) => n + 1);
     } finally {
       setConnecting(false);
     }
   }
 
   const showConnectWatch =
-    !loading && !!model && !model.physical && healthService.isAvailable();
+    !loading &&
+    !!model &&
+    !model.physical &&
+    healthService.isAvailable() &&
+    healthGranted === false;
 
   async function onShare() {
     if (!cardRef.current || sharing) return;
