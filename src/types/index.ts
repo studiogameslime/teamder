@@ -1249,7 +1249,10 @@ export interface Game {
   id: string;
   groupId: GroupId;             // FK to /groups/{groupId}
   title: string;                // e.g. "חמישי כדורגל"
-  startsAt: number;             // ms epoch
+  startsAt: number;             // ms epoch (scheduled kickoff)
+  /** Set when the admin ends the evening — the real end epoch (ms). Used to
+   *  bound the physical-data read window. */
+  endedAt?: number;
   fieldName: string;
   fieldLat?: number;
   fieldLng?: number;
@@ -1891,6 +1894,17 @@ export interface LiveMatchState {
    * on every device. Cleared on reset. Kept small (one entry per press).
    */
   timerEvents?: TimerEvent[];
+
+  /**
+   * Evening-level log of every window the timer was ACTUALLY RUNNING, as
+   * {s:start, e:end} epoch pairs in the shared server-time base. Appended
+   * whenever the timer stops (pause / reset / end-of-evening) and — unlike
+   * `timerEvents` — NEVER cleared on a round reset/advance, so a finished game
+   * carries every active window of the whole evening. This is what scopes the
+   * Health Connect physical read to "only the minutes the timer ran" (not the
+   * whole evening / pre-kickoff warmup / halftime). See physicalSyncService.
+   */
+  activeIntervals?: { s: number; e: number }[];
 
   /** Last write epoch (ms). Cheap "who edited most recently" tie-breaker. */
   updatedAt?: number;

@@ -33,14 +33,47 @@ export const physicalSyncService = {
       const db = getFirebase().db;
       const snap = await getDoc(doc(db, 'games', gameId));
       if (!snap.exists()) return false;
-      const g = snap.data() as { startsAt?: number; endedAt?: number };
+      const g = snap.data() as {
+        startsAt?: number;
+        endedAt?: number;
+        liveMatch?: {
+          activeIntervals?: Array<{ s: number; e: number }>;
+          timerRunning?: boolean;
+          timerLastStartedAt?: number | null;
+        };
+      };
       const now = Date.now();
-      const from = typeof g.startsAt === 'number' ? g.startsAt : now - DEFAULT_WINDOW_MS;
-      const rawEnd = typeof g.endedAt === 'number' ? g.endedAt : now;
-      // Bound the window: never past kickoff + MAX_GAME_MS, never past now.
-      const to = Math.min(rawEnd, from + MAX_GAME_MS, now);
 
-      const session = await healthService.readSession(from, to);
+      // Read ONLY the minutes the live-match TIMER was actually running — the
+      // evening-level `activeIntervals` the timer appends on each pause/end.
+      // This excludes pre-kickoff warmup, halftime pauses, and post-game, so
+      // the physical summary reflects the played minutes, not the whole evening.
+      const lm = g.liveMatch;
+      const intervals = (Array.isArray(lm?.activeIntervals) ? lm!.activeIntervals : [])
+        .map((iv) => ({ from: iv.s, to: Math.min(iv.e, now) }))
+        .filter(
+          (iv) =>
+            typeof iv.from === 'number' &&
+            typeof iv.to === 'number' &&
+            iv.to > iv.from,
+        );
+      // Edge: summary opened while the timer is still running (before endEvening).
+      if (lm?.timerRunning && typeof lm.timerLastStartedAt === 'number') {
+        intervals.push({ from: lm.timerLastStartedAt, to: now });
+      }
+
+      let session: Awaited<ReturnType<typeof healthService.readSession>>;
+      if (intervals.length > 0) {
+        session = await healthService.readSessionMulti(intervals);
+      } else {
+        // Fallback for games with no timer-interval data (older games, or the
+        // timer was never used): the coarse whole-game window, capped.
+        const from =
+          typeof g.startsAt === 'number' ? g.startsAt : now - DEFAULT_WINDOW_MS;
+        const rawEnd = typeof g.endedAt === 'number' ? g.endedAt : now;
+        const to = Math.min(rawEnd, from + MAX_GAME_MS, now);
+        session = await healthService.readSession(from, to);
+      }
       if (!session) return false;
 
       const metrics = {

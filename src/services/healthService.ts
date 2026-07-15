@@ -268,4 +268,66 @@ export const healthService = {
       return null;
     }
   },
+
+  /**
+   * Read + aggregate metrics across MULTIPLE [from,to] windows — the exact
+   * minutes the live-match timer was running (see physicalSyncService). Sums
+   * distance/steps/calories/sprints, takes the max top-speed, and derives
+   * average speed from total distance ÷ total active time (so pauses between
+   * intervals never dilute it). null when no device / nothing recorded.
+   */
+  async readSessionMulti(
+    intervals: Array<{ from: number; to: number }>,
+  ): Promise<HealthSession | null> {
+    const native = nativeHealth();
+    if (!native) return null;
+    try {
+      if (!(await ensureReady(native))) return null;
+      let distanceM = 0;
+      let steps = 0;
+      let calories = 0;
+      let sprints = 0;
+      let topSpeedKmh = 0;
+      let activeMs = 0;
+      let any = false;
+      for (const iv of intervals) {
+        if (!(iv.to > iv.from)) continue;
+        activeMs += iv.to - iv.from;
+        const raw = await readRawSession(native, iv.from, iv.to);
+        if (!raw) continue;
+        any = true;
+        distanceM += raw.distanceM ?? 0;
+        steps += raw.steps ?? 0;
+        calories += raw.calories ?? 0;
+        sprints += raw.sprints ?? 0;
+        topSpeedKmh = Math.max(topSpeedKmh, raw.topSpeedKmh ?? 0);
+      }
+      if (!any) return null;
+      const avgSpeedKmh =
+        activeMs > 0
+          ? Math.round((distanceM / (activeMs / 1000)) * 3.6 * 10) / 10
+          : 0;
+      // Heart-rate dropped in the HC config → zeroed; effort/zones resolve empty.
+      const hrZones = computeHrZones([], 0);
+      const effortScore = computeEffort(0, 0, hrZones);
+      return {
+        distanceM,
+        steps,
+        calories,
+        avgHr: 0,
+        maxHr: 0,
+        topSpeedKmh,
+        avgSpeedKmh,
+        sprints,
+        hrZones,
+        effortScore,
+        source: Platform.OS === 'ios' ? 'healthkit' : 'healthconnect',
+      };
+    } catch (err) {
+      logError('healthService.readSessionMulti', err, {
+        n: intervals.length,
+      });
+      return null;
+    }
+  },
 };

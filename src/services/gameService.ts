@@ -6388,6 +6388,11 @@ export const gameService = {
           ...(prev.timerEvents ?? []),
           { type: 'pause', at: Date.now(), byName: userName },
         ],
+        // Record the window the timer just ran — evening-level, never wiped.
+        activeIntervals: [
+          ...(prev.activeIntervals ?? []),
+          { s: prev.timerLastStartedAt, e: Date.now() },
+        ],
       };
       g.updatedAt = Date.now();
       return;
@@ -6416,6 +6421,12 @@ export const gameService = {
           type: 'pause',
           at: serverNow(),
           byName: userName,
+        }),
+        // Record the window the timer just ran — evening-level, never wiped
+        // (scopes the Health Connect physical read to timer-active minutes).
+        'liveMatch.activeIntervals': arrayUnion({
+          s: cur.liveMatch.timerLastStartedAt,
+          e: serverNow(),
         }),
         updatedAt: serverNow(),
       });
@@ -6503,7 +6514,18 @@ export const gameService = {
       if (g.status === 'finished' || g.status === 'cancelled') return;
       g.status = 'finished';
       g.locked = true;
-      if (g.liveMatch) g.liveMatch = { ...g.liveMatch, phase: 'finished' };
+      g.endedAt = Date.now();
+      if (g.liveMatch) {
+        const openSeg =
+          g.liveMatch.timerRunning && g.liveMatch.timerLastStartedAt
+            ? [{ s: g.liveMatch.timerLastStartedAt, e: Date.now() }]
+            : [];
+        g.liveMatch = {
+          ...g.liveMatch,
+          phase: 'finished',
+          activeIntervals: [...(g.liveMatch.activeIntervals ?? []), ...openSeg],
+        };
+      }
       g.updatedAt = Date.now();
       return;
     }
@@ -6542,6 +6564,8 @@ export const gameService = {
       }
       const updates: Record<string, unknown> = {
         status: 'finished',
+        // The real end epoch — bounds the physical-data read window.
+        endedAt: Date.now(),
         updatedAt: Date.now(),
       };
       if (data.liveMatch) {
@@ -6549,6 +6573,15 @@ export const gameService = {
         // read (a last-second goal/timer press between the read above and
         // this write would be lost).
         updates['liveMatch.phase'] = 'finished';
+        // If the evening ended with the timer still RUNNING, close that final
+        // active window so the whole played time is recorded (evening-level,
+        // survives the goals/score freeze below).
+        if (lm?.timerRunning && lm.timerLastStartedAt) {
+          updates['liveMatch.activeIntervals'] = arrayUnion({
+            s: lm.timerLastStartedAt,
+            e: serverNow(),
+          });
+        }
         if (finalRoundCommitted) {
           // Commit succeeded (it already zeroed goals/score) → freeze empty.
           updates['liveMatch.goals'] = [];
