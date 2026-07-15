@@ -49,7 +49,16 @@ export async function createShortInviteUrl(args: {
       invitedBy: args.invitedBy ?? '',
       createdAt: Date.now(),
     });
-    return `${HOSTING_ORIGIN}/i/${code}`;
+    // Carry the inviter in the URL too, not just inside the Firestore doc. The
+    // `serveInviteCode` CF injects the full {type,id,invitedBy} for the deep-link
+    // + OG preview, BUT if it cold-starts / the doc is missing, it serves the bare
+    // page with no injection → the invited user was NOT credited. With `?invitedBy=`
+    // in the URL, invite.html recovers the inviter client-side and still credits
+    // them (as a generic app invite), so attribution never depends on the CF.
+    const base = `${HOSTING_ORIGIN}/i/${code}`;
+    return args.invitedBy
+      ? `${base}?invitedBy=${encodeURIComponent(args.invitedBy)}`
+      : base;
   } catch (err) {
     logError('createShortInviteUrl', err, { type: args.type });
     return args.fallbackLong;

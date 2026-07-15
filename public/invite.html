@@ -300,6 +300,12 @@
   // 'app' / 'go' = generic "open the app" (no path target). 'go' is the
   // dedicated acquisition entry; it may still carry `g=<gameId>` to deep
   // link into a game. Both carry invitedBy/source for attribution.
+  // Fallback: a short /i/<code> link whose CF injection is missing (cold start,
+  // deleted doc, partial deploy) has no type/id — but if the URL still carries
+  // the inviter (?invitedBy=), credit them as a generic app invite so the
+  // attribution ("this person invited me") is never lost, even without the
+  // specific game/community deep-link.
+  if (!type && invitedBy) { type = 'app'; }
   var isApp = type === 'app' || type === 'go';
   var valid = !!type && (isApp || !!id);
   var pathPart = type === 'go' ? 'go'
