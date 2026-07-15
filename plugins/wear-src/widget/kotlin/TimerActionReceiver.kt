@@ -159,6 +159,19 @@ class TimerActionReceiver : BroadcastReceiver() {
                     newLive["timerAccumulatedMs"] = acc + elapsed
                     events.add(mapOf("type" to "pause", "at" to now, "byName" to userName))
                     newLive["timerEvents"] = events
+                    // Record the window the timer just ran, so the physical/health
+                    // read stays scoped to timer-active minutes even when the timer
+                    // is controlled from the widget/watch (mirror gameService
+                    // .pauseTimer — same server-time base; physicalSyncService
+                    // coalesces any overlap with a concurrent in-app append).
+                    if (lastStarted > 0) {
+                        @Suppress("UNCHECKED_CAST")
+                        val intervals =
+                            (live["activeIntervals"] as? List<Map<String, Any?>>)?.toMutableList()
+                                ?: mutableListOf()
+                        intervals.add(mapOf("s" to lastStarted, "e" to now))
+                        newLive["activeIntervals"] = intervals
+                    }
                 }
                 ACTION_RESET -> {
                     newLive["timerRunning"] = false
@@ -166,6 +179,14 @@ class TimerActionReceiver : BroadcastReceiver() {
                     newLive["timerAccumulatedMs"] = 0L
                     // Reset clears the whole log (matches the in-app reset).
                     newLive["timerEvents"] = emptyList<Any?>()
+                    // Mirror gameService.resetTimer: zero the mini-game SCORE and
+                    // the round goal LOG together. Zeroing the clock but keeping
+                    // goals[] left phantom goals that the next round-end committed
+                    // to stats. The evening-long per-player BADGE (goalTally) and
+                    // the physical activeIntervals log are NOT touched.
+                    newLive["scoreA"] = 0L
+                    newLive["scoreB"] = 0L
+                    newLive["goals"] = emptyList<Any?>()
                 }
                 else -> return@runTransaction null
             }
@@ -182,7 +203,7 @@ class TimerActionReceiver : BroadcastReceiver() {
             )
         }.addOnSuccessListener { newTimer ->
             if (newTimer != null) {
-                applyOptimisticPrefsUpdate(context, newTimer)
+                applyOptimisticPrefsUpdate(context, newTimer, now)
                 TeamderWidgetProvider.requestRefresh(context)
                 // Also push to the paired watch so the Wear tile reflects a
                 // timer change driven from the phone widget — without this,
@@ -270,6 +291,7 @@ class TimerActionReceiver : BroadcastReceiver() {
     private fun applyOptimisticPrefsUpdate(
         context: Context,
         newTimer: Map<String, Any?>,
+        nowServerMs: Long,
     ) {
         try {
             val prefs = context.getSharedPreferences(
@@ -278,11 +300,27 @@ class TimerActionReceiver : BroadcastReceiver() {
             val current = prefs.getString(TeamderWidgetProvider.KEY_JSON, null) ?: return
             val o = JSONObject(current)
             if (o.optString("kind") != "live") return
+            val acc = (newTimer["timerAccumulatedMs"] as? Number)?.toLong() ?: 0L
             val timer = o.optJSONObject("timer") ?: JSONObject()
             timer.put("running", newTimer["timerRunning"] as? Boolean == true)
             timer.put("lastStartedAt", (newTimer["timerLastStartedAt"] as? Number)?.toLong() ?: 0L)
-            timer.put("accumulatedMs", (newTimer["timerAccumulatedMs"] as? Number)?.toLong() ?: 0L)
+            timer.put("accumulatedMs", acc)
+            // CRITICAL when this republish is the ONLY one the watch/widget will
+            // get (app dead → no JS re-publish to self-correct): re-stamp the base
+            // at THIS instant. At both start and pause the elapsed-at-this-instant
+            // equals the accumulator, and serverNowMs must be the publish instant
+            // so the running fold (nowEpoch − serverNowMs) starts at ~0. Without
+            // this the payload kept the STALE serverNowMs / baseElapsedMs → the
+            // timer jumped forward (start) or showed a wrong frozen value (pause).
+            // The SAME prefs JSON is forwarded to BOTH the phone widget and the
+            // watch (publishToWatch), and they read baseElapsedMs from DIFFERENT
+            // places: the widget from the ROOT (o.baseElapsedMs), the watch from
+            // NESTED (timer.baseElapsedMs). Set it in both, and serverNowMs at
+            // root (both read it there), or one surface keeps the stale value.
+            timer.put("baseElapsedMs", acc)
             o.put("timer", timer)
+            o.put("baseElapsedMs", acc)
+            o.put("serverNowMs", nowServerMs)
             o.put("controlledBy", newTimer["timerControlledBy"] as? String ?: "")
             o.put("controlledByName", newTimer["timerControlledByName"] as? String ?: "")
             prefs.edit().putString(TeamderWidgetProvider.KEY_JSON, o.toString()).apply()

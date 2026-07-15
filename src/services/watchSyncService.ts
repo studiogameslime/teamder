@@ -267,8 +267,15 @@ function resolveWatchBridge(): WatchBridgeLike {
 }
 
 /** Highest serverNowMs we've written to the Data Layer this session — guards
- *  against a slower, older publish landing after a newer one (see below). */
-let lastPublishedServerNow = 0;
+ *  against a slower, older publish landing after a newer one (see below).
+ *  A monotonic per-call counter — NOT serverNowMs — because serverNowMs =
+ *  Date.now() + offsetMs, and the offset is re-probed mid-match; a downward
+ *  correction makes serverNowMs jump backwards, which would wrongly drop every
+ *  subsequent (legit) publish — including a pause/reset — until real time
+ *  caught up, leaving the watch ticking as "running". A plain counter can't
+ *  regress. */
+let publishSeq = 0;
+let lastPublishedSeq = 0;
 
 /** Serialize + hand the payload to the native bridge. Safe no-op when the
  *  bridge isn't available (mock / pre-bridge build). */
@@ -283,6 +290,10 @@ export async function publishWatchState(
   // same publishState(json). No-ops on any build without the bridge.
   const bridge = resolveWatchBridge();
   if (!bridge?.publishState) return;
+  // Stamp the initiation order SYNCHRONOUSLY, before any await — so two
+  // concurrent publishes are ranked by when they STARTED, not by a clock that
+  // can be re-corrected mid-flight.
+  const seq = ++publishSeq;
   // AWAIT the server-clock sync so the payload's serverNowMs / baseElapsedMs are
   // anchored to true server time even on the very first (cold-start) publish —
   // otherwise the first live payload could ship an offset of 0. De-duped +
@@ -293,10 +304,9 @@ export async function publishWatchState(
     // Out-of-order guard: two concurrent publishes (e.g. a snapshot + the
     // periodic refresh) can resolve in the wrong order and overwrite the Data
     // Layer item with an OLDER payload, freezing the watch on a stale timer.
-    // serverNowMs is monotonic per publish, so drop anything older than the
-    // newest we've already written.
-    if (payload.serverNowMs < lastPublishedServerNow) return;
-    lastPublishedServerNow = payload.serverNowMs;
+    // Drop any publish that STARTED before the newest one we've already written.
+    if (seq < lastPublishedSeq) return;
+    lastPublishedSeq = seq;
     await bridge.publishState(JSON.stringify(payload));
   } catch (err) {
     // Best-effort relay to the Wear OS companion — a failure here is almost

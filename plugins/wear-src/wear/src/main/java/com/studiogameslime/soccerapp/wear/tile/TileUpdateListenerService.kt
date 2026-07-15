@@ -6,7 +6,7 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.WearableListenerService
 import com.studiogameslime.soccerapp.wear.model.WearGameState
-import com.studiogameslime.soccerapp.wear.model.parseWearState
+import com.studiogameslime.soccerapp.wear.model.parseWearStateFresh
 import com.studiogameslime.soccerapp.wear.ongoing.LiveOngoingActivity
 
 /**
@@ -27,13 +27,15 @@ class TileUpdateListenerService : WearableListenerService() {
         super.onDataChanged(events)
         var refresh = false
         var latestJson: String? = null
+        var latestTs = 0L
         var deleted = false
         for (event in events) {
             if (event.dataItem.uri.path != STATE_PATH) continue
             if (event.type == DataEvent.TYPE_CHANGED) {
                 refresh = true
-                latestJson =
-                    DataMapItem.fromDataItem(event.dataItem).dataMap.getString(KEY_JSON)
+                val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+                latestJson = dataMap.getString(KEY_JSON)
+                latestTs = dataMap.getLong(KEY_TS, 0L)
             } else if (event.type == DataEvent.TYPE_DELETED) {
                 deleted = true
             }
@@ -42,7 +44,10 @@ class TileUpdateListenerService : WearableListenerService() {
             TileService.getUpdater(applicationContext)
                 .requestUpdate(TeamderTileService::class.java)
             latestJson?.let {
-                LiveOngoingActivity.update(applicationContext, parseWearState(it))
+                // Fresh-parse (age out a stale LIVE payload if the Data Layer
+                // redelivers a long-dead item on reconnect) so the ongoing
+                // activity never resurrects a finished match's clock.
+                LiveOngoingActivity.update(applicationContext, parseWearStateFresh(it, latestTs))
             }
         }
         // The state item was removed (session ended / signed out) → drop the
@@ -55,5 +60,6 @@ class TileUpdateListenerService : WearableListenerService() {
     companion object {
         private const val STATE_PATH = "/teamder/state"
         private const val KEY_JSON = "json"
+        private const val KEY_TS = "ts"
     }
 }
