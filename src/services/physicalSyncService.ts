@@ -11,6 +11,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
 import { healthService } from '@/services/healthService';
+import { getServerOffsetMs } from '@/services/serverClock';
 import { logError } from '@/services/errorLog';
 
 const DEFAULT_WINDOW_MS = 3 * 60 * 60 * 1000; // fallback pre-kickoff span
@@ -33,40 +34,55 @@ export const physicalSyncService = {
       const snap = await getDoc(doc(db, 'games', gameId));
       if (!snap.exists()) return false;
       const g = snap.data() as {
+        status?: string;
         startsAt?: number;
         endedAt?: number;
-        liveMatch?: {
-          activeIntervals?: Array<{ s: number; e: number }>;
-          timerRunning?: boolean;
-          timerLastStartedAt?: number | null;
-        };
+        liveMatch?: { activeIntervals?: Array<{ s: number; e: number }> };
       };
       const now = Date.now();
+      // Only sync a FINISHED game — mid-evening the timer intervals are still
+      // partial and the merge write would overwrite the real end-of-game totals.
+      if (g.status && g.status !== 'finished') return false;
 
-      // Read ONLY the minutes the live-match TIMER was actually running — the
-      // evening-level `activeIntervals` the timer appends on each pause/end.
-      // This excludes pre-kickoff warmup, halftime pauses, and post-game, so
-      // the physical summary reflects the played minutes, not the whole evening.
-      const lm = g.liveMatch;
-      const intervals = (Array.isArray(lm?.activeIntervals) ? lm!.activeIntervals : [])
-        .map((iv) => ({ from: iv.s, to: Math.min(iv.e, now) }))
+      // Read ONLY the minutes the live-match TIMER was running — the evening-level
+      // `activeIntervals` (appended on each pause/end). Timer epochs are stamped in
+      // SERVER time (serverNow); Health Connect records are DEVICE-LOCAL — so
+      // convert back to local (subtract the clock offset), clamp each window to a
+      // sane span + to now, drop invalid, then COALESCE overlaps so no window is
+      // read (and summed) twice.
+      const offset = getServerOffsetMs();
+      const sorted = (
+        Array.isArray(g.liveMatch?.activeIntervals) ? g.liveMatch!.activeIntervals : []
+      )
+        .map((iv) => ({ from: iv.s - offset, to: iv.e - offset }))
+        .map((iv) => ({ from: iv.from, to: Math.min(iv.to, iv.from + MAX_GAME_MS, now) }))
         .filter(
-          (iv) =>
-            typeof iv.from === 'number' &&
-            typeof iv.to === 'number' &&
-            iv.to > iv.from,
-        );
-      // Edge: summary opened while the timer is still running (before endEvening).
-      if (lm?.timerRunning && typeof lm.timerLastStartedAt === 'number') {
-        intervals.push({ from: lm.timerLastStartedAt, to: now });
+          (iv) => Number.isFinite(iv.from) && Number.isFinite(iv.to) && iv.to > iv.from,
+        )
+        .sort((a, b) => a.from - b.from);
+      const merged: Array<{ from: number; to: number }> = [];
+      for (const iv of sorted) {
+        const last = merged[merged.length - 1];
+        if (last && iv.from <= last.to) last.to = Math.max(last.to, iv.to);
+        else merged.push({ ...iv });
+      }
+      // Total active time can never exceed a pickup evening (belt-and-suspenders).
+      let budget = MAX_GAME_MS;
+      const intervals: Array<{ from: number; to: number }> = [];
+      for (const iv of merged) {
+        if (budget <= 0) break;
+        const span = Math.min(iv.to - iv.from, budget);
+        intervals.push({ from: iv.from, to: iv.from + span });
+        budget -= span;
       }
 
       let session: Awaited<ReturnType<typeof healthService.readSession>>;
       if (intervals.length > 0) {
         session = await healthService.readSessionMulti(intervals);
       } else {
-        // Fallback for games with no timer-interval data (older games, or the
-        // timer was never used): the coarse whole-game window, capped.
+        // Fallback for games with no timer-interval data (older games / the timer
+        // was never used): the coarse whole-game window, capped. startsAt/endedAt
+        // are wall-clock (device-local) — no offset conversion.
         const from =
           typeof g.startsAt === 'number' ? g.startsAt : now - DEFAULT_WINDOW_MS;
         const rawEnd = typeof g.endedAt === 'number' ? g.endedAt : now;

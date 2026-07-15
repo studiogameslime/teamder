@@ -6523,6 +6523,8 @@ export const gameService = {
         g.liveMatch = {
           ...g.liveMatch,
           phase: 'finished',
+          timerRunning: false,
+          timerLastStartedAt: null,
           activeIntervals: [...(g.liveMatch.activeIntervals ?? []), ...openSeg],
         };
       }
@@ -6575,12 +6577,17 @@ export const gameService = {
         updates['liveMatch.phase'] = 'finished';
         // If the evening ended with the timer still RUNNING, close that final
         // active window so the whole played time is recorded (evening-level,
-        // survives the goals/score freeze below).
+        // survives the goals/score freeze below), AND stop the timer — otherwise
+        // the frozen doc keeps timerRunning=true and physicalSyncService would
+        // push the same final window AGAIN (double-count + uncapped next-morning
+        // read).
         if (lm?.timerRunning && lm.timerLastStartedAt) {
           updates['liveMatch.activeIntervals'] = arrayUnion({
             s: lm.timerLastStartedAt,
             e: serverNow(),
           });
+          updates['liveMatch.timerRunning'] = false;
+          updates['liveMatch.timerLastStartedAt'] = null;
         }
         if (finalRoundCommitted) {
           // Commit succeeded (it already zeroed goals/score) → freeze empty.

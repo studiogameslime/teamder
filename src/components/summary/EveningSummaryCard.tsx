@@ -308,12 +308,18 @@ export const EveningSummaryCard = forwardRef<View, Props>(
               </View>
             </View>
             <View style={styles.watchBody}>
-              <EffortRing score={p.effortScore} />
+              {/* Effort ring + max-HR only when heart-rate is available. The
+                  Health Connect path doesn't read HR (avgHr/maxHr/effort=0), so
+                  without this guard the ring renders "0 מאמץ" (empty) and the HR
+                  tile shows a permanent "0" — hide both instead. */}
+              {p.effortScore > 0 ? <EffortRing score={p.effortScore} /> : null}
               <View style={styles.wMetrics}>
                 <WMetric label="מרחק ריצה" value={`${p.distanceKm}`} unit=" ק״מ" color={C.green} />
                 <WMetric label="מהירות שיא" value={`${p.topSpeedKmh}`} unit=" קמ״ש" color={C.cyan} />
                 <WMetric label="ספרינטים" value={`${p.sprints}`} color={C.ink} />
-                <WMetric label="דופק מקסימלי" value={`${p.maxHr}`} color={C.red} />
+                {p.maxHr > 0 ? (
+                  <WMetric label="דופק מקסימלי" value={`${p.maxHr}`} color={C.red} />
+                ) : null}
               </View>
             </View>
             {/* HR zones */}

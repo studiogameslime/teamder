@@ -292,9 +292,11 @@ export const healthService = {
       let any = false;
       for (const iv of intervals) {
         if (!(iv.to > iv.from)) continue;
-        activeMs += iv.to - iv.from;
         const raw = await readRawSession(native, iv.from, iv.to);
         if (!raw) continue;
+        // Count active time only for windows that actually returned data — else
+        // an empty window inflates the denominator and understates avg speed.
+        activeMs += iv.to - iv.from;
         any = true;
         distanceM += raw.distanceM ?? 0;
         steps += raw.steps ?? 0;
