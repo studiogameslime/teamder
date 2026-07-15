@@ -191,9 +191,20 @@ class ExerciseRecorderService : Service() {
             // rather than crash the watch app.
             Log.w(TAG, "startRecording failed", e)
             recording = false
-            active = false
-            stopForegroundCompat()
-            stopSelf()
+            val debuggable =
+                (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            if (debuggable) {
+                // Debug/emulator ONLY: Health Services is usually unavailable on
+                // an emulator, but keep the foreground service (+notification) up
+                // so the FGS behaviour is demonstrable (the Play "Foreground
+                // service permissions" video). This branch never runs in release.
+                active = true
+                Log.i(TAG, "debug: keeping FGS up despite HS failure")
+            } else {
+                active = false
+                stopForegroundCompat()
+                stopSelf()
+            }
         }
     }
 

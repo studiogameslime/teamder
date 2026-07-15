@@ -65,15 +65,22 @@ class MainActivity : ComponentActivity() {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
             val real by repo.state
-            // Drive the Health Services recorder off the REAL relayed state
-            // (never the debug demo states). Live → record; a real non-live
-            // state → stop. We don't stop on Loading/Disconnected — those mean
-            // "no data yet" (e.g. a brief Data-Layer reconnect), and stopping
-            // then would kill an in-progress recording. Background start/stop
-            // (app closed) is handled by PhysicalStateListenerService.
-            LaunchedEffect(real) {
-                val s = real
-                when (s) {
+            var demo by remember { mutableIntStateOf(0) }
+            val demoStates = remember { demoStates() }
+            val realReady =
+                real !is WearGameState.Disconnected && real !is WearGameState.Loading
+            // Show demo only in a debug build when there's no real state yet.
+            val useReal = realReady || !debuggable
+            val shown = if (useReal) real else demoStates[demo % demoStates.size]
+            // Drive the Health Services recorder off the DISPLAYED state. In a
+            // release build this is ALWAYS the real relayed state (useReal is
+            // always true when !debuggable), so behaviour is unchanged in prod;
+            // in a debug build it also lets the demo Live state exercise the
+            // recorder, so the foreground-service is demonstrable on an emulator
+            // with no paired phone (Play FGS-permissions video). Live → record;
+            // a real non-live state → stop; Loading/Disconnected → leave as-is.
+            LaunchedEffect(shown) {
+                when (val s = shown) {
                     is WearGameState.Live ->
                         if (s.gameId.isNotBlank()) {
                             ExerciseRecorderService.start(applicationContext, s.gameId)
@@ -85,13 +92,6 @@ class MainActivity : ComponentActivity() {
                     else -> Unit // Loading / Disconnected → leave as-is
                 }
             }
-            var demo by remember { mutableIntStateOf(0) }
-            val demoStates = remember { demoStates() }
-            val realReady =
-                real !is WearGameState.Disconnected && real !is WearGameState.Loading
-            // Show demo only in a debug build when there's no real state yet.
-            val useReal = realReady || !debuggable
-            val shown = if (useReal) real else demoStates[demo % demoStates.size]
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -139,7 +139,9 @@ class MainActivity : ComponentActivity() {
 }
 
 private fun demoStates(): List<WearGameState> = listOf(
-    // 1. Live — game running, big stopwatch.
+    // 1. Live — game running, big stopwatch. gameId set so the (debug-only)
+    //    demo also drives the Health Services recorder → the FGS notification
+    //    shows for the Play "Foreground service permissions" demo video.
     WearGameState.Live(
         title = "חמישי כדורגל",
         timer = TimerState(
@@ -148,6 +150,8 @@ private fun demoStates(): List<WearGameState> = listOf(
             lastStartedAt = System.currentTimeMillis() - 728_000L,
             accumulatedMs = 0L,
         ),
+        gameId = "DEMOGAME",
+        canControl = true,
     ),
     // 2. Live — paused (e.g. half-time). Same elapsed, but frozen.
     WearGameState.Live(
