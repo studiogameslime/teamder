@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.wear.remote.interactions.RemoteActivityHelper
 import com.studiogameslime.soccerapp.wear.data.WearCommandSender
 import com.studiogameslime.soccerapp.wear.data.WearStateRepository
+import com.studiogameslime.soccerapp.wear.health.ExerciseRecorderService
 import com.studiogameslime.soccerapp.wear.model.TimerState
 import com.studiogameslime.soccerapp.wear.model.WearGameState
 import com.studiogameslime.soccerapp.wear.model.WearPlayer
@@ -36,14 +38,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ask once for notification permission so the live-match Ongoing Activity
-        // (watch-face indicator + recents chip) can actually post on Wear OS 4+.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        // Ask once for the permissions the app needs:
+        //   • POST_NOTIFICATIONS — the live-match Ongoing Activity (watch-face
+        //     indicator + recents chip) + the recorder's foreground notification.
+        //   • BODY_SENSORS / ACTIVITY_RECOGNITION — Health Services match
+        //     recording (heart-rate / steps / step-derived distance / calories).
+        //     NORMAL sensor runtime permissions, NOT the android.permission.health.*
+        //     Health-Connect ones — no Play health gate. GPS is off, so no
+        //     ACCESS_FINE_LOCATION and no Location-declaration gate either.
+        val wanted = mutableListOf(
+            android.Manifest.permission.BODY_SENSORS,
+            android.Manifest.permission.ACTIVITY_RECOGNITION,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            wanted += android.Manifest.permission.POST_NOTIFICATIONS
         }
+        val toRequest = wanted.filter {
+            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (toRequest.isNotEmpty()) requestPermissions(toRequest.toTypedArray(), 1)
         repo = WearStateRepository(applicationContext)
         // Demo/preview states (tap to cycle) are DEBUG-ONLY. In a release build a
         // real un-paired user must see the genuine Disconnected/Loading screen —
@@ -52,6 +65,26 @@ class MainActivity : ComponentActivity() {
             (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
             val real by repo.state
+            // Drive the Health Services recorder off the REAL relayed state
+            // (never the debug demo states). Live → record; a real non-live
+            // state → stop. We don't stop on Loading/Disconnected — those mean
+            // "no data yet" (e.g. a brief Data-Layer reconnect), and stopping
+            // then would kill an in-progress recording. Background start/stop
+            // (app closed) is handled by PhysicalStateListenerService.
+            LaunchedEffect(real) {
+                val s = real
+                when (s) {
+                    is WearGameState.Live ->
+                        if (s.gameId.isNotBlank()) {
+                            ExerciseRecorderService.start(applicationContext, s.gameId)
+                        }
+                    is WearGameState.Upcoming,
+                    is WearGameState.Scheduled,
+                    WearGameState.NotRegistered ->
+                        ExerciseRecorderService.stop(applicationContext)
+                    else -> Unit // Loading / Disconnected → leave as-is
+                }
+            }
             var demo by remember { mutableIntStateOf(0) }
             val demoStates = remember { demoStates() }
             val realReady =

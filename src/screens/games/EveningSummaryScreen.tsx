@@ -55,7 +55,15 @@ export function EveningSummaryScreen() {
     (async () => {
       // Best-effort: ingest this device's wearable session first (a fast no-op
       // when there's no watch / in mock), so the model picks up the physical
-      // panel + heatmap on this same load.
+      // panel + heatmap on this same load. Two sources, both harmless no-ops
+      // when absent:
+      //   • drainWatchPhysical — our Galaxy Watch app recorded the session with
+      //     its own sensors (Wear Health Services) and relayed it to the phone;
+      //     persist whatever it queued. This is the live path (Health Connect is
+      //     gated off pending Google's health declaration).
+      //   • syncForGame — the legacy Health Connect read (currently a no-op
+      //     while HEALTH_ENABLED=false), kept so re-enabling it needs no wiring.
+      await physicalSyncService.drainWatchPhysical().catch(() => false);
       await physicalSyncService.syncForGame(gameId).catch(() => false);
       const m = await eveningSummaryService.getEveningSummary(
         gameId,
