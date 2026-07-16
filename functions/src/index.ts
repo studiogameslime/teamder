@@ -3865,6 +3865,8 @@ export const onGameTimerChanged = onDocumentWritten(
           players?: string[];
           title?: string;
           status?: string;
+          updatedAt?: number;
+          createdBy?: string;
         }
       | undefined;
     if (!after) return;
@@ -3918,6 +3920,15 @@ export const onGameTimerChanged = onDocumentWritten(
       // cached payload anchor the timer to server time (offset = serverNowMs −
       // deviceNow) instead of trusting a possibly-skewed device clock.
       serverNowMs: String(Date.now()),
+      // CHANGE-time (the doc's updatedAt, stamped at WRITE time and carried per
+      // write) — the ordering key for the native out-of-order guard. Must NOT be
+      // this function's Date.now(): onGameTimerChanged invocations are not
+      // execution-ordered, so a reordered run would stamp a larger send-time for
+      // an OLDER change and defeat the guard. updatedAt is monotonic per write.
+      updatedAtMs: String(after.updatedAt ?? Date.now()),
+      // Game creator — lets a truly-cold recipient (fresh payload, no cached
+      // viewer) recompute canControl so the admin still sees the control buttons.
+      createdBy: String(after.createdBy ?? ''),
       // NOT `title`/`message`/`body`: those keys make expo-notifications
       // render a visible notification on clients that DON'T have the native
       // TeamderMessagingService yet (pre-1.0.21). `gameTitle` is inert there

@@ -193,29 +193,53 @@ private fun StopwatchScreen(
             style = MaterialTheme.typography.caption2,
             color = MaterialTheme.colors.primary,
         )
-        // Control row — mirrors the phone widget's button logic exactly:
-        //   running        → [Pause]
-        //   paused w/ time  → [Play] [Reset]
-        //   never started   → [Play]
-        // Each tap sends a MessageClient command to the phone, which runs
-        // the same Firestore mutation as the widget / in-app controls.
-        // Only the controller sees buttons — a non-admin's command is rejected
-        // by the phone, so showing buttons would just be dead taps.
+        // Control row — mirrors the phone widget's button logic:
+        //   running        → [Pause] [Reset]
+        //   paused w/ time → [Play]  [Reset]
+        //   never started  → [Play]
+        // (Reset appears alongside Pause while running so a match can be stopped
+        // directly from the wrist.) Each tap sends a MessageClient command to the
+        // phone, which runs the same Firestore mutation as the widget / in-app
+        // controls. Only the controller sees buttons — a non-admin's command is
+        // rejected by the phone.
+        //
+        // Reset is DESTRUCTIVE (zeroes the clock + this round's score/goals; the
+        // evening tally survives) and sits one fat-finger away from Pause on a
+        // small round watch worn during play — so it's a TWO-TAP confirm: the
+        // first tap arms it ("לאפס?") for 3s, a second tap within that window
+        // actually resets. Any other interaction lets it disarm.
         if (state.canControl) {
+            var resetArmed by remember { mutableStateOf(false) }
+            LaunchedEffect(resetArmed) {
+                if (resetArmed) {
+                    delay(3000)
+                    resetArmed = false
+                }
+            }
+            val onReset: () -> Unit = {
+                if (resetArmed) {
+                    onTimerCommand("reset", state.gameId)
+                    resetArmed = false
+                } else {
+                    resetArmed = true
+                }
+            }
+            val resetLabel = if (resetArmed) "לאפס?" else "אפס"
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (state.timer.running) {
                     TimerButton(PauseIcon, "השהה") {
+                        resetArmed = false
                         onTimerCommand("pause", state.gameId)
                     }
+                    TimerButton(Icons.Filled.Refresh, resetLabel, armed = resetArmed, onClick = onReset)
                 } else {
                     TimerButton(Icons.Filled.PlayArrow, "הפעל") {
+                        resetArmed = false
                         onTimerCommand("start", state.gameId)
                     }
                     if (elapsed > 0L) {
-                        TimerButton(Icons.Filled.Refresh, "אפס") {
-                            onTimerCommand("reset", state.gameId)
-                        }
+                        TimerButton(Icons.Filled.Refresh, resetLabel, armed = resetArmed, onClick = onReset)
                     }
                 }
             }
@@ -252,17 +276,24 @@ private val PauseIcon: ImageVector by lazy {
     }.build()
 }
 
-/** Round control button for the watch stopwatch (play / pause / reset). */
+/** Round control button for the watch stopwatch (play / pause / reset).
+ *  `armed` turns it red — the visual cue for the reset two-tap confirm (the
+ *  icon carries no text, so colour is the only feedback the wrist gets). */
 @Composable
 private fun TimerButton(
     icon: ImageVector,
     label: String,
+    armed: Boolean = false,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
         modifier = Modifier.size(48.dp),
-        colors = ButtonDefaults.primaryButtonColors(),
+        colors = if (armed) {
+            ButtonDefaults.buttonColors(backgroundColor = Color(0xFFEF4444))
+        } else {
+            ButtonDefaults.primaryButtonColors()
+        },
     ) {
         Icon(imageVector = icon, contentDescription = label)
     }

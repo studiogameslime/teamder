@@ -57,9 +57,13 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     val controlledBy = data["timerControlledBy"] ?: ""
     val controlledByName = data["timerControlledByName"] ?: ""
     val title = data["gameTitle"] ?: ""
-    // Server send time (server epoch) — used for both the clock anchor below and
-    // the out-of-order guard next.
+    // Server send time (server epoch) — the clock ANCHOR for the timer fold.
     val msgServerNow = data["serverNowMs"]?.toLongOrNull()
+    // CHANGE time — the doc's updatedAt, stamped at write time and carried per
+    // write. This (NOT the send-time above) is the ordering key: onGameTimerChanged
+    // invocations aren't execution-ordered, so send-time can regress for an older
+    // change; updatedAt is monotonic per write.
+    val changeMs = data["updatedAtMs"]?.toLongOrNull()
 
     // Out-of-order guard: onGameTimerChanged fires an FCM per timer change and
     // FCM delivery is NOT ordered — a delayed older timerSync arriving after a
@@ -69,7 +73,7 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
     // by gameId so switching games doesn't wrongly block the new one.
     val lastSyncGame = prefs.getString(KEY_LAST_SYNC_GAME, null)
     val lastSyncMs = prefs.getLong(KEY_LAST_SYNC_MS, 0L)
-    if (msgServerNow != null && lastSyncGame == gameId && msgServerNow < lastSyncMs) {
+    if (changeMs != null && lastSyncGame == gameId && changeMs < lastSyncMs) {
       return
     }
 
@@ -142,15 +146,28 @@ class TeamderMessagingService : ExpoFirebaseMessagingService() {
       state.put("timer", timer)
       state.put("baseElapsedMs", baseElapsed)
       state.put("serverNowMs", nowServer)
+
+      // Preserve the viewer identity (same person across games) + recompute
+      // canControl so the controller still sees the Start/Pause/Reset row even on
+      // a truly-cold FRESH payload (app killed, this game never published this
+      // session) — without it, parseWearState reads canControl=false → no buttons.
+      val createdBy = data["createdBy"] ?: ""
+      val viewer = state.optJSONObject("viewer") ?: existing?.optJSONObject("viewer")
+      if (viewer != null) {
+        state.put("viewer", viewer)
+        if (createdBy.isNotEmpty()) {
+          state.put("canControl", viewer.optString("id") == createdBy)
+        }
+      }
     }
 
     val json = state.toString()
-    // Persist the applied message's server time + game so the guard above can
+    // Persist the applied message's CHANGE time + game so the guard above can
     // drop a later-arriving OLDER message. Keep the previous marker if this
-    // message carried no serverNowMs (older sender), so we never regress to 0.
+    // message carried no updatedAtMs (older sender), so we never regress to 0.
     prefs.edit()
       .putString(TeamderWidgetProvider.KEY_JSON, json)
-      .putLong(KEY_LAST_SYNC_MS, msgServerNow ?: lastSyncMs)
+      .putLong(KEY_LAST_SYNC_MS, changeMs ?: lastSyncMs)
       .putString(KEY_LAST_SYNC_GAME, gameId)
       .apply()
     TeamderWidgetProvider.requestRefresh(context)
