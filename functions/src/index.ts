@@ -2949,6 +2949,12 @@ async function runCloneRecurringGames(): Promise<void> {
     // report [DXo4]).
     delete next.invitedUserIds;
     delete next.invitesSent;
+    // Per-instance moderation/dedup state must NOT carry over: last week's kick
+    // log would show phantom removals on a fresh roster, and a stale filler-push
+    // history would suppress this week's filler outreach.
+    delete next.adminRemovals;
+    delete next.adminRemovedBy;
+    delete next.fillerPushHistory;
     // Status: scheduled if registration hasn't opened yet, else open.
     const isDeferred = typeof nextReg === 'number' && nextReg > now;
     next.status = isDeferred ? 'scheduled' : 'open';

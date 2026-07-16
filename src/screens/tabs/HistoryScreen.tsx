@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -25,6 +25,8 @@ export function HistoryScreen() {
   const nav = useNavigation<any>();
   const [items, setItems] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     logEvent(AnalyticsEvent.HistoryOpened);
@@ -37,14 +39,16 @@ export function HistoryScreen() {
     }
     let alive = true;
     setLoading(true);
+    setError(false);
     gameService
       .getPlayedGames(userId)
       .then((list) => {
         if (alive) setItems(list.sort((a, b) => b.date - a.date));
       })
       .catch((err) => {
-        // Without this, a failed fetch silently shows the empty state
-        // ("no history") — indistinguishable from genuinely having none.
+        // A failed fetch must NOT masquerade as the empty state ("no history")
+        // — surface a distinct error + retry instead.
+        if (alive) setError(true);
         logError('loadHistory', err, {
           screen: 'HistoryScreen',
           userId,
@@ -57,7 +61,7 @@ export function HistoryScreen() {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, reload]);
 
   const openDetails = (gameId: string) => {
     // Push within the current stack (ProfileStack) — back returns to
@@ -72,6 +76,17 @@ export function HistoryScreen() {
       {loading ? (
         <View style={{ padding: spacing.lg, gap: spacing.sm }}>
           <MatchCardSkeleton count={4} />
+        </View>
+      ) : error ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>{he.historyLoadError}</Text>
+          <Pressable
+            onPress={() => setReload((n) => n + 1)}
+            style={styles.retryBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.retryText}>{he.retry}</Text>
+          </Pressable>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>
@@ -123,6 +138,19 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  retryText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '700',
   },
   rowPressable: {
     borderRadius: radius.lg,

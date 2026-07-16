@@ -913,6 +913,8 @@ export const he = {
   statsEmpty: 'אין עדיין נתונים',
   statsEmptySub: 'הסטטיסטיקות יתעדכנו אחרי המשחקים הראשונים שלך',
   historyEmptyReal: 'אין עדיין היסטוריית משחקים',
+  historyLoadError: 'שגיאה בטעינת ההיסטוריה',
+  retry: 'נסה שוב',
   historyEmptyHint: 'ברגע שתסיים משחקים, הם יופיעו כאן',
 
   // Mock mode banner
