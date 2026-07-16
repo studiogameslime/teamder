@@ -8342,6 +8342,8 @@ export const serveInviteCode = onRequest(
               { merge: true },
             )
             .catch(() => {});
+          // …and into the cross-source daily aggregate the dashboard reads.
+          bumpLinkClickAggregate(admin.firestore(), Date.now()).catch(() => {});
         }
       }
 
@@ -10654,6 +10656,10 @@ export const trackLinkClick = onRequest(
           { clicks: inc, lastClickAt: now }, { merge: true },
         );
       }
+      // Cross-source daily aggregate so the dashboard can show clicks by
+      // today / yesterday / this week (the per-link `clicks` fields are running
+      // totals with no history). One click = one request = one bump.
+      await bumpLinkClickAggregate(db, now);
     } catch {
       /* best-effort beacon — never error the user's redirect */
     }
@@ -10661,6 +10667,29 @@ export const trackLinkClick = onRequest(
     res.status(204).send('');
   },
 );
+
+/**
+ * Cross-source link-click aggregate at `metrics/linkClicks`:
+ *   • `total`            — all-time running count (seeded once from the existing
+ *                          per-link counters via a backfill).
+ *   • `days.<YYYY-MM-DD>` — per-day count, keyed in Israel time so the
+ *                          dashboard's "today"/"yesterday" match the operator's
+ *                          clock. Only NEW clicks (from deploy onward) populate
+ *                          the daily map; `total` stays accurate historically.
+ */
+async function bumpLinkClickAggregate(
+  db: FirebaseFirestore.Firestore,
+  now: number,
+): Promise<void> {
+  const inc = admin.firestore.FieldValue.increment(1);
+  const dayKey = new Date(now).toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Jerusalem',
+  }); // → "YYYY-MM-DD"
+  await db.doc('metrics/linkClicks').set(
+    { total: inc, [`days.${dayKey}`]: inc, lastClickAt: now },
+    { merge: true },
+  );
+}
 
 // User feedback — bug report / feature suggestion (separate toggles).
 export const onFeedbackSubmitted = onDocumentCreated(
