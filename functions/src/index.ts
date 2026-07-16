@@ -5978,10 +5978,24 @@ export const deleteMyAccount = onCall(
           name: 'משתמש שהוסר',
           email: admin.firestore.FieldValue.delete(),
           photoUrl: admin.firestore.FieldValue.delete(),
+          // Wipe availability + push tokens so a deleted account stops surfacing
+          // as an "available player" invite candidate (findAvailablePlayers /
+          // the filler sweep filter on availability) and stops receiving pushes
+          // to tokens the client's best-effort single-device removal missed.
+          availability: admin.firestore.FieldValue.delete(),
+          fcmTokens: admin.firestore.FieldValue.delete(),
           deletedAt: now,
         },
         { merge: true },
       );
+      // Push tokens also live in a private sub-doc — remove it entirely.
+      await db
+        .collection('users')
+        .doc(uid)
+        .collection('private')
+        .doc('push')
+        .delete()
+        .catch(() => {});
     } catch (err) {
       console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
     }
@@ -11194,7 +11208,21 @@ export const commitRoundStats = onCall(
     sameTeamPairs(A, aWon, bWon);
     sameTeamPairs(B, bWon, aWon);
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (err) {
+      // The idempotency latch (committedRounds/{roundId}.create) already fired
+      // for this round on a PRIOR attempt — the SDK auto-retried after a lost
+      // success response, or the admin double-tapped "סיים משחקון". The stats
+      // are already committed, so a re-run must SUCCEED (idempotent), not surface
+      // a permanent failure that leaves the round/evening stuck. Only swallow the
+      // duplicate-latch case; any other commit error still propagates.
+      const code = (err as { code?: unknown } | undefined)?.code;
+      if (code === 6 || code === 'already-exists') {
+        return { ok: true, alreadyCommitted: true };
+      }
+      throw err;
+    }
 
     // Round-history write, OUTSIDE the atomic stats batch (op-count + doc-size
     // safety). Runs only after the batch commits, so on an idempotent retry the
