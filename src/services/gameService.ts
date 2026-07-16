@@ -6761,7 +6761,20 @@ export const gameService = {
       // Fire current state immediately (mirrors Firestore's first-snapshot behaviour).
       const g = mockGamesV2.find((x) => x.id === gameId);
       cb(g?.liveMatch ?? null);
+      // Poll for changes too — most mock mutations bump game.updatedAt but only
+      // two call the registry, so without polling the UI froze after timer/
+      // goal writes (mirrors onSnapshot's continuous delivery).
+      let lastStamp = g?.updatedAt ?? 0;
+      const iv = setInterval(() => {
+        const cur = mockGamesV2.find((x) => x.id === gameId);
+        const stamp = cur?.updatedAt ?? 0;
+        if (stamp !== lastStamp) {
+          lastStamp = stamp;
+          cb(cur?.liveMatch ?? null);
+        }
+      }, 800);
       return () => {
+        clearInterval(iv);
         list.delete(cb);
       };
     }
@@ -6787,9 +6800,21 @@ export const gameService = {
     cb: (data: { rotation?: import('@/types').MatchRotation; draftTeams?: DraftTeamsResult }) => void,
   ): () => void {
     if (USE_MOCK_DATA) {
-      const g = mockGamesV2.find((x) => x.id === gameId);
-      cb({ rotation: g?.rotation, draftTeams: g?.draftTeams });
-      return () => undefined;
+      // Fire now + poll (updatedAt) — see subscribeLiveGame's mock path.
+      const fire = () => {
+        const g = mockGamesV2.find((x) => x.id === gameId);
+        cb({ rotation: g?.rotation, draftTeams: g?.draftTeams });
+      };
+      fire();
+      let lastStamp = mockGamesV2.find((x) => x.id === gameId)?.updatedAt ?? 0;
+      const iv = setInterval(() => {
+        const stamp = mockGamesV2.find((x) => x.id === gameId)?.updatedAt ?? 0;
+        if (stamp !== lastStamp) {
+          lastStamp = stamp;
+          fire();
+        }
+      }, 800);
+      return () => clearInterval(iv);
     }
     const ref = docs.game(gameId);
     return onSnapshot(
@@ -6822,9 +6847,24 @@ export const gameService = {
     }) => void,
   ): () => void {
     if (USE_MOCK_DATA) {
-      const g = mockGamesV2.find((x) => x.id === gameId);
-      cb({ liveMatch: g?.liveMatch ?? null, rotation: g?.rotation, draftTeams: g?.draftTeams });
-      return () => undefined;
+      // Mirror onSnapshot in mock: fire now + poll for changes (updatedAt) so
+      // the live screen actually re-renders after timer/goal/team mutations.
+      // Without this, mock QA showed a frozen 00:00 timer after a successful
+      // start — the mutation landed but the one-shot callback never re-fired.
+      const fire = () => {
+        const g = mockGamesV2.find((x) => x.id === gameId);
+        cb({ liveMatch: g?.liveMatch ?? null, rotation: g?.rotation, draftTeams: g?.draftTeams });
+      };
+      fire();
+      let lastStamp = mockGamesV2.find((x) => x.id === gameId)?.updatedAt ?? 0;
+      const iv = setInterval(() => {
+        const stamp = mockGamesV2.find((x) => x.id === gameId)?.updatedAt ?? 0;
+        if (stamp !== lastStamp) {
+          lastStamp = stamp;
+          fire();
+        }
+      }, 800);
+      return () => clearInterval(iv);
     }
     const ref = docs.game(gameId);
     return onSnapshot(
