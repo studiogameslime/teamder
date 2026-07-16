@@ -32,6 +32,8 @@ import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { MatchDetailsScreen } from '@/screens/games/MatchDetailsScreen';
+import { DraftSetupScreen } from '@/screens/games/DraftSetupScreen';
+import { DraftBoardScreen } from '@/screens/games/DraftBoardScreen';
 import { EveningSummaryScreen } from '@/screens/games/EveningSummaryScreen';
 import { MatchPlayersScreen } from '@/screens/games/MatchPlayersScreen';
 import { AvailablePlayersScreen } from '@/screens/games/AvailablePlayersScreen';
@@ -63,6 +65,15 @@ export type CommunitiesStackParamList = {
   // duplicated so back-navigation from MatchDetails returns to
   // CommunityDetails rather than jumping the user to the Games tab.
   MatchDetails: { gameId: string };
+  // Draft Teams (חלוקת כוחות) — reachable from MatchDetails' "קביעת כוחות".
+  DraftSetup: { gameId: string };
+  DraftBoard: {
+    gameId: string;
+    captainIds: string[];
+    method: 'snake' | 'regular';
+    resume?: boolean;
+    readOnly?: boolean;
+  };
   EveningSummary: { gameId: string };
   MatchPlayers: { gameId: string };
   AvailablePlayers: { gameId: string };
@@ -121,6 +132,11 @@ export function CommunitiesStack() {
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="MatchDetails" component={MatchDetailsScreen} />
+      {/* Draft Teams (חלוקת כוחות) — MatchDetails is hosted in this stack too,
+          so its "קביעת כוחות" action MUST be able to navigate here, else the tap
+          silently no-ops when the game was opened from the Communities tab. */}
+      <Stack.Screen name="DraftSetup" component={DraftSetupScreen} />
+      <Stack.Screen name="DraftBoard" component={DraftBoardScreen} />
       <Stack.Screen name="EveningSummary" component={EveningSummaryScreen} />
       <Stack.Screen name="AddMembers" component={AddMembersScreen} />
       <Stack.Screen name="MatchPlayers" component={MatchPlayersScreen} />
