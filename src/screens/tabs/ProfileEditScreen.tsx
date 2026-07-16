@@ -211,8 +211,9 @@ export function ProfileEditScreen() {
       // the dirty state stays so the form is recoverable.
       if (__DEV__) console.warn('[profileEdit] save failed', err);
       // Friendly Hebrew only — the technical code/message stays in the
-      // __DEV__ warn above and never reaches the user.
-      appAlert(he.error, he.profilePhotoUploadFailed);
+      // __DEV__ warn above and never reaches the user. Generic save-failure
+      // copy (the failure may be the NAME write, not the photo).
+      appAlert(he.error, he.profileSaveFailed);
       // Bail out so the finally still resets busy/saving but goBack
       // never runs.
     } finally {

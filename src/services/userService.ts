@@ -528,10 +528,19 @@ export const userService = {
       // morning/noon/evening). Empty = any time. The legacy timeFrom/timeTo
       // fields are no longer written by the availability screen, so the old
       // check never fired — players were offered games outside their window.
-      if (typeof opts.hour === 'number') {
+      // `hour` arrives as a STRING (formatHour(startsAt), e.g. "20" / "20:00").
+      // The old `typeof === 'number'` gate never matched, so the whole
+      // time-window filter was dead — players were offered games outside their
+      // chosen windows. Parse the leading hour and honour preferredTimes.
+      const h =
+        typeof opts.hour === 'number'
+          ? opts.hour
+          : typeof opts.hour === 'string'
+            ? parseInt(opts.hour, 10)
+            : NaN;
+      if (Number.isFinite(h)) {
         const times = Array.isArray(a.preferredTimes) ? a.preferredTimes : [];
         if (times.length > 0) {
-          const h = opts.hour;
           const window =
             h >= 7 && h < 12 ? 'morning' : h >= 12 && h < 18 ? 'noon' : 'evening';
           if (!times.includes(window as never)) return false;

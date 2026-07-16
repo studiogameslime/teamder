@@ -8,7 +8,7 @@
 // listener.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -160,7 +160,15 @@ export function LiveScoreboardCard(props: Props) {
       setBusy(false);
     }
   };
-  const undo = async (goalId: string) => {
+  // Deleting a goal is destructive (drops it from the log + decrements the
+  // score) and the ✕ is a tiny target next to other rows — confirm first.
+  const undo = (goalId: string) => {
+    Alert.alert('מחיקת גול', 'למחוק את הגול מהיומן?', [
+      { text: 'ביטול', style: 'cancel' },
+      { text: 'מחק', style: 'destructive', onPress: () => doUndo(goalId) },
+    ]);
+  };
+  const doUndo = async (goalId: string) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);

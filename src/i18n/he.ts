@@ -957,8 +957,10 @@ export const he = {
   clubLevelLabel: 'רמה',
   clubLevelNextHint: (pts: number) => `עוד ${pts} נקודות לרמה הבאה`,
   clubLevelMaxHint: 'רמת השיא הושגה 🏆',
+  // LTR isolate (LRI…PDI) so "3 / 10" keeps its order in the RTL layout instead
+  // of flipping to "10 / 3" (the slash is a neutral that the RTL run reorders).
   clubAchievementProgress: (value: number, target: number) =>
-    `${value} / ${target}`,
+    `⁦${value} / ${target}⁩`,
   clubAchievementGold: 'הושלם ✓',
   // hero tiles
   communityStatsGoals: 'גולים',
@@ -1729,6 +1731,7 @@ export const he = {
   profilePhotoPermissionDenied:
     'אין הרשאה לגישה לגלריה. אפשר לאשר בהגדרות הטלפון.',
   profilePhotoUploadFailed: 'העלאת התמונה נכשלה. נסה שוב.',
+  profileSaveFailed: 'שמירת הפרופיל נכשלה. נסה שוב.',
   profilePhotoUnavailable:
     'בחירת תמונה לא זמינה כרגע. בחר אווטאר מוכן בינתיים.',
   profileEditUnsavedTitle: 'יש לך שינויים שלא נשמרו',

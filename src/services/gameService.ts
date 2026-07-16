@@ -2702,6 +2702,13 @@ export const gameService = {
       ...patch,
       updatedAt: Date.now(),
     };
+    // A reschedule invalidates the "reminder already sent" latch — otherwise a
+    // game moved to a NEW time after its ~1h reminder already fired would never
+    // remind for the new kickoff (the server's reminder guard early-returns on
+    // reminderSent). Clearing it lets the newly-enqueued task fire.
+    if (typeof patch.startsAt === 'number' && patch.startsAt !== existing.startsAt) {
+      updates.reminderSent = false;
+    }
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) Object.assign(m, updates);
