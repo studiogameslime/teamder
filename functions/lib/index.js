@@ -55,8 +55,8 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onAvailabilityUpdated = exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = void 0;
+exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -185,6 +185,34 @@ const STALE_UNREAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // firestore.indexes.json.
 const STRICT_UNREAD_DEDUP = {
     gameCanceledOrUpdated: true,
+};
+// ─── Dormant-user push gate ─────────────────────────────────────────────
+//
+// A user who hasn't opened the app in this long stops receiving LOW-PRIORITY
+// announcements/reminders — otherwise someone in several communities who
+// never engages accumulates a push for every game in every community with no
+// ceiling. Opening the app writes `lastSeenAt` (touchPresence) and lifts the
+// gate on the very next launch, so it self-heals the moment they return.
+//
+// SAFETY: gated types are only the non-critical fan-outs below. Personal /
+// actionable pushes (spot offered, added-to-game, invites, approvals, chat,
+// teams-ready, friend requests, game-canceled) are NEVER suppressed — a
+// dormant user must still learn the game they're IN was canceled. A missing
+// `lastSeenAt` counts as ACTIVE (the presence ping is itself feature-flagged,
+// so absence must not read as "dormant" and mute everyone).
+const DORMANT_PUSH_CUTOFF_MS = 21 * 24 * 60 * 60 * 1000;
+const DORMANT_SUPPRESSIBLE = {
+    newGameInCommunity: true,
+    gameReminder: true,
+    gameRsvpNudge: true,
+    gameFillingUp: true,
+    gamePlayersJoined: true,
+    playerCancelled: true,
+    eveningSummary: true,
+    fillerOpportunity: true,
+    growthMilestone: true,
+    gameShortageWarning: true,
+    promotePrompt: true,
 };
 // Types where a duplicate write inside the cooldown bucket should
 // AGGREGATE the payload (count + appended id/name lists) into the
@@ -1170,6 +1198,11 @@ async function deliverBatch(type, recipients, message, data) {
     const tokenToUser = new Map();
     let skippedPref = 0;
     let skippedNoToken = 0;
+    let skippedDormant = 0;
+    // Dormant-user gate (see DORMANT_SUPPRESSIBLE): for low-priority types only,
+    // users inactive ≥21d are skipped. Computed once per batch.
+    const dormantGated = DORMANT_SUPPRESSIBLE[type] === true;
+    const dormantCutoff = Date.now() - DORMANT_PUSH_CUTOFF_MS;
     // Map notification TYPE → the pref KEY that gates it. Most match 1:1, but
     // 'approved'/'rejected' are two types governed by the single 'approvedRejected'
     // toggle — without this map a user who turned that toggle OFF still got the
@@ -1188,6 +1221,15 @@ async function deliverBatch(type, recipients, message, data) {
             skippedPref++;
             continue;
         }
+        // Dormant gate — only for low-priority types, and only when we have a
+        // real lastSeenAt that's older than the cutoff. Missing/zero → active.
+        if (dormantGated) {
+            const ls = typeof user.lastSeenAt === 'number' ? user.lastSeenAt : 0;
+            if (ls > 0 && ls < dormantCutoff) {
+                skippedDormant++;
+                continue;
+            }
+        }
         const userTokens = (user.fcmTokens || []).filter((t) => typeof t === 'string' && t.length > 0);
         if (userTokens.length === 0) {
             skippedNoToken++;
@@ -1205,8 +1247,11 @@ async function deliverBatch(type, recipients, message, data) {
     if (skippedNoToken > 0) {
         console.log(`[notifications] ${type}: skipped ${skippedNoToken} user(s) — no fcm token`);
     }
+    if (skippedDormant > 0) {
+        console.log(`[notifications] ${type}: skipped ${skippedDormant} user(s) — dormant ≥21d`);
+    }
     if (tokens.size === 0) {
-        return { ok: 0, failed: 0, skippedPref, skippedNoToken };
+        return { ok: 0, failed: 0, skippedPref, skippedNoToken, skippedDormant };
     }
     // Notifications that should render with action buttons advertise
     // a category id; expo-notifications matches it against the
@@ -1347,8 +1392,8 @@ async function deliverBatch(type, recipients, message, data) {
         ]));
         console.log(`[notifications] ${type}: pruned ${deadTokens.size} dead token(s) across ${byUser.size} user(s)`);
     }
-    console.log(`[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} categoryIdentifier=${categoryIdentifier ?? 'none'}`);
-    return { ok, failed, skippedPref, skippedNoToken };
+    console.log(`[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} skippedDormant=${skippedDormant} categoryIdentifier=${categoryIdentifier ?? 'none'}`);
+    return { ok, failed, skippedPref, skippedNoToken, skippedDormant };
 }
 // ─── onCreate trigger ──────────────────────────────────────────────────
 /**
@@ -2554,6 +2599,18 @@ async function runCloneRecurringGames() {
         delete next.jerseysHolderUserId;
         delete next.teams; // legacy Team[]; modern draftTeams already cleared above
         delete next.weather; // stale forecast — refreshed on demand
+        // Invitations are per-INSTANCE: each weekly game has its own invite list, so
+        // last week's invitees must not ride in via {...g} — otherwise the coach sees
+        // them as "already invited" on the fresh game and can't re-invite them (user
+        // report [DXo4]).
+        delete next.invitedUserIds;
+        delete next.invitesSent;
+        // Per-instance moderation/dedup state must NOT carry over: last week's kick
+        // log would show phantom removals on a fresh roster, and a stale filler-push
+        // history would suppress this week's filler outreach.
+        delete next.adminRemovals;
+        delete next.adminRemovedBy;
+        delete next.fillerPushHistory;
         // Status: scheduled if registration hasn't opened yet, else open.
         const isDeferred = typeof nextReg === 'number' && nextReg > now;
         next.status = isDeferred ? 'scheduled' : 'open';
@@ -3330,12 +3387,18 @@ exports.onGameTimerChanged = (0, firestore_1.onDocumentWritten)('games/{id}', as
     const before = event.data?.before?.data();
     const a = after.liveMatch ?? {};
     const b = before?.liveMatch ?? {};
-    // Only fire when a timer primitive actually changed — not on every
-    // roster write.
+    // Fire on a timer-primitive change (start/pause/reset) OR when the game
+    // TRANSITIONS to finished/cancelled. The latter matters because ending an
+    // evening while the timer is already paused changes no timer primitive — so
+    // without this branch the killed-app widget/tile would stay stuck on the
+    // last 'live' card forever (its own JS re-publish is dead).
     const changed = (a.timerRunning ?? null) !== (b.timerRunning ?? null) ||
         (a.timerLastStartedAt ?? null) !== (b.timerLastStartedAt ?? null) ||
         (a.timerAccumulatedMs ?? null) !== (b.timerAccumulatedMs ?? null);
-    if (!changed)
+    const isOver = after.status === 'finished' || after.status === 'cancelled';
+    const wasOver = before?.status === 'finished' || before?.status === 'cancelled';
+    const endedNow = isOver && !wasOver;
+    if (!changed && !endedNow)
         return;
     const recipients = Array.isArray(after.participantIds)
         ? after.participantIds
@@ -3367,11 +3430,27 @@ exports.onGameTimerChanged = (0, firestore_1.onDocumentWritten)('games/{id}', as
         timerAccumulatedMs: String(a.timerAccumulatedMs ?? 0),
         timerControlledBy: String(a.timerControlledBy ?? ''),
         timerControlledByName: String(a.timerControlledByName ?? ''),
+        // Server wall clock at send time. Lets a killed-app recipient with NO
+        // cached payload anchor the timer to server time (offset = serverNowMs −
+        // deviceNow) instead of trusting a possibly-skewed device clock.
+        serverNowMs: String(Date.now()),
+        // CHANGE-time (the doc's updatedAt, stamped at WRITE time and carried per
+        // write) — the ordering key for the native out-of-order guard. Must NOT be
+        // this function's Date.now(): onGameTimerChanged invocations are not
+        // execution-ordered, so a reordered run would stamp a larger send-time for
+        // an OLDER change and defeat the guard. updatedAt is monotonic per write.
+        updatedAtMs: String(after.updatedAt ?? Date.now()),
+        // Game creator — lets a truly-cold recipient (fresh payload, no cached
+        // viewer) recompute canControl so the admin still sees the control buttons.
+        createdBy: String(after.createdBy ?? ''),
         // NOT `title`/`message`/`body`: those keys make expo-notifications
         // render a visible notification on clients that DON'T have the native
         // TeamderMessagingService yet (pre-1.0.21). `gameTitle` is inert there
         // — the message stays silent — and the native service reads this key.
         gameTitle: String(after.title ?? ''),
+        // On game end, tell the native handler to CLEAR the live widget/tile
+        // instead of re-writing a 'live' card (which would freeze on screen).
+        ...(endedNow ? { gameEnded: 'true' } : {}),
     };
     const all = Array.from(tokens);
     let ok = 0;
@@ -3578,10 +3657,19 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
     // already promoted client-side is therefore a no-op here (no free seat).
     const beforePlayers = before?.players ?? [];
     const afterPlayers = after.players ?? [];
+    // An ACTIVE guest occupies a real seat, so removing one frees a seat exactly
+    // like a player leaving. It must trigger the same waitlist promotion (user
+    // report [4ldH]: "removed someone from a full game, the waitlisted person got
+    // no notification"). The guest was being removed via the guests[] array,
+    // which the old rosterShrank check ignored entirely.
+    const beforeActiveGuests = (before?.guests ?? []).filter((g) => !g?.waitlisted).length;
+    const afterActiveGuests = (after.guests ?? []).filter((g) => !g?.waitlisted).length;
+    const guestSeatFreed = afterActiveGuests < beforeActiveGuests;
     const rosterShrank = JSON.stringify(beforePlayers) !== JSON.stringify(afterPlayers) ||
         JSON.stringify(before?.waitlist ?? []) !==
             JSON.stringify(after.waitlist ?? []) ||
-        JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []);
+        JSON.stringify(before?.pending ?? []) !== JSON.stringify(after.pending ?? []) ||
+        guestSeatFreed;
     // GameStatus is 'scheduled'|'open'|'locked'|'active'|'finished'|'cancelled'.
     // PRUNE a departed ghost from drawn teams / live rotation for any game still
     // in play (incl. 'locked' near kickoff AND 'active' live play) — a player
@@ -3647,7 +3735,7 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                     // `departed` — without this gate the trigger would auto-promote (or
                     // re-offer) the seat the admin just deliberately opened, reverting
                     // the manual roster action.
-                    departed.size > 0 &&
+                    (departed.size > 0 || guestSeatFreed) &&
                     !ppUid &&
                     waitlist.length > 0 &&
                     occupancy < (d.maxPlayers ?? 15)) {
@@ -5037,8 +5125,22 @@ exports.deleteMyAccount = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHE
             name: 'משתמש שהוסר',
             email: admin.firestore.FieldValue.delete(),
             photoUrl: admin.firestore.FieldValue.delete(),
+            // Wipe availability + push tokens so a deleted account stops surfacing
+            // as an "available player" invite candidate (findAvailablePlayers /
+            // the filler sweep filter on availability) and stops receiving pushes
+            // to tokens the client's best-effort single-device removal missed.
+            availability: admin.firestore.FieldValue.delete(),
+            fcmTokens: admin.firestore.FieldValue.delete(),
             deletedAt: now,
         }, { merge: true });
+        // Push tokens also live in a private sub-doc — remove it entirely.
+        await db
+            .collection('users')
+            .doc(uid)
+            .collection('private')
+            .doc('push')
+            .delete()
+            .catch(() => { });
     }
     catch (err) {
         console.error('[deleteMyAccount] user doc anonymise failed', uid, err);
@@ -6764,6 +6866,136 @@ exports.serveCommunityPage = (0, https_1.onRequest)({ region: 'us-central1', mem
                 ? INVITE_TEMPLATE_PATH
                 : COMMUNITY_TEMPLATE_PATH;
             res.status(200).send(loadTemplate(fallbackPath));
+        }
+        catch {
+            res.status(500).send('internal error');
+        }
+    }
+});
+/**
+ * Resolves a SHORT invite link `/i/<code>` → the real target. Reads
+ * `inviteLinks/{code}` = {type, targetId, invitedBy}, serves the SAME invite
+ * landing template with OG injected AND `window.__INVITE__` set, so the short
+ * link keeps full attribution (install referrer / clipboard) + WhatsApp preview.
+ * A pure alias — no redirect, so the short URL stays in the address bar.
+ */
+exports.serveInviteCode = (0, https_1.onRequest)({ region: 'us-central1', memory: '256MiB' }, async (req, res) => {
+    try {
+        const raw = (req.path || '').replace(/^\/+/, '');
+        const parts = raw.split('/').filter(Boolean);
+        const code = (parts[0] === 'i' ? parts[1] : parts[0]) || '';
+        let type = 'app';
+        let targetId = '';
+        let invitedBy = '';
+        if (code) {
+            const snap = await db.collection('inviteLinks').doc(code).get();
+            if (snap.exists) {
+                const d = snap.data();
+                if (d.type === 'session' || d.type === 'team' || d.type === 'app') {
+                    type = d.type;
+                }
+                targetId = typeof d.targetId === 'string' ? d.targetId : '';
+                invitedBy = typeof d.invitedBy === 'string' ? d.invitedBy : '';
+                // Count the click (per short link). Fire-and-forget.
+                snap.ref
+                    .set({ clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() }, { merge: true })
+                    .catch(() => { });
+                // …AND the per-INVITER counter the dashboard profile reads for
+                // "קליקים על הקישור". trackLinkClick's legacy `?inviter=` path bumps
+                // this, but short links (`/i/<code>`) used to skip it — so a person's
+                // profile undercounted (7) while the daily aggregate below was right
+                // (15). Bump it here too so the two never diverge again. Modern shares
+                // are almost all short links, so without this the profile counter is
+                // effectively dead. (inviteLinks.invitedBy is the trusted inviter.)
+                if (invitedBy) {
+                    db.collection('inviteClicks')
+                        .doc(invitedBy)
+                        .set({ clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() }, { merge: true })
+                        .catch(() => { });
+                }
+                // …and into the cross-source daily aggregate the dashboard reads,
+                // attributed to the inviter (or the short-code when anonymous).
+                bumpLinkClickAggregate(admin.firestore(), Date.now(), {
+                    inviterId: invitedBy || undefined,
+                    code: code || undefined,
+                    kind: 'invite',
+                }).catch(() => { });
+            }
+        }
+        // Situation-aware OG preview so the WhatsApp/crawler card matches the
+        // link TYPE — a personal invite must NOT show the community default
+        // ("מועדון ב־Teamder"). Mirrors the page-body variant selection:
+        // session→game, team→community, else invitedBy→personal, else generic.
+        let summary = null;
+        let meta;
+        let ogImage = null;
+        if (type === 'team' && targetId) {
+            summary = await loadShowcaseSummary(targetId).catch(() => null);
+            meta = buildMetaBlock(summary);
+            ogImage = summary?.coverPhotoUrl ?? null;
+        }
+        else if (type === 'session' && targetId) {
+            const g = await db
+                .collection('games')
+                .doc(targetId)
+                .get()
+                .catch(() => null);
+            const gd = g && g.exists ? g.data() : null;
+            const gt = gd && typeof gd.title === 'string' && gd.title.trim()
+                ? gd.title.trim()
+                : '';
+            const where = gd && typeof gd.fieldName === 'string' && gd.fieldName
+                ? gd.fieldName
+                : gd && typeof gd.city === 'string'
+                    ? gd.city
+                    : '';
+            meta = {
+                title: gt ? `הוזמנת למשחק: ${gt}` : 'הוזמנת למשחק כדורגל ב־Teamder',
+                description: where
+                    ? `משחק כדורגל ב־Teamder · ${where} · ראה מי מגיע והצטרף בלחיצה.`
+                    : 'משחק כדורגל ב־Teamder · ראה מי מגיע והצטרף בלחיצה אחת.',
+            };
+        }
+        else if (invitedBy) {
+            const u = await db
+                .collection('users')
+                .doc(invitedBy)
+                .get()
+                .catch(() => null);
+            const nm = u && u.exists && typeof u.data()?.name === 'string'
+                ? u.data().name.trim()
+                : '';
+            meta = {
+                title: nm ? `${nm} מזמין אותך ל־Teamder` : 'הזמנה אישית ל־Teamder',
+                description: 'הצטרף לחברים שלך ב־Teamder — האפליקציה שמארגנת את הכדורגל כדי שרק תגיעו לשחק.',
+            };
+        }
+        else {
+            meta = {
+                title: 'Teamder · כדורגל קבוע בלי כאב ראש',
+                description: 'פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר.',
+            };
+        }
+        const html = loadTemplate(INVITE_TEMPLATE_PATH);
+        const rendered = injectMeta(html, meta.title, meta.description, ogImage);
+        // Inject the resolved target BEFORE the page's inline script runs, so
+        // invite.html reads window.__INVITE__ instead of the (target-less) path.
+        const inject = `<script>window.__INVITE__=${JSON.stringify({
+            type,
+            id: targetId,
+            invitedBy,
+        })};</script>`;
+        const out = rendered.replace('</head>', `${inject}</head>`);
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        // Short cache — the click counter + resolved target should stay fresh.
+        res.set('Cache-Control', 'public, max-age=60, s-maxage=60');
+        res.status(200).send(out);
+    }
+    catch (err) {
+        console.error('[serveInviteCode] render failed', err);
+        try {
+            res.set('Content-Type', 'text/html; charset=utf-8');
+            res.status(200).send(loadTemplate(INVITE_TEMPLATE_PATH));
         }
         catch {
             res.status(500).send('internal error');
@@ -8566,6 +8798,130 @@ exports.trackCampaignEvent = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
 // a fire-and-forget fetch here on load, so we count CLICKS (people who
 // tapped the link + reached the page) independently of installs. Keyed by
 // the link id `l` when present (per-link), else by source `s` (per-source).
+// Public, READ-ONLY landing-page preview. Resolves a short invite CODE (never
+// a raw gameId) to a strictly-whitelisted, non-personal summary so the landing
+// page can show real game/community context. Returns ONLY: title, date/time,
+// city/field, community name, status, free spots (game) or name/city/cover/
+// member-count (community). NEVER player names, uids, phones, participants,
+// notes, or admin data. Any invalid code / deleted target / error → { type:
+// 'generic' } so the page falls back to the generic Teamder version.
+exports.getInvitePreview = (0, https_1.onRequest)({ region: 'us-central1', memory: '256MiB', cors: true }, async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=60');
+    try {
+        const code = typeof req.query.code === 'string' ? req.query.code.trim() : '';
+        if (!code) {
+            res.json({ type: 'generic' });
+            return;
+        }
+        const linkSnap = await db.collection('inviteLinks').doc(code).get();
+        if (!linkSnap.exists) {
+            res.json({ type: 'generic' });
+            return;
+        }
+        const link = linkSnap.data();
+        const targetId = typeof link.targetId === 'string' ? link.targetId : '';
+        const inviterId = typeof link.invitedBy === 'string' ? link.invitedBy : '';
+        if (link.type === 'session' && targetId) {
+            const g = await db.collection('games').doc(targetId).get();
+            const d = g.exists ? g.data() : null;
+            if (!d) {
+                res.json({ type: 'generic' });
+                return;
+            }
+            const players = Array.isArray(d.players) ? d.players.length : 0;
+            const guests = Array.isArray(d.guests)
+                ? d.guests
+                    .filter((x) => !x?.canceled && !x?.waitlisted).length
+                : 0;
+            const held = d.pendingPromotion?.uid ? 1 : 0;
+            const maxPlayers = typeof d.maxPlayers === 'number' ? d.maxPlayers : 0;
+            const occ = players + guests + held;
+            // Also carry the parent community so the landing page can gracefully
+            // fall back to "join the community" when THIS game has already passed
+            // (a finished/cancelled/past game shouldn't be pitched as joinable —
+            // the community usually has a fresh upcoming instance).
+            let communityName;
+            let communityId;
+            let communityCity;
+            let communityMembersCount;
+            if (typeof d.groupId === 'string' && d.groupId) {
+                const gp = await db
+                    .collection('groupsPublic')
+                    .doc(d.groupId)
+                    .get();
+                const gpd = gp.exists
+                    ? gp.data()
+                    : undefined;
+                if (gpd && typeof gpd.name === 'string') {
+                    communityName = gpd.name;
+                    communityId = d.groupId;
+                    if (typeof gpd.city === 'string')
+                        communityCity = gpd.city;
+                    if (typeof gpd.memberCount === 'number')
+                        communityMembersCount = gpd.memberCount;
+                }
+            }
+            res.json({
+                type: 'game',
+                id: targetId, // lets the page deep-link to THIS game (footy://session/<id>)
+                gameTitle: typeof d.title === 'string' ? d.title : undefined,
+                startsAt: typeof d.startsAt === 'number' ? d.startsAt : undefined,
+                fieldName: typeof d.fieldName === 'string' ? d.fieldName : undefined,
+                city: typeof d.city === 'string' ? d.city : undefined,
+                communityName,
+                communityId,
+                communityCity,
+                communityMembersCount,
+                status: typeof d.status === 'string' ? d.status : undefined,
+                maxPlayers: maxPlayers > 0 ? maxPlayers : undefined,
+                availableSpots: maxPlayers > 0 ? Math.max(0, maxPlayers - occ) : undefined,
+            });
+            return;
+        }
+        if (link.type === 'team' && targetId) {
+            const gp = await db.collection('groupsPublic').doc(targetId).get();
+            const d = gp.exists
+                ? gp.data()
+                : null;
+            if (!d) {
+                res.json({ type: 'generic' });
+                return;
+            }
+            res.json({
+                type: 'community',
+                id: targetId, // deep-link to THIS community (footy://team/<id>)
+                communityName: typeof d.name === 'string' ? d.name : undefined,
+                city: typeof d.city === 'string' ? d.city : undefined,
+                communityCover: typeof d.coverUrl === 'string' ? d.coverUrl : undefined,
+                communityMembersCount: typeof d.memberCount === 'number' ? d.memberCount : undefined,
+            });
+            return;
+        }
+        // Personal invite (app-type link that carries an inviter) → return the
+        // inviter's display NAME only (no uid/phone), so the hero can say
+        // "{name} הזמין אותך". Safe: name is public-facing display text.
+        if ((link.type === 'app' || !link.type) && inviterId) {
+            let inviterName;
+            try {
+                const u = await db.collection('users').doc(inviterId).get();
+                const un = u.exists ? u.data().name : undefined;
+                if (typeof un === 'string' && un.trim())
+                    inviterName = un.trim();
+            }
+            catch {
+                /* name is optional */
+            }
+            res.json({ type: 'personal', inviterName });
+            return;
+        }
+        // app/go/unknown → generic; the page shows the universal Teamder version.
+        res.json({ type: 'generic' });
+    }
+    catch {
+        // Never leak an internal error — degrade to the generic page.
+        res.json({ type: 'generic' });
+    }
+});
 exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory: '256MiB', cors: true }, async (req, res) => {
     try {
         const l = typeof req.query.l === 'string' ? req.query.l : '';
@@ -8588,6 +8944,16 @@ exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory:
         if (inviter) {
             await db.collection('inviteClicks').doc(inviter).set({ clicks: inc, lastClickAt: now }, { merge: true });
         }
+        // Cross-source daily aggregate so the dashboard can show clicks by
+        // today / yesterday / this week (the per-link `clicks` fields are running
+        // totals with no history). One click = one request = one bump. Attributed
+        // to the inviter (personal link) or the ad link/source (campaign).
+        await bumpLinkClickAggregate(db, now, {
+            inviterId: inviter || undefined,
+            linkId: l || undefined,
+            source: s || undefined,
+            kind: l || s ? 'ad' : 'invite',
+        });
     }
     catch {
         /* best-effort beacon — never error the user's redirect */
@@ -8595,6 +8961,63 @@ exports.trackLinkClick = (0, https_1.onRequest)({ region: 'us-central1', memory:
     res.set('Cache-Control', 'no-store');
     res.status(204).send('');
 });
+// Canonical, map-safe key identifying the link for the daily breakdown.
+// Preference: person > short-code > ad-link > source. Sanitised so it's always
+// a valid Firestore map key (Firestore map keys can't be empty or contain
+// `.`, `/`, `~`, `*`, `[`, `]`).
+function linkAggKey(a) {
+    const clean = (s) => s.replace(/[.\/~*[\]]/g, '_').slice(0, 120);
+    if (a.inviterId)
+        return `u:${clean(a.inviterId)}`;
+    if (a.code)
+        return `c:${clean(a.code)}`;
+    if (a.linkId)
+        return `l:${clean(a.linkId)}`;
+    if (a.source)
+        return `s:${clean(a.source)}`;
+    return '';
+}
+async function bumpLinkClickAggregate(db, now, attribution) {
+    const inc = admin.firestore.FieldValue.increment(1);
+    const dayKey = new Date(now).toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Jerusalem',
+    }); // → "YYYY-MM-DD"
+    // NOTE: nested `days: { [dayKey]: inc }` — NOT `{ [`days.${dayKey}`]: inc }`.
+    // In set(..., {merge:true}) a key is a LITERAL field name, so a dotted key
+    // creates a flat top-level field "days.2026-07-16" instead of a nested map,
+    // and the per-day breakdown (today/yesterday/week) reads empty. The nested
+    // object form merges into the `days` map, bumping only that day's sub-field.
+    // Per-day, per-link breakdown → dashboard "🔥 top link today + whose".
+    // Stored as nested fields INSIDE this same doc (not a separate per-day doc):
+    //   byDayLinks.<dayKey>.<linkKey> = count
+    //   byDayMeta.<dayKey>.<linkKey>  = { kind, inviterId?, code?, linkId?, source? }
+    // The previous `db.doc('metrics/linkClicksByDay/<day>')` was a 3-segment path
+    // (odd) → the Admin SDK treats it as a COLLECTION and throws; the best-effort
+    // catch swallowed it, so nothing was ever written. Keeping it in this doc also
+    // means the dashboard reads it from the same fetch it already does.
+    const doc = {
+        total: inc,
+        days: { [dayKey]: inc },
+        lastClickAt: now,
+    };
+    if (attribution) {
+        const key = linkAggKey(attribution);
+        if (key) {
+            const meta = { kind: attribution.kind ?? 'link' };
+            if (attribution.inviterId)
+                meta.inviterId = attribution.inviterId;
+            if (attribution.code)
+                meta.code = attribution.code;
+            if (attribution.linkId)
+                meta.linkId = attribution.linkId;
+            if (attribution.source)
+                meta.source = attribution.source;
+            doc.byDayLinks = { [dayKey]: { [key]: inc } };
+            doc.byDayMeta = { [dayKey]: { [key]: meta } };
+        }
+    }
+    await db.doc('metrics/linkClicks').set(doc, { merge: true });
+}
 // User feedback — bug report / feature suggestion (separate toggles).
 exports.onFeedbackSubmitted = (0, firestore_1.onDocumentCreated)('feedback/{id}', async (event) => {
     const f = event.data?.data();
@@ -8726,17 +9149,23 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // never on both sides. Without this a duplicated/both-sides uid (a client
     // team-assignment bug or forged payload) was credited a WIN and a LOSS in
     // the same round, plus a self-pair (uid vs uid) polluting nemesis/duo.
+    // Exclude players marked no-show: setArrival can flip a still-assigned player
+    // to 'no_show' at any time, and the games-count / showcase already strip them
+    // — so crediting them rounds/wins/goals here (while games:0 elsewhere) left a
+    // self-contradictory table (rounds=3, games=0). Skip them on both sides; since
+    // onField = A∪B gates goals/assists too, their stats drop out consistently.
+    const arrivals = game.arrivals ?? {};
     const seen = new Set();
     const A = [];
     const B = [];
     for (const id of sideA ?? []) {
-        if (isReal(id) && roster.has(id) && !seen.has(id)) {
+        if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) {
             seen.add(id);
             A.push(id);
         }
     }
     for (const id of sideB ?? []) {
-        if (isReal(id) && roster.has(id) && !seen.has(id)) {
+        if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) {
             seen.add(id);
             B.push(id);
         }
@@ -8992,7 +9421,22 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // together-win/loss — a case the old rotation trigger couldn't represent.
     sameTeamPairs(A, aWon, bWon);
     sameTeamPairs(B, bWon, aWon);
-    await batch.commit();
+    try {
+        await batch.commit();
+    }
+    catch (err) {
+        // The idempotency latch (committedRounds/{roundId}.create) already fired
+        // for this round on a PRIOR attempt — the SDK auto-retried after a lost
+        // success response, or the admin double-tapped "סיים משחקון". The stats
+        // are already committed, so a re-run must SUCCEED (idempotent), not surface
+        // a permanent failure that leaves the round/evening stuck. Only swallow the
+        // duplicate-latch case; any other commit error still propagates.
+        const code = err?.code;
+        if (code === 6 || code === 'already-exists') {
+            return { ok: true, alreadyCommitted: true };
+        }
+        throw err;
+    }
     // Round-history write, OUTSIDE the atomic stats batch (op-count + doc-size
     // safety). Runs only after the batch commits, so on an idempotent retry the
     // batch throws ALREADY_EXISTS first and we never reach here — no duplicate.
@@ -9039,11 +9483,60 @@ exports.saveGamePhysical = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     if (!roster.has(uid)) {
         throw new https_1.HttpsError('permission-denied', 'not a participant');
     }
+    // Server-side guard (defense-in-depth; the client already gates on this):
+    // only a FINISHED game accepts physical metrics. A mid-game/replayed call
+    // would otherwise land partial data — and, via the non-destructive merge
+    // below, could pin a low value before the evening even ends. Legacy games
+    // with no status are still accepted (mirrors the client's gate).
+    const gameStatus = game.status;
+    if (gameStatus && gameStatus !== 'finished') {
+        throw new https_1.HttpsError('failed-precondition', 'game not finished');
+    }
     // Clamp a numeric field to [0, max] (drops NaN/negatives/absurd values).
     const num = (v, max) => {
         const n = typeof v === 'number' && Number.isFinite(v) ? v : 0;
         return Math.max(0, Math.min(max, n));
     };
+    // Non-destructive merge: re-opening the summary after a permission was
+    // revoked (or a partial Health Connect read) would otherwise write 0 over a
+    // good stored value. A single finished game's totals only ever grow across
+    // re-syncs, so keep the MAX of stored vs incoming per numeric field — a
+    // degraded read can never lower a previously-recorded metric.
+    const ref = db.collection('games').doc(gameId).collection('physical').doc(uid);
+    const prev = ((await ref.get()).data() ?? {});
+    const prevNum = (k) => {
+        const n = prev[k];
+        return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+    };
+    const keepMax = (k, incoming) => Math.max(prevNum(k), incoming);
+    const prevZones = (prev.hrZones ?? {});
+    const prevZone = (k) => {
+        const n = prevZones[k];
+        return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+    };
+    // Anti-forgery: bound movement metrics by the REAL timer-active duration the
+    // server already trusts (liveMatch.activeIntervals, the same windows the
+    // honest client scoped its Health Connect read to). A human can't out-run
+    // ~12 m/s, out-step ~4/s, or out-sprint ~1 per 8 s — so anything beyond that
+    // for the known active seconds is fabricated. Only clamp when the duration is
+    // known (activeMs>0); legacy games with no intervals keep the static caps.
+    const lm = (game.liveMatch ?? {});
+    let activeMs = 0;
+    if (Array.isArray(lm.activeIntervals)) {
+        for (const iv of lm.activeIntervals) {
+            const s = typeof iv?.s === 'number' ? iv.s : NaN;
+            const e = typeof iv?.e === 'number' ? iv.e : NaN;
+            if (Number.isFinite(s) && Number.isFinite(e) && e > s)
+                activeMs += e - s;
+        }
+    }
+    const activeSec = activeMs / 1000;
+    const capDist = activeSec > 0 ? 12 * activeSec : Infinity;
+    const capSteps = activeSec > 0 ? 4 * activeSec : Infinity;
+    const capSprints = activeSec > 0 ? Math.ceil(activeSec / 8) : Infinity;
+    // Clamp incoming AND the max-merged result so a value forged before this
+    // guard (already stored high) can't survive via keepMax.
+    const bounded = (cap, k, incoming) => Math.min(cap, keepMax(k, Math.min(cap, incoming)));
     const src = String(metrics.source ?? 'wear');
     const source = ['wear', 'healthkit', 'healthconnect'].includes(src) ? src : 'wear';
     const zonesIn = (metrics.hrZones ?? {});
@@ -9058,31 +9551,26 @@ exports.saveGamePhysical = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const doc = {
         gameId,
         userId: uid,
-        distanceM: num(metrics.distanceM, 50000),
-        topSpeedKmh: num(metrics.topSpeedKmh, 45),
-        avgSpeedKmh: num(metrics.avgSpeedKmh, 45),
-        sprints: Math.round(num(metrics.sprints, 500)),
-        steps: Math.round(num(metrics.steps, 100000)),
-        calories: Math.round(num(metrics.calories, 10000)),
-        maxHr: Math.round(num(metrics.maxHr, 230)),
-        avgHr: Math.round(num(metrics.avgHr, 230)),
-        effortScore: Math.round(num(metrics.effortScore, 100)),
+        distanceM: bounded(capDist, 'distanceM', num(metrics.distanceM, 50000)),
+        topSpeedKmh: keepMax('topSpeedKmh', num(metrics.topSpeedKmh, 45)),
+        avgSpeedKmh: keepMax('avgSpeedKmh', num(metrics.avgSpeedKmh, 45)),
+        sprints: Math.round(bounded(capSprints, 'sprints', num(metrics.sprints, 500))),
+        steps: Math.round(bounded(capSteps, 'steps', num(metrics.steps, 100000))),
+        calories: Math.round(keepMax('calories', num(metrics.calories, 10000))),
+        maxHr: Math.round(keepMax('maxHr', num(metrics.maxHr, 230))),
+        avgHr: Math.round(keepMax('avgHr', num(metrics.avgHr, 230))),
+        effortScore: Math.round(keepMax('effortScore', num(metrics.effortScore, 100))),
         hrZones: {
-            light: Math.round(num(zonesIn.light, 300)),
-            moderate: Math.round(num(zonesIn.moderate, 300)),
-            intense: Math.round(num(zonesIn.intense, 300)),
-            peak: Math.round(num(zonesIn.peak, 300)),
+            light: Math.round(Math.max(prevZone('light'), num(zonesIn.light, 300))),
+            moderate: Math.round(Math.max(prevZone('moderate'), num(zonesIn.moderate, 300))),
+            intense: Math.round(Math.max(prevZone('intense'), num(zonesIn.intense, 300))),
+            peak: Math.round(Math.max(prevZone('peak'), num(zonesIn.peak, 300))),
         },
         source,
         ...(heatGrid.length ? { heatGrid, gridRows: rows, gridCols: cols } : {}),
         updatedAt: Date.now(),
     };
-    await db
-        .collection('games')
-        .doc(gameId)
-        .collection('physical')
-        .doc(uid)
-        .set(doc, { merge: true });
+    await ref.set(doc, { merge: true });
     return { ok: true };
 });
 // ── Pitch calibration (heatmap) ──────────────────────────────────────────────

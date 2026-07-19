@@ -146,6 +146,11 @@ interface UserDoc {
   /** Last-seen device platform. Used to skip iOS for Android-only silent
    *  pushes (home widget / Wear tile sync). */
   platform?: string;
+  /** Epoch-ms of the last app-open presence ping (touchPresence, throttled
+   *  ~6h). Powers the dormant-user gate in deliverBatch. Absent when the
+   *  user has never opened a build that writes it (or the presence ping's
+   *  feature flag is off) — absence is treated as ACTIVE, never dormant. */
+  lastSeenAt?: number;
 }
 
 // ─── Growth milestone dispatcher ────────────────────────────────────────
@@ -239,6 +244,35 @@ const STALE_UNREAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // firestore.indexes.json.
 const STRICT_UNREAD_DEDUP: Partial<Record<DedupeKind, true>> = {
   gameCanceledOrUpdated: true,
+};
+
+// ─── Dormant-user push gate ─────────────────────────────────────────────
+//
+// A user who hasn't opened the app in this long stops receiving LOW-PRIORITY
+// announcements/reminders — otherwise someone in several communities who
+// never engages accumulates a push for every game in every community with no
+// ceiling. Opening the app writes `lastSeenAt` (touchPresence) and lifts the
+// gate on the very next launch, so it self-heals the moment they return.
+//
+// SAFETY: gated types are only the non-critical fan-outs below. Personal /
+// actionable pushes (spot offered, added-to-game, invites, approvals, chat,
+// teams-ready, friend requests, game-canceled) are NEVER suppressed — a
+// dormant user must still learn the game they're IN was canceled. A missing
+// `lastSeenAt` counts as ACTIVE (the presence ping is itself feature-flagged,
+// so absence must not read as "dormant" and mute everyone).
+const DORMANT_PUSH_CUTOFF_MS = 21 * 24 * 60 * 60 * 1000;
+const DORMANT_SUPPRESSIBLE: Partial<Record<NotificationType, true>> = {
+  newGameInCommunity: true,
+  gameReminder: true,
+  gameRsvpNudge: true,
+  gameFillingUp: true,
+  gamePlayersJoined: true,
+  playerCancelled: true,
+  eveningSummary: true,
+  fillerOpportunity: true,
+  growthMilestone: true,
+  gameShortageWarning: true,
+  promotePrompt: true,
 };
 
 // Types where a duplicate write inside the cooldown bucket should
@@ -1351,7 +1385,7 @@ async function deliverBatch(
   recipients: UserDoc[],
   message: { title: string; body: string },
   data: Record<string, string>
-): Promise<{ ok: number; failed: number; skippedPref: number; skippedNoToken: number }> {
+): Promise<{ ok: number; failed: number; skippedPref: number; skippedNoToken: number; skippedDormant: number }> {
   // Aggregate tokens across all recipients into a Set so a user with
   // the same device registered twice (or two recipients sharing a
   // token, which shouldn't happen but cheap to guard) doesn't get a
@@ -1364,6 +1398,11 @@ async function deliverBatch(
   const tokenToUser = new Map<string, string>();
   let skippedPref = 0;
   let skippedNoToken = 0;
+  let skippedDormant = 0;
+  // Dormant-user gate (see DORMANT_SUPPRESSIBLE): for low-priority types only,
+  // users inactive ≥21d are skipped. Computed once per batch.
+  const dormantGated = DORMANT_SUPPRESSIBLE[type] === true;
+  const dormantCutoff = Date.now() - DORMANT_PUSH_CUTOFF_MS;
   // Map notification TYPE → the pref KEY that gates it. Most match 1:1, but
   // 'approved'/'rejected' are two types governed by the single 'approvedRejected'
   // toggle — without this map a user who turned that toggle OFF still got the
@@ -1386,6 +1425,15 @@ async function deliverBatch(
     ) {
       skippedPref++;
       continue;
+    }
+    // Dormant gate — only for low-priority types, and only when we have a
+    // real lastSeenAt that's older than the cutoff. Missing/zero → active.
+    if (dormantGated) {
+      const ls = typeof user.lastSeenAt === 'number' ? user.lastSeenAt : 0;
+      if (ls > 0 && ls < dormantCutoff) {
+        skippedDormant++;
+        continue;
+      }
     }
     const userTokens = (user.fcmTokens || []).filter(
       (t) => typeof t === 'string' && t.length > 0
@@ -1410,9 +1458,14 @@ async function deliverBatch(
       `[notifications] ${type}: skipped ${skippedNoToken} user(s) — no fcm token`
     );
   }
+  if (skippedDormant > 0) {
+    console.log(
+      `[notifications] ${type}: skipped ${skippedDormant} user(s) — dormant ≥21d`
+    );
+  }
 
   if (tokens.size === 0) {
-    return { ok: 0, failed: 0, skippedPref, skippedNoToken };
+    return { ok: 0, failed: 0, skippedPref, skippedNoToken, skippedDormant };
   }
 
   // Notifications that should render with action buttons advertise
@@ -1562,9 +1615,9 @@ async function deliverBatch(
   }
 
   console.log(
-    `[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} categoryIdentifier=${categoryIdentifier ?? 'none'}`,
+    `[notifications] ${type}: dispatched tokens=${tokens.size} ok=${ok} failed=${failed} skippedPref=${skippedPref} skippedNoToken=${skippedNoToken} skippedDormant=${skippedDormant} categoryIdentifier=${categoryIdentifier ?? 'none'}`,
   );
-  return { ok, failed, skippedPref, skippedNoToken };
+  return { ok, failed, skippedPref, skippedNoToken, skippedDormant };
 }
 
 // ─── onCreate trigger ──────────────────────────────────────────────────
@@ -8362,24 +8415,90 @@ export const serveInviteCode = onRequest(
               { merge: true },
             )
             .catch(() => {});
-          // …and into the cross-source daily aggregate the dashboard reads.
-          bumpLinkClickAggregate(admin.firestore(), Date.now()).catch(() => {});
+          // …AND the per-INVITER counter the dashboard profile reads for
+          // "קליקים על הקישור". trackLinkClick's legacy `?inviter=` path bumps
+          // this, but short links (`/i/<code>`) used to skip it — so a person's
+          // profile undercounted (7) while the daily aggregate below was right
+          // (15). Bump it here too so the two never diverge again. Modern shares
+          // are almost all short links, so without this the profile counter is
+          // effectively dead. (inviteLinks.invitedBy is the trusted inviter.)
+          if (invitedBy) {
+            db.collection('inviteClicks')
+              .doc(invitedBy)
+              .set(
+                { clicks: admin.firestore.FieldValue.increment(1), lastClickAt: Date.now() },
+                { merge: true },
+              )
+              .catch(() => {});
+          }
+          // …and into the cross-source daily aggregate the dashboard reads,
+          // attributed to the inviter (or the short-code when anonymous).
+          bumpLinkClickAggregate(admin.firestore(), Date.now(), {
+            inviterId: invitedBy || undefined,
+            code: code || undefined,
+            kind: 'invite',
+          }).catch(() => {});
         }
       }
 
-      // OG preview for a community target (mirrors serveCommunityPage).
+      // Situation-aware OG preview so the WhatsApp/crawler card matches the
+      // link TYPE — a personal invite must NOT show the community default
+      // ("מועדון ב־Teamder"). Mirrors the page-body variant selection:
+      // session→game, team→community, else invitedBy→personal, else generic.
       let summary: ShowcaseSummary | null = null;
+      let meta: { title: string; description: string };
+      let ogImage: string | null = null;
       if (type === 'team' && targetId) {
         summary = await loadShowcaseSummary(targetId).catch(() => null);
+        meta = buildMetaBlock(summary);
+        ogImage = summary?.coverPhotoUrl ?? null;
+      } else if (type === 'session' && targetId) {
+        const g = await db
+          .collection('games')
+          .doc(targetId)
+          .get()
+          .catch(() => null);
+        const gd = g && g.exists ? (g.data() as Record<string, unknown>) : null;
+        const gt =
+          gd && typeof gd.title === 'string' && gd.title.trim()
+            ? gd.title.trim()
+            : '';
+        const where =
+          gd && typeof gd.fieldName === 'string' && gd.fieldName
+            ? gd.fieldName
+            : gd && typeof gd.city === 'string'
+            ? (gd.city as string)
+            : '';
+        meta = {
+          title: gt ? `הוזמנת למשחק: ${gt}` : 'הוזמנת למשחק כדורגל ב־Teamder',
+          description: where
+            ? `משחק כדורגל ב־Teamder · ${where} · ראה מי מגיע והצטרף בלחיצה.`
+            : 'משחק כדורגל ב־Teamder · ראה מי מגיע והצטרף בלחיצה אחת.',
+        };
+      } else if (invitedBy) {
+        const u = await db
+          .collection('users')
+          .doc(invitedBy)
+          .get()
+          .catch(() => null);
+        const nm =
+          u && u.exists && typeof (u.data() as { name?: string })?.name === 'string'
+            ? ((u.data() as { name?: string }).name as string).trim()
+            : '';
+        meta = {
+          title: nm ? `${nm} מזמין אותך ל־Teamder` : 'הזמנה אישית ל־Teamder',
+          description:
+            'הצטרף לחברים שלך ב־Teamder — האפליקציה שמארגנת את הכדורגל כדי שרק תגיעו לשחק.',
+        };
+      } else {
+        meta = {
+          title: 'Teamder · כדורגל קבוע בלי כאב ראש',
+          description:
+            'פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר.',
+        };
       }
       const html = loadTemplate(INVITE_TEMPLATE_PATH);
-      const { title, description } = buildMetaBlock(summary);
-      const rendered = injectMeta(
-        html,
-        title,
-        description,
-        summary?.coverPhotoUrl ?? null,
-      );
+      const rendered = injectMeta(html, meta.title, meta.description, ogImage);
       // Inject the resolved target BEFORE the page's inline script runs, so
       // invite.html reads window.__INVITE__ instead of the (target-less) path.
       const inject = `<script>window.__INVITE__=${JSON.stringify({
@@ -10647,6 +10766,145 @@ export const trackCampaignEvent = onCall(
 // a fire-and-forget fetch here on load, so we count CLICKS (people who
 // tapped the link + reached the page) independently of installs. Keyed by
 // the link id `l` when present (per-link), else by source `s` (per-source).
+// Public, READ-ONLY landing-page preview. Resolves a short invite CODE (never
+// a raw gameId) to a strictly-whitelisted, non-personal summary so the landing
+// page can show real game/community context. Returns ONLY: title, date/time,
+// city/field, community name, status, free spots (game) or name/city/cover/
+// member-count (community). NEVER player names, uids, phones, participants,
+// notes, or admin data. Any invalid code / deleted target / error → { type:
+// 'generic' } so the page falls back to the generic Teamder version.
+export const getInvitePreview = onRequest(
+  { region: 'us-central1', memory: '256MiB', cors: true },
+  async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=60');
+    try {
+      const code =
+        typeof req.query.code === 'string' ? req.query.code.trim() : '';
+      if (!code) {
+        res.json({ type: 'generic' });
+        return;
+      }
+      const linkSnap = await db.collection('inviteLinks').doc(code).get();
+      if (!linkSnap.exists) {
+        res.json({ type: 'generic' });
+        return;
+      }
+      const link = linkSnap.data() as {
+        type?: string;
+        targetId?: string;
+        invitedBy?: string;
+      };
+      const targetId =
+        typeof link.targetId === 'string' ? link.targetId : '';
+      const inviterId =
+        typeof link.invitedBy === 'string' ? link.invitedBy : '';
+
+      if (link.type === 'session' && targetId) {
+        const g = await db.collection('games').doc(targetId).get();
+        const d = g.exists ? (g.data() as Record<string, unknown>) : null;
+        if (!d) {
+          res.json({ type: 'generic' });
+          return;
+        }
+        const players = Array.isArray(d.players) ? d.players.length : 0;
+        const guests = Array.isArray(d.guests)
+          ? (d.guests as Array<{ canceled?: boolean; waitlisted?: boolean }>)
+              .filter((x) => !x?.canceled && !x?.waitlisted).length
+          : 0;
+        const held = (d.pendingPromotion as { uid?: string })?.uid ? 1 : 0;
+        const maxPlayers =
+          typeof d.maxPlayers === 'number' ? d.maxPlayers : 0;
+        const occ = players + guests + held;
+        // Also carry the parent community so the landing page can gracefully
+        // fall back to "join the community" when THIS game has already passed
+        // (a finished/cancelled/past game shouldn't be pitched as joinable —
+        // the community usually has a fresh upcoming instance).
+        let communityName: string | undefined;
+        let communityId: string | undefined;
+        let communityCity: string | undefined;
+        let communityMembersCount: number | undefined;
+        if (typeof d.groupId === 'string' && d.groupId) {
+          const gp = await db
+            .collection('groupsPublic')
+            .doc(d.groupId)
+            .get();
+          const gpd = gp.exists
+            ? (gp.data() as { name?: string; city?: string; memberCount?: number })
+            : undefined;
+          if (gpd && typeof gpd.name === 'string') {
+            communityName = gpd.name;
+            communityId = d.groupId;
+            if (typeof gpd.city === 'string') communityCity = gpd.city;
+            if (typeof gpd.memberCount === 'number')
+              communityMembersCount = gpd.memberCount;
+          }
+        }
+        res.json({
+          type: 'game',
+          id: targetId, // lets the page deep-link to THIS game (footy://session/<id>)
+          gameTitle: typeof d.title === 'string' ? d.title : undefined,
+          startsAt: typeof d.startsAt === 'number' ? d.startsAt : undefined,
+          fieldName: typeof d.fieldName === 'string' ? d.fieldName : undefined,
+          city: typeof d.city === 'string' ? d.city : undefined,
+          communityName,
+          communityId,
+          communityCity,
+          communityMembersCount,
+          status: typeof d.status === 'string' ? d.status : undefined,
+          maxPlayers: maxPlayers > 0 ? maxPlayers : undefined,
+          availableSpots:
+            maxPlayers > 0 ? Math.max(0, maxPlayers - occ) : undefined,
+        });
+        return;
+      }
+
+      if (link.type === 'team' && targetId) {
+        const gp = await db.collection('groupsPublic').doc(targetId).get();
+        const d = gp.exists
+          ? (gp.data() as Record<string, unknown>)
+          : null;
+        if (!d) {
+          res.json({ type: 'generic' });
+          return;
+        }
+        res.json({
+          type: 'community',
+          id: targetId, // deep-link to THIS community (footy://team/<id>)
+          communityName: typeof d.name === 'string' ? d.name : undefined,
+          city: typeof d.city === 'string' ? d.city : undefined,
+          communityCover:
+            typeof d.coverUrl === 'string' ? d.coverUrl : undefined,
+          communityMembersCount:
+            typeof d.memberCount === 'number' ? d.memberCount : undefined,
+        });
+        return;
+      }
+
+      // Personal invite (app-type link that carries an inviter) → return the
+      // inviter's display NAME only (no uid/phone), so the hero can say
+      // "{name} הזמין אותך". Safe: name is public-facing display text.
+      if ((link.type === 'app' || !link.type) && inviterId) {
+        let inviterName: string | undefined;
+        try {
+          const u = await db.collection('users').doc(inviterId).get();
+          const un = u.exists ? (u.data() as { name?: string }).name : undefined;
+          if (typeof un === 'string' && un.trim()) inviterName = un.trim();
+        } catch {
+          /* name is optional */
+        }
+        res.json({ type: 'personal', inviterName });
+        return;
+      }
+
+      // app/go/unknown → generic; the page shows the universal Teamder version.
+      res.json({ type: 'generic' });
+    } catch {
+      // Never leak an internal error — degrade to the generic page.
+      res.json({ type: 'generic' });
+    }
+  },
+);
+
 export const trackLinkClick = onRequest(
   { region: 'us-central1', memory: '256MiB', cors: true },
   async (req, res) => {
@@ -10678,8 +10936,14 @@ export const trackLinkClick = onRequest(
       }
       // Cross-source daily aggregate so the dashboard can show clicks by
       // today / yesterday / this week (the per-link `clicks` fields are running
-      // totals with no history). One click = one request = one bump.
-      await bumpLinkClickAggregate(db, now);
+      // totals with no history). One click = one request = one bump. Attributed
+      // to the inviter (personal link) or the ad link/source (campaign).
+      await bumpLinkClickAggregate(db, now, {
+        inviterId: inviter || undefined,
+        linkId: l || undefined,
+        source: s || undefined,
+        kind: l || s ? 'ad' : 'invite',
+      });
     } catch {
       /* best-effort beacon — never error the user's redirect */
     }
@@ -10697,18 +10961,69 @@ export const trackLinkClick = onRequest(
  *                          clock. Only NEW clicks (from deploy onward) populate
  *                          the daily map; `total` stays accurate historically.
  */
+// Attribution for a single click — who/what the link belongs to. Drives the
+// per-day per-link breakdown the dashboard uses for "top link today + whose".
+interface LinkClickAttribution {
+  inviterId?: string; // a person's link (invitedBy uid) — takes precedence
+  code?: string; // /i/<code> short-link id (when no inviter)
+  linkId?: string; // ad link id (l=)
+  source?: string; // legacy source bucket (s=)
+  kind?: string; // 'invite' | 'ad'
+}
+
+// Canonical, map-safe key identifying the link for the daily breakdown.
+// Preference: person > short-code > ad-link > source. Sanitised so it's always
+// a valid Firestore map key (Firestore map keys can't be empty or contain
+// `.`, `/`, `~`, `*`, `[`, `]`).
+function linkAggKey(a: LinkClickAttribution): string {
+  const clean = (s: string) => s.replace(/[.\/~*[\]]/g, '_').slice(0, 120);
+  if (a.inviterId) return `u:${clean(a.inviterId)}`;
+  if (a.code) return `c:${clean(a.code)}`;
+  if (a.linkId) return `l:${clean(a.linkId)}`;
+  if (a.source) return `s:${clean(a.source)}`;
+  return '';
+}
+
 async function bumpLinkClickAggregate(
   db: FirebaseFirestore.Firestore,
   now: number,
+  attribution?: LinkClickAttribution,
 ): Promise<void> {
   const inc = admin.firestore.FieldValue.increment(1);
   const dayKey = new Date(now).toLocaleDateString('en-CA', {
     timeZone: 'Asia/Jerusalem',
   }); // → "YYYY-MM-DD"
-  await db.doc('metrics/linkClicks').set(
-    { total: inc, [`days.${dayKey}`]: inc, lastClickAt: now },
-    { merge: true },
-  );
+  // NOTE: nested `days: { [dayKey]: inc }` — NOT `{ [`days.${dayKey}`]: inc }`.
+  // In set(..., {merge:true}) a key is a LITERAL field name, so a dotted key
+  // creates a flat top-level field "days.2026-07-16" instead of a nested map,
+  // and the per-day breakdown (today/yesterday/week) reads empty. The nested
+  // object form merges into the `days` map, bumping only that day's sub-field.
+  // Per-day, per-link breakdown → dashboard "🔥 top link today + whose".
+  // Stored as nested fields INSIDE this same doc (not a separate per-day doc):
+  //   byDayLinks.<dayKey>.<linkKey> = count
+  //   byDayMeta.<dayKey>.<linkKey>  = { kind, inviterId?, code?, linkId?, source? }
+  // The previous `db.doc('metrics/linkClicksByDay/<day>')` was a 3-segment path
+  // (odd) → the Admin SDK treats it as a COLLECTION and throws; the best-effort
+  // catch swallowed it, so nothing was ever written. Keeping it in this doc also
+  // means the dashboard reads it from the same fetch it already does.
+  const doc: Record<string, unknown> = {
+    total: inc,
+    days: { [dayKey]: inc },
+    lastClickAt: now,
+  };
+  if (attribution) {
+    const key = linkAggKey(attribution);
+    if (key) {
+      const meta: Record<string, unknown> = { kind: attribution.kind ?? 'link' };
+      if (attribution.inviterId) meta.inviterId = attribution.inviterId;
+      if (attribution.code) meta.code = attribution.code;
+      if (attribution.linkId) meta.linkId = attribution.linkId;
+      if (attribution.source) meta.source = attribution.source;
+      doc.byDayLinks = { [dayKey]: { [key]: inc } };
+      doc.byDayMeta = { [dayKey]: { [key]: meta } };
+    }
+  }
+  await db.doc('metrics/linkClicks').set(doc, { merge: true });
 }
 
 // User feedback — bug report / feature suggestion (separate toggles).
