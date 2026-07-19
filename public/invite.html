@@ -2,492 +2,267 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Teamder · מארגנים כדורגל בלי כאב ראש</title>
-<meta name="description" content="האפליקציה שמנהלת את משחק הכדורגל השבועי שלך — אישורי הגעה, תזכורות, מילוי מקום, קהילות וטיימר משחק. אתה רק מגיע לשחק." />
-<!-- Default OG placeholders. The serveCommunityPage CF rewrites
-     these per-group when the page is fetched at /team/{id} so
-     WhatsApp / Telegram / Facebook show the community's name + cover
-     image as the link preview. Crawlers don't run JS, so SSR is the
-     only way to get a per-community preview. -->
+<meta name="description" content="פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר — הרשמות, רשימת המתנה, חלוקת כוחות וסטטיסטיקות." />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Teamder · מארגנים כדורגל בלי כאב ראש" />
-<meta property="og:description" content="כל המשחק השבועי במקום אחד — אישורי הגעה, תזכורות ומילוי מקום. אתה רק מגיע לשחק." />
+<meta property="og:description" content="כל המשחק השבועי במקום אחד — אתה רק מגיע לשחק." />
 <meta property="og:image" content="https://teamderfc.web.app/logo.png" />
 <meta property="og:locale" content="he_IL" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Teamder · מארגנים כדורגל בלי כאב ראש" />
-<meta name="twitter:description" content="כל המשחק השבועי במקום אחד — אישורי הגעה, תזכורות ומילוי מקום." />
 <meta name="twitter:image" content="https://teamderfc.web.app/logo.png" />
+<meta name="theme-color" content="#0B1B3B" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --blue:#2563EB; --blue-d:#1D4ED8; --green:#22C55E; --green-d:#16A34A;
-    --ink:#0F2540; --muted:#5B6B82; --line:#E7EDF5;
-    --bg:#FFFFFF; --bg2:#F4F7FB;
+    --navy:#0B1B3B; --navy2:#0F2350; --blue:#2563EB; --blue-d:#1D4ED8;
+    --green-d:#16A34A; --ink:#122A4A; --muted:#5B6B82; --line:#E2E9F3;
+    --light:#F4F7FB; --ease:cubic-bezier(.22,1,.36,1);
+    --cw:342px; /* one content width, everywhere */
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{
-    font-family:'Assistant',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    color:var(--ink); background:var(--bg); line-height:1.5;
-    -webkit-font-smoothing:antialiased;
+  body{ font-family:'Assistant',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    line-height:1.58; -webkit-font-smoothing:antialiased; color:var(--ink); background:var(--navy);
+    position:relative; overflow-x:hidden; }
+  a{ color:inherit; text-decoration:none; } img{ max-width:100%; display:block; }
+
+  /* ONE continuous background: navy → light → navy, gradual (no hard cuts). */
+  .bg{ position:absolute; inset:0; z-index:-2;
+    background:linear-gradient(180deg,
+      #0B1B3B 0%, #0B1B3B 26%, #123156 34%, #EAF1F9 43%,
+      var(--light) 52%, var(--light) 68%, #E7EFF8 80%, #123156 90%, #0B1B3B 96%); }
+  /* ONE connecting pitch line down the whole page + a ball that advances. */
+  .rail{ position:absolute; top:0; bottom:0; right:50%; width:2px; z-index:-1;
+    background:repeating-linear-gradient(180deg, rgba(120,150,200,.22) 0 12px, transparent 12px 22px); }
+  .railBall{ position:absolute; right:calc(50% - 7px); width:16px; height:16px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff,#cbd5e1); border:1px solid #94a3b8; z-index:0;
+    box-shadow:0 2px 6px rgba(0,0,0,.25); top:0; transition:top .08s linear; }
+
+  .chap{ position:relative; z-index:2; }
+  .cw{ width:var(--cw); max-width:calc(100% - 44px); margin:0 auto; }
+  h1,h2,h3,.lead,.step p,.trust,.badge,.ctxNote{ text-align:right; }
+
+  /* HEADER (part of the hero, same bg) */
+  .hd{ position:sticky; top:0; z-index:40; height:56px; display:flex; align-items:center;
+    background:rgba(11,27,59,.55); backdrop-filter:saturate(160%) blur(10px); }
+  .hd .cw{ display:flex; align-items:center; justify-content:space-between; }
+  .hd .brand{ display:flex; align-items:center; gap:8px; }
+  .hd img.lg{ width:32px;height:32px;border-radius:9px; } .hd img.wm{ height:20px;filter:brightness(0) invert(1);opacity:.95; }
+  .hd .dl{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.2); color:#fff; font-weight:700; font-size:13.5px; padding:6px 13px; border-radius:9px; }
+
+  /* CH 1 — HERO */
+  .hero{ color:#fff; padding:22px 0 0; }
+  .badge{ display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.16); color:#DCE7FF; font-weight:700; font-size:13px; padding:6px 13px; border-radius:999px; }
+  .badge .dot{ width:7px;height:7px;border-radius:50%;background:#A3E635; }
+  h1{ font-size:40px; line-height:1.1; font-weight:800; letter-spacing:-.8px; margin:14px 0 0; }
+  .lead{ font-size:18px; color:#B9C7E0; font-weight:600; margin-top:12px; }
+  .cta{ width:100%; height:54px; font-size:18px; font-weight:800; border:none; border-radius:14px;
+    background:var(--blue); color:#fff; box-shadow:0 14px 30px rgba(37,99,235,.42); margin-top:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; }
+  .cta:active{ transform:scale(.99); }
+  .trust{ margin-top:12px; color:#8FA1C4; font-size:13.5px; font-weight:600; }
+  .ctxCard{ display:none; margin-top:14px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:12px 14px; }
+  .ctxCard.on{ display:block; }
+  .ctxCard .t{ font-size:17px; font-weight:800; } .ctxCard .row{ display:flex; gap:7px; flex-wrap:wrap; margin-top:7px; }
+  .ctxCard .tg{ background:rgba(255,255,255,.10); border-radius:999px; padding:4px 11px; font-size:13px; font-weight:700; color:#E7EEFF; }
+  .ctxCard .tg.free{ background:rgba(163,230,53,.16); color:#D7F3A0; }
+  .ctxNote{ display:none; margin-top:10px; color:#9FB0CF; font-size:14px; font-weight:600; } .ctxNote.on{ display:block; }
+  /* hero phone overlaps into ch2 (no hard cut) */
+  .heroPhone{ margin-top:32px; margin-bottom:-70px; display:flex; justify-content:center; }
+
+  /* shared phone frame (identical everywhere) */
+  .phone{ width:236px; padding:8px; background:#0c1220; border-radius:34px; border:2px solid #1c2740;
+    box-shadow:0 26px 54px rgba(0,0,0,.34); position:relative; }
+  .phone .notch{ position:absolute; top:12px; left:50%; transform:translateX(-50%); width:78px; height:15px; background:#0c1220; border-radius:0 0 12px 12px; z-index:3; }
+  .phone .screen{ border-radius:27px; overflow:hidden; background:#0b1b3a; aspect-ratio:9/18.6; }
+  .phone .screen img{ width:100%; height:100%; object-fit:cover; object-position:top; }
+
+  /* CH 2 — PROBLEM → SOLUTION (light, flows from hero) */
+  .prob{ color:var(--ink); padding:110px 0 0; }
+  h2{ font-size:31px; font-weight:800; letter-spacing:-.5px; line-height:1.22; }
+  .say{ color:var(--muted); font-size:17px; font-weight:600; margin-top:12px; }
+  .bubbles{ margin-top:24px; display:flex; flex-direction:column; gap:10px; }
+  .bubble{ align-self:flex-start; background:#E9EFF7; border-radius:14px 14px 14px 4px; padding:10px 14px;
+    font-size:15px; font-weight:700; color:#41526B; max-width:76%; opacity:0; transform:translateY(8px); }
+  .bubble:nth-child(2){ align-self:flex-end; border-radius:14px 14px 4px 14px; }
+  .down{ text-align:center; color:#9AA9C0; font-size:20px; margin:14px 0; opacity:0; }
+  .order{ background:#fff; border:1px solid var(--line); border-radius:18px; padding:17px; box-shadow:0 18px 40px rgba(15,37,64,.09); opacity:0; transform:scale(.96); }
+  .order .h{ display:flex; align-items:center; justify-content:space-between; }
+  .order .full{ background:#E9F9EF; color:var(--green-d); font-weight:800; padding:4px 11px; border-radius:999px; font-size:13px; }
+  .order .big{ font-size:27px; font-weight:800; margin-top:7px; } .order .s{ color:var(--muted); font-weight:600; margin-top:2px; font-size:14.5px; }
+  .prob.in .bubble{ animation:bIn .36s var(--ease) forwards; }
+  .prob.in .bubble:nth-child(1){animation-delay:.05s}.prob.in .bubble:nth-child(2){animation-delay:.26s}.prob.in .bubble:nth-child(3){animation-delay:.47s}
+  .prob.in .down{ animation:fIn .3s ease .78s forwards; } .prob.in .order{ animation:oIn .5s var(--ease) 1s forwards; }
+  @keyframes bIn{to{opacity:1;transform:translateY(0)}} @keyframes fIn{to{opacity:1}} @keyframes oIn{to{opacity:1;transform:scale(1)}}
+
+  /* CH 3 — TEAMDER IN ACTION (light, continuous path of 3 steps) */
+  .action{ color:var(--ink); padding:96px 0 0; }
+  .step{ padding-top:80px; }
+  .step:first-of-type{ padding-top:34px; }
+  .stepN{ display:inline-flex; align-items:center; gap:9px; color:var(--blue-d); font-weight:800; font-size:15px; }
+  .stepN i{ width:30px;height:30px;border-radius:50%;background:#E7EEFF;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:14px; }
+  .step h3{ font-size:25px; font-weight:800; letter-spacing:-.4px; margin-top:12px; }
+  .step p{ color:var(--muted); font-size:17px; font-weight:600; margin-top:6px; }
+  .step .shot{ margin-top:22px; display:flex; justify-content:center; }
+  .step .shot img{ opacity:0; transform:translateY(14px); }
+  .step.seen .shot img{ animation:sIn .5s var(--ease) forwards; }
+  @keyframes sIn{to{opacity:1;transform:translateY(0)}}
+
+  /* CH 4 — FINAL CTA (returns to navy gradually) */
+  .final{ color:#fff; text-align:center; padding:104px 0 70px;
+    background:linear-gradient(180deg, rgba(11,27,59,0) 0%, var(--navy) 32%); }
+  .final h2{ text-align:center; } .final p{ color:#B9C7E0; font-size:17px; font-weight:600; margin-top:12px; }
+  .stores{ display:flex; flex-direction:column; gap:12px; margin-top:26px; }
+  .store{ display:flex; align-items:center; justify-content:center; gap:11px; background:#fff; color:var(--ink); padding:14px; border-radius:14px; font-weight:800; }
+  .store small{ display:block; font-size:12px; opacity:.7; font-weight:600; } .store b{ font-size:17px; }
+  .foot{ color:#8FA1C4; padding:18px 0 34px; text-align:center; font-size:13.5px; } .foot a{ color:#8FA1C4; margin:0 9px; }
+
+  .sticky{ position:fixed; inset-inline:0; bottom:0; z-index:50; transform:translateY(130%); transition:transform .3s var(--ease);
+    background:rgba(11,27,59,.97); backdrop-filter:blur(8px); border-top:1px solid rgba(255,255,255,.10);
+    padding:10px 22px calc(10px + env(safe-area-inset-bottom)); }
+  .sticky.show{ transform:translateY(0); }
+  .sticky button{ width:100%; height:50px; font-size:16px; font-weight:800; border:none; border-radius:12px; background:var(--blue); color:#fff; }
+
+  @media (min-width:900px){
+    :root{ --cw:420px; }
+    .hero{ padding-top:30px; } .hero .cw{ display:grid; grid-template-columns:1fr .82fr; gap:36px; align-items:center; width:900px; }
+    h1{ font-size:50px; } .cta{ width:auto; padding:0 32px; display:inline-flex; } .heroPhone{ margin:0; }
+    .prob .cw,.action .cw,.final .cw{ width:560px; }
+    h2{ font-size:35px; } .final h2{ }
   }
-  .wrap{ max-width:1120px; margin:0 auto; padding:0 22px; }
-  a{ color:inherit; text-decoration:none; }
-
-  /* top bar */
-  .nav{ position:sticky; top:0; z-index:30; background:rgba(255,255,255,0.86);
-    backdrop-filter:saturate(160%) blur(10px); border-bottom:1px solid var(--line); }
-  .nav .row{ display:flex; align-items:center; justify-content:space-between; height:68px; }
-  .brand{ display:flex; align-items:center; gap:12px; }
-  .logo-icon{ width:46px; height:46px; border-radius:13px; display:block;
-    box-shadow:0 8px 18px rgba(15,37,64,0.18); }
-  .wordmark{ height:30px; width:auto; display:block; }
-  .nav .get{ background:var(--blue); color:#fff; font-weight:700; font-size:16px; padding:10px 20px; border-radius:11px;}
-
-  /* hero */
-  .hero{ background:
-      radial-gradient(900px 460px at 88% -8%, #E9F0FF 0%, rgba(233,240,255,0) 62%),
-      linear-gradient(180deg,#FFFFFF, #F7F9FD); padding:54px 0 30px; overflow:hidden;}
-  .hero .grid{ display:grid; grid-template-columns:1.1fr 0.9fr; gap:40px; align-items:center;}
-  .kick{ display:inline-flex; align-items:center; gap:9px; background:#E7EEFF; color:var(--blue-d);
-    font-weight:700; font-size:18px; padding:8px 16px; border-radius:999px;}
-  .kick .dot{ width:9px;height:9px;border-radius:50%;background:var(--green);}
-  h1{ font-size:54px; line-height:1.08; font-weight:800; letter-spacing:-1.2px; margin:18px 0 0;}
-  h1 .b{ color:var(--blue); } h1 .g{ color:var(--green-d); }
-  .lead{ font-size:22px; color:var(--muted); font-weight:600; margin-top:16px; max-width:560px;}
-  .cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
-  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px;
-    font-family:inherit; font-weight:700; font-size:18px; padding:15px 26px; border-radius:14px;
-    border:none; cursor:pointer; }
-  .btn-primary{ background:var(--blue); color:#fff; box-shadow:0 12px 26px rgba(37,99,235,0.30);}
-  .btn-primary:hover{ background:var(--blue-d); }
-  .btn-ghost{ background:#fff; color:var(--ink); border:1.5px solid var(--line); }
-  .trust{ margin-top:18px; color:var(--muted); font-size:16px; font-weight:600; }
-
-  .phoneWrap{ display:flex; justify-content:center; }
-  .phone{ width:300px; padding:11px; background:#0c1220; border-radius:42px; position:relative;
-    box-shadow:0 40px 80px rgba(15,37,64,0.30); border:2px solid #1c2740;}
-  .phone .notch{ position:absolute; top:18px; left:50%; transform:translateX(-50%);
-    width:104px; height:22px; background:#0c1220; border-radius:0 0 16px 16px; z-index:3;}
-  .phone .screen{ border-radius:33px; overflow:hidden; background:#0b1b3a; display:block;}
-  .phone img{ width:100%; display:block; }
-
-  /* pain strip */
-  .pain{ background:var(--ink); color:#fff; padding:34px 0;}
-  .pain .row{ display:flex; gap:26px; align-items:center; justify-content:center; flex-wrap:wrap;}
-  .pain .q{ font-size:24px; font-weight:800; }
-  .pain .chips{ display:flex; gap:12px; flex-wrap:wrap; }
-  .pain .chip{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
-    padding:9px 16px; border-radius:999px; font-size:17px; font-weight:600; color:#D6E2F5;}
-
-  /* features */
-  .sec{ padding:62px 0; }
-  .sec h2{ font-size:38px; font-weight:800; letter-spacing:-0.8px; text-align:center;}
-  .sec .subhead{ text-align:center; color:var(--muted); font-size:20px; font-weight:600; margin-top:10px;}
-  .feat{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px;}
-  .card{ background:#fff; border:1px solid var(--line); border-radius:20px; padding:24px;
-    transition:transform .15s ease, box-shadow .15s ease;}
-  .card:hover{ transform:translateY(-3px); box-shadow:0 18px 40px rgba(15,37,64,0.08);}
-  .ic{ width:54px;height:54px;border-radius:15px;display:flex;align-items:center;justify-content:center;
-    font-size:26px; margin-bottom:14px;}
-  .card h3{ font-size:21px; font-weight:800;}
-  .card p{ color:var(--muted); font-size:16.5px; font-weight:600; margin-top:6px; line-height:1.5;}
-
-  /* how */
-  .how{ background:var(--bg2); }
-  .steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:38px;}
-  .step{ text-align:center; padding:8px;}
-  .step .n{ width:56px;height:56px;border-radius:50%; margin:0 auto 14px;
-    background:linear-gradient(150deg,var(--blue),var(--blue-d)); color:#fff;
-    display:flex;align-items:center;justify-content:center; font-size:26px; font-weight:800;
-    box-shadow:0 12px 24px rgba(37,99,235,0.30);}
-  .step h3{ font-size:21px; font-weight:800;}
-  .step p{ color:var(--muted); font-size:16.5px; font-weight:600; margin-top:6px;}
-
-  /* final cta */
-  .final{ text-align:center; padding:70px 0; background:
-      radial-gradient(700px 360px at 50% 0%, #EAF1FF, rgba(234,241,255,0) 70%);}
-  .final h2{ font-size:40px; font-weight:800; letter-spacing:-0.8px;}
-  .final p{ color:var(--muted); font-size:20px; font-weight:600; margin-top:12px;}
-  .stores{ display:flex; gap:14px; justify-content:center; margin-top:26px; flex-wrap:wrap;}
-  .store{ display:inline-flex; align-items:center; gap:12px; background:var(--ink); color:#fff;
-    padding:14px 24px; border-radius:15px; font-weight:700; }
-  .store small{ display:block; font-size:13px; opacity:.75; font-weight:600;}
-  .store b{ font-size:19px; }
-  .store svg{ width:26px;height:26px; }
-
-  /* footer */
-  footer{ border-top:1px solid var(--line); padding:30px 0; }
-  footer .row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;}
-  footer .links{ display:flex; gap:20px; flex-wrap:wrap;}
-  footer a{ color:var(--muted); font-size:16px; font-weight:600;}
-  footer .cpy{ color:var(--muted); font-size:15px; }
-
-  @media (max-width:880px){
-    .hero .grid{ grid-template-columns:1fr; gap:26px; }
-    .phoneWrap{ order:-1; }
-    h1{ font-size:42px; }
-    .feat{ grid-template-columns:1fr 1fr; }
-    .steps{ grid-template-columns:1fr; }
-    .pain .row{ flex-direction:column; text-align:center; }
-  }
-  @media (max-width:560px){
-    h1{ font-size:36px; } .lead{ font-size:19px; }
-    .feat{ grid-template-columns:1fr; }
-    .sec h2,.final h2{ font-size:30px; }
-    .btn{ flex:1; }
+  @media (prefers-reduced-motion:reduce){
+    html{ scroll-behavior:auto; } .rail{ background:linear-gradient(180deg,rgba(120,150,200,.16),rgba(120,150,200,.16)); } .railBall{ display:none; }
+    *{ animation-duration:.001s !important; animation-delay:0s !important; transition-duration:.12s !important; }
+    .bubble,.down,.order,.step .shot img{ opacity:1 !important; transform:none !important; }
   }
 </style>
 </head>
 <body>
+<div class="bg"></div>
+<div class="rail" id="rail"></div>
+<div class="railBall" id="railBall" aria-hidden="true"></div>
 
-<div class="nav">
-  <div class="wrap row">
-    <div class="brand">
-      <img class="logo-icon" src="/logo.png" alt="Teamder" />
-      <img class="wordmark" src="/logo2.png" alt="Teamder" />
-    </div>
-    <a class="get" href="#download">הורד את האפליקציה</a>
-  </div>
-</div>
+<!-- CH1: HEADER + HERO -->
+<header class="hd chap"><div class="cw">
+  <div class="brand"><img class="lg" src="/logo.png" alt="Teamder"/><img class="wm" src="/logo2.png" alt="Teamder"/></div>
+  <button class="dl" id="hdrBtn" type="button">הורד</button>
+</div></header>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="wrap grid">
-    <div>
-      <span class="kick"><span class="dot"></span>למארגני הכדורגל הקבוע</span>
-      <h1 id="title">כל המשחק השבועי שלך,<br><span class="b">בלי לרדוף</span> אחרי אף אחד.</h1>
-      <p class="lead" id="subtitle">מי בא, מי ביטל, מי מביא כדור — Teamder מנהל את זה במקומך. אתה רק מגיע לשחק.</p>
-      <div class="cta">
-        <button class="btn btn-primary" id="openBtn" type="button">פתח באפליקציה</button>
-        <a class="btn btn-ghost" id="installBtn"
-           href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">הורד את האפליקציה</a>
-      </div>
-      <div class="trust">חינם להורדה · אנדרואיד ו-iPhone · עברית מלאה</div>
-    </div>
-    <div class="phoneWrap">
-      <div class="phone">
-        <div class="screen"><img src="/app-preview.png" alt="מסך האפליקציה Teamder" /></div>
-      </div>
-    </div>
+<section class="hero chap"><div class="cw">
+  <div>
+    <span class="badge" id="badge"><span class="dot"></span><span id="badgeTxt">ברוכים הבאים ל־Teamder</span></span>
+    <h1 id="title">כדורגל קבוע. בלי כאב הראש של הארגון.</h1>
+    <p class="lead" id="subtitle">פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר.</p>
+    <div class="ctxCard" id="ctxCard"><div class="t" id="ctxTitle"></div><div class="row" id="ctxTags"></div></div>
+    <button class="cta" id="ctaBtn" type="button">הורד את Teamder</button>
+    <div class="trust">חינם · Android ו־iPhone · עברית מלאה</div>
+    <div class="ctxNote" id="ctxNote">הקישור כבר לא זמין, אבל אפשר למצוא משחקים נוספים ב־Teamder.</div>
   </div>
-</section>
+  <div class="heroPhone"><div class="phone"><div class="notch"></div><div class="screen"><img id="heroShot" src="/shot-match.jpg" alt="מסך פרטי משחק ב־Teamder" width="472" height="976"/></div></div></div>
+</div></section>
 
-<!-- PAIN -->
-<section class="pain">
-  <div class="wrap row">
-    <div class="q">מי שמארגן כדורגל מכיר את זה 👇</div>
-    <div class="chips">
-      <span class="chip">"מישהו בא היום?"</span>
-      <span class="chip">דני ביטל שעה לפני</span>
-      <span class="chip">40 הודעות בקבוצה</span>
-      <span class="chip">מי שילם, מי לא</span>
-    </div>
+<!-- CH2: PROBLEM → SOLUTION -->
+<section class="prob chap" id="prob"><div class="cw">
+  <h2>מ־40 הודעות למשחק אחד מסודר</h2>
+  <p class="say">במקום לרדוף אחרי תשובות בקבוצה, כולם רואים מי מגיע ומה מצב המשחק.</p>
+  <div class="bubbles">
+    <div class="bubble">מי מגיע?</div><div class="bubble">חסר לנו אחד</div><div class="bubble">מי מביא כדור?</div>
   </div>
-</section>
+  <div class="down">↓</div>
+  <div class="order"><div class="h"><b style="font-size:16px">חמישי כדורגל</b><span class="full">המשחק מלא</span></div>
+    <div class="big">10/10 שחקנים</div><div class="s">הקבוצות מוכנות · אתם רק מגיעים לשחק</div></div>
+</div></section>
 
-<!-- FEATURES -->
-<section class="sec">
-  <div class="wrap">
-    <h2>כל מה ש-Teamder עושה במקומך</h2>
-    <div class="subhead">כל הניהול של המשחק השבועי — במקום אחד, בלי וואטסאפ.</div>
-    <div class="feat">
-      <div class="card"><div class="ic" style="background:#E9FBEF;color:#16A34A">✓</div><h3>אישורי הגעה</h3><p>רואים בדיוק מי בא, מי בהמתנה ומי עוד לא ענה — בלי לספור הודעות.</p></div>
-      <div class="card"><div class="ic" style="background:#E7EEFF;color:#2563EB">⏰</div><h3>תזכורות אוטומטיות</h3><p>האפליקציה מזכירה לכולם לפני המשחק. אתה לא צריך לרדוף אחרי אף אחד.</p></div>
-      <div class="card"><div class="ic" style="background:#FEF3E2;color:#D97706">↻</div><h3>מילוי מקום</h3><p>מישהו ביטל? המקום מוצע אוטומטית לשחקן הבא, וההרכב נשאר מלא.</p></div>
-      <div class="card"><div class="ic" style="background:#EAF1FF;color:#1D4ED8">👥</div><h3>קהילות קבועות</h3><p>הקבוצה הקבועה שלך במקום אחד — חברים, היסטוריה ומשחקים חדשים.</p></div>
-      <div class="card"><div class="ic" style="background:#E9FBEF;color:#16A34A">🔁</div><h3>משחקים חוזרים</h3><p>משחק קבוע כל שבוע נפתח אוטומטית. לא צריך לפתוח מחדש כל פעם.</p></div>
-      <div class="card"><div class="ic" style="background:#E7EEFF;color:#2563EB">⏱️</div><h3>טיימר משחק מסונכרן</h3><p>טיימר אחד לכל המגרש — כולם רואים את אותו הזמן והתוצאה בזמן אמת.</p></div>
-      <div class="card"><div class="ic" style="background:#F1ECFF;color:#7C3AED">⌚</div><h3>גם לשעון חכם</h3><p>הטיימר והתוצאה ישר על היד — בלי לרוץ לטלפון באמצע המשחק.</p></div>
-      <div class="card"><div class="ic" style="background:#FEF3E2;color:#D97706">🛠️</div><h3>חלוקת קבוצות</h3><p>מחלקים כוחות מאוזנים בכמה לחיצות — ידני, לפי דירוג או אקראי.</p></div>
-      <div class="card"><div class="ic" style="background:#EAF1FF;color:#1D4ED8">📊</div><h3>סטטיסטיקות ודירוג</h3><p>גולים, בישולים, נצחונות ודירוג שחקנים — לכל מי שמתעניין במספרים.</p></div>
-    </div>
+<!-- CH3: FINAL CTA -->
+<section class="final chap" id="download"><div class="cw">
+  <h2 id="finalTitle">פחות הודעות.<br>יותר כדורגל.</h2>
+  <p>כל מה שצריך כדי לארגן את המשחק הבא במקום אחד.</p>
+  <div class="stores">
+    <a class="store" id="storeAndroid" href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp" aria-label="הורד מ-Google Play"><span>▶</span><span><small>הורד ב־</small><b>Google Play</b></span></a>
+    <a class="store" href="https://apps.apple.com/app/id6775178022" aria-label="הורד מ-App Store"><span></span><span><small>הורד ב־</small><b>App Store</b></span></a>
   </div>
-</section>
+</div></section>
+<div class="foot chap"><div class="cw">© Teamder · <a href="/privacy.html">פרטיות</a><a href="/terms.html">תנאי שימוש</a></div></div>
 
-<!-- HOW -->
-<section class="sec how">
-  <div class="wrap">
-    <h2>ככה זה עובד</h2>
-    <div class="subhead">שלוש דקות הקמה, ואז זה רץ לבד.</div>
-    <div class="steps">
-      <div class="step"><div class="n">1</div><h3>פותחים קהילה</h3><p>יוצרים את הקבוצה הקבועה ומגדירים את המשחק השבועי.</p></div>
-      <div class="step"><div class="n">2</div><h3>מזמינים את החבר'ה</h3><p>שולחים קישור אחד. כל אחד מאשר הגעה בלחיצה.</p></div>
-      <div class="step"><div class="n">3</div><h3>באים לשחק</h3><p>תזכורות, מילוי מקום וחלוקת קבוצות — קורים לבד.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- FINAL CTA -->
-<section class="final" id="download">
-  <div class="wrap">
-    <h2>תהפוך את הערב כדורגל לפשוט</h2>
-    <p>הורד את Teamder ותפסיק לנהל את המשחק בוואטסאפ.</p>
-    <div class="stores">
-      <a class="store" id="storeAndroid" href="https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp">
-        <svg viewBox="0 0 24 24" fill="#fff"><path d="M3.6 2.3 13 11.7l-9.4 9.4a1.7 1.7 0 0 1-.6-1.3V3.6c0-.5.2-1 .6-1.3Zm10.7 10.7 2.6 2.6-9 5.2 6.4-7.8Zm0-2.6L7.9 2.8l9 5.2-2.6 2.4Zm4 2.3 2.7-1.6c.9-.5.9-1.8 0-2.3L18.3 9.4 16 12l2.3 2.7Z"/></svg>
-        <span><small>הורד מ-</small><b>Google Play</b></span>
-      </a>
-      <a class="store" id="storeApple" href="https://apps.apple.com/app/id6775178022">
-        <svg viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.7c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.5 2.2 2.6 2.1 1-.04 1.4-.7 2.7-.7 1.2 0 1.6.7 2.7.66 1.1-.02 1.8-1 2.5-2 .8-1.2 1.1-2.3 1.1-2.3s-2.1-.8-2.1-3.2ZM14.3 6c.6-.7 1-1.7.9-2.7-.8 0-1.9.5-2.5 1.2-.5.6-1 1.6-.9 2.6.9.1 1.8-.4 2.5-1.1Z"/></svg>
-        <span><small>הורד מ-</small><b>App Store</b></span>
-      </a>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="wrap row">
-    <div class="brand"><img class="logo-icon" src="/logo.png" alt="Teamder" /><img class="wordmark" src="/logo2.png" alt="Teamder" /></div>
-    <div class="links">
-      <a href="/privacy.html">מדיניות פרטיות</a>
-      <a href="/delete-account.html">מחיקת חשבון</a>
-    </div>
-    <div class="cpy">© Teamder · מארגנים כדורגל בלי כאב ראש</div>
-  </div>
-</footer>
+<div class="sticky" id="sticky" aria-hidden="true"><button id="stickyBtn" type="button">הורד את Teamder</button></div>
 
 <script>
-  // Hosting rewrites /session/* and /team/* to this single file, so we
-  // recover the original target via location.pathname.
-  // Short links (/i/<code>) can't carry the target in the path — the
-  // serveInviteCode CF resolves the code and injects window.__INVITE__ with the
-  // real {type,id,invitedBy}; prefer it when present.
-  var INV = window.__INVITE__ || {};
-  var parts = location.pathname.split('/').filter(Boolean);
-  var type = INV.type ? INV.type
-           : parts[0] === 'session' ? 'session'
-           : parts[0] === 'team' ? 'team'
-           : parts[0] === 'app' ? 'app'
-           : parts[0] === 'go' ? 'go'
-           : null;
-  var id = INV.id || parts[1] || '';
-  var qp = new URLSearchParams(location.search);
-  var invitedBy = (INV.invitedBy || qp.get('invitedBy') || '').trim();
-  // UTM acquisition params from the Pulse ad-link builder. The source is now
-  // carried as a short base64url token `b` (keeps Hebrew sources from blowing
-  // up the URL); decode it here, falling back to the legacy plain `s`.
-  function b64urlDecode(t) {
-    try {
-      var b = String(t || '').replace(/-/g, '+').replace(/_/g, '/');
-      while (b.length % 4) b += '=';
-      return decodeURIComponent(escape(atob(b)));
-    } catch (_) { return ''; }
+(function(){
+  "use strict";
+  var _s={}; function track(n,e){try{(window.dataLayer=window.dataLayer||[]).push(Object.assign({event:n},window.__AB__||{},e||{}));if(typeof window.gtag==='function')window.gtag('event',n,e||{});}catch(_){}}
+  function once(n,e){if(_s[n])return;_s[n]=1;track(n,e);}
+  var INV=window.__INVITE__||{}; var parts=location.pathname.split('/').filter(Boolean);
+  var code=parts[0]==='i'?(parts[1]||''):'';
+  var type=INV.type?INV.type:parts[0]==='session'?'session':parts[0]==='team'?'team':parts[0]==='app'?'app':parts[0]==='go'?'go':null;
+  var id=INV.id||INV.targetId||((parts[0]==='session'||parts[0]==='team')?(parts[1]||''):'');
+  var qp=new URLSearchParams(location.search); if(!code)code=(qp.get('code')||'').trim();
+  var invitedBy=(INV.invitedBy||qp.get('invitedBy')||'').trim();
+  function b64d(t){try{var b=String(t||'').replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';return decodeURIComponent(escape(atob(b)));}catch(_){return '';}}
+  var source=((qp.get('b')||'').trim()?b64d(qp.get('b')):(qp.get('s')||qp.get('utm_source')||'')).trim();
+  var campaign=(qp.get('c')||qp.get('utm_campaign')||'').trim(); var gameTarget=(qp.get('g')||'').trim(); var linkId=(qp.get('l')||'').trim();
+  if(source||linkId||invitedBy){try{var bc='/track-click?l='+encodeURIComponent(linkId)+'&s='+encodeURIComponent(source)+'&inviter='+encodeURIComponent(invitedBy);if(navigator.sendBeacon)navigator.sendBeacon(bc);else fetch(bc,{mode:'no-cors',keepalive:true});}catch(_){}}
+  if(!type&&invitedBy)type='app';
+  var isApp=type==='app'||type==='go'; var valid=!!type&&(isApp||!!id);
+  var pathPart=type==='go'?'go':isApp?'app':(type?type+'/'+encodeURIComponent(id):'app');
+  var wasGameLink=(type==='session'), wasCommLink=(type==='team');
+  var ctxType='generic'; if(type==='session')ctxType='game';else if(type==='team')ctxType='community';else if(invitedBy)ctxType='personal_invite';else if(source||campaign)ctxType='campaign';
+  window.__AB__={context_type:ctxType,campaign_source:source||undefined,platform:/Android/i.test(navigator.userAgent)?'android':/iPhone|iPad|iPod/i.test(navigator.userAgent)?'ios':'web',has_inviter:!!invitedBy,has_game:type==='session',has_community:type==='team'};
+  once('landing_view');
+  function appQuery(){var p=[];if(invitedBy)p.push('invitedBy='+encodeURIComponent(invitedBy));if(source)p.push('s='+encodeURIComponent(source));if(campaign)p.push('c='+encodeURIComponent(campaign));if(gameTarget)p.push('g='+encodeURIComponent(gameTarget));return p.length?'?'+p.join('&'):'';}
+  function deepLink(){if(!valid)return null;return 'footy://'+pathPart+appQuery();}
+  function clipUrl(){if(!valid)return null;return 'https://teamderfc.web.app/'+pathPart+appQuery();}
+  // Re-point the deep link + store referrer at the entity the code resolved to,
+  // so the CTA opens the RIGHT game/community even when __INVITE__ wasn't
+  // injected (e.g. the /app?code= path). No-op without an id.
+  function retarget(t,i){ if(!i)return; type=t; id=i; isApp=false; valid=true; pathPart=type+'/'+encodeURIComponent(id);
+    var r='invite_'+type+'_'+encodeURIComponent(id); if(invitedBy)r+='_by_'+encodeURIComponent(invitedBy);
+    storeHref='https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp&referrer='+encodeURIComponent(r);
+    var sa=document.getElementById('storeAndroid'); if(sa)sa.href=storeHref; }
+  if(valid){try{var cc=isApp?{type:'app'}:{type:type,id:id};if(invitedBy)cc.invitedBy=invitedBy;localStorage.setItem('pendingInvite',JSON.stringify(cc));}catch(_){}}
+  var storeHref='https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp';
+  if(valid){var ref;if(source){var u=['utm_source='+encodeURIComponent(source)];if(campaign)u.push('utm_campaign='+encodeURIComponent(campaign));var g=gameTarget||(type==='session'?id:'');if(g)u.push('g='+encodeURIComponent(g));if(linkId)u.push('l='+encodeURIComponent(linkId));ref=u.join('&');}else{ref=isApp?'invite_app':'invite_'+type+'_'+encodeURIComponent(id);if(invitedBy)ref+='_by_'+encodeURIComponent(invitedBy);}storeHref+='&referrer='+encodeURIComponent(ref);var sa=document.getElementById('storeAndroid');if(sa)sa.href=storeHref;}
+  var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  function primary(){once('landing_primary_cta_click');var url=deepLink();if(isIOS){try{var cu=clipUrl();if(cu&&navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(cu);}catch(_){}}var store=isIOS?'https://apps.apple.com/app/id6775178022':storeHref;if(!url){once('landing_store_click');location.href=store;return;}var op=false;track('landing_app_open_attempt');var fb=setTimeout(function(){if(!op){op=true;location.href=store;}},1500);document.addEventListener('visibilitychange',function vc(){if(document.hidden){op=true;clearTimeout(fb);document.removeEventListener('visibilitychange',vc);}});location.href=url;}
+  ['ctaBtn','stickyBtn','hdrBtn'].forEach(function(i){var e=document.getElementById(i);if(e)e.addEventListener('click',primary);});
+  var V={personal_invite:{badge:'הזמנה אישית',cta:'הצטרף ל־Teamder',final:'הצטרף לחברים שלך ב־Teamder',shot:'/shot-home.jpg',title:'הוזמנת ל־Teamder',sub:'האפליקציה שמארגנת את הכדורגל כדי שאתם רק תגיעו לשחק.'},
+    game:{badge:'הזמנה למשחק',cta:'פתח את המשחק',final:'המשחק הבא שלך כבר מחכה',shot:'/shot-match.jpg',title:'הוזמנת למשחק כדורגל',sub:'משחק שכונתי מחכה לך. ראה מי מגיע והצטרף בלחיצה אחת.'},
+    community:{badge:'הזמנה למועדון',cta:'פתח את המועדון',final:'הצטרף למועדון דרך Teamder',shot:'/shot-games.jpg',title:'הוזמנת להצטרף למועדון',sub:'הצטרף לקבוצה קבועה וקבל עדכונים על משחקים חדשים.'},
+    generic:{badge:'ברוכים הבאים ל־Teamder',cta:'הורד את Teamder',final:'פחות הודעות.<br>יותר כדורגל.',shot:'/shot-match.jpg',title:'כדורגל קבוע. בלי כאב הראש של הארגון.',sub:'פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר.'},
+    campaign:{badge:'ברוכים הבאים ל־Teamder',cta:'הורד את Teamder',final:'פחות הודעות.<br>יותר כדורגל.',shot:'/shot-match.jpg',title:'כדורגל קבוע. בלי כאב הראש של הארגון.',sub:'פותחים משחק, החבר׳ה נרשמים ו־Teamder מטפלת בכל השאר.'}};
+  function applyV(t,nm){var v=V[t]||V.generic;document.getElementById('badgeTxt').textContent=(t==='personal_invite'&&nm)?(nm+' הזמין אותך'):v.badge;document.getElementById('title').innerHTML=(t==='personal_invite'&&nm)?(nm+' הזמין אותך ל־Teamder'):v.title;document.getElementById('subtitle').textContent=v.sub;document.getElementById('ctaBtn').textContent=v.cta;document.getElementById('stickyBtn').textContent=v.cta;document.getElementById('finalTitle').innerHTML=v.final;var hs=document.getElementById('heroShot');if(hs&&v.shot)hs.src=v.shot;}
+  applyV(ctxType);
+  function fD(ms){try{return new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'numeric'}).format(new Date(ms));}catch(_){return '';}}
+  function fT(ms){try{return new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit'}).format(new Date(ms));}catch(_){return '';}}
+  function ctxCard(t,tags){var c=document.getElementById('ctxCard');document.getElementById('ctxTitle').textContent=t||'';var b=document.getElementById('ctxTags');b.innerHTML='';(tags||[]).forEach(function(x){if(x&&x.txt){var s=document.createElement('span');s.className='tg'+(x.cls?' '+x.cls:'');s.textContent=x.txt;b.appendChild(s);}});c.classList.add('on');}
+  function toGeneric(note){ctxType=invitedBy?'personal_invite':'generic';applyV(ctxType);document.getElementById('ctxCard').classList.remove('on');if(note)document.getElementById('ctxNote').classList.add('on');once('landing_context_failed');}
+  if(code){fetch('/invite-preview?code='+encodeURIComponent(code)).then(function(r){return r.json();}).then(function(d){
+    if(!d||d.type==='generic'){toGeneric(wasGameLink||wasCommLink);return;}
+    if(d.type==='game'){var gpast=d.status==='finished'||d.status==='cancelled'||(typeof d.startsAt==='number'&&d.startsAt<Date.now());if(gpast){if(d.communityId){retarget('team',d.communityId);ctxType='community';applyV('community');var pc=[];if(d.communityCity||d.city)pc.push({txt:d.communityCity||d.city});if(typeof d.communityMembersCount==='number')pc.push({txt:d.communityMembersCount+' חברים'});ctxCard(d.communityName||'מועדון כדורגל',pc);once('landing_context_loaded');}else{toGeneric();}return;}retarget('session',d.id||id);ctxType='game';applyV('game');var tg=[];if(typeof d.startsAt==='number'){tg.push({txt:fD(d.startsAt)});tg.push({txt:fT(d.startsAt)});}if(d.fieldName)tg.push({txt:d.fieldName});else if(d.city)tg.push({txt:d.city});if(d.communityName)tg.push({txt:d.communityName});if(typeof d.availableSpots==='number'&&d.availableSpots>0)tg.push({txt:d.availableSpots+' מקומות פנויים',cls:'free'});ctxCard(d.gameTitle||'משחק כדורגל',tg);once('landing_context_loaded');}
+    else if(d.type==='community'){retarget('team',d.id||id);ctxType='community';applyV('community');var ct=[];if(d.city)ct.push({txt:d.city});if(typeof d.communityMembersCount==='number')ct.push({txt:d.communityMembersCount+' חברים'});ctxCard(d.communityName||'מועדון כדורגל',ct);once('landing_context_loaded');}
+    else if(d.type==='personal'){ctxType='personal_invite';applyV('personal_invite',d.inviterName);once('landing_context_loaded');}
+    else toGeneric(wasGameLink||wasCommLink);
+  }).catch(function(){toGeneric(wasGameLink||wasCommLink);});}
+  // one-shot in-view
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add(e.target.classList.contains('step')?'seen':'in');io.unobserve(e.target);}});},{threshold:.28});
+  var prob=document.getElementById('prob'); if(prob)io.observe(prob);
+  Array.prototype.forEach.call(document.querySelectorAll('.step'),function(s){io.observe(s);});
+  // rail ball follows scroll
+  var ball=document.getElementById('railBall'), depth={};
+  function tick(){ if(!reduce){ var h=document.body.scrollHeight-window.innerHeight; var p=h>0?Math.min(1,Math.max(0,window.scrollY/h)):0; ball.style.top=(window.scrollY+window.innerHeight*0.5)+'px'; if(ball.offsetTop>document.body.scrollHeight-40)ball.style.top=(document.body.scrollHeight-40)+'px'; }
+    var y=window.scrollY,vh=window.innerHeight,dh=document.body.scrollHeight,pct=Math.round((y+vh)/dh*100);
+    [25,50,75,100].forEach(function(m){if(pct>=m&&!depth[m]){depth[m]=1;track('landing_scroll_depth',{depth:m});}});
+    var hero=document.querySelector('.hero'),fin=document.getElementById('download'),st=document.getElementById('sticky');
+    if(hero.getBoundingClientRect().bottom<0 && fin.getBoundingClientRect().top>vh*0.85)st.classList.add('show');else st.classList.remove('show');
   }
-  var bTok = (qp.get('b') || '').trim();
-  var source = (bTok ? b64urlDecode(bTok) : (qp.get('s') || qp.get('utm_source') || '')).trim();
-  var campaign = (qp.get('c') || qp.get('utm_campaign') || '').trim();
-  var gameTarget = (qp.get('g') || '').trim();
-  var linkId = (qp.get('l') || '').trim();
-
-  // Click beacon — count people who tapped a tracked link + reached the
-  // page, before any redirect. Fire-and-forget; never blocks navigation.
-  // Fires for ad/campaign links (source/linkId) AND personal invite links
-  // (invitedBy) so a user's "link clicks" can be counted per inviter.
-  if (source || linkId || invitedBy) {
-    try {
-      var beacon = '/track-click?l=' + encodeURIComponent(linkId) +
-        '&s=' + encodeURIComponent(source) +
-        '&inviter=' + encodeURIComponent(invitedBy);
-      if (navigator.sendBeacon) navigator.sendBeacon(beacon);
-      else fetch(beacon, { mode: 'no-cors', keepalive: true });
-    } catch (_) { /* non-fatal */ }
-  }
-  // 'app' / 'go' = generic "open the app" (no path target). 'go' is the
-  // dedicated acquisition entry; it may still carry `g=<gameId>` to deep
-  // link into a game. Both carry invitedBy/source for attribution.
-  // Fallback: a short /i/<code> link whose CF injection is missing (cold start,
-  // deleted doc, partial deploy) has no type/id — but if the URL still carries
-  // the inviter (?invitedBy=), credit them as a generic app invite so the
-  // attribution ("this person invited me") is never lost, even without the
-  // specific game/community deep-link.
-  if (!type && invitedBy) { type = 'app'; }
-  var isApp = type === 'app' || type === 'go';
-  var valid = !!type && (isApp || !!id);
-  var pathPart = type === 'go' ? 'go'
-               : isApp ? 'app'
-               : type + '/' + encodeURIComponent(id);
-
-  var titleEl = document.getElementById('title');
-  var subEl = document.getElementById('subtitle');
-  // Personal invites get a contextual hero line. The generic acquisition
-  // entry (app/go — used by ads, the printed-field QR, etc.) KEEPS the
-  // default marketing headline so people see the full pitch.
-  if (type === 'session') {
-    titleEl.textContent = 'הוזמנת למשחק ב־Teamder';
-    subEl.textContent = 'משחק שכונתי מחכה לך. ראה מי מגיע והצטרף בלחיצה אחת.';
-  } else if (type === 'team') {
-    titleEl.textContent = 'הוזמנת לקבוצה ב־Teamder';
-    subEl.textContent = 'הצטרף לקבוצה קבועה וקבל עדכונים על משחקים חדשים.';
-  }
-
-  // Build the query string carried into the app (deep link + clipboard),
-  // preserving inviter + UTM source/campaign + optional game target.
-  function appQuery() {
-    var p = [];
-    if (invitedBy) p.push('invitedBy=' + encodeURIComponent(invitedBy));
-    if (source) p.push('s=' + encodeURIComponent(source));
-    if (campaign) p.push('c=' + encodeURIComponent(campaign));
-    if (gameTarget) p.push('g=' + encodeURIComponent(gameTarget));
-    return p.length ? '?' + p.join('&') : '';
-  }
-
-  function deepLink() {
-    if (!valid) return null;
-    var query = appQuery();
-    // We use the `footy://` scheme rather than `teamder://` because
-    // every shipped build of the app has registered `footy` since
-    // launch, while `teamder` was only added later and isn't present
-    // in installed copies of older versions. The app's deep-link
-    // parser accepts both, so this gives us universal coverage with
-    // no client-side branching.
-    return 'footy://' + pathPart + query;
-  }
-
-  // Persist invite in localStorage as a belt-and-suspenders cache.
-  // Mainly useful for the *web* re-visit flow (user returns to this
-  // page in the same browser session) — the app side relies on the
-  // Play Install Referrer below for cross-install recovery.
-  if (valid) {
-    try {
-      var cached = isApp ? { type: 'app' } : { type: type, id: id };
-      if (invitedBy) cached.invitedBy = invitedBy;
-      localStorage.setItem('pendingInvite', JSON.stringify(cached));
-    } catch (_) { /* private mode / quota — non-fatal */ }
-  }
-
-  // Append `referrer=invite_<type>_<id>[_by_<uid>]` (or `invite_app_by_<uid>`
-  // for a generic app invite) to the Play Store link. The Play Install
-  // Referrer API delivers it verbatim to the freshly installed app on
-  // first launch, letting installReferrerService recover the inviter.
-  if (valid) {
-    var installEl = document.getElementById('installBtn');
-    var ref;
-    if (source) {
-      // Acquisition link → standard UTM referrer the app parses into
-      // `acquisition`. Includes the game target (if any) so the install
-      // can still deep-link into it.
-      var u = ['utm_source=' + encodeURIComponent(source)];
-      if (campaign) u.push('utm_campaign=' + encodeURIComponent(campaign));
-      var gForRef = gameTarget || (type === 'session' ? id : '');
-      if (gForRef) u.push('g=' + encodeURIComponent(gForRef));
-      // Carry the link id so the install attributes to THIS specific link
-      // (not just the source) — fixes "all WhatsApp links show the same count".
-      if (linkId) u.push('l=' + encodeURIComponent(linkId));
-      ref = u.join('&');
-    } else {
-      ref = isApp ? 'invite_app' : 'invite_' + type + '_' + encodeURIComponent(id);
-      if (invitedBy) ref += '_by_' + encodeURIComponent(invitedBy);
-    }
-    var storeHref =
-      'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp' +
-      '&referrer=' + encodeURIComponent(ref);
-    installEl.href = storeHref;
-    // Mirror the referrer onto the bottom "Google Play" store badge too.
-    var sa = document.getElementById('storeAndroid');
-    if (sa) sa.href = storeHref;
-  }
-
-  // iOS has no Play Install Referrer — point the install button at the
-  // App Store instead of Google Play so non-installed users can download.
-  // AND copy the invite URL to the clipboard on tap: Apple gives us no
-  // way to carry the inviter through a fresh App Store install, so the
-  // freshly launched app recovers it from the clipboard
-  // (clipboardInviteService). The write MUST happen inside the tap
-  // handler — Safari blocks programmatic clipboard writes without a user
-  // gesture — which is also why we don't auto-redirect iOS to the store.
-  if (/iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
-    var iosInstallEl = document.getElementById('installBtn');
-    if (iosInstallEl) {
-      iosInstallEl.href = 'https://apps.apple.com/app/id6775178022';
-      if (valid) {
-        iosInstallEl.addEventListener('click', function () {
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(location.href);
-            }
-          } catch (_) { /* non-fatal — navigation proceeds regardless */ }
-        });
-      }
-    }
-  }
-
-  // "פתח באפליקציה" — try to open the installed app via the custom
-  // scheme. If nothing takes over within a short window the app isn't
-  // installed → send the user to the right store instead of leaving
-  // them stuck on Safari's "address invalid" dialog.
-  document.getElementById('openBtn').addEventListener('click', function () {
-    var url = deepLink();
-    if (!url) { location.href = '#download'; return; }
-    var ua2 = navigator.userAgent || '';
-    var iOS = /iPhone|iPad|iPod/i.test(ua2);
-    var installEl2 = document.getElementById('installBtn');
-    var store = iOS
-      ? 'https://apps.apple.com/app/id6775178022'
-      : (installEl2 ? installEl2.href : '');
-    var opened = false;
-    var fallback = setTimeout(function () {
-      if (!opened && store) { opened = true; location.href = store; }
-    }, 1500);
-    document.addEventListener('visibilitychange', function vc() {
-      if (document.hidden) {
-        opened = true;
-        clearTimeout(fallback);
-        document.removeEventListener('visibilitychange', vc);
-      }
-    });
-    location.href = url;
-  });
-
-  // ── Auto-redirect ────────────────────────────────────────────────
-  // Personal invites (session/team) fast-path into the app/store. The
-  // generic acquisition entry (app/go — ads + the printed-field QR) does
-  // NOT auto-redirect: we WANT those visitors to see the full landing
-  // page and its pitch, then tap download themselves (the install button
-  // already carries the attribution referrer).
-  var ua = navigator.userAgent || '';
-  var isAndroid = /Android/i.test(ua);
-  var isIOS = /iPhone|iPad|iPod/i.test(ua);
-  var isMobile = isAndroid || isIOS;
-  var APP_STORE_URL_IOS = 'https://apps.apple.com/app/id6775178022';
-  var PLAY_PACKAGE = 'com.studiogameslime.soccerapp';
-
-  function autoRedirect() {
-    if (!valid) return;
-    if (isApp) return;       // ads / QR / generic — show the landing page
-    if (!isMobile) return;   // desktop — never force a redirect
-    var query = invitedBy ? '?invitedBy=' + encodeURIComponent(invitedBy) : '';
-    var path = pathPart + query;
-    var installEl = document.getElementById('installBtn');
-    var storeUrl = installEl ? installEl.href : null;
-    if (isAndroid) {
-      var isChrome =
-        /Chrome\/[0-9]/.test(ua) &&
-        !/EdgA|EdgiOS|OPR|SamsungBrowser/.test(ua);
-      if (isChrome && storeUrl) {
-        var intentUrl =
-          'intent://' + path +
-          '#Intent;scheme=footy;package=' + PLAY_PACKAGE +
-          ';S.browser_fallback_url=' + encodeURIComponent(storeUrl) +
-          ';end';
-        location.replace(intentUrl);
-        return;
-      }
-      if (storeUrl) {
-        location.replace(storeUrl);
-        return;
-      }
-    }
-    // iOS: do NOT auto-redirect (clipboard write needs the user's tap).
-  }
-
-  // Defer one tick so the install-referrer wiring above (which
-  // builds `installEl.href`) lands before we read it.
-  setTimeout(autoRedirect, 0);
+  window.addEventListener('scroll',tick,{passive:true}); tick();
+})();
 </script>
 </body>
 </html>
