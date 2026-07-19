@@ -1,6 +1,7 @@
 // withHealth — wires the OS wearable-data hubs so Teamder can READ a player's
-// session metrics (steps / distance / heart-rate / calories / speed) from
-// whatever watch or band they own, plus the exercise route for the heatmap.
+// session movement metrics (steps / distance / speed / calories) from whatever
+// watch or band they own, to show a personal post-game physical summary.
+// NO heart-rate and NO exercise-route are requested (both removed 2026-07-14).
 //
 //   • iOS      → HealthKit: read-usage Info.plist string + the HealthKit
 //                entitlement (Apple Watch + any tracker that writes to Health).
@@ -43,7 +44,7 @@ const HC_READ_PERMISSIONS = [
 
 function withHealthIos(config) {
   const usage =
-    'Teamder קורא את נתוני הפעילות שלך מהשעון (מרחק, דופק, קלוריות) כדי להציג לך סיכום פיזי אחרי המשחק. הנתונים נשארים אישיים.';
+    'Teamder קורא את נתוני הפעילות שלך מהשעון (מרחק, מהירות, צעדים, קלוריות) כדי להציג לך סיכום פיזי אחרי המשחק. הנתונים נשארים אישיים.';
   config = withInfoPlist(config, (cfg) => {
     cfg.modResults.NSHealthShareUsageDescription = usage;
     // We never write to Health, but some HealthKit bindings expect the key to

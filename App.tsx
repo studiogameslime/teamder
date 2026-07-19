@@ -36,6 +36,13 @@ LogBox.ignoreLogs([
   'googleMobileAds/error-code-no-fill',
 ]);
 
+// Screenshot capture: fully silence LogBox (incl. the "open debugger to view
+// warnings" toast) so marketing screenshots carry zero dev chrome. Gated by
+// the same EXPO_PUBLIC_SCREENSHOT_MODE flag that hides the mock banner + ads.
+if ((process.env.EXPO_PUBLIC_SCREENSHOT_MODE ?? '').trim() === '1') {
+  LogBox.ignoreAllLogs(true);
+}
+
 // A single notification-action tap can be DELIVERED more than once:
 //   • On a cold start, `addNotificationResponseReceivedListener` AND
 //     `getLastNotificationResponseAsync` both surface the same response.

@@ -69,10 +69,24 @@
         "track": "production"
       }
     },
+    "production-draft": {
+      "android": {
+        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "track": "production",
+        "changesNotSentForReview": true
+      }
+    },
     "production-wear": {
       "android": {
         "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
         "track": "wear:production"
+      }
+    },
+    "production-wear-draft": {
+      "android": {
+        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "track": "wear:production",
+        "changesNotSentForReview": true
       }
     },
     "internal-wear": {

@@ -8,7 +8,7 @@
 // deferred follow-up — nativeHealth() returns null there, so the physical panel
 // simply doesn't render and nothing crashes.
 
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logError } from '@/services/errorLog';
 import { computeHrZones, computeEffort, type HrZoneMinutes } from '@/utils/physical';
@@ -71,6 +71,24 @@ const MAX_PLAUSIBLE_MPS = 12;
 // Persist a "user declined Health Connect" flag so we prompt at most once
 // automatically — a manual re-connect can pass forcePrompt to bypass it.
 const DECLINED_KEY = 'health.hc.declined';
+
+// Google Health Connect policy requires a PROMINENT in-app disclosure shown
+// BEFORE the system permission sheet: what data is read, for what feature, and
+// that it stays private. Shown every time we're about to request (not gated by
+// the declined-latch) so the user always sees the purpose before granting.
+function showHealthDisclosure(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'סיכום פיזי אחרי המשחק',
+      'Teamder יקרא מ-Health Connect את נתוני הפעילות של המשחק שלך — צעדים, מרחק, מהירות וקלוריות — כדי להציג לך סיכום פיזי אישי אחרי כל משחק.\n\nהנתונים משמשים אך ורק לתצוגה שלך, נשארים אישיים ואינם משותפים. אפשר לבטל את הגישה בכל עת בהגדרות Health Connect.',
+      [
+        { text: 'לא עכשיו', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'המשך', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
+}
 
 // Total overlap (ms) between [s,e] and the (sorted, coalesced) active windows.
 function overlapMs(
@@ -282,6 +300,13 @@ export const healthService = {
           () => null,
         );
         if (declined === '1') return false;
+      }
+      // Prominent disclosure BEFORE the system Health Connect sheet (Google
+      // policy). Declining here counts as a decline and latches off the prompt.
+      const consented = await showHealthDisclosure();
+      if (!consented) {
+        await AsyncStorage.setItem(DECLINED_KEY, '1').catch(() => {});
+        return false;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res: any[] = await hc.requestPermission(READ_PERMISSIONS as any);
