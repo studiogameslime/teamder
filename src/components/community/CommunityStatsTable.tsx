@@ -50,7 +50,18 @@ export function CommunityStatsTable({
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
-  const rows = players.slice(0, limit);
+  // Tap a column header to sort by it. Default = wins (the headline stat).
+  const [sortKey, setSortKey] = useState<keyof ChampionshipRow>('wins');
+  // Sort by the chosen column (desc), THEN slice — so the top-N reflects the
+  // active sort. V8's sort is stable, so ties keep the incoming order (which is
+  // itself wins→goals ranked), giving sensible tie-breaking.
+  const rows = React.useMemo(
+    () =>
+      [...players]
+        .sort((a, b) => Number(b[sortKey] ?? 0) - Number(a[sortKey] ?? 0))
+        .slice(0, limit),
+    [players, sortKey, limit],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -68,7 +79,7 @@ export function CommunityStatsTable({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, limit]);
+  }, [players, limit, sortKey]);
 
   if (rows.length === 0) return null;
 
@@ -131,22 +142,33 @@ export function CommunityStatsTable({
         <ScrollView horizontal showsHorizontalScrollIndicator style={styles.scroll}>
           <View>
             <View style={[styles.gridRow, { height: HEADER_H }]}>
-              {cols.map((c) => (
-                <Text
-                  key={c.key}
-                  numberOfLines={1}
-                  style={[styles.statHeader, c.primary && styles.primaryHeader]}
-                >
-                  {c.label}
-                </Text>
-              ))}
+              {cols.map((c) => {
+                const active = c.key === sortKey;
+                return (
+                  <Pressable
+                    key={c.key}
+                    onPress={() => setSortKey(c.key)}
+                    style={styles.headerHit}
+                    accessibilityRole="button"
+                    accessibilityLabel={c.label}
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.statHeader, active && styles.primaryHeader]}
+                    >
+                      {active ? `${c.label} ▾` : c.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
             {rows.map((r) => (
               <View key={r.uid} style={[styles.gridRow, styles.dataRow]}>
                 {cols.map((c) => (
                   <Text
                     key={c.key}
-                    style={[styles.statCell, c.primary && styles.primaryCell]}
+                    style={[styles.statCell, c.key === sortKey && styles.primaryCell]}
                   >
                     {r[c.key]}
                   </Text>
@@ -192,6 +214,7 @@ const styles = StyleSheet.create({
   name: { flex: 1, minWidth: 0, ...typography.body, color: colors.text, fontWeight: '700', textAlign: RTL_LABEL_ALIGN },
   gridRow: { flexDirection: 'row', alignItems: 'center' },
   dataRow: { height: ROW_H, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  headerHit: { width: STAT_W, height: '100%', justifyContent: 'center' },
   statHeader: {
     width: STAT_W,
     ...typography.caption,

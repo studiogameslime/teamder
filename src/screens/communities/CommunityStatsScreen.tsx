@@ -60,6 +60,11 @@ interface StatsData {
   activeThisYear: number;
   longestStreak: number;
   longestStreakUid: string | null;
+  // Most-loyal-by-attendance, from the SAME finished-nights scan as the streak
+  // (so "הכי מתמיד" can never be smaller than "הרצף הארוך" — both count the
+  // exact same attendance events, unlike the communityPlayerStats rollup which
+  // can lag). topPlayers[0] = the player who attended the most nights.
+  topPlayers: Array<{ uid: string; attended: number }>;
 }
 interface DeadlyDuo {
   uidA: string;
@@ -133,6 +138,7 @@ export function CommunityStatsScreen() {
           activeThisYear: 0,
           longestStreak: 0,
           longestStreakUid: null,
+          topPlayers: [],
         },
       );
       setDuo(d);
@@ -145,6 +151,7 @@ export function CommunityStatsScreen() {
       });
       if (d) { ids.add(d.uidA); ids.add(d.uidB); }
       if (s?.longestStreakUid) ids.add(s.longestStreakUid);
+      if (s?.topPlayers?.[0]?.uid) ids.add(s.topPlayers[0].uid);
       const fetched = await Promise.all(
         Array.from(ids).map((id) => userService.getUserById(id).catch(() => null)),
       );
@@ -190,9 +197,17 @@ export function CommunityStatsScreen() {
       topScorer,
       topAssister: leaderBy(players, (p) => p.assists),
       topWinner: leaderBy(players, (p) => p.wins),
-      mostLoyal: leaderBy(players, (p) => p.games),
     };
   }, [champ]);
+
+  // "הכי מתמיד" = most nights attended, taken from the finished-nights scan in
+  // getCommunityStats (topPlayers[0]) — NOT the communityPlayerStats `games`
+  // rollup, which can lag behind and produced the "4 vs 5-in-a-row" mismatch
+  // (a streak can never exceed total attendance when both share a source).
+  const mostLoyal = useMemo(() => {
+    const top = stats?.topPlayers?.[0];
+    return top && top.attended > 0 ? { uid: top.uid, nights: top.attended } : null;
+  }, [stats]);
 
   // Club achievements + level — derived from the same aggregates, client-side.
   const club = useMemo(() => {
@@ -340,9 +355,9 @@ export function CommunityStatsScreen() {
             <LeaderCard
               crown="🔥"
               title={he.communityStatsMostLoyal}
-              row={derived.mostLoyal}
-              user={derived.mostLoyal ? resolved(derived.mostLoyal.uid) : null}
-              valueText={derived.mostLoyal ? he.communityStatsEveningsUnit(derived.mostLoyal.games) : ''}
+              row={mostLoyal}
+              user={mostLoyal ? resolved(mostLoyal.uid) : null}
+              valueText={mostLoyal ? he.communityStatsEveningsUnit(mostLoyal.nights) : ''}
               tint={colors.success}
             />
           </View>
@@ -477,7 +492,8 @@ function LeaderCard({
 }: {
   crown: string;
   title: string;
-  row: ChampionshipRow | null;
+  // Only used for truthiness (has-data gate); any leader shape with a uid works.
+  row: { uid: string } | null;
   user: Resolved | null;
   valueText: string;
   tint: string;

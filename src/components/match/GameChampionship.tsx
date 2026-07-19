@@ -50,8 +50,9 @@ export function GameChampionship({
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{he.gameChampTitle}</Text>
-      <Text style={styles.note}>{he.gameChampNote}</Text>
-      {/* Same table + sort as the community table, minus the appearances column. */}
+      {/* Tap any column header to sort by it (default: wins). Same table as the
+          community view, minus the appearances column. The scoring-formula note
+          was removed per user feedback — the numbers speak for themselves. */}
       <CommunityStatsTable players={players} groupId={groupId} hideAppearances />
     </View>
   );
@@ -60,5 +61,4 @@ export function GameChampionship({
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm, marginTop: spacing.md },
   title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
-  note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: -2 },
 });

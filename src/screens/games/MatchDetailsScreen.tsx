@@ -11,7 +11,7 @@
 //   ⑤ Sticky bottom CTA — outline-only red for cancel, full pill green
 //      for join.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Modal,
@@ -55,6 +55,13 @@ import { GuestModal } from '@/components/GuestModal';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { PlayerCountBar } from '@/components/PlayerCountBar';
 import { CelebrationOverlay } from '@/components/anim/CelebrationOverlay';
+import {
+  RegistrationSuccessAnimation,
+  type RegistrationAnimationVariant,
+} from '@/components/anim/game/RegistrationSuccessAnimation';
+import { WaitlistPromotionAnimation } from '@/components/anim/game/WaitlistPromotionAnimation';
+import { isWaitlistPromotion } from '@/components/anim/game/triggerLogic';
+import { usePreviousValue } from '@/hooks/animations';
 import { successHaptic } from '@/utils/haptics';
 import { toast } from '@/components/Toast';
 import {
@@ -488,6 +495,37 @@ export function MatchDetailsScreen() {
   // haptic the moment the user actually lands IN the game (bucket
   // 'players'), OR right after they created the game. Self-clears.
   const [celebrate, setCelebrate] = useState(false);
+  const [regAnim, setRegAnim] = useState<{
+    variant: RegistrationAnimationVariant;
+    isLastSpot: boolean;
+  } | null>(null);
+  // Anim 2 — detect a REAL waitlist→roster promotion from the live game state
+  // (via useGameEvents' setGame). Computed at top level so the hooks below never
+  // sit behind an early return. Dedup latch resets when the user leaves the
+  // roster, so a Firestore snapshot can't replay it but a later promotion can.
+  const myRegStatus: RegistrationAnimationVariant | null =
+    game && user
+      ? (() => {
+          const st = statusForUser(game, user.id);
+          return st === 'joined'
+            ? 'registered'
+            : st === 'waitlist'
+              ? 'waitlisted'
+              : st === 'pending'
+                ? 'pendingApproval'
+                : null;
+        })()
+      : null;
+  const prevRegStatus = usePreviousValue(myRegStatus);
+  const [showPromotion, setShowPromotion] = useState(false);
+  const promoFired = useRef(false);
+  useEffect(() => {
+    if (isWaitlistPromotion(prevRegStatus, myRegStatus) && !promoFired.current) {
+      promoFired.current = true;
+      setShowPromotion(true);
+    }
+    if (myRegStatus !== 'registered') promoFired.current = false;
+  }, [myRegStatus, prevRegStatus]);
   // Fire the creation celebration once, on arrival from GameCreate.
   useEffect(() => {
     if (!celebrateOnArrival) return;
@@ -723,7 +761,7 @@ export function MatchDetailsScreen() {
         const p = playersMap[id];
         return {
           id,
-          name: p?.displayName ?? he.genericUserName,
+          name: (p?.displayName ?? '').trim() || he.genericUserName,
           avatarId: p?.avatarId,
           photoUrl: p?.photoUrl,
         };
@@ -965,6 +1003,28 @@ export function MatchDetailsScreen() {
         // waitlist/pending join was previously SILENT here (user just saw the
         // CTA flip) — surface the same bucket-aware toast the Games tab shows,
         // so someone who landed on the waitlist knows they aren't confirmed.
+        // Product animation (Anim 1 / 3): flourish keyed to the confirmed
+        // bucket. Last-spot celebration only when a self-join took the final
+        // free seat. `freeBefore` is read from the pre-join game state.
+        {
+          const guestsActive = (game.guests ?? []).filter(
+            (g) => !(g as { canceled?: boolean }).canceled,
+          ).length;
+          const occBefore =
+            (game.players?.length ?? 0) +
+            guestsActive +
+            (game.pendingPromotion?.uid ? 1 : 0);
+          const freeBefore = Math.max(0, (game.maxPlayers ?? 0) - occBefore);
+          setRegAnim({
+            variant:
+              result.bucket === 'players'
+                ? 'registered'
+                : result.bucket === 'waitlist'
+                  ? 'waitlisted'
+                  : 'pendingApproval',
+            isLastSpot: result.bucket === 'players' && freeBefore === 1,
+          });
+        }
         if (result.bucket === 'players') {
           successHaptic();
           setCelebrate(true);
@@ -2034,7 +2094,7 @@ export function MatchDetailsScreen() {
     : myCommunities.find((g) => g.id === game.groupId)?.rules?.trim() ||
       undefined;
   const organizerName = game.createdBy
-    ? playersMap[game.createdBy]?.displayName ?? null
+    ? (playersMap[game.createdBy]?.displayName ?? '').trim() || null
     : null;
 
   // Resolve a draft participant id (uid → store; guest id → game.guests)
@@ -2042,7 +2102,7 @@ export function MatchDetailsScreen() {
   const resolveDraftUser = (id: string) => {
     const p = playersMap[id];
     if (p) {
-      return { id, name: p.displayName ?? '…', avatarId: p.avatarId, photoUrl: p.photoUrl };
+      return { id, name: (p.displayName ?? '').trim() || he.fillerDefaultName, avatarId: p.avatarId, photoUrl: p.photoUrl };
     }
     // Team playerIds store guests PREFIXED (`guest:<id>`); strip it before
     // matching the raw guest id, otherwise the name renders as "…".
@@ -2236,7 +2296,11 @@ export function MatchDetailsScreen() {
       const p = playersMap[uid];
       return {
         id: uid,
-        name: p?.displayName ?? '...',
+        // '...' ONLY while the user is still hydrating; once loaded, a blank
+        // `name` falls back to the "שחקן" placeholder — never an empty row
+        // (user report: registered players showed no name). `??` alone missed
+        // this because an empty-string name isn't nullish.
+        name: p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '...',
         avatarId: p?.avatarId,
         photoUrl: p?.photoUrl,
         isAdmin: groupAdminIds.has(uid),
@@ -2262,7 +2326,7 @@ export function MatchDetailsScreen() {
       const guestRosterId = toGuestRosterId(g.id);
       return {
         id: guestRosterId,
-        name: g.name,
+        name: (g.name ?? '').trim() || he.fillerDefaultName,
         isAdmin: false,
         isOrganizer: false,
         // A guest added while the game was full sits on the waitlist — render
@@ -2349,6 +2413,16 @@ export function MatchDetailsScreen() {
         {celebrate ? (
           <CelebrationOverlay onDone={() => setCelebrate(false)} />
         ) : null}
+        <RegistrationSuccessAnimation
+          visible={!!regAnim}
+          variant={regAnim?.variant ?? 'registered'}
+          isLastSpot={regAnim?.isLastSpot}
+          onComplete={() => setRegAnim(null)}
+        />
+        <WaitlistPromotionAnimation
+          visible={showPromotion}
+          onComplete={() => setShowPromotion(false)}
+        />
       </View>
       <ScrollView
         contentContainerStyle={[
@@ -2392,13 +2466,18 @@ export function MatchDetailsScreen() {
             admin approves. */}
         {isFillerCandidate ? (
           <View style={styles.fillerBanner}>
-            <Ionicons name="megaphone-outline" size={22} color={colors.primary} />
-            <View style={{ flex: 1 }}>
+            {/* Vertical layout: the note gets the full width (no longer squeezed
+                by an inline button → no truncation), and the action is a normal
+                full-width "בקש להצטרף" button like every other join CTA (user
+                report). Underneath it still runs the filler application → admin
+                approval; only the label + shape changed. */}
+            <View style={styles.fillerBannerHead}>
+              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
               <Text style={styles.fillerBannerTitle}>{he.fillerApplyTitle}</Text>
-              <Text style={styles.fillerBannerSub}>
-                {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
-              </Text>
             </View>
+            <Text style={styles.fillerBannerSub}>
+              {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
+            </Text>
             {fillerState === 'sent' ? (
               <View style={styles.fillerSentChip}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.success} />
@@ -2406,9 +2485,9 @@ export function MatchDetailsScreen() {
               </View>
             ) : (
               <Button
-                title={he.fillerApplyCta}
+                title={he.gameCardRequestJoin}
                 variant="primary"
-                size="sm"
+                fullWidth
                 loading={fillerState === 'submitting'}
                 disabled={fillerState === 'submitting'}
                 onPress={onApplyAsFiller}
@@ -2710,7 +2789,7 @@ export function MatchDetailsScreen() {
               </Text>
               {(game.pending ?? []).map((uid, i) => {
                 const p = playersMap[uid];
-                const name = p?.displayName ?? '...';
+                const name = p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '...';
                 return (
                   <View
                     key={uid}
@@ -2842,10 +2921,13 @@ export function MatchDetailsScreen() {
             // with waitlisted:true — they must appear here (and in the count),
             // otherwise filtering them out of the roster made them vanish.
             const waitlistPreview: { key: string; name: string }[] = [
-              ...(game.waitlist ?? []).map((uid) => ({
-                key: uid,
-                name: playersMap[uid]?.displayName ?? '…',
-              })),
+              ...(game.waitlist ?? []).map((uid) => {
+                const p = playersMap[uid];
+                return {
+                  key: uid,
+                  name: p ? (p.displayName ?? '').trim() || he.fillerDefaultName : '…',
+                };
+              }),
               ...(game.guests ?? [])
                 .filter((g) => g.waitlisted)
                 .map((g) => ({
@@ -3804,16 +3886,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   fillerBanner: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
+    flexDirection: 'column',
     gap: spacing.sm,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
+    // Clear the statsFloat's marginTop:-36 pull so it can't overlap/clip the
+    // banner (the sub-text used to get cut off by the floating stats card).
+    marginBottom: 44,
     padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.primary,
     backgroundColor: colors.surfaceMuted,
+    zIndex: 2,
+  },
+  fillerBannerHead: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   fillerBannerTitle: {
     ...typography.bodyBold,
