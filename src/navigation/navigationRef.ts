@@ -391,6 +391,23 @@ export function navigateForPush(
       });
       return true;
 
+    case 'adminBroadcast': {
+      // Campaign broadcasts spread their arbitrary `data` string-map into the
+      // push (adminUserPush). Honor the same deep-link targets the in-app
+      // popup router supports, reading whichever convention the campaign used.
+      // Announcement-only campaigns carry none of these → no-op (just opens the
+      // app), exactly as before. Reuses navigateCampaign (URL allowlist etc.).
+      const actType = typeof data.action === 'string' ? data.action : undefined;
+      const actVal = typeof data.value === 'string' ? data.value : undefined;
+      if (actType) return navigateCampaign({ type: actType, value: actVal });
+      if (typeof data.url === 'string' && data.url) {
+        return navigateCampaign({ type: 'openUrl', value: data.url });
+      }
+      if (gameId) return navigateCampaign({ type: 'openGame', value: gameId });
+      if (groupId) return navigateCampaign({ type: 'openCommunity', value: groupId });
+      return false;
+    }
+
     default:
       return false;
   }

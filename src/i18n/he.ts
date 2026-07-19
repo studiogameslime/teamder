@@ -174,6 +174,8 @@ export const he = {
   toastJoinedGroup: 'ברוך הבא למועדון',
   toastJoinSuccess: 'הצטרפת למועדון',
   toastGameJoined: 'הצטרפת למשחק',
+  lastSpotTaken: 'תפסת את המקום האחרון',
+  promotedToRoster: 'נכנסת להרכב! ⚽',
   toastGameJoinedWaitlist: 'נוספת לרשימת המתנה',
   toastGameJoinedPending: 'בקשת ההצטרפות נשלחה',
   toastGameLeft: 'יצאת מהמשחק',
