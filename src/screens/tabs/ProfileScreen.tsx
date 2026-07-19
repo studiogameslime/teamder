@@ -43,6 +43,8 @@ import { currentAuthProviderId } from '@/firebase/auth';
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
+import { NextGameCardEntrance } from '@/components/anim/game/NextGameCardEntrance';
+import { AnimationLab } from '@/screens/dev/AnimationLab';
 import { HomeGreetingHeader } from '@/components/home/HomeGreetingHeader';
 import { AvailabilityCalendarCard } from '@/components/home/AvailabilityCalendarCard';
 import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
@@ -115,6 +117,7 @@ export function ProfileScreen() {
   ]);
   const [refreshing, setRefreshing] = useState(false);
   const [referralCount, setReferralCount] = useState<number | null>(null);
+  const [showLab, setShowLab] = useState(false); // DEV-only animation lab
   // Full referral list (who joined through the user + when) — powers
   // both the count tile and the recent-activity feed.
   const [referrals, setReferrals] = useState<
@@ -726,12 +729,14 @@ export function ProfileScreen() {
               job is to keep nudging the user to mark availability and organize
               the NEXT game, even when they already have one lined up. */}
           {hasCloseGame ? (
-            <ProfileNextGameCard
-              game={nextGame}
-              userId={user.id}
-              onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
-              onFindGame={() => nav.navigate('GameTab')}
-            />
+            <NextGameCardEntrance triggerKey={nextGame?.id}>
+              <ProfileNextGameCard
+                game={nextGame}
+                userId={user.id}
+                onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
+                onFindGame={() => nav.navigate('GameTab')}
+              />
+            </NextGameCardEntrance>
           ) : null}
 
           {markedAvailability ? (
@@ -854,6 +859,17 @@ export function ProfileScreen() {
       {celebrate.length > 0 ? (
         <AchievementCelebration items={celebrate} onDone={() => setCelebrate([])} />
       ) : null}
+
+      {/* DEV-ONLY: animation lab (preview/record product animations). Never
+          renders in a production build (__DEV__ is false there). */}
+      {__DEV__ ? (
+        <>
+          <Pressable style={styles.labFab} onPress={() => setShowLab(true)}>
+            <Text style={styles.labFabTxt}>🎬</Text>
+          </Pressable>
+          <AnimationLab visible={showLab} onClose={() => setShowLab(false)} />
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -942,6 +958,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  labFab: {
+    position: 'absolute',
+    bottom: 90,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0B1B3B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.85,
+    zIndex: 50,
+  },
+  labFabTxt: { fontSize: 20 },
   guestWrap: {
     flex: 1,
     alignItems: 'center',

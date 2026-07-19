@@ -37,6 +37,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
+import { LiveMatchEntrance } from '@/components/anim/game/LiveMatchEntrance';
 import { TimerProgressRing } from '@/components/match/TimerProgressRing';
 import { gameService } from '@/services/gameService';
 import { AdvancedLiveMatchScreen } from './AdvancedLiveMatchScreen';
@@ -166,7 +167,11 @@ export function LiveMatchScreen() {
   if (advanced === null) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
-  return advanced ? <AdvancedLiveMatchScreen /> : <PlainLiveMatchScreen />;
+  return (
+    <LiveMatchEntrance>
+      {advanced ? <AdvancedLiveMatchScreen /> : <PlainLiveMatchScreen />}
+    </LiveMatchEntrance>
+  );
 }
 
 function PlainLiveMatchScreen() {

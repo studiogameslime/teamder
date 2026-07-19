@@ -37,6 +37,7 @@ import {
   MAX_TEAMS,
   type DraftMethod,
 } from '@/utils/draft';
+import { balanceTiming } from '@/components/anim/game/triggerLogic';
 import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Nav = NativeStackNavigationProp<GameStackParamList>;
@@ -215,6 +216,7 @@ export function DraftSetupScreen() {
     }
     setGenerating(true);
     try {
+      const computeStart = Date.now();
       const { result, unratedCount } = balanceTeams({
         playerIds,
         ratings,
@@ -223,6 +225,15 @@ export function DraftSetupScreen() {
         createdBy: currentUser.id,
       });
       await gameService.saveDraftTeams(game.id, result);
+      // Anim 13 — the balance is computed locally (instant), so pad to a
+      // minimal "computing" phase (spec floor ≥300ms) via the existing
+      // `generating` loader, so the result never pops in. Capped, never padded
+      // past the floor — the effect must not add real latency beyond that.
+      const elapsed = Date.now() - computeStart;
+      const floorMs = balanceTiming().minComputeMs;
+      if (elapsed < floorMs) {
+        await new Promise((r) => setTimeout(r, floorMs - elapsed));
+      }
       if (splitMode === 'auto' && unratedCount > 0) {
         toast.info(he.autoBalanceUnrated(unratedCount));
       }
