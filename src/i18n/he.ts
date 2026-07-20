@@ -1992,7 +1992,7 @@ export const he = {
   availNudgeLater: 'אחר כך',
   matchesSectionOpen: 'משחקים פתוחים',
   matchesSectionMine: 'המשחקים שלי',
-  matchesEmptyCardTitle: 'לא מצאת משחק שמתאים?',
+  matchesEmptyCardTitle: 'לא מצאת משחק מתאים?',
   matchesEmptyCardSub: 'צור משחק חדש ותן לאחרים להצטרף',
   matchCardJoinFull: 'הצטרף למשחק',
   matchesEmptyMine: 'עוד לא נכנסת להרכב של משחק',
