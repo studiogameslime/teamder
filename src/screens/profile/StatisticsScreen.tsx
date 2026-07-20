@@ -31,6 +31,12 @@ export function StatisticsScreen() {
   const localUser = useUserStore((s) => s.currentUser);
   const [stats, setStats] = useState<PlayerStatsSummary | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
+  const [pen, setPen] = useState<{
+    penTaken: number;
+    penScored: number;
+    penFaced: number;
+    penSaved: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,12 +50,24 @@ export function StatisticsScreen() {
     userService
       .getUserById(uid)
       .catch(() => null)
-      .then((fresh) =>
-        playerStatsService.compute(uid, {
+      .then((fresh) => {
+        // Penalty stats (server-maintained) — captured for the penalty tiles.
+        const st = fresh?.stats;
+        setPen(
+          st
+            ? {
+                penTaken: st.penTaken ?? 0,
+                penScored: st.penScored ?? 0,
+                penFaced: st.penFaced ?? 0,
+                penSaved: st.penSaved ?? 0,
+              }
+            : null,
+        );
+        return playerStatsService.compute(uid, {
           goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
           assists: fresh?.stats?.assists ?? localUser?.stats?.assists ?? 0,
-        }),
-      )
+        });
+      })
       .then(async (s) => {
         if (!alive) return;
         setStats(s);
@@ -114,6 +132,43 @@ export function StatisticsScreen() {
                tiles entirely (user request). */}
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
           </View>
+
+          {/* ── Penalties (only when the player has any) ────────────── */}
+          {pen && (pen.penTaken > 0 || pen.penFaced > 0) ? (
+            <>
+              <Text style={[styles.section, styles.sectionGap]}>{he.statsSectionPenalties}</Text>
+              <View style={styles.tileGrid}>
+                {pen.penTaken > 0 ? (
+                  <NumberTile
+                    icon="football-outline"
+                    value={`${pen.penScored}/${pen.penTaken}`}
+                    label={he.statPenScored}
+                  />
+                ) : null}
+                {pen.penTaken > 0 ? (
+                  <NumberTile
+                    icon="stats-chart-outline"
+                    value={`${Math.round((pen.penScored / pen.penTaken) * 100)}%`}
+                    label={he.statPenRate}
+                  />
+                ) : null}
+                {pen.penFaced > 0 ? (
+                  <NumberTile
+                    icon="hand-left-outline"
+                    value={String(pen.penSaved)}
+                    label={he.statPenSaves}
+                  />
+                ) : null}
+                {pen.penFaced > 0 ? (
+                  <NumberTile
+                    icon="shield-checkmark-outline"
+                    value={`${Math.round((pen.penSaved / pen.penFaced) * 100)}%`}
+                    label={he.statPenSaveRate}
+                  />
+                ) : null}
+              </View>
+            </>
+          ) : null}
 
           {/* ── People (named superlatives) ─────────────────────────── */}
           <Text style={[styles.section, styles.sectionGap]}>

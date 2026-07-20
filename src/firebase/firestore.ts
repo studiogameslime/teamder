@@ -130,6 +130,15 @@ export function readStats(d: DocumentData): UserStats | undefined {
     // the profile/championship assist + win tallies read back as 0.
     assists: typeof s.assists === 'number' ? s.assists : 0,
     wins: typeof s.wins === 'number' ? s.wins : 0,
+    // Penalty stats (server-maintained). Same strip-on-read risk — without
+    // these the profile penalty tiles read back as 0. Left undefined when
+    // absent so a player who never took a penalty carries no penalty fields.
+    penTaken: typeof s.penTaken === 'number' ? s.penTaken : undefined,
+    penScored: typeof s.penScored === 'number' ? s.penScored : undefined,
+    penMissed: typeof s.penMissed === 'number' ? s.penMissed : undefined,
+    penFaced: typeof s.penFaced === 'number' ? s.penFaced : undefined,
+    penSaved: typeof s.penSaved === 'number' ? s.penSaved : undefined,
+    penConceded: typeof s.penConceded === 'number' ? s.penConceded : undefined,
   };
 }
 
@@ -179,6 +188,15 @@ const userConverter: FirestoreDataConverter<User> = {
             goals: u.stats.goals ?? 0,
             assists: u.stats.assists ?? 0,
             wins: u.stats.wins ?? 0,
+            // Penalty stats — only serialize when present, so a full setDoc
+            // preserves the server value (read back by readStats) without
+            // creating 0-fields on every user who never took a penalty.
+            ...(typeof u.stats.penTaken === 'number' ? { penTaken: u.stats.penTaken } : {}),
+            ...(typeof u.stats.penScored === 'number' ? { penScored: u.stats.penScored } : {}),
+            ...(typeof u.stats.penMissed === 'number' ? { penMissed: u.stats.penMissed } : {}),
+            ...(typeof u.stats.penFaced === 'number' ? { penFaced: u.stats.penFaced } : {}),
+            ...(typeof u.stats.penSaved === 'number' ? { penSaved: u.stats.penSaved } : {}),
+            ...(typeof u.stats.penConceded === 'number' ? { penConceded: u.stats.penConceded } : {}),
           }
         : null,
       // fcmTokens are NO LONGER written to the world-readable /users doc —
@@ -678,6 +696,41 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
             // never sees it and per-player assist tallies stay 0 forever.
             assisterId: typeof x.assisterId === 'string' ? x.assisterId : undefined,
             ownGoal: x.ownGoal === true ? true : undefined,
+            // Penalty marker + keeper — same strip-on-read risk as the assister:
+            // without these the round-end commit can't credit penalty stats.
+            penalty:
+              (x as { penalty?: unknown }).penalty === true ? true : undefined,
+            keeperId:
+              typeof (x as { keeperId?: unknown }).keeperId === 'string'
+                ? (x as { keeperId?: string }).keeperId
+                : undefined,
+            minute: typeof x.minute === 'number' ? x.minute : 0,
+            at: typeof x.at === 'number' ? x.at : 0,
+          }))
+      : undefined,
+    // Missed penalties for the running round (NOT goals — no score impact).
+    // Same explicit-deserialization requirement as `goals` above; without this
+    // branch the array is stripped on every listener tick and the round-end
+    // commit never sees the misses (keeper saves + kicker misses stay 0).
+    missedPenalties: Array.isArray(o.missedPenalties)
+      ? (o.missedPenalties as unknown[])
+          .filter(
+            (x): x is import('@/types').RoundGoal =>
+              !!x &&
+              typeof x === 'object' &&
+              typeof (x as { id?: unknown }).id === 'string' &&
+              ((x as { team?: unknown }).team === 'A' ||
+                (x as { team?: unknown }).team === 'B'),
+          )
+          .map((x) => ({
+            id: x.id,
+            team: x.team,
+            scorerId: typeof x.scorerId === 'string' ? x.scorerId : null,
+            keeperId:
+              typeof (x as { keeperId?: unknown }).keeperId === 'string'
+                ? (x as { keeperId?: string }).keeperId
+                : undefined,
+            penalty: true as const,
             minute: typeof x.minute === 'number' ? x.minute : 0,
             at: typeof x.at === 'number' ? x.at : 0,
           }))

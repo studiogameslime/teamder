@@ -3060,6 +3060,10 @@ export const gameService = {
       assisterId?: UserId | null;
       ownGoal?: boolean;
       minute: number;
+      /** SCORED penalty: counts as a normal goal AND carries the marker so the
+       *  round-end commit credits penalty stats. `keeperId` = opposing keeper. */
+      penalty?: boolean;
+      keeperId?: UserId | null;
     },
   ): Promise<void> {
     if (!gameId) return;
@@ -3074,12 +3078,18 @@ export const gameService = {
       scorerId && opts.assisterId && opts.assisterId !== scorerId
         ? opts.assisterId
         : undefined;
+    // A scored penalty carries its marker + the opposing keeper (never on an
+    // own goal). Undefined-when-false so a normal goal serializes identically.
+    const isPen = !!opts.penalty && !opts.ownGoal;
+    const keeperId = isPen && typeof opts.keeperId === 'string' ? opts.keeperId : undefined;
     const goal: import('@/types').RoundGoal = {
       id: `g_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
       team: opts.team,
       scorerId,
       ...(assisterId ? { assisterId } : {}),
       ownGoal: opts.ownGoal ? true : undefined,
+      ...(isPen ? { penalty: true as const } : {}),
+      ...(keeperId ? { keeperId } : {}),
       minute: Math.max(0, Math.floor(opts.minute)),
       // serverNow() (not Date.now()) so goal ordering matches the synced match
       // clock even on a device whose wall clock is skewed.
@@ -3200,6 +3210,65 @@ export const gameService = {
   },
 
   /**
+   * Record a MISSED penalty for the running round. Not a goal — no score/tally
+   * change — so it lives on `liveMatch.missedPenalties` until round-end, when
+   * `commitRoundStats` credits the kicker's miss + the keeper's save. `keeperId`
+   * is the opposing keeper who saved it.
+   */
+  async recordMissedPenalty(
+    gameId: string,
+    opts: { team: 'A' | 'B'; kickerId: UserId; keeperId: UserId; minute: number },
+  ): Promise<void> {
+    if (!gameId || !opts.kickerId) return;
+    const pen: import('@/types').RoundGoal = {
+      id: `p_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
+      team: opts.team,
+      scorerId: opts.kickerId,
+      ...(opts.keeperId ? { keeperId: opts.keeperId } : {}),
+      penalty: true as const,
+      minute: Math.max(0, Math.floor(opts.minute)),
+      at: serverNow(),
+    };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) {
+        m.liveMatch.missedPenalties = [...(m.liveMatch.missedPenalties ?? []), pen];
+      }
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.missedPenalties': arrayUnion(pen),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Remove one missed penalty from the running round by id (no score change). */
+  async removeMissedPenalty(gameId: string, penId: string): Promise<void> {
+    if (!gameId || !penId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) {
+        m.liveMatch.missedPenalties = (m.liveMatch.missedPenalties ?? []).filter(
+          (x) => x.id !== penId,
+        );
+      }
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    const gone = (cur.liveMatch.missedPenalties ?? []).find((x) => x.id === penId);
+    if (!gone) return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.missedPenalties': arrayRemove(gone),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /**
    * End the running round: derive the winner from the score (a tie is resolved
    * by the manual `manualWinnerSide` the caller passes — that side is recorded
    * as the winner), write goal + pair + community stats, clear the live
@@ -3287,6 +3356,29 @@ export const gameService = {
             assisterId: gl.assisterId ?? null,
             ownGoal: !!gl.ownGoal,
           })),
+          // Penalty-specific stats (kicker taken/scored/missed + keeper
+          // faced/saved/conceded). SCORED penalties come from goals[] (marked
+          // `penalty`) — their GOAL is already counted via `goals` above, so
+          // this array feeds ONLY the penalty fields, never goals. MISSED ones
+          // come from the separate missedPenalties[] (they're not goals).
+          penalties: [
+            ...(lm.goals ?? [])
+              .filter((gl) => gl.penalty && gl.scorerId)
+              .map((gl) => ({
+                kickerId: gl.scorerId as string,
+                keeperId: gl.keeperId ?? null,
+                scored: true,
+                team: gl.team,
+              })),
+            ...(lm.missedPenalties ?? [])
+              .filter((p) => p.scorerId)
+              .map((p) => ({
+                kickerId: p.scorerId as string,
+                keeperId: p.keeperId ?? null,
+                scored: false,
+                team: p.team,
+              })),
+          ],
         });
         // Clear the scoreboard ONLY after the stats commit succeeded. Doing it
         // unconditionally (as before) meant a failed/​swallowed commit — an
@@ -3298,6 +3390,7 @@ export const gameService = {
           'liveMatch.scoreA': 0,
           'liveMatch.scoreB': 0,
           'liveMatch.goals': [],
+          'liveMatch.missedPenalties': [],
           updatedAt: now,
         });
       } catch (err) {
@@ -3314,6 +3407,7 @@ export const gameService = {
         m.liveMatch.scoreA = 0;
         m.liveMatch.scoreB = 0;
         m.liveMatch.goals = [];
+        m.liveMatch.missedPenalties = [];
       }
     }
   },
