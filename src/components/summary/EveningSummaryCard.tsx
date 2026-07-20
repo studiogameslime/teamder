@@ -211,13 +211,32 @@ export const EveningSummaryCard = forwardRef<View, Props>(
 
         {/* score hero */}
         <View style={styles.score}>
-          <Text style={styles.scoreNum}>{model.score.toFixed(1)}</Text>
+          <View style={styles.scoreNumCol}>
+            <Text style={styles.scoreNum}>{model.score.toFixed(1)}</Text>
+            {model.scoreDelta != null && model.scoreDelta !== 0 ? (
+              <Text
+                style={[
+                  styles.scoreDelta,
+                  { color: model.scoreDelta > 0 ? C.green : C.red },
+                ]}
+              >
+                {model.scoreDelta > 0 ? '▲' : '▼'}{' '}
+                {Math.abs(model.scoreDelta).toFixed(1)}
+              </Text>
+            ) : null}
+          </View>
           <View style={styles.scoreText}>
             <Text style={styles.tier}>
               {model.title} {model.titleEmoji}
             </Text>
             <Text style={styles.scoreLabel}>ציון הערב שלך</Text>
-            <Text style={styles.scoreSub}>מגולים, בישולים ומאמץ — לא רק משערים</Text>
+            <Text style={styles.scoreSub}>
+              {model.scoreDelta != null && model.scoreDelta !== 0
+                ? model.scoreDelta > 0
+                  ? 'עלית מהערב הקודם 📈'
+                  : 'קצת מתחת לערב הקודם'
+                : 'מגולים, בישולים וניצחונות — לא רק משערים'}
+            </Text>
           </View>
         </View>
 
@@ -241,6 +260,27 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             <Text style={styles.resLabel}>אחוז ניצחון</Text>
           </View>
         </View>
+
+        {/* community-table standing + movement (computed end-of-evening) */}
+        {model.rank != null ? (
+          <View style={[styles.strip, styles.stripBlue]}>
+            <Text style={styles.stripIco}>🏆</Text>
+            <Text style={styles.stripTxt}>
+              מקום <Text style={styles.stripBoldBlue}>{model.rank}</Text>
+              {model.rankTotal ? ` מתוך ${model.rankTotal}` : ''} בטבלת המועדון
+              {model.rankDelta != null && model.rankDelta !== 0 ? (
+                <Text
+                  style={{
+                    color: model.rankDelta > 0 ? C.green : C.red,
+                    fontWeight: '900',
+                  }}
+                >
+                  {`  ${model.rankDelta > 0 ? '▲' : '▼'}${Math.abs(model.rankDelta)}`}
+                </Text>
+              ) : null}
+            </Text>
+          </View>
+        ) : null}
 
         {/* held the pitch (winner-stays) */}
         {model.heldPitch >= 2 ? (
@@ -551,10 +591,14 @@ const styles = StyleSheet.create({
   },
   stripGold: { backgroundColor: C.goldTint, borderColor: '#FDE9AE' },
   stripLime: { backgroundColor: C.greenTint, borderColor: '#C7EFD6' },
+  stripBlue: { backgroundColor: C.blueTint, borderColor: '#D8E4FF' },
   stripIco: { fontSize: 20 },
   stripTxt: { flex: 1, color: C.ink, fontSize: 13, fontWeight: '700' },
   stripBoldGold: { color: C.goldDeep, fontWeight: '800' },
   stripBoldLime: { color: C.green, fontWeight: '800' },
+  stripBoldBlue: { color: C.blueDeep, fontWeight: '900' },
+  scoreNumCol: { alignItems: 'center', gap: 2 },
+  scoreDelta: { fontSize: 14, fontWeight: '900' },
 
   contrib: {
     padding: 15,

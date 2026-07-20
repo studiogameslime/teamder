@@ -67,6 +67,13 @@ export interface EveningSummaryModel {
   score: number;
   title: string;
   titleEmoji: string;
+  // Comparison vs the player's previous evening + their community-table standing.
+  // Computed at end-of-evening (onGameRosterChanged) AFTER the ranking is final,
+  // stored at eveningStandings/{gameId__uid} — the card reads it, never re-ranks.
+  scoreDelta: number | null; // score − previous evening's score
+  rank: number | null; // 1-based place in the community table
+  rankTotal: number | null;
+  rankDelta: number | null; // places climbed since before this evening (+ = up)
   // phase 2
   contribution: { pct: number; touched: number; teamGoals: number } | null;
   heldPitch: number;
@@ -172,6 +179,10 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     score: eveningScore(goals, assists, wins, rounds),
     title: t.title,
     titleEmoji: t.emoji,
+    scoreDelta: 0.6,
+    rank: 3,
+    rankTotal: 24,
+    rankDelta: 2,
     // pct mirrors the real derivation Math.round(touched/teamGoals*100) = 41.
     contribution: { pct: 41, touched: 7, teamGoals: 17 },
     heldPitch: 5,
@@ -198,16 +209,26 @@ export const eveningSummaryService = {
       // sections. The phase-2/3/4 reads (roundHistory, physical) are OPTIONAL —
       // an old game predating them, or a denied/failed read, must degrade to
       // "no contribution / no physical", never fail or crash the whole summary.
-      const [game, statSnap, roundSnap, physSnap, name] = await Promise.all([
-        gameService.getGameById(gameId).catch(() => null),
-        getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)).catch(() => null),
-        getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
-        getDoc(doc(db, 'games', gameId, 'physical', uid)).catch(() => null),
-        (viewerName
-          ? Promise.resolve(viewerName)
-          : userService.getUserById(uid).then((u) => u?.name ?? '')
-        ).catch(() => ''),
-      ]);
+      const [game, statSnap, roundSnap, physSnap, name, standSnap] =
+        await Promise.all([
+          gameService.getGameById(gameId).catch(() => null),
+          getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)).catch(() => null),
+          getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
+          getDoc(doc(db, 'games', gameId, 'physical', uid)).catch(() => null),
+          (viewerName
+            ? Promise.resolve(viewerName)
+            : userService.getUserById(uid).then((u) => u?.name ?? '')
+          ).catch(() => ''),
+          getDoc(doc(db, 'eveningStandings', `${gameId}__${uid}`)).catch(
+            () => null,
+          ),
+        ]);
+      const stand =
+        standSnap && standSnap.exists()
+          ? (standSnap.data() as Record<string, unknown>)
+          : null;
+      const numOrNull = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) ? v : null;
 
       const row = readStatRow(
         statSnap && statSnap.exists() ? statSnap.data() : undefined,
@@ -280,6 +301,10 @@ export const eveningSummaryService = {
         score: eveningScore(row.goals, row.assists, row.wins, row.rounds),
         title: t.title,
         titleEmoji: t.emoji,
+        scoreDelta: numOrNull(stand?.scoreDelta),
+        rank: numOrNull(stand?.rank),
+        rankTotal: numOrNull(stand?.rankTotal),
+        rankDelta: numOrNull(stand?.rankDelta),
         contribution,
         heldPitch: rs.heldPitch,
         teamGoalsFor,

@@ -3806,14 +3806,21 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         after.groupId &&
         Array.isArray(after.players) &&
         after.players.length > 0) {
+        const gid = after.groupId;
+        // Exclude no-shows — the same rule the attendance‑based counts use
+        // (isAttendedGame / avgAttendance / attendedTogether). Without this, the
+        // community "games played" column + the 'הכי נאמן' (most‑loyal) leader
+        // credited nights a player registered for but skipped, diverging from
+        // the player's own Statistics screen (which strips no‑shows).
+        const arrivals = after.arrivals ?? {};
+        // Latched so the evening-standings block below runs EXACTLY once per
+        // game (a redelivered finish event fails the games batch on the
+        // finishCredited latch → creditedNow stays false → standings skip,
+        // avoiding a double `lastEveningScore` overwrite that would zero the
+        // next delta). Declared OUTSIDE the games try so the standings block
+        // after the catch can still read gid/arrivals/creditedNow.
+        let creditedNow = false;
         try {
-            const gid = after.groupId;
-            // Exclude no-shows — the same rule the attendance‑based counts use
-            // (isAttendedGame / avgAttendance / attendedTogether). Without this, the
-            // community "games played" column + the 'הכי נאמן' (most‑loyal) leader
-            // credited nights a player registered for but skipped, diverging from
-            // the player's own Statistics screen (which strips no‑shows).
-            const arrivals = after.arrivals ?? {};
             const batch = db.batch();
             for (const uid of after.players) {
                 if (arrivals[uid] === 'no_show')
@@ -3835,6 +3842,7 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                 .collection('finishCredited')
                 .doc('once'), { at: Date.now() });
             await batch.commit();
+            creditedNow = true;
         }
         catch (err) {
             const code = err.code;
@@ -3843,6 +3851,109 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
             }
             else
                 console.error('[onGameRosterChanged] games tally failed', event.params.gameId, err);
+        }
+        // ── Evening standings: score delta + community rank movement ─────
+        // Runs ONCE per game (creditedNow), AFTER the games credit — the ranking
+        // metric (points = goals×2 + assists) is already final from
+        // commitRoundStats, so ranks read here are the finalised ones (the user's
+        // timing requirement). Stored per player at eveningStandings/{game__uid}
+        // so the summary card reads ONE doc instead of re-ranking client-side.
+        if (creditedNow) {
+            try {
+                const num = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
+                const eveningScore = (goals, assists, wins, rounds) => {
+                    const winShare = rounds > 0 ? wins / rounds : 0;
+                    const attack = goals * 2 + assists;
+                    const raw = 6 + winShare * 2 + Math.min(1, attack / 8) * 2;
+                    return Math.round(Math.min(10, Math.max(6, raw)) * 10) / 10;
+                };
+                const attendees = after.players.filter((u) => arrivals[u] !== 'no_show');
+                // Cumulative community rows (points already include this evening).
+                const psSnap = await db
+                    .collection('communityPlayerStats')
+                    .where('groupId', '==', gid)
+                    .get();
+                const cum = psSnap.docs
+                    .map((d) => {
+                    const x = d.data();
+                    return {
+                        uid: typeof x.userId === 'string' ? x.userId : '',
+                        goals: num(x.goals),
+                        assists: num(x.assists),
+                        lastScore: typeof x.lastEveningScore === 'number'
+                            ? x.lastEveningScore
+                            : null,
+                    };
+                })
+                    .filter((r) => r.uid);
+                // This-evening per-player stats (for the score + the "before" ranking).
+                const evSnaps = await Promise.all(attendees.map((u) => db
+                    .collection('gamePlayerStats')
+                    .doc(`${event.params.gameId}__${u}`)
+                    .get()));
+                const evStat = {};
+                attendees.forEach((u, i) => {
+                    const d = evSnaps[i].exists
+                        ? evSnaps[i].data()
+                        : {};
+                    evStat[u] = {
+                        goals: num(d.goals),
+                        assists: num(d.assists),
+                        wins: num(d.wins),
+                        rounds: num(d.rounds),
+                    };
+                });
+                const pts = (g, a) => g * 2 + a;
+                // Rank by points desc; ties → goals, then uid (stable, deterministic).
+                const rankByPoints = (pointOf, goalOf) => [...cum].sort((a, b) => pointOf(b.uid) - pointOf(a.uid) ||
+                    goalOf(b.uid) - goalOf(a.uid) ||
+                    a.uid.localeCompare(b.uid));
+                const cumMap = new Map(cum.map((c) => [c.uid, c]));
+                const nowPoints = (uid) => {
+                    const c = cumMap.get(uid);
+                    return c ? pts(c.goals, c.assists) : 0;
+                };
+                const nowGoals = (uid) => cumMap.get(uid)?.goals ?? 0;
+                const beforePoints = (uid) => {
+                    const c = cumMap.get(uid);
+                    if (!c)
+                        return 0;
+                    const e = evStat[uid];
+                    return pts(c.goals - (e?.goals ?? 0), c.assists - (e?.assists ?? 0));
+                };
+                const beforeGoals = (uid) => (cumMap.get(uid)?.goals ?? 0) - (evStat[uid]?.goals ?? 0);
+                const nowRanked = rankByPoints(nowPoints, nowGoals);
+                const beforeRanked = rankByPoints(beforePoints, beforeGoals);
+                const total = cum.length;
+                const standingBatch = db.batch();
+                for (const uid of attendees) {
+                    const e = evStat[uid];
+                    const score = eveningScore(e.goals, e.assists, e.wins, e.rounds);
+                    const prev = cumMap.get(uid)?.lastScore ?? null;
+                    const rankNow = nowRanked.findIndex((c) => c.uid === uid) + 1;
+                    const rankBefore = beforeRanked.findIndex((c) => c.uid === uid) + 1;
+                    standingBatch.set(db
+                        .collection('eveningStandings')
+                        .doc(`${event.params.gameId}__${uid}`), {
+                        gameId: event.params.gameId,
+                        userId: uid,
+                        groupId: gid,
+                        score,
+                        scoreDelta: prev == null ? null : Math.round((score - prev) * 10) / 10,
+                        rank: rankNow > 0 ? rankNow : null,
+                        rankTotal: total > 0 ? total : null,
+                        // + = climbed N places since before this evening.
+                        rankDelta: rankNow > 0 && rankBefore > 0 ? rankBefore - rankNow : null,
+                        at: Date.now(),
+                    }, { merge: true });
+                    // Remember this evening's score for next evening's delta.
+                    standingBatch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), { lastEveningScore: score }, { merge: true });
+                }
+                await standingBatch.commit();
+            }
+            catch (err) {
+                console.error('[onGameRosterChanged] evening standings failed', event.params.gameId, err);
+            }
         }
         // ── Evening-summary push ────────────────────────────────────────
         // The night is over → hand each player who actually showed up a
