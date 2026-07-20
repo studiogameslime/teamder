@@ -11306,7 +11306,6 @@ export const commitRoundStats = onCall(
       sideB,
       winnerSide,
       goals,
-      penalties,
     } = (request.data ?? {}) as {
       gameId?: string;
       roundId?: number | string | null;
@@ -11317,14 +11316,6 @@ export const commitRoundStats = onCall(
         scorerId?: string | null;
         assisterId?: string | null;
         ownGoal?: boolean;
-      }[];
-      // Penalty events (kicker + keeper + scored). A SCORED penalty's GOAL is
-      // ALREADY in `goals[]`; these entries credit ONLY the penalty-specific
-      // fields (never goals). MISSED penalties appear only here.
-      penalties?: {
-        kickerId?: string | null;
-        keeperId?: string | null;
-        scored?: boolean;
       }[];
     };
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
@@ -11472,18 +11463,6 @@ export const commitRoundStats = onCall(
                 ownGoal: !!g.ownGoal,
                 team: A.includes(g.scorerId as string) ? 'A' : 'B',
               })),
-            penalties: (penalties ?? [])
-              .filter((p) => p.kickerId && isReal(p.kickerId) && onField.has(p.kickerId))
-              .slice(0, 100)
-              .map((p) => ({
-                kickerId: p.kickerId as string,
-                keeperId:
-                  p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)
-                    ? p.keeperId
-                    : null,
-                scored: !!p.scored,
-                team: A.includes(p.kickerId as string) ? 'A' : 'B',
-              })),
             at: now,
           }
         : null;
@@ -11519,67 +11498,6 @@ export const commitRoundStats = onCall(
           tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
           updatedAt: now,
         },
-        { merge: true },
-      );
-    }
-
-    // 1c) PENALTY stats (penalty situations only). Kicker: taken/scored/missed.
-    //     Keeper: faced/saved/conceded. A SCORED penalty's GOAL is already
-    //     credited via `byScorer` above — here we add ONLY the pen-specific
-    //     fields, never goals. Both kicker + keeper gated through `onField`,
-    //     exactly like goals/assists. Deduped per player so each writes once.
-    //     CAP: the batch already runs near Firestore's 500-op ceiling at 11-a-
-    //     side (~385 ops). Real in-match penalties are 0–2 per mini-game, so a
-    //     cap of 16 never truncates a real round while bounding the added ops
-    //     to ≤ 16 kickers + 16 keepers × 3 stores ≈ 96 (total stays < 500). A
-    //     forged/oversized payload is clipped rather than overflowing the batch.
-    const pens = (penalties ?? []).slice(0, 16);
-    const kickerPen: Record<string, { taken: number; scored: number; missed: number }> = {};
-    const keeperPen: Record<string, { faced: number; saved: number; conceded: number }> = {};
-    for (const p of pens) {
-      const scored = !!p.scored;
-      const k = p.kickerId;
-      if (k && isReal(k) && onField.has(k)) {
-        const s = (kickerPen[k] ??= { taken: 0, scored: 0, missed: 0 });
-        s.taken += 1;
-        if (scored) s.scored += 1;
-        else s.missed += 1;
-      }
-      const gk = p.keeperId;
-      if (gk && isReal(gk) && onField.has(gk)) {
-        const s = (keeperPen[gk] ??= { faced: 0, saved: 0, conceded: 0 });
-        s.faced += 1;
-        if (scored) s.conceded += 1;
-        else s.saved += 1;
-      }
-    }
-    for (const [kicker, s] of Object.entries(kickerPen)) {
-      const fields = { penTaken: inc(s.taken), penScored: inc(s.scored), penMissed: inc(s.missed) };
-      batch.set(db.collection('users').doc(kicker), { stats: fields }, { merge: true });
-      if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${kicker}`),
-          { groupId, userId: kicker, ...fields, updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${kicker}`),
-        { gameId, userId: kicker, ...fields, updatedAt: now },
-        { merge: true },
-      );
-    }
-    for (const [keeper, s] of Object.entries(keeperPen)) {
-      const fields = { penFaced: inc(s.faced), penSaved: inc(s.saved), penConceded: inc(s.conceded) };
-      batch.set(db.collection('users').doc(keeper), { stats: fields }, { merge: true });
-      if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${keeper}`),
-          { groupId, userId: keeper, ...fields, updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${keeper}`),
-        { gameId, userId: keeper, ...fields, updatedAt: now },
         { merge: true },
       );
     }

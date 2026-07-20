@@ -672,16 +672,6 @@ export interface UserStats {
   /** Lifetime assists — incremented server-side by `commitRoundStats` when the
    *  admin attributes an assist to the goal during an advanced-match round. */
   assists?: number;
-  /** Penalty stats (penalty situations ONLY — not general shots/saves).
-   *  As kicker: taken = scored + missed. As keeper: faced = saved + conceded.
-   *  All incremented server-side by `commitRoundStats`. All optional → no
-   *  migration; a player with no penalties simply has them undefined. */
-  penTaken?: number;
-  penScored?: number;
-  penMissed?: number;
-  penFaced?: number;
-  penSaved?: number;
-  penConceded?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
@@ -1151,13 +1141,6 @@ export interface RoundGoal {
    *  there was no assist / unknown scorer / own goal. */
   assisterId?: UserId | null;
   ownGoal?: boolean;
-  /** True when this goal came from a penalty kick. A SCORED penalty is a normal
-   *  goal (counts on the score + tally) that ALSO carries this marker so the
-   *  round-end commit can credit the penalty-specific stats. `keeperId` is the
-   *  opposing player who was in goal for it. MISSED penalties never live here —
-   *  they sit on `LiveMatchState.missedPenalties` (they aren't goals). */
-  penalty?: boolean;
-  keeperId?: UserId | null;
   minute: number;
   at: number; // epoch ms
 }
@@ -1823,14 +1806,6 @@ export interface LiveMatchState {
    * `MatchRound.goals` and cleared when the round ends.
    */
   goals?: RoundGoal[];
-  /**
-   * MISSED penalties for the CURRENTLY-RUNNING round. A missed penalty is NOT
-   * a goal (no score/tally change), so it can't live in `goals[]` — it sits
-   * here until round-end, when `commitRoundStats` credits the kicker's miss +
-   * the keeper's save. Reuses the RoundGoal shape (`scorerId` = the kicker,
-   * `keeperId` = the keeper who saved). Cleared alongside `goals` at round-end.
-   */
-  missedPenalties?: RoundGoal[];
   /** Score for team C — only used when numberOfTeams ≥ 3. */
   scoreC?: number;
   /** Score for team D — only used when numberOfTeams ≥ 4. */

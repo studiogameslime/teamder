@@ -39,9 +39,13 @@ interface Props {
   current: number;
   /** Step labels in display order. The component derives count from length. */
   labels: string[];
+  /** Optional per-step emoji for the STATIC step icons (e.g. ['⚽','👟']).
+   *  When omitted, every step shows the gray football-outline (create-game
+   *  default). The rolling blue football overlay is unchanged either way. */
+  emojis?: string[];
 }
 
-export function StepIndicator({ current, labels }: Props) {
+export function StepIndicator({ current, labels, emojis }: Props) {
   // Bar width drives the deterministic step-center math below — saves
   // us from per-item onLayout (which on Android+forceRTL can report
   // either logical or physical x depending on RN version).
@@ -154,11 +158,15 @@ export function StepIndicator({ current, labels }: Props) {
         <React.Fragment key={i}>
           <View style={styles.item}>
             <View style={styles.staticBallSlot}>
-              <Ionicons
-                name="football-outline"
-                size={ICON_SIZE}
-                color={colors.border}
-              />
+              {emojis && emojis[i] ? (
+                <Text style={styles.stepEmoji}>{emojis[i]}</Text>
+              ) : (
+                <Ionicons
+                  name="football-outline"
+                  size={ICON_SIZE}
+                  color={colors.border}
+                />
+              )}
             </View>
             <Text
               style={[
@@ -221,6 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepEmoji: { fontSize: 22, textAlign: 'center' },
   label: {
     ...typography.caption,
     color: colors.textMuted,
