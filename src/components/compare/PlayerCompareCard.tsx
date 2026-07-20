@@ -68,7 +68,7 @@ function MetricRow({ m, last }: { m: CompareMetric; last?: boolean }) {
 
 export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
   function PlayerCompareCard({ model }, ref) {
-    const { a, b, metrics, verdict } = model;
+    const { a, b, metrics, verdict, rankA, rankB, rankTotal } = model;
     const youLead = verdict.leader === 'a';
     const tie = verdict.leader === 'tie';
     const leadCount = youLead ? verdict.aLeads : verdict.bLeads;
@@ -129,6 +129,28 @@ export const PlayerCompareCard = forwardRef<View, { model: ComparisonModel }>(
             </Text>
           </View>
         </View>
+
+        {/* community-table standing — a headline row, deliberately NOT counted
+            in the verdict (rank is derived from the same points the metrics
+            already cover). Lower place wins → highlighted green. */}
+        {rankA != null && rankB != null ? (
+          <View style={styles.standing}>
+            <Text
+              style={[styles.standVal, styles.valYou, rankA < rankB && styles.valWin]}
+            >
+              {rankA < rankB ? '● ' : ''}#{rankA}
+            </Text>
+            <View style={styles.standMid}>
+              <Text style={styles.standLbl}>🏆 מיקום בטבלה</Text>
+              <Text style={styles.standSub}>מתוך {rankTotal} במועדון</Text>
+            </View>
+            <Text
+              style={[styles.standVal, styles.valHim, rankB < rankA && styles.valWin]}
+            >
+              #{rankB}{rankB < rankA ? ' ●' : ''}
+            </Text>
+          </View>
+        ) : null}
 
         {/* metrics */}
         <View style={styles.metrics}>
@@ -219,6 +241,19 @@ const styles = StyleSheet.create({
   valYou: { textAlign: 'right', color: C.blue },
   valHim: { textAlign: 'left', color: C.red },
   valWin: { color: C.green },
+  standing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: C.blueTint,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  standVal: { fontWeight: '900', fontSize: 24, flex: 1 },
+  standMid: { alignItems: 'center' },
+  standLbl: { fontWeight: '800', fontSize: 13, color: C.ink },
+  standSub: { fontSize: 11, fontWeight: '700', color: C.muted, marginTop: 1 },
   rlbl: { fontSize: 12, color: C.muted, textAlign: 'center', flex: 1.4 },
   bar: {
     flexDirection: 'row',

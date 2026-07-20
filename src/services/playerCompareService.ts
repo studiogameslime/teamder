@@ -50,6 +50,13 @@ export interface ComparisonModel {
   b: ComparePlayer;
   metrics: CompareMetric[];
   verdict: { leader: 'a' | 'b' | 'tie'; aLeads: number; bLeads: number; total: number };
+  // Community-table standing (1-based) for each player. Shown as its own row —
+  // NOT folded into the verdict count, since rank is derived from the same
+  // points the metrics already cover (would double-count the leader). null when
+  // a player has no ranked stat row yet.
+  rankA: number | null;
+  rankB: number | null;
+  rankTotal: number;
 }
 
 interface Row {
@@ -152,7 +159,18 @@ export const playerCompareService = {
         total: metrics.length,
       };
 
-      return { a, b, metrics, verdict };
+      // Community-table position = index in the points-ranked champ list.
+      const idxA = rows.findIndex((r) => r.uid === uidA);
+      const idxB = rows.findIndex((r) => r.uid === uidB);
+      return {
+        a,
+        b,
+        metrics,
+        verdict,
+        rankA: idxA >= 0 ? idxA + 1 : null,
+        rankB: idxB >= 0 ? idxB + 1 : null,
+        rankTotal: rows.length,
+      };
     } catch (err) {
       logError('getComparison', err, { groupId, uidA, uidB });
       return null;
