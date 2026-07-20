@@ -203,8 +203,13 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             <Text style={styles.playerName} numberOfLines={1}>
               {model.playerName}
             </Text>
+            {/* Club name on its OWN line so a long name isn't truncated
+               together with the counts (user report: "שם המועדון חתוך"). */}
             <Text style={styles.meta} numberOfLines={1}>
-              {roundsMeta} משחקונים · {model.dateLabel} · {model.communityName}
+              {roundsMeta} משחקונים · {model.dateLabel}
+            </Text>
+            <Text style={styles.metaClub} numberOfLines={1}>
+              {model.communityName}
             </Text>
           </View>
         </View>
@@ -343,15 +348,19 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         </View>
 
-        {/* grit / effort — always shows the player did the work */}
-        <View style={[styles.strip, styles.stripLime]}>
-          <Text style={styles.stripIco}>💪</Text>
-          <Text style={styles.stripTxt}>
-            עבדת קשה — שיחקת{' '}
-            <Text style={styles.stripBoldLime}>{gritRounds}</Text>
-            {gritDistance}
-          </Text>
-        </View>
+        {/* grit / effort — only when the player actually played mini-games.
+           A retro-goal-only evening has rounds=0, where "עבדת קשה — שיחקת 0
+           משחקונים" read as nonsense (user report). */}
+        {model.rounds > 0 ? (
+          <View style={[styles.strip, styles.stripLime]}>
+            <Text style={styles.stripIco}>💪</Text>
+            <Text style={styles.stripTxt}>
+              עבדת קשה — שיחקת{' '}
+              <Text style={styles.stripBoldLime}>{gritRounds}</Text>
+              {gritDistance}
+            </Text>
+          </View>
+        ) : null}
 
         {/* physical panel */}
         {p ? (
@@ -548,6 +557,7 @@ const styles = StyleSheet.create({
   whoText: { flex: 1 },
   playerName: { color: C.ink, fontSize: 21, fontWeight: '800' },
   meta: { color: C.muted, fontSize: 12, fontWeight: '600', marginTop: 4 },
+  metaClub: { color: C.ink, fontSize: 12.5, fontWeight: '800', marginTop: 1 },
 
   score: {
     flexDirection: 'row',

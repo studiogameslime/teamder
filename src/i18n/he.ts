@@ -2198,6 +2198,10 @@ export const he = {
   pairStatsAgainstWL: (w: number, l: number) => `ניצחת ${w} · הפסדת ${l}`,
   pairStatsRoundsUnit: (n: number) => (n === 1 ? 'משחקון 1' : `${n} משחקונים`),
   pairStatsRoundsCount: (n: number) => (n === 1 ? 'משחקון אחד' : `${n} משחקונים`),
+  // Ties aren't wins or losses, so rounds can exceed wins+losses. Surface the
+  // tie count so "23 משחקונים · 11 ניצחת · 11 הפסדת" no longer looks off-by-one.
+  pairStatsRoundsWithTies: (n: number, ties: number) =>
+    `${n === 1 ? 'משחקון אחד' : `${n} משחקונים`}${ties > 0 ? ` · ${ties} תיקו` : ''}`,
   // Separate W/L labels for the donut rows (big number + small label).
   pairWonTogether: 'ניצחתם',
   pairLostTogether: 'הפסדתם',

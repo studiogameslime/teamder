@@ -80,9 +80,9 @@ export const CLUB_ACHIEVEMENTS: ClubAchievementDef[] = [
   },
   {
     id: 'ageYears',
-    titleHe: 'ותק',
-    nounHe: 'שנים',
-    howHe: 'החזיקו את המועדון פעיל לאורך זמן',
+    titleHe: 'ותק המועדון',
+    nounHe: 'שנים פעילות',
+    howHe: 'כמה שנים המועדון קיים ופעיל — תואר על ההיסטוריה של המועדון',
     icon: 'time',
     tiers: tiered(1, 2, 5),
     value: (m) => m.ageYears,

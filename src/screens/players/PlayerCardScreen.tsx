@@ -435,7 +435,9 @@ function H2hRecordRow({
         <Text style={styles.h2hLabel} numberOfLines={1}>
           {label}
         </Text>
-        <Text style={styles.h2hSub}>{he.pairStatsRoundsCount(rounds)}</Text>
+        <Text style={styles.h2hSub}>
+          {he.pairStatsRoundsWithTies(rounds, Math.max(0, rounds - wins - losses))}
+        </Text>
       </View>
       {/* RTL: wins (green) first → right/inner (next to the label), losses
           (red) → left. Reads ניצחת · הפסדת in the natural Hebrew order. */}

@@ -25,8 +25,6 @@ import {
   eveningSummaryService,
   type EveningSummaryModel,
 } from '@/services/eveningSummaryService';
-import { physicalSyncService } from '@/services/physicalSyncService';
-import { healthService } from '@/services/healthService';
 import { useUserStore } from '@/store/userStore';
 import { toast } from '@/components/Toast';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
@@ -45,22 +43,13 @@ export function EveningSummaryScreen() {
   const [model, setModel] = useState<EveningSummaryModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  // Bumped to re-run the load after a manual "connect watch" grant.
-  const [reload, setReload] = useState(0);
-  // null = unknown; false = HC available but not yet granted (so a connect tap
-  // is meaningful); true = granted (hide the CTA — no more permission to gain).
-  const [healthGranted, setHealthGranted] = useState<boolean | null>(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     (async () => {
-      // Best-effort: ingest this player's physical session from Health Connect
-      // (any watch/band the phone syncs from, scoped to the timer-active minutes)
-      // so the model picks up the physical panel on this same load. A fast no-op
-      // when there's no Health Connect data / in mock.
-      await physicalSyncService.syncForGame(gameId).catch(() => false);
+      // Physical/Health-Connect ingestion was removed — the feature is disabled
+      // (no wearable data path). The summary is goals/assists/result only now.
       const m = await eveningSummaryService.getEveningSummary(
         gameId,
         currentUser?.id ?? '',
@@ -73,52 +62,7 @@ export function EveningSummaryScreen() {
     return () => {
       alive = false;
     };
-  }, [gameId, currentUser?.id, currentUser?.name, reload]);
-
-  // Resolve whether the Health Connect READ permission is already granted, so we
-  // only show the "connect watch" CTA when a tap can actually change something.
-  // Without this, every Android user with no wearable feeding Health Connect saw
-  // a permanent, un-satisfiable button (model.physical stays null forever).
-  useEffect(() => {
-    let alive = true;
-    if (!healthService.isAvailable()) {
-      setHealthGranted(false);
-      return undefined;
-    }
-    healthService
-      .arePermissionsGranted()
-      .then((g) => {
-        if (alive) setHealthGranted(g);
-      })
-      .catch(() => {
-        if (alive) setHealthGranted(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [reload]);
-
-  // Manual "connect watch" — for a player who dismissed the first-time Health
-  // Connect prompt. Force the permission sheet, then reload so the physical
-  // panel fills in (the load effect re-runs syncForGame — no need to sync here
-  // too, which would double every Health Connect read + saveGamePhysical write).
-  async function onConnectWatch() {
-    if (connecting) return;
-    setConnecting(true);
-    try {
-      const ok = await healthService.ensurePermissions(true);
-      if (ok) setReload((n) => n + 1);
-    } finally {
-      setConnecting(false);
-    }
-  }
-
-  const showConnectWatch =
-    !loading &&
-    !!model &&
-    !model.physical &&
-    healthService.isAvailable() &&
-    healthGranted === false;
+  }, [gameId, currentUser?.id, currentUser?.name]);
 
   async function onShare() {
     if (!cardRef.current || sharing) return;
@@ -177,22 +121,6 @@ export function EveningSummaryScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <EveningSummaryCard ref={cardRef} model={model} />
-          {showConnectWatch ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.connectBtn,
-                pressed && { opacity: 0.9 },
-              ]}
-              onPress={onConnectWatch}
-              disabled={connecting}
-            >
-              {connecting ? (
-                <ActivityIndicator color="#1E40AF" />
-              ) : (
-                <Text style={styles.connectTxt}>{he.summaryConnectWatch}</Text>
-              )}
-            </Pressable>
-          ) : null}
           <Pressable
             style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.9 }]}
             onPress={onShare}
@@ -228,14 +156,4 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   shareTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  connectBtn: {
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#1E40AF',
-    backgroundColor: '#EEF2FF',
-  },
-  connectTxt: { color: '#1E40AF', fontSize: 14, fontWeight: '800' },
 });
