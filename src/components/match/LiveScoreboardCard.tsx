@@ -392,11 +392,12 @@ function GoalWizard({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.wizSheet} onPress={(e) => e.stopPropagation()}>
-          {/* Rolling-ball step header: ⚽ כובש → 👟 מבשל (like the create-game wizard). */}
+          {/* Rolling-ball step header (like the create-game wizard). The active
+             step is a clean BLUE ball; inactive steps are solid BLACK balls. */}
           <StepIndicator
             current={step}
             labels={[he.goalStepScorer, he.goalStepAssist]}
-            emojis={['⚽', '👟']}
+            inactiveColor="#0F172A"
           />
           <View style={styles.wizBody}>
             {step === 1 ? (

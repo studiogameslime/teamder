@@ -43,9 +43,14 @@ interface Props {
    *  When omitted, every step shows the gray football-outline (create-game
    *  default). The rolling blue football overlay is unchanged either way. */
   emojis?: string[];
+  /** When set, INACTIVE steps render a solid football in this color and the
+   *  ACTIVE step's static icon is hidden (the blue rolling ball sits there) —
+   *  so the active step reads pure blue and inactive steps pure black, with no
+   *  overlap. Omit for the create-game look (gray football-outline on all). */
+  inactiveColor?: string;
 }
 
-export function StepIndicator({ current, labels, emojis }: Props) {
+export function StepIndicator({ current, labels, emojis, inactiveColor }: Props) {
   // Bar width drives the deterministic step-center math below — saves
   // us from per-item onLayout (which on Android+forceRTL can report
   // either logical or physical x depending on RN version).
@@ -160,6 +165,13 @@ export function StepIndicator({ current, labels, emojis }: Props) {
             <View style={styles.staticBallSlot}>
               {emojis && emojis[i] ? (
                 <Text style={styles.stepEmoji}>{emojis[i]}</Text>
+              ) : inactiveColor ? (
+                // Active step: nothing here — the blue rolling ball covers it,
+                // so it reads pure blue (no black football peeking through).
+                // Inactive steps: a solid black football.
+                i + 1 === current ? null : (
+                  <Ionicons name="football" size={ICON_SIZE} color={inactiveColor} />
+                )
               ) : (
                 <Ionicons
                   name="football-outline"
