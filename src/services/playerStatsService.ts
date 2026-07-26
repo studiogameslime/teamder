@@ -80,7 +80,20 @@ export const playerStatsService = {
   ): Promise<PlayerStatsSummary> {
     const goals = Math.max(0, ctx.goals ?? 0);
     const assists = Math.max(0, ctx.assists ?? 0);
-    if (!userId || USE_MOCK_DATA) return emptySummary(goals, assists);
+    if (!userId) return emptySummary(goals, assists);
+    // Mock: synthesize a plausible summary so the profile stats screen renders
+    // with data (attendedGames > 0 flips the `hasData` gate) instead of the
+    // empty state — lets the penalty tiles + numbers show in the emulator demo.
+    if (USE_MOCK_DATA) {
+      return {
+        ...emptySummary(goals, assists),
+        attendedGames: 28,
+        totalRegistered: 30,
+        attendanceRate: 93,
+        goalsPerEvening: 28 > 0 ? Math.round((goals / 28) * 10) / 10 : 0,
+        distinctPlayers: 22,
+      };
+    }
 
     // ── Games scan: attendance + co-attendance per teammate ──────────────
     let attendedGames = 0;

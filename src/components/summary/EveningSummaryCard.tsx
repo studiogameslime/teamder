@@ -171,9 +171,9 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     // In winner-stays the player sits some mini-games out, so show played-of-
     // total when the total is known and larger than what they played.
     const showTotal = model.totalKnown && model.totalRounds > model.rounds;
-    const roundsMeta = showTotal
-      ? `${model.rounds} מתוך ${model.totalRounds}`
-      : `${model.rounds}`;
+    // Header = the EVENING TOTAL mini-games (user request); the player's share
+    // of them moves to the grit strip below ("שיחקת X מתוך Y").
+    const roundsMeta = model.totalKnown ? `${model.totalRounds}` : `${model.rounds}`;
     const gritRounds = showTotal
       ? `${model.rounds} מתוך ${model.totalRounds} המשחקונים`
       : model.totalKnown

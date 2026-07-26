@@ -422,12 +422,40 @@ export const userService = {
   async getUserById(uid: string): Promise<User | null> {
     if (!uid) return null;
     if (USE_MOCK_DATA) {
+      const { mockPlayers } = await import('@/data/mockData');
+      const idx = mockPlayers.findIndex((x) => x.id === uid);
+      // Demo penalty stats (mirrors the community-champ demo spread) so the
+      // profile penalty tiles + compare card have something to render in mock.
+      const demoPenStats = () => {
+        if (idx < 0 || idx >= 8) return undefined;
+        const penTaken = Math.max(0, 9 - idx);
+        const penScored = Math.min(penTaken, [7, 8, 4, 5, 2, 3, 1, 0][idx] ?? 0);
+        const penFaced = Math.max(0, 8 - idx);
+        const penSaved = Math.min(penFaced, [2, 3, 6, 1, 4, 0, 1, 0][idx] ?? 0);
+        return {
+          penTaken,
+          penScored,
+          penMissed: penTaken - penScored,
+          penFaced,
+          penSaved,
+          penConceded: penFaced - penSaved,
+        };
+      };
       const cur = await this.getCurrentUser();
-      if (cur && cur.id === uid) return cur;
+      if (cur && cur.id === uid) {
+        // Merge demo penalty stats onto the signed-in mock user so their own
+        // profile ("סטטיסטיקה") shows the penalty tiles.
+        const pen = demoPenStats();
+        return pen
+          ? {
+              ...cur,
+              stats: { totalGames: 30, attended: 28, cancelled: 1, ...(cur.stats ?? {}), ...pen },
+            }
+          : cur;
+      }
       // Mock players have rich identity but no persisted User record;
       // surface a synthetic User so the Player Card can still render.
-      const { mockPlayers } = await import('@/data/mockData');
-      const p = mockPlayers.find((x) => x.id === uid);
+      const p = idx >= 0 ? mockPlayers[idx] : undefined;
       if (!p) return null;
       return {
         id: p.id,
@@ -435,6 +463,18 @@ export const userService = {
         avatarId: undefined,
         photoUrl: p.avatarUrl,
         createdAt: Date.now(),
+        stats:
+          idx < 8
+            ? {
+                totalGames: 30,
+                attended: 28,
+                cancelled: 1,
+                goals: Math.max(0, 58 - idx * 7),
+                assists: Math.max(0, 26 - idx * 3),
+                wins: Math.max(0, 22 - idx * 2),
+                ...demoPenStats(),
+              }
+            : undefined,
       };
     }
     try {

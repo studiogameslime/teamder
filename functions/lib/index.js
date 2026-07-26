@@ -3550,6 +3550,41 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         // Don't spam a "game cancelled" push when a FINISHED / already-cancelled
         // game is deleted (cleanup) — its participants already played / were told.
         const delStatus = before?.status;
+        // ── Audit trail: record EVERY game deletion (create-once) ────────────
+        // Firestore triggers carry no auth actor, so we can't see WHO issued the
+        // delete here. A client build stamps the exact deleter into this same doc
+        // BEFORE deleting (its create lands first → our create() below no-ops and
+        // theirs wins). Until then this is the best guess: a populated game that
+        // was deleted = a human admin/creator (the delete button is admin-gated);
+        // an empty (0-roster) game = the hourly stale-cleanup cron.
+        if (before) {
+            const rosterCount = Array.from(new Set([
+                ...(before.players ?? []),
+                ...(before.waitlist ?? []),
+                ...(before.pending ?? []),
+            ])).length;
+            const source = rosterCount === 0 ? 'auto-cleanup' : 'manual';
+            try {
+                await db
+                    .collection('gameDeletions')
+                    .doc(event.params.gameId)
+                    .create({
+                    gameId: event.params.gameId,
+                    deletedBy: source === 'manual' ? before.createdBy ?? '' : 'system:stale-cleanup',
+                    deletedByApprox: true, // server best-guess; a client build overwrites with the exact actor
+                    source,
+                    gameTitle: before.title ?? '',
+                    groupId: before.groupId ?? '',
+                    createdBy: before.createdBy ?? '',
+                    status: delStatus ?? '',
+                    rosterCount,
+                    deletedAt: Date.now(),
+                });
+            }
+            catch {
+                /* already recorded — a client stamped the exact deleter, or a retry */
+            }
+        }
         if (before && delStatus !== 'finished' && delStatus !== 'cancelled') {
             // Self-exclude the game creator: the person deleting is virtually always
             // the organiser, and they don't need "your game was cancelled" for their
@@ -5694,11 +5729,12 @@ exports.adminReorderRoster = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
 //   • keep the dedupeKey free of per-user discriminators so
 //     successive cancels collide on the same doc id.
 //
-// Auth: the cancelling user must be signed in AND must currently be
-// the user identified in the input (no proxy cancellations). The
-// game's createdBy is the recipient; if the canceller IS the game
-// creator (organiser cancelling themselves out of their own game)
-// we skip — they don't need a push about their own action.
+// Auth: the cancelling user must be signed in AND must currently be a
+// participant of the game (no proxy cancellations). Recipients are the
+// game's createdBy PLUS every community admin (group.adminIds) — so the
+// whole admin team is notified, not just whoever opened the game. The
+// canceller is always excluded from the recipients (an organiser cancelling
+// themselves out of their own game needs no push about their own action).
 exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     if (!request.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
@@ -5721,15 +5757,6 @@ exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_A
         throw new https_1.HttpsError('not-found', 'game does not exist');
     }
     const game = gameSnap.data();
-    const adminUid = game.createdBy;
-    if (!adminUid) {
-        // No admin to notify (legacy game). Silently succeed —
-        // suppressing the push is the right behaviour.
-        return { ok: true, skipped: 'no-admin' };
-    }
-    if (adminUid === callerUid) {
-        return { ok: true, skipped: 'self-cancel' };
-    }
     // Only a real participant may fire a cancel notification. The cancel flow
     // removes the player from the roster BEFORE calling this, so accept either
     // a current roster membership OR a just-stamped cancellations[uid] entry.
@@ -5742,13 +5769,34 @@ exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_A
     if (!related) {
         return { ok: true, skipped: 'not-a-participant' };
     }
+    // Recipients = the game creator + EVERY community admin, so the whole
+    // admin team hears about a cancellation — not just whoever opened the
+    // game (user request). Deduped; the canceller never notifies themselves
+    // (an organiser cancelling out of their own game needs no push).
+    const recipients = new Set();
+    if (game.createdBy)
+        recipients.add(game.createdBy);
+    if (game.groupId) {
+        const grpSnap = await db.collection('groups').doc(game.groupId).get();
+        const adminIds = grpSnap.data()?.adminIds ?? [];
+        for (const a of adminIds)
+            if (typeof a === 'string' && a)
+                recipients.add(a);
+    }
+    recipients.delete(callerUid);
+    if (recipients.size === 0) {
+        // No admin to notify (legacy game / canceller is the only admin).
+        return { ok: true, skipped: 'no-recipients' };
+    }
     const cancellingUserName = (userSnap.exists &&
         typeof userSnap.data()?.name === 'string' &&
         userSnap.data().name.slice(0, 60)) ||
         '';
-    const result = await createNotificationOnce({
+    // One aggregated notification per recipient — the dedupeKey namespaces by
+    // recipientId, so each admin gets their own count-aggregated doc.
+    const results = await Promise.all(Array.from(recipients).map((recipientId) => createNotificationOnce({
         type: 'playerCancelled',
-        recipientId: adminUid,
+        recipientId,
         payload: {
             gameId,
             gameTitle: typeof game.title === 'string' ? game.title : '',
@@ -5761,8 +5809,8 @@ exports.notifyPlayerCancelled = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_A
             cancellingUserNames: cancellingUserName ? [cancellingUserName] : [],
         },
         createdByUid: callerUid,
-    });
-    return { ok: true, result };
+    })));
+    return { ok: true, recipients: recipients.size, results };
 });
 // ─── Callable: notify players their auto-balanced teams are ready ──────
 //
@@ -7660,7 +7708,13 @@ async function runFillerPulseBatch(gameId) {
     const lead = startsAt - now;
     if (lead <= PULSE_STOP_BEFORE_MS)
         return null; // too close to kickoff
-    if (lead > PULSE_MAX_LEAD_MS)
+    // A MANUAL admin "send to all" (chain marked manual) may run any time before
+    // kickoff — admins asked to not be limited to the 12h window. The AUTOMATIC
+    // sweep still defers games further than PULSE_MAX_LEAD_MS out; they enter the
+    // pulse engine once inside the window.
+    const chainSnap = await db.collection('fillerPulseChains').doc(gameId).get();
+    const isManualChain = chainSnap.exists && chainSnap.data().manual === true;
+    if (!isManualChain && lead > PULSE_MAX_LEAD_MS)
         return null; // too far out — sweep handles it
     const players = game.players ?? [];
     const maxPlayers = game.maxPlayers ?? 0;
@@ -7917,8 +7971,9 @@ exports.startGameFillerPulse = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_AP
     const lead = startsAt - Date.now();
     if (!startsAt || lead <= PULSE_STOP_BEFORE_MS)
         return { started: false, reason: 'TOO_LATE' };
-    if (lead > PULSE_MAX_LEAD_MS)
-        return { started: false, reason: 'TOO_EARLY' };
+    // No upper-bound (12h) gate on the MANUAL pulse — admins can send to all
+    // available players any time before kickoff. The chain is marked `manual`
+    // below so runFillerPulseBatch also bypasses the 12h window when sending.
     const players = game.players ?? [];
     const maxPlayers = game.maxPlayers ?? 0;
     if (maxPlayers > 0 && players.length >= maxPlayers)
@@ -9228,7 +9283,7 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const uid = request.auth?.uid;
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
-    const { gameId, roundId, sideA, sideB, winnerSide, goals, } = (request.data ?? {});
+    const { gameId, roundId, sideA, sideB, winnerSide, goals, penalties, } = (request.data ?? {});
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
         throw new https_1.HttpsError('invalid-argument', 'gameId + winnerSide required');
     }
@@ -9375,6 +9430,17 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
                 ownGoal: !!g.ownGoal,
                 team: A.includes(g.scorerId) ? 'A' : 'B',
             })),
+            penalties: (penalties ?? [])
+                .filter((p) => p.kickerId && isReal(p.kickerId) && onField.has(p.kickerId))
+                .slice(0, 100)
+                .map((p) => ({
+                kickerId: p.kickerId,
+                keeperId: p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)
+                    ? p.keeperId
+                    : null,
+                scored: !!p.scored,
+                team: A.includes(p.kickerId) ? 'A' : 'B',
+            })),
             at: now,
         }
         : null;
@@ -9396,8 +9462,67 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             goals: inc(totalGoalsThisRound),
             // Ties get their own counter → drives the club's draw-rate fun fact.
             tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
+            // Mini-games decided by a penalty SHOOTOUT (a drawn round the admin
+            // resolved with penalties). Identified by a non-empty penalties[]
+            // payload — those commits carry a real winnerSide (the shootout
+            // winner), so they DON'T count as ties. Drives the "% decided by
+            // penalties" fun fact. Counts from deploy onward.
+            shootoutRounds: inc((penalties?.length ?? 0) > 0 ? 1 : 0),
+            // Scoreless mini-games (ended 0:0 in regulation) → the "% ended 0:0"
+            // fun fact. Counts from deploy onward — round-level scores aren't
+            // stored historically, so old 0:0 rounds can't be backfilled.
+            scorelessRounds: inc(scoreA === 0 && scoreB === 0 ? 1 : 0),
             updatedAt: now,
         }, { merge: true });
+    }
+    // 1c) PENALTY-SHOOTOUT stats (tiebreaker kicks only). Kicker:
+    //     taken/scored/missed. Keeper: faced/saved/conceded. Shootout kicks are
+    //     NOT mini-game goals — they never touch score/goals, only these
+    //     pen-specific fields. Both kicker + keeper gated through `onField`,
+    //     exactly like goals/assists. Deduped per player so each writes once.
+    //     CAP: the batch already runs near Firestore's 500-op ceiling at 11-a-
+    //     side (~385 ops). A cap of 16 kicks bounds the added ops to ≤ 16
+    //     kickers + 16 keepers × 3 stores ≈ 96 (total stays < 500). A
+    //     forged/oversized payload is clipped rather than overflowing the batch.
+    // ⚠️ This loop MIRRORS `aggregatePenalties` in src/utils/penaltyStats.ts
+    //    (the unit-tested canonical spec). Keep the two in sync.
+    const pens = (penalties ?? []).slice(0, 16);
+    const kickerPen = {};
+    const keeperPen = {};
+    for (const p of pens) {
+        const scored = !!p.scored;
+        const k = p.kickerId;
+        if (k && isReal(k) && onField.has(k)) {
+            const s = (kickerPen[k] ?? (kickerPen[k] = { taken: 0, scored: 0, missed: 0 }));
+            s.taken += 1;
+            if (scored)
+                s.scored += 1;
+            else
+                s.missed += 1;
+        }
+        const gk = p.keeperId;
+        if (gk && isReal(gk) && onField.has(gk)) {
+            const s = (keeperPen[gk] ?? (keeperPen[gk] = { faced: 0, saved: 0, conceded: 0 }));
+            s.faced += 1;
+            if (scored)
+                s.conceded += 1;
+            else
+                s.saved += 1;
+        }
+    }
+    for (const [kicker, s] of Object.entries(kickerPen)) {
+        const fields = { penTaken: inc(s.taken), penScored: inc(s.scored), penMissed: inc(s.missed) };
+        batch.set(db.collection('users').doc(kicker), { stats: fields }, { merge: true });
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${kicker}`), { groupId, userId: kicker, ...fields, updatedAt: now }, { merge: true });
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${kicker}`), { gameId, userId: kicker, ...fields, updatedAt: now }, { merge: true });
+    }
+    for (const [keeper, s] of Object.entries(keeperPen)) {
+        const fields = { penFaced: inc(s.faced), penSaved: inc(s.saved), penConceded: inc(s.conceded) };
+        batch.set(db.collection('users').doc(keeper), { stats: fields }, { merge: true });
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${keeper}`), { groupId, userId: keeper, ...fields, updatedAt: now }, { merge: true });
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${keeper}`), { gameId, userId: keeper, ...fields, updatedAt: now }, { merge: true });
     }
     // 1b) assists → assister.stats.assists + community tally + directional
     //     head-to-head ("X assisted Y") on the sorted pair doc. An assist only

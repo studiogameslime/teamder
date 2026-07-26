@@ -47,6 +47,7 @@ import {
   dedupeKeyFor,
   inferEntityFromPayload,
 } from './notificationDedup';
+import { holidayNameOnDate } from './holidays';
 
 // Chat fan-out + "one push per chat until opened" — defined in its own
 // module, re-exported so Cloud Functions discovers the triggers.
@@ -118,7 +119,10 @@ type NotificationType =
   | 'teamsGenerated'
   // Evening finished → per-player "your night summary is ready" push.
   // Carries `gameId` → deep-links to the EveningSummary card.
-  | 'eveningSummary';
+  | 'eveningSummary'
+  // Organizer heads-up: a game (manual or a recurring clone) is scheduled on a
+  // Jewish "no-play" holiday. Carries `gameId` + `holiday` (name).
+  | 'gameOnHoliday';
 
 interface NotificationDoc {
   type: NotificationType;
@@ -656,6 +660,15 @@ function buildMessage(
       return {
         title: `משחק חדש: ${title}`,
         body: when ? `${title} · ${when}` : `נפתח משחק חדש ב${title}`,
+      };
+    }
+    case 'gameOnHoliday': {
+      const holiday = (payload.holiday as string) || 'חג';
+      return {
+        title: 'משחק מתוזמן לחג',
+        body: when
+          ? `${gameTitle} מתוזמן ל${holiday} (${when}). אולי כדאי לבדוק.`
+          : `${gameTitle} מתוזמן ל${holiday}. אולי כדאי לבדוק.`,
       };
     }
     case 'gameReminder':
@@ -2877,11 +2890,32 @@ async function runCloneRecurringGames(): Promise<void> {
       guestsOpenAt?: number;
       groupId?: string;
       title?: string;
+      players?: string[];
+      guests?: unknown[];
     };
     if (typeof g.startsAt !== 'number') continue;
     if (g.recurringNextCreatedAt) continue; // already spawned next week
     if (g.status === 'cancelled') continue; // a cancelled week doesn't recur
     if (now < g.startsAt + RECURRING_CLONE_DELAY_MS) continue; // wait 3h post-kickoff
+
+    // Stop the perpetual-empty-clone chain for abandoned communities. We're now
+    // ≥3h past kickoff; a live weekly fixture always has people on the roster by
+    // this point. If NOBODY registered (no players, no guests), the community
+    // that set up this recurring game is effectively dead — spawning next week
+    // just creates another empty instance that runCleanupStaleGames deletes,
+    // which then clones AGAIN (clones reset the latch), looping forever. Skip
+    // the clone so the weekly chain dies with the roster. A community that comes
+    // back to life re-enables recurring on its next real game.
+    const rosterCount =
+      (Array.isArray(g.players) ? g.players.length : 0) +
+      (Array.isArray(g.guests) ? g.guests.length : 0);
+    if (rosterCount === 0) {
+      console.log('[cloneRecurringGames] skip empty (dead fixture)', {
+        gameId: doc.id,
+        groupId: g.groupId,
+      });
+      continue;
+    }
 
     // Advance kickoff by one week preserving Israel wall time (DST-safe), then
     // shift every dependent window by the SAME delta so each keeps its exact
@@ -3265,6 +3299,58 @@ async function runExpireStaleOffers(): Promise<void> {
     }
   }
   console.log(`[expireStaleOffers] advanced ${advanced} stale offer(s)`);
+}
+
+/** Scan upcoming games; if one falls on a no-play holiday and the organizer
+ *  hasn't been warned yet, push them a heads-up. Catches both manual games and
+ *  recurring clones that auto-landed on a holiday. Deduped by a per-game
+ *  `holidayNotifiedAt` stamp (+ createNotificationOnce's own dedupe). */
+async function runHolidayGameNotices(): Promise<void> {
+  const now = Date.now();
+  const horizon = now + 8 * 24 * 60 * 60 * 1000; // games within the next 8 days
+  const snap = await db
+    .collection('games')
+    .where('startsAt', '>=', now)
+    .where('startsAt', '<=', horizon)
+    .orderBy('startsAt', 'asc')
+    .limit(200)
+    .get();
+  if (snap.empty) return;
+  for (const doc of snap.docs) {
+    const g = doc.data() as {
+      startsAt?: number;
+      status?: string;
+      createdBy?: string;
+      title?: string;
+      groupId?: string;
+      holidayNotifiedAt?: number;
+    };
+    if (typeof g.startsAt !== 'number') continue;
+    if (g.status === 'cancelled') continue;
+    if (g.holidayNotifiedAt) continue; // already warned for this game
+    const holiday = holidayNameOnDate(g.startsAt);
+    if (!holiday) continue;
+    const organizer = typeof g.createdBy === 'string' ? g.createdBy : '';
+    if (!organizer) continue;
+    try {
+      await createNotificationOnce({
+        type: 'gameOnHoliday',
+        recipientId: organizer,
+        createdByUid: '',
+        payload: {
+          gameId: doc.id,
+          gameTitle: g.title || 'המשחק',
+          startsAt: g.startsAt,
+          holiday,
+          groupId: g.groupId,
+        },
+      });
+      // Stamp regardless of push outcome so we don't re-scan/re-notify.
+      await doc.ref.set({ holidayNotifiedAt: now }, { merge: true });
+    } catch (err) {
+      console.error('[holidayGameNotices] failed', doc.id, err);
+    }
+  }
 }
 
 async function runCleanupStaleGames(): Promise<void> {
@@ -4152,6 +4238,42 @@ export const onGameRosterChanged = onDocumentWritten(
       // Don't spam a "game cancelled" push when a FINISHED / already-cancelled
       // game is deleted (cleanup) — its participants already played / were told.
       const delStatus = before?.status;
+      // ── Audit trail: record EVERY game deletion (create-once) ────────────
+      // Firestore triggers carry no auth actor, so we can't see WHO issued the
+      // delete here. A client build stamps the exact deleter into this same doc
+      // BEFORE deleting (its create lands first → our create() below no-ops and
+      // theirs wins). Until then this is the best guess: a populated game that
+      // was deleted = a human admin/creator (the delete button is admin-gated);
+      // an empty (0-roster) game = the hourly stale-cleanup cron.
+      if (before) {
+        const rosterCount = Array.from(
+          new Set([
+            ...(before.players ?? []),
+            ...(before.waitlist ?? []),
+            ...(before.pending ?? []),
+          ]),
+        ).length;
+        const source = rosterCount === 0 ? 'auto-cleanup' : 'manual';
+        try {
+          await db
+            .collection('gameDeletions')
+            .doc(event.params.gameId)
+            .create({
+              gameId: event.params.gameId,
+              deletedBy: source === 'manual' ? before.createdBy ?? '' : 'system:stale-cleanup',
+              deletedByApprox: true, // server best-guess; a client build overwrites with the exact actor
+              source,
+              gameTitle: before.title ?? '',
+              groupId: before.groupId ?? '',
+              createdBy: before.createdBy ?? '',
+              status: delStatus ?? '',
+              rosterCount,
+              deletedAt: Date.now(),
+            });
+        } catch {
+          /* already recorded — a client stamped the exact deleter, or a retry */
+        }
+      }
       if (before && delStatus !== 'finished' && delStatus !== 'cancelled') {
         // Self-exclude the game creator: the person deleting is virtually always
         // the organiser, and they don't need "your game was cancelled" for their
@@ -6755,11 +6877,12 @@ export const adminReorderRoster = onCall(
 //   • keep the dedupeKey free of per-user discriminators so
 //     successive cancels collide on the same doc id.
 //
-// Auth: the cancelling user must be signed in AND must currently be
-// the user identified in the input (no proxy cancellations). The
-// game's createdBy is the recipient; if the canceller IS the game
-// creator (organiser cancelling themselves out of their own game)
-// we skip — they don't need a push about their own action.
+// Auth: the cancelling user must be signed in AND must currently be a
+// participant of the game (no proxy cancellations). Recipients are the
+// game's createdBy PLUS every community admin (group.adminIds) — so the
+// whole admin team is notified, not just whoever opened the game. The
+// canceller is always excluded from the recipients (an organiser cancelling
+// themselves out of their own game needs no push about their own action).
 export const notifyPlayerCancelled = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -6788,6 +6911,7 @@ export const notifyPlayerCancelled = onCall(
     }
     const game = gameSnap.data() as {
       createdBy?: string;
+      groupId?: string;
       title?: string;
       startsAt?: number;
       players?: string[];
@@ -6795,15 +6919,6 @@ export const notifyPlayerCancelled = onCall(
       pending?: string[];
       cancellations?: Record<string, number>;
     };
-    const adminUid = game.createdBy;
-    if (!adminUid) {
-      // No admin to notify (legacy game). Silently succeed —
-      // suppressing the push is the right behaviour.
-      return { ok: true, skipped: 'no-admin' };
-    }
-    if (adminUid === callerUid) {
-      return { ok: true, skipped: 'self-cancel' };
-    }
     // Only a real participant may fire a cancel notification. The cancel flow
     // removes the player from the roster BEFORE calling this, so accept either
     // a current roster membership OR a just-stamped cancellations[uid] entry.
@@ -6817,29 +6932,53 @@ export const notifyPlayerCancelled = onCall(
     if (!related) {
       return { ok: true, skipped: 'not-a-participant' };
     }
+
+    // Recipients = the game creator + EVERY community admin, so the whole
+    // admin team hears about a cancellation — not just whoever opened the
+    // game (user request). Deduped; the canceller never notifies themselves
+    // (an organiser cancelling out of their own game needs no push).
+    const recipients = new Set<string>();
+    if (game.createdBy) recipients.add(game.createdBy);
+    if (game.groupId) {
+      const grpSnap = await db.collection('groups').doc(game.groupId).get();
+      const adminIds = (grpSnap.data()?.adminIds as string[] | undefined) ?? [];
+      for (const a of adminIds) if (typeof a === 'string' && a) recipients.add(a);
+    }
+    recipients.delete(callerUid);
+    if (recipients.size === 0) {
+      // No admin to notify (legacy game / canceller is the only admin).
+      return { ok: true, skipped: 'no-recipients' };
+    }
+
     const cancellingUserName =
       (userSnap.exists &&
         typeof userSnap.data()?.name === 'string' &&
         (userSnap.data()!.name as string).slice(0, 60)) ||
       '';
 
-    const result = await createNotificationOnce({
-      type: 'playerCancelled',
-      recipientId: adminUid,
-      payload: {
-        gameId,
-        gameTitle: typeof game.title === 'string' ? game.title : '',
-        cancellingUserId: callerUid,
-        cancellingUserName,
-        // Initial count = 1 — the AGGREGATE_ON_DUPLICATE branch will
-        // increment this on subsequent cancellations within the bucket.
-        count: 1,
-        cancellingUserIds: [callerUid],
-        cancellingUserNames: cancellingUserName ? [cancellingUserName] : [],
-      },
-      createdByUid: callerUid,
-    });
-    return { ok: true, result };
+    // One aggregated notification per recipient — the dedupeKey namespaces by
+    // recipientId, so each admin gets their own count-aggregated doc.
+    const results = await Promise.all(
+      Array.from(recipients).map((recipientId) =>
+        createNotificationOnce({
+          type: 'playerCancelled',
+          recipientId,
+          payload: {
+            gameId,
+            gameTitle: typeof game.title === 'string' ? game.title : '',
+            cancellingUserId: callerUid,
+            cancellingUserName,
+            // Initial count = 1 — the AGGREGATE_ON_DUPLICATE branch will
+            // increment this on subsequent cancellations within the bucket.
+            count: 1,
+            cancellingUserIds: [callerUid],
+            cancellingUserNames: cancellingUserName ? [cancellingUserName] : [],
+          },
+          createdByUid: callerUid,
+        }),
+      ),
+    );
+    return { ok: true, recipients: recipients.size, results };
   },
 );
 
@@ -9137,29 +9276,16 @@ async function runFindFillerCandidates(): Promise<void> {
           preferredCity?: string;
           preferredDays?: number[];
           preferredTimes?: string[];
+          availabilitySlots?: Record<string, string[]> | null;
           fillerPushDay?: string;
           fillerPushCount?: number;
         };
       };
       const av = userData.availability ?? {};
 
-      // Declared-availability match (empty arrays = "any"), same as the pulse.
-      const pdaysS = Array.isArray(av.preferredDays) ? av.preferredDays : [];
-      if (
-        gameWeekdaySweep !== undefined &&
-        pdaysS.length > 0 &&
-        !pdaysS.includes(gameWeekdaySweep)
-      ) {
-        continue;
-      }
-      const ptimesS = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
-      if (
-        gameWindowSweep &&
-        ptimesS.length > 0 &&
-        !ptimesS.includes(gameWindowSweep)
-      ) {
-        continue;
-      }
+      // Declared-availability match — prefers the precise per-day grid, falls
+      // back to legacy days×times (empty = "any"). Same rule as the pulse.
+      if (!availabilityCovers(av, gameWeekdaySweep, gameWindowSweep)) continue;
 
       // Best-effort daily-cap pre-filter (authoritative reservation is the txn
       // below) — avoids a transaction for obviously-capped candidates.
@@ -9358,7 +9484,14 @@ async function runFillerPulseBatch(
   if (!startsAt) return null;
   const lead = startsAt - now;
   if (lead <= PULSE_STOP_BEFORE_MS) return null; // too close to kickoff
-  if (lead > PULSE_MAX_LEAD_MS) return null; // too far out — sweep handles it
+  // A MANUAL admin "send to all" (chain marked manual) may run any time before
+  // kickoff — admins asked to not be limited to the 12h window. The AUTOMATIC
+  // sweep still defers games further than PULSE_MAX_LEAD_MS out; they enter the
+  // pulse engine once inside the window.
+  const chainSnap = await db.collection('fillerPulseChains').doc(gameId).get();
+  const isManualChain =
+    chainSnap.exists && (chainSnap.data() as { manual?: boolean }).manual === true;
+  if (!isManualChain && lead > PULSE_MAX_LEAD_MS) return null; // too far out — sweep handles it
 
   const players = game.players ?? [];
   const maxPlayers = game.maxPlayers ?? 0;
@@ -9431,18 +9564,17 @@ async function runFillerPulseBatch(
         preferredCity?: string;
         preferredDays?: number[];
         preferredTimes?: string[];
+        availabilitySlots?: Record<string, string[]> | null;
         fillerPushDay?: string;
         fillerPushCount?: number;
       };
     };
     const av = userData.availability ?? {};
 
-    // Declared-availability match — only invite players who marked THIS
-    // weekday and window free (empty arrays = "any", mirroring the count).
-    const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
-    if (pdays.length > 0 && !pdays.includes(gameWeekday)) continue;
-    const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
-    if (ptimes.length > 0 && !ptimes.includes(gameWindow)) continue;
+    // Declared-availability match — only invite players free THIS weekday+window.
+    // Prefers the precise per-day grid; falls back to legacy days×times (empty =
+    // "any") so users who haven't re-saved keep matching exactly as before.
+    if (!availabilityCovers(av, gameWeekday, gameWindow)) continue;
 
     // Best-effort daily-cap pre-filter (authoritative check is in the txn).
     const usedToday = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
@@ -9652,7 +9784,9 @@ export const startGameFillerPulse = onCall(
     const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
     const lead = startsAt - Date.now();
     if (!startsAt || lead <= PULSE_STOP_BEFORE_MS) return { started: false, reason: 'TOO_LATE' };
-    if (lead > PULSE_MAX_LEAD_MS) return { started: false, reason: 'TOO_EARLY' };
+    // No upper-bound (12h) gate on the MANUAL pulse — admins can send to all
+    // available players any time before kickoff. The chain is marked `manual`
+    // below so runFillerPulseBatch also bypasses the 12h window when sending.
     const players = game.players ?? [];
     const maxPlayers = game.maxPlayers ?? 0;
     if (maxPlayers > 0 && players.length >= maxPlayers) return { started: false, reason: 'GAME_FULL' };
@@ -9865,6 +9999,48 @@ function hourToAvailWindow(hour: number): AvailWindow {
   return 'evening'; // 18:00–06:59 (also absorbs the small hours)
 }
 
+/**
+ * True if the user's declared availability covers (weekday, window). Prefers
+ * the PRECISE per-day grid (`availabilitySlots`) when the user has one; falls
+ * back to the legacy decoupled `preferredDays` × `preferredTimes` cross-product
+ * (empty arrays = "any") so users who haven't re-saved keep matching EXACTLY as
+ * before — no one's existing availability is broken by the grid rollout.
+ */
+function availabilityCovers(
+  av: {
+    availabilitySlots?: Record<string, string[]> | null;
+    preferredDays?: number[];
+    preferredTimes?: string[];
+  },
+  weekday: number | undefined,
+  window: AvailWindow | null,
+): boolean {
+  const slots = av.availabilitySlots;
+  const hasGrid =
+    !!slots &&
+    typeof slots === 'object' &&
+    Object.values(slots).some((a) => Array.isArray(a) && a.length > 0);
+  if (hasGrid) {
+    if (weekday === undefined) return true; // no time anchor → don't exclude
+    // Firestore serialises numeric keys as strings; read defensively.
+    const daySlots =
+      (slots as Record<string, string[]>)[String(weekday)] ??
+      (slots as Record<string, string[]>)[weekday as unknown as string] ??
+      [];
+    if (daySlots.length === 0) return false; // nothing ticked that day
+    if (!window) return true; // day matches, window unknown → allow
+    return daySlots.includes(window);
+  }
+  // Legacy fallback — decoupled arrays, empty = "any".
+  const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+  if (weekday !== undefined && pdays.length > 0 && !pdays.includes(weekday)) {
+    return false;
+  }
+  const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+  if (window && ptimes.length > 0 && !ptimes.includes(window)) return false;
+  return true;
+}
+
 export const availabilityCounts = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -9964,6 +10140,7 @@ export const availabilityCounts = onCall(
         availabilityRadiusKm?: number;
         preferredDays?: number[];
         preferredTimes?: string[];
+        availabilitySlots?: Record<string, string[]> | null;
       };
       if (typeof a.homeCityLat !== 'number' || typeof a.homeCityLng !== 'number') {
         continue;
@@ -9977,23 +10154,17 @@ export const availabilityCounts = onCall(
       if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
         continue;
       }
-      // Empty preferredDays / preferredTimes = "available any day / any window"
-      // — mirrors the pulse engine's candidate filter so the count reflects the
-      // same population that would actually be invited.
-      const pdaysRaw = Array.isArray(a.preferredDays) ? a.preferredDays : [];
-      const pdays =
-        pdaysRaw.length > 0 ? pdaysRaw : days.map((d) => d.weekday);
-      const ptimes =
-        Array.isArray(a.preferredTimes) && a.preferredTimes.length > 0
-          ? (a.preferredTimes as string[])
-          : ([...AVAIL_WINDOWS] as string[]);
-      for (const wd of pdays) {
-        const di = weekdayToIndex.get(wd);
+      // Count every (day, window) the player is free in — via availabilityCovers
+      // so the PRECISE per-day grid is honoured, and legacy days×times still
+      // behaves as "empty = any". Mirrors the pulse candidate filter exactly, so
+      // the count reflects the same population that would actually be invited.
+      for (const d of days) {
+        const di = weekdayToIndex.get(d.weekday);
         if (di === undefined) continue;
-        for (const w of ptimes) {
-          if (!(AVAIL_WINDOWS as readonly string[]).includes(w)) continue;
+        for (const w of AVAIL_WINDOWS) {
+          if (!availabilityCovers(a, d.weekday, w)) continue;
           if (registered.get(`${di}:${w}`)?.has(u.id)) continue; // already playing
-          days[di].windows[w as AvailWindow] += 1;
+          days[di].windows[w] += 1;
         }
       }
     }
@@ -11270,6 +11441,7 @@ export const cronEvery60Min = onSchedule(
   async () => {
     await runSweep('cleanupStaleGames', runCleanupStaleGames);
     await runSweep('sendPromotePrompts', runSendPromotePrompts);
+    await runSweep('holidayGameNotices', runHolidayGameNotices);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
   },
 );
@@ -11306,6 +11478,7 @@ export const commitRoundStats = onCall(
       sideB,
       winnerSide,
       goals,
+      penalties,
     } = (request.data ?? {}) as {
       gameId?: string;
       roundId?: number | string | null;
@@ -11316,6 +11489,14 @@ export const commitRoundStats = onCall(
         scorerId?: string | null;
         assisterId?: string | null;
         ownGoal?: boolean;
+      }[];
+      // Penalty-shootout kicks (kicker + keeper + scored). These credit ONLY
+      // the penalty-specific stat fields — never goals/score (the shootout is a
+      // tiebreaker, its kicks are not mini-game goals).
+      penalties?: {
+        kickerId?: string | null;
+        keeperId?: string | null;
+        scored?: boolean;
       }[];
     };
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
@@ -11463,6 +11644,18 @@ export const commitRoundStats = onCall(
                 ownGoal: !!g.ownGoal,
                 team: A.includes(g.scorerId as string) ? 'A' : 'B',
               })),
+            penalties: (penalties ?? [])
+              .filter((p) => p.kickerId && isReal(p.kickerId) && onField.has(p.kickerId))
+              .slice(0, 100)
+              .map((p) => ({
+                kickerId: p.kickerId as string,
+                keeperId:
+                  p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)
+                    ? p.keeperId
+                    : null,
+                scored: !!p.scored,
+                team: A.includes(p.kickerId as string) ? 'A' : 'B',
+              })),
             at: now,
           }
         : null;
@@ -11496,8 +11689,80 @@ export const commitRoundStats = onCall(
           goals: inc(totalGoalsThisRound),
           // Ties get their own counter → drives the club's draw-rate fun fact.
           tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
+          // Mini-games decided by a penalty SHOOTOUT (a drawn round the admin
+          // resolved with penalties). Identified by a non-empty penalties[]
+          // payload — those commits carry a real winnerSide (the shootout
+          // winner), so they DON'T count as ties. Drives the "% decided by
+          // penalties" fun fact. Counts from deploy onward.
+          shootoutRounds: inc((penalties?.length ?? 0) > 0 ? 1 : 0),
+          // Scoreless mini-games (ended 0:0 in regulation) → the "% ended 0:0"
+          // fun fact. Counts from deploy onward — round-level scores aren't
+          // stored historically, so old 0:0 rounds can't be backfilled.
+          scorelessRounds: inc(scoreA === 0 && scoreB === 0 ? 1 : 0),
           updatedAt: now,
         },
+        { merge: true },
+      );
+    }
+
+    // 1c) PENALTY-SHOOTOUT stats (tiebreaker kicks only). Kicker:
+    //     taken/scored/missed. Keeper: faced/saved/conceded. Shootout kicks are
+    //     NOT mini-game goals — they never touch score/goals, only these
+    //     pen-specific fields. Both kicker + keeper gated through `onField`,
+    //     exactly like goals/assists. Deduped per player so each writes once.
+    //     CAP: the batch already runs near Firestore's 500-op ceiling at 11-a-
+    //     side (~385 ops). A cap of 16 kicks bounds the added ops to ≤ 16
+    //     kickers + 16 keepers × 3 stores ≈ 96 (total stays < 500). A
+    //     forged/oversized payload is clipped rather than overflowing the batch.
+    // ⚠️ This loop MIRRORS `aggregatePenalties` in src/utils/penaltyStats.ts
+    //    (the unit-tested canonical spec). Keep the two in sync.
+    const pens = (penalties ?? []).slice(0, 16);
+    const kickerPen: Record<string, { taken: number; scored: number; missed: number }> = {};
+    const keeperPen: Record<string, { faced: number; saved: number; conceded: number }> = {};
+    for (const p of pens) {
+      const scored = !!p.scored;
+      const k = p.kickerId;
+      if (k && isReal(k) && onField.has(k)) {
+        const s = (kickerPen[k] ??= { taken: 0, scored: 0, missed: 0 });
+        s.taken += 1;
+        if (scored) s.scored += 1;
+        else s.missed += 1;
+      }
+      const gk = p.keeperId;
+      if (gk && isReal(gk) && onField.has(gk)) {
+        const s = (keeperPen[gk] ??= { faced: 0, saved: 0, conceded: 0 });
+        s.faced += 1;
+        if (scored) s.conceded += 1;
+        else s.saved += 1;
+      }
+    }
+    for (const [kicker, s] of Object.entries(kickerPen)) {
+      const fields = { penTaken: inc(s.taken), penScored: inc(s.scored), penMissed: inc(s.missed) };
+      batch.set(db.collection('users').doc(kicker), { stats: fields }, { merge: true });
+      if (groupId)
+        batch.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${kicker}`),
+          { groupId, userId: kicker, ...fields, updatedAt: now },
+          { merge: true },
+        );
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${kicker}`),
+        { gameId, userId: kicker, ...fields, updatedAt: now },
+        { merge: true },
+      );
+    }
+    for (const [keeper, s] of Object.entries(keeperPen)) {
+      const fields = { penFaced: inc(s.faced), penSaved: inc(s.saved), penConceded: inc(s.conceded) };
+      batch.set(db.collection('users').doc(keeper), { stats: fields }, { merge: true });
+      if (groupId)
+        batch.set(
+          db.collection('communityPlayerStats').doc(`${groupId}__${keeper}`),
+          { groupId, userId: keeper, ...fields, updatedAt: now },
+          { merge: true },
+        );
+      batch.set(
+        db.collection('gamePlayerStats').doc(`${gameId}__${keeper}`),
+        { gameId, userId: keeper, ...fields, updatedAt: now },
         { merge: true },
       );
     }

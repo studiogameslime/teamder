@@ -40,7 +40,10 @@ android {
   defaultConfig {
     applicationId "com.studiogameslime.soccerapp"
     minSdk 30        // Wear OS 3 — Galaxy Watch 4 and up
-    targetSdk 34
+    // API 35 (Android 15): Google requires Wear OS updates to target API 35+
+    // to publish after 2026-08-31. compileSdk is already 35 + the phone app
+    // targets 35, so this only opts the watch into the same behaviour.
+    targetSdk 35
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.

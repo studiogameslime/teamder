@@ -15,7 +15,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -26,6 +26,8 @@ import { AchievementBadge } from '@/components/AchievementBadge';
 import { appAlert } from '@/components/AppDialog';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { CountUp } from '@/components/anim/CountUp';
+import { AppearItem } from '@/components/anim/AppearItem';
+import { StatDonut } from '@/components/community/StatDonut';
 import {
   computeClubBadges,
   type ClubMetrics,
@@ -36,6 +38,7 @@ import { gameService } from '@/services/gameService';
 import { userService } from '@/services';
 import { groupService } from '@/services';
 import { type ChampionshipRow } from '@/utils/championship';
+import { penaltyKing, penaltyKeeperKing, pctOf } from '@/utils/penaltyStats';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
@@ -50,6 +53,8 @@ interface ChampData {
   totalGoals: number;
   totalRounds: number;
   tiedRounds: number;
+  shootoutRounds: number;
+  scorelessRounds: number;
   players: ChampionshipRow[];
 }
 interface StatsData {
@@ -75,9 +80,6 @@ interface DeadlyDuo {
 function firstName(name: string): string {
   const t = (name || '').trim().split(/\s+/)[0];
   return t || name || '';
-}
-function oneDecimal(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 /** Highest-by-metric row, ignoring zeros. */
 function leaderBy(
@@ -128,7 +130,16 @@ export function CommunityStatsScreen() {
           createdAt: g.createdAt ?? Date.now(),
         });
       }
-      setChamp(c ?? { totalGoals: 0, totalRounds: 0, tiedRounds: 0, players: [] });
+      setChamp(
+        c ?? {
+          totalGoals: 0,
+          totalRounds: 0,
+          tiedRounds: 0,
+          shootoutRounds: 0,
+          scorelessRounds: 0,
+          players: [],
+        },
+      );
       setStats(
         s ?? {
           totalFinished: 0,
@@ -147,7 +158,8 @@ export function CommunityStatsScreen() {
       const ids = new Set<string>();
       (c?.players ?? []).slice(0, 10).forEach((r) => ids.add(r.uid));
       (c?.players ?? []).forEach((r) => {
-        if (r.assists > 0 || r.wins > 0 || r.games > 0) ids.add(r.uid);
+        if (r.assists > 0 || r.wins > 0 || r.games > 0 || r.penScored > 0 || r.penSaved > 0)
+          ids.add(r.uid);
       });
       if (d) { ids.add(d.uidA); ids.add(d.uidB); }
       if (s?.longestStreakUid) ids.add(s.longestStreakUid);
@@ -175,8 +187,19 @@ export function CommunityStatsScreen() {
     const totalGoals = champ?.totalGoals ?? 0;
     const totalRounds = champ?.totalRounds ?? 0;
     const tiedRounds = champ?.tiedRounds ?? 0;
+    const shootoutRounds = champ?.shootoutRounds ?? 0;
+    const scorelessRounds = champ?.scorelessRounds ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
     const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
+    const shootoutPct =
+      totalRounds > 0 ? Math.round((shootoutRounds / totalRounds) * 100) : 0;
+    const scorelessPct =
+      totalRounds > 0 ? Math.round((scorelessRounds / totalRounds) * 100) : 0;
+    // Club-wide penalty conversion — sum every player's scored/taken. Drives
+    // the "דיוק מהנקודה הלבנה" fun fact. Gated on penTakenTotal > 0.
+    const penTakenTotal = players.reduce((a, p) => a + (p.penTaken ?? 0), 0);
+    const penScoredTotal = players.reduce((a, p) => a + (p.penScored ?? 0), 0);
+    const penAccuracyPct = pctOf(penScoredTotal, penTakenTotal);
     // `players` is ranked by POINTS (goals*2+assists), so players[0] is NOT
     // necessarily the top scorer — pick the max-goals player explicitly.
     const topScorer = players.length
@@ -184,19 +207,40 @@ export function CommunityStatsScreen() {
       : null;
     const kingSharePct =
       topScorer && totalGoals > 0 ? Math.round((topScorer.goals / totalGoals) * 100) : 0;
+    // Share of goals that came off an assist — each assisted goal carries exactly
+    // one assist, so assists ÷ goals is the assisted-goal rate. Capped at 100%
+    // defensively. Uses the reliable per-player assist totals (not the partial
+    // communityPairStats), so it's accurate for historical goals too.
+    const assistedGoalsPct =
+      totalGoals > 0 ? Math.min(100, Math.round((totalAssists / totalGoals) * 100)) : 0;
     return {
       players,
       totalGoals,
       totalRounds,
       tiedRounds,
       drawPct,
+      shootoutRounds,
+      shootoutPct,
+      scorelessRounds,
+      scorelessPct,
+      penTakenTotal,
+      penAccuracyPct,
       totalAssists,
       totalWins,
       goalsPerMini,
       kingSharePct,
+      assistedGoalsPct,
       topScorer,
       topAssister: leaderBy(players, (p) => p.assists),
       topWinner: leaderBy(players, (p) => p.wins),
+      // Penalty leaders — tested derivation (tie-break on success%, then
+      // attempts, then uid). null when nobody has scored/saved a penalty yet.
+      penaltyKing: penaltyKing(
+        players.map((p) => ({ userId: p.uid, penScored: p.penScored, penTaken: p.penTaken })),
+      ),
+      penaltyKeeperKing: penaltyKeeperKing(
+        players.map((p) => ({ userId: p.uid, penSaved: p.penSaved, penFaced: p.penFaced })),
+      ),
     };
   }, [champ]);
 
@@ -268,99 +312,118 @@ export function CommunityStatsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── רמת המועדון (למעלה, מעל הכל) ── */}
-          <Card style={styles.levelCard}>
-            <View style={styles.levelDisc}>
-              <Text style={styles.levelDiscLabel}>{he.clubLevelLabel}</Text>
-              <Text style={styles.levelDiscNum}>{club.level.level}</Text>
-            </View>
-            <View style={styles.levelInfo}>
-              <Text style={styles.levelTier} numberOfLines={1}>
-                {club.level.tierName}
-              </Text>
-              <View style={styles.levelBarTrack}>
-                <View
-                  style={[
-                    styles.levelBarFill,
-                    { width: `${Math.round(club.level.progressPct * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.levelHint} numberOfLines={1}>
-                {club.level.pointsToNext == null
-                  ? he.clubLevelMaxHint
-                  : he.clubLevelNextHint(club.level.pointsToNext)}
-              </Text>
-            </View>
-          </Card>
+          {/* ── המצטיין (מלך השערים) — הגיבור בראש המסך ── */}
+          {derived.topScorer && derived.totalGoals > 0 ? (
+            <AppearItem index={0}>
+              <Card style={styles.mvpCard}>
+                <View style={styles.mvpRibbon}>
+                  <Ionicons name="star" size={11} color="#fff" />
+                  <Text style={styles.mvpRibbonText}>{he.communityStatsMvp}</Text>
+                </View>
+                <View style={styles.mvpRow}>
+                  <UserAvatar user={resolved(derived.topScorer.uid)} size={64} ring />
+                  <View style={styles.mvpMid}>
+                    <Text style={styles.mvpCat}>{he.communityStatsTopScorer}</Text>
+                    <Text style={styles.mvpName} numberOfLines={1}>
+                      {firstName(resolved(derived.topScorer.uid).name)}
+                    </Text>
+                    <Text style={styles.mvpSub} numberOfLines={1}>
+                      {he.communityStatsMvpShare(derived.kingSharePct)}
+                    </Text>
+                  </View>
+                  <View style={styles.mvpBig}>
+                    <CountUp
+                      from={0}
+                      to={derived.topScorer.goals}
+                      durationMs={1100}
+                      style={styles.mvpBigNum}
+                    />
+                    <Text style={styles.mvpBigLabel}>{he.communityStatsGoals}</Text>
+                  </View>
+                </View>
+              </Card>
+            </AppearItem>
+          ) : null}
 
-          {/* ── המועדון במספרים ── */}
+          {/* ── המועדון במספרים (4) ── */}
           <SectionTitle icon="bar-chart" text={he.communityStatsSectionNumbers} />
           <View style={styles.heroGrid}>
-            <HeroTile icon="football" tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
-            <HeroTile icon="git-network" tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
-            <HeroTile icon="repeat" tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
-            <HeroTile icon="calendar" tint={colors.success} value={stats?.totalFinished ?? 0} label={he.communityStatsEvenings} />
-            <HeroTile icon="flame" tint={colors.danger} value={stats?.activeThisMonth ?? 0} label={he.communityStatsActiveMonth} />
-            <HeroTile icon="speedometer" tint={colors.warning} value={oneDecimal(derived.goalsPerMini)} label={he.communityStatsGoalsPerMini} />
+            <HeroTile icon={<MaterialCommunityIcons name="soccer" size={24} color={colors.primary} />} tint={colors.primary} value={derived.totalGoals} label={he.communityStatsGoals} />
+            <HeroTile icon={<MaterialCommunityIcons name="shoe-cleat" size={24} color="#7C3AED" />} tint="#7C3AED" value={derived.totalAssists} label={he.communityStatsAssists} />
+            <HeroTile icon={<MaterialCommunityIcons name="soccer-field" size={24} color="#0EA5E9" />} tint="#0EA5E9" value={derived.totalRounds} label={he.communityStatsMiniGames} />
+            <HeroTile icon={<MaterialCommunityIcons name="calendar-month" size={24} color={colors.success} />} tint={colors.success} value={stats?.totalFinished ?? 0} label={he.communityStatsEvenings} />
           </View>
-
-          {/* ── הישגי המועדון (תארים) ── */}
-          <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
-          <Card style={styles.badgeCard}>
-            <View style={styles.badgeGrid}>
-              {club.badges.map((b) => (
-                <AchievementBadge
-                  key={b.def.id}
-                  def={b.def}
-                  tier={b.tier}
-                  size={64}
-                  showTierLabel
-                  onPress={() => onBadgePress(b)}
-                  style={styles.badgeItem}
-                />
-              ))}
-            </View>
-          </Card>
 
           {/* ── מובילי המועדון ── (only once goals exist; else all "—") */}
           {hasScoring ? (
           <>
           <SectionTitle icon="trophy" text={he.communityStatsSectionLeaders} />
-          <View style={styles.leadersGrid}>
-            <LeaderCard
-              crown="👑"
-              title={he.communityStatsTopScorer}
-              row={derived.topScorer}
-              user={derived.topScorer ? resolved(derived.topScorer.uid) : null}
-              valueText={derived.topScorer ? he.communityStatsGoalsUnit(derived.topScorer.goals) : ''}
-              tint={colors.primary}
-            />
-            <LeaderCard
-              crown="🅰️"
-              title={he.communityStatsTopAssister}
-              row={derived.topAssister}
-              user={derived.topAssister ? resolved(derived.topAssister.uid) : null}
-              valueText={derived.topAssister ? he.communityStatsAssistsUnit(derived.topAssister.assists) : ''}
-              tint="#7C3AED"
-            />
-            <LeaderCard
-              crown="🏆"
-              title={he.communityStatsTopWinner}
-              row={derived.topWinner}
-              user={derived.topWinner ? resolved(derived.topWinner.uid) : null}
-              valueText={derived.topWinner ? he.communityStatsWinsUnit(derived.topWinner.wins) : ''}
-              tint={colors.warning}
-            />
-            <LeaderCard
-              crown="🔥"
-              title={he.communityStatsMostLoyal}
-              row={mostLoyal}
-              user={mostLoyal ? resolved(mostLoyal.uid) : null}
-              valueText={mostLoyal ? he.communityStatsEveningsUnit(mostLoyal.nights) : ''}
-              tint={colors.success}
-            />
-          </View>
+          {/* מלך השערים מוצג למעלה כ"מצטיין" — כאן רק שאר המובילים, כרשימה
+              מיושרת-לימין: אווטאר בימין, קטגוריה+שם, וערך מונפש בשמאל. */}
+          <Card style={styles.leadersCard}>
+            {(
+              [
+                derived.topAssister && {
+                  title: he.communityStatsTopAssister,
+                  uid: derived.topAssister.uid,
+                  value: derived.topAssister.assists,
+                  unit: 'בישולים',
+                  tint: '#7C3AED',
+                },
+                derived.topWinner && {
+                  title: he.communityStatsTopWinner,
+                  uid: derived.topWinner.uid,
+                  value: derived.topWinner.wins,
+                  unit: 'נצחונות',
+                  tint: colors.warning,
+                },
+                mostLoyal && {
+                  title: he.communityStatsMostLoyal,
+                  uid: mostLoyal.uid,
+                  value: mostLoyal.nights,
+                  unit: 'ערבים',
+                  tint: colors.success,
+                },
+                derived.penaltyKing && {
+                  title: he.communityStatsPenaltyKing,
+                  uid: derived.penaltyKing.userId,
+                  // Headline the CONVERSION RATE (8% of 1000 ≠ 80% of 5). The raw
+                  // "scored / attempts" sits below as the ratio.
+                  value: derived.penaltyKing.pct,
+                  suffix: '%',
+                  unit: `${derived.penaltyKing.count}/${derived.penaltyKing.attempts}`,
+                  tint: '#EF4444',
+                },
+                derived.penaltyKeeperKing && {
+                  title: he.communityStatsPenaltyKeeperKing,
+                  uid: derived.penaltyKeeperKing.userId,
+                  value: derived.penaltyKeeperKing.pct,
+                  suffix: '%',
+                  unit: `${derived.penaltyKeeperKing.count}/${derived.penaltyKeeperKing.attempts}`,
+                  tint: '#16A34A',
+                },
+              ].filter(Boolean) as {
+                title: string;
+                uid: string;
+                value: number;
+                unit: string;
+                tint: string;
+                suffix?: string;
+              }[]
+            ).map((r, i, arr) => (
+              <LeaderRow
+                key={r.title}
+                title={r.title}
+                user={resolved(r.uid)}
+                value={r.value}
+                unit={r.unit}
+                suffix={r.suffix}
+                tint={r.tint}
+                index={i}
+                last={i === arr.length - 1}
+              />
+            ))}
+          </Card>
           </>
           ) : null}
 
@@ -369,17 +432,30 @@ export function CommunityStatsScreen() {
           {/* ── נתונים מעניינים ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
-            {derived.topScorer && derived.totalGoals > 0 ? (
-              <FunRow
-                icon="ribbon-outline"
-                tint={colors.warning}
-                parts={[
-                  { t: `${derived.kingSharePct}% `, em: 'num' },
-                  { t: 'מכמות השערים במועדון הכניס ' },
-                  { t: name(derived.topScorer.uid), em: 'name' },
-                ]}
-              />
+            {/* חלק המלך מוצג למעלה באריח "המצטיין". האחוזים כאן = דונאטים מונפשים. */}
+            {derived.totalGoals > 0 && derived.totalAssists > 0 ? (
+              <FunDonutRow index={0} pct={derived.assistedGoalsPct} tint="#7C3AED"
+                text="מהגולים במועדון הגיעו אחרי בישול — כדורגל של עבודת צוות" />
             ) : null}
+            {derived.penTakenTotal > 0 ? (
+              <FunDonutRow index={1} pct={derived.penAccuracyPct} tint={colors.success}
+                text="מהפנדלים במועדון הסתיימו בגול" />
+            ) : null}
+            {derived.totalRounds > 0 && derived.drawPct > 0 ? (
+              <FunDonutRow index={2} pct={derived.drawPct} tint={colors.info}
+                text="מהמשחקונים הסתיימו בתיקו" />
+            ) : null}
+            {derived.scorelessRounds > 0 ? (
+              <FunDonutRow index={3} pct={derived.scorelessPct} tint={colors.textMuted}
+                text="מהמשחקונים הסתיימו 0:0" />
+            ) : null}
+            {derived.shootoutRounds > 0 ? (
+              <FunDonutRow index={4} pct={derived.shootoutPct} tint={colors.danger}
+                text="מהמשחקונים הוכרעו בפנדלים" />
+            ) : null}
+            <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
+              tint={colors.success} text="מהמשחקים המתוכננים יצאו לפועל" />
+            {/* עובדות טקסט (בלי אחוז) */}
             {duo && duo.assists > 0 ? (
               <FunRow
                 icon="git-network-outline"
@@ -391,16 +467,6 @@ export function CommunityStatsScreen() {
                   { t: ' הם הצמד עם הכי הרבה בישולים משותפים (' },
                   { t: `${duo.assists}`, em: 'num' },
                   { t: ')' },
-                ]}
-              />
-            ) : null}
-            {derived.totalRounds > 0 && derived.drawPct > 0 ? (
-              <FunRow
-                icon="git-compare-outline"
-                tint={colors.info}
-                parts={[
-                  { t: `${derived.drawPct}% `, em: 'num' },
-                  { t: 'מהמשחקונים הסתיימו בתיקו' },
                 ]}
               />
             ) : null}
@@ -417,14 +483,6 @@ export function CommunityStatsScreen() {
               />
             ) : null}
             <FunRow
-              icon="checkmark-done-outline"
-              tint={colors.success}
-              parts={[
-                { t: `${Math.round((stats?.organizationRate ?? 0) * 100)}% `, em: 'num' },
-                { t: 'מהמשחקים המתוכננים יצאו לפועל' },
-              ]}
-            />
-            <FunRow
               icon="calendar-outline"
               tint={colors.primary}
               parts={[
@@ -433,6 +491,24 @@ export function CommunityStatsScreen() {
               ]}
               last
             />
+          </Card>
+
+          {/* ── הישגי המועדון (תארים) — הכי למטה ── */}
+          <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />
+          <Card style={styles.badgeCard}>
+            <View style={styles.badgeGrid}>
+              {club.badges.map((b) => (
+                <AchievementBadge
+                  key={b.def.id}
+                  def={b.def}
+                  tier={b.tier}
+                  size={64}
+                  showTierLabel
+                  onPress={() => onBadgePress(b)}
+                  style={styles.badgeItem}
+                />
+              ))}
+            </View>
           </Card>
 
           <View style={{ height: spacing.xl }} />
@@ -459,7 +535,7 @@ function HeroTile({
   value,
   label,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ReactNode;
   tint: string;
   value: number | string;
   label: string;
@@ -467,57 +543,63 @@ function HeroTile({
   return (
     <Card style={styles.heroTile}>
       <View style={[styles.heroIcon, { backgroundColor: tint + '1A' }]}>
-        <Ionicons name={icon} size={18} color={tint} />
+        {icon}
       </View>
-      {/* Numbers count up (0 → value) as the stats resolve — a small entrance
-          that makes the tiles feel alive. Pre-formatted strings (e.g. the
-          one-decimal average) render as-is. */}
-      {typeof value === 'number' ? (
-        <CountUp from={0} to={value} durationMs={800} style={styles.heroValue} />
-      ) : (
-        <Text style={styles.heroValue}>{value}</Text>
-      )}
-      <Text style={styles.heroLabel} numberOfLines={1}>{label}</Text>
+      <View style={styles.heroText}>
+        {/* Numbers count up (0 → value) as the stats resolve. */}
+        {typeof value === 'number' ? (
+          <CountUp from={0} to={value} durationMs={1000} style={styles.heroValue} />
+        ) : (
+          <Text style={styles.heroValue}>{value}</Text>
+        )}
+        <Text style={styles.heroLabel} numberOfLines={1}>{label}</Text>
+      </View>
     </Card>
   );
 }
 
-function LeaderCard({
-  crown,
+// One leader = a right-aligned list row: avatar (right), category + name
+// (right-aligned) beside it, and the value (counts up) pinned to the left.
+function LeaderRow({
   title,
-  row,
   user,
-  valueText,
+  value,
+  unit,
   tint,
+  index,
+  last,
+  suffix,
 }: {
-  crown: string;
   title: string;
-  // Only used for truthiness (has-data gate); any leader shape with a uid works.
-  row: { uid: string } | null;
-  user: Resolved | null;
-  valueText: string;
+  user: Resolved;
+  value: number;
+  unit: string;
   tint: string;
+  index: number;
+  last?: boolean;
+  /** e.g. "%" for penalty leaders whose headline value is a success rate. */
+  suffix?: string;
 }) {
   return (
-    <Card style={styles.leaderCard}>
-      <View style={styles.leaderHead}>
-        <Text style={styles.leaderCrown}>{crown}</Text>
-        <Text style={[styles.leaderTitle, { color: tint }]} numberOfLines={1}>
-          {title}
-        </Text>
+    <AppearItem index={index}>
+      <View style={[styles.leaderRow, !last && styles.funDivider]}>
+        <UserAvatar user={user} size={40} ring />
+        <View style={styles.leaderMid}>
+          <Text style={styles.leaderCat} numberOfLines={1}>{title}</Text>
+          <Text style={styles.leaderName} numberOfLines={1}>{firstName(user.name)}</Text>
+        </View>
+        <View style={styles.leaderVal}>
+          <CountUp
+            from={0}
+            to={value}
+            durationMs={1000}
+            suffix={suffix}
+            style={[styles.leaderValNum, { color: tint }]}
+          />
+          <Text style={styles.leaderValUnit}>{unit}</Text>
+        </View>
       </View>
-      {row && user ? (
-        <>
-          <UserAvatar user={user} size={48} ring />
-          <Text style={styles.leaderName} numberOfLines={1}>
-            {firstName(user.name)}
-          </Text>
-          <Text style={[styles.leaderValue, { color: tint }]}>{valueText}</Text>
-        </>
-      ) : (
-        <Text style={styles.leaderEmpty}>—</Text>
-      )}
-    </Card>
+    </AppearItem>
   );
 }
 
@@ -562,6 +644,29 @@ function FunRow({
   );
 }
 
+// A fun fact whose stat is a percentage → an animated donut (the "graph") on
+// the right that sweeps to the value, with the descriptive sentence beside it.
+function FunDonutRow({
+  pct,
+  tint,
+  text,
+  index,
+  last,
+}: {
+  pct: number;
+  tint: string;
+  text: string;
+  index: number;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.funRow, !last && styles.funDivider]}>
+      <StatDonut pct={pct} tint={tint} size={48} delayMs={index * 90} />
+      <Text style={styles.funSentence}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
@@ -579,28 +684,68 @@ const styles = StyleSheet.create({
   },
   sectionTitleText: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
 
-  // hero grid
+  // MVP hero (top scorer) — the dominant element at the top.
+  mvpCard: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    overflow: 'hidden',
+  },
+  // Corner ribbon, top-right. paddingStart clears the card's rounded corner so
+  // the last Hebrew letter isn't clipped.
+  mvpRibbon: {
+    position: 'absolute',
+    top: 0,
+    // forceRTL swaps left/right, so `left:0` pins the ribbon to the visual
+    // RIGHT corner (matching the sketch). paddingStart clears the rounded corner.
+    left: 0,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.warning,
+    paddingStart: spacing.md,
+    paddingEnd: spacing.sm,
+    paddingVertical: 4,
+    borderBottomEndRadius: radius.md,
+    zIndex: 2,
+  },
+  mvpRibbonText: { ...typography.caption, color: '#fff', fontWeight: '900' },
+  // `row` (not row-reverse): under forceRTL first child (avatar) → visual RIGHT,
+  // text block to its left, and the big number pinned far LEFT (like the sketch).
+  mvpRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  mvpMid: { flex: 1, minWidth: 0 },
+  mvpCat: { ...typography.caption, color: colors.warning, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
+  mvpName: { ...typography.h3, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN },
+  mvpSub: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
+  mvpBig: { alignItems: 'center' },
+  mvpBigNum: { ...typography.h1, color: colors.warning, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  mvpBigLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
+
+  // hero grid — 2×2, compact horizontal tiles (icon + number/label)
   heroGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
   heroTile: {
-    width: '31.5%',
+    width: '48.5%',
     minWidth: 0,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.md,
-    gap: 4,
   },
-  heroIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  heroValue: { ...typography.h2, color: colors.text, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  heroLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  heroIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  heroText: { flex: 1, minWidth: 0 },
+  heroValue: { ...typography.h2, color: colors.text, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: RTL_LABEL_ALIGN },
+  heroLabel: { ...typography.caption, color: colors.textMuted, fontWeight: '700', textAlign: RTL_LABEL_ALIGN, marginTop: 2 },
 
-  // leaders
-  leadersGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: spacing.sm },
-  leaderCard: { width: '48.5%', minWidth: 0, alignItems: 'center', paddingVertical: spacing.md, gap: 6 },
-  leaderHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
-  leaderCrown: { fontSize: 16 },
-  leaderTitle: { ...typography.caption, fontWeight: '800', textAlign: 'center' },
-  leaderName: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: 'center' },
-  leaderValue: { ...typography.caption, fontWeight: '800' },
-  leaderEmpty: { ...typography.h2, color: colors.textMuted, paddingVertical: spacing.md },
+  // leaders — right-aligned list rows
+  leadersCard: { padding: 0, overflow: 'hidden' },
+  // `row` (not row-reverse): under forceRTL the first child (avatar) sits on the
+  // visual RIGHT, category/name flow to its left, value pinned far LEFT.
+  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  leaderMid: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
+  leaderCat: { ...typography.caption, color: colors.textMuted, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  leaderName: { ...typography.body, color: colors.text, fontWeight: '900', textAlign: RTL_LABEL_ALIGN, marginTop: 1 },
+  leaderVal: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  leaderValNum: { ...typography.h3, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  leaderValUnit: { ...typography.caption, color: colors.textMuted, fontWeight: '800' },
 
   // scorers table
   tableCard: { padding: spacing.sm },

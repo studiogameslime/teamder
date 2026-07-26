@@ -32,7 +32,8 @@ export type NotificationKind =
   | 'addedToGame'
   | 'friendRequest'
   | 'friendRequestAccepted'
-  | 'eveningSummary';
+  | 'eveningSummary'
+  | 'gameOnHoliday';
 
 export type NotificationEntity = 'game' | 'group' | 'user';
 
@@ -88,6 +89,9 @@ const COOLDOWN_MS: Record<NotificationKind, number> = {
   // status re-write (e.g. an admin reopening then re-finishing) can't
   // double-ping the same recipient for the same night.
   eveningSummary: 24 * 60 * 60 * 1000,
+  // One holiday heads-up per (organizer, game). Long window — the scan also
+  // stamps `game.holidayNotifiedAt` so this is a belt-and-suspenders guard.
+  gameOnHoliday: 7 * 24 * 60 * 60 * 1000,
 };
 
 export function cooldownMsFor(type: NotificationKind): number {
@@ -173,6 +177,8 @@ export function inferEntityFromPayload(
       return { entityType: 'game', entityId: gameId || recipientId, reason: 'filling-up' };
     case 'gamePlayersJoined':
       return { entityType: 'game', entityId: gameId || recipientId, reason: 'players-joined' };
+    case 'gameOnHoliday':
+      return { entityType: 'game', entityId: gameId || recipientId, reason: 'holiday' };
     case 'gameCanceledOrUpdated':
       // `action` is critical — without it cancel/delete would collide with
       // a benign edit fired moments earlier.

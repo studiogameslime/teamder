@@ -951,12 +951,17 @@ service cloud.firestore {
         // ── Self ADD-GUEST branch ─────────────────────────────────
         // A registered player may APPEND one guest to `guests` while the
         // game is open — UNLESS the game restricts guest-adding until a set
-        // time (`guestsOpenAt`). When guestsOpenAt is 0/absent there is no
+        // time (`guestsOpenAt`). When guestsOpenAt is 0/null/absent there is no
         // restriction (any player can always add). Only `guests` (+updatedAt)
         // may change, and the array must grow by exactly one while KEEPING
         // every existing guest (`hasAll`) — so a player can add but can't
         // remove or edit someone else's guest. Edits/removals stay in the
         // admin branch below.
+        // ⚠️ guestsOpenAt is often stored as an explicit `null` (recurring
+        // clones / create paths). `.get(key, 0)` only defaults on an ABSENT
+        // key, NOT a present-null one, so `time >= null` used to type-error →
+        // deny, blocking every participant guest-add on those games while the
+        // client gate (`guestsOpenAt ?? 0`) allowed it. Treat null as "open".
         (
           resource.data.status == 'open' &&
           request.auth.uid in resource.data.players &&
@@ -966,7 +971,10 @@ service cloud.firestore {
             resource.data.get('guests', []).size() + 1 &&
           request.resource.data.guests.size() <= 100 &&
           request.resource.data.guests.hasAll(resource.data.get('guests', [])) &&
-          request.time.toMillis() >= resource.data.get('guestsOpenAt', 0)
+          (
+            resource.data.get('guestsOpenAt', 0) == null ||
+            request.time.toMillis() >= resource.data.get('guestsOpenAt', 0)
+          )
         ) ||
         // ── Organizer / admin branch ──────────────────────────────
         // Can mutate ANYTHING except terminal lifecycle states AND
@@ -1775,6 +1783,16 @@ service cloud.firestore {
     match /communityPairStats/{doc} {
       allow read: if isSignedIn();
       allow write: if false;
+    }
+    // Audit trail of DELETED games — "who deleted a game" record. Written by
+    // the client at delete time (the exact deleter; `deletedBy` must equal the
+    // caller, so nobody can frame someone else) and by server triggers/cron
+    // (Admin SDK — bypasses these rules, records a best-guess actor). Immutable.
+    // Readable by admins of the game's community.
+    match /gameDeletions/{gameId} {
+      allow read: if isSignedIn() && isGroupAdmin(resource.data.groupId);
+      allow create: if isSignedIn() && request.resource.data.deletedBy == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }

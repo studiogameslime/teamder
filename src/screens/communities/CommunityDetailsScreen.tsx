@@ -34,7 +34,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
-import { goToCommunityChat } from '@/navigation/navigationRef';
+import { goToCommunityChat, goToDirectChat } from '@/navigation/navigationRef';
+import { dmConvId } from '@/services/chatService';
+import { ensureNotGuest } from '@/utils/guestGate';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CollapsibleContent } from '@/components/CollapsibleContent';
@@ -231,6 +233,22 @@ export function CommunityDetailsScreen() {
   );
   const phoneValid =
     !!group?.contactPhone && isValidIsraeliPhone(group.contactPhone);
+
+  // The admin to reach via the in-app chat: the community's founder, falling
+  // back to the first admin for legacy docs that predate creatorId.
+  const adminUid = useMemo(
+    () => (group ? group.creatorId ?? group.adminIds?.[0] : undefined),
+    [group],
+  );
+
+  // Open a 1:1 in-app DM with the community admin (parallel to the WhatsApp
+  // contact button). DirectChatScreen creates the conversation on mount and
+  // gracefully handles a friends-only restriction, so we just navigate.
+  const handleChatAdmin = useCallback(() => {
+    if (!me || !adminUid || me.id === adminUid) return;
+    if (!ensureNotGuest(he.guestRegisterChatAdmin)) return;
+    goToDirectChat(dmConvId(me.id, adminUid));
+  }, [me, adminUid]);
 
   // ─── Action handlers ────────────────────────────────────────────────────
 
@@ -714,6 +732,7 @@ export function CommunityDetailsScreen() {
               <CommunityChampionship
                 groupId={group.id}
                 memberIds={group.playerIds ?? []}
+                attendedByUser={communityStats?.attendedByUser}
               />
             </>
           ) : (
@@ -883,7 +902,11 @@ export function CommunityDetailsScreen() {
           <CommunityStatsSection stats={communityStats} />
 
           {/* Goals championship — club-scoped scorers leaderboard. */}
-          <CommunityChampionship groupId={group.id} memberIds={group.playerIds ?? []} />
+          <CommunityChampionship
+            groupId={group.id}
+            memberIds={group.playerIds ?? []}
+            attendedByUser={communityStats?.attendedByUser}
+          />
 
           {/* The per-community game-history list used to render here, but it
               duplicated the same list already reachable from the ⋯ menu's
@@ -907,6 +930,20 @@ export function CommunityDetailsScreen() {
               // the label in this RTL layout (QA request).
               iconRight="logo-whatsapp"
               onPress={() => openWhatsApp(group.contactPhone)}
+            />
+          ) : null}
+
+          {/* In-app chat contact — DM the admin without leaving the app.
+              Shown to non-admins (members and non-members on the private
+              view) whenever we know who the admin is. */}
+          {!isAdmin && me && adminUid && me.id !== adminUid ? (
+            <Button
+              title={he.communityDetailsChatAdmin}
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconRight="chatbubble-ellipses-outline"
+              onPress={handleChatAdmin}
             />
           ) : null}
 

@@ -27,6 +27,9 @@ export interface ComparePlayer {
   wins: number;
   losses: number;
   rounds: number;
+  /** Penalty-shootout: scored (kicker) + saved (keeper). */
+  penScored: number;
+  penSaved: number;
   /** derived */
   winPct: number;
   goalsPerGame: number;
@@ -67,6 +70,8 @@ interface Row {
   losses: number;
   games: number;
   rounds: number;
+  penScored: number;
+  penSaved: number;
 }
 
 function toPlayer(
@@ -87,6 +92,8 @@ function toPlayer(
     wins: row.wins,
     losses: row.losses,
     rounds: row.rounds,
+    penScored: row.penScored,
+    penSaved: row.penSaved,
     winPct: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
     goalsPerGame: row.games > 0 ? Math.round((row.goals / row.games) * 10) / 10 : 0,
   };
@@ -115,14 +122,19 @@ export const playerCompareService = {
   ): Promise<ComparisonModel | null> {
     if (!groupId || !uidA || !uidB || uidA === uidB) return null;
     try {
-      const [champ, ua, ub] = await Promise.all([
+      // getCommunityStats gives the AUTHORITATIVE "משחקים" (finished-nights
+      // scan) — same source the champions table reads — so the compare card
+      // doesn't disagree with it over the drift-prone `games` rollup.
+      const [champ, stats, ua, ub] = await Promise.all([
         gameService.getCommunityChampionship(groupId).catch(() => null),
+        gameService.getCommunityStats(groupId).catch(() => null),
         userService.getUserById(uidA).catch(() => null),
         userService.getUserById(uidB).catch(() => null),
       ]);
 
       const rows = (champ?.players ?? []) as Row[];
       const byId = new Map(rows.map((r) => [r.uid, r]));
+      const attended = stats?.attendedByUser ?? {};
       const zero: Row = {
         uid: '',
         goals: 0,
@@ -131,9 +143,11 @@ export const playerCompareService = {
         losses: 0,
         games: 0,
         rounds: 0,
+        penScored: 0,
+        penSaved: 0,
       };
-      const rowA = { ...zero, ...(byId.get(uidA) ?? {}), uid: uidA };
-      const rowB = { ...zero, ...(byId.get(uidB) ?? {}), uid: uidB };
+      const rowA = { ...zero, ...(byId.get(uidA) ?? {}), uid: uidA, games: attended[uidA] ?? byId.get(uidA)?.games ?? 0 };
+      const rowB = { ...zero, ...(byId.get(uidB) ?? {}), uid: uidB, games: attended[uidB] ?? byId.get(uidB)?.games ?? 0 };
 
       const a = toPlayer(rowA, ua?.name ?? 'שחקן', ua?.avatarId ?? '', ua?.photoUrl ?? '');
       const b = toPlayer(rowB, ub?.name ?? 'שחקן', ub?.avatarId ?? '', ub?.photoUrl ?? '');
@@ -146,6 +160,14 @@ export const playerCompareService = {
         metric('games', 'משחקים', a.games, b.games, 'int'),
         metric('rounds', 'משחקונים', a.rounds, b.rounds, 'int'),
       ];
+      // Penalty rows only when at least one of the two has taken/faced any —
+      // otherwise every comparison would carry two 0-vs-0 rows.
+      if (a.penScored > 0 || b.penScored > 0) {
+        metrics.push(metric('penScored', 'פנדלים שהוכנסו', a.penScored, b.penScored, 'int'));
+      }
+      if (a.penSaved > 0 || b.penSaved > 0) {
+        metrics.push(metric('penSaved', 'פנדלים שנעצרו', a.penSaved, b.penSaved, 'int'));
+      }
 
       const aLeads = metrics.filter((m) => m.winner === 'a').length;
       const bLeads = metrics.filter((m) => m.winner === 'b').length;

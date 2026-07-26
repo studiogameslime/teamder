@@ -57,6 +57,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, isGuestId } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
+import { Shootout, TieDecisionModal } from '@/components/match/Shootout';
 import { LiveScoreboardCard } from '@/components/match/LiveScoreboardCard';
 import {
   FillerPickerModal,
@@ -196,6 +197,10 @@ export function AdvancedLiveMatchScreen() {
   } | null>(null);
   const [stoppagesOpen, setStoppagesOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
+  // Drawn-round tiebreaker: a decision chooser (manual vs penalties) then the
+  // penalty shootout modal.
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const [shootoutOpen, setShootoutOpen] = useState(false);
   // Interactive team-completion flow. The modal request is render state; the
   // in-progress working rosters + queue live in a ref (mutated between popups).
   const [fillRequest, setFillRequest] = useState<FillRequestView | null>(null);
@@ -567,7 +572,17 @@ export function AdvancedLiveMatchScreen() {
     // a second "סיים משחקון" tap (the ref clears in `finally` BEFORE the async
     // fill flow finishes) re-runs prepareRoundResult and double-commits the
     // round's goals/wins (user-facing stat corruption).
-    if (!gameId || !me || finalizingRef.current || committingRef.current || fillFlowRef.current || winnerOpen) return;
+    if (
+      !gameId ||
+      !me ||
+      finalizingRef.current ||
+      committingRef.current ||
+      fillFlowRef.current ||
+      winnerOpen ||
+      decisionOpen ||
+      shootoutOpen
+    )
+      return;
     finalizingRef.current = true;
     try {
       // STOP (don't reset) the clock the moment the round ends — it shouldn't
@@ -575,11 +590,12 @@ export function AdvancedLiveMatchScreen() {
       // committed (see advanceFillFlow).
       await gameService.pauseTimer(gameId, me.id, me.name ?? '').catch(() => {});
       // Commit stats + build the post-round skeleton (no rotate yet). A 4-team
-      // tie auto-resolves; a 2–3 team tie returns outcome null → manual picker.
+      // tie auto-resolves; a 2–3 team tie returns outcome null → tie chooser
+      // (manual pick vs penalty shootout).
       const res = await gameService.prepareRoundResult(gameId, me.id);
       if (!res) return;
       if (res.outcome === null) {
-        setWinnerOpen(true);
+        setDecisionOpen(true);
         return;
       }
       beginFillFlow(res.skeleton, res.draft);
@@ -619,6 +635,57 @@ export function AdvancedLiveMatchScreen() {
     } finally {
       finalizingRef.current = false;
     }
+  };
+
+  // Tie chooser: admin picks how to break the draw.
+  const onDecideManual = () => {
+    setDecisionOpen(false);
+    setWinnerOpen(true);
+  };
+  const onDecidePenalties = () => {
+    setDecisionOpen(false);
+    setShootoutOpen(true);
+  };
+
+  // Shootout produced a winner (more penalties scored) → record that side as
+  // the round winner (same commit path as a manual tie pick; the shootout kicks
+  // ride along and credit penalty stats via prepareRoundResult).
+  const onShootoutDecided = async (side: 'A' | 'B') => {
+    setShootoutOpen(false);
+    if (
+      !gameId ||
+      !me ||
+      !rotation ||
+      finalizingRef.current ||
+      committingRef.current ||
+      fillFlowRef.current
+    )
+      return;
+    finalizingRef.current = true;
+    try {
+      const res = await gameService.prepareRoundResult(gameId, me.id, side);
+      if (res && res.outcome !== null) beginFillFlow(res.skeleton, res.draft);
+    } catch (err) {
+      logError('liveShootoutDecided', err, { gameId, userId: me.id });
+      toast.error(he.roundFinalizeFailed);
+      if (__DEV__) console.warn('[live] shootout decided failed', err);
+    } finally {
+      finalizingRef.current = false;
+    }
+  };
+
+  // Penalties ended level → fall back to a manual winner pick (kicks are kept
+  // on the live state so they still credit stats when the round is committed).
+  const onShootoutTie = () => {
+    setShootoutOpen(false);
+    setWinnerOpen(true);
+  };
+
+  // Admin backed out of the shootout entirely → clear the state; the round
+  // stays drawn and can be re-decided from "סיים משחקון".
+  const onShootoutExit = () => {
+    setShootoutOpen(false);
+    if (gameId) void gameService.clearShootout(gameId);
   };
 
   // "התחל משחקון" — kick off a round: draft rotation + start the match clock
@@ -1547,6 +1614,28 @@ export function AdvancedLiveMatchScreen() {
         guests={game?.guests}
         onPick={(idx) => onTieWinner(idx)}
         onClose={() => setWinnerOpen(false)}
+      />
+
+      {/* Tie chooser — manual pick vs penalty shootout */}
+      <TieDecisionModal
+        visible={decisionOpen}
+        onManual={onDecideManual}
+        onPenalties={onDecidePenalties}
+        onClose={() => setDecisionOpen(false)}
+      />
+
+      {/* Penalty shootout (שובר שוויון) */}
+      <Shootout
+        visible={shootoutOpen}
+        gameId={gameId ?? ''}
+        shootout={live?.shootout}
+        draftTeams={draftTeams ?? undefined}
+        rotation={rotation ?? undefined}
+        playersMap={playersMap}
+        guests={game?.guests}
+        onDecided={onShootoutDecided}
+        onTie={onShootoutTie}
+        onExit={onShootoutExit}
       />
 
       {/* Team-completion picker — admin chooses who comes up to fill a short

@@ -1,27 +1,25 @@
-// TeamsEditModal — drag-and-drop editor for an EXISTING team split (כוחות).
+// TeamsEditModal — tap-to-swap editor for an EXISTING team split (כוחות).
 //
-// The admin drags a player chip from one team onto a player in ANOTHER team;
-// the chip under the finger ENLARGES to show who they'll swap with, and on
-// release the two players exchange teams. A "סיים" button persists the result
-// via gameService.saveDraftTeams (which flags teamsEditedManually so the
-// scheduled auto-generator won't clobber the manual edit).
+// The admin TAPS a player chip; that chip locks with a highlighted ring and
+// every player in the OTHER team(s) starts blinking as a "tap me to swap"
+// affordance. Tapping one of the blinking chips exchanges the two players'
+// teams; tapping the picked chip again (or the cancel banner) clears the
+// selection. A "סיים" button persists the result via gameService.saveDraftTeams
+// (which flags teamsEditedManually so the scheduled auto-generator won't clobber
+// the manual edit).
 //
-// Built on PanResponder + RN Animated (no Reanimated worklets) so the drag is
-// driven from JS — fine for the ≤~24 chips a game ever has, and easy to drive
-// from an adb swipe during testing. Hit-testing uses page coords
-// (measureInWindow / gestureState.moveX|moveY), and the floating overlay is
-// positioned in a full-screen absolute layer so page coords map 1:1.
+// This mirrors the live-match "החלפה" interaction (RotationPanel/TeamScore) —
+// same one-source-then-tap-target model, same pulsing-candidate cue — instead of
+// the old PanResponder drag, which was fiddly on narrow screens.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
   View,
-  type LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -29,7 +27,7 @@ import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
-import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { isGuestId, type DraftTeam, type Game } from '@/types';
 import { selectionHaptic, successHaptic } from '@/utils/haptics';
@@ -51,45 +49,39 @@ interface Props {
   onSaved?: () => void;
 }
 
-// The floating drag chip is a COMPACT pill (not the full column-width row) so
-// it can sit centred on the finger — a full-width ghost put the RTL name far to
-// the right of the touch point.
-const GHOST_W = 176;
 const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'];
 // Per-team accent (index-based) — only used for the column header dot/tint.
 const TEAM_TINTS = ['#2F6BFF', '#E5484D', '#1FA971', '#F5A524'];
 
-type Rect = { x: number; y: number; w: number; h: number };
+/** Pulsing opacity — marks the swap-target candidates while a source is picked.
+ *  Resets cleanly to opacity 1 on deactivate so a chip never stays dimmed. */
+function Blink({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const op = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!active) {
+      op.stopAnimation();
+      Animated.timing(op, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(op, { toValue: 0.3, duration: 450, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 1, duration: 450, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, op]);
+  return <Animated.View style={{ opacity: op }}>{children}</Animated.View>;
+}
 
 export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Props) {
   // Working copy of the teams; reset every time the modal opens.
   const [teams, setTeams] = useState<DraftTeam[]>([]);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [hoverId, setHoverId] = useState<string | null>(null);
+  // Non-null while a first player is picked: the roster id to swap FROM.
+  const [swapSource, setSwapSource] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-
-  const layouts = useRef<Record<string, Rect>>({});
-  const chipRefs = useRef<Record<string, View | null>>({});
-  const pan = useRef(new Animated.ValueXY()).current;
-  const dragSize = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
-  // Live refs so the PanResponder (created once) always sees fresh state.
-  const dragIdRef = useRef<string | null>(null);
-  const hoverIdRef = useRef<string | null>(null);
-  const teamsRef = useRef<DraftTeam[]>([]);
-  teamsRef.current = teams;
-
-  // (Re)measure every chip's page rect for hit-testing. measureInWindow inside
-  // a freshly-opened Modal can return zeros on the first layout pass, so we
-  // also call this on open (after the slide settles) and on each drag grab.
-  const measureAll = () => {
-    for (const [id, ref] of Object.entries(chipRefs.current)) {
-      if (!ref) continue;
-      ref.measureInWindow((x, y, w, h) => {
-        if (w > 0 && h > 0) layouts.current[id] = { x, y, w, h };
-      });
-    }
-  };
 
   useEffect(() => {
     if (!visible) return;
@@ -99,31 +91,13 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
         .sort((a, b) => a.index - b.index)
         .map((t) => ({ ...t, playerIds: [...t.playerIds] })),
     );
-    setDragId(null);
-    setHoverId(null);
+    setSwapSource(null);
     setDirty(false);
-    dragIdRef.current = null;
-    hoverIdRef.current = null;
-    layouts.current = {};
-    const t = setTimeout(measureAll, 400);
-    return () => clearTimeout(t);
   }, [visible, game.draftTeams]);
 
-  // Which team a roster id currently sits in (working copy).
+  // Which team index a roster id currently sits in (working copy).
   const teamOf = (id: string): number =>
-    teamsRef.current.findIndex((t) => t.playerIds.includes(id));
-
-  const hitTest = (px: number, py: number): string | null => {
-    const fromTeam = teamOf(dragIdRef.current ?? '');
-    for (const [id, r] of Object.entries(layouts.current)) {
-      if (id === dragIdRef.current) continue;
-      if (teamOf(id) === fromTeam) continue; // only a DIFFERENT team swaps
-      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
-        return id;
-      }
-    }
-    return null;
-  };
+    teams.findIndex((t) => t.playerIds.includes(id));
 
   const doSwap = (aId: string, bId: string) => {
     setTeams((prev) => {
@@ -156,55 +130,26 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
     setDirty(true);
   };
 
-  // Drag lifecycle — each chip owns a PanResponder that calls these. Kept as
-  // plain functions (re-read via the chip's cbRef each render) so they always
-  // see fresh state through the refs above.
-  const onDragStart = (id: string, x0: number, y0: number) => {
-    const r = layouts.current[id];
-    dragIdRef.current = id;
-    dragSize.current = r ? { w: r.w, h: r.h } : { w: 140, h: 44 };
-    // Centre the COMPACT ghost (GHOST_W) on the finger from the first frame,
-    // even before measurement resolves — so the drag is always visible.
-    pan.setValue({ x: x0 - GHOST_W / 2, y: y0 - dragSize.current.h / 2 });
-    setDragId(id);
-    selectionHaptic();
-    // Refresh target rects in case the open-time measure was early/stale.
-    measureAll();
-  };
-  const onDragMove = (px: number, py: number) => {
-    if (!dragIdRef.current) return;
-    pan.setValue({
-      x: px - GHOST_W / 2,
-      y: py - dragSize.current.h / 2,
-    });
-    const target = hitTest(px, py);
-    if (target !== hoverIdRef.current) {
-      hoverIdRef.current = target;
-      setHoverId(target);
-      if (target) selectionHaptic();
+  // Tap flow: first tap picks a source; a second tap on a DIFFERENT team swaps;
+  // tapping within the same team re-picks the source; tapping the source clears.
+  const onChipTap = (id: string) => {
+    if (!swapSource) {
+      setSwapSource(id);
+      selectionHaptic();
+      return;
     }
-  };
-  const onDragEnd = () => {
-    const from = dragIdRef.current;
-    const to = hoverIdRef.current;
-    if (from && to) {
-      doSwap(from, to);
-      successHaptic();
+    if (id === swapSource) {
+      setSwapSource(null);
+      return;
     }
-    dragIdRef.current = null;
-    hoverIdRef.current = null;
-    setDragId(null);
-    setHoverId(null);
-  };
-  const dragCallbacks = { onStart: onDragStart, onMove: onDragMove, onEnd: onDragEnd };
-
-  const registerLayout = (id: string, viewRef: View | null) => {
-    chipRefs.current[id] = viewRef;
-    if (!viewRef) return;
-    // measureInWindow → page coords, matching gestureState.moveX/moveY.
-    viewRef.measureInWindow((x, y, w, h) => {
-      if (w > 0 && h > 0) layouts.current[id] = { x, y, w, h };
-    });
+    if (teamOf(id) === teamOf(swapSource)) {
+      setSwapSource(id); // re-pick a different source within the same team
+      selectionHaptic();
+      return;
+    }
+    doSwap(swapSource, id);
+    successHaptic();
+    setSwapSource(null);
   };
 
   const onFinish = async () => {
@@ -230,7 +175,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
     }
   };
 
-  const draggingUser = dragId ? resolve(dragId) : null;
+  const sourceTeam = swapSource ? teamOf(swapSource) : -1;
 
   return (
     <Modal
@@ -249,11 +194,27 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
             <Text style={styles.title}>{he.teamsEditTitle}</Text>
             <View style={styles.closeBtn} />
           </View>
-          <Text style={styles.hint}>{he.teamsEditHint}</Text>
 
-          <View style={styles.columns}>
+          {/* Instruction — swaps to an active "pick a target / cancel" banner
+              once a source is chosen. */}
+          {swapSource ? (
+            <Pressable
+              onPress={() => setSwapSource(null)}
+              style={styles.pickBanner}
+            >
+              <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
+              <Text style={styles.pickBannerText}>{he.teamsEditPickTarget}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.hint}>{he.teamsEditHint}</Text>
+          )}
+
+          <View style={[styles.columns, teams.length <= 2 && styles.columnsNoWrap]}>
             {teams.map((t) => (
-              <View key={t.index} style={styles.column}>
+              <View
+                key={t.index}
+                style={[styles.column, teams.length <= 2 && styles.columnFlexible]}
+              >
                 <View style={styles.columnHead}>
                   <View
                     style={[
@@ -268,16 +229,19 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
                 <View style={styles.chipList}>
                   {t.playerIds.map((pid, idx) => {
                     const u = resolve(pid);
+                    const isSource = pid === swapSource;
+                    // A candidate blinks only when a source is picked AND this
+                    // chip is on a DIFFERENT team (a legal swap partner).
+                    const isCandidate =
+                      swapSource != null && !isSource && t.index !== sourceTeam;
                     return (
                       <Chip
                         key={pid}
-                        id={pid}
                         user={u}
                         isCaptain={idx === 0}
-                        dragging={dragId === pid}
-                        hovered={hoverId === pid}
-                        onLayoutRef={(ref) => registerLayout(pid, ref)}
-                        callbacks={dragCallbacks}
+                        isSource={isSource}
+                        isCandidate={isCandidate}
+                        onPress={() => onChipTap(pid)}
                       />
                     );
                   })}
@@ -291,145 +255,54 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
               title={he.teamsEditFinish}
               onPress={onFinish}
               loading={saving}
+              disabled={!dirty}
               fullWidth
               size="lg"
               iconLeft="checkmark-circle"
             />
           </View>
         </View>
-
-        {/* Floating drag overlay — follows the finger, sits above everything.
-            Wrapped in a `direction:'ltr'` layer so translateX is physical (the
-            page coords from PanResponder); without it, RTL mirrors the X and
-            the ghost lands far to the side of the finger. */}
-        {draggingUser ? (
-          <View pointerEvents="none" style={styles.overlayLayer}>
-            <Animated.View
-              style={[
-                styles.dragGhost,
-                {
-                  width: GHOST_W,
-                  transform: [
-                    { translateX: pan.x },
-                    { translateY: pan.y },
-                    { scale: 1.08 },
-                  ],
-                },
-              ]}
-            >
-              <ChipFace user={draggingUser} tone="drag" compact />
-            </Animated.View>
-          </View>
-        ) : null}
       </View>
     </Modal>
   );
 }
 
-interface DragCallbacks {
-  onStart: (id: string, x0: number, y0: number) => void;
-  onMove: (px: number, py: number) => void;
-  onEnd: () => void;
-}
-
 function Chip({
-  id,
   user,
   isCaptain,
-  dragging,
-  hovered,
-  onLayoutRef,
-  callbacks,
+  isSource,
+  isCandidate,
+  onPress,
 }: {
-  id: string;
   user: RosterUser;
   isCaptain: boolean;
-  dragging: boolean;
-  hovered: boolean;
-  onLayoutRef: (ref: View | null) => void;
-  callbacks: DragCallbacks;
-}) {
-  const ref = useRef<View | null>(null);
-  const scale = useRef(new Animated.Value(1)).current;
-  // Keep the latest callbacks reachable from the once-created responder.
-  const cbRef = useRef(callbacks);
-  cbRef.current = callbacks;
-
-  const responder = useRef(
-    PanResponder.create({
-      // Claim on touch-down so the drag always engages (there's no scroll
-      // view to compete with inside the editor).
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (_e, g) => cbRef.current.onStart(id, g.x0, g.y0),
-      onPanResponderMove: (_e, g) => cbRef.current.onMove(g.moveX, g.moveY),
-      onPanResponderRelease: () => cbRef.current.onEnd(),
-      onPanResponderTerminate: () => cbRef.current.onEnd(),
-    }),
-  ).current;
-
-  useEffect(() => {
-    Animated.spring(scale, {
-      toValue: hovered ? 1.18 : 1,
-      useNativeDriver: true,
-      friction: 6,
-      tension: 140,
-    }).start();
-  }, [hovered, scale]);
-
-  const onLayout = (_e: LayoutChangeEvent) => onLayoutRef(ref.current);
-
-  return (
-    <Animated.View
-      ref={ref}
-      onLayout={onLayout}
-      collapsable={false}
-      style={[
-        styles.chip,
-        hovered && styles.chipHovered,
-        dragging && styles.chipDragging,
-        { transform: [{ scale }] },
-      ]}
-      {...responder.panHandlers}
-    >
-      <ChipFace user={user} isCaptain={isCaptain} />
-    </Animated.View>
-  );
-}
-
-function ChipFace({
-  user,
-  isCaptain,
-  tone,
-  compact,
-}: {
-  user: RosterUser;
-  isCaptain?: boolean;
-  tone?: 'drag';
-  compact?: boolean;
+  isSource: boolean;
+  isCandidate: boolean;
+  onPress: () => void;
 }) {
   return (
-    <View
-      style={[
-        styles.chipFace,
-        tone === 'drag' && styles.chipFaceDrag,
-        compact && styles.chipFaceCompact,
-      ]}
-    >
-      <UserAvatar user={user} size={32} />
-      <Text
-        style={[styles.chipName, compact && styles.chipNameCompact]}
-        numberOfLines={1}
-      >
-        {user.name}
-      </Text>
-      {isCaptain ? (
-        <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-      ) : null}
-      {isGuestId(user.id) ? (
-        <Ionicons name="person-outline" size={12} color={colors.textMuted} />
-      ) : null}
-    </View>
+    <Pressable onPress={onPress}>
+      <Blink active={isCandidate}>
+        <View
+          style={[
+            styles.chipFace,
+            isCandidate && styles.chipFaceCandidate,
+            isSource && styles.chipFaceSource,
+          ]}
+        >
+          <UserAvatar user={user} size={32} />
+          <Text style={styles.chipName} numberOfLines={1}>
+            {user.name}
+          </Text>
+          {isCaptain ? (
+            <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
+          ) : null}
+          {isGuestId(user.id) ? (
+            <Ionicons name="person-outline" size={12} color={colors.textMuted} />
+          ) : null}
+        </View>
+      </Blink>
+    </Pressable>
   );
 }
 
@@ -459,6 +332,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: spacing.md,
   },
+  // Active "now pick a target" banner shown while a source is selected.
+  pickBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: spacing.lg,
+    marginTop: 2,
+    marginBottom: spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  pickBannerText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    textAlign: 'center',
+    flexShrink: 1,
+  },
   columns: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -466,6 +362,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
+  // With 2 teams, keep them SIDE-BY-SIDE on every screen width — never let the
+  // 150px min wrap them into a vertical stack on narrow/high-density phones.
+  columnsNoWrap: { flexWrap: 'nowrap' },
+  // 2-team columns shrink to share the row (minWidth 0) instead of overflowing;
+  // long player names ellipsize (see chipName) rather than forcing a wrap.
+  columnFlexible: { minWidth: 0 },
   column: {
     flex: 1,
     minWidth: 150,
@@ -486,9 +388,6 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   chipList: { gap: spacing.xs },
-  chip: { borderRadius: radius.pill },
-  chipHovered: {},
-  chipDragging: { opacity: 0.25 },
   chipFace: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,27 +396,27 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: 5,
     paddingHorizontal: 8,
-  },
-  chipFaceDrag: {
-    backgroundColor: colors.surface,
-    ...shadows.card,
     borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  // A blinking swap candidate — soft tinted background so it reads as tappable.
+  chipFaceCandidate: {
+    backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
   },
-  // Compact face for the floating ghost: content hugs the centre so the name
-  // sits under the finger rather than stretching to a column width.
-  chipFaceCompact: { justifyContent: 'center' },
-  chipNameCompact: { flex: 0, flexShrink: 1 },
+  // The picked source — solid ring, no blink.
+  chipFaceSource: {
+    borderColor: colors.primary,
+    borderWidth: 2.5,
+    backgroundColor: colors.surface,
+  },
   chipName: {
     ...typography.caption,
     color: colors.text,
     fontWeight: '700',
     flex: 1,
+    minWidth: 0, // let a long one-line name ellipsize instead of forcing the column wider
     textAlign: RTL_LABEL_ALIGN,
   },
   footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  // LTR coordinate frame for the floating ghost so translateX maps to physical
-  // page-X (matching the PanResponder coords) instead of being RTL-mirrored.
-  overlayLayer: { ...StyleSheet.absoluteFillObject, direction: 'ltr', zIndex: 50 },
-  dragGhost: { position: 'absolute', top: 0, left: 0 },
 });

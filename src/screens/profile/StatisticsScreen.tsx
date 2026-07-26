@@ -31,6 +31,12 @@ export function StatisticsScreen() {
   const localUser = useUserStore((s) => s.currentUser);
   const [stats, setStats] = useState<PlayerStatsSummary | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
+  const [pen, setPen] = useState<{
+    penTaken: number;
+    penScored: number;
+    penFaced: number;
+    penSaved: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,12 +50,24 @@ export function StatisticsScreen() {
     userService
       .getUserById(uid)
       .catch(() => null)
-      .then((fresh) =>
-        playerStatsService.compute(uid, {
+      .then((fresh) => {
+        // Penalty-shootout stats (server-maintained) — captured for the tiles.
+        const st = fresh?.stats;
+        setPen(
+          st
+            ? {
+                penTaken: st.penTaken ?? 0,
+                penScored: st.penScored ?? 0,
+                penFaced: st.penFaced ?? 0,
+                penSaved: st.penSaved ?? 0,
+              }
+            : null,
+        );
+        return playerStatsService.compute(uid, {
           goals: fresh?.stats?.goals ?? localUser?.stats?.goals ?? 0,
           assists: fresh?.stats?.assists ?? localUser?.stats?.assists ?? 0,
-        }),
-      )
+        });
+      })
       .then(async (s) => {
         if (!alive) return;
         setStats(s);
@@ -114,6 +132,48 @@ export function StatisticsScreen() {
                tiles entirely (user request). */}
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
           </View>
+
+          {/* ── Penalties AS KICKER (only when the player took any) ───── */}
+          {pen && pen.penTaken > 0 ? (
+            <>
+              <Text style={[styles.section, styles.sectionGap]}>
+                {he.statsSectionPenaltiesKicker}
+              </Text>
+              <View style={styles.tileGrid}>
+                <NumberTile
+                  icon="football-outline"
+                  value={`${pen.penScored}/${pen.penTaken}`}
+                  label={he.statPenScored}
+                />
+                <NumberTile
+                  icon="stats-chart-outline"
+                  value={`${Math.round((pen.penScored / pen.penTaken) * 100)}%`}
+                  label={he.statPenRate}
+                />
+              </View>
+            </>
+          ) : null}
+
+          {/* ── Penalties AS KEEPER (only when the player faced any) ──── */}
+          {pen && pen.penFaced > 0 ? (
+            <>
+              <Text style={[styles.section, styles.sectionGap]}>
+                {he.statsSectionPenaltiesKeeper}
+              </Text>
+              <View style={styles.tileGrid}>
+                <NumberTile
+                  icon="hand-left-outline"
+                  value={String(pen.penSaved)}
+                  label={he.statPenSaves}
+                />
+                <NumberTile
+                  icon="shield-checkmark-outline"
+                  value={`${Math.round((pen.penSaved / pen.penFaced) * 100)}%`}
+                  label={he.statPenSaveRate}
+                />
+              </View>
+            </>
+          ) : null}
 
           {/* ── People (named superlatives) ─────────────────────────── */}
           <Text style={[styles.section, styles.sectionGap]}>

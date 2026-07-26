@@ -22,6 +22,12 @@ export interface ChampionshipRow {
   losses: number;
   /** Full games (evenings) the player took part in. */
   games: number;
+  /** Penalty-shootout kicker: taken / scored. Drives "מלך הפנדלים". */
+  penTaken: number;
+  penScored: number;
+  /** Penalty-shootout keeper: faced / saved. Drives "מלך שוערי הפנדלים". */
+  penFaced: number;
+  penSaved: number;
 }
 
 /** goals×2 + assists×1 */
@@ -67,6 +73,10 @@ export function rankChampionshipRows(
     wins?: number;
     losses?: number;
     games?: number;
+    penTaken?: number;
+    penScored?: number;
+    penFaced?: number;
+    penSaved?: number;
   }>,
   sortBy: ChampionshipSort = 'perGame',
   // When true, keep EVERY row (even all-zeros) instead of dropping the inactive
@@ -82,6 +92,10 @@ export function rankChampionshipRows(
     wins: typeof x.wins === 'number' ? x.wins : 0,
     losses: typeof x.losses === 'number' ? x.losses : 0,
     games: typeof x.games === 'number' ? x.games : 0,
+    penTaken: typeof x.penTaken === 'number' ? x.penTaken : 0,
+    penScored: typeof x.penScored === 'number' ? x.penScored : 0,
+    penFaced: typeof x.penFaced === 'number' ? x.penFaced : 0,
+    penSaved: typeof x.penSaved === 'number' ? x.penSaved : 0,
   }));
   if (sortBy === 'goals' || sortBy === 'points') {
     // 'points' (community table): sort by WINS, then goals, then assists

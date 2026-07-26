@@ -130,6 +130,15 @@ export function readStats(d: DocumentData): UserStats | undefined {
     // the profile/championship assist + win tallies read back as 0.
     assists: typeof s.assists === 'number' ? s.assists : 0,
     wins: typeof s.wins === 'number' ? s.wins : 0,
+    // Penalty-shootout stats (server-maintained). Same strip-on-read risk —
+    // without these the profile penalty tiles read back as 0. Left undefined
+    // when absent so a player who never took a penalty carries no penalty fields.
+    penTaken: typeof s.penTaken === 'number' ? s.penTaken : undefined,
+    penScored: typeof s.penScored === 'number' ? s.penScored : undefined,
+    penMissed: typeof s.penMissed === 'number' ? s.penMissed : undefined,
+    penFaced: typeof s.penFaced === 'number' ? s.penFaced : undefined,
+    penSaved: typeof s.penSaved === 'number' ? s.penSaved : undefined,
+    penConceded: typeof s.penConceded === 'number' ? s.penConceded : undefined,
   };
 }
 
@@ -179,6 +188,15 @@ const userConverter: FirestoreDataConverter<User> = {
             goals: u.stats.goals ?? 0,
             assists: u.stats.assists ?? 0,
             wins: u.stats.wins ?? 0,
+            // Penalty stats — only serialize when present, so a full setDoc
+            // preserves the server value (read back by readStats) without
+            // creating 0-fields on every user who never took a penalty.
+            ...(typeof u.stats.penTaken === 'number' ? { penTaken: u.stats.penTaken } : {}),
+            ...(typeof u.stats.penScored === 'number' ? { penScored: u.stats.penScored } : {}),
+            ...(typeof u.stats.penMissed === 'number' ? { penMissed: u.stats.penMissed } : {}),
+            ...(typeof u.stats.penFaced === 'number' ? { penFaced: u.stats.penFaced } : {}),
+            ...(typeof u.stats.penSaved === 'number' ? { penSaved: u.stats.penSaved } : {}),
+            ...(typeof u.stats.penConceded === 'number' ? { penConceded: u.stats.penConceded } : {}),
           }
         : null,
       // fcmTokens are NO LONGER written to the world-readable /users doc —
@@ -682,6 +700,43 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
             at: typeof x.at === 'number' ? x.at : 0,
           }))
       : undefined,
+    // Penalty-shootout state for a drawn round. Same explicit-deserialization
+    // requirement as `goals` above — without this branch the whole `shootout`
+    // object (first team, keepers, every kick) is stripped on every listener
+    // tick and the tiebreaker UI would reset mid-shootout.
+    shootout: (() => {
+      const sh = o.shootout as Record<string, unknown> | undefined;
+      if (!sh || typeof sh !== 'object') return undefined;
+      const firstTeam = sh.firstTeam === 'A' || sh.firstTeam === 'B' ? sh.firstTeam : undefined;
+      if (!firstTeam) return undefined;
+      return {
+        firstTeam,
+        keeperA:
+          typeof sh.keeperA === 'string' ? sh.keeperA : sh.keeperA === null ? null : undefined,
+        keeperB:
+          typeof sh.keeperB === 'string' ? sh.keeperB : sh.keeperB === null ? null : undefined,
+        kicks: Array.isArray(sh.kicks)
+          ? (sh.kicks as unknown[])
+              .filter(
+                (k): k is Record<string, unknown> =>
+                  !!k &&
+                  typeof k === 'object' &&
+                  typeof (k as { id?: unknown }).id === 'string' &&
+                  typeof (k as { kickerId?: unknown }).kickerId === 'string' &&
+                  ((k as { team?: unknown }).team === 'A' ||
+                    (k as { team?: unknown }).team === 'B'),
+              )
+              .map((k) => ({
+                id: k.id as string,
+                kickerId: k.kickerId as string,
+                keeperId: typeof k.keeperId === 'string' ? (k.keeperId as string) : '',
+                team: k.team as 'A' | 'B',
+                scored: (k as { scored?: unknown }).scored === true,
+                at: typeof k.at === 'number' ? (k.at as number) : 0,
+              }))
+          : [],
+      };
+    })(),
     scoreC: typeof o.scoreC === 'number' ? o.scoreC : undefined,
     scoreD: typeof o.scoreD === 'number' ? o.scoreD : undefined,
     scoreE: typeof o.scoreE === 'number' ? o.scoreE : undefined,

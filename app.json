@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teamder",
     "slug": "soccer-game",
-    "version": "1.0.72",
+    "version": "1.0.79",
     "orientation": "portrait",
     "icon": "./Logo.png",
     "scheme": [
@@ -49,7 +49,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.studiogameslime.soccerapp",
-      "versionCode": 41,
+      "versionCode": 43,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
@@ -136,8 +136,7 @@
       "./plugins/withScreenCapture.js",
       "./plugins/withWearApp.js",
       "./plugins/withFmtConstevalFix.js",
-      "./plugins/withRemoveAlwaysLocation.js",
-      "@bacons/apple-targets"
+      "./plugins/withRemoveAlwaysLocation.js"
     ],
     "experiments": {
       "typedRoutes": false

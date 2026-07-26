@@ -58,11 +58,50 @@ const TIME_BUCKETS: {
   key: TimeBucket;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  range: string;
 }[] = [
-  { key: 'morning', label: he.availabilityTimeMorning, icon: 'sunny-outline' },
-  { key: 'noon', label: he.availabilityTimeNoon, icon: 'sunny' },
-  { key: 'evening', label: he.availabilityTimeEvening, icon: 'partly-sunny-outline' },
+  { key: 'morning', label: he.availabilityTimeMorning, icon: 'sunny-outline', range: he.availabilityTimeRangeMorning },
+  { key: 'noon', label: he.availabilityTimeNoon, icon: 'sunny', range: he.availabilityTimeRangeNoon },
+  { key: 'evening', label: he.availabilityTimeEvening, icon: 'partly-sunny-outline', range: he.availabilityTimeRangeEvening },
 ];
+const ALL_BUCKETS: TimeBucket[] = ['morning', 'noon', 'evening'];
+
+/** grid = weekday → free buckets that day. */
+type SlotGrid = Partial<Record<WeekdayIndex, TimeBucket[]>>;
+
+/**
+ * Build the initial grid, MIGRATING existing users so nobody's saved
+ * availability is lost when the grid UI replaces the old decoupled pickers:
+ *  • a saved `availabilitySlots` grid wins (normalise string keys from Firestore);
+ *  • else expand the legacy `preferredDays × preferredTimes` cross-product —
+ *    empty days ⇒ "any day", empty times ⇒ "any window" (matches the old
+ *    "empty array = any" matcher semantics);
+ *  • both empty ⇒ empty grid (still "any", handled by the matcher fallback).
+ */
+function buildInitialGrid(av: UserAvailability): SlotGrid {
+  const saved = av.availabilitySlots;
+  if (saved && Object.keys(saved).length > 0) {
+    const out: SlotGrid = {};
+    for (const [k, v] of Object.entries(saved)) {
+      if (Array.isArray(v) && v.length > 0) {
+        out[Number(k) as WeekdayIndex] = v.filter((b): b is TimeBucket =>
+          ALL_BUCKETS.includes(b as TimeBucket),
+        );
+      }
+    }
+    return out;
+  }
+  const dLegacy = av.preferredDays ?? [];
+  const tLegacy = (av.preferredTimes ?? []).filter((b) =>
+    ALL_BUCKETS.includes(b),
+  );
+  if (dLegacy.length === 0 && tLegacy.length === 0) return {};
+  const days = dLegacy.length > 0 ? dLegacy : ALL_DAYS;
+  const buckets = tLegacy.length > 0 ? tLegacy : ALL_BUCKETS;
+  const out: SlotGrid = {};
+  for (const d of days) out[d] = [...buckets];
+  return out;
+}
 
 export function AvailabilityEditScreen() {
   const nav = useNavigation();
@@ -94,8 +133,9 @@ export function AvailabilityEditScreen() {
     typeof initial.homeCityLat === 'number' &&
     typeof initial.homeCityLng === 'number';
 
-  const [days, setDays] = useState<WeekdayIndex[]>(initial.preferredDays ?? []);
-  const [times, setTimes] = useState<TimeBucket[]>(initial.preferredTimes ?? []);
+  // Per-day availability grid (migrated from any legacy days×times on first open).
+  const initialGrid = useMemo(() => buildInitialGrid(initial), [user?.availability]);
+  const [slots, setSlots] = useState<SlotGrid>(initialGrid);
   const [pin, setPin] = useState(initialPin);
   const [radiusKm, setRadiusKm] = useState<number>(initialRadius);
   // Default ON (user request): nearby-game invites are the point of setting
@@ -115,8 +155,7 @@ export function AvailabilityEditScreen() {
   const [cityLabel, setCityLabel] = useState<string>(initial.homeCity ?? '');
 
   const isDirty =
-    JSON.stringify(days) !== JSON.stringify(initial.preferredDays ?? []) ||
-    JSON.stringify(times) !== JSON.stringify(initial.preferredTimes ?? []) ||
+    JSON.stringify(slots) !== JSON.stringify(initialGrid) ||
     pin.lat !== initialPin.lat ||
     pin.lng !== initialPin.lng ||
     radiusKm !== initialRadius ||
@@ -181,21 +220,45 @@ export function AvailabilityEditScreen() {
     setSearchOpen(false);
   };
 
-  const toggleDay = useCallback((d: WeekdayIndex) => {
-    setDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
-    );
+  const toggleSlot = useCallback((d: WeekdayIndex, b: TimeBucket) => {
+    setSlots((prev) => {
+      const cur = prev[d] ?? [];
+      const nextArr = cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b];
+      const next: SlotGrid = { ...prev };
+      if (nextArr.length > 0) next[d] = nextArr;
+      else delete next[d];
+      return next;
+    });
   }, []);
 
-  const toggleTime = useCallback((t: TimeBucket) => {
-    setTimes((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
-    );
+  const applyPreset = useCallback((kind: 'evenings' | 'weekend' | 'clear') => {
+    setSlots((prev) => {
+      if (kind === 'clear') return {};
+      const next: SlotGrid = { ...prev };
+      if (kind === 'evenings') {
+        for (const d of ALL_DAYS) {
+          next[d] = Array.from(new Set([...(next[d] ?? []), 'evening']));
+        }
+      } else if (kind === 'weekend') {
+        for (const d of [5, 6] as WeekdayIndex[]) next[d] = [...ALL_BUCKETS];
+      }
+      return next;
+    });
   }, []);
 
   if (!user) return null;
 
   const save = async () => {
+    // The grid is the source of truth; derive the legacy arrays from it so
+    // older clients + the server matcher's fallback path keep working exactly
+    // as before (never wiping anyone's saved availability).
+    const derivedDays = (Object.keys(slots) as string[])
+      .map((k) => Number(k) as WeekdayIndex)
+      .filter((d) => (slots[d]?.length ?? 0) > 0)
+      .sort((a, b) => a - b);
+    const derivedTimes = Array.from(
+      new Set(Object.values(slots).flat().filter(Boolean)),
+    ) as TimeBucket[];
     setBusy(true);
     try {
       // When location is off the feature is disabled: clear coords/city and
@@ -216,8 +279,9 @@ export function AvailabilityEditScreen() {
         }
       }
       const next: UserAvailability = {
-        preferredDays: days,
-        preferredTimes: times,
+        preferredDays: derivedDays,
+        preferredTimes: derivedTimes,
+        availabilitySlots: slots,
         homeCity: cityName || undefined,
         preferredCity: cityName || undefined,
         cities: cityName ? [cityName] : [],
@@ -232,8 +296,8 @@ export function AvailabilityEditScreen() {
       // cache so the "פנויים לשחק לידך" counts refresh on the next open.
       availabilityFeedService.invalidate();
       logEvent(AnalyticsEvent.AvailabilitySet, {
-        days: days.join(','),
-        times: times.join(','),
+        days: derivedDays.join(','),
+        times: derivedTimes.join(','),
         radiusKm,
         locationEnabled: String(locationEnabled),
         acceptsFillerPush: String(locationEnabled && notify),
@@ -246,7 +310,7 @@ export function AvailabilityEditScreen() {
       logError('saveAvailability', e, {
         screen: 'AvailabilityEditScreen',
         userId: user.id,
-        days: days.join(','),
+        days: derivedDays.join(','),
         radiusKm,
       });
       if (__DEV__) console.warn('[availability] save failed', e);
@@ -317,58 +381,85 @@ export function AvailabilityEditScreen() {
           </View>
         ) : (
           <>
-        {/* Days — all 7 fit in one row, single letter each */}
-        <SectionHeader icon="calendar-outline" title={he.availabilityDaysTitle} />
-        <View style={styles.daysRow}>
+        {/* Availability grid — day × time-of-day, each cell independent so a
+            user can be free e.g. Friday morning but NOT Friday evening. */}
+        <SectionHeader icon="calendar-outline" title={he.availabilityGridTitle} />
+        <View style={styles.gridCard}>
+          <View style={styles.gridHeaderRow}>
+            <View style={styles.gridDayCol} />
+            {TIME_BUCKETS.map((t) => (
+              <View key={t.key} style={styles.gridHeadCell}>
+                <Ionicons name={t.icon} size={18} color={colors.textMuted} />
+                <Text style={styles.gridHeadLabel}>{t.label}</Text>
+                <Text style={styles.gridHeadRange}>{t.range}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.gridDivider} />
           {ALL_DAYS.map((d) => {
-            const active = days.includes(d);
+            const isWeekend = d === 5 || d === 6;
             return (
-              <Pressable
-                key={d}
-                onPress={() => toggleDay(d)}
-                style={({ pressed }) => [
-                  styles.dayChip,
-                  active && styles.chipActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text style={[styles.dayLetter, active && styles.textOnActive]}>
-                  {he.availabilityDayLetter[d]}
+              <View key={d} style={styles.gridRow}>
+                <Text
+                  style={[styles.gridDayLabel, isWeekend && styles.gridDayWeekend]}
+                >
+                  {he.availabilityDayName[d]}
                 </Text>
-                {active ? <CheckBadge /> : null}
-              </Pressable>
+                {TIME_BUCKETS.map((t) => {
+                  const on = (slots[d] ?? []).includes(t.key);
+                  return (
+                    <Pressable
+                      key={t.key}
+                      onPress={() => toggleSlot(d, t.key)}
+                      style={({ pressed }) => [
+                        styles.gridCell,
+                        on && styles.gridCellOn,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      <Ionicons
+                        name={on ? 'checkmark' : 'add'}
+                        size={on ? 20 : 19}
+                        color={on ? '#fff' : colors.textMuted}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
             );
           })}
+          <View style={styles.gridLegend}>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendSwatch, { backgroundColor: colors.success }]}
+              />
+              <Text style={styles.legendText}>{he.availabilityLegendFree}</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendSwatch, styles.legendSwatchOff]} />
+              <Text style={styles.legendText}>{he.availabilityLegendBusy}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Time of day */}
-        <SectionHeader icon="time-outline" title={he.availabilityTimesTitle} />
-        <View style={styles.timesRow}>
-          {TIME_BUCKETS.map((t) => {
-            const active = times.includes(t.key);
-            return (
-              <Pressable
-                key={t.key}
-                onPress={() => toggleTime(t.key)}
-                style={({ pressed }) => [
-                  styles.timeChip,
-                  active && styles.chipActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text style={[styles.timeLabel, active && styles.textOnActive]}>
-                  {t.label}
-                </Text>
-                <Ionicons
-                  name={t.icon}
-                  size={22}
-                  color={active ? '#fff' : colors.textMuted}
-                  style={{ marginTop: 4 }}
-                />
-                {active ? <CheckBadge /> : null}
-              </Pressable>
-            );
-          })}
+        {/* Quick-fill presets — 21 cells by hand is a chore; one tap fills a
+            common pattern, then the user tweaks the exceptions. */}
+        <SectionHeader icon="flash-outline" title={he.availabilityQuickFill} />
+        <View style={styles.presetRow}>
+          <Pressable style={styles.preset} onPress={() => applyPreset('evenings')}>
+            <Text style={styles.presetText}>{he.availabilityPresetEvenings}</Text>
+          </Pressable>
+          <Pressable style={styles.preset} onPress={() => applyPreset('weekend')}>
+            <Text style={styles.presetText}>{he.availabilityPresetWeekend}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.preset, styles.presetGhost]}
+            onPress={() => applyPreset('clear')}
+          >
+            <Text style={[styles.presetText, styles.presetGhostText]}>
+              {he.availabilityPresetClear}
+            </Text>
+          </Pressable>
         </View>
 
         {/* Fixed home area (map) — set explicitly, never from live GPS. */}
@@ -682,6 +773,71 @@ const styles = StyleSheet.create({
 
   chipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   textOnActive: { color: '#fff' },
+
+  // Availability grid (day × time-of-day)
+  gridCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+  },
+  gridHeaderRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
+  gridDayCol: { width: 58 },
+  gridHeadCell: { flex: 1, alignItems: 'center', paddingBottom: 2 },
+  gridHeadLabel: { fontSize: 12, fontWeight: '800', color: colors.text, marginTop: 1 },
+  gridHeadRange: { fontSize: 10, fontWeight: '600', color: colors.textMuted },
+  gridDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  gridRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  gridDayLabel: {
+    width: 58,
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'right',
+  },
+  gridDayWeekend: { color: '#7C3AED' },
+  gridCell: {
+    flex: 1,
+    height: 42,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridCellOn: { backgroundColor: colors.success, borderColor: colors.success },
+  gridLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendSwatch: { width: 14, height: 14, borderRadius: 4 },
+  legendSwatchOff: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  legendText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  preset: {
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+  },
+  presetText: { fontSize: 13, fontWeight: '800', color: ACCENT },
+  presetGhost: { borderColor: colors.border },
+  presetGhostText: { color: colors.textMuted },
   checkBadge: {
     position: 'absolute',
     bottom: -8,

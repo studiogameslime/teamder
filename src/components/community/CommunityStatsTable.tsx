@@ -42,25 +42,38 @@ export function CommunityStatsTable({
   /** Drop the "הופעות" (evenings attended) column — the per-game table reuses
    *  this table but appearances are meaningless for a single game. */
   hideAppearances = false,
+  /** Authoritative "הופעות" per uid (finished-nights scan from
+   *  getCommunityStats). When given, it OVERRIDES the drift-prone
+   *  `communityPlayerStats.games` rollup for the appearances column. */
+  attendedByUser,
 }: {
   players: ChampionshipRow[];
   groupId?: string;
   limit?: number;
   hideAppearances?: boolean;
+  attendedByUser?: Record<string, number>;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
   // Tap a column header to sort by it. Default = wins (the headline stat).
   const [sortKey, setSortKey] = useState<keyof ChampionshipRow>('wins');
+  // Replace the rollup `games` with the authoritative scan count when provided.
+  const effPlayers = React.useMemo(
+    () =>
+      attendedByUser
+        ? players.map((p) => ({ ...p, games: attendedByUser[p.uid] ?? p.games }))
+        : players,
+    [players, attendedByUser],
+  );
   // Sort by the chosen column (desc), THEN slice — so the top-N reflects the
   // active sort. V8's sort is stable, so ties keep the incoming order (which is
   // itself wins→goals ranked), giving sensible tie-breaking.
   const rows = React.useMemo(
     () =>
-      [...players]
+      [...effPlayers]
         .sort((a, b) => Number(b[sortKey] ?? 0) - Number(a[sortKey] ?? 0))
         .slice(0, limit),
-    [players, sortKey, limit],
+    [effPlayers, sortKey, limit],
   );
 
   useEffect(() => {

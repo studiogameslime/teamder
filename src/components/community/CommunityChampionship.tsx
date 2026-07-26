@@ -21,9 +21,13 @@ export function CommunityChampionship({
   // The club's registered members — passed so the table lists EVERYONE, not
   // only players who already have stats (members with no games show as zero).
   memberIds,
+  // Authoritative "הופעות" per uid (finished-nights scan) — overrides the
+  // drift-prone rollup for the appearances column.
+  attendedByUser,
 }: {
   groupId: string;
   memberIds?: string[];
+  attendedByUser?: Record<string, number>;
 }) {
   const [data, setData] = useState<{
     totalGoals: number;
@@ -84,7 +88,11 @@ export function CommunityChampionship({
         </Card>
       </View>
 
-      <CommunityStatsTable players={data.players} groupId={groupId} />
+      <CommunityStatsTable
+        players={data.players}
+        groupId={groupId}
+        attendedByUser={attendedByUser}
+      />
     </View>
   );
 }

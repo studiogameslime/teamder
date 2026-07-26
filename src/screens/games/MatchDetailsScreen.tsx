@@ -1696,6 +1696,43 @@ export function MatchDetailsScreen() {
     }
   };
 
+  // Edit tap — for a recurring game, offer "this week only" (keeps the series
+  // unchanged) vs "the whole series". Non-recurring → straight to the editor.
+  const handleEditPress = () => {
+    if (!game.recurring) {
+      nav.navigate('GameEdit', { gameId: game.id });
+      return;
+    }
+    appAlert(he.editRecurringTitle, he.editRecurringBody, [
+      { text: he.cancel, style: 'cancel' },
+      { text: he.editRecurringThisWeek, onPress: () => void handleEditThisWeek() },
+      {
+        text: he.editRecurringSeries,
+        onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
+      },
+    ]);
+  };
+
+  // "Edit this week only": spawn next week's clone from the CURRENT settings
+  // (series continues unchanged) + detach this game, then open the editor on it.
+  const handleEditThisWeek = async () => {
+    if (!user) return;
+    setBusy(true);
+    try {
+      await gameService.detachRecurringOccurrence(game.id, user.id);
+      nav.navigate('GameEdit', { gameId: game.id });
+    } catch (err) {
+      logError('matchEditThisWeek', err, {
+        screen: 'MatchDetailsScreen',
+        gameId: game.id,
+      });
+      if (__DEV__) console.warn('[matchDetails] editThisWeek failed', err);
+      toast.error(he.error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSetTeamFeedback = async (value: 'like' | 'dislike') => {
     if (!user) return;
     // Toggle off if tapping the same reaction again.
@@ -1866,7 +1903,7 @@ export function MatchDetailsScreen() {
                 icon: 'create-outline' as const,
                 onPress: () => {
                   if (canEditGame(game, { isOrganizerOrAdmin: isAdmin })) {
-                    nav.navigate('GameEdit', { gameId: game.id });
+                    handleEditPress();
                   } else {
                     appAlert(
                       he.matchEditBlockedTitle,
@@ -2180,16 +2217,20 @@ export function MatchDetailsScreen() {
   // `draftTeams.teams` is the split as created. `draftTeams.teams` itself is the
   // LIVE/working roster (mutated by went-home + permanent-fill), so it is used
   // only by the live-match rotation panel, never for this fixed display.
-  const splitTeams = game.rotation?.baseTeams?.length
-    ? [...game.rotation.baseTeams]
-        .sort((a, b) => a.index - b.index)
-        .map((b) => ({
-          index: b.index,
-          // baseTeams keeps the original order → playerIds[0] is the captain.
-          captainId: b.playerIds[0] ?? '',
-          playerIds: b.playerIds,
-        }))
-    : draftTeams?.teams ?? [];
+  const splitTeams = draftTeams?.originalTeams?.length
+    ? // FROZEN original split (survives go-home / removals) — the true "as
+      // divided" record the user wants in the summary.
+      [...draftTeams.originalTeams].sort((a, b) => a.index - b.index)
+    : game.rotation?.baseTeams?.length
+      ? [...game.rotation.baseTeams]
+          .sort((a, b) => a.index - b.index)
+          .map((b) => ({
+            index: b.index,
+            // baseTeams keeps the original order → playerIds[0] is the captain.
+            captainId: b.playerIds[0] ?? '',
+            playerIds: b.playerIds,
+          }))
+      : draftTeams?.teams ?? [];
 
   // ── Team internal-rating (average) + WhatsApp export ──────────────────────
   const teamsGrp = myCommunities.find((c) => c.id === game.groupId);
@@ -3300,7 +3341,7 @@ export function MatchDetailsScreen() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={async () => {
           try {
-            await gameService.deleteGame(game.id);
+            await gameService.deleteGame(game.id, user?.id);
             setDeleteOpen(false);
             toast.success(he.deleteGameSuccess);
             nav.goBack();

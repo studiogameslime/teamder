@@ -26,7 +26,8 @@
     "react-native": "0.79.6"
   },
   "devDependencies": {
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "@hebcal/core": "^6.8.2"
   },
   "version": "1.0.0"
 }

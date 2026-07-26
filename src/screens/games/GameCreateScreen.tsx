@@ -20,6 +20,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { holidayOnDate } from '@/utils/holidays';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -94,12 +95,12 @@ function buildInitial(
     advancedFillMode: 'temporary',
     advancedTieMode: 'bothOut',
     ruleTags: [],
-    // Default to PUBLIC ("פתוח לכולם") — the app's whole point is to fill
-    // games by reaching people, so a new game should be discoverable unless
-    // it belongs to an EXPLICITLY closed/private community (isOpen === false),
-    // where games stay inside the group until the admin opens them. (User
-    // request: the "פתוח לכולם" toggle should be ON by default.)
-    visibility: g?.isOpen === false ? 'community' : 'public',
+    // Default to PUBLIC ("פתוח לכולם") for EVERY new game — the app's whole
+    // point is to fill games by reaching people, so a new game should be
+    // discoverable by default. This now applies even inside a closed/private
+    // community; the admin can still flip the toggle OFF per game to keep a
+    // specific game internal. (User request: "פתוח לכולם" ON by default.)
+    visibility: 'public',
     requiresApproval: false,
     // Default OFF (user request): the first in the waitlist enters automatically
     // when a spot frees, without a confirm step. Admins can turn confirm back on
@@ -351,6 +352,26 @@ export function GameCreateScreen() {
           [
             { text: he.cancel, style: 'cancel', onPress: () => resolve(false) },
             { text: he.createGamePastDateConfirm, onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        );
+      });
+      if (!proceed) return;
+    }
+    // Holiday guard: warn (don't block) if kickoff lands on a Jewish "no-play"
+    // holiday — a yom-tov or major fast (Rosh Hashana, Yom Kippur, Sukkot I,
+    // Shmini Atzeret, Pesach I/VII, Shavuot, Tisha B'Av). The organizer can
+    // still proceed. Applies to recurring too (warns on the anchor date; the
+    // backend scan separately notifies the organizer for clones on holidays).
+    const holiday = holidayOnDate(v.startsAt);
+    if (holiday) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        appAlert(
+          he.createGameHolidayTitle,
+          he.createGameHolidayBody(holiday),
+          [
+            { text: he.cancel, style: 'cancel', onPress: () => resolve(false) },
+            { text: he.createGameHolidayConfirm, onPress: () => resolve(true) },
           ],
           { cancelable: true, onDismiss: () => resolve(false) },
         );

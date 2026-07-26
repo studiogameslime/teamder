@@ -19,6 +19,7 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -83,6 +84,7 @@ import { failValidation, optionalString, requireInt, requireString } from '@/uti
 import { he } from '@/i18n/he';
 import { enforceRateLimit } from '@/services/rateLimitService';
 import { serverNow } from '@/services/serverClock';
+import { buildShootoutPenaltyPayload } from '@/utils/penaltyStats';
 import { assignJoins, type RosterState } from '@/services/joinFairness';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
@@ -904,6 +906,12 @@ export const gameService = {
     activeThisMonth: number;
     activeThisYear: number;
     topPlayers: Array<{ uid: UserId; attended: number }>;
+    /** SOURCE OF TRUTH for "הופעות" (evenings attended) per player — counted
+     *  from the finished-games scan (distinct finished nights the player was on
+     *  the roster and NOT a no-show). The `communityPlayerStats.games` rollup
+     *  can drift (missed increments on historical/edge games); this scan is
+     *  authoritative and is what the champions table + compare card read. */
+    attendedByUser: Record<UserId, number>;
     /** Longest run of consecutive game-nights attended by a single player. */
     longestStreak: number;
     longestStreakUid: UserId | null;
@@ -917,6 +925,7 @@ export const gameService = {
       activeThisMonth: 0,
       activeThisYear: 0,
       topPlayers: [] as Array<{ uid: UserId; attended: number }>,
+      attendedByUser: {} as Record<UserId, number>,
       longestStreak: 0,
       longestStreakUid: null as UserId | null,
     };
@@ -934,6 +943,9 @@ export const gameService = {
         topPlayers: mockPlayers
           .slice(0, 5)
           .map((p, i) => ({ uid: p.id, attended: 40 - i * 4 })),
+        attendedByUser: Object.fromEntries(
+          mockPlayers.slice(0, 8).map((p, i) => [p.id, 40 - i * 4]),
+        ),
         longestStreak: 9,
         longestStreakUid: mockPlayers[0].id,
       };
@@ -1037,6 +1049,8 @@ export const gameService = {
       activeThisMonth: activeMonth.size,
       activeThisYear: activeYear.size,
       topPlayers,
+      // The full per-player finished-nights count — the authoritative "הופעות".
+      attendedByUser: attendedTally,
       longestStreak,
       longestStreakUid,
     };
@@ -1058,14 +1072,24 @@ export const gameService = {
     totalRounds: number;
     /** Mini-games that ended in a tie (for the draw-rate fun fact). */
     tiedRounds: number;
+    /** Mini-games decided by a penalty shootout (for the "% by penalties" fact). */
+    shootoutRounds: number;
+    /** Mini-games that ended 0:0 in regulation (for the "% ended 0:0" fact). */
+    scorelessRounds: number;
     players: ChampionshipRow[];
   }> {
-    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, players: [] as ChampionshipRow[] };
+    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, shootoutRounds: 0, scorelessRounds: 0, players: [] as ChampionshipRow[] };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
       const players: ChampionshipRow[] = mockPlayers.slice(0, 8).map((p, i) => {
         const games = 38 - i;
         const wins = Math.max(0, 22 - i * 2);
+        // Demo penalty stats — a non-monotonic spread so the kicker king and
+        // keeper king aren't just "player 0" (exercises the tie-break/derivation).
+        const penTaken = Math.max(0, 9 - i);
+        const penScored = Math.max(0, [7, 8, 4, 5, 2, 3, 1, 0][i] ?? 0);
+        const penFaced = Math.max(0, 8 - i);
+        const penSaved = Math.max(0, [2, 3, 6, 1, 4, 0, 1, 0][i] ?? 0);
         return {
           uid: p.id,
           goals: Math.max(0, 58 - i * 7),
@@ -1074,6 +1098,10 @@ export const gameService = {
           wins,
           losses: Math.max(0, games - wins),
           games,
+          penTaken,
+          penScored: Math.min(penScored, penTaken),
+          penFaced,
+          penSaved: Math.min(penSaved, penFaced),
         };
       });
       // Show every club member: the first 8 carry stats, the rest get a zero
@@ -1083,7 +1111,7 @@ export const gameService = {
         const have = new Set(players.map((p) => p.uid));
         for (const uid of memberIds) {
           if (uid && !have.has(uid)) {
-            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0 });
+            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0 });
             have.add(uid);
           }
         }
@@ -1092,6 +1120,8 @@ export const gameService = {
         totalGoals: players.reduce((a, p) => a + p.goals, 0),
         totalRounds: 210,
         tiedRounds: 34,
+        shootoutRounds: 11,
+        scorelessRounds: 6,
         players: withZeros,
       };
     }
@@ -1116,10 +1146,19 @@ export const gameService = {
       }
       const players = rankChampionshipRows(statRows, 'points', !!(memberIds && memberIds.length));
       const totalGoals = players.reduce((a, s) => a + s.goals, 0);
-      const cs = csSnap.exists() ? (csSnap.data() as { rounds?: number; tiedRounds?: number }) : null;
+      const cs = csSnap.exists()
+        ? (csSnap.data() as {
+            rounds?: number;
+            tiedRounds?: number;
+            shootoutRounds?: number;
+            scorelessRounds?: number;
+          })
+        : null;
       const totalRounds = cs?.rounds ?? 0;
       const tiedRounds = cs?.tiedRounds ?? 0;
-      return { totalGoals, totalRounds, tiedRounds, players };
+      const shootoutRounds = cs?.shootoutRounds ?? 0;
+      const scorelessRounds = cs?.scorelessRounds ?? 0;
+      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, players };
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
@@ -2773,16 +2812,28 @@ export const gameService = {
     draft: DraftTeamsResult | null,
   ): Promise<void> {
     if (!gameId) return;
+    // Freeze the split as first drawn so the post-game "הכוחות שחולקו" record
+    // survives go-home / removals. Preserve an existing snapshot if the incoming
+    // draft already carries one (edits/re-saves keep the original); a fresh
+    // draft (new split / re-balance) captures the current teams as the original.
+    const withOriginal: DraftTeamsResult | null = draft
+      ? {
+          ...draft,
+          originalTeams:
+            draft.originalTeams ??
+            draft.teams.map((t) => ({ ...t, playerIds: [...(t.playerIds ?? [])] })),
+        }
+      : null;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
-        m.draftTeams = draft ?? undefined;
+        m.draftTeams = withOriginal ?? undefined;
         m.teamsEditedManually = !!draft;
       }
       return;
     }
     await updateGameDoc(gameId, {
-      draftTeams: draft ?? null,
+      draftTeams: withOriginal ?? null,
       // Any client-side save is a deliberate human split (manual draft or the
       // admin's auto-balance button) → mark it so the scheduled auto-generator
       // never clobbers it (B05/B16). Clearing the draft (null) lifts the flag
@@ -3244,6 +3295,100 @@ export const gameService = {
     return winnerSide;
   },
 
+  // ── Penalty shootout (drawn-round tiebreaker) ────────────────────────────
+  // A drawn mini-game can be decided by penalties instead of a manual pick.
+  // State lives on `liveMatch.shootout` and is cleared at round-end alongside
+  // the goal log (see _commitRoundStatsAndClear). Each kick is an independent
+  // unit; the winner (more scored) flows through prepareRoundResult like a
+  // manual pick, so the shootout kicks credit penalty stats via that commit.
+
+  /** Begin a shootout for the drawn round. `firstTeam` = who kicks first. */
+  async startShootout(gameId: string, firstTeam: 'A' | 'B'): Promise<void> {
+    if (!gameId) return;
+    const shootout = { firstTeam, keeperA: null, keeperB: null, kicks: [] };
+    if (USE_MOCK_DATA) {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) m.liveMatch.shootout = shootout;
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.shootout': shootout,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Set (or replace) a team's sticky keeper for the shootout. */
+  async setShootoutKeeper(gameId: string, side: 'A' | 'B', uid: UserId): Promise<void> {
+    if (!gameId || !uid) return;
+    const field = side === 'A' ? 'keeperA' : 'keeperB';
+    if (USE_MOCK_DATA) {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch?.shootout) m.liveMatch.shootout[field] = uid;
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch?.shootout) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    await updateDoc(docs.game(gameId), {
+      [`liveMatch.shootout.${field}`]: uid,
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Record one shootout kick (kicker + keeper + scored). Appended in order. */
+  async recordShootoutKick(
+    gameId: string,
+    opts: { team: 'A' | 'B'; kickerId: UserId; keeperId: UserId; scored: boolean },
+  ): Promise<void> {
+    if (!gameId || !opts.kickerId) return;
+    const kick = {
+      id: `pk_${Date.now()}_${Math.floor(Math.random() * 1e9).toString(36)}`,
+      kickerId: opts.kickerId,
+      keeperId: opts.keeperId,
+      team: opts.team,
+      scored: !!opts.scored,
+      at: serverNow(),
+    };
+    if (USE_MOCK_DATA) {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch?.shootout) {
+        m.liveMatch.shootout.kicks = [...(m.liveMatch.shootout.kicks ?? []), kick];
+      }
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch?.shootout) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.shootout.kicks': arrayUnion(kick),
+      updatedAt: Date.now(),
+    });
+  },
+
+  /** Abandon a shootout without deciding (e.g. admin backs all the way out).
+   *  Clears the state; the round stays drawn and can be decided another way. */
+  async clearShootout(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      if (m?.liveMatch) m.liveMatch.shootout = undefined;
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    if (!cur?.liveMatch) return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.shootout': deleteField(),
+      updatedAt: Date.now(),
+    });
+  },
+
   /** Commit the just-finished round's stats (goals + pairs + community) and
    *  clear the live scoreboard. Shared by the auto path
    *  (finalizeRoundAndRotate) and the interactive-fill path
@@ -3287,6 +3432,9 @@ export const gameService = {
             assisterId: gl.assisterId ?? null,
             ownGoal: !!gl.ownGoal,
           })),
+          // Penalty-shootout kicks (tiebreaker). Feed ONLY the penalty stat
+          // fields — never goals/score. A round with no shootout sends [].
+          penalties: buildShootoutPenaltyPayload(lm.shootout),
         });
         // Clear the scoreboard ONLY after the stats commit succeeded. Doing it
         // unconditionally (as before) meant a failed/​swallowed commit — an
@@ -3298,6 +3446,9 @@ export const gameService = {
           'liveMatch.scoreA': 0,
           'liveMatch.scoreB': 0,
           'liveMatch.goals': [],
+          // Clear the shootout too — it's a per-round tiebreaker, so like the
+          // goal log it must not survive into the next round.
+          'liveMatch.shootout': deleteField(),
           updatedAt: now,
         });
       } catch (err) {
@@ -3314,6 +3465,7 @@ export const gameService = {
         m.liveMatch.scoreA = 0;
         m.liveMatch.scoreB = 0;
         m.liveMatch.goals = [];
+        m.liveMatch.shootout = undefined;
       }
     }
   },
@@ -3820,10 +3972,15 @@ export const gameService = {
    * week FIRST — only removes the current week once the series is carried
    * forward, so a failure never silently kills the recurrence.
    */
-  async skipRecurringWeek(gameId: string, fallbackCreatedBy: UserId): Promise<void> {
-    const g = await gameService.getGameById(gameId);
-    if (!g) throw new Error('skipRecurringWeek: game not found');
-    if (!g.recurring) throw new Error('skipRecurringWeek: not a recurring game');
+  /** Spawn NEXT week's clone of a recurring game from its CURRENT settings,
+   *  keeping the series going. Shared by skipRecurringWeek ("delete this week")
+   *  and detachRecurringOccurrence ("edit this week only"). The caller becomes
+   *  the new occurrence's `createdBy` (the CREATE rule requires createdBy ==
+   *  auth.uid — a client can't create a game on behalf of another user). */
+  async _cloneRecurringNextWeek(
+    g: import('@/types').Game,
+    callerId: UserId,
+  ): Promise<void> {
     const WEEK = 7 * 24 * 60 * 60 * 1000;
     const shift = (v?: number): number | undefined =>
       typeof v === 'number' && v > 0 ? v + WEEK : undefined;
@@ -3863,10 +4020,34 @@ export const gameService = {
       guestsOpenAt: shift(g.guestsOpenAt),
       acceptsFillers: g.acceptsFillers,
       fillerMinTrust: g.fillerMinTrust,
-      createdBy: g.createdBy ?? fallbackCreatedBy,
+      createdBy: callerId,
       isOrphanContext: g.isOrphanContext,
     });
+  },
+
+  async skipRecurringWeek(gameId: string, callerId: UserId): Promise<void> {
+    const g = await gameService.getGameById(gameId);
+    if (!g) throw new Error('skipRecurringWeek: game not found');
+    if (!g.recurring) throw new Error('skipRecurringWeek: not a recurring game');
+    // Series continues next week (cloned from CURRENT settings); this week goes.
+    await gameService._cloneRecurringNextWeek(g, callerId);
     await gameService.deleteGame(gameId);
+  },
+
+  /**
+   * "Edit only this occurrence" of a recurring game: spawn next week's clone
+   * from the CURRENT (pre-edit) settings so the SERIES continues unchanged,
+   * then DETACH this game from the series (`recurring: false`) so its own edits
+   * don't propagate to future weeks (and it won't auto-clone again — next week
+   * already exists). The caller then edits this now-standalone game via GameEdit.
+   * Mirrors skipRecurringWeek, but keeps this week instead of deleting it.
+   */
+  async detachRecurringOccurrence(gameId: string, callerId: UserId): Promise<void> {
+    const g = await gameService.getGameById(gameId);
+    if (!g) throw new Error('detachRecurringOccurrence: game not found');
+    if (!g.recurring) return; // already a one-off — nothing to detach
+    await gameService._cloneRecurringNextWeek(g, callerId);
+    await updateDoc(docs.game(gameId), { recurring: false, updatedAt: Date.now() });
   },
 
   /**
@@ -3874,7 +4055,7 @@ export const gameService = {
    * admin — Firestore rules enforce this; we don't double-check here.
    * Notifies participants so subscribed UIs can navigate away.
    */
-  async deleteGame(gameId: string): Promise<void> {
+  async deleteGame(gameId: string, deletedBy?: UserId): Promise<void> {
     if (!gameId) return;
     clearMyGamesCache();
     // Capture the roster + title BEFORE deleting. The Cloud Function fans
@@ -3885,12 +4066,14 @@ export const gameService = {
     let recipientUids: string[] = [];
     let gameTitle = '';
     let capturedGroupId = '';
+    let capturedCreatedBy = '';
     const captureRoster = (g?: {
       players?: string[];
       waitlist?: string[];
       pending?: string[];
       title?: string;
       groupId?: string;
+      createdBy?: string;
     }) => {
       if (!g) return;
       recipientUids = Array.from(
@@ -3904,6 +4087,7 @@ export const gameService = {
       // Stash groupId so the fan-out CF can authorise the sender (community
       // admin) even after the game doc is deleted below.
       if (g.groupId) capturedGroupId = g.groupId;
+      if (g.createdBy) capturedCreatedBy = g.createdBy;
     };
     if (USE_MOCK_DATA) {
       const idx = mockGamesV2.findIndex((x) => x.id === gameId);
@@ -3917,6 +4101,28 @@ export const gameService = {
       } catch (err) {
         logError('deleteGameCaptureRoster', err, { gameId });
         /* best-effort — still delete + dispatch with whatever we captured */
+      }
+      // Audit trail — stamp WHO deleted the game (the exact actor) BEFORE the
+      // doc is removed. The server trigger also records a best-guess, but our
+      // create lands first so the accurate deleter wins (create-once). Rules
+      // require deletedBy == the caller, so nobody can frame someone else.
+      if (deletedBy) {
+        try {
+          await setDoc(doc(getFirebase().db, 'gameDeletions', gameId), {
+            gameId,
+            deletedBy,
+            deletedByApprox: false,
+            source: 'manual',
+            gameTitle,
+            groupId: capturedGroupId,
+            createdBy: capturedCreatedBy,
+            rosterCount: recipientUids.length,
+            deletedAt: Date.now(),
+          });
+        } catch (err) {
+          logError('gameDeletionAudit', err, { gameId });
+          /* best-effort — the server trigger still records a fallback */
+        }
       }
       try {
         await deleteDoc(docs.game(gameId));

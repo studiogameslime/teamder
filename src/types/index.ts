@@ -605,6 +605,16 @@ export interface UserAvailability {
   /** Preferred time-of-day buckets (replaces the old from/to fields in
    *  the UI; from/to kept below for backward compatibility). */
   preferredTimes?: TimeBucket[];
+  /**
+   * Precise per-day availability grid: for each weekday, the time buckets the
+   * user is free THAT day. Supersedes the decoupled `preferredDays` ×
+   * `preferredTimes` cross-product (which couldn't express e.g. "Friday morning
+   * but not Friday evening"). When present it's the source of truth for the
+   * filler matcher; `preferredDays`/`preferredTimes` are still written (derived
+   * from this grid) so older clients + legacy readers keep working. Firestore
+   * serialises the numeric keys as strings — read defensively.
+   */
+  availabilitySlots?: Partial<Record<WeekdayIndex, TimeBucket[]>>;
   /** @deprecated "HH:mm" 24h — superseded by `preferredTimes`. */
   timeFrom?: string;
   /** @deprecated "HH:mm" 24h — superseded by `preferredTimes`. */
@@ -672,6 +682,16 @@ export interface UserStats {
   /** Lifetime assists — incremented server-side by `commitRoundStats` when the
    *  admin attributes an assist to the goal during an advanced-match round. */
   assists?: number;
+  /** Penalty stats (penalty SHOOTOUTS only — not general shots/saves).
+   *  As kicker: taken = scored + missed. As keeper: faced = saved + conceded.
+   *  All incremented server-side by `commitRoundStats`. All optional → no
+   *  migration; a player with no penalties simply has them undefined. */
+  penTaken?: number;
+  penScored?: number;
+  penMissed?: number;
+  penFaced?: number;
+  penSaved?: number;
+  penConceded?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
@@ -1070,6 +1090,13 @@ export interface DraftTeamsResult {
   createdAt: number;
   createdBy: UserId;
   teams: DraftTeam[];
+  /** FROZEN snapshot of the teams exactly as first drawn — never mutated by
+   *  go-home / player-removal (which strip `teams` + `rotation.baseTeams`).
+   *  Drives the post-game "הכוחות שחולקו" record so it shows the INITIAL split,
+   *  not the reduced end-state (user request). Set at saveDraftTeams; survives
+   *  mutations via the `...draft` spread. Absent on legacy games → the display
+   *  falls back to baseTeams/teams. */
+  originalTeams?: DraftTeam[];
   /** Live-rotation fill behaviour. Defaults to 'temporary' when absent. */
   fillMode?: FillMode;
   /** Players who left during the evening ("הלך הביתה"). They're removed from
@@ -1806,6 +1833,27 @@ export interface LiveMatchState {
    * `MatchRound.goals` and cleared when the round ends.
    */
   goals?: RoundGoal[];
+  /**
+   * Penalty-shootout state for a drawn mini-game (the tiebreaker). Lives here
+   * during the shootout and is cleared at round-end (like `goals`). `firstTeam`
+   * = who kicked first; `keeperA`/`keeperB` = each team's current (sticky)
+   * keeper; `kicks` = every kick, in order (each an independent unit; a miss is
+   * `scored:false`). ⚠️ needs an explicit `readLiveMatch` branch (firestore.ts)
+   * or it is stripped on every listener tick — same trap as `goals`.
+   */
+  shootout?: {
+    firstTeam: 'A' | 'B';
+    keeperA?: UserId | null;
+    keeperB?: UserId | null;
+    kicks: {
+      id: string;
+      kickerId: UserId;
+      keeperId: UserId;
+      team: 'A' | 'B';
+      scored: boolean;
+      at: number;
+    }[];
+  };
   /** Score for team C — only used when numberOfTeams ≥ 3. */
   scoreC?: number;
   /** Score for team D — only used when numberOfTeams ≥ 4. */

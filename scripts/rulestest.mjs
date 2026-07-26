@@ -95,6 +95,39 @@ await check('self-withdraw from waitlist is ALLOWED',
     waitlist: [], participantIds: ['owner'], updatedAt: 2,
   })));
 
+// ── Guest-add (client/rules null-mismatch regression) ──────────────────────
+// A registered participant (B) may append a guest when the game doesn't
+// restrict guest-adding. The prod bug: guestsOpenAt stored as explicit `null`
+// made `time >= .get('guestsOpenAt', 0)` (which returns null, not 0) type-error
+// → deny, while the client's `?? 0` allowed it. These pin the fix.
+const guestA = { id: 'g_a', name: 'Guest A', addedBy: 'owner', createdAt: 1 };
+const guestNew = { id: 'g_new', name: 'Guest New', addedBy: 'B', createdAt: 2 };
+
+// (9) guestsOpenAt = null → ALLOWED (the fix)
+await seed({ ...BASE, players: ['owner', 'B'], participantIds: ['owner', 'B'], guestsOpenAt: null, guests: [guestA] });
+await check('guest-add: participant, guestsOpenAt=null → ALLOWED',
+  assertSucceeds(updateDoc(g(asB()), { guests: [guestA, guestNew], updatedAt: 2 })));
+
+// (10) guestsOpenAt = 0 → ALLOWED
+await seed({ ...BASE, players: ['owner', 'B'], participantIds: ['owner', 'B'], guestsOpenAt: 0, guests: [guestA] });
+await check('guest-add: participant, guestsOpenAt=0 → ALLOWED',
+  assertSucceeds(updateDoc(g(asB()), { guests: [guestA, guestNew], updatedAt: 2 })));
+
+// (11) guestsOpenAt absent → ALLOWED
+await seed({ ...BASE, players: ['owner', 'B'], participantIds: ['owner', 'B'], guests: [guestA] });
+await check('guest-add: participant, guestsOpenAt absent → ALLOWED',
+  assertSucceeds(updateDoc(g(asB()), { guests: [guestA, guestNew], updatedAt: 2 })));
+
+// (12) guestsOpenAt in the FUTURE → DENIED (restriction still honored)
+await seed({ ...BASE, players: ['owner', 'B'], participantIds: ['owner', 'B'], guestsOpenAt: 9999999999999, guests: [guestA] });
+await check('guest-add: participant, guestsOpenAt in FUTURE → DENIED',
+  assertFails(updateDoc(g(asB()), { guests: [guestA, guestNew], updatedAt: 2 })));
+
+// (13) NON-participant (not in players) → DENIED even with guestsOpenAt=null
+await seed({ ...BASE, players: ['owner'], participantIds: ['owner', 'B'], guestsOpenAt: null, guests: [guestA] });
+await check('guest-add: non-participant → DENIED',
+  assertFails(updateDoc(g(asB()), { guests: [guestA, guestNew], updatedAt: 2 })));
+
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 await env.cleanup();
 process.exit(fail ? 1 : 0);

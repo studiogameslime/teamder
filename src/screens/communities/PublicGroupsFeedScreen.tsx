@@ -62,6 +62,12 @@ import type { MapItem } from '@/screens/map/MapScreen';
 
 type Nav = NativeStackNavigationProp<CommunitiesStackParamList, 'CommunitiesFeed'>;
 
+// The discovery feed is windowed: show the top-N most-active communities and
+// reveal the long tail of tiny/single-member ones only on demand, so they don't
+// clutter the top as "junk". (Fetch is still one cheap query — this is a render
+// window, not server pagination; revisit if the collection grows to hundreds.)
+const DISCOVERY_PAGE = 8;
+
 export function PublicGroupsFeedScreen() {
   const nav = useNavigation<Nav>();
   const user = useUserStore((s) => s.currentUser);
@@ -77,6 +83,8 @@ export function PublicGroupsFeedScreen() {
   const [items, setItems] = useState<GroupPublic[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  // How many discovery cards are currently revealed (see DISCOVERY_PAGE).
+  const [discoveryLimit, setDiscoveryLimit] = useState(DISCOVERY_PAGE);
 
   const [filters, setFilters] = useState<GroupFilters>(EMPTY_GROUP_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -123,6 +131,13 @@ export function PublicGroupsFeedScreen() {
   }, [filters.nearby, user?.availability?.preferredCity]);
 
   const filterCount = activeGroupFiltersCount(filters);
+
+  // Collapse the discovery window back to the first page whenever the query
+  // that produces it changes (new search text, filters, or a manual refresh),
+  // so an old "expanded" state doesn't carry over to a different result set.
+  useEffect(() => {
+    setDiscoveryLimit(DISCOVERY_PAGE);
+  }, [text, filters, nearbyLoc, refreshTick]);
 
   useEffect(() => {
     let alive = true;
@@ -698,9 +713,26 @@ export function PublicGroupsFeedScreen() {
                     {he.communitiesEmptyOpenSection}
                   </Text>
                 ) : (
-                  <View style={styles.cardsList}>
-                    {discoveryItems.map(renderCard)}
-                  </View>
+                  <>
+                    <View style={styles.cardsList}>
+                      {discoveryItems.slice(0, discoveryLimit).map(renderCard)}
+                    </View>
+                    {discoveryItems.length > discoveryLimit ? (
+                      <Button
+                        title={he.communitiesShowMore(
+                          discoveryItems.length - discoveryLimit,
+                        )}
+                        variant="outline"
+                        size="md"
+                        iconLeft="chevron-down"
+                        onPress={() =>
+                          setDiscoveryLimit((n) => n + DISCOVERY_PAGE)
+                        }
+                        style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
+                        fullWidth
+                      />
+                    ) : null}
+                  </>
                 )}
               </Section>
             </View>
