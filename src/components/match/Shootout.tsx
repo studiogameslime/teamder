@@ -14,6 +14,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   buildRoster,
   firstName,
@@ -330,9 +331,15 @@ export function Shootout({
 
         <Pressable style={styles.kickBtn} onPress={() => setScreen('entry')}>
           <Text style={styles.kickTxt}>{he.shAddKick}</Text>
+          <Ionicons name="add-circle" size={18} color="#fff" />
         </Pressable>
         <Pressable style={styles.finBtn} onPress={finish} disabled={kicks.length === 0}>
           <Text style={[styles.finTxt, kicks.length === 0 && styles.dim]}>{he.shFinish}</Text>
+          <Ionicons
+            name="checkmark-circle"
+            size={18}
+            color={kicks.length === 0 ? '#9CA3AF' : '#16A34A'}
+          />
         </Pressable>
         {/* No "back" once the shootout is underway — a kick has been taken. */}
         {kicks.length === 0 ? <BackBtn /> : null}
@@ -449,7 +456,19 @@ export function Shootout({
   return (
     <Modal visible={visible && ready} transparent animationType="fade" onRequestClose={back}>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>{body}</View>
+        {/* Border in the CURRENTLY-KICKING team's colour (once a team has
+            started kicking) so it's obvious whose turn it is. */}
+        <View
+          style={[
+            styles.sheet,
+            screen !== 'first' && {
+              borderWidth: 3,
+              borderColor: colorOf(kickingTeam),
+            },
+          ]}
+        >
+          {body}
+        </View>
       </View>
     </Modal>
   );
@@ -475,7 +494,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     maxHeight: '96%',
-    minHeight: '62%',
+    // No minHeight — the sheet hugs its content so there's no dead space at the
+    // bottom on the shorter screens (Pulse: "empty space at the bottom").
     backgroundColor: '#F4F6F9',
     borderRadius: 26,
     padding: spacing.md,
@@ -591,14 +611,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     borderRadius: 12,
     paddingVertical: 13,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   kickTxt: { color: '#fff', fontWeight: '900', fontSize: 14.5, writingDirection: 'rtl' },
   finBtn: {
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 11,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderWidth: 1.5,
     borderColor: '#16A34A',
     marginTop: 8,

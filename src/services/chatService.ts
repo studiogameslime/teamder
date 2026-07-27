@@ -243,6 +243,7 @@ export const chatService = {
             lastMessageAt: typeof x.lastMessageAt === 'number' ? x.lastMessageAt : 0,
             lastText: typeof x.lastText === 'string' ? x.lastText : '',
             lastSenderName: typeof x.lastSenderName === 'string' ? x.lastSenderName : '',
+            lastSenderId: typeof x.lastSenderId === 'string' ? x.lastSenderId : '',
             scope: (x.scope as ChatScope) ?? 'game',
             parentId: typeof x.parentId === 'string' ? x.parentId : '',
             title: typeof x.title === 'string' ? x.title : '',

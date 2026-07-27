@@ -134,6 +134,9 @@ export function CreateGroupScreen() {
       submitLabel={he.createGroupSubmit}
       initial={EMPTY_GROUP_FORM_VALUES}
       onSubmit={submit}
+      // Confirm before leaving with filled-in fields instead of discarding
+      // them silently (Pulse #9).
+      enableUnsavedGuard
     />
   );
 }

@@ -755,10 +755,10 @@ export function CommunityDetailsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.clubLevelChipTitle} numberOfLines={1}>
-                  {he.clubLevelLabel} {clubLevel.level} · {clubLevel.tierName}
+                  {he.communityStatsEntryTitle}
                 </Text>
                 <Text style={styles.clubLevelChipSub} numberOfLines={1}>
-                  {he.communityStatsSectionAchievements}
+                  {he.clubLevelLabel} {clubLevel.level} · {clubLevel.tierName}
                 </Text>
               </View>
               <Ionicons name="chevron-back" size={18} color={colors.textMuted} />

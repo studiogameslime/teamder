@@ -140,6 +140,20 @@ export function ChatsListScreen() {
     };
   }, [dmOtherIds, dmProfiles]);
 
+  // Preview text for a chat row. When the last message is the viewer's OWN
+  // (lastSenderId === me), prefix "אני:" so it shows instead of a blank
+  // placeholder (Pulse #19).
+  const chatPreview = (e?: {
+    lastText?: string;
+    lastSenderId?: string;
+  }): string => {
+    const t = e?.lastText ?? '';
+    if (!t) return '';
+    return e?.lastSenderId && e.lastSenderId === me?.id
+      ? `${he.chatListMinePrefix}${t}`
+      : t;
+  };
+
   const toRow = (
     kind: 'community' | 'game',
     id: string,
@@ -151,7 +165,7 @@ export function ChatsListScreen() {
       kind,
       id,
       title,
-      preview: entry?.lastText ?? '',
+      preview: chatPreview(entry),
       unread: entry?.count ?? 0,
       sortAt: entry?.lastMessageAt ?? 0,
       image,
@@ -181,7 +195,7 @@ export function ChatsListScreen() {
         kind: 'dm' as const,
         id: e.parentId,
         title: profile?.name || e.title || '',
-        preview: e.lastText ?? '',
+        preview: chatPreview(e),
         unread: e.count ?? 0,
         sortAt: e.lastMessageAt ?? 0,
         dmUser: {

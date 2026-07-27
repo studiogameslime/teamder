@@ -703,11 +703,17 @@ function Step1({
           everyone (public), OFF → community/invite-only. Clearer than two
           competing pills, and the tooltip spells out both states. */}
       <FormSectionHeader title={he.wizardSectionVisibility} />
+      {/* Merged toggle (Pulse #6): "open to everyone" now ALSO turns on
+          filler-reach — a public game should reach nearby strangers when it's
+          short on players; no reason to split them into two toggles. */}
       <ToggleRow
         label={he.createGameIsPublic}
         info={{ title: he.createGameIsPublic, text: he.createGameIsPublicHint }}
         value={values.visibility === 'public'}
-        onChange={(v) => set('visibility', v ? 'public' : 'community')}
+        onChange={(v) => {
+          set('visibility', v ? 'public' : 'community');
+          set('acceptsFillers', v);
+        }}
       />
     </View>
   );
@@ -863,6 +869,62 @@ function Step3({
         </View>
       ) : null}
 
+      {/* Guest-add gate + auto-teams timing — moved UP into "מאפייני משחק"
+          from the availability section (Pulse #5). */}
+      {!quick ? (
+        <ScheduleGroup
+          open={values.guestsOpenAt > 0}
+          toggle={
+            <ToggleRow
+              label={he.wizardGuestsOpenToggle}
+              info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
+              value={values.guestsOpenAt > 0}
+              onChange={(v) =>
+                set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
+              }
+            />
+          }
+        >
+          <AppDateTimeField
+            label={he.wizardGuestsOpenLabel}
+            value={values.guestsOpenAt}
+            onChange={(ms) => set('guestsOpenAt', ms)}
+            required
+          />
+        </ScheduleGroup>
+      ) : null}
+      {!quick && internalRating ? (
+        <ScheduleGroup
+          open={values.autoTeamsAt > 0}
+          toggle={
+            <ToggleRow
+              label={he.wizardAutoTeamsToggle}
+              info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
+              value={values.autoTeamsAt > 0}
+              onChange={(v) =>
+                set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
+              }
+            />
+          }
+        >
+          <AppDateTimeField
+            label={he.wizardAutoTeamsLabel}
+            value={values.autoTeamsAt}
+            onChange={(ms) => set('autoTeamsAt', ms)}
+            required
+          />
+          <PillRow
+            label={he.wizardAutoTeamsMethodLabel}
+            options={[
+              { value: 'rating', label: he.draftMethodAuto },
+              { value: 'random', label: he.draftMethodRandom },
+            ]}
+            selected={values.autoTeamsMethod}
+            onSelect={(v) => set('autoTeamsMethod', v as 'rating' | 'random')}
+          />
+        </ScheduleGroup>
+      ) : null}
+
       <FormSectionHeader title={he.wizardSectionAvailability} />
 
       {/* Two INDEPENDENT community-game options (hidden for quick one-offs):
@@ -945,86 +1007,14 @@ function Step3({
         </>
       ) : null}
 
-      {/* Gate non-admin guest-adding until a chosen time (community games). */}
-      {!quick ? (
-        <>
-          <ScheduleGroup
-            open={values.guestsOpenAt > 0}
-            toggle={
-              <ToggleRow
-                label={he.wizardGuestsOpenToggle}
-                info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
-                value={values.guestsOpenAt > 0}
-                onChange={(v) =>
-                  set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
-                }
-              />
-            }
-          >
-            <AppDateTimeField
-              label={he.wizardGuestsOpenLabel}
-              value={values.guestsOpenAt}
-              onChange={(ms) => set('guestsOpenAt', ms)}
-              required
-            />
-          </ScheduleGroup>
-        </>
-      ) : null}
-
-      {/* Auto-generate balanced teams at a chosen time (internal-rating
-          communities only). A CF balances the roster by the admins' internal
-          ratings at this time and pushes every player their team. */}
-      {!quick && internalRating ? (
-        <>
-          <ScheduleGroup
-            open={values.autoTeamsAt > 0}
-            toggle={
-              <ToggleRow
-                label={he.wizardAutoTeamsToggle}
-                info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
-                value={values.autoTeamsAt > 0}
-                onChange={(v) =>
-                  set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
-                }
-              />
-            }
-          >
-            <AppDateTimeField
-              label={he.wizardAutoTeamsLabel}
-              value={values.autoTeamsAt}
-              onChange={(ms) => set('autoTeamsAt', ms)}
-              required
-            />
-            <PillRow
-              label={he.wizardAutoTeamsMethodLabel}
-              options={[
-                { value: 'rating', label: he.draftMethodAuto },
-                { value: 'random', label: he.draftMethodRandom },
-              ]}
-              selected={values.autoTeamsMethod}
-              onSelect={(v) =>
-                set('autoTeamsMethod', v as 'rating' | 'random')
-              }
-            />
-          </ScheduleGroup>
-        </>
-      ) : null}
-
       {/* Cancel-deadline toggle removed 2026-06-21 (user report): the
           reliability/"אמינות" feature it fed was scrapped, so the late-cancel
           window + its confirm popup are no longer wanted. New games leave
           `cancelDeadlineHours` undefined → isPastCancelDeadline() is always
           false → no popup. */}
 
-      {/* Filler matching — opt-in per game. When ON, the scheduled CF
-          pushes nearby non-members an interest invite when the roster
-          falls short. (The minimum-trust selector was removed for now.) */}
-      <ToggleRow
-        label={he.gameFillerAcceptToggle}
-        value={values.acceptsFillers}
-        onChange={(v) => set('acceptsFillers', v)}
-        info={{ title: he.tipFillerTitle, text: he.tipFillerText }}
-      />
+      {/* Filler matching is no longer a separate toggle — it's merged into the
+          "משחק פתוח לכולם" switch on step 1 (Pulse #6). */}
 
       <InputField
         label={he.createGameNotes}
@@ -1125,7 +1115,7 @@ function SummaryCard({
   // prefer it alone; fall back to city only when there's no field name.
   const placeLabel =
     values.fieldName.trim() || values.city.trim() || '—';
-  const formatStr = `${formatLabel(values.format)} · ${maxPlayers} שחקנים`;
+  const formatStr = `${formatLabel(values.format)} · ${values.numberOfTeams} קבוצות · ${maxPlayers} שחקנים`;
   const visibilityStr =
     values.visibility === 'public'
       ? he.wizardVisibilityPublic
@@ -1566,8 +1556,10 @@ const styles = StyleSheet.create({
   toggleLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    width: '100%',
+    // Tight gap so the ⓘ always hugs the label, on every screen size
+    // (Pulse #7 reported extra space on a narrower device).
+    gap: 4,
+    alignSelf: 'flex-start',
   },
   toggleLabel: {
     ...typography.body,

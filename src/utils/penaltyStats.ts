@@ -100,8 +100,10 @@ export interface PenaltyLeader {
   count: number;
   /** Attempts behind the count — penTaken (king) or penFaced (keeper king). */
   attempts: number;
-  /** Success rate 0..100, rounded. */
+  /** Success rate 0..100, rounded — the REAL percentage, shown in the UI. */
   pct: number;
+  /** Wilson lower-bound score (0..1) used for RANKING only (not displayed). */
+  score: number;
 }
 
 /** Round a ratio to a whole-number percentage (0 attempts → 0). */
@@ -109,8 +111,24 @@ export function pctOf(made: number, attempts: number): number {
   return attempts > 0 ? Math.round((made / attempts) * 100) : 0;
 }
 
-// Rank by headline count desc, then success% desc, then attempts desc, then
-// userId asc (stable + deterministic across devices).
+/**
+ * Wilson score lower bound of a binomial proportion (z=1.96, 95% CI). Rewards
+ * BOTH a high success rate AND a large sample: 8/10 (0.49) outranks 1/1 (0.21),
+ * so a one-shot 100% no longer beats a proven high-volume scorer. Used ONLY to
+ * pick the leader — the card still shows the real success %. 0 attempts → 0.
+ */
+export function wilsonLowerBound(pos: number, n: number, z = 1.96): number {
+  if (n <= 0 || pos <= 0) return 0;
+  const phat = pos / n;
+  const z2 = z * z;
+  const denom = 1 + z2 / n;
+  const center = phat + z2 / (2 * n);
+  const margin = z * Math.sqrt((phat * (1 - phat) + z2 / (4 * n)) / n);
+  return Math.max(0, (center - margin) / denom);
+}
+
+// Rank by Wilson score desc (volume + rate), then headline count desc, then
+// attempts desc, then userId asc (stable + deterministic across devices).
 function pickLeader(
   players: PenaltyStatsLike[],
   countOf: (p: PenaltyStatsLike) => number,
@@ -121,14 +139,20 @@ function pickLeader(
     const count = countOf(p) || 0;
     if (count <= 0) continue; // nobody with 0 scored/saved can be king
     const attempts = attemptsOf(p) || 0;
-    const cand: PenaltyLeader = { userId: p.userId, count, attempts, pct: pctOf(count, attempts) };
+    const cand: PenaltyLeader = {
+      userId: p.userId,
+      count,
+      attempts,
+      pct: pctOf(count, attempts),
+      score: wilsonLowerBound(count, attempts),
+    };
     if (
       !best ||
-      cand.count > best.count ||
-      (cand.count === best.count && cand.pct > best.pct) ||
-      (cand.count === best.count && cand.pct === best.pct && cand.attempts > best.attempts) ||
-      (cand.count === best.count &&
-        cand.pct === best.pct &&
+      cand.score > best.score ||
+      (cand.score === best.score && cand.count > best.count) ||
+      (cand.score === best.score && cand.count === best.count && cand.attempts > best.attempts) ||
+      (cand.score === best.score &&
+        cand.count === best.count &&
         cand.attempts === best.attempts &&
         cand.userId < best.userId)
     ) {

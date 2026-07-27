@@ -517,8 +517,8 @@ export const he = {
   shLogEmpty: 'עדיין לא נבעטו פנדלים',
   shScored: (keeper: string) => `⚽ נכנס · מול ${keeper}`,
   shMissed: (keeper: string) => `❌ החמיץ · מול ${keeper}`,
-  shAddKick: '+ בעיטת פנדל',
-  shFinish: '✓ סיים שובר שוויון',
+  shAddKick: 'בעיטת פנדל',
+  shFinish: 'סיים שובר שוויון',
   shKickTitle: 'בעיטת פנדל',
   shKicking: (team: string) => `${team} בועטים`,
   shVsKeeper: (team: string) => `מול שוער ${team}:`,
@@ -761,7 +761,7 @@ export const he = {
   createGameFormat: 'פורמט',
   createGameIsPublic: 'משחק פתוח לכולם',
   createGameIsPublicHint:
-    'כשמופעל — המשחק פתוח ומוצג בלשונית המשחקים גם למי שאינם במועדון. כבוי — המשחק סגור לחברי המועדון בלבד.',
+    'כשמופעל — המשחק פתוח ומוצג בלשונית המשחקים גם למי שאינם במועדון, וגם נשלחת פנייה לשחקנים פנויים בקרבת מקום כשחסרים משתתפים. כבוי — המשחק סגור לחברי המועדון בלבד.',
   createGameRequiresApproval: 'הצטרפות דורשת אישור',
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
   createGameWaitlistApproval: 'קידום מרשימת המתנה דורש אישור השחקן',
@@ -1011,6 +1011,7 @@ export const he = {
   communityStatsSectionFun: 'נתונים מעניינים',
   // ── Club achievements & level ──
   communityStatsSectionAchievements: 'הישגי המועדון',
+  communityStatsEntryTitle: 'סטטיסטיקות המועדון',
   clubLevelLabel: 'רמה',
   clubLevelNextHint: (pts: number) => `עוד ${pts} נקודות לרמה הבאה`,
   clubLevelMaxHint: 'רמת השיא הושגה 🏆',
@@ -1656,6 +1657,49 @@ export const he = {
     `${n} ${n === 1 ? 'בקשה ממתינה' : 'בקשות ממתינות'} לך`,
   homeCreateGame: 'צור משחק',
   homeMarkAvailability: 'סמן זמינות',
+  // ── Home dashboard (redesign) ──
+  homeBrandName: 'Teamder',
+  homeNextGameTitle: 'המשחק הקרוב שלך',
+  homeGameTypeRegular: 'משחק רגיל',
+  homeGameDetailsCta: 'לפרטי המשחק',
+  homeRosterFull: 'ההרכב מלא',
+  homeSpotsLeft: (n: number) =>
+    n === 0 ? '0 מקומות פנויים' : n === 1 ? 'מקום פנוי אחד' : `${n} מקומות פנויים`,
+  homeNoGameTitle: 'אין לך משחק קרוב',
+  homeNoGameBody: 'מצא משחק פתוח או פתח משחק חדש',
+  homeNoGameCta: 'מצא משחק',
+  // Recommended day to open a game (most available players nearby).
+  homeRecommendedTitle: 'היום המומלץ לפתיחת משחק',
+  homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,
+  // Three action tiles.
+  homeActionOpenTitle: 'פתח משחק',
+  homeActionOpenSub: 'ארגן משחק משלך',
+  homeActionAvailTitle: 'סמן זמינות',
+  homeActionAvailSub: 'עדכן את הנוכחות שלך',
+  homeActionJoinTitle: 'הצטרף למשחק',
+  homeActionJoinSub: 'מצא משחקים פתוחים',
+  // "Available by (evening) window" — per-day evening counts.
+  homeWindowsTitle: 'פנויים לידך',
+  homeWindowsShowWeek: 'הצג שבוע מלא',
+  homeAvailCount: (n: number) => `${n} פנויים`,
+  homeDayLabel: (letter: string) => `יום ${letter}׳`,
+  // Smart contextual banner — ALWAYS a time-of-day greeting + name, then one
+  // contextual suffix chosen by the player's current state. `homeGreetingLine`
+  // builds the prefix; the rest are the suffixes.
+  homeGreetingLine: (greeting: string, name: string) =>
+    name ? `${greeting} ${name}, ` : `${greeting}, `,
+  homeBannerGameToday: (t: string) => `המשחק שלך היום ב-${t} — מוכן? ⚽`,
+  homeBannerGameTomorrow: (t: string) => `המשחק שלך מחר ב-${t} 📅`,
+  homeBannerRequests: (n: number) =>
+    `יש ${n === 1 ? 'בקשה אחת שממתינה' : `${n} בקשות שממתינות`} לך 👋`,
+  homeBannerSetAvailability: 'סמנו זמינות ונמצא לכם משחקים לידכם 👋',
+  homeBannerJoinCommunity: 'כדאי להצטרף למועדון כדי לשחק בקביעות ⚽',
+  homeBannerPlayedThisWeek: (n: number) =>
+    `השבוע כבר שיחקת ${n === 1 ? 'פעם אחת' : `${n} פעמים`}! 👏`,
+  homeBannerNoGameThisWeek: 'השבוע עוד לא קבעת משחק — יאללה, נקבע אחד? ⚽',
+  homeBannerDaysSincePlayed: (d: number) =>
+    `לא שיחקת כבר ${d} ימים — בוא נחזיר אותך למגרש 🔥`,
+  homeBannerWelcome: 'טוב לראות אותך! מוכן למשחק הבא? ⚽',
   // ── Statistics screen ──
   statsScreenTitle: 'סטטיסטיקה',
   statsSectionNumbers: 'המספרים שלך',
@@ -2617,6 +2661,8 @@ export const he = {
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
   matchCreateTeamsBannerSub: 'המשחק מתקרב — חלקו את השחקנים לקבוצות',
+  matchAutoTeamsScheduled: (when: string) =>
+    `הכוחות ייווצרו אוטומטית ב-${when}`,
   matchManageTeamsBannerTitle: 'נהל כוחות',
   matchManageTeamsBannerSub: 'ערוך, אזן מחדש או חלק מחדש',
   // Drag-and-drop teams editor
@@ -2684,6 +2730,7 @@ export const he = {
   // Direct (1-on-1) messages.
   dmTitle: 'הודעה ישירה',
   dmSubtitle: 'הודעה פרטית',
+  chatListMinePrefix: 'אני: ',
   dmSendMessage: 'שלח הודעה',
   genericUserName: 'משתמש',
   dmRestricted: 'המשתמש מקבל הודעות מחברים בלבד.',

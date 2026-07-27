@@ -40,14 +40,24 @@ import { DeleteAccountSheet } from '@/components/profile/DeleteAccountSheet';
 import { currentAuthProviderId } from '@/firebase/auth';
 // DisciplineRow (trust meter) hidden from UI for now — see render site below.
 // import { DisciplineRow } from '@/components/profile/DisciplineRow';
-import { ReferralCard } from '@/components/profile/ReferralCard';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
-import { ProfileNextGameCard } from '@/components/profile/ProfileNextGameCard';
 import { NextGameCardEntrance } from '@/components/anim/game/NextGameCardEntrance';
 import { AnimationLab } from '@/screens/dev/AnimationLab';
-import { HomeGreetingHeader } from '@/components/home/HomeGreetingHeader';
 import { AvailabilityCalendarCard } from '@/components/home/AvailabilityCalendarCard';
 import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
+import {
+  HomeTopBar,
+  HomeSmartBanner,
+  HomeRecommendedDay,
+  HomeActionTiles,
+  HomeAvailabilityWindows,
+  type WindowDay,
+} from '@/components/home/HomeDashboardParts';
+import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
+import {
+  availabilityFeedService,
+  type AvailabilityCounts,
+} from '@/services/availabilityFeedService';
 import {
   OnboardingChecklist,
   type ChecklistItem,
@@ -60,7 +70,7 @@ import {
 import { gameService, userService } from '@/services';
 import { getInboxCount } from '@/services/requestsService';
 import { getAvailabilityCardEnabled } from '@/services/homeConfigService';
-import { dayDiff } from '@/utils/format';
+import { dayDiff, formatTime } from '@/utils/format';
 import {
   achievementsService,
   type NewlyUnlocked,
@@ -139,6 +149,18 @@ export function ProfileScreen() {
   // Pulse master switch (appConfig/features.availabilityCardEnabled) — off hides
   // the whole home availability surface. Defaults true (fail-open).
   const [availCardEnabled, setAvailCardEnabled] = useState(true);
+  // Nearby availability counts (per day × window) — powers the "recommended
+  // day" banner + the evening-availability podium. Fetched once on focus
+  // (15-min service cache). Null = loading/none.
+  const [availData, setAvailData] = useState<AvailabilityCounts | null>(null);
+  // Toggle: expand the full week×window grid below the evening podium.
+  const [showFullWeek, setShowFullWeek] = useState(false);
+  // Games the user PLAYED since the start of this week (Sun 00:00) — powers
+  // one of the smart-banner states. 0 = none yet this week.
+  const [playedThisWeek, setPlayedThisWeek] = useState(0);
+  // Epoch ms of the user's most recent played game (null = never / not loaded)
+  // — drives the "haven't played in N days" banner line.
+  const [lastPlayedMs, setLastPlayedMs] = useState<number | null>(null);
   // Open, non-stale games the user CREATED (createdBy === me). Derived
   // from the same getMyGames fetch that powers nextGame — no extra
   // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
@@ -299,6 +321,57 @@ export function ProfileScreen() {
         alive = false;
       };
     }, []),
+  );
+
+  // Nearby availability counts — refetched on focus (service caches 15 min so
+  // an unchanged refocus is a no-op). Feeds the recommended-day banner + podium.
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+      availabilityFeedService
+        .getAvailabilityCounts()
+        .then((d) => {
+          if (alive) setAvailData(d);
+        })
+        .catch(() => {
+          /* keep previous — never blank the home screen on a transient error */
+        });
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
+
+  // Games played since the start of this week (Sunday) — one smart-banner state.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid || localUser?.isGuest) {
+        setPlayedThisWeek(0);
+        return;
+      }
+      let alive = true;
+      // Start of the current week (Sunday 00:00, Israel week).
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setHours(0, 0, 0, 0);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekStartMs = weekStart.getTime();
+      gameService
+        .getPlayedGames(uid, 20)
+        .then((list) => {
+          if (!alive) return;
+          setPlayedThisWeek(list.filter((g) => g.date >= weekStartMs).length);
+          // getPlayedGames is sorted by date desc, so the first is the latest.
+          setLastPlayedMs(list.length > 0 ? list[0].date : null);
+        })
+        .catch(() => {
+          /* keep previous count on a transient error */
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id]),
   );
 
   // Live "games played" count — refreshed on focus so it reflects a game
@@ -483,6 +556,90 @@ export function ProfileScreen() {
   const markedAvailability =
     (user.availability?.preferredDays?.length ?? 0) > 0;
 
+  // ── Availability-derived widgets (recommended day + evening podium) ──
+  const availReady =
+    !!availData &&
+    !availData.error &&
+    availData.hasLocation &&
+    availData.days.length > 0;
+  const eveningDays = availReady
+    ? availData!.days.map((d) => ({
+        dateMs: d.dateMs,
+        count: d.windows.evening ?? 0,
+        letter: he.availabilityDayLetter[new Date(d.dateMs).getDay()] ?? '',
+      }))
+    : [];
+  // "Closest strong days": pick from the NEAREST few days (not the whole week)
+  // so we surface soon-and-busy days, then rank those by availability.
+  const NEAR_WINDOW_DAYS = 5;
+  const nearDays = eveningDays.slice(0, NEAR_WINDOW_DAYS);
+  const eveningSorted = [...nearDays].sort((a, b) => b.count - a.count);
+  const anyEvening = eveningSorted.length > 0 && eveningSorted[0].count > 0;
+  // Recommended day = the day with the most evening availability nearby.
+  const recommended = anyEvening ? eveningSorted[0] : null;
+  // Podium: top-3 evening days arranged [2nd, max, 3rd] so the busiest sits
+  // centre + highlighted (matches the mockup). Best is the true max only.
+  const podium: WindowDay[] = (() => {
+    if (!anyEvening) return [];
+    const top = eveningSorted.slice(0, 3);
+    const bestMs = top[0].dateMs;
+    const mk = (d: (typeof top)[number]): WindowDay => ({
+      letter: d.letter,
+      count: d.count,
+      dateMs: d.dateMs,
+      best: d.dateMs === bestMs,
+    });
+    if (top.length < 3) return top.map(mk);
+    return [mk(top[1]), mk(top[0]), mk(top[2])];
+  })();
+  const podiumMax = podium.reduce((m, d) => Math.max(m, d.count), 0);
+
+  // ── Smart contextual banner ──
+  // ALWAYS a time-of-day greeting + name, then ONE contextual suffix chosen by
+  // the player's current state (requests / game today / haven't played /
+  // haven't scheduled / availability / etc.). So the top line always opens with
+  // "בוקר טוב <שם>, …" and never feels empty.
+  const firstName = (user.name ?? '').trim().split(/\s+/)[0] || '';
+  const greetWord = (() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return he.greetingMorning;
+    if (h >= 12 && h < 17) return he.greetingNoon;
+    if (h >= 17 && h < 22) return he.greetingEvening;
+    return he.greetingNight;
+  })();
+  const daysSincePlayed =
+    lastPlayedMs != null ? Math.max(0, dayDiff(lastPlayedMs) * -1) : null;
+  const noUpcomingCreated = createdGames.length === 0;
+
+  let bannerSuffix: string = he.homeBannerWelcome;
+  let bannerPress: (() => void) | undefined;
+  if (inboxCount > 0) {
+    bannerSuffix = he.homeBannerRequests(inboxCount);
+    bannerPress = () => nav.navigate('Requests');
+  } else if (hasCloseGame && nextGame && dayDiff(nextGame.startsAt) <= 0) {
+    bannerSuffix = he.homeBannerGameToday(formatTime(nextGame.startsAt));
+    bannerPress = () => nav.navigate('MatchDetails', { gameId: nextGame.id });
+  } else if (!markedAvailability) {
+    bannerSuffix = he.homeBannerSetAvailability;
+    bannerPress = () => nav.navigate('AvailabilityEdit');
+  } else if (daysSincePlayed != null && daysSincePlayed >= 3) {
+    bannerSuffix = he.homeBannerDaysSincePlayed(daysSincePlayed);
+    bannerPress = () => nav.navigate('GameTab');
+  } else if (noUpcomingCreated && !hasCloseGame) {
+    bannerSuffix = he.homeBannerNoGameThisWeek;
+    bannerPress = () =>
+      nav.navigate('GameTab', {
+        screen: 'GamesList',
+        params: { openCreate: true },
+      });
+  } else if (myCommunities.length === 0) {
+    bannerSuffix = he.homeBannerJoinCommunity;
+    bannerPress = () => nav.navigate('CommunitiesTab');
+  } else if (playedThisWeek > 0) {
+    bannerSuffix = he.homeBannerPlayedThisWeek(playedThisWeek);
+  }
+  const bannerText = he.homeGreetingLine(greetWord, firstName) + bannerSuffix;
+
   // The user's communities split into the ones they OPENED (founder) vs
   // Pre-compute the share invite handler once.
   const handleShareInvite = async () => {
@@ -543,6 +700,18 @@ export function ProfileScreen() {
                 label: he.friendsTitle,
                 icon: 'people-outline' as const,
                 onPress: () => nav.navigate('Friends'),
+              },
+            ]
+          : []),
+        // Referrals — moved here from the home body (Pulse: "→ לתפריט").
+        ...(rcBool('feature_referrals')
+          ? [
+              {
+                id: 'referrals',
+                label: he.referralsScreenTitle,
+                icon: 'person-add-outline' as const,
+                onPress: () => nav.navigate('Referrals'),
+                badge: referralCount || undefined,
               },
             ]
           : []),
@@ -695,57 +864,71 @@ export function ProfileScreen() {
           />
         }
       >
-        {/* ① Compact greeting header — replaces the big stadium hero. */}
-        <HomeGreetingHeader
+        {/* ① Top bar — menu + bell (leading), centered Teamder logo, avatar. */}
+        <HomeTopBar
           user={user}
+          hasNotif={inboxCount > 0}
           onMenu={() => setMenuOpen(true)}
-          onEdit={() => nav.navigate('ProfileEdit')}
+          onBell={() => nav.navigate('Requests')}
+          onAvatar={() => nav.navigate('ProfileEdit')}
         />
 
         <View style={styles.body}>
-          {/* ① Pending requests banner — FIRST, for every user (not just
-              admins): it now counts friend requests + community-join requests
-              + game-join requests via the unified inbox. Time-sensitive, so it
-              sits above the hero. */}
-          {inboxCount > 0 ? (
-            <Pressable
-              onPress={() => nav.navigate('Requests')}
-              style={({ pressed }) => [
-                styles.pendingBanner,
-                pressed && { opacity: 0.9 },
-              ]}
-              accessibilityRole="button"
-            >
-              <Ionicons name="download-outline" size={20} color="#B45309" />
-              <Text style={styles.pendingText} numberOfLines={1}>
-                {he.homePendingInbox(inboxCount)}
-              </Text>
-              <Ionicons name="chevron-back" size={18} color="#B45309" />
-            </Pressable>
+          {/* ② Smart contextual banner — a single line chosen by the player's
+              current state (requests / game today / set availability / etc.). */}
+          <HomeSmartBanner text={bannerText} onPress={bannerPress} />
+
+          {/* ③ Next-game hero — mockup card (empty state built in). */}
+          <NextGameCardEntrance triggerKey={nextGame?.id}>
+            <HomeNextGameCard
+              game={hasCloseGame ? nextGame : null}
+              onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
+              onFind={() => nav.navigate('GameTab')}
+            />
+          </NextGameCardEntrance>
+
+          {/* ④ Recommended day to open a game — busiest evening nearby. */}
+          {availCardEnabled && recommended ? (
+            <HomeRecommendedDay
+              dayLetter={recommended.letter}
+              count={recommended.count}
+              onPress={() =>
+                (
+                  nav as { navigate: (s: string, p?: unknown) => void }
+                ).navigate('GameTab', {
+                  screen: 'GameCreate',
+                  params: {
+                    quick: true,
+                    prefillDateMs: recommended.dateMs,
+                    prefillWindow: 'evening',
+                    prefillCity: availData?.viewerCity ?? undefined,
+                    inviteAvailable: true,
+                  },
+                })
+              }
+            />
           ) : null}
 
-          {/* ② The hero(es). A live/near game leads (when there is one), and
-              the availability hero ALWAYS follows below it — the screen's whole
-              job is to keep nudging the user to mark availability and organize
-              the NEXT game, even when they already have one lined up. */}
-          {hasCloseGame ? (
-            <NextGameCardEntrance triggerKey={nextGame?.id}>
-              <ProfileNextGameCard
-                game={nextGame}
-                userId={user.id}
-                onOpenGame={(gameId) => nav.navigate('MatchDetails', { gameId })}
-                onFindGame={() => nav.navigate('GameTab')}
-              />
-            </NextGameCardEntrance>
-          ) : null}
+          {/* ⑤ Three action tiles. */}
+          <HomeActionTiles
+            onOpen={() =>
+              nav.navigate('GameTab', {
+                screen: 'GamesList',
+                params: { openCreate: true },
+              })
+            }
+            onAvailability={() => nav.navigate('AvailabilityEdit')}
+            onJoin={() => nav.navigate('GameTab')}
+          />
 
-          {markedAvailability ? (
-            // availability marked → show who's free nearby (organize a game).
-            // The Pulse switch hides ONLY this calendar view (availCardEnabled);
-            // the "set availability" prompt below is unaffected.
-            availCardEnabled ? (
-              <AvailabilityCalendarCard
-                onCreateGame={(dateMs, window, city) =>
+          {/* ⑥ Evening-availability podium (+ expand to the full week grid). */}
+          {availCardEnabled && podium.length > 0 ? (
+            <>
+              <HomeAvailabilityWindows
+                days={podium}
+                maxCount={podiumMax}
+                onShowWeek={() => setShowFullWeek((v) => !v)}
+                onPickDay={(dateMs) =>
                   (
                     nav as { navigate: (s: string, p?: unknown) => void }
                   ).navigate('GameTab', {
@@ -753,56 +936,39 @@ export function ProfileScreen() {
                     params: {
                       quick: true,
                       prefillDateMs: dateMs,
-                      prefillWindow: window,
-                      prefillCity: city ?? undefined,
+                      prefillWindow: 'evening',
+                      prefillCity: availData?.viewerCity ?? undefined,
                       inviteAvailable: true,
                     },
                   })
                 }
-                onSetAvailability={() => nav.navigate('AvailabilityEdit')}
               />
-            ) : null
-          ) : (
-            // not marked → drive the key action, even when a game exists.
+              {showFullWeek ? (
+                <AvailabilityCalendarCard
+                  onCreateGame={(dateMs, window, city) =>
+                    (
+                      nav as { navigate: (s: string, p?: unknown) => void }
+                    ).navigate('GameTab', {
+                      screen: 'GameCreate',
+                      params: {
+                        quick: true,
+                        prefillDateMs: dateMs,
+                        prefillWindow: window,
+                        prefillCity: city ?? undefined,
+                        inviteAvailable: true,
+                      },
+                    })
+                  }
+                  onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+                />
+              ) : null}
+            </>
+          ) : !markedAvailability ? (
+            // No availability marked → keep nudging the key action.
             <AvailabilityPromptCard
               onSetAvailability={() => nav.navigate('AvailabilityEdit')}
             />
-          )}
-
-          {/* Quick actions — create a game / mark availability. High up (right
-              under the hero) because the whole screen exists to nudge the user
-              to mark availability and open games. */}
-          <View style={styles.ctaRow}>
-            <Pressable
-              onPress={() =>
-                nav.navigate('GameTab', {
-                  screen: 'GamesList',
-                  params: { openCreate: true },
-                })
-              }
-              style={({ pressed }) => [
-                styles.ctaPrimary,
-                pressed && { opacity: 0.92 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.homeCreateGame}
-            >
-              <Ionicons name="football" size={18} color="#FFFFFF" />
-              <Text style={styles.ctaPrimaryText}>{he.homeCreateGame}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => nav.navigate('AvailabilityEdit')}
-              style={({ pressed }) => [
-                styles.ctaSecondary,
-                pressed && { opacity: 0.85 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={he.homeMarkAvailability}
-            >
-              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-              <Text style={styles.ctaSecondaryText}>{he.homeMarkAvailability}</Text>
-            </Pressable>
-          </View>
+          ) : null}
 
           {/* Activation checklist — ALWAYS shown while incomplete (once data
               loaded, to avoid a first-paint flash), but positioned low: below
@@ -815,14 +981,7 @@ export function ProfileScreen() {
           {/* Rotating "ידעת ש..." feature-discovery tip — passive, so it sits
               below the actionable content. */}
           <DidYouKnowCard tips={homeTips} />
-
-          {/* ⑦ Referral row — tap → list of who joined through you. */}
-          {rcBool('feature_referrals') ? (
-            <ReferralCard
-              count={referralCount}
-              onPress={() => nav.navigate('Referrals')}
-            />
-          ) : null}
+          {/* Referrals moved OFF the home body into the ☰ menu (Pulse request). */}
 
           {/* ⑧ Invite friends. */}
           <Pressable

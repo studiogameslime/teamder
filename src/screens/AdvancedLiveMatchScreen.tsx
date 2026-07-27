@@ -36,7 +36,7 @@ import Animated, {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 
 import { toast } from '@/components/Toast';
-import { gameService } from '@/services/gameService';
+import { gameService, resolveRosterEntry } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
 import { communityEventsService } from '@/services/communityEventsService';
 import {
@@ -395,8 +395,13 @@ export function AdvancedLiveMatchScreen() {
   ): { id: string; name: string; avatarId?: string; photoUrl?: string } => {
     const u = playersMap[id];
     if (u) return { id, name: u.displayName ?? id, avatarId: u.avatarId, photoUrl: u.photoUrl };
-    const guest = (game?.guests ?? []).find((x) => x.id === id);
-    return { id, name: guest?.name ?? he.guestLabel };
+    // Guests carry a `guest:<id>` roster id — resolveRosterEntry strips the
+    // prefix before matching game.guests, so the guest's real NAME shows
+    // instead of a generic "אורח" (Pulse #10: the naive game.guests.find(id)
+    // below never matched the prefixed roster id).
+    const entry = resolveRosterEntry(id, game);
+    if (entry.kind === 'guest') return { id, name: entry.guest.name || he.guestLabel };
+    return { id, name: he.guestLabel };
   };
 
   // Kick off the team-completion flow from an engine skeleton: seed the working

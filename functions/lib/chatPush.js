@@ -167,6 +167,7 @@ async function handleRecipient(uid, scope, parentId, title, msg, isBlocked) {
                 lastMessageAt,
                 lastText: truncate(text),
                 lastSenderName: senderName,
+                lastSenderId: typeof msg.senderId === 'string' ? msg.senderId : '',
                 scope,
                 parentId,
                 title,
@@ -276,6 +277,27 @@ async function handleChatMessage(scope, parentId, msg) {
         return;
     }
     // Exclude the sender — they don't get a push/unread for their own message.
+    // Stamp the SENDER's own chats-list entry with their last message — WITHOUT
+    // bumping their unread count — so "my last message" shows in the list instead
+    // of a blank placeholder ("הודעה פרטית"). Pulse #19. `lastSenderId === me`
+    // lets the client prefix "אני:".
+    if (senderId) {
+        await db
+            .collection('users')
+            .doc(senderId)
+            .collection('chatUnread')
+            .doc(chatKeyFor(scope, parentId))
+            .set({
+            lastMessageAt: typeof msg.createdAt === 'number' ? msg.createdAt : Date.now(),
+            lastText: truncate(msg.text || ''),
+            lastSenderName: (msg.senderName || '').trim() || 'שחקן',
+            lastSenderId: senderId,
+            scope,
+            parentId,
+            title,
+        }, { merge: true })
+            .catch((err) => console.warn('[chatPush] sender stamp failed', err));
+    }
     const targets = recipients.filter((uid) => typeof uid === 'string' && uid && uid !== senderId);
     if (targets.length === 0)
         return;

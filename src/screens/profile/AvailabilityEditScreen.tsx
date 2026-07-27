@@ -440,26 +440,30 @@ export function AvailabilityEditScreen() {
               <Text style={styles.legendText}>{he.availabilityLegendBusy}</Text>
             </View>
           </View>
-        </View>
 
-        {/* Quick-fill presets — 21 cells by hand is a chore; one tap fills a
-            common pattern, then the user tweaks the exceptions. */}
-        <SectionHeader icon="flash-outline" title={he.availabilityQuickFill} />
-        <View style={styles.presetRow}>
-          <Pressable style={styles.preset} onPress={() => applyPreset('evenings')}>
-            <Text style={styles.presetText}>{he.availabilityPresetEvenings}</Text>
-          </Pressable>
-          <Pressable style={styles.preset} onPress={() => applyPreset('weekend')}>
-            <Text style={styles.presetText}>{he.availabilityPresetWeekend}</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.preset, styles.presetGhost]}
-            onPress={() => applyPreset('clear')}
-          >
-            <Text style={[styles.presetText, styles.presetGhostText]}>
-              {he.availabilityPresetClear}
-            </Text>
-          </Pressable>
+          {/* Quick-fill presets live INSIDE the grid card so they clearly read
+              as part of marking availability, not a separate section (Pulse #15). */}
+          <View style={styles.gridDivider} />
+          <View style={styles.quickFillHead}>
+            <Ionicons name="flash-outline" size={15} color={colors.textMuted} />
+            <Text style={styles.quickFillLabel}>{he.availabilityQuickFill}</Text>
+          </View>
+          <View style={styles.presetRow}>
+            <Pressable style={styles.preset} onPress={() => applyPreset('evenings')}>
+              <Text style={styles.presetText}>{he.availabilityPresetEvenings}</Text>
+            </Pressable>
+            <Pressable style={styles.preset} onPress={() => applyPreset('weekend')}>
+              <Text style={styles.presetText}>{he.availabilityPresetWeekend}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.preset, styles.presetGhost]}
+              onPress={() => applyPreset('clear')}
+            >
+              <Text style={[styles.presetText, styles.presetGhostText]}>
+                {he.availabilityPresetClear}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Fixed home area (map) — set explicitly, never from live GPS. */}
@@ -828,6 +832,18 @@ const styles = StyleSheet.create({
   },
   legendText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  quickFillHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  quickFillLabel: {
+    fontSize: 12.5,
+    color: colors.textMuted,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
   preset: {
     borderRadius: radius.md,
     paddingVertical: spacing.sm,

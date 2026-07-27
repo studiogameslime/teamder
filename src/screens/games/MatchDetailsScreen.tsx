@@ -122,7 +122,7 @@ import {
 } from '@/types';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShortYear, formatDayDate } from '@/utils/format';
+import { formatDateShortYear, formatDayDate, formatTime } from '@/utils/format';
 import { teamName } from '@/utils/draft';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -2513,8 +2513,8 @@ export function MatchDetailsScreen() {
                 report). Underneath it still runs the filler application → admin
                 approval; only the label + shape changed. */}
             <View style={styles.fillerBannerHead}>
-              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
               <Text style={styles.fillerBannerTitle}>{he.fillerApplyTitle}</Text>
+              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
             </View>
             <Text style={styles.fillerBannerSub}>
               {fillerState === 'sent' ? he.fillerApplySentSub : he.fillerApplySub}
@@ -2625,6 +2625,15 @@ export function MatchDetailsScreen() {
                 <Text style={styles.createTeamsSub}>
                   {he.matchCreateTeamsBannerSub}
                 </Text>
+                {/* If auto-teams is SCHEDULED, tell the admin exactly when it
+                    will fire (Pulse request). */}
+                {game.autoTeamsAt && game.autoTeamsAt > Date.now() ? (
+                  <Text style={styles.createTeamsAutoNote}>
+                    {he.matchAutoTeamsScheduled(
+                      `${formatDayDate(game.autoTeamsAt)} · ${formatTime(game.autoTeamsAt)}`,
+                    )}
+                  </Text>
+                ) : null}
               </View>
               <Ionicons name="chevron-back" size={20} color={colors.primary} />
             </Pressable>
@@ -3942,13 +3951,14 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   fillerBannerHead: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
   },
   fillerBannerTitle: {
     ...typography.bodyBold,
     color: colors.text,
+    flex: 1,
     textAlign: RTL_LABEL_ALIGN,
   },
   fillerBannerSub: {
@@ -4406,6 +4416,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,
+  },
+  createTeamsAutoNote: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: 3,
   },
   sectionTitle: {
     color: colors.text,

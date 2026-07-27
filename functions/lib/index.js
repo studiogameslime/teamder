@@ -72,6 +72,7 @@ const reviewAlerts_1 = require("./reviewAlerts");
 const adminPush_1 = require("./adminPush");
 const adminUserPush_1 = require("./adminUserPush");
 const notificationDedup_1 = require("./notificationDedup");
+const holidays_1 = require("./holidays");
 // Chat fan-out + "one push per chat until opened" — defined in its own
 // module, re-exported so Cloud Functions discovers the triggers.
 var chatPush_1 = require("./chatPush");
@@ -519,6 +520,15 @@ function buildMessage(type, payload) {
             return {
                 title: `משחק חדש: ${title}`,
                 body: when ? `${title} · ${when}` : `נפתח משחק חדש ב${title}`,
+            };
+        }
+        case 'gameOnHoliday': {
+            const holiday = payload.holiday || 'חג';
+            return {
+                title: 'משחק מתוזמן לחג',
+                body: when
+                    ? `${gameTitle} מתוזמן ל${holiday} (${when}). אולי כדאי לבדוק.`
+                    : `${gameTitle} מתוזמן ל${holiday}. אולי כדאי לבדוק.`,
             };
         }
         case 'gameReminder':
@@ -2484,6 +2494,23 @@ async function runCloneRecurringGames() {
             continue; // a cancelled week doesn't recur
         if (now < g.startsAt + RECURRING_CLONE_DELAY_MS)
             continue; // wait 3h post-kickoff
+        // Stop the perpetual-empty-clone chain for abandoned communities. We're now
+        // ≥3h past kickoff; a live weekly fixture always has people on the roster by
+        // this point. If NOBODY registered (no players, no guests), the community
+        // that set up this recurring game is effectively dead — spawning next week
+        // just creates another empty instance that runCleanupStaleGames deletes,
+        // which then clones AGAIN (clones reset the latch), looping forever. Skip
+        // the clone so the weekly chain dies with the roster. A community that comes
+        // back to life re-enables recurring on its next real game.
+        const rosterCount = (Array.isArray(g.players) ? g.players.length : 0) +
+            (Array.isArray(g.guests) ? g.guests.length : 0);
+        if (rosterCount === 0) {
+            console.log('[cloneRecurringGames] skip empty (dead fixture)', {
+                gameId: doc.id,
+                groupId: g.groupId,
+            });
+            continue;
+        }
         // Advance kickoff by one week preserving Israel wall time (DST-safe), then
         // shift every dependent window by the SAME delta so each keeps its exact
         // offset from kickoff (e.g. "24h before") across a DST boundary.
@@ -2853,6 +2880,57 @@ async function runExpireStaleOffers() {
         }
     }
     console.log(`[expireStaleOffers] advanced ${advanced} stale offer(s)`);
+}
+/** Scan upcoming games; if one falls on a no-play holiday and the organizer
+ *  hasn't been warned yet, push them a heads-up. Catches both manual games and
+ *  recurring clones that auto-landed on a holiday. Deduped by a per-game
+ *  `holidayNotifiedAt` stamp (+ createNotificationOnce's own dedupe). */
+async function runHolidayGameNotices() {
+    const now = Date.now();
+    const horizon = now + 8 * 24 * 60 * 60 * 1000; // games within the next 8 days
+    const snap = await db
+        .collection('games')
+        .where('startsAt', '>=', now)
+        .where('startsAt', '<=', horizon)
+        .orderBy('startsAt', 'asc')
+        .limit(200)
+        .get();
+    if (snap.empty)
+        return;
+    for (const doc of snap.docs) {
+        const g = doc.data();
+        if (typeof g.startsAt !== 'number')
+            continue;
+        if (g.status === 'cancelled')
+            continue;
+        if (g.holidayNotifiedAt)
+            continue; // already warned for this game
+        const holiday = (0, holidays_1.holidayNameOnDate)(g.startsAt);
+        if (!holiday)
+            continue;
+        const organizer = typeof g.createdBy === 'string' ? g.createdBy : '';
+        if (!organizer)
+            continue;
+        try {
+            await createNotificationOnce({
+                type: 'gameOnHoliday',
+                recipientId: organizer,
+                createdByUid: '',
+                payload: {
+                    gameId: doc.id,
+                    gameTitle: g.title || 'המשחק',
+                    startsAt: g.startsAt,
+                    holiday,
+                    groupId: g.groupId,
+                },
+            });
+            // Stamp regardless of push outcome so we don't re-scan/re-notify.
+            await doc.ref.set({ holidayNotifiedAt: now }, { merge: true });
+        }
+        catch (err) {
+            console.error('[holidayGameNotices] failed', doc.id, err);
+        }
+    }
 }
 async function runCleanupStaleGames() {
     // 3h past kickoff with no start → stale (owner request: a game whose time
@@ -7531,19 +7609,10 @@ async function runFindFillerCandidates() {
             //     before geocoding has populated, and unknown cities.
             const userData = userDoc.data();
             const av = userData.availability ?? {};
-            // Declared-availability match (empty arrays = "any"), same as the pulse.
-            const pdaysS = Array.isArray(av.preferredDays) ? av.preferredDays : [];
-            if (gameWeekdaySweep !== undefined &&
-                pdaysS.length > 0 &&
-                !pdaysS.includes(gameWeekdaySweep)) {
+            // Declared-availability match — prefers the precise per-day grid, falls
+            // back to legacy days×times (empty = "any"). Same rule as the pulse.
+            if (!availabilityCovers(av, gameWeekdaySweep, gameWindowSweep))
                 continue;
-            }
-            const ptimesS = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
-            if (gameWindowSweep &&
-                ptimesS.length > 0 &&
-                !ptimesS.includes(gameWindowSweep)) {
-                continue;
-            }
             // Best-effort daily-cap pre-filter (authoritative reservation is the txn
             // below) — avoids a transaction for obviously-capped candidates.
             const usedTodayS = av.fillerPushDay === sweepTodayKey ? av.fillerPushCount ?? 0 : 0;
@@ -7776,13 +7845,10 @@ async function runFillerPulseBatch(gameId) {
             continue;
         const userData = userDoc.data();
         const av = userData.availability ?? {};
-        // Declared-availability match — only invite players who marked THIS
-        // weekday and window free (empty arrays = "any", mirroring the count).
-        const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
-        if (pdays.length > 0 && !pdays.includes(gameWeekday))
-            continue;
-        const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
-        if (ptimes.length > 0 && !ptimes.includes(gameWindow))
+        // Declared-availability match — only invite players free THIS weekday+window.
+        // Prefers the precise per-day grid; falls back to legacy days×times (empty =
+        // "any") so users who haven't re-saved keep matching exactly as before.
+        if (!availabilityCovers(av, gameWeekday, gameWindow))
             continue;
         // Best-effort daily-cap pre-filter (authoritative check is in the txn).
         const usedToday = av.fillerPushDay === todayKey ? av.fillerPushCount ?? 0 : 0;
@@ -8155,6 +8221,41 @@ function hourToAvailWindow(hour) {
         return 'noon'; // 12:00–17:59
     return 'evening'; // 18:00–06:59 (also absorbs the small hours)
 }
+/**
+ * True if the user's declared availability covers (weekday, window). Prefers
+ * the PRECISE per-day grid (`availabilitySlots`) when the user has one; falls
+ * back to the legacy decoupled `preferredDays` × `preferredTimes` cross-product
+ * (empty arrays = "any") so users who haven't re-saved keep matching EXACTLY as
+ * before — no one's existing availability is broken by the grid rollout.
+ */
+function availabilityCovers(av, weekday, window) {
+    const slots = av.availabilitySlots;
+    const hasGrid = !!slots &&
+        typeof slots === 'object' &&
+        Object.values(slots).some((a) => Array.isArray(a) && a.length > 0);
+    if (hasGrid) {
+        if (weekday === undefined)
+            return true; // no time anchor → don't exclude
+        // Firestore serialises numeric keys as strings; read defensively.
+        const daySlots = slots[String(weekday)] ??
+            slots[weekday] ??
+            [];
+        if (daySlots.length === 0)
+            return false; // nothing ticked that day
+        if (!window)
+            return true; // day matches, window unknown → allow
+        return daySlots.includes(window);
+    }
+    // Legacy fallback — decoupled arrays, empty = "any".
+    const pdays = Array.isArray(av.preferredDays) ? av.preferredDays : [];
+    if (weekday !== undefined && pdays.length > 0 && !pdays.includes(weekday)) {
+        return false;
+    }
+    const ptimes = Array.isArray(av.preferredTimes) ? av.preferredTimes : [];
+    if (window && ptimes.length > 0 && !ptimes.includes(window))
+        return false;
+    return true;
+}
 exports.availabilityCounts = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
@@ -8245,20 +8346,16 @@ exports.availabilityCounts = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         if (haversineKm(myLoc, { lat: a.homeCityLat, lng: a.homeCityLng }) > radiusKm) {
             continue;
         }
-        // Empty preferredDays / preferredTimes = "available any day / any window"
-        // — mirrors the pulse engine's candidate filter so the count reflects the
-        // same population that would actually be invited.
-        const pdaysRaw = Array.isArray(a.preferredDays) ? a.preferredDays : [];
-        const pdays = pdaysRaw.length > 0 ? pdaysRaw : days.map((d) => d.weekday);
-        const ptimes = Array.isArray(a.preferredTimes) && a.preferredTimes.length > 0
-            ? a.preferredTimes
-            : [...AVAIL_WINDOWS];
-        for (const wd of pdays) {
-            const di = weekdayToIndex.get(wd);
+        // Count every (day, window) the player is free in — via availabilityCovers
+        // so the PRECISE per-day grid is honoured, and legacy days×times still
+        // behaves as "empty = any". Mirrors the pulse candidate filter exactly, so
+        // the count reflects the same population that would actually be invited.
+        for (const d of days) {
+            const di = weekdayToIndex.get(d.weekday);
             if (di === undefined)
                 continue;
-            for (const w of ptimes) {
-                if (!AVAIL_WINDOWS.includes(w))
+            for (const w of AVAIL_WINDOWS) {
+                if (!availabilityCovers(a, d.weekday, w))
                     continue;
                 if (registered.get(`${di}:${w}`)?.has(u.id))
                     continue; // already playing
@@ -9259,6 +9356,7 @@ exports.cronEvery15Min = (0, scheduler_1.onSchedule)({
 exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
     await runSweep('cleanupStaleGames', runCleanupStaleGames);
     await runSweep('sendPromotePrompts', runSendPromotePrompts);
+    await runSweep('holidayGameNotices', runHolidayGameNotices);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
 });
 // ─── Advanced-mode round stats aggregation ─────────────────────────────────

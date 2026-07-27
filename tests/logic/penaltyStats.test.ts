@@ -292,6 +292,17 @@ describe('penaltyKing (top scorer)', () => {
     expect(king2?.userId).toBe('a'); // 'a' < 'z'
   });
 
+  it('ranks by Wilson score — a proven high-volume scorer beats a one-shot 100%', () => {
+    // 8/10 (80%) should outrank 1/1 (100%): more attempts + strong rate wins,
+    // so a lucky single penalty no longer crowns the king (Pulse feedback).
+    const king = penaltyKing([
+      { userId: 'volume', penScored: 8, penTaken: 10 }, // 80%, big sample
+      { userId: 'oneshot', penScored: 1, penTaken: 1 }, // 100%, tiny sample
+    ]);
+    expect(king?.userId).toBe('volume');
+    expect(king?.pct).toBe(80); // still shows the REAL success %
+  });
+
   it('returns null when nobody has scored a penalty', () => {
     expect(
       penaltyKing([

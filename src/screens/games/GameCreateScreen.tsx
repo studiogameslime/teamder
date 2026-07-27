@@ -118,17 +118,12 @@ function buildInitial(
     autoTeamsAt: 0,
     autoTeamsMethod: 'rating',
     cancelDeadlineHours: undefined,
-    // Cross-community fillers: default ON for the DISCOVERABLE flows —
-    // availability-calendar quick games, one-off (orphan) pickup games, and
-    // OPEN communities — since those are meant to reach strangers and fill the
-    // feed. Closed/private communities stay OFF by default (their games would
-    // otherwise become world-readable + stranger-invitable via invitedUserIds);
-    // their admins opt in per game. The engine only fires below the shortage
-    // threshold and every filler still needs admin approval.
-    acceptsFillers:
-      overrides?.inviteAvailable === true ||
-      overrides?.quick === true ||
-      g?.isOpen === true,
+    // Fillers are MERGED into the "משחק פתוח לכולם" toggle (Pulse #6): a public
+    // game reaches nearby strangers when short. Since visibility defaults to
+    // 'public' above, fillers default ON to match. (The merged toggle keeps the
+    // two in sync when the admin flips it; the engine still fires only below the
+    // shortage threshold and every filler needs admin approval.)
+    acceptsFillers: true,
     fillerMinTrust: 70,
     notes: '',
     bringBall: true,
@@ -581,6 +576,9 @@ export function GameCreateScreen() {
         }
         internalRating={!isOrphan && selectedGroup?.internalRating === true}
         showInviteFriends
+        // Confirm before leaving the create wizard with filled-in fields
+        // (back / tab-switch) instead of silently discarding them (Pulse #9).
+        enableUnsavedGuard
       />
       <ConfirmDialog
         visible={!!notice}

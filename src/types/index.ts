@@ -584,6 +584,9 @@ export interface ChatUnreadEntry {
   lastMessageAt: number;
   lastText: string;
   lastSenderName: string;
+  /** Uid of whoever sent the last message — lets the chats list prefix "אני:"
+   *  when the last message is the viewer's own (Pulse #19). */
+  lastSenderId: string;
   scope: ChatScope;
   parentId: string;
   title: string;
