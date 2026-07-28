@@ -43,7 +43,6 @@ import { currentAuthProviderId } from '@/firebase/auth';
 import { rcBool, rcString, useRemoteConfig } from '@/services/remoteConfigService';
 import { NextGameCardEntrance } from '@/components/anim/game/NextGameCardEntrance';
 import { AnimationLab } from '@/screens/dev/AnimationLab';
-import { AvailabilityCalendarCard } from '@/components/home/AvailabilityCalendarCard';
 import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
 import {
   HomeTopBar,
@@ -153,8 +152,6 @@ export function ProfileScreen() {
   // day" banner + the evening-availability podium. Fetched once on focus
   // (15-min service cache). Null = loading/none.
   const [availData, setAvailData] = useState<AvailabilityCounts | null>(null);
-  // Toggle: expand the full week×window grid below the evening podium.
-  const [showFullWeek, setShowFullWeek] = useState(false);
   // Games the user PLAYED since the start of this week (Sun 00:00) — powers
   // one of the smart-banner states. 0 = none yet this week.
   const [playedThisWeek, setPlayedThisWeek] = useState(0);
@@ -878,14 +875,18 @@ export function ProfileScreen() {
               current state (requests / game today / set availability / etc.). */}
           <HomeSmartBanner text={bannerText} onPress={bannerPress} />
 
-          {/* ③ Next-game hero — mockup card (empty state built in). */}
-          <NextGameCardEntrance triggerKey={nextGame?.id}>
-            <HomeNextGameCard
-              game={hasCloseGame ? nextGame : null}
-              onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
-              onFind={() => nav.navigate('GameTab')}
-            />
-          </NextGameCardEntrance>
+          {/* ③ Next-game hero — shown ONLY when there's a close game. With no
+              upcoming game we render nothing (no empty card, no dead gap) so the
+              content below just tightens up towards the top. */}
+          {hasCloseGame ? (
+            <NextGameCardEntrance triggerKey={nextGame?.id}>
+              <HomeNextGameCard
+                game={nextGame}
+                onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
+                onFind={() => nav.navigate('GameTab')}
+              />
+            </NextGameCardEntrance>
+          ) : null}
 
           {/* ④ Recommended day to open a game — busiest evening nearby. */}
           {availCardEnabled && recommended ? (
@@ -921,48 +922,28 @@ export function ProfileScreen() {
             onJoin={() => nav.navigate('GameTab')}
           />
 
-          {/* ⑥ Evening-availability podium (+ expand to the full week grid). */}
+          {/* ⑥ Evening-availability podium. "הצג שבוע מלא" NAVIGATES to the
+              full-week screen (Pulse: no inline expand). */}
           {availCardEnabled && podium.length > 0 ? (
-            <>
-              <HomeAvailabilityWindows
-                days={podium}
-                maxCount={podiumMax}
-                onShowWeek={() => setShowFullWeek((v) => !v)}
-                onPickDay={(dateMs) =>
-                  (
-                    nav as { navigate: (s: string, p?: unknown) => void }
-                  ).navigate('GameTab', {
-                    screen: 'GameCreate',
-                    params: {
-                      quick: true,
-                      prefillDateMs: dateMs,
-                      prefillWindow: 'evening',
-                      prefillCity: availData?.viewerCity ?? undefined,
-                      inviteAvailable: true,
-                    },
-                  })
-                }
-              />
-              {showFullWeek ? (
-                <AvailabilityCalendarCard
-                  onCreateGame={(dateMs, window, city) =>
-                    (
-                      nav as { navigate: (s: string, p?: unknown) => void }
-                    ).navigate('GameTab', {
-                      screen: 'GameCreate',
-                      params: {
-                        quick: true,
-                        prefillDateMs: dateMs,
-                        prefillWindow: window,
-                        prefillCity: city ?? undefined,
-                        inviteAvailable: true,
-                      },
-                    })
-                  }
-                  onSetAvailability={() => nav.navigate('AvailabilityEdit')}
-                />
-              ) : null}
-            </>
+            <HomeAvailabilityWindows
+              days={podium}
+              maxCount={podiumMax}
+              onShowWeek={() => nav.navigate('AvailabilityWeek')}
+              onPickDay={(dateMs) =>
+                (
+                  nav as { navigate: (s: string, p?: unknown) => void }
+                ).navigate('GameTab', {
+                  screen: 'GameCreate',
+                  params: {
+                    quick: true,
+                    prefillDateMs: dateMs,
+                    prefillWindow: 'evening',
+                    prefillCity: availData?.viewerCity ?? undefined,
+                    inviteAvailable: true,
+                  },
+                })
+              }
+            />
           ) : !markedAvailability ? (
             // No availability marked → keep nudging the key action.
             <AvailabilityPromptCard
