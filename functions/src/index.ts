@@ -6746,13 +6746,17 @@ export const adminAddPlayers = onCall(
     const adderName = (callerSnap.data() as { name?: string } | undefined)?.name ?? '';
     const title = typeof game.title === 'string' ? game.title : 'המשחק';
     const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
-    const pushOne = (uid: string, waitlisted: boolean) =>
-      createNotificationOnce({
+    const pushOne = (uid: string, waitlisted: boolean) => {
+      // Don't notify an admin that they registered THEMSELVES — they just did
+      // the action, a "<me> רשם אותך" push to myself is noise (user report).
+      if (uid === callerUid) return Promise.resolve();
+      return createNotificationOnce({
         type: 'addedToGame',
         recipientId: uid,
         payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
         createdByUid: callerUid,
       }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+    };
     await Promise.all([
       ...result.addedToPlayers.map((uid) => pushOne(uid, false)),
       ...result.addedToWaitlist.map((uid) => pushOne(uid, true)),

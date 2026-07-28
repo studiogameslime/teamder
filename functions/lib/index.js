@@ -5700,12 +5700,18 @@ exports.adminAddPlayers = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHE
     const adderName = callerSnap.data()?.name ?? '';
     const title = typeof game.title === 'string' ? game.title : 'המשחק';
     const startsAt = typeof game.startsAt === 'number' ? game.startsAt : 0;
-    const pushOne = (uid, waitlisted) => createNotificationOnce({
-        type: 'addedToGame',
-        recipientId: uid,
-        payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
-        createdByUid: callerUid,
-    }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+    const pushOne = (uid, waitlisted) => {
+        // Don't notify an admin that they registered THEMSELVES — they just did
+        // the action, a "<me> רשם אותך" push to myself is noise (user report).
+        if (uid === callerUid)
+            return Promise.resolve();
+        return createNotificationOnce({
+            type: 'addedToGame',
+            recipientId: uid,
+            payload: { gameId, gameTitle: title, adderName, startsAt, waitlisted },
+            createdByUid: callerUid,
+        }).catch((err) => console.warn('[adminAddPlayers] push failed', uid, err));
+    };
     await Promise.all([
         ...result.addedToPlayers.map((uid) => pushOne(uid, false)),
         ...result.addedToWaitlist.map((uid) => pushOne(uid, true)),
