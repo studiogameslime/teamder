@@ -1668,6 +1668,14 @@ export const he = {
   homeNoGameTitle: 'אין לך משחק קרוב',
   homeNoGameBody: 'מצא משחק פתוח או פתח משחק חדש',
   homeNoGameCta: 'מצא משחק',
+  // "Coming soon" teaser — a community game whose registration hasn't opened yet.
+  homeUpcomingSectionTitle: 'בקרוב במועדונים שלך',
+  homeUpcomingBadge: 'משחק בדרך',
+  homeUpcomingRegistration: (label: string) => `ההרשמה ${label}`,
+  homeUpcomingOpensAt: (dayDate: string, time: string) =>
+    `תיפתח ${dayDate} ב-${time}`,
+  homeUpcomingOpensInMinutes: (mmss: string) => `תיפתח בעוד ${mmss} דק׳`,
+  homeUpcomingOpeningNow: 'נפתחת עכשיו',
   // Recommended day to open a game (most available players nearby).
   homeRecommendedTitle: 'היום המומלץ לפתיחת משחק',
   homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,
@@ -2075,7 +2083,22 @@ export const he = {
   // Compact match card on the Matches list
   matchCardJoin: 'אני מגיע',
   matchCardWaitlist: 'המתנה',
+  matchCardWaitlistCta: 'הצטרף לרשימת המתנה',
   matchCardLeave: 'בטל הרשמה',
+  // Redesigned two-column card extras.
+  matchCardManagedBy: (name: string) => `מנוהל ע״י ${name}`,
+  matchCardJoinShort: 'הצטרף',
+  matchCardInWaitlist: 'ברשימת המתנה',
+  // Smart when-line: today/tomorrow collapse to "<day> ב-HH:MM"; further out
+  // shows the date + time.
+  matchCardWhenToday: (t: string) => `היום ב-${t}`,
+  matchCardWhenTomorrow: (t: string) => `מחר ב-${t}`,
+  matchCardWhenDate: (date: string, t: string) => `${date} · ${t}`,
+  matchCardMore: (n: number) => `+${n}`,
+  matchCardOccupancy: (n: number, max: number) => `${n}/${max}`,
+  matchCardWeatherClear: 'בהיר',
+  matchCardWeatherPartly: 'מעונן חלקית',
+  matchCardWeatherRain: (p: number) => `גשם ${p}%`,
   matchCardPlayersOf: (n: number, max: number) => `‎${n}/${max}‎ שחקנים`,
   matchStatusOpen: 'פתוח להרשמה',
   matchStatusFull: 'מלא',

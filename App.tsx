@@ -128,7 +128,12 @@ try {
     {
       identifier: 'JOIN_GAME',
       buttonTitle: 'אני מגיע',
-      options: { opensAppToForeground: false },
+      // Was a BACKGROUND action (opensAppToForeground:false) — but on Android a
+      // background action button is DROPPED when the app is fully killed (no
+      // headless JS task; getLastNotificationResponseAsync never sees it), so
+      // "אני מגיע" silently did nothing (user report). Open the app so the
+      // response is always delivered → the handler joins + lands on the game.
+      options: { opensAppToForeground: true },
     },
   ]).catch(() => {});
   // Waitlist promotion offer: someone cancelled, head of waitlist
@@ -693,12 +698,9 @@ export default function App() {
         );
         await handleGameReminderAction(action, gameId);
         await dismissNotificationSafely(notifId);
-        // JOIN_GAME is now a BACKGROUND action (opensAppToForeground:false) —
-        // the handler already registered the user and posted a local
-        // confirmation, so DON'T drag the app to MatchDetails behind their
-        // back. CANCEL_GAME (retired from the category) still falls through to
-        // show the result on the rare legacy push.
-        if (action === 'JOIN_GAME') return;
+        // "אני מגיע" now opens the app (opensAppToForeground:true) — after the
+        // join, FALL THROUGH to navigation so the user lands on the game and
+        // sees they're registered, instead of being dropped on home.
       } else if (action === 'CONFIRM_SPOT' || action === 'PASS_SPOT') {
         const gameId = typeof data.gameId === 'string' ? data.gameId : '';
         if (!gameId) return;

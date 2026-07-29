@@ -1109,10 +1109,17 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       capacityNoticeSent: g.capacityNoticeSent ?? false,
       rsvpNudgeSent: g.rsvpNudgeSent ?? false,
       arrivals: g.arrivals ?? null,
-      cancellations: g.cancellations ?? null,
+      // Empty MAP, never null: the self-cancel rule does
+      // `resource.data.get('cancellations', {}).diff(...)`, and Firestore's
+      // `.get(k, default)` returns the default only when the key is ABSENT —
+      // a present `null` returns null and blows up `.diff()`, silently
+      // permission-denying every player's cancellation (Ziv/Lioz reports).
+      // The rule now also null-guards via safeMap; writing {} avoids the trap
+      // at the source. Reads round-trip identically ({} → undefined).
+      cancellations: g.cancellations ?? {},
       adminRemovals: g.adminRemovals ?? null,
       adminRemovedBy: g.adminRemovedBy ?? null,
-      joinedAt: g.joinedAt ?? null,
+      joinedAt: g.joinedAt ?? {},
       pinnedMessage:
         typeof g.pinnedMessage === 'string' && g.pinnedMessage.length > 0
           ? g.pinnedMessage

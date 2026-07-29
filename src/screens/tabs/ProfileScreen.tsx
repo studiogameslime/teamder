@@ -53,6 +53,7 @@ import {
   type WindowDay,
 } from '@/components/home/HomeDashboardParts';
 import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
+import { UpcomingScheduledGameCard } from '@/components/home/UpcomingScheduledGameCard';
 import {
   availabilityFeedService,
   type AvailabilityCounts,
@@ -139,6 +140,9 @@ export function ProfileScreen() {
   // next-game card that replaced the achievements rail. Null = none
   // upcoming (or still loading on first paint).
   const [nextGame, setNextGame] = useState<Game | null>(null);
+  // Scheduled games (registration not yet open) in my communities — the
+  // read-only "בקרוב" teaser shown in place of the empty no-game state.
+  const [scheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
   // Unified count of incoming requests the user must act on — friend
   // requests + community-join requests (admin) + game-join requests
   // (creator). Drives the top-of-home "pending requests" banner, which is
@@ -282,6 +286,34 @@ export function ProfileScreen() {
         alive = false;
       };
     }, [localUser?.id]),
+  );
+
+  // Scheduled ("coming soon") games across my communities — surfaced as a
+  // read-only teaser when I have no near game, so an empty home turns into
+  // "a game is on the way, registration opens at…". Refetched on focus.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid || localUser?.isGuest || myCommunities.length === 0) {
+        setScheduledUpcoming([]);
+        return;
+      }
+      let alive = true;
+      gameService
+        .getMyUpcomingScheduledGames(
+          uid,
+          myCommunities.map((g) => g.id),
+        )
+        .then((games) => {
+          if (alive) setScheduledUpcoming(games);
+        })
+        .catch(() => {
+          /* transient — keep the previous list */
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id, myCommunities.length]),
   );
 
   // Unified incoming-requests count for the top banner — refreshed on focus
@@ -875,17 +907,31 @@ export function ProfileScreen() {
               current state (requests / game today / set availability / etc.). */}
           <HomeSmartBanner text={bannerText} onPress={bannerPress} />
 
-          {/* ③ Next-game hero — shown ONLY when there's a close game. With no
-              upcoming game we render nothing (no empty card, no dead gap) so the
-              content below just tightens up towards the top. */}
-          {hasCloseGame ? (
-            <NextGameCardEntrance triggerKey={nextGame?.id}>
+          {/* ③ Hero — exactly ONE card, in priority order:
+              1. a game I'm registered to / created (always wins, even if it's
+                 further than a week out — a registered game beats everything);
+              2. else the single closest community game whose registration
+                 hasn't opened yet ("משחק בדרך");
+              3. else nothing — the content below just tightens up to the top. */}
+          {nextGame ? (
+            <NextGameCardEntrance triggerKey={nextGame.id}>
               <HomeNextGameCard
                 game={nextGame}
                 onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
                 onFind={() => nav.navigate('GameTab')}
               />
             </NextGameCardEntrance>
+          ) : scheduledUpcoming.length > 0 ? (
+            <UpcomingScheduledGameCard
+              game={scheduledUpcoming[0]}
+              communityName={
+                myCommunities.find((c) => c.id === scheduledUpcoming[0].groupId)
+                  ?.name
+              }
+              onOpen={(groupId) =>
+                nav.navigate('CommunityDetails', { groupId })
+              }
+            />
           ) : null}
 
           {/* ④ Recommended day to open a game — busiest evening nearby. */}

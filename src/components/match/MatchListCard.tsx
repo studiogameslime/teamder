@@ -1,31 +1,26 @@
-// MatchListCard — premium row card for the redesigned matches list.
+// MatchListCard — games-feed card. Two columns under forceRTL:
 //
-// Layout under forceRTL (visual):
+//   ┌─────────────────────────────────────────────────────────────┐
+//   │                     14/15   כדורגל אנשים טובים ‹  [בהרכב][🛡] │
+//   │  ▓▓▓▓▓▓▓░           📍 שדרות אליהו סעדון, אור יהודה           │
+//   │  חסר שחקן אחד    [עוד 11 שעות] 20:00 🕐  היום 📅            │
+//   │  [ אני מגיע ]    [מקום אחרון] [5×5] [אספלט] [סגור למועדון]    │
+//   └─────────────────────────────────────────────────────────────┘
 //
-//   ┌──────────────────────────────────────────────────────┐
-//   │ [פתוח]                       קבוצה / שם המשחק   →    │
-//   │                              📍 שם המגרש              │
-//   │                              📅 30/04   ⏰ 20:00      │
-//   │                              [5×5] [אספלט] [ממתין]   │
-//   │   [הצטרף למשחק]              8/15 שחקנים              │
-//   └──────────────────────────────────────────────────────┘
-//
-// Status pill is absolute at the top-LEFT (same row as the title);
-// the format (5×5) lives as a leading chip in the tags row instead
-// of a wide vertical strip — keeps the card compact.
-//
-// Tapping the card → MatchDetails (same-stack push, registered in
-// every host stack so back returns to the list).
+// RIGHT column = details (title + chevron + status/manager pill, location,
+// date/time line with a relative-kickoff pill, chip tags). LEFT column =
+// occupancy number (top), progress bar, spots-left text (bottom) + join CTA.
+// Fill urgency (green plenty / amber last-few / red full) colours the bar +
+// spots text. Tap → MatchDetails.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Game, GameFormat, FieldType, UserId, activeGuestCount } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
-import { canJoinGame, isScheduled, isTerminal } from '@/services/gameLifecycle';
+import { dayDiff, formatDateShort, formatTime } from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
@@ -45,6 +40,11 @@ interface Props {
 }
 
 const ACCENT = '#3B82F6';
+const GREEN = '#16A34A';
+const AMBER = '#F59E0B';
+const RED = '#DC2626';
+const MUTED = '#94A3B8';
+const INK = '#0F172A';
 
 // ─── Pure derivations ──────────────────────────────────────────────────
 
@@ -65,18 +65,8 @@ function ctaForGame(
   if (status === 'joined') return 'cancel';
   if (status === 'waitlist') return 'leaveWaitlist';
   if (status === 'pending') return 'pending';
-  // Deferred-open ("scheduled") game — registration hasn't started yet. NOT
-  // joinable until the CF flips it to 'open' at registrationOpensAt; surfacing
-  // a join button let people register before the game was meant to be visible
-  // (user report). No CTA → the card just shows when registration opens.
   if (g.status === 'scheduled') return 'none';
-  // Approval-gated game the user hasn't requested yet → a "request to
-  // join" button (the join policy lives in the button text now, not a tag).
   if (g.requiresApproval) return 'requestJoin';
-  // A pending-promotion offer holds the open spot for the offered user, so the
-  // game is effectively full — a new joiner lands on the waitlist. Count that
-  // reservation here so the CTA says "waitlist" instead of a misleading "join"
-  // that silently waitlists them (mirrors requestJoinGame's seating logic).
   const occupancy =
     g.players.length +
     activeGuestCount(g.guests) +
@@ -86,15 +76,11 @@ function ctaForGame(
 }
 
 function formatLabel(f: GameFormat | undefined): string | null {
-  // Cast to string so a legacy/bad runtime value (outside the union) is handled
-  // instead of narrowing to `never` — the type says it can't happen, data can.
   const s = f as string | undefined;
   if (s === '4v4') return he.gameFormat4;
   if (s === '5v5') return he.gameFormat5;
   if (s === '6v6') return he.gameFormat6;
   if (s === '7v7') return he.gameFormat7;
-  // Unknown/legacy "NvN" → derive generically (e.g. "8v8" → "8×8") instead of
-  // silently defaulting to a wrong "5×5".
   if (typeof s === 'string' && /^\d+v\d+$/.test(s)) return s.replace('v', '×');
   return null;
 }
@@ -105,168 +91,127 @@ function fieldTypeLabel(f: FieldType): string {
   return he.fieldTypeGrass;
 }
 
-
 // ─── Component ─────────────────────────────────────────────────────────
 
 export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
-  // The viewer manages this game (its creator) → show a "מנהל" badge.
   const isManager = !!userId && game.createdBy === userId;
   const fmt = formatLabel(game.format);
-  // ONE effective occupancy that includes a pending-promotion reservation, so
-  // the capacity tag (מלא / מקומות אחרונים), isFull, spotsLeft AND the CTA all
-  // agree — previously the tag showed a free spot while the button said waitlist.
   const occupancy =
     game.players.length +
     activeGuestCount(game.guests) +
     (game.pendingPromotion?.uid ? 1 : 0);
-
   const isFull = occupancy >= game.maxPlayers;
-  // Relative "time to kickoff" chip — nudges the user with how soon the game
-  // is ("מחר", "עוד 3 שעות") next to the absolute date.
-  const kickoff = relativeKickoff(game.startsAt);
-  const dayLabel = formatGameDay(game.startsAt);
-  // Highlight when it's imminent (today, within hours/minutes) vs just soon.
-  const kickoffSoon = !!kickoff && kickoff.startsWith('עוד');
-
-  const openDetails = () =>
-    nav.navigate('MatchDetails', { gameId: game.id });
-
-  // Status pill at the top-LEFT corner of the card (same row as the
-  // title). Joined / waitlist / pending override the open/full
-  // default so the user sees their personal state first.
-  const statusPill = renderStatusPill(status, isFull);
-
-  // Tag row — the capacity chip (מלא / מקומות אחרונים) leads so it
-  // ends up on the visual LEFT EDGE of the row under RTL flip, where
-  // a red/orange swatch reads as a scarcity alarm separated from the
-  // descriptor cluster. Format + field type + approval follow on the
-  // right, reading right-to-left as the primary facets.
-  const tags: Array<{ label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = [];
   const spotsLeft = Math.max(0, game.maxPlayers - occupancy);
-  // Registration closed while the game is still upcoming — locked by an admin
-  // or past the late-join cutoff. Excludes 'scheduled' (shows its own "opens
-  // at" hint) and terminal games. A full game stays joinable-to-waitlist, so
-  // canJoinGame is still true there → no false "closed" on a full open game.
-  const registrationClosed =
-    !isScheduled(game) && !isTerminal(game) && !canJoinGame(game);
-  if (isFull) {
-    tags.push({ label: he.matchStatusFull, tone: 'danger' });
-  } else if (spotsLeft > 0 && spotsLeft <= 3) {
-    tags.push({ label: he.matchStatusLastSpots(spotsLeft), tone: 'warning' });
-  }
-  if (registrationClosed) {
-    tags.push({ label: he.matchTagRegistrationClosed, tone: 'warning' });
-  }
-  if (fmt) tags.push({ label: fmt, tone: 'accent' });
-  if (game.fieldType) {
-    tags.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
-  }
-  // (No "needs approval" tag — the join policy is conveyed by the button
-  // text: "הצטרף" for open games, "בקש להצטרף" for approval-gated ones.)
-  // Visibility at a glance: open-to-all (accent) vs members-only / quick.
-  if (game.visibility === 'public') {
-    tags.push({ label: he.matchTagOpenToAll, tone: 'accent' });
-  } else if (game.isOrphanContext) {
-    tags.push({ label: he.matchTagQuickClosed, tone: 'neutral' });
-  } else {
-    tags.push({ label: he.matchTagCommunityOnly, tone: 'neutral' });
-  }
+  const ratio = game.maxPlayers > 0 ? Math.min(1, occupancy / game.maxPlayers) : 0;
 
-  // Hide the cancel CTA on the list — it's a destructive action and
-  // belongs only on MatchDetails where the consequence is more
-  // visible. Same rule the old card followed.
-  const showCta = cta === 'join' || cta === 'requestJoin' || cta === 'waitlist';
+  // Fill urgency → colours the progress bar. (The spots-left text under the
+  // bar was removed — the bar itself already reads at a glance.)
+  const urgency = isFull ? RED : spotsLeft <= 3 ? AMBER : GREEN;
+
+  // Smart when-line: today/tomorrow → "<day> ב-HH:MM"; further out → date + time.
+  const dDiff = dayDiff(game.startsAt);
+  const time = formatTime(game.startsAt);
+  const whenText =
+    dDiff === 0
+      ? he.matchCardWhenToday(time)
+      : dDiff === 1
+        ? he.matchCardWhenTomorrow(time)
+        : he.matchCardWhenDate(formatDateShort(game.startsAt), time);
+  const whenSoon = dDiff <= 1;
+
+  // Side accent stripe by the viewer's relationship to the game:
+  // green = in the roster, orange = on the waitlist, blue = regular.
+  const stripeColor =
+    status === 'joined' ? GREEN : status === 'waitlist' ? AMBER : ACCENT;
+
+  const openDetails = () => nav.navigate('MatchDetails', { gameId: game.id });
+
+  // A full game always offers a waitlist join ("הצטרף") — there's no
+  // lock-registration feature, so registration is open until the game is over.
+  const showCta =
+    cta === 'join' || cta === 'requestJoin' || cta === 'waitlist';
+  // Even a full game's CTA just says "הצטרף" (not "…לרשימת המתנה") — tappers
+  // land on the waitlist and then see the "ברשימת המתנה" badge.
   const ctaLabel =
-    cta === 'waitlist'
-      ? he.matchCardWaitlist
-      : cta === 'requestJoin'
-        ? he.gameCardRequestJoin
-        : he.matchCardJoin;
+    cta === 'requestJoin' ? he.gameCardRequestJoin : he.matchCardJoinShort;
+
+  // Personal-status label — replaces the CTA button once the user has a
+  // relationship to the game. Styled as a soft, non-interactive badge (looks
+  // un-tappable, not a button) in the same spot the "הצטרף" button sat.
+  const statusLabel =
+    status === 'joined'
+      ? { label: he.matchStatusJoined, bg: '#DCFCE7', fg: '#166534', icon: 'checkmark-circle' as const }
+      : status === 'waitlist'
+        ? { label: he.matchCardInWaitlist, bg: '#FEF3C7', fg: '#B45309', icon: 'hourglass' as const }
+        : status === 'pending'
+          ? { label: he.matchStatusPending, bg: '#E2E8F0', fg: '#475569', icon: 'time' as const }
+          : null;
+
+  // Chip tags — format + surface + visibility only. (Scarcity / full /
+  // closed tags were dropped — they duplicate the occupancy bar.)
+  const chips: Array<{ label: string; tone: 'neutral' | 'accent' | 'warning' | 'danger' }> = [];
+  if (fmt) chips.push({ label: fmt, tone: 'neutral' });
+  if (game.fieldType) chips.push({ label: fieldTypeLabel(game.fieldType), tone: 'neutral' });
+  chips.push({
+    label:
+      game.visibility === 'public'
+        ? he.matchTagOpenToAll
+        : game.isOrphanContext
+          ? he.matchTagQuickClosed
+          : he.matchTagCommunityOnly,
+    tone: game.visibility === 'public' ? 'accent' : 'neutral',
+  });
 
   return (
     <PressableScale
       onPress={openDetails}
-      style={styles.card}
-      // No press-in haptic: list cards fire it as soon as a finger lands,
-      // so a scroll gesture that starts on a card buzzed on every drag
-      // (feedback: "לבטל רטט בגלילה במסך המשחקים").
+      style={[styles.card, { borderEndColor: stripeColor }]}
       haptic={false}
       accessibilityRole="button"
       accessibilityLabel={game.title}
     >
-      <View style={styles.content}>
-        {/* Title row — title (+ chevron) anchors the visual RIGHT
-            edge of the card (Hebrew reading starts there). Status
-            pill anchors the visual LEFT. JSX-first lands on the
-            visual RIGHT under our RTL flow, so title comes first. */}
-        <View style={styles.titleRow}>
-          <View style={styles.titleTextWrap}>
-            <Text style={styles.title} numberOfLines={1}>
-              {game.title}
-            </Text>
-            <Ionicons
-              name="chevron-back"
-              size={18}
-              color="#94A3B8"
-              style={styles.titleChevron}
+      <View style={styles.row}>
+        {/* ── RIGHT column: details ──────────────────────────────── */}
+        <View style={styles.detailsCol}>
+          <Text style={styles.title} numberOfLines={2}>
+            {game.title}
+          </Text>
+
+          {game.fieldName ? (
+            <InfoRow icon="location-outline" text={game.fieldName} />
+          ) : null}
+
+          {/* Smart when-line: "היום ב-20:00" / "מחר ב-20:00" / "01.08 · 17:00". */}
+          <View style={styles.dateRow}>
+            <MetaChip icon="calendar-outline" text={whenText} emphasis={whenSoon} />
+          </View>
+
+          {/* Chip tags — format / surface / visibility. */}
+          <View style={styles.chipsRow}>
+            {chips.map((c, i) => (
+              <Chip key={`${c.label}-${i}`} label={c.label} tone={c.tone} />
+            ))}
+          </View>
+        </View>
+
+        {/* ── LEFT column: occupancy + CTA / status label ────────── */}
+        <View style={styles.statusCol}>
+          <Text style={styles.occupancy}>
+            {he.matchCardOccupancy(occupancy, game.maxPlayers)}
+          </Text>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.round(ratio * 100)}%`, backgroundColor: urgency },
+              ]}
             />
           </View>
-          <View style={styles.titlePills}>
-            {isManager ? (
-              <View style={styles.managerPill}>
-                <Ionicons name="shield-checkmark" size={11} color="#1D4ED8" />
-                <Text style={styles.managerPillText}>{he.gameManagerBadge}</Text>
-              </View>
-            ) : null}
-            {statusPill ? <View>{statusPill}</View> : null}
-          </View>
-        </View>
 
-        {game.fieldName ? (
-          <InfoRow icon="location" text={game.fieldName} />
-        ) : null}
-
-        <View style={styles.dateLine}>
-          <InfoRow
-            icon="calendar"
-            text={dayLabel}
-            // Highlight "היום" / "מחר" so a near-term game's day pops out
-            // from the gray date text.
-            emphasis={dayDiff(game.startsAt) <= 1}
-          />
-          <InfoRow icon="time" text={formatTime(game.startsAt)} />
-          {/* Relative chip — skip it when it just repeats the day label
-              (both read "מחר" for a tomorrow game → duplicate, user report).
-              It still shows for "עוד 3 שעות" / "בעוד 4 ימים". */}
-          {kickoff && kickoff !== dayLabel ? (
-            <View style={[styles.kickoffChip, kickoffSoon && styles.kickoffChipSoon]}>
-              <Text style={[styles.kickoffText, kickoffSoon && styles.kickoffTextSoon]}>
-                {kickoff}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        {/* Combined facts row — the per-game chips (capacity, format,
-            field type) AND the player count share one row now. The
-            count anchors the RIGHT edge so it lines up with the
-            heaviest piece of info (where the eye lands first reading
-            RTL); the chips spill from there toward the visual LEFT,
-            capacity-first under the new ordering. */}
-        <View style={styles.tagsRow}>
-          {tags.map((t, i) => (
-            <Tag key={`${t.label}-${i}`} label={t.label} tone={t.tone} />
-          ))}
-          <Text style={styles.playersInline} numberOfLines={1}>
-            {he.matchCardPlayersOf(occupancy, game.maxPlayers)}
-          </Text>
-        </View>
-
-        {showCta ? (
-          <View style={styles.bottomRow}>
+          {showCta ? (
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
@@ -276,18 +221,37 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
               hitSlop={6}
               style={({ pressed }) => [
                 styles.cta,
-                cta === 'waitlist' && styles.ctaWaitlist,
                 (pressed || busy) && { opacity: 0.85 },
               ]}
               accessibilityRole="button"
               accessibilityLabel={ctaLabel}
             >
-              <Text style={styles.ctaText}>{ctaLabel}</Text>
+              <Text
+                style={styles.ctaText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
+                {ctaLabel}
+              </Text>
             </Pressable>
-          </View>
-        ) : null}
+          ) : statusLabel ? (
+            // Already in the game → a soft, NON-interactive status badge in the
+            // button's spot (so the CTA doesn't just vanish after joining).
+            <View style={[styles.statusLabel, { backgroundColor: statusLabel.bg }]}>
+              <Ionicons name={statusLabel.icon} size={13} color={statusLabel.fg} />
+              <Text
+                style={[styles.statusLabelText, { color: statusLabel.fg }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                {statusLabel.label}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
-
     </PressableScale>
   );
 }
@@ -297,36 +261,45 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
 function InfoRow({
   icon,
   text,
-  emphasis,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
-  /** Brand-colored + bold (used for the "היום"/"מחר" day label). */
-  emphasis?: boolean;
 }) {
-  // `row-reverse` keeps the icon on the visual LEFT of the text
-  // regardless of whether RN auto-flips `row` for the surrounding
-  // layout — text is the FIRST JSX child so it lands on the visual
-  // RIGHT under both LTR and RTL renderings.
   return (
     <View style={styles.infoRow}>
-      <Text
-        style={[styles.infoText, emphasis && styles.infoTextEmphasis]}
-        numberOfLines={1}
-      >
+      <Text style={styles.infoText} numberOfLines={1}>
         {text}
       </Text>
-      <Ionicons name={icon} size={13} color={emphasis ? ACCENT : '#94A3B8'} />
+      <Ionicons name={icon} size={13} color={MUTED} />
     </View>
   );
 }
 
-function Tag({
+function MetaChip({
+  icon,
+  text,
+  emphasis,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <View style={styles.metaChip}>
+      <Text style={[styles.metaText, emphasis && styles.metaTextEmphasis]} numberOfLines={1}>
+        {text}
+      </Text>
+      <Ionicons name={icon} size={12} color={emphasis ? ACCENT : MUTED} />
+    </View>
+  );
+}
+
+function Chip({
   label,
   tone,
 }: {
   label: string;
-  tone: 'accent' | 'neutral' | 'warning' | 'danger';
+  tone: 'neutral' | 'accent' | 'warning' | 'danger';
 }) {
   const palette =
     tone === 'danger'
@@ -337,60 +310,8 @@ function Tag({
           ? { bg: 'rgba(59,130,246,0.12)', fg: '#1D4ED8' }
           : { bg: '#F1F5F9', fg: '#475569' };
   return (
-    <View style={[styles.tag, { backgroundColor: palette.bg }]}>
-      <Text style={[styles.tagText, { color: palette.fg }]}>{label}</Text>
-    </View>
-  );
-}
-
-function renderStatusPill(
-  status: ReturnType<typeof statusForUser>,
-  isFull: boolean,
-): React.ReactNode {
-  // Status pill = USER'S relationship to the game (joined / waitlist /
-  // pending). Capacity ("מלא" / "מקומות אחרונים") lives in the tags row
-  // instead, so a registered user still sees the room/scarcity signal
-  // without it stealing the status slot.
-  if (status === 'joined') {
-    return (
-      <PillBadge label={he.matchStatusJoined} bg="#DCFCE7" fg="#166534" icon="checkmark-circle" />
-    );
-  }
-  if (status === 'waitlist') {
-    return (
-      <PillBadge label={he.matchStatusWaitlist} bg="#FEF3C7" fg="#B45309" icon="hourglass" />
-    );
-  }
-  if (status === 'pending') {
-    return (
-      <PillBadge label={he.matchStatusPending} bg="#E2E8F0" fg="#475569" icon="time" />
-    );
-  }
-  // Not-related user: only flag "full" (a real constraint). No "open" pill
-  // — the join button already says the game is open ("הצטרף").
-  if (isFull) {
-    return (
-      <PillBadge label={he.matchStatusFull} bg="#FEE2E2" fg="#B91C1C" icon="people" />
-    );
-  }
-  return null;
-}
-
-function PillBadge({
-  label,
-  bg,
-  fg,
-  icon,
-}: {
-  label: string;
-  bg: string;
-  fg: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}) {
-  return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <Ionicons name={icon} size={11} color={fg} />
-      <Text style={[styles.pillText, { color: fg }]}>{label}</Text>
+    <View style={[styles.chip, { backgroundColor: palette.bg }]}>
+      <Text style={[styles.chipText, { color: palette.fg }]}>{label}</Text>
     </View>
   );
 }
@@ -402,181 +323,124 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    position: 'relative',
-    overflow: 'hidden',
+    // 6px colored accent border on the visual-LEFT edge (end under RTL).
+    // paddingEnd is reduced by 6 so the CONTENT position is unchanged.
+    borderEndWidth: 6,
+    paddingEnd: spacing.md - 6,
+    paddingStart: spacing.md,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
     elevation: 3,
   },
-  content: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  detailsCol: { flex: 1, gap: 6 },
+  // Status pill (top-left) + centred occupancy + progress bar + CTA.
+  statusCol: {
+    width: 96,
     gap: 6,
-  },
-  // Title row — title (+ chevron) on the visual RIGHT, status pill on
-  // the visual LEFT. `space-between` resolves automatically under RTL
-  // so we don't need an absolute child to anchor the pill.
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    alignSelf: 'stretch',
-    gap: spacing.sm,
-  },
-  // Title + chevron move as a single unit on the visual RIGHT side of
-  // the row. `flexShrink: 1` lets a long title elide rather than push
-  // the pill off the card.
-  titleTextWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 1,
-  },
-  titleStatusPill: {
-    flexShrink: 0,
-  },
-  titlePills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 0,
-  },
-  managerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#DBEAFE',
-    borderRadius: 999,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-  },
-  managerPillText: {
-    color: '#1D4ED8',
-    fontSize: 11,
-    fontWeight: '800',
+    alignItems: 'stretch',
   },
   title: {
-    color: '#0F172A',
-    fontSize: 17,
+    color: INK,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: RTL_LABEL_ALIGN,
-    flexShrink: 1,
   },
-  // Chevron hint — points "back" under RTL (which Hebrew users read
-  // as "next/forward"), tucked next to the title.
-  titleChevron: {
-    opacity: 0.6,
+  // Non-interactive status badge that replaces the CTA once joined/waitlisted.
+  // Soft fill, no shadow/border → reads as a label, not a tappable button.
+  statusLabel: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    alignSelf: 'stretch',
+    marginTop: 2,
   },
+  statusLabelText: { fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
   infoRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 5,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   infoText: {
     color: '#475569',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '500',
     textAlign: RTL_LABEL_ALIGN,
+    flexShrink: 1,
   },
-  infoTextEmphasis: {
-    color: ACCENT,
-    fontWeight: '800',
-  },
-  // Date + time live on one line (two InfoRows separated by a small
-  // gap) — saves a row of vertical real estate.
-  dateLine: {
+  dateRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     alignSelf: 'flex-start',
-  },
-  // "Time to kickoff" chip — neutral by default, blue when imminent (today).
-  kickoffChip: {
-    backgroundColor: '#E2E8F0',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  kickoffChipSoon: { backgroundColor: '#DBEAFE' },
-  kickoffText: { fontSize: 11, fontWeight: '700', color: '#475569' },
-  kickoffTextSoon: { color: '#1D4ED8' },
-  tagsRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'stretch',
-    marginTop: 2,
     flexWrap: 'wrap',
   },
-  // Player count rides the chips row now. `marginEnd: auto` (RTL-aware
-  // 'start' under forceRTL) pushes the count to the visual RIGHT edge,
-  // which is where the eye lands first reading Hebrew. The chips
-  // gather on its left.
-  playersInline: {
-    color: '#0F172A',
-    fontSize: 13,
+  metaChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    color: '#475569',
+    fontSize: 12.5,
     fontWeight: '700',
-    marginEnd: 'auto',
     textAlign: RTL_LABEL_ALIGN,
   },
-  tag: {
+  metaTextEmphasis: { color: ACCENT, fontWeight: '800' },
+  chipsRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    flexWrap: 'wrap',
+    marginTop: 1,
+  },
+  chip: {
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
   },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+  chipText: { fontSize: 11, fontWeight: '700' },
+  // ── left column ──
+  // Smaller + centred over the progress bar.
+  occupancy: {
+    color: INK,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
-  // Bottom row — players count on the visual RIGHT (Hebrew text);
-  // join CTA on the visual LEFT. Built with `row-reverse` so the
-  // first JSX child lands on the right regardless of RTL flip
-  // behavior in the surrounding layout.
-  bottomRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+  progressTrack: {
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: '#EEF2F7',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+    // Fill grows from the visual-LEFT (flex-end under forceRTL) to match the
+    // sketch — was filling from the right (reversed).
+    alignItems: 'flex-end',
   },
-  players: {
-    color: '#0F172A',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
+  progressFill: { height: '100%', borderRadius: 999 },
   cta: {
     backgroundColor: ACCENT,
-    paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 999,
-    minWidth: 100,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'stretch',
+    marginTop: 2,
   },
-  ctaWaitlist: {
-    backgroundColor: '#94A3B8',
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  pill: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  pillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
+  ctaText: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '800', letterSpacing: 0.2 },
 });

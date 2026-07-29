@@ -1905,6 +1905,85 @@ export const gameService = {
   },
 
   /**
+   * Scheduled games (registration not yet open) in communities the user
+   * belongs to. Powers the read-only "בקרוב" teasers on the home no-game
+   * state + the games-feed "coming soon" section, so a member sees a game
+   * is on the way and when it opens — without having to drill into each
+   * community page. Registration is still blocked until `flipScheduledGames`
+   * flips status to 'open'; these cards route to the community page, never a
+   * join. Server-filters `status == 'scheduled'` (reuses the
+   * (groupId, status, startsAt) index), drops any whose kickoff already
+   * passed, and sorts soonest-to-open first.
+   */
+  async getMyUpcomingScheduledGames(
+    userId: UserId,
+    communityIds: string[],
+  ): Promise<Game[]> {
+    if (communityIds.length === 0) return [];
+    const now = Date.now();
+    // "Still a pre-open teaser": scheduled + kickoff in the future. (A
+    // scheduled game whose kickoff somehow passed is stale, not upcoming.)
+    const stillUpcoming = (g: {
+      status?: string;
+      startsAt?: number;
+    }) => g.status === 'scheduled' && (g.startsAt ?? 0) > now;
+    const openKey = (g: Game) => g.registrationOpensAt ?? g.startsAt;
+    if (USE_MOCK_DATA) {
+      return mockGamesV2
+        .filter((g) => communityIds.includes(g.groupId) && stillUpcoming(g))
+        .sort((a, b) => openKey(a) - openKey(b));
+    }
+    // Chunk in 30s for the `in` operator; fail-soft per chunk (mirrors
+    // getCommunityGames — a LIST query fails entirely if any matched doc
+    // fails the read rule, which happens transiently when communityIds is
+    // briefly out of sync with membership). 'permission-denied' is expected,
+    // so it's NOT logged to /errors.
+    const chunks: string[][] = [];
+    for (let i = 0; i < communityIds.length; i += 30) {
+      chunks.push(communityIds.slice(i, i + 30));
+    }
+    const snaps = (
+      await Promise.all(
+        chunks.map((c) =>
+          withAuthRaceRetry(() =>
+            getDocs(
+              query(
+                col.games(),
+                where('groupId', 'in', c),
+                where('status', '==', 'scheduled'),
+              ),
+            ),
+          ).catch((err: { code?: string }) => {
+            if (err?.code !== 'permission-denied') {
+              logError('getMyUpcomingScheduledGames', err, {
+                userId,
+                communityCount: communityIds.length,
+              });
+            } else if (__DEV__) {
+              console.warn(
+                '[gameService] getMyUpcomingScheduledGames chunk denied (transient)',
+              );
+            }
+            return null;
+          }),
+        ),
+      )
+    ).filter((s): s is NonNullable<typeof s> => s != null);
+    const out: Game[] = [];
+    const seen = new Set<string>();
+    snaps.forEach((s) =>
+      s.docs.forEach((d) => {
+        if (seen.has(d.id)) return;
+        seen.add(d.id);
+        const data = d.data();
+        if (!stillUpcoming(data)) return;
+        out.push({ ...data, matches: [] });
+      }),
+    );
+    return out.sort((a, b) => openKey(a) - openKey(b));
+  },
+
+  /**
    * All upcoming games of a single community whose registration is or
    * will be open — regardless of the caller's membership in any
    * individual game.

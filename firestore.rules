@@ -50,6 +50,16 @@ service cloud.firestore {
     function affectedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
+    // Firestore `.get(key, default)` returns the default ONLY when the key is
+    // ABSENT — a key PRESENT with value `null` returns null, which then blows
+    // up `.diff()` (and `in`/`hasAll`) and denies the whole write. Older
+    // game-create paths persisted `cancellations`/`joinedAt` as literal null,
+    // so self-cancel was silently permission-denied for every player in those
+    // games. Normalise a present-null map to {} here. (Same class as the
+    // guestsOpenAt:null incident.)
+    function safeMap(data, key) {
+      return data.get(key, {}) == null ? {} : data.get(key, {});
+    }
     function groupDoc(gid) {
       return get(/databases/$(database)/documents/groups/$(gid)).data;
     }
@@ -734,11 +744,11 @@ service cloud.firestore {
           // touch the CALLER'S OWN key (was ungated → a griefer could inject
           // cancellations[victim] to suppress the victim's reminder, or forge
           // another player's joinedAt).
-          request.resource.data.get('cancellations', {})
-            .diff(resource.data.get('cancellations', {}))
+          safeMap(request.resource.data, 'cancellations')
+            .diff(safeMap(resource.data, 'cancellations'))
             .affectedKeys().hasOnly([request.auth.uid]) &&
-          request.resource.data.get('joinedAt', {})
-            .diff(resource.data.get('joinedAt', {}))
+          safeMap(request.resource.data, 'joinedAt')
+            .diff(safeMap(resource.data, 'joinedAt'))
             .affectedKeys().hasOnly([request.auth.uid]) &&
           // ── Per-array delta: each may change by at most ±1, and
           //    if it grew, the auth user is the new entry; if it

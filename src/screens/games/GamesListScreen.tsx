@@ -54,6 +54,7 @@ import {
 } from '@/components/match/MatchListCard';
 import { MatchesHero } from '@/components/match/MatchesHero';
 import { MatchEmptyHintCard } from '@/components/match/MatchEmptyHintCard';
+import { UpcomingScheduledGameCard } from '@/components/home/UpcomingScheduledGameCard';
 import {
   GameFilterSheet,
   EMPTY_GAME_FILTERS,
@@ -137,6 +138,8 @@ export function GamesListScreen() {
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [communityGames, setCommunityGames] = useState<Game[]>([]);
   const [openGames, setOpenGames] = useState<Game[]>([]);
+  // Scheduled ("בקרוב") games in my communities — registration not yet open.
+  const [scheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
   // Guards the map button while it geocodes cities (spinner + no re-fire).
   const [mapBusy, setMapBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -230,7 +233,7 @@ export function GamesListScreen() {
       }
       try {
         const myCommunityIds = myCommunities.map((g) => g.id);
-        const [a, b, c] = await Promise.all([
+        const [a, b, c, d] = await Promise.all([
           // getMyLiveOrUpcomingGames (not getMyGames): the latter is
           // `status==='open'` only, so a game that went 'active' (live),
           // 'locked', or was created 'scheduled' fell out of "המשחקים שלי".
@@ -243,10 +246,12 @@ export function GamesListScreen() {
           gameService.getMyLiveOrUpcomingGames(user.id),
           gameService.getCommunityGames(user.id, myCommunityIds),
           gameService.getOpenGames(user.id, myCommunityIds),
+          gameService.getMyUpcomingScheduledGames(user.id, myCommunityIds),
         ]);
         setMyGames(a);
         setCommunityGames(b);
         setOpenGames(c);
+        setScheduledUpcoming(d);
         const uids = Array.from(
           new Set(
             [...a, ...b, ...c].flatMap((g) => [
@@ -726,6 +731,34 @@ export function GamesListScreen() {
       >
 
         <View style={styles.body}>
+          {/* "בקרוב" — scheduled community games whose registration hasn't
+              opened yet. Read-only teasers pinned above the joinable sections
+              (and shown even when there's nothing joinable yet). */}
+          {!loading && scheduledUpcoming.length > 0 ? (
+            <View style={{ marginBottom: spacing.lg }}>
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>
+                  {he.homeUpcomingSectionTitle}
+                </Text>
+                <View style={styles.sectionUnderline} />
+              </View>
+              <View style={styles.cardsList}>
+                {scheduledUpcoming.map((g, idx) => (
+                  <AppearItem key={g.id} index={idx}>
+                    <UpcomingScheduledGameCard
+                      game={g}
+                      communityName={
+                        myCommunities.find((c) => c.id === g.groupId)?.name
+                      }
+                      onOpen={(groupId) =>
+                        nav.navigate('CommunityDetails', { groupId })
+                      }
+                    />
+                  </AppearItem>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {loading && isEmpty ? (
             // Skeleton placeholder cards — shape-accurate so the
             // layout doesn't shove when the real cards land.

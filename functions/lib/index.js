@@ -822,7 +822,7 @@ function buildMessage(type, payload) {
                 : 'שחקן';
             return {
                 title: 'בקשת החברות אושרה 🤝',
-                body: `${fromName} אישר/ה את בקשת החברות שלך — אתם חברים עכשיו.`,
+                body: `${fromName} אישר/ה את בקשת החברות שלך.`,
             };
         }
         case 'teamsGenerated': {

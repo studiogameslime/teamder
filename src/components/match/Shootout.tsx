@@ -26,7 +26,7 @@ import {
 import { gameService } from '@/services/gameService';
 import { appAlert } from '@/components/AppDialog';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 
 // ── Tie decision chooser: manual pick vs penalties ────────────────────────
@@ -522,8 +522,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   decideEmoji: { fontSize: 26 },
-  decideLabel: { fontSize: 16, fontWeight: '800', color: colors.text, textAlign: 'right', writingDirection: 'rtl' },
-  decideHint: { fontSize: 12.5, fontWeight: '600', color: colors.textMuted, textAlign: 'right', writingDirection: 'rtl' },
+  decideLabel: { fontSize: 16, fontWeight: '800', color: colors.text, textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
+  decideHint: { fontSize: 12.5, fontWeight: '600', color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
   // shared
   tag: {
     alignSelf: 'center',
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   tRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, paddingHorizontal: 12 },
   hr: { height: 1, backgroundColor: '#F1F3F6' },
   bd: { width: 11, height: 11, borderRadius: 6 },
-  tName: { fontSize: 14, fontWeight: '800', color: '#111827', minWidth: 56, textAlign: 'right', writingDirection: 'rtl' },
+  tName: { fontSize: 14, fontWeight: '800', color: '#111827', minWidth: 56, textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
   dots: { flex: 1, flexDirection: 'row', gap: 4, alignItems: 'center', flexWrap: 'wrap' },
   dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#CBD5E1' },
   kk: { color: '#9CA3AF', fontSize: 11, fontWeight: '700', minWidth: 52, textAlign: 'left', writingDirection: 'rtl' },
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
   turn: { textAlign: 'center', fontSize: 12, fontWeight: '800', color: '#2563EB', writingDirection: 'rtl', marginBottom: 9 },
   logTitleRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 4, marginBottom: 4 },
-  logTitle: { fontSize: 11, fontWeight: '800', color: '#6B7280', textAlign: 'right', writingDirection: 'rtl' },
+  logTitle: { fontSize: 11, fontWeight: '800', color: '#6B7280', textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
   log: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -591,12 +591,12 @@ const styles = StyleSheet.create({
   logEmpty: { textAlign: 'center', writingDirection: 'rtl', color: '#9CA3AF', paddingVertical: 14, fontWeight: '700' },
   k: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 10 },
   kb: { width: 8, height: 8, borderRadius: 4 },
-  who: { fontWeight: '800', color: '#111827', fontSize: 14, textAlign: 'right', writingDirection: 'rtl' },
+  who: { fontWeight: '800', color: '#111827', fontSize: 14, textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
   // Result sits right after the name (both packed right by logSpacer), with a
   // clear gap + a thin divider between them.
   res: {
     flexShrink: 1,
-    textAlign: 'right',
+    textAlign: RTL_LABEL_ALIGN,
     fontSize: 12.5,
     fontWeight: '700',
     writingDirection: 'rtl',
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 4,
   },
-  keeperSelTxt: { flexShrink: 1, fontSize: 12.5, fontWeight: '700', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
+  keeperSelTxt: { flexShrink: 1, fontSize: 12.5, fontWeight: '700', color: '#FFFFFF', textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
   keeperName: { fontWeight: '900', color: '#FFFFFF' },
   pickK: {
     backgroundColor: '#FFFFFF',
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
   radioOn: { borderColor: '#2563EB', backgroundColor: '#2563EB' },
   av: { width: 29, height: 29, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   avTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  pname: { flexShrink: 1, textAlign: 'right', fontSize: 14, fontWeight: '700', color: '#111827', writingDirection: 'rtl' },
+  pname: { flexShrink: 1, textAlign: RTL_LABEL_ALIGN, fontSize: 14, fontWeight: '700', color: '#111827', writingDirection: 'rtl' },
   // Pushes the name+avatar to the right and the radio/count to the left (RTL).
   prowSpacer: { flex: 1 },
   pcnt: {
