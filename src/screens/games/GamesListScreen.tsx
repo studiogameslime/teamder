@@ -478,13 +478,23 @@ export function GamesListScreen() {
   // top, everything else below — no tabs. "Near me" is a DISCOVERY filter, so
   // it applies to the rest list only — my own games always show regardless of
   // distance (`nearby: false` for mine).
+  // Games shown in the "בקרוב" teaser section (registration not yet open) must
+  // NOT also appear in "המשחקים שלי"/"פתוחים" — otherwise a scheduled game the
+  // user is registered to shows twice (user report). "בקרוב" wins.
+  const scheduledIds = useMemo(
+    () => new Set(scheduledUpcoming.map((g) => g.id)),
+    [scheduledUpcoming],
+  );
   const mineList = useMemo(
     () =>
-      applyGameFilters(myGames.filter(isVisibleInMyGames), {
-        ...filters,
-        nearby: false,
-      }).sort(sortByStart),
-    [myGames, filters],
+      applyGameFilters(
+        myGames.filter((g) => isVisibleInMyGames(g) && !scheduledIds.has(g.id)),
+        {
+          ...filters,
+          nearby: false,
+        },
+      ).sort(sortByStart),
+    [myGames, filters, scheduledIds],
   );
   const restList = useMemo(() => {
     const mineIds = new Set(mineList.map((g) => g.id));
@@ -492,12 +502,12 @@ export function GamesListScreen() {
     [...communityGames, ...openGames]
       .filter(isVisibleInOpenGames)
       .forEach((g) => {
-        if (!mineIds.has(g.id)) set.set(g.id, g);
+        if (!mineIds.has(g.id) && !scheduledIds.has(g.id)) set.set(g.id, g);
       });
     return applyGameFilters(Array.from(set.values()), restFilters, gameCtx).sort(
       sortByStart,
     );
-  }, [communityGames, openGames, restFilters, gameCtx, mineList]);
+  }, [communityGames, openGames, restFilters, gameCtx, mineList, scheduledIds]);
 
   const filterCount = activeFiltersCount(filters);
   // A community game needs a community the user admins. When they admin
@@ -750,8 +760,8 @@ export function GamesListScreen() {
                       communityName={
                         myCommunities.find((c) => c.id === g.groupId)?.name
                       }
-                      onOpen={(groupId) =>
-                        nav.navigate('CommunityDetails', { groupId })
+                      onOpen={(gameId) =>
+                        nav.navigate('MatchDetails', { gameId })
                       }
                     />
                   </AppearItem>

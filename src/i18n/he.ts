@@ -539,7 +539,7 @@ export const he = {
   shConfirmWinTitle: (team: string) => `${team} ניצחה?`,
   shConfirmWinBody: (team: string, w: number, l: number) =>
     `${team} מובילה ${w}-${l} בפנדלים. לקבוע אותה כמנצחת המשחקון?`,
-  shConfirmWinCta: 'כן, נצחו',
+  shConfirmWinCta: 'אישור',
   liveEndEvening: 'סיים ערב',
   liveEndEveningTitle: 'לסיים את הערב?',
   liveEndEveningBody:
@@ -1688,6 +1688,7 @@ export const he = {
   homeActionJoinSub: 'מצא משחקים פתוחים',
   // "Available by (evening) window" — per-day evening counts.
   homeWindowsTitle: 'פנויים לידך',
+  homeWindowsPlayersUnit: 'שחקנים',
   homeWindowsShowWeek: 'הצג שבוע מלא',
   homeAvailCount: (n: number) => `${n} פנויים`,
   homeDayLabel: (letter: string) => `יום ${letter}׳`,

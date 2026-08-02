@@ -606,8 +606,9 @@ export function ProfileScreen() {
   const anyEvening = eveningSorted.length > 0 && eveningSorted[0].count > 0;
   // Recommended day = the day with the most evening availability nearby.
   const recommended = anyEvening ? eveningSorted[0] : null;
-  // Podium: top-3 evening days arranged [2nd, max, 3rd] so the busiest sits
-  // centre + highlighted (matches the mockup). Best is the true max only.
+  // Podium: the top-3 evening days by availability, but displayed in
+  // CHRONOLOGICAL order (nearest first → visual-right under RTL) so the days
+  // read in order (user report). The busiest still gets the star.
   const podium: WindowDay[] = (() => {
     if (!anyEvening) return [];
     const top = eveningSorted.slice(0, 3);
@@ -618,8 +619,7 @@ export function ProfileScreen() {
       dateMs: d.dateMs,
       best: d.dateMs === bestMs,
     });
-    if (top.length < 3) return top.map(mk);
-    return [mk(top[1]), mk(top[0]), mk(top[2])];
+    return top.map(mk).sort((a, b) => a.dateMs - b.dateMs);
   })();
   const podiumMax = podium.reduce((m, d) => Math.max(m, d.count), 0);
 
@@ -928,8 +928,8 @@ export function ProfileScreen() {
                 myCommunities.find((c) => c.id === scheduledUpcoming[0].groupId)
                   ?.name
               }
-              onOpen={(groupId) =>
-                nav.navigate('CommunityDetails', { groupId })
+              onOpen={(gameId) =>
+                nav.navigate('MatchDetails', { gameId })
               }
             />
           ) : null}

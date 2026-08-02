@@ -43,7 +43,8 @@ export function UpcomingScheduledGameCard({
   game: Game;
   /** @deprecated no longer shown — the game title is the identifier. */
   communityName?: string;
-  onOpen: (groupId: string) => void;
+  /** Tapping opens the GAME itself (MatchDetails), not the community. */
+  onOpen: (gameId: string) => void;
 }) {
   const opensAt = game.registrationOpensAt ?? game.startsAt;
   // A 1s tick keeps the final-hour countdown live; torn down on unmount. The
@@ -58,7 +59,7 @@ export function UpcomingScheduledGameCard({
 
   return (
     <Pressable
-      onPress={() => onOpen(game.groupId)}
+      onPress={() => onOpen(game.id)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.95 }]}
       accessibilityRole="button"
       accessibilityLabel={he.homeUpcomingBadge}

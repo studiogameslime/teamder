@@ -6351,8 +6351,8 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('setVisibility: game not found');
-      if (g.status !== 'open') {
-        throw new Error('setVisibility: game is not in open status');
+      if (g.status !== 'open' && g.status !== 'scheduled') {
+        throw new Error('setVisibility: game is not editable');
       }
       g.visibility = visibility;
       g.updatedAt = Date.now();
@@ -6367,8 +6367,12 @@ export const gameService = {
       const snap = await getDoc(ref);
       if (!snap.exists()) throw new Error('setVisibility: game not found');
       const game = snap.data();
-      if (game.status !== 'open') {
-        throw new Error('setVisibility: game is not in open status');
+      // Visibility is editable pre-live: while registration is still
+      // scheduled (not yet open) OR already open. Only started/terminal
+      // games are locked. Previously this rejected 'scheduled' games, so an
+      // admin editing an upcoming game hit "יצירת המשחק נכשלה" (user report).
+      if (game.status !== 'open' && game.status !== 'scheduled') {
+        throw new Error('setVisibility: game is not editable');
       }
       // Admin = creator OR group admin. Group lookup pulls the parent
       // doc once; cheaper than doing it server-side per query.

@@ -19,6 +19,7 @@ import { useChatStore, totalUnread } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
+import { maybeInterceptTabLeave } from '@/navigation/tabLeaveGuard';
 
 // 3-tab layout. RTL flips flexDirection automatically, so array index 0 →
 // rightmost on screen, last index → leftmost. v2 order:
@@ -219,15 +220,25 @@ function resetTabToRoot(
     stackRoutes?.length === 1 &&
     stackRoutes[0]?.name === rootName;
   if (alreadyAtRoot && navigation.isFocused()) return;
+  const perform = () =>
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: tabName,
+        params: {
+          // Force the nested stack to exactly `[root]` — drops any
+          // deep route the tab had been on (MatchDetails, etc.).
+          state: { routes: [{ name: rootName }] },
+        },
+      }),
+    );
+  // A focused edit screen with unsaved changes gets to confirm first —
+  // `beforeRemove` doesn't fire on tab switches, so this is the only hook
+  // that catches "tapped another tab mid-edit". The guard defers `perform`
+  // until the user picks discard / finishes saving.
+  if (maybeInterceptTabLeave(perform)) {
+    e.preventDefault();
+    return;
+  }
   e.preventDefault();
-  navigation.dispatch(
-    CommonActions.navigate({
-      name: tabName,
-      params: {
-        // Force the nested stack to exactly `[root]` — drops any
-        // deep route the tab had been on (MatchDetails, etc.).
-        state: { routes: [{ name: rootName }] },
-      },
-    }),
-  );
+  perform();
 }

@@ -18,6 +18,7 @@ import {  } from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { useNavigation } from '@react-navigation/native';
 import { he } from '@/i18n/he';
+import { registerTabLeaveGuard } from '@/navigation/tabLeaveGuard';
 
 interface Options {
   /** True when the screen has edits that haven't been persisted. */
@@ -79,6 +80,38 @@ export function useUnsavedChangesGuard({
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav]);
+
+  // Bottom-tab switches don't fire `beforeRemove` (the screen is blurred, not
+  // removed), so tapping another tab would silently drop unsaved edits. Register
+  // a tab-leave guard that `resetTabToRoot` (MainTabs) consults; it shows the
+  // same confirm dialog and only leaves on discard / after a successful save.
+  useEffect(() => {
+    const unregister = registerTabLeaveGuard({
+      isDirty: () => dirtyRef.current && !saving.current,
+      confirmLeave: (proceed) => {
+        appAlert(
+          title ?? he.profileEditUnsavedTitle,
+          body ?? he.profileEditUnsavedBody,
+          [
+            {
+              text: he.profileEditUnsavedDiscard,
+              style: 'destructive',
+              onPress: () => proceed(),
+            },
+            {
+              text: he.profileEditUnsavedSave,
+              onPress: async () => {
+                await onSave();
+              },
+            },
+            { text: he.cancel, style: 'cancel' },
+          ],
+        );
+      },
+    });
+    return unregister;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return saving;
 }

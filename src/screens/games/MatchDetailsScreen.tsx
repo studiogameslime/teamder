@@ -388,6 +388,22 @@ export function MatchDetailsScreen() {
   const nav = useNavigation<Nav>();
   const route = useRoute<Params>();
   const gameId = route.params?.gameId;
+  // Robust back: some entry paths (home hero, a push tap, a tab-switch that
+  // resets the stack) land the user on MatchDetails with NO back-stack entry,
+  // so `nav.goBack()` silently does nothing and the header "‹" looks dead
+  // (user report). Fall back to the parent tab, then to the games list.
+  const goBackSafe = React.useCallback(() => {
+    if (nav.canGoBack()) {
+      nav.goBack();
+      return;
+    }
+    const parent = nav.getParent?.();
+    if (parent?.canGoBack?.()) {
+      parent.goBack();
+      return;
+    }
+    nav.navigate('GamesList' as never);
+  }, [nav]);
   // Set by GameCreate after a successful create → celebrate on arrival.
   const celebrateOnArrival =
     (route.params as { celebrate?: boolean } | undefined)?.celebrate === true;
@@ -1257,9 +1273,7 @@ export function MatchDetailsScreen() {
             variant="primary"
             size="lg"
             fullWidth
-            onPress={() => {
-              if (nav.canGoBack()) nav.goBack();
-            }}
+            onPress={goBackSafe}
           />
         </View>
       </SafeAreaView>
@@ -2486,9 +2500,7 @@ export function MatchDetailsScreen() {
           startsAt={game.startsAt}
           title={game.title}
           onMenuPress={hasMenuItems ? () => setMenuOpen(true) : undefined}
-          onBackPress={() => {
-            if (nav.canGoBack()) nav.goBack();
-          }}
+          onBackPress={goBackSafe}
           // Share lives in the header so the sticky CTA at the bottom
           // is free to surface the contextual action (join / cancel /
           // session-action). Hidden for terminal-state games where

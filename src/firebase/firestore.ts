@@ -1297,6 +1297,11 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? d.visibility
           : 'community',
       requiresApproval: d.requiresApproval === true,
+      // Default true (approval required) unless the doc explicitly stores
+      // false — previously this field was never read back, so an admin who
+      // turned it OFF saw the toggle spring back ON in the edit form and the
+      // choice looked un-saved (user report).
+      waitlistApprovalRequired: d.waitlistApprovalRequired !== false,
       format,
       numberOfTeams:
         typeof d.numberOfTeams === 'number' && d.numberOfTeams >= 2

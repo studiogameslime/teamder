@@ -568,7 +568,6 @@ function PlayerRow({
   /** Open the player's ⋮ action menu (the ONLY interaction — no row tap). */
   onOpenMenu: (e: GestureResponderEvent) => void;
 }) {
-  const games = stats?.gamesPlayed ?? 0;
   return (
     <View style={[styles.row, showDivider && styles.rowDivider]}>
       <PlayerIdentity user={user} size="sm" />
@@ -596,24 +595,22 @@ function PlayerRow({
           ) : null}
           <CardCountBadges counts={cardCounts} />
         </View>
-        <View style={styles.statsRow}>
-          <StatChip
-            icon="football-outline"
-            text={he.communityPlayerGames(games)}
-          />
-          {/* Internal rating is ADMIN-ONLY and DISPLAY-ONLY here: the chip shows
-              the value (or "לא דורג"), but tapping does nothing — rating is
-              edited from the "דרג" item in the player's ⋮ menu. Members never
-              see it; when internal rating is off, no chip at all. */}
-          {internalRating && showRating ? (
+        {/* Internal rating is ADMIN-ONLY and DISPLAY-ONLY here: the chip shows
+            the value (or "לא דורג"), but tapping does nothing — rating is
+            edited from the "דרג" item in the player's ⋮ menu. Members never
+            see it; when internal rating is off, no chip at all — and with the
+            games-played stat removed (user report) the row then has no stats
+            line, so we skip the wrapper entirely to avoid a phantom gap. */}
+        {internalRating && showRating ? (
+          <View style={styles.statsRow}>
             <View style={[styles.chip, styles.ratingChip]}>
               <Ionicons name="star" size={12} color={colors.warning} />
               <Text style={[styles.chipText, styles.ratingChipText]}>
                 {isRated(rating) ? formatRating(rating) : he.ratingNotRated}
               </Text>
             </View>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
       </View>
       <Pressable
         onPress={onOpenMenu}
@@ -624,23 +621,6 @@ function PlayerRow({
       >
         <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
       </Pressable>
-    </View>
-  );
-}
-
-function StatChip({
-  icon,
-  text,
-  tint = colors.textMuted,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  tint?: string;
-}) {
-  return (
-    <View style={styles.chip}>
-      <Ionicons name={icon} size={12} color={tint} />
-      <Text style={[styles.chipText, { color: tint }]}>{text}</Text>
     </View>
   );
 }

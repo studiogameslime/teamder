@@ -249,7 +249,7 @@ export function HomeAvailabilityWindows({
               <Text style={[styles.dayCount, d.best && styles.dayCountBest]}>
                 {d.count}
               </Text>
-              <Text style={styles.dayUnit}>{he.availabilityTimeEvening}</Text>
+              <Text style={styles.dayUnit}>{he.homeWindowsPlayersUnit}</Text>
               <View style={styles.dayBarTrack}>
                 <View
                   style={[
