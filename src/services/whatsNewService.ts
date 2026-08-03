@@ -55,16 +55,8 @@ export async function resolveWhatsNew(): Promise<WhatsNewPayload | null> {
   const current = getCurrentVersion();
   const seen = await storage.getWhatsNewSeenVersion();
 
-  // Fresh install → establish the baseline, never show (they didn't "update").
-  // In mock mode we instead pretend the user came from an older version so the
-  // modal is demoable/verifiable at launch.
-  const seenEffective = seen ?? (USE_MOCK_DATA ? '1.0.80' : null);
-  if (!seenEffective) {
-    await storage.setWhatsNewSeenVersion(current);
-    return null;
-  }
-  // Already shown for this version (or a newer one) → never again.
-  if (compareVersions(seenEffective, current) >= 0) return null;
+  // Already shown for this version (or newer) → never again.
+  if (seen && compareVersions(seen, current) >= 0) return null;
 
   const cfg = await fetchWhatsNewDoc();
   if (!cfg || cfg.enabled === false || !Array.isArray(cfg.items)) {
@@ -73,16 +65,31 @@ export async function resolveWhatsNew(): Promise<WhatsNewPayload | null> {
     return null;
   }
 
-  // Highlights strictly newer than what the user last saw, up to the running
-  // version. Sorted newest-version-first for a flat, un-grouped list.
+  // Which highlights fall in this user's window?
+  //   • Known baseline (seen) → strict delta: (seen, current]. A one-version
+  //     updater sees only that version; a multi-version jump sees all in
+  //     between, flat.
+  //   • No baseline yet (seen == null) — the first launch with this feature OR
+  //     a fresh install: we can't know their true previous version, so we NEVER
+  //     surface older versions (that would show a one-version updater features
+  //     they already had). We show ONLY the CURRENT version's highlights — a
+  //     clean "what's new in this version" — then set the baseline.
+  //     (Mock pretends the baseline is 1.0.80 so the full list is demoable.)
+  const mockBaseline = USE_MOCK_DATA ? '1.0.80' : null;
+  const baseline = seen ?? mockBaseline;
+  const inWindow = (v: string): boolean => {
+    if (compareVersions(v, current) > 0) return false; // newer than the build
+    if (baseline) return compareVersions(v, baseline) > 0; // strict delta
+    return compareVersions(v, current) === 0; // null baseline → current only
+  };
+
   const items = cfg.items
     .filter(
       (it) =>
         it &&
         typeof it.version === 'string' &&
         typeof it.title === 'string' &&
-        compareVersions(it.version, seenEffective) > 0 &&
-        compareVersions(it.version, current) <= 0,
+        inWindow(it.version),
     )
     .sort((a, b) => compareVersions(b.version, a.version));
 
