@@ -28,29 +28,11 @@ import {
 } from '@/utils/eveningNarrative';
 import {
   reduceRounds,
-  computeFun,
-  computeRadar,
   type RoundHistoryDoc,
-  type PhysicalDoc,
-  type FunNumbers,
-  type RadarShape,
 } from '@/utils/eveningStats';
 import type { UserId } from '@/types';
 
 export { eveningScore } from '@/utils/eveningScore';
-
-export interface EveningPhysical {
-  distanceKm: number;
-  topSpeedKmh: number;
-  sprints: number;
-  maxHr: number;
-  avgSpeedKmh: number;
-  steps: number;
-  calories: number;
-  effortScore: number;
-  hrZones: { light: number; moderate: number; intense: number; peak: number };
-  source: string;
-}
 
 export interface EveningSummaryModel {
   gameId: string;
@@ -87,11 +69,6 @@ export interface EveningSummaryModel {
   heldPitch: number;
   teamGoalsFor: number;
   teamGoalsAgainst: number;
-  // phase 3
-  physical: EveningPhysical | null;
-  fun: FunNumbers | null;
-  // phase 4
-  radar: RadarShape | null;
 }
 
 const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -129,27 +106,6 @@ function readStatRow(data: Record<string, unknown> | undefined): GameStatRow {
   };
 }
 
-function toPhysical(p: PhysicalDoc): EveningPhysical {
-  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-  return {
-    distanceKm: Math.round((n(p.distanceM) / 1000) * 10) / 10,
-    topSpeedKmh: Math.round(n(p.topSpeedKmh) * 10) / 10,
-    sprints: Math.round(n(p.sprints)),
-    maxHr: Math.round(n(p.maxHr)),
-    avgSpeedKmh: Math.round(n(p.avgSpeedKmh) * 10) / 10,
-    steps: Math.round(n(p.steps)),
-    calories: Math.round(n(p.calories)),
-    effortScore: Math.round(n(p.effortScore)),
-    hrZones: {
-      light: Math.round(n(p.hrZones?.light)),
-      moderate: Math.round(n(p.hrZones?.moderate)),
-      intense: Math.round(n(p.hrZones?.intense)),
-      peak: Math.round(n(p.hrZones?.peak)),
-    },
-    source: typeof p.source === 'string' ? p.source : 'wear',
-  };
-}
-
 function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
   const goals = 4;
   const assists = 3;
@@ -164,18 +120,6 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     pen: { scored: 1, saved: 1, missed: 0, conceded: 0 },
   };
   const t = pickEveningTitle(mockNarrative, `${gameId}:${uid}`);
-  const physicalDoc: PhysicalDoc = {
-    distanceM: 6200,
-    topSpeedKmh: 24.3,
-    sprints: 18,
-    maxHr: 178,
-    avgSpeedKmh: 7.4,
-    steps: 4850,
-    calories: 640,
-    effortScore: 82,
-    hrZones: { light: 11, moderate: 14, intense: 9, peak: 7 },
-    source: 'wear',
-  };
   return {
     gameId,
     uid,
@@ -207,9 +151,6 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     heldPitch: 5,
     teamGoalsFor: 17,
     teamGoalsAgainst: 9,
-    physical: toPhysical(physicalDoc),
-    fun: computeFun(physicalDoc),
-    radar: computeRadar(physicalDoc, goals, assists),
   };
 }
 
@@ -225,15 +166,13 @@ export const eveningSummaryService = {
     try {
       const db = getFirebase().db;
       // The core reads (game, per-game stat, name) drive the always-present
-      // sections. The phase-2/3/4 reads (roundHistory, physical) are OPTIONAL —
-      // an old game predating them, or a denied/failed read, must degrade to
-      // "no contribution / no physical", never fail or crash the whole summary.
-      const [game, statSnap, roundSnap, physSnap, name, standSnap] =
+      // sections. The roundHistory read is OPTIONAL — an old game predating it,
+      // or a denied/failed read, degrades to "no contribution", never crashes.
+      const [game, statSnap, roundSnap, name, standSnap] =
         await Promise.all([
           gameService.getGameById(gameId).catch(() => null),
           getDoc(doc(db, 'gamePlayerStats', `${gameId}__${uid}`)).catch(() => null),
           getDocs(collection(db, 'games', gameId, 'roundHistory')).catch(() => null),
-          getDoc(doc(db, 'games', gameId, 'physical', uid)).catch(() => null),
           (viewerName
             ? Promise.resolve(viewerName)
             : userService.getUserById(uid).then((u) => u?.name ?? '')
@@ -258,17 +197,6 @@ export const eveningSummaryService = {
         ? roundSnap.docs.map((d) => d.data() as RoundHistoryDoc)
         : [];
       const rs = reduceRounds(uid, rounds);
-
-      // phase 3/4 — the wearable doc (may not exist)
-      let physical: EveningPhysical | null = null;
-      let fun: FunNumbers | null = null;
-      let radar: RadarShape | null = null;
-      if (physSnap && physSnap.exists()) {
-        const pd = physSnap.data() as PhysicalDoc;
-        physical = toPhysical(pd);
-        fun = computeFun(pd);
-        radar = computeRadar(pd, row.goals, row.assists);
-      }
 
       const decided = row.wins + row.losses;
       // Evening total = number of roundHistory docs (one per committed mini-
@@ -354,9 +282,6 @@ export const eveningSummaryService = {
         heldPitch: rs.heldPitch,
         teamGoalsFor,
         teamGoalsAgainst,
-        physical,
-        fun,
-        radar,
       };
     } catch (err) {
       logError('getEveningSummary', err, { gameId, uid });
