@@ -17,6 +17,7 @@ import {
   Animated,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -30,6 +31,7 @@ import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { isGuestId, type DraftTeam, type Game } from '@/types';
+import { teamName } from '@/utils/draft';
 import { selectionHaptic, successHaptic } from '@/utils/haptics';
 
 export interface RosterUser {
@@ -49,9 +51,10 @@ interface Props {
   onSaved?: () => void;
 }
 
-const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'];
-// Per-team accent (index-based) — only used for the column header dot/tint.
-const TEAM_TINTS = ['#2F6BFF', '#E5484D', '#1FA971', '#F5A524'];
+// Per-team accent by index (0=red, 1=blue, 2=green, 3=yellow) — the SAME bib
+// colours used everywhere else (draft, live match, round history). The old
+// array had red/blue swapped, so "קבוצה א" showed a blue dot.
+const TEAM_TINTS = [colors.team1, colors.team2, colors.team3, colors.team4];
 
 /** Pulsing opacity — marks the swap-target candidates while a source is picked.
  *  Resets cleanly to opacity 1 on deactivate so a chip never stays dimmed. */
@@ -209,12 +212,14 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
             <Text style={styles.hint}>{he.teamsEditHint}</Text>
           )}
 
-          <View style={[styles.columns, teams.length <= 2 && styles.columnsNoWrap]}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.columns}
+            showsVerticalScrollIndicator
+            persistentScrollbar
+          >
             {teams.map((t) => (
-              <View
-                key={t.index}
-                style={[styles.column, teams.length <= 2 && styles.columnFlexible]}
-              >
+              <View key={t.index} style={styles.column}>
                 <View style={styles.columnHead}>
                   <View
                     style={[
@@ -223,7 +228,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
                     ]}
                   />
                   <Text style={styles.columnTitle} numberOfLines={1}>
-                    {he.teamsEditTeamName(TEAM_LETTERS[t.index] ?? String(t.index + 1))}
+                    {teamName(t.index)}
                   </Text>
                 </View>
                 <View style={styles.chipList}>
@@ -248,7 +253,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
                 </View>
               </View>
             ))}
-          </View>
+          </ScrollView>
 
           <View style={styles.footer}>
             <Button
@@ -355,22 +360,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flexShrink: 1,
   },
+  // Teams scroll between the fixed header and the pinned "סיים" footer — with
+  // 3–4 teams stacked full-width the list overflows the sheet, so without this
+  // the lower teams AND the finish button were unreachable. flexShrink lets the
+  // scroll area collapse to the space left inside the 92%-max sheet.
+  scroll: { flexShrink: 1 },
+  // One team per row, full width, stacked top-to-bottom — every team gets the
+  // same size regardless of team count (2/3/4), instead of a wrapping grid that
+  // left the 3rd team stretched full-width under two narrow columns.
   columns: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    paddingBottom: spacing.sm,
   },
-  // With 2 teams, keep them SIDE-BY-SIDE on every screen width — never let the
-  // 150px min wrap them into a vertical stack on narrow/high-density phones.
-  columnsNoWrap: { flexWrap: 'nowrap' },
-  // 2-team columns shrink to share the row (minWidth 0) instead of overflowing;
-  // long player names ellipsize (see chipName) rather than forcing a wrap.
-  columnFlexible: { minWidth: 0 },
   column: {
-    flex: 1,
-    minWidth: 150,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,

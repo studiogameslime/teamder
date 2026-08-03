@@ -27,7 +27,6 @@ export interface NarrativeStats {
   heldPitch: number;
   /** longest consecutive-scoring streak. */
   scoringStreak: number;
-  contribution: { pct: number; touched: number; teamGoals: number } | null;
   bestMiniGame: { round: number; goals: number; assists: number } | null;
   pen: { scored: number; saved: number; missed: number; conceded: number };
 }
@@ -104,16 +103,12 @@ interface InsightRule {
   make: (s: NarrativeStats, rng: () => number) => InsightLine;
 }
 
-// The card renders the contribution % and the goals/assists tiles on its own,
-// so those aren't repeated here — these strips add the situational colour.
+// The card renders the goals/assists tiles on its own, so those aren't repeated
+// here — these strips add the situational colour.
 const INSIGHT_RULES: InsightRule[] = [
   { when: (s) => s.gamesPlayed >= 2 && s.wins === s.gamesPlayed, priority: 95,
     make: (s) => ({ icon: '🏆', tone: 'gold',
       text: `מחזור מושלם — ניצחת בכל ${s.gamesPlayed} המשחקים` }) },
-  { when: (s) => !!s.contribution && s.contribution.teamGoals >= 2 &&
-      s.contribution.touched >= s.contribution.teamGoals, priority: 92,
-    make: () => ({ icon: '🎯', tone: 'gold',
-      text: 'כל הגולים של הקבוצה שלך — עליך' }) },
   { when: (s) => s.goals >= 3, priority: 90,
     make: (s) => ({ icon: '⚽', tone: 'gold',
       text: `${s.goals} גולים במחזור אחד 🔥` }) },

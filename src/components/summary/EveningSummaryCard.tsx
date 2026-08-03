@@ -125,7 +125,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                 ? model.scoreDelta > 0
                   ? 'עלית מהמחזור הקודם 📈'
                   : 'קצת מתחת למחזור הקודם'
-                : 'ניצחונות, גולים, בישולים, תרומה ופנדלים'}
+                : 'ניצחונות, גולים, בישולים ופנדלים'}
             </Text>
           </View>
         </View>
@@ -168,34 +168,6 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                   {`  ${model.rankDelta > 0 ? '▲' : '▼'}${Math.abs(model.rankDelta)}`}
                 </Text>
               ) : null}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* contribution */}
-        {model.contribution ? (
-          <View style={styles.contrib}>
-            <View style={styles.contribTop}>
-              <Text style={styles.contribLabel}>📊 התרומה שלך</Text>
-              <Text style={styles.contribBig}>
-                {model.contribution.pct}
-                <Text style={styles.contribPct}>%</Text>
-              </Text>
-            </View>
-            <View style={styles.bar}>
-              <View
-                style={[
-                  styles.barFill,
-                  { width: `${Math.max(4, Math.min(100, model.contribution.pct))}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.contribSub}>
-              נגעת ב-
-              <Text style={styles.contribSubStrong}>
-                {model.contribution.touched} מתוך {model.contribution.teamGoals}
-              </Text>{' '}
-              מהגולים של הקבוצה שלך
             </Text>
           </View>
         ) : null}

@@ -12,7 +12,6 @@ const score = (p: Partial<EveningScoreInput>): number =>
     assists: 0,
     wins: 0,
     gamesPlayed: 7,
-    contributionPct: null,
     pen: noPen,
     ...p,
   });
@@ -23,9 +22,7 @@ describe('eveningScore (weighted model)', () => {
   });
 
   it('never exceeds 10 (won all + prolific)', () => {
-    expect(
-      score({ wins: 7, goals: 20, assists: 20, contributionPct: 100 }),
-    ).toBe(10);
+    expect(score({ wins: 7, goals: 20, assists: 20 })).toBe(10);
   });
 
   it('a zero-game evening does not divide by zero', () => {
@@ -47,10 +44,16 @@ describe('eveningScore (weighted model)', () => {
     expect(score({ wins: 3, goals: 4 })).toBeGreaterThan(score({ wins: 3, goals: 0 }));
   });
 
-  it('goals reach the cap around 2/game', () => {
-    const two = score({ gamesPlayed: 4, goals: 8 }); // 2/game → goalsScore 10
-    const four = score({ gamesPlayed: 4, goals: 16 }); // capped, same goals axis
-    expect(four).toBe(two);
+  it('goals reach the cap at the community benchmark target', () => {
+    const atTarget = score({ goals: 4, goalsFor10: 4 }); // 4 = target → goalsScore 10
+    const over = score({ goals: 9, goalsFor10: 4 }); // capped, same goals axis
+    expect(over).toBe(atTarget);
+  });
+
+  it('a lower king benchmark makes the same goals worth more', () => {
+    const easyLeague = score({ wins: 3, goals: 3, goalsFor10: 3 }); // 3/3 → 10
+    const toughLeague = score({ wins: 3, goals: 3, goalsFor10: 6 }); // 3/6 → 5
+    expect(easyLeague).toBeGreaterThan(toughLeague);
   });
 
   it('drops the penalty category when there was no shootout (no punishment)', () => {
@@ -76,7 +79,6 @@ const nstats = (p: Partial<NarrativeStats>): NarrativeStats => ({
   totalRounds: 7,
   heldPitch: 0,
   scoringStreak: 0,
-  contribution: null,
   bestMiniGame: null,
   pen: noPen,
   ...p,

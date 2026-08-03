@@ -1107,6 +1107,14 @@ export interface DraftTeamsResult {
    *  so an admin can restore them to the same team. `at` = when they left
    *  (ms epoch), shown in the live panel + the post-game summary. */
   leftHome?: { playerId: UserId; homeTeam: number; at?: number }[];
+  /** Draft/publish gate. `false` = a DRAFT split the admin is still preparing —
+   *  visible ONLY to the organiser (client-side gate in MatchDetails), no push.
+   *  `true` / absent = PUBLISHED, visible to every player. Absent is treated as
+   *  published so legacy games + server auto-teams stay visible. A fresh split
+   *  (manual finish / auto-balance) is saved `false`; the "פרסם כוחות" button
+   *  flips it to `true` and fires the teams-ready push. Edits preserve it via
+   *  the `...draft` spread, so editing a draft keeps it a draft. */
+  published?: boolean;
 }
 
 /** A player currently completing a team that isn't their own. */

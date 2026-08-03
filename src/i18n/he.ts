@@ -2711,6 +2711,16 @@ export const he = {
   draftTeamsSectionTitle: 'הכוחות שחולקו',
   draftExportWhatsapp: 'ייצא כוחות לווטצאפ',
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
+  // Draft/publish mode for team splitting
+  draftTeamsDraftBadge: 'טיוטה',
+  draftTeamsDraftHint:
+    'רק אתה רואה את הכוחות. אפשר לערוך, וכשמוכן — לחץ "פרסם כוחות" כדי שכל השחקנים יראו ויקבלו התראה.',
+  draftPublishCta: 'פרסם כוחות',
+  draftPublishConfirmTitle: 'לפרסם את הכוחות?',
+  draftPublishConfirmBody:
+    'הכוחות יופיעו לכל השחקנים ותישלח להם התראה. אפשר יהיה לערוך גם אחרי הפרסום.',
+  draftPublishConfirmCta: 'פרסם',
+  draftPublishedToast: 'הכוחות פורסמו ונשלחה התראה לשחקנים',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
   matchCreateTeamsBannerSub: 'המחזור מתקרב — חלקו את השחקנים לקבוצות',
   matchAutoTeamsScheduled: (when: string) =>

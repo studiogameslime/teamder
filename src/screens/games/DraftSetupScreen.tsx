@@ -224,7 +224,9 @@ export function DraftSetupScreen() {
         format: game.format,
         createdBy: currentUser.id,
       });
-      await gameService.saveDraftTeams(game.id, result);
+      // Auto/random balance is saved as a DRAFT (published:false) too — the
+      // admin then reviews it in DraftBoard and publishes from MatchDetails.
+      await gameService.saveDraftTeams(game.id, { ...result, published: false });
       // Anim 13 — the balance is computed locally (instant), so pad to a
       // minimal "computing" phase (spec floor ≥300ms) via the existing
       // `generating` loader, so the result never pops in. Capped, never padded

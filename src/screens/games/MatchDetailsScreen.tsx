@@ -507,6 +507,7 @@ export function MatchDetailsScreen() {
   // hooks — above the notFound/accessBlocked early returns — or React throws
   // "Rendered more hooks than during the previous render" once the game loads.
   const [notifyingTeams, setNotifyingTeams] = useState(false);
+  const [publishingTeams, setPublishingTeams] = useState(false);
   // Join celebration — a short confetti + flying-balls burst + success
   // haptic the moment the user actually lands IN the game (bucket
   // 'players'), OR right after they created the game. Self-clears.
@@ -1785,6 +1786,31 @@ export function MatchDetailsScreen() {
     }
   };
 
+  // "פרסם כוחות" — reveal a draft split to every player + fire the teams-ready
+  // push in one action. Confirmed first so a stray tap can't publish a half-
+  // built split. Reuses notifyTeamsReady under the hood (publishDraftTeams).
+  const handlePublishTeams = () => {
+    if (publishingTeams) return;
+    appAlert(he.draftPublishConfirmTitle, he.draftPublishConfirmBody, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.draftPublishConfirmCta,
+        onPress: async () => {
+          setPublishingTeams(true);
+          try {
+            await gameService.publishDraftTeams(game.id);
+            toast.success(he.draftPublishedToast);
+          } catch (err) {
+            logError('publishDraftTeams', err, { gameId: game.id });
+            toast.error(he.error);
+          } finally {
+            setPublishingTeams(false);
+          }
+        },
+      },
+    ]);
+  };
+
   // Primary CTA — POSITIVE actions only. Cancel-registration is
   // intentionally NOT a primary anymore: it's a subtle outline-red
   // link below the quick actions so a stray tap can't accidentally
@@ -1997,8 +2023,9 @@ export function MatchDetailsScreen() {
               },
             ]
           : []),
-        // Non-manager: view the saved split read-only.
-        ...(!isAdmin && game.draftTeams
+        // Non-manager: view the saved split read-only — but ONLY once it's
+        // published (a draft is invisible to players until "פרסם כוחות").
+        ...(!isAdmin && game.draftTeams && game.draftTeams.published !== false
           ? [
               {
                 id: 'draftView',
@@ -2206,6 +2233,12 @@ export function MatchDetailsScreen() {
   };
 
   const draftTeams = game.draftTeams;
+  // Draft/publish gate. A fresh split is a DRAFT (`published:false`) the admin
+  // is still preparing — visible ONLY to them until they tap "פרסם כוחות".
+  // `published` absent/true = published (legacy games + server auto-teams stay
+  // visible). So non-admins see NOTHING until the split is published.
+  const teamsAreDraft = !!draftTeams && draftTeams.published === false;
+  const teamsVisibleToViewer = !!draftTeams && (isAdmin || !teamsAreDraft);
   // "Was this game actually played?" — the live timer was started at least once
   // (set-once, never cleared) or the game is finished. Used to gate summary-only
   // UI (who went home) so it never shows on a game that hasn't kicked off — you
@@ -2272,15 +2305,18 @@ export function MatchDetailsScreen() {
   // Export the split to WhatsApp as plain text — names only, NO team or
   // individual ratings (user request).
   const handleExportTeams = async () => {
-    const dots = ['🔵', '🔴', '🟢', '🟡'];
+    // Dot colours must line up with teamName(index): 0=red, 1=blue, 2=green,
+    // 3=yellow. Index by t.index (NOT the loop position) so a non-contiguous
+    // set of team indices still gets the right colour beside each name.
+    const dots = ['🔴', '🔵', '🟢', '🟡'];
     const body = [...splitTeams]
       .sort((a, b) => a.index - b.index)
-      .map((t, i) => {
+      .map((t) => {
         const names = t.playerIds
           .map((id) => resolveDraftUser(id).name.trim().split(/\s+/)[0])
           .filter(Boolean)
           .join(', ');
-        return `${dots[i % dots.length]} ${teamName(t.index)}\n${names}`;
+        return `${dots[t.index % dots.length]} ${teamName(t.index)}\n${names}`;
       })
       .join('\n\n');
     try {
@@ -2710,7 +2746,7 @@ export function MatchDetailsScreen() {
           {/* Drafted teams (חלוקת כוחות) — sits ABOVE the roster (2026-06-12)
               so the split is the first thing participants see. A "!" badge
               warns the admin when someone joined after teams were saved. */}
-          {draftTeams ? (
+          {teamsVisibleToViewer ? (
             <View style={styles.draftSection}>
               <Pressable
                 style={styles.draftSectionHeader}
@@ -2721,6 +2757,12 @@ export function MatchDetailsScreen() {
                     chevron affordance on the left (QA request). */}
                 <View style={styles.draftTitleRow}>
                   <Text style={styles.draftSectionTitle}>{he.draftTeamsSectionTitle}</Text>
+                  {teamsAreDraft ? (
+                    <View style={styles.draftBadge}>
+                      <Ionicons name="eye-off-outline" size={12} color={colors.warning} />
+                      <Text style={styles.draftBadgeText}>{he.draftTeamsDraftBadge}</Text>
+                    </View>
+                  ) : null}
                   {teamsStale ? (
                     <View style={styles.staleBadge}>
                       <Text style={styles.staleBadgeText}>!</Text>
@@ -2729,6 +2771,9 @@ export function MatchDetailsScreen() {
                 </View>
                 <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
               </Pressable>
+              {teamsAreDraft ? (
+                <Text style={styles.draftHint}>{he.draftTeamsDraftHint}</Text>
+              ) : null}
               {teamsStale ? (
                 <Text style={styles.staleHint}>{he.draftTeamsStaleHint}</Text>
               ) : null}
@@ -2752,6 +2797,18 @@ export function MatchDetailsScreen() {
                     />
                   ))}
               </View>
+              {isAdmin && teamsAreDraft ? (
+                <View style={styles.publishTeamsWrap}>
+                  <Button
+                    title={he.draftPublishCta}
+                    onPress={handlePublishTeams}
+                    loading={publishingTeams}
+                    fullWidth
+                    size="lg"
+                    iconLeft="megaphone-outline"
+                  />
+                </View>
+              ) : null}
               <Pressable
                 onPress={handleExportTeams}
                 style={styles.exportTeamsBtn}
@@ -2793,8 +2850,9 @@ export function MatchDetailsScreen() {
               {/* Team feedback. Members react 👍/👎 to the PROPOSED teams BEFORE
                   the game — a pre-match "are these balanced?" reaction. Hidden
                   once the game is terminal (finished/cancelled): there's nothing
-                  left to react to or re-send. */}
-              {!isTerminalGame(game) && (() => {
+                  left to react to or re-send. Also hidden while the split is an
+                  unpublished DRAFT — no player has seen it yet. */}
+              {!isTerminalGame(game) && !teamsAreDraft && (() => {
                 const fb = game.draftTeamFeedback ?? {};
                 const likes = Object.values(fb).filter((v) => v === 'like').length;
                 const dislikes = Object.values(fb).filter(
@@ -4449,6 +4507,28 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
     paddingHorizontal: spacing.xs,
   },
+  draftBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 20,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: `${colors.warning}22`,
+  },
+  draftBadgeText: {
+    color: colors.warning,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  draftHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    paddingHorizontal: spacing.xs,
+    lineHeight: 18,
+  },
+  publishTeamsWrap: { marginTop: spacing.sm, marginBottom: spacing.xs },
   createTeamsBanner: {
     flexDirection: 'row',
     alignItems: 'center',

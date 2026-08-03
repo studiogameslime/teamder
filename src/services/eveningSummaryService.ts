@@ -65,7 +65,6 @@ export interface EveningSummaryModel {
   rankTotal: number | null;
   rankDelta: number | null; // places climbed since before this evening (+ = up)
   // phase 2
-  contribution: { pct: number; touched: number; teamGoals: number } | null;
   heldPitch: number;
   teamGoalsFor: number;
   teamGoalsAgainst: number;
@@ -115,7 +114,6 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
   const mockNarrative: NarrativeStats = {
     goals, assists, wins, losses, gamesPlayed: rounds, totalRounds: 12,
     heldPitch: 2, scoringStreak: 3,
-    contribution: { pct: 60, touched: 3, teamGoals: 5 },
     bestMiniGame: { round: 3, goals: 2, assists: 1 },
     pen: { scored: 1, saved: 1, missed: 0, conceded: 0 },
   };
@@ -136,7 +134,6 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     assists,
     score: eveningScore({
       goals, assists, wins, gamesPlayed: rounds,
-      contributionPct: mockNarrative.contribution?.pct ?? null,
       pen: mockNarrative.pen,
     }),
     title: t.title,
@@ -146,8 +143,6 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     rank: 3,
     rankTotal: 24,
     rankDelta: 2,
-    // pct mirrors the real derivation Math.round(touched/teamGoals*100) = 41.
-    contribution: { pct: 41, touched: 7, teamGoals: 17 },
     heldPitch: 5,
     teamGoalsFor: 17,
     teamGoalsAgainst: 9,
@@ -212,22 +207,38 @@ export const eveningSummaryService = {
       // sat rounds out).
       const totalKnown = rounds.length > 0 && rs.playedRounds >= row.rounds;
 
-      // Contribution % + GF/GA: prefer the AUTHORITATIVE gamePlayerStats team
-      // goals (committed in the atomic round batch) over the best-effort
-      // roundHistory reduction, which under-counts when a roundHistory write
-      // failed. touched = the player's own goals+assists (also authoritative).
-      const touchedAuth = row.goals + row.assists;
-      const contribution = row.hasTeamGoals
-        ? row.teamGoalsFor > 0
-          ? {
-              pct: Math.min(100, Math.round((touchedAuth / row.teamGoalsFor) * 100)),
-              touched: touchedAuth,
-              teamGoals: row.teamGoalsFor,
-            }
-          : null
-        : rs.contribution;
+      // GF/GA: prefer the AUTHORITATIVE gamePlayerStats team goals (committed in
+      // the atomic round batch) over the best-effort roundHistory reduction,
+      // which under-counts when a roundHistory write failed.
       const teamGoalsFor = row.hasTeamGoals ? row.teamGoalsFor : rs.teamGoalsFor;
       const teamGoalsAgainst = row.hasTeamGoals ? row.teamGoalsAgainst : rs.teamGoalsAgainst;
+
+      // Community benchmark: the "perfect 10" goals/assists targets are the
+      // group's historical average of the top scorer's / top assister's evening
+      // total ("מלך השערים" per מחזור), maintained on communityStats by the
+      // evening-standings Cloud Function. Absent (new group / read failed) →
+      // eveningScore falls back to its DEFAULT_*_FOR_10. Never blocks the card.
+      const benchSnap = game?.groupId
+        ? await getDoc(doc(db, 'communityStats', game.groupId)).catch(() => null)
+        : null;
+      const bench =
+        benchSnap && benchSnap.exists()
+          ? (benchSnap.data() as {
+              kingGoalsSum?: number;
+              kingGoalsCount?: number;
+              kingAssistsSum?: number;
+              kingAssistsCount?: number;
+            })
+          : null;
+      const avgOrUndef = (sum?: number, count?: number) =>
+        typeof sum === 'number' && typeof count === 'number' && count > 0
+          ? sum / count
+          : undefined;
+      const goalsFor10 = avgOrUndef(bench?.kingGoalsSum, bench?.kingGoalsCount);
+      const assistsFor10 = avgOrUndef(
+        bench?.kingAssistsSum,
+        bench?.kingAssistsCount,
+      );
 
       // Score + adaptive narrative, from the full performance picture. Seed the
       // copy per (game, player) so it's varied across players yet stable for a
@@ -241,7 +252,6 @@ export const eveningSummaryService = {
         totalRounds,
         heldPitch: rs.heldPitch,
         scoringStreak: rs.scoringStreak,
-        contribution,
         bestMiniGame: rs.bestMiniGame,
         pen: rs.pen,
       };
@@ -252,7 +262,8 @@ export const eveningSummaryService = {
         assists: row.assists,
         wins: row.wins,
         gamesPlayed: row.rounds,
-        contributionPct: contribution ? contribution.pct : null,
+        goalsFor10,
+        assistsFor10,
         pen: rs.pen,
       });
 
@@ -278,7 +289,6 @@ export const eveningSummaryService = {
         rank: numOrNull(stand?.rank),
         rankTotal: numOrNull(stand?.rankTotal),
         rankDelta: numOrNull(stand?.rankDelta),
-        contribution,
         heldPitch: rs.heldPitch,
         teamGoalsFor,
         teamGoalsAgainst,

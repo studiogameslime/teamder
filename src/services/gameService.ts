@@ -2974,6 +2974,27 @@ export const gameService = {
   },
 
   /**
+   * Publish a DRAFT team split: flips `draftTeams.published` → true so every
+   * player can see the teams, then fires the personalized "teams ready" push.
+   * While a split is a draft (`published:false`) only the organiser sees it
+   * (client-side gate in MatchDetails). Field-path update so it touches ONLY
+   * the flag — never races with a concurrent rotation write. No-op push in mock.
+   */
+  async publishDraftTeams(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m?.draftTeams) m.draftTeams = { ...m.draftTeams, published: true };
+      return;
+    }
+    await updateGameDoc(gameId, {
+      'draftTeams.published': true,
+      updatedAt: Date.now(),
+    });
+    await this.notifyTeamsReady(gameId);
+  },
+
+  /**
    * A member's 👍/👎 reaction to the current team split. Writes ONLY the
    * caller's own key via a field-path update (`draftTeamFeedback.<uid>`) so
    * Firestore rules can permit members to react without touching anyone

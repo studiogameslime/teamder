@@ -234,6 +234,9 @@ export function DraftBoardScreen() {
         playerIds: [captainIds[t], ...membersOf(t)],
         ...(teamColors[t] ? { colorKey: teamColors[t] } : {}),
       })),
+      // A fresh split starts as a DRAFT — visible only to the organiser until
+      // they tap "פרסם כוחות". No push fires on save.
+      published: false,
     };
     setSaving(true);
     try {
