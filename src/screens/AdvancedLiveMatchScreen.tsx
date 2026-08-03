@@ -379,14 +379,14 @@ export function AdvancedLiveMatchScreen() {
   // Latch that spans the ASYNC rotation commit at the end of the fill flow.
   // finalizingRef clears in onEndRound's synchronous finally (before the fill
   // flow's await resolves) and fillFlowRef is nulled just before the commit, so
-  // without this a fast second "סיים משחקון" tap during the ~commit round‑trip
+  // without this a fast second "סיים משחק" tap during the ~commit round‑trip
   // re-runs onEndRound against an already-cleared score (read as a tie) and
   // corrupts the rotation. Held true across commitFilledRotation.
   const committingRef = useRef(false);
   // Latch around the timer/round START so a rapid double-tap can't run
   // prepareStartRotation / beginFillFlow twice and clobber fillFlowRef.
   const startingRef = useRef(false);
-  // Latch around the "הלך הביתה" / "החזר למשחק" confirm so a rapid double-tap
+  // Latch around the "הלך הביתה" / "החזר למחזור" confirm so a rapid double-tap
   // can't run markPlayerWentHome / a fill flow twice and race fillFlowRef (B25).
   const homeActionRef = useRef(false);
   // Resolve a roster id (registered uid OR guest id) to a display card.
@@ -490,7 +490,7 @@ export function AdvancedLiveMatchScreen() {
       // Commit the rotation. For a round transition we ALSO zero the new round's
       // clock+score in the same atomic write (a concurrent admin's timer-start
       // can't slip between two writes). For a mid-evening substitution
-      // (keepClock) we DON'T reset — the current משחקון keeps running.
+      // (keepClock) we DON'T reset — the current משחק keeps running.
       await gameService.commitFilledRotation(
         gameId,
         flow.draft,
@@ -537,7 +537,7 @@ export function AdvancedLiveMatchScreen() {
     if (gameId) void gameService.nudgeRotationAfterFillCancel(gameId);
   };
 
-  // "סיים משחקון" → confirm first, naming the winner + who comes on next, so
+  // "סיים משחק" → confirm first, naming the winner + who comes on next, so
   // the admin doesn't accidentally end a round (and sees the rotation result).
   // A tie skips straight to the manual winner picker.
   const confirmEndRound = () => {
@@ -574,7 +574,7 @@ export function AdvancedLiveMatchScreen() {
   const onEndRound = async () => {
     // Block re-entry while a round transition is already in flight: finalizing,
     // the manual winner picker is open, or a fill flow is mid-way. Without this
-    // a second "סיים משחקון" tap (the ref clears in `finally` BEFORE the async
+    // a second "סיים משחק" tap (the ref clears in `finally` BEFORE the async
     // fill flow finishes) re-runs prepareRoundResult and double-commits the
     // round's goals/wins (user-facing stat corruption).
     if (
@@ -687,13 +687,13 @@ export function AdvancedLiveMatchScreen() {
   };
 
   // Admin backed out of the shootout entirely → clear the state; the round
-  // stays drawn and can be re-decided from "סיים משחקון".
+  // stays drawn and can be re-decided from "סיים משחק".
   const onShootoutExit = () => {
     setShootoutOpen(false);
     if (gameId) void gameService.clearShootout(gameId);
   };
 
-  // "התחל משחקון" — kick off a round: draft rotation + start the match clock
+  // "התחל משחק" — kick off a round: draft rotation + start the match clock
   // together so the live state goes straight to "running" (matches the design).
   const onStartRound = async () => {
     if (!gameId || !me || startingRef.current || committingRef.current) return;
@@ -1064,7 +1064,7 @@ export function AdvancedLiveMatchScreen() {
       game?.groupId ? { userId, groupId: game.groupId } : { userId },
     );
   // "הלך הביתה" — remove a player for the rest of the evening. Allowed at any
-  // point in an active rotation (mid-round too, not just between משחקונים): if a
+  // point in an active rotation (mid-round too, not just between משחקים): if a
   // playing team is left short we immediately offer a replacement, and the
   // fill is committed WITHOUT resetting the running clock (keepClock).
   const onPlayerWentHome = (player: { id: string; name: string }) => {
@@ -1088,7 +1088,7 @@ export function AdvancedLiveMatchScreen() {
               if (!finalizingRef.current && !fillFlowRef.current && !winnerOpen) {
                 const refill = await gameService.prepareRefillPlaying(gameId);
                 // keepClock: this is a mid-evening substitution, not a round
-                // transition — the current משחקון's clock + score must keep
+                // transition — the current משחק's clock + score must keep
                 // running through the swap (don't zero them on commit).
                 if (refill) beginFillFlow(refill.skeleton, refill.draft, undefined, true);
               }
@@ -1102,7 +1102,7 @@ export function AdvancedLiveMatchScreen() {
       ],
     );
   };
-  // "החזר למשחק" — bring a departed player back onto their team. Allowed
+  // "החזר למחזור" — bring a departed player back onto their team. Allowed
   // mid-round too: `restorePlayer` re-adds them and undoes the fill that covered
   // them (drops the loan / ejects the over-fill, B01) WITHOUT touching the
   // timer, so the running round's clock is unaffected.
@@ -1446,7 +1446,7 @@ export function AdvancedLiveMatchScreen() {
             ) : null}
           </>
         ) : (
-          // ── Active rotation → [אפס] [סיים משחקון] [השהה / המשך] ──────────
+          // ── Active rotation → [אפס] [סיים משחק] [השהה / המשך] ──────────
           <View style={styles.controlRow}>
             <Pressable style={styles.sideBtn} onPress={onTimerReset}>
               <Ionicons name="refresh" size={22} color="#1D4ED8" />
@@ -1610,7 +1610,7 @@ export function AdvancedLiveMatchScreen() {
         </Pressable>
       </Modal>
 
-      {/* Round winner picker — "מי ניצחה במשחקון?" */}
+      {/* Round winner picker — "מי ניצחה במשחק?" */}
       <WinnerPickerModal
         visible={winnerOpen}
         draftTeams={draftTeams ?? undefined}

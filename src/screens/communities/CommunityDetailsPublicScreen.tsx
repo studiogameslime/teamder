@@ -77,7 +77,7 @@ export function CommunityDetailsPublicScreen() {
   const cancelJoinById = useGroupStore((s) => s.cancelJoinById);
 
   const [group, setGroup] = useState<GroupPublic | null>(null);
-  // Upcoming public games drive the dynamic "ימי משחק" / "שעת משחק"
+  // Upcoming public games drive the dynamic "ימי מחזור" / "שעת מחזור"
   // derivation below — replacing the legacy `group.preferredDays` /
   // `group.preferredHour` MetaRows that no longer exist on the
   // create/edit form.

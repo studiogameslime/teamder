@@ -236,7 +236,7 @@ export function GamesListScreen() {
         const [a, b, c, d] = await Promise.all([
           // getMyLiveOrUpcomingGames (not getMyGames): the latter is
           // `status==='open'` only, so a game that went 'active' (live),
-          // 'locked', or was created 'scheduled' fell out of "המשחקים שלי".
+          // 'locked', or was created 'scheduled' fell out of "המחזורים שלי".
           // For a one-time PRIVATE game (in the user's hidden personal
           // group) there's no community feed to fall back to, so it vanished
           // entirely. This variant keeps scheduled|open|locked|active; the
@@ -304,7 +304,7 @@ export function GamesListScreen() {
     setCreateSheetVisible(true);
   };
 
-  // Home quick-action ("צור משחק") routes here with openCreate:true so the
+  // Home quick-action ("צור מחזור") routes here with openCreate:true so the
   // same chooser the FAB shows opens — one consistent create entry point
   // instead of the home CTA jumping straight into the quick-game wizard.
   useEffect(() => {
@@ -479,7 +479,7 @@ export function GamesListScreen() {
   // it applies to the rest list only — my own games always show regardless of
   // distance (`nearby: false` for mine).
   // Games shown in the "בקרוב" teaser section (registration not yet open) must
-  // NOT also appear in "המשחקים שלי"/"פתוחים" — otherwise a scheduled game the
+  // NOT also appear in "המחזורים שלי"/"פתוחים" — otherwise a scheduled game the
   // user is registered to shows twice (user report). "בקרוב" wins.
   const scheduledIds = useMemo(
     () => new Set(scheduledUpcoming.map((g) => g.id)),

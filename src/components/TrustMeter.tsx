@@ -30,7 +30,7 @@ interface Props {
   score: number | null;
   tier: TrustTier;
   size?: Size;
-  /** Optional caption shown under the tier label (e.g. "12 משחקים"). */
+  /** Optional caption shown under the tier label (e.g. "12 מחזורים"). */
   caption?: string;
 }
 

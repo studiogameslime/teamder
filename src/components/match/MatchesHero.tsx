@@ -4,7 +4,7 @@
 //   • `gamesTabBackground.png` as ImageBackground.
 //   • Dark→light blue gradient overlay for legibility.
 //   • Soft curved bottom corners.
-//   • Title "משחקים" + subtitle, right-aligned (RTL leading edge).
+//   • Title "מחזורים" + subtitle, right-aligned (RTL leading edge).
 //
 // The hero is purely presentational — no controls. The screen owns
 // the filter button + segmented control row that floats over the
@@ -36,8 +36,8 @@ function greetingWord(hour: number): string {
 }
 
 export function MatchesHero() {
-  // The Games tab header is a section title ("משחקים"), not a greeting — the
-  // greeting belongs on Home. (Owner request: show "משחקים" up top here.)
+  // The Games tab header is a section title ("מחזורים"), not a greeting — the
+  // greeting belongs on Home. (Owner request: show "מחזורים" up top here.)
   const heading = he.gamesListTitle;
   return (
     <View style={styles.wrap}>

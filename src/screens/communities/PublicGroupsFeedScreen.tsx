@@ -537,7 +537,7 @@ export function PublicGroupsFeedScreen() {
               ];
             });
 
-            // Overlay layer for the "הצג משחקים" toggle — open games
+            // Overlay layer for the "הצג מחזורים" toggle — open games
             // (geocoded by city/venue). Without this the toggle never
             // appeared. Best-effort: a fetch failure just omits the layer.
             let overlay: MapItem[] = [];

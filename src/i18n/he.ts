@@ -11,26 +11,26 @@ export const he = {
   infoTipGotIt: 'הבנתי',
   tipFillerTitle: 'פתיחה לזרים — מילוי חוסר',
   tipFillerText:
-    'כשחסרים שחקנים, האפליקציה מציעה את המשחק לשחקנים מתאימים מחוץ למועדון שלך, באזור שלך. שים לב: בזמן החוסר המשחק נחשף לאותם שחקנים מהאזור — הם יוכלו לראות את פרטיו ולהגיש מועמדות. אתה תמיד מאשר ידנית מי מצטרף — אף אחד לא נכנס בלי אישורך. ככה ממלאים שבוע חוסר בלי לרדוף אחרי אנשים.',
+    'כשחסרים שחקנים, האפליקציה מציעה את המחזור לשחקנים מתאימים מחוץ למועדון שלך, באזור שלך. שים לב: בזמן החוסר המחזור נחשף לאותם שחקנים מהאזור — הם יוכלו לראות את פרטיו ולהגיש מועמדות. אתה תמיד מאשר ידנית מי מצטרף — אף אחד לא נכנס בלי אישורך. ככה ממלאים שבוע חוסר בלי לרדוף אחרי אנשים.',
   tipTrustTitle: 'מד אמינות',
   tipTrustText:
-    'ציון שמשקף עד כמה אפשר לסמוך עליך שתגיע — נבנה מנוכחות במשחקים וביטולים בזמן. ככל שתגיע יותר ותבטל פחות, הציון עולה, ומארגנים נוטים יותר לאשר אותך למשחקים.',
+    'ציון שמשקף עד כמה אפשר לסמוך עליך שתגיע — נבנה מנוכחות במחזורים וביטולים בזמן. ככל שתגיע יותר ותבטל פחות, הציון עולה, ומארגנים נוטים יותר לאשר אותך למחזורים.',
   tipRatingTitle: 'דירוג שחקנים',
   tipRatingText:
     'שחקנים מדרגים זה את זה 1–5 כוכבים. הדירוג כללי (לא פר־מועדון), אנונימי, ומסייע למארגנים להרכיב קבוצות מאוזנות. רואים רק את הממוצע ואת מספר המדרגים, לא מי נתן מה.',
   // Map
-  mapGamesTitle: 'מפת המשחקים',
+  mapGamesTitle: 'מפת המחזורים',
   mapCommunitiesTitle: 'מפת המועדונים',
   mapEmpty: 'אין מה להציג על המפה כרגע',
   mapOpenDetails: 'לפרטים',
-  mapClusterGamesTitle: 'משחקים באזור הזה',
+  mapClusterGamesTitle: 'מחזורים באזור הזה',
   mapClusterCommunitiesTitle: 'מועדונים באזור הזה',
   mapButtonLabel: 'תצוגת מפה',
   mapLoadError: 'לא הצלחנו לטעון את המפה. נסה שוב.',
-  mapSubtitle: 'מצא משחקים ומועדונים בכל מקום',
+  mapSubtitle: 'מצא מחזורים ומועדונים בכל מקום',
   mapSearchGames: 'חיפוש לפי עיר או מגרש',
   mapSearchCommunities: 'חיפוש לפי עיר או שם מועדון',
-  mapChipAllGames: 'כל המשחקים',
+  mapChipAllGames: 'כל המחזורים',
   mapChipToday: 'היום',
   mapChipTomorrow: 'מחר',
   mapChipCustom: 'מותאם',
@@ -43,18 +43,18 @@ export const he = {
   mapLegendWeekend: 'סוף שבוע',
   mapLegendOther: 'אחר',
   mapShowCommunities: 'הצג מועדונים',
-  mapShowGames: 'הצג משחקים',
+  mapShowGames: 'הצג מחזורים',
   mapLocateMe: 'התמקד במיקום שלי',
   yes: 'כן',
   no: 'לא',
 
   // Filters (games + communities)
-  gameFiltersTitle: 'סינון משחקים',
+  gameFiltersTitle: 'סינון מחזורים',
   gameFiltersAny: 'הכל',
   gameFiltersApply: 'החל',
   gameFiltersReset: 'איפוס',
   gameFiltersVisibility: 'נראות',
-  gameFiltersOnlyAvailable: 'רק משחקים עם מקומות פנויים',
+  gameFiltersOnlyAvailable: 'רק מחזורים עם מקומות פנויים',
   gameFiltersButton: 'סינון',
   // New time-window filter — surfaced at the top of the sheet so the
   // most common "what's happening soon" question is one tap away.
@@ -65,24 +65,24 @@ export const he = {
   gameFiltersWhenWeekend: 'בסופ״ש',
   gameFiltersWhenTomorrow: 'מחר',
   gameFiltersWhenPickDay: 'בחר יום',
-  // Redesigned "סינון משחקים" sheet (2026-06).
+  // Redesigned "סינון מחזורים" sheet (2026-06).
   gameFiltersNearbyTitle: 'קרוב אליי',
   gameFiltersNearbyNeedPermission: 'נדרש אישור מיקום',
-  gameFiltersNearbyPermissionHint: 'כדי להציג משחקים בקרבתך',
+  gameFiltersNearbyPermissionHint: 'כדי להציג מחזורים בקרבתך',
   gameFiltersNearbyAllow: 'אפשר גישה למיקום',
   // Shown when location permission is ALREADY granted — no need to ask
   // again, just an enable control.
-  gameFiltersNearbyEnableTitle: 'משחקים בקרבת מקום',
+  gameFiltersNearbyEnableTitle: 'מחזורים בקרבת מקום',
   gameFiltersNearbyEnableHint: 'סנן לפי המרחק ממך',
-  gameFiltersNearbyEnable: 'הצג משחקים קרובים',
-  gameFiltersNearbyActive: 'מציג משחקים בקרבתך',
+  gameFiltersNearbyEnable: 'הצג מחזורים קרובים',
+  gameFiltersNearbyActive: 'מציג מחזורים בקרבתך',
   gameFiltersNearbyOff: 'כבה',
   gameFiltersKm: (km: number) => `${km} ק"מ`,
   gameFiltersQuickTitle: 'סינונים מהירים',
   gameFiltersOpenToAll: 'פתוח לכולם',
   gameFiltersHasSpots: 'יש מקומות פנויים',
-  gameFiltersShowN: (n: number) => `הצג ${n} משחקים`,
-  gameFiltersFormatTitle: 'פורמט משחק',
+  gameFiltersShowN: (n: number) => `הצג ${n} מחזורים`,
+  gameFiltersFormatTitle: 'פורמט מחזור',
   gameFiltersMyHome: 'הבית שלי',
   // Cost — most games are free; surfacing this avoids the surprise.
   gameFiltersCost: 'תשלום',
@@ -91,7 +91,7 @@ export const he = {
   // Group the rare rule flags under one collapsible header so the
   // primary filters above stay scannable.
   gameFiltersAdvanced: 'מסננים מתקדמים',
-  matchesCreateFab: 'יצירת משחק חדש',
+  matchesCreateFab: 'יצירת מחזור חדש',
   gameFiltersActive: (n: number) =>
     n === 1 ? 'פילטר אחד פעיל' : `${n} פילטרים פעילים`,
   communityFiltersTitle: 'סינון מועדונים',
@@ -114,9 +114,9 @@ export const he = {
   confirmDeleteAck: 'אני מבין שהפעולה בלתי הפיכה',
   confirmDeleteSubmit: 'אישור מחיקה',
   // Game / group destructive flows
-  deleteGameTitle: 'מחיקת המשחק',
-  deleteGameBody: 'המשחק יוסר לצמיתות מהמועדון ומהיסטוריית השחקנים. רישומים, רשימת המתנה והקבוצות שנבנו ימחקו.',
-  deleteGameSuccess: 'המשחק נמחק',
+  deleteGameTitle: 'מחיקת המחזור',
+  deleteGameBody: 'המחזור יוסר לצמיתות מהמועדון ומהיסטוריית השחקנים. רישומים, רשימת המתנה והקבוצות שנבנו ימחקו.',
+  deleteGameSuccess: 'המחזור נמחק',
   // Recurring (מחזור שבועי) game — delete needs a choice so cancelling one
   // week doesn't kill the whole series.
   deleteRecurringTitle: 'משחק מחזור שבועי',
@@ -137,7 +137,7 @@ export const he = {
   loading: 'טוען...',
   error: 'שגיאה',
   profileSaveError: 'לא הצלחנו לשמור את הפרטים. בדוק את החיבור ונסה שוב.',
-  liveMatchNotFound: 'המשחק לא נמצא או הוסר.',
+  liveMatchNotFound: 'המחזור לא נמצא או הוסר.',
 
   // Global error boundary — fallback UI when a React tree crashes.
   errorBoundaryTitle: 'משהו השתבש',
@@ -178,12 +178,12 @@ export const he = {
   toastJoinRequestSent: 'הבקשה נשלחה',
   toastJoinedGroup: 'ברוך הבא למועדון',
   toastJoinSuccess: 'הצטרפת למועדון',
-  toastGameJoined: 'הצטרפת למשחק',
+  toastGameJoined: 'הצטרפת למחזור',
   lastSpotTaken: 'תפסת את המקום האחרון',
   promotedToRoster: 'נכנסת להרכב! ⚽',
   toastGameJoinedWaitlist: 'נוספת לרשימת המתנה',
   toastGameJoinedPending: 'בקשת ההצטרפות נשלחה',
-  toastGameLeft: 'יצאת מהמשחק',
+  toastGameLeft: 'יצאת מהמחזור',
   toastRequestFailed: 'שליחת הבקשה נכשלה. נסה שוב.',
   toastMemberApproved: 'השחקן אושר',
   toastMemberRejected: 'הבקשה נדחתה',
@@ -197,10 +197,10 @@ export const he = {
   groupMaxBelowCurrentBody: (current: number) =>
     `יש כבר ${current} חברים פעילים במועדון. כדי להקטין את הקיבולת, יש קודם להסיר חברים.`,
   cancelPastDeadline: (hours: number) =>
-    `מועד הביטול חלף — ניתן להתבטל רק עד ${hours} שעות לפני המשחק.`,
-  lateCancelTitle: 'ביטול קרוב מאוד למשחק',
+    `מועד הביטול חלף — ניתן להתבטל רק עד ${hours} שעות לפני המחזור.`,
+  lateCancelTitle: 'ביטול קרוב מאוד למחזור',
   lateCancelBody: (hours: number) =>
-    `נשארו פחות מ-${hours} שעות עד תחילת המשחק. ביטול בשלב הזה ייספר כביטול מאוחר וישפיע על דירוג המשמעת שלך. בטוח שאתה רוצה לבטל?`,
+    `נשארו פחות מ-${hours} שעות עד תחילת המחזור. ביטול בשלב הזה ייספר כביטול מאוחר וישפיע על דירוג המשמעת שלך. בטוח שאתה רוצה לבטל?`,
   lateCancelConfirm: 'אישור ביטול',
 
   // Date/time field strings
@@ -211,8 +211,8 @@ export const he = {
   dtfClear: 'נקה',
 
   // Game registration screen
-  eveningList: 'רשימת משחק',
-  eveningDetails: 'פרטי משחק',
+  eveningList: 'רשימת מחזור',
+  eveningDetails: 'פרטי מחזור',
   registered: 'בהרכב',
   waiting: 'ספסל',
   imIn: 'אני מגיע',
@@ -228,23 +228,23 @@ export const he = {
   rainProb: 'סיכוי לגשם',
   weatherTemp: 'טמפרטורה',
   weatherRain: 'גשם',
-  weatherForecastFor: 'תחזית למועד המשחק',
+  weatherForecastFor: 'תחזית למועד המחזור',
   // Session state pills (Match Details)
   sessionStatusWaitingPlayers: (cur: number, max: number) =>
     `⏳ מחכים לשחקנים (${cur}/${max})`,
   sessionStatusEnoughPlayers: 'יש מספיק שחקנים 🎉',
   sessionStatusTeamsReady: 'כוחות מוכנים',
-  sessionStatusActive: 'משחק פעיל',
+  sessionStatusActive: 'מחזור פעיל',
   sessionStatusTeamsInvalid: 'צריך ליצור כוחות מחדש',
   sessionInvalidHelper: 'הכוחות מתייחסים לשחקנים שכבר לא רשומים. צרו אותם מחדש.',
   sessionWaitingHelper: (min: number) =>
     `תצטרכו לפחות ${min} שחקנים כדי ליצור כוחות ולהתחיל`,
   sessionActionInvitePlayers: 'הזמן שחקנים',
   sessionActionShareLink: 'שיתוף קישור',
-  sessionActionStart: 'התחל ערב משחקים',
+  sessionActionStart: 'התחל מחזור',
   sessionActionGoLive: 'עבור ללייב',
   sessionInviteShareBody: (link: string) =>
-    `הוזמנת למשחק ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
+    `הוזמנת למחזור ב־Teamder ⚽\nהצטרף כאן:\n${link}`,
   sessionShareWhatsapp: 'שתף בוואטסאפ',
   // Rich, scannable WhatsApp recruitment message: what / when / where /
   // how many still missing, then the join link. Lines are only added when
@@ -274,7 +274,7 @@ export const he = {
   team3: 'קבוצה 3',
   teamWaitingLabel: '(ממתינה)',
   shuffleTeams: 'ערבב קבוצות',
-  startEvening: 'התחל משחק',
+  startEvening: 'התחל מחזור',
   goalkeeperOrder: 'סדר שוערים',
 
   // Goalkeeper screen
@@ -284,8 +284,8 @@ export const he = {
   dragToReorder: 'גרור לשינוי סדר',
 
   // Live match — v2 portrait layout
-  liveStartMatch: 'התחל משחק',
-  liveResumeMatch: 'המשך משחק',
+  liveStartMatch: 'התחל מחזור',
+  liveResumeMatch: 'המשך מחזור',
   liveTimerOfTotal: (total: number) => `מתוך ${total} דקות`,
   /** Label above the "+MM:SS" added-time counter shown once the configured
    *  duration is exceeded (the main clock freezes at the duration). */
@@ -294,9 +294,9 @@ export const he = {
   liveTimerResume: 'המשך',
   liveTimerStart: 'התחל',
   liveTimerReset: 'אפס',
-  liveTimerResetConfirmTitle: 'לאפס את המשחק ולהתחיל מחדש?',
+  liveTimerResetConfirmTitle: 'לאפס את המחזור ולהתחיל מחדש?',
   liveTimerResetConfirmBody:
-    'כל הגולים יימחקו, הטיימר יתאפס, והמשחק יתחיל מהתחלה. אי אפשר לבטל.',
+    'כל הגולים יימחקו, הטיימר יתאפס, והמחזור יתחיל מהתחלה. אי אפשר לבטל.',
   // Stoppages log — synced history of every start / pause / resume so
   // players can settle "the clock kept running!" arguments.
   liveStoppagesTitle: 'יומן עצירות',
@@ -305,7 +305,7 @@ export const he = {
   liveStoppagesTotal: (total: string) => `סה״כ זמן עצור: ${total}`,
   liveStoppagesCount: (n: number) => `${n} עצירות`,
   liveStoppagesEmpty: 'עוד לא היו עצירות',
-  liveStoppageStarted: 'המשחק התחיל',
+  liveStoppageStarted: 'המחזור התחיל',
   liveStoppagePaused: 'הופסק',
   liveStoppageResumed: 'חודש',
   liveStoppageRanFor: (dur: string) => `שוחק ${dur}`,
@@ -317,7 +317,7 @@ export const he = {
   rotationStartHint: 'מנצחת נשארת, מפסידה יוצאת, הממתינה נכנסת. קבוצה חסרה מושלמת אוטומטית.',
   rotationStartCta: 'התחל רוטציה',
   rotationNotEnough: 'אין מספיק שחקנים לשתי קבוצות מלאות',
-  rotationPlayingNow: 'משחקים עכשיו',
+  rotationPlayingNow: 'מחזורים עכשיו',
   rotationWonCta: 'ניצחה',
   rotationReset: 'אפס',
   rotationResetMenu: 'אפס רוטציה',
@@ -328,8 +328,8 @@ export const he = {
   // teams can have wins, so "ברצף" would be wrong here).
   rotationStreak: (n: number) => (n === 1 ? 'ניצחון אחד' : `${n} ניצחונות`),
   rotationWinsLabel: 'ניצחונות',
-  rotationActiveBadge: 'משחק פעיל עכשיו',
-  rotationPlayingTeams: 'קבוצות במשחק',
+  rotationActiveBadge: 'מחזור פעיל עכשיו',
+  rotationPlayingTeams: 'קבוצות במחזור',
   rotationWaitingTeams: 'קבוצות ממתינות',
   rotationNextUp: 'הבאה בתור',
   rotationAfter: 'אחריה',
@@ -342,19 +342,19 @@ export const he = {
     `${playerName} משלים מ${teamName}`,
   rotationStoppagesInline: (count: number, time: string) =>
     `${count} עצירות · ${time}`,
-  rotationStartRound: 'התחל משחקון',
-  rotationEndRound: 'סיים משחקון',
+  rotationStartRound: 'התחל משחק',
+  rotationEndRound: 'סיים משחק',
   rotationEndRoundConfirmTitle: (winner: string) => `${winner} ניצחה! 🏆`,
   rotationEndRoundConfirmBody: (next: string) =>
-    `הבאה שעולה למגרש: ${next}. לסיים את המשחקון?`,
-  rotationEndRoundConfirmBodyNoNext: 'לסיים את המשחקון?',
-  rotationEndRoundConfirmOk: 'סיים משחקון',
+    `הבאה שעולה למגרש: ${next}. לסיים את המשחק?`,
+  rotationEndRoundConfirmBodyNoNext: 'לסיים את המשחק?',
+  rotationEndRoundConfirmOk: 'סיים משחק',
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   fillPickerSelectCount: (chosen: number, required: number) =>
     `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
   fillPickerConfirm: 'אישור',
   fillPickerEmptyPool: 'אין שחקנים זמינים להשלמה — סגרו וסדרו את הקבוצות ידנית',
-  rotationPreviewLabel: 'מי נגד מי · הקבוצות יושלמו בלחיצת ״התחל משחקון״',
+  rotationPreviewLabel: 'מי נגד מי · הקבוצות יושלמו בלחיצת ״התחל משחק״',
   rotationStartingTeams: 'קבוצות פותחות (אקראי)',
   rotationShuffle: 'ערבב',
   rotationTapToSwap: 'הקש על קבוצה ממתינה כדי להחליף אותה בפותחת',
@@ -380,12 +380,12 @@ export const he = {
   swapPickTarget: 'בחרו שחקן להחלפה',
   swapCancel: 'ביטול',
   playerMenuWentHome: 'הלך הביתה',
-  playerMenuWentHomeHint: 'זמין רק במהלך ערב פעיל',
-  playerMenuRestore: 'החזר למשחק',
+  playerMenuWentHomeHint: 'זמין רק במהלך מחזור פעיל',
+  playerMenuRestore: 'החזר למחזור',
   // ── Community player menu + timeline + cards ──
   playerMenuTimeline: 'ציר זמן',
   playerMenuRate: 'דרג שחקן',
-  playerMenuRemove: 'הסר מהמשחק',
+  playerMenuRemove: 'הסר מהמחזור',
   // Equipment (club ball / jerseys) — admin marks who currently holds them.
   playerMenuManageEquipment: 'נהל ציוד',
   manageEquipmentTitle: (name: string) => `ציוד אצל ${name}`,
@@ -397,7 +397,7 @@ export const he = {
   cardRed: 'כרטיס אדום',
   cardRedConfirmTitle: 'להנפיק כרטיס אדום?',
   cardRedConfirmBody: (name: string) =>
-    `כרטיס אדום פעיל יחסום את ${name} מהרשמה למשחקים חדשים במועדון — עד שיפוג או שתבטל אותו.`,
+    `כרטיס אדום פעיל יחסום את ${name} מהרשמה למחזורים חדשים במועדון — עד שיפוג או שתבטל אותו.`,
   cardIssueFailed: 'לא הצלחנו לרשום את הכרטיס. נסה שוב.',
   issueCardTitle: (name: string, cardLabel: string) => `${cardLabel} ל${name}`,
   cardDetailLabel: 'פירוט (אופציונלי)',
@@ -442,7 +442,7 @@ export const he = {
   groupFormTabAdvanced: 'מתקדם',
   cardsToggleLabel: 'כרטיסים (צהוב/אדום)',
   cardsToggleHint:
-    'מאפשר למנהלים לתת כרטיסים לשחקנים. כרטיס צהוב הוא אזהרה/מעקב בלבד. כרטיס אדום פעיל חוסם את השחקן מהרשמה למשחקי המועדון — עד שהתוקף יפוג או שהמנהל יבטל אותו.',
+    'מאפשר למנהלים לתת כרטיסים לשחקנים. כרטיס צהוב הוא אזהרה/מעקב בלבד. כרטיס אדום פעיל חוסם את השחקן מהרשמה למחזורי המועדון — עד שהתוקף יפוג או שהמנהל יבטל אותו.',
   redCardBlockJoin: (until: string) => `יש לך כרטיס אדום פעיל ${until} — לא ניתן להירשם`,
   redCardBlockUntilRevoke: 'עד ביטול',
   redCardBlockUntilDate: (d: string) => `עד ${d}`,
@@ -453,21 +453,21 @@ export const he = {
   wentHomeTapHint: 'הקש על שחקן כדי להחזיר אותו',
   wentHomeConfirmTitle: (name: string) => `${name} הלך הביתה?`,
   wentHomeConfirmBody:
-    'השחקן יוצא מהערב. אם קבוצתו במגרש ותישאר חסרה — תוצע החלפה, והשעון ימשיך לרוץ. אפשר להחזיר אותו בכל רגע.',
+    'השחקן יוצא מהמחזור. אם קבוצתו במגרש ותישאר חסרה — תוצע החלפה, והשעון ימשיך לרוץ. אפשר להחזיר אותו בכל רגע.',
   wentHomeConfirmOk: 'הלך הביתה',
   restoreConfirmTitle: (name: string) => `להחזיר את ${name}?`,
   restoreConfirmBody: 'השחקן יחזור לקבוצתו. אם נכנס לו מחליף — המחליף יפנה את מקומו.',
   restoreConfirmOk: 'החזר',
-  winnerPickTitle: 'מי ניצחה במשחקון?',
-  winnerPickSubtitle: 'בחר את הקבוצה שניצחה כדי לסיים את המשחקון',
+  winnerPickTitle: 'מי ניצחה במשחק?',
+  winnerPickSubtitle: 'בחר את הקבוצה שניצחה כדי לסיים את המשחק',
   winnerPickTieSubtitle: 'תיקו בתוצאה — בחרו ביניכם מי ניצחה (פנדלים / פרט-זוג / וכו׳) וסמנו כאן',
   // ── Live goal entry (advanced mode) ──
-  goalSectionTitle: 'תוצאת המשחקון',
+  goalSectionTitle: 'תוצאת המשחק',
   goalAdd: 'שער',
   goalAddTo: (team: string) => `שער · ${team}`,
   goalAddGoal: 'הוסף גול',
   goalScorersLog: (n: number) => `מבקיעים · ${n}`,
-  goalLogEmpty: 'עדיין אין שערים במשחקון',
+  goalLogEmpty: 'עדיין אין שערים במשחק',
   goalScorerPickTitle: (team: string) => `מי הבקיע? · ${team}`,
   goalUnknownScorer: 'לא ידוע',
   goalOwnGoal: 'שער עצמי',
@@ -481,11 +481,11 @@ export const he = {
   goalScorerWithAssist: (scorer: string, assister: string) =>
     `${scorer} (בישול: ${assister})`,
   goalSaveFailed: 'לא הצלחנו לשמור את הגול, נסו שוב',
-  roundFinalizeFailed: 'לא הצלחנו לסיים את המשחקון, נסו שוב (הגולים נשמרו)',
+  roundFinalizeFailed: 'לא הצלחנו לסיים את המשחק, נסו שוב (הגולים נשמרו)',
   // ── Retro goals (admin, post-match) ──
   retroEntryCta: 'השלם גול שהוחמץ',
   retroTitle: 'השלמת גולים',
-  retroNote: 'מזכה את השחקן בגול — לא משנה מי ניצח את המשחקונים.',
+  retroNote: 'מזכה את השחקן בגול — לא משנה מי ניצח את המשחקים.',
   retroEmpty: 'עדיין לא הושלמו גולים',
   retroAddCta: 'הוסף גול שהוחמץ',
   retroPickScorer: 'מי הבקיע?',
@@ -502,7 +502,7 @@ export const he = {
   winnerPickConfirm: 'אישור',
   // ── Penalty shootout (drawn-round tiebreaker) ──
   shDecideTitle: 'איך מכריעים את התיקו?',
-  shDecideSubtitle: 'המשחקון נגמר בתיקו — בחרו איך לקבוע מנצחת',
+  shDecideSubtitle: 'המשחק נגמר בתיקו — בחרו איך לקבוע מנצחת',
   shDecideManual: 'בחירה ידנית',
   shDecideManualHint: 'בוחרים קבוצה מנצחת בלי פנדלים',
   shDecidePenalties: 'שובר שוויון בפנדלים',
@@ -538,31 +538,31 @@ export const he = {
   // Winner confirmation on "finish shootout"
   shConfirmWinTitle: (team: string) => `${team} ניצחה?`,
   shConfirmWinBody: (team: string, w: number, l: number) =>
-    `${team} מובילה ${w}-${l} בפנדלים. לקבוע אותה כמנצחת המשחקון?`,
+    `${team} מובילה ${w}-${l} בפנדלים. לקבוע אותה כמנצחת המשחק?`,
   shConfirmWinCta: 'אישור',
-  liveEndEvening: 'סיים ערב',
-  liveEndEveningTitle: 'לסיים את הערב?',
+  liveEndEvening: 'סיים מחזור',
+  liveEndEveningTitle: 'לסיים את המחזור?',
   liveEndEveningBody:
-    'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
-  liveEndEveningConfirm: 'כן, סיים את הערב',
+    'המחזור יסומן כהסתיים, התוצאות יישמרו והמחזור יעבור להיסטוריה. לא ניתן לחזור אחורה.',
+  liveEndEveningConfirm: 'כן, סיים את המחזור',
   // "מה חדש" modal (post-update highlights)
   whatsNewTitle: 'מה חדש באפליקציה ⚽',
   whatsNewBadge: (v: string) => `✦ גרסה ${v}`,
   whatsNewCta: 'יאללה, הבנתי 🎉',
 
-  // Mini-games history ("היסטוריית המשחקונים") — finished-game breakdown
-  matchRoundsTitle: 'היסטוריית המשחקונים',
-  matchDetailsRoundsCta: 'היסטוריית המשחקונים',
+  // Mini-games history ("היסטוריית המשחקים") — finished-game breakdown
+  matchRoundsTitle: 'היסטוריית המשחקים',
+  matchDetailsRoundsCta: 'היסטוריית המשחקים',
   matchDetailsRoundsSub: 'מי נגד מי · גולים · בישולים · פנדלים',
   matchRoundsCount: (n: number) =>
-    n === 1 ? 'משחקון אחד' : `${n} משחקונים`,
-  matchRoundsRoundN: (n: number) => `משחקון ${n}`,
+    n === 1 ? 'משחק אחד' : `${n} משחקים`,
+  matchRoundsRoundN: (n: number) => `משחק ${n}`,
   matchRoundsTeamA: 'קבוצה א׳',
   matchRoundsTeamB: 'קבוצה ב׳',
   matchRoundsWon: (team: string) => `${team} ניצחה`,
   matchRoundsWonPens: (team: string) => `${team} בפנדלים`,
   matchRoundsTie: 'תיקו',
-  matchRoundsNoGoals: 'לא נרשמו גולים במשחקון',
+  matchRoundsNoGoals: 'לא נרשמו גולים במשחק',
   matchRoundsAssist: (name: string) => `בישול: ${name}`,
   matchRoundsOwnGoal: 'שער עצמי',
   matchRoundsShootout: 'שובר-שוויון בפנדלים',
@@ -570,18 +570,18 @@ export const he = {
   matchRoundsWhoPlayed: 'מי שיחק',
   matchRoundsUnknownPlayer: 'שחקן',
   matchRoundsGuest: 'אורח',
-  matchRoundsEmptyTitle: 'אין היסטוריית משחקונים',
-  matchRoundsEmptySub: 'למשחק הזה לא נשמרו פרטי משחקונים.',
+  matchRoundsEmptyTitle: 'אין היסטוריית משחקים',
+  matchRoundsEmptySub: 'למחזור הזה לא נשמרו פרטי משחקים.',
 
   // Evening summary card + sharing
-  summaryTitle: 'סיכום הערב',
-  summaryCta: 'סיכום הערב שלי',
-  summaryShareCta: 'שתף את סיכום הערב ⚡',
-  summaryShareTitle: 'שיתוף סיכום הערב',
+  summaryTitle: 'סיכום המחזור',
+  summaryCta: 'סיכום המחזור שלי',
+  summaryShareCta: 'שתף את סיכום המחזור ⚡',
+  summaryShareTitle: 'שיתוף סיכום המחזור',
   summaryShareUnavailable: 'שיתוף לא זמין במכשיר הזה',
   summaryShareFailed: 'השיתוף נכשל, נסו שוב',
-  summaryUnavailable: 'אין עדיין סיכום למשחק הזה',
-  summaryNoPlay: 'לא שיחקת משחקונים בערב הזה, אז אין סיכום להציג 🙂',
+  summaryUnavailable: 'אין עדיין סיכום למחזור הזה',
+  summaryNoPlay: 'לא שיחקת משחקים במחזור הזה, אז אין סיכום להציג 🙂',
   summaryConnectWatch: 'חבר שעון לנתונים פיזיים 🏃',
   // ── Player comparison (head-to-head) ──
   compareTitle: 'השוואה',
@@ -596,32 +596,32 @@ export const he = {
   pitchSaved: 'המגרש כויל ונשמר ✓',
   pitchSaveFailed: 'שמירת הכיול נכשלה, נסו שוב',
   availablePlayersTitle: 'שחקנים פנויים',
-  availablePlayersEmpty: 'לא נמצאו שחקנים פנויים שמתאימים למשחק הזה',
+  availablePlayersEmpty: 'לא נמצאו שחקנים פנויים שמתאימים למחזור הזה',
   // "Send to everyone available, in pulses" (manual filler-pulse trigger).
   sendPulseTitle: 'שלח לכל הפנויים באזור',
   sendPulseCta: 'שלח לכולם בפעימות',
   sendPulseSending: 'שולח…',
   sendPulseExplain:
-    'נשלח הזמנה לשחקנים פנויים באזור המשחק, בהדרגה, עד שהמשחק יתמלא. כל שחקן מקבל הזמנה אחת בלבד.',
+    'נשלח הזמנה לשחקנים פנויים באזור המחזור, בהדרגה, עד שהמחזור יתמלא. כל שחקן מקבל הזמנה אחת בלבד.',
   sendPulseConfirm: 'להתחיל לשלוח?',
-  sendPulseStarted: 'התחלנו לשלוח! נזמין שחקנים פנויים עד שהמשחק יתמלא.',
+  sendPulseStarted: 'התחלנו לשלוח! נזמין שחקנים פנויים עד שהמחזור יתמלא.',
   sendPulseSentBtn: 'השליחה החלה ✓',
-  sendPulseAlready: 'כבר יש שליחה פעילה למשחק הזה.',
-  sendPulseTooLate: 'קרוב מדי לתחילת המשחק (פחות מחצי שעה) — אי אפשר לשלוח.',
-  sendPulseTooEarly: 'עוד מוקדם מדי — אפשר לשלוח מ-12 שעות לפני המשחק.',
-  sendPulseFull: 'המשחק כבר מלא — אין למי לשלוח.',
-  sendPulseNoCity: 'למשחק אין עיר מוגדרת, אז אי אפשר למצוא שחקנים באזור.',
-  sendPulseNotOpen: 'המשחק לא פתוח להרשמה.',
+  sendPulseAlready: 'כבר יש שליחה פעילה למחזור הזה.',
+  sendPulseTooLate: 'קרוב מדי לתחילת המחזור (פחות מחצי שעה) — אי אפשר לשלוח.',
+  sendPulseTooEarly: 'עוד מוקדם מדי — אפשר לשלוח מ-12 שעות לפני המחזור.',
+  sendPulseFull: 'המחזור כבר מלא — אין למי לשלוח.',
+  sendPulseNoCity: 'למחזור אין עיר מוגדרת, אז אי אפשר למצוא שחקנים באזור.',
+  sendPulseNotOpen: 'המחזור לא פתוח להרשמה.',
   sendPulseError: 'לא הצלחנו להתחיל את השליחה. נסה שוב.',
   vs: 'VS',
   startTimer: 'התחל טיימר',
   pauseTimer: 'השהה',
   resetTimer: 'אפס',
-  matchNumber: (n: number) => `משחקון ${n}`,
-  matchOf: (n: number, total: number) => `משחקון ${n} מתוך ${total}`,
+  matchNumber: (n: number) => `משחק ${n}`,
+  matchOf: (n: number, total: number) => `משחק ${n} מתוך ${total}`,
 
   // Match end
-  matchEnd: 'סיום משחקון',
+  matchEnd: 'סיום משחק',
   whoWon: 'מי ניצחה?',
   team1Won: 'קבוצה 1',
   team2Won: 'קבוצה 2',
@@ -636,26 +636,26 @@ export const he = {
   regularField: 'המגרש הקבוע',
 
   // Game tab states
-  gameLoading: 'טוען את המשחק...',
-  liveTimerViewerHint: 'הטיימר מנוהל על ידי מנהל המשחק',
-  gameNoActiveAdmin: 'אין משחק פעיל. צור משחק חדש כדי להתחיל.',
-  gameNoActivePlayer: 'ממתין למנהל ליצור את המשחק',
-  gamePermissionDenied: 'אין לך הרשאה לצפות במשחק הזה',
-  gameLoadError: 'לא הצלחנו לטעון את המשחק. נסה שוב.',
-  gameCreate: 'צור משחק חדש',
+  gameLoading: 'טוען את המחזור...',
+  liveTimerViewerHint: 'הטיימר מנוהל על ידי מנהל המחזור',
+  gameNoActiveAdmin: 'אין מחזור פעיל. צור מחזור חדש כדי להתחיל.',
+  gameNoActivePlayer: 'ממתין למנהל ליצור את המחזור',
+  gamePermissionDenied: 'אין לך הרשאה לצפות במחזור הזה',
+  gameLoadError: 'לא הצלחנו לטעון את המחזור. נסה שוב.',
+  gameCreate: 'צור מחזור חדש',
   gameRetry: 'נסה שוב',
 
   // Games list (Games tab — sectioned)
-  gamesListTitle: 'משחקים',
-  gamesSectionMy: 'המשחקים שלי',
+  gamesListTitle: 'מחזורים',
+  gamesSectionMy: 'המחזורים שלי',
   gamesSectionFromCommunities: 'מהמועדונים שלי',
-  gamesSectionOpen: 'משחקים פתוחים',
-  gamesEmptyMy: 'עוד לא נכנסת להרכב של אף משחק',
-  gamesEmptyFromCommunities: 'אין כרגע משחקים במועדונים שלך',
-  gamesEmptyOpen: 'אין כרגע משחקים פתוחים באזור',
-  gamesEmptyAllTitle: 'אין כרגע משחקים פעילים',
-  gamesEmptyAllSub: 'תהיה הראשון לפתוח משחק עם המועדון שלך',
-  gamesCreate: 'צור משחק חדש',
+  gamesSectionOpen: 'מחזורים פתוחים',
+  gamesEmptyMy: 'עוד לא נכנסת להרכב של אף מחזור',
+  gamesEmptyFromCommunities: 'אין כרגע מחזורים במועדונים שלך',
+  gamesEmptyOpen: 'אין כרגע מחזורים פתוחים באזור',
+  gamesEmptyAllTitle: 'אין כרגע מחזורים פעילים',
+  gamesEmptyAllSub: 'תהיה הראשון לפתוח מחזור עם המועדון שלך',
+  gamesCreate: 'צור מחזור חדש',
 
   // Game card
   gameCardPlayersOf: (cur: number, max: number) => `‎${cur}/${max}‎ שחקנים`,
@@ -667,10 +667,10 @@ export const he = {
   gameCardLeaveWaitlist: 'יציאה מהספסל',
   gameCardMissing: (n: number) =>
     n === 1 ? 'חסר עוד שחקן אחד' : `חסרים עוד ${n} שחקנים`,
-  gameCardFull: 'המשחק מלא — ניתן להצטרף לספסל',
+  gameCardFull: 'המחזור מלא — ניתן להצטרף לספסל',
   gameCardCancelDeadline: (h: number) =>
     h === 1 ? 'דדליין לביטול: שעה לפני' : `דדליין לביטול: ${h} שעות לפני`,
-  gameCardPublic: 'משחק פתוח',
+  gameCardPublic: 'מחזור פתוח',
   gameCardPrivate: 'מועדון',
   gameCardPlayersMore: (n: number) => `+${n}`,
   gameStatusJoined: 'בהרכב',
@@ -682,29 +682,29 @@ export const he = {
   gameFormat7: '7 × 7',
 
   // Create game form
-  createGameTitle: 'יצירת משחק חדש',
+  createGameTitle: 'יצירת מחזור חדש',
   createGameRecurringTitle: 'תזמן מחזור שבועי',
-  createGameOverlapTitle: 'יש כבר משחק באותו זמן',
-  createGameOverlapUnknownTitle: 'משחק קיים',
+  createGameOverlapTitle: 'יש כבר מחזור באותו זמן',
+  createGameOverlapUnknownTitle: 'מחזור קיים',
   createGameOverlapBody: (title: string, when: string) =>
-    `כבר קיים משחק "${title}" ב-${when}. לא ניתן ליצור שני משחקים באותו חלון זמן.`,
+    `כבר קיים מחזור "${title}" ב-${when}. לא ניתן ליצור שני מחזורים באותו חלון זמן.`,
   // Scheduled registration-open (separate from the recurring toggle)
   wizardScheduledRegToggle: 'תזמון פתיחת הרשמה',
   wizardScheduledRegHint:
     'במקום שההרשמה תיפתח מיד — בחר מתי המשחק יופיע בפיד וההרשמה תיפתח. עד אז המשחק נסתר. מתאים גם למשחק חד-פעמי וגם למחזור שבועי.',
   wizardRegOpensLabel: 'פתיחת הרשמה',
   wizardRegOpensHint:
-    'במועד שתבחר המשחק יופיע בפיד וההרשמה תיפתח. עד אז הוא נסתר מכולם וחברי המועדון יקבלו התראה כשהוא נפתח.',
+    'במועד שתבחר המחזור יופיע בפיד וההרשמה תיפתח. עד אז הוא נסתר מכולם וחברי המועדון יקבלו התראה כשהוא נפתח.',
   wizardRegOpensHintPast:
-    'מועד שבחרת כבר עבר — חברי המועדון יקבלו התראה והמשחק יופיע בפיד מיד עם השמירה.',
+    'מועד שבחרת כבר עבר — חברי המועדון יקבלו התראה והמחזור יופיע בפיד מיד עם השמירה.',
   wizardRegOpensRequired: 'יש לבחור מועד פתיחת הרשמה',
   wizardRegOpensMustBeBeforeKickoff:
-    'מועד פתיחת ההרשמה חייב להיות לפני שעת המשחק',
+    'מועד פתיחת ההרשמה חייב להיות לפני שעת המחזור',
   wizardRegOpensWarnTitle: 'לוודא שזה מה שרצית?',
   wizardRegOpensWarnPastBody:
-    'מועד פתיחת ההרשמה שבחרת כבר עבר. ברגע השמירה תישלח התראה והמשחק יופיע בפיד.',
+    'מועד פתיחת ההרשמה שבחרת כבר עבר. ברגע השמירה תישלח התראה והמחזור יופיע בפיד.',
   wizardRegOpensWarnShortBody:
-    'מועד פתיחת ההרשמה קרוב מאוד לתחילת המשחק (פחות מ-4 שעות). מומלץ לתת לחברי המועדון זמן להירשם.',
+    'מועד פתיחת ההרשמה קרוב מאוד לתחילת המחזור (פחות מ-4 שעות). מומלץ לתת לחברי המועדון זמן להירשם.',
   wizardRegOpensWarnContinue: 'המשך בכל זאת',
   wizardRegOpensWarnEdit: 'ערוך',
   createGameCommunity: 'מועדון',
@@ -712,21 +712,21 @@ export const he = {
   createGameDateTime: 'תאריך ושעה',
   gameWizardMissingFields: (fields: string) => `יש למלא: ${fields}`,
   createGamePastDateTitle: 'התאריך כבר עבר',
-  createGamePastDateBody: 'מועד המשחק שבחרת כבר חלף. ליצור את המשחק בכל זאת?',
+  createGamePastDateBody: 'מועד המחזור שבחרת כבר חלף. ליצור את המחזור בכל זאת?',
   createGamePastDateConfirm: 'צור בכל זאת',
-  createGameHolidayTitle: 'המשחק נופל על חג',
+  createGameHolidayTitle: 'המחזור נופל על חג',
   createGameHolidayBody: (name: string) =>
-    `המשחק מתוזמן ל${name}, ליצור בכל זאת?`,
+    `המחזור מתוזמן ל${name}, ליצור בכל זאת?`,
   createGameHolidayConfirm: 'צור בכל זאת',
   editGameNotifyTitle: 'השינוי יישלח להרכב',
   editGameNotifyBody: (n: number) =>
     `השינוי יישלח כהתראה ל-${n} שחקנים בהרכב. להמשיך?`,
   editGameNotifyConfirm: 'שמור ושלח',
-  gameWizardSubmitFailed: 'יצירת המשחק נכשלה. נסה שוב.',
+  gameWizardSubmitFailed: 'יצירת המחזור נכשלה. נסה שוב.',
   createGameField: 'מיקום המגרש',
   createGameFieldPlaceholder: 'חפש מגרש, בית ספר, פארק או כתובת (כולל עיר)',
   createGameLocationFreeTextHint:
-    'אפשר גם להקליד מיקום חופשי. בחירה מהרשימה תעזור לנו למקם את המשחק במדויק.',
+    'אפשר גם להקליד מיקום חופשי. בחירה מהרשימה תעזור לנו למקם את המחזור במדויק.',
   // Location search sheet
   locationSearchTitle: 'חיפוש מיקום',
   locationConfirm: 'אישור המיקום',
@@ -745,16 +745,16 @@ export const he = {
   createGameAddressPlaceholder: 'רחוב, מספר, נקודת ציון',
   createGameMaxPlayers: 'מקסימום שחקנים',
   createGameMinPlayers: 'מינימום שחקנים (לא חובה)',
-  createGameMinPlayersHint: 'מתחת למספר הזה המשחק עלול להתבטל',
+  createGameMinPlayersHint: 'מתחת למספר הזה המחזור עלול להתבטל',
   createGameNumberOfTeams: 'מספר קבוצות',
   // Advanced game mode toggle + sub-options.
-  createGameAdvancedMode: 'מצב משחק מתקדם',
+  createGameAdvancedMode: 'מצב מחזור מתקדם',
   createGameAdvancedModeHint:
     'כבוי: טיימר בלבד · דלוק: קבוצות, רוטציה וסטטיסטיקה',
   createGameAdvancedModeInfo:
-    'הבחירה קובעת איך ייראה מסך הלייב במהלך המשחק:\n\n' +
-    '🔘 כבוי — טיימר משחק בלבד, מסונכרן בזמן אמת בין כל המכשירים, כולל שעונים חכמים. פשוט ונקי.\n\n' +
-    '🟢 דלוק — בנוסף לטיימר, מסך הלייב מנהל את כל הערב: חלוקה לקבוצות, רוטציה והחלפת שחקנים אוטומטית בין המשחקונים, ותיעוד ניצחונות וסטטיסטיקה לכל שחקן.',
+    'הבחירה קובעת איך ייראה מסך הלייב במהלך המחזור:\n\n' +
+    '🔘 כבוי — טיימר מחזור בלבד, מסונכרן בזמן אמת בין כל המכשירים, כולל שעונים חכמים. פשוט ונקי.\n\n' +
+    '🟢 דלוק — בנוסף לטיימר, מסך הלייב מנהל את כל המחזור: חלוקה לקבוצות, רוטציה והחלפת שחקנים אוטומטית בין המשחקים, ותיעוד ניצחונות וסטטיסטיקה לכל שחקן.',
   createGameAdvancedFill: 'שלוש קבוצות — שחקן משלים',
   createGameAdvancedFillTemporary: 'זמני',
   createGameAdvancedFillPermanent: 'קבוע',
@@ -762,17 +762,17 @@ export const he = {
     'כשקבוצה עולה עם שחקן מושאל (הקבוצות לא מלאות)',
   createGameAdvancedFillInfo:
     'כשמשחקים בשלוש קבוצות והן לא מלאות, הקבוצה שמנצחת ועולה משלימה את עצמה בשחקן מהקבוצה שיצאה:\n\n' +
-    '• קבוע — השחקן המושאל נשאר בקבוצה החדשה עד סוף הערב.\n' +
+    '• קבוע — השחקן המושאל נשאר בקבוצה החדשה עד סוף המחזור.\n' +
     '• זמני — השחקן חוזר לקבוצתו ברגע שהיא חוזרת למגרש (מסומן בכוכב כל עוד הוא מושאל).',
   createGameAdvancedTie: 'בתיקו — הקבוצה הותיקה יוצאת',
-  createGameAdvancedTieHint: 'מי יוצא כשמשחקון נגמר בתיקו',
+  createGameAdvancedTieHint: 'מי יוצא כשמשחק נגמר בתיקו',
   createGameAdvancedTieInfo:
-    'מה קורה כשמשחקון מסתיים בתיקו, כשמשחקים בארבע קבוצות:\n\n' +
+    'מה קורה כשמשחק מסתיים בתיקו, כשמשחקים בארבע קבוצות:\n\n' +
     '🔘 כבוי — שתי הקבוצות שעל המגרש יוצאות, ושתי הקבוצות הממתינות נכנסות במקומן.\n\n' +
-    '🟢 דלוק — רק הקבוצה הותיקה (זו ששיחקה יותר זמן ברצף) יוצאת, והשנייה נשארת למשחקון נוסף.',
+    '🟢 דלוק — רק הקבוצה הותיקה (זו ששיחקה יותר זמן ברצף) יוצאת, והשנייה נשארת למשחק נוסף.',
   createGameTotalPlayers: (n: number) => `סה״כ שחקנים: ${n}`,
   createGameFieldType: 'משטח המגרש',
-  createGameMatchDuration: 'אורך המשחק (דקות)',
+  createGameMatchDuration: 'אורך המחזור (דקות)',
   createGameMatchDurationHint: 'ברירת המחדל לטיימר במגרש',
   createGameExtraTime: 'תוספת זמן (דקות)',
   createGameAutoBalanceTiming: 'מתי לסדר כוחות אוטומטית?',
@@ -783,13 +783,13 @@ export const he = {
   fieldTypeSynthetic: 'סינטטי',
   fieldTypeGrass: 'דשא',
   minutesShort: 'דק׳',
-  createGameCancelDeadline: 'דדליין לביטול (שעות לפני המשחק)',
+  createGameCancelDeadline: 'דדליין לביטול (שעות לפני המחזור)',
   createGameCancelDeadlineHint:
     'אחרי הזמן הזה ביטול ייספר כאי-הגעה',
   createGameFormat: 'פורמט',
-  createGameIsPublic: 'משחק פתוח לכולם',
+  createGameIsPublic: 'מחזור פתוח לכולם',
   createGameIsPublicHint:
-    'כשמופעל — המשחק פתוח ומוצג בלשונית המשחקים גם למי שאינם במועדון, וגם נשלחת פנייה לשחקנים פנויים בקרבת מקום כשחסרים משתתפים. כבוי — המשחק סגור לחברי המועדון בלבד.',
+    'כשמופעל — המחזור פתוח ומוצג בלשונית המחזורים גם למי שאינם במועדון, וגם נשלחת פנייה לשחקנים פנויים בקרבת מקום כשחסרים משתתפים. כבוי — המחזור סגור לחברי המועדון בלבד.',
   createGameRequiresApproval: 'הצטרפות דורשת אישור',
   createGameRequiresApprovalHint: 'כשמופעל — תאשר ידנית כל בקשה להצטרף',
   createGameWaitlistApproval: 'קידום מרשימת המתנה דורש אישור השחקן',
@@ -801,35 +801,35 @@ export const he = {
   createGameNotes: 'הערות (לא חובה)',
   // Section headers that split the create-game wizard + create-community form
   // into labeled groups (bold title + hairline rule).
-  wizardSectionDetails: 'פרטי המשחק',
-  wizardSectionFormat: 'פורמט המשחק',
+  wizardSectionDetails: 'פרטי המחזור',
+  wizardSectionFormat: 'פורמט המחזור',
   wizardSectionDurationRules: 'משך וחוקים',
-  wizardSectionCharacteristics: 'מאפייני משחק',
-  wizardSectionAvailability: 'זמינות משחק',
+  wizardSectionCharacteristics: 'מאפייני מחזור',
+  wizardSectionAvailability: 'זמינות מחזור',
   groupSectionIdentity: 'פרטי המועדון',
   groupSectionLocation: 'מיקום ויצירת קשר',
   groupSectionAccess: 'הצטרפות והרשאות',
   groupSectionRating: 'דירוג וכרטיסים',
   createGameBringBall: 'מישהו צריך להביא כדור',
   createGameBringShirts: 'מישהו צריך להביא גופיות',
-  createGameSubmit: 'יצירת משחק',
+  createGameSubmit: 'יצירת מחזור',
   createGameAdvanced: 'הגדרות מתקדמות',
   createGameTotalShort: (n: number) => `סך ${n} שחקנים`,
-  editGameTitle: 'עריכת משחק',
+  editGameTitle: 'עריכת מחזור',
   editGameSubmit: 'שמירת שינויים',
   editGameRegAfterKickoffTitle: 'תזמון לא תקין',
   editGameRegAfterKickoffBody:
-    'מועד פתיחת ההרשמה חייב להיות לפני זמן תחילת המשחק.',
-  editGameAlreadyStartedTitle: 'המשחק כבר התחיל',
+    'מועד פתיחת ההרשמה חייב להיות לפני זמן תחילת המחזור.',
+  editGameAlreadyStartedTitle: 'המחזור כבר התחיל',
   editGameAlreadyStartedBody:
-    'לא ניתן לערוך פרטי משחק לאחר שזמן ההתחלה הגיע.',
+    'לא ניתן לערוך פרטי מחזור לאחר שזמן ההתחלה הגיע.',
   editGameCapacityTooLowTitle: 'יותר מדי שחקנים בהרכב',
   editGameCapacityTooLowBody: (registered: number, max: number) =>
-    `כרגע ${registered} שחקנים בהרכב. לא ניתן להוריד את הקיבולת ל-${max}. הסר/י קודם שחקנים מהמשחק.`,
-  matchDetailsDeletedTitle: 'המשחק כבר לא קיים',
+    `כרגע ${registered} שחקנים בהרכב. לא ניתן להוריד את הקיבולת ל-${max}. הסר/י קודם שחקנים מהמחזור.`,
+  matchDetailsDeletedTitle: 'המחזור כבר לא קיים',
   matchDetailsDeletedBody:
-    'המשחק נמחק או הוסר. אפשר לחזור לרשימת המשחקים ולמצוא משחק אחר.',
-  matchDetailsLoadErrorTitle: 'לא הצלחנו לטעון את המשחק',
+    'המחזור נמחק או הוסר. אפשר לחזור לרשימת המחזורים ולמצוא מחזור אחר.',
+  matchDetailsLoadErrorTitle: 'לא הצלחנו לטעון את המחזור',
   matchDetailsLoadErrorBody: 'בדוק את החיבור לאינטרנט ונסה שוב.',
   communityDetailsDeletedTitle: 'המועדון כבר לא קיים',
   communityDetailsDeletedBody:
@@ -846,7 +846,7 @@ export const he = {
   wizardStepBack: 'חזרה',
   wizardStepNext: 'המשך',
   wizardStepSkip: 'דלג',
-  wizardGameTitle: 'שם המשחק',
+  wizardGameTitle: 'שם המחזור',
   wizardGameTitlePlaceholder: 'לדוגמה: חמישי כדורגל',
   wizardCity: 'עיר',
   wizardCityPlaceholder: 'לדוגמה: תל אביב',
@@ -854,44 +854,44 @@ export const he = {
   wizardAddressPlaceholder: 'רחוב הספורט 12',
   wizardLocation: 'מיקום',
   wizardLocationPlaceholder: 'עיר, רחוב ומספר',
-  wizardTitleOptional: 'שם המשחק (אופציונלי)',
+  wizardTitleOptional: 'שם המחזור (אופציונלי)',
   wizardCancelOptionNone: 'ללא הגבלה',
   wizardCancelOption: (h: number) => `${h} שעות`,
-  wizardSectionRules: 'חוקי המשחק',
+  wizardSectionRules: 'חוקי המחזור',
   wizardHasReferee: 'שופט',
-  wizardHasRefereeHint: 'שופט במגרש לאכיפת חוקים ופתיחת משחקונים',
+  wizardHasRefereeHint: 'שופט במגרש לאכיפת חוקים ופתיחת משחקים',
   wizardHasPenalties: 'פנדלים',
   wizardHasPenaltiesHint: 'סבב פנדלים בתיקו',
   wizardHasHalfTime: 'חוצים',
-  wizardHasHalfTimeHint: 'משחקים עם חוצים',
+  wizardHasHalfTimeHint: 'מחזורים עם חוצים',
   wizardSectionVisibility: 'נראות',
   wizardVisibilityHint:
-    'פתוח לכולם — כל שחקן באפליקציה יכול לראות את המשחק ולהצטרף.\n\nרק למועדון — רק חברי המועדון רואים את המשחק.',
+    'פתוח לכולם — כל שחקן באפליקציה יכול לראות את המחזור ולהצטרף.\n\nרק למועדון — רק חברי המועדון רואים את המחזור.',
   wizardVisibilityCommunity: 'רק למועדון שלי',
   wizardVisibilityPublic: 'פתוח לכולם',
   // Quick-game name + community target label (details step)
-  createGameNameLabel: 'שם המשחק',
+  createGameNameLabel: 'שם המחזור',
   createGameNamePlaceholder: 'לדוגמה: כדורגל שישי בבוקר',
-  createGameNameHint: 'השם שיוצג בפיד ובכרטיס המשחק.',
-  createGameForCommunity: (name: string) => `המשחק ייפתח למועדון: ${name}`,
+  createGameNameHint: 'השם שיוצג בפיד ובכרטיס המחזור.',
+  createGameForCommunity: (name: string) => `המחזור ייפתח למועדון: ${name}`,
   createGameChooseCommunityLocked:
-    'משחק למועדון קבוע שלך — אבל עדיין אין לך מועדון. הקם מועדון ראשון כדי לפתוח לו משחקים.',
+    'מחזור למועדון קבוע שלך — אבל עדיין אין לך מועדון. הקם מועדון ראשון כדי לפתוח לו מחזורים.',
   createGameCreateCommunityCta: 'הקמת מועדון ראשון',
   // Scheduled public-open + guests-open pickers (community games)
   wizardPublicOpenToggle: 'פתיחה לכלל האפליקציה בזמן מתוזמן',
   wizardPublicOpenHint:
-    'בחר מתי המשחק יהפוך מ"רק למועדון" ל"פתוח לכולם". עד אז רק חברי המועדון רואים אותו; מהמועד שתבחר כל שחקן באפליקציה יוכל לראות ולהצטרף.',
+    'בחר מתי המחזור יהפוך מ"רק למועדון" ל"פתוח לכולם". עד אז רק חברי המועדון רואים אותו; מהמועד שתבחר כל שחקן באפליקציה יוכל לראות ולהצטרף.',
   wizardPublicOpenLabel: 'מועד פתיחה לכולם',
   wizardGuestsOpenToggle: 'הגבלת הוספת אורחים עד זמן מסוים',
   wizardGuestsOpenHint:
-    'עד המועד שתבחר רק מנהל המשחק יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
+    'עד המועד שתבחר רק מנהל המחזור יוכל להוסיף אורחים. שאר השחקנים יוכלו להוסיף אורחים רק מהמועד הזה ואילך. למנהל אין הגבלה.',
   wizardGuestsOpenLabel: 'פתיחת הוספת אורחים לשחקנים',
   wizardAutoTeamsToggle: 'תזמון יצירת כוחות אוטומטיים',
   wizardAutoTeamsHint:
     'במועד שתבחר, המערכת תחלק את הנרשמים לקבוצות מאוזנות (לפי הדירוג הפנימי או באקראי — לבחירתך), וכל שחקן יקבל פוש עם הקבוצה שלו. אפשר לערוך אחר כך. שחקן ללא דירוג פנימי ייחשב בדירוג ממוצע.\n\nשים לב: אם כבר קבעת כוחות ידנית (בכל שיטה — ידני, דירוג או אקראי) — התזמון לא ירוץ ולא ישנה אותם.',
   wizardAutoTeamsLabel: 'מועד יצירת הכוחות',
   wizardAutoTeamsMethodLabel: 'שיטת החלוקה',
-  wizardAutoTeamsBeforeKickoff: 'מועד יצירת הכוחות חייב להיות לפני תחילת המשחק',
+  wizardAutoTeamsBeforeKickoff: 'מועד יצירת הכוחות חייב להיות לפני תחילת המחזור',
   wizardAutoTeamsInPast: 'מועד יצירת הכוחות חייב להיות בעתיד',
   wizardSectionAdvanced: 'הגדרות מתקדמות',
   wizardCancelDeadline: 'עד כמה שעות לפני אפשר לבטל הרשמה',
@@ -902,26 +902,26 @@ export const he = {
   wizardCancelDeadlineToggleHint:
     'כשמופעל — אחרי המועד שתבחר לא ניתן לבטל הרשמה (ביטול ייחשב כאי־הגעה). כבוי = אפשר לבטל בכל עת.',
   wizardCancelDeadlineLabel: 'מועד אחרון לביטול',
-  wizardSummaryTitle: 'תקציר המשחק',
+  wizardSummaryTitle: 'תקציר המחזור',
   wizardSummaryConfirm: 'אישור ויצירה',
   wizardSummaryBackToEdit: 'חזרה לעריכה',
   wizardSummaryDate: 'מתי',
   wizardSummaryWhere: 'מיקום',
   wizardSummaryFormat: 'פורמט',
   wizardSummaryVisibility: 'נראות',
-  createGameNoCommunities: 'לפני שתוכל ליצור משחק, צריך להצטרף למועדון',
+  createGameNoCommunities: 'לפני שתוכל ליצור מחזור, צריך להצטרף למועדון',
   createGameNoAdmin:
-    'רק מנהלי מועדון יכולים ליצור משחקים. בקש מהמנהל של המועדון ליצור עבורך משחק.',
+    'רק מנהלי מועדון יכולים ליצור מחזורים. בקש מהמנהל של המועדון ליצור עבורך מחזור.',
   // Orphan / "no community" flow — fast path for creating a one-off
   // game without setting up a community first. The game lives in a
   // hidden personal group; after it ends, the user gets a push
   // offering to promote that group to a real community.
-  matchDetailsCommunityOrphan: 'משחק חד־פעמי',
+  matchDetailsCommunityOrphan: 'מחזור חד־פעמי',
   // Game rules — free-text chip input. Replaces the old
   // hasReferee/hasPenalties/hasHalfTime toggles.
-  ruleTagsLabel: 'חוקי המשחק',
+  ruleTagsLabel: 'חוקי המחזור',
   ruleTagsHint: 'הקלידו והוסיפו תגית עם Enter, פסיק או הכפתור +.',
-  ruleTagsPlaceholder: 'שופט, משחקים עם חוצים…',
+  ruleTagsPlaceholder: 'שופט, מחזורים עם חוצים…',
   ruleTagsAdd: 'הוסף חוק',
   ruleTagsRemove: (tag: string) => `הסר את "${tag}"`,
   ruleTagsAtCap: (n: number) => `הגעת למקסימום ${n} חוקים. הסר אחד כדי להוסיף עוד.`,
@@ -930,16 +930,16 @@ export const he = {
   matchBringBallToggle: 'אני מביא כדור',
   matchBringBallTagOn: 'מביא כדור',
   // Promote-orphan-to-community screen
-  promoteOrphanTitle: 'צור מועדון מהמשחק',
+  promoteOrphanTitle: 'צור מועדון מהמחזור',
   promoteOrphanBanner:
-    'תן שם, סמן את מי להזמין — ובלחיצה כל החברים מהמשחק יקבלו הזמנה.',
+    'תן שם, סמן את מי להזמין — ובלחיצה כל החברים מהמחזור יקבלו הזמנה.',
   promoteOrphanNameLabel: 'שם המועדון',
   promoteOrphanNamePlaceholder: 'הכדורגלנים של חמישי',
   promoteOrphanCityLabel: 'עיר (אופציונלי)',
   promoteOrphanCityPlaceholder: 'תל אביב',
   promoteOrphanInviteHeader: (selected: number, total: number) =>
     `מי להזמין? (${selected}/${total} מסומנים)`,
-  promoteOrphanNoOthers: 'לא היו עוד שחקנים במשחק להזמין.',
+  promoteOrphanNoOthers: 'לא היו עוד שחקנים במחזור להזמין.',
   promoteOrphanSubmit: (n: number) =>
     n === 0 ? 'צור מועדון' : `צור והזמן ${n} שחקנים`,
   promoteOrphanNameTooShortTitle: 'שם קצר מדי',
@@ -952,16 +952,16 @@ export const he = {
   promoteOrphanGoToCommunity: 'פתח את המועדון',
   promoteOrphanErrorTitle: 'תקלה ביצירת המועדון',
   promoteOrphanErrorBody: 'נסה שוב בעוד רגע.',
-  createGameOrphanCta: 'צור משחק חד־פעמי',
-  createGameOrphanCtaSub: 'בלי מועדון — מהיר, רק עבור הערב',
-  createGameOrphanBanner: 'משחק חד־פעמי — תוכל לקבע מועדון אחרי שתשחקו',
-  createGameQuickLoading: 'מכינים משחק מהיר…',
+  createGameOrphanCta: 'צור מחזור חד־פעמי',
+  createGameOrphanCtaSub: 'בלי מועדון — מהיר, רק עבור המחזור',
+  createGameOrphanBanner: 'מחזור חד־פעמי — תוכל לקבע מועדון אחרי שתשחקו',
+  createGameQuickLoading: 'מכינים מחזור מהיר…',
   createGameOrphanErrorTitle: 'תקלה ביצירה',
   createGameOrphanErrorBody: 'לא הצלחנו להכין את הסביבה. נסה שוב בעוד רגע.',
 
   // Admin gating
-  startEveningAdminOnly: 'רק מנהל יכול להתחיל את המשחק',
-  createGameAdminOnly: 'רק מנהל יכול ליצור משחק חדש',
+  startEveningAdminOnly: 'רק מנהל יכול להתחיל את המחזור',
+  createGameAdminOnly: 'רק מנהל יכול ליצור מחזור חדש',
 
   // Group search
   groupsSearchTitle: 'חפש מועדון',
@@ -994,11 +994,11 @@ export const he = {
 
   // Empty states (real mode)
   statsEmpty: 'אין עדיין נתונים',
-  statsEmptySub: 'הסטטיסטיקות יתעדכנו אחרי המשחקים הראשונים שלך',
-  historyEmptyReal: 'אין עדיין היסטוריית משחקים',
+  statsEmptySub: 'הסטטיסטיקות יתעדכנו אחרי המחזורים הראשונים שלך',
+  historyEmptyReal: 'אין עדיין היסטוריית מחזורים',
   historyLoadError: 'שגיאה בטעינת ההיסטוריה',
   retry: 'נסה שוב',
-  historyEmptyHint: 'ברגע שתסיים משחקים, הם יופיעו כאן',
+  historyEmptyHint: 'ברגע שתסיים מחזורים, הם יופיעו כאן',
 
   // Mock mode banner
   mockBanner: 'מצב נתוני דמו — לא קיים חיבור ל-Firebase',
@@ -1013,13 +1013,13 @@ export const he = {
   createGroupAddressNote: 'הערה למיקום (לא חובה)',
   createGroupAddressNotePlaceholder: 'לדוגמה: שער צפוני, ליד בית הספר',
   createGroupDescription: 'תיאור המועדון (לא חובה)',
-  createGroupMaxPlayers: 'מקסימום שחקנים במשחק',
+  createGroupMaxPlayers: 'מקסימום שחקנים במחזור',
   createGroupMaxMembers: 'מקסימום שחקנים במועדון',
   createGroupIsOpen: 'מועדון פתוח',
   createGroupIsOpenHint: 'כשמופעל — שחקנים חדשים מצטרפים אוטומטית. כבוי = דורש אישור מנהל.',
   createGroupInternalRating: 'דירוג פנימי',
   createGroupInternalRatingHint:
-    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המשחק ובמועדון במקום דירוג השחקנים. כבוי = הדירוג נקבע מהצבעות השחקנים.',
+    'כשמופעל — המנהלים קובעים בעצמם את דירוג השחקנים, והדירוג הזה הוא שיוצג בפרטי המחזור ובמועדון במקום דירוג השחקנים. כבוי = הדירוג נקבע מהצבעות השחקנים.',
   createGroupHideInternalRating: 'להסתיר דירוג פנימי',
   createGroupHideInternalRatingHint:
     'כשמופעל — השחקנים לא יוכלו לראות את הדירוגים כלל (לא של עצמם ולא של אחרים). הדירוג ישמש כנתון פנימי של המנהלים בלבד.',
@@ -1032,7 +1032,7 @@ export const he = {
   communityStatsScreenTitle: 'סטטיסטיקת המועדון',
   communityStatsLoading: 'טוען נתונים…',
   communityStatsEmptyTitle: 'עדיין אין נתונים',
-  communityStatsEmptyBody: 'אחרי שתשחקו כמה ערבים, כאן תופיע כל הסטטיסטיקה של המועדון.',
+  communityStatsEmptyBody: 'אחרי שתשחקו כמה מחזורים, כאן תופיע כל הסטטיסטיקה של המועדון.',
   communityStatsSectionNumbers: 'המועדון במספרים',
   communityStatsSectionLeaders: 'מובילי המועדון',
   communityStatsSectionScorers: 'טבלת המבקיעים',
@@ -1051,9 +1051,9 @@ export const he = {
   // hero tiles
   communityStatsGoals: 'גולים',
   communityStatsAssists: 'בישולים',
-  communityStatsMiniGames: 'משחקונים',
-  communityStatsEvenings: 'ערבי משחק',
-  communityStatsGoalsPerMini: 'גולים למשחקון',
+  communityStatsMiniGames: 'משחקים',
+  communityStatsEvenings: 'מחזורים',
+  communityStatsGoalsPerMini: 'גולים למשחק',
   // leaders
   communityStatsTopScorer: 'מלך השערים',
   communityStatsMvp: 'המצטיין',
@@ -1066,22 +1066,22 @@ export const he = {
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
   communityStatsAssistsUnit: (n: number) => `${n} בישולים`,
   communityStatsWinsUnit: (n: number) => `${n} ניצחונות`,
-  communityStatsEveningsUnit: (n: number) => `${n} ערבים`,
+  communityStatsEveningsUnit: (n: number) => `${n} מחזורים`,
   communityStatsPenScoredUnit: (n: number) => `${n} פנדלים`,
   communityStatsPenSavedUnit: (n: number) => `${n} עצירות`,
   // fun facts
   communityStatsDeadliest: 'היחס הקטלני',
-  communityStatsDeadliestValue: (r: string) => `${r} גולים למשחקון`,
+  communityStatsDeadliestValue: (r: string) => `${r} גולים למשחק`,
   communityStatsAvgAttendanceValue: (n: string) => `${n} שחקנים`,
   communityStatsTotalWins: 'סך הניצחונות שנרשמו',
   createGroupContactPhone: 'טלפון איש קשר',
   createGroupContactPhonePlaceholder: '050-1234567',
   createGroupContactPhoneHint: 'יוצג כפתור "פתח ב־WhatsApp" במועדון',
   createGroupContactPhoneInvalid: 'מספר לא תקין. פורמט: 05XXXXXXXX או +9725XXXXXXXX',
-  createGroupPreferredDays: 'ימי משחק קבועים',
-  createGroupPreferredHour: 'שעת משחק (לא חובה)',
+  createGroupPreferredDays: 'ימי מחזור קבועים',
+  createGroupPreferredHour: 'שעת מחזור (לא חובה)',
   createGroupPreferredHourPlaceholder: '20:00',
-  createGroupCostPerGame: 'עלות למשחק (₪)',
+  createGroupCostPerGame: 'עלות למחזור (₪)',
   createGroupCostPerGamePlaceholder: '0 = חינם',
   createGroupNotes: 'הערות לסגל (לא חובה)',
   createGroupNotesPlaceholder: 'מים אישיים, להגיע 10 דקות מראש וכו׳',
@@ -1102,7 +1102,7 @@ export const he = {
   communitiesEmptyAdmin: 'אינך מנהל אף מועדון',
   communitiesEmptyMember: 'עדיין לא הצטרפת לאף מועדון',
   communitiesEmptyMemberSub:
-    'הצטרף למועדון מהרשימה למטה כדי לראות משחקים, או פתח מועדון משלך.',
+    'הצטרף למועדון מהרשימה למטה כדי לראות מחזורים, או פתח מועדון משלך.',
   communitiesEmptyOpenSection: 'אין מועדונים פתוחים נוספים',
   // Discovery is windowed — the biggest/most-active communities show first and
   // the long tail of tiny ones is revealed on demand (n = how many remain).
@@ -1124,7 +1124,7 @@ export const he = {
   // Shown when the user enables "near me" without granting location access
   locationPermTitle: 'צריך גישה למיקום',
   locationPermBody:
-    'כדי לחפש משחקים ומועדונים קרובים אליך, יש לאשר גישה למיקום.',
+    'כדי לחפש מחזורים ומועדונים קרובים אליך, יש לאשר גישה למיקום.',
   locationPermOpenSettings: 'פתיחת הגדרות',
 
   // Card actions
@@ -1139,32 +1139,32 @@ export const he = {
   communityDetailsAbout: 'תיאור המועדון',
   communityDetailsField: 'מגרש',
   communityDetailsCity: 'עיר',
-  communityDetailsPreferredDays: 'ימי משחק',
-  communityDetailsPreferredHour: 'שעת משחק',
-  communityDetailsCost: 'עלות למשחק',
+  communityDetailsPreferredDays: 'ימי מחזור',
+  communityDetailsPreferredHour: 'שעת מחזור',
+  communityDetailsCost: 'עלות למחזור',
   communityDetailsCostFmt: (n: number) => (n > 0 ? `₪${n}` : 'חינם'),
   communityDetailsNotes: 'הערות',
   communityDetailsCreated: 'נוסד ב',
   communityDetailsRules: 'חוקי המועדון',
   communityDetailsRecurring: 'מחזור שבועי',
   communityDetailsCreateRecurringGame: 'פתח את המחזור הבא',
-  communityDetailsRecurringConfirm: 'צור משחק',
+  communityDetailsRecurringConfirm: 'צור מחזור',
   communityDetailsRecurringNoConfig: 'אין הגדרת מחזור שבועי למועדון',
-  communityDetailsRecurringFailed: 'יצירת המשחק נכשלה. נסה שוב.',
+  communityDetailsRecurringFailed: 'יצירת המחזור נכשלה. נסה שוב.',
   communityDetailsAdmins: 'מנהלים',
   communityDetailsMembers: 'שחקנים',
-  communityDetailsUpcoming: 'משחקים קרובים',
-  communityDetailsNextGame: 'משחק קרוב',
-  communityDetailsNoUpcoming: 'אין משחקים קרובים',
+  communityDetailsUpcoming: 'מחזורים קרובים',
+  communityDetailsNextGame: 'מחזור קרוב',
+  communityDetailsNoUpcoming: 'אין מחזורים קרובים',
 
   // Guests (per-game guest players, not real users)
   guestLabel: 'אורח',
   guestAddButton: 'הוסף אורח',
-  guestAddTitle: 'הוסף אורח למשחק',
+  guestAddTitle: 'הוסף אורח למחזור',
   guestEditTitle: 'ערוך אורח',
-  guestRowActionTitle: (name: string) => `הסרת ${name} מהמשחק?`,
+  guestRowActionTitle: (name: string) => `הסרת ${name} מהמחזור?`,
   guestRowActionRemove: 'הסר אורח',
-  guestRowRemoveSuccess: 'האורח הוסר מהמשחק',
+  guestRowRemoveSuccess: 'האורח הוסר מהמחזור',
   guestRowRemoveError: 'הסרת האורח נכשלה',
   createGroupGenericError: 'יצירת המועדון נכשלה. נסה שוב.',
   createGroupAuthError:
@@ -1190,28 +1190,28 @@ export const he = {
   guestAdded: 'האורח נוסף',
   guestSaved: 'נשמר',
   guestRemoved: 'האורח הוסר',
-  guestErrorGameFull: 'המשחק מלא — הסר שחקן או אורח קיים',
-  guestErrorGameNotOpen: 'המשחק אינו פתוח להרשמה — אי אפשר להוסיף אורחים',
+  guestErrorGameFull: 'המחזור מלא — הסר שחקן או אורח קיים',
+  guestErrorGameNotOpen: 'המחזור אינו פתוח להרשמה — אי אפשר להוסיף אורחים',
   guestErrorPermission: 'רק מנהל יכול לערוך אורחים',
   guestErrorGeneric: 'הפעולה נכשלה',
   guestRemoveConfirmBody: (name: string) =>
-    `${name} יוסר מהמשחק (כולל מרשימת ההמתנה). אפשר להוסיף שוב בכל עת.`,
-  guestRemovedToast: 'האורח הוסר מהמשחק',
+    `${name} יוסר מהמחזור (כולל מרשימת ההמתנה). אפשר להוסיף שוב בכל עת.`,
+  guestRemovedToast: 'האורח הוסר מהמחזור',
   guestAddedByLine: (name: string, when: string) => `צורף ע״י ${name} · ${when}`,
   communityDetailsAdminBadge: 'מנהל',
   communityEditTitle: 'עריכת מועדון',
   communityEditNoPermission: 'רק מנהל יכול לערוך את המועדון',
   communityEditRecurringEnabled: 'מחזור שבועי',
   communityEditRecurringHint:
-    'משחק שחוזר כל שבוע. כ-3 שעות אחרי שהמשחק מסתיים נפתח אוטומטית משחק זהה לשבוע הבא (אותו יום ושעה), כך שלא צריך לפתוח ידנית כל שבוע. אם הגדרת גם תזמון פתיחת הרשמה — הוא יוזז שבוע קדימה יחד עם המשחק.',
+    'מחזור שחוזר כל שבוע. כ-3 שעות אחרי שהמחזור מסתיים נפתח אוטומטית מחזור זהה לשבוע הבא (אותו יום ושעה), כך שלא צריך לפתוח ידנית כל שבוע. אם הגדרת גם תזמון פתיחת הרשמה — הוא יוזז שבוע קדימה יחד עם המחזור.',
   communityEditSectionBasics: 'פרטים בסיסיים',
-  communityEditSectionSchedule: 'מתי משחקים',
+  communityEditSectionSchedule: 'מתי מחזורים',
   communityEditSectionSettings: 'הגדרות מועדון',
   communityEditSectionExtra: 'פרטים נוספים',
   communityEditIsOpenHint: 'כשמופעל, שחקנים מצטרפים ללא אישור מנהל',
   communityEditTimeUnset: 'לא הוגדר',
   communityEditTimePick: 'בחר שעה',
-  communityEditPreferredDaysLabel: 'ימי משחק קבועים',
+  communityEditPreferredDaysLabel: 'ימי מחזור קבועים',
   communityEditPreferredHourLabel: 'שעה קבועה',
   communityEditOptional: 'לא חובה',
   /** Schedule preview shown under section B when enough data exists.
@@ -1257,12 +1257,12 @@ export const he = {
   communityMembersCount: (n: number) =>
     n === 1 ? 'שחקן אחד' : `${n} שחקנים`,
   // Community details — redesign strings
-  communityNextGameTitle: 'משחק קרוב',
-  communityNextGameNone: 'לא נקבע משחק קרוב',
-  communityNextGameCta: 'לצפייה בפרטי המשחק',
+  communityNextGameTitle: 'מחזור קרוב',
+  communityNextGameNone: 'לא נקבע מחזור קרוב',
+  communityNextGameCta: 'לצפייה בפרטי המחזור',
   communityNextGameLocked: 'ההרשמה תיפתח בקרוב',
   communityNextGameLockedBody: (when: string) =>
-    `המשחק יופיע בפיד וההרשמה תיפתח ב-${when}.`,
+    `המחזור יופיע בפיד וההרשמה תיפתח ב-${when}.`,
   communityNextGameCreateRecurring: 'תזמן מחזור שבועי למועדון',
   // Secondary "more upcoming" row shown under the primary NextGameCard
   // when the community has additional scheduled games queued up.
@@ -1286,15 +1286,15 @@ export const he = {
   communityPlayersEmpty: 'אין עדיין שחקנים בסגל',
   communityPlayersScreenTitle: 'הסגל',
   // Scoped to the community we're looking at — without the context
-  // word "כאן" the count read as "1 משחק (everywhere?)" and
+  // word "כאן" the count read as "1 מחזור (everywhere?)" and
   // confused users on the community players screen.
   communityPlayerGames: (n: number) =>
-    n === 1 ? 'משחק אחד כאן' : `${n} משחקים כאן`,
+    n === 1 ? 'מחזור אחד כאן' : `${n} מחזורים כאן`,
   communitySummaryPlayers: 'שחקנים',
-  communitySummaryDays: 'ימי משחק',
-  communitySummaryHour: 'שעת משחק',
+  communitySummaryDays: 'ימי מחזור',
+  communitySummaryHour: 'שעת מחזור',
   communitySummaryField: 'מגרש',
-  communityNotifyRow: 'עדכן אותי על משחקים חדשים במועדון',
+  communityNotifyRow: 'עדכן אותי על מחזורים חדשים במועדון',
   // Community redesign — stadium-style premium UI
   communityHeroLabel: 'מועדון',
   communityHeroDetailsTitle: 'פרטי מועדון',
@@ -1331,16 +1331,16 @@ export const he = {
   communityRemoveMemberCreatorBlocked: 'לא ניתן להסיר את מייסד המועדון',
   friendsActionFailed: 'הפעולה נכשלה. נסה שוב.',
   friendsMineTitle: (n: number) => `החברים שלי (${n})`,
-  friendsEmpty: 'עדיין אין לך חברים. שלח בקשת חברות לשחקנים שפגשת במשחקים.',
+  friendsEmpty: 'עדיין אין לך חברים. שלח בקשת חברות לשחקנים שפגשת במחזורים.',
   friendsEmptyCtaTitle: 'בנה לעצמך רשימת חברים',
-  friendsEmptyCtaBody: 'הזמן חברים מרשימת אנשי הקשר שלך — תוכל להזמין אותם ישירות למשחקים בלחיצה אחת.',
+  friendsEmptyCtaBody: 'הזמן חברים מרשימת אנשי הקשר שלך — תוכל להזמין אותם ישירות למחזורים בלחיצה אחת.',
   friendsEmptyCtaButton: 'הזמן חברים לאפליקציה',
   friendsAccept: 'אשר',
   friendsDecline: 'דחה',
   // Unified "Requests" inbox (header bell)
   requestsTitle: 'בקשות',
   requestsEmpty: 'אין בקשות ממתינות',
-  requestsEmptyHint: 'בקשות חברות, הצטרפות למועדונים ולמשחקים יופיעו כאן.',
+  requestsEmptyHint: 'בקשות חברות, הצטרפות למועדונים ולמחזורים יופיעו כאן.',
   requestsFriends: 'בקשות חברות',
   requestsCommunitySection: (name: string) => `הצטרפות ל${name}`,
   requestsGameSection: (name: string) => `הצטרפות ל${name}`,
@@ -1350,7 +1350,7 @@ export const he = {
   requestsApprovedToast: (n: number) => (n === 1 ? 'בקשה אחת אושרה' : `${n} בקשות אושרו`),
   requestsPartial: (ok: number, fail: number) => `${ok} אושרו, ${fail} נכשלו`,
   requestsActionFailed: 'הפעולה נכשלה, נסה שוב',
-  requestsApprovedToWaitlist: 'המשחק מלא — השחקן אושר ונכנס לרשימת ההמתנה',
+  requestsApprovedToWaitlist: 'המחזור מלא — השחקן אושר ונכנס לרשימת ההמתנה',
   friendsAccepted: 'נוספתם כחברים',
   friendsRemove: 'הסר חבר',
   friendsRemoveTitle: 'להסיר חבר?',
@@ -1368,15 +1368,15 @@ export const he = {
   wizardVisibilityPublicOpen: 'פתוח לכולם',
   wizardInviteFriends: 'הזמן חברים',
   wizardInviteFriendsEmpty:
-    'אין לך עדיין חברים להזמין. אפשר לשתף קישור למשחק אחרי היצירה, ולהוסיף חברים מכרטיס השחקן.',
+    'אין לך עדיין חברים להזמין. אפשר לשתף קישור למחזור אחרי היצירה, ולהוסיף חברים מכרטיס השחקן.',
   // Quick-vs-community chooser on the "+" button
-  createGameChooseTitle: 'איזה משחק ליצור?',
-  createGameChooseQuickTitle: 'משחק מהיר',
-  createGameChooseQuickBody: 'משחק חד־פעמי בלי לפתוח מועדון. אתה מזמין ידנית את מי שתרצה לשחק.',
-  createGameChooseCommunityTitle: 'משחק למועדון',
-  createGameChooseCommunityBody: 'משחק למועדון קיים שלך. כל החברים יראו אותו אוטומטית.',
-  createGameChooseQuick: 'משחק מהיר',
-  createGameChooseCommunity: 'משחק למועדון',
+  createGameChooseTitle: 'איזה מחזור ליצור?',
+  createGameChooseQuickTitle: 'מחזור מהיר',
+  createGameChooseQuickBody: 'מחזור חד־פעמי בלי לפתוח מועדון. אתה מזמין ידנית את מי שתרצה לשחק.',
+  createGameChooseCommunityTitle: 'מחזור למועדון',
+  createGameChooseCommunityBody: 'מחזור למועדון קיים שלך. כל החברים יראו אותו אוטומטית.',
+  createGameChooseQuick: 'מחזור מהיר',
+  createGameChooseCommunity: 'מחזור למועדון',
   // Invite friends to an existing community
   communityMenuInviteFriends: 'הזמן חברים למועדון',
   communityInviteFriendsSend: (n: number) =>
@@ -1389,15 +1389,15 @@ export const he = {
   communityStatsMembers: 'סגל',
   communityStatsField: 'מגרש קבוע',
   communityStatsMatchesHeld: 'מפגשים שנערכו',
-  communityNotifyDesignTitle: 'עדכנו אותי על משחקים חדשים במועדון',
-  communityNextGameDetailsCta: 'לפרטי משחק',
+  communityNotifyDesignTitle: 'עדכנו אותי על מחזורים חדשים במועדון',
+  communityNextGameDetailsCta: 'לפרטי מחזור',
   communityPlayersActiveTitle: 'שחקנים פעילים',
   // Hamburger menu sections for community
   communityMenuSectionCommunity: 'מועדון',
   communityMenuSectionPlayers: 'שחקנים',
   communityMenuSectionActions: 'פעולות',
   communityMenuApprovals: 'בקשות ממתינות לאישור',
-  communityMenuRecurringGame: 'צור משחק חוזר',
+  communityMenuRecurringGame: 'צור מחזור חוזר',
   communityMenuContactAdmin: 'צור קשר עם המנהל',
   communityMenuShareInvite: 'שתף הזמנה למועדון',
 
@@ -1449,15 +1449,15 @@ export const he = {
   onbCtaSignInApple: 'התחבר עם Apple',
   onbCtaStart: 'המשך',
   onb1Title: 'שחקו עם אנשים בקרבת מקום',
-  onb1Body: 'גלו משחקי כדורגל פתוחים באזור שלכם והצטרפו בלחיצה — או פגשו שחקנים חדשים לידכם',
+  onb1Body: 'גלו מחזורי כדורגל פתוחים באזור שלכם והצטרפו בלחיצה — או פגשו שחקנים חדשים לידכם',
   onb2Title: 'מועדון קבוע, מחזור אוטומטי',
   onb2Body: 'בנו את הסגל הקבוע שלכם — והמחזור השבועי נפתח לבד עם הזמנה לכולם',
   onb3Title: 'הכל זורם מעצמו',
-  onb3Body: 'מישהו ביטל? המקום מתמלא אוטומטית משחקנים מתאימים. ותזכורות חכמות דואגות שכולם יגיעו',
+  onb3Body: 'מישהו ביטל? המקום מתמלא אוטומטית מחזורנים מתאימים. ותזכורות חכמות דואגות שכולם יגיעו',
   // 4th = final CTA screen — see onbStart / onbCtaSignIn above
   // (kept onb4* as legacy strings in case any UI still references them)
   onb4Title: 'בוא נתחיל',
-  onb4Body: 'התחבר ותתחיל לארגן משחקים',
+  onb4Body: 'התחבר ותתחיל לארגן מחזורים',
 
   // Auth
   signInTitle: 'בואו נתחיל',
@@ -1470,7 +1470,7 @@ export const he = {
   // Guest → register prompt (shown when a guest taps an account action)
   guestRegisterTitle: 'נדרשת הרשמה',
   guestRegisterBody: 'כדי להשתמש בתכונה הזו צריך חשבון. רוצה להירשם עכשיו?',
-  guestRegisterJoinGame: 'כדי להירשם למשחק צריך חשבון. רוצה להירשם עכשיו?',
+  guestRegisterJoinGame: 'כדי להירשם למחזור צריך חשבון. רוצה להירשם עכשיו?',
   guestRegisterJoinCommunity: 'כדי להצטרף למועדון צריך חשבון. רוצה להירשם עכשיו?',
   guestRegisterChatAdmin: 'כדי לשלוח הודעה למנהל צריך חשבון. רוצה להירשם עכשיו?',
   guestRegisterCreate: 'כדי ליצור צריך חשבון. רוצה להירשם עכשיו?',
@@ -1478,7 +1478,7 @@ export const he = {
   guestRegisterCta: 'הרשמה',
   guestProfileTitle: 'הפרופיל שלך מחכה',
   guestProfileBody:
-    'אתה גולש כאורח. הירשם כדי לשמור משחקים, להצטרף למועדונים ולבנות פרופיל שחקן.',
+    'אתה גולש כאורח. הירשם כדי לשמור מחזורים, להצטרף למועדונים ולבנות פרופיל שחקן.',
   // Email + password screen
   emailAuthSignInTitle: 'התחברות עם מייל',
   emailAuthSignUpTitle: 'הרשמה עם מייל',
@@ -1521,7 +1521,7 @@ export const he = {
   profileEdit: 'ערוך כרטיס שחקן',
 
   // Player card
-  playerCardTotalGames: 'משחקים',
+  playerCardTotalGames: 'מחזורים',
   playerCardAttendance: 'אחוז הגעה',
   playerCardCancelRate: 'אחוז ביטולים',
   // Successful-referral stat — counts users whose invitedBy points
@@ -1530,18 +1530,18 @@ export const he = {
   playerCardReferrals: 'צירף לאפליקציה',
   playerCardReferralsHelper: 'משתמשים שנרשמו דרך קישור שלך',
   playerCardReferralsHelperOther: 'משתמשים שהוא צירף לאפליקציה',
-  playerCardInvite: 'הזמן למשחק',
+  playerCardInvite: 'הזמן למחזור',
   playerCardNotAvailable: 'לא זמין להזמנות',
   playerCardNotFound: 'לא הצלחנו לטעון את השחקן',
   playerCardEmail: 'אימייל',
-  playerCardNoGameToInvite: 'אין לך משחק פעיל להזמנה. צור משחק קודם.',
+  playerCardNoGameToInvite: 'אין לך מחזור פעיל להזמנה. צור מחזור קודם.',
   playerCardInviteSent: 'הזמנה נשלחה',
   playerCardSelf: 'זה אתה',
-  playerCardAlreadyJoined: 'כבר רשום למשחק שלך',
-  playerCardAlreadyWaitlist: 'בספסל למשחק שלך',
-  playerCardAlreadyPending: 'ממתין לאישור למשחק שלך',
+  playerCardAlreadyJoined: 'כבר רשום למחזור שלך',
+  playerCardAlreadyWaitlist: 'בספסל למחזור שלך',
+  playerCardAlreadyPending: 'ממתין לאישור למחזור שלך',
   playerCardInviteSentToast: 'הזמנה נשלחה ל{name}',
-  playerCardLoadingGame: 'טוען את המשחק הקרוב…',
+  playerCardLoadingGame: 'טוען את המחזור הקרוב…',
   playerCardInviteFailed: 'שליחת ההזמנה נכשלה. נסה שוב.',
 
   // Discipline (yellow / red cards)
@@ -1550,8 +1550,8 @@ export const he = {
   disciplineRecent: 'אירועים אחרונים',
   disciplineYellow: 'כרטיס צהוב',
   disciplineRed: 'כרטיס אדום',
-  disciplineReasonLate: 'איחור למשחק',
-  disciplineReasonNoShow: 'אי-הגעה למשחק',
+  disciplineReasonLate: 'איחור למחזור',
+  disciplineReasonNoShow: 'אי-הגעה למחזור',
   disciplineReasonManual: 'הוצא ידנית',
   disciplineCoachActions: 'ניהול כרטיסים',
   disciplineGiveYellow: 'תן כרטיס צהוב',
@@ -1560,14 +1560,14 @@ export const he = {
   disciplineConfirmRevoke: 'להסיר את הכרטיס?',
   disciplineWarningRecentRed: 'התקבל כרטיס אדום לאחרונה',
   // Snapshot caption — shown under the yellow/red display so the
-  // user understands the window. We surface "10 המשחקים האחרונים"
+  // user understands the window. We surface "10 המחזורים האחרונים"
   // when the user has at least 10 terminal games on file, and the
-  // truncated "X משחקים אחרונים" otherwise.
-  disciplineSnapshotTitle: 'משמעת (10 משחקים אחרונים)',
-  disciplineSnapshotCaptionFull: 'מתוך 10 המשחקים האחרונים',
+  // truncated "X מחזורים אחרונים" otherwise.
+  disciplineSnapshotTitle: 'משמעת (10 מחזורים אחרונים)',
+  disciplineSnapshotCaptionFull: 'מתוך 10 המחזורים האחרונים',
   disciplineSnapshotCaptionPartial: (n: number) =>
-    `מתוך ${n} משחקים אחרונים`,
-  disciplineSnapshotEmpty: 'אין עדיין היסטוריית משחקים להצגה',
+    `מתוך ${n} מחזורים אחרונים`,
+  disciplineSnapshotEmpty: 'אין עדיין היסטוריית מחזורים להצגה',
   // Shown when the snapshot fetch fails — distinct from "0 cards".
   // A clean player and an unknown player must look different.
   disciplineSnapshotUnavailable: 'אין נתונים זמינים',
@@ -1580,8 +1580,8 @@ export const he = {
   // on the Player Card + Profile + filler-approval screens. Five
   // tiers map a 0-100 score (or `null` for new users) to a label.
   trustMeterTitle: 'מד אמינות',
-  trustMeterCaption: (n: number) => `על בסיס ${n} משחקים אחרונים`,
-  trustMeterCaptionEmpty: 'תקבל מד אמינות אחרי 3 משחקים שתסיים',
+  trustMeterCaption: (n: number) => `על בסיס ${n} מחזורים אחרונים`,
+  trustMeterCaptionEmpty: 'תקבל מד אמינות אחרי 3 מחזורים שתסיים',
   trustMeterUnavailable: 'אין נתונים זמינים',
   trustTierExcellent: 'מצוין',
   trustTierGood: 'טוב',
@@ -1589,7 +1589,7 @@ export const he = {
   trustTierLow: 'נמוך',
   trustTierNew: 'חדש',
   trustBreakdownAttended: (att: number, reg: number) =>
-    `הופיע ב־${att} מתוך ${reg} משחקים`,
+    `הופיע ב־${att} מתוך ${reg} מחזורים`,
   trustBreakdownSoftCancels: (n: number) =>
     n === 1 ? 'ביטול אחד לפני המועד האחרון' : `${n} ביטולים לפני המועד האחרון`,
   trustBreakdownHardCancels: (n: number) =>
@@ -1611,12 +1611,12 @@ export const he = {
     'שחקנים מחוץ למועדון שמעוניינים למלא את החסר. אישור יכניס אותם לרוסטר.',
   fillerApprove: 'אישור',
   fillerDecline: 'דחייה',
-  fillerApproveSuccess: 'השחקן נוסף למשחק',
+  fillerApproveSuccess: 'השחקן נוסף למחזור',
   fillerApproveStale:
-    'המקום כבר התמלא או שהמשחק נסגר',
+    'המקום כבר התמלא או שהמחזור נסגר',
   fillerDeclineConfirmTitle: 'דחיית מועמדות',
   fillerDeclineConfirmBody: (name: string) =>
-    `לדחות את ${name}? לא תוכל לבחור בו שוב למילוי המשחק הזה.`,
+    `לדחות את ${name}? לא תוכל לבחור בו שוב למילוי המחזור הזה.`,
   fillerDeclineConfirm: 'דחה',
   fillerDefaultName: 'שחקן',
 
@@ -1662,7 +1662,7 @@ export const he = {
   homeStepPhoto: 'הוספת תמונת פרופיל',
   homeStepAvailability: 'סמן מתי אתה פנוי',
   homeStepCommunity: 'הצטרף או פתח מועדון',
-  homeStepGame: 'הצטרף או צור משחק ראשון',
+  homeStepGame: 'הצטרף או צור מחזור ראשון',
   homeStepInvite: 'הבא חבר למגרש',
   homeStepPosition: 'בחר עמדה מועדפת',
   // Preferred-position picker (ProfileEdit) + labels.
@@ -1674,8 +1674,8 @@ export const he = {
   homeDidYouKnowTitle: 'ידעת ש...',
   homeTipAutoTeams: 'אפשר ליצור כוחות מאוזנים אוטומטית לפי דירוג השחקנים',
   homeTipInternalRating: 'דירוג פנימי של שחקנים עוזר לאזן קבוצות הוגנות',
-  homeTipAvailability: 'סמן מתי אתה פנוי — ומנהלים יזמינו אותך למשחקים',
-  homeTipScheduled: 'אפשר לתזמן מראש מתי נפתחת ההרשמה למשחק',
+  homeTipAvailability: 'סמן מתי אתה פנוי — ומנהלים יזמינו אותך למחזורים',
+  homeTipScheduled: 'אפשר לתזמן מראש מתי נפתחת ההרשמה למחזור',
   homeTipCommunity: 'פתח מועדון כדי לנהל קבוצה קבועה עם דירוגים וכוחות',
   homePendingRequests: (n: number) =>
     `${n} ${n === 1 ? 'בקשת הצטרפות ממתינה' : 'בקשות הצטרפות ממתינות'} לאישור`,
@@ -1683,37 +1683,37 @@ export const he = {
   // top-of-home inbox banner.
   homePendingInbox: (n: number) =>
     `${n} ${n === 1 ? 'בקשה ממתינה' : 'בקשות ממתינות'} לך`,
-  homeCreateGame: 'צור משחק',
+  homeCreateGame: 'צור מחזור',
   homeMarkAvailability: 'סמן זמינות',
   // ── Home dashboard (redesign) ──
   homeBrandName: 'Teamder',
-  homeNextGameTitle: 'המשחק הקרוב שלך',
-  homeGameTypeRegular: 'משחק רגיל',
-  homeGameDetailsCta: 'לפרטי המשחק',
+  homeNextGameTitle: 'המחזור הקרוב שלך',
+  homeGameTypeRegular: 'מחזור רגיל',
+  homeGameDetailsCta: 'לפרטי המחזור',
   homeRosterFull: 'ההרכב מלא',
   homeSpotsLeft: (n: number) =>
     n === 0 ? '0 מקומות פנויים' : n === 1 ? 'מקום פנוי אחד' : `${n} מקומות פנויים`,
-  homeNoGameTitle: 'אין לך משחק קרוב',
-  homeNoGameBody: 'מצא משחק פתוח או פתח משחק חדש',
-  homeNoGameCta: 'מצא משחק',
+  homeNoGameTitle: 'אין לך מחזור קרוב',
+  homeNoGameBody: 'מצא מחזור פתוח או פתח מחזור חדש',
+  homeNoGameCta: 'מצא מחזור',
   // "Coming soon" teaser — a community game whose registration hasn't opened yet.
   homeUpcomingSectionTitle: 'בקרוב במועדונים שלך',
-  homeUpcomingBadge: 'משחק בדרך',
+  homeUpcomingBadge: 'מחזור בדרך',
   homeUpcomingRegistration: (label: string) => `ההרשמה ${label}`,
   homeUpcomingOpensAt: (dayDate: string, time: string) =>
     `תיפתח ${dayDate} ב-${time}`,
   homeUpcomingOpensInMinutes: (mmss: string) => `תיפתח בעוד ${mmss} דק׳`,
   homeUpcomingOpeningNow: 'נפתחת עכשיו',
   // Recommended day to open a game (most available players nearby).
-  homeRecommendedTitle: 'היום המומלץ לפתיחת משחק',
+  homeRecommendedTitle: 'היום המומלץ לפתיחת מחזור',
   homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,
   // Three action tiles.
-  homeActionOpenTitle: 'פתח משחק',
-  homeActionOpenSub: 'ארגן משחק משלך',
+  homeActionOpenTitle: 'פתח מחזור',
+  homeActionOpenSub: 'ארגן מחזור משלך',
   homeActionAvailTitle: 'סמן זמינות',
   homeActionAvailSub: 'עדכן את הנוכחות שלך',
-  homeActionJoinTitle: 'הצטרף למשחק',
-  homeActionJoinSub: 'מצא משחקים פתוחים',
+  homeActionJoinTitle: 'הצטרף למחזור',
+  homeActionJoinSub: 'מצא מחזורים פתוחים',
   // "Available by (evening) window" — per-day evening counts.
   homeWindowsTitle: 'פנויים לידך',
   homeWindowsPlayersUnit: 'שחקנים',
@@ -1725,18 +1725,18 @@ export const he = {
   // builds the prefix; the rest are the suffixes.
   homeGreetingLine: (greeting: string, name: string) =>
     name ? `${greeting} ${name}, ` : `${greeting}, `,
-  homeBannerGameToday: (t: string) => `המשחק שלך היום ב-${t} — מוכן? ⚽`,
-  homeBannerGameTomorrow: (t: string) => `המשחק שלך מחר ב-${t} 📅`,
+  homeBannerGameToday: (t: string) => `המחזור שלך היום ב-${t} — מוכן? ⚽`,
+  homeBannerGameTomorrow: (t: string) => `המחזור שלך מחר ב-${t} 📅`,
   homeBannerRequests: (n: number) =>
     `יש ${n === 1 ? 'בקשה אחת שממתינה' : `${n} בקשות שממתינות`} לך 👋`,
-  homeBannerSetAvailability: 'סמנו זמינות ונמצא לכם משחקים לידכם 👋',
+  homeBannerSetAvailability: 'סמנו זמינות ונמצא לכם מחזורים לידכם 👋',
   homeBannerJoinCommunity: 'כדאי להצטרף למועדון כדי לשחק בקביעות ⚽',
   homeBannerPlayedThisWeek: (n: number) =>
     `השבוע כבר שיחקת ${n === 1 ? 'פעם אחת' : `${n} פעמים`}! 👏`,
-  homeBannerNoGameThisWeek: 'השבוע עוד לא קבעת משחק — יאללה, נקבע אחד? ⚽',
+  homeBannerNoGameThisWeek: 'השבוע עוד לא קבעת מחזור — יאללה, נקבע אחד? ⚽',
   homeBannerDaysSincePlayed: (d: number) =>
     `לא שיחקת כבר ${d} ימים — בוא נחזיר אותך למגרש 🔥`,
-  homeBannerWelcome: 'טוב לראות אותך! מוכן למשחק הבא? ⚽',
+  homeBannerWelcome: 'טוב לראות אותך! מוכן למחזור הבא? ⚽',
   // ── Statistics screen ──
   statsScreenTitle: 'סטטיסטיקה',
   statsSectionNumbers: 'המספרים שלך',
@@ -1749,14 +1749,14 @@ export const he = {
   statPenSaves: 'פנדלים שנעצרו',
   statPenSaveRate: 'אחוז עצירה',
   statsMenuLabel: 'סטטיסטיקה',
-  statGames: 'משחקים',
+  statGames: 'מחזורים',
   statAttendance: 'אחוז הגעה',
   statGoals: 'שערים',
   statAssists: 'בישולים',
-  statGoalsPerEvening: 'גולים לערב',
+  statGoalsPerEvening: 'גולים למחזור',
   statDistinctPlayers: 'שחקנים שונים',
   statMostPlayedWith: 'השותף הקבוע',
-  statMostPlayedWithSub: (n: number) => `${n} משחקים יחד`,
+  statMostPlayedWithSub: (n: number) => `${n} מחזורים יחד`,
   statMostWinsWith: 'הצמד המנצח',
   statMostWinsWithSub: (n: number) => (n === 1 ? 'ניצחון אחד יחד' : `${n} נצחונות יחד`),
   statBiggestVictim: 'היריב שלך',
@@ -1770,8 +1770,8 @@ export const he = {
   statMostAssistedBySub: (n: number) =>
     n === 1 ? 'בישל לך פעם אחת' : `בישל לך ${n} פעמים`,
   statsScreenEmpty: 'עוד אין מספיק נתונים — תתחיל לשחק והמספרים יתחילו להצטבר!',
-  statsPersonEmpty: 'עדיין אין מספיק משחקים',
-  achievementCategoryGames: 'משחקים',
+  statsPersonEmpty: 'עדיין אין מספיק מחזורים',
+  achievementCategoryGames: 'מחזורים',
   achievementCategoryWins: 'ניצחונות',
   achievementCategoryTeams: 'מועדונים',
   achievementCategoryInvites: 'הזמנות',
@@ -1783,7 +1783,7 @@ export const he = {
 
   // Availability editor
   availabilityTitle: 'זמינות שלי',
-  availabilityIntro: 'איך אנחנו יודעים מתי להציע לך משחקים',
+  availabilityIntro: 'איך אנחנו יודעים מתי להציע לך מחזורים',
   availabilityDays: 'ימים מועדפים',
   availabilityDayShort: ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'],
   /** Full Hebrew names of weekdays — same index as availabilityDayShort.
@@ -1801,7 +1801,7 @@ export const he = {
   availabilityTimeFrom: 'משעה',
   availabilityTimeTo: 'עד שעה',
   availabilityCity: 'אזור / עיר מועדפים',
-  availabilityCityHint: 'נשמש לאיתור מועדונים וזימוני משחקים קרובים',
+  availabilityCityHint: 'נשמש לאיתור מועדונים וזימוני מחזורים קרובים',
   availabilityCities: 'ערים שאני מוכן לשחק בהן',
   availabilityCitiesPlaceholder: 'הוסף עיר',
   availabilityCitiesHint: 'בחר עיר מהרשימה והקש כדי להוסיף. ניתן להוסיף כמה.',
@@ -1809,12 +1809,12 @@ export const he = {
   availabilityHomeCity: 'עיר המגורים',
   availabilityHomeCityPlaceholder: 'בחר עיר מהרשימה',
   availabilityHomeCityHint:
-    'נשתמש בה יחד עם הרדיוס למצוא משחקים קרובים אליך.',
+    'נשתמש בה יחד עם הרדיוס למצוא מחזורים קרובים אליך.',
   availabilityHomeCityMustPick:
     'חובה לבחור את העיר מהרשימה (לא טקסט חופשי).',
-  availabilityRadius: (km: number) => `רדיוס למשחקים: עד ${km} ק"מ`,
+  availabilityRadius: (km: number) => `רדיוס למחזורים: עד ${km} ק"מ`,
   availabilityRadiusHint:
-    'הרחק מעיר המגורים, נציע לך משחקים במועדונים אחרים.',
+    'הרחק מעיר המגורים, נציע לך מחזורים במועדונים אחרים.',
   availabilityInvitable: 'זמין להזמנות למועדונים אחרים',
   availabilityInvitableHint: 'כשמכובה — שום שחקן לא יוכל לראות אותך כמועמד הזמנה',
   availabilityFillerPush: 'קבל הזמנות מילוי למועדונים אחרים',
@@ -1822,21 +1822,21 @@ export const he = {
     'תישלח לך התראה כשמועדון באזורך זקוק לשחקנים. תוכל לבחור אם להגיש מועמדות.',
   availabilitySave: 'שמור זמינות',
 
-  // ── Redesigned availability screen ("מצא לי משחקים") ──────────────
-  availabilityHeaderTitle: 'מצא לי משחקים ⚽',
-  availabilityCardTitle: 'אנחנו נמצא לך משחקים מתאימים!',
+  // ── Redesigned availability screen ("מצא לי מחזורים") ──────────────
+  availabilityHeaderTitle: 'מצא לי מחזורים ⚽',
+  availabilityCardTitle: 'אנחנו נמצא לך מחזורים מתאימים!',
   availabilityCardBody:
-    'בחר את הימים, הזמן והאזור שבו תרצה לשחק. נמצא לך משחקים פתוחים עם שחקנים חסרים בסביבה שלך, ונזמין אותך כשמישהו פותח משחק בחלון שסימנת. שחקנים אחרים באזור יראו כמה אנשים פנויים בכל חלון (רק המספר — לא מי) כדי לעודד פתיחת משחקים.',
+    'בחר את הימים, הזמן והאזור שבו תרצה לשחק. נמצא לך מחזורים פתוחים עם שחקנים חסרים בסביבה שלך, ונזמין אותך כשמישהו פותח מחזור בחלון שסימנת. שחקנים אחרים באזור יראו כמה אנשים פנויים בכל חלון (רק המספר — לא מי) כדי לעודד פתיחת מחזורים.',
   // Home "פנויים לשחק לידך" calendar
   availFeedTitle: '⚽ פנויים לשחק לידך',
-  availFeedSub: 'כמה שחקנים פנויים בכל חלון — ולא רשומים למשחק',
+  availFeedSub: 'כמה שחקנים פנויים בכל חלון — ולא רשומים למחזור',
   availFeedRadius: (km: number) => `רדיוס ${km} ק״מ`,
   availFeedHottest: 'הכי חם:',
-  availFeedCreateCta: 'פתח משחק ⚡',
-  availFeedTapHint: 'לחצו על חלון כדי לפתוח משחק ולהזמין את הפנויים',
+  availFeedCreateCta: 'פתח מחזור ⚡',
+  availFeedTapHint: 'לחצו על חלון כדי לפתוח מחזור ולהזמין את הפנויים',
   availFeedPromptTitle: 'רוצה לראות מי פנוי לשחק לידך?',
   availFeedPromptBody:
-    'הגדר את האזור והזמנים שנוח לך — ונראה לך כמה שחקנים פנויים בכל חלון, כדי לפתוח משחק בקלות.',
+    'הגדר את האזור והזמנים שנוח לך — ונראה לך כמה שחקנים פנויים בכל חלון, כדי לפתוח מחזור בקלות.',
   availFeedPromptCta: 'הגדר זמינות',
   availabilityDaysTitle: 'בחר ימי פעילות',
   /** Single-letter day badges, same index as weekdayLong (Sun→Sat). */
@@ -1868,13 +1868,13 @@ export const he = {
   availabilityRangeTitle: 'טווח חיפוש',
   availabilityRangeValue: (km: number) => `${km} ק"מ`,
   availabilityNotifTitle: 'קבל התראות',
-  availabilityNotifHint: 'שלח לי התראה כשיש משחקים עם חסרים באזור שלי',
+  availabilityNotifHint: 'שלח לי התראה כשיש מחזורים עם חסרים באזור שלי',
   availabilitySavePrefs: 'שמור העדפות',
   // Home-area gate — the feature is anchored to a FIXED home area the user
   // sets (on a map / by city), NOT their live GPS. Off until they enable it.
   availabilityLocationToggle: 'הגדרת אזור הבית שלי',
   availabilityLocationToggleHint:
-    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך משחקים פתוחים לידו.',
+    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך מחזורים פתוחים לידו.',
   availabilityLocationLockedTitle: 'הפעל כדי להגדיר אזור',
   availabilityLocationLockedHint:
     'הפעל את המתג למעלה כדי לסמן על המפה (או לחפש עיר) את אזור הבית הקבוע שלך, ולהגדיר ימים, שעות וטווח חיפוש.',
@@ -1884,7 +1884,7 @@ export const he = {
   availabilityLocationLockedHintGranted:
     'הפעל את המתג למעלה כדי לסמן על המפה (או לחפש עיר) את אזור הבית הקבוע שלך, ולהגדיר ימים, שעות וטווח חיפוש.',
   availabilityLocationToggleHintGranted:
-    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך משחקים פתוחים לידו.',
+    'קבע אזור קבוע (לא המיקום הנוכחי) — נמצא לך מחזורים פתוחים לידו.',
 
   // Post sign-in onboarding — single profile-customisation step.
   // The welcome + "how it works" intermediate screens were removed
@@ -1909,38 +1909,38 @@ export const he = {
   profileEditUnsavedSave: 'שמור',
   profileEditUnsavedDiscard: 'התעלם וצא',
   gameEditUnsavedTitle: 'יש שינויים שלא נשמרו',
-  gameEditUnsavedBody: 'שינית פרטים במשחק ולא שמרת. לשמור עכשיו?',
+  gameEditUnsavedBody: 'שינית פרטים במחזור ולא שמרת. לשמור עכשיו?',
   groupEditUnsavedTitle: 'יש שינויים שלא נשמרו',
   groupEditUnsavedBody: 'שינית פרטים במועדון ולא שמרת. לשמור עכשיו?',
   validateRequired: 'יש להזין {field}',
   validateTooLong: '{field} ארוך מדי (עד {max} תווים)',
   validateOutOfRange: '{field} חייב להיות בין {min} ל-{max}',
-  validationErrorTitle: 'לא ניתן לשמור את המשחק',
-  gameOpenAfterKickoff: 'זמן פתיחת ההרשמה הציבורית / לאורחים חייב להיות לפני תחילת המשחק.',
+  validationErrorTitle: 'לא ניתן לשמור את המחזור',
+  gameOpenAfterKickoff: 'זמן פתיחת ההרשמה הציבורית / לאורחים חייב להיות לפני תחילת המחזור.',
   gamePublicBeforeReg: 'הפתיחה לכולם חייבת להיות אחרי פתיחת ההרשמה לחברי המועדון.',
   inviteRateLimited: 'שלחת יותר מדי הזמנות. נסה שוב מאוחר יותר.',
-  inviteAlreadyJoined: 'השחקן כבר רשום למשחק.',
-  inviteNotAllowed: 'אין לך הרשאה להזמין למשחק הזה.',
+  inviteAlreadyJoined: 'השחקן כבר רשום למחזור.',
+  inviteNotAllowed: 'אין לך הרשאה להזמין למחזור הזה.',
   inviteSelfNotAllowed: 'אי אפשר להזמין את עצמך.',
   psoProfileTitle: 'בוא נכיר',
   psoProfileSave: 'המשך',
 
   // Empty state — first-time main screen
-  emptyHomeTitle: 'אין לך עדיין משחקים',
-  emptyHomeBody: 'צור משחק חדש או הצטרף למשחק קיים',
-  emptyHomePrimary: 'צור משחק',
-  emptyHomeSecondary: 'מצא משחקים',
-  // Shown instead of "מצא משחקים" when there's nothing to find — both
+  emptyHomeTitle: 'אין לך עדיין מחזורים',
+  emptyHomeBody: 'צור מחזור חדש או הצטרף למחזור קיים',
+  emptyHomePrimary: 'צור מחזור',
+  emptyHomeSecondary: 'מצא מחזורים',
+  // Shown instead of "מצא מחזורים" when there's nothing to find — both
   // tabs are empty, so the button would dead-end. Encourages the user
   // to be the one who starts a game in their community.
-  emptyHomeNoGamesAnywhere: 'אין משחקים פתוחים כרגע — היה הראשון לפתוח משחק למועדון שלך',
+  emptyHomeNoGamesAnywhere: 'אין מחזורים פתוחים כרגע — היה הראשון לפתוח מחזור למועדון שלך',
   // Shown when a filter is active and nothing matches — there ARE games,
   // they're just filtered out, so we point at the filter, not "create".
-  emptyHomeFilteredBody: 'אין משחקים שתואמים לסינון',
+  emptyHomeFilteredBody: 'אין מחזורים שתואמים לסינון',
   emptyHomeClearFilters: 'נקה סינון',
 
   // First-run hint (tooltip)
-  hintCreateGame: 'כאן יוצרים משחק חדש',
+  hintCreateGame: 'כאן יוצרים מחזור חדש',
   hintGotIt: 'הבנתי',
 
   // Groups
@@ -1968,7 +1968,7 @@ export const he = {
   reject: 'דחה',
 
   // Tabs
-  tabGame: 'משחקים',
+  tabGame: 'מחזורים',
   tabProfile: 'כרטיס שחקן',
   tabHome: 'בית',
   tabStats: 'סטטיסטיקה',
@@ -2003,7 +2003,7 @@ export const he = {
   profileGroupActive: 'פעיל',
   profileGroupSwitch: 'החלף',
   profileSectionStats: 'סטטיסטיקה',
-  profileSectionHistory: 'היסטוריית משחקים',
+  profileSectionHistory: 'היסטוריית מחזורים',
   profileSectionApprovals: 'בקשות לסגל',
   profileSectionAvailability: 'הזמינות שלי',
   profileSectionPlayerCard: 'הכרטיס שלי',
@@ -2024,7 +2024,7 @@ export const he = {
   blockedUnblockDone: 'החסימה בוטלה',
   // New section labels for the redesigned profile
   profileSectionAccount: 'החשבון שלי',
-  profileSectionMatches: 'משחקים ולוח זמנים',
+  profileSectionMatches: 'מחזורים ולוח זמנים',
   profileSectionPreferences: 'התראות והעדפות',
   profileSectionSupport: 'עזרה ומשוב',
   profileBadgeAdmin: 'מנהל',
@@ -2033,11 +2033,11 @@ export const he = {
   profileMenuOpen: 'פתח תפריט',
   profileMenuClose: 'סגור תפריט',
   profileMenuSectionProfile: 'כרטיס שחקן',
-  profileMenuSectionGames: 'משחקים',
+  profileMenuSectionGames: 'מחזורים',
   profileMenuSectionSystem: 'הגדרות',
   profileMenuSectionSupport: 'עזרה ומשוב',
   profileMenuSectionAccount: 'חשבון',
-  profileStatTotalGames: 'משחקים',
+  profileStatTotalGames: 'מחזורים',
   profileStatAttendance: 'הגעה',
   profileStatWinRate: 'אחוז ניצחון',
   profileStatAttended: 'הופעות',
@@ -2051,21 +2051,21 @@ export const he = {
   profileStatInvited: 'שחקנים שהצטרפו דרכי',
   // Next-game card on the player's own profile (replaces the
   // achievements rail) — shows the soonest game the user is in.
-  profileNextGameTitle: 'המשחק הקרוב שלך',
-  profileNextGameEmptyTitle: 'אין לך משחק קרוב',
-  profileNextGameEmptyBody: 'עוד לא נרשמת למשחק. בוא נמצא לך אחד.',
-  profileNextGameEmptyCta: 'חפש משחק',
+  profileNextGameTitle: 'המחזור הקרוב שלך',
+  profileNextGameEmptyTitle: 'אין לך מחזור קרוב',
+  profileNextGameEmptyBody: 'עוד לא נרשמת למחזור. בוא נמצא לך אחד.',
+  profileNextGameEmptyCta: 'חפש מחזור',
   // Hero meta row (under the name) — location · trust · communities.
   profileHeroCommunities: (n: number) =>
     n === 1 ? 'מועדון אחד' : `${n} מועדונים`,
   profileHeroTrust: (pct: number) => `${pct}% אמין`,
   // Availability summary card on the profile.
-  profileAvailabilityTitle: 'זמינות למשחקים',
+  profileAvailabilityTitle: 'זמינות למחזורים',
   profileAvailabilityDaysLabel: 'ימים זמינים',
   profileAvailabilityRadiusLabel: 'מרחק מועדף',
   profileAvailabilityRadiusValue: (km: number) => `עד ${km} ק"מ`,
   profileAvailabilityNoDays: 'לא נבחרו ימים',
-  profileAvailabilityEmptyBody: 'הגדר מתי ואיפה נוח לך לשחק — ונמצא לך משחקים מתאימים.',
+  profileAvailabilityEmptyBody: 'הגדר מתי ואיפה נוח לך לשחק — ונמצא לך מחזורים מתאימים.',
   profileAvailabilityEmptyCta: 'הגדר זמינות',
   // Recent-activity feed on the profile — merged from achievements
   // unlocked + players who joined through the user.
@@ -2074,8 +2074,8 @@ export const he = {
   profileActivityAchievement: (title: string) => `פתחת תואר: ${title}`,
   profileActivityReferral: (name: string) => `${name} הצטרף דרך ההזמנה שלך`,
   profileActivityReferralAnon: 'שחקן חדש הצטרף דרך ההזמנה שלך',
-  profileActivityCreatedGame: (title: string) => `יצרת משחק · ${title}`,
-  profileActivityRegisteredGame: (title: string) => `נרשמת למשחק · ${title}`,
+  profileActivityCreatedGame: (title: string) => `יצרת מחזור · ${title}`,
+  profileActivityRegisteredGame: (title: string) => `נרשמת למחזור · ${title}`,
   profileActivityOpenedCommunity: (name: string) => `פתחת מועדון · ${name}`,
   profileActivityJoinedCommunity: (name: string) => `הצטרפת למועדון · ${name}`,
   profileActivityToday: 'היום',
@@ -2095,7 +2095,7 @@ export const he = {
   referralsScreenJoinedUnknownTime: 'הצטרף',
   referralsScreenViaLink: 'דרך הזמנה',
   referralsScreenViaCommunity: 'דרך מועדון',
-  referralsScreenViaGame: 'דרך משחק',
+  referralsScreenViaGame: 'דרך מחזור',
   referralsScreenEmptyTitle: 'עוד לא הזמנת אף אחד',
   referralsScreenEmptyBody:
     'שלח לחבר קישור הזמנה מכרטיס השחקן שלך — וכשהוא יתחבר תראה אותו פה.',
@@ -2137,7 +2137,7 @@ export const he = {
   // Visibility tag on the games list card
   matchTagOpenToAll: 'פתוח לכולם',
   matchTagCommunityOnly: 'סגור למועדון',
-  matchTagQuickClosed: 'משחק מהיר',
+  matchTagQuickClosed: 'מחזור מהיר',
   // Registration is no longer open (locked by an admin, or the late-join
   // window passed) while the game itself is still upcoming — flags that you
   // can't sign up right now (user report).
@@ -2148,13 +2148,13 @@ export const he = {
     n === 1 ? 'מקום אחרון' : `${n} מקומות אחרונים`,
 
   // Matches tab header / segmented tabs
-  matchesTabMine: 'המשחקים שלי',
-  matchesTabOpen: 'גלה משחקים',
-  // Section header inside "המשחקים שלי" tab — earlier it duplicated
-  // "משחקים פתוחים" from the other tab, which was confusing.
-  matchesSectionMineRegistered: 'משחקים שאתה רשום אליהם',
+  matchesTabMine: 'המחזורים שלי',
+  matchesTabOpen: 'גלה מחזורים',
+  // Section header inside "המחזורים שלי" tab — earlier it duplicated
+  // "מחזורים פתוחים" from the other tab, which was confusing.
+  matchesSectionMineRegistered: 'מחזורים שאתה רשום אליהם',
   // Matches screen redesign — hero / sections / empty card
-  matchesHeroSubtitle: 'הצטרף למשחקים או צור משחק חדש',
+  matchesHeroSubtitle: 'הצטרף למחזורים או צור מחזור חדש',
   // Personalised time-of-day greeting on the Matches hero.
   greetingMorning: 'בוקר טוב',
   greetingNoon: 'צהריים טובים',
@@ -2164,69 +2164,69 @@ export const he = {
   // Availability nudge popup (shown to users who haven't marked their days).
   availNudgeTitle: 'מתי בא לך לשחק?',
   availNudgeBody:
-    'סמן את הימים שאתה פנוי לשחק — ונציע לך אוטומטית משחקים שמתאימים בדיוק לזמן שלך.',
-  availNudgePerk1: 'הצעות משחק לפי הימים שלך',
+    'סמן את הימים שאתה פנוי לשחק — ונציע לך אוטומטית מחזורים שמתאימים בדיוק לזמן שלך.',
+  availNudgePerk1: 'הצעות מחזור לפי הימים שלך',
   availNudgePerk2: 'מנהלים יראו שאתה פנוי ויזמינו אותך',
   availNudgePerk3: 'פחות לפספס — יותר לשחק',
   availNudgeCta: 'סמן את הימים שלי',
   availNudgeLater: 'אחר כך',
-  matchesSectionOpen: 'משחקים פתוחים',
-  matchesSectionMine: 'המשחקים שלי',
-  matchesEmptyCardTitle: 'לא מצאת משחק מתאים?',
-  matchesEmptyCardSub: 'צור משחק חדש ותן לאחרים להצטרף',
-  matchCardJoinFull: 'הצטרף למשחק',
-  matchesEmptyMine: 'עוד לא נכנסת להרכב של משחק',
-  matchesEmptyOpen: 'אין משחקים פתוחים בקרבתך',
+  matchesSectionOpen: 'מחזורים פתוחים',
+  matchesSectionMine: 'המחזורים שלי',
+  matchesEmptyCardTitle: 'לא מצאת מחזור מתאים?',
+  matchesEmptyCardSub: 'צור מחזור חדש ותן לאחרים להצטרף',
+  matchCardJoinFull: 'הצטרף למחזור',
+  matchesEmptyMine: 'עוד לא נכנסת להרכב של מחזור',
+  matchesEmptyOpen: 'אין מחזורים פתוחים בקרבתך',
 
   // Match details screen
-  matchDetailsTitle: 'פרטי המשחק',
-  matchDetailsLoading: 'טוען את המשחק…',
+  matchDetailsTitle: 'פרטי המחזור',
+  matchDetailsLoading: 'טוען את המחזור…',
   matchDetailsDate: 'תאריך ושעה',
   matchDetailsLocation: 'מיקום',
   matchDetailsField: 'סוג מגרש',
   matchDetailsFormat: 'פורמט',
   matchDetailsPlayers: 'ההרכב',
-  matchDetailsManage: 'ניהול משחק',
+  matchDetailsManage: 'ניהול מחזור',
   matchDetailsCancel: 'בטל הרשמה',
-  matchDetailsJoin: 'הצטרף למשחק',
+  matchDetailsJoin: 'הצטרף למחזור',
   matchDetailsAcceptOffer: 'נפתח לך מקום — אשר הגעה',
   matchDetailsClosedForRegistration: 'ההרשמה נסגרה',
   matchDetailsRegistrationOpensAt: (when: string) =>
     `ההרשמה עדיין לא נפתחה — היא תיפתח ב-${when}`,
-  matchDetailsAlreadyStarted: 'המשחק כבר התחיל',
-  matchDetailsAlreadyLive: 'המשחק כבר במצב לייב',
-  matchDetailsJoinRejected: 'בקשתך למשחק זה נדחתה ולא ניתן להירשם שוב.',
-  matchDetailsAlreadyFinished: 'המשחק הסתיים',
-  matchDetailsAlreadyCancelled: 'המשחק בוטל',
-  matchDetailsTerminalSub: 'לא ניתן לבצע פעולות על המשחק הזה',
-  matchDetailsNotFound: 'המשחק לא קיים יותר',
+  matchDetailsAlreadyStarted: 'המחזור כבר התחיל',
+  matchDetailsAlreadyLive: 'המחזור כבר במצב לייב',
+  matchDetailsJoinRejected: 'בקשתך למחזור זה נדחתה ולא ניתן להירשם שוב.',
+  matchDetailsAlreadyFinished: 'המחזור הסתיים',
+  matchDetailsAlreadyCancelled: 'המחזור בוטל',
+  matchDetailsTerminalSub: 'לא ניתן לבצע פעולות על המחזור הזה',
+  matchDetailsNotFound: 'המחזור לא קיים יותר',
   // Stage 2 lifecycle CTAs / banners
-  lifecycleCannotJoin: 'אין אפשרות להצטרף למשחק הזה',
-  liveMatchNotActiveYet: 'המשחק עדיין לא פעיל',
+  lifecycleCannotJoin: 'אין אפשרות להצטרף למחזור הזה',
+  liveMatchNotActiveYet: 'המחזור עדיין לא פעיל',
   // Top in-app banners (event signals, distinct from system toasts).
   // These fire from the realtime game-doc listener, so they describe
   // events that may be triggered by other users on other devices.
-  bannerPlayerJoined: 'שחקן הצטרף למשחק',
+  bannerPlayerJoined: 'שחקן הצטרף למחזור',
   bannerPlayerJoinedNamed: (firstName: string) => `${firstName} נכנס להרכב`,
   bannerPlayersJoinedCount: (n: number) => `${n} שחקנים נכנסו להרכב`,
-  bannerPlayerLeft: 'שחקן יצא מהמשחק',
-  bannerPlayerLeftNamed: (firstName: string) => `${firstName} יצא מהמשחק`,
-  bannerPlayersLeftCount: (n: number) => `${n} שחקנים יצאו מהמשחק`,
-  bannerGuestAdded: 'אורח נוסף למשחק',
-  bannerEveningEnded: 'הערב הסתיים',
-  bannerGameCancelled: 'המשחק בוטל',
+  bannerPlayerLeft: 'שחקן יצא מהמחזור',
+  bannerPlayerLeftNamed: (firstName: string) => `${firstName} יצא מהמחזור`,
+  bannerPlayersLeftCount: (n: number) => `${n} שחקנים יצאו מהמחזור`,
+  bannerGuestAdded: 'אורח נוסף למחזור',
+  bannerEveningEnded: 'המחזור הסתיים',
+  bannerGameCancelled: 'המחזור בוטל',
   // Inline soft prompt at the top of MatchDetails for finished games
   // the user played in. Complements the post-game push so a player who
   // muted notifications still gets a clear nudge to rate teammates.
-  rateBannerTitle: 'דרג את חבריך מהמשחק',
+  rateBannerTitle: 'דרג את חבריך מהמחזור',
   rateBannerSub: 'תן דירוג מהיר לכל מי ששיחק איתך.',
   rateBannerCta: 'התחל לדרג',
   rateBannerDismiss: 'סגור',
   // RatePlayersScreen — the full list reached from the banner CTA.
   ratePlayersTitle: 'דירוג שחקנים',
-  ratePlayersIntro: 'תן דירוג לשחקנים ששיחקו איתך במשחק.',
+  ratePlayersIntro: 'תן דירוג לשחקנים ששיחקו איתך במחזור.',
   ratePlayersHint: 'אפשר לשנות דירוג בכל רגע. הדירוג שלך אנונימי.',
-  ratePlayersEmpty: 'אין שחקנים רשומים לדירוג במשחק הזה.',
+  ratePlayersEmpty: 'אין שחקנים רשומים לדירוג במחזור הזה.',
   ratePlayersSaveFailed: 'שמירת הדירוג נכשלה, נסה שוב',
   // Pending join-request approvals — used both for community and game.
   pendingApprove: 'אשר',
@@ -2241,27 +2241,27 @@ export const he = {
   // of the parent community can see it.
   matchVisibilityToggle: 'הצג לכל האפליקציה',
   matchVisibilityHelper:
-    'כשהאפשרות כבויה, רק חברי המועדון יראו את המשחק',
-  matchVisibilityErrorPublic: 'לא הצלחנו לפרסם את המשחק',
-  matchVisibilityErrorCommunity: 'לא הצלחנו להגביל את המשחק למועדון',
+    'כשהאפשרות כבויה, רק חברי המועדון יראו את המחזור',
+  matchVisibilityErrorPublic: 'לא הצלחנו לפרסם את המחזור',
+  matchVisibilityErrorCommunity: 'לא הצלחנו להגביל את המחזור למועדון',
   // Blocked-state screen rendered when a non-member tries to open a
   // community-only game (deep link / invite / push / stale nav). Must
   // not leak any private game info — title, time, venue, players.
-  communityOnlyGameTitle: 'משחק לסגל בלבד',
-  communityOnlyGameSubtitle: 'המשחק הזה פתוח רק לחברי המועדון',
+  communityOnlyGameTitle: 'מחזור לסגל בלבד',
+  communityOnlyGameSubtitle: 'המחזור הזה פתוח רק לחברי המועדון',
   communityOnlyGameBack: 'חזור',
   matchDetailsDuration: 'משך',
   matchDetailsRoleAdmin: 'מנהל',
   matchDetailsAddGuest: 'הוסף אורח',
   matchDetailsNavigateWaze: 'נווט עם Waze',
-  matchDetailsNoLocation: 'אין מיקום למשחק',
+  matchDetailsNoLocation: 'אין מיקום למחזור',
   matchDetailsCannotOpenNavigation: 'לא ניתן לפתוח ניווט',
   // ── Match details redesign ───────────────────────────────────────────
   matchHeroNoLocation: 'אין מיקום',
-  matchHeroTitle: 'פרטי משחק',
+  matchHeroTitle: 'פרטי מחזור',
   matchHeroCommunityPrefix: 'מועדון',
   matchStatsPlayers: 'שחקנים',
-  matchStatsDuration: 'משך משחק',
+  matchStatsDuration: 'משך מחזור',
   matchStatsCommunity: 'מועדון',
   matchStatsWeather: 'מזג אוויר',
   matchStatsMinutesShort: 'דק׳',
@@ -2269,7 +2269,7 @@ export const he = {
   matchParticipantStatusComing: 'מגיע',
   matchParticipantStatusArrived: 'הגיע',
   matchParticipantRoleOrganizer: 'מנהל',
-  matchDetailsCardTitle: 'פרטי המשחק',
+  matchDetailsCardTitle: 'פרטי המחזור',
   matchDetailsLabelField: 'מגרש',
   matchDetailsLabelCity: 'עיר',
   matchDetailsLabelAddress: 'כתובת',
@@ -2277,7 +2277,7 @@ export const he = {
   matchDetailsNavigateButton: 'נווט למגרש ב-Waze',
   matchDetailsLabelFieldType: 'סוג מגרש',
   matchDetailsLabelNotes: 'הערות',
-  matchDetailsLabelOrganizer: 'יוצר המשחק',
+  matchDetailsLabelOrganizer: 'יוצר המחזור',
   matchDetailsLabelCreatedAt: 'נוצר בתאריך',
   matchDetailsLabelMeetingTime: 'שעת התכנסות',
   matchDetailsLabelCommunity: 'מועדון',
@@ -2296,14 +2296,14 @@ export const he = {
   matchStatusCardWaiting: 'מחכים לשחקנים',
   matchStatusCardWaitingHelper: (n: number) =>
     `חסרים עוד ${n} שחקנים כדי להתחיל`,
-  matchStatusCardYouRegistered: 'אתה רשום למשחק',
+  matchStatusCardYouRegistered: 'אתה רשום למחזור',
   matchStatusCardReadyTeams: 'מוכנים להרכיב קבוצות',
   matchStatusCardTeamsReady: 'הקבוצות מוכנות — אפשר להתחיל',
   matchStatusCardTeamsInvalid: 'יש לעדכן את הקבוצות',
-  matchStatusCardLive: 'המשחק בעיצומו',
-  matchStatusCardFinished: 'המשחק נגמר',
-  matchStatusCardCancelled: 'המשחק בוטל',
-  matchPlayersScreenTitle: 'שחקני המשחק',
+  matchStatusCardLive: 'המחזור בעיצומו',
+  matchStatusCardFinished: 'המחזור נגמר',
+  matchStatusCardCancelled: 'המחזור בוטל',
+  matchPlayersScreenTitle: 'שחקני המחזור',
   matchPlayersSectionRegistered: 'ההרכב',
   matchPlayersSectionWaitlist: 'רשימת המתנה',
   matchPlayersSectionPending: 'ממתינים לאישור',
@@ -2364,30 +2364,30 @@ export const he = {
   pairStatsSameTeam: 'באותה קבוצה',
   pairStatsWinsTogether: 'ניצחתם יחד',
   pairStatsLossesTogether: 'הפסדתם יחד',
-  pairStatsSameTeamGames: 'משחקים באותה קבוצה',
-  pairStatsSameTeamRounds: 'משחקונים באותה קבוצה',
+  pairStatsSameTeamGames: 'מחזורים באותה קבוצה',
+  pairStatsSameTeamRounds: 'משחקים באותה קבוצה',
   pairStatsEmpty: 'עדיין לא שיחקתם יחד',
   // ── Head-to-head (from live rotation) ──
-  pairStatsH2HTitle: 'ראש בראש במשחקונים',
+  pairStatsH2HTitle: 'ראש בראש במשחקים',
   pairStatsAgainst: 'אחד נגד השני',
   pairStatsTogetherWL: (w: number, l: number) => `ניצחתם ${w} · הפסדתם ${l}`,
   pairStatsAgainstWL: (w: number, l: number) => `ניצחת ${w} · הפסדת ${l}`,
-  pairStatsRoundsUnit: (n: number) => (n === 1 ? 'משחקון 1' : `${n} משחקונים`),
-  pairStatsRoundsCount: (n: number) => (n === 1 ? 'משחקון אחד' : `${n} משחקונים`),
+  pairStatsRoundsUnit: (n: number) => (n === 1 ? 'משחק 1' : `${n} משחקים`),
+  pairStatsRoundsCount: (n: number) => (n === 1 ? 'משחק אחד' : `${n} משחקים`),
   // Ties aren't wins or losses, so rounds can exceed wins+losses. Surface the
-  // tie count so "23 משחקונים · 11 ניצחת · 11 הפסדת" no longer looks off-by-one.
+  // tie count so "23 משחקים · 11 ניצחת · 11 הפסדת" no longer looks off-by-one.
   pairStatsRoundsWithTies: (n: number, ties: number) =>
-    `${n === 1 ? 'משחקון אחד' : `${n} משחקונים`}${ties > 0 ? ` · ${ties} תיקו` : ''}`,
+    `${n === 1 ? 'משחק אחד' : `${n} משחקים`}${ties > 0 ? ` · ${ties} תיקו` : ''}`,
   // Separate W/L labels for the donut rows (big number + small label).
   pairWonTogether: 'ניצחתם',
   pairLostTogether: 'הפסדתם',
   pairWonYou: 'ניצחת',
   pairLostYou: 'הפסדת',
   communityStatsTitle: 'נתוני מועדון',
-  communityStatsTotalFinished: 'משחקים שיצאו לפועל',
-  communityStatsThisMonth: 'משחקים החודש',
+  communityStatsTotalFinished: 'מחזורים שיצאו לפועל',
+  communityStatsThisMonth: 'מחזורים החודש',
   communityStatsOrgRate: 'אחוז הצלחה בארגון',
-  communityStatsAvgAttendance: 'ממוצע הגעות למשחק',
+  communityStatsAvgAttendance: 'ממוצע הגעות למחזור',
   communityStatsTopPlayers: 'המגיעים הקבועים',
   communityStatsActiveMonth: 'פעילים החודש',
   communityStatsActiveYear: 'פעילים השנה',
@@ -2400,9 +2400,9 @@ export const he = {
   communityStatsKingShareValue: (pct: number) => `${pct}%`,
   communityStatsDuo: 'הצמד הקטלני',
   communityStatsDuoValue: (n: number) => `${n} בישולים`,
-  communityStatsDrawRate: 'אחוז התיקו במשחקונים',
+  communityStatsDrawRate: 'אחוז התיקו במשחקים',
   communityStatsStreak: 'רצף ההגעות הארוך ביותר',
-  communityStatsStreakValue: (n: number) => `${n} ערבים`,
+  communityStatsStreakValue: (n: number) => `${n} מחזורים`,
   // Community goals championship (community-scoped goals only).
   communityChampTitle: 'אלופי המועדון',
   communityChampNote: 'סיכום מצטבר של כל החברות במועדון · ממוין לפי ניצחונות, אז גולים, אז בישולים',
@@ -2411,16 +2411,16 @@ export const he = {
   communityChampInfoBody:
     'הטבלה ממוינת לפי מספר הניצחונות. אם מספר הניצחונות שווה, השוויון נשבר לפי מספר הגולים; ואם גם הגולים שווים — לפי מספר הבישולים.',
   communityChampTotalGoals: 'סך הגולים',
-  communityChampTotalRounds: 'משחקונים',
+  communityChampTotalRounds: 'משחקים',
   // Per-game championship (shown once the game is finished).
-  gameChampTitle: 'אלופי המשחק',
-  gameChampNote: 'ניקוד = (גול×2 + בישול) חלקי מספר המשחקונים',
+  gameChampTitle: 'אלופי המחזור',
+  gameChampNote: 'ניקוד = (גול×2 + בישול) חלקי מספר המשחקים',
   // Championship table column headers.
   champColPlayer: 'שחקן',
   champColGoals: 'גולים',
   champColAssists: 'בישולים',
-  champColGames: 'משחקים',
-  champColMiniGames: 'משחקונים',
+  champColGames: 'מחזורים',
+  champColMiniGames: 'משחקים',
   champColAppearances: 'הופעות',
   champColWins: 'ניצחונות',
   champColLosses: 'הפסדים',
@@ -2428,59 +2428,59 @@ export const he = {
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,
-  pairStatsFirstShared: 'משחק ראשון יחד',
-  pairStatsLastShared: 'משחק אחרון יחד',
+  pairStatsFirstShared: 'מחזור ראשון יחד',
+  pairStatsLastShared: 'מחזור אחרון יחד',
   // Used when first === last (single shared game). The two-row
   // version would have duplicated the same date label so we collapse
   // to one neutral label.
-  pairStatsOnlyShared: 'משחק משותף',
+  pairStatsOnlyShared: 'מחזור משותף',
   pairStatsNoSharedHistory:
-    'עדיין לא שיחקתם יחד — הזמן אותו למשחק כדי להתחיל היסטוריה',
+    'עדיין לא שיחקתם יחד — הזמן אותו למחזור כדי להתחיל היסטוריה',
   // Hamburger sections + items for match
-  matchMenuSectionMatch: 'משחק',
+  matchMenuSectionMatch: 'מחזור',
   matchMenuSectionPlayers: 'שחקנים',
   matchMenuSectionDanger: 'מסוכן',
-  matchMenuEdit: 'ערוך משחק',
-  matchEditBlockedTitle: 'הערב כבר התחיל',
+  matchMenuEdit: 'ערוך מחזור',
+  matchEditBlockedTitle: 'המחזור כבר התחיל',
   matchEditBlockedBody:
-    'לא ניתן לערוך את פרטי המשחק אחרי שלחצתם על "התחל ערב". כדי לערוך, סיימו או בטלו את המשחק.',
+    'לא ניתן לערוך את פרטי המחזור אחרי שלחצתם על "התחל מחזור". כדי לערוך, סיימו או בטלו את המחזור.',
   matchMenuPlayers: 'ניהול שחקנים',
-  matchMenuShare: 'שתף משחק',
+  matchMenuShare: 'שתף מחזור',
   // Explicit entry to the full players screen — players, waitlist,
   // pending approvals. Mirrors the inline "הצג הכל" link, but
   // surfaces it as a discoverable admin action in the menu.
   matchMenuManagePlayers: 'ניהול שחקנים והממתינים',
   // Visibility-toggle labels — describe the CURRENT state, not the
   // action. The toggle next to the label flips public ↔ community.
-  matchMenuMakePublic: 'משחק פתוח לכולם',
-  matchMenuMakeCommunity: 'משחק למועדון בלבד',
-  matchMenuManage: 'ניהול משחק',
-  matchMenuWatchLive: 'צפייה במשחק חי',
-  matchManageScreenTitle: 'ניהול משחק',
-  matchManageSectionAccess: 'גישה למשחק',
+  matchMenuMakePublic: 'מחזור פתוח לכולם',
+  matchMenuMakeCommunity: 'מחזור למועדון בלבד',
+  matchMenuManage: 'ניהול מחזור',
+  matchMenuWatchLive: 'צפייה במחזור חי',
+  matchManageScreenTitle: 'ניהול מחזור',
+  matchManageSectionAccess: 'גישה למחזור',
   matchManageSectionDanger: 'פעולות מסוכנות',
-  matchManageVisibilityLocked: 'אפשר לעדכן רק כשהמשחק במצב פתוח להרשמה',
-  matchManageAdminOnly: 'רק מנהל יכול לנהל את המשחק',
+  matchManageVisibilityLocked: 'אפשר לעדכן רק כשהמחזור במצב פתוח להרשמה',
+  matchManageAdminOnly: 'רק מנהל יכול לנהל את המחזור',
   // Manage section toggle title
-  matchManageToggle: 'ניהול משחק',
+  matchManageToggle: 'ניהול מחזור',
   matchInviteAvailable: 'הזמן שחקנים פנויים',
-  matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המשחק, באזור',
+  matchInviteAvailableHelper: 'שחקנים שזמינים ביום ובשעה של המחזור, באזור',
   // Admin "register members from the community" flow (MatchDetails menu →
   // AddMembersScreen).
   matchMenuAddMembers: 'צרף חברים מהמועדון',
   addMembersTitle: 'הוספת שחקנים מהמועדון',
-  addMembersHint: 'בחרו חברי מועדון לרשום ישירות למשחק. הם יקבלו על כך התראה.',
+  addMembersHint: 'בחרו חברי מועדון לרשום ישירות למחזור. הם יקבלו על כך התראה.',
   addMembersHintSpots: (n: number) =>
     n === 1
       ? 'נשאר מקום אחד בהרכב — מעבר לזה השחקנים יתווספו לרשימת ההמתנה. הם יקבלו התראה.'
       : n === 0
         ? 'ההרכב מלא — השחקנים שתבחרו יתווספו לרשימת ההמתנה. הם יקבלו התראה.'
         : `נשארו ${n} מקומות בהרכב — מעבר לזה השחקנים יתווספו לרשימת ההמתנה. הם יקבלו התראה.`,
-  addMembersEmpty: 'כל חברי המועדון כבר רשומים למשחק',
+  addMembersEmpty: 'כל חברי המועדון כבר רשומים למחזור',
   addMembersSubmit: (n: number) => (n === 1 ? 'רשום שחקן' : `רשום ${n} שחקנים`),
   addMembersSubmitEmpty: 'בחרו שחקנים לרישום',
   addMembersDone: (n: number) =>
-    n === 1 ? 'שחקן נרשם למשחק' : `${n} שחקנים נרשמו למשחק`,
+    n === 1 ? 'שחקן נרשם למחזור' : `${n} שחקנים נרשמו למחזור`,
   addMembersDoneWaitlist: (players: number, waitlist: number) =>
     `${players} נרשמו להרכב, ${waitlist} לרשימת ההמתנה`,
   addMembersNoneAdded: 'אף שחקן לא נוסף (כבר רשומים)',
@@ -2500,11 +2500,11 @@ export const he = {
       ? 'ההרשמה עוד לא נפתחה. נשאר מקום אחד לשריון — בחרו למי לשמור אותו.'
       : `ההרשמה עוד לא נפתחה. אפשר לשריין עד ${n} מקומות — בחרו למי לשמור אותם. הם ייכנסו אוטומטית ויקבלו התראה.`,
   // Filler candidate (non-member) apply CTA on MatchDetails.
-  fillerApplyTitle: 'המשחק מחפש שחקנים להשלמה',
-  fillerApplySub: 'הגש מועמדות — מנהל המשחק יאשר אותך ידנית.',
+  fillerApplyTitle: 'המחזור מחפש שחקנים להשלמה',
+  fillerApplySub: 'הגש מועמדות — מנהל המחזור יאשר אותך ידנית.',
   fillerApplyCta: 'הגש מועמדות',
   fillerApplySent: 'הבקשה נשלחה — ממתין לאישור המנהל',
-  fillerApplySentSub: 'הבקשה נשלחה. מנהל המשחק יחליט אם לאשר.',
+  fillerApplySentSub: 'הבקשה נשלחה. מנהל המחזור יחליט אם לאשר.',
   fillerApplySentChip: 'נשלח',
   fillerApplyError: 'לא הצלחנו לשלוח, נסו שוב',
   // Compact status helpers — used by MatchStatusCard
@@ -2513,7 +2513,7 @@ export const he = {
   matchStatusReadyToCreate: 'אפשר להרכיב קבוצות',
   matchStatusTeamsInvalid: 'יש לעדכן את הקבוצות לפני התחלה',
   // Conflict CTA copy
-  matchPrimaryConflict: 'יש לך משחק אחר בזמן הזה',
+  matchPrimaryConflict: 'יש לך מחזור אחר בזמן הזה',
   // Compact status chip shown in the hero strip — three tiers based
   // on capacity ratio. "חסרים N" is the default green state; we
   // switch to yellow at 80% full and red when fully booked.
@@ -2523,37 +2523,37 @@ export const he = {
   // Notes / rules row + bottom sheet
   matchNotesRowTitle: 'חוקים והערות',
   matchNotesSheetTitle: 'חוקים והערות',
-  matchNotesEmpty: 'לא הוזנו הערות למשחק',
+  matchNotesEmpty: 'לא הוזנו הערות למחזור',
   // Cancel-registration as a subtle outlined link (not a destructive
   // primary). Same Hebrew copy as before.
   matchCancelRegistrationLink: 'בטל הרשמה',
   // History menu entry — navigates the user to their general match
   // history surface (no per-game history screen yet).
-  matchMenuHistory: 'היסטוריית משחקים',
-  matchMenuLeave: 'יציאה מהמשחק',
+  matchMenuHistory: 'היסטוריית מחזורים',
+  matchMenuLeave: 'יציאה מהמחזור',
   leaveGameConfirmTitle: 'לבטל את ההרשמה?',
-  leaveGameConfirmBody: 'ההרשמה שלך למשחק תבוטל. תמיד אפשר להירשם שוב כל עוד יש מקום.',
+  leaveGameConfirmBody: 'ההרשמה שלך למחזור תבוטל. תמיד אפשר להירשם שוב כל עוד יש מקום.',
   // Registration conflict — surfaced in the modal that blocks a join
   // when the user is already registered to a game within ±4h of the
   // target. The helper variant is for the inline disabled-CTA hint.
   gameManagerBadge: 'מנהל',
-  communityHistoryTitle: 'היסטוריית משחקים',
+  communityHistoryTitle: 'היסטוריית מחזורים',
   communityHistoryShowLess: 'הצג פחות',
   communityHistorySeeAll: (n: number) => `הצג את כל ההיסטוריה (${n})`,
-  communityMenuHistory: 'היסטוריית משחקים',
-  communityHistoryEmptyTitle: 'עדיין אין משחקים',
-  communityHistoryEmptyBody: 'אחרי שתשחקו ערב ראשון, כל המשחקים שהסתיימו יופיעו כאן.',
-  gameJoinRejectedToast: 'הבקשה שלך למשחק נדחתה על ידי המנהל',
-  gameNotJoinableToast: 'המשחק כבר לא פתוח להרשמה',
-  registrationConflictTitle: 'אתה כבר רשום למשחק בזמן חופף',
+  communityMenuHistory: 'היסטוריית מחזורים',
+  communityHistoryEmptyTitle: 'עדיין אין מחזורים',
+  communityHistoryEmptyBody: 'אחרי שתשחקו מחזור ראשון, כל המחזורים שהסתיימו יופיעו כאן.',
+  gameJoinRejectedToast: 'הבקשה שלך למחזור נדחתה על ידי המנהל',
+  gameNotJoinableToast: 'המחזור כבר לא פתוח להרשמה',
+  registrationConflictTitle: 'אתה כבר רשום למחזור בזמן חופף',
   // Variant shown when the conflicting game lives in a DIFFERENT
   // community than the target. Same body copy works for both — only
   // the title needs to clarify the cross-group case.
-  registrationConflictTitleOtherGroup: 'אתה כבר רשום למשחק קרוב במועדון אחר',
+  registrationConflictTitleOtherGroup: 'אתה כבר רשום למחזור קרוב במועדון אחר',
   registrationConflictMessage:
-    'כדי להירשם למשחק הזה, בטל קודם את ההרשמה למשחק השני.',
-  registrationConflictHelper: 'כבר בהרכב של משחק קרוב',
-  registrationConflictViewGame: 'צפה במשחק',
+    'כדי להירשם למחזור הזה, בטל קודם את ההרשמה למחזור השני.',
+  registrationConflictHelper: 'כבר בהרכב של מחזור קרוב',
+  registrationConflictViewGame: 'צפה במחזור',
   // Fallback group label used in the modal when we can't resolve
   // the conflicting game's group name from the local store
   // (typically because the user isn't a member of that community).
@@ -2562,22 +2562,22 @@ export const he = {
   // see exactly how close the two games are. Hidden when either side
   // lacks a startsAt (e.g. an active game with no scheduled time).
   registrationConflictTimeDiffMinutes: (min: number) =>
-    `המשחקים בהפרש של ${min} דקות`,
+    `המחזורים בהפרש של ${min} דקות`,
   registrationConflictTimeDiffHoursMinutes: (h: number, min: number) =>
     min === 0
-      ? `המשחקים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`}`
-      : `המשחקים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`} ו־${min} דקות`,
+      ? `המחזורים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`}`
+      : `המחזורים בהפרש של ${h === 1 ? 'שעה' : `${h} שעות`} ו־${min} דקות`,
   // Direct-cancel action lets the user resolve the conflict without
   // navigating away. After success we re-run the pre-check; the
   // user still has to tap "הצטרף" again — we never auto-join.
-  registrationConflictCancelOther: 'ביטול ההרשמה מהמשחק האחר',
-  registrationConflictCancelSuccess: 'ההרשמה למשחק האחר בוטלה',
+  registrationConflictCancelOther: 'ביטול ההרשמה מהמחזור האחר',
+  registrationConflictCancelSuccess: 'ההרשמה למחזור האחר בוטלה',
   registrationConflictCancelFailed: 'לא ניתן לבטל את ההרשמה כרגע',
-  registrationConflictViewOther: 'צפה במשחק האחר',
+  registrationConflictViewOther: 'צפה במחזור האחר',
   registrationConflictClose: 'סגור',
-  registrationConflictResolved: 'בוטלה ההרשמה הקודמת ונרשמת למשחק החדש',
+  registrationConflictResolved: 'בוטלה ההרשמה הקודמת ונרשמת למחזור החדש',
   sessionActionInviteCommunityOnly:
-    'זמין רק למשחקים פתוחים לכלל האפליקציה',
+    'זמין רק למחזורים פתוחים לכלל האפליקציה',
   matchDetailsJoinAsPlayer: 'הצטרף כשחקן',
   // Refactored status card — single block replacing the old pill +
   // helper + teams placeholder trio.
@@ -2587,41 +2587,41 @@ export const he = {
   playersEmptyMissing: (n: number) =>
     n === 1 ? 'חסר עוד שחקן אחד' : `חסרים עוד ${n} שחקנים`,
   // Admin "manage game" section at the bottom.
-  manageSectionTitle: 'ניהול משחק',
-  deleteGameAction: 'מחיקת משחק',
+  manageSectionTitle: 'ניהול מחזור',
+  deleteGameAction: 'מחיקת מחזור',
   matchDetailsGoLive: 'עבור למצב לייב',
 
   // Notifications settings
   notificationsTitle: 'הגדרות התראות',
   notificationsIntro:
     'בחר אילו התראות לקבל. אפשר לכבות סוגים בודדים בכל רגע.',
-  notifJoinRequest: 'בקשות הצטרפות (מועדון ומשחק)',
-  notifJoinRequestSub: 'כשמישהו מבקש להצטרף למועדון או למשחק שאתה מנהל',
+  notifJoinRequest: 'בקשות הצטרפות (מועדון ומחזור)',
+  notifJoinRequestSub: 'כשמישהו מבקש להצטרף למועדון או למחזור שאתה מנהל',
   notifApprovedRejected: 'אישור / דחייה של הבקשות שלי',
   notifApprovedRejectedSub: 'כשבקשת ההצטרפות שלך מטופלת',
-  notifNewGameInCommunity: 'משחק חדש במועדון',
+  notifNewGameInCommunity: 'מחזור חדש במועדון',
   notifNewGameInCommunitySub: 'תוכל להפעיל את זה בכל מועדון בנפרד',
-  notifGameReminder: 'תזכורת לפני משחק',
-  notifGameReminderSub: 'שעות לפני משחק שאתה רשום אליו',
-  notifGameCanceledOrUpdated: 'ביטול / שינוי משחק',
-  notifGameCanceledOrUpdatedSub: 'אם משחק שלך מבוטל או הוזז',
-  notifSpotOpened: 'פתחו מקום במשחק שאני בספסל',
+  notifGameReminder: 'תזכורת לפני מחזור',
+  notifGameReminderSub: 'שעות לפני מחזור שאתה רשום אליו',
+  notifGameCanceledOrUpdated: 'ביטול / שינוי מחזור',
+  notifGameCanceledOrUpdatedSub: 'אם מחזור שלך מבוטל או הוזז',
+  notifSpotOpened: 'פתחו מקום במחזור שאני בספסל',
   notifSpotOpenedSub: 'כששחקן ביטל ואתה הראשון בספסל',
   notifGrowthMilestone: 'אבני דרך במועדון',
   notifGrowthMilestoneSub: '10/20/30/50 שחקנים — אופציונלי',
-  notifInviteToGame: 'הזמנות אישיות למשחקים',
-  notifInviteToGameSub: 'כששחקן אחר מזמין אותך למשחק',
+  notifInviteToGame: 'הזמנות אישיות למחזורים',
+  notifInviteToGameSub: 'כששחקן אחר מזמין אותך למחזור',
   notifRateReminder: 'תזכורת לדרג חברים',
-  notifRateReminderSub: 'אחרי משחק שסיימת — שעה אחרי הסיום',
-  notifGameFillingUp: 'מקום אחרון במשחק קרוב',
-  notifGameFillingUpSub: 'משחקים במועדון שלך שכמעט מלאים',
-  notifGameRsvpNudge: 'תזכורת להירשם למשחק',
-  notifGameRsvpNudgeSub: 'נשלחת 5 שעות לפני המשחק אם עדיין לא ענית',
-  notifGamePlayersJoined: 'שחקן נרשם למשחק',
+  notifRateReminderSub: 'אחרי מחזור שסיימת — שעה אחרי הסיום',
+  notifGameFillingUp: 'מקום אחרון במחזור קרוב',
+  notifGameFillingUpSub: 'מחזורים במועדון שלך שכמעט מלאים',
+  notifGameRsvpNudge: 'תזכורת להירשם למחזור',
+  notifGameRsvpNudgeSub: 'נשלחת 5 שעות לפני המחזור אם עדיין לא ענית',
+  notifGamePlayersJoined: 'שחקן נרשם למחזור',
   notifGamePlayersJoinedSub:
     'מישהו נרשם למשחק שאני מארגן (כולל מחזור שבועי ומשחק מהיר)',
   notifPlayerCancelled: 'שחקן ביטל השתתפות',
-  notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמשחק שאני מארגן',
+  notifPlayerCancelledSub: 'שחקן רשום הסיר את עצמו מהמחזור שאני מארגן',
   notifGameShortageWarning: 'מחסור בשחקנים',
   notifGameShortageWarningSub:
     'התראה למארגן כשמתקרבים לקיק־אוף ויש פחות שחקנים מהמינימום',
@@ -2635,7 +2635,7 @@ export const he = {
   notifHeroTitle: 'נהל את הקצב שלך',
   notifHeroBody:
     'בחר בדיוק אילו עדכונים לקבל כדי להישאר בעניינים בלי הסחות דעת.',
-  notifCategoryGames: 'ניהול משחקים',
+  notifCategoryGames: 'ניהול מחזורים',
   notifCategoryCommunity: 'קהילה וחברה',
   notifCategoryReminders: 'תזכורות',
   // OS-permission gate — shown when notifications are turned off for the
@@ -2643,7 +2643,7 @@ export const he = {
   // until the OS lets pushes through).
   notifPermTitle: 'ההתראות כבויות במכשיר',
   notifPermBody:
-    'כדי לקבל עדכונים על משחקים, בקשות ותזכורות — צריך לאשר התראות לאפליקציה. אחרי שתאשר, תוכל לבחור כאן בדיוק מה לקבל.',
+    'כדי לקבל עדכונים על מחזורים, בקשות ותזכורות — צריך לאשר התראות לאפליקציה. אחרי שתאשר, תוכל לבחור כאן בדיוק מה לקבל.',
   notifPermEnable: 'אפשר התראות',
   notifPermOpenSettings: 'פתיחת הגדרות',
   notifPermDeniedTitle: 'ההתראות חסומות',
@@ -2651,11 +2651,11 @@ export const he = {
     'חסמת התראות לאפליקציה. פתח את הגדרות המכשיר ואפשר התראות כדי לקבל עדכונים.',
 
   // Per-community subscription
-  communityNotifyNewGames: 'הודיעו לי על משחקים חדשים במועדון',
+  communityNotifyNewGames: 'הודיעו לי על מחזורים חדשים במועדון',
 
   // Stats tab
   statsTitle: 'סטטיסטיקה',
-  statsGames: 'משחקים',
+  statsGames: 'מחזורים',
   statsWins: 'ניצחונות',
   statsLosses: 'הפסדים',
   statsTies: 'תיקו',
@@ -2664,15 +2664,15 @@ export const he = {
   statsCancelRate: 'אחוז ביטולים',
 
   // History tab
-  historyTitle: 'היסטוריית משחקים',
-  historyEmpty: 'אין עדיין משחקים קודמים',
-  historyMatches: (n: number) => `${n} משחקונים`,
+  historyTitle: 'היסטוריית מחזורים',
+  historyEmpty: 'אין עדיין מחזורים קודמים',
+  historyMatches: (n: number) => `${n} משחקים`,
   historyWin: 'ניצחון',
   historyLoss: 'הפסד',
 
   // ── Draft Teams (חלוקת כוחות) ──────────────────────────────────────
   draftTitle: 'חלוקת כוחות',
-  draftAdminOnly: 'רק מנהל המשחק יכול לקבוע כוחות',
+  draftAdminOnly: 'רק מנהל המחזור יכול לקבוע כוחות',
   draftStepLabel: (n: number, total: number) => `שלב ${n} מתוך ${total}`,
   draftSetupSubtitle: 'בחר קפטנים',
   draftCaptainBadge: 'קפטן',
@@ -2682,7 +2682,7 @@ export const he = {
   // in the live rotation.
   draftFillModeTitle: 'השלמת קבוצה חסרה',
   draftFillModeSubtitle:
-    'כשקבוצה לא מלאה עולה, האפליקציה משלימה אותה אוטומטית משחקן של הקבוצה שיצאה. מה קורה איתו אחרי?',
+    'כשקבוצה לא מלאה עולה, האפליקציה משלימה אותה אוטומטית מחזורן של הקבוצה שיצאה. מה קורה איתו אחרי?',
   draftFillTemporaryTitle: 'השלמה זמנית',
   draftFillTemporaryDesc: 'המשלים חוזר לקבוצה שלו כשהיא עולה שוב',
   draftFillPermanentTitle: 'השלמה קבועה',
@@ -2696,7 +2696,7 @@ export const he = {
   draftChooseOrder: 'בחרו סדר הגרלה כדי להמשיך',
   draftTooManyCaptains: 'אפשר עד 4 קבוצות — הסירו קפטן',
   draftPickExactCaptains: (n: number) =>
-    `בחרו בדיוק ${n} קפטנים (כמספר הקבוצות במשחק)`,
+    `בחרו בדיוק ${n} קפטנים (כמספר הקבוצות במחזור)`,
   draftNotEnoughPlayers: 'אין מספיק שחקנים רשומים לחלוקה',
   draftBoardTurn: (letter: string) => `תורו של קפטן ${letter} לבחור`,
   draftAvailableTitle: 'שחקנים זמינים',
@@ -2712,7 +2712,7 @@ export const he = {
   draftExportWhatsapp: 'ייצא כוחות לווטצאפ',
   draftTeamsStaleHint: 'מישהו הצטרף אחרי שחולקו הכוחות — כדאי לאזן מחדש',
   matchCreateTeamsBannerTitle: 'הגיע הזמן לחלק כוחות',
-  matchCreateTeamsBannerSub: 'המשחק מתקרב — חלקו את השחקנים לקבוצות',
+  matchCreateTeamsBannerSub: 'המחזור מתקרב — חלקו את השחקנים לקבוצות',
   matchAutoTeamsScheduled: (when: string) =>
     `הכוחות ייווצרו אוטומטית ב-${when}`,
   matchManageTeamsBannerTitle: 'נהל כוחות',
@@ -2761,13 +2761,13 @@ export const he = {
   tabChat: "צ'אטים",
   chatsListTitle: "צ'אטים",
   chatsListEmpty: 'אין עדיין שיחות',
-  chatsListEmptyHint: 'שיחות של משחקים ומועדונים שאתה חבר בהם יופיעו כאן',
-  chatOpenGame: "צ'אט המשחק",
+  chatsListEmptyHint: 'שיחות של מחזורים ומועדונים שאתה חבר בהם יופיעו כאן',
+  chatOpenGame: "צ'אט המחזור",
   chatOpenCommunity: "צ'אט המועדון",
   chatNoAccess: 'אין לך גישה לצ׳אט הזה',
   chatEmpty: 'המגרש פנוי — שלחו את ההודעה הראשונה ⚽',
   chatLoadingTitle: 'טוען צ׳אט…',
-  chatGameUnavailable: 'הצ׳אט לא זמין — ייתכן שהמשחק נמחק או שאין לך גישה',
+  chatGameUnavailable: 'הצ׳אט לא זמין — ייתכן שהמחזור נמחק או שאין לך גישה',
   chatInputPlaceholder: 'כתבו הודעה…',
   chatSendA11y: 'שליחת הודעה',
   chatSendFailedTitle: 'ההודעה לא נשלחה',
@@ -2777,7 +2777,7 @@ export const he = {
   chatDeleteConfirmBodyMod: 'מחיקה כמנהל — ההודעה תימחק לכל המשתתפים.',
   chatDeleteFailedTitle: 'המחיקה נכשלה',
   chatDeleteFailedBody: 'נסו שוב.',
-  chatGameSubtitle: 'משתתפי המשחק',
+  chatGameSubtitle: 'משתתפי המחזור',
   chatCommunitySubtitle: 'חברי המועדון',
   // Direct (1-on-1) messages.
   dmTitle: 'הודעה ישירה',

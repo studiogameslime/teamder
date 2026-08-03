@@ -156,7 +156,7 @@ export const playerCompareService = {
         metric('goals', 'גולים', a.goals, b.goals, 'int'),
         metric('assists', 'בישולים', a.assists, b.assists, 'int'),
         metric('winPct', 'אחוז ניצחון', a.winPct, b.winPct, 'pct'),
-        metric('gpg', 'ממוצע גולים לערב', a.goalsPerGame, b.goalsPerGame, 'avg1'),
+        metric('gpg', 'ממוצע גולים למחזור', a.goalsPerGame, b.goalsPerGame, 'avg1'),
         metric('games', 'משחקים', a.games, b.games, 'int'),
         metric('rounds', 'משחקונים', a.rounds, b.rounds, 'int'),
       ];

@@ -64,7 +64,7 @@ export function UpcomingScheduledGameCard({
       accessibilityRole="button"
       accessibilityLabel={he.homeUpcomingBadge}
     >
-      {/* Game title on the right (like a regular card), "משחק בדרך" badge left. */}
+      {/* Game title on the right (like a regular card), "מחזור בדרך" badge left. */}
       <View style={styles.top}>
         <Text style={styles.title} numberOfLines={2}>
           {game.title}

@@ -78,7 +78,7 @@ function gameToValues(g: Game): GameFormValues {
         ? g.ruleTags
         : [
             g.hasReferee ? 'שופט' : '',
-            g.hasHalfTime ? 'משחקים עם חוצים' : '',
+            g.hasHalfTime ? 'מחזורים עם חוצים' : '',
             g.hasPenalties ? 'פנדלים בסיום' : '',
             typeof g.extraTimeMinutes === 'number' && g.extraTimeMinutes > 0
               ? `זמן נוסף ${g.extraTimeMinutes}'`

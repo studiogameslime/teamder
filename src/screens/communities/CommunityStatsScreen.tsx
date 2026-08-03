@@ -443,18 +443,18 @@ export function CommunityStatsScreen() {
             ) : null}
             {derived.totalRounds > 0 && derived.drawPct > 0 ? (
               <FunDonutRow index={2} pct={derived.drawPct} tint={colors.info}
-                text="מהמשחקונים הסתיימו בתיקו" />
+                text="מהמשחקים הסתיימו בתיקו" />
             ) : null}
             {derived.scorelessRounds > 0 ? (
               <FunDonutRow index={3} pct={derived.scorelessPct} tint={colors.textMuted}
-                text="מהמשחקונים הסתיימו 0:0" />
+                text="מהמשחקים הסתיימו 0:0" />
             ) : null}
             {derived.shootoutRounds > 0 ? (
               <FunDonutRow index={4} pct={derived.shootoutPct} tint={colors.danger}
-                text="מהמשחקונים הוכרעו בפנדלים" />
+                text="מהמשחקים הוכרעו בפנדלים" />
             ) : null}
             <FunDonutRow index={5} pct={Math.round((stats?.organizationRate ?? 0) * 100)}
-              tint={colors.success} text="מהמשחקים המתוכננים יצאו לפועל" />
+              tint={colors.success} text="מהמחזורים המתוכננים יצאו לפועל" />
             {/* עובדות טקסט (בלי אחוז) */}
             {duo && duo.assists > 0 ? (
               <FunRow
@@ -477,7 +477,7 @@ export function CommunityStatsScreen() {
                 parts={[
                   { t: name(stats.longestStreakUid ?? undefined), em: 'name' },
                   { t: ' הגיע ' },
-                  { t: `${stats.longestStreak} ערבים`, em: 'num' },
+                  { t: `${stats.longestStreak} מחזורים`, em: 'num' },
                   { t: ' ברצף — הרצף הארוך במועדון' },
                 ]}
               />

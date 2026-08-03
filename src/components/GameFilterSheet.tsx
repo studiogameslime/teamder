@@ -1,11 +1,11 @@
 // GameFilterSheet — modal sheet for filtering the matches list.
 //
-// Redesigned (2026-06) to the "סינון משחקים" mockup:
+// Redesigned (2026-06) to the "סינון מחזורים" mockup:
 //   • מתי            — היום / מחר / בחר יום (→ weekday chips, like the
 //                      availability screen; no native date-picker dep)
 //   • קרוב אליי       — location card: permission prompt + radius slider
 //   • סינונים מהירים  — פתוח לכולם · יש מקומות פנויים (toggle cards)
-//   • פורמט משחק      — 5×5 / 6×6 / 7×7 (multi-select segments)
+//   • פורמט מחזור      — 5×5 / 6×6 / 7×7 (multi-select segments)
 //
 // Dropped from the old sheet (product decision): the payment/cost
 // filter, field-type filter, the approval tri-state, and the
@@ -344,7 +344,7 @@ export function GameFilterSheet({
               />
             </View>
 
-            {/* ── פורמט משחק ──────────────────────────────────────── */}
+            {/* ── פורמט מחזור ──────────────────────────────────────── */}
             <SectionHeader
               icon="football-outline"
               title={he.gameFiltersFormatTitle}

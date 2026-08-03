@@ -3,7 +3,7 @@
 // New structure (replaces the previous identity + nav + settings
 // blob):
 //   ① Compact identity header (jersey + name + role badge + community)
-//   ② 2×2 stats grid — משחקים / הגעה % / הופעות / ביטולים
+//   ② 2×2 stats grid — מחזורים / הגעה % / הופעות / ביטולים
 //   ③ Full-width referral card
 //   ④ Discipline row (last 10 games)
 //   ⑤ Next-game card (soonest game the user is in, or empty state)
@@ -164,7 +164,7 @@ export function ProfileScreen() {
   const [lastPlayedMs, setLastPlayedMs] = useState<number | null>(null);
   // Open, non-stale games the user CREATED (createdBy === me). Derived
   // from the same getMyGames fetch that powers nextGame — no extra
-  // round-trip. Surfaced as the "משחקים שיצרתי" collection below.
+  // round-trip. Surfaced as the "מחזורים שיצרתי" collection below.
   const [createdGames, setCreatedGames] = useState<Game[]>([]);
   // The user's full registered/created game list (getMyGames) — kept so
   // the activity feed can surface "created" + "registered to" events.
@@ -275,7 +275,7 @@ export function ProfileScreen() {
           setNextGame(mine[0] ?? null);
           setMyGames(mine);
           // Same list, filtered to the ones the user CREATED — powers
-          // the "משחקים שיצרתי" section. createdBy is set by the wizard.
+          // the "מחזורים שיצרתי" section. createdBy is set by the wizard.
           setCreatedGames(mine.filter((g) => g.createdBy === uid));
         })
         .catch(() => {
@@ -414,7 +414,7 @@ export function ProfileScreen() {
       }
       let alive = true;
       // Exact, unbounded attended-games count — equals the Statistics screen's
-      // "משחקים" tile (same `isAttendedGame` model, no 50-row cap).
+      // "מחזורים" tile (same `isAttendedGame` model, no 50-row cap).
       gameService
         .getPlayedGamesCount(uid)
         .then((count) => {
@@ -911,7 +911,7 @@ export function ProfileScreen() {
               1. a game I'm registered to / created (always wins, even if it's
                  further than a week out — a registered game beats everything);
               2. else the single closest community game whose registration
-                 hasn't opened yet ("משחק בדרך");
+                 hasn't opened yet ("מחזור בדרך");
               3. else nothing — the content below just tightens up to the top. */}
           {nextGame ? (
             <NextGameCardEntrance triggerKey={nextGame.id}>

@@ -188,7 +188,7 @@ export function CommunityFilterSheet({
               onChange={(v) => onChange({ ...filters, autoJoinOnly: v })}
             />
             <SwitchRow
-              label="מועדונים עם משחקים קבועים"
+              label="מועדונים עם מחזורים קבועים"
               value={filters.regularGamesOnly}
               onChange={(v) => onChange({ ...filters, regularGamesOnly: v })}
             />

@@ -118,7 +118,7 @@ function buildInitial(
     autoTeamsAt: 0,
     autoTeamsMethod: 'rating',
     cancelDeadlineHours: undefined,
-    // Fillers are MERGED into the "משחק פתוח לכולם" toggle (Pulse #6): a public
+    // Fillers are MERGED into the "מחזור פתוח לכולם" toggle (Pulse #6): a public
     // game reaches nearby strangers when short. Since visibility defaults to
     // 'public' above, fillers default ON to match. (The merged toggle keeps the
     // two in sync when the admin flips it; the engine still fires only below the
@@ -152,7 +152,7 @@ export function GameCreateScreen() {
   // Orphan / "no-community" mode. When set, the wizard renders with a
   // synthesized Group built from the caller's hidden personal group;
   // submit stamps `isOrphanContext: true` on the new game so MatchDetails
-  // labels it "משחק חד־פעמי" instead of showing the (placeholder)
+  // labels it "מחזור חד־פעמי" instead of showing the (placeholder)
   // community name. The group id itself is real (Firestore rules expect
   // a non-null group), it just stays hidden until the post-game
   // promote prompt converts it into a real community.
@@ -307,7 +307,7 @@ export function GameCreateScreen() {
 
   // Empty states with an "ללא קבוצה" CTA — rendered AFTER all hooks (see
   // the note above) so the hook count never changes. Both show the same
-  // primary CTA ("צור משחק חד־פעמי"): the answer for "no community to
+  // primary CTA ("צור מחזור חד־פעמי"): the answer for "no community to
   // create in" is to make a one-off game without one.
   if (!orphanGroup && allMyCommunities.length === 0) {
     return (
@@ -400,7 +400,7 @@ export function GameCreateScreen() {
         groupId: selectedGroup.id,
         // Orphan flow: the synthesized group has no name, so don't
         // fall back to it for the title.
-        title: v.title.trim() || (isOrphan ? 'משחק חד־פעמי' : selectedGroup.name),
+        title: v.title.trim() || (isOrphan ? 'מחזור חד־פעמי' : selectedGroup.name),
         startsAt: v.startsAt,
         fieldName: v.fieldName.trim(),
         maxPlayers: playersPerTeam * v.numberOfTeams,

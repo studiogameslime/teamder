@@ -265,7 +265,7 @@ export const mockGamesV2: Game[] = [
   },
   // 0b. DEMO — advanced timer-only game that already has a score but the clock
   //     was reset to 00:00 (the "reset keeps goals" fix). Re-entering shows the
-  //     CTA as "המשך משחק" instead of "התחל" (continue-vs-start fix).
+  //     CTA as "המשך מחזור" instead of "התחל" (continue-vs-start fix).
   {
     id: 'gv2-resume',
     groupId: 'g1',
@@ -309,7 +309,7 @@ export const mockGamesV2: Game[] = [
       goals: [],
       timerRunning: false,
       timerLastStartedAt: null,
-      timerAccumulatedMs: 0, // reset to 00:00 → started=false → "המשך משחק"
+      timerAccumulatedMs: 0, // reset to 00:00 → started=false → "המשך מחזור"
     },
   },
   // 1. My Game — already registered, full 15/15 so the live match
@@ -712,7 +712,7 @@ export const mockGamesV2: Game[] = [
 ];
 
 // Mock per-mini-game history for the finished game gv2-7 — powers a live
-// verification of the "היסטוריית המשחקונים" screen in FORCE_MOCK runs. Teams:
+// verification of the "היסטוריית המשחקים" screen in FORCE_MOCK runs. Teams:
 // A = p1..p5, B = p6..p10 (p7 "דניאל" = the mock current user). Shows goals,
 // assists, an own goal, and a penalty-shootout round.
 export const mockRoundHistory: Record<string, RoundHistoryDoc[]> = {
@@ -782,15 +782,15 @@ export const mockRoundHistory: Record<string, RoundHistoryDoc[]> = {
 export const mockWhatsNew = {
   enabled: true,
   items: [
-    { version: '1.0.84', emoji: '📋', title: 'היסטוריית המשחקונים',
-      body: 'אחרי כל ערב — מי נגד מי, גולים, בישולים, פנדלים ותוצאה לכל משחקון.' },
+    { version: '1.0.84', emoji: '📋', title: 'היסטוריית המשחקים',
+      body: 'אחרי כל מחזור — מי נגד מי, גולים, בישולים, פנדלים ותוצאה לכל משחק.' },
     { version: '1.0.84', emoji: '✋', title: 'שובר-שוויון בפנדלים',
-      body: 'משחקון שנגמר בתיקו? מכריעים בפנדלים, עם סטטיסטיקת בועט ושוער.' },
-    { version: '1.0.82', emoji: '🎨', title: 'עיצוב חדש לכרטיסי המשחקים',
-      body: 'תפוסה, הסטטוס שלך ופרטי המשחק — הכל במבט אחד.' },
-    { version: '1.0.82', emoji: '🕒', title: '"משחק בדרך"',
-      body: 'משחקי מועדון שההרשמה בהם עוד תיפתח, עם ספירה לאחור עד הפתיחה.' },
-    { version: '1.0.81', emoji: '✨', title: 'סיכום הערב שלך',
-      body: 'כרטיס אישי ומעוצב לשיתוף — הגולים, הבישולים והתואר שלך מהערב.' },
+      body: 'משחק שנגמר בתיקו? מכריעים בפנדלים, עם סטטיסטיקת בועט ושוער.' },
+    { version: '1.0.82', emoji: '🎨', title: 'עיצוב חדש לכרטיסי המחזורים',
+      body: 'תפוסה, הסטטוס שלך ופרטי המחזור — הכל במבט אחד.' },
+    { version: '1.0.82', emoji: '🕒', title: '"מחזור בדרך"',
+      body: 'מחזורי מועדון שההרשמה בהם עוד תיפתח, עם ספירה לאחור עד הפתיחה.' },
+    { version: '1.0.81', emoji: '✨', title: 'סיכום המחזור שלך',
+      body: 'כרטיס אישי ומעוצב לשיתוף — הגולים, הבישולים והתואר שלך מהמחזור.' },
   ],
 };

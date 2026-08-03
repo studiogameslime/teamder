@@ -505,7 +505,7 @@ export function CommunityDetailsScreen() {
   const nextGame = upcoming[0];
   // Use the authoritative finished-games count from getCommunityStats (windowed
   // to ~200 terminal docs, cancelled excluded) so this number AGREES with the
-  // "משחקים שיצאו לפועל" stat shown lower on the same screen. The old source
+  // "מחזורים שיצאו לפועל" stat shown lower on the same screen. The old source
   // (history list, limit 20, cancelled INCLUDED) both undercounted past ~20
   // games and contradicted that stat. Fall back to the history-derived count
   // only until the stats load.
@@ -714,7 +714,7 @@ export function CommunityDetailsScreen() {
               {
                 icon: 'football',
                 // Always show the number — including "0" — to match the
-                // profile stats ("0 משחקים"). matchesHeld is a known
+                // profile stats ("0 מחזורים"). matchesHeld is a known
                 // count, so "0" means zero, not "no data".
                 label: he.communityStatsMatchesHeld,
                 value: String(matchesHeld),
@@ -910,7 +910,7 @@ export function CommunityDetailsScreen() {
 
           {/* The per-community game-history list used to render here, but it
               duplicated the same list already reachable from the ⋯ menu's
-              "היסטוריית משחקים" (→ CommunityHistory). Removed at the owner's
+              "היסטוריית מחזורים" (→ CommunityHistory). Removed at the owner's
               request; `history` is still loaded above solely as the pre-stats
               fallback for the "מפגשים שנערכו" count (matchesHeld). */}
 

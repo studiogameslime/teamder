@@ -196,7 +196,7 @@ export function RequestsScreen() {
         {data.games.map(({ game, pending }) => (
           <Section
             key={`m:${game.id}`}
-            title={he.requestsGameSection(game.title ?? 'משחק')}
+            title={he.requestsGameSection(game.title ?? 'מחזור')}
             count={pending.length}
             busy={busy === `mAll:${game.id}`}
             onApproveAll={() =>

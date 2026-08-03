@@ -1,6 +1,6 @@
-// MatchRoundsScreen — "היסטוריית המשחקונים" for a finished game.
+// MatchRoundsScreen — "היסטוריית המשחקים" for a finished game.
 //
-// Reached from the finished-game MatchDetails ("היסטוריית המשחקונים" CTA).
+// Reached from the finished-game MatchDetails ("היסטוריית המשחקים" CTA).
 // Renders one card per committed mini-game (games/{id}/roundHistory):
 // the two teams, the score, the winner, the goal log (scorer + assister +
 // own-goal) and — when the mini-game was decided on penalties — the shootout

@@ -1,4 +1,4 @@
-// EveningSummaryCard — the shareable "סיכום הערב" card, in the app's LIGHT
+// EveningSummaryCard — the shareable "סיכום המחזור" card, in the app's LIGHT
 // palette so it belongs inside Teamder (which is light). Wrapped in a forwardRef
 // View so the screen can hand the node to react-native-view-shot's captureRef.
 //
@@ -175,10 +175,10 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     // of them moves to the grit strip below ("שיחקת X מתוך Y").
     const roundsMeta = model.totalKnown ? `${model.totalRounds}` : `${model.rounds}`;
     const gritRounds = showTotal
-      ? `${model.rounds} מתוך ${model.totalRounds} המשחקונים`
+      ? `${model.rounds} מתוך ${model.totalRounds} המשחקים`
       : model.totalKnown
-        ? `את כל ${model.rounds} המשחקונים`
-        : `${model.rounds} משחקונים`;
+        ? `את כל ${model.rounds} המשחקים`
+        : `${model.rounds} משחקים`;
     return (
       <View ref={ref} collapsable={false} style={styles.card}>
         {/* brand */}
@@ -190,7 +190,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             <Text style={styles.brandName}>Teamder</Text>
           </View>
           <View style={styles.kicker}>
-            <Text style={styles.kickerTxt}>סיכום הערב</Text>
+            <Text style={styles.kickerTxt}>סיכום המחזור</Text>
           </View>
         </View>
 
@@ -206,7 +206,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             {/* Club name on its OWN line so a long name isn't truncated
                together with the counts (user report: "שם המועדון חתוך"). */}
             <Text style={styles.meta} numberOfLines={1}>
-              {roundsMeta} משחקונים · {model.dateLabel}
+              {roundsMeta} משחקים · {model.dateLabel}
             </Text>
             <Text style={styles.metaClub} numberOfLines={1}>
               {model.communityName}
@@ -234,12 +234,12 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             <Text style={styles.tier}>
               {model.title} {model.titleEmoji}
             </Text>
-            <Text style={styles.scoreLabel}>ציון הערב שלך</Text>
+            <Text style={styles.scoreLabel}>ציון המחזור שלך</Text>
             <Text style={styles.scoreSub}>
               {model.scoreDelta != null && model.scoreDelta !== 0
                 ? model.scoreDelta > 0
-                  ? 'עלית מהערב הקודם 📈'
-                  : 'קצת מתחת לערב הקודם'
+                  ? 'עלית מהמחזור הקודם 📈'
+                  : 'קצת מתחת למחזור הקודם'
                 : 'מגולים, בישולים וניצחונות — לא רק משערים'}
             </Text>
           </View>
@@ -293,7 +293,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             <Text style={styles.stripIco}>🏰</Text>
             <Text style={styles.stripTxt}>
               החזקתם את המגרש{' '}
-              <Text style={styles.stripBoldGold}>{model.heldPitch} משחקונים ברצף</Text>
+              <Text style={styles.stripBoldGold}>{model.heldPitch} משחקים ברצף</Text>
             </Text>
           </View>
         ) : null}
@@ -350,7 +350,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
 
         {/* grit / effort — only when the player actually played mini-games.
            A retro-goal-only evening has rounds=0, where "עבדת קשה — שיחקת 0
-           משחקונים" read as nonsense (user report). */}
+           משחקים" read as nonsense (user report). */}
         {model.rounds > 0 ? (
           <View style={[styles.strip, styles.stripLime]}>
             <Text style={styles.stripIco}>💪</Text>
@@ -430,7 +430,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           <View style={styles.viz}>
             <RadarChart radar={model.radar} />
             <View style={styles.vizText}>
-              <Text style={styles.vizTitle}>🕸️ ה-DNA שלך הערב</Text>
+              <Text style={styles.vizTitle}>🕸️ ה-DNA שלך במחזור</Text>
               <View style={styles.vChips}>
                 <View style={styles.vChip}>
                   <Text style={styles.vChipTxt}>הפרופיל שלך: {model.radar.profile}</Text>
@@ -443,7 +443,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
         {/* funny numbers — only the rows whose metric is real */}
         {funRows.length > 0 ? (
           <View style={styles.fun}>
-            <Text style={styles.funTitle}>😄 מספרים מהערב</Text>
+            <Text style={styles.funTitle}>😄 מספרים מהמחזור</Text>
             {funRows.map((r, i) => (
               <FunRow key={r.icon} first={i === 0} icon={r.icon} text={r.text} />
             ))}

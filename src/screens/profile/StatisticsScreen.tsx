@@ -128,7 +128,7 @@ export function StatisticsScreen() {
             <NumberTile icon="calendar-outline" value={String(stats!.attendedGames)} label={he.statGames} />
             <NumberTile icon="football" value={String(stats!.goals)} label={he.statGoals} />
             {/* "בישול" (assist) = cooking pun → a food icon, not a hand
-               (user request). Dropped the "גולים לערב" + "שחקנים שונים"
+               (user request). Dropped the "גולים למחזור" + "שחקנים שונים"
                tiles entirely (user request). */}
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
           </View>

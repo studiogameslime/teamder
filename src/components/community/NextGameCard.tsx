@@ -6,7 +6,7 @@
 // Layout under forceRTL:
 //
 //   ┌──────────────────────────────────────────────┐
-//   │  [□ לפרטי משחק]      המשחק הקרוב            │
+//   │  [□ לפרטי מחזור]      המחזור הקרוב            │
 //   │      → arrow         יום + תאריך            │
 //   │                      19:30                  │
 //   │                      📍 שם המגרש            │
@@ -39,7 +39,7 @@ interface Props {
   /** Optional venue name shown under the time. */
   fieldName?: string;
   /** When set, registration hasn't opened yet — the card swaps the
-   *  "לפרטי משחק" CTA for a muted "ההרשמה תיפתח ב..." badge. */
+   *  "לפרטי מחזור" CTA for a muted "ההרשמה תיפתח ב..." badge. */
   registrationOpensAt?: number;
   onPress?: () => void;
   /** Admin-only: when set AND there's no upcoming game, the empty
@@ -58,7 +58,7 @@ export function NextGameCard({
 }: Props) {
   const hasGame = typeof startsAt === 'number';
   // Deferred-open mode: registration hasn't started yet. The card
-  // shows "ההרשמה תיפתח ב-X" instead of the "לפרטי משחק" CTA, and tap
+  // shows "ההרשמה תיפתח ב-X" instead of the "לפרטי מחזור" CTA, and tap
   // simply pops a non-blocking toast/alert (handled by the parent —
   // we expose `onPress` regardless and let the parent decide).
   const isDeferred =
