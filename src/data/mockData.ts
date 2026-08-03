@@ -1,4 +1,5 @@
 import { Game, Player } from '@/types';
+import type { RoundHistoryDoc } from '@/utils/eveningStats';
 
 // 25 mock players for a realistic community size. The first 15 are the same
 // names used across earlier mocks so screenshots/demos stay consistent.
@@ -709,3 +710,69 @@ export const mockGamesV2: Game[] = [
     createdAt: Date.now() - 1000 * 60 * 60 * 30,
   },
 ];
+
+// Mock per-mini-game history for the finished game gv2-7 — powers a live
+// verification of the "היסטוריית המשחקונים" screen in FORCE_MOCK runs. Teams:
+// A = p1..p5, B = p6..p10 (p7 "דניאל" = the mock current user). Shows goals,
+// assists, an own goal, and a penalty-shootout round.
+export const mockRoundHistory: Record<string, RoundHistoryDoc[]> = {
+  'gv2-7': [
+    {
+      roundId: '1',
+      teamA: ['p1', 'p2', 'p3', 'p4', 'p5'],
+      teamB: ['p6', 'p7', 'p8', 'p9', 'p10'],
+      scoreA: 3,
+      scoreB: 1,
+      winnerSide: 'A',
+      goals: [
+        { scorerId: 'p1', assisterId: 'p3', ownGoal: false, team: 'A' },
+        { scorerId: 'p2', assisterId: null, ownGoal: false, team: 'A' },
+        { scorerId: 'p1', assisterId: 'p4', ownGoal: false, team: 'A' },
+        { scorerId: 'p6', assisterId: null, ownGoal: false, team: 'B' },
+      ],
+      at: 1000,
+    },
+    {
+      roundId: '2',
+      teamA: ['p1', 'p2', 'p3', 'p4', 'p5'],
+      teamB: ['p6', 'p7', 'p8', 'p9', 'p10'],
+      scoreA: 2,
+      scoreB: 2,
+      winnerSide: 'tie',
+      goals: [
+        { scorerId: 'p5', assisterId: 'p2', ownGoal: false, team: 'A' },
+        { scorerId: 'p3', assisterId: null, ownGoal: false, team: 'A' },
+        { scorerId: 'p7', assisterId: 'p6', ownGoal: false, team: 'B' },
+        { scorerId: 'p9', assisterId: null, ownGoal: false, team: 'B' },
+      ],
+      penalties: [
+        { kickerId: 'p1', keeperId: 'p10', scored: true, team: 'A' },
+        { kickerId: 'p6', keeperId: 'p5', scored: true, team: 'B' },
+        { kickerId: 'p2', keeperId: 'p10', scored: false, team: 'A' },
+        { kickerId: 'p7', keeperId: 'p5', scored: true, team: 'B' },
+        { kickerId: 'p3', keeperId: 'p10', scored: true, team: 'A' },
+        { kickerId: 'p8', keeperId: 'p5', scored: false, team: 'B' },
+        { kickerId: 'p4', keeperId: 'p10', scored: true, team: 'A' },
+        { kickerId: 'p9', keeperId: 'p5', scored: false, team: 'B' },
+      ],
+      at: 2000,
+    },
+    {
+      roundId: '3',
+      teamA: ['p1', 'p2', 'p3', 'p4', 'p5'],
+      teamB: ['p6', 'p7', 'p8', 'p9', 'p10'],
+      scoreA: 4,
+      scoreB: 2,
+      winnerSide: 'A',
+      goals: [
+        { scorerId: 'p1', assisterId: 'p5', ownGoal: false, team: 'A' },
+        { scorerId: 'p2', assisterId: null, ownGoal: false, team: 'A' },
+        { scorerId: 'p3', assisterId: 'p1', ownGoal: false, team: 'A' },
+        { scorerId: 'p4', assisterId: null, ownGoal: false, team: 'A' },
+        { scorerId: 'p8', assisterId: null, ownGoal: false, team: 'B' },
+        { scorerId: 'p5', assisterId: null, ownGoal: true, team: 'A' },
+      ],
+      at: 3000,
+    },
+  ],
+};

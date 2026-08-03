@@ -16,6 +16,15 @@ export interface RoundGoalRec {
   team: 'A' | 'B';
 }
 
+/** One shootout kick, as persisted on the round-history doc (only for a
+ *  mini-game decided by penalties). Written by commitRoundStats. */
+export interface RoundPenaltyRec {
+  kickerId: string;
+  keeperId: string | null;
+  scored: boolean;
+  team: 'A' | 'B';
+}
+
 export interface RoundHistoryDoc {
   roundId: string;
   teamA: string[];
@@ -24,6 +33,9 @@ export interface RoundHistoryDoc {
   scoreB: number;
   winnerSide: Side;
   goals: RoundGoalRec[];
+  /** Penalty-shootout kicks — present only when the mini-game was tied and
+   *  decided by a shootout. Absent on regular (non-shootout) rounds. */
+  penalties?: RoundPenaltyRec[];
   at: number;
 }
 

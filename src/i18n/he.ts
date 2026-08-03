@@ -545,6 +545,29 @@ export const he = {
   liveEndEveningBody:
     'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
   liveEndEveningConfirm: 'כן, סיים את הערב',
+  // Mini-games history ("היסטוריית המשחקונים") — finished-game breakdown
+  matchRoundsTitle: 'היסטוריית המשחקונים',
+  matchDetailsRoundsCta: 'היסטוריית המשחקונים',
+  matchDetailsRoundsSub: 'מי נגד מי · גולים · בישולים · פנדלים',
+  matchRoundsCount: (n: number) =>
+    n === 1 ? 'משחקון אחד' : `${n} משחקונים`,
+  matchRoundsRoundN: (n: number) => `משחקון ${n}`,
+  matchRoundsTeamA: 'קבוצה א׳',
+  matchRoundsTeamB: 'קבוצה ב׳',
+  matchRoundsWon: (team: string) => `${team} ניצחה`,
+  matchRoundsWonPens: (team: string) => `${team} בפנדלים`,
+  matchRoundsTie: 'תיקו',
+  matchRoundsNoGoals: 'לא נרשמו גולים במשחקון',
+  matchRoundsAssist: (name: string) => `בישול: ${name}`,
+  matchRoundsOwnGoal: 'שער עצמי',
+  matchRoundsShootout: 'שובר-שוויון בפנדלים',
+  matchRoundsVsKeeper: (name: string) => `מול ${name}`,
+  matchRoundsWhoPlayed: 'מי שיחק',
+  matchRoundsUnknownPlayer: 'שחקן',
+  matchRoundsGuest: 'אורח',
+  matchRoundsEmptyTitle: 'אין היסטוריית משחקונים',
+  matchRoundsEmptySub: 'למשחק הזה לא נשמרו פרטי משחקונים.',
+
   // Evening summary card + sharing
   summaryTitle: 'סיכום הערב',
   summaryCta: 'סיכום הערב שלי',

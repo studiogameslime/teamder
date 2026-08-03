@@ -3225,6 +3225,29 @@ export function MatchDetailsScreen() {
           </Pressable>
         ) : null}
 
+        {/* Mini-games history — the per-round breakdown (who vs who, goals,
+            assists, penalties, result). Participants only: the roundHistory
+            read is gated to them (same rule as the evening summary). */}
+        {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
+          <Pressable
+            onPress={() => nav.navigate('MatchRounds', { gameId: game.id })}
+            style={({ pressed }) => [
+              styles.roundsCta,
+              pressed && { opacity: 0.92 },
+            ]}
+            accessibilityRole="button"
+          >
+            <View style={styles.roundsCtaIcon}>
+              <Ionicons name="list" size={20} color="#fff" />
+            </View>
+            <View style={styles.roundsCtaText}>
+              <Text style={styles.roundsCtaTitle}>{he.matchDetailsRoundsCta}</Text>
+              <Text style={styles.roundsCtaSub}>{he.matchDetailsRoundsSub}</Text>
+            </View>
+            <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.9)" />
+          </Pressable>
+        ) : null}
+
         {/* Per-game championship — goals + assists tallied in THIS game,
             ranked by score (goal=2, assist=1). Only after the game is
             finished. Renders nothing for games with no recorded stats. */}
@@ -3680,6 +3703,37 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   summaryCtaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  roundsCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm + 2,
+    marginTop: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  roundsCtaIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roundsCtaText: { flex: 1 },
+  roundsCtaTitle: {
+    color: '#fff',
+    fontSize: 15.5,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  roundsCtaSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginTop: 1,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   cancelRegBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

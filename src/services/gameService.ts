@@ -56,7 +56,7 @@ import {
   toGuestRosterId,
   UserId,
 } from '@/types';
-import { mockGame, mockGamesV2, mockPlayers } from '@/data/mockData';
+import { mockGame, mockGamesV2, mockPlayers, mockRoundHistory } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
@@ -64,6 +64,11 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
+import type {
+  RoundHistoryDoc,
+  RoundGoalRec,
+  RoundPenaltyRec,
+} from '@/utils/eveningStats';
 import {
   rankChampionshipRows,
   type ChampionshipRow,
@@ -1280,6 +1285,50 @@ export const gameService = {
     } catch (err) {
       logError('getRetroGoals', err, { gameId });
       if (__DEV__) console.warn('[gameService] getRetroGoals failed', err);
+      return [];
+    }
+  },
+
+  /**
+   * Read the per-mini-game history for a finished game (one doc per committed
+   * round under games/{id}/roundHistory). Returns them in CHRONOLOGICAL order
+   * (earliest mini-game first) for the "היסטוריית המשחקונים" screen. Each doc
+   * holds both rosters, the score, the winner, the goal log (scorer + assister
+   * + own-goal) and the shootout kicks (when the round was decided on penalties).
+   * Best-effort data — old games predating this feature return []. Reads are
+   * gated by rules to game participants (mirrors the evening-summary read).
+   */
+  async getRoundHistory(gameId: string): Promise<RoundHistoryDoc[]> {
+    if (!gameId) return [];
+    if (USE_MOCK_DATA) return mockRoundHistory[gameId] ?? [];
+    try {
+      const snap = await getDocs(collection(docs.game(gameId), 'roundHistory'));
+      const arr = snap.docs.map((d) => {
+        const x = d.data() as Record<string, unknown>;
+        const goals = Array.isArray(x.goals) ? (x.goals as RoundGoalRec[]) : [];
+        const penalties = Array.isArray(x.penalties)
+          ? (x.penalties as RoundPenaltyRec[])
+          : undefined;
+        return {
+          roundId: String(x.roundId ?? d.id),
+          teamA: Array.isArray(x.teamA) ? (x.teamA as string[]) : [],
+          teamB: Array.isArray(x.teamB) ? (x.teamB as string[]) : [],
+          scoreA: Number(x.scoreA ?? 0),
+          scoreB: Number(x.scoreB ?? 0),
+          winnerSide: (x.winnerSide ?? 'tie') as RoundHistoryDoc['winnerSide'],
+          goals,
+          penalties,
+          at: Number(x.at ?? 0),
+        } as RoundHistoryDoc;
+      });
+      // Chronological (mini-game 1 → N). `at` is the commit time; fall back to a
+      // numeric roundId when timestamps tie or are missing on legacy docs.
+      return arr.sort(
+        (a, b) => a.at - b.at || Number(a.roundId) - Number(b.roundId),
+      );
+    } catch (err) {
+      logError('getRoundHistory', err, { gameId });
+      if (__DEV__) console.warn('[gameService] getRoundHistory failed', err);
       return [];
     }
   },
