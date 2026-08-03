@@ -45,6 +45,11 @@ const KEYS = {
   // Per-campaign popup impression ledger — `{ [campaignId]: lastSeenMs }`.
   // Drives the client-side frequency cap before the modal is shown.
   CAMPAIGN_SEEN: 'footy.campaign.seen',
+  // Highest app version the "מה חדש" modal has already been shown for on
+  // THIS device. Written the moment we decide to show (write-through), so the
+  // modal is strictly one-time per version — it never reappears on relaunch /
+  // foreground, even if the user closes the app mid-modal.
+  WHATS_NEW_SEEN_VERSION: 'footy.whatsNew.seenVersion',
 } as const;
 
 /**
@@ -82,6 +87,15 @@ export const storage = {
   },
   async setOnboardingDone(v: boolean): Promise<void> {
     await AsyncStorage.setItem(KEYS.ONBOARDING_DONE, String(v));
+  },
+
+  // "מה חדש" one-time latch — the last app version the modal was shown for.
+  // null on a fresh install (never shown).
+  async getWhatsNewSeenVersion(): Promise<string | null> {
+    return AsyncStorage.getItem(KEYS.WHATS_NEW_SEEN_VERSION);
+  },
+  async setWhatsNewSeenVersion(version: string): Promise<void> {
+    await AsyncStorage.setItem(KEYS.WHATS_NEW_SEEN_VERSION, version);
   },
 
   async getAuthUserJson(): Promise<string | null> {

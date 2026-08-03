@@ -776,3 +776,21 @@ export const mockRoundHistory: Record<string, RoundHistoryDoc[]> = {
     },
   ],
 };
+
+// Mock "מה חדש" config — powers the WhatsNew modal in FORCE_MOCK runs (mock
+// mode pretends the user came from 1.0.80, so all of these show).
+export const mockWhatsNew = {
+  enabled: true,
+  items: [
+    { version: '1.0.84', emoji: '📋', title: 'היסטוריית המשחקונים',
+      body: 'אחרי כל ערב — מי נגד מי, גולים, בישולים, פנדלים ותוצאה לכל משחקון.' },
+    { version: '1.0.84', emoji: '✋', title: 'שובר-שוויון בפנדלים',
+      body: 'משחקון שנגמר בתיקו? מכריעים בפנדלים, עם סטטיסטיקת בועט ושוער.' },
+    { version: '1.0.82', emoji: '🎨', title: 'עיצוב חדש לכרטיסי המשחקים',
+      body: 'תפוסה, הסטטוס שלך ופרטי המשחק — הכל במבט אחד.' },
+    { version: '1.0.82', emoji: '🕒', title: '"משחק בדרך"',
+      body: 'משחקי מועדון שההרשמה בהם עוד תיפתח, עם ספירה לאחור עד הפתיחה.' },
+    { version: '1.0.81', emoji: '✨', title: 'סיכום הערב שלך',
+      body: 'כרטיס אישי ומעוצב לשיתוף — הגולים, הבישולים והתואר שלך מהערב.' },
+  ],
+};

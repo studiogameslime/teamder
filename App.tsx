@@ -194,6 +194,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { checkForUpdate, type UpdateKind } from '@/services/updateService';
 import { useWatchSync } from '@/services/watchSyncService';
 import { UpdateModal } from '@/components/UpdateModal';
+import { WhatsNewGate } from '@/components/WhatsNewGate';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
@@ -909,6 +910,17 @@ export default function App() {
       {/* In-app popup campaigns (authored in Pulse). Only after splash +
           when signed in and no blocking update modal is up. */}
       <CampaignGate active={splashDone && updateKind === 'none' && !!currentUserId} />
+
+      {/* One-time "מה חדש" highlights after a version update. Only once splash
+          is done, signed in + onboarded, and no update modal is competing. */}
+      <WhatsNewGate
+        active={
+          splashDone &&
+          updateKind === 'none' &&
+          !!currentUserId &&
+          onboardingComplete
+        }
+      />
     </SafeAreaProvider>
     </ErrorBoundary>
   );

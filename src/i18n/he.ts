@@ -545,6 +545,11 @@ export const he = {
   liveEndEveningBody:
     'הערב יסומן כהסתיים, התוצאות יישמרו והמשחק יעבור להיסטוריה. לא ניתן לחזור אחורה.',
   liveEndEveningConfirm: 'כן, סיים את הערב',
+  // "מה חדש" modal (post-update highlights)
+  whatsNewTitle: 'מה חדש באפליקציה ⚽',
+  whatsNewBadge: (v: string) => `✦ גרסה ${v}`,
+  whatsNewCta: 'יאללה, הבנתי 🎉',
+
   // Mini-games history ("היסטוריית המשחקונים") — finished-game breakdown
   matchRoundsTitle: 'היסטוריית המשחקונים',
   matchDetailsRoundsCta: 'היסטוריית המשחקונים',
