@@ -2672,6 +2672,41 @@ export function MatchDetailsScreen() {
             </Pressable>
           ) : null}
 
+          {/* Finished-game shortcuts — placed ABOVE the drawn teams (user
+              request): the personal summary first, then the mini-games history.
+              Participants only (the summary/roundHistory reads are gated). */}
+          {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
+            <>
+              <Pressable
+                onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
+                style={({ pressed }) => [
+                  styles.summaryCta,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <Ionicons name="sparkles" size={18} color="#fff" />
+                <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => nav.navigate('MatchRounds', { gameId: game.id })}
+                style={({ pressed }) => [
+                  styles.roundsCta,
+                  pressed && { opacity: 0.92 },
+                ]}
+                accessibilityRole="button"
+              >
+                <View style={styles.roundsCtaIcon}>
+                  <Ionicons name="list" size={20} color="#fff" />
+                </View>
+                <View style={styles.roundsCtaText}>
+                  <Text style={styles.roundsCtaTitle}>{he.matchDetailsRoundsCta}</Text>
+                  <Text style={styles.roundsCtaSub}>{he.matchDetailsRoundsSub}</Text>
+                </View>
+                <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.9)" />
+              </Pressable>
+            </>
+          ) : null}
+
           {/* Drafted teams (חלוקת כוחות) — sits ABOVE the roster (2026-06-12)
               so the split is the first thing participants see. A "!" badge
               warns the admin when someone joined after teams were saved. */}
@@ -3225,29 +3260,6 @@ export function MatchDetailsScreen() {
           </Pressable>
         ) : null}
 
-        {/* Mini-games history — the per-round breakdown (who vs who, goals,
-            assists, penalties, result). Participants only: the roundHistory
-            read is gated to them (same rule as the evening summary). */}
-        {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
-          <Pressable
-            onPress={() => nav.navigate('MatchRounds', { gameId: game.id })}
-            style={({ pressed }) => [
-              styles.roundsCta,
-              pressed && { opacity: 0.92 },
-            ]}
-            accessibilityRole="button"
-          >
-            <View style={styles.roundsCtaIcon}>
-              <Ionicons name="list" size={20} color="#fff" />
-            </View>
-            <View style={styles.roundsCtaText}>
-              <Text style={styles.roundsCtaTitle}>{he.matchDetailsRoundsCta}</Text>
-              <Text style={styles.roundsCtaSub}>{he.matchDetailsRoundsSub}</Text>
-            </View>
-            <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.9)" />
-          </Pressable>
-        ) : null}
-
         {/* Per-game championship — goals + assists tallied in THIS game,
             ranked by score (goal=2, assist=1). Only after the game is
             finished. Renders nothing for games with no recorded stats. */}
@@ -3262,22 +3274,6 @@ export function MatchDetailsScreen() {
               (uid) => game.arrivals?.[uid] !== 'no_show',
             )}
           />
-        ) : null}
-
-        {/* Personal shareable "סיכום הערב" — only for a PARTICIPANT of a
-            finished game (a non-participant has no per-player stats and would
-            hit a permission-denied on the roundHistory read). */}
-        {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
-          <Pressable
-            onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
-            style={({ pressed }) => [
-              styles.summaryCta,
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Ionicons name="sparkles" size={18} color="#fff" />
-            <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
-          </Pressable>
         ) : null}
 
         {/* Cancel registration — a plain (non-floating) red button at the very

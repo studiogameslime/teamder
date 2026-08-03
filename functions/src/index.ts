@@ -11490,6 +11490,8 @@ export const commitRoundStats = onCall(
       roundId,
       sideA,
       sideB,
+      teamAIndex,
+      teamBIndex,
       winnerSide,
       goals,
       penalties,
@@ -11498,11 +11500,16 @@ export const commitRoundStats = onCall(
       roundId?: number | string | null;
       sideA?: string[];
       sideB?: string[];
+      // Bib-colour indices of the two sides (0=red,1=blue,2=green,…). Stored on
+      // the round-history doc so the recap shows real colours, not א׳/ב׳.
+      teamAIndex?: number;
+      teamBIndex?: number;
       winnerSide?: 'A' | 'B' | 'tie';
       goals?: {
         scorerId?: string | null;
         assisterId?: string | null;
         ownGoal?: boolean;
+        minute?: number;
       }[];
       // Penalty-shootout kicks (kicker + keeper + scored). These credit ONLY
       // the penalty-specific stat fields — never goals/score (the shootout is a
@@ -11643,6 +11650,10 @@ export const commitRoundStats = onCall(
             roundId: String(roundId),
             teamA: A,
             teamB: B,
+            // Bib-colour indices (0=red,1=blue,2=green,…) so the recap shows the
+            // real colours. Default −1 → the client falls back to א׳/ב׳.
+            teamAIndex: typeof teamAIndex === 'number' ? teamAIndex : -1,
+            teamBIndex: typeof teamBIndex === 'number' ? teamBIndex : -1,
             scoreA,
             scoreB,
             winnerSide,
@@ -11656,6 +11667,10 @@ export const commitRoundStats = onCall(
                     ? g.assisterId
                     : null,
                 ownGoal: !!g.ownGoal,
+                minute:
+                  typeof g.minute === 'number' && g.minute > 0
+                    ? Math.floor(g.minute)
+                    : 0,
                 team: A.includes(g.scorerId as string) ? 'A' : 'B',
               })),
             penalties: (penalties ?? [])

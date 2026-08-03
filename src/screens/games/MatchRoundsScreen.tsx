@@ -25,6 +25,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
+import { teamName } from '@/utils/draft';
 import { useGameStore } from '@/store/gameStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -38,12 +39,22 @@ import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Params = RouteProp<GameStackParamList, 'MatchRounds'>;
 
-// Team A = warm (orange), Team B = cool (blue). The real jersey COLOR isn't
-// persisted on the round-history doc, so these are UI accents for telling the
-// two sides apart, paired with the neutral "קבוצה א׳/ב׳" labels — never a claim
-// about the actual bib colour.
-const TEAM_A_COLOR = '#F97316';
-const TEAM_B_COLOR = colors.primary;
+// Bib colours by team index (0=red,1=blue,2=green,3=yellow) — matches the live
+// mini-game teams. Rounds record the two sides' indices, so the recap shows the
+// real colours + names ("אדומה נגד כחולה"). Old games (no index, −1) fall back to
+// neutral orange/blue + "קבוצה א׳/ב׳".
+const TEAM_HEX = [colors.team1, colors.team2, colors.team3, colors.team4];
+function teamStyle(
+  index: number | undefined,
+  side: 'A' | 'B',
+): { color: string; name: string } {
+  if (typeof index === 'number' && index >= 0 && index < TEAM_HEX.length) {
+    return { color: TEAM_HEX[index], name: teamName(index) };
+  }
+  return side === 'A'
+    ? { color: '#F97316', name: he.matchRoundsTeamA }
+    : { color: colors.primary, name: he.matchRoundsTeamB };
+}
 
 interface Resolved {
   id: string;
@@ -147,17 +158,6 @@ export function MatchRoundsScreen() {
               {he.matchRoundsCount(rounds.length)}
             </Text>
           </View>
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.swatch, { backgroundColor: TEAM_A_COLOR }]} />
-              <Text style={styles.legendTx}>{he.matchRoundsTeamA}</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.swatch, { backgroundColor: TEAM_B_COLOR }]} />
-              <Text style={styles.legendTx}>{he.matchRoundsTeamB}</Text>
-            </View>
-          </View>
-
           {rounds.map((r, idx) => (
             <RoundCard
               key={r.roundId || String(idx)}
@@ -193,8 +193,8 @@ function RoundCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const goalsA = round.goals.filter((g) => g.team === 'A');
-  const goalsB = round.goals.filter((g) => g.team === 'B');
+  const A = teamStyle(round.teamAIndex, 'A');
+  const B = teamStyle(round.teamBIndex, 'B');
   const pens = round.penalties ?? [];
   const penA = pens.filter((p) => p.team === 'A' && p.scored).length;
   const penB = pens.filter((p) => p.team === 'B' && p.scored).length;
@@ -204,24 +204,16 @@ function RoundCard({
   const shootoutWinner =
     pens.length > 0 ? (penA === penB ? null : penA > penB ? 'A' : 'B') : null;
   const winnerSide = shootoutWinner ?? round.winnerSide;
-  const winner =
-    winnerSide === 'A'
-      ? {
-          label: shootoutWinner
-            ? he.matchRoundsWonPens(he.matchRoundsTeamA)
-            : he.matchRoundsWon(he.matchRoundsTeamA),
-          color: TEAM_A_COLOR,
-          icon: shootoutWinner ? ('hand-left' as const) : ('trophy' as const),
-        }
-      : winnerSide === 'B'
-        ? {
-            label: shootoutWinner
-              ? he.matchRoundsWonPens(he.matchRoundsTeamB)
-              : he.matchRoundsWon(he.matchRoundsTeamB),
-            color: TEAM_B_COLOR,
-            icon: shootoutWinner ? ('hand-left' as const) : ('trophy' as const),
-          }
-        : { label: he.matchRoundsTie, color: colors.textMuted, icon: 'remove' as const };
+  const winTeam = winnerSide === 'A' ? A : winnerSide === 'B' ? B : null;
+  const winner = winTeam
+    ? {
+        label: shootoutWinner
+          ? he.matchRoundsWonPens(winTeam.name)
+          : he.matchRoundsWon(winTeam.name),
+        color: winTeam.color,
+        icon: shootoutWinner ? ('hand-left' as const) : ('trophy' as const),
+      }
+    : { label: he.matchRoundsTie, color: colors.textMuted, icon: 'remove' as const };
 
   return (
     <View style={styles.card}>
@@ -239,8 +231,8 @@ function RoundCard({
       <View style={styles.scoreRow}>
         <View style={styles.scoreTeam}>
           <View style={styles.teamName}>
-            <View style={[styles.swatch, { backgroundColor: TEAM_A_COLOR }]} />
-            <Text style={styles.teamNameTx}>{he.matchRoundsTeamA}</Text>
+            <View style={[styles.swatch, { backgroundColor: A.color }]} />
+            <Text style={styles.teamNameTx}>{A.name}</Text>
           </View>
         </View>
         <Text style={styles.scoreNum}>{round.scoreA}</Text>
@@ -248,27 +240,45 @@ function RoundCard({
         <Text style={styles.scoreNum}>{round.scoreB}</Text>
         <View style={styles.scoreTeam}>
           <View style={styles.teamName}>
-            <View style={[styles.swatch, { backgroundColor: TEAM_B_COLOR }]} />
-            <Text style={styles.teamNameTx}>{he.matchRoundsTeamB}</Text>
+            <View style={[styles.swatch, { backgroundColor: B.color }]} />
+            <Text style={styles.teamNameTx}>{B.name}</Text>
           </View>
         </View>
       </View>
 
-      {/* Goals */}
+      {/* Goals — ONE chronological list (order of entry), the ball coloured by
+          the scoring team, and the minute on the visual-left. No team headers. */}
       {round.goals.length > 0 ? (
-        <View style={styles.goalsWrap}>
-          <GoalColumn
-            title={he.matchRoundsTeamA}
-            color={TEAM_A_COLOR}
-            goals={goalsA}
-            resolve={resolve}
-          />
-          <GoalColumn
-            title={he.matchRoundsTeamB}
-            color={TEAM_B_COLOR}
-            goals={goalsB}
-            resolve={resolve}
-          />
+        <View style={styles.goalsList}>
+          {round.goals.map((g, i) => {
+            const t = g.team === 'A' ? A : B;
+            const scorer = resolve(g.scorerId);
+            const assist = g.assisterId ? resolve(g.assisterId) : null;
+            return (
+              <View key={i} style={styles.goalRow}>
+                <View style={styles.goalMain}>
+                  <Ionicons
+                    name="football"
+                    size={15}
+                    color={g.ownGoal ? colors.textMuted : t.color}
+                  />
+                  <Text style={styles.goalScorer} numberOfLines={1}>
+                    {scorer.name}
+                  </Text>
+                  {g.ownGoal ? (
+                    <Text style={styles.goalOwn}>{he.matchRoundsOwnGoal}</Text>
+                  ) : assist ? (
+                    <Text style={styles.goalAssist} numberOfLines={1}>
+                      {he.matchRoundsAssist(assist.name)}
+                    </Text>
+                  ) : null}
+                </View>
+                {g.minute ? (
+                  <Text style={styles.goalMinute}>{g.minute}׳</Text>
+                ) : null}
+              </View>
+            );
+          })}
         </View>
       ) : (
         <Text style={styles.noGoals}>{he.matchRoundsNoGoals}</Text>
@@ -299,10 +309,7 @@ function RoundCard({
                 <View
                   style={[
                     styles.swatchSm,
-                    {
-                      backgroundColor:
-                        p.team === 'A' ? TEAM_A_COLOR : TEAM_B_COLOR,
-                    },
+                    { backgroundColor: p.team === 'A' ? A.color : B.color },
                   ]}
                 />
                 <Text style={styles.penKicker}>{kicker.name}</Text>
@@ -330,61 +337,19 @@ function RoundCard({
       {expanded ? (
         <View style={styles.rosterBody}>
           <RosterRow
-            color={TEAM_A_COLOR}
-            title={he.matchRoundsTeamA}
+            color={A.color}
+            title={A.name}
             ids={round.teamA}
             resolve={resolve}
           />
           <RosterRow
-            color={TEAM_B_COLOR}
-            title={he.matchRoundsTeamB}
+            color={B.color}
+            title={B.name}
             ids={round.teamB}
             resolve={resolve}
           />
         </View>
       ) : null}
-    </View>
-  );
-}
-
-function GoalColumn({
-  title,
-  color,
-  goals,
-  resolve,
-}: {
-  title: string;
-  color: string;
-  goals: RoundGoalRec[];
-  resolve: (id: string | null | undefined) => Resolved;
-}) {
-  if (goals.length === 0) return null;
-  return (
-    <View style={[styles.goalCol, { borderStartColor: color }]}>
-      <Text style={[styles.goalColTitle, { color }]}>{title}</Text>
-      {goals.map((g, i) => {
-        const scorer = resolve(g.scorerId);
-        const assist = g.assisterId ? resolve(g.assisterId) : null;
-        return (
-          <View key={i} style={styles.goalRow}>
-            <Ionicons
-              name="football"
-              size={14}
-              color={g.ownGoal ? colors.textMuted : color}
-            />
-            <Text style={styles.goalScorer} numberOfLines={1}>
-              {scorer.name}
-            </Text>
-            {g.ownGoal ? (
-              <Text style={styles.goalOwn}>{he.matchRoundsOwnGoal}</Text>
-            ) : assist ? (
-              <Text style={styles.goalAssist} numberOfLines={1}>
-                {he.matchRoundsAssist(assist.name)}
-              </Text>
-            ) : null}
-          </View>
-        );
-      })}
     </View>
   );
 }
@@ -523,18 +488,25 @@ const styles = StyleSheet.create({
   },
   scoreSep: { fontSize: 20, color: colors.textMuted, fontWeight: '700' },
 
-  goalsWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  goalCol: {
-    borderStartWidth: 3,
-    paddingStart: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  goalColTitle: { fontSize: 11.5, fontWeight: '800', marginBottom: 4 },
+  goalsList: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   goalRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  goalMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 7,
-    paddingVertical: 3,
+    flexShrink: 1,
+  },
+  goalMinute: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    marginStart: spacing.sm,
   },
   goalScorer: { ...typography.body, fontWeight: '700', color: colors.text },
   goalAssist: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },

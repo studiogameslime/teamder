@@ -80,7 +80,6 @@ export function UpcomingScheduledGameCard({
         <Text style={styles.infoStrong} numberOfLines={1}>
           {formatDayDate(game.startsAt, {
             day: 'long',
-            dayPrefix: true,
             withTime: true,
           })}
         </Text>

@@ -14,6 +14,8 @@ export interface RoundGoalRec {
   assisterId: string | null;
   ownGoal: boolean;
   team: 'A' | 'B';
+  /** minute the goal went in (0 when unknown — old games / no clock). */
+  minute?: number;
 }
 
 /** One shootout kick, as persisted on the round-history doc (only for a
@@ -29,6 +31,10 @@ export interface RoundHistoryDoc {
   roundId: string;
   teamA: string[];
   teamB: string[];
+  /** bib-colour indices of the two sides (0=red,1=blue,2=green,…); −1/absent on
+   *  old games → the recap falls back to "קבוצה א׳/ב׳". */
+  teamAIndex?: number;
+  teamBIndex?: number;
   scoreA: number;
   scoreB: number;
   winnerSide: Side;

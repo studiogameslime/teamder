@@ -567,7 +567,7 @@ export const he = {
   matchRoundsOwnGoal: 'שער עצמי',
   matchRoundsShootout: 'שובר-שוויון בפנדלים',
   matchRoundsVsKeeper: (name: string) => `מול ${name}`,
-  matchRoundsWhoPlayed: 'מי שיחק',
+  matchRoundsWhoPlayed: 'הרכבים',
   matchRoundsUnknownPlayer: 'שחקן',
   matchRoundsGuest: 'אורח',
   matchRoundsEmptyTitle: 'אין היסטוריית משחקים',

@@ -3974,11 +3974,21 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         if (creditedNow) {
             try {
                 const num = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
-                const eveningScore = (goals, assists, wins, rounds) => {
-                    const winShare = rounds > 0 ? wins / rounds : 0;
-                    const attack = goals * 2 + assists;
-                    const raw = 6 + winShare * 2 + Math.min(1, attack / 8) * 2;
-                    return Math.round(Math.min(10, Math.max(6, raw)) * 10) / 10;
+                // Weighted performance model — the CORE subset (wins/goals/assists)
+                // of the client's src/utils/eveningScore. Contribution% + penalties
+                // aren't available here (the client adds them on the card); the three
+                // weights are re-normalised so this stays on the same 6–10 basis for
+                // the scoreDelta. Keep in sync with SCORE_WEIGHTS there.
+                const eveningScore = (goals, assists, wins, gamesPlayed) => {
+                    if (gamesPlayed <= 0)
+                        return 6.0;
+                    const clamp10 = (x) => Math.max(0, Math.min(10, x));
+                    const winsScore = clamp10((wins / gamesPlayed) * 10);
+                    const goalsScore = clamp10((goals / gamesPlayed / 2) * 10);
+                    const assistsScore = clamp10((assists / gamesPlayed / 1) * 10);
+                    const weighted = (winsScore * 0.5 + goalsScore * 0.2 + assistsScore * 0.15) / 0.85;
+                    const score = 6 + (weighted / 10) * 4;
+                    return Math.round(Math.min(10, Math.max(6, score)) * 10) / 10;
                 };
                 const attendees = after.players.filter((u) => arrivals[u] !== 'no_show');
                 // Cumulative community rows (points already include this evening).
@@ -9387,7 +9397,7 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const uid = request.auth?.uid;
     if (!uid)
         throw new https_1.HttpsError('unauthenticated', 'sign in required');
-    const { gameId, roundId, sideA, sideB, winnerSide, goals, penalties, } = (request.data ?? {});
+    const { gameId, roundId, sideA, sideB, teamAIndex, teamBIndex, winnerSide, goals, penalties, } = (request.data ?? {});
     if (!gameId || (winnerSide !== 'A' && winnerSide !== 'B' && winnerSide !== 'tie')) {
         throw new https_1.HttpsError('invalid-argument', 'gameId + winnerSide required');
     }
@@ -9520,6 +9530,10 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             roundId: String(roundId),
             teamA: A,
             teamB: B,
+            // Bib-colour indices (0=red,1=blue,2=green,…) so the recap shows the
+            // real colours. Default −1 → the client falls back to א׳/ב׳.
+            teamAIndex: typeof teamAIndex === 'number' ? teamAIndex : -1,
+            teamBIndex: typeof teamBIndex === 'number' ? teamBIndex : -1,
             scoreA,
             scoreB,
             winnerSide,
@@ -9532,6 +9546,9 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
                     ? g.assisterId
                     : null,
                 ownGoal: !!g.ownGoal,
+                minute: typeof g.minute === 'number' && g.minute > 0
+                    ? Math.floor(g.minute)
+                    : 0,
                 team: A.includes(g.scorerId) ? 'A' : 'B',
             })),
             penalties: (penalties ?? [])

@@ -1313,6 +1313,8 @@ export const gameService = {
           roundId: String(x.roundId ?? d.id),
           teamA: Array.isArray(x.teamA) ? (x.teamA as string[]) : [],
           teamB: Array.isArray(x.teamB) ? (x.teamB as string[]) : [],
+          teamAIndex: typeof x.teamAIndex === 'number' ? x.teamAIndex : -1,
+          teamBIndex: typeof x.teamBIndex === 'number' ? x.teamBIndex : -1,
           scoreA: Number(x.scoreA ?? 0),
           scoreB: Number(x.scoreB ?? 0),
           winnerSide: (x.winnerSide ?? 'tie') as RoundHistoryDoc['winnerSide'],
@@ -3554,11 +3556,17 @@ export const gameService = {
           roundId: `${rot.round ?? 'r'}:${rot.updatedAt ?? 0}`,
           sideA,
           sideB,
+          // Team indices (0=red,1=blue,2=green,…) → the round-history screen shows
+          // the real bib colours ("אדומה נגד כחולה") instead of a generic א׳/ב׳.
+          teamAIndex: idxA,
+          teamBIndex: idxB,
           winnerSide: winnerSide ?? 'tie',
           goals: (lm.goals ?? []).map((gl) => ({
             scorerId: gl.scorerId ?? null,
             assisterId: gl.assisterId ?? null,
             ownGoal: !!gl.ownGoal,
+            // Minute the goal went in — shown on the round-history goal line.
+            minute: Math.max(0, Math.floor((gl as { minute?: number }).minute ?? 0)),
           })),
           // Penalty-shootout kicks (tiebreaker). Feed ONLY the penalty stat
           // fields — never goals/score. A round with no shootout sends [].
