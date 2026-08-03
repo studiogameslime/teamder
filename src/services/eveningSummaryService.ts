@@ -19,7 +19,13 @@ import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
-import { eveningScore, pickTitle } from '@/utils/eveningScore';
+import { eveningScore } from '@/utils/eveningScore';
+import {
+  pickEveningTitle,
+  pickEveningInsights,
+  type InsightLine,
+  type NarrativeStats,
+} from '@/utils/eveningNarrative';
 import {
   reduceRounds,
   computeFun,
@@ -67,6 +73,8 @@ export interface EveningSummaryModel {
   score: number;
   title: string;
   titleEmoji: string;
+  /** situational "alive" strips picked by this player's actual performance. */
+  insights: InsightLine[];
   // Comparison vs the player's previous evening + their community-table standing.
   // Computed at end-of-evening (onGameRosterChanged) AFTER the ranking is final,
   // stored at eveningStandings/{gameId__uid} — the card reads it, never re-ranks.
@@ -148,8 +156,14 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
   const wins = 5;
   const losses = 2;
   const rounds = 7;
-  const winShare = wins / rounds;
-  const t = pickTitle(goals, assists, winShare, rounds);
+  const mockNarrative: NarrativeStats = {
+    goals, assists, wins, losses, gamesPlayed: rounds, totalRounds: 12,
+    heldPitch: 2, scoringStreak: 3,
+    contribution: { pct: 60, touched: 3, teamGoals: 5 },
+    bestMiniGame: { round: 3, goals: 2, assists: 1 },
+    pen: { scored: 1, saved: 1, missed: 0, conceded: 0 },
+  };
+  const t = pickEveningTitle(mockNarrative, `${gameId}:${uid}`);
   const physicalDoc: PhysicalDoc = {
     distanceM: 6200,
     topSpeedKmh: 24.3,
@@ -176,9 +190,14 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     winRate: Math.round((wins / (wins + losses)) * 100),
     goals,
     assists,
-    score: eveningScore(goals, assists, wins, rounds),
+    score: eveningScore({
+      goals, assists, wins, gamesPlayed: rounds,
+      contributionPct: mockNarrative.contribution?.pct ?? null,
+      pen: mockNarrative.pen,
+    }),
     title: t.title,
     titleEmoji: t.emoji,
+    insights: pickEveningInsights(mockNarrative, `${gameId}:${uid}`),
     scoreDelta: 0.6,
     rank: 3,
     rankTotal: 24,
@@ -252,8 +271,6 @@ export const eveningSummaryService = {
       }
 
       const decided = row.wins + row.losses;
-      const winShare = row.rounds > 0 ? row.wins / row.rounds : 0;
-      const t = pickTitle(row.goals, row.assists, winShare, row.rounds);
       // Evening total = number of roundHistory docs (one per committed mini-
       // game). Accurate for games from this feature onward; OLD games have no
       // roundHistory, so we fall back to the played count (total unknowable).
@@ -284,6 +301,33 @@ export const eveningSummaryService = {
       const teamGoalsFor = row.hasTeamGoals ? row.teamGoalsFor : rs.teamGoalsFor;
       const teamGoalsAgainst = row.hasTeamGoals ? row.teamGoalsAgainst : rs.teamGoalsAgainst;
 
+      // Score + adaptive narrative, from the full performance picture. Seed the
+      // copy per (game, player) so it's varied across players yet stable for a
+      // given game.
+      const narrative: NarrativeStats = {
+        goals: row.goals,
+        assists: row.assists,
+        wins: row.wins,
+        losses: row.losses,
+        gamesPlayed: row.rounds,
+        totalRounds,
+        heldPitch: rs.heldPitch,
+        scoringStreak: rs.scoringStreak,
+        contribution,
+        bestMiniGame: rs.bestMiniGame,
+        pen: rs.pen,
+      };
+      const seed = `${gameId}:${uid}`;
+      const t = pickEveningTitle(narrative, seed);
+      const score = eveningScore({
+        goals: row.goals,
+        assists: row.assists,
+        wins: row.wins,
+        gamesPlayed: row.rounds,
+        contributionPct: contribution ? contribution.pct : null,
+        pen: rs.pen,
+      });
+
       return {
         gameId,
         uid,
@@ -298,9 +342,10 @@ export const eveningSummaryService = {
         winRate: decided > 0 ? Math.round((row.wins / decided) * 100) : 0,
         goals: row.goals,
         assists: row.assists,
-        score: eveningScore(row.goals, row.assists, row.wins, row.rounds),
+        score,
         title: t.title,
         titleEmoji: t.emoji,
+        insights: pickEveningInsights(narrative, seed),
         scoreDelta: numOrNull(stand?.scoreDelta),
         rank: numOrNull(stand?.rank),
         rankTotal: numOrNull(stand?.rankTotal),

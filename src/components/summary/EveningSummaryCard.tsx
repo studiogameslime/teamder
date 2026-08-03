@@ -22,6 +22,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import type { EveningSummaryModel } from '@/services/eveningSummaryService';
+import type { InsightTone } from '@/utils/eveningNarrative';
 
 const C = {
   bg: '#F9FAFB',
@@ -47,6 +48,15 @@ const C = {
   orange: '#EA580C',
   cyan: '#0891B2',
   cyanTint: '#E6F6FA',
+};
+
+// Per-tone colours for the adaptive insight strips.
+const TONE_STYLES: Record<InsightTone, { bg: string; border: string; text: string }> = {
+  gold: { bg: C.goldTint, border: '#FDE9AE', text: C.goldDeep },
+  lime: { bg: C.greenTint, border: '#C7EFD6', text: C.green },
+  blue: { bg: C.blueTint, border: '#CFE0FF', text: C.blueDeep },
+  purple: { bg: C.purpleTint, border: '#E7DBFB', text: C.purple },
+  rose: { bg: '#FFF1F2', border: '#FECDD3', text: '#E11D48' },
 };
 
 function initial(name: string): string {
@@ -151,7 +161,6 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     const p = model.physical;
     const zoneTotal =
       p ? p.hrZones.light + p.hrZones.moderate + p.hrZones.intense + p.hrZones.peak : 0;
-    const gritDistance = p && p.distanceKm > 0 ? ` · רצת ${p.distanceKm} ק״מ` : '';
     // A wearable that logs only some record types leaves the rest at 0. Show a
     // fun row only when its underlying metric is real — otherwise the card read
     // "שרפת 0 פיצות" / "0 טעינות" (see the physical-panel per-tile guards below).
@@ -168,17 +177,11 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             : null,
         ].filter((r): r is { icon: string; text: string } => r !== null)
       : [];
-    // In winner-stays the player sits some mini-games out, so show played-of-
-    // total when the total is known and larger than what they played.
-    const showTotal = model.totalKnown && model.totalRounds > model.rounds;
-    // Header = the EVENING TOTAL mini-games (user request); the player's share
-    // of them moves to the grit strip below ("שיחקת X מתוך Y").
+    // Header = the EVENING TOTAL mini-games (user request).
     const roundsMeta = model.totalKnown ? `${model.totalRounds}` : `${model.rounds}`;
-    const gritRounds = showTotal
-      ? `${model.rounds} מתוך ${model.totalRounds} המשחקים`
-      : model.totalKnown
-        ? `את כל ${model.rounds} המשחקים`
-        : `${model.rounds} משחקים`;
+    // Situational strips picked by this player's performance (replaces the old
+    // fixed held-pitch + "worked hard" lines that everyone saw identically).
+    const insights = model.insights ?? [];
     return (
       <View ref={ref} collapsable={false} style={styles.card}>
         {/* brand */}
@@ -240,7 +243,7 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                 ? model.scoreDelta > 0
                   ? 'עלית מהמחזור הקודם 📈'
                   : 'קצת מתחת למחזור הקודם'
-                : 'מגולים, בישולים וניצחונות — לא רק משערים'}
+                : 'ניצחונות, גולים, בישולים, תרומה ופנדלים'}
             </Text>
           </View>
         </View>
@@ -283,17 +286,6 @@ export const EveningSummaryCard = forwardRef<View, Props>(
                   {`  ${model.rankDelta > 0 ? '▲' : '▼'}${Math.abs(model.rankDelta)}`}
                 </Text>
               ) : null}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* held the pitch (winner-stays) */}
-        {model.heldPitch >= 2 ? (
-          <View style={[styles.strip, styles.stripGold]}>
-            <Text style={styles.stripIco}>🏰</Text>
-            <Text style={styles.stripTxt}>
-              החזקתם את המגרש{' '}
-              <Text style={styles.stripBoldGold}>{model.heldPitch} משחקים ברצף</Text>
             </Text>
           </View>
         ) : null}
@@ -348,19 +340,18 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         </View>
 
-        {/* grit / effort — only when the player actually played mini-games.
-           A retro-goal-only evening has rounds=0, where "עבדת קשה — שיחקת 0
-           משחקים" read as nonsense (user report). */}
-        {model.rounds > 0 ? (
-          <View style={[styles.strip, styles.stripLime]}>
-            <Text style={styles.stripIco}>💪</Text>
-            <Text style={styles.stripTxt}>
-              עבדת קשה — שיחקת{' '}
-              <Text style={styles.stripBoldLime}>{gritRounds}</Text>
-              {gritDistance}
-            </Text>
-          </View>
-        ) : null}
+        {/* Adaptive insight strips — chosen by what THIS player did (goals,
+            assists, wins, held-pitch, penalties, streaks…). Different players
+            see different lines instead of the old fixed copy. */}
+        {insights.map((ins, i) => {
+          const t = TONE_STYLES[ins.tone];
+          return (
+            <View key={i} style={[styles.strip, { backgroundColor: t.bg, borderColor: t.border }]}>
+              <Text style={styles.stripIco}>{ins.icon}</Text>
+              <Text style={[styles.stripTxt, { color: t.text }]}>{ins.text}</Text>
+            </View>
+          );
+        })}
 
         {/* physical panel */}
         {p ? (

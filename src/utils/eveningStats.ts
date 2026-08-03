@@ -75,6 +75,8 @@ export interface EveningRoundStats {
   bestMiniGame: { round: number; goals: number; assists: number } | null;
   /** how many mini-games the player actually took the field for. */
   playedRounds: number;
+  /** shootout tallies across the evening (0 when no shootout involvement). */
+  pen: { scored: number; saved: number; missed: number; conceded: number };
 }
 
 /** Reduce a player's round-history into their per-evening derived stats. */
@@ -92,8 +94,15 @@ export function reduceRounds(
   let bestWin = 0;
   let played = 0;
   let best = { round: 0, goals: 0, assists: 0, pts: 0 };
+  const pen = { scored: 0, saved: 0, missed: 0, conceded: 0 };
 
   for (const r of sorted) {
+    // Shootout tallies count regardless of which team the player was on (a
+    // keeper faces the OTHER team's kicks). Done before the on-field guard.
+    for (const p of r.penalties ?? []) {
+      if (p.kickerId === uid) p.scored ? (pen.scored += 1) : (pen.missed += 1);
+      if (p.keeperId === uid) p.scored ? (pen.conceded += 1) : (pen.saved += 1);
+    }
     const onA = (r.teamA ?? []).includes(uid);
     const onB = (r.teamB ?? []).includes(uid);
     if (!onA && !onB) {
@@ -146,6 +155,7 @@ export function reduceRounds(
     teamGoalsAgainst,
     bestMiniGame: best.pts > 0 ? { round: best.round, goals: best.goals, assists: best.assists } : null,
     playedRounds: played,
+    pen,
   };
 }
 
