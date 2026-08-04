@@ -3988,7 +3988,9 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                     const winsScore = clamp10((wins / gamesPlayed) * 10);
                     const goalsScore = clamp10((goals / goalsFor10) * 10);
                     const assistsScore = clamp10((assists / assistsFor10) * 10);
-                    const weighted = (winsScore * 0.5 + goalsScore * 0.2 + assistsScore * 0.15) / 0.85;
+                    // No penalty data server-side → the no-shootout weight set
+                    // (50/30/20, sums to 1.0). Keep in sync with SCORE_WEIGHTS_NO_PEN.
+                    const weighted = winsScore * 0.5 + goalsScore * 0.3 + assistsScore * 0.2;
                     const score = 6 + (weighted / 10) * 4;
                     return Math.round(Math.min(10, Math.max(6, score)) * 10) / 10;
                 };

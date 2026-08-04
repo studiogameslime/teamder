@@ -29,7 +29,7 @@ import { teamName } from '@/utils/draft';
 import { useGameStore } from '@/store/gameStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import type { Game, GameGuest } from '@/types';
+import type { DraftTeam, Game, GameGuest } from '@/types';
 import type {
   RoundHistoryDoc,
   RoundGoalRec,
@@ -54,6 +54,29 @@ function teamStyle(
   return side === 'A'
     ? { color: '#F97316', name: he.matchRoundsTeamA }
     : { color: colors.primary, name: he.matchRoundsTeamB };
+}
+
+/** Old roundHistory docs (pre-teamAIndex) don't record which bib colour each
+ *  side was. Reconstruct it by matching the round's roster to the draft split:
+ *  the draft team whose players overlap this side the most IS this side's real
+ *  team. Returns −1 when there's no split to match against (→ "קבוצה א/ב"). */
+function resolveTeamIndex(
+  roster: readonly string[] | undefined,
+  teams: readonly DraftTeam[] | undefined,
+): number {
+  if (!teams?.length || !roster?.length) return -1;
+  let best = -1;
+  let bestOverlap = 0;
+  for (const t of teams) {
+    const ids = new Set(t.playerIds);
+    let overlap = 0;
+    for (const id of roster) if (ids.has(id)) overlap++;
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      best = t.index;
+    }
+  }
+  return bestOverlap > 0 ? best : -1;
 }
 
 interface Resolved {
@@ -195,6 +218,7 @@ export function MatchRoundsScreen() {
               round={r}
               index={idx}
               resolve={resolve}
+              teams={game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams}
               expanded={!!expanded[r.roundId || String(idx)]}
               onToggle={() =>
                 setExpanded((s) => ({
@@ -215,17 +239,31 @@ function RoundCard({
   round,
   index,
   resolve,
+  teams,
   expanded,
   onToggle,
 }: {
   round: RoundHistoryDoc;
   index: number;
   resolve: (id: string | null | undefined) => Resolved;
+  teams?: readonly DraftTeam[];
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const A = teamStyle(round.teamAIndex, 'A');
-  const B = teamStyle(round.teamBIndex, 'B');
+  // Prefer the stored bib index; for old rounds that lack it, reconstruct the
+  // real colour by matching the round's roster to the draft split — so the
+  // matchup reads "אדומה נגד כחולה" and the goal balls take the scorer's team
+  // colour, instead of the neutral "קבוצה א/ב" + orange/blue fallback.
+  const aIdx =
+    typeof round.teamAIndex === 'number' && round.teamAIndex >= 0
+      ? round.teamAIndex
+      : resolveTeamIndex(round.teamA, teams);
+  const bIdx =
+    typeof round.teamBIndex === 'number' && round.teamBIndex >= 0
+      ? round.teamBIndex
+      : resolveTeamIndex(round.teamB, teams);
+  const A = teamStyle(aIdx, 'A');
+  const B = teamStyle(bIdx, 'B');
   const pens = round.penalties ?? [];
   const penA = pens.filter((p) => p.team === 'A' && p.scored).length;
   const penB = pens.filter((p) => p.team === 'B' && p.scored).length;
