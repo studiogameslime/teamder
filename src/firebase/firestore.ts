@@ -973,6 +973,11 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
     teams,
     fillMode: o.fillMode === 'permanent' ? 'permanent' : o.fillMode === 'temporary' ? 'temporary' : undefined,
     leftHome: leftHome && leftHome.length > 0 ? leftHome : undefined,
+    // Draft/publish gate — MUST survive deserialization, else `published:false`
+    // reads back as undefined and the whole draft mode silently disables (no
+    // "טיוטה" badge, and the client shows the split to everyone). Absent = legacy
+    // published. (This is exactly what broke draft mode in 1.0.85.)
+    published: typeof o.published === 'boolean' ? o.published : undefined,
   };
 }
 
