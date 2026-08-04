@@ -28,6 +28,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { CountUp } from '@/components/anim/CountUp';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { StatDonut } from '@/components/community/StatDonut';
+import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import {
   computeClubBadges,
   type ClubMetrics,
@@ -105,6 +106,8 @@ export function CommunityStatsScreen() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [duo, setDuo] = useState<DeadlyDuo | null>(null);
   const [people, setPeople] = useState<Record<string, Resolved>>({});
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [attended, setAttended] = useState<Record<string, number>>({});
   const [subtitle, setSubtitle] = useState<string>('');
   // Members + founding date for the club achievements/level (the rest of the
   // club metrics come from champ/stats already fetched).
@@ -123,8 +126,10 @@ export function CommunityStatsScreen() {
         gameService.getCommunityDeadlyDuo(groupId).catch(() => null),
       ]);
       if (!alive) return;
+      if (s) setAttended(s.attendedByUser ?? {});
       if (g) {
         setSubtitle(g.name);
+        setMemberIds(g.playerIds ?? []);
         setClubMeta({
           members: g.playerIds?.length ?? 0,
           createdAt: g.createdAt ?? Date.now(),
@@ -427,7 +432,13 @@ export function CommunityStatsScreen() {
           </>
           ) : null}
 
-          {/* טבלת המבקיעים הוסרה — כפילות מול טבלת הליגה במסך פרטי המועדון. */}
+          {/* טבלת הליגה המלאה — הועברה לכאן ממסך פרטי-המועדון (בקשת משתמש), כדי
+              שלא תופיע פעמיים. מציגה את כל חברי המועדון מדורגים. */}
+          <CommunityChampionship
+            groupId={groupId}
+            memberIds={memberIds}
+            attendedByUser={attended}
+          />
 
           {/* ── נתונים מעניינים ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
