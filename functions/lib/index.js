@@ -3974,18 +3974,20 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         if (creditedNow) {
             try {
                 const num = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
-                // Weighted performance model — the CORE subset (wins/goals/assists)
-                // of the client's src/utils/eveningScore. Contribution% + penalties
-                // aren't available here (the client adds them on the card); the three
-                // weights are re-normalised so this stays on the same 6–10 basis for
-                // the scoreDelta. Keep in sync with SCORE_WEIGHTS there.
-                const eveningScore = (goals, assists, wins, gamesPlayed) => {
+                // SELF-based performance model — the CORE subset (wins/goals/assists)
+                // of the client's src/utils/eveningScore. Penalties aren't available
+                // here (the client adds them on the card); the three weights are
+                // re-normalised so this stays on the same 6–10 basis for the
+                // scoreDelta. Goals/assists are evening TOTALS measured against the
+                // community king benchmark (goalsFor10/assistsFor10) — NOT per-game.
+                // Keep in sync with SCORE_WEIGHTS + eveningScore() there.
+                const eveningScore = (goals, assists, wins, gamesPlayed, goalsFor10, assistsFor10) => {
                     if (gamesPlayed <= 0)
                         return 6.0;
                     const clamp10 = (x) => Math.max(0, Math.min(10, x));
                     const winsScore = clamp10((wins / gamesPlayed) * 10);
-                    const goalsScore = clamp10((goals / gamesPlayed / 2) * 10);
-                    const assistsScore = clamp10((assists / gamesPlayed / 1) * 10);
+                    const goalsScore = clamp10((goals / goalsFor10) * 10);
+                    const assistsScore = clamp10((assists / assistsFor10) * 10);
                     const weighted = (winsScore * 0.5 + goalsScore * 0.2 + assistsScore * 0.15) / 0.85;
                     const score = 6 + (weighted / 10) * 4;
                     return Math.round(Math.min(10, Math.max(6, score)) * 10) / 10;
@@ -4026,6 +4028,38 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                         rounds: num(d.rounds),
                     };
                 });
+                // ── Community king benchmark ─────────────────────────────────────
+                // The "perfect 10" goals/assists targets = the group's HISTORICAL
+                // average of the top scorer's / top assister's evening total ("מלך
+                // השערים" per מחזור). Read the running totals on communityStats, fold
+                // in THIS evening's kings, and use the updated average as the target —
+                // so a 10 tracks what the best player in this community actually does
+                // and stays reachable. The client (eveningSummaryService) reads the
+                // SAME doc and derives the same average, so its displayed score and
+                // this scoreDelta stay consistent. Defaults kept in sync with
+                // src/utils/eveningScore DEFAULT_*_FOR_10.
+                const DEFAULT_GOALS_FOR_10 = 4;
+                const DEFAULT_ASSISTS_FOR_10 = 2;
+                const BENCH_FLOOR = 1;
+                const attGoals = attendees.map((u) => evStat[u].goals);
+                const attAssists = attendees.map((u) => evStat[u].assists);
+                const sessionKingGoals = attGoals.length ? Math.max(...attGoals) : 0;
+                const sessionKingAssists = attAssists.length
+                    ? Math.max(...attAssists)
+                    : 0;
+                const csRef = db.collection('communityStats').doc(gid);
+                const csDoc = await csRef.get();
+                const cs = csDoc.exists
+                    ? csDoc.data()
+                    : {};
+                const addG = sessionKingGoals > 0 ? 1 : 0;
+                const addA = sessionKingAssists > 0 ? 1 : 0;
+                const newGCnt = num(cs.kingGoalsCount) + addG;
+                const newGSum = num(cs.kingGoalsSum) + sessionKingGoals * addG;
+                const newACnt = num(cs.kingAssistsCount) + addA;
+                const newASum = num(cs.kingAssistsSum) + sessionKingAssists * addA;
+                const goalsFor10 = Math.max(BENCH_FLOOR, newGCnt > 0 ? newGSum / newGCnt : DEFAULT_GOALS_FOR_10);
+                const assistsFor10 = Math.max(BENCH_FLOOR, newACnt > 0 ? newASum / newACnt : DEFAULT_ASSISTS_FOR_10);
                 const pts = (g, a) => g * 2 + a;
                 // Rank by points desc; ties → goals, then uid (stable, deterministic).
                 const rankByPoints = (pointOf, goalOf) => [...cum].sort((a, b) => pointOf(b.uid) - pointOf(a.uid) ||
@@ -4051,7 +4085,7 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                 const standingBatch = db.batch();
                 for (const uid of attendees) {
                     const e = evStat[uid];
-                    const score = eveningScore(e.goals, e.assists, e.wins, e.rounds);
+                    const score = eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10);
                     const prev = cumMap.get(uid)?.lastScore ?? null;
                     const rankNow = nowRanked.findIndex((c) => c.uid === uid) + 1;
                     const rankBefore = beforeRanked.findIndex((c) => c.uid === uid) + 1;
@@ -4072,6 +4106,15 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                     // Remember this evening's score for next evening's delta.
                     standingBatch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), { lastEveningScore: score }, { merge: true });
                 }
+                // Fold this evening's kings into the community benchmark (atomic
+                // increments, so concurrent finishes in the same group don't clobber).
+                standingBatch.set(csRef, {
+                    kingGoalsSum: admin.firestore.FieldValue.increment(sessionKingGoals * addG),
+                    kingGoalsCount: admin.firestore.FieldValue.increment(addG),
+                    kingAssistsSum: admin.firestore.FieldValue.increment(sessionKingAssists * addA),
+                    kingAssistsCount: admin.firestore.FieldValue.increment(addA),
+                    updatedAt: Date.now(),
+                }, { merge: true });
                 await standingBatch.commit();
             }
             catch (err) {
@@ -5033,6 +5076,9 @@ async function generateDraftTeamsForGame(ref, g) {
                 createdAt: Date.now(),
                 createdBy: g.createdBy ?? 'system',
                 teams,
+                // Scheduled auto-teams are meant to be visible immediately (the push
+                // fires here too) → publish straight away, never a hidden draft.
+                published: true,
             };
             tx.update(ref, {
                 draftTeams,

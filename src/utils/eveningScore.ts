@@ -3,13 +3,17 @@
 // in a plain node jest env, and so the formula lives in exactly one place.
 // The adaptive headline + insight lines live in ./eveningNarrative.
 //
-// SELF-BASED weighted model, final score 6.0–10.0. Four categories, each first
-// scored 0–10, then blended by weight and mapped into the 6–10 display range:
+// SELF-BASED weighted model, final score 6.0–10.0. Each category is first
+// scored 0–10, then blended by weight and mapped into the 6–10 display range.
+// Weights depend on shootout involvement (each set sums to 1.0):
 //
-//   50% wins       — win rate (the one team-aligned axis you're rewarded for)
-//   20% goals       — YOUR goals this evening vs the community benchmark
-//   15% assists     — YOUR assists this evening vs the community benchmark
-//    5% penalties    — shootout: scored/saved good, missed/conceded bad
+//   no shootout:   50% wins · 30% goals · 20% assists
+//   in a shootout: 45% wins · 30% goals · 20% assists · 5% penalties
+//
+//   wins    — win rate (the one team-aligned axis you're rewarded for)
+//   goals   — YOUR goals this evening vs the community benchmark
+//   assists — YOUR assists this evening vs the community benchmark
+//   penalties — shootout: scored/saved good, missed/conceded bad
 //
 // The score is measured against YOURSELF only — there is no "contribution %"
 // (share of your team's goals), which perversely punished you for a teammate
@@ -20,17 +24,24 @@
 // from communityStats; the DEFAULT_* fallbacks apply only before a group has
 // any finished-evening history.
 //
-// Sparsity: a category with no data (no shootout involvement → no penalties) is
-// DROPPED and its weight redistributed, so a player is never punished for a
-// situation that never came up. A subset (wins/goals/assists) is mirrored in
-// the evening-standings Cloud Function — keep both in sync.
+// Penalties only count for players actually involved in a shootout. Rather than
+// re-normalising, there are TWO explicit weight sets that each sum to 1.0 — for
+// a shootout player, the penalty axis takes its 5% out of the WINS weight
+// (50→45); goals/assists stay fixed. A subset (wins/goals/assists) is mirrored
+// in the evening-standings Cloud Function — keep both in sync.
 
-/** Category weights. Tunable in one place. Sum 0.9 — the penalties axis is
- *  dropped for anyone not in a shootout, and the present weights re-normalise. */
-export const SCORE_WEIGHTS = {
+/** No shootout involvement (the common case). Sums to 1.0. */
+export const SCORE_WEIGHTS_NO_PEN = {
   wins: 0.5,
-  goals: 0.2,
-  assists: 0.15,
+  goals: 0.3,
+  assists: 0.2,
+} as const;
+
+/** Shootout involvement — the 5% penalty axis comes out of wins. Sums to 1.0. */
+export const SCORE_WEIGHTS_WITH_PEN = {
+  wins: 0.45,
+  goals: 0.3,
+  assists: 0.2,
   penalties: 0.05,
 } as const;
 
@@ -106,27 +117,30 @@ export function eveningScore(input: EveningScoreInput): number {
   const goalsScore = clamp10((input.goals / goalsFor10) * 10);
   const assistsScore = clamp10((input.assists / assistsFor10) * 10);
 
-  // [weight, categoryScore] — always-present core three first.
-  const cats: Array<[number, number]> = [
-    [SCORE_WEIGHTS.wins, winsScore],
-    [SCORE_WEIGHTS.goals, goalsScore],
-    [SCORE_WEIGHTS.assists, assistsScore],
-  ];
   const penInvolved =
     input.pen.scored + input.pen.saved + input.pen.missed + input.pen.conceded;
-  if (penInvolved > 0) {
-    const p =
-      PENALTY_POINTS.base +
-      input.pen.scored * PENALTY_POINTS.scored +
-      input.pen.saved * PENALTY_POINTS.saved +
-      input.pen.missed * PENALTY_POINTS.missed +
-      input.pen.conceded * PENALTY_POINTS.conceded;
-    cats.push([SCORE_WEIGHTS.penalties, clamp10(p)]);
-  }
 
-  // Weighted average over PRESENT categories (re-normalised → 0–10).
-  const wsum = cats.reduce((s, [w]) => s + w, 0);
-  const weighted = cats.reduce((s, [w, v]) => s + w * v, 0) / wsum;
+  // Two explicit weight sets, each summing to 1.0 → no re-normalisation.
+  let weighted: number;
+  if (penInvolved > 0) {
+    const penScore = clamp10(
+      PENALTY_POINTS.base +
+        input.pen.scored * PENALTY_POINTS.scored +
+        input.pen.saved * PENALTY_POINTS.saved +
+        input.pen.missed * PENALTY_POINTS.missed +
+        input.pen.conceded * PENALTY_POINTS.conceded,
+    );
+    const w = SCORE_WEIGHTS_WITH_PEN;
+    weighted =
+      winsScore * w.wins +
+      goalsScore * w.goals +
+      assistsScore * w.assists +
+      penScore * w.penalties;
+  } else {
+    const w = SCORE_WEIGHTS_NO_PEN;
+    weighted =
+      winsScore * w.wins + goalsScore * w.goals + assistsScore * w.assists;
+  }
 
   const score = 6 + (weighted / 10) * 4;
   return round1(Math.max(6, Math.min(10, score)));

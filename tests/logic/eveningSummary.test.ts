@@ -34,10 +34,10 @@ describe('eveningScore (weighted model)', () => {
     expect(Math.round(s * 10) / 10).toBe(s);
   });
 
-  it('wins dominate (50%): all-wins no-goals still scores well', () => {
+  it('wins dominate (50%): all-wins no-goals lands at the 8.0 midpoint', () => {
     const runner = score({ wins: 7, goals: 0, assists: 0 });
-    expect(runner).toBeGreaterThan(8); // ~0.5 weight * 10 → strong
-    expect(runner).toBeLessThanOrEqual(10);
+    // 0.5 weight × a perfect win-rate (10) → weighted 5 → 6 + 5/10*4 = 8.0
+    expect(runner).toBe(8);
   });
 
   it('more goals ⇒ higher, all else equal', () => {
