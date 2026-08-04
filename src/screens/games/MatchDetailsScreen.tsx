@@ -2814,14 +2814,15 @@ export function MatchDetailsScreen() {
                 style={styles.exportTeamsBtn}
                 accessibilityRole="button"
               >
+                {/* Icon AFTER text → visual-left under forceRTL (user request). */}
+                <Text style={styles.exportTeamsText}>
+                  {he.draftExportWhatsapp}
+                </Text>
                 <Ionicons
                   name="share-social-outline"
                   size={16}
                   color={colors.primary}
                 />
-                <Text style={styles.exportTeamsText}>
-                  {he.draftExportWhatsapp}
-                </Text>
               </Pressable>
               {/* "הלכו הביתה" summary — who left mid-evening and when, kept on
                   draftTeams.leftHome (with its timestamp) so it survives into
@@ -2917,14 +2918,15 @@ export function MatchDetailsScreen() {
                           ]}
                           accessibilityRole="button"
                         >
+                          {/* Icon AFTER text → visual-left under forceRTL. */}
+                          <Text style={styles.teamFbNotifyText}>
+                            {he.autoBalanceNotifyPlayers}
+                          </Text>
                           <Ionicons
                             name="notifications-outline"
                             size={16}
                             color={colors.primary}
                           />
-                          <Text style={styles.teamFbNotifyText}>
-                            {he.autoBalanceNotifyPlayers}
-                          </Text>
                         </Pressable>
                       </View>
                     ) : null}

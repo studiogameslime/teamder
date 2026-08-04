@@ -146,9 +146,10 @@ export function HomeNextGameCard({
         accessibilityRole="button"
         accessibilityLabel={he.homeGameDetailsCta}
       >
-        <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
+        {/* Icon AFTER the text → visual-left in RTL (user request); the old
+            leading chevron was dropped (redundant with the ball icon). */}
         <Text style={styles.ctaText}>{he.homeGameDetailsCta}</Text>
-        <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
+        <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
       </Pressable>
     </View>
   );
