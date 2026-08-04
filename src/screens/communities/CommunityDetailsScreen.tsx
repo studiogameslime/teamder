@@ -147,6 +147,10 @@ export function CommunityDetailsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [invitingBusy, setInvitingBusy] = useState(false);
+  const [lastCycleHolders, setLastCycleHolders] = useState<{
+    ballId?: string;
+    jerseysId?: string;
+  }>({});
 
   const reload = useCallback(
     async (opts: { pullToRefresh?: boolean } = {}) => {
@@ -207,6 +211,43 @@ export function CommunityDetailsScreen() {
     useCallback(() => {
       reload();
     }, [reload]),
+  );
+
+  // "מהמחזור האחרון" — who brought the ball / jerseys last evening. The history
+  // summaries don't carry the holder fields, so fetch the most recent finished
+  // game's doc once. Non-blocking: absent/failed → the section just hides.
+  const lastFinishedId = useMemo(
+    () =>
+      [...history]
+        .filter((h) => h.status === 'finished')
+        .sort((a, b) => b.date - a.date)[0]?.id ?? null,
+    [history],
+  );
+  useEffect(() => {
+    if (!lastFinishedId) {
+      setLastCycleHolders({});
+      return;
+    }
+    let alive = true;
+    gameService
+      .getGameById(lastFinishedId)
+      .then((g) => {
+        if (alive && g) {
+          setLastCycleHolders({
+            ballId: g.ballHolderUserId,
+            jerseysId: g.jerseysHolderUserId,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [lastFinishedId]);
+  const memberName = useCallback(
+    (uid?: string) =>
+      uid ? members.find((m) => m.id === uid)?.name ?? null : null,
+    [members],
   );
 
   // NOTE: `?.` on playerIds/adminIds — a group snapshot can legitimately reach
@@ -896,16 +937,71 @@ export function CommunityDetailsScreen() {
             }
           />
 
+          {/* "מהמחזור האחרון" — who brought the ball / jerseys last evening
+              (user request). Vector icons, no emoji. Hidden when neither holder
+              is known (old game / not assigned). */}
+          {(() => {
+            const ballName = memberName(lastCycleHolders.ballId);
+            const jerseysName = memberName(lastCycleHolders.jerseysId);
+            if (!ballName && !jerseysName) return null;
+            return (
+              <View style={styles.lastCycleWrap}>
+                <Text style={styles.lastCycleTitle}>
+                  {he.communityLastCycleTitle}
+                </Text>
+                <View style={styles.lastCycleRow}>
+                  {ballName ? (
+                    <View style={styles.lastCycleSquare}>
+                      <View style={styles.lastCycleIcon}>
+                        <Ionicons name="football" size={20} color={colors.primary} />
+                      </View>
+                      <Text style={styles.lastCycleLabel}>
+                        {he.communityBroughtBall}
+                      </Text>
+                      <Text style={styles.lastCycleName} numberOfLines={1}>
+                        {ballName}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {jerseysName ? (
+                    <View style={styles.lastCycleSquare}>
+                      <View style={styles.lastCycleIcon}>
+                        <Ionicons name="shirt" size={20} color={colors.primary} />
+                      </View>
+                      <Text style={styles.lastCycleLabel}>
+                        {he.communityBroughtJerseys}
+                      </Text>
+                      <Text style={styles.lastCycleName} numberOfLines={1}>
+                        {jerseysName}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })()}
+
           {/* Community-level aggregate stats. Loaded once by the parent
               (read cost bounded to ~200 finished/cancelled game docs) and
               passed down so the count here AGREES with "מפגשים שנערכו". */}
           <CommunityStatsSection stats={communityStats} />
 
-          {/* Goals championship — club-scoped scorers leaderboard. */}
-          <CommunityChampionship
-            groupId={group.id}
-            memberIds={group.playerIds ?? []}
-            attendedByUser={communityStats?.attendedByUser}
+          {/* The club scorers table was MOVED into the full stats window (user
+              request) — where it already lives alongside the leaderboards and
+              superlatives. A button takes you straight there. */}
+          <Button
+            title={he.communityViewStatsTable}
+            variant="outline"
+            size="lg"
+            fullWidth
+            iconRight="stats-chart"
+            style={{ marginTop: spacing.md }}
+            onPress={() =>
+              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                'CommunityStats',
+                { groupId: group.id },
+              )
+            }
           />
 
           {/* The per-community game-history list used to render here, but it
@@ -1163,6 +1259,47 @@ function nextOccurrence(g: Group): number | null {
 }
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  lastCycleWrap: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
+  lastCycleTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+    marginBottom: spacing.sm,
+  },
+  lastCycleRow: { flexDirection: 'row', gap: spacing.sm },
+  lastCycleSquare: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  lastCycleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${colors.primary}14`,
+    marginBottom: 2,
+  },
+  lastCycleLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    writingDirection: 'rtl',
+  },
+  lastCycleName: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+  },
   celebrationLayer: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
