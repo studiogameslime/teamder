@@ -130,6 +130,23 @@ export function MatchRoundsScreen() {
     };
   }, [players, guestsById]);
 
+  // Distinct teams that took part this cycle — for the legend row under the
+  // count. Prefer the authoritative draft split; fall back to whatever indices
+  // the rounds recorded (old games with a real index but no draftTeams). −1
+  // (index-less legacy rounds) is dropped: there's no colour to show.
+  const cycleTeams = useMemo<number[]>(() => {
+    const fromDraft = (game?.draftTeams?.teams ?? [])
+      .map((t) => t.index)
+      .filter((i) => typeof i === 'number' && i >= 0);
+    if (fromDraft.length) return [...new Set(fromDraft)].sort((a, b) => a - b);
+    const fromRounds = new Set<number>();
+    for (const r of rounds) {
+      if (typeof r.teamAIndex === 'number' && r.teamAIndex >= 0) fromRounds.add(r.teamAIndex);
+      if (typeof r.teamBIndex === 'number' && r.teamBIndex >= 0) fromRounds.add(r.teamBIndex);
+    }
+    return [...fromRounds].sort((a, b) => a - b);
+  }, [game?.draftTeams?.teams, rounds]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -158,6 +175,20 @@ export function MatchRoundsScreen() {
               {he.matchRoundsCount(rounds.length)}
             </Text>
           </View>
+          {/* All teams that played this cycle — a colour legend so the
+              "אדומה נגד כחולה" matchups below read at a glance (user request). */}
+          {cycleTeams.length > 0 ? (
+            <View style={styles.teamsLegend}>
+              {cycleTeams.map((idx) => (
+                <View key={idx} style={styles.teamsLegendChip}>
+                  <View
+                    style={[styles.teamsLegendDot, { backgroundColor: TEAM_HEX[idx] }]}
+                  />
+                  <Text style={styles.teamsLegendName}>{teamName(idx)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           {rounds.map((r, idx) => (
             <RoundCard
               key={r.roundId || String(idx)}
@@ -430,6 +461,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   summaryPillTx: { ...typography.caption, color: colors.text, fontWeight: '700' },
+  teamsLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  teamsLegendChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+  },
+  teamsLegendDot: { width: 11, height: 11, borderRadius: 6 },
+  teamsLegendName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+  },
   legend: {
     flexDirection: 'row',
     justifyContent: 'flex-start',

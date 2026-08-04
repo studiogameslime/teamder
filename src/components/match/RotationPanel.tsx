@@ -303,9 +303,10 @@ export function RotationPanel({
                     <Text style={[styles.waitName, { color: teamColor(idx, draftTeams?.teams) }]}>{teamName(idx, draftTeams?.teams)}</Text>
                     <Text style={styles.waitCount}>
                       {he.rotationPlayersCount(roster.length)}
-                      {winsOf(idx) > 0
-                        ? ` · ⁦🏆 ${he.rotationWinsShort(winsOf(idx))}⁩`
-                        : ''}
+                      {/* Wins are shown for waiting/inviting teams too (user
+                          request) — always, even at 0, matching the two playing
+                          teams' "N ניצחונות" counter. */}
+                      {` · ⁦🏆 ${he.rotationWinsShort(winsOf(idx))}⁩`}
                     </Text>
                   </View>
                   <View style={styles.waitSpacer} />
