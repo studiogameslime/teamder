@@ -868,6 +868,10 @@ export function CommunityDetailsScreen() {
           <NextGameCard
             startsAt={nextGame?.startsAt}
             fieldName={nextGame?.fieldName ?? group.fieldName ?? ''}
+            playersCount={nextGame?.players?.length}
+            maxPlayers={nextGame?.maxPlayers}
+            format={nextGame?.format}
+            fieldType={nextGame?.fieldType}
             registrationOpensAt={
               nextGame?.status === 'scheduled'
                 ? nextGame.registrationOpensAt

@@ -1262,8 +1262,17 @@ export const he = {
     n === 1 ? 'שחקן אחד' : `${n} שחקנים`,
   // Community details — redesign strings
   communityNextGameTitle: 'מחזור קרוב',
+  communityNextGameEyebrow: 'המחזור הקרוב',
   communityNextGameNone: 'לא נקבע מחזור קרוב',
   communityNextGameCta: 'לצפייה בפרטי המחזור',
+  communityNextGameFullCta: 'לפרטי המחזור',
+  communityNextGameStatPlayers: 'שחקנים',
+  communityNextGameStatFormat: 'פורמט',
+  communityNextGameStatField: 'מגרש',
+  communityNextGameInMin: (n: number) => `עוד ${n} דק׳`,
+  communityNextGameInHours: (n: number) => `עוד ${n} שעות`,
+  communityNextGameTomorrow: 'מחר',
+  communityNextGameInDays: (n: number) => `עוד ${n} ימים`,
   communityNextGameLocked: 'ההרשמה תיפתח בקרוב',
   communityNextGameLockedBody: (when: string) =>
     `המחזור יופיע בפיד וההרשמה תיפתח ב-${when}.`,
