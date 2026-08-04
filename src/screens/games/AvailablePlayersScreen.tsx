@@ -249,43 +249,33 @@ export function AvailablePlayersScreen() {
           contentContainerStyle={styles.list}
           data={candidates}
           keyExtractor={(u) => u.id}
-          renderItem={({ item }) => {
-            const sent = invitedIds.has(item.id);
-            return (
-              <View style={styles.row}>
-                <PlayerIdentity
-                  user={item}
-                  size={44}
-                  onPress={() =>
-                    nav.navigate('PlayerCard', {
-                      userId: item.id,
-                      groupId: game?.groupId,
-                    })
-                  }
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.name}
+          // Read-only preview of who the pulse will reach — the per-row
+          // one-by-one invite was removed (user request): a single "send to
+          // everyone" button up top is the only send action now.
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <PlayerIdentity
+                user={item}
+                size={44}
+                onPress={() =>
+                  nav.navigate('PlayerCard', {
+                    userId: item.id,
+                    groupId: game?.groupId,
+                  })
+                }
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {item.availability?.preferredCity ? (
+                  <Text style={styles.sub} numberOfLines={1}>
+                    {item.availability.preferredCity}
                   </Text>
-                  {item.availability?.preferredCity ? (
-                    <Text style={styles.sub} numberOfLines={1}>
-                      {item.availability.preferredCity}
-                    </Text>
-                  ) : null}
-                </View>
-                <Button
-                  title={
-                    sent ? he.playerCardInviteSent : he.playerCardInvite
-                  }
-                  variant={sent ? 'outline' : 'primary'}
-                  size="sm"
-                  loading={invitingId === item.id}
-                  disabled={sent || invitingId === item.id}
-                  onPress={() => invite(item)}
-                />
+                ) : null}
               </View>
-            );
-          }}
+            </View>
+          )}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
         />
       )}
