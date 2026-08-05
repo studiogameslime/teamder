@@ -974,7 +974,17 @@ service cloud.firestore {
         // client gate (`guestsOpenAt ?? 0`) allowed it. Treat null as "open".
         (
           resource.data.status == 'open' &&
-          request.auth.uid in resource.data.players &&
+          // A registered player OR a waitlisted player may add a guest (user
+          // request — waitlisters can add too). Mirrors the client canAddGuest.
+          // `is list` guards against a present-null `waitlist` (the .get(k,d)
+          // null trap — a null value would make `in` type-error and deny).
+          (
+            request.auth.uid in resource.data.players ||
+            (
+              resource.data.get('waitlist', []) is list &&
+              request.auth.uid in resource.data.get('waitlist', [])
+            )
+          ) &&
           affectedKeys().hasOnly(['guests', 'updatedAt']) &&
           request.resource.data.guests is list &&
           request.resource.data.guests.size() ==

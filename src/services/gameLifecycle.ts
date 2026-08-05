@@ -184,7 +184,9 @@ export function canAddGuest(game: Game, actor: ActorFlags): boolean {
   if (!isOpen(game)) return false;
   // Admin / organizer: always allowed.
   if (actor.isOrganizerOrAdmin) return true;
-  // Everyone else must be a registered participant.
+  // Everyone else must be a participant — a registered player OR a waitlisted
+  // player (user request: let waitlisters add guests too). The caller passes
+  // isParticipant = players∪waitlist; the rules mirror this.
   if (!actor.isParticipant) return false;
   // The "הגבלת הוספת אורחים עד זמן מסוים" toggle: when set (guestsOpenAt > 0)
   // non-admins may add guests only from that time onward. When unset (0/undef)

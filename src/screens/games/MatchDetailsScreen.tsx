@@ -3013,14 +3013,18 @@ export function MatchDetailsScreen() {
             pendingCount={game.pending?.length ?? 0}
             onSeeAll={() => nav.navigate('MatchPlayers', { gameId: game.id })}
             // "הוסף אורח" lives as an inline text link next to the
-            // section header. Admins can always add; registered players can
-            // too unless the game restricts it until a set time (the
-            // "הגבלת הוספת אורחים עד זמן מסוים" toggle). Hidden on any status
-            // where the server/rules would reject the write (GAME_NOT_OPEN).
+            // section header. Admins can always add; registered players AND
+            // waitlisted players can too (user request) unless the game
+            // restricts it until a set time (the "הגבלת הוספת אורחים עד זמן
+            // מסוים" toggle). Hidden on any status where the server/rules would
+            // reject the write (GAME_NOT_OPEN).
             onAddGuest={
               canAddGuest(game, {
                 isOrganizerOrAdmin: isAdmin,
-                isParticipant: !!user && game.players.includes(user.id),
+                isParticipant:
+                  !!user &&
+                  (game.players.includes(user.id) ||
+                    (game.waitlist ?? []).includes(user.id)),
               })
                 ? () => setGuestModalOpen(true)
                 : undefined
