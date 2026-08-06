@@ -695,6 +695,9 @@ export interface UserStats {
   penFaced?: number;
   penSaved?: number;
   penConceded?: number;
+  /** Own goals the player scored (into their own net). Incremented server-side
+   *  by `commitRoundStats`; optional (no migration). Never part of `goals`. */
+  ownGoals?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
@@ -1166,8 +1169,10 @@ export interface MatchRotation {
  *
  * `team` is 'A' or 'B' — the on-field side the goal COUNTS FOR (for an own
  * goal this is already the beneficiary side, i.e. the opponent of whoever
- * put it in). `scorerId` is the attributed scorer, or null when unknown /
- * an own goal (own goals never credit a scorer in the goals tally).
+ * put it in). `scorerId` is the attributed scorer, or null when unknown. For
+ * an OWN goal, `scorerId` is the player who put it into their own net — who is
+ * on the CONCEDING team (the other side than `team`); they never get a striker
+ * tally, but they do earn the "שערים עצמיים" stat.
  * `minute` is the match-clock minute (0-based) captured at entry — recorded
  * behind the scenes even if not shown prominently.
  */

@@ -54,7 +54,7 @@ import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, isGuestId } from '@/types';
+import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
 import { Shootout, TieDecisionModal } from '@/components/match/Shootout';
@@ -328,10 +328,10 @@ export function AdvancedLiveMatchScreen() {
     }
     const acc: Record<string, number> = {};
     for (const g of live?.goals ?? []) {
-      // Skip own goals, unknown scorers, AND guests — guests carry no stats and
-      // are dropped at commit, so the live badge must not credit them either
-      // (matches the goalTally path, which already excludes guests). N1.
-      if (g.ownGoal || !g.scorerId || isGuestId(g.scorerId)) continue;
+      // Credit real AND guest scorers (a guest is a full player in the cycle and
+      // now earns a per-game scorer row + badge). Only own goals / unknown
+      // scorers credit no one. Matches the goalTally path.
+      if (g.ownGoal || !g.scorerId) continue;
       acc[g.scorerId] = (acc[g.scorerId] ?? 0) + 1;
     }
     return acc;

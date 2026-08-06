@@ -9520,6 +9520,38 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // matching "round played" (B12, B13). Keeps every per-round stat internally
     // consistent: you played, or you got nothing.
     const onField = new Set([...A, ...B]);
+    // The game's registered guests (roster ids are `guest:<id>`). Used to
+    // validate a guest actually belongs to THIS game before listing them / a
+    // guest scorer before crediting — same anti-forgery guard `roster` gives
+    // real players.
+    const guestRoster = new Set();
+    for (const gg of game.guests ?? []) {
+        if (gg?.id)
+            guestRoster.add(`guest:${gg.id}`);
+    }
+    // FULL display rosters (guests INCLUDED) — a guest is a full player in the
+    // cycle, so "מי שיחק" in the match-history recap must show them. Kept
+    // separate from A/B (real-only, for stat crediting). Same guards as A/B: a
+    // real id must be on the game roster and not a no-show; a guest id must be a
+    // registered guest of this game. Deduped + disjoint, capped for doc size.
+    const okForDisplay = (id) => isReal(id)
+        ? roster.has(id) && arrivals[id] !== 'no_show'
+        : guestRoster.has(id);
+    const fseen = new Set();
+    const fullA = [];
+    const fullB = [];
+    for (const id of sideA ?? []) {
+        if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) {
+            fseen.add(id);
+            fullA.push(id);
+        }
+    }
+    for (const id of sideB ?? []) {
+        if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) {
+            fseen.add(id);
+            fullB.push(id);
+        }
+    }
     const inc = (n) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
     const batch = db.batch();
@@ -9542,6 +9574,33 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
     }
     const totalGoalsThisRound = Object.values(byScorer).reduce((a, b) => a + b, 0);
+    // 1b) GUEST goals → NOT credited to any real/community stat (guests have no
+    // cross-cycle identity), but they DO earn a per-game scorer row (so the
+    // finished-game table lists them) and feed the club "goals by guests"
+    // counter. Own goals excluded (they belong to no one). Validated against the
+    // game's guest roster so a forged guest id can't inflate the counter.
+    const byGuest = {};
+    for (const g of goals ?? []) {
+        if (g.ownGoal || !g.scorerId || isReal(g.scorerId))
+            continue;
+        if (!guestRoster.has(g.scorerId))
+            continue;
+        byGuest[g.scorerId] = (byGuest[g.scorerId] ?? 0) + 1;
+    }
+    const guestGoalsThisRound = Object.values(byGuest).reduce((a, b) => a + b, 0);
+    // 1c) OWN goals → credit the OWN-GOAL scorer (the player who put it into
+    // their own net; on the CONCEDING team, so still on-field). NOT a striker
+    // goal — a separate `ownGoals` stat. Real players only (a guest own-goal
+    // just displays in history). Inverse of the byScorer guard (ownGoal only).
+    const byOwnScorer = {};
+    for (const g of goals ?? []) {
+        if (!g.ownGoal || !g.scorerId || !isReal(g.scorerId))
+            continue;
+        if (!onField.has(g.scorerId))
+            continue;
+        byOwnScorer[g.scorerId] = (byOwnScorer[g.scorerId] ?? 0) + 1;
+    }
+    const totalOwnGoalsThisRound = Object.values(byOwnScorer).reduce((a, b) => a + b, 0);
     // ── Phase-2 evening-summary data (roundHistory + team goal split) ────────
     // Credited team goals per side → drives each player's per-evening
     // contribution% (their goals ÷ their team's goals). The actual mini-game
@@ -9550,16 +9609,29 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const creditedForSide = (side) => side.reduce((s, id) => s + (byScorer[id] ?? 0), 0);
     const creditedA = creditedForSide(A);
     const creditedB = creditedForSide(B);
+    // Stored round score = count each goal for its `team` (the beneficiary side
+    // the client already used to move the live score). This is the ONLY way own
+    // goals and guest goals count toward the stored score — deriving from a real
+    // on-field scorer dropped both. Legacy payloads (no `team`) fall back to the
+    // old scorer-side derivation so older app versions still store a score.
     let scoreA = 0;
     let scoreB = 0;
     for (const g of goals ?? []) {
+        if (g.team === 'A') {
+            scoreA++;
+            continue;
+        }
+        if (g.team === 'B') {
+            scoreB++;
+            continue;
+        }
+        // Legacy (no team): real on-field scorer only; own goal credits the other.
         if (!g.scorerId || !isReal(g.scorerId) || !onField.has(g.scorerId))
             continue;
         const onA = A.includes(g.scorerId);
         const onB = B.includes(g.scorerId);
         if (!onA && !onB)
             continue;
-        // An own goal credits the OTHER team's score.
         const forA = g.ownGoal ? onB : onA;
         if (forA)
             scoreA++;
@@ -9576,8 +9648,11 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const roundHistoryDoc = roundId !== undefined && roundId !== null
         ? {
             roundId: String(roundId),
-            teamA: A,
-            teamB: B,
+            // FULL rosters (guests included) so "מי שיחק" shows everyone who
+            // played. Sliced for doc-size safety. (A/B — real only — remain the
+            // basis for stat crediting above, not for this display roster.)
+            teamA: fullA.slice(0, 25),
+            teamB: fullB.slice(0, 25),
             // Bib-colour indices (0=red,1=blue,2=green,…) so the recap shows the
             // real colours. Default −1 → the client falls back to א׳/ב׳.
             teamAIndex: typeof teamAIndex === 'number' ? teamAIndex : -1,
@@ -9585,11 +9660,18 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             scoreA,
             scoreB,
             winnerSide,
+            // Store EVERY goal for the recap — real, guest AND own (null
+            // scorer). A goal is kept if it carries a `team` (new payloads) or,
+            // for legacy payloads, if it has a real on-field scorer. `team`
+            // comes from the payload; legacy falls back to scorer-side.
             goals: (goals ?? [])
-                .filter((g) => g.scorerId && isReal(g.scorerId) && onField.has(g.scorerId))
+                .filter((g) => g.team === 'A' ||
+                g.team === 'B' ||
+                (g.scorerId && isReal(g.scorerId) && onField.has(g.scorerId)))
                 .slice(0, 100)
                 .map((g) => ({
-                scorerId: g.scorerId,
+                // null for own goals; the guest/real id otherwise.
+                scorerId: g.scorerId ?? null,
                 assisterId: g.assisterId && isReal(g.assisterId) && onField.has(g.assisterId)
                     ? g.assisterId
                     : null,
@@ -9597,7 +9679,11 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
                 minute: typeof g.minute === 'number' && g.minute > 0
                     ? Math.floor(g.minute)
                     : 0,
-                team: A.includes(g.scorerId) ? 'A' : 'B',
+                team: g.team === 'A' || g.team === 'B'
+                    ? g.team
+                    : A.includes(g.scorerId)
+                        ? 'A'
+                        : 'B',
             })),
             penalties: (penalties ?? [])
                 .filter((p) => p.kickerId && isReal(p.kickerId) && onField.has(p.kickerId))
@@ -9621,6 +9707,23 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         // game is finished). Same idempotent batch, so a retry can't double.
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${scorer}`), { gameId, userId: scorer, goals: inc(n), updatedAt: now }, { merge: true });
     }
+    // GUEST scorers get a per-GAME row ONLY (so the finished-game scorers table
+    // lists them). Deliberately NOT written to users.stats / communityPlayerStats
+    // — guests have no account and no cross-cycle identity, so they never join
+    // the club's ranked table. `isGuest` marks the row so the read side can
+    // resolve the name from game.guests instead of /users.
+    for (const [guest, n] of Object.entries(byGuest)) {
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${guest}`), { gameId, userId: guest, goals: inc(n), isGuest: true, updatedAt: now }, { merge: true });
+    }
+    // OWN-GOAL scorers → the `ownGoals` stat across the SAME three stores as a
+    // normal goal (a dubious honour, but a real per-player stat). NEVER touches
+    // `goals` — an own goal is not a scoring achievement.
+    for (const [owner, n] of Object.entries(byOwnScorer)) {
+        batch.set(db.collection('users').doc(owner), { stats: { ownGoals: inc(n) } }, { merge: true });
+        if (groupId)
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${owner}`), { groupId, userId: owner, ownGoals: inc(n), updatedAt: now }, { merge: true });
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${owner}`), { gameId, userId: owner, ownGoals: inc(n), updatedAt: now }, { merge: true });
+    }
     // Community-level rollup for the club's stats + championship table:
     // total mini-games (rounds) and total goals scored THROUGH this club's
     // games. In the same idempotent batch, so a retry can't double-count.
@@ -9629,6 +9732,13 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             groupId,
             rounds: inc(1),
             goals: inc(totalGoalsThisRound),
+            // Goals scored by GUESTS this round → drives the "X גולים ע"י אורחים"
+            // fun fact. Kept OUT of the `goals` total above (guests aren't in the
+            // ranked table); this is a separate breakout. Counts from deploy on.
+            ...(guestGoalsThisRound > 0 ? { guestGoals: inc(guestGoalsThisRound) } : {}),
+            // Own goals scored this round → the club "X שערים עצמיים" fun fact.
+            // Also separate from `goals` (an own goal isn't a scoring goal).
+            ...(totalOwnGoalsThisRound > 0 ? { ownGoals: inc(totalOwnGoalsThisRound) } : {}),
             // Ties get their own counter → drives the club's draw-rate fun fact.
             tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
             // Mini-games decided by a penalty SHOOTOUT (a drawn round the admin

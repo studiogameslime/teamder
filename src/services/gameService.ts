@@ -1081,9 +1081,13 @@ export const gameService = {
     shootoutRounds: number;
     /** Mini-games that ended 0:0 in regulation (for the "% ended 0:0" fact). */
     scorelessRounds: number;
+    /** Goals scored by guests across the club (for the "גולים ע"י אורחים" fact). */
+    guestGoals: number;
+    /** Own goals across the club (for the "שערים עצמיים" fact). */
+    ownGoals: number;
     players: ChampionshipRow[];
   }> {
-    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, shootoutRounds: 0, scorelessRounds: 0, players: [] as ChampionshipRow[] };
+    const empty = { totalGoals: 0, totalRounds: 0, tiedRounds: 0, shootoutRounds: 0, scorelessRounds: 0, guestGoals: 0, ownGoals: 0, players: [] as ChampionshipRow[] };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
       const players: ChampionshipRow[] = mockPlayers.slice(0, 8).map((p, i) => {
@@ -1107,6 +1111,8 @@ export const gameService = {
           penScored: Math.min(penScored, penTaken),
           penFaced,
           penSaved: Math.min(penSaved, penFaced),
+          // Demo own goals — a couple of players carry one for the fun fact.
+          ownGoals: [1, 0, 2, 0, 0, 1, 0, 0][i] ?? 0,
         };
       });
       // Show every club member: the first 8 carry stats, the rest get a zero
@@ -1116,7 +1122,7 @@ export const gameService = {
         const have = new Set(players.map((p) => p.uid));
         for (const uid of memberIds) {
           if (uid && !have.has(uid)) {
-            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0 });
+            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0, ownGoals: 0 });
             have.add(uid);
           }
         }
@@ -1127,6 +1133,8 @@ export const gameService = {
         tiedRounds: 34,
         shootoutRounds: 11,
         scorelessRounds: 6,
+        guestGoals: 7,
+        ownGoals: 4,
         players: withZeros,
       };
     }
@@ -1157,13 +1165,20 @@ export const gameService = {
             tiedRounds?: number;
             shootoutRounds?: number;
             scorelessRounds?: number;
+            guestGoals?: number;
+            ownGoals?: number;
           })
         : null;
       const totalRounds = cs?.rounds ?? 0;
       const tiedRounds = cs?.tiedRounds ?? 0;
       const shootoutRounds = cs?.shootoutRounds ?? 0;
       const scorelessRounds = cs?.scorelessRounds ?? 0;
-      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, players };
+      // Goals scored by GUESTS across the club (separate from totalGoals, which
+      // is real ranked players only). Drives the "X גולים ע"י אורחים" fun fact.
+      const guestGoals = cs?.guestGoals ?? 0;
+      // Own goals across the club → the "X שערים עצמיים" fun fact.
+      const ownGoals = cs?.ownGoals ?? 0;
+      return { totalGoals, totalRounds, tiedRounds, shootoutRounds, scorelessRounds, guestGoals, ownGoals, players };
     } catch (err) {
       logError('getCommunityChampionship', err, { groupId });
       if (__DEV__) console.warn('[gameService] getCommunityChampionship failed', err);
@@ -1233,15 +1248,19 @@ export const gameService = {
       const snap = await getDocs(
         query(collection(db, 'gamePlayerStats'), where('gameId', '==', gameId)),
       );
-      const statRows = snap.docs.map((d) => d.data() as { userId?: string });
+      const statRows = snap.docs.map(
+        (d) => d.data() as { userId?: string; isGuest?: boolean },
+      );
       // Merge attendees as zero-rows ONLY for games that actually have stats —
       // a legacy pre-stats game (no docs at all) should stay empty (return null
-      // in the component) rather than render an all-zero table.
+      // in the component) rather than render an all-zero table. Guests among the
+      // attendees are marked isGuest so the table resolves their name from
+      // game.guests (they have no /users doc).
       if (statRows.length > 0 && attendedUids && attendedUids.length) {
         const have = new Set(statRows.map((r) => r.userId));
         for (const uid of attendedUids) {
           if (uid && !have.has(uid)) {
-            statRows.push({ userId: uid });
+            statRows.push(isGuestId(uid) ? { userId: uid, isGuest: true } : { userId: uid });
             have.add(uid);
           }
         }
@@ -3269,11 +3288,14 @@ export const gameService = {
     // same ms at the same array length (two rapid taps / two devices), which
     // then made removeGoal delete EVERY goal sharing that id. A random suffix
     // guarantees uniqueness.
-    const scorerId = opts.ownGoal ? null : opts.scorerId ?? null;
+    // Own goals now CARRY their scorer (the player who put it into their own
+    // net, on the conceding team) — used for the "שערים עצמיים" stat + history
+    // attribution. They still credit no striker tally (see tallyId below).
+    const scorerId = opts.scorerId ?? null;
     // An assist only makes sense for a real, attributed scorer (never on an own
     // goal / unknown scorer, and never the scorer assisting themselves).
     const assisterId =
-      scorerId && opts.assisterId && opts.assisterId !== scorerId
+      !opts.ownGoal && scorerId && opts.assisterId && opts.assisterId !== scorerId
         ? opts.assisterId
         : undefined;
     const goal: import('@/types').RoundGoal = {
@@ -3287,12 +3309,11 @@ export const gameService = {
       // clock even on a device whose wall clock is skewed.
       at: serverNow(),
     };
-    // Whom to credit on the evening-long goal tally (badge): a real attributed
-    // scorer only (own goals / unknown credit no one). Guests are excluded —
-    // the server filters them out of committed stats, so tallying a guest here
-    // made the live badge show a goal that vanishes from every stat (B24).
-    const tallyId =
-      !opts.ownGoal && scorerId && !isGuestId(scorerId) ? scorerId : null;
+    // Whom to credit on the evening-long goal tally (badge): any attributed
+    // scorer — real OR guest (a guest is a full player in the cycle and now
+    // earns a per-game scorer row too). Own goals / unknown scorers credit no
+    // one (null scorer).
+    const tallyId = !opts.ownGoal && scorerId ? scorerId : null;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
       if (m?.liveMatch) {
@@ -3344,9 +3365,9 @@ export const gameService = {
         const goneM = (m.liveMatch.goals ?? []).find((x) => x.id === goalId);
         const r = apply(m.liveMatch);
         if (r) { m.liveMatch.goals = r.goals; m.liveMatch.scoreA = r.scoreA; m.liveMatch.scoreB = r.scoreB; }
-        // Roll back the evening tally for the undone goal's scorer (guests were
-        // never tallied — keep symmetric with recordGoal).
-        if (goneM && !goneM.ownGoal && goneM.scorerId && !isGuestId(goneM.scorerId) && m.liveMatch.goalTally) {
+        // Roll back the evening tally for the undone goal's scorer — real OR
+        // guest (both are tallied now; keep symmetric with recordGoal).
+        if (goneM && !goneM.ownGoal && goneM.scorerId && m.liveMatch.goalTally) {
           const t = { ...m.liveMatch.goalTally };
           t[goneM.scorerId] = Math.max(0, (t[goneM.scorerId] ?? 0) - 1);
           m.liveMatch.goalTally = t;
@@ -3360,13 +3381,10 @@ export const gameService = {
     if (cur.status === 'finished' || cur.status === 'cancelled') return;
     const gone = (cur.liveMatch.goals ?? []).find((x) => x.id === goalId);
     if (!gone) return;
-    // Roll back the evening tally for the undone goal's scorer (own goals /
-    // unknown scorers / guests were never tallied — keep this symmetric with
-    // recordGoal so undoing a guest goal doesn't drive the tally negative).
-    const untally =
-      !gone.ownGoal && gone.scorerId && !isGuestId(gone.scorerId)
-        ? gone.scorerId
-        : null;
+    // Roll back the evening tally for the undone goal's scorer — real OR guest
+    // (both are tallied now). Own goals / unknown scorers credit no one, so
+    // there's nothing to roll back for them. Keep symmetric with recordGoal.
+    const untally = !gone.ownGoal && gone.scorerId ? gone.scorerId : null;
     // arrayRemove + increment(-1) compose ATOMICALLY at the field level with a
     // concurrent recordGoal (arrayUnion + increment(+1)) — unlike the old
     // read-modify-write, which overwrote the whole `goals` array and could drop
@@ -3552,11 +3570,12 @@ export const gameService = {
     winnerSide: 'A' | 'B' | null,
   ): Promise<void> {
     const [idxA, idxB] = rot.playing;
-    // On-field rosters — the EFFECTIVE lineup (loan-adjusted), registered uids
-    // only (guests carry no stats). Must match the loan-aware rosters the
-    // rotation trigger uses for same-team pairs.
+    // On-field rosters — the EFFECTIVE lineup (loan-adjusted), guests INCLUDED.
+    // A guest is a full player in the cycle, so they must appear in the
+    // round-history "מי שיחק" roster. The server re-filters to real uids
+    // (isReal) for stat crediting, but stores these full rosters for display.
     const rosterFor = (idx: number) =>
-      effectiveRosterOf(idx, draft.teams, rot.loans ?? []).filter((id) => !isGuestId(id));
+      effectiveRosterOf(idx, draft.teams, rot.loans ?? []);
     const sideA = rosterFor(idxA);
     const sideB = rosterFor(idxB);
 
@@ -3586,6 +3605,10 @@ export const gameService = {
             scorerId: gl.scorerId ?? null,
             assisterId: gl.assisterId ?? null,
             ownGoal: !!gl.ownGoal,
+            // The side that got the point (mirrors the live score). Forwarded so
+            // the server can attribute own goals (null scorer) and guest goals to
+            // a team + store them + count them in the round score.
+            team: gl.team,
             // Minute the goal went in — shown on the round-history goal line.
             minute: Math.max(0, Math.floor((gl as { minute?: number }).minute ?? 0)),
           })),

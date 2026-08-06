@@ -46,12 +46,16 @@ export function CommunityStatsTable({
    *  getCommunityStats). When given, it OVERRIDES the drift-prone
    *  `communityPlayerStats.games` rollup for the appearances column. */
   attendedByUser,
+  /** Guest roster-id → name. Rows whose uid is here resolve to that name (no
+   *  /users fetch) and open no player card. Used by the per-game table. */
+  guestNames,
 }: {
   players: ChampionshipRow[];
   groupId?: string;
   limit?: number;
   hideAppearances?: boolean;
   attendedByUser?: Record<string, number>;
+  guestNames?: Record<string, string>;
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
@@ -78,14 +82,26 @@ export function CommunityStatsTable({
 
   useEffect(() => {
     let alive = true;
+    // Guests have no /users doc — resolve their name straight from guestNames
+    // and only fetch the real uids from userService.
     Promise.all(
-      rows.map((r) => userService.getUserById(r.uid).catch(() => null)),
+      rows.map((r) =>
+        guestNames?.[r.uid]
+          ? Promise.resolve(null)
+          : userService.getUserById(r.uid).catch(() => null),
+      ),
     ).then((fetched) => {
       if (!alive) return;
       const map: Record<string, Resolved> = {};
       fetched.forEach((u) => {
         if (u) map[u.id] = u;
       });
+      // Synthetic entries for guest rows (name only; UserAvatar falls back to
+      // initials, and openCard is disabled for them below).
+      for (const r of rows) {
+        const gn = guestNames?.[r.uid];
+        if (gn) map[r.uid] = { id: r.uid, name: gn, avatarId: '', photoUrl: '' };
+      }
       setPeople(map);
     });
     return () => {
@@ -96,8 +112,11 @@ export function CommunityStatsTable({
 
   if (rows.length === 0) return null;
 
-  const openCard = (uid: string) =>
+  const openCard = (uid: string) => {
+    // Guests have no player card — their row is a name label only.
+    if (guestNames?.[uid]) return;
     nav.navigate('PlayerCard', groupId ? { userId: uid, groupId } : { userId: uid });
+  };
 
   // Goals first (the ranking metric → visible without scrolling), then the
   // rest. Scroll the strip to reveal the others.

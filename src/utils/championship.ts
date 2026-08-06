@@ -28,6 +28,12 @@ export interface ChampionshipRow {
   /** Penalty-shootout keeper: faced / saved. Drives "מלך שוערי הפנדלים". */
   penFaced: number;
   penSaved: number;
+  /** Own goals the player scored (into their own net). Drives "מלך השערים
+   *  העצמיים". NEVER counted in `goals`. */
+  ownGoals: number;
+  /** True for a GUEST row (per-game table only) — the caller resolves the name
+   *  from game.guests instead of /users, and it opens no player card. */
+  isGuest?: boolean;
 }
 
 /** goals×2 + assists×1 */
@@ -77,6 +83,8 @@ export function rankChampionshipRows(
     penScored?: number;
     penFaced?: number;
     penSaved?: number;
+    ownGoals?: number;
+    isGuest?: boolean;
   }>,
   sortBy: ChampionshipSort = 'perGame',
   // When true, keep EVERY row (even all-zeros) instead of dropping the inactive
@@ -96,6 +104,8 @@ export function rankChampionshipRows(
     penScored: typeof x.penScored === 'number' ? x.penScored : 0,
     penFaced: typeof x.penFaced === 'number' ? x.penFaced : 0,
     penSaved: typeof x.penSaved === 'number' ? x.penSaved : 0,
+    ownGoals: typeof x.ownGoals === 'number' ? x.ownGoals : 0,
+    ...(x.isGuest === true ? { isGuest: true } : {}),
   }));
   if (sortBy === 'goals' || sortBy === 'points') {
     // 'points' (community table): sort by WINS, then goals, then assists

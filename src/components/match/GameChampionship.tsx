@@ -20,11 +20,15 @@ export function GameChampionship({
   refreshKey,
   /** Attendees of the evening — listed even with no stats (report [cetR]). */
   attendedUids,
+  /** The game's guests — a guest is a full player in the cycle, so their
+   *  scorer rows appear here; names resolve from this list (no /users doc). */
+  guests,
 }: {
   gameId: string;
   groupId?: string;
   refreshKey?: number;
   attendedUids?: string[];
+  guests?: import('@/types').GameGuest[];
 }) {
   const [players, setPlayers] = useState<ChampionshipRow[] | null>(null);
   const attendedKey = (attendedUids ?? []).join(',');
@@ -47,13 +51,25 @@ export function GameChampionship({
 
   if (!players || players.length === 0) return null;
 
+  // Guest name lookup (roster id `guest:<id>` → name) so the table can label
+  // guest scorer rows, which have no /users doc to resolve.
+  const guestNames: Record<string, string> = {};
+  for (const g of guests ?? []) {
+    if (g?.id) guestNames[`guest:${g.id}`] = g.name || he.matchRoundsGuest;
+  }
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{he.gameChampTitle}</Text>
       {/* Tap any column header to sort by it (default: wins). Same table as the
           community view, minus the appearances column. The scoring-formula note
           was removed per user feedback — the numbers speak for themselves. */}
-      <CommunityStatsTable players={players} groupId={groupId} hideAppearances />
+      <CommunityStatsTable
+        players={players}
+        groupId={groupId}
+        hideAppearances
+        guestNames={guestNames}
+      />
     </View>
   );
 }

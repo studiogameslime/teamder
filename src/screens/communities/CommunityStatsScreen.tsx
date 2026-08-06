@@ -56,6 +56,8 @@ interface ChampData {
   tiedRounds: number;
   shootoutRounds: number;
   scorelessRounds: number;
+  guestGoals: number;
+  ownGoals: number;
   players: ChampionshipRow[];
 }
 interface StatsData {
@@ -142,6 +144,8 @@ export function CommunityStatsScreen() {
           tiedRounds: 0,
           shootoutRounds: 0,
           scorelessRounds: 0,
+          guestGoals: 0,
+          ownGoals: 0,
           players: [],
         },
       );
@@ -163,7 +167,10 @@ export function CommunityStatsScreen() {
       const ids = new Set<string>();
       (c?.players ?? []).slice(0, 10).forEach((r) => ids.add(r.uid));
       (c?.players ?? []).forEach((r) => {
-        if (r.assists > 0 || r.wins > 0 || r.games > 0 || r.penScored > 0 || r.penSaved > 0)
+        if (
+          r.assists > 0 || r.wins > 0 || r.games > 0 ||
+          r.penScored > 0 || r.penSaved > 0 || r.ownGoals > 0
+        )
           ids.add(r.uid);
       });
       if (d) { ids.add(d.uidA); ids.add(d.uidB); }
@@ -194,6 +201,9 @@ export function CommunityStatsScreen() {
     const tiedRounds = champ?.tiedRounds ?? 0;
     const shootoutRounds = champ?.shootoutRounds ?? 0;
     const scorelessRounds = champ?.scorelessRounds ?? 0;
+    // Goals scored by guests across the club — a separate breakout, NOT folded
+    // into totalGoals (which is real ranked players only). Drives its own row.
+    const guestGoals = champ?.guestGoals ?? 0;
     const goalsPerMini = totalRounds > 0 ? totalGoals / totalRounds : 0;
     const drawPct = totalRounds > 0 ? Math.round((tiedRounds / totalRounds) * 100) : 0;
     const shootoutPct =
@@ -228,6 +238,11 @@ export function CommunityStatsScreen() {
       shootoutPct,
       scorelessRounds,
       scorelessPct,
+      guestGoals,
+      // Own goals — club total (for the fun fact) + the player who scored the
+      // most (a dubious crown). null when nobody has an own goal yet.
+      totalOwnGoals: champ?.ownGoals ?? 0,
+      ownGoalKing: leaderBy(players, (p) => p.ownGoals),
       penTakenTotal,
       penAccuracyPct,
       totalAssists,
@@ -407,6 +422,14 @@ export function CommunityStatsScreen() {
                   unit: `${derived.penaltyKeeperKing.count}/${derived.penaltyKeeperKing.attempts}`,
                   tint: '#16A34A',
                 },
+                // The dubious crown — most own goals. Only when someone has one.
+                derived.ownGoalKing && {
+                  title: he.communityStatsOwnGoalKing,
+                  uid: derived.ownGoalKing.uid,
+                  value: derived.ownGoalKing.ownGoals,
+                  unit: 'עצמיים',
+                  tint: '#F59E0B',
+                },
               ].filter(Boolean) as {
                 title: string;
                 uid: string;
@@ -492,8 +515,33 @@ export function CommunityStatsScreen() {
                 { t: `${stats?.activeThisYear ?? 0} שחקנים`, em: 'num' },
                 { t: ' היו פעילים השנה' },
               ]}
-              last
+              last={!(derived.guestGoals > 0) && !(derived.totalOwnGoals > 0)}
             />
+            {/* גולים של אורחים — שורה נפרדת (רק אם קיים נתון). אורחים אינם
+                בטבלה המדורגת, אז זו הדרך היחידה שהתרומה שלהם נספרת גלוי. */}
+            {derived.guestGoals > 0 ? (
+              <FunRow
+                icon="people-outline"
+                tint={colors.info}
+                parts={[
+                  { t: `${derived.guestGoals} גולים`, em: 'num' },
+                  { t: ' הוכנסו על ידי אורחים' },
+                ]}
+                last={!(derived.totalOwnGoals > 0)}
+              />
+            ) : null}
+            {/* שערים עצמיים — סה"כ במועדון (רק אם קיים נתון). */}
+            {derived.totalOwnGoals > 0 ? (
+              <FunRow
+                icon="footsteps-outline"
+                tint="#F59E0B"
+                parts={[
+                  { t: `${derived.totalOwnGoals} שערים עצמיים`, em: 'num' },
+                  { t: ' נכבשו במועדון' },
+                ]}
+                last
+              />
+            ) : null}
           </Card>
 
           {/* טבלת הליגה המלאה — מתחת ל"נתונים מעניינים" (בקשת אלירן: הנתונים

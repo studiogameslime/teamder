@@ -10,7 +10,8 @@
 export type Side = 'A' | 'B' | 'tie';
 
 export interface RoundGoalRec {
-  scorerId: string;
+  /** null for an own goal (no scorer); a guest id (`guest:<id>`) for a guest. */
+  scorerId: string | null;
   assisterId: string | null;
   ownGoal: boolean;
   team: 'A' | 'B';

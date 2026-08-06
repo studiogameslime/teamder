@@ -478,6 +478,9 @@ export const he = {
   goalStepAssist: 'מבשל',
   goalBack: '‹ חזרה',
   goalOwnGoalShort: 'שער עצמי',
+  // Own-goal scorer picker (the conceding team's players) + the log label.
+  goalOwnScorerPickTitle: 'מי כבש לעצמו?',
+  goalOwnGoalBy: (scorer: string) => `${scorer} · שער עצמי`,
   goalScorerWithAssist: (scorer: string, assister: string) =>
     `${scorer} (בישול: ${assister})`,
   goalSaveFailed: 'לא הצלחנו לשמור את הגול, נסו שוב',
@@ -1063,6 +1066,7 @@ export const he = {
   communityStatsMostLoyal: 'הכי מתמיד',
   communityStatsPenaltyKing: 'מלך הפנדלים',
   communityStatsPenaltyKeeperKing: 'מלך שוערי הפנדלים',
+  communityStatsOwnGoalKing: 'מלך השערים העצמיים',
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
   communityStatsAssistsUnit: (n: number) => `${n} בישולים`,
   communityStatsWinsUnit: (n: number) => `${n} ניצחונות`,
@@ -1766,6 +1770,7 @@ export const he = {
   statAttendance: 'אחוז הגעה',
   statGoals: 'שערים',
   statAssists: 'בישולים',
+  statOwnGoals: 'שערים עצמיים',
   statGoalsPerEvening: 'גולים למחזור',
   statDistinctPlayers: 'שחקנים שונים',
   statMostPlayedWith: 'השותף הקבוע',

@@ -177,7 +177,12 @@ export function LiveScoreboardCard(props: Props) {
     }
   };
   const goalLabel = (g: (typeof goals)[number]): string => {
-    if (g.ownGoal) return he.goalOwnGoalShort;
+    // Own goal → the player who scored it (on the conceding team) + the tag.
+    if (g.ownGoal) {
+      return g.scorerId
+        ? he.goalOwnGoalBy(resolve(g.scorerId).displayName ?? '…')
+        : he.goalOwnGoalShort;
+    }
     if (!g.scorerId) return he.goalUnknownScorer;
     const scorer = resolve(g.scorerId).displayName ?? '…';
     // Surface the assist inline (user report: "why are there no assists?").
@@ -291,11 +296,14 @@ export function LiveScoreboardCard(props: Props) {
           goalSide === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)
         }
         roster={goalSide === 'A' ? rosterA : rosterB}
+        // Own-goal scorer picker uses the OTHER (conceding) side — the player
+        // who put it into their own net is on the team that didn't get the point.
+        ownGoalRoster={goalSide === 'A' ? rosterB : rosterA}
         onGoal={(scorerId, assisterId) =>
           goalSide && addGoal(goalSide, scorerId, false, assisterId)
         }
         onUnknownGoal={() => goalSide && addGoal(goalSide, null)}
-        onOwnGoal={() => goalSide && addGoal(goalSide, null, true)}
+        onOwnGoal={(scorerId) => goalSide && addGoal(goalSide, scorerId, true)}
         onClose={() => setGoalSide(null)}
       />
     </View>
@@ -363,6 +371,7 @@ function GoalWizard({
   side,
   teamLabel,
   roster,
+  ownGoalRoster,
   onGoal,
   onUnknownGoal,
   onOwnGoal,
@@ -371,13 +380,17 @@ function GoalWizard({
   side: 'A' | 'B' | null;
   teamLabel: string;
   roster: RosterMember[];
+  /** The CONCEDING team's roster — for an own goal you pick the player who put
+   *  it into their own net, and they're on the OTHER side than the beneficiary. */
+  ownGoalRoster: RosterMember[];
   onGoal: (scorerId: string, assisterId: string | null) => void;
   onUnknownGoal: () => void;
-  onOwnGoal: () => void;
+  onOwnGoal: (scorerId: string) => void;
   onClose: () => void;
 }) {
   const visible = side !== null;
-  const [step, setStep] = useState<1 | 2>(1);
+  // 'own' = the mandatory own-goal scorer picker (conceding team).
+  const [step, setStep] = useState<1 | 2 | 'own'>(1);
   const [scorerId, setScorerId] = useState<string | null>(null);
   useEffect(() => {
     if (visible) {
@@ -394,13 +407,27 @@ function GoalWizard({
         <Pressable style={styles.wizSheet} onPress={(e) => e.stopPropagation()}>
           {/* Rolling-ball step header (like the create-game wizard). The active
              step is a clean BLUE ball; inactive steps are solid BLACK balls. */}
-          <StepIndicator
-            current={step}
-            labels={[he.goalStepScorer, he.goalStepAssist]}
-            inactiveColor="#0F172A"
-          />
+          {step !== 'own' ? (
+            <StepIndicator
+              current={step}
+              labels={[he.goalStepScorer, he.goalStepAssist]}
+              inactiveColor="#0F172A"
+            />
+          ) : null}
           <View style={styles.wizBody}>
-            {step === 1 ? (
+            {step === 'own' ? (
+              <>
+                <Text style={styles.sheetTitle}>{he.goalOwnScorerPickTitle}</Text>
+                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                  {ownGoalRoster.length === 0 ? (
+                    <Text style={styles.emptyRoster}>{he.goalPickerEmptyRoster}</Text>
+                  ) : null}
+                  {ownGoalRoster.map((m) => (
+                    <PickRow key={m.id} m={m} onPress={() => onOwnGoal(m.id)} />
+                  ))}
+                </ScrollView>
+              </>
+            ) : step === 1 ? (
               <>
                 <Text style={styles.sheetTitle}>{he.goalScorerPickTitle(teamLabel)}</Text>
                 <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -422,7 +449,7 @@ function GoalWizard({
                   <Pressable style={styles.specialBtn} onPress={onUnknownGoal}>
                     <Text style={styles.specialTxt}>{he.goalUnknownScorer}</Text>
                   </Pressable>
-                  <Pressable style={styles.specialBtn} onPress={onOwnGoal}>
+                  <Pressable style={styles.specialBtn} onPress={() => setStep('own')}>
                     <Text style={styles.specialTxt}>{he.goalOwnGoal}</Text>
                   </Pressable>
                 </View>
@@ -449,7 +476,7 @@ function GoalWizard({
               </>
             )}
             <View style={styles.wizNav}>
-              {step === 2 ? (
+              {step === 2 || step === 'own' ? (
                 <Pressable style={styles.backBtn} onPress={() => { setScorerId(null); setStep(1); }}>
                   <Text style={styles.backTxt}>{he.goalBack}</Text>
                 </Pressable>

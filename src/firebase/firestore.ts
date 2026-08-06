@@ -139,6 +139,8 @@ export function readStats(d: DocumentData): UserStats | undefined {
     penFaced: typeof s.penFaced === 'number' ? s.penFaced : undefined,
     penSaved: typeof s.penSaved === 'number' ? s.penSaved : undefined,
     penConceded: typeof s.penConceded === 'number' ? s.penConceded : undefined,
+    // Own goals (server-maintained). Same strip-on-read guard as penalties.
+    ownGoals: typeof s.ownGoals === 'number' ? s.ownGoals : undefined,
   };
 }
 
@@ -197,6 +199,7 @@ const userConverter: FirestoreDataConverter<User> = {
             ...(typeof u.stats.penFaced === 'number' ? { penFaced: u.stats.penFaced } : {}),
             ...(typeof u.stats.penSaved === 'number' ? { penSaved: u.stats.penSaved } : {}),
             ...(typeof u.stats.penConceded === 'number' ? { penConceded: u.stats.penConceded } : {}),
+            ...(typeof u.stats.ownGoals === 'number' ? { ownGoals: u.stats.ownGoals } : {}),
           }
         : null,
       // fcmTokens are NO LONGER written to the world-readable /users doc —

@@ -154,4 +154,12 @@ describe('readStats — penalty fields survive deserialization', () => {
     expect(s!.penScored).toBe(0);
     expect(s!.penTaken).toBe(2);
   });
+
+  it('keeps ownGoals when present, undefined when absent', () => {
+    expect(readStats({ stats: { totalGames: 3, ownGoals: 2 } })!.ownGoals).toBe(2);
+    expect(readStats({ stats: { totalGames: 1, goals: 2 } })!.ownGoals).toBeUndefined();
+    expect(
+      readStats({ stats: { totalGames: 1, ownGoals: 'two' as unknown as number } })!.ownGoals,
+    ).toBeUndefined();
+  });
 });

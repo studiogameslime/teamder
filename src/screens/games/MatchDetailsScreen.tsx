@@ -3333,10 +3333,18 @@ export function MatchDetailsScreen() {
             groupId={game.groupId}
             refreshKey={retroRefreshKey}
             // Everyone who showed up (not a no-show) is listed even with no
-            // stats — they "were in the evening" (report [cetR]).
-            attendedUids={(game.players ?? []).filter(
-              (uid) => game.arrivals?.[uid] !== 'no_show',
-            )}
+            // stats — they "were in the evening" (report [cetR]). Active guests
+            // (roster id `guest:<id>`) are included too — a guest is a full
+            // player in the cycle.
+            attendedUids={[
+              ...(game.players ?? []).filter(
+                (uid) => game.arrivals?.[uid] !== 'no_show',
+              ),
+              ...(game.guests ?? [])
+                .filter((g) => !g.waitlisted)
+                .map((g) => `guest:${g.id}`),
+            ]}
+            guests={(game.guests ?? []).filter((g) => !g.waitlisted)}
           />
         ) : null}
 

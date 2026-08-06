@@ -36,6 +36,7 @@ export function StatisticsScreen() {
     penScored: number;
     penFaced: number;
     penSaved: number;
+    ownGoals: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +61,7 @@ export function StatisticsScreen() {
                 penScored: st.penScored ?? 0,
                 penFaced: st.penFaced ?? 0,
                 penSaved: st.penSaved ?? 0,
+                ownGoals: st.ownGoals ?? 0,
               }
             : null,
         );
@@ -131,6 +133,11 @@ export function StatisticsScreen() {
                (user request). Dropped the "גולים למחזור" + "שחקנים שונים"
                tiles entirely (user request). */}
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
+            {/* Own goals — only shown once the player has one (a rare, dubious
+                stat; no need for a permanent 0 tile). */}
+            {pen && pen.ownGoals > 0 ? (
+              <NumberTile icon="footsteps-outline" value={String(pen.ownGoals)} label={he.statOwnGoals} />
+            ) : null}
           </View>
 
           {/* ── Penalties AS KICKER (only when the player took any) ───── */}
