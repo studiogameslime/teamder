@@ -52,7 +52,7 @@
         "ascApiKeyIssuerId": "0938f882-34aa-42d5-af5d-cab509cac969"
       },
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "internal"
       }
     },
@@ -65,33 +65,33 @@
         "ascApiKeyIssuerId": "0938f882-34aa-42d5-af5d-cab509cac969"
       },
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "production"
       }
     },
     "production-draft": {
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "production",
         "changesNotSentForReview": true
       }
     },
     "production-wear": {
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "wear:production"
       }
     },
     "production-wear-draft": {
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "wear:production",
         "changesNotSentForReview": true
       }
     },
     "internal-wear": {
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "wear:internal"
       }
     },
@@ -104,7 +104,7 @@
         "ascApiKeyIssuerId": "0938f882-34aa-42d5-af5d-cab509cac969"
       },
       "android": {
-        "serviceAccountKeyPath": "/Users/matan/Downloads/soccer-app-52b6b-280210db172b.json",
+        "serviceAccountKeyPath": "./credentials/gplay-service-account.json",
         "track": "production"
       }
     }
