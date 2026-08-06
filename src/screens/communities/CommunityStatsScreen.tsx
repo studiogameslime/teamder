@@ -432,15 +432,7 @@ export function CommunityStatsScreen() {
           </>
           ) : null}
 
-          {/* טבלת הליגה המלאה — הועברה לכאן ממסך פרטי-המועדון (בקשת משתמש), כדי
-              שלא תופיע פעמיים. מציגה את כל חברי המועדון מדורגים. */}
-          <CommunityChampionship
-            groupId={groupId}
-            memberIds={memberIds}
-            attendedByUser={attended}
-          />
-
-          {/* ── נתונים מעניינים ── */}
+          {/* ── נתונים מעניינים (מעל הטבלה — בקשת אלירן) ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
           <Card style={styles.funCard}>
             {/* חלק המלך מוצג למעלה באריח "המצטיין". האחוזים כאן = דונאטים מונפשים. */}
@@ -503,6 +495,14 @@ export function CommunityStatsScreen() {
               last
             />
           </Card>
+
+          {/* טבלת הליגה המלאה — מתחת ל"נתונים מעניינים" (בקשת אלירן: הנתונים
+              המעניינים מעל הטבלה). מציגה את כל חברי המועדון מדורגים. */}
+          <CommunityChampionship
+            groupId={groupId}
+            memberIds={memberIds}
+            attendedByUser={attended}
+          />
 
           {/* ── הישגי המועדון (תארים) — הכי למטה ── */}
           <SectionTitle icon="medal" text={he.communityStatsSectionAchievements} />

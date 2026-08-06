@@ -15,28 +15,24 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import type { Game, GameFormat, UserId } from '@/types';
+import type { Game } from '@/types';
 import { activeGuestCount } from '@/types';
-import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatGameDay, formatTime } from '@/utils/format';
 
 // Ball-on-grass photo behind the card's tile — matches the sketch.
 const BALL_FIELD: ImageSourcePropType = require('../../assets/images/ball-field.jpg');
 
-function formatLabel(f: GameFormat | undefined): string {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '6v6') return he.gameFormat6;
-  if (f === '7v7') return he.gameFormat7;
-  return he.gameFormat5;
-}
-
 export function HomeNextGameCard({
   game,
+  communityName,
   onOpen,
   onFind,
 }: {
   game: Game | null;
+  /** Club / cycle name shown under the title (falls back to the game title). */
+  communityName?: string;
   onOpen: (gameId: string) => void;
   onFind: () => void;
 }) {
@@ -66,6 +62,7 @@ export function HomeNextGameCard({
   const spots = Math.max(0, (game.maxPlayers ?? 0) - occupancy);
   const full = game.maxPlayers ? spots <= 0 : false;
   const venue = [game.fieldName, game.city].filter(Boolean).join(', ');
+  const clubName = (communityName || game.title || '').trim();
 
   return (
     <View style={styles.card}>
@@ -81,6 +78,17 @@ export function HomeNextGameCard({
             </Text>
           </View>
 
+          {/* Club / cycle name — sits right under the title (pf3). */}
+          {clubName ? (
+            <Text style={styles.clubName} numberOfLines={1}>
+              {clubName}
+            </Text>
+          ) : null}
+
+          {/* Spacer pushes the time + location down to the bottom of the card
+              (where the format/occupancy box used to be — removed per pf3). */}
+          <View style={styles.metaSpacer} />
+
           <View style={styles.infoRow}>
             <Ionicons name="calendar-outline" size={15} color={colors.primary} />
             <Text style={styles.infoStrong} numberOfLines={1}>
@@ -95,19 +103,6 @@ export function HomeNextGameCard({
               </Text>
             </View>
           ) : null}
-
-          {/* format + occupancy box */}
-          <View style={styles.statBox}>
-            <View style={styles.statCell}>
-              <MaterialCommunityIcons name="tshirt-crew-outline" size={16} color={colors.primary} />
-              <Text style={styles.statText}>{formatLabel(game.format)}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statCell}>
-              <Ionicons name="people-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.statText}>{he.homeSpotsLeft(spots)}</Text>
-            </View>
-          </View>
         </View>
 
         <View style={styles.tile}>
@@ -171,10 +166,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     alignItems: 'stretch',
+    minHeight: 132,
   },
   meta: {
     flex: 1,
     gap: spacing.xs,
+  },
+  clubName: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '800',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  metaSpacer: {
+    flex: 1,
+    minHeight: spacing.sm,
   },
   titleRow: {
     flexDirection: 'row',
@@ -215,34 +221,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: RTL_LABEL_ALIGN,
-  },
-  statBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bg,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    marginTop: spacing.xs,
-    gap: spacing.sm,
-  },
-  statCell: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    justifyContent: 'center',
-  },
-  statText: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  statDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: colors.border,
   },
   tile: {
     width: 132,

@@ -157,8 +157,8 @@ export const playerCompareService = {
         metric('assists', 'בישולים', a.assists, b.assists, 'int'),
         metric('winPct', 'אחוז ניצחון', a.winPct, b.winPct, 'pct'),
         metric('gpg', 'ממוצע גולים למחזור', a.goalsPerGame, b.goalsPerGame, 'avg1'),
-        metric('games', 'משחקים', a.games, b.games, 'int'),
-        metric('rounds', 'משחקונים', a.rounds, b.rounds, 'int'),
+        metric('games', 'מחזורים', a.games, b.games, 'int'),
+        metric('rounds', 'משחקים', a.rounds, b.rounds, 'int'),
       ];
       // Penalty rows only when at least one of the two has taken/faced any —
       // otherwise every comparison would carry two 0-vs-0 rows.

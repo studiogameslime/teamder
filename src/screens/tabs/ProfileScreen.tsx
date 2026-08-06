@@ -917,6 +917,9 @@ export function ProfileScreen() {
             <NextGameCardEntrance triggerKey={nextGame.id}>
               <HomeNextGameCard
                 game={nextGame}
+                communityName={
+                  myCommunities.find((c) => c.id === nextGame.groupId)?.name
+                }
                 onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
                 onFind={() => nav.navigate('GameTab')}
               />

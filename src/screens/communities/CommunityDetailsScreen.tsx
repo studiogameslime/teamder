@@ -53,8 +53,6 @@ import { CommunityStadiumHero } from '@/components/community/CommunityStadiumHer
 import { CoverImagePicker } from '@/components/community/CoverImagePicker';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { CommunityStatsGrid } from '@/components/community/CommunityStatsGrid';
-import { computeClubLevel } from '@/utils/clubLevel';
-import type { ClubMetrics } from '@/data/clubAchievements';
 import { CommunityChampionship } from '@/components/community/CommunityChampionship';
 import { CommunityNotifyToggle } from '@/components/community/CommunityNotifyToggle';
 import { NextGameCard } from '@/components/community/NextGameCard';
@@ -124,7 +122,6 @@ export function CommunityDetailsScreen() {
   const [communityStats, setCommunityStats] = useState<CommunityStatsData | null>(
     null,
   );
-  const [clubGoals, setClubGoals] = useState(0);
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh has its own state so the native RefreshControl
   // spinner doesn't fire at the same time as our SoccerBallLoader.
@@ -177,19 +174,16 @@ export function CommunityDetailsScreen() {
             ...(g.pendingPlayerIds ?? []),
           ]),
         );
-        const [users, games, hist, cStats, champ] = await Promise.all([
+        const [users, games, hist, cStats] = await Promise.all([
           groupService.hydrateUsers(memberIds),
           gameService.getUpcomingGamesForGroup(g.id).catch(() => [] as Game[]),
           gameService.getHistory(g.id).catch(() => [] as GameSummary[]),
           gameService.getCommunityStats(g.id).catch(() => null),
-          // For the club-level chip (kept consistent with the stats screen).
-          gameService.getCommunityChampionship(g.id).catch(() => null),
         ]);
         setMembers(users);
         setUpcoming(games);
         setHistory(hist);
         setCommunityStats(cStats);
-        setClubGoals(champ?.totalGoals ?? 0);
       } catch (err) {
         logError('communityDetailsReload', err, {
           screen: 'CommunityDetailsScreen',
@@ -554,26 +548,6 @@ export function CommunityDetailsScreen() {
     communityStats?.totalFinished ??
     history.filter((h) => h.status === 'finished').length;
 
-  // Club level for the compact hero chip → taps through to the full club
-  // achievements on CommunityStats. Same metrics as that screen, so the level
-  // matches. Plain const (computeClubLevel is cheap) — kept below the early
-  // returns where hooks can't go.
-  const clubLevel = group
-    ? computeClubLevel({
-        gameNights: communityStats?.totalFinished ?? 0,
-        clubGoals,
-        members: group.playerIds?.length ?? 0,
-        ageYears: Math.floor(
-          (Date.now() - (group.createdAt ?? Date.now())) /
-            (365.25 * 24 * 3600 * 1000),
-        ),
-        activeThisMonth: communityStats?.activeThisMonth ?? 0,
-        organizationRatePct: Math.round(
-          (communityStats?.organizationRate ?? 0) * 100,
-        ),
-      } as ClubMetrics)
-    : null;
-
   // Hamburger menu — all admin / destructive / contact actions live
   // here. The ⋯ overflow opens the same sheet so users get one mental
   // model: "more actions live in the menu".
@@ -754,11 +728,14 @@ export function CommunityDetailsScreen() {
               },
               {
                 icon: 'football',
-                // Always show the number — including "0" — to match the
-                // profile stats ("0 מחזורים"). matchesHeld is a known
-                // count, so "0" means zero, not "no data".
+                // Until the club stats resolve, matchesHeld would briefly read
+                // "0" (history fallback is still empty on first paint) and then
+                // jump to the real count — a visible flash. Show a neutral "—"
+                // placeholder until communityStats loads; from then on the value
+                // is authoritative and persists across re-focus (never reset to
+                // null), so no 0-flash on return.
                 label: he.communityStatsMatchesHeld,
-                value: String(matchesHeld),
+                value: communityStats ? String(matchesHeld) : '—',
               },
             ]}
           />
@@ -778,33 +755,23 @@ export function CommunityDetailsScreen() {
             </>
           ) : (
           <>
-          {/* Club level chip → taps through to the full club achievements. */}
-          {clubLevel ? (
-            <Pressable
-              style={styles.clubLevelChip}
-              onPress={() =>
-                (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                  'CommunityStats',
-                  { groupId: group.id },
-                )
-              }
-              accessibilityRole="button"
-            >
-              <View style={styles.clubLevelBadge}>
-                <Ionicons name="medal" size={16} color="#FFFFFF" />
-                <Text style={styles.clubLevelBadgeNum}>{clubLevel.level}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.clubLevelChipTitle} numberOfLines={1}>
-                  {he.communityStatsEntryTitle}
-                </Text>
-                <Text style={styles.clubLevelChipSub} numberOfLines={1}>
-                  {he.clubLevelLabel} {clubLevel.level} · {clubLevel.tierName}
-                </Text>
-              </View>
-              <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-            </Pressable>
-          ) : null}
+          {/* Single entry to the full stats window (club table + leaderboards
+              + superlatives + club level). Was duplicated — a club-level chip
+              here AND a button lower down both opened CommunityStats; per owner
+              request the chip was dropped and the button lives here at the top. */}
+          <Button
+            title={he.communityViewStatsTable}
+            variant="outline"
+            size="lg"
+            fullWidth
+            iconRight="stats-chart"
+            onPress={() =>
+              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
+                'CommunityStats',
+                { groupId: group.id },
+              )
+            }
+          />
 
           {/* Group description — free-text "about this group" copy
               the admin set in the create / edit wizard. Rendered
@@ -990,23 +957,9 @@ export function CommunityDetailsScreen() {
               passed down so the count here AGREES with "מפגשים שנערכו". */}
           <CommunityStatsSection stats={communityStats} />
 
-          {/* The club scorers table was MOVED into the full stats window (user
-              request) — where it already lives alongside the leaderboards and
-              superlatives. A button takes you straight there. */}
-          <Button
-            title={he.communityViewStatsTable}
-            variant="outline"
-            size="lg"
-            fullWidth
-            iconRight="stats-chart"
-            style={{ marginTop: spacing.md }}
-            onPress={() =>
-              (nav as { navigate: (s: string, p: unknown) => void }).navigate(
-                'CommunityStats',
-                { groupId: group.id },
-              )
-            }
-          />
+          {/* The stats-table button that used to sit here (below "נתוני
+              מועדון") was moved UP to the top of the body — it duplicated the
+              club-level chip that also opened CommunityStats. */}
 
           {/* The per-community game-history list used to render here, but it
               duplicated the same list already reachable from the ⋯ menu's
@@ -1334,46 +1287,6 @@ const styles = StyleSheet.create({
   // operational section. Uses primaryLight as the accent so it reads
   // as a "first impression" surface — different from the white cards
   // below which feel transactional.
-  clubLevelChip: {
-    // `row` under forceRTL → the medal (first child) leads on the visual RIGHT,
-    // the chevron trails on the left (was row-reverse → medal on the wrong side).
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  clubLevelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  clubLevelBadgeNum: {
-    ...typography.body,
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-  },
-  clubLevelChipTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '800',
-    textAlign: RTL_LABEL_ALIGN,
-  },
-  clubLevelChipSub: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: RTL_LABEL_ALIGN,
-  },
   descriptionCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,

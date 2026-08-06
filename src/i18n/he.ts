@@ -544,7 +544,7 @@ export const he = {
   liveEndEveningTitle: 'לסיים את המחזור?',
   liveEndEveningBody:
     'המחזור יסומן כהסתיים, התוצאות יישמרו והמחזור יעבור להיסטוריה. לא ניתן לחזור אחורה.',
-  liveEndEveningConfirm: 'כן, סיים את המחזור',
+  liveEndEveningConfirm: 'כן, סיים',
   // "מה חדש" modal (post-update highlights)
   whatsNewTitle: 'מה חדש באפליקציה ⚽',
   whatsNewBadge: (v: string) => `✦ גרסה ${v}`,
@@ -1275,7 +1275,7 @@ export const he = {
   communityNextGameInDays: (n: number) => `עוד ${n} ימים`,
   communityNextGameLocked: 'ההרשמה תיפתח בקרוב',
   communityNextGameLockedBody: (when: string) =>
-    `המחזור יופיע בפיד וההרשמה תיפתח ב-${when}.`,
+    `ההרשמה תיפתח ב-${when}.`,
   communityNextGameCreateRecurring: 'תזמן מחזור שבועי למועדון',
   // Secondary "more upcoming" row shown under the primary NextGameCard
   // when the community has additional scheduled games queued up.
@@ -2274,7 +2274,7 @@ export const he = {
   matchHeroTitle: 'פרטי מחזור',
   matchHeroCommunityPrefix: 'מועדון',
   matchStatsPlayers: 'שחקנים',
-  matchStatsDuration: 'משך מחזור',
+  matchStatsDuration: 'משך משחק',
   matchStatsCommunity: 'מועדון',
   matchStatsWeather: 'מזג אוויר',
   matchStatsMinutesShort: 'דק׳',

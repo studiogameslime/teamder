@@ -85,6 +85,37 @@ function errInfo(e: unknown): { message: string; code?: string; stack?: string }
   }
 }
 
+// ── transient-error filter ─────────────────────────────────────────
+// Environmental blips — the device lost connectivity, a request timed out,
+// or an auth token momentarily lapsed — are NOT actionable code bugs. They
+// used to land in the `errors` dev-inbox as "פעולה נכשלה · <op>" noise (a
+// user walking into a dead-zone mid-tap), one doc each, drowning real
+// regressions. Skip logging them: the operation already failed gracefully
+// (every call site is wrapped), and there is nothing to fix in the app.
+// Deliberately NARROW — only unambiguously network/offline/timeout codes.
+// `unauthenticated` is intentionally EXCLUDED (it can signal a real
+// auth-gating regression, not just a token race), so it still gets logged.
+const TRANSIENT_CODES: ReadonlySet<string> = new Set([
+  'unavailable',
+  'deadline-exceeded',
+  'cancelled',
+  'functions/unavailable',
+  'functions/deadline-exceeded',
+  'functions/cancelled',
+  'auth/network-request-failed',
+  'auth/timeout',
+]);
+
+function isTransientEnvError(code?: string, message?: string): boolean {
+  if (code && TRANSIENT_CODES.has(code)) return true;
+  // Fallback for errors that arrive without a `code` (raw FirebaseError):
+  // match the two stable offline/network sentinels by message.
+  const m = (message ?? '').toLowerCase();
+  return (
+    m.includes('client is offline') || m.includes('network request failed')
+  );
+}
+
 function safeContext(ctx?: ErrorContext): Record<string, unknown> {
   if (!ctx) return {};
   try {
@@ -208,6 +239,9 @@ export function logError(
 ): void {
   try {
     const { message, code, stack } = errInfo(error);
+    // Drop transient network/offline/timeout blips — not actionable bugs,
+    // just dead-zone noise in the dev inbox (see isTransientEnvError).
+    if (isTransientEnvError(code, message)) return;
     const fp = djb2(`${operation}|${normalize(message)}`);
     // Runaway guard: once this signature has been written SESSION_WRITE_CAP
     // times this session, stop buffering it (protects a single hot doc).
