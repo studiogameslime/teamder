@@ -11,6 +11,7 @@ import React, { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { EveningSummaryModel } from '@/services/eveningSummaryService';
 import type { InsightTone } from '@/utils/eveningNarrative';
+import { scoreBand } from '@/utils/eveningNarrative';
 import { progressLines } from '@/utils/eveningProgress';
 
 const C = {
@@ -66,6 +67,9 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     // fixed held-pitch + "worked hard" lines that everyone saw identically).
     const insights = model.insights ?? [];
     // Seeded per game+player so one evening always shows the same line.
+    // The score's own colour. A 6.9 and a 9.4 used to share the same gold
+    // tint, so the card looked equally pleased with both.
+    const band = SCORE_BAND_STYLE[scoreBand(model.score)];
     const progress = progressLines(
       model.metrics,
       model.score,
@@ -111,12 +115,19 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             drop whenever the one before happened to be better, which is the
             opposite of what this card is for. The score is placed against the
             people who actually played tonight instead. */}
-        <View style={styles.score}>
+        <View
+          style={[
+            styles.score,
+            { backgroundColor: band.bg, borderColor: band.border },
+          ]}
+        >
           <View style={styles.scoreNumCol}>
-            <Text style={styles.scoreNum}>{model.score.toFixed(1)}</Text>
+            <Text style={[styles.scoreNum, { color: band.ink }]}>
+              {model.score.toFixed(1)}
+            </Text>
           </View>
           <View style={styles.scoreText}>
-            <Text style={styles.tier}>
+            <Text style={[styles.tier, { color: band.ink }]}>
               {model.title} {model.titleEmoji}
             </Text>
             <Text style={styles.scoreLabel}>ציון המחזור שלך</Text>
@@ -237,6 +248,18 @@ export const EveningSummaryCard = forwardRef<View, Props>(
 
 // Same visual family as the insight strips below, so the card reads as one
 // thing. The crown gets gold because it's the loudest event on it.
+// 6–7 red, 7–8 amber, 8–9 green, 9–10 blue. The hero is the first thing read;
+// its colour should agree with the number inside it before a word is.
+const SCORE_BAND_STYLE: Record<
+  string,
+  { bg: string; border: string; ink: string }
+> = {
+  low: { bg: '#FEF2F2', border: '#FBD5D5', ink: '#B91C1C' },
+  mid: { bg: '#FFF7ED', border: '#FDE1BE', ink: '#B45309' },
+  good: { bg: C.greenTint, border: '#C7EFD6', ink: '#15803D' },
+  great: { bg: C.blueTint, border: '#DCE6FF', ink: C.blueDeep },
+};
+
 const PROGRESS_TONE: Record<string, { bg: string; border: string; text: string }> = {
   crown: { bg: C.goldTint, border: '#F7E7BC', text: C.goldDeep },
   good: { bg: C.greenTint, border: '#C7EFD6', text: '#15803D' },

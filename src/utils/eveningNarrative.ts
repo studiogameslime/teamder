@@ -92,13 +92,49 @@ const DEFAULT_TITLE: TitleRule = {
   variants: ['טוב שהיית', 'נעים לראות אותך על הדשא', 'ערב טוב על המגרש'],
 };
 
+/**
+ * Below this score the achievement titles are locked out.
+ *
+ * They read the STATS, not the result — so a player who stayed on for six
+ * mini-games and lost most of them was crowned "רצת בלי לעצור" on a 6.9. The
+ * headline is the biggest thing on the card; praising a middling evening in it
+ * makes the score underneath look like a typo, and makes the praise worthless
+ * on the evenings it IS earned.
+ */
+const PRAISE_MIN_SCORE = 8;
+
+/** Titles that match the evening the score actually describes. */
+const SCORE_BAND_TITLES: Array<{ min: number; emoji: string; variants: string[] }> = [
+  { min: 7, emoji: '👍', variants: ['ערב סולידי', 'עשית את שלך', 'נוכחות טובה'] },
+  { min: 6, emoji: '😐', variants: ['ערב פושר', 'היה אפשר יותר', 'לא הלך הערב'] },
+  { min: 0, emoji: '🌱', variants: ['ערב קשה', 'יש ימים כאלה', 'בשבוע הבא מתקנים'] },
+];
+
 export function pickEveningTitle(
   s: NarrativeStats,
   seed = '',
+  /** The evening score. Omitted (or 0) keeps the old stats-only behaviour. */
+  score = 0,
 ): { title: string; emoji: string } {
   const rng = seededRng(`title:${seed}`);
+  if (score > 0 && score < PRAISE_MIN_SCORE) {
+    const band =
+      SCORE_BAND_TITLES.find((b) => score >= b.min) ??
+      SCORE_BAND_TITLES[SCORE_BAND_TITLES.length - 1];
+    return { title: pick(band.variants, rng), emoji: band.emoji };
+  }
   const rule = TITLE_RULES.find((r) => r.when(s)) ?? DEFAULT_TITLE;
   return { title: pick(rule.variants, rng), emoji: rule.emoji };
+}
+
+/** Which colour band a score falls into. Drives the hero's tint. */
+export type ScoreBand = 'low' | 'mid' | 'good' | 'great';
+
+export function scoreBand(score: number): ScoreBand {
+  if (score >= 9) return 'great';
+  if (score >= 8) return 'good';
+  if (score >= 7) return 'mid';
+  return 'low';
 }
 
 // ── insight strips ───────────────────────────────────────────────────────────

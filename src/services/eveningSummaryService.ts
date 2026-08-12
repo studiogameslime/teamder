@@ -343,7 +343,6 @@ export const eveningSummaryService = {
         pen: rs.pen,
       };
       const seed = `${gameId}:${uid}`;
-      const t = pickEveningTitle(narrative, seed);
       // Prefer the score the SERVER stored. It is the one that ranked this
       // evening's players against each other, the one saved as the club's
       // lastEveningScore, and the one every other surface reads — so a card
@@ -362,6 +361,9 @@ export const eveningSummaryService = {
       });
       const storedScore = numOrNull(stand?.score);
       const score = storedScore ?? localScore;
+      // Title AFTER the score: it is gated on it, so a middling evening can't
+      // be crowned by a stats rule that never looked at the result.
+      const t = pickEveningTitle(narrative, seed, score);
 
       return {
         gameId,
