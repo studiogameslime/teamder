@@ -10244,21 +10244,36 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${keeper}`), { gameId, userId: keeper, ...fields, updatedAt: now }, { merge: true });
     }
     // 1b) assists → assister.stats.assists + community tally + directional
-    //     head-to-head ("X assisted Y") on the sorted pair doc. An assist only
-    //     counts for a real, attributed scorer and a real, different assister.
+    //     head-to-head ("X assisted Y") on the sorted pair doc.
+    //
+    // ⚠️ The scorer does NOT have to be a registered user. This used to skip
+    // the goal entirely when `!isReal(scorerId)`, so setting up a GUEST cost
+    // the assister his assist — it showed in the match history (written on a
+    // separate path) and never reached his stats or the club table. Reported
+    // on a real evening: a player laid on two goals for a guest and both
+    // vanished. A guest is a full player in the cycle; feeding one is the
+    // same act of football as feeding anyone else.
+    //
+    // What still gates: the scorer must have legitimately played this round —
+    // a real on-field player, or a guest actually registered to THIS game
+    // (`guestRoster`, the same anti-forgery check a real roster gives).
+    const scorerPlayed = (id) => (isReal(id) && onField.has(id)) || guestRoster.has(id);
     const byAssister = {};
     const assistPairs = [];
     for (const g of goals ?? []) {
-        if (g.ownGoal || !g.scorerId || !isReal(g.scorerId))
+        if (g.ownGoal || !g.scorerId || !scorerPlayed(g.scorerId))
             continue;
-        if (!onField.has(g.scorerId))
-            continue; // scorer off the playing sides
         if (!g.assisterId || !isReal(g.assisterId) || g.assisterId === g.scorerId)
             continue;
         if (!onField.has(g.assisterId))
             continue; // assister not on a playing side (B12)
         byAssister[g.assisterId] = (byAssister[g.assisterId] ?? 0) + 1;
-        assistPairs.push({ assister: g.assisterId, scorer: g.scorerId });
+        // The head-to-head pair still needs BOTH sides to be real accounts: a
+        // pair doc keyed on a guest id belongs to nobody and would pollute the
+        // "X assisted Y" stats with a name that has no profile.
+        if (isReal(g.scorerId)) {
+            assistPairs.push({ assister: g.assisterId, scorer: g.scorerId });
+        }
     }
     for (const [assister, n] of Object.entries(byAssister)) {
         batch.set(db.collection('users').doc(assister), { stats: { assists: inc(n) } }, { merge: true });
