@@ -11,7 +11,7 @@ import React, { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { EveningSummaryModel } from '@/services/eveningSummaryService';
 import type { InsightTone } from '@/utils/eveningNarrative';
-import { aheadLabel, progressLines } from '@/utils/eveningProgress';
+import { progressLines } from '@/utils/eveningProgress';
 
 const C = {
   bg: '#F9FAFB',
@@ -179,10 +179,12 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         ) : null}
 
-        {/* ── where I stand in the club, and what moved tonight ──────────
-            Sits under the rank strip because it elaborates it: the strip says
-            the place, this says who I passed to get there. */}
-        {model.metrics.length > 0 ? (
+        {/* ── what moved tonight ────────────────────────────────────────
+            Sentences only. A three-row table of value/place/gap was the first
+            attempt and read like a spreadsheet on a card that is otherwise
+            about how the evening FELT — the owner asked for the sentences and
+            nothing else. The overall place still lives in the strip above. */}
+        {progress.length > 0 ? (
           <View style={styles.progress}>
             {progress.map((l) => (
               <Text
@@ -195,21 +197,6 @@ export const EveningSummaryCard = forwardRef<View, Props>(
               >
                 {l.text}
               </Text>
-            ))}
-            {model.metrics.map((mt) => (
-              <View key={mt.key} style={styles.mRow}>
-                <Text style={styles.mIco}>{METRIC_ICON[mt.key]}</Text>
-                <Text style={styles.mLbl}>{METRIC_LABEL[mt.key]}</Text>
-                <Text style={styles.mVal}>{mt.value}</Text>
-                <Text style={styles.mPos}>מקום {mt.rank}</Text>
-                <Text style={styles.mNext} numberOfLines={1}>
-                  {mt.aheadName && mt.aheadGap != null && mt.aheadGap > 0
-                    ? aheadLabel(mt.aheadName, mt.aheadGap)
-                    : mt.rank === 1
-                      ? 'ראשון במועדון 👑'
-                      : ''}
-                </Text>
-              </View>
             ))}
           </View>
         ) : null}
@@ -254,17 +241,6 @@ export const EveningSummaryCard = forwardRef<View, Props>(
   },
 );
 
-const METRIC_LABEL: Record<string, string> = {
-  goals: 'שערים',
-  assists: 'בישולים',
-  wins: 'ניצחונות',
-};
-const METRIC_ICON: Record<string, string> = {
-  goals: '⚽',
-  assists: '🎯',
-  wins: '🏆',
-};
-
 const CARD_SHADOW = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.06,
@@ -275,36 +251,20 @@ const CARD_SHADOW = {
 
 const styles = StyleSheet.create({
   progress: {
-    borderWidth: 1,
-    borderColor: C.line,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 4,
+    // NO alignItems here. The app runs under I18nManager.forceRTL, which
+    // mirrors flex — so 'flex-end' is the physical LEFT and pinned every line
+    // to the wrong edge. Alignment comes from the global Text default
+    // (App.tsx sets textAlign right + rtl on every Text), exactly like the
+    // strips and tiles around it; overriding it here is what broke it.
+    gap: 5,
     marginBottom: 10,
   },
   progressLine: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 13.5,
+    lineHeight: 21,
     color: C.ink,
     fontWeight: '700',
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    marginBottom: 4,
   },
-  mRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: C.line,
-  },
-  mIco: { fontSize: 14, width: 18, textAlign: 'center' },
-  mLbl: { fontSize: 11.5, color: C.muted, width: 54, textAlign: 'right' },
-  mVal: { fontSize: 15, fontWeight: '800', color: C.ink, width: 30, textAlign: 'right' },
-  mPos: { fontSize: 11.5, color: C.muted, width: 52, textAlign: 'right' },
-  mNext: { flex: 1, fontSize: 11, color: C.muted2, textAlign: 'left' },
 
   card: {
     width: '100%',

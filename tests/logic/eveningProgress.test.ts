@@ -67,9 +67,25 @@ describe('naming the people you passed', () => {
   });
 
   it('stays silent when nothing moved', () => {
-    // The common case — most evenings nobody is overtaken. The rows below
-    // still render; this band simply has nothing to say.
+    // The common case — most evenings nobody is overtaken. With the table
+    // gone there is nothing else in this band, so it disappears entirely
+    // rather than showing an empty box.
     expect(progressLines([m()], 7.5, 'x')).toEqual([]);
+  });
+
+  it('calls out being top of a column', () => {
+    const lines = progressLines([m({ key: 'assists', rank: 1 })], 7.5, 'x');
+    expect(lines).toHaveLength(1);
+    expect(lines[0].text).toContain('ראשון במועדון בבישולים');
+  });
+
+  it('puts the crown before the overtakes', () => {
+    const lines = progressLines(
+      [m({ key: 'assists', rank: 1 }), m({ key: 'goals', passed: ['דור'] })],
+      8,
+      'x',
+    );
+    expect(lines[0].id).toContain('crown');
   });
 });
 

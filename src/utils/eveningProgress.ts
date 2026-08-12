@@ -117,6 +117,17 @@ export function progressLines(
   }
 
   const out: ProgressLine[] = [];
+  // Being top of a column is worth saying out loud, and it's the one standing
+  // that survives now that the per-metric table is gone.
+  for (const m of metrics) {
+    if (m.rank === 1) {
+      out.push({
+        id: `crown-${m.key}`,
+        tone: 'good',
+        text: `${RLM}אתה ראשון במועדון ${IN_METRIC[m.key]} 👑`,
+      });
+    }
+  }
   for (const m of metrics) {
     if (m.passed.length > 0) {
       out.push({

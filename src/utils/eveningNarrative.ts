@@ -62,29 +62,34 @@ interface TitleRule {
 
 // Highest-priority match wins; variants vary by seed. No "ערב/מחזור" in the
 // phrasing so it reads clean regardless of terminology.
+//
+// TONE: this is the biggest sentence on the card, so it should sound like a
+// friend who watched you play — not a performance review. The earlier set
+// ("מנוע בלתי-נדלה", "סוס עבודה", "חייל נאמן") described output; these describe
+// the person's evening.
 const TITLE_RULES: TitleRule[] = [
   { when: (s) => s.goals >= 3, emoji: '🔥',
-    variants: ['חלוץ בלתי-נעצר', 'מכונת גולים', 'האטרקציה של המחזור'] },
+    variants: ['ערב שלא שוכחים', 'הכל נכנס לך הערב', 'היית בכל מקום'] },
   { when: (s) => s.assists >= 3, emoji: '🅰️',
-    variants: ['מלך הבישולים', 'הרגל של הזהב', 'המוח מאחורי הקבוצה'] },
+    variants: ['הכל עבר דרכך', 'נתת לכולם לזרוח', 'ראית את כל המגרש'] },
   { when: (s) => (s.goals >= 2 && s.assists >= 1) || (s.goals >= 1 && s.assists >= 2),
-    emoji: '🎭', variants: ['המחזור עבר דרכך', 'בלתי-אפשרי לעצירה', 'שחקן המפתח'] },
+    emoji: '🎭', variants: ['ערב גדול שלך', 'הובלת את הערב', 'עשית את ההבדל'] },
   { when: (s) => winShareOf(s) >= 0.7 && s.gamesPlayed >= 3, emoji: '🏆',
-    variants: ['מכונת ניצחונות', 'לא יודע להפסיד', 'תמיד בצד המנצח'] },
+    variants: ['איפה שאתה, מנצחים', 'הבאת איתך מזל טוב', 'הצד המנצח'] },
   { when: (s) => s.pen.saved >= 1, emoji: '🧤',
-    variants: ['החומה', 'קיר לבנים', 'סיוט הבועטים'] },
+    variants: ['עצרת ברגע הנכון', 'הידיים היו שם', 'הצלת את הקבוצה'] },
   { when: (s) => s.heldPitch >= 3, emoji: '🏰',
-    variants: ['מלך הגבעה', 'בעל-הבית על המגרש', 'לא זזים מפה'] },
+    variants: ['לא ירדת מהמגרש', 'נשארת עד הסוף', 'החזקת את המגרש'] },
   { when: (s) => s.goals >= 1, emoji: '⚽',
-    variants: ['תורם בהתקפה', 'מסמן נוכחות', 'על לוח התוצאות'] },
+    variants: ['רשמת את עצמך', 'תרמת את שלך', 'השארת חתימה'] },
   { when: (s) => s.gamesPlayed >= 6, emoji: '💪',
-    variants: ['מנוע בלתי-נדלה', 'לא ירד מהמגרש', 'סוס עבודה'] },
+    variants: ['רצת בלי לעצור', 'נתת הכל הערב', 'לא ויתרת רגע'] },
   { when: (s) => s.gamesPlayed >= 3 && winShareOf(s) < 0.34 && s.goals + s.assists === 0,
-    emoji: '🌱', variants: ['מחזור של למידה', 'יום כזה — חוזרים חזק', 'הכל לפנינו'] },
+    emoji: '🌱', variants: ['ערב של חימום', 'השבוע הבא שלך', 'הרגליים עוד יגיעו'] },
 ];
 const DEFAULT_TITLE: TitleRule = {
   when: () => true, emoji: '👟',
-  variants: ['חייל נאמן', 'נתן את שלו', 'מחזור סולידי'],
+  variants: ['טוב שהיית', 'נעים לראות אותך על הדשא', 'ערב טוב על המגרש'],
 };
 
 export function pickEveningTitle(
