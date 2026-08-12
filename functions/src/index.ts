@@ -4871,12 +4871,14 @@ export const onGameRosterChanged = onDocumentWritten(
                 userId?: string;
                 goals?: number;
                 assists?: number;
+                wins?: number;
                 lastEveningScore?: number;
               };
               return {
                 uid: typeof x.userId === 'string' ? x.userId : '',
                 goals: num(x.goals),
                 assists: num(x.assists),
+                wins: num(x.wins),
                 lastScore:
                   typeof x.lastEveningScore === 'number'
                     ? x.lastEveningScore
@@ -4974,6 +4976,106 @@ export const onGameRosterChanged = onDocumentWritten(
           const nowRanked = rankByPoints(nowPoints, nowGoals);
           const beforeRanked = rankByPoints(beforePoints, beforeGoals);
           const total = cum.length;
+
+          // ── Per-metric movement: goals, assists, wins ────────────────────
+          // The combined ranking above already answers "where am I", but not
+          // the thing players actually talk about: WHO you went past tonight.
+          // Both orderings are right here — before this evening and after it —
+          // so the names cost nothing to derive; they were simply being thrown
+          // away with only the place-count kept.
+          const METRICS = ['goals', 'assists', 'wins'] as const;
+          type Metric = (typeof METRICS)[number];
+          const cumOf = (uid: string, m: Metric): number => {
+            const c = cumMap.get(uid);
+            return c ? (m === 'goals' ? c.goals : m === 'assists' ? c.assists : c.wins) : 0;
+          };
+          const evOf = (uid: string, m: Metric): number => {
+            const e = evStat[uid];
+            if (!e) return 0;
+            return m === 'goals' ? e.goals : m === 'assists' ? e.assists : e.wins;
+          };
+          // Ties are broken by uid so the order is deterministic — otherwise a
+          // tied pair could "swap" between the two sorts and look like an
+          // overtake that never happened.
+          const orderBy = (m: Metric, at: 'now' | 'before'): string[] => {
+            const valOf = (uid: string) =>
+              at === 'now' ? cumOf(uid, m) : cumOf(uid, m) - evOf(uid, m);
+            return [...cum]
+              .map((c) => c.uid)
+              .sort((a, b) => valOf(b) - valOf(a) || a.localeCompare(b));
+          };
+          const orders: Record<Metric, { now: string[]; before: string[] }> = {
+            goals: { now: orderBy('goals', 'now'), before: orderBy('goals', 'before') },
+            assists: { now: orderBy('assists', 'now'), before: orderBy('assists', 'before') },
+            wins: { now: orderBy('wins', 'now'), before: orderBy('wins', 'before') },
+          };
+
+          // Resolve the display names we're about to quote — ONE batched read
+          // for every name across every attendee, not one per name.
+          const nameIds = new Set<string>();
+          for (const uid of attendees) {
+            for (const m of METRICS) {
+              const o = orders[m];
+              const iNow = o.now.indexOf(uid);
+              const iBefore = o.before.indexOf(uid);
+              if (iNow < 0 || iBefore < 0) continue;
+              // everyone between the two positions, plus the player just above
+              const lo = Math.min(iNow, iBefore);
+              const hi = Math.max(iNow, iBefore);
+              for (let i = lo; i <= hi; i++) if (o.now[i] !== uid) nameIds.add(o.now[i]);
+              if (iNow > 0) nameIds.add(o.now[iNow - 1]);
+            }
+          }
+          const nameById = new Map<string, string>();
+          if (nameIds.size > 0) {
+            const ids = [...nameIds];
+            const snaps = await db.getAll(
+              ...ids.map((u) => db.collection('users').doc(u)),
+            );
+            snaps.forEach((sn, i) => {
+              const n = (sn.data() as { name?: string } | undefined)?.name;
+              if (typeof n === 'string' && n.trim()) nameById.set(ids[i], n.trim());
+            });
+          }
+          const MAX_NAMES = 3;
+          const metricsFor = (uid: string) => {
+            const out: Record<string, unknown> = {};
+            for (const m of METRICS) {
+              const o = orders[m];
+              const iNow = o.now.indexOf(uid);
+              const iBefore = o.before.indexOf(uid);
+              if (iNow < 0 || iBefore < 0) continue;
+              // Passed = above me before, below me now. Derived from positions
+              // rather than values, so equal-value ties never read as a pass.
+              const passed: string[] = [];
+              const passedBy: string[] = [];
+              for (const other of o.now) {
+                if (other === uid) continue;
+                const oNow = o.now.indexOf(other);
+                const oBefore = o.before.indexOf(other);
+                if (oBefore < iBefore && oNow > iNow) passed.push(other);
+                else if (oBefore > iBefore && oNow < iNow) passedBy.push(other);
+              }
+              const aboveId = iNow > 0 ? o.now[iNow - 1] : null;
+              out[m] = {
+                value: cumOf(uid, m),
+                rank: iNow + 1,
+                // + = climbed
+                delta: iBefore - iNow,
+                passed: passed
+                  .map((u) => nameById.get(u))
+                  .filter((n): n is string => !!n)
+                  .slice(0, MAX_NAMES),
+                passedBy: passedBy
+                  .map((u) => nameById.get(u))
+                  .filter((n): n is string => !!n)
+                  .slice(0, MAX_NAMES),
+                aheadName: aboveId ? (nameById.get(aboveId) ?? null) : null,
+                aheadGap: aboveId ? cumOf(aboveId, m) - cumOf(uid, m) : null,
+              };
+            }
+            return out;
+          };
           const standingBatch = db.batch();
           for (const uid of attendees) {
             const e = evStat[uid];
@@ -5004,6 +5106,7 @@ export const onGameRosterChanged = onDocumentWritten(
                 // + = climbed N places since before this evening.
                 rankDelta:
                   rankNow > 0 && rankBefore > 0 ? rankBefore - rankNow : null,
+                metrics: metricsFor(uid),
                 at: Date.now(),
               },
               { merge: true },

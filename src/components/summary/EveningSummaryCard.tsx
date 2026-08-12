@@ -11,6 +11,7 @@ import React, { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { EveningSummaryModel } from '@/services/eveningSummaryService';
 import type { InsightTone } from '@/utils/eveningNarrative';
+import { aheadLabel, progressLines } from '@/utils/eveningProgress';
 
 const C = {
   bg: '#F9FAFB',
@@ -64,6 +65,12 @@ export const EveningSummaryCard = forwardRef<View, Props>(
     // Situational strips picked by this player's performance (replaces the old
     // fixed held-pitch + "worked hard" lines that everyone saw identically).
     const insights = model.insights ?? [];
+    // Seeded per game+player so one evening always shows the same line.
+    const progress = progressLines(
+      model.metrics,
+      model.score,
+      `${model.gameId}:${model.uid}`,
+    );
     return (
       <View ref={ref} collapsable={false} style={styles.card}>
         {/* brand */}
@@ -172,6 +179,41 @@ export const EveningSummaryCard = forwardRef<View, Props>(
           </View>
         ) : null}
 
+        {/* ── where I stand in the club, and what moved tonight ──────────
+            Sits under the rank strip because it elaborates it: the strip says
+            the place, this says who I passed to get there. */}
+        {model.metrics.length > 0 ? (
+          <View style={styles.progress}>
+            {progress.map((l) => (
+              <Text
+                key={l.id}
+                style={[
+                  styles.progressLine,
+                  l.tone === 'bad' && { color: C.red },
+                  l.tone === 'snark' && { color: C.goldDeep },
+                ]}
+              >
+                {l.text}
+              </Text>
+            ))}
+            {model.metrics.map((mt) => (
+              <View key={mt.key} style={styles.mRow}>
+                <Text style={styles.mIco}>{METRIC_ICON[mt.key]}</Text>
+                <Text style={styles.mLbl}>{METRIC_LABEL[mt.key]}</Text>
+                <Text style={styles.mVal}>{mt.value}</Text>
+                <Text style={styles.mPos}>מקום {mt.rank}</Text>
+                <Text style={styles.mNext} numberOfLines={1}>
+                  {mt.aheadName && mt.aheadGap != null && mt.aheadGap > 0
+                    ? aheadLabel(mt.aheadName, mt.aheadGap)
+                    : mt.rank === 1
+                      ? 'ראשון במועדון 👑'
+                      : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* goals + assists */}
         <View style={styles.grid}>
           <View style={styles.gTile}>
@@ -212,6 +254,17 @@ export const EveningSummaryCard = forwardRef<View, Props>(
   },
 );
 
+const METRIC_LABEL: Record<string, string> = {
+  goals: 'שערים',
+  assists: 'בישולים',
+  wins: 'ניצחונות',
+};
+const METRIC_ICON: Record<string, string> = {
+  goals: '⚽',
+  assists: '🎯',
+  wins: '🏆',
+};
+
 const CARD_SHADOW = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.06,
@@ -221,6 +274,38 @@ const CARD_SHADOW = {
 } as const;
 
 const styles = StyleSheet.create({
+  progress: {
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    marginBottom: 10,
+  },
+  progressLine: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: C.ink,
+    fontWeight: '700',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    marginBottom: 4,
+  },
+  mRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+  },
+  mIco: { fontSize: 14, width: 18, textAlign: 'center' },
+  mLbl: { fontSize: 11.5, color: C.muted, width: 54, textAlign: 'right' },
+  mVal: { fontSize: 15, fontWeight: '800', color: C.ink, width: 30, textAlign: 'right' },
+  mPos: { fontSize: 11.5, color: C.muted, width: 52, textAlign: 'right' },
+  mNext: { flex: 1, fontSize: 11, color: C.muted2, textAlign: 'left' },
+
   card: {
     width: '100%',
     borderRadius: 28,

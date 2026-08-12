@@ -34,6 +34,58 @@ import type { UserId } from '@/types';
 
 export { eveningScore } from '@/utils/eveningScore';
 
+/** One club-table metric (goals / assists / wins) as of tonight. */
+export interface EveningMetric {
+  key: 'goals' | 'assists' | 'wins';
+  value: number;
+  rank: number;
+  /** Places climbed tonight (+ = up). */
+  delta: number;
+  /** Who you went past tonight, up to 3. */
+  passed: string[];
+  /** Who went past you, up to 3. */
+  passedBy: string[];
+  /** The player directly above you, and by how much. */
+  aheadName: string | null;
+  aheadGap: number | null;
+}
+
+const METRIC_ORDER: EveningMetric['key'][] = ['goals', 'assists', 'wins'];
+
+/**
+ * Read the server-computed per-metric block. Everything is validated on the
+ * way in: a metric with no rank is dropped rather than rendered as "מקום 0",
+ * and names are filtered to real strings so a partial write can't put
+ * "undefined" on the card.
+ */
+function readMetrics(raw: unknown): EveningMetric[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const src = raw as Record<string, unknown>;
+  const strList = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      : [];
+  const out: EveningMetric[] = [];
+  for (const key of METRIC_ORDER) {
+    const m = src[key];
+    if (!m || typeof m !== 'object') continue;
+    const d = m as Record<string, unknown>;
+    const rank = typeof d.rank === 'number' ? d.rank : 0;
+    if (rank <= 0) continue;
+    out.push({
+      key,
+      value: typeof d.value === 'number' ? d.value : 0,
+      rank,
+      delta: typeof d.delta === 'number' ? d.delta : 0,
+      passed: strList(d.passed),
+      passedBy: strList(d.passedBy),
+      aheadName: typeof d.aheadName === 'string' ? d.aheadName : null,
+      aheadGap: typeof d.aheadGap === 'number' ? d.aheadGap : null,
+    });
+  }
+  return out;
+}
+
 export interface EveningSummaryModel {
   gameId: string;
   uid: UserId;
@@ -64,6 +116,9 @@ export interface EveningSummaryModel {
   rank: number | null; // 1-based place in the community table
   rankTotal: number | null;
   rankDelta: number | null; // places climbed since before this evening (+ = up)
+  /** Per-metric standing in the club, with the names actually passed tonight.
+   *  Computed server-side at end-of-evening from the before/after orderings. */
+  metrics: EveningMetric[];
   // phase 2
   heldPitch: number;
   teamGoalsFor: number;
@@ -143,6 +198,23 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     rank: 3,
     rankTotal: 24,
     rankDelta: 2,
+    metrics: [
+      {
+        key: 'goals', value: 31, rank: 4, delta: 3,
+        passed: ['שלומי', 'יוסי', 'נדב'], passedBy: [],
+        aheadName: 'דניאל', aheadGap: 2,
+      },
+      {
+        key: 'assists', value: 23, rank: 6, delta: -1,
+        passed: [], passedBy: ['אבי'],
+        aheadName: 'אבי', aheadGap: 2,
+      },
+      {
+        key: 'wins', value: 48, rank: 2, delta: 0,
+        passed: [], passedBy: [],
+        aheadName: 'דניאל', aheadGap: 5,
+      },
+    ],
     heldPitch: 5,
     teamGoalsFor: 17,
     teamGoalsAgainst: 9,
@@ -289,6 +361,7 @@ export const eveningSummaryService = {
         rank: numOrNull(stand?.rank),
         rankTotal: numOrNull(stand?.rankTotal),
         rankDelta: numOrNull(stand?.rankDelta),
+        metrics: readMetrics(stand?.metrics),
         heldPitch: rs.heldPitch,
         teamGoalsFor,
         teamGoalsAgainst,
