@@ -1590,6 +1590,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── /eveningStandings/{gameId__uid} — my place after an evening ────
+    // Written ONLY by onGameRosterChanged (Admin SDK) at end-of-evening: the
+    // player's score, its delta, and their rank in the club table before/after.
+    //
+    // ⚠️ This rule was MISSING, so the default deny applied and the client's
+    // read threw — swallowed by a `.catch(() => null)` in eveningSummaryService,
+    // which left `rank` null. The result: the "מקום N מתוך M בטבלת המועדון"
+    // strip never rendered for anyone since it shipped, and the card silently
+    // fell back to a locally recomputed score. Read is limited to the owner of
+    // the doc; a player's standing is nobody else's business.
+    match /eveningStandings/{standingId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     // ── /tasks/{taskId} — the Pulse work list. NO client access ────────
     // Written two ways, both privileged: the `onFeedbackCreated` trigger
     // (Admin SDK) when a tester files a report, and the Pulse dashboard
