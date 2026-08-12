@@ -4351,6 +4351,10 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                             rank: iNow + 1,
                             // + = climbed
                             delta: iBefore - iNow,
+                            // Full counts travel alongside the capped name lists so the
+                            // card can say "ואב ועוד 4" without shipping 6 names.
+                            passedCount: passed.length,
+                            passedByCount: passedBy.length,
                             passed: passed
                                 .map((u) => nameById.get(u))
                                 .filter((n) => !!n)
@@ -4365,6 +4369,17 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                     }
                     return out;
                 };
+                // ── tonight's score table ────────────────────────────────────────
+                // "I got 7.1 — where does that put me among everyone who played?"
+                // Scored over THIS evening's attendees only: the question is about
+                // tonight, and a club-wide comparison would drag in players who
+                // weren't even here.
+                const scoreOf = new Map();
+                for (const uid of attendees) {
+                    const e = evStat[uid];
+                    scoreOf.set(uid, eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10));
+                }
+                const scoreRanked = [...attendees].sort((a, b) => (scoreOf.get(b) ?? 0) - (scoreOf.get(a) ?? 0) || a.localeCompare(b));
                 const standingBatch = db.batch();
                 for (const uid of attendees) {
                     const e = evStat[uid];
@@ -4385,6 +4400,8 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                         // + = climbed N places since before this evening.
                         rankDelta: rankNow > 0 && rankBefore > 0 ? rankBefore - rankNow : null,
                         metrics: metricsFor(uid),
+                        scoreRank: scoreRanked.indexOf(uid) + 1,
+                        scoreTotal: scoreRanked.length,
                         at: Date.now(),
                     }, { merge: true });
                     // Remember this evening's score for next evening's delta.

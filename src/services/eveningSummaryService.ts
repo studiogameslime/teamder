@@ -41,10 +41,12 @@ export interface EveningMetric {
   rank: number;
   /** Places climbed tonight (+ = up). */
   delta: number;
-  /** Who you went past tonight, up to 3. */
+  /** Who you went past tonight — NAMES are capped, the count is the truth. */
   passed: string[];
-  /** Who went past you, up to 3. */
+  passedCount: number;
+  /** Who went past you. Same split. */
   passedBy: string[];
+  passedByCount: number;
   /** The player directly above you, and by how much. */
   aheadName: string | null;
   aheadGap: number | null;
@@ -78,7 +80,13 @@ function readMetrics(raw: unknown): EveningMetric[] {
       rank,
       delta: typeof d.delta === 'number' ? d.delta : 0,
       passed: strList(d.passed),
+      passedCount:
+        typeof d.passedCount === 'number' ? d.passedCount : strList(d.passed).length,
       passedBy: strList(d.passedBy),
+      passedByCount:
+        typeof d.passedByCount === 'number'
+          ? d.passedByCount
+          : strList(d.passedBy).length,
       aheadName: typeof d.aheadName === 'string' ? d.aheadName : null,
       aheadGap: typeof d.aheadGap === 'number' ? d.aheadGap : null,
     });
@@ -116,6 +124,9 @@ export interface EveningSummaryModel {
   rank: number | null; // 1-based place in the community table
   rankTotal: number | null;
   rankDelta: number | null; // places climbed since before this evening (+ = up)
+  /** Where tonight's score placed me among everyone who played tonight. */
+  scoreRank: number | null;
+  scoreTotal: number | null;
   /** Per-metric standing in the club, with the names actually passed tonight.
    *  Computed server-side at end-of-evening from the before/after orderings. */
   metrics: EveningMetric[];
@@ -198,20 +209,24 @@ function mockModel(gameId: string, uid: UserId): EveningSummaryModel {
     rank: 3,
     rankTotal: 24,
     rankDelta: 2,
+    scoreRank: 3,
+    scoreTotal: 15,
     metrics: [
       {
         key: 'goals', value: 31, rank: 4, delta: 3,
-        passed: ['שלומי', 'יוסי', 'נדב'], passedBy: [],
+        passed: ['שלומי', 'יוסי', 'נדב'], passedCount: 3,
+        passedBy: [], passedByCount: 0,
         aheadName: 'דניאל', aheadGap: 2,
       },
       {
         key: 'assists', value: 23, rank: 6, delta: -1,
-        passed: [], passedBy: ['אבי'],
+        passed: [], passedCount: 0,
+        passedBy: ['אבי'], passedByCount: 1,
         aheadName: 'אבי', aheadGap: 2,
       },
       {
         key: 'wins', value: 48, rank: 2, delta: 0,
-        passed: [], passedBy: [],
+        passed: [], passedCount: 0, passedBy: [], passedByCount: 0,
         aheadName: 'דניאל', aheadGap: 5,
       },
     ],
@@ -329,7 +344,14 @@ export const eveningSummaryService = {
       };
       const seed = `${gameId}:${uid}`;
       const t = pickEveningTitle(narrative, seed);
-      const score = eveningScore({
+      // Prefer the score the SERVER stored. It is the one that ranked this
+      // evening's players against each other, the one saved as the club's
+      // lastEveningScore, and the one every other surface reads — so a card
+      // showing a locally recomputed number put "מקום 12 מתוך 15" next to a
+      // score that wasn't what produced that place. The local computation
+      // stays as the fallback for evenings with no standing doc (and it also
+      // folds in penalties, which the server's stats rows don't carry).
+      const localScore = eveningScore({
         goals: row.goals,
         assists: row.assists,
         wins: row.wins,
@@ -338,6 +360,8 @@ export const eveningSummaryService = {
         assistsFor10,
         pen: rs.pen,
       });
+      const storedScore = numOrNull(stand?.score);
+      const score = storedScore ?? localScore;
 
       return {
         gameId,
@@ -361,6 +385,8 @@ export const eveningSummaryService = {
         rank: numOrNull(stand?.rank),
         rankTotal: numOrNull(stand?.rankTotal),
         rankDelta: numOrNull(stand?.rankDelta),
+        scoreRank: numOrNull(stand?.scoreRank),
+        scoreTotal: numOrNull(stand?.scoreTotal),
         metrics: readMetrics(stand?.metrics),
         heldPitch: rs.heldPitch,
         teamGoalsFor,

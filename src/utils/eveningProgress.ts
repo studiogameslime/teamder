@@ -71,14 +71,23 @@ const METRIC_ICON: Record<EveningMetric['key'], string> = {
  */
 export const SNARK_SCORE_MAX = 5;
 
+/** How many names to print before switching to a count. */
+export const NAMES_SHOWN = 2;
+
 /**
- * Join names the way a person would: "שלומי, יוסי ונדב".
+ * Name the people, but stop at two.
+ *
+ * "שלומי, יוסי, נדב, אבי ורן עקפו אותך" is a wall — the point lands with two
+ * names and a number, and the line stays one row on a phone. `total` is the
+ * real count, which can exceed the names we were given.
  */
-export function joinNames(names: readonly string[]): string {
+export function joinNames(names: readonly string[], total = names.length): string {
   if (names.length === 0) return '';
-  const safe = names.map(iso);
-  if (safe.length === 1) return safe[0];
-  return `${safe.slice(0, -1).join(', ')} ו${safe[safe.length - 1]}`;
+  const safe = names.slice(0, NAMES_SHOWN).map(iso);
+  const extra = Math.max(0, total - safe.length);
+  const head = safe.length === 1 ? safe[0] : `${safe[0]} ו${safe[1]}`;
+  if (extra === 0) return head;
+  return `${head} ועוד ${extra}`;
 }
 
 /**
@@ -157,19 +166,19 @@ export function progressLines(
         id: `passed-${m.key}`,
         tone: 'good',
         icon: METRIC_ICON[m.key],
-        text: `${RLM}עקפת את ${joinNames(m.passed)} ${IN_METRIC[m.key]}`,
+        text: `${RLM}עקפת את ${joinNames(m.passed, m.passedCount)} ${IN_METRIC[m.key]}`,
       });
     }
   }
   for (const m of metrics) {
     if (m.passedBy.length > 0) {
-      const who = joinNames(m.passedBy);
+      const who = joinNames(m.passedBy, m.passedByCount);
       out.push({
         id: `passedby-${m.key}`,
         tone: 'bad',
         icon: METRIC_ICON[m.key],
         text:
-          m.passedBy.length === 1
+          m.passedByCount === 1
             ? `${RLM}${who} עקף אותך ${IN_METRIC[m.key]}`
             : `${RLM}${who} עקפו אותך ${IN_METRIC[m.key]}`,
       });

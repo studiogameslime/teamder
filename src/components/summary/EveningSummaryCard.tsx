@@ -107,20 +107,13 @@ export const EveningSummaryCard = forwardRef<View, Props>(
         </View>
 
         {/* score hero */}
+        {/* No comparison to the previous evening: it framed a good night as a
+            drop whenever the one before happened to be better, which is the
+            opposite of what this card is for. The score is placed against the
+            people who actually played tonight instead. */}
         <View style={styles.score}>
           <View style={styles.scoreNumCol}>
             <Text style={styles.scoreNum}>{model.score.toFixed(1)}</Text>
-            {model.scoreDelta != null && model.scoreDelta !== 0 ? (
-              <Text
-                style={[
-                  styles.scoreDelta,
-                  { color: model.scoreDelta > 0 ? C.green : C.red },
-                ]}
-              >
-                {model.scoreDelta > 0 ? '▲' : '▼'}{' '}
-                {Math.abs(model.scoreDelta).toFixed(1)}
-              </Text>
-            ) : null}
           </View>
           <View style={styles.scoreText}>
             <Text style={styles.tier}>
@@ -128,10 +121,8 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             </Text>
             <Text style={styles.scoreLabel}>ציון המחזור שלך</Text>
             <Text style={styles.scoreSub}>
-              {model.scoreDelta != null && model.scoreDelta !== 0
-                ? model.scoreDelta > 0
-                  ? 'עלית מהמחזור הקודם 📈'
-                  : 'קצת מתחת למחזור הקודם'
+              {model.scoreRank != null && model.scoreTotal != null && model.scoreTotal > 1
+                ? `מקום ${model.scoreRank} מתוך ${model.scoreTotal} ששיחקו הערב`
                 : 'ניצחונות, גולים, בישולים ופנדלים'}
             </Text>
           </View>
@@ -375,7 +366,6 @@ const styles = StyleSheet.create({
   stripBoldLime: { color: C.green, fontWeight: '800' },
   stripBoldBlue: { color: C.blueDeep, fontWeight: '900' },
   scoreNumCol: { alignItems: 'center', gap: 2 },
-  scoreDelta: { fontSize: 14, fontWeight: '900' },
 
   contrib: {
     padding: 15,

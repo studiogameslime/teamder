@@ -16,7 +16,9 @@ const m = (over: Partial<EveningMetric> = {}): EveningMetric => ({
   rank: 4,
   delta: 0,
   passed: [],
+  passedCount: 0,
   passedBy: [],
+  passedByCount: 0,
   aheadName: 'דניאל',
   aheadGap: 2,
   ...over,
@@ -29,12 +31,18 @@ describe('naming the people you passed', () => {
     const plain = (s: string) => s.replace(/[\u2066-\u2069\u200F]/g, '');
     expect(plain(joinNames(['שלומי']))).toBe('שלומי');
     expect(plain(joinNames(['שלומי', 'יוסי']))).toBe('שלומי ויוסי');
-    expect(plain(joinNames(['שלומי', 'יוסי', 'נדב']))).toBe('שלומי, יוסי ונדב');
+    // The count is the truth even when we were handed fewer names than that.
+    expect(plain(joinNames(['שלומי', 'יוסי'], 6))).toBe('שלומי ויוסי ועוד 4');
+    expect(plain(joinNames(['שלומי', 'יוסי', 'נדב'], 3))).toBe('שלומי ויוסי ועוד 1');
     expect(joinNames([])).toBe('');
   });
 
   it('says who you went past, per metric', () => {
-    const lines = progressLines([m({ passed: ['שלומי', 'יוסי'] })], 7.1, 'g1');
+    const lines = progressLines(
+      [m({ passed: ['שלומי', 'יוסי'], passedCount: 2 })],
+      7.1,
+      'g1',
+    );
     expect(lines).toHaveLength(1);
     expect(lines[0].text.replace(/[\u2066-\u2069\u200F]/g, '')).toBe(
       'עקפת את שלומי ויוסי בשערים',
@@ -42,13 +50,27 @@ describe('naming the people you passed', () => {
     expect(lines[0].tone).toBe('good');
   });
 
+  it('names two and counts the rest', () => {
+    const lines = progressLines(
+      [m({ key: 'wins', passedBy: ['אבי', 'רן', 'דור', 'עומר'], passedByCount: 4 })],
+      7,
+      'x',
+    );
+    const t = lines[0].text.replace(/[\u2066-\u2069\u200F]/g, '');
+    expect(t).toBe('אבי ורן ועוד 2 עקפו אותך בניצחונות');
+  });
+
   it('matches the verb to one person or several', () => {
-    const one = progressLines([m({ key: 'assists', passedBy: ['אבי'] })], 7, 'x');
+    const one = progressLines(
+      [m({ key: 'assists', passedBy: ['אבי'], passedByCount: 1 })],
+      7,
+      'x',
+    );
     expect(one[0].text.replace(/[\u2066-\u2069\u200F]/g, '')).toBe(
       'אבי עקף אותך בבישולים',
     );
     const many = progressLines(
-      [m({ key: 'assists', passedBy: ['אבי', 'רן'] })],
+      [m({ key: 'assists', passedBy: ['אבי', 'רן'], passedByCount: 2 })],
       7,
       'x',
     );
@@ -59,7 +81,10 @@ describe('naming the people you passed', () => {
 
   it('puts the wins you gained before the ones you lost', () => {
     const lines = progressLines(
-      [m({ passed: ['שלומי'] }), m({ key: 'assists', passedBy: ['אבי'] })],
+      [
+        m({ passed: ['שלומי'], passedCount: 1 }),
+        m({ key: 'assists', passedBy: ['אבי'], passedByCount: 1 }),
+      ],
       8,
       'x',
     );
@@ -84,7 +109,7 @@ describe('naming the people you passed', () => {
 
   it('says you TOOK the crown when you just climbed to first', () => {
     const lines = progressLines(
-      [m({ key: 'goals', rank: 1, delta: 2, passed: ['דור', 'רן'] })],
+      [m({ key: 'goals', rank: 1, delta: 2, passed: ['דור', 'רן'], passedCount: 2 })],
       7.5,
       'x',
     );
@@ -95,7 +120,10 @@ describe('naming the people you passed', () => {
 
   it('gives every line an icon to render with', () => {
     const lines = progressLines(
-      [m({ rank: 1, delta: 0 }), m({ key: 'wins', passedBy: ['אבי'] })],
+      [
+        m({ rank: 1, delta: 0 }),
+        m({ key: 'wins', passedBy: ['אבי'], passedByCount: 1 }),
+      ],
       7,
       'x',
     );
@@ -104,7 +132,10 @@ describe('naming the people you passed', () => {
 
   it('puts the crown before the overtakes', () => {
     const lines = progressLines(
-      [m({ key: 'assists', rank: 1 }), m({ key: 'goals', passed: ['דור'] })],
+      [
+        m({ key: 'assists', rank: 1 }),
+        m({ key: 'goals', passed: ['דור'], passedCount: 1 }),
+      ],
       8,
       'x',
     );
@@ -118,7 +149,7 @@ describe('lines that start with a name', () => {
     // so "Haim Yaakov עקף אותך" was detected LTR and rendered with the name
     // stranded on the far left of a right-aligned card. Seen on-device.
     const line = progressLines(
-      [m({ key: 'goals', passedBy: ['Haim Yaakov'] })],
+      [m({ key: 'goals', passedBy: ['Haim Yaakov'], passedByCount: 1 })],
       7,
       'x',
     )[0];
@@ -135,7 +166,7 @@ describe('lines that start with a name', () => {
   });
 
   it('marks the boast line as well — names can be Latin on either side', () => {
-    const line = progressLines([m({ passed: ['Dor'] })], 7, 'x')[0];
+    const line = progressLines([m({ passed: ['Dor'], passedCount: 1 })], 7, 'x')[0];
     expect(line.text.startsWith('\u200F')).toBe(true);
   });
 });
@@ -143,7 +174,7 @@ describe('lines that start with a name', () => {
 describe('the joke on a bad night', () => {
   it('replaces the movement lines rather than joining them', () => {
     // "עקפת את שלומי" next to "תפסת מקום על המגרש" contradict each other.
-    const lines = progressLines([m({ passed: ['שלומי'] })], 3.2, 'x');
+    const lines = progressLines([m({ passed: ['שלומי'], passedCount: 1 })], 3.2, 'x');
     expect(lines).toHaveLength(1);
     expect(lines[0].tone).toBe('snark');
   });
