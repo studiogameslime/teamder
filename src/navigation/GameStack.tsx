@@ -33,6 +33,8 @@ import { PlayerCardScreen } from '@/screens/players/PlayerCardScreen';
 import { PlayerCompareScreen } from '@/screens/players/PlayerCompareScreen';
 import { PlayerTimelineScreen } from '@/screens/players/PlayerTimelineScreen';
 import { CommunityDetailsScreen } from '@/screens/communities/CommunityDetailsScreen';
+import { CommunityDetailsPublicScreen } from '@/screens/communities/CommunityDetailsPublicScreen';
+import { AvailabilityEditScreen } from '@/screens/profile/AvailabilityEditScreen';
 import { CommunityEditScreen } from '@/screens/communities/CommunityEditScreen';
 import { CommunityPlayersScreen } from '@/screens/communities/CommunityPlayersScreen';
 import { CommunityStatsScreen } from '@/screens/communities/CommunityStatsScreen';
@@ -73,7 +75,12 @@ export type GameStackParamList = {
         inviteAvailable?: boolean;
       };
   /** Edit metadata of an existing game. Only the organizer should reach this. */
-  GameEdit: { gameId: string };
+  GameEdit: {
+    gameId: string;
+    /** Save should ALSO overwrite the weekly series template, so every future
+     *  occurrence is built from what's being saved now. */
+    applyToSeries?: boolean;
+  };
   /** Read-mostly view of one match. */
   MatchDetails: { gameId: string };
   /** Shareable personal "סיכום הערב" for a finished game. Registered in
@@ -115,6 +122,14 @@ export type GameStackParamList = {
    *  here makes navigate() silently no-op — that's the bug where "רשימת
    *  השחקנים" did nothing when the club was opened from the Games tab). */
   CommunityDetails: { groupId: string };
+  /** Public preview of a club the viewer is NOT a member of — reached from the
+   *  "מועדונים באזור שלך" section on the games list. Registered here (as well
+   *  as in CommunitiesStack) so back returns to the matches tab; without the
+   *  registration navigate() would silently no-op. */
+  CommunityDetailsPublic: { groupId: string };
+  /** Reached from the "ביקוש באזור שלך" card ("גם אני פנוי" / "הגדר אזור"),
+   *  so declaring availability doesn't bounce the user out to the profile tab. */
+  AvailabilityEdit: undefined;
   CommunityEdit: { groupId: string };
   CommunityPlayers: { groupId: string };
   CommunityStats: { groupId: string };
@@ -161,6 +176,11 @@ export function GameStack() {
       <Stack.Screen name="PlayerCompare" component={PlayerCompareScreen} />
       <Stack.Screen name="PlayerTimeline" component={PlayerTimelineScreen} />
       <Stack.Screen name="CommunityDetails" component={CommunityDetailsScreen} />
+      <Stack.Screen
+        name="CommunityDetailsPublic"
+        component={CommunityDetailsPublicScreen}
+      />
+      <Stack.Screen name="AvailabilityEdit" component={AvailabilityEditScreen} />
       <Stack.Screen name="CommunityEdit" component={CommunityEditScreen} />
       <Stack.Screen name="CommunityPlayers" component={CommunityPlayersScreen} />
       <Stack.Screen name="CommunityStats" component={CommunityStatsScreen} />

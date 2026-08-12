@@ -11,6 +11,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
+import { toast } from '@/components/Toast';
+import { seriesService, settingsFromGame } from '@/services/seriesService';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
 import { Game } from '@/types';
@@ -112,7 +114,7 @@ function gameToValues(g: Game): GameFormValues {
 
 export function GameEditScreen() {
   const nav = useNavigation<Nav>();
-  const { gameId } = useRoute<Route>().params;
+  const { gameId, applyToSeries } = useRoute<Route>().params;
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const myGroups = useGroupStore((s) => s.groups);
@@ -322,6 +324,60 @@ export function GameEditScreen() {
         advancedTieMode: v.advancedTieMode,
         ...regOpensPatch,
       });
+
+      // "גם הגדרות הסדרה": overwrite the weekly template with what was just
+      // saved, so every FUTURE occurrence is built from it. The upcoming match
+      // that already exists is deliberately left alone — players signed up for
+      // its pitch and time (owner's call). Best-effort: a failure here still
+      // leaves the match itself correctly edited.
+      if (applyToSeries && game.seriesId) {
+        try {
+          await seriesService.updateSettings(
+            game.seriesId,
+            settingsFromGame({
+              title: v.title.trim() || game.title,
+              startsAt: v.startsAt,
+              fieldName: v.fieldName.trim(),
+              maxPlayers: newMaxPlayers,
+              format: v.format,
+              numberOfTeams: v.numberOfTeams,
+              cancelDeadlineHours: v.cancelDeadlineHours,
+              fieldType: v.fieldType,
+              matchDurationMinutes:
+                Number.isFinite(parsedDuration) && parsedDuration > 0
+                  ? parsedDuration
+                  : undefined,
+              visibility: game.visibility === 'public' ? 'public' : 'community',
+              requiresApproval: v.requiresApproval,
+              bringBall: v.bringBall,
+              bringShirts: v.bringShirts,
+              notes: v.notes.trim() || undefined,
+              city: v.city.trim() || undefined,
+              fieldAddress: v.fieldAddress.trim() || undefined,
+              fieldLat: v.coords?.lat,
+              fieldLng: v.coords?.lng,
+              ruleTags: v.ruleTags,
+              acceptsFillers: v.acceptsFillers,
+              fillerMinTrust: v.acceptsFillers ? v.fillerMinTrust : undefined,
+              advancedMode: v.advancedMode,
+              advancedFillMode: v.advancedFillMode,
+              advancedTieMode: v.advancedTieMode,
+              registrationOpensAt:
+                v.scheduledRegEnabled && v.registrationOpensAt > 0
+                  ? v.registrationOpensAt
+                  : undefined,
+              publicOpenAt: v.publicOpenAt > 0 ? v.publicOpenAt : undefined,
+              guestsOpenAt: v.guestsOpenAt > 0 ? v.guestsOpenAt : undefined,
+            }),
+          );
+          toast.success(he.editSeriesAppliedToast);
+        } catch (err) {
+          logError('updateSeriesSettings', err, {
+            gameId: game.id,
+            seriesId: game.seriesId,
+          });
+        }
+      }
     } catch (err) {
       const e = err as Error & {
         code?: string;
@@ -364,6 +420,7 @@ export function GameEditScreen() {
   const isOrphan = game.isOrphanContext === true;
   return (
     <GameWizardForm
+      isEdit
       headerTitle={he.editGameTitle}
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}

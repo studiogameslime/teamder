@@ -46,25 +46,22 @@ import type { Game } from '@/types';
 // short enough that a normal "someone joined" feels real-time.
 const ROSTER_BANNER_FLUSH_MS = 1500;
 
-/** First token of a display name. Falls back to the whole string when
- *  there's no space. Empty / null returns ''. */
-function firstNameOf(displayName: string | null | undefined): string {
-  if (!displayName) return '';
-  const trimmed = displayName.trim();
-  if (!trimmed) return '';
-  const space = trimmed.indexOf(' ');
-  return space === -1 ? trimmed : trimmed.slice(0, space);
-}
-
 /** Build the joined-banner copy from the list of new uids. Looks each
  *  name up in the players store; falls back to the generic copy when
  *  the name isn't hydrated yet. If 2+ joined within the same window,
  *  shows a counted banner instead of N stacked ones. */
+// FULL name, not just the first: in a club with two Omris the banner was
+// ambiguous about who actually joined, and the roster right below it shows
+// full names anyway (manager request).
+function fullNameOf(displayName: string | undefined): string {
+  return (displayName ?? '').trim();
+}
+
 function describeJoiners(uids: string[]): string {
   if (uids.length === 0) return he.bannerPlayerJoined;
   if (uids.length === 1) {
     const p = useGameStore.getState().players[uids[0]];
-    const name = firstNameOf(p?.displayName);
+    const name = fullNameOf(p?.displayName);
     return name ? he.bannerPlayerJoinedNamed(name) : he.bannerPlayerJoined;
   }
   return he.bannerPlayersJoinedCount(uids.length);
@@ -74,7 +71,7 @@ function describeLeavers(uids: string[]): string {
   if (uids.length === 0) return he.bannerPlayerLeft;
   if (uids.length === 1) {
     const p = useGameStore.getState().players[uids[0]];
-    const name = firstNameOf(p?.displayName);
+    const name = fullNameOf(p?.displayName);
     return name ? he.bannerPlayerLeftNamed(name) : he.bannerPlayerLeft;
   }
   return he.bannerPlayersLeftCount(uids.length);

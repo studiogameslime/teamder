@@ -1164,6 +1164,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       recurring: g.recurring === true ? true : null,
       recurringNextCreatedAt:
         typeof g.recurringNextCreatedAt === 'number' ? g.recurringNextCreatedAt : null,
+      seriesId: typeof g.seriesId === 'string' && g.seriesId ? g.seriesId : null,
       publicOpenAt: typeof g.publicOpenAt === 'number' ? g.publicOpenAt : null,
       publicOpenedAt: typeof g.publicOpenedAt === 'number' ? g.publicOpenedAt : null,
       guestsOpenAt: typeof g.guestsOpenAt === 'number' ? g.guestsOpenAt : null,
@@ -1392,6 +1393,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
         typeof d.recurringNextCreatedAt === 'number'
           ? d.recurringNextCreatedAt
           : undefined,
+      seriesId: typeof d.seriesId === 'string' && d.seriesId ? d.seriesId : undefined,
       publicOpenAt:
         typeof d.publicOpenAt === 'number' ? d.publicOpenAt : undefined,
       publicOpenedAt:

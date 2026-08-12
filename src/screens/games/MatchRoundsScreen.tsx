@@ -29,7 +29,13 @@ import { teamName } from '@/utils/draft';
 import { useGameStore } from '@/store/gameStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import type { DraftTeam, Game, GameGuest } from '@/types';
+import {
+  isGuestId,
+  parseGuestRosterId,
+  type DraftTeam,
+  type Game,
+  type GameGuest,
+} from '@/types';
 import type {
   RoundHistoryDoc,
   RoundGoalRec,
@@ -109,7 +115,11 @@ export function MatchRoundsScreen() {
       setRounds(rs);
       // Hydrate every REAL player id referenced across the rounds so names +
       // avatars resolve (guests come from the game doc, not /users).
-      const guestIds = new Set((g?.guests ?? []).map((x) => x.id));
+      // Round history stores a guest as the PREFIXED roster id (`guest:<id>`).
+      // Filter on the PREFIX, not on membership of `game.guests`: a guest who
+      // was removed from the roster after the round still leaves their token
+      // in the history, and matching by membership sent it to /users as if it
+      // were a real uid — a lookup that can only ever miss.
       const ids = new Set<string>();
       for (const r of rs) {
         [...r.teamA, ...r.teamB].forEach((id) => id && ids.add(id));
@@ -122,7 +132,7 @@ export function MatchRoundsScreen() {
           if (p.keeperId) ids.add(p.keeperId);
         }
       }
-      const realIds = [...ids].filter((id) => !guestIds.has(id));
+      const realIds = [...ids].filter((id) => !isGuestId(id));
       if (realIds.length) hydratePlayers(realIds);
       setLoading(false);
     })();
@@ -140,7 +150,13 @@ export function MatchRoundsScreen() {
   const resolve = useMemo(() => {
     return (id: string | null | undefined): Resolved => {
       if (!id) return { id: '', name: he.matchRoundsUnknownPlayer };
-      const guest = guestsById.get(id);
+      // A guest appears in the round history under the PREFIXED roster id
+      // (`guest:<id>`) — the same token draft/teams/live use — while
+      // `game.guests` is keyed by the bare id. Strip before looking up.
+      // Without this every guest rendered as the "שחקן" placeholder in both
+      // the line-ups and the goal rows, which is what 1.0.89 surfaced when
+      // guests first started appearing in the recap at all.
+      const guest = guestsById.get(parseGuestRosterId(id) ?? id);
       if (guest) return { id, name: guest.name || he.matchRoundsGuest };
       const p = players[id];
       const name = (p?.displayName ?? '').trim();

@@ -22,7 +22,7 @@ import { SpringSheet } from '@/components/anim/SpringSheet';
 import { ScreenshotAnnotator } from '@/components/ScreenshotAnnotator';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
-import { submitFeedback } from '@/services/feedbackService';
+import { submitFeedback, type FeedbackCategory } from '@/services/feedbackService';
 import { navigationRef } from '@/navigation/navigationRef';
 import { useUserStore } from '@/store/userStore';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -30,9 +30,25 @@ import { he } from '@/i18n/he';
 
 const MAX_LEN = 600;
 
+// What the tester can file the report as. Priority is intentionally absent —
+// everyone marking their own report "urgent" makes the field meaningless, so
+// urgency is set in Pulse by the person who decides what gets built.
+const REPORT_CATEGORIES: Array<{
+  key: FeedbackCategory;
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}> = [
+  { key: 'bug', label: he.reportCatBug, icon: 'bug-outline' },
+  { key: 'ui', label: he.reportCatUi, icon: 'color-palette-outline' },
+  { key: 'feature', label: he.reportCatFeature, icon: 'sparkles-outline' },
+];
+
 export function ScreenshotReportSheet() {
   const [visible, setVisible] = useState(false);
   const [image, setImage] = useState<string | null>(null);
+  // What the tester says this is. It rides along to the Pulse task list, so a
+  // report arrives already filed instead of landing in an unsorted pile.
+  const [category, setCategory] = useState<FeedbackCategory>('bug');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [annotating, setAnnotating] = useState(false);
@@ -88,6 +104,7 @@ export function ScreenshotReportSheet() {
     setVisible(false);
     setImage(null);
     setText('');
+    setCategory('bug');
   };
 
   const submit = async () => {
@@ -99,7 +116,7 @@ export function ScreenshotReportSheet() {
         : undefined;
       // The screenshot is the content; text is optional.
       const msg = text.trim() || he.screenshotReportDefaultMsg;
-      await submitFeedback('bug', msg, screen, image ?? undefined);
+      await submitFeedback('bug', msg, screen, image ?? undefined, category);
       toast.success(he.screenshotReportSent);
       close();
     } catch {
@@ -151,6 +168,32 @@ export function ScreenshotReportSheet() {
             </View>
           ) : null}
 
+          <View style={styles.catRow}>
+            {REPORT_CATEGORIES.map((c) => {
+              const on = category === c.key;
+              return (
+                <Pressable
+                  key={c.key}
+                  onPress={() => setCategory(c.key)}
+                  style={({ pressed }) => [
+                    styles.catChip,
+                    on && styles.catChipOn,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Ionicons
+                    name={c.icon}
+                    size={15}
+                    color={on ? colors.textOnPrimary : colors.textMuted}
+                  />
+                  <Text style={[styles.catText, on && styles.catTextOn]}>
+                    {c.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           <TextInput
             value={text}
             onChangeText={(t) => setText(t.slice(0, MAX_LEN))}
@@ -190,6 +233,33 @@ export function ScreenshotReportSheet() {
 }
 
 const styles = StyleSheet.create({
+  catRow: {
+    flexDirection: 'row-reverse',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 2,
+  },
+  catChip: {
+    flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+  },
+  catChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  catText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  catTextOn: { color: colors.textOnPrimary },
   sheet: {
     backgroundColor: colors.bg,
     borderTopLeftRadius: 24,

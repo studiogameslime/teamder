@@ -180,6 +180,11 @@ export const AnalyticsEvent = {
   /** Phone-side: cached widget snapshot was refreshed in SharedPreferences. */
   WidgetSyncPushed: 'widget_sync_pushed',
 
+  /** The Teamder Assistant card's CTA was tapped (params: scenario, id).
+   *  Together with which scenario fired, this is how we learn which assistant
+   *  lines actually move players and which are wallpaper. */
+  HomeAssistantCtaTapped: 'home_assistant_cta_tapped',
+
   // ─── Discovery & filtering ─────────────────────────────────────────────
   /** A filter on the games-list screen was applied (date / city / format). */
   GameFilterApplied: 'game_filter_applied',

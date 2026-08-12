@@ -91,6 +91,7 @@ import { enforceRateLimit } from '@/services/rateLimitService';
 import { serverNow } from '@/services/serverClock';
 import { buildShootoutPenaltyPayload } from '@/utils/penaltyStats';
 import { assignJoins, type RosterState } from '@/services/joinFairness';
+import { seriesService, settingsFromGame } from '@/services/seriesService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { notificationsService } from './notificationsService';
 import { achievementsService } from './achievementsService';
@@ -920,6 +921,8 @@ export const gameService = {
     /** Longest run of consecutive game-nights attended by a single player. */
     longestStreak: number;
     longestStreakUid: UserId | null;
+    /** Each player's CURRENT run of consecutive attended nights. */
+    currentStreakByUser: Record<UserId, number>;
   }> {
     const empty = {
       totalFinished: 0,
@@ -933,6 +936,7 @@ export const gameService = {
       attendedByUser: {} as Record<UserId, number>,
       longestStreak: 0,
       longestStreakUid: null as UserId | null,
+      currentStreakByUser: {} as Record<UserId, number>,
     };
     if (!groupId) return empty;
     if (USE_MOCK_DATA) {
@@ -953,6 +957,9 @@ export const gameService = {
         ),
         longestStreak: 9,
         longestStreakUid: mockPlayers[0].id,
+        currentStreakByUser: Object.fromEntries(
+          mockPlayers.slice(0, 8).map((p, i) => [p.id, Math.max(0, 7 - i)]),
+        ),
       };
     }
     const q = query(
@@ -1058,6 +1065,11 @@ export const gameService = {
       attendedByUser: attendedTally,
       longestStreak,
       longestStreakUid,
+      // Each player's CURRENT run of consecutive attended nights — which is
+      // exactly what `run` holds once the walk reaches the latest night (a
+      // missed night has already zeroed it). Free: the loop above computed it
+      // to find the record. Drives the coach's "you're on a 7-night streak".
+      currentStreakByUser: run,
     };
   },
 
@@ -2291,6 +2303,9 @@ export const gameService = {
     /** Recurring weekly fixture — the clone-on-completion CF re-creates
      *  it for next week ~3h after kickoff. */
     recurring?: boolean;
+    /** Set when this match is an occurrence OF an existing series (the weekly
+     *  creator passes it). Suppresses creating a second series. */
+    seriesId?: string;
     /** ms-epoch when the game flips community→public (CF-driven). */
     publicOpenAt?: number;
     /** ms-epoch before which non-admins can't add guests. */
@@ -2585,6 +2600,38 @@ export const gameService = {
         }
         throw e;
       }
+    }
+
+    // ── Weekly series ────────────────────────────────────────────────────
+    // A recurring fixture gets its own SERIES doc, and this first match
+    // becomes its first occurrence. From here on the cron builds each week
+    // from the series — never by copying the previous match — so deleting an
+    // occurrence can't break the chain.
+    //
+    // Best-effort: a failure here leaves a perfectly good one-off match rather
+    // than failing the create. The match simply isn't part of a series.
+    if (input.recurring === true && !input.seriesId) {
+      try {
+        const series = await seriesService.create({
+          groupId: input.groupId,
+          createdBy: input.createdBy,
+          firstOccurrenceAt: input.startsAt,
+          settings: settingsFromGame({ ...input, startsAt: input.startsAt }),
+        });
+        await updateDoc(docs.game(createdId), {
+          seriesId: series.id,
+        } as Partial<GameDoc>);
+      } catch (err) {
+        logError('createGameSeries', err, {
+          gameId: createdId,
+          groupId: input.groupId,
+        });
+      }
+    } else if (input.seriesId) {
+      // Created BY a series (the weekly occurrence) — just stamp the link.
+      await updateDoc(docs.game(createdId), {
+        seriesId: input.seriesId,
+      } as Partial<GameDoc>).catch(() => undefined);
     }
 
     // Best-effort geocoding so the new game shows on the games map. Fire-
@@ -4141,94 +4188,7 @@ export const gameService = {
     });
   },
 
-  /**
-   * "Skip this week" for a recurring (מחזור שבועי) game: spawn next week's
-   * instance so the weekly series survives, THEN delete the current one.
-   * Without this, deleting a recurring game ends the series entirely (the
-   * clone-on-completion CF never runs for a removed/cancelled week).
-   *
-   * Mirrors the CF clone (gameService.createGameV2 with the same settings,
-   * +7d, fresh roster) so we don't need a dedicated callable. Creates next
-   * week FIRST — only removes the current week once the series is carried
-   * forward, so a failure never silently kills the recurrence.
-   */
-  /** Spawn NEXT week's clone of a recurring game from its CURRENT settings,
-   *  keeping the series going. Shared by skipRecurringWeek ("delete this week")
-   *  and detachRecurringOccurrence ("edit this week only"). The caller becomes
-   *  the new occurrence's `createdBy` (the CREATE rule requires createdBy ==
-   *  auth.uid — a client can't create a game on behalf of another user). */
-  async _cloneRecurringNextWeek(
-    g: import('@/types').Game,
-    callerId: UserId,
-  ): Promise<void> {
-    const WEEK = 7 * 24 * 60 * 60 * 1000;
-    const shift = (v?: number): number | undefined =>
-      typeof v === 'number' && v > 0 ? v + WEEK : undefined;
-    const nextPublic = shift(g.publicOpenAt);
-    await gameService.createGameV2({
-      groupId: g.groupId,
-      title: g.title,
-      startsAt: g.startsAt + WEEK,
-      fieldName: g.fieldName ?? '',
-      maxPlayers: g.maxPlayers,
-      minPlayers: g.minPlayers,
-      format: g.format,
-      numberOfTeams: g.numberOfTeams,
-      cancelDeadlineHours: g.cancelDeadlineHours,
-      fieldType: g.fieldType,
-      matchDurationMinutes: g.matchDurationMinutes,
-      // If it flips community→public on a schedule, next week starts
-      // members-only again (mirrors the CF clone).
-      visibility:
-        nextPublic !== undefined
-          ? 'community'
-          : g.visibility === 'public'
-            ? 'public'
-            : 'community',
-      requiresApproval: g.requiresApproval === true,
-      bringBall: g.bringBall === true,
-      bringShirts: g.bringShirts === true,
-      notes: g.notes,
-      city: g.city,
-      fieldAddress: g.fieldAddress,
-      fieldLat: g.fieldLat,
-      fieldLng: g.fieldLng,
-      ruleTags: g.ruleTags,
-      registrationOpensAt: shift(g.registrationOpensAt),
-      recurring: true,
-      publicOpenAt: nextPublic,
-      guestsOpenAt: shift(g.guestsOpenAt),
-      acceptsFillers: g.acceptsFillers,
-      fillerMinTrust: g.fillerMinTrust,
-      createdBy: callerId,
-      isOrphanContext: g.isOrphanContext,
-    });
-  },
 
-  async skipRecurringWeek(gameId: string, callerId: UserId): Promise<void> {
-    const g = await gameService.getGameById(gameId);
-    if (!g) throw new Error('skipRecurringWeek: game not found');
-    if (!g.recurring) throw new Error('skipRecurringWeek: not a recurring game');
-    // Series continues next week (cloned from CURRENT settings); this week goes.
-    await gameService._cloneRecurringNextWeek(g, callerId);
-    await gameService.deleteGame(gameId);
-  },
-
-  /**
-   * "Edit only this occurrence" of a recurring game: spawn next week's clone
-   * from the CURRENT (pre-edit) settings so the SERIES continues unchanged,
-   * then DETACH this game from the series (`recurring: false`) so its own edits
-   * don't propagate to future weeks (and it won't auto-clone again — next week
-   * already exists). The caller then edits this now-standalone game via GameEdit.
-   * Mirrors skipRecurringWeek, but keeps this week instead of deleting it.
-   */
-  async detachRecurringOccurrence(gameId: string, callerId: UserId): Promise<void> {
-    const g = await gameService.getGameById(gameId);
-    if (!g) throw new Error('detachRecurringOccurrence: game not found');
-    if (!g.recurring) return; // already a one-off — nothing to detach
-    await gameService._cloneRecurringNextWeek(g, callerId);
-    await updateDoc(docs.game(gameId), { recurring: false, updatedAt: Date.now() });
-  },
 
   /**
    * Permanently remove a game. Caller must be the creator or a community

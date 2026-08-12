@@ -17,6 +17,15 @@ import { logError } from '@/services/errorLog';
 
 export type FeedbackType = 'bug' | 'suggestion';
 
+/**
+ * What KIND of thing the reporter says this is. Chosen by the tester in the
+ * report sheet and carried straight through to the Pulse task list, so a
+ * report lands already filed under the right heading instead of waiting in an
+ * "unsorted" pile. Priority is deliberately NOT here — that's the owner's
+ * call in Pulse, not the reporter's.
+ */
+export type FeedbackCategory = 'ui' | 'bug' | 'feature';
+
 const appVersion =
   (Constants.expoConfig?.version as string | undefined) ?? 'unknown';
 
@@ -37,6 +46,9 @@ export async function submitFeedback(
   /** Optional raw base64 JPEG (no data: prefix) — e.g. a screenshot the
    *  user attached. Capped client-side so the doc stays well under 1 MB. */
   imageBase64?: string,
+  /** How the reporter classified it. Defaults to 'bug' — the report sheet
+   *  opens on a screenshot, which is nearly always something broken. */
+  category: FeedbackCategory = 'bug',
 ): Promise<void> {
   const text = message.trim().slice(0, 2000);
   if (text.length === 0) throw new Error('submitFeedback: empty message');
@@ -67,6 +79,7 @@ export async function submitFeedback(
       userId: fbUser.uid,
       userName,
       ...(screen ? { screen } : {}),
+      category,
       ...(image ? { image } : {}),
       appVersion,
       platform: Platform.OS,

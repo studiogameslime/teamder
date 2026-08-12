@@ -80,9 +80,12 @@ interface DeadlyDuo {
   assists: number;
 }
 
-function firstName(name: string): string {
-  const t = (name || '').trim().split(/\s+/)[0];
-  return t || name || '';
+/** FULL display name. The club board used to show first names only, which in
+ *  a club with two Elirans said nothing about who actually leads (manager
+ *  request). Rows are `numberOfLines={1}`, so a long name ellipsises rather
+ *  than breaking the layout. */
+function fullName(name: string): string {
+  return (name || '').trim();
 }
 /** Highest-by-metric row, ignoring zeros. */
 function leaderBy(
@@ -298,7 +301,7 @@ export function CommunityStatsScreen() {
   };
 
   const name = (uid?: string) =>
-    uid && people[uid] ? firstName(people[uid].name) : '—';
+    uid && people[uid] ? fullName(people[uid].name) : '—';
   const resolved = (uid: string): Resolved => people[uid] ?? { id: uid, name: '' };
 
   const isEmpty =
@@ -345,7 +348,7 @@ export function CommunityStatsScreen() {
                   <View style={styles.mvpMid}>
                     <Text style={styles.mvpCat}>{he.communityStatsTopScorer}</Text>
                     <Text style={styles.mvpName} numberOfLines={1}>
-                      {firstName(resolved(derived.topScorer.uid).name)}
+                      {fullName(resolved(derived.topScorer.uid).name)}
                     </Text>
                     <Text style={styles.mvpSub} numberOfLines={1}>
                       {he.communityStatsMvpShare(derived.kingSharePct)}
@@ -645,7 +648,7 @@ function LeaderRow({
         <UserAvatar user={user} size={40} ring />
         <View style={styles.leaderMid}>
           <Text style={styles.leaderCat} numberOfLines={1}>{title}</Text>
-          <Text style={styles.leaderName} numberOfLines={1}>{firstName(user.name)}</Text>
+          <Text style={styles.leaderName} numberOfLines={1}>{fullName(user.name)}</Text>
         </View>
         <View style={styles.leaderVal}>
           <CountUp

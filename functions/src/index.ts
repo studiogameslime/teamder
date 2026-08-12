@@ -2857,8 +2857,182 @@ function addOneWeekSameWallTime(epoch: number): number {
   return naive + (israelOffsetMs(epoch) - israelOffsetMs(naive));
 }
 
+/**
+ * Create the next occurrence of every ACTIVE weekly series that is due.
+ *
+ * This is the model that replaced clone-from-the-previous-match. The old cron
+ * read the last past game and copied it, so the fixture lived inside a match:
+ * deleting one week killed the chain, which is why "delete this week" had to
+ * spawn next week up front and matches appeared unbidden (owner report:
+ * deleting 2.9 produced 9.9).
+ *
+ * Here the settings live in `gameSeries`, so an occurrence is disposable. We
+ * never look at the previous match — delete every one of them and the next
+ * week is still built from the series. It also means no giant reset list: the
+ * doc is composed from the template, so there is no stale roster, latch or
+ * live-state to strip.
+ */
+async function runCreateSeriesOccurrences(): Promise<void> {
+  const now = Date.now();
+  const snap = await db
+    .collection('gameSeries')
+    .where('active', '==', true)
+    .limit(200)
+    .get();
+  if (snap.empty) {
+    console.log('[seriesOccurrences] none');
+    return;
+  }
+  let created = 0;
+  for (const doc of snap.docs) {
+    const sdoc = doc.data() as {
+      groupId?: string;
+      createdBy?: string;
+      lastOccurrenceAt?: number;
+      settings?: Record<string, unknown>;
+    };
+    const last = sdoc.lastOccurrenceAt;
+    const st = sdoc.settings;
+    if (typeof last !== 'number' || !sdoc.groupId || !st) continue;
+    // Due only once the previous occurrence is well past — same 3h grace the
+    // old clone used, so a fixture never doubles up while it's still being
+    // played.
+    if (now < last + RECURRING_CLONE_DELAY_MS) continue;
+
+    // Walk forward to the first slot that is genuinely in the FUTURE.
+    //
+    // A blind `last + 1 week` breaks on a dormant series (cron outage, a club
+    // that paused, a series created long ago): it would produce a long-dead
+    // match, and since each run advances the anchor by only one week the next
+    // run would create another, and another — dozens of past-dated matches at
+    // five-minute intervals. Bounded at 520 weeks so bad data can't spin the
+    // function's whole timeout.
+    //
+    // ⚠️ MIRRORS `nextOccurrenceAt` in src/utils/seriesSchedule.ts, which is
+    //    unit-tested (tests/logic/seriesSchedule.test.ts). Keep the two in sync.
+    let nextStartsAt = addOneWeekSameWallTime(last);
+    for (let i = 0; i < 520 && nextStartsAt <= now; i++) {
+      nextStartsAt = addOneWeekSameWallTime(nextStartsAt);
+    }
+    if (nextStartsAt <= now) {
+      console.warn('[seriesOccurrences] anchor too old, skipping', doc.id);
+      continue;
+    }
+    // Idempotence without a latch: if this series already has an occurrence at
+    // that kickoff, we've done it. Survives retries and concurrent runs.
+    const dupe = await db
+      .collection('games')
+      .where('seriesId', '==', doc.id)
+      .where('startsAt', '==', nextStartsAt)
+      .limit(1)
+      .get();
+    if (!dupe.empty) {
+      await doc.ref.update({ lastOccurrenceAt: nextStartsAt });
+      continue;
+    }
+
+    // ⚠️ MIRRORS `buildOccurrence` in src/utils/seriesSchedule.ts, which is
+    //    unit-tested (tests/logic/seriesSchedule.test.ts). Keep the two in sync.
+    const num = (v: unknown): number | undefined =>
+      typeof v === 'number' ? v : undefined;
+    const at = (before: unknown): number | undefined => {
+      const n = num(before);
+      return n !== undefined && n > 0 ? nextStartsAt - n : undefined;
+    };
+    const reg = at(st.registrationOpensBeforeMs);
+    // Deferred registration → 'scheduled', and a CF opens it at the picked
+    // time. Already past → open now, don't hide it waiting for a flip that's
+    // already due.
+    const status = reg !== undefined && reg > now ? 'scheduled' : 'open';
+    const game: Record<string, unknown> = {
+      groupId: sdoc.groupId,
+      seriesId: doc.id,
+      createdBy: String(sdoc.createdBy ?? ''),
+      title: String(st.title ?? ''),
+      startsAt: nextStartsAt,
+      fieldName: String(st.fieldName ?? ''),
+      maxPlayers: num(st.maxPlayers) ?? 10,
+      visibility: st.visibility === 'public' ? 'public' : 'community',
+      requiresApproval: st.requiresApproval === true,
+      bringBall: st.bringBall === true,
+      bringShirts: st.bringShirts === true,
+      status,
+      // A fresh week starts empty — explicit, never inherited.
+      players: [],
+      waitlist: [],
+      pending: [],
+      participantIds: [],
+      guests: [],
+      matches: [],
+      arrivals: {},
+      cancellations: {},
+      joinedAt: {},
+      ballBringerIds: [],
+      locked: false,
+      currentMatchIndex: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const opt = (key: string, v: unknown) => {
+      if (v !== undefined && v !== null) game[key] = v;
+    };
+    opt('minPlayers', num(st.minPlayers));
+    opt('format', st.format);
+    opt('numberOfTeams', num(st.numberOfTeams));
+    opt('cancelDeadlineHours', num(st.cancelDeadlineHours));
+    opt('fieldType', st.fieldType);
+    opt('matchDurationMinutes', num(st.matchDurationMinutes));
+    opt('notes', st.notes);
+    opt('city', st.city);
+    opt('fieldAddress', st.fieldAddress);
+    opt('fieldLat', num(st.fieldLat));
+    opt('fieldLng', num(st.fieldLng));
+    opt('ruleTags', Array.isArray(st.ruleTags) ? st.ruleTags : undefined);
+    opt('acceptsFillers', st.acceptsFillers === true ? true : undefined);
+    opt('fillerMinTrust', num(st.fillerMinTrust));
+    opt('advancedMode', st.advancedMode === true ? true : undefined);
+    opt('advancedFillMode', st.advancedFillMode);
+    opt('advancedTieMode', st.advancedTieMode);
+    opt('registrationOpensAt', reg);
+    opt('publicOpenAt', at(st.publicOpenBeforeMs));
+    opt('guestsOpenAt', at(st.guestsOpenBeforeMs));
+
+    try {
+      await db.collection('games').add(game);
+      await doc.ref.update({ lastOccurrenceAt: nextStartsAt });
+      created += 1;
+    } catch (err) {
+      console.error('[seriesOccurrences] create failed', doc.id, err);
+    }
+  }
+  console.log(`[seriesOccurrences] created ${created}`);
+}
+
 async function runCloneRecurringGames(): Promise<void> {
   const now = Date.now();
+  // Clubs whose fixture already moved to a series doc. Their weeks are produced
+  // by runCreateSeriesOccurrences, so nothing here may clone for them.
+  //
+  // Checking the CLUB, not just `game.seriesId`, is deliberate: a user still on
+  // an older build runs the retired client-side "delete this week" path, which
+  // creates a fresh `recurring: true` game with NO seriesId. Matching only on
+  // the field would let that orphan start a SECOND weekly chain alongside the
+  // series — two matches every week for the same fixture. This holds the line
+  // server-side until every client has updated.
+  const seriesGroups = new Set<string>();
+  try {
+    const active = await db
+      .collection('gameSeries')
+      .where('active', '==', true)
+      .limit(500)
+      .get();
+    for (const d of active.docs) {
+      const gid = (d.data() as { groupId?: string }).groupId;
+      if (gid) seriesGroups.add(gid);
+    }
+  } catch (err) {
+    console.error('[cloneRecurringGames] series guard failed', err);
+  }
   // `recurring == true` accumulates EVERY weekly instance ever created (each
   // clone is also recurring). A game is only DUE to clone once kickoff+3h has
   // passed, so range-filter `startsAt <= now-3h` AT THE QUERY: this excludes
@@ -2895,6 +3069,10 @@ async function runCloneRecurringGames(): Promise<void> {
     };
     if (typeof g.startsAt !== 'number') continue;
     if (g.recurringNextCreatedAt) continue; // already spawned next week
+    // Series-driven fixtures are handled by runCreateSeriesOccurrences from
+    // their own settings doc. Cloning them here too would double-book the week.
+    if ((g as { seriesId?: string }).seriesId) continue;
+    if (g.groupId && seriesGroups.has(g.groupId)) continue;
     if (g.status === 'cancelled') continue; // a cancelled week doesn't recur
     if (now < g.startsAt + RECURRING_CLONE_DELAY_MS) continue; // wait 3h post-kickoff
 
@@ -11492,6 +11670,9 @@ export const cronEvery5Min = onSchedule(
   async () => {
     await runSweep('flipScheduledGames', runFlipScheduledGames);
     await runSweep('flipPublicGames', runFlipPublicGames);
+    // Series-driven fixtures first; the legacy game-to-game clone then runs
+    // only for recurring games that have no series yet.
+    await runSweep('createSeriesOccurrences', runCreateSeriesOccurrences);
     await runSweep('cloneRecurringGames', runCloneRecurringGames);
     await runSweep('scheduledAutoGenerateTeams', runScheduledAutoGenerateTeams);
     await runSweep('expireStaleOffers', runExpireStaleOffers);
@@ -12574,5 +12755,68 @@ export const removeRetroGoal = onCall(
       }
     });
     return { ok: true };
+  },
+);
+
+// ── Reports → the Pulse task list ────────────────────────────────────────
+//
+// Every in-app report a tester files becomes a task the moment it's written,
+// so the owner's work list is complete without Pulse having to scan the
+// `feedback` collection on every open. That scan is exactly what the tasks
+// screen replaced: one collection read instead of four.
+//
+// The task carries the reporter's own category (they picked it in the sheet)
+// but NOT a priority — urgency is the owner's call, so everything lands at
+// 'normal' and gets promoted by hand in Pulse.
+export const onFeedbackCreated = onDocumentCreated(
+  'feedback/{feedbackId}',
+  async (event) => {
+    const d = event.data?.data() as
+      | {
+          message?: string;
+          screen?: string;
+          image?: string;
+          category?: string;
+          userName?: string;
+          appVersion?: string;
+          type?: string;
+        }
+      | undefined;
+    if (!d) return;
+
+    const feedbackId = event.params.feedbackId;
+    // Deterministic id: a retry of this trigger (Cloud Functions guarantees
+    // at-least-once, not exactly-once) rewrites the SAME doc instead of
+    // creating a second task for one report.
+    const taskId = `fb-${feedbackId}`;
+    const ref = db.collection('tasks').doc(taskId);
+    if ((await ref.get()).exists) return;
+
+    const category =
+      d.category === 'ui' || d.category === 'feature' ? d.category : 'bug';
+    const title = (d.message ?? '').trim().slice(0, 200) || 'דיווח מהאפליקציה';
+    const now = Date.now();
+    const who = (d.userName ?? '').trim();
+    const version = (d.appVersion ?? '').trim();
+    // Provenance goes in the body, not the title — the title is what the list
+    // shows, and "מ־דני · 1.0.91" in every row would crowd out the actual report.
+    const notes = [who && `דיווח מ${who}`, version && `גרסה ${version}`]
+      .filter(Boolean)
+      .join(' · ');
+
+    await ref.set({
+      title,
+      notes,
+      category,
+      status: 'new',
+      priority: 'normal',
+      source: 'teamder',
+      images: typeof d.image === 'string' && d.image ? [d.image] : [],
+      screen: typeof d.screen === 'string' ? d.screen : '',
+      sourceId: feedbackId,
+      createdAt: now,
+      updatedAt: now,
+      doneAt: 0,
+    });
   },
 );

@@ -46,13 +46,24 @@ import { AnimationLab } from '@/screens/dev/AnimationLab';
 import { AvailabilityPromptCard } from '@/components/home/AvailabilityPromptCard';
 import {
   HomeTopBar,
-  HomeSmartBanner,
   HomeRecommendedDay,
   HomeActionTiles,
   HomeAvailabilityWindows,
   type WindowDay,
 } from '@/components/home/HomeDashboardParts';
 import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
+import { AssistantCard } from '@/components/home/AssistantCard';
+import { newAssistantNonce, resolveAssistantMessage } from '@/utils/assistant/resolve';
+import { ASSISTANT_RULES } from '@/utils/assistant/rules';
+import type {
+  AssistantContext,
+  AssistantMessage,
+} from '@/utils/assistant/types';
+import {
+  assistantInsightsService,
+  invalidateAssistantInsights,
+  type ClubInsight,
+} from '@/services/assistantInsightsService';
 import { UpcomingScheduledGameCard } from '@/components/home/UpcomingScheduledGameCard';
 import {
   availabilityFeedService,
@@ -70,7 +81,7 @@ import {
 import { gameService, userService } from '@/services';
 import { getInboxCount } from '@/services/requestsService';
 import { getAvailabilityCardEnabled } from '@/services/homeConfigService';
-import { dayDiff, formatTime } from '@/utils/format';
+import { dayDiff } from '@/utils/format';
 import {
   achievementsService,
   type NewlyUnlocked,
@@ -173,6 +184,12 @@ export function ProfileScreen() {
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
   const [playedCount, setPlayedCount] = useState<number | null>(null);
+  // Where the user stands in their main club — crowns, scorer place, rival,
+  // attendance streak. The only piece of coach context not already on this
+  // screen, so it's fetched behind a 30-minute cache and only for a signed-in
+  // member of at least one club. Null is a perfectly good answer: the rules
+  // that needed it simply stay quiet.
+  const [clubInsight, setClubInsight] = useState<ClubInsight | null>(null);
   // Tiers crossed since last check — shown as a celebration overlay. We
   // derive achievements once per signed-in user (not per focus) to keep the
   // read cost down on this frequently-visited screen.
@@ -191,13 +208,25 @@ export function ProfileScreen() {
   const refreshUser = React.useCallback(async () => {
     if (!localUser || localUser.isGuest) return;
     setRefreshing(true);
+    // A deliberate pull means "recompute what you're telling me" — drop the
+    // cached club standing so the assistant's rivalry lines refresh too.
+    invalidateAssistantInsights();
     try {
       const u = await userService.getUserById(localUser.id);
       if (u) setUser(u);
+      const groupId = myCommunities[0]?.id;
+      if (groupId) {
+        setClubInsight(
+          await assistantInsightsService
+            .getClubInsight(localUser.id, groupId, lastPlayedMs)
+            .catch(() => null),
+        );
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [localUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localUser, myCommunities[0]?.id, lastPlayedMs]);
 
   useEffect(() => {
     if (!localUser || localUser.isGuest) return;
@@ -429,6 +458,33 @@ export function ProfileScreen() {
     }, [localUser?.id]),
   );
 
+  // Club standing for the coach. Keyed on the FIRST club — a player in several
+  // clubs gets their primary one, which is the table they think of as "the"
+  // table. Cached in the service, so a refocus is free.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      const groupId = myCommunities[0]?.id;
+      if (!uid || localUser?.isGuest || !groupId) {
+        setClubInsight(null);
+        return;
+      }
+      let alive = true;
+      assistantInsightsService
+        .getClubInsight(uid, groupId, lastPlayedMs)
+        .then((r) => {
+          if (alive) setClubInsight(r);
+        })
+        .catch(() => {
+          /* the assistant just skips the rivalry rules */
+        });
+      return () => {
+        alive = false;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [localUser?.id, myCommunities[0]?.id, lastPlayedMs]),
+  );
+
   // Derive achievements once per mount and celebrate any tier just
   // crossed. Runs after groups hydrate so the team metrics are real.
   useEffect(() => {
@@ -577,11 +633,6 @@ export function ProfileScreen() {
   //   • state 1 — a game within the next week  → the next-game card
   //   • state 2 — no near game + marked availability → the availability calendar
   //   • state 3 — no near game + not marked    → a big "set availability" prompt
-  const CLOSE_GAME_DAYS = 7;
-  // dayDiff(startsAt) = calendar days until kickoff (negative/0 = live/today).
-  // A live or upcoming-within-a-week game counts as "close".
-  const hasCloseGame =
-    !!nextGame && dayDiff(nextGame.startsAt) <= CLOSE_GAME_DAYS;
   const markedAvailability =
     (user.availability?.preferredDays?.length ?? 0) > 0;
 
@@ -636,38 +687,136 @@ export function ProfileScreen() {
     if (h >= 17 && h < 22) return he.greetingEvening;
     return he.greetingNight;
   })();
-  const daysSincePlayed =
-    lastPlayedMs != null ? Math.max(0, dayDiff(lastPlayedMs) * -1) : null;
-  const noUpcomingCreated = createdGames.length === 0;
+  // The standalone greeting banner is GONE. It used to greet you on one line
+  // and then bolt on a contextual suffix chosen by a hand-rolled if/else chain
+  // in this component — two voices, and one of its branches printed
+  // "המחזור שלך היום ב-20:00" which the next-match card already states in
+  // full. The coach's card now opens with the greeting itself, so the whole
+  // thing is one sentence in one voice. `greetWord` + `firstName` feed it.
+  const coachGreeting = firstName ? `${greetWord} ${firstName}` : greetWord;
 
-  let bannerSuffix: string = he.homeBannerWelcome;
-  let bannerPress: (() => void) | undefined;
-  if (inboxCount > 0) {
-    bannerSuffix = he.homeBannerRequests(inboxCount);
-    bannerPress = () => nav.navigate('Requests');
-  } else if (hasCloseGame && nextGame && dayDiff(nextGame.startsAt) <= 0) {
-    bannerSuffix = he.homeBannerGameToday(formatTime(nextGame.startsAt));
-    bannerPress = () => nav.navigate('MatchDetails', { gameId: nextGame.id });
-  } else if (!markedAvailability) {
-    bannerSuffix = he.homeBannerSetAvailability;
-    bannerPress = () => nav.navigate('AvailabilityEdit');
-  } else if (daysSincePlayed != null && daysSincePlayed >= 3) {
-    bannerSuffix = he.homeBannerDaysSincePlayed(daysSincePlayed);
-    bannerPress = () => nav.navigate('GameTab');
-  } else if (noUpcomingCreated && !hasCloseGame) {
-    bannerSuffix = he.homeBannerNoGameThisWeek;
-    bannerPress = () =>
-      nav.navigate('GameTab', {
-        screen: 'GamesList',
-        params: { openCreate: true },
-      });
-  } else if (myCommunities.length === 0) {
-    bannerSuffix = he.homeBannerJoinCommunity;
-    bannerPress = () => nav.navigate('CommunitiesTab');
-  } else if (playedThisWeek > 0) {
-    bannerSuffix = he.homeBannerPlayedThisWeek(playedThisWeek);
-  }
-  const bannerText = he.homeGreetingLine(greetWord, firstName) + bannerSuffix;
+  // ── Teamder Assistant ──────────────────────────────────────────────────
+  // Assemble everything the rules may look at, then let the resolver pick the
+  // single highest-value line. All of it is state this screen already holds
+  // (plus the cached club standing), so the assistant costs no extra fetch.
+  //
+  // `shown` is the anti-duplication channel: it tells the rules which cards
+  // are on screen right now, so an availability message can silence itself
+  // when the recommended-day banner or the podium is already stating the very
+  // same headcount a few rows down.
+  // Drawn once per mount: the coach says something new every time the app
+  // opens, and holds that line while the screen is up — a re-roll on each
+  // render would reshuffle the words mid-read.
+  const assistantNonce = useRef(newAssistantNonce()).current;
+
+  const assistantMessage = useMemo<AssistantMessage | null>(() => {
+    const now = Date.now();
+    const ctx: AssistantContext = {
+      now,
+      nonce: assistantNonce,
+      user,
+      nextGame,
+      isGameToday: !!nextGame && dayDiff(nextGame.startsAt) <= 0,
+      communities: myCommunities,
+      isClubAdmin: myCommunities.some((g) => g.adminIds.includes(user.id)),
+      playedThisWeek,
+      lastPlayedMs,
+      playedCount,
+      markedAvailability,
+      bestEvening: recommended
+        ? {
+            dateMs: recommended.dateMs,
+            weekday: new Date(recommended.dateMs).getDay(),
+            count: recommended.count,
+          }
+        : null,
+      clubName: myCommunities[0]?.name ?? null,
+      clubInsight,
+      // Mirrors the render conditions below EXACTLY — if one of those changes,
+      // change it here too, or the assistant starts echoing a card again.
+      shown: {
+        nextGameCard: !!nextGame,
+        recommendedDay: availCardEnabled && !!recommended,
+        availabilityPodium: availCardEnabled && podium.length > 0,
+        upcomingScheduledCard: !nextGame && scheduledUpcoming.length > 0,
+        // Mirrors the render condition below EXACTLY. It is NOT gated on
+        // availCardEnabled: with the remote flag off the podium is hidden but
+        // the prompt card still renders, and reading `false` here let the
+        // coach ask for availability a second time on the same screen.
+        availabilityPrompt:
+          !(availCardEnabled && podium.length > 0) && !markedAvailability,
+      },
+    };
+    return resolveAssistantMessage(ctx, ASSISTANT_RULES);
+  }, [
+    assistantNonce,
+    user,
+    nextGame,
+    myCommunities,
+    playedThisWeek,
+    lastPlayedMs,
+    playedCount,
+    markedAvailability,
+    recommended,
+    clubInsight,
+    availCardEnabled,
+    podium.length,
+    scheduledUpcoming.length,
+  ]);
+
+  // The rules emit an intent; routing stays here so they remain pure.
+  const handleAssistantCta = (m: AssistantMessage) => {
+    const action = m.cta?.action;
+    if (!action) return;
+    logEvent(AnalyticsEvent.HomeAssistantCtaTapped, {
+      scenario: m.scenario,
+      id: m.id,
+    });
+    switch (action.kind) {
+      case 'openGame':
+        nav.navigate('MatchDetails', { gameId: action.gameId });
+        break;
+      case 'browseGames':
+        nav.navigate('GameTab');
+        break;
+      case 'createGame':
+        // With a slot attached this came from declared availability — a quick
+        // one-off match seeded with that day/window is exactly right.
+        //
+        // WITHOUT one it came from the club line ("השבוע עוד לא סגרתם מחזור"),
+        // and `quick: true` there would have skipped the community picker and
+        // created a match inside the hidden PERSONAL group — an orphan the
+        // club never sees, which is the opposite of what that line asks for.
+        // Send those to the normal chooser instead.
+        if (action.dateMs) {
+          nav.navigate('GameTab', {
+            screen: 'GameCreate',
+            params: {
+              quick: true,
+              prefillDateMs: action.dateMs,
+              ...(action.window ? { prefillWindow: action.window } : {}),
+              prefillCity: availData?.viewerCity ?? undefined,
+              inviteAvailable: true,
+            },
+          });
+        } else {
+          nav.navigate('GameTab', {
+            screen: 'GamesList',
+            params: { openCreate: true },
+          });
+        }
+        break;
+      case 'markAvailability':
+        nav.navigate('AvailabilityEdit');
+        break;
+      case 'discoverClubs':
+        nav.navigate('CommunitiesTab');
+        break;
+      case 'openStats':
+        nav.navigate('Statistics');
+        break;
+    }
+  };
 
   // The user's communities split into the ones they OPENED (founder) vs
   // Pre-compute the share invite handler once.
@@ -903,9 +1052,17 @@ export function ProfileScreen() {
         />
 
         <View style={styles.body}>
-          {/* ② Smart contextual banner — a single line chosen by the player's
-              current state (requests / game today / set availability / etc.). */}
-          <HomeSmartBanner text={bannerText} onPress={bannerPress} />
+          {/* ② "הודעה מהמאמן" — greeting + ONE contextual line, chosen by the
+              rule engine in utils/assistant. Replaces the old greeting banner
+              entirely (see the note where coachGreeting is built). Sits above
+              the data cards because it's the coach talking to the player, not
+              another readout; renders nothing when no rule has anything worth
+              saying. */}
+          <AssistantCard
+            message={assistantMessage}
+            greeting={coachGreeting}
+            onCta={handleAssistantCta}
+          />
 
           {/* ③ Hero — exactly ONE card, in priority order:
               1. a game I'm registered to / created (always wins, even if it's

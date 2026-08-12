@@ -84,6 +84,7 @@ import { GameChampionship } from '@/components/match/GameChampionship';
 import { RetroGoalsSheet } from '@/components/match/RetroGoalsSheet';
 import { MatchFactsRow } from '@/components/match/MatchFactsRow';
 import { gameService, type RegistrationConflict } from '@/services/gameService';
+import { seriesService } from '@/services/seriesService';
 import { logError, logUnexpected } from '@/services/errorLog';
 import { handleFillerOpportunityAction } from '@/services/notificationActionService';
 import { maybeRequestStoreReview } from '@/services/storeReviewService';
@@ -1674,78 +1675,69 @@ export function MatchDetailsScreen() {
     }
   };
 
-  // Delete tap — for a recurring game, offer "this week only" (keeps the
-  // series) vs "stop the whole series". Non-recurring → the plain confirm.
-  const handleDeletePress = () => {
-    if (!game.recurring) {
-      setDeleteOpen(true);
-      return;
-    }
-    appAlert(he.deleteRecurringTitle, he.deleteRecurringBody, [
+  // Stop the weekly fixture. Deliberately NOT a delete: every match that
+  // already exists stays, only the series stops producing new ones.
+  const handleStopSeries = () => {
+    if (!game.seriesId) return;
+    appAlert(he.stopSeriesTitle, he.stopSeriesBody, [
       { text: he.cancel, style: 'cancel' },
-      { text: he.deleteRecurringThisWeek, onPress: () => void handleSkipWeek() },
       {
-        text: he.deleteRecurringStop,
+        text: he.stopSeriesConfirm,
         style: 'destructive',
-        onPress: () => setDeleteOpen(true),
+        onPress: () => {
+          void (async () => {
+            try {
+              await seriesService.stop(game.seriesId as string);
+              toast.success(he.stopSeriesSuccess);
+            } catch (err) {
+              logError('stopSeries', err, {
+                screen: 'MatchDetailsScreen',
+                gameId: game.id,
+                seriesId: game.seriesId,
+              });
+              toast.error(he.error);
+            }
+          })();
+        },
       },
     ]);
   };
 
-  const handleSkipWeek = async () => {
-    if (!user) return;
-    setBusy(true);
-    try {
-      await gameService.skipRecurringWeek(game.id, user.id);
-      toast.success(he.skipRecurringWeekSuccess);
-      nav.goBack();
-    } catch (err) {
-      logError('matchSkipRecurringWeek', err, {
-        screen: 'MatchDetailsScreen',
-        gameId: game.id,
-      });
-      if (__DEV__) console.warn('[matchDetails] skipRecurringWeek failed', err);
-      toast.error(he.error);
-    } finally {
-      setBusy(false);
-    }
+  // Delete tap — one plain confirm, recurring or not.
+  //
+  // "מחק רק את השבוע הזה" used to sit here. Keeping a series alive past a
+  // deleted week means spawning the NEXT week up front (the weekly cron can't
+  // clone from a game that no longer exists) — so deleting one match silently
+  // created another. Eliran deleted 2.9 and got 9.9 for free. The owner's call:
+  // the app never opens a match as a side effect, so deleting is now just
+  // deleting, and it ends the weekly series with it.
+  const handleDeletePress = () => {
+    setDeleteOpen(true);
   };
 
-  // Edit tap — for a recurring game, offer "this week only" (keeps the series
-  // unchanged) vs "the whole series". Non-recurring → straight to the editor.
+
+  // Edit tap — for a match that belongs to a weekly SERIES, ask what the edit
+  // applies to. Both answers are now side-effect free: the fixture's settings
+  // live in their own `gameSeries` doc, so "this match only" touches the match
+  // and "the series too" overwrites the template. Neither creates a match —
+  // which is exactly what the old version of this dialog did.
   const handleEditPress = () => {
-    if (!game.recurring) {
+    if (!game.seriesId) {
       nav.navigate('GameEdit', { gameId: game.id });
       return;
     }
-    appAlert(he.editRecurringTitle, he.editRecurringBody, [
+    appAlert(he.editSeriesTitle, he.editSeriesBody, [
       { text: he.cancel, style: 'cancel' },
-      { text: he.editRecurringThisWeek, onPress: () => void handleEditThisWeek() },
       {
-        text: he.editRecurringSeries,
+        text: he.editSeriesThisOnly,
         onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
       },
+      {
+        text: he.editSeriesAll,
+        onPress: () =>
+          nav.navigate('GameEdit', { gameId: game.id, applyToSeries: true }),
+      },
     ]);
-  };
-
-  // "Edit this week only": spawn next week's clone from the CURRENT settings
-  // (series continues unchanged) + detach this game, then open the editor on it.
-  const handleEditThisWeek = async () => {
-    if (!user) return;
-    setBusy(true);
-    try {
-      await gameService.detachRecurringOccurrence(game.id, user.id);
-      nav.navigate('GameEdit', { gameId: game.id });
-    } catch (err) {
-      logError('matchEditThisWeek', err, {
-        screen: 'MatchDetailsScreen',
-        gameId: game.id,
-      });
-      if (__DEV__) console.warn('[matchDetails] editThisWeek failed', err);
-      toast.error(he.error);
-    } finally {
-      setBusy(false);
-    }
   };
 
   const handleSetTeamFeedback = async (value: 'like' | 'dislike') => {
@@ -2130,6 +2122,20 @@ export function MatchDetailsScreen() {
                     },
                   ]),
                 tone: 'danger' as const,
+              },
+            ]
+          : []),
+        // Stop the weekly fixture — admin only, and only for a match that
+        // actually belongs to a series. Ends future occurrences WITHOUT
+        // touching any match that already exists, which is the piece that was
+        // missing once the recurring toggle left the editor.
+        ...(isAdmin && game.seriesId && !isTerminalGame(game)
+          ? [
+              {
+                id: 'stopSeries',
+                label: he.stopSeriesAction,
+                icon: 'repeat-outline' as const,
+                onPress: handleStopSeries,
               },
             ]
           : []),

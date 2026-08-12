@@ -1220,7 +1220,14 @@ export function AdvancedLiveMatchScreen() {
             // Goal minute from the CAPPED clock so it matches the frozen
             // '+MM:SS' scoreboard in overtime (was raw timerMs, which kept
             // climbing while the displayed clock was pinned).
-            minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000)}
+            //
+            // 1-BASED, like football. `floor(ms/60000)` alone made every goal
+            // in the opening 60 seconds "minute 0" — which both reads wrong
+            // and is FALSY, so the recap simply omitted the minute for those
+            // goals while later ones showed theirs. Owner report: "למה יש זמן
+            // לגול רק לשער עצמי ולא לשאר הגולים?" — those other goals just
+            // happened to be scored in the first minute.
+            minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000) + 1}
             canEdit={isAdmin}
             totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}

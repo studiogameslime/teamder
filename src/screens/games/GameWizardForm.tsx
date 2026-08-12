@@ -217,6 +217,9 @@ interface Props {
    * byte unchanged.
    */
   quick?: boolean;
+  /** True when editing an EXISTING match. Hides create-time-only controls —
+   *  see the recurring toggle on step 3. */
+  isEdit?: boolean;
   /**
    * Extra content rendered ABOVE the step indicator (e.g. a community
    * picker on the create screen). Lives inside the same scroll container
@@ -258,6 +261,7 @@ export function GameWizardForm({
   onSubmit,
   extraTopSlot,
   quick = false,
+  isEdit = false,
   showInviteFriends = false,
   communityName,
   internalRating = false,
@@ -471,6 +475,7 @@ export function GameWizardForm({
                 set={set}
                 maxPlayers={maxPlayers}
                 quick={quick}
+                isEdit={isEdit}
                 showInviteFriends={showInviteFriends}
                 internalRating={internalRating}
               />
@@ -828,6 +833,7 @@ function Step3({
   set,
   maxPlayers,
   quick,
+  isEdit,
   showInviteFriends,
   internalRating,
 }: {
@@ -835,6 +841,7 @@ function Step3({
   set: SetFn;
   maxPlayers: number;
   quick: boolean;
+  isEdit: boolean;
   showInviteFriends: boolean;
   internalRating: boolean;
 }) {
@@ -925,20 +932,30 @@ function Step3({
         </ScheduleGroup>
       ) : null}
 
-      <FormSectionHeader title={he.wizardSectionAvailability} />
+      {/* Every control under this header is community-only, so on a quick
+          one-off the header sat alone above "הערות" + "הזמן חברים" — labelling
+          fields that have nothing to do with availability (manager report). */}
+      {!quick ? (
+        <FormSectionHeader title={he.wizardSectionAvailability} />
+      ) : null}
 
       {/* Two INDEPENDENT community-game options (hidden for quick one-offs):
           (1) recurring weekly fixture, (2) scheduled registration open.
           A game can be either, both, or neither. */}
       {!quick ? (
         <>
-          {/* (1) Recurring weekly — auto-clones each week. */}
-          <ToggleRow
-            label={he.communityEditRecurringEnabled}
-            info={{ title: he.communityEditRecurringEnabled, text: he.communityEditRecurringHint }}
-            value={values.recurringGameEnabled}
-            onChange={(v) => set('recurringGameEnabled', v)}
-          />
+          {/* (1) Recurring weekly — auto-clones each week. CREATE ONLY.
+              Editing one match is about that match; a weekly-series switch
+              sitting in its advanced settings just invites the question "am I
+              changing this match or all of them?" (owner report). */}
+          {!isEdit ? (
+            <ToggleRow
+              label={he.communityEditRecurringEnabled}
+              info={{ title: he.communityEditRecurringEnabled, text: he.communityEditRecurringHint }}
+              value={values.recurringGameEnabled}
+              onChange={(v) => set('recurringGameEnabled', v)}
+            />
+          ) : null}
 
           {/* (2) Scheduled registration open — defer when the game appears
               + opens for joins. Independent of recurring. */}

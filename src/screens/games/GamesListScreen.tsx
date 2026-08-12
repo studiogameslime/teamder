@@ -12,7 +12,15 @@
 //      it. Empty state (no cards at all) replaces the list entirely.
 //   ⑥ Floating "+" FAB pinned to the bottom-LEFT.
 //
-// Logic / data flow / navigation are all unchanged.
+// The screen ADAPTS to how many matches it has (see gamesFeedDiscovery):
+//   many → ①–⑥ exactly as above, nothing added. Real matches carry the tab.
+//   few  → the same list, then "ביקוש לכדורגל באזור שלך" + "מועדונים באזור שלך".
+//   none → a one-line "nothing open right now" in place of the big empty
+//          state, then those same two sections.
+// The order is fixed and deliberate: a joinable match outranks real demand,
+// and demand outranks a club — discovery never sits above the list.
+// Filters hiding everything is a separate case that keeps the original empty
+// state, because there the fix is "clear the filter", not "find a club".
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -54,6 +62,11 @@ import {
 } from '@/components/match/MatchListCard';
 import { MatchesHero } from '@/components/match/MatchesHero';
 import { MatchEmptyHintCard } from '@/components/match/MatchEmptyHintCard';
+import { AreaDemandCard } from '@/components/games/AreaDemandCard';
+import { NearbyClubsSection } from '@/components/games/NearbyClubsSection';
+import { feedDensity, gamesFeedConfig } from '@/config/gamesFeedDiscovery';
+import { availabilityFeedService } from '@/services/availabilityFeedService';
+import { invalidateNearbyClubs } from '@/services/nearbyClubsService';
 import { UpcomingScheduledGameCard } from '@/components/home/UpcomingScheduledGameCard';
 import {
   GameFilterSheet,
@@ -77,7 +90,7 @@ import {
   isVisibleInOpenGames,
 } from '@/services/gameLifecycle';
 import { storage } from '@/services/storage';
-import { Game } from '@/types';
+import { Game, type TimeBucket } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { ensureNotGuest } from '@/utils/guestGate';
@@ -516,6 +529,90 @@ export function GamesListScreen() {
     !!user && myCommunities.some((g) => g.adminIds.includes(user.id));
   const isEmpty = mineList.length === 0 && restList.length === 0;
 
+  // ── How full does this tab feel, and what do we put underneath ─────────
+  // While the app is growing there are stretches with few (or zero) public
+  // matches, and the tab reads as "nothing happens here". Rather than three
+  // screens we keep one and vary what sits BELOW the list: real demand from
+  // declared availability, then clubs near the viewer. Thresholds live in
+  // gamesFeedDiscovery (Remote Config backed) — see that file for the rules.
+  //
+  // The count includes the viewer's own matches and the "בקרוב" teasers, not
+  // just the public ones: a screen already full of the viewer's own matches
+  // doesn't need padding out.
+  const feedCfg = gamesFeedConfig();
+  const visibleGamesCount =
+    mineList.length + restList.length + scheduledUpcoming.length;
+  const density = feedDensity(visibleGamesCount, feedCfg.richMin);
+  // Filters hiding everything is a different problem with a different fix
+  // ("clear the filter"), so that case keeps the original empty state rather
+  // than pivoting the user to clubs.
+  const filteredToNothing = isEmpty && filterCount > 0;
+  // Discovery is supporting content: it appears only when real matches don't
+  // already carry the screen, and always BELOW them.
+  const showDiscovery = !filteredToNothing && density !== 'many';
+  // Bumped by pull-to-refresh; used as a React key so the discovery blocks
+  // remount and refetch instead of serving their cached snapshot.
+  const [discoveryTick, setDiscoveryTick] = useState(0);
+
+  const openCreateForSlot = (
+    dateMs: number,
+    window: TimeBucket,
+    city: string | null,
+  ) => {
+    if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    nav.navigate('GameCreate', {
+      quick: true,
+      prefillDateMs: dateMs,
+      prefillWindow: window,
+      prefillCity: city ?? undefined,
+      inviteAvailable: true,
+    });
+  };
+
+  // "בקרוב" — scheduled club matches whose registration hasn't opened yet.
+  // Read-only teasers. They sit BELOW "המחזורים שלי": a match you're already
+  // registered to is more urgent than one you can't even join yet (manager
+  // request). Still shown when there's nothing joinable at all.
+  const upcomingSection =
+    !loading && scheduledUpcoming.length > 0 ? (
+      <View style={{ marginBottom: spacing.lg }}>
+        <View style={styles.sectionTitleRow}>
+          <Text style={styles.sectionTitle}>{he.homeUpcomingSectionTitle}</Text>
+          <View style={styles.sectionUnderline} />
+        </View>
+        <View style={styles.cardsList}>
+          {scheduledUpcoming.map((g, idx) => (
+            <AppearItem key={g.id} index={idx}>
+              <UpcomingScheduledGameCard
+                game={g}
+                communityName={myCommunities.find((c) => c.id === g.groupId)?.name}
+                onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
+              />
+            </AppearItem>
+          ))}
+        </View>
+      </View>
+    ) : null;
+
+  const discovery = showDiscovery ? (
+    <View style={styles.discovery}>
+      <AreaDemandCard
+        key={`demand-${discoveryTick}`}
+        onCreateGame={openCreateForSlot}
+        onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+      />
+      <NearbyClubsSection
+        key={`clubs-${discoveryTick}`}
+        radiusKm={feedCfg.clubsRadiusKm}
+        limit={feedCfg.clubsMax}
+        minMembers={feedCfg.clubsMinMembers}
+        onOpenClub={(groupId) =>
+          nav.navigate('CommunityDetailsPublic', { groupId })
+        }
+      />
+    </View>
+  ) : null;
+
   return (
     <View style={styles.root}>
       {/* Hero pinned at the top of the screen. The controls row
@@ -733,7 +830,15 @@ export function GamesListScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => reload({ pullToRefresh: true })}
+            onRefresh={() => {
+              // A deliberate pull means "give me fresh everything" — drop the
+              // discovery caches and remount those blocks so they refetch too,
+              // instead of re-serving a snapshot up to 15 minutes old.
+              availabilityFeedService.invalidate();
+              invalidateNearbyClubs();
+              setDiscoveryTick((n) => n + 1);
+              reload({ pullToRefresh: true });
+            }}
             tintColor="#3B82F6"
             colors={['#3B82F6']}
           />
@@ -741,47 +846,33 @@ export function GamesListScreen() {
       >
 
         <View style={styles.body}>
-          {/* "בקרוב" — scheduled community games whose registration hasn't
-              opened yet. Read-only teasers pinned above the joinable sections
-              (and shown even when there's nothing joinable yet). */}
-          {!loading && scheduledUpcoming.length > 0 ? (
-            <View style={{ marginBottom: spacing.lg }}>
-              <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>
-                  {he.homeUpcomingSectionTitle}
-                </Text>
-                <View style={styles.sectionUnderline} />
-              </View>
-              <View style={styles.cardsList}>
-                {scheduledUpcoming.map((g, idx) => (
-                  <AppearItem key={g.id} index={idx}>
-                    <UpcomingScheduledGameCard
-                      game={g}
-                      communityName={
-                        myCommunities.find((c) => c.id === g.groupId)?.name
-                      }
-                      onOpen={(gameId) =>
-                        nav.navigate('MatchDetails', { gameId })
-                      }
-                    />
-                  </AppearItem>
-                ))}
-              </View>
-            </View>
-          ) : null}
           {loading && isEmpty ? (
             // Skeleton placeholder cards — shape-accurate so the
             // layout doesn't shove when the real cards land.
             <MatchCardSkeleton count={3} />
-          ) : isEmpty ? (
+          ) : filteredToNothing ? (
+            // A filter is hiding matches that exist — clearing it is the fix,
+            // so keep the focused empty state instead of pivoting to clubs.
             <FullEmptyState
               tab="open"
               hasGamesInOtherTab={false}
-              hasActiveFilters={filterCount > 0}
+              hasActiveFilters
               onCreate={handleCreate}
               onSwitchToOpen={handleCreate}
               onClearFilters={() => setFilters(EMPTY_GAME_FILTERS)}
             />
+          ) : isEmpty ? (
+            // Nothing open right now: one honest line instead of a big empty
+            // state, then the discovery content so there's always a next step.
+            <>
+              <View style={styles.noOpenBox}>
+                <Text style={styles.noOpenTitle}>{he.gamesNoOpenTitle}</Text>
+                <Text style={styles.noOpenBody}>{he.gamesNoOpenBody}</Text>
+              </View>
+              {upcomingSection}
+              <MatchEmptyHintCard onPress={handleCreate} />
+              {discovery}
+            </>
           ) : (
             <>
               {/* Section 1 — games I'm registered to (top). */}
@@ -806,6 +897,8 @@ export function GamesListScreen() {
                 </>
               ) : null}
 
+              {upcomingSection}
+
               {/* Section 2 — everything else (below). */}
               {restList.length > 0 ? (
                 <>
@@ -828,6 +921,10 @@ export function GamesListScreen() {
                   </View>
                 </>
               ) : null}
+
+              {/* Discovery sits BELOW every real match — a joinable match
+                  always outranks demand, and demand outranks a club. */}
+              {discovery}
             </>
           )}
         </View>
@@ -835,10 +932,11 @@ export function GamesListScreen() {
 
       {/* Floating "+" FAB — pinned to the bottom-LEFT under forceRTL.
           `end: spacing.xl` is the trailing edge under RTL, which is
-          the visual LEFT (per spec). Hidden on the empty state, which
-          already shows a centered "create game" CTA — a second floating
-          + would be redundant. */}
-      {!isEmpty ? (
+          the visual LEFT (per spec). Hidden only on the filtered-to-nothing
+          empty state, which already shows a centered CTA — a second floating
+          + would be redundant. The no-open-matches state now renders a real
+          scrollable screen, so it keeps the FAB. */}
+      {!filteredToNothing ? (
         <>
           <Breathing mode="pulse" amount={0.05} periodMs={2400} style={styles.fab}>
             <Pressable
@@ -1332,6 +1430,27 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#3B82F6',
   },
+  // "Nothing open right now" — a quiet header, not a full-screen empty state:
+  // the discovery content below it is the real answer.
+  noOpenBox: {
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+    gap: 2,
+  },
+  noOpenTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  noOpenBody: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: RTL_LABEL_ALIGN,
+    writingDirection: 'rtl',
+  },
+  discovery: { marginTop: spacing.lg, gap: spacing.lg },
   cardsList: {
     gap: spacing.md,
   },

@@ -119,17 +119,22 @@ export const he = {
   deleteGameSuccess: 'המחזור נמחק',
   // Recurring (מחזור שבועי) game — delete needs a choice so cancelling one
   // week doesn't kill the whole series.
-  deleteRecurringTitle: 'משחק מחזור שבועי',
-  deleteRecurringBody:
-    'זהו משחק מחזור שבועי. אפשר למחוק רק את המשחק השבוע — והמחזור ימשיך בשבוע הבא — או להפסיק את כל המחזור.',
-  deleteRecurringThisWeek: 'מחק רק את השבוע הזה',
-  deleteRecurringStop: 'הפסק את כל המחזור',
-  skipRecurringWeekSuccess: 'המשחק השבוע נמחק — המחזור ממשיך בשבוע הבא',
-  editRecurringTitle: 'משחק מחזור שבועי',
-  editRecurringBody:
-    'זהו משחק מחזור שבועי. אפשר לערוך רק את המשחק השבוע — והמחזור ימשיך בשבוע הבא ללא שינוי — או לערוך את כל המחזור (גם השבועות הבאים).',
-  editRecurringThisWeek: 'ערוך רק את השבוע הזה',
-  editRecurringSeries: 'ערוך את כל המחזור',
+  // Edit scope for a match that belongs to a weekly series. Neither option
+  // creates anything — that's what the gameSeries refactor bought us.
+  editSeriesTitle: 'מחזור מתוך סדרה שבועית',
+  editSeriesBody:
+    'המחזור הזה שייך לסדרה שבועית. אפשר לערוך רק אותו — והסדרה תמשיך כרגיל — או לעדכן גם את הגדרות הסדרה, כך שכל המחזורים הבאים ייווצרו לפי מה שתשמור עכשיו.',
+  editSeriesThisOnly: 'רק המחזור הזה',
+  editSeriesAll: 'גם הגדרות הסדרה',
+  editSeriesAppliedToast: 'הגדרות הסדרה עודכנו — יחול על המחזורים הבאים',
+  // Stopping the weekly fixture. Distinct from deleting a match: this ends the
+  // SERIES and leaves every already-created match exactly where it is.
+  stopSeriesAction: 'הפסק את המחזור השבועי',
+  stopSeriesTitle: 'הפסקת מחזור שבועי',
+  stopSeriesBody:
+    'לא ייווצרו יותר מחזורים חדשים בסדרה הזו. המחזורים שכבר נוצרו — כולל זה — נשארים כמו שהם, ואפשר להתחיל סדרה חדשה מתי שתרצה.',
+  stopSeriesConfirm: 'הפסק',
+  stopSeriesSuccess: 'המחזור השבועי הופסק',
   deleteGroupTitle: 'מחיקת המועדון',
   deleteGroupBody: 'המועדון ומידע השייך אליו יימחקו לצמיתות. כל החברים יתנתקו ולא ניתן יהיה לשחזר.',
   deleteGroupSuccess: 'המועדון נמחק',
@@ -1442,6 +1447,9 @@ export const he = {
   screenshotReportSubtitle: 'צירפנו את הצילום אוטומטית. ספר/י בקצרה מה לא תקין.',
   screenshotReportAttached: 'הצילום צורף',
   screenshotReportPlaceholder: 'מה הבאג? (לא חובה)',
+  reportCatBug: 'תקלה',
+  reportCatUi: 'עיצוב',
+  reportCatFeature: 'רעיון',
   screenshotReportSend: 'שליחת דיווח',
   screenshotReportSent: 'הדיווח נשלח עם הצילום, תודה! 🙏',
   screenshotReportDefaultMsg: 'דיווח על באג מצילום מסך',
@@ -1742,6 +1750,10 @@ export const he = {
   // builds the prefix; the rest are the suffixes.
   homeGreetingLine: (greeting: string, name: string) =>
     name ? `${greeting} ${name}, ` : `${greeting}, `,
+  /** Greeting with no contextual suffix — the contextual half of the old smart
+   *  banner now lives in the Teamder Assistant card just below it. */
+  homeGreetingOnly: (greeting: string, name: string) =>
+    name ? `${greeting} ${name}` : greeting,
   homeBannerGameToday: (t: string) => `המחזור שלך היום ב-${t} — מוכן? ⚽`,
   homeBannerGameTomorrow: (t: string) => `המחזור שלך מחר ב-${t} 📅`,
   homeBannerRequests: (n: number) =>
@@ -2188,8 +2200,298 @@ export const he = {
   availNudgePerk3: 'פחות לפספס — יותר לשחק',
   availNudgeCta: 'סמן את הימים שלי',
   availNudgeLater: 'אחר כך',
+  // ── הודעה מהמאמן (home) ─────────────────────────────────────────────────
+  // One short line from "the coach", prefixed with the time-of-day greeting by
+  // the card itself — so every line reads "בוקר טוב, ...". Bodies therefore
+  // start lowercase-ish (no greeting of their own) and carry their emoji at
+  // the END, where it doesn't break the sentence.
+  //
+  // Each scenario ships several phrasings; the variant is picked per DAY (see
+  // utils/assistant/resolve.pickVariant), never per render. The breadth here is
+  // the point — the coach should feel alive, not like one saved string.
+  //
+  // Anything with a number is fed by a real server-written counter, and no line
+  // repeats what a card on the same screen already states.
+  assistantTitle: 'הודעה מהמאמן',
+  /** Time-of-day greeting the card prefixes onto every coach line. */
+  assistantGreeting: (greeting: string) => `${greeting},`,
+
+  // ── game day ──
+  assistantGameDay: [
+    'יום של משחק! 💪🏼',
+    'היום עולים על הדשא ⚽',
+    'היום משאירים הכול על הדשא 🔥',
+    'הנעליים מוכנות? 👀',
+    'Game Day! ⚽',
+    'היום זה קורה. תן בראש 🔥',
+  ],
+  assistantGameDayGoalsMilestone: (left: number, target: number) =>
+    left === 1
+      ? `גול אחד היום ואתה מגיע ל-${target} 🔥`
+      : `${left} גולים היום ואתה מגיע ל-${target} 🔥`,
+  assistantGameDayCrown: (left: number, club: string) =>
+    left === 1
+      ? `עוד גול אחד ואתה מלך השערים של ${club} 👑`
+      : `עוד ${left} גולים ואתה מלך השערים של ${club} 👑`,
+  assistantGameDayRival: (name: string, gap: number) =>
+    gap === 1
+      ? `עוד גול אחד היום ואתה עוקף את ${name} 👀`
+      : `עוד ${gap} גולים היום ואתה עוקף את ${name} 👀`,
+  assistantGameDayStreak: (n: number, club: string) =>
+    `אתה מחזיק רצף של ${n} הגעות רצופות ב${club} — אל תשבור אותו היום 🔥`,
+
+  // ── after a match ──
+  // Two hard rules for these, both enforced by tests:
+  //
+  //   ⚠️ No time-of-day greeting ("ערב טוב" and friends) — the card already
+  //     prefixes one and the pair reads as a stutter ("ערב טוב מתן, ערב טוב
+  //     על המגרש"). These fire mostly in the evening, so they avoid the word
+  //     "ערב" altogether.
+  //
+  //   ⚠️ No sign-off ("נתראה בפעם הבאה") — the next-match card usually sits
+  //     directly below with a date already on it. Waving goodbye on top of a
+  //     booked fixture contradicts the screen. Look BACK at the match that
+  //     just happened, never forward.
+  //   ⚠️ Every line must NAME what it's about. "סיימת. תנוח, מגיע לך" was
+  //     shipped and the owner's reaction was "סיימתי מה?" — a sentence with no
+  //     object tells the player nothing. Say "מחזור".
+  assistantPostGame: [
+    'איזה מחזור היה לך! 🔥',
+    'עוד מחזור מאחוריך. כל הכבוד 👏',
+    'מחזור בכיס. תנוח, מגיע לך 💪🏼',
+  ],
+  assistantPostGameWeek: (n: number) => `${n} מחזורים השבוע. אתה בכושר 🔥`,
+  assistantPostGameStreak: (n: number, club: string) =>
+    `זה כבר ${n} הגעות רצופות ב${club}. ברזל 🧱`,
+
+  // ── club crowns ──
+  assistantCrownGoalsHeld: (goals: number, club: string) =>
+    `אתה מלך השערים של ${club} עם ${goals} שערים. תשמור על הכתר 👑`,
+  assistantCrownGoalsChase: (left: number, club: string) =>
+    left === 1
+      ? `עוד גול אחד ואתה מלך השערים של ${club} 👑`
+      : `עוד ${left} גולים ואתה מלך השערים של ${club} 👑`,
+  assistantCrownAssistsHeld: (assists: number, club: string) =>
+    `אתה מלך הבישולים של ${club} עם ${assists} בישולים. הקבוצה מודה לך 🎯`,
+  assistantCrownAssistsChase: (left: number, club: string) =>
+    left === 1
+      ? `עוד בישול אחד ואתה מלך הבישולים של ${club} 🎯`
+      : `עוד ${left} בישולים ואתה מלך הבישולים של ${club} 🎯`,
+
+  // ── standing + rivalry ──
+  assistantRivalry: (name: string, gap: number) =>
+    gap === 1
+      ? `חסר לך גול אחד כדי לעקוף את ${name} 👀`
+      : `חסרים לך ${gap} גולים כדי לעקוף את ${name} 👀`,
+  assistantTopFive: (club: string) =>
+    `אתה מקום אחד מהטופ 5 של ${club} 🏆`,
+  assistantStanding: (place: number, total: number, club: string) =>
+    `אתה במקום ${place} מתוך ${total} בטבלת המבקיעים של ${club} 📊`,
+  assistantWinsPlace: (place: number, club: string) =>
+    place === 1
+      ? `אתה השחקן עם הכי הרבה ניצחונות ב${club} 🏆`
+      : `אתה מקום ${place} בניצחונות ב${club} 🏆`,
+
+  // ── attendance ──
+  assistantStreak: (n: number, club: string) =>
+    `אתה מחזיק רצף של ${n} הגעות רצופות ב${club} 🔥`,
+  assistantLoyaltyNights: (n: number, club: string) =>
+    `${n} ערבים על הדשא ב${club}. מהעמודים של הקבוצה 🧱`,
+  assistantAttendanceRate: (pct: number) =>
+    `${pct}% הגעה. אפשר לסמוך עליך ✅`,
+
+  // ── personal milestones ──
+  assistantMilestoneGoals: (left: number, target: number) =>
+    left === 1
+      ? `עוד גול אחד ואתה מגיע ל-${target} שערים 🎯`
+      : `עוד ${left} גולים ואתה מגיע ל-${target} שערים 🎯`,
+  assistantMilestoneAssists: (left: number, target: number) =>
+    left === 1
+      ? `עוד בישול אחד ואתה מגיע ל-${target} בישולים 🎯`
+      : `עוד ${left} בישולים ואתה מגיע ל-${target} בישולים 🎯`,
+  assistantMilestoneGames: (left: number, target: number) =>
+    left === 1
+      ? `עוד מחזור אחד ואתה מגיע ל-${target} הופעות ⚽`
+      : `עוד ${left} מחזורים ואתה מגיע ל-${target} הופעות ⚽`,
+  assistantMilestoneWins: (left: number, target: number) =>
+    left === 1
+      ? `עוד ניצחון אחד ואתה מגיע ל-${target} ניצחונות 🏆`
+      : `עוד ${left} ניצחונות ואתה מגיע ל-${target} ניצחונות 🏆`,
+
+  // ── penalties ──
+  assistantPenKicker: (scored: number, taken: number) =>
+    `${scored} מתוך ${taken} פנדלים. עצבים של ברזל 🧊`,
+  assistantPenKeeper: (saved: number) =>
+    saved === 1
+      ? `עצרת פנדל אחד בשוברי שוויון. כפפות זהב 🧤`
+      : `עצרת ${saved} פנדלים בשוברי שוויון. כפפות זהב 🧤`,
+
+  assistantDaysSincePlayed: (d: number) =>
+    d === 7
+      ? 'שבוע בדיוק מאז המחזור האחרון שלך ⏳'
+      : `${d} ימים מאז המחזור האחרון שלך ⏳`,
+  assistantWeekCount: (n: number) => `${n} מחזורים השבוע. אתה בכושר 🔥`,
+  assistantTotalGames: (n: number) => `${n} מחזורים על הדשא עד היום ⚽`,
+
+  // ── more of the coach's material ──────────────────────────────────────
+  // Every one of these is computed from data the player already owns; none
+  // of them may run without its number. See statsCandidates().
+  assistantGoalsPerGame: (avg: string, games: number) =>
+    `ממוצע ${avg} שערים למחזור, על פני ${games} מחזורים ⚽`,
+  assistantCareerGoals: (n: number) => `${n} שערים בקריירה שלך כאן ⚽`,
+  assistantCareerAssists: (n: number) =>
+    `${n} בישולים בקריירה. גם מסירה נכנסת לתיק 🎯`,
+  assistantContribution: (n: number) =>
+    `${n} מעורבויות בשערים — שערים ובישולים יחד 📈`,
+  assistantWinsTotal: (n: number) => `${n} ניצחונות במשחקונים עד היום 🏆`,
+  assistantOwnGoals: (n: number) =>
+    n === 1
+      ? 'שער עצמי אחד בקריירה. קורה גם לטובים 🙃'
+      : `${n} שערים עצמיים בקריירה. שער זה שער, לא? 🙃`,
+  assistantPenKeeperRate: (saved: number, faced: number) =>
+    `עצרת ${saved} מתוך ${faced} פנדלים שנבעטו מולך 🧤`,
+  assistantTenure: (months: number) =>
+    months >= 12
+      ? `${Math.floor(months / 12)} שנים איתנו על המגרש 📅`
+      : `${months} חודשים איתנו על המגרש 📅`,
+  assistantFriendsCount: (n: number) =>
+    `${n} חברים ברשימה שלך. יש את מי להביא למחזור 👥`,
+  assistantClubsCount: (n: number) => `אתה חבר ב-${n} מועדונים ⚽`,
+  assistantClubMembers: (n: number, club: string) =>
+    `${n} שחקנים ב${club}. תמיד יש עם מי לשחק 👥`,
+  assistantPositionLine: (label: string) =>
+    `העמדה המועדפת שלך: ${label} 🎽`,
+  assistantNoCancels: (n: number) =>
+    `${n} הרשמות ואפס ביטולים. אפשר לסמוך עליך 💪`,
+
+  // Contextual flavour — no numbers, just the day of the week talking.
+  assistantWeekendFlavor: [
+    'סוף השבוע כאן. הדשא פנוי ואתה יודע את זה 🌤️',
+    'שבת על הספה או שבת על המגרש? תחליט 🛋️',
+    'הזמן הכי טוב לבעוט הוא כשאין עבודה מחר ⚽',
+  ],
+  assistantMidweekFlavor: [
+    'אמצע שבוע זה בדיוק הזמן לשבור שגרה ⚽',
+    'יום עמוס? שעה על הדשא מסדרת את הראש 😌',
+    'לא צריך לחכות לסופ״ש בשביל מחזור טוב 🌙',
+  ],
+  assistantStatsCta: 'לסטטיסטיקה',
+
+  // ── club / lifecycle ──
+  assistantClubIdle: [
+    'השבוע עוד לא סגרתם מחזור ⚽',
+    'בא לך כדורגל השבוע? 👀',
+    'הגיע הזמן להחזיר את החבר׳ה למגרש 🔥',
+  ],
+  assistantClubIdleCta: 'פתח מחזור',
+  assistantAvailabilityMatch: [
+    'נראה שיש פה מחזור שמחכה לקרות ⚽',
+    'יש מספיק אנשים פנויים — חבל לפספס 👀',
+  ],
+  assistantAvailabilityMatchCta: 'פתח מחזור',
+  assistantComeback: [
+    'הרבה זמן לא ראינו אותך על הדשא 👀',
+    'הגיע הזמן לחזור לשחק? ⚽',
+    'המגרש מתגעגע. נחזור? 🔥',
+  ],
+  assistantComebackCta: 'מצא מחזור',
+  assistantJoinClub: [
+    'יש כדורגל מסביבך 👀',
+    'ברוך הבא ל-Teamder! 👋',
+  ],
+  assistantJoinClubSub: 'הגיע הזמן למצוא את החבר׳ה שלך ⚽',
+  assistantJoinClubCta: 'גלה מועדונים',
+  assistantMarkAvailability: [
+    'נו, מתי משחקים? ⚽',
+    'בוא נמצא לך כדורגל 👀',
+  ],
+  assistantMarkAvailabilitySub: 'סמן מתי אתה פנוי וננסה למצוא לך מחזור.',
+  assistantMarkAvailabilityCta: 'סמן זמינות',
+  assistantEngagement: [
+    'הגיע הזמן לעלות על הדשא 🔥',
+    'נו, מתי משחקים? ⚽',
+    'בוא נמצא לך כדורגל 👀',
+  ],
+  assistantEngagementCta: 'מצא מחזור',
+
+  // ── the coach's jokes ──
+  // Used ONLY where there is no real fact to report. A player with a streak,
+  // a crown in reach or a milestone gets the number; a player with nothing
+  // countable gets a nudge with a smile instead of a hollow "time to play".
+  //
+  // Rules for this list: no numbers (it is the no-data fallback and must never
+  // look like a stat), nothing about anyone's body, and nothing that scolds.
+  // It teases the sofa, never the player.
+  assistantHumor: [
+    'תוריד את הפיצה, יש מגרש שמחכה 🍕',
+    'הכדור לא יבעט את עצמו ⚽',
+    'הנעליים בארון שואלות מה קורה 👟',
+    'הספה נוחה, אבל היא לא סופרת הופעות 🛋️',
+    'מסי לא נהיה מסי מהסלון 🐐',
+    'הדשא מתגעגע יותר ממה שאתה חושב 🌱',
+    'תזכיר לרגליים שהן יודעות לרוץ 🏃',
+    'הכדור עגול, התירוצים פחות ⚽',
+    'החולצה מהמחזור האחרון כבר יבשה. אפשר שוב 👕',
+    'עוד רגע קוראים לך אוהד במקום שחקן 👀',
+    'הגרביים הגבוהות מחכות בארון 🧦',
+    'רגליים מדגדגות? זה סימן ⚽',
+    'שער אחד ביום מרחיק את הרופא 🩺',
+    'הזמן על הספה לא נספר כדקות משחק ⏱️',
+    'המגרש לא מתקן את עצמו, וגם הבעיטה החופשית שלך לא 🎯',
+    'עוד קפה או עוד מחזור? שאלת מלכודת ☕',
+    'הגוף שלך שלח בקשת חברות למגרש 🤝',
+    'ה-VAR בדק ואישר: אין לך תירוץ 📺',
+    'הכושר לא הולך לאיבוד, הוא רק מסתתר טוב 🕵️',
+    'קבוצת הוואטסאפ שקטה מדי, תעיר אותה 💬',
+    'הכדור שאל עליך. אמרנו שאתה עסוק ⚽',
+    'שריקת פתיחה זה הצליל הכי טוב בשבוע 📣',
+    'כל אגדה התחילה ממחזור אחד 🌟',
+    'הרגליים נחו מספיק, הן ביקשו שנעדכן 🦵',
+    'אין מצב רוח רע שמחזור טוב לא מתקן 😌',
+    'המגרש פתוח, התירוצים סגורים 🚪',
+    'גם ריצה איטית היא ריצה 🐢',
+    'הכדורים הכי טובים הם אלה שבעטת 🎯',
+    'מזג האוויר מושלם למישהו שיוצא מהבית ☀️',
+    'תשאיר את הטלפון בתיק, המגרש לא צריך אותו 📱',
+    'הדשא לא שופט אותך, הוא רק שמח לראות אותך 🌱',
+    'הכי קשה זה לנעול נעליים. משם זה כיף 👟',
+  ],
+
   matchesSectionOpen: 'מחזורים פתוחים',
   matchesSectionMine: 'המחזורים שלי',
+
+  // ── Matches tab, thin-supply state ──────────────────────────────────────
+  // Shown when there aren't enough open matches to fill the screen. Every
+  // number below comes from real declared availability / the public club
+  // directory — nothing here is filler content.
+  gamesNoOpenTitle: 'אין כרגע מחזורים פתוחים שמתאימים לך',
+  gamesNoOpenBody: 'אבל יש אנשים שרוצים לשחק — הנה איפה להתחיל',
+  gamesDemandTitle: 'ביקוש לכדורגל באזור שלך',
+  gamesDemandDayToday: 'היום',
+  gamesDemandDayTomorrow: 'מחר',
+  gamesDemandDayNamed: (day: string) => `ביום ${day}`,
+  /** "בבוקר" / "בצהריים" / "בערב" — reads inside the demand headline. */
+  gamesDemandWindowIn: {
+    morning: 'בבוקר',
+    noon: 'בצהריים',
+    evening: 'בערב',
+  } as Record<string, string>,
+  gamesDemandFreeHeadline: (n: number, day: string, window: string) =>
+    `${n} שחקנים פנויים ${day} ${window} באזור שלך`,
+  gamesDemandHeroSub: 'נראה שיש פה מחזור שמחכה לקרות',
+  gamesDemandOpenCta: (day: string) => `פתח מחזור ל${day}`,
+  gamesDemandLookingHeadline: (n: number, window: string) =>
+    `${n} שחקנים מחפשים מחזור היום ${window} באזור שלך`,
+  gamesDemandImFreeCta: 'גם אני פנוי',
+  gamesDemandFoot: 'הספירה מבוססת על שחקנים שסימנו זמינות — בלי שמות',
+  gamesDemandPromptTitle: 'רוצה לדעת מי מחפש משחק לידך?',
+  gamesDemandPromptBody:
+    'הגדר את אזור הבית והימים שנוח לך, ונראה לך כמה שחקנים פנויים בכל חלון — כדי לפתוח מחזור בדיוק מתי שיש ביקוש.',
+  gamesDemandPromptCta: 'הגדר אזור וזמינות',
+  gamesClubsNearbyTitle: 'מועדונים באזור שלך',
+  gamesClubsNearbySub: 'קהילות כדורגל שמשחקות בקביעות לידך — הצטרף ותשחק איתן',
+  gamesClubsAnyTitle: 'מועדונים שאפשר להצטרף אליהם',
+  gamesClubsAnySub: 'הקהילות הפעילות באפליקציה — הגדר אזור בית כדי לראות את אלו שלידך',
   matchesEmptyCardTitle: 'לא מצאת מחזור מתאים?',
   matchesEmptyCardSub: 'צור מחזור חדש ותן לאחרים להצטרף',
   matchCardJoinFull: 'הצטרף למחזור',
@@ -2225,10 +2527,10 @@ export const he = {
   // These fire from the realtime game-doc listener, so they describe
   // events that may be triggered by other users on other devices.
   bannerPlayerJoined: 'שחקן הצטרף למחזור',
-  bannerPlayerJoinedNamed: (firstName: string) => `${firstName} נכנס להרכב`,
+  bannerPlayerJoinedNamed: (name: string) => `${name} נכנס להרכב`,
   bannerPlayersJoinedCount: (n: number) => `${n} שחקנים נכנסו להרכב`,
   bannerPlayerLeft: 'שחקן יצא מהמחזור',
-  bannerPlayerLeftNamed: (firstName: string) => `${firstName} יצא מהמחזור`,
+  bannerPlayerLeftNamed: (name: string) => `${name} יצא מהמחזור`,
   bannerPlayersLeftCount: (n: number) => `${n} שחקנים יצאו מהמחזור`,
   bannerGuestAdded: 'אורח נוסף למחזור',
   bannerEveningEnded: 'המחזור הסתיים',

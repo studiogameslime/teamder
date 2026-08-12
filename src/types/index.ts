@@ -1288,6 +1288,68 @@ export interface GameJoinRequest {
   assignedAt?: number;
 }
 
+/**
+ * A weekly fixture's SETTINGS, independent of any single match.
+ *
+ * Every week the cron creates the next occurrence FROM THIS DOC — never by
+ * copying the previous match. That's what makes an occurrence disposable:
+ * deleting next week's match doesn't break the chain, and the week after is
+ * still built from these settings.
+ *
+ * Editing the series edits this doc and affects FUTURE occurrences only; the
+ * already-created upcoming match is left alone so players who signed up don't
+ * have the pitch or time moved under them.
+ */
+export interface GameSeries {
+  id: string;
+  groupId: GroupId;
+  /** False = stopped. Stopped series never spawn another occurrence, and are
+   *  kept (not deleted) so past matches keep resolving their `seriesId`. */
+  active: boolean;
+  createdBy: UserId;
+  createdAt: number;
+  updatedAt: number;
+  /** Kickoff of the most recent occurrence THIS SERIES produced. The next one
+   *  is exactly one week later (same local wall-clock time across DST). */
+  lastOccurrenceAt: number;
+  /** The template every occurrence is built from. Mirrors the createGameV2
+   *  inputs that make sense to repeat weekly — deliberately NOT the roster,
+   *  status, or anything else instance-specific. */
+  settings: GameSeriesSettings;
+}
+
+export interface GameSeriesSettings {
+  title: string;
+  fieldName: string;
+  city?: string;
+  fieldAddress?: string;
+  fieldLat?: number;
+  fieldLng?: number;
+  fieldType?: FieldType;
+  format?: GameFormat;
+  numberOfTeams?: number;
+  maxPlayers: number;
+  minPlayers?: number;
+  matchDurationMinutes?: number;
+  cancelDeadlineHours?: number;
+  visibility: 'public' | 'community';
+  requiresApproval: boolean;
+  bringBall: boolean;
+  bringShirts: boolean;
+  notes?: string;
+  ruleTags?: string[];
+  acceptsFillers?: boolean;
+  fillerMinTrust?: number;
+  advancedMode?: boolean;
+  advancedFillMode?: 'permanent' | 'temporary';
+  advancedTieMode?: 'bothOut' | 'veteranOut';
+  /** Offsets BEFORE kickoff (ms) rather than absolute timestamps, so each
+   *  occurrence gets the same relative schedule without any drift. */
+  registrationOpensBeforeMs?: number;
+  publicOpenBeforeMs?: number;
+  guestsOpenBeforeMs?: number;
+}
+
 export interface Game {
   id: string;
   groupId: GroupId;             // FK to /groups/{groupId}
@@ -1507,6 +1569,19 @@ export interface Game {
    * cloning the same fixture twice.
    */
   recurringNextCreatedAt?: number;
+
+  /**
+   * The weekly SERIES this match is an occurrence of. Present on every
+   * occurrence created from a `GameSeries`.
+   *
+   * WHY A SEPARATE ENTITY: the old model kept the series alive *inside* the
+   * most recent match — the cron cloned next week from the last past game. So
+   * deleting one week killed the whole fixture, which is why "delete this
+   * week" had to spawn next week up front and matches appeared out of nowhere.
+   * With the settings living in their own document, an occurrence is just an
+   * occurrence: delete it and the series carries on from the series doc.
+   */
+  seriesId?: string;
 
   /**
    * Optional ms-epoch when a community game flips from members-only

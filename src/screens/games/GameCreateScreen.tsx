@@ -19,6 +19,7 @@ import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { Group } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { WINDOW_START_HOUR } from '@/utils/demandSlots';
 import { he } from '@/i18n/he';
 import { holidayOnDate } from '@/utils/holidays';
 import { useUserStore } from '@/store/userStore';
@@ -269,11 +270,9 @@ export function GameCreateScreen() {
   const [initialKey, setInitialKey] = useState(0);
   // From the home availability calendar: turn (start-of-day + window) into a
   // concrete kickoff time. Default hour per window; the user can still edit it.
-  const WINDOW_HOUR: Record<import('@/types').TimeBucket, number> = {
-    morning: 9,
-    noon: 13,
-    evening: 19,
-  };
+  // Shared with the demand card, which uses the same hours to decide whether
+  // today's window has already gone — two copies is how they drifted before.
+  const WINDOW_HOUR = WINDOW_START_HOUR;
   const prefillStartsAt =
     typeof params.prefillDateMs === 'number' && params.prefillWindow
       ? (() => {

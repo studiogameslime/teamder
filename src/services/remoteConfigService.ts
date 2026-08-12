@@ -55,6 +55,19 @@ export const RC_DEFAULTS = {
   store_url_android:
     'https://play.google.com/store/apps/details?id=com.studiogameslime.soccerapp',
 
+  // ── Games-feed discovery density (GamesListScreen) ──
+  // How full the matches tab feels decides how much discovery content we add
+  // below the list. Server-tunable so the thresholds can follow real supply as
+  // the app grows, without a new build. See src/config/gamesFeedDiscovery.ts.
+  games_feed_rich_min: 5, // ≥ this many visible games → "many", no filler
+  games_feed_demand_min: 3, // fewer available players than this → no demand row
+  games_feed_clubs_max: 3, // how many nearby clubs to surface
+  games_feed_clubs_radius_km: 30,
+  // A club needs enough people to actually field a match; 10 covers a 5v5.
+  // Below this it isn't a community to join, and surfacing it makes the
+  // section's own promise ("קהילות שמשחקות בקביעות") false.
+  games_feed_clubs_min_members: 10,
+
   // ── In-app announcement banner ──
   announcement_enabled: false,
   announcement_text: '',

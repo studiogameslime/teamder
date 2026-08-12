@@ -629,6 +629,20 @@ service cloud.firestore {
     }
 
     // ── /games/{id} ─────────────────────────────────────────────────────
+    // Weekly fixture SETTINGS, independent of any single match. Members read
+    // (the club surfaces show the fixture); only club admins write, same
+    // authority that creates the matches themselves. The server (Admin SDK)
+    // bypasses rules to advance `lastOccurrenceAt` each week.
+    match /gameSeries/{id} {
+      allow read: if isSignedIn() && isGroupMember(resource.data.groupId);
+      allow create: if isGroupAdmin(request.resource.data.groupId);
+      // groupId is the authority anchor — pinning it prevents moving a series
+      // into a club you don't administer.
+      allow update: if isGroupAdmin(resource.data.groupId)
+        && request.resource.data.groupId == resource.data.groupId;
+      allow delete: if isGroupAdmin(resource.data.groupId);
+    }
+
     match /games/{id} {
       allow read: if isSignedIn() && (
         resource.data.visibility == 'public' ||
@@ -1573,6 +1587,16 @@ service cloud.firestore {
     // Nominatim directly via geocodeService when persisting their
     // home city, no shared cache.
     match /cityGeocode/{name} {
+      allow read, write: if false;
+    }
+
+    // ── /tasks/{taskId} — the Pulse work list. NO client access ────────
+    // Written two ways, both privileged: the `onFeedbackCreated` trigger
+    // (Admin SDK) when a tester files a report, and the Pulse dashboard
+    // (service account). Neither goes through these rules — so denying the
+    // app outright costs nothing and keeps the owner's backlog, which quotes
+    // reporters by name and carries their screenshots, off every client.
+    match /tasks/{taskId} {
       allow read, write: if false;
     }
 
