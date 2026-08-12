@@ -41,10 +41,13 @@ import {
   type GroupFilters,
 } from '@/components/CommunityFilterSheet';
 import { CommunitiesHero } from '@/components/community/CommunitiesHero';
+import { ClubCard } from '@/components/community/ClubCard';
+import { resolveClubCard } from '@/utils/clubCard';
 import {
-  CommunityCard,
-  type CommunityCardStatus,
-} from '@/components/community/CommunityCard';
+  fetchFriendsInClubs,
+  type ClubFriendsEntry,
+} from '@/services/clubFriendsService';
+import { haversineKm } from '@/utils/geo';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { groupService } from '@/services';
 import { GroupJoinRejectedError } from '@/services/groupService';
@@ -56,7 +59,11 @@ import { colors, spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
-import { resolveNearbyLocation, promptLocationDenied } from '@/utils/nearby';
+import {
+  resolveLocationIfGranted,
+  resolveNearbyLocation,
+  promptLocationDenied,
+} from '@/utils/nearby';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import type { MapItem } from '@/screens/map/MapScreen';
 
@@ -166,6 +173,26 @@ export function PublicGroupsFeedScreen() {
     };
   }, [text, refreshTick]);
 
+  // Friends-in-club, per club id. Server-resolved (see clubFriendsService):
+  // a non-member can't read a club's roster, which is exactly the case this
+  // row is for.
+  const [clubFriends, setClubFriends] = useState<Record<string, ClubFriendsEntry>>({});
+  // Coordinates for the "מתאים לך" badge. Passive: taken only if the user
+  // already granted location, never prompted for. Used ONLY to decide the
+  // badge — the distance itself is never shown.
+  const [myLatLng, setMyLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    resolveLocationIfGranted()
+      .then((l) => {
+        if (alive) setMyLatLng(l);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const memberIds = useMemo(
     () => new Set(memberGroups.map((g) => g.id)),
     [memberGroups]
@@ -183,12 +210,35 @@ export function PublicGroupsFeedScreen() {
     );
   }, [memberGroups, user]);
 
-  function statusFor(g: GroupPublic): CommunityCardStatus {
+  function statusFor(g: GroupPublic): 'admin' | 'member' | 'pending' | 'none' {
     if (adminIds.has(g.id)) return 'admin';
     if (memberIds.has(g.id)) return 'member';
     if (pendingIds.has(g.id)) return 'pending';
     return 'none';
   }
+
+  // Ask the server which of my friends are in the clubs I can SEE and am not
+  // already in. Batched (the callable caps at 30) and refreshed only when the
+  // visible set changes, so scrolling costs nothing.
+  useEffect(() => {
+    const ids = (items ?? [])
+      .filter((g) => !memberIds.has(g.id) && !adminIds.has(g.id))
+      .slice(0, 30)
+      .map((g) => g.id);
+    if (ids.length === 0) {
+      setClubFriends({});
+      return;
+    }
+    let alive = true;
+    fetchFriendsInClubs(ids)
+      .then((m) => {
+        if (alive) setClubFriends(m);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [items, memberIds, adminIds]);
 
   function passesDiscoveryFilters(g: GroupPublic): boolean {
     // While the nearby toggle is on, wait for permission + first GPS
@@ -378,30 +428,50 @@ export function PublicGroupsFeedScreen() {
     // the count shown on the details screen.
     const localGroup = memberGroups.find((mg) => mg.id === g.id);
     const memberCount = localGroup?.playerIds?.length ?? g.memberCount;
+
+    // Distance is used ONLY to decide the "מתאים לך" badge — it is never
+    // printed on the card. Null when either side has no coordinates, which
+    // the resolver treats as "unknown", not "far".
+    const origin = nearbyLoc?.latLng ?? myLatLng;
+    const distanceKm =
+      origin && typeof g.lat === 'number' && typeof g.lng === 'number'
+        ? haversineKm(origin, { lat: g.lat, lng: g.lng })
+        : null;
+
+    const fr = clubFriends[g.id];
+    const vm = resolveClubCard({
+      isAdmin: status === 'admin',
+      isMember: status === 'member',
+      isPending: status === 'pending',
+      isOpen: g.isOpen === true,
+      playerCount: memberCount,
+      distanceKm,
+      friends: fr?.friends ?? [],
+      gamesLast30: g.gamesLast30 ?? null,
+      gamesLast60: g.gamesLast60 ?? null,
+    });
+    // The resolver caps the avatars; the real total comes from the server so
+    // "+N" counts friends we never fetched a profile for.
+    const overflow = fr ? Math.max(0, fr.total - vm.friends.length) : vm.friendsOverflow;
+
     return (
       <AppearItem key={g.id} index={idx}>
-        <CommunityCard
+        <ClubCard
+          vm={{ ...vm, friendsOverflow: overflow }}
           name={localGroup?.name ?? g.name}
-          locationLine={locationLine}
-          description={g.description}
+          city={city}
           coverPhotoUrl={g.coverPhotoUrl}
           coverImageId={g.coverImageId}
-          memberCount={memberCount}
-          status={status}
           onPress={() => {
-            // Members enter the full community page; non-members
-            // open the public preview where they can act on a join.
+            // Members enter the full community page; non-members open the
+            // public preview where they can act on a join.
             if (status === 'admin' || status === 'member') {
               handleEnter(g);
             } else {
               handleOpenDetails(g);
             }
           }}
-          onJoinPress={() => handleRequest(g)}
-          // Closed / approval-gated communities (isOpen !== true) ask the
-          // user to REQUEST to join rather than promising an instant join.
-          // Open communities keep the default "הצטרף למועדון".
-          joinLabel={g.isOpen ? he.communitiesCardJoin : he.communityRequestToJoin}
+          onCtaPress={() => handleRequest(g)}
         />
       </AppearItem>
     );

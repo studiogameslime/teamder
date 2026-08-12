@@ -551,7 +551,18 @@ service cloud.firestore {
         isOptionalShortString(request.resource.data, 'description', 500) &&
         isOptionalShortString(request.resource.data, 'city', 80) &&
         isOptionalShortString(request.resource.data, 'fieldName', 200) &&
-        isOptionalShortString(request.resource.data, 'fieldAddress', 300);
+        isOptionalShortString(request.resource.data, 'fieldAddress', 300) &&
+        // Activity counters are SERVER-owned (the daily clubActivity sweep).
+        // Without this a club admin could write gamesLast30: 99 and wear a
+        // "פעיל מאוד" badge on a club that hasn't played since spring —
+        // the badge is a recommendation signal, so faking it is worth money
+        // to them and worthless to everyone else. -1 is a safe sentinel:
+        // the server only ever writes non-negative ints, so an absent field
+        // can't collide with a real value.
+        request.resource.data.get('gamesLast30', -1) ==
+          resource.data.get('gamesLast30', -1) &&
+        request.resource.data.get('gamesLast60', -1) ==
+          resource.data.get('gamesLast60', -1);
       allow delete: if isSignedIn() && (
         isGroupAdmin(gid) ||
         !exists(/databases/$(database)/documents/groups/$(gid))

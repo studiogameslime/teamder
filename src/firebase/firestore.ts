@@ -812,6 +812,9 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       description: g.description ?? null,
       memberCount: g.memberCount,
       isOpen: g.isOpen ?? null,
+      // gamesLast30/60 are deliberately NOT written here. They are owned by
+      // the server sweep, and a client write would let anyone claim their
+      // club is the most active one in the feed.
       maxMembers: g.maxMembers ?? null,
       contactPhone: g.contactPhone ?? null,
       // Cover photo — admin upload from the details screen lands here.
@@ -843,6 +846,13 @@ const groupPublicConverter: FirestoreDataConverter<GroupPublic> = {
       description: d.description ?? undefined,
       memberCount: d.memberCount ?? 0,
       isOpen: typeof d.isOpen === 'boolean' ? d.isOpen : undefined,
+      // Activity counters, written by the server sweep. They must be read
+      // here explicitly: this converter rebuilds the object field by field,
+      // so anything not listed is dropped even though it's in the document.
+      gamesLast30:
+        typeof d.gamesLast30 === 'number' ? d.gamesLast30 : undefined,
+      gamesLast60:
+        typeof d.gamesLast60 === 'number' ? d.gamesLast60 : undefined,
       maxMembers: typeof d.maxMembers === 'number' ? d.maxMembers : undefined,
       contactPhone:
         typeof d.contactPhone === 'string' ? d.contactPhone : undefined,

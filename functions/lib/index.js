@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
+exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -9719,11 +9719,149 @@ exports.cronEvery15Min = (0, scheduler_1.onSchedule)({
     await runSweep('reviewAlerts', () => (0, reviewAlerts_1.runReviewAlerts)(ASC_P8.value(), PLAY_SA.value()));
 });
 // Every 60 minutes — cleanup, promote prompts, and the gated daily sweep.
+/**
+ * Club activity counters for the communities feed.
+ *
+ * The card shows פעיל / פעיל מאוד / לא פעיל, and the only honest source is
+ * games the club actually PLAYED. The client can't compute this: a non-member
+ * cannot read /groups/{id} at all, let alone its games — correctly, because a
+ * club's fixtures are private. So the counts are derived here and denormalised
+ * onto the PUBLIC projection.
+ *
+ * Only two integers are published. Not dates, not titles, not headcounts —
+ * "how active" is exactly what the badge claims and nothing more leaks.
+ *
+ * Counted by KICKOFF time (`startsAt`), not by when the game was created: a
+ * fixture opened in January for a March match is March's activity. Only
+ * `finished` games count — an opened game nobody turned up to isn't activity.
+ */
+const ACTIVITY_30 = 30 * 24 * 60 * 60 * 1000;
+const ACTIVITY_60 = 60 * 24 * 60 * 60 * 1000;
+async function runClubActivitySweep() {
+    const now = Date.now();
+    // ONE range query over the last 60 days, then grouped in memory. Per-club
+    // queries would be N reads for a feed that is read constantly.
+    const snap = await db
+        .collection('games')
+        .where('startsAt', '>=', now - ACTIVITY_60)
+        .get();
+    const per = new Map();
+    for (const doc of snap.docs) {
+        const g = doc.data();
+        if (g.status !== 'finished')
+            continue;
+        const gid = typeof g.groupId === 'string' ? g.groupId : '';
+        const at = typeof g.startsAt === 'number' ? g.startsAt : 0;
+        if (!gid || at <= 0 || at > now)
+            continue;
+        const row = per.get(gid) ?? { d30: 0, d60: 0 };
+        row.d60 += 1;
+        if (at >= now - ACTIVITY_30)
+            row.d30 += 1;
+        per.set(gid, row);
+    }
+    // Every club with a public projection gets written, INCLUDING the ones with
+    // no games — otherwise a club that goes quiet keeps yesterday's "פעיל" badge
+    // forever, which is worse than saying nothing.
+    const pubs = await db.collection('groupsPublic').select().get();
+    let batch = db.batch();
+    let n = 0;
+    for (const p of pubs.docs) {
+        const row = per.get(p.id) ?? { d30: 0, d60: 0 };
+        batch.set(p.ref, { gamesLast30: row.d30, gamesLast60: row.d60, activityAt: now }, { merge: true });
+        if (++n % 400 === 0) {
+            await batch.commit();
+            batch = db.batch();
+        }
+    }
+    if (n % 400 !== 0)
+        await batch.commit();
+    console.log(`[clubActivity] ${pubs.size} clubs, ${per.size} with games`);
+}
+/** Once a day is plenty — an activity badge does not need to be live. */
+let lastActivitySweep = 0;
+async function runClubActivityIfDue() {
+    const now = Date.now();
+    if (now - lastActivitySweep < 20 * 60 * 60 * 1000)
+        return;
+    lastActivitySweep = now;
+    await runClubActivitySweep();
+}
 exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minutes', timeZone: 'Asia/Jerusalem' }, async () => {
     await runSweep('cleanupStaleGames', runCleanupStaleGames);
     await runSweep('sendPromotePrompts', runSendPromotePrompts);
     await runSweep('holidayGameNotices', runHolidayGameNotices);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
+    await runSweep('clubActivity', runClubActivityIfDue);
+});
+/**
+ * Which of my friends are in these clubs.
+ *
+ * The card wants "3 חברים שלך כאן" on clubs the user has NOT joined — and that
+ * is exactly where the client is blind: /groups/{id} is readable only by its
+ * own members, so `playerIds` is out of reach for every club this could apply
+ * to. Resolved here with the Admin SDK instead of loosening that rule.
+ *
+ * Returns only friends' names and avatars, and only for clubs the caller is
+ * NOT in. Nothing about the club's roster beyond the caller's own friends
+ * crosses the wire.
+ */
+exports.getFriendsInClubs = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign in required');
+    const ids = (request.data?.groupIds ?? []);
+    const groupIds = Array.isArray(ids)
+        ? ids.filter((x) => typeof x === 'string' && !!x).slice(0, 30)
+        : [];
+    if (groupIds.length === 0)
+        return { clubs: {} };
+    const me = await db.collection('users').doc(uid).get();
+    const friends = (me.data()?.friends ?? []).filter((x) => typeof x === 'string' && !!x);
+    if (friends.length === 0)
+        return { clubs: {} };
+    const friendSet = new Set(friends);
+    const groups = await db.getAll(...groupIds.map((g) => db.collection('groups').doc(g)));
+    const wanted = new Set();
+    const perClub = new Map();
+    for (const g of groups) {
+        const d = g.data();
+        if (!d)
+            continue;
+        const members = new Set([...(d.playerIds ?? []), ...(d.adminIds ?? [])]);
+        // The caller's own clubs are skipped: the card hides the friends row
+        // there anyway, and this keeps the response to what it's for.
+        if (members.has(uid))
+            continue;
+        const hits = friends.filter((f) => members.has(f));
+        if (hits.length === 0)
+            continue;
+        perClub.set(g.id, hits);
+        hits.slice(0, 5).forEach((h) => wanted.add(h));
+    }
+    if (perClub.size === 0)
+        return { clubs: {} };
+    const profiles = await db.getAll(...[...wanted].map((u) => db.collection('users').doc(u)));
+    const byId = new Map();
+    for (const p of profiles) {
+        const d = p.data();
+        if (!d || !friendSet.has(p.id))
+            continue;
+        byId.set(p.id, {
+            id: p.id,
+            name: typeof d.name === 'string' ? d.name : '',
+            ...(typeof d.photoUrl === 'string' ? { photoUrl: d.photoUrl } : {}),
+            ...(typeof d.avatarId === 'string' ? { avatarId: d.avatarId } : {}),
+        });
+    }
+    const clubs = {};
+    for (const [gid, hits] of perClub) {
+        clubs[gid] = {
+            total: hits.length,
+            friends: hits.slice(0, 5).map((h) => byId.get(h)).filter(Boolean),
+        };
+    }
+    return { clubs };
 });
 // ─── Advanced-mode round stats aggregation ─────────────────────────────────
 // Called by the game admin when a round ends. The client can't write other

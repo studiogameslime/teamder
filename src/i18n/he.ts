@@ -2457,6 +2457,20 @@ export const he = {
     'הכי קשה זה לנעול נעליים. משם זה כיף 👟',
   ],
 
+  // ── Club card (communities feed) ────────────────────────────────────────
+  clubCardMember: 'חבר במועדון',
+  clubCardJoin: 'הצטרף',
+  clubCardRequest: 'בקש להצטרף',
+  clubCardRequested: 'בקשה נשלחה',
+  clubCardManager: 'מנהל',
+  clubCardRecommended: 'מתאים לך',
+  clubCardVeryActive: 'פעיל מאוד',
+  clubCardActive: 'פעיל',
+  clubCardInactive: 'לא פעיל',
+  clubCardPlayers: (n: number) => `${n} שחקנים`,
+  clubCardFriendsHere: (n: number) =>
+    n === 1 ? 'חבר שלך כאן' : `${n} חברים שלך כאן`,
+
   matchesSectionOpen: 'מחזורים פתוחים',
   matchesSectionMine: 'המחזורים שלי',
 

@@ -31,6 +31,39 @@ export interface NearbyLocation {
  *   • `{ latLng: null, city }` — GPS denied/unavailable; city-only fallback.
  *   • `{ latLng: null, city: null }` — nothing to match on; caller shows empty.
  */
+/**
+ * Coordinates ONLY if location permission was already granted — never prompts.
+ *
+ * The "מתאים לך" badge is a nicety; asking a user for GPS so a card can wear a
+ * star would be a bad trade. Users who already granted location (the nearby
+ * filter, the map) get the badge; everyone else simply doesn't, and the
+ * resolver treats an unknown distance as unknown rather than far.
+ */
+export async function resolveLocationIfGranted(): Promise<
+  { lat: number; lng: number } | null
+> {
+  let Location: typeof import('expo-location') | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    Location = require('expo-location');
+  } catch {
+    return null;
+  }
+  if (!Location) return null;
+  try {
+    const cur = await Location.getForegroundPermissionsAsync();
+    if (!cur.granted) return null;
+    const pos = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000)),
+    ]);
+    if (!pos) return null;
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveNearbyLocation(
   fallbackCity: string | undefined,
 ): Promise<NearbyLocation> {

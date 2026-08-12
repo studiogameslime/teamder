@@ -985,6 +985,12 @@ export interface GroupPublic {
   memberCount: number;
   /** See `Group.isOpen`. Mirrored here so the public feed can show it. */
   isOpen?: boolean;
+  /** Games this club actually PLAYED in the last 30 / 60 days, written by the
+   *  daily `clubActivity` sweep. Only the counts are published — never dates
+   *  or any other detail of a club's fixtures. Absent = not yet computed,
+   *  which the card must render as NO badge rather than "inactive". */
+  gamesLast30?: number;
+  gamesLast60?: number;
   maxMembers?: number;
   contactPhone?: string;
   /** Geo coords (WGS-84) — mirrored from `Group.lat`/`Group.lng`. Lets
