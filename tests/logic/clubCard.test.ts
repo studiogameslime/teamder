@@ -83,11 +83,19 @@ describe('the badge in the top corner', () => {
 
 describe('activity, from games actually played', () => {
   it('follows the bands exactly', () => {
-    expect(clubActivity(3, 5)).toBe('veryActive');
+    expect(clubActivity(4, 6)).toBe('veryActive');
     expect(clubActivity(9, 9)).toBe('veryActive');
-    expect(clubActivity(1, 2)).toBe('active');
-    expect(clubActivity(2, 2)).toBe('active');
+    expect(clubActivity(2, 3)).toBe('active');
+    expect(clubActivity(3, 4)).toBe('active');
     expect(clubActivity(0, 0)).toBe('inactive');
+  });
+
+  it('does not call a club active on a single game', () => {
+    // The case that raised the bar: one finished game twenty days ago used
+    // to earn "פעיל". A badge a near-dormant club also gets tells a player
+    // nothing about the clubs that really do play every week.
+    expect(clubActivity(1, 1)).toBeNull();
+    expect(clubActivity(1, 3)).toBeNull();
   });
 
   it('says NOTHING for the in-between club', () => {

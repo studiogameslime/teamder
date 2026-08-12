@@ -145,24 +145,55 @@ export function ClubCard({
             ) : null}
           </View>
 
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              if (ctaActs) onCtaPress?.();
-              else onPress();
-            }}
-            disabled={ctaBusy}
-            style={({ pressed }) => [
-              styles.cta,
-              { backgroundColor: cta.bg, borderColor: cta.border },
-              (pressed || ctaBusy) && { opacity: 0.85 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={CTA_LABEL[vm.cta]}
-          >
-            <Ionicons name={cta.icon as never} size={16} color={cta.fg} />
-            <Text style={[styles.ctaTxt, { color: cta.fg }]}>{CTA_LABEL[vm.cta]}</Text>
-          </Pressable>
+          {/* A member has nothing to press. Rendering their state as a
+              full-width outlined button made "חבר במועדון" read as an action
+              — people tap it and nothing happens. It's a STATUS, so it's a
+              small filled chip that hugs its text and never spans the card;
+              the shape itself says "label", not "button". */}
+          {ctaActs ? (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onCtaPress?.();
+              }}
+              disabled={ctaBusy}
+              style={({ pressed }) => [
+                styles.cta,
+                { backgroundColor: cta.bg, borderColor: cta.border },
+                (pressed || ctaBusy) && { opacity: 0.85 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={CTA_LABEL[vm.cta]}
+            >
+              <Ionicons name={cta.icon as never} size={16} color={cta.fg} />
+              <Text style={[styles.ctaTxt, { color: cta.fg }]}>
+                {CTA_LABEL[vm.cta]}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.statusRow}>
+              <View
+                style={[
+                  styles.status,
+                  vm.cta === 'requested' && { backgroundColor: '#FFF7ED' },
+                ]}
+              >
+                <Ionicons
+                  name={cta.icon as never}
+                  size={14}
+                  color={vm.cta === 'requested' ? '#C2710C' : '#15803D'}
+                />
+                <Text
+                  style={[
+                    styles.statusTxt,
+                    { color: vm.cta === 'requested' ? '#C2710C' : '#15803D' },
+                  ]}
+                >
+                  {CTA_LABEL[vm.cta]}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
         <ImageBackground
           source={
@@ -248,9 +279,13 @@ const styles = StyleSheet.create({
     // flex-END under forceRTL is the visual LEFT — the corner the spec puts
     // the badge in, and the corner it sits in on the mockup.
     alignSelf: 'flex-end',
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 5,
-    borderBottomRightRadius: 12,
+    // Fully rounded and inset. Clipping it into the corner (as the first cut
+    // did) made it look like a torn sticker rather than a badge sitting on
+    // the photo — the reference floats it.
+    margin: 7,
+    borderRadius: 10,
   },
   topBadgeTxt: { color: '#FFF', fontSize: 11, fontWeight: '800' },
   activityBadge: {
@@ -259,9 +294,10 @@ const styles = StyleSheet.create({
     gap: 5,
     alignSelf: 'flex-end',
     backgroundColor: 'rgba(15,23,42,0.82)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 5,
-    borderTopRightRadius: 12,
+    margin: 7,
+    borderRadius: 99,
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
   activityTxt: { color: '#FFF', fontSize: 10.5, fontWeight: '700' },
@@ -286,6 +322,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   moreTxt: { fontSize: 10.5, fontWeight: '800', color: '#475569' },
+
+  statusRow: { flexDirection: 'row', marginTop: 6 },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF3',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 99,
+  },
+  statusTxt: { fontSize: 13.5, fontWeight: '800' },
 
   cta: {
     marginTop: 4,

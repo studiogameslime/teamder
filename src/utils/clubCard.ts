@@ -73,7 +73,16 @@ export const FRIENDS_SHOWN = 3;
  * last month but did play within two months gets NO badge. It isn't active
  * enough to advertise and calling it dead would be wrong — silence is the
  * honest answer, and it keeps the badge meaningful where it does appear.
+ *
+ * ⚠️ The bar was raised after a real case: a club with ONE finished game in
+ * the last twenty days wore "פעיל". True to the old rule, and useless to the
+ * player it's aimed at — someone reading these cards is asking "is there a
+ * game here every week?", and a badge that a near-dormant club also earns
+ * stops answering that for the clubs that do.
  */
+export const VERY_ACTIVE_MIN = 4;
+export const ACTIVE_MIN = 2;
+
 export function clubActivity(
   gamesLast30: number | null,
   gamesLast60: number | null,
@@ -82,8 +91,8 @@ export function clubActivity(
   // every club as dead the moment the feature ships and before the first
   // sweep runs.
   if (gamesLast30 == null || gamesLast60 == null) return null;
-  if (gamesLast30 >= 3) return 'veryActive';
-  if (gamesLast30 >= 1) return 'active';
+  if (gamesLast30 >= VERY_ACTIVE_MIN) return 'veryActive';
+  if (gamesLast30 >= ACTIVE_MIN) return 'active';
   if (gamesLast60 <= 0) return 'inactive';
   return null;
 }
