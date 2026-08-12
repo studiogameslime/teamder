@@ -14,11 +14,13 @@
 
 import type { EveningMetric } from '@/services/eveningSummaryService';
 
-export type ProgressTone = 'good' | 'bad' | 'snark';
+export type ProgressTone = 'crown' | 'good' | 'bad' | 'snark';
 
 export interface ProgressLine {
   id: string;
   tone: ProgressTone;
+  /** Leading emoji — the line renders as a strip, like the insight rows. */
+  icon: string;
   text: string;
 }
 
@@ -47,6 +49,19 @@ const IN_METRIC: Record<EveningMetric['key'], string> = {
   goals: 'בשערים',
   assists: 'בבישולים',
   wins: 'בניצחונות',
+};
+
+/** The club title that comes with topping a column. */
+const CROWN_TITLE: Record<EveningMetric['key'], string> = {
+  goals: 'מלך השערים',
+  assists: 'מלך הבישולים',
+  wins: 'מלך הניצחונות',
+};
+
+const METRIC_ICON: Record<EveningMetric['key'], string> = {
+  goals: '⚽',
+  assists: '🎯',
+  wins: '🏆',
 };
 
 /**
@@ -113,26 +128,35 @@ export function progressLines(
   seed: string,
 ): ProgressLine[] {
   if (score > 0 && score < SNARK_SCORE_MAX) {
-    return [{ id: 'snark', tone: 'snark', text: pickSnark(seed, score) }];
+    return [{ id: 'snark', tone: 'snark', icon: '🙃', text: pickSnark(seed, score) }];
   }
 
   const out: ProgressLine[] = [];
-  // Being top of a column is worth saying out loud, and it's the one standing
-  // that survives now that the per-metric table is gone.
+
+  // ── the crown ──
+  // Topping a column is the loudest thing that can happen, so it leads. And
+  // KEEPING it is its own event: a player who was first last week and is
+  // first again didn't overtake anyone, so without this the card would have
+  // nothing to say to the best player in the club.
   for (const m of metrics) {
-    if (m.rank === 1) {
-      out.push({
-        id: `crown-${m.key}`,
-        tone: 'good',
-        text: `${RLM}אתה ראשון במועדון ${IN_METRIC[m.key]} 👑`,
-      });
-    }
+    if (m.rank !== 1) continue;
+    const held = m.delta === 0;
+    out.push({
+      id: `crown-${m.key}`,
+      tone: 'crown',
+      icon: '👑',
+      text: held
+        ? `${RLM}שמרת על התואר ${CROWN_TITLE[m.key]} גם אחרי המחזור הזה`
+        : `${RLM}לקחת את התואר ${CROWN_TITLE[m.key]}`,
+    });
   }
+
   for (const m of metrics) {
     if (m.passed.length > 0) {
       out.push({
         id: `passed-${m.key}`,
         tone: 'good',
+        icon: METRIC_ICON[m.key],
         text: `${RLM}עקפת את ${joinNames(m.passed)} ${IN_METRIC[m.key]}`,
       });
     }
@@ -143,6 +167,7 @@ export function progressLines(
       out.push({
         id: `passedby-${m.key}`,
         tone: 'bad',
+        icon: METRIC_ICON[m.key],
         text:
           m.passedBy.length === 1
             ? `${RLM}${who} עקף אותך ${IN_METRIC[m.key]}`

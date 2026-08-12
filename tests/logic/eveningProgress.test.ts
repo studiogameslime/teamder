@@ -73,10 +73,33 @@ describe('naming the people you passed', () => {
     expect(progressLines([m()], 7.5, 'x')).toEqual([]);
   });
 
-  it('calls out being top of a column', () => {
-    const lines = progressLines([m({ key: 'assists', rank: 1 })], 7.5, 'x');
+  it('says you KEPT the crown when you were already first', () => {
+    // The best player in the club overtakes nobody, so without this the card
+    // has nothing to tell them — the one player it should be loudest for.
+    const lines = progressLines([m({ key: 'assists', rank: 1, delta: 0 })], 7.5, 'x');
     expect(lines).toHaveLength(1);
-    expect(lines[0].text).toContain('ראשון במועדון בבישולים');
+    expect(lines[0].text).toContain('שמרת על התואר מלך הבישולים');
+    expect(lines[0].tone).toBe('crown');
+  });
+
+  it('says you TOOK the crown when you just climbed to first', () => {
+    const lines = progressLines(
+      [m({ key: 'goals', rank: 1, delta: 2, passed: ['דור', 'רן'] })],
+      7.5,
+      'x',
+    );
+    expect(lines[0].text).toContain('לקחת את התואר מלך השערים');
+    // …and the overtake still gets named underneath it.
+    expect(lines[1].text).toContain('עקפת את');
+  });
+
+  it('gives every line an icon to render with', () => {
+    const lines = progressLines(
+      [m({ rank: 1, delta: 0 }), m({ key: 'wins', passedBy: ['אבי'] })],
+      7,
+      'x',
+    );
+    expect(lines.every((l) => l.icon.length > 0)).toBe(true);
   });
 
   it('puts the crown before the overtakes', () => {

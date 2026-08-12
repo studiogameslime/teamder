@@ -186,18 +186,21 @@ export const EveningSummaryCard = forwardRef<View, Props>(
             nothing else. The overall place still lives in the strip above. */}
         {progress.length > 0 ? (
           <View style={styles.progress}>
-            {progress.map((l) => (
-              <Text
-                key={l.id}
-                style={[
-                  styles.progressLine,
-                  l.tone === 'bad' && { color: C.red },
-                  l.tone === 'snark' && { color: C.goldDeep },
-                ]}
-              >
-                {l.text}
-              </Text>
-            ))}
+            {progress.map((l) => {
+              const t = PROGRESS_TONE[l.tone];
+              return (
+                <View
+                  key={l.id}
+                  style={[
+                    styles.pRow,
+                    { backgroundColor: t.bg, borderColor: t.border },
+                  ]}
+                >
+                  <Text style={styles.pIco}>{l.icon}</Text>
+                  <Text style={[styles.pTxt, { color: t.text }]}>{l.text}</Text>
+                </View>
+              );
+            })}
           </View>
         ) : null}
 
@@ -241,6 +244,15 @@ export const EveningSummaryCard = forwardRef<View, Props>(
   },
 );
 
+// Same visual family as the insight strips below, so the card reads as one
+// thing. The crown gets gold because it's the loudest event on it.
+const PROGRESS_TONE: Record<string, { bg: string; border: string; text: string }> = {
+  crown: { bg: C.goldTint, border: '#F7E7BC', text: C.goldDeep },
+  good: { bg: C.greenTint, border: '#C7EFD6', text: '#15803D' },
+  bad: { bg: '#FEF2F2', border: '#FBD5D5', text: '#B91C1C' },
+  snark: { bg: C.goldTint, border: '#F7E7BC', text: C.goldDeep },
+};
+
 const CARD_SHADOW = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.06,
@@ -250,21 +262,22 @@ const CARD_SHADOW = {
 } as const;
 
 const styles = StyleSheet.create({
-  progress: {
-    // NO alignItems here. The app runs under I18nManager.forceRTL, which
-    // mirrors flex — so 'flex-end' is the physical LEFT and pinned every line
-    // to the wrong edge. Alignment comes from the global Text default
-    // (App.tsx sets textAlign right + rtl on every Text), exactly like the
-    // strips and tiles around it; overriding it here is what broke it.
-    gap: 5,
-    marginBottom: 10,
+  // NO alignItems anywhere in here. The app runs under I18nManager.forceRTL,
+  // which mirrors flex — 'flex-end' is the physical LEFT and pinned every line
+  // to the wrong edge. Alignment comes from the global Text default that
+  // App.tsx sets on every Text, exactly like the strips around it.
+  progress: { gap: 6, marginBottom: 10 },
+  pRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  progressLine: {
-    fontSize: 13.5,
-    lineHeight: 21,
-    color: C.ink,
-    fontWeight: '700',
-  },
+  pIco: { fontSize: 17 },
+  pTxt: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '700' },
 
   card: {
     width: '100%',
