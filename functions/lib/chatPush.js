@@ -53,9 +53,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
+exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = exports.TEAMDER_UID = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
+/**
+ * The reserved sender for messages the app itself sends ("Teamder" replying to
+ * someone's bug report). It is NOT a real account and deliberately has no
+ * /users doc — one would surface in player lists, search and the user counter.
+ *
+ * A real Firebase uid is a 28-char random string, so this short constant can
+ * never collide with one. Impersonation is already impossible: the rules
+ * require senderId == request.auth.uid, and nobody authenticates as this.
+ */
+exports.TEAMDER_UID = 'teamder';
 // Keep the persisted preview + push body bounded.
 const MAX_PREVIEW = 120;
 function truncate(s, max = MAX_PREVIEW) {
@@ -249,7 +259,12 @@ async function handleChatMessage(scope, parentId, msg) {
             // DMs to friends and the sender isn't one — a message that slipped
             // through (legacy client / rules race) must not still buzz the victim.
             const other = recipients.find((uid) => typeof uid === 'string' && uid && uid !== senderId);
-            if (other) {
+            // …but never for the app's own account. `dmFriendsOnly` exists to keep
+            // STRANGERS out; the person it would silence here is the one who wrote
+            // to us first. Worse, this gate returns BEFORE handleRecipient, so
+            // without the exemption the reply would land in the conversation with
+            // no push AND no unread row — invisible. They'd never know we answered.
+            if (other && senderId !== exports.TEAMDER_UID) {
                 try {
                     const uSnap = await db.collection('users').doc(other).get();
                     const u = uSnap.data();
@@ -281,7 +296,9 @@ async function handleChatMessage(scope, parentId, msg) {
     // bumping their unread count — so "my last message" shows in the list instead
     // of a blank placeholder ("הודעה פרטית"). Pulse #19. `lastSenderId === me`
     // lets the client prefix "אני:".
-    if (senderId) {
+    // Skipped for the app account: it has no /users doc, so this would create a
+    // stray /users/teamder/chatUnread tree for a user that doesn't exist.
+    if (senderId && senderId !== exports.TEAMDER_UID) {
         await db
             .collection('users')
             .doc(senderId)

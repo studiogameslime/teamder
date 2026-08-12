@@ -10481,6 +10481,10 @@ exports.onFeedbackCreated = (0, firestore_1.onDocumentCreated)('feedback/{feedba
         images: typeof d.image === 'string' && d.image ? [d.image] : [],
         screen: typeof d.screen === 'string' ? d.screen : '',
         sourceId: feedbackId,
+        // WHO reported. Without this the task is a dead end — you can read the
+        // complaint but have no way to get back to the person who filed it.
+        reporterId: typeof d.userId === 'string' ? d.userId : '',
+        reporterName: who,
         createdAt: now,
         updatedAt: now,
         doneAt: 0,
