@@ -171,7 +171,6 @@ export function ClubCard({
               : (getCoverSource(coverImageId) ?? STADIUM_BG)
           }
           style={styles.cover}
-          imageStyle={styles.coverImg}
           resizeMode="cover"
         >
           <LinearGradient
@@ -227,9 +226,21 @@ const styles = StyleSheet.create({
   // `row` under forceRTL puts the FIRST child on the visual RIGHT. The body
   // is therefore declared first (text starts at the right, where Hebrew
   // reading begins) and the cover second, so it lands on the left as spec'd.
-  row: { flexDirection: 'row', padding: 10, gap: 12 },
-  cover: { width: COVER, alignSelf: 'stretch', minHeight: COVER, justifyContent: 'space-between' },
-  coverImg: { borderRadius: 14 },
+  //
+  // NO padding on the row: the cover is full-bleed against the card's left
+  // edge. It used to sit inside 10px of white with a 14px radius of its own,
+  // which left a grey square-cornered plate showing through behind a rounded
+  // photo. The card already clips (overflow:hidden + borderRadius), so the
+  // cover simply inherits the card's corners instead of fighting them.
+  row: { flexDirection: 'row', alignItems: 'stretch' },
+  cover: {
+    width: COVER,
+    alignSelf: 'stretch',
+    minHeight: COVER,
+    justifyContent: 'space-between',
+    // Not the container's job to round anything — the card does it.
+    overflow: 'hidden',
+  },
   topBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,9 +249,8 @@ const styles = StyleSheet.create({
     // the badge in, and the corner it sits in on the mockup.
     alignSelf: 'flex-end',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderTopRightRadius: 14,
-    borderBottomLeftRadius: 12,
+    paddingVertical: 5,
+    borderBottomRightRadius: 12,
   },
   topBadgeTxt: { color: '#FFF', fontSize: 11, fontWeight: '800' },
   activityBadge: {
@@ -250,14 +260,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     backgroundColor: 'rgba(15,23,42,0.82)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    margin: 6,
-    borderRadius: 99,
+    paddingVertical: 5,
+    borderTopRightRadius: 12,
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
   activityTxt: { color: '#FFF', fontSize: 10.5, fontWeight: '700' },
 
-  body: { flex: 1, justifyContent: 'center', gap: 6, paddingVertical: 2 },
+  body: { flex: 1, justifyContent: 'center', gap: 6, padding: 12 },
   name: { fontSize: 17.5, fontWeight: '800', color: '#0F172A' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaTxt: { fontSize: 14, color: '#475569', fontWeight: '600' },
