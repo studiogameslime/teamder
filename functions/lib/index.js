@@ -4150,23 +4150,43 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
         if (creditedNow) {
             try {
                 const num = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
-                // SELF-based performance model — the CORE subset (wins/goals/assists)
-                // of the client's src/utils/eveningScore. Penalties aren't available
-                // here (the client adds them on the card); the three weights are
-                // re-normalised so this stays on the same 6–10 basis for the
-                // scoreDelta. Goals/assists are evening TOTALS measured against the
-                // community king benchmark (goalsFor10/assistsFor10) — NOT per-game.
-                // Keep in sync with SCORE_WEIGHTS + eveningScore() there.
-                const eveningScore = (goals, assists, wins, gamesPlayed, goalsFor10, assistsFor10) => {
+                // SELF-based performance model — the FULL client model from
+                // src/utils/eveningScore, penalties included. Goals/assists are
+                // evening TOTALS measured against the community king benchmark
+                // (goalsFor10/assistsFor10) — NOT per-game.
+                // Keep in sync with SCORE_WEIGHTS_* + PENALTY_POINTS + eveningScore().
+                //
+                // ⚠️ This used to drop the penalty axis, on the belief that shootout
+                // data "isn't available here". It is: commitRoundStats writes
+                // penSaved/penScored/penMissed/penConceded onto the SAME
+                // gamePlayerStats doc this function already reads for goals and
+                // wins. The consequence was invisible while the card recomputed its
+                // own score — and became real the moment the card started showing
+                // the STORED one: a keeper who saved a shootout penalty saw it
+                // recorded in his stats and absent from the score that ranked him.
+                const eveningScore = (goals, assists, wins, gamesPlayed, goalsFor10, assistsFor10, pen) => {
                     if (gamesPlayed <= 0)
                         return 6.0;
                     const clamp10 = (x) => Math.max(0, Math.min(10, x));
                     const winsScore = clamp10((wins / gamesPlayed) * 10);
                     const goalsScore = clamp10((goals / goalsFor10) * 10);
                     const assistsScore = clamp10((assists / assistsFor10) * 10);
-                    // No penalty data server-side → the no-shootout weight set
-                    // (50/30/20, sums to 1.0). Keep in sync with SCORE_WEIGHTS_NO_PEN.
-                    const weighted = winsScore * 0.5 + goalsScore * 0.3 + assistsScore * 0.2;
+                    const penInvolved = pen.scored + pen.saved + pen.missed + pen.conceded;
+                    // Two explicit weight sets, each summing to 1.0 — the penalty axis
+                    // takes its 5% out of WINS (50→45), exactly as on the client.
+                    let weighted;
+                    if (penInvolved > 0) {
+                        const penScore = clamp10(5 + pen.scored * 2 + pen.saved * 3 + pen.missed * -2 + pen.conceded * -1);
+                        weighted =
+                            winsScore * 0.45 +
+                                goalsScore * 0.3 +
+                                assistsScore * 0.2 +
+                                penScore * 0.05;
+                    }
+                    else {
+                        weighted =
+                            winsScore * 0.5 + goalsScore * 0.3 + assistsScore * 0.2;
+                    }
                     const score = 6 + (weighted / 10) * 4;
                     return Math.round(Math.min(10, Math.max(6, score)) * 10) / 10;
                 };
@@ -4205,6 +4225,14 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                         assists: num(d.assists),
                         wins: num(d.wins),
                         rounds: num(d.rounds),
+                        // Same document, written by commitRoundStats — see the note on
+                        // eveningScore above.
+                        pen: {
+                            scored: num(d.penScored),
+                            saved: num(d.penSaved),
+                            missed: num(d.penMissed),
+                            conceded: num(d.penConceded),
+                        },
                     };
                 });
                 // ── Community king benchmark ─────────────────────────────────────
@@ -4377,13 +4405,13 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                 const scoreOf = new Map();
                 for (const uid of attendees) {
                     const e = evStat[uid];
-                    scoreOf.set(uid, eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10));
+                    scoreOf.set(uid, eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10, e.pen));
                 }
                 const scoreRanked = [...attendees].sort((a, b) => (scoreOf.get(b) ?? 0) - (scoreOf.get(a) ?? 0) || a.localeCompare(b));
                 const standingBatch = db.batch();
                 for (const uid of attendees) {
                     const e = evStat[uid];
-                    const score = eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10);
+                    const score = eveningScore(e.goals, e.assists, e.wins, e.rounds, goalsFor10, assistsFor10, e.pen);
                     const prev = cumMap.get(uid)?.lastScore ?? null;
                     const rankNow = nowRanked.findIndex((c) => c.uid === uid) + 1;
                     const rankBefore = beforeRanked.findIndex((c) => c.uid === uid) + 1;
