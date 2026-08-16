@@ -913,7 +913,7 @@ function readDraftTeamFeedback(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
+export function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   const rawTeams = Array.isArray(o.teams) ? o.teams : [];
@@ -1513,7 +1513,7 @@ function readGuests(v: unknown): import('@/types').GameGuest[] | undefined {
   return out;
 }
 
-function readTeamBalanceMeta(
+export function readTeamBalanceMeta(
   v: unknown,
 ): import('@/types').Game['teamBalanceMeta'] | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -1531,6 +1531,19 @@ function readTeamBalanceMeta(
     teamRatings: Array.isArray(o.teamRatings)
       ? o.teamRatings.filter((n): n is number => typeof n === 'number')
       : [],
+    // The calibration fields. They must be listed here or they are stripped on
+    // read and the whole point of recording them is lost — the same way
+    // `originalTeams` was silently dropped for months. All optional: games
+    // split before v2 simply have none.
+    ...(typeof o.gap === 'number' ? { gap: o.gap } : {}),
+    ...(o.band === 'A' || o.band === 'B' || o.band === 'C' || o.band === 'over'
+      ? { band: o.band }
+      : {}),
+    ...(typeof o.repeat === 'number' ? { repeat: o.repeat } : {}),
+    ...(typeof o.fallback === 'boolean' ? { fallback: o.fallback } : {}),
+    ...(typeof o.historyGames === 'number'
+      ? { historyGames: o.historyGames }
+      : {}),
   };
 }
 

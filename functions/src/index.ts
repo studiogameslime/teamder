@@ -42,6 +42,7 @@ import {
   buildPairRepeatWeights,
   HISTORY_GAMES,
   NEUTRAL_RATING,
+  type BalanceBand,
   normalizeRating,
   type PastSplit,
 } from './teamBalanceCore';
@@ -5817,6 +5818,11 @@ function balanceTeamsV1(
   benchOrder: string[];
   teamRatings: number[];
   unratedCount: number;
+  /** Diagnostics recorded on the game — see Game.teamBalanceMeta. */
+  gap: number;
+  band: BalanceBand;
+  repeat: number;
+  fallback: boolean;
 } {
   const core = balanceCore({
     playerIds,
@@ -5865,6 +5871,10 @@ function balanceTeamsV1(
       return Math.round(avg * 10) / 10;
     }),
     unratedCount: core.unratedCount,
+    gap: core.gap,
+    band: core.band,
+    repeat: core.repeat,
+    fallback: core.fallback,
   };
 }
 
@@ -6154,6 +6164,13 @@ async function generateForGame(
           algorithm: 'rating_balanced_v2',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
+          // Recorded so a split can be explained after the fact and the
+          // parameters calibrated from real weeks. No UI reads these.
+          gap: Math.round(result.gap * 1000) / 1000,
+          band: result.band,
+          repeat: Math.round(result.repeat * 100) / 100,
+          fallback: result.fallback,
+          historyGames: history.length,
         },
         updatedAt: Date.now(),
         // INTENTIONALLY NOT touching teamsEditedManually — system
@@ -6462,6 +6479,13 @@ async function generateDraftTeamsForGame(
           algorithm: 'rating_balanced_v2',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
+          // Recorded so a split can be explained after the fact and the
+          // parameters calibrated from real weeks. No UI reads these.
+          gap: Math.round(result.gap * 1000) / 1000,
+          band: result.band,
+          repeat: Math.round(result.repeat * 100) / 100,
+          fallback: result.fallback,
+          historyGames: history.length,
         },
         updatedAt: Date.now(),
       });

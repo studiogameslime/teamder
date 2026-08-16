@@ -148,6 +148,21 @@ export interface PastSplit {
 
 export type BalanceStrategy = 'A' | 'B';
 
+/**
+ * Which tolerance band a split's rating gap fell into. Recorded on every split
+ * so the parameters can eventually be calibrated from real weeks instead of
+ * from a simulation: 'A' ≤ 0.10 excellent, 'B' ≤ 0.15 good, 'C' ≤ 0.20
+ * tolerable, 'over' only reachable through the fallback.
+ */
+export type BalanceBand = 'A' | 'B' | 'C' | 'over';
+
+export function balanceBand(gap: number): BalanceBand {
+  if (gap <= GAP_EXCELLENT + 1e-9) return 'A';
+  if (gap <= GAP_GOOD + 1e-9) return 'B';
+  if (gap <= GAP_MAX + 1e-9) return 'C';
+  return 'over';
+}
+
 export interface CoreInput {
   playerIds: string[];
   /** Roster id → raw rating. Missing/≤0 = unrated → NEUTRAL_RATING. */
@@ -175,6 +190,8 @@ export interface CoreResult {
   repeat: number;
   /** Extreme-stacking penalty (see stackPenalty). */
   stack: number;
+  /** Which tolerance band `gap` fell into — recorded for later calibration. */
+  band: BalanceBand;
   /** True when no candidate reached GAP_MAX and the fallback window was used. */
   fallback: boolean;
   /** How many roster ids had no rating. */
@@ -713,10 +730,12 @@ export function balanceCore(input: CoreInput): CoreResult {
     rng,
   );
 
+  const finalGap = spreadOf(chosen.teams);
   return {
     teams: chosen.teams.map((t) => t.ids.slice()),
     bench: chosen.bench.map((p) => p.id),
-    gap: spreadOf(chosen.teams),
+    gap: finalGap,
+    band: balanceBand(finalGap),
     repeat: repeatPenalty(chosen.teams, pairWeights),
     stack: stackPenalty(chosen.teams, top, bottom),
     fallback,

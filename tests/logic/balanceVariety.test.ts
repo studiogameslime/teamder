@@ -2,6 +2,7 @@ import {
   balanceCore,
   buildPairRepeatWeights,
   balancePenalty,
+  balanceBand,
   pairKey,
   GAP_MAX,
   GAP_EXCELLENT,
@@ -346,5 +347,37 @@ describe('performance', () => {
     for (let i = 0; i < 10; i++) split({ history });
     const perSplit = (Date.now() - start) / 10;
     expect(perSplit).toBeLessThan(150);
+  });
+});
+
+describe('diagnostics recorded on every split', () => {
+  it('classifies the gap into the tolerance bands', () => {
+    expect(balanceBand(0)).toBe('A');
+    expect(balanceBand(0.1)).toBe('A');
+    expect(balanceBand(0.101)).toBe('B');
+    expect(balanceBand(0.15)).toBe('B');
+    expect(balanceBand(0.151)).toBe('C');
+    expect(balanceBand(0.2)).toBe('C');
+    expect(balanceBand(0.201)).toBe('over');
+  });
+
+  it('reports a band consistent with the gap it returns', () => {
+    const history: PastSplit[] = [LAST_WEEK];
+    for (let i = 0; i < 20; i++) {
+      const r = split({ history });
+      expect(r.band).toBe(balanceBand(r.gap));
+      expect(r.band === 'A' || r.band === 'B' || r.band === 'C').toBe(true);
+    }
+  });
+
+  it('marks the fallback split as over the ceiling', () => {
+    const r = balanceCore({
+      playerIds: ['a', 'b', 'c', 'd'],
+      ratings: { a: 5, b: 4.8, c: 4.6, d: 0.5 },
+      numTeams: 2,
+      perTeam: 2,
+    });
+    expect(r.fallback).toBe(true);
+    expect(r.band).toBe('over');
   });
 });

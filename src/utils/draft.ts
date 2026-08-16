@@ -15,6 +15,7 @@ import {
   buildPairRepeatWeights,
   NEUTRAL_RATING,
   normalizeRating,
+  type BalanceBand,
   type BalanceStrategy,
   type PastSplit,
 } from './teamBalanceCore';
@@ -22,7 +23,7 @@ import {
 // Re-exported so callers (and tests) keep importing the rating helpers from
 // the same place they always have.
 export { NEUTRAL_RATING, normalizeRating };
-export type { PastSplit, BalanceStrategy };
+export type { PastSplit, BalanceStrategy, BalanceBand };
 
 
 export type DraftMethod = 'snake' | 'regular';
@@ -151,6 +152,8 @@ export interface BalanceTeamsOutput {
   repeat: number;
   /** True when the roster made GAP_MAX unreachable and the fallback ran. */
   fallback: boolean;
+  /** Tolerance band the gap fell into (A/B/C/over). */
+  band: BalanceBand;
 }
 
 /**
@@ -213,5 +216,6 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
     gap: core.gap,
     repeat: core.repeat,
     fallback: core.fallback,
+    band: core.band,
   };
 }

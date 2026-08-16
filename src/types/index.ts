@@ -1758,7 +1758,11 @@ export interface Game {
    * this game forever — manual edits are sticky.
    */
   teamsEditedManually?: boolean;
-  /** Diagnostic snapshot of the last auto-balance run. */
+  /**
+   * Diagnostic snapshot of the last auto-balance run. Written by BOTH the
+   * phone and the scheduled function, so after a few real weeks the parameters
+   * can be calibrated from what actually happened instead of from a simulation.
+   */
   teamBalanceMeta?: {
     generatedAt: number;
     /** v1 balanced rating SUMS; v2 balances team AVERAGES + refines by swaps.
@@ -1767,6 +1771,19 @@ export interface Game {
     unratedCount: number;
     /** v1: rating sum of the first two teams. v2: average of every team. */
     teamRatings: number[];
+    /** Strongest team average − weakest. Absent on pre-v2 games. */
+    gap?: number;
+    /** Tolerance band the gap fell into: A ≤0.10, B ≤0.15, C ≤0.20, over. */
+    band?: 'A' | 'B' | 'C' | 'over';
+    /** Repeat weight the chosen split carried against recent game-nights —
+     *  0 means nothing was rebuilt from the last few weeks. */
+    repeat?: number;
+    /** True when the roster made the 0.20 ceiling unreachable and the split
+     *  came from the fallback window instead. */
+    fallback?: boolean;
+    /** How many past game-nights informed the variety model (0 = none found,
+     *  so the split was decided on rating alone). */
+    historyGames?: number;
   };
 
   // ── Cross-community filler matching (per-game opt-in) ─────────

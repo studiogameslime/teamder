@@ -3079,6 +3079,10 @@ export const gameService = {
   async saveDraftTeams(
     gameId: string,
     draft: DraftTeamsResult | null,
+    /** Diagnostics for an AUTO split (gap / band / repeat / fallback), so the
+     *  parameters can later be calibrated from real weeks. Omitted for a manual
+     *  captain draft — there is no algorithm to measure there. */
+    meta?: Game['teamBalanceMeta'],
   ): Promise<void> {
     if (!gameId) return;
     // Freeze the split as first drawn so the post-game "הכוחות שחולקו" record
@@ -3098,11 +3102,13 @@ export const gameService = {
       if (m) {
         m.draftTeams = withOriginal ?? undefined;
         m.teamsEditedManually = !!draft;
+        if (meta) m.teamBalanceMeta = meta;
       }
       return;
     }
     await updateGameDoc(gameId, {
       draftTeams: withOriginal ?? null,
+      ...(meta ? { teamBalanceMeta: meta } : {}),
       // Any client-side save is a deliberate human split (manual draft or the
       // admin's auto-balance button) → mark it so the scheduled auto-generator
       // never clobbers it (B05/B16). Clearing the draft (null) lifts the flag

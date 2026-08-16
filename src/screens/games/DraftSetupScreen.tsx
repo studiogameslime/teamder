@@ -227,17 +227,43 @@ export function DraftSetupScreen() {
               excludeGameId: game.id,
             })
           : [];
-      const { result, unratedCount } = balanceTeams({
-        playerIds,
-        ratings,
-        numTeams: autoNumTeams,
-        format: game.format,
-        createdBy: currentUser.id,
-        history,
-      });
+      const { result, unratedCount, gap, band, repeat, fallback, teamAverages } =
+        balanceTeams({
+          playerIds,
+          ratings,
+          numTeams: autoNumTeams,
+          format: game.format,
+          createdBy: currentUser.id,
+          history,
+        });
       // Auto/random balance is saved as a DRAFT (published:false) too — the
       // admin then reviews it in DraftBoard and publishes from MatchDetails.
-      await gameService.saveDraftTeams(game.id, { ...result, published: false });
+      // Recorded on the game so a split can be explained after the fact: how
+      // balanced it was, which tolerance band that put it in, how much of the
+      // recent weeks it rebuilt, and whether the fallback had to run. No UI
+      // reads this — it exists so the parameters get calibrated from real
+      // weeks rather than from a feeling.
+      await gameService.saveDraftTeams(
+        game.id,
+        { ...result, published: false },
+        {
+          generatedAt: Date.now(),
+          algorithm: 'rating_balanced_v2',
+          unratedCount,
+          teamRatings: teamAverages,
+          gap: Math.round(gap * 1000) / 1000,
+          band,
+          repeat: Math.round(repeat * 100) / 100,
+          fallback,
+          historyGames: history.length,
+        },
+      );
+      if (__DEV__) {
+        console.log(
+          `[autoBalance] gap=${gap.toFixed(3)} band=${band} repeat=${repeat.toFixed(2)}` +
+            ` fallback=${fallback} history=${history.length} unrated=${unratedCount}`,
+        );
+      }
       // Anim 13 — the balance is computed locally (instant), so pad to a
       // minimal "computing" phase (spec floor ≥300ms) via the existing
       // `generating` loader, so the result never pops in. Capped, never padded
