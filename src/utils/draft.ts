@@ -213,16 +213,24 @@ interface BuildTeam {
   size: number;
 }
 
-/** Two splits whose costs differ by less than this are equally good; the
- *  generator picks between them at random so reruns vary (0.02 of a rating
- *  point is far below what anyone can feel on the pitch). */
-const SPREAD_EPSILON = 0.02;
+/**
+ * How much average gap counts as "still equally fair" — the knob that decides
+ * how much a rerun varies. Measured over 200 presses of the real 15-player
+ * roster: 0.02 → 12 distinct splits, 0.05 → 36, 0.08 → 78, 0.10 → 125, with the
+ * worst surviving gap tracking the value itself. 0.05 is the last value whose
+ * gap (0.04) still rounds to a single shared number on screen — past it the
+ * teams start showing 3.3 against 3.4, which is the very thing the split is
+ * supposed to avoid.
+ */
+const SPREAD_EPSILON = 0.05;
 /** Weight of one stack-penalty point against one rating point of average gap.
  *  Small on purpose: a genuinely fairer split still wins, but between splits
  *  that are equally fair the less top-heavy one is taken. */
 const STACK_WEIGHT = 0.02;
 /** How many independent splits to generate before picking one. */
 const CANDIDATES = 32;
+/** Sideways swaps applied to the chosen split, for variety at equal fairness. */
+const WANDER_STEPS = 6;
 /** Cap on improvement passes — the loop exits on its own long before this. */
 const MAX_REFINE_PASSES = 60;
 
@@ -347,8 +355,12 @@ function refineSwaps(
   bottom: Set<string>,
 ): void {
   for (let pass = 0; pass < MAX_REFINE_PASSES; pass++) {
-    let best: { i: number; j: number; a: number; b: number; gain: number } | null =
-      null;
+    // ALL the best swaps, not the first one found: a roster usually offers
+    // several swaps that improve the split by exactly the same amount, and
+    // taking the earliest in scan order every time is what made the descent
+    // land on the same handful of splits no matter where it started.
+    let bestGain = 0;
+    let best: { i: number; j: number; a: number; b: number }[] = [];
     const current = costOf(teams, top, bottom);
     for (let i = 0; i < teams.length; i++) {
       for (let j = i + 1; j < teams.length; j++) {
@@ -361,15 +373,62 @@ function refineSwaps(
             applySwap(ti, a, tj, b, rating);
             const gain = current - costOf(teams, top, bottom);
             applySwap(ti, a, tj, b, rating);
-            if (gain > 1e-9 && (!best || gain > best.gain)) {
-              best = { i, j, a, b, gain };
+            if (gain <= 1e-9) continue;
+            if (gain > bestGain + 1e-9) {
+              bestGain = gain;
+              best = [{ i, j, a, b }];
+            } else if (gain >= bestGain - 1e-9) {
+              best.push({ i, j, a, b });
             }
           }
         }
       }
     }
-    if (!best) return;
-    applySwap(teams[best.i], best.a, teams[best.j], best.b, rating);
+    if (best.length === 0) return;
+    const pick = best[Math.floor(Math.random() * best.length)];
+    applySwap(teams[pick.i], pick.a, teams[pick.j], pick.b, rating);
+  }
+}
+
+/**
+ * Random walk INSIDE the fair region: repeatedly apply a random swap that keeps
+ * the stacking minimal and the average gap within `maxSpread`. The refinement
+ * converges on a handful of optimal splits — on the real 15-player roster only
+ * about a dozen exist — so without this step a rerun keeps re-drawing the same
+ * few line-ups, and one grouping can end up fixed. Every step here is
+ * sideways, never downhill: the split that comes out is exactly as fair as the
+ * one that went in, just composed differently.
+ */
+function wander(
+  teams: BuildTeam[],
+  rating: (id: string) => number,
+  top: Set<string>,
+  bottom: Set<string>,
+  maxSpread: number,
+  steps: number,
+): void {
+  for (let s = 0; s < steps; s++) {
+    const basePenalty = stackPenalty(teams, top, bottom);
+    const moves: { i: number; j: number; a: number; b: number }[] = [];
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const ti = teams[i];
+        const tj = teams[j];
+        for (let a = 0; a < ti.ids.length; a++) {
+          for (let b = 0; b < tj.ids.length; b++) {
+            applySwap(ti, a, tj, b, rating);
+            const ok =
+              spreadOf(teams) <= maxSpread + 1e-9 &&
+              stackPenalty(teams, top, bottom) <= basePenalty;
+            applySwap(ti, a, tj, b, rating);
+            if (ok) moves.push({ i, j, a, b });
+          }
+        }
+      }
+    }
+    if (moves.length === 0) return;
+    const m = moves[Math.floor(Math.random() * moves.length)];
+    applySwap(teams[m.i], m.a, teams[m.j], m.b, rating);
   }
 }
 
@@ -427,19 +486,31 @@ export function balanceTeams(input: BalanceTeamsInput): BalanceTeamsOutput {
 
   // Generate several good splits, then pick one at random among the best.
   const { top, bottom } = extremeSets(scored, numTeams);
-  const pool: { teams: BuildTeam[]; cost: number }[] = [];
+  const pool = [];
   for (let k = 0; k < CANDIDATES; k++) {
     const { teams: built } = greedyBuild(
       scored,
       splitSizes(scored.length, numTeams, perTeam),
     );
     refineSwaps(built, ratingOf, top, bottom);
-    pool.push({ teams: built, cost: costOf(built, top, bottom) });
+    pool.push({
+      teams: built,
+      spread: spreadOf(built),
+      penalty: stackPenalty(built, top, bottom),
+    });
   }
-  const bestCost = Math.min(...pool.map((c) => c.cost));
-  const best = pool.filter((c) => c.cost <= bestCost + SPREAD_EPSILON);
+  // Selection is LEXICOGRAPHIC, not a weighted sum: no team may hold more of
+  // the strongest (or weakest) players than it has to — that is a hard rule,
+  // and letting `SPREAD_EPSILON` trade it away for a hundredth of a rating
+  // point put the whole top of the roster back on one team. Only once the
+  // stacking is minimal does the tolerance open the field up for variety.
+  const minPenalty = Math.min(...pool.map((c) => c.penalty));
+  const unstacked = pool.filter((c) => c.penalty === minPenalty);
+  const bestSpread = Math.min(...unstacked.map((c) => c.spread));
+  const best = unstacked.filter((c) => c.spread <= bestSpread + SPREAD_EPSILON);
   const chosen = best[Math.floor(Math.random() * best.length)] ?? pool[0];
   const teams = chosen.teams;
+  wander(teams, ratingOf, top, bottom, bestSpread + SPREAD_EPSILON, WANDER_STEPS);
 
   const draftTeams = teams.map((t, index) => {
     // Captain = the highest-rated member (ties → first after the stable sort).

@@ -137,6 +137,31 @@ describe('balanceTeams — the 12.08 roster', () => {
     }
   });
 
+  it('shows one shared average on screen (rounded to a decimal)', () => {
+    for (let i = 0; i < 20; i++) {
+      const { averages } = run(REAL_1208, 3, '5v5');
+      const shown = new Set(averages.map((a) => a.toFixed(1)));
+      expect(shown.size).toBe(1);
+    }
+  });
+
+  it('almost every press gives a different split', () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      const { out } = run(REAL_1208, 3, '5v5');
+      seen.add(
+        out.result.teams
+          .map((t) => t.playerIds.slice().sort().join(','))
+          .sort()
+          .join('|'),
+      );
+    }
+    // Was 1 distinct split, always. Any regression that re-freezes the search
+    // (a deterministic tie-break, a tolerance too tight to move in) shows up
+    // here before it reaches the pitch.
+    expect(seen.size).toBeGreaterThanOrEqual(12);
+  });
+
   it('stays fast enough for a button press', () => {
     const start = Date.now();
     for (let i = 0; i < 10; i++) run(REAL_1208, 3, '5v5');
