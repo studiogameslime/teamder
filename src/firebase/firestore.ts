@@ -1488,10 +1488,14 @@ function readTeamBalanceMeta(
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   if (typeof o.generatedAt !== 'number') return undefined;
-  if (o.algorithm !== 'rating_greedy_v1') return undefined;
+  // Both algorithm tags must be accepted: games balanced before the v2 switch
+  // still carry 'rating_greedy_v1', and an unknown tag here would silently drop
+  // the whole meta object on read.
+  if (o.algorithm !== 'rating_greedy_v1' && o.algorithm !== 'rating_balanced_v2')
+    return undefined;
   return {
     generatedAt: o.generatedAt,
-    algorithm: 'rating_greedy_v1',
+    algorithm: o.algorithm,
     unratedCount: typeof o.unratedCount === 'number' ? o.unratedCount : 0,
     teamRatings: Array.isArray(o.teamRatings)
       ? o.teamRatings.filter((n): n is number => typeof n === 'number')

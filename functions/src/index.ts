@@ -5765,17 +5765,23 @@ function shuffleInPlace<T>(arr: T[]): void {
 }
 
 /**
- * rating_greedy_v1 — distribute registered players into N teams so the
- * sum of ratings per team is roughly equal.
+ * rating_balanced_v2 — distribute registered players into N teams so the
+ * AVERAGE rating per team is as close to equal as possible.
  *
  * - Unrated players are scored at the neutral 3.
- * - The whole list is shuffled BEFORE sorting so every run is
- *   non-deterministic when several players share a rating (Array.sort
- *   is stable in V8 since ES2019, so the shuffle order is preserved
- *   for ties).
- * - Greedy assignment respects a hard `perTeam` cap; any registered
- *   player who can't fit lands on the bench in shuffled order.
- * - Tie-breaker order: lowest team total → fewest players → random.
+ * - Team sizes are fixed up front, as even as possible under the `perTeam`
+ *   cap, with the remainder handed to a random subset of teams.
+ * - Greedy pass: strongest first, into whichever team sits furthest below its
+ *   share (`total / size`, not `total` — that is what balances averages rather
+ *   than sums; the old v1 balanced sums, so a team carrying an extra player
+ *   was permanently weaker on average).
+ * - Refinement: repeatedly apply the single cross-team swap that shrinks the
+ *   average spread the most, until nothing improves.
+ * - Variety: several independent splits are generated and one is picked at
+ *   random among all that are within `SPREAD_EPSILON` of the fairest. v1 was
+ *   deterministic in its totals — its shuffle only reordered tied ratings — so
+ *   pressing "generate" again returned the same team ratings every time.
+ * - Any registered player who can't fit under the cap lands on the bench.
  */
 type BalanceZone =
   | 'teamA'
@@ -5801,6 +5807,200 @@ function normalizeRating(v: number): number {
   return Math.min(5, Math.max(0, r));
 }
 
+/** Neutral score for an unrated player — the middle of the 1.0–5.0 scale. */
+const NEUTRAL_RATING = 3;
+/** Splits whose costs differ by less than this are equally good; the picker
+ *  chooses between them at random so reruns actually vary. */
+const SPREAD_EPSILON = 0.02;
+/** Weight of one stack-penalty point against one rating point of average gap —
+ *  small, so a genuinely fairer split still wins. */
+const STACK_WEIGHT = 0.02;
+/** How many independent splits to generate before picking one. */
+const BALANCE_CANDIDATES = 32;
+/** Cap on refinement passes — the loop exits on its own long before this. */
+const MAX_REFINE_PASSES = 60;
+
+interface ScoredPlayer {
+  id: string;
+  rating: number;
+}
+interface BuildTeam {
+  ids: string[];
+  total: number;
+  /** Fixed target size — balancing AVERAGES needs the final head count. */
+  size: number;
+}
+
+/** The strongest / weakest ends of the roster, TIE-INCLUSIVE (a tie at the
+ *  cut-off would otherwise hide a pile-up). Mirrors the client `extremeSets`. */
+function extremeSets(
+  scored: ScoredPlayer[],
+  numTeams: number,
+): { top: Set<string>; bottom: Set<string> } {
+  const sorted = scored.map((p) => p.rating).sort((a, b) => b - a);
+  const topCut = sorted[Math.min(numTeams, sorted.length) - 1];
+  const bottomCut = sorted[Math.max(0, sorted.length - numTeams)];
+  const top = new Set<string>();
+  const bottom = new Set<string>();
+  for (const p of scored) {
+    if (p.rating >= topCut) top.add(p.id);
+    else if (p.rating <= bottomCut) bottom.add(p.id);
+  }
+  return { top, bottom };
+}
+
+/** How badly a split stacks the extremes: the sum of SQUARED per-team counts of
+ *  the top (and bottom) players, smallest when they are spread one per team.
+ *  Equal averages alone allow the three best on one team carried by a 1-rated
+ *  guest — fair on paper, lopsided on the pitch. Squared and not
+ *  `max(0, n − 1)`, which scores 3/1/1 and 2/2/1 identically. Mirrors the
+ *  client `stackPenalty` in src/utils/draft.ts. */
+function stackPenalty(
+  teams: BuildTeam[],
+  top: Set<string>,
+  bottom: Set<string>,
+): number {
+  let penalty = 0;
+  for (const t of teams) {
+    let nTop = 0;
+    let nBottom = 0;
+    for (const id of t.ids) {
+      if (top.has(id)) nTop += 1;
+      else if (bottom.has(id)) nBottom += 1;
+    }
+    penalty += nTop * nTop + nBottom * nBottom;
+  }
+  return penalty;
+}
+
+/** Team sizes, as even as possible, capped at `capacity` each; the remainder
+ *  goes to a RANDOM subset so team A isn't always the bigger one. Mirrors the
+ *  client `splitSizes` in src/utils/draft.ts. */
+function splitSizes(
+  count: number,
+  numTeams: number,
+  capacity: number,
+): number[] {
+  const placed = Math.min(count, numTeams * capacity);
+  const base = Math.floor(placed / numTeams);
+  const extra = placed % numTeams;
+  const order = Array.from({ length: numTeams }, (_, i) => i);
+  shuffleInPlace(order);
+  const sizes = new Array<number>(numTeams).fill(base);
+  for (let i = 0; i < extra; i++) sizes[order[i]] += 1;
+  return sizes;
+}
+
+function averageOf(t: BuildTeam): number {
+  return t.ids.length > 0 ? t.total / t.ids.length : NEUTRAL_RATING;
+}
+
+/** The fairness objective: strongest team average minus weakest. */
+function spreadOf(teams: BuildTeam[]): number {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const t of teams) {
+    const a = averageOf(t);
+    if (a < min) min = a;
+    if (a > max) max = a;
+  }
+  return max - min;
+}
+
+/** One greedy pass: strongest player first, into whichever team is furthest
+ *  below its share. Mirrors the client `greedyBuild`. */
+function greedyBuild(
+  scored: ScoredPlayer[],
+  sizes: number[],
+): { teams: BuildTeam[]; bench: ScoredPlayer[] } {
+  const teams: BuildTeam[] = sizes.map((size) => ({ ids: [], total: 0, size }));
+  const players = scored.slice();
+  shuffleInPlace(players); // varies the order inside every tied-rating bucket
+  players.sort((a, b) => b.rating - a.rating); // stable → the shuffle survives
+
+  const bench: ScoredPlayer[] = [];
+  for (const p of players) {
+    const open = teams.filter((t) => t.ids.length < t.size);
+    if (open.length === 0) {
+      bench.push(p);
+      continue;
+    }
+    open.sort((a, b) => {
+      const da = a.total / Math.max(1, a.size);
+      const db = b.total / Math.max(1, b.size);
+      if (Math.abs(da - db) > 1e-9) return da - db;
+      if (a.ids.length !== b.ids.length) return a.ids.length - b.ids.length;
+      return Math.random() - 0.5;
+    });
+    open[0].ids.push(p.id);
+    open[0].total += p.rating;
+  }
+  return { teams, bench };
+}
+
+/** What the balance optimises: the average gap plus a small charge for piling
+ *  the extremes onto one team, in ONE number so fixing one can't wreck the
+ *  other. Mirrors the client `costOf`. */
+function costOf(
+  teams: BuildTeam[],
+  top: Set<string>,
+  bottom: Set<string>,
+): number {
+  return spreadOf(teams) + STACK_WEIGHT * stackPenalty(teams, top, bottom);
+}
+
+/** Swap two players between teams, keeping the running totals in step. */
+function applySwap(
+  ti: BuildTeam,
+  a: number,
+  tj: BuildTeam,
+  b: number,
+  rating: (id: string) => number,
+): void {
+  const ida = ti.ids[a];
+  const idb = tj.ids[b];
+  ti.ids[a] = idb;
+  tj.ids[b] = ida;
+  ti.total += rating(idb) - rating(ida);
+  tj.total += rating(ida) - rating(idb);
+}
+
+/** Steepest-descent refinement: apply the best size-preserving cross-team swap
+ *  until none improves the cost. Mirrors the client `refineSwaps`. */
+function refineSwaps(
+  teams: BuildTeam[],
+  rating: (id: string) => number,
+  top: Set<string>,
+  bottom: Set<string>,
+): void {
+  for (let pass = 0; pass < MAX_REFINE_PASSES; pass++) {
+    let best:
+      | { i: number; j: number; a: number; b: number; gain: number }
+      | null = null;
+    const current = costOf(teams, top, bottom);
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const ti = teams[i];
+        const tj = teams[j];
+        for (let a = 0; a < ti.ids.length; a++) {
+          for (let b = 0; b < tj.ids.length; b++) {
+            // Try it for real and undo — the cost depends on WHO sits where
+            // (the stacking half), not just on the totals.
+            applySwap(ti, a, tj, b, rating);
+            const gain = current - costOf(teams, top, bottom);
+            applySwap(ti, a, tj, b, rating);
+            if (gain > 1e-9 && (!best || gain > best.gain)) {
+              best = { i, j, a, b, gain };
+            }
+          }
+        }
+      }
+    }
+    if (!best) return;
+    applySwap(teams[best.i], best.a, teams[best.j], best.b, rating);
+  }
+}
+
 function balanceTeamsV1(
   playerIds: string[],
   ratings: Record<string, number>,
@@ -5813,47 +6013,41 @@ function balanceTeamsV1(
   unratedCount: number;
 } {
   let unratedCount = 0;
-  const scored = playerIds.map((id) => {
+  const scored: ScoredPlayer[] = playerIds.map((id) => {
     const known = ratings[id];
     if (typeof known === 'number' && known > 0) {
-      return { id, rating: normalizeRating(known), unrated: false };
+      return { id, rating: normalizeRating(known) };
     }
     unratedCount += 1;
-    return { id, rating: 3, unrated: true }; // neutral midpoint of 1.0..5.0
+    return { id, rating: NEUTRAL_RATING }; // neutral midpoint of 1.0..5.0
   });
+  const ratingOf = (id: string) => {
+    const known = ratings[id];
+    return typeof known === 'number' && known > 0
+      ? normalizeRating(known)
+      : NEUTRAL_RATING;
+  };
 
-  // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
-  // stable, so shuffled-order survives within any tied rating bucket.
-  shuffleInPlace(scored);
-  scored.sort((a, b) => b.rating - a.rating);
-
-  const teams: { ids: string[]; total: number }[] = Array.from(
-    { length: numberOfTeams },
-    () => ({ ids: [], total: 0 }),
-  );
-  const capacity = perTeam;
   const assignments: Record<string, BalanceZone> = {};
   const benchOrder: string[] = [];
 
-  for (const p of scored) {
-    // Build the candidate list of teams that still have capacity.
-    const open = teams.filter((t) => t.ids.length < capacity);
-    if (open.length === 0) {
-      // Capacity exhausted — overflow to bench.
-      benchOrder.push(p.id);
-      continue;
-    }
-    // Tie-breaker: lowest total → fewest players → random pick among
-    // remaining ties so identical seeds don't clump on team[0].
-    open.sort((a, b) => {
-      if (a.total !== b.total) return a.total - b.total;
-      if (a.ids.length !== b.ids.length) return a.ids.length - b.ids.length;
-      return Math.random() - 0.5;
-    });
-    const target = open[0];
-    target.ids.push(p.id);
-    target.total += p.rating;
+  // Generate several good splits, then pick at random among the best — the
+  // step that makes a rerun produce genuinely different teams.
+  const { top, bottom } = extremeSets(scored, numberOfTeams);
+  const pool: { teams: BuildTeam[]; bench: ScoredPlayer[]; cost: number }[] = [];
+  for (let k = 0; k < BALANCE_CANDIDATES; k++) {
+    const built = greedyBuild(
+      scored,
+      splitSizes(scored.length, numberOfTeams, perTeam),
+    );
+    refineSwaps(built.teams, ratingOf, top, bottom);
+    pool.push({ ...built, cost: costOf(built.teams, top, bottom) });
   }
+  const bestCost = Math.min(...pool.map((c) => c.cost));
+  const best = pool.filter((c) => c.cost <= bestCost + SPREAD_EPSILON);
+  const chosen = best[Math.floor(Math.random() * best.length)] ?? pool[0];
+  const teams = chosen.teams;
+  chosen.bench.forEach((p) => benchOrder.push(p.id));
 
   // Map team index → live-match zone. The live screen renders A/B as
   // the on-field matchup and C/D/E as the waiting queue — we assign
@@ -5878,7 +6072,11 @@ function balanceTeamsV1(
   return {
     assignments,
     benchOrder,
-    teamRatings: teams.slice(0, 2).map((t) => Math.round(t.total * 10) / 10),
+    // AVERAGE per team (all teams), not the sum of the first two: the average
+    // is what the balance now equalises and what the app shows, so the audit
+    // trail in `teamBalanceMeta` should carry the same number. Nothing in the
+    // client renders this field — it is diagnostics only.
+    teamRatings: teams.map((t) => Math.round(averageOf(t) * 10) / 10),
     unratedCount,
   };
 }
@@ -6116,7 +6314,7 @@ async function generateForGame(
         autoTeamsGeneratedBy: 'system',
         teamBalanceMeta: {
           generatedAt: Date.now(),
-          algorithm: 'rating_greedy_v1',
+          algorithm: 'rating_balanced_v2',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
         },
@@ -6408,7 +6606,7 @@ async function generateDraftTeamsForGame(
         autoTeamsAt: admin.firestore.FieldValue.delete(),
         teamBalanceMeta: {
           generatedAt: Date.now(),
-          algorithm: 'rating_greedy_v1',
+          algorithm: 'rating_balanced_v2',
           unratedCount: result.unratedCount,
           teamRatings: result.teamRatings,
         },

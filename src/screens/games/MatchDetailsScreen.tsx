@@ -124,7 +124,7 @@ import {
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { formatDateShortYear, formatDayDate, formatTime } from '@/utils/format';
-import { teamName } from '@/utils/draft';
+import { teamName, normalizeRating, NEUTRAL_RATING } from '@/utils/draft';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { communityEventsService } from '@/services/communityEventsService';
@@ -2299,12 +2299,21 @@ export function MatchDetailsScreen() {
     }
     return teamsGrp?.adminRatings?.[id];
   };
+  // The average shown must be the average the SPLIT was balanced on, or the
+  // screen contradicts the algorithm: unrated players (and guests without an
+  // estimate) count as the neutral middle here exactly as they do in
+  // `balanceTeams`, and legacy 1–10 values are normalised the same way. Before
+  // this, unrated members were simply dropped from the average — so a team the
+  // balancer had made equal could still show a lower number.
   const teamAvgRating = (playerIds: string[]): number | undefined => {
-    if (!teamRatingsVisible) return undefined;
-    const vals = playerIds
-      .map(ratingForRosterId)
-      .filter((v): v is number => typeof v === 'number' && v > 0);
-    if (vals.length === 0) return undefined;
+    if (!teamRatingsVisible || playerIds.length === 0) return undefined;
+    const raw = playerIds.map(ratingForRosterId);
+    // Nobody on the team is rated at all → there is no meaningful number to
+    // show (a flat "3.0" for every team would be noise, not information).
+    if (!raw.some((v) => typeof v === 'number' && v > 0)) return undefined;
+    const vals = raw.map((v) =>
+      typeof v === 'number' && v > 0 ? normalizeRating(v) : NEUTRAL_RATING,
+    );
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   };
 

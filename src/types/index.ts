@@ -1761,8 +1761,11 @@ export interface Game {
   /** Diagnostic snapshot of the last auto-balance run. */
   teamBalanceMeta?: {
     generatedAt: number;
-    algorithm: 'rating_greedy_v1';
+    /** v1 balanced rating SUMS; v2 balances team AVERAGES + refines by swaps.
+     *  Old games keep their v1 tag, so both must stay readable. */
+    algorithm: 'rating_greedy_v1' | 'rating_balanced_v2';
     unratedCount: number;
+    /** v1: rating sum of the first two teams. v2: average of every team. */
     teamRatings: number[];
   };
 
