@@ -217,12 +217,23 @@ export function DraftSetupScreen() {
     setGenerating(true);
     try {
       const computeStart = Date.now();
+      // Recent splits drive the "don't rebuild last week's teams" half of the
+      // balance. A failure or an empty history is fine — the split then falls
+      // back to rating alone. 'random' mode ignores ratings AND history: it is
+      // meant to be a genuine draw.
+      const history =
+        splitMode === 'auto'
+          ? await gameService.getRecentSplits(game.groupId, {
+              excludeGameId: game.id,
+            })
+          : [];
       const { result, unratedCount } = balanceTeams({
         playerIds,
         ratings,
         numTeams: autoNumTeams,
         format: game.format,
         createdBy: currentUser.id,
+        history,
       });
       // Auto/random balance is saved as a DRAFT (published:false) too — the
       // admin then reviews it in DraftBoard and publishes from MatchDetails.

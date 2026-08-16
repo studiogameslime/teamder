@@ -978,12 +978,43 @@ function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
         }))
         .filter((l) => l.playerId)
     : undefined;
+  // The FROZEN original split. It MUST survive deserialization: every live
+  // mutation (went-home, swap, restore, rebalance) writes back `{...draft}`
+  // read through this converter, so a stripped field is erased from the
+  // document on the first edit of the evening. That is exactly what happened —
+  // in production not one finished game still had it, and `teams` (the only
+  // thing left) is the END state: two of the last six games show a team of 2
+  // because players went home. Anything reading history off a past game needs
+  // the original, so this is read back field-by-field like the rest.
+  const rawOriginal = Array.isArray(o.originalTeams) ? o.originalTeams : [];
+  const originalTeams = rawOriginal
+    .map((t) => {
+      if (!t || typeof t !== 'object') return null;
+      const r = t as Record<string, unknown>;
+      const playerIds = Array.isArray(r.playerIds)
+        ? (r.playerIds.filter((x) => typeof x === 'string') as string[])
+        : [];
+      const captainId =
+        typeof r.captainId === 'string' && r.captainId
+          ? r.captainId
+          : playerIds[0] ?? '';
+      if (!captainId && playerIds.length === 0) return null;
+      return {
+        index: typeof r.index === 'number' ? r.index : 0,
+        captainId,
+        playerIds,
+        ...(typeof r.colorKey === 'string' ? { colorKey: r.colorKey } : {}),
+      };
+    })
+    .filter((t): t is NonNullable<typeof t> => t !== null);
+
   return {
     method: o.method === 'regular' ? 'regular' : 'snake',
     numTeams: typeof o.numTeams === 'number' ? o.numTeams : teams.length,
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : 0,
     createdBy: typeof o.createdBy === 'string' ? o.createdBy : '',
     teams,
+    ...(originalTeams.length > 0 ? { originalTeams } : {}),
     fillMode: o.fillMode === 'permanent' ? 'permanent' : o.fillMode === 'temporary' ? 'temporary' : undefined,
     leftHome: leftHome && leftHome.length > 0 ? leftHome : undefined,
     // Draft/publish gate — MUST survive deserialization, else `published:false`

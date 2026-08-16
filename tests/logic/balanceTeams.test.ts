@@ -159,7 +159,12 @@ describe('balanceTeams — the 12.08 roster', () => {
     // Was 1 distinct split, always. Any regression that re-freezes the search
     // (a deterministic tie-break, a tolerance too tight to move in) shows up
     // here before it reaches the pitch.
-    expect(seen.size).toBeGreaterThanOrEqual(12);
+    //
+    // The bar is 8 rather than 12 since variety became a between-WEEKS goal:
+    // with no history to work from, this call now holds the balance tighter and
+    // leaves the mixing to the pair-history model (see balanceVariety.test.ts).
+    // Non-determinism is the property under test here, not its magnitude.
+    expect(seen.size).toBeGreaterThanOrEqual(8);
   });
 
   it('stays fast enough for a button press', () => {

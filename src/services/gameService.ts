@@ -64,6 +64,7 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
+import { HISTORY_GAMES, type PastSplit } from '@/utils/teamBalanceCore';
 import type {
   RoundHistoryDoc,
   RoundGoalRec,
@@ -1393,6 +1394,78 @@ export const gameService = {
       gameId,
       retroGoalId,
     });
+  },
+
+  /**
+   * The club's recent stored team splits, for the auto-balance variety model
+   * ("don't put the same people together again"). One read per game-night, off
+   * the game document itself — the alternative source, `roundHistory`, is a
+   * subcollection and would cost a read per mini-game.
+   *
+   * `originalTeams` is the split as first drawn and `teams` is what it became
+   * by the end of the night (went-home strips players out of it), so the frozen
+   * one wins whenever it's there. Older games have none — they fall back to
+   * `teams`, which under-reports pairs whose player left early. That is a known
+   * gap in old data, not something to paper over.
+   *
+   * Games with no split at all are dropped rather than returned empty: a night
+   * we know nothing about must not consume a slot in a pair's history window.
+   */
+  async getRecentSplits(
+    groupId: GroupId,
+    opts?: { limit?: number; excludeGameId?: string },
+  ): Promise<PastSplit[]> {
+    const max = opts?.limit ?? HISTORY_GAMES;
+    if (!groupId) return [];
+    if (USE_MOCK_DATA) {
+      return mockGamesV2
+        .filter(
+          (g) =>
+            g.groupId === groupId &&
+            g.id !== opts?.excludeGameId &&
+            g.status === 'finished' &&
+            g.draftTeams,
+        )
+        .sort((a, b) => b.startsAt - a.startsAt)
+        .slice(0, max)
+        .map((g) => ({
+          startsAt: g.startsAt,
+          teams: (g.draftTeams?.originalTeams ?? g.draftTeams?.teams ?? []).map(
+            (t) => [...t.playerIds],
+          ),
+        }))
+        .filter((s) => s.teams.length > 0);
+    }
+    try {
+      // Same (groupId, status, startsAt desc) index the history screen uses.
+      // Fetch a couple more than needed — some will have no split and drop out.
+      const snap = await getDocs(
+        query(
+          col.games(),
+          where('groupId', '==', groupId),
+          where('status', '==', 'finished'),
+          orderBy('startsAt', 'desc'),
+          limit(max + 4),
+        ),
+      );
+      const out: PastSplit[] = [];
+      for (const d of snap.docs) {
+        if (out.length >= max) break;
+        if (d.id === opts?.excludeGameId) continue;
+        const g = d.data();
+        const teams = (g.draftTeams?.originalTeams ?? g.draftTeams?.teams ?? [])
+          .map((t) => [...t.playerIds])
+          .filter((ids) => ids.length > 0);
+        if (teams.length === 0) continue;
+        out.push({ startsAt: g.startsAt, teams });
+      }
+      return out;
+    } catch (err) {
+      // History is an enhancement, never a blocker: a failure here just means
+      // the split is decided on rating alone, exactly as it was before.
+      logError('getRecentSplits', err, { groupId });
+      return [];
+    }
   },
 
   async getHistory(groupId: GroupId): Promise<GameSummary[]> {
