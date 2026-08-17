@@ -1423,11 +1423,6 @@ export function AdvancedLiveMatchScreen() {
                 </Pressable>
               </View>
             )}
-            {timerStarted ? (
-              <Pressable style={styles.endBtn} onPress={() => setEndOpen(true)}>
-                <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>
-              </Pressable>
-            ) : null}
           </>
         ) : !rotationActive ? (
           // ── Teams drafted, round not started → single CTA ───────────────
@@ -1445,11 +1440,6 @@ export function AdvancedLiveMatchScreen() {
               <Text style={styles.warnText}>{he.rotationNotEnough}</Text>
             ) : !canStartRound ? (
               <Text style={styles.warnText}>{he.rotationPickStartingNeedTwo}</Text>
-            ) : null}
-            {timerStarted ? (
-              <Pressable style={styles.endBtn} onPress={() => setEndOpen(true)}>
-                <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>
-              </Pressable>
             ) : null}
           </>
         ) : (
@@ -1481,13 +1471,10 @@ export function AdvancedLiveMatchScreen() {
             )}
           </View>
         )}
-        {/* End the whole evening — available in advanced mode too (was only on
-            the timer-only screen). Hidden before kickoff. */}
-        {isAdmin && hasTeams && (rotationActive || timerStarted) ? (
-          <Pressable style={styles.endEveningLink} onPress={() => setEndOpen(true)}>
-            <Text style={styles.endEveningLinkText}>{he.liveEndEvening}</Text>
-          </Pressable>
-        ) : null}
+        {/* Ending the evening lives ONLY in the header menu now — see the
+            overflow Modal below. It used to sit here as well, directly under
+            "סיים משחק", which is the button an admin taps every few minutes all
+            night (reported from a real evening). */}
       </View>
 
       {/* Stoppages history — the synced log of every start / pause / resume
@@ -1669,7 +1656,10 @@ export function AdvancedLiveMatchScreen() {
         onSkip={onSkipHandoff}
       />
 
-      {/* Overflow menu — end evening (rare destructive bits). */}
+      {/* Overflow menu — the ONLY place the evening can be ended from. It used
+          to be duplicated inline under the round controls, six pixels below
+          "סיים משחק"; a coach reported that as a hazard and asked for it to live
+          in the menu. The confirm dialog behind it is unchanged. */}
       <Modal
         visible={menuOpen}
         transparent
@@ -1896,22 +1886,6 @@ const styles = StyleSheet.create({
   statusWord: { fontSize: 15, fontWeight: '700', color: '#64748B' },
   statusWordRunning: { color: '#0F172A' },
   controlRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
-  // Ending the EVENING sat 6px under "סיים משחק" — the button an admin taps
-  // every few minutes all night — and centred on the same axis, so the two read
-  // as one control group (reported from a real evening: "לשנות את המיקום של
-  // כפתור סיים מחזור"). It keeps its place, since admins use it every week and
-  // burying it in a menu trades one problem for another, but it is now clearly
-  // BELOW the line rather than part of the row above it.
-  endEveningLink: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  endEveningLinkText: { ...typography.body, color: colors.danger, fontWeight: '700' },
   sideBtn: {
     width: 84,
     borderRadius: 18,
@@ -2187,19 +2161,6 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontSize: 17,
     fontWeight: '800',
-  },
-  endBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-  },
-  endBtnText: {
-    color: '#DC2626',
-    fontSize: 16,
-    fontWeight: '700',
   },
   viewerHint: {
     textAlign: 'center',
