@@ -3139,7 +3139,16 @@ export const gameService = {
       'draftTeams.published': true,
       updatedAt: Date.now(),
     });
-    await this.notifyTeamsReady(gameId);
+    // Publishing is allowed after the evening is over — a split left as a draft
+    // is invisible to the players forever otherwise. The PUSH is not: "הכוחות
+    // מוכנים" landing after the final whistle is noise, not news. So reveal the
+    // teams either way, and only announce them while the game is still ahead.
+    const g = await this.getGameById(gameId);
+    const alreadyPlayed =
+      g?.status === 'finished' ||
+      g?.status === 'cancelled' ||
+      g?.liveMatch?.startedAt != null;
+    if (!alreadyPlayed) await this.notifyTeamsReady(gameId);
   },
 
   /**

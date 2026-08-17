@@ -1,0 +1,435 @@
+{
+ "game": {
+  "capacityNoticeSent": true,
+  "cancelDeadlineHours": null,
+  "jerseysHolderUserId": null,
+  "participantIds": [
+   "uid_p0",
+   "uid_p1",
+   "uid_p2",
+   "uid_p3",
+   "uid_p4",
+   "uid_p5",
+   "uid_p6",
+   "uid_p7",
+   "uid_p8",
+   "uid_p9",
+   "uid_p10",
+   "uid_p11",
+   "uid_p12",
+   "uid_p13"
+  ],
+  "ballHolderUserId": null,
+  "currentMatchIndex": 0,
+  "advancedMode": true,
+  "hasHalfTime": false,
+  "updatedAt": 1786561561301,
+  "teams": null,
+  "guestsOpenAt": null,
+  "ballBringerIds": null,
+  "adminRemovedBy": null,
+  "arrivals": {
+   "uid_p0": "arrived",
+   "uid_p1": "arrived",
+   "uid_p2": "arrived",
+   "uid_p3": "arrived",
+   "uid_p4": "arrived",
+   "uid_p5": "arrived",
+   "uid_p6": "arrived",
+   "uid_p7": "arrived",
+   "uid_p8": "arrived",
+   "uid_p9": "arrived",
+   "uid_p10": "arrived",
+   "uid_p11": "arrived",
+   "uid_p12": "arrived",
+   "uid_p13": "arrived"
+  },
+  "publicOpenedAt": null,
+  "title": "redacted",
+  "pending": [],
+  "promotePromptSent": false,
+  "autoTeamsGeneratedBy": "system",
+  "players": [
+   "uid_p0",
+   "uid_p1",
+   "uid_p2",
+   "uid_p3",
+   "uid_p4",
+   "uid_p5",
+   "uid_p6",
+   "uid_p7",
+   "uid_p8",
+   "uid_p9",
+   "uid_p10",
+   "uid_p11",
+   "uid_p12",
+   "uid_p13"
+  ],
+  "fieldType": "asphalt",
+  "matchDurationMinutes": 8,
+  "bringShirts": true,
+  "notes": null,
+  "requiresApproval": false,
+  "reminderSent": true,
+  "fieldLat": 32.02676306357574,
+  "rotation": {
+   "loans": [],
+   "lastRoundAt": 1786561481760,
+   "waiting": [
+    2
+   ],
+   "lastRoundWinners": [
+    "uid_3898",
+    "uid_8516",
+    "uid_897",
+    "uid_4342",
+    "uid_6173"
+   ],
+   "lastRoundLosers": [
+    "uid_6527",
+    "uid_2426",
+    "uid_3366",
+    "uid_8979"
+   ],
+   "round": 11,
+   "wins": {
+    "0": 4,
+    "1": 2,
+    "2": 4
+   },
+   "playing": [
+    0,
+    1
+   ],
+   "updatedAt": 1786561481760
+  },
+  "draftTeams": {
+   "teams": [
+    {
+     "index": 0,
+     "captainId": "uid_p0",
+     "playerIds": [
+      "uid_p0",
+      "uid_p1",
+      "uid_p2",
+      "uid_p3",
+      "uid_p4"
+     ]
+    },
+    {
+     "index": 1,
+     "captainId": "uid_p5",
+     "playerIds": [
+      "uid_p5",
+      "uid_p6",
+      "uid_p7",
+      "uid_p8",
+      "uid_p9"
+     ]
+    }
+   ],
+   "createdBy": "uid_2426",
+   "published": false,
+   "numTeams": 3,
+   "method": "snake",
+   "createdAt": 1786555074190,
+   "originalTeams": [
+    {
+     "index": 0,
+     "captainId": "uid_p0",
+     "playerIds": [
+      "uid_p0",
+      "uid_p1",
+      "uid_p2",
+      "uid_p3",
+      "uid_p4"
+     ]
+    },
+    {
+     "index": 1,
+     "captainId": "uid_p5",
+     "playerIds": [
+      "uid_p5",
+      "uid_p6",
+      "uid_p7",
+      "uid_p8",
+      "uid_p9"
+     ]
+    }
+   ]
+  },
+  "waitlist": [],
+  "fieldAddress": "redacted",
+  "publicOpenAt": null,
+  "acceptsFillers": true,
+  "guests": [
+   {
+    "estimatedRating": 1,
+    "id": "msqcde6k-7b8xl5",
+    "addedBy": "uid_6527",
+    "name": "redacted",
+    "createdAt": 1786554416396
+   }
+  ],
+  "teamsNotifiedAt": null,
+  "teamsEditedManually": true,
+  "startsAt": 1786554000000,
+  "waitlistApprovalTimeoutMinutes": 20,
+  "minPlayers": null,
+  "waitlistApprovalRequired": false,
+  "liveMatch": {
+   "activeIntervals": [
+    {
+     "e": 1786555837891.5,
+     "s": 1786555340093
+    },
+    {
+     "e": 1786556453658.5,
+     "s": 1786555939306.5
+    },
+    {
+     "s": 1786556539498.5,
+     "e": 1786556604541
+    },
+    {
+     "e": 1786557161236,
+     "s": 1786556619392
+    },
+    {
+     "s": 1786557282503.5,
+     "e": 1786557832659.5
+    },
+    {
+     "e": 1786558325484,
+     "s": 1786557913108.5
+    },
+    {
+     "s": 1786558346368.5,
+     "e": 1786558395747.5
+    },
+    {
+     "s": 1786558482653,
+     "e": 1786558543872
+    },
+    {
+     "e": 1786558590729.5,
+     "s": 1786558585966.5
+    },
+    {
+     "s": 1786558593364.5,
+     "e": 1786558758758.5
+    },
+    {
+     "e": 1786558962036.5,
+     "s": 1786558808400.5
+    },
+    {
+     "e": 1786559193979,
+     "s": 1786558982933.5
+    },
+    {
+     "s": 1786559325502,
+     "e": 1786559766116.5
+    },
+    {
+     "e": 1786559909948.5,
+     "s": 1786559891973.5
+    },
+    {
+     "s": 1786559921756.5,
+     "e": 1786560589604
+    }
+   ],
+   "startedAt": 1786555111638,
+   "benchOrder": [],
+   "updatedAt": 1786550657528,
+   "timerEvents": [],
+   "goals": [],
+   "scoreB": 0,
+   "timerAccumulatedMs": 0,
+   "timerControlledByName": "Eliran Tzabari",
+   "timerLastStartedAt": null,
+   "goalTally": {
+    "guest:msqcde6k-7b8xl5": 2,
+    "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2": 1,
+    "qhNeLtkLF4ehpLCL3JMYUidxqom1": 1,
+    "ouF28ORPdfYbKINgRnupme2KaqY2": 3,
+    "1PrZpa3nPrO5jMWQLVSBRmUAKJf1": 1,
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": 3,
+    "XEVi4UPvuZbVnsq2ntBtMAqTPGR2": 3,
+    "PHlSgRAvPgRJUkzTZtmNpWmwB1w2": 2,
+    "9OZlK5fmd1Vh46SszBs5y5cQVyg1": 2
+   },
+   "timerControlledBy": "uid_6527",
+   "scoreA": 0,
+   "phase": "finished",
+   "assignments": {
+    "IkGmP0AAadR9LKVD4zeyM06K2xz1": "teamC",
+    "XEVi4UPvuZbVnsq2ntBtMAqTPGR2": "teamB",
+    "JoLFRxFr0tTaYfVAXBPwkvT0et62": "teamC",
+    "YIZlKWBvvjae3oqgIoAMr9nzQEi1": "teamA",
+    "1IdtNEjbEXfiRSqvLrJVn99NsfI2": "teamB",
+    "ouF28ORPdfYbKINgRnupme2KaqY2": "teamC",
+    "bVHUo9Iscacfg7otf6wrPQ60Nlh1": "teamB",
+    "9OZlK5fmd1Vh46SszBs5y5cQVyg1": "teamB",
+    "PHlSgRAvPgRJUkzTZtmNpWmwB1w2": "teamA",
+    "fw3knoc4buQoLmWKGbmnYElidvs2": "teamA",
+    "ojKdWuKnuhcqIQCqUQ05fLUdjCP2": "teamA",
+    "qhNeLtkLF4ehpLCL3JMYUidxqom1": "teamC"
+   },
+   "timerRunning": false
+  },
+  "advancedFillMode": "temporary",
+  "draftTeamFeedback": null,
+  "recurringNextCreatedAt": null,
+  "status": "finished",
+  "joinedAt": {
+   "9OZlK5fmd1Vh46SszBs5y5cQVyg1": 1786432306871,
+   "bVHUo9Iscacfg7otf6wrPQ60Nlh1": 1786431780702,
+   "1IdtNEjbEXfiRSqvLrJVn99NsfI2": 1786348696404,
+   "JoLFRxFr0tTaYfVAXBPwkvT0et62": 1786431712993,
+   "B5KpYO4ILhQD0YVmMng997matof1": 1786431933288,
+   "PHlSgRAvPgRJUkzTZtmNpWmwB1w2": 1786432821765,
+   "ouF28ORPdfYbKINgRnupme2KaqY2": 1786432952011,
+   "1PrZpa3nPrO5jMWQLVSBRmUAKJf1": 1786551933672,
+   "XEVi4UPvuZbVnsq2ntBtMAqTPGR2": 1786431791652,
+   "IkGmP0AAadR9LKVD4zeyM06K2xz1": 1786434975062,
+   "YIZlKWBvvjae3oqgIoAMr9nzQEi1": 1786261611677,
+   "VGPpDG3c9RNMNlsNMvfwNF2MkQ03": 1786432688865,
+   "qhNeLtkLF4ehpLCL3JMYUidxqom1": 1786509033681,
+   "ojKdWuKnuhcqIQCqUQ05fLUdjCP2": 1786432810943,
+   "c3TocTM8nCPCRJ2YWKa2zMpTUhv1": 1786431691491,
+   "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2": 1786554435555,
+   "fw3knoc4buQoLmWKGbmnYElidvs2": 1786431727811
+  },
+  "groupId": "grp1",
+  "autoTeamsGeneratedAt": 1786550657528,
+  "autoTeamGenerationMinutesBeforeStart": null,
+  "ruleTags": [],
+  "isOrphanContext": false,
+  "fieldName": "redacted",
+  "pendingPromotion": null,
+  "advancedTieMode": "bothOut",
+  "invitedUserIds": [
+   "uid_1222",
+   "uid_8573",
+   "uid_7896",
+   "uid_3180",
+   "uid_2213",
+   "uid_5414",
+   "uid_8675",
+   "uid_5866",
+   "uid_408",
+   "uid_1696",
+   "uid_7513",
+   "uid_8480",
+   "uid_9410",
+   "uid_4534",
+   "uid_4713",
+   "uid_5305",
+   "uid_3455",
+   "uid_5067",
+   "uid_9685",
+   "uid_7450",
+   "uid_5037",
+   "uid_6982",
+   "uid_1943",
+   "uid_5707",
+   "uid_7310",
+   "uid_9405",
+   "uid_1066"
+  ],
+  "bringBall": true,
+  "hasPenalties": false,
+  "visibility": "public",
+  "rateReminderSent": false,
+  "endedAt": 1786561561301,
+  "autoTeamsMethod": null,
+  "maxPlayers": 15,
+  "extraTimeMinutes": null,
+  "cancellations": {
+   "B5KpYO4ILhQD0YVmMng997matof1": 1786546232098,
+   "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2": 1786532071399,
+   "c3TocTM8nCPCRJ2YWKa2zMpTUhv1": 1786475636812,
+   "VGPpDG3c9RNMNlsNMvfwNF2MkQ03": 1786548281434
+  },
+  "createdBy": "uid_owner",
+  "city": "redacted",
+  "fieldLng": 34.8574706854796,
+  "hasReferee": false,
+  "createdAt": 1785937566859,
+  "fillerMinTrust": 70,
+  "adminRemovals": null,
+  "format": "5v5",
+  "teamBalanceMeta": {
+   "unratedCount": 0,
+   "teamRatings": [
+    14.4,
+    14.3
+   ],
+   "algorithm": "rating_greedy_v1",
+   "generatedAt": 1786550657528
+  },
+  "numberOfTeams": 3,
+  "weather": null,
+  "rsvpNudgeSent": true,
+  "registrationOpensAt": 1786431600000,
+  "fillerPushHistory": {
+   "JrbOFYZfipXule0Kpv88jrAGFa63": 1786548402822,
+   "sNu8teupeRXbmUeOLhMSF64bfOx1": 1786548661863,
+   "LZ3qT9sydwZ1TignGaNPzoE33g83": 1786548402822,
+   "rflguwyqKBR6s8vOgrJ00GEToy32": 1786548533376,
+   "JLFms4Vy9SgMj9BXiPz3rYDUlTM2": 1786548533376,
+   "64Z3MmUKCzd9fyR85zOMucO2fq32": 1786548402822,
+   "uzaCNCEaICgTtkBdpWsLTAyZanD3": 1786548661863,
+   "yI9yo3Fdu2RFv4MWnWb7XSkvRzC2": 1786548533376,
+   "AeV12e02ppYcsh8iUyelJjPOvJn1": 1786548402822,
+   "c3e1ZigKmXdtgbgzr2gHQxj7X143": 1786548661863,
+   "xONT6ARgNaS1dBDQB5e3gQI9XKz1": 1786548533376,
+   "EGR0JVPS3MfXTHXNWdyxRAZyh1d2": 1786548402822,
+   "DxNOHaXBkBeqboAd7imX0lYkjWj1": 1786548661863,
+   "ZGOuMqNTrPUKaBRGJpVyjv4Tbqi1": 1786548533376,
+   "4ioUEemnH0UOjjaobeu80p0B4MV2": 1786548533376,
+   "GbVEfriYtqTog5M8v8yss1tWlhf1": 1786548402822,
+   "kIObqoTMcCWkWTjFe5IItUikDxf1": 1786548402822,
+   "gzM4y2AShUhD9PTeGyfLxkI8lie2": 1786548402822,
+   "1vENze8qBAcWSUqAyCvqbgEkHKD3": 1786548402822,
+   "t7MEY5PEgXbjLsbjmK6efwd5iTj1": 1786548402822,
+   "s9UANvgzaxafPUBzXktTiA4irqB2": 1786548533376,
+   "mSUg7QIc2rbFiyY3dTwgDeJTRI13": 1786548533376,
+   "TSboyErFHGgjMoc8EkcLA1m8V7p2": 1786548661863,
+   "47pjtZrjsads9ZKNEeswJfUCpQG2": 1786548661863,
+   "VSAnTC3VisYQhjpJT1rz2Qtgsvu2": 1786548533376,
+   "Ii0nVFmWUmbcnZnj3zEWkyByOGo1": 1786548661863,
+   "RzSc5MtGcUSuj13gpzlFOmsZWxk1": 1786548533376
+  },
+  "autoTeamsAt": null,
+  "recurring": false,
+  "openedNotificationSent": true,
+  "pinnedMessage": null
+ },
+ "group": {
+  "name": "club",
+  "adminIds": [
+   "uid_admin"
+  ],
+  "playerIds": [
+   "uid_admin",
+   "uid_p0",
+   "uid_p1",
+   "uid_p2",
+   "uid_p3",
+   "uid_p4",
+   "uid_p5",
+   "uid_p6",
+   "uid_p7",
+   "uid_p8",
+   "uid_p9",
+   "uid_p10",
+   "uid_p11",
+   "uid_p12",
+   "uid_p13"
+  ],
+  "creatorId": "uid_admin"
+ }
+}

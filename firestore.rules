@@ -709,6 +709,41 @@ service cloud.firestore {
         request.resource.data.maxPlayers <= 50;
 
       allow update: if isSignedIn() && (
+        // ── Publish a stored split, even after the final whistle ──────
+        // FIRST on purpose. `allow update` is one long OR chain, and Firestore
+        // stops evaluating a rule after 1000 expressions — on a real game
+        // document (82 fields) the branches below burn the whole budget and the
+        // request is denied before this one is ever reached. That is what
+        // actually failed in production, not the 'finished' guard further down:
+        // the emulator reproduces it against the real document with
+        // "maximum of 1000 expressions to evaluate has been reached". Cheap and
+        // narrow, so leading with it costs the other branches ~10 expressions
+        // and short-circuits this one immediately.
+        //
+        // A split left as a draft is invisible to the players FOREVER, and the
+        // organizer branch below stops dead at 'finished' — so an admin who
+        // forgot to publish before kickoff could never show the teams. Reported
+        // from production: an admin tapped "פרסם כוחות" four minutes after
+        // ending the evening, got permission-denied, and that night's teams
+        // stayed hidden for good.
+        //
+        // The narrowest branch in this file: it may only flip the flag to TRUE,
+        // and a map diff pins every other key of the split — so it cannot
+        // rewrite who played with whom after the fact, which the stats and the
+        // next split's variety model both read back.
+        (
+          (
+            request.auth.uid == resource.data.createdBy ||
+            isGroupAdmin(resource.data.groupId)
+          ) &&
+          affectedKeys().hasOnly(['draftTeams', 'updatedAt']) &&
+          'draftTeams' in resource.data &&
+          resource.data.draftTeams != null &&
+          request.resource.data.draftTeams.published == true &&
+          request.resource.data.draftTeams
+            .diff(resource.data.draftTeams)
+            .affectedKeys().hasOnly(['published'])
+        ) ||
         // ── Self join/cancel branch ───────────────────────────────
         // Strict per-array delta so a self-joining client can't sneak
         // unrelated UIDs into waitlist/pending while satisfying the
