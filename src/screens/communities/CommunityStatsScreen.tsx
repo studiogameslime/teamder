@@ -256,6 +256,9 @@ export function CommunityStatsScreen() {
       topScorer,
       topAssister: leaderBy(players, (p) => p.assists),
       topWinner: leaderBy(players, (p) => p.wins),
+      // The defensive crown — most mini-games finished without conceding.
+      // null until somebody has one, like every other leader here.
+      cleanSheetKing: leaderBy(players, (p) => p.cleanSheets),
       // Penalty leaders — tested derivation (tie-break on success%, then
       // attempts, then uid). null when nobody has scored/saved a penalty yet.
       penaltyKing: penaltyKing(
@@ -399,6 +402,13 @@ export function CommunityStatsScreen() {
                   value: derived.topWinner.wins,
                   unit: 'נצחונות',
                   tint: colors.warning,
+                },
+                derived.cleanSheetKing && {
+                  title: he.communityStatsCleanSheetKing,
+                  uid: derived.cleanSheetKing.uid,
+                  value: derived.cleanSheetKing.cleanSheets,
+                  unit: 'שערים נקיים',
+                  tint: colors.info,
                 },
                 mostLoyal && {
                   title: he.communityStatsMostLoyal,

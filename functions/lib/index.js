@@ -69,6 +69,7 @@ const crypto_1 = require("crypto");
 const v2_1 = require("firebase-functions/v2");
 const params_1 = require("firebase-functions/params");
 const reviewAlerts_1 = require("./reviewAlerts");
+const teamBalanceCore_1 = require("./teamBalanceCore");
 const adminPush_1 = require("./adminPush");
 const adminUserPush_1 = require("./adminUserPush");
 const notificationDedup_1 = require("./notificationDedup");
@@ -4879,84 +4880,104 @@ function shuffleInPlace(arr) {
     }
 }
 /**
- * Coerce any stored rating onto the live 1.0–5.0 scale. Admin ratings created
- * before the 1–10 → 1–5 migration still sit in `adminRatings` / guest
- * `estimatedRating` as 6–10 values. Reading them raw makes an old "8" tower
- * over a neutral 3 and skews every auto-balance (B06/B07/B17). Anything above
- * the 1–5 max is treated as the old scale and halved back; everything is
- * clamped into [1,5]. Idempotent for already-migrated 1–5 values.
+ * Split a roster into balanced, varied teams. The algorithm itself lives in
+ * `./teamBalanceCore` — a GENERATED copy of `src/utils/teamBalanceCore.ts`, so
+ * the scheduled split and the one the admin triggers on the phone can never
+ * drift apart. This wrapper only maps the result onto the live-match zone
+ * shape the rotation screen reads.
  */
-function normalizeRating(v) {
-    const r = v > 5 ? v / 2 : v;
-    // Floor at 0 (not 1): the live scale is 0–5 and sub-1 ratings are real, so
-    // flooring to 1 would erase the sub-1 resolution at balance time. Mirrors the
-    // client `normalizeRating` in src/utils/draft.ts.
-    return Math.min(5, Math.max(0, r));
-}
-function balanceTeamsV1(playerIds, ratings, numberOfTeams, perTeam) {
-    let unratedCount = 0;
-    const scored = playerIds.map((id) => {
-        const known = ratings[id];
-        if (typeof known === 'number' && known > 0) {
-            return { id, rating: normalizeRating(known), unrated: false };
-        }
-        unratedCount += 1;
-        return { id, rating: 3, unrated: true }; // neutral midpoint of 1.0..5.0
+function balanceTeamsV1(playerIds, ratings, numberOfTeams, perTeam, history) {
+    const core = (0, teamBalanceCore_1.balanceCore)({
+        playerIds,
+        ratings,
+        numTeams: numberOfTeams,
+        perTeam,
+        pairWeights: history?.length ? (0, teamBalanceCore_1.buildPairRepeatWeights)(history) : undefined,
     });
-    // Shuffle BEFORE sort so reruns aren't deterministic. JS sort is
-    // stable, so shuffled-order survives within any tied rating bucket.
-    shuffleInPlace(scored);
-    scored.sort((a, b) => b.rating - a.rating);
-    const teams = Array.from({ length: numberOfTeams }, () => ({ ids: [], total: 0 }));
-    const capacity = perTeam;
     const assignments = {};
-    const benchOrder = [];
-    for (const p of scored) {
-        // Build the candidate list of teams that still have capacity.
-        const open = teams.filter((t) => t.ids.length < capacity);
-        if (open.length === 0) {
-            // Capacity exhausted — overflow to bench.
-            benchOrder.push(p.id);
-            continue;
-        }
-        // Tie-breaker: lowest total → fewest players → random pick among
-        // remaining ties so identical seeds don't clump on team[0].
-        open.sort((a, b) => {
-            if (a.total !== b.total)
-                return a.total - b.total;
-            if (a.ids.length !== b.ids.length)
-                return a.ids.length - b.ids.length;
-            return Math.random() - 0.5;
-        });
-        const target = open[0];
-        target.ids.push(p.id);
-        target.total += p.rating;
-    }
-    // Map team index → live-match zone. The live screen renders A/B as
-    // the on-field matchup and C/D/E as the waiting queue — we assign
-    // each balanced team to its corresponding zone instead of dumping
-    // overflow on the bench (which left "team 3" visually empty even
-    // though enough players were registered).
+    const benchOrder = [...core.bench];
+    // Map team index → live-match zone. The live screen renders A/B as the
+    // on-field matchup and C/D/E as the waiting queue — each balanced team gets
+    // its zone instead of overflow being dumped on the bench (which left "team 3"
+    // visually empty even though enough players were registered).
     const ZONES = ['teamA', 'teamB', 'teamC', 'teamD', 'teamE'];
-    teams.forEach((t, i) => {
+    core.teams.forEach((ids, i) => {
         const zone = ZONES[i];
         if (!zone) {
-            benchOrder.push(...t.ids);
+            benchOrder.push(...ids);
             return;
         }
-        t.ids.forEach((uid) => {
+        ids.forEach((uid) => {
             assignments[uid] = zone;
         });
     });
     benchOrder.forEach((uid) => {
         assignments[uid] = 'bench';
     });
+    const ratingOf = (id) => {
+        const known = ratings[id];
+        return typeof known === 'number' && known > 0
+            ? (0, teamBalanceCore_1.normalizeRating)(known)
+            : teamBalanceCore_1.NEUTRAL_RATING;
+    };
     return {
         assignments,
         benchOrder,
-        teamRatings: teams.slice(0, 2).map((t) => Math.round(t.total * 10) / 10),
-        unratedCount,
+        // AVERAGE per team (all teams), not the sum of the first two: the average is
+        // what the balance equalises and what the app shows, so the audit trail in
+        // `teamBalanceMeta` carries the same number. Diagnostics only.
+        teamRatings: core.teams.map((ids) => {
+            const avg = ids.reduce((s, id) => s + ratingOf(id), 0) / (ids.length || 1);
+            return Math.round(avg * 10) / 10;
+        }),
+        unratedCount: core.unratedCount,
+        gap: core.gap,
+        band: core.band,
+        repeat: core.repeat,
+        fallback: core.fallback,
     };
+}
+/**
+ * The club's recent stored splits, for the auto-balance variety model. Mirrors
+ * the client `gameService.getRecentSplits`: one read per game-night off the
+ * game document, `originalTeams` (the split as first drawn) preferred over
+ * `teams` (what it became after went-home), and nights with no stored split
+ * dropped so they don't consume a slot in a pair's history window.
+ */
+async function loadRecentSplits(groupId, excludeGameId, max = teamBalanceCore_1.HISTORY_GAMES) {
+    if (!groupId)
+        return [];
+    try {
+        const snap = await db
+            .collection('games')
+            .where('groupId', '==', groupId)
+            .where('status', '==', 'finished')
+            .orderBy('startsAt', 'desc')
+            .limit(max + 4)
+            .get();
+        const out = [];
+        for (const doc of snap.docs) {
+            if (out.length >= max)
+                break;
+            if (doc.id === excludeGameId)
+                continue;
+            const g = doc.data();
+            const src = g.draftTeams?.originalTeams ?? g.draftTeams?.teams ?? [];
+            const teams = src
+                .map((t) => (t.playerIds ?? []).slice())
+                .filter((ids) => ids.length > 0);
+            if (teams.length === 0)
+                continue;
+            out.push({ startsAt: g.startsAt ?? 0, teams });
+        }
+        return out;
+    }
+    catch (err) {
+        // Variety is an enhancement, never a blocker — without history the split
+        // is decided on rating alone, exactly as before.
+        console.warn('[autoBalance] loadRecentSplits failed', groupId, err);
+        return [];
+    }
 }
 /** Read every rating summary in the group as a uid → average map. */
 async function loadGroupRatings(groupId, uids) {
@@ -5124,6 +5145,10 @@ async function generateForGame(ref, g) {
         const numberOfTeams = typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
             ? g.numberOfTeams
             : 2;
+        // Same variety history the draft-shaped generator uses, so a club gets the
+        // same "don't rebuild last week's teams" behaviour whichever path seeds its
+        // teams. Read outside the transaction — a query inside joins the read set.
+        const history = await loadRecentSplits(g.groupId, ref.id);
         const wrote = await db.runTransaction(async (tx) => {
             const fresh = await tx.get(ref);
             if (!fresh.exists)
@@ -5164,12 +5189,12 @@ async function generateForGame(ref, g) {
                 // differently depending on who generated it (B07). Normalising both
                 // sides keeps them identical.
                 if (typeof gu.estimatedRating === 'number' && gu.estimatedRating > 0) {
-                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = normalizeRating(gu.estimatedRating);
+                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = (0, teamBalanceCore_1.normalizeRating)(gu.estimatedRating);
                 }
             }
             const rosterIds = [...freshPlayers, ...guestRoster];
             const combinedRatings = { ...ratings, ...guestRatings };
-            const result = balanceTeamsV1(rosterIds, combinedRatings, numberOfTeams, perTeam);
+            const result = balanceTeamsV1(rosterIds, combinedRatings, numberOfTeams, perTeam, history);
             const liveMatch = {
                 phase: 'organizing',
                 assignments: result.assignments,
@@ -5184,9 +5209,16 @@ async function generateForGame(ref, g) {
                 autoTeamsGeneratedBy: 'system',
                 teamBalanceMeta: {
                     generatedAt: Date.now(),
-                    algorithm: 'rating_greedy_v1',
+                    algorithm: 'rating_balanced_v2',
                     unratedCount: result.unratedCount,
                     teamRatings: result.teamRatings,
+                    // Recorded so a split can be explained after the fact and the
+                    // parameters calibrated from real weeks. No UI reads these.
+                    gap: Math.round(result.gap * 1000) / 1000,
+                    band: result.band,
+                    repeat: Math.round(result.repeat * 100) / 100,
+                    fallback: result.fallback,
+                    historyGames: history.length,
                 },
                 updatedAt: Date.now(),
                 // INTENTIONALLY NOT touching teamsEditedManually — system
@@ -5217,7 +5249,7 @@ function buildDraftTeamsFromBalance(assignments, ratings, numberOfTeams, created
     // 1–5 max, so on the new scale every unrated player out-sorted every rated
     // one and wrongly became captain (B17). Rated values are normalised off any
     // leftover 1–10 data (B06/B07).
-    const ratingOf = (id) => typeof ratings[id] === 'number' && ratings[id] > 0 ? normalizeRating(ratings[id]) : 3;
+    const ratingOf = (id) => typeof ratings[id] === 'number' && ratings[id] > 0 ? (0, teamBalanceCore_1.normalizeRating)(ratings[id]) : 3;
     const teams = [];
     for (let i = 0; i < numberOfTeams; i++) {
         const zone = ZONES[i];
@@ -5359,6 +5391,9 @@ async function generateDraftTeamsForGame(ref, g) {
         const numberOfTeams = typeof g.numberOfTeams === 'number' && g.numberOfTeams >= 2
             ? g.numberOfTeams
             : 2;
+        // Loaded outside the transaction on purpose: a query inside one joins the
+        // read set and would make the whole generation contend on every past game.
+        const history = await loadRecentSplits(groupId, ref.id);
         const built = await db.runTransaction(async (tx) => {
             const fresh = await tx.get(ref);
             if (!fresh.exists)
@@ -5384,7 +5419,7 @@ async function generateDraftTeamsForGame(ref, g) {
                 // differently depending on who generated it (B07). Normalising both
                 // sides keeps them identical.
                 if (typeof gu.estimatedRating === 'number' && gu.estimatedRating > 0) {
-                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = normalizeRating(gu.estimatedRating);
+                    guestRatings[`${GUEST_ID_PREFIX}${gu.id}`] = (0, teamBalanceCore_1.normalizeRating)(gu.estimatedRating);
                 }
             }
             const rosterIds = [...freshPlayers, ...guestRoster];
@@ -5397,7 +5432,9 @@ async function generateDraftTeamsForGame(ref, g) {
             const combinedRatings = { ...ratings, ...guestRatings };
             // Size so nobody benches — mirrors the client `balanceTeams`.
             const fitPerTeam = Math.max(perTeam, Math.ceil(rosterIds.length / effTeams));
-            const result = balanceTeamsV1(rosterIds, combinedRatings, effTeams, fitPerTeam);
+            const result = balanceTeamsV1(rosterIds, combinedRatings, effTeams, fitPerTeam, 
+            // 'random' is meant to be a genuine draw — no ratings, no history.
+            g.autoTeamsMethod === 'random' ? undefined : history);
             const teams = buildDraftTeamsFromBalance(result.assignments, combinedRatings, effTeams, g.createdBy ?? 'system').filter((t) => t.playerIds.length > 0); // defensive: drop any empty zone
             const draftTeams = {
                 method: 'snake',
@@ -5405,6 +5442,12 @@ async function generateDraftTeamsForGame(ref, g) {
                 createdAt: Date.now(),
                 createdBy: g.createdBy ?? 'system',
                 teams,
+                // Freeze the split as generated. `teams` is mutated all evening by
+                // went-home / swaps, so it is NOT a record of who started together —
+                // and that record is what the next split's variety logic reads. The
+                // client's saveDraftTeams captures the same snapshot; a server-generated
+                // split used to carry none at all.
+                originalTeams: teams.map((t) => ({ ...t, playerIds: [...t.playerIds] })),
                 // Scheduled auto-teams are meant to be visible immediately (the push
                 // fires here too) → publish straight away, never a hidden draft.
                 published: true,
@@ -5420,9 +5463,16 @@ async function generateDraftTeamsForGame(ref, g) {
                 autoTeamsAt: admin.firestore.FieldValue.delete(),
                 teamBalanceMeta: {
                     generatedAt: Date.now(),
-                    algorithm: 'rating_greedy_v1',
+                    algorithm: 'rating_balanced_v2',
                     unratedCount: result.unratedCount,
                     teamRatings: result.teamRatings,
+                    // Recorded so a split can be explained after the fact and the
+                    // parameters calibrated from real weeks. No UI reads these.
+                    gap: Math.round(result.gap * 1000) / 1000,
+                    band: result.band,
+                    repeat: Math.round(result.repeat * 100) / 100,
+                    fallback: result.fallback,
+                    historyGames: history.length,
                 },
                 updatedAt: Date.now(),
             });
@@ -9969,7 +10019,8 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // Bound the side sizes BEFORE building the batch. Per round this batch writes
     // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
     // per-player tallies + the latch — all in ONE atomic batch. Worst case at
-    // n-per-side ≈ 2n² + ~13n; that crosses Firestore's 500-op cap around n≈13,
+    // n-per-side ≈ 2n² + ~15n (the clean-sheet lifetime write adds up to 2n on a
+    // 0:0); that crosses Firestore's 500-op cap around n≈13,
     // where commit() throws and — because the committedRounds latch is in the
     // SAME batch — every retry re-fails identically (permanent loss of the
     // round's stats). Real football tops out at 11-a-side, so 11 covers every
@@ -10310,13 +10361,41 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         // Per-GAME assist tally (mirrors the per-game goals write above).
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${assister}`), { gameId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
     }
+    // 1c-clean) "שער נקי" — a mini-game whose side finished with nothing
+    //     conceded. A TEAM outcome credited to every participant, not a claim
+    //     about who defended: 2:0 credits each player on the winning side once
+    //     (one clean sheet, not two), 0:0 credits BOTH sides, 3:1 credits
+    //     nobody. Uses the same A/B participation sets as rounds/wins below, so
+    //     a player can never have more clean sheets than mini-games.
+    //     `scoreA`/`scoreB` are the stored round score, which counts own goals
+    //     and guest goals for the side that benefited — so an own goal denies
+    //     the conceding side its clean sheet, as it should.
+    //     A round decided by a penalty shootout still keeps the 0:0 of regular
+    //     play, and credits both sides: the shootout is a tiebreaker, and its
+    //     kicks are deliberately not goals anywhere else either.
+    // ⚠️ MIRRORED in src/utils/cleanSheets.ts (the unit-tested canonical spec)
+    //    and scripts/backfill_clean_sheets.py. Keep the three in sync.
+    const cleanA = scoreB === 0;
+    const cleanB = scoreA === 0;
+    const cleanSheetFor = (uid) => (cleanA && A.includes(uid)) || (cleanB && B.includes(uid));
     // 1c) mini-games PLAYED — every on-field player this round (both teams)
     //     gets a +1 `rounds` tally, per-community and per-game. Drives the
     //     championship's "games played" column + its score-per-game average.
     //     Counts everyone who played, not just scorers/assisters.
+    //     The clean sheet rides along in the SAME writes: it is credited to
+    //     exactly the players who are getting a round here, and adds no
+    //     operations to a batch that is already sized against Firestore's
+    //     500-op ceiling at 11-a-side.
     for (const uid of new Set([...A, ...B])) {
+        const clean = cleanSheetFor(uid);
         if (groupId)
-            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), { groupId, userId: uid, rounds: inc(1), updatedAt: now }, { merge: true });
+            batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${uid}`), {
+                groupId,
+                userId: uid,
+                rounds: inc(1),
+                ...(clean ? { cleanSheets: inc(1) } : {}),
+                updatedAt: now,
+            }, { merge: true });
         // Per-GAME rounds + this player's team goals for/against this round.
         // teamGoalsFor is the contribution% denominator (player.goals ÷ team.goals
         // over the evening); teamGoalsAgainst rounds out GF/GA. Folded into the
@@ -10326,10 +10405,16 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             gameId,
             userId: uid,
             rounds: inc(1),
+            ...(clean ? { cleanSheets: inc(1) } : {}),
             teamGoalsFor: inc(onA ? creditedA : creditedB),
             teamGoalsAgainst: inc(onA ? creditedB : creditedA),
             updatedAt: now,
         }, { merge: true });
+        // Lifetime tally, in the SAME latched batch as the other two so the three
+        // counters can never diverge — the rule `stats.wins` follows.
+        if (clean) {
+            batch.set(db.collection('users').doc(uid), { stats: { cleanSheets: inc(1) } }, { merge: true });
+        }
     }
     // 1d) mini-games WON / LOST — the winning side's players get a +1 `wins`
     //     tally and the losing side a +1 `losses`, per-community + per-game.

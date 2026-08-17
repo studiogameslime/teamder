@@ -1072,6 +1072,7 @@ export const he = {
   communityStatsPenaltyKing: 'מלך הפנדלים',
   communityStatsPenaltyKeeperKing: 'מלך שוערי הפנדלים',
   communityStatsOwnGoalKing: 'מלך השערים העצמיים',
+  communityStatsCleanSheetKing: 'מלך שערים נקיים',
   communityStatsGoalsUnit: (n: number) => `${n} גולים`,
   communityStatsAssistsUnit: (n: number) => `${n} בישולים`,
   communityStatsWinsUnit: (n: number) => `${n} ניצחונות`,
