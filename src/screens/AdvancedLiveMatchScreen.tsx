@@ -1896,7 +1896,21 @@ const styles = StyleSheet.create({
   statusWord: { fontSize: 15, fontWeight: '700', color: '#64748B' },
   statusWordRunning: { color: '#0F172A' },
   controlRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
-  endEveningLink: { alignSelf: 'center', paddingVertical: 10, marginTop: 6 },
+  // Ending the EVENING sat 6px under "סיים משחק" — the button an admin taps
+  // every few minutes all night — and centred on the same axis, so the two read
+  // as one control group (reported from a real evening: "לשנות את המיקום של
+  // כפתור סיים מחזור"). It keeps its place, since admins use it every week and
+  // burying it in a menu trades one problem for another, but it is now clearly
+  // BELOW the line rather than part of the row above it.
+  endEveningLink: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   endEveningLinkText: { ...typography.body, color: colors.danger, fontWeight: '700' },
   sideBtn: {
     width: 84,
