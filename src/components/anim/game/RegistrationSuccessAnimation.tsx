@@ -95,20 +95,28 @@ export function RegistrationSuccessAnimation({
   const postRStyle = useAnimatedStyle(() => ({ opacity: postR.value, transform: [{ translateX: 40 * (1 - postR.value) }] }));
   const msgStyle = useAnimatedStyle(() => ({ opacity: msg.value, transform: [{ scale: 0.9 + msg.value * 0.1 }] }));
 
-  if (!visible) return null;
-
+  // The host stays mounted for the life of the screen and only its CONTENT
+  // toggles. Mounting/unmounting an absoluteFill View over a ScrollView leaves a
+  // stale native touch region on Fabric, and the screen behind it stops
+  // responding until a scroll forces the touch targets to be rebuilt — reported
+  // from production as "לפעמים שלוחצים על כפתורים הם לא עובדים בכלל ולאחר שקצת
+  // גוללים באותו עמוד אז ניתן אחר כך ללחוץ". The confetti host on MatchDetails
+  // was already fixed this way after the same diagnosis; these two overlays,
+  // which mount on the same screen right after a registration, kept the old
+  // pattern. `pointerEvents="none"` alone does not save it: the stale region is
+  // left behind by the unmount, not by the mounted view.
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {variant === 'registered' && !reduced ? (
+      {visible && variant === 'registered' && !reduced ? (
         <Animated.View style={[styles.ball, ballStyle]} />
       ) : null}
-      {isLastSpot && !reduced ? (
+      {visible && isLastSpot && !reduced ? (
         <>
           <Animated.View style={[styles.postL, postLStyle]} />
           <Animated.View style={[styles.postR, postRStyle]} />
         </>
       ) : null}
-      {isLastSpot ? (
+      {visible && isLastSpot ? (
         <Animated.View style={[styles.msgWrap, msgStyle]}>
           <Text style={styles.msgText}>{he.lastSpotTaken}</Text>
         </Animated.View>

@@ -59,14 +59,20 @@ export function WaitlistPromotionAnimation({ visible, onComplete }: Props) {
     transform: [{ translateY: 10 * (1 - banner.value) }],
   }));
 
-  if (!visible) return null;
-
+  // Host permanently mounted, content toggled — see the note in
+  // RegistrationSuccessAnimation. Unmounting an absoluteFill over a ScrollView
+  // leaves a stale native touch region on Fabric and the screen behind stops
+  // taking taps until it is scrolled.
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {!reduced ? <Animated.View style={[styles.ring, ringStyle]} /> : null}
-      <Animated.View style={[styles.banner, bannerStyle]}>
-        <Text style={styles.bannerText}>{he.promotedToRoster}</Text>
-      </Animated.View>
+      {visible && !reduced ? (
+        <Animated.View style={[styles.ring, ringStyle]} />
+      ) : null}
+      {visible ? (
+        <Animated.View style={[styles.banner, bannerStyle]}>
+          <Text style={styles.bannerText}>{he.promotedToRoster}</Text>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
