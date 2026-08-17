@@ -101,6 +101,21 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     tiers: tiered(3, 10, 25),
   },
   {
+    id: 'cleanSheets',
+    metric: 'cleanSheets',
+    titleHe: 'שער נקי',
+    nounHe: 'שערים נקיים',
+    howHe: 'סיים משחקון בלי שהקבוצה שלך תספוג',
+    icon: 'shield-checkmark',
+    // Scaled to the real rate, measured over 5 stored game-nights of a weekly
+    // club: a regular collects 3–4 clean sheets a night (the club's leader had
+    // 21 in 5 nights), so bronze lands after ~3 nights, silver after ~15, and
+    // gold after roughly a season of turning up. Deliberately NOT the same
+    // ladder as goals — a clean sheet is a team outcome and accrues far faster
+    // than a goal does.
+    tiers: tiered(10, 50, 150),
+  },
+  {
     id: 'distinctPlayers',
     metric: 'distinctPlayers',
     titleHe: 'היכרויות',

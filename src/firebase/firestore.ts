@@ -141,6 +141,8 @@ export function readStats(d: DocumentData): UserStats | undefined {
     penConceded: typeof s.penConceded === 'number' ? s.penConceded : undefined,
     // Own goals (server-maintained). Same strip-on-read guard as penalties.
     ownGoals: typeof s.ownGoals === 'number' ? s.ownGoals : undefined,
+    // Clean sheets ("שער נקי") — server-maintained, same strip-on-read risk.
+    cleanSheets: typeof s.cleanSheets === 'number' ? s.cleanSheets : undefined,
   };
 }
 
@@ -200,6 +202,9 @@ const userConverter: FirestoreDataConverter<User> = {
             ...(typeof u.stats.penSaved === 'number' ? { penSaved: u.stats.penSaved } : {}),
             ...(typeof u.stats.penConceded === 'number' ? { penConceded: u.stats.penConceded } : {}),
             ...(typeof u.stats.ownGoals === 'number' ? { ownGoals: u.stats.ownGoals } : {}),
+            ...(typeof u.stats.cleanSheets === 'number'
+              ? { cleanSheets: u.stats.cleanSheets }
+              : {}),
           }
         : null,
       // fcmTokens are NO LONGER written to the world-readable /users doc —
@@ -381,6 +386,9 @@ function readAchievements(v: unknown): UserAchievementState | undefined {
       typeof o.maxWinsWithPlayer === 'number' ? o.maxWinsWithPlayer : 0,
     distinctPlayers:
       typeof o.distinctPlayers === 'number' ? o.distinctPlayers : 0,
+    // Clean sheets. Like every field above, absent here means "stripped on
+    // read" — the badge would sit at 0 no matter what the user actually has.
+    cleanSheets: typeof o.cleanSheets === 'number' ? o.cleanSheets : 0,
   };
 }
 

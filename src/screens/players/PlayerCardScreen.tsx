@@ -711,6 +711,7 @@ function AchievementsSection({ user }: { user: User }) {
         friendsCount: me?.friends?.length ?? 0,
         goals: user.stats?.goals ?? 0,
         assists: user.stats?.assists ?? 0,
+        cleanSheets: user.stats?.cleanSheets ?? 0,
       })
       .then(async (c) => {
         if (!alive) return;

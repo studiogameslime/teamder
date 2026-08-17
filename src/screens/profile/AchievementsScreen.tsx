@@ -90,6 +90,7 @@ export function AchievementsScreen() {
         friendsCount: localUser.friends?.length ?? 0,
         goals: localUser.stats?.goals ?? 0,
         assists: localUser.stats?.assists ?? 0,
+        cleanSheets: localUser.stats?.cleanSheets ?? 0,
       })
       .then(async (c) => {
         if (!alive) return;

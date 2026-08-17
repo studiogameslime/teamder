@@ -12222,7 +12222,8 @@ export const commitRoundStats = onCall(
     // Bound the side sizes BEFORE building the batch. Per round this batch writes
     // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
     // per-player tallies + the latch — all in ONE atomic batch. Worst case at
-    // n-per-side ≈ 2n² + ~13n; that crosses Firestore's 500-op cap around n≈13,
+    // n-per-side ≈ 2n² + ~15n (the clean-sheet lifetime write adds up to 2n on a
+    // 0:0); that crosses Firestore's 500-op cap around n≈13,
     // where commit() throws and — because the committedRounds latch is in the
     // SAME batch — every retry re-fails identically (permanent loss of the
     // round's stats). Real football tops out at 11-a-side, so 11 covers every
@@ -12610,15 +12611,45 @@ export const commitRoundStats = onCall(
       );
     }
 
+    // 1c-clean) "שער נקי" — a mini-game whose side finished with nothing
+    //     conceded. A TEAM outcome credited to every participant, not a claim
+    //     about who defended: 2:0 credits each player on the winning side once
+    //     (one clean sheet, not two), 0:0 credits BOTH sides, 3:1 credits
+    //     nobody. Uses the same A/B participation sets as rounds/wins below, so
+    //     a player can never have more clean sheets than mini-games.
+    //     `scoreA`/`scoreB` are the stored round score, which counts own goals
+    //     and guest goals for the side that benefited — so an own goal denies
+    //     the conceding side its clean sheet, as it should.
+    //     A round decided by a penalty shootout still keeps the 0:0 of regular
+    //     play, and credits both sides: the shootout is a tiebreaker, and its
+    //     kicks are deliberately not goals anywhere else either.
+    // ⚠️ MIRRORED in src/utils/cleanSheets.ts (the unit-tested canonical spec)
+    //    and scripts/backfill_clean_sheets.py. Keep the three in sync.
+    const cleanA = scoreB === 0;
+    const cleanB = scoreA === 0;
+    const cleanSheetFor = (uid: string) =>
+      (cleanA && A.includes(uid)) || (cleanB && B.includes(uid));
+
     // 1c) mini-games PLAYED — every on-field player this round (both teams)
     //     gets a +1 `rounds` tally, per-community and per-game. Drives the
     //     championship's "games played" column + its score-per-game average.
     //     Counts everyone who played, not just scorers/assisters.
+    //     The clean sheet rides along in the SAME writes: it is credited to
+    //     exactly the players who are getting a round here, and adds no
+    //     operations to a batch that is already sized against Firestore's
+    //     500-op ceiling at 11-a-side.
     for (const uid of new Set([...A, ...B])) {
+      const clean = cleanSheetFor(uid);
       if (groupId)
         batch.set(
           db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
-          { groupId, userId: uid, rounds: inc(1), updatedAt: now },
+          {
+            groupId,
+            userId: uid,
+            rounds: inc(1),
+            ...(clean ? { cleanSheets: inc(1) } : {}),
+            updatedAt: now,
+          },
           { merge: true },
         );
       // Per-GAME rounds + this player's team goals for/against this round.
@@ -12632,12 +12663,22 @@ export const commitRoundStats = onCall(
           gameId,
           userId: uid,
           rounds: inc(1),
+          ...(clean ? { cleanSheets: inc(1) } : {}),
           teamGoalsFor: inc(onA ? creditedA : creditedB),
           teamGoalsAgainst: inc(onA ? creditedB : creditedA),
           updatedAt: now,
         },
         { merge: true },
       );
+      // Lifetime tally, in the SAME latched batch as the other two so the three
+      // counters can never diverge — the rule `stats.wins` follows.
+      if (clean) {
+        batch.set(
+          db.collection('users').doc(uid),
+          { stats: { cleanSheets: inc(1) } },
+          { merge: true },
+        );
+      }
     }
 
     // 1d) mini-games WON / LOST — the winning side's players get a +1 `wins`

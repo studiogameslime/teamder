@@ -131,6 +131,10 @@ export function CommunityStatsTable({
     { key: 'goals', label: he.champColGoals },
     { key: 'assists', label: he.champColAssists },
     { key: 'losses', label: he.champColLosses },
+    // "שער נקי" — mini-games the player's side finished without conceding.
+    // A counter like the rest (no percentage), and it sorts by tapping the
+    // header exactly like every other column.
+    { key: 'cleanSheets', label: he.champColCleanSheets },
     { key: 'games', label: he.champColAppearances }, // evenings attended
     { key: 'rounds', label: he.champColMiniGames }, // mini-games played
   ];

@@ -2759,6 +2759,7 @@ export const he = {
   champColWins: 'ניצחונות',
   champColLosses: 'הפסדים',
   champColScore: 'ניקוד',
+  champColCleanSheets: 'שער נקי',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,

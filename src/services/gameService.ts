@@ -1126,6 +1126,9 @@ export const gameService = {
           penSaved: Math.min(penSaved, penFaced),
           // Demo own goals — a couple of players carry one for the fun fact.
           ownGoals: [1, 0, 2, 0, 0, 1, 0, 0][i] ?? 0,
+          // Demo clean sheets — bounded by rounds, spread so the column reads
+          // as a real distribution in the emulator rather than a ladder.
+          cleanSheets: Math.max(0, [61, 44, 52, 30, 38, 21, 27, 12][i] ?? 0),
         };
       });
       // Show every club member: the first 8 carry stats, the rest get a zero
@@ -1135,7 +1138,7 @@ export const gameService = {
         const have = new Set(players.map((p) => p.uid));
         for (const uid of memberIds) {
           if (uid && !have.has(uid)) {
-            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0, ownGoals: 0 });
+            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0, ownGoals: 0, cleanSheets: 0 });
             have.add(uid);
           }
         }

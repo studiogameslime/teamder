@@ -177,6 +177,7 @@ export const achievementsService = {
       wins?: number;
       goals?: number;
       assists?: number;
+      cleanSheets?: number;
     } = {},
   ): Promise<UserAchievementState> {
     if (!userId) return { ...defaultAchievementState };
@@ -185,6 +186,8 @@ export const achievementsService = {
     // goals + assists come from the caller's already-loaded user doc (stats.*).
     const goals = Math.max(0, ctx.goals ?? 0);
     const assists = Math.max(0, ctx.assists ?? 0);
+    // Clean sheets, same source (stats.cleanSheets) — no extra read.
+    const cleanSheets = Math.max(0, ctx.cleanSheets ?? 0);
     // friendsCount comes from the caller's already-loaded user doc
     // (`user.friends`) — no extra read needed.
     const friendsCount = Math.max(0, ctx.friendsCount ?? 0);
@@ -304,6 +307,7 @@ export const achievementsService = {
       maxGamesWithPlayer,
       maxWinsWithPlayer,
       distinctPlayers,
+      cleanSheets,
     };
   },
 
@@ -395,6 +399,7 @@ function readState(user: User): UserAchievementState {
     friendsCount: a.friendsCount ?? 0,
     goals: a.goals ?? 0,
     assists: a.assists ?? 0,
+    cleanSheets: a.cleanSheets ?? 0,
     maxGamesWithPlayer: a.maxGamesWithPlayer ?? 0,
     maxWinsWithPlayer: a.maxWinsWithPlayer ?? 0,
     distinctPlayers: a.distinctPlayers ?? 0,

@@ -204,7 +204,8 @@ export type AchievementMetric =
   | 'assists'
   | 'maxGamesWithPlayer'
   | 'maxWinsWithPlayer'
-  | 'distinctPlayers';
+  | 'distinctPlayers'
+  | 'cleanSheets';
 
 /** A single badge now levels up through three metal tiers in place. */
 export type AchievementTier = 'bronze' | 'silver' | 'gold';
@@ -240,6 +241,9 @@ export interface UserAchievementState {
   maxWinsWithPlayer: number;
   /** Distinct players the user has shared a finished game with. */
   distinctPlayers: number;
+  /** Lifetime clean sheets — mini-games whose side conceded nothing
+   *  (from stats.cleanSheets). */
+  cleanSheets: number;
 }
 
 export const defaultAchievementState: UserAchievementState = {
@@ -256,6 +260,7 @@ export const defaultAchievementState: UserAchievementState = {
   maxGamesWithPlayer: 0,
   maxWinsWithPlayer: 0,
   distinctPlayers: 0,
+  cleanSheets: 0,
 };
 
 // ─── Discipline (yellow / red cards) ─────────────────────────────────────
@@ -698,6 +703,15 @@ export interface UserStats {
   /** Own goals the player scored (into their own net). Incremented server-side
    *  by `commitRoundStats`; optional (no migration). Never part of `goals`. */
   ownGoals?: number;
+  /**
+   * "שער נקי" — mini-games the player was on the field for whose side finished
+   * with nothing conceded. A TEAM outcome credited to every participant, not a
+   * claim about who defended: 2:0 gives one clean sheet to each player on the
+   * winning side, 0:0 gives one to everybody, 3:1 gives none. Incremented
+   * server-side by `commitRoundStats` on the same participation set that feeds
+   * `rounds`/`wins`. Optional → no migration.
+   */
+  cleanSheets?: number;
 }
 
 export function getAttendanceRate(s: UserStats | undefined): number {
