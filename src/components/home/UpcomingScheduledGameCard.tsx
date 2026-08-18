@@ -3,9 +3,15 @@
 // the home no-game state and the games-feed "בקרוב" section so a member knows a
 // game is on the way and exactly when they can register.
 //
-// No join button — registration is blocked until the `flipScheduledGames` CF
-// flips the status to 'open' (which already pushes every community subscriber).
-// A tap opens the community page (NOT MatchDetails — joins aren't possible yet).
+// It also carries the OPEN variant: a game whose registration is already open
+// and that the viewer has not joined. That case had no home card at all, so at
+// the exact moment a registration opens the screen was advertising next week
+// instead (production, 18.08 — 11 of 15 places went in nine minutes while 17 of
+// the club's 28 members were shown an eight-day-out teaser). The variant is
+// derived from `game.status`, so no call site has to remember to pass a flag.
+//
+// Scheduled: no join button — registration is blocked until `flipScheduledGames`
+// flips the status. Open: the tap routes to the game, where the join button is.
 
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -46,6 +52,12 @@ export function UpcomingScheduledGameCard({
   /** Tapping opens the GAME itself (MatchDetails), not the community. */
   onOpen: (gameId: string) => void;
 }) {
+  // 'open' = the club can register NOW; anything else is still a teaser.
+  const isOpen = game.status === 'open';
+  const spotsLeft = Math.max(
+    0,
+    (game.maxPlayers ?? 0) - (game.players?.length ?? 0),
+  );
   const opensAt = game.registrationOpensAt ?? game.startsAt;
   // A 1s tick keeps the final-hour countdown live; torn down on unmount. The
   // pre-hour branch recomputes the same absolute string cheaply.
@@ -60,18 +72,28 @@ export function UpcomingScheduledGameCard({
   return (
     <Pressable
       onPress={() => onOpen(game.id)}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.95 }]}
+      style={({ pressed }) => [
+        styles.card,
+        isOpen && styles.cardOpen,
+        pressed && { opacity: 0.95 },
+      ]}
       accessibilityRole="button"
-      accessibilityLabel={he.homeUpcomingBadge}
+      accessibilityLabel={isOpen ? he.homeOpenNowBadge : he.homeUpcomingBadge}
     >
       {/* Game title on the right (like a regular card), "מחזור בדרך" badge left. */}
       <View style={styles.top}>
         <Text style={styles.title} numberOfLines={2}>
           {game.title}
         </Text>
-        <View style={styles.chip}>
-          <MaterialCommunityIcons name="lock-clock" size={15} color={colors.primary} />
-          <Text style={styles.chipText}>{he.homeUpcomingBadge}</Text>
+        <View style={[styles.chip, isOpen && styles.chipOpen]}>
+          <MaterialCommunityIcons
+            name={isOpen ? 'lock-open-variant' : 'lock-clock'}
+            size={15}
+            color={isOpen ? colors.success : colors.primary}
+          />
+          <Text style={[styles.chipText, isOpen && styles.chipTextOpen]}>
+            {isOpen ? he.homeOpenNowBadge : he.homeUpcomingBadge}
+          </Text>
         </View>
       </View>
 
@@ -94,9 +116,20 @@ export function UpcomingScheduledGameCard({
       ) : null}
 
       <View style={styles.countdown}>
-        <Ionicons name="time-outline" size={16} color={colors.primary} />
-        <Text style={styles.countdownText} numberOfLines={1}>
-          {he.homeUpcomingRegistration(openLabel(opensAt, now))}
+        <Ionicons
+          name={isOpen ? 'person-add-outline' : 'time-outline'}
+          size={16}
+          color={isOpen ? colors.success : colors.primary}
+        />
+        <Text
+          style={[styles.countdownText, isOpen && styles.countdownTextOpen]}
+          numberOfLines={1}
+        >
+          {isOpen
+            ? spotsLeft > 0
+              ? `${he.homeOpenSpotsLeft(spotsLeft)} · ${he.homeOpenCta}`
+              : he.homeOpenFull
+            : he.homeUpcomingRegistration(openLabel(opensAt, now))}
         </Text>
       </View>
     </Pressable>
@@ -104,6 +137,11 @@ export function UpcomingScheduledGameCard({
 }
 
 const styles = StyleSheet.create({
+  // Green edge + chip mark 'you can register now'; grey stays 'not yet'.
+  cardOpen: { borderEndColor: colors.success },
+  chipOpen: { backgroundColor: 'rgba(22,163,74,0.10)' },
+  chipTextOpen: { color: colors.success },
+  countdownTextOpen: { color: colors.success },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 22,
@@ -113,6 +151,7 @@ const styles = StyleSheet.create({
     // doesn't shift.
     borderEndWidth: 6,
     borderEndColor: '#94A3B8',
+    // (the OPEN variant overrides this to green — see cardOpen)
     paddingEnd: spacing.md - 5,
     gap: spacing.xs,
     borderTopWidth: 1,

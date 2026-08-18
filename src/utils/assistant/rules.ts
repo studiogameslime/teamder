@@ -252,6 +252,10 @@ const clubIdleRule: AssistantRule = (ctx) => {
   if (ctx.communities.length === 0) return null;
   if (ctx.nextGame) return null;
   if (ctx.shown.upcomingScheduledCard) return null;
+  // A match that is open for sign-up is the loudest possible "not idle" — and
+  // telling a member "nobody has booked anything" while places are filling
+  // would be worse than saying nothing.
+  if (ctx.shown.openToJoinCard) return null;
   // The admin gets the job, plainly — they're the one who can book a pitch.
   // A regular member can only wait, so for them this line alternates with the
   // coach's jokes: hearing "nobody's booked anything" every single day is how

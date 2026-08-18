@@ -99,6 +99,7 @@ import {
   RTL_LABEL_ALIGN,
 } from '@/theme';
 import { he } from '@/i18n/he';
+import { pickHomeHero } from '@/utils/homeHero';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore, useIsAdmin } from '@/store/groupStore';
 import { type User } from '@/types';
@@ -154,6 +155,14 @@ export function ProfileScreen() {
   // Scheduled games (registration not yet open) in my communities — the
   // read-only "בקרוב" teaser shown in place of the empty no-game state.
   const [scheduledUpcoming, setScheduledUpcoming] = useState<Game[]>([]);
+  // Games in my clubs that are OPEN for registration and that I have NOT
+  // joined. This is the rung the hero was missing — see pickHomeHero.
+  const [openToJoin, setOpenToJoin] = useState<Game[]>([]);
+  // The fallback hero when I'm not in any game: a game I can still join beats a
+  // game that hasn't opened yet. Ordering lives in a pure helper so it can be
+  // tested without a renderer.
+  const heroPick = pickHomeHero<Game>([], openToJoin, scheduledUpcoming);
+  const heroGame = heroPick.game;
   // Unified count of incoming requests the user must act on — friend
   // requests + community-join requests (admin) + game-join requests
   // (creator). Drives the top-of-home "pending requests" banner, which is
@@ -315,6 +324,35 @@ export function ProfileScreen() {
         alive = false;
       };
     }, [localUser?.id]),
+  );
+
+  // Games I could join right now, across my communities. getCommunityGames
+  // already server-filters to status=='open' and drops anything I'm in, so this
+  // is exactly "what can I still register for" — one query per 30 clubs, the
+  // same one the games tab runs.
+  useFocusEffect(
+    React.useCallback(() => {
+      const uid = localUser?.id;
+      if (!uid || localUser?.isGuest || myCommunities.length === 0) {
+        setOpenToJoin([]);
+        return;
+      }
+      let alive = true;
+      gameService
+        .getCommunityGames(
+          uid,
+          myCommunities.map((g) => g.id),
+        )
+        .then((games) => {
+          if (alive) setOpenToJoin(games);
+        })
+        .catch(() => {
+          /* transient — keep the previous list */
+        });
+      return () => {
+        alive = false;
+      };
+    }, [localUser?.id, myCommunities.length]),
   );
 
   // Scheduled ("coming soon") games across my communities — surfaced as a
@@ -739,7 +777,9 @@ export function ProfileScreen() {
         nextGameCard: !!nextGame,
         recommendedDay: availCardEnabled && !!recommended,
         availabilityPodium: availCardEnabled && podium.length > 0,
-        upcomingScheduledCard: !nextGame && scheduledUpcoming.length > 0,
+        openToJoinCard: !nextGame && openToJoin.length > 0,
+        upcomingScheduledCard:
+          !nextGame && openToJoin.length === 0 && scheduledUpcoming.length > 0,
         // Mirrors the render condition below EXACTLY. It is NOT gated on
         // availCardEnabled: with the remote flag off the podium is hidden but
         // the prompt card still renders, and reading `false` here let the
@@ -763,6 +803,7 @@ export function ProfileScreen() {
     availCardEnabled,
     podium.length,
     scheduledUpcoming.length,
+    openToJoin.length,
   ]);
 
   // The rules emit an intent; routing stays here so they remain pure.
@@ -1065,12 +1106,14 @@ export function ProfileScreen() {
             onCta={handleAssistantCta}
           />
 
-          {/* ③ Hero — exactly ONE card, in priority order:
+          {/* ③ Hero — exactly ONE card, in priority order (see pickHomeHero):
               1. a game I'm registered to / created (always wins, even if it's
                  further than a week out — a registered game beats everything);
-              2. else the single closest community game whose registration
-                 hasn't opened yet ("מחזור בדרך");
-              3. else nothing — the content below just tightens up to the top. */}
+              2. else the closest community game I can still REGISTER to right
+                 now ("ההרשמה פתוחה") — this rung was missing, so at the moment
+                 registration opened the screen advertised next week instead;
+              3. else the closest one whose registration hasn't opened yet;
+              4. else nothing — the content below just tightens up to the top. */}
           {nextGame ? (
             <NextGameCardEntrance triggerKey={nextGame.id}>
               <HomeNextGameCard
@@ -1082,12 +1125,14 @@ export function ProfileScreen() {
                 onFind={() => nav.navigate('GameTab')}
               />
             </NextGameCardEntrance>
-          ) : scheduledUpcoming.length > 0 ? (
+          ) : heroGame ? (
+            // Same component for both: it reads `status` and switches between
+            // "ההרשמה פתוחה" (green, places left) and "מחזור בדרך" (grey,
+            // countdown to opening).
             <UpcomingScheduledGameCard
-              game={scheduledUpcoming[0]}
+              game={heroGame}
               communityName={
-                myCommunities.find((c) => c.id === scheduledUpcoming[0].groupId)
-                  ?.name
+                myCommunities.find((c) => c.id === heroGame.groupId)?.name
               }
               onOpen={(gameId) =>
                 nav.navigate('MatchDetails', { gameId })

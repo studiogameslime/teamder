@@ -1730,6 +1730,14 @@ export const he = {
     `תיפתח ${dayDate} ב-${time}`,
   homeUpcomingOpensInMinutes: (mmss: string) => `תיפתח בעוד ${mmss} דק׳`,
   homeUpcomingOpeningNow: 'נפתחת עכשיו',
+  // The hero for a game that is open for registration RIGHT NOW and that the
+  // viewer has not joined — the rung that used to be missing, so an open game
+  // showed nowhere on home and a "coming soon" teaser took its place.
+  homeOpenNowBadge: 'ההרשמה פתוחה',
+  homeOpenSpotsLeft: (n: number) =>
+    n === 1 ? 'נשאר מקום אחד' : `נשארו ${n} מקומות`,
+  homeOpenFull: 'מלא — אפשר להצטרף לרשימת המתנה',
+  homeOpenCta: 'לפרטים והרשמה',
   // Recommended day to open a game (most available players nearby).
   homeRecommendedTitle: 'היום המומלץ לפתיחת מחזור',
   homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,

@@ -116,6 +116,10 @@ export interface AssistantShownSurfaces {
   /** The "a match is on the way" teaser for a club match whose sign-up hasn't
    *  opened. Its presence also means the club is NOT idle. */
   upcomingScheduledCard: boolean;
+  /** The "sign-up is open" hero for a club match the viewer hasn't joined.
+   *  Even stronger evidence the club is NOT idle than the teaser above — the
+   *  match exists AND can be joined right now. */
+  openToJoinCard: boolean;
   /** The full-width "set your availability" prompt card. */
   availabilityPrompt: boolean;
 }
