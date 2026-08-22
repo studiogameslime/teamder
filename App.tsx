@@ -201,6 +201,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
 import { joryio } from '@/services/joryio';
+import { InAppMessageHost } from '@/components/joryio/InAppMessageHost';
 
 // ── Force RTL on first launch ───────────────────────────────────────────────
 // Hebrew is RTL. Setting this once at startup mirrors the entire layout.
@@ -872,6 +873,10 @@ export default function App() {
         <BannerHost />
         {/* Global: a device screenshot slides up a pre-filled bug report. */}
         <ScreenshotReportSheet />
+        {/* Joryio in-app campaigns. INSIDE the navigator so a message's
+            deep-link button resolves against the same routing as any other
+            link; above it there is no navigation to hand the URL to. */}
+        <InAppMessageHost />
       </NavigationContainer>
 
       {/* Splash sits ABOVE everything. RootNavigator keeps mounting +

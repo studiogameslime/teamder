@@ -149,12 +149,28 @@ export function trackPushClick(trackingId: string): void {
   Joryio.trackPushClick(trackingId);
 }
 
-/** In-app campaigns — the capability a hand-written HTTP client cannot provide. */
+/** In-app campaigns — the capability a hand-written HTTP client cannot provide.
+ *  Subscribing is not enough on its own: something has to DRAW the message.
+ *  See components/joryio/InAppMessageHost. */
 export function onInAppMessage(
   cb: (message: unknown) => void,
 ): () => void {
   if (USE_MOCK_DATA) return () => {};
   return Joryio.onInAppMessage(cb as never);
+}
+
+/** Ask for campaigns the user is eligible for right now. The SDK also pushes
+ *  them as they qualify; this covers the ones already waiting at mount. */
+export function syncInAppCampaigns(): void {
+  if (USE_MOCK_DATA) return;
+  Joryio.syncInAppCampaigns();
+}
+
+/** Report what happened to a message — shown, dismissed, which button.
+ *  Without it a campaign has no idea whether it was ever seen. */
+export function trackInAppImpression(campaignId: string, action: string): void {
+  if (USE_MOCK_DATA || !campaignId) return;
+  Joryio.trackInAppImpression(campaignId, action);
 }
 
 export function flush(): void {
@@ -170,5 +186,7 @@ export const joryio = {
   registerPushToken,
   trackPushClick,
   onInAppMessage,
+  syncInAppCampaigns,
+  trackInAppImpression,
   flush,
 };

@@ -1,0 +1,352 @@
+import UIKit
+import WebKit
+import Joryio
+
+/**
+ Renders an in-app campaign's HTML in a WKWebView.
+
+ REPLACES six view classes - Modal, Banner, SlideUp, FullScreen, Card, Custom -
+ that between them were ~1,100 lines laying out `title`, `body`, `imageUrl` and
+ `buttons` with UIKit. None of it could ever run: the server does not send a
+ structured message and never has. It sends `template { html, css }`, because
+ the campaign editor is HTML-based.
+
+ The six classes differed only in PLACEMENT, which is a handful of constraints -
+ so placement is all this keeps. Content is one WebView.
+
+ Mirrors `packages/sdk-web/src/core/inapp.ts` deliberately: same bridge method
+ names, same per-type sizing, same URL safety rule. A template authored once
+ then behaves the same on web, Android and iOS, which is the entire point of
+ the editor producing one document.
+ */
+final class InAppWebMessageView: BaseMessageView {
+    /// Bridge name. Must match the web SDK and Android, or authored templates
+    /// that call `joryioBridge.closeMessage(...)` silently do nothing.
+    private static let bridgeName = "joryioBridge"
+
+    private let backdrop = UIView()
+    private let container = UIView()
+    private var webView: WKWebView!
+    private var heightConstraint: NSLayoutConstraint?
+
+    private let html: String
+    private let css: String
+
+    /// Returns nil when the campaign carries no renderable document.
+    ///
+    /// An empty container the user has to dismiss is worse than no message, and
+    /// counting an impression for it would inflate the campaign's reach - so
+    /// this refuses to construct rather than presenting a blank.
+    ///
+    /// A factory rather than a failable `init?`: Swift forbids a failable
+    /// initializer overriding BaseMessageView's non-failable one.
+    static func make(campaign: InAppCampaign, delegate: InAppMessageViewDelegate?) -> InAppWebMessageView? {
+        guard case let .html(html, css)? = campaign.content, !html.isEmpty else {
+            return nil
+        }
+        return InAppWebMessageView(campaign: campaign, delegate: delegate, html: html, css: css)
+    }
+
+    private init(campaign: InAppCampaign, delegate: InAppMessageViewDelegate?, html: String, css: String) {
+        self.html = html
+        self.css = css
+        super.init(campaign: campaign, delegate: delegate)
+        setupViews()
+        load()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - Layout
+
+    private func setupViews() {
+        translatesAutoresizingMaskIntoConstraints = false
+
+        // Only the screen-blocking types dim the app. A banner or slide-up that
+        // dimmed the screen would read as blocking, when the whole point of
+        // those types is that the app stays usable behind them.
+        let dims = campaign.type == .modal || campaign.type == .fullscreen
+        backdrop.backgroundColor = dims
+            ? UIColor.black.withAlphaComponent(0.4)
+            : .clear
+        backdrop.isUserInteractionEnabled = dims
+        backdrop.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(backdrop)
+
+        if dims {
+            backdrop.addGestureRecognizer(
+                UITapGestureRecognizer(target: self, action: #selector(backdropTapped))
+            )
+        }
+
+        container.backgroundColor = .clear
+        container.clipsToBounds = true
+        container.layer.cornerRadius = campaign.type == .fullscreen ? 0 : 14
+        container.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(container)
+
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(BridgeProxy(self), name: Self.bridgeName)
+        // The shim is injected rather than concatenated into the document so a
+        // template with a stray `</script>` cannot terminate it early.
+        config.userContentController.addUserScript(
+            WKUserScript(source: shimSource(), injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        )
+
+        webView = WKWebView(frame: .zero, configuration: config)
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.isScrollEnabled = campaign.type == .fullscreen
+        webView.navigationDelegate = self
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(webView)
+
+        NSLayoutConstraint.activate([
+            backdrop.topAnchor.constraint(equalTo: topAnchor),
+            backdrop.bottomAnchor.constraint(equalTo: bottomAnchor),
+            backdrop.leadingAnchor.constraint(equalTo: leadingAnchor),
+            backdrop.trailingAnchor.constraint(equalTo: trailingAnchor),
+
+            webView.topAnchor.constraint(equalTo: container.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            webView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        ])
+
+        applyPlacement()
+    }
+
+    /// Placement per type - the only thing the six old view classes really did.
+    private func applyPlacement() {
+        let guide = safeAreaLayoutGuide
+
+        switch campaign.type {
+        case .fullscreen:
+            NSLayoutConstraint.activate([
+                container.topAnchor.constraint(equalTo: topAnchor),
+                container.bottomAnchor.constraint(equalTo: bottomAnchor),
+                container.leadingAnchor.constraint(equalTo: leadingAnchor),
+                container.trailingAnchor.constraint(equalTo: trailingAnchor),
+            ])
+
+        case .banner:
+            NSLayoutConstraint.activate([
+                container.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+                container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+                container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            ])
+            setContentHeight(120)
+
+        case .slideup:
+            NSLayoutConstraint.activate([
+                container.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -12),
+                container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+                container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            ])
+            setContentHeight(160)
+
+        case .modal, .custom:
+            NSLayoutConstraint.activate([
+                container.centerYAnchor.constraint(equalTo: centerYAnchor),
+                container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 24),
+                container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -24),
+            ])
+            setContentHeight(240)
+        }
+    }
+
+    /// Height tracks the content, driven by the bridge's `setSize`, and is
+    /// capped so a runaway document cannot cover the whole screen in a type
+    /// that is meant to be partial.
+    private func setContentHeight(_ height: CGFloat) {
+        guard campaign.type != .fullscreen else { return }
+        let cap = UIScreen.main.bounds.height * 0.9
+        let value = min(max(height, 1), cap)
+
+        if let existing = heightConstraint {
+            existing.constant = value
+        } else {
+            let c = container.heightAnchor.constraint(equalToConstant: value)
+            c.isActive = true
+            heightConstraint = c
+        }
+        layoutIfNeeded()
+    }
+
+    /**
+     A Content-Security-Policy for the message document.
+
+     `script-src 'none'` is deliberate and stronger than the web SDK's nonce:
+     this document contains NO inline script at all - the bridge shim is
+     injected as a WKUserScript, which WebKit exempts from the page's CSP. So
+     nothing legitimate needs to execute, and anything that survives the
+     server's sanitiser cannot.
+
+     The media directives are the mixed-content control Android enforced with
+     MIXED_CONTENT_NEVER_ALLOW and iOS had no equivalent for: an origin-less
+     document has no "mixed" for WebKit to detect, so the restriction has to be
+     stated. `upgrade-insecure-requests` upgrades an author's http image rather
+     than simply breaking it.
+
+     style-src stays permissive because the server's sanitiser ALLOWS style=""
+     attributes; styles cannot execute.
+     */
+    private static let contentSecurityPolicyMeta = """
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: data:; media-src https: data:; font-src https: data:; connect-src 'none'; form-action 'none'; base-uri 'none'; upgrade-insecure-requests">
+        """
+
+    // MARK: - Content
+
+    private func load() {
+        let document = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        \(Self.contentSecurityPolicyMeta)
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <style>
+          html,body{margin:0;padding:0;background:transparent;}
+          \(campaign.type == .fullscreen ? "html,body{height:100%;}" : "")
+        </style>
+        <style>\(css)</style>
+        </head>
+        <body>\(html)</body>
+        </html>
+        """
+        // nil baseURL: the document gets no origin, so it cannot reach
+        // app-local files or same-origin storage.
+        webView.loadHTMLString(document, baseURL: nil)
+    }
+
+    /**
+     The shim injected into every message.
+
+     Tags the device class so the editor's "mobile only" / "desktop only" rules
+     resolve, and reports content height so a non-fullscreen message is exactly
+     as tall as its content. Images and web fonts land after `load` and change
+     the height, so a single measurement would leave messages clipped - hence
+     the ResizeObserver.
+     */
+    private func shimSource() -> String {
+        let cid = campaign.id.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return """
+        (function(){
+          var CID = "\(cid)";
+          try {
+            document.documentElement.className +=
+              (window.innerWidth <= 480 ? ' jr-vp-mobile' : ' jr-vp-desktop');
+          } catch (e) {}
+
+          function post(method, args) {
+            try {
+              window.webkit.messageHandlers.\(Self.bridgeName).postMessage({
+                method: method, campaignId: CID, args: args || {}
+              });
+            } catch (e) {}
+          }
+
+          // Same surface as the web SDK's joryioBridge, so one authored
+          // template works on web, Android and iOS unchanged.
+          window.\(Self.bridgeName) = {
+            trackClick: function(cid, action){ post('trackClick', {action: action}); },
+            closeMessage: function(){ post('closeMessage', {}); },
+            navigate: function(cid, url, target){ post('navigate', {url: url, target: target}); },
+            setSize: function(cid, h){ post('setSize', {height: h}); }
+          };
+
+          function report() {
+            try {
+              var h = Math.max(
+                document.body ? document.body.scrollHeight : 0,
+                document.documentElement ? document.documentElement.scrollHeight : 0
+              );
+              if (h > 0) post('setSize', {height: h});
+            } catch (e) {}
+          }
+          window.addEventListener('load', report);
+          if (window.ResizeObserver && document.body) {
+            new ResizeObserver(report).observe(document.body);
+          }
+          setTimeout(report, 60);
+        })();
+        """
+    }
+
+    // MARK: - Bridge
+
+    fileprivate func handle(method: String, args: [String: Any]) {
+        switch method {
+        case "setSize":
+            if let h = args["height"] as? NSNumber {
+                setContentHeight(CGFloat(truncating: h))
+            }
+        case "closeMessage":
+            dismiss()
+        case "trackClick":
+            let action = (args["action"] as? String) ?? "click"
+            delegate?.messageViewClicked(campaign.id, action: action, url: nil)
+        case "navigate":
+            guard let url = args["url"] as? String else { return }
+            delegate?.messageViewClicked(campaign.id, action: "link", url: url)
+        default:
+            break
+        }
+    }
+
+    @objc private func backdropTapped() {
+        dismiss()
+    }
+
+    /**
+     WKScriptMessageHandler is retained by the configuration, and the
+     configuration is retained by the web view, which the view owns - a direct
+     conformance would be a retain cycle that leaks a WebView per message.
+     */
+    private final class BridgeProxy: NSObject, WKScriptMessageHandler {
+        weak var owner: InAppWebMessageView?
+        init(_ owner: InAppWebMessageView) { self.owner = owner }
+
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard
+                let body = message.body as? [String: Any],
+                let method = body["method"] as? String
+            else { return }
+            owner?.handle(method: method, args: (body["args"] as? [String: Any]) ?? [:])
+        }
+    }
+}
+
+extension InAppWebMessageView: WKNavigationDelegate {
+    /**
+     Any top-level navigation leaves the message, so it opens externally rather
+     than replacing the app's UI with an arbitrary page.
+
+     http(s) only - the same rule as web and Android, for the same reason:
+     `javascript:`, `data:` and `file:` URLs are how authored content escapes
+     its container.
+     */
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        guard navigationAction.navigationType == .linkActivated,
+              let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+
+        let scheme = url.scheme?.lowercased()
+        if scheme == "http" || scheme == "https" {
+            delegate?.messageViewClicked(campaign.id, action: "link", url: url.absoluteString)
+        }
+        decisionHandler(.cancel)
+    }
+}

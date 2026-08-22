@@ -22,8 +22,12 @@ LOCAL-SECRETS.md
 # only carry public client identifiers + API keys. Firestore Rules + the
 # SHA-1 fingerprint registered in Firebase Console are the real security
 # boundary. Committing them lets EAS Build pick them up via git.
-ios/
-android/
+/ios/
+# Anchored to the repo root ON PURPOSE. Unanchored `android/` matches a
+# directory of that name at ANY depth, which silently swallowed the whole
+# native SDK under vendor/joryio — the build then produced a clean, signed AAB
+# with no analytics in it.
+/android/
 
 # Claude Code session data + Firebase CLI cache (machine-local)
 .claude/

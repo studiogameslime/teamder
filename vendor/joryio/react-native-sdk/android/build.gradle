@@ -1,0 +1,60 @@
+buildscript {
+    ext.kotlin_version = '1.9.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace "io.joryio.reactnative"
+    compileSdkVersion 34
+
+    defaultConfig {
+        // Matches the native SDK this wraps (packages/sdk-android → minSdk 21).
+        // A thin bridge must never declare a HIGHER floor than the library it
+        // delegates to: manifest merging takes the max across all libraries, so
+        // 24 here silently made every React Native consumer minSdk 24 and broke
+        // the stock RN 0.75 template (which generates 23) with
+        //   uses-sdk:minSdkVersion 23 cannot be smaller than version 24
+        //   declared in library [:joryio_react-native-sdk]
+        // The bridge itself uses no API above 21 - it only forwards calls.
+        minSdkVersion 21
+        targetSdkVersion 34
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['src/main/java']
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation "com.facebook.react:react-android:+"
+    // BASE + UI, deliberately. An RN app that installs this package and writes
+    // no JavaScript still sees in-app messages, rendered by the native views -
+    // the same default Braze's RN SDK ships (api "com.braze:android-sdk-ui").
+    // "install the SDK, send a campaign, see it appear" is the thing that
+    // decides whether an integration succeeds.
+    //
+    // The opt-out already works and stays: calling Joryio.onInAppMessage() from
+    // JS invokes enableInAppMessages(), which sets the native callback and
+    // flips hostHandlesDisplay, so the SDK stops drawing and hands messages to
+    // React. An app that wants to render in React gets to; an app that does
+    // nothing is not left with a silently dead channel.
+    implementation project(':joryio-sdk')
+    implementation project(':joryio-sdk-ui')
+}
