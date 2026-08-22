@@ -9,9 +9,15 @@ clicks: 0, dismissals: 0** — after a session in which the CTA was tapped and t
 message was closed. What follows is the trace to the cause, then the issues that
 are yours.
 
-The headline finding is that **the primary cause was ours, not yours** — but it
-was caused by an API design that makes the mistake invisible, and the trace
-surfaced three real defects on your side.
+There were **two** causes, one in each codebase, and they masked each other. Ours
+is written up first (§0) because it had to be fixed before yours was even
+visible. Yours (§1) is the one that kept clicks at zero after that, and it is a
+bug you have already fixed upstream but which no released SDK carries — so every
+integrator on the current published sources hits it.
+
+Both are the same *shape* of defect, which is the point worth taking from this
+report: an interaction that is not recorded still answers `{"success": true}`,
+and the SDK still logs "Impression tracked successfully".
 
 ---
 
@@ -76,7 +82,88 @@ classifies as a click too.
 
 ---
 
-## 1. `push_permission` is stamped once and never refreshed
+## 1. The shipped Android SDK cannot report a click at all
+
+**Severity: critical — the in-app channel reports zero engagement on Android.**
+
+`InAppMessagingManager.trackImpression` in the sources we vendored builds this:
+
+```kotlin
+val request = TrackImpressionRequest(
+    campaignId = campaignId,
+    userId = identityManager.getUserId() ?: "",
+    anonymousId = identityManager.getAnonymousId(),
+    sessionId = sessionManager.getSessionId(),
+    action = action,                 // ← the interaction, and nothing else
+    deliveryToken = deliveryToken
+)
+```
+
+Captured off the wire from a release build with body logging on:
+
+```
+--> POST /v1/in-app/track
+{"action":"dismissed","anonymousId":"…","campaignId":"…","deliveryToken":"…"}
+<-- 200
+{"success":true}
+```
+
+No `in_app.dismissed` event was written. The backend classifies an impression
+from the STRUCTURED markers — `displayedAt` / `clicked`+`clickedAt` /
+`dismissedAt` — and reads "no marker present" as a display:
+
+```ts
+const actionIsInteraction =
+  action.includes('click') || action.includes('dismiss') || action.includes('convert');
+const reportsDisplay =
+  !!displayedAt || (!clicked && !dismissedAt && !actionIsInteraction && !converted);
+...
+if (impressionData.clicked) { emit('in_app.clicked', …) }
+```
+
+So `action: "clicked"` with no markers falls between the branches: not a display
+(the string contains `click`, so `actionIsInteraction` is true), and not a click
+(`clicked` is undefined). **Nothing is recorded, and the response is 200
+`{"success": true}`.** Only `displayed` works, because it is the one action that
+happens to land in the fallback.
+
+Replaying the identical request by hand with the markers added recorded a click
+within the minute — that is how the client half was isolated from the server
+half.
+
+Your current `main` already fixes this: the newer `trackImpression` maps the
+action onto the markers and collapses it to the singular `click`/`dismiss` the
+web SDK sends. We fixed our integration by re-vendoring from `main`. But the
+published artifacts still carry the old shape, so **anyone integrating from the
+released SDK today gets an in-app channel that silently reports 0% CTR.** That is
+worth a release rather than waiting for the next one.
+
+### 1a. The SDK reads the HTTP status and ignores the body
+
+```kotlin
+when (val result = networkClient.trackImpression(request)) {
+    is NetworkResult.Success -> logger.debug("Impression tracked successfully")
+```
+
+`NetworkResult.Success` means HTTP 2xx. But `/v1/in-app/track` answers **200**
+with `{"success": false, "error": …}` for every rejection it knows about —
+invalid delivery token, missing token under `IN_APP_REQUIRE_DELIVERY_TOKEN`,
+tenant mismatch. The SDK logs "succeeded" for all of them.
+
+Combined with §1b below, a rejected impression is indistinguishable from one
+that was never sent, from inside the app *and* from the logs.
+
+### 1b. Every log line is gated behind `enableDebug`
+
+`Logger.error` is gated on the same `enabled` flag as `verbose`. An integration
+that has not opted into debug logging gets **complete silence** in logcat — no
+warning, no error, nothing — while impressions are being dropped. Errors are not
+debug output; they should print regardless of level, exactly so that this class
+of failure announces itself.
+
+---
+
+## 2. `push_permission` is stamped once and never refreshed
 
 **Severity: high — it silently shrinks every push-targeted audience.**
 
@@ -97,7 +184,7 @@ attribute back ourselves after every registration.
 
 ---
 
-## 2. Two device rows are created for one device
+## 3. Two device rows are created for one device
 
 For a single install, `GET /users/{id}/devices` returns two rows:
 
@@ -116,7 +203,7 @@ gets a 50/50 chance of the row without the token.
 
 ---
 
-## 3. `Joryio.kt` discards `present()`'s return value, contradicting its own comment
+## 4. `Joryio.kt` discards `present()`'s return value, contradicting its own comment
 
 ```kotlin
 // Joryio.kt:~893
@@ -144,7 +231,7 @@ The three comments describe behaviour the code does not have.
 
 ---
 
-## 4. Minor: two packaging gaps that cost a build each
+## 5. Minor: two packaging gaps that cost a build each
 
 Not bugs in the product, but each one produced a *successful* build that did
 nothing, which is expensive to diagnose:
