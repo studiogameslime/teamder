@@ -219,6 +219,23 @@ export function GameCreateScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.quick]);
 
+  // Funnel entry: the create wizard mounted. `mode` says which of the three
+  // entry points opened it (recurring clone / quick "+" / community create),
+  // `prefilled` marks arrivals from the home availability calendar.
+  useEffect(() => {
+    logEvent(AnalyticsEvent.GameCreateStarted, {
+      stage: 'wizard',
+      mode: params.recurring
+        ? 'recurring'
+        : params.quick
+          ? 'quick'
+          : 'community',
+      prefilled: !!params.prefillDateMs,
+      communityCount: myCommunities.length,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // NOTE: the quick-path loading spinner is rendered LOWER DOWN, in the
   // main return after every hook — NOT here. GameCreateScreen calls
   // several hooks (useState / useMemo) AFTER the empty-state early-
@@ -302,6 +319,10 @@ export function GameCreateScreen() {
   const handleGroupChange = (id: string) => {
     setGroupId(id);
     setInitialKey((n) => n + 1);
+    logEvent(AnalyticsEvent.GameCreateCommunityChanged, {
+      groupId: id,
+      communityCount: myCommunities.length,
+    });
   };
 
   // Empty states with an "ללא קבוצה" CTA — rendered AFTER all hooks (see
@@ -350,6 +371,11 @@ export function GameCreateScreen() {
           { cancelable: true, onDismiss: () => resolve(false) },
         );
       });
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: 'create',
+        reason: 'past_date',
+        confirmed: proceed,
+      });
       if (!proceed) return;
     }
     // Holiday guard: warn (don't block) if kickoff lands on a Jewish "no-play"
@@ -369,6 +395,11 @@ export function GameCreateScreen() {
           ],
           { cancelable: true, onDismiss: () => resolve(false) },
         );
+      });
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: 'create',
+        reason: 'holiday',
+        confirmed: proceed,
       });
       if (!proceed) return;
     }
@@ -469,6 +500,16 @@ export function GameCreateScreen() {
       if (isOrphan) {
         logEvent(AnalyticsEvent.QuickGameCreated, { gameId: created.id });
       }
+      // Auto-teams was armed at create time — track the method and how
+      // far ahead of kickoff the generation is scheduled.
+      if (v.autoTeamsAt > 0) {
+        logEvent(AnalyticsEvent.AutoTeamsScheduled, {
+          gameId: created.id,
+          method: v.autoTeamsMethod,
+          leadMinutes: Math.round((v.startsAt - v.autoTeamsAt) / 60000),
+          source: 'create',
+        });
+      }
       (nav as { replace: (s: string, p: unknown) => void }).replace(
         'MatchDetails',
         { gameId: created.id, celebrate: true },
@@ -481,6 +522,10 @@ export function GameCreateScreen() {
         code?: string;
         conflict?: { title: string; startsAt: number };
       };
+      logEvent(AnalyticsEvent.GameSaveBlocked, {
+        mode: 'create',
+        reason: e.code ?? 'unknown',
+      });
       if (e.code === 'GAME_OVERLAP' && e.conflict) {
         const ts = new Date(e.conflict.startsAt);
         const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;

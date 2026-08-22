@@ -18,6 +18,7 @@ import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 // Brand-blue palette — same tones as the redesigned onboarding /
 // hero blocks. Hardcoded here (not via colors.primary, which is
@@ -40,6 +41,7 @@ export function SignInScreen() {
   const busy = busyProvider !== null;
 
   const handlePress = async () => {
+    logEvent(AnalyticsEvent.SignInAttempted, { method: 'google' });
     setBusyProvider('google');
     try {
       await signIn();
@@ -68,6 +70,11 @@ export function SignInScreen() {
           code: e?.code,
         });
       }
+      if (cancelled) {
+        logEvent(AnalyticsEvent.SignInCancelled, { method: 'google' });
+      } else {
+        logEvent(AnalyticsEvent.SignInFailed, { method: 'google', code });
+      }
       // Map known errors to friendly Hebrew. Log raw error to console.
       if (__DEV__) console.warn('[signIn] failed', err);
       // Don't pop an error dialog when the USER cancelled the Google chooser
@@ -83,6 +90,7 @@ export function SignInScreen() {
   // Sign in with Apple — required by App Store Guideline 4.8 alongside
   // Google. iOS-only; the native button is hidden on Android.
   const handleApple = async () => {
+    logEvent(AnalyticsEvent.SignInAttempted, { method: 'apple' });
     setBusyProvider('apple');
     try {
       await signInApple();
@@ -110,6 +118,11 @@ export function SignInScreen() {
           code: e?.code,
         });
       }
+      if (cancelled) {
+        logEvent(AnalyticsEvent.SignInCancelled, { method: 'apple' });
+      } else {
+        logEvent(AnalyticsEvent.SignInFailed, { method: 'apple', code });
+      }
       // Still tell the user something went wrong (unless they cancelled) so a
       // transient failure prompts a retry rather than a silent dead button.
       if (!cancelled) {
@@ -129,6 +142,7 @@ export function SignInScreen() {
     } catch (err) {
       if (__DEV__) console.warn('[signIn] guest failed', err);
       logError('signInGuestScreen', err, { screen: 'SignInScreen' });
+      logEvent(AnalyticsEvent.SignInFailed, { method: 'guest' });
       appAlert(he.error, he.signInFailed);
     } finally {
       setBusyProvider(null);
@@ -214,7 +228,10 @@ export function SignInScreen() {
         {/* Email + password — a third option for users without (or who
             prefer not to use) a Google/Apple account. */}
         <Pressable
-          onPress={() => nav.navigate('EmailAuth')}
+          onPress={() => {
+            logEvent(AnalyticsEvent.SignInAttempted, { method: 'email' });
+            nav.navigate('EmailAuth');
+          }}
           disabled={busy}
           style={({ pressed }) => [
             styles.ctaBtn,

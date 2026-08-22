@@ -70,7 +70,8 @@
     "react-native-svg": "15.11.2",
     "react-native-view-shot": "4.0.3",
     "react-native-webview": "13.13.5",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "@joryio/react-native-sdk": "file:./vendor/joryio/react-native-sdk"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

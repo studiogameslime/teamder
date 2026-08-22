@@ -22,6 +22,7 @@ import { Button } from './Button';
 import { RatingSlider } from './RatingSlider';
 import { appAlert } from './AppDialog';
 import { toast } from './Toast';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { gameService } from '@/services/gameService';
 import type { GameGuest } from '@/types';
@@ -78,6 +79,11 @@ export function GuestModal({
     if (!visible) return;
     setName(existing?.name ?? '');
     setRating(existing?.estimatedRating ?? null);
+    logEvent(AnalyticsEvent.GuestModalOpened, {
+      gameId,
+      mode: existing ? 'edit' : 'add',
+      isAdmin: !!isAdmin,
+    });
   }, [visible, existing?.id, existing?.name, existing?.estimatedRating]);
 
   // Permission split (only meaningful in edit mode; on ADD the caller is the
@@ -160,6 +166,19 @@ export function GuestModal({
         gameId,
         callerId,
         guestId: existing?.id,
+      });
+      // Bucket the message we already branch on below into a fixed enum —
+      // the raw error text never reaches analytics.
+      const reason =
+        msg === 'GAME_FULL' ||
+        msg === 'GAME_NOT_OPEN' ||
+        msg === 'PERMISSION_DENIED'
+          ? msg
+          : 'other';
+      logEvent(AnalyticsEvent.GuestSaveFailed, {
+        gameId,
+        mode: existing ? 'edit' : 'add',
+        reason,
       });
       if (msg === 'GAME_FULL') toast.error(he.guestErrorGameFull);
       else if (msg === 'GAME_NOT_OPEN') toast.error(he.guestErrorGameNotOpen);

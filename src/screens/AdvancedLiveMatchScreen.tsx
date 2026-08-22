@@ -464,12 +464,25 @@ export function AdvancedLiveMatchScreen() {
         // happened (B15).
         if (req.donors.length === 0) {
           toast.info(he.rotationFillNoDonor);
+          logEvent(AnalyticsEvent.LineupFillResolved, {
+            gameId,
+            teamIndex: team,
+            result: 'no_donor',
+            count: 0,
+          });
           continue;
         }
         flow.current = team;
         // Never ask for more than the pool can supply — otherwise the confirm
         // button stays permanently disabled.
         const need = Math.min(req.deficit, req.donors.length);
+        logEvent(AnalyticsEvent.LineupFillPrompted, {
+          gameId,
+          teamIndex: team,
+          required: need,
+          donors: req.donors.length,
+          keepClock: flow.keepClock,
+        });
         setFillRequest({
           teamLabel: teamName(team, draftTeams?.teams),
           players: req.donors.map(resolveFillPlayer),
@@ -510,6 +523,12 @@ export function AdvancedLiveMatchScreen() {
   const onFillConfirm = (chosen: string[]) => {
     const flow = fillFlowRef.current;
     if (!flow || flow.current == null) return;
+    logEvent(AnalyticsEvent.LineupFillResolved, {
+      gameId,
+      teamIndex: flow.current,
+      result: 'confirmed',
+      count: chosen.length,
+    });
     flow.working = applyChosenFill(
       flow.working.teams,
       flow.working.loans,
@@ -534,7 +553,14 @@ export function AdvancedLiveMatchScreen() {
     // rotation frozen. Advance its identity so the NEXT round-commit by the
     // same teams gets a fresh idempotency key and isn't dropped as a duplicate
     // (B03/B04). Fire-and-forget — a failure only risks the rare collision.
-    if (gameId) void gameService.nudgeRotationAfterFillCancel(gameId);
+    if (gameId) {
+      logEvent(AnalyticsEvent.LineupFillResolved, {
+        gameId,
+        result: 'cancelled',
+        count: 0,
+      });
+      void gameService.nudgeRotationAfterFillCancel(gameId);
+    }
   };
 
   // "סיים משחק" → confirm first, naming the winner + who comes on next, so
@@ -554,6 +580,13 @@ export function AdvancedLiveMatchScreen() {
         : (live.scoreB ?? 0) > (live.scoreA ?? 0)
           ? b
           : null;
+    logEvent(AnalyticsEvent.RoundEndPrompted, {
+      gameId,
+      round: rotation?.round ?? 0,
+      scoreA: live?.scoreA ?? 0,
+      scoreB: live?.scoreB ?? 0,
+      tie: winnerIdx == null,
+    });
     if (winnerIdx == null) {
       void onEndRound(); // tie → picker
       return;
@@ -603,6 +636,14 @@ export function AdvancedLiveMatchScreen() {
         setDecisionOpen(true);
         return;
       }
+      logEvent(AnalyticsEvent.MatchRoundCompleted, {
+        gameId,
+        round: rotation?.round ?? 0,
+        resolution: 'score',
+        outcome: String(res.outcome),
+        goals: live?.goals?.length ?? 0,
+        elapsedSec: Math.round(timerMs / 1000),
+      });
       beginFillFlow(res.skeleton, res.draft);
     } catch (err) {
       logError('liveFinalizeRound', err, { gameId, userId: me.id });
@@ -632,7 +673,16 @@ export function AdvancedLiveMatchScreen() {
     finalizingRef.current = true;
     try {
       const res = await gameService.prepareRoundResult(gameId, me.id, side);
-      if (res && res.outcome !== null) beginFillFlow(res.skeleton, res.draft);
+      if (res && res.outcome !== null) {
+        logEvent(AnalyticsEvent.MatchRoundCompleted, {
+          gameId,
+          round: rotation?.round ?? 0,
+          resolution: 'manual_tie',
+          outcome: side,
+          goals: live?.goals?.length ?? 0,
+        });
+        beginFillFlow(res.skeleton, res.draft);
+      }
     } catch (err) {
       logError('liveFinalizeRoundTie', err, { gameId, userId: me.id });
       toast.error(he.roundFinalizeFailed);
@@ -645,10 +695,20 @@ export function AdvancedLiveMatchScreen() {
   // Tie chooser: admin picks how to break the draw.
   const onDecideManual = () => {
     setDecisionOpen(false);
+    logEvent(AnalyticsEvent.RoundTieDecision, {
+      gameId,
+      round: rotation?.round ?? 0,
+      method: 'manual',
+    });
     setWinnerOpen(true);
   };
   const onDecidePenalties = () => {
     setDecisionOpen(false);
+    logEvent(AnalyticsEvent.RoundTieDecision, {
+      gameId,
+      round: rotation?.round ?? 0,
+      method: 'penalties',
+    });
     setShootoutOpen(true);
   };
 
@@ -669,7 +729,16 @@ export function AdvancedLiveMatchScreen() {
     finalizingRef.current = true;
     try {
       const res = await gameService.prepareRoundResult(gameId, me.id, side);
-      if (res && res.outcome !== null) beginFillFlow(res.skeleton, res.draft);
+      if (res && res.outcome !== null) {
+        logEvent(AnalyticsEvent.MatchRoundCompleted, {
+          gameId,
+          round: rotation?.round ?? 0,
+          resolution: 'shootout',
+          outcome: side,
+          goals: live?.goals?.length ?? 0,
+        });
+        beginFillFlow(res.skeleton, res.draft);
+      }
     } catch (err) {
       logError('liveShootoutDecided', err, { gameId, userId: me.id });
       toast.error(he.roundFinalizeFailed);
@@ -690,7 +759,13 @@ export function AdvancedLiveMatchScreen() {
   // stays drawn and can be re-decided from "סיים משחק".
   const onShootoutExit = () => {
     setShootoutOpen(false);
-    if (gameId) void gameService.clearShootout(gameId);
+    if (gameId) {
+      logEvent(AnalyticsEvent.ShootoutAbandoned, {
+        gameId,
+        round: rotation?.round ?? 0,
+      });
+      void gameService.clearShootout(gameId);
+    }
   };
 
   // "התחל משחק" — kick off a round: draft rotation + start the match clock
@@ -707,7 +782,18 @@ export function AdvancedLiveMatchScreen() {
       );
       if (!prep) return; // gate: not enough players for two teams
       await gameService.markGameStarted(gameId);
+      logEvent(AnalyticsEvent.GameStarted, {
+        gameId,
+        mode: 'advanced',
+        teams: draftTeams?.teams.length ?? 0,
+      });
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.RoundStarted, {
+        gameId,
+        round: rotation?.round ?? 0,
+        teams: draftTeams?.teams.length ?? 0,
+        perTeam,
+      });
       beginFillFlow(prep.skeleton, prep.draft, prep.baseTeams);
     } catch (err) {
       logError('liveStartRound', err, { gameId, userId: me?.id });
@@ -733,6 +819,7 @@ export function AdvancedLiveMatchScreen() {
       return;
     }
     if (ctrlId && ctrlId !== me?.id && running !== prevRunning) {
+      logEvent(AnalyticsEvent.LiveTimerRemoteChange, { gameId, running });
       const who = ctrlName || 'אדמין אחר';
       toast.info(running ? `${who} הפעיל את הטיימר` : `${who} עצר את הטיימר`, 1800);
     }
@@ -757,7 +844,20 @@ export function AdvancedLiveMatchScreen() {
       // liveMatch.startedAt (and creates liveMatch if absent — required
       // before startTimer can run). Idempotent on subsequent presses.
       await gameService.markGameStarted(gameId);
+      if (!timerStarted) {
+        logEvent(AnalyticsEvent.GameStarted, {
+          gameId,
+          mode: 'advanced',
+          teams: draftTeams?.teams.length ?? 0,
+        });
+      }
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'start',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerStart', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startTimer failed', err);
@@ -769,6 +869,12 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId || !me) return;
     try {
       await gameService.pauseTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'pause',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerPause', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
@@ -778,6 +884,12 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId || !me) return;
     try {
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'resume',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerResume', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
@@ -798,6 +910,12 @@ export function AdvancedLiveMatchScreen() {
           onPress: async () => {
             try {
               await gameService.resetTimer(gameId, me.id, me.name ?? '');
+              logEvent(AnalyticsEvent.LiveTimerAction, {
+                gameId,
+                action: 'reset',
+                elapsedSec: Math.round(timerMs / 1000),
+                isAdmin,
+              });
             } catch (err) {
               logError('liveTimerReset', err, { gameId, userId: me?.id });
               if (__DEV__) console.warn('[live] resetTimer failed', err);
@@ -816,12 +934,6 @@ export function AdvancedLiveMatchScreen() {
     try {
       await gameService.endEvening(gameId);
       setEndOpen(false);
-      // For a COMMUNITY game, ask who took the club's ball / jerseys home so
-      // the holders persist to the next game. Registered players only (a holder
-      // is a community-member state). One-off games just leave the screen.
-      const grpId = game?.groupId;
-      const grp = grpId ? myCommunities.find((g) => g.id === grpId) : undefined;
-      const registered = (game?.players ?? []).map(resolveFillPlayer);
       // Only ask about equipment if the evening was ACTUALLY played (the timer
       // started at least once). Ending a called-off game that no one played must
       // not overwrite the community's real ball/jersey holder state.
@@ -833,6 +945,20 @@ export function AdvancedLiveMatchScreen() {
         game?.status === 'finished' ||
         live?.startedAt != null ||
         (live?.goals?.length ?? 0) > 0;
+      logEvent(AnalyticsEvent.MatchCompleted, {
+        gameId,
+        mode: 'advanced',
+        rounds: rotation?.round ?? 0,
+        goals: live?.goals?.length ?? 0,
+        elapsedSec: Math.round(timerMs / 1000),
+        wasPlayed,
+      });
+      // For a COMMUNITY game, ask who took the club's ball / jerseys home so
+      // the holders persist to the next game. Registered players only (a holder
+      // is a community-member state). One-off games just leave the screen.
+      const grpId = game?.groupId;
+      const grp = grpId ? myCommunities.find((g) => g.id === grpId) : undefined;
+      const registered = (game?.players ?? []).map(resolveFillPlayer);
       if (grpId && registered.length > 0 && wasPlayed) {
         // "Last took" hints so the admin can hand off fairly (who took it
         // longest ago). Non-blocking — an empty map just hides the hints.
@@ -864,6 +990,13 @@ export function AdvancedLiveMatchScreen() {
     if (grpId) {
       try {
         await groupService.setEquipmentHolders(grpId, holders);
+        logEvent(AnalyticsEvent.EquipmentHandoffAction, {
+          gameId,
+          groupId: grpId,
+          action: 'saved',
+          ballHolders: holders.ballHolderIds.length,
+          jerseysHolders: holders.jerseysHolderIds.length,
+        });
         successHaptic();
         // Log timestamped events so the timeline + next "last took" hint update.
         await communityEventsService.logEquipmentEvents(
@@ -879,6 +1012,13 @@ export function AdvancedLiveMatchScreen() {
     leaveLiveScreen();
   };
   const onSkipHandoff = () => {
+    logEvent(AnalyticsEvent.EquipmentHandoffAction, {
+      gameId,
+      groupId: game?.groupId,
+      action: 'skipped',
+      ballHolders: 0,
+      jerseysHolders: 0,
+    });
     setHandoff(null);
     leaveLiveScreen();
   };
@@ -955,6 +1095,11 @@ export function AdvancedLiveMatchScreen() {
     if (inOvertime && !enteredOvertimeRef.current) {
       enteredOvertimeRef.current = true;
       warningHaptic();
+      logEvent(AnalyticsEvent.LiveOvertimeReached, {
+        gameId,
+        totalMinutes,
+        round: rotation?.round ?? 0,
+      });
     }
     if (!inOvertime) enteredOvertimeRef.current = false;
   }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
@@ -1045,6 +1190,10 @@ export function AdvancedLiveMatchScreen() {
     if (!draftTeams) return;
     const idx = draftTeams.teams.map((t) => t.index);
     setFirstTwo([...idx].sort(() => Math.random() - 0.5).slice(0, 2));
+    logEvent(AnalyticsEvent.PlayersShuffled, {
+      gameId,
+      teams: draftTeams.teams.length,
+    });
   };
   // Tap a team to select/deselect it as one of the two starters. Capped at
   // two: tapping a third replaces the older selection so you always converge
@@ -1058,11 +1207,17 @@ export function AdvancedLiveMatchScreen() {
 
   // ─── Per-player actions from the live roster popover menu ───────────────
   // "כרטיס שחקן" → open the player's card (community-scoped for head-to-head).
-  const openPlayerCard = (userId: string) =>
+  const openPlayerCard = (userId: string) => {
+    logEvent(AnalyticsEvent.PlayerCardOpened, {
+      userId,
+      groupId: game?.groupId,
+      source: 'live_match',
+    });
     (nav as unknown as { navigate: (s: string, p: object) => void }).navigate(
       'PlayerCard',
       game?.groupId ? { userId, groupId: game.groupId } : { userId },
     );
+  };
   // "הלך הביתה" — remove a player for the rest of the evening. Allowed at any
   // point in an active rotation (mid-round too, not just between משחקים): if a
   // playing team is left short we immediately offer a replacement, and the
@@ -1082,6 +1237,13 @@ export function AdvancedLiveMatchScreen() {
             homeActionRef.current = true;
             try {
               await gameService.markPlayerWentHome(gameId, player.id);
+              logEvent(AnalyticsEvent.LiveRosterAction, {
+                gameId,
+                action: 'went_home',
+                playerId: player.id,
+                isGuest: !playersMap[player.id],
+                midRound: timerRunning,
+              });
               // If they were on a playing team that's now short, offer to borrow
               // a replacement (same fill flow as a round transition). No-op when
               // no playing team is short or a transition is already in flight.
@@ -1120,6 +1282,13 @@ export function AdvancedLiveMatchScreen() {
             homeActionRef.current = true;
             try {
               await gameService.restorePlayer(gameId, player.id);
+              logEvent(AnalyticsEvent.LiveRosterAction, {
+                gameId,
+                action: 'restored',
+                playerId: player.id,
+                isGuest: !playersMap[player.id],
+                midRound: timerRunning,
+              });
             } catch (err) {
               logError('restorePlayer', err, { gameId, playerId: player.id });
             } finally {
@@ -1141,6 +1310,11 @@ export function AdvancedLiveMatchScreen() {
     void (async () => {
       try {
         await gameService.swapPlayers(gameId, aId, bId);
+        logEvent(AnalyticsEvent.LiveRosterAction, {
+          gameId,
+          action: 'swapped',
+          midRound: timerRunning,
+        });
       } catch (err) {
         logError('swapPlayers', err, { gameId, aId, bId });
       } finally {
@@ -1239,7 +1413,14 @@ export function AdvancedLiveMatchScreen() {
               stoppages.stopCount,
               formatTime(totalStoppedMs),
             )}
-            onStoppages={() => setStoppagesOpen(true)}
+            onStoppages={() => {
+              logEvent(AnalyticsEvent.LiveStoppagesOpened, {
+                gameId,
+                stopCount: stoppages.stopCount,
+                totalStoppedSec: Math.round(totalStoppedMs / 1000),
+              });
+              setStoppagesOpen(true);
+            }}
             controllerName={showController ? timerView.controlledByName : null}
           />
         ) : (
@@ -1286,7 +1467,14 @@ export function AdvancedLiveMatchScreen() {
                 <View style={styles.timerDivider} />
                 <Pressable
                   style={styles.stoppagesRow}
-                  onPress={() => setStoppagesOpen(true)}
+                  onPress={() => {
+                    logEvent(AnalyticsEvent.LiveStoppagesOpened, {
+                      gameId,
+                      stopCount: stoppages.stopCount,
+                      totalStoppedSec: Math.round(totalStoppedMs / 1000),
+                    });
+                    setStoppagesOpen(true);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={he.liveStoppagesTitle}
                 >
@@ -1672,6 +1860,11 @@ export function AdvancedLiveMatchScreen() {
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
+                logEvent(AnalyticsEvent.EndEveningPrompted, {
+                  gameId,
+                  source: 'menu',
+                  elapsedSec: Math.round(timerMs / 1000),
+                });
                 setEndOpen(true);
               }}
             >

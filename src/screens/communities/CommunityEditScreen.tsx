@@ -119,7 +119,21 @@ export function CommunityEditScreen() {
         // GROUP_MAX_BELOW_CURRENT and lock an admin out of editing an uncapped /
         // over-40 community. Omitting the key preserves the stored cap untouched.
       });
-      logEvent(AnalyticsEvent.GroupSettingsEdited, { groupId: original.id });
+      // The rating switches ride along on the same edit event, but only when
+      // they actually moved — otherwise every unrelated save would report the
+      // current rating config as if it had just been changed.
+      const ratingChanged =
+        v.internalRating !== (original.internalRating ?? false) ||
+        v.hideInternalRating !== (original.hideInternalRating ?? false);
+      logEvent(AnalyticsEvent.GroupSettingsEdited, {
+        groupId: original.id,
+        ...(ratingChanged
+          ? {
+              internalRating: v.internalRating,
+              hidden: v.internalRating ? v.hideInternalRating : false,
+            }
+          : {}),
+      });
       await reloadGroups(me.id);
       nav.replace('CommunityDetails', { groupId: original.id });
     } catch (e) {
@@ -127,6 +141,10 @@ export function CommunityEditScreen() {
         typeof (e as { code?: unknown })?.code === 'string'
           ? ((e as { code: string }).code)
           : '';
+      logEvent(AnalyticsEvent.GroupSettingsEditFailed, {
+        groupId: original.id,
+        code,
+      });
       if (code === 'GROUP_MAX_BELOW_CURRENT') {
         const current =
           (e as { currentCount?: number }).currentCount ?? 0;

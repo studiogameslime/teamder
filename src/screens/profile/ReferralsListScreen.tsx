@@ -8,7 +8,7 @@
 // not a high-traffic feed) and a one-shot Firestore read on focus is
 // cheap and always fresh.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -24,6 +24,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useUserStore } from '@/store/userStore';
 import { userService } from '@/services';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -50,6 +51,10 @@ export function ReferralsListScreen() {
   const currentUserId = useUserStore((s) => s.currentUser?.id ?? null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // The screen-open event carries the referral count, which is only known
+  // once the load resolves — and `load` re-runs on every focus, so guard it
+  // to a single fire per mount.
+  const openLoggedRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!currentUserId) {
@@ -59,6 +64,10 @@ export function ReferralsListScreen() {
     try {
       const list = await userService.listInvitedUsers(currentUserId);
       setRows(list);
+      if (!openLoggedRef.current) {
+        openLoggedRef.current = true;
+        logEvent(AnalyticsEvent.ReferralsScreenOpened, { count: list.length });
+      }
     } catch (err) {
       // Never leave `rows` as null — that drives the perpetual spinner
       // (loading is derived from `rows === null`). On failure fall back to

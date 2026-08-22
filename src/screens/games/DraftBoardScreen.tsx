@@ -32,6 +32,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { DraftTeamsResult, Game } from '@/types';
@@ -82,6 +83,13 @@ export function DraftBoardScreen() {
           }
         }
         setGame(g);
+        if (readOnly) {
+          logEvent(AnalyticsEvent.TeamsViewed, {
+            gameId,
+            readOnly: true,
+            numTeams: captainIds.length,
+          });
+        }
         if (g?.players?.length) hydratePlayers(g.players);
         // Resuming a saved draft → reconstruct the picks so we land on the
         // summary (and can still step back to edit).
@@ -189,14 +197,25 @@ export function DraftBoardScreen() {
   const pick = useCallback(
     (uid: string) => {
       if (done || ghost) return;
+      logEvent(AnalyticsEvent.DraftPickMade, {
+        gameId,
+        pickIndex: picks.length,
+        isGuest: isGuestId(uid),
+      });
       setPicks((prev) => [...prev, uid]);
       setGhost({ uid, where: 'list' });
     },
-    [done, ghost],
+    [done, ghost, gameId, picks],
   );
 
   const undo = useCallback(() => {
     if (ghost) return;
+    if (picks.length > 0) {
+      logEvent(AnalyticsEvent.DraftPickUndone, {
+        gameId,
+        pickIndex: picks.length - 1,
+      });
+    }
     setPicks((prev) => {
       if (prev.length === 0) return prev;
       const removed = prev[prev.length - 1];
@@ -204,7 +223,7 @@ export function DraftBoardScreen() {
       setGhost({ uid: removed, where: 'team', team: removedTeam });
       return prev.slice(0, -1);
     });
-  }, [ghost, order]);
+  }, [ghost, order, gameId, picks]);
 
   // When the last pick completes the draft we flip to the summary and the
   // board (with its shrinking ghost) unmounts — clear the ghost so it can't
@@ -241,6 +260,13 @@ export function DraftBoardScreen() {
     setSaving(true);
     try {
       await gameService.saveDraftTeams(gameId, result);
+      logEvent(AnalyticsEvent.TeamsSaved, {
+        gameId,
+        numTeams,
+        order: method,
+        source: 'draft_board',
+        published: false,
+      });
       appAlert(he.draftTitle, he.draftSaved);
       nav.navigate('MatchDetails', { gameId });
     } catch (err) {
@@ -341,6 +367,11 @@ export function DraftBoardScreen() {
                       disabled={taken}
                       onPress={() => {
                         if (pickerTeam === null) return;
+                        logEvent(AnalyticsEvent.TeamColorPicked, {
+                          gameId,
+                          teamIndex: pickerTeam,
+                          color: c.key,
+                        });
                         setTeamColors((prev) => ({ ...prev, [pickerTeam]: c.key }));
                         setPickerTeam(null);
                       }}

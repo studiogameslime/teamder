@@ -34,6 +34,7 @@ import {
   type RosterMember,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { StepIndicator } from '@/components/StepIndicator';
 import type { DraftTeamsResult, GameGuest, LiveMatchState, MatchRotation } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -148,6 +149,14 @@ export function LiveScoreboardCard(props: Props) {
     setBusy(true);
     try {
       await gameService.recordGoal(gameId, { team, scorerId, assisterId, ownGoal, minute });
+      logEvent(AnalyticsEvent.TeamScoreChanged, {
+        gameId,
+        team,
+        delta: 1,
+        kind: ownGoal ? 'own' : scorerId ? 'player' : 'unknown',
+        hasAssist: !!assisterId && assisterId !== scorerId,
+        minute,
+      });
     } catch (err) {
       toast.error(he.goalSaveFailed);
     } finally {
@@ -158,6 +167,7 @@ export function LiveScoreboardCard(props: Props) {
   // Deleting a goal is destructive (drops it from the log + decrements the
   // score) and the ✕ is a tiny target next to other rows — confirm first.
   const undo = (goalId: string) => {
+    logEvent(AnalyticsEvent.GoalDeletePrompted, { gameId });
     Alert.alert('מחיקת גול', 'למחוק את הגול מהיומן?', [
       { text: 'ביטול', style: 'cancel' },
       { text: 'מחק', style: 'destructive', onPress: () => doUndo(goalId) },
@@ -169,6 +179,7 @@ export function LiveScoreboardCard(props: Props) {
     setBusy(true);
     try {
       await gameService.removeGoal(gameId, goalId);
+      logEvent(AnalyticsEvent.TeamScoreChanged, { gameId, delta: -1, kind: 'undo' });
     } catch (err) {
       toast.error(he.goalSaveFailed);
     } finally {
@@ -208,7 +219,10 @@ export function LiveScoreboardCard(props: Props) {
           tint={teamColor(aIdx, draftTeams.teams)}
           canEdit={canEdit}
           busy={busy}
-          onAdd={() => setGoalSide('A')}
+          onAdd={() => {
+            logEvent(AnalyticsEvent.GoalWizardOpened, { gameId, team: 'A', minute });
+            setGoalSide('A');
+          }}
         />
 
         <View style={styles.timerCol}>
@@ -246,7 +260,10 @@ export function LiveScoreboardCard(props: Props) {
           tint={teamColor(bIdx, draftTeams.teams)}
           canEdit={canEdit}
           busy={busy}
-          onAdd={() => setGoalSide('B')}
+          onAdd={() => {
+            logEvent(AnalyticsEvent.GoalWizardOpened, { gameId, team: 'B', minute });
+            setGoalSide('B');
+          }}
         />
       </View>
 
@@ -259,7 +276,13 @@ export function LiveScoreboardCard(props: Props) {
       {/* Collapsible scorer log. */}
       {goals.length > 0 ? (
         <View style={styles.logWrap}>
-          <Pressable style={styles.logHeader} onPress={() => setLogOpen((v) => !v)}>
+          <Pressable
+            style={styles.logHeader}
+            onPress={() => {
+              logEvent(AnalyticsEvent.GoalLogToggled, { gameId, open: !logOpen, goals: goals.length });
+              setLogOpen((v) => !v);
+            }}
+          >
             <Ionicons name={logOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.primary} />
             <Text style={styles.logHeaderText}>{he.goalScorersLog(goals.length)}</Text>
           </Pressable>
@@ -291,6 +314,7 @@ export function LiveScoreboardCard(props: Props) {
       ) : null}
 
       <GoalWizard
+        gameId={gameId}
         side={goalSide}
         teamLabel={
           goalSide === 'A' ? teamName(aIdx, draftTeams.teams) : teamName(bIdx, draftTeams.teams)
@@ -304,7 +328,10 @@ export function LiveScoreboardCard(props: Props) {
         }
         onUnknownGoal={() => goalSide && addGoal(goalSide, null)}
         onOwnGoal={(scorerId) => goalSide && addGoal(goalSide, scorerId, true)}
-        onClose={() => setGoalSide(null)}
+        onClose={() => {
+          if (goalSide) logEvent(AnalyticsEvent.GoalWizardCancelled, { gameId, team: goalSide });
+          setGoalSide(null);
+        }}
       />
     </View>
   );
@@ -368,6 +395,7 @@ function PickRow({ m, onPress }: { m: RosterMember; onPress: () => void }) {
  * step 2 (👟 מבשל) picks the assister. No penalties, no type step.
  */
 function GoalWizard({
+  gameId,
   side,
   teamLabel,
   roster,
@@ -377,6 +405,7 @@ function GoalWizard({
   onOwnGoal,
   onClose,
 }: {
+  gameId: string;
   side: 'A' | 'B' | null;
   teamLabel: string;
   roster: RosterMember[];
@@ -449,7 +478,13 @@ function GoalWizard({
                   <Pressable style={styles.specialBtn} onPress={onUnknownGoal}>
                     <Text style={styles.specialTxt}>{he.goalUnknownScorer}</Text>
                   </Pressable>
-                  <Pressable style={styles.specialBtn} onPress={() => setStep('own')}>
+                  <Pressable
+                    style={styles.specialBtn}
+                    onPress={() => {
+                      logEvent(AnalyticsEvent.OwnGoalPickerOpened, { gameId, team: side ?? '' });
+                      setStep('own');
+                    }}
+                  >
                     <Text style={styles.specialTxt}>{he.goalOwnGoal}</Text>
                   </Pressable>
                 </View>

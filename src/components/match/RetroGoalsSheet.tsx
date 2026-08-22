@@ -16,6 +16,7 @@ import { Button } from '@/components/Button';
 import { UserAvatar } from '@/components/UserAvatar';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { successHaptic, warningHaptic } from '@/utils/haptics';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -84,6 +85,11 @@ export function RetroGoalsSheet({
     setBusy(true);
     try {
       await gameService.addRetroGoal(gameId, scorerId, assisterId, genRetroId());
+      logEvent(AnalyticsEvent.RetroGoalAdded, {
+        gameId,
+        hasAssist: !!assisterId,
+        total: (list?.length ?? 0) + 1,
+      });
       successHaptic();
       toast.success(he.retroAddDone);
       setMode('list');
@@ -105,6 +111,10 @@ export function RetroGoalsSheet({
     setBusy(true);
     try {
       await gameService.removeRetroGoal(gameId, id);
+      logEvent(AnalyticsEvent.RetroGoalRemoved, {
+        gameId,
+        total: Math.max(0, (list?.length ?? 1) - 1),
+      });
       warningHaptic();
       toast.success(he.retroRemoveDone);
       await reload();

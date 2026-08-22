@@ -14,6 +14,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { toast } from '@/components/Toast';
 import { seriesService, settingsFromGame } from '@/services/seriesService';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { Game } from '@/types';
 import { colors, spacing, typography } from '@/theme';
@@ -204,6 +205,12 @@ export function GameEditScreen() {
     // waitlist-approval, is silently lost). Reported by Eliran (8 in roster + 1
     // waiting, editing something unrelated).
     if (newMaxPlayers < currentMax && newMaxPlayers < registeredCount) {
+      logEvent(AnalyticsEvent.GameSaveBlocked, {
+        mode: 'edit',
+        reason: 'capacity_too_low',
+        registeredCount,
+        newMaxPlayers,
+      });
       appAlert(
         he.editGameCapacityTooLowTitle,
         he.editGameCapacityTooLowBody(registeredCount, newMaxPlayers),
@@ -226,6 +233,11 @@ export function GameEditScreen() {
           ],
           { cancelable: true, onDismiss: () => resolve(false) },
         );
+      });
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: 'edit',
+        reason: 'past_date',
+        confirmed: proceed,
       });
       if (!proceed) return;
     }
@@ -251,6 +263,12 @@ export function GameEditScreen() {
           ],
           { cancelable: true, onDismiss: () => resolve(false) },
         );
+      });
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: 'edit',
+        reason: 'notify_players',
+        confirmed: proceed,
+        count: notifiableCount,
       });
       if (!proceed) return;
     }
@@ -325,6 +343,38 @@ export function GameEditScreen() {
         ...regOpensPatch,
       });
 
+      // Deferred registration-open was (re-)armed by this edit — mirrors
+      // the `regOpensPatch` condition above so we only report a time we
+      // actually wrote.
+      if (
+        v.scheduledRegEnabled &&
+        game.status === 'scheduled' &&
+        v.registrationOpensAt > 0
+      ) {
+        logEvent(AnalyticsEvent.GameScheduleSet, {
+          kind: 'registration_opens',
+          mode: 'edit',
+          earlier:
+            v.registrationOpensAt <
+            (game.registrationOpensAt ?? Number.MAX_SAFE_INTEGER),
+          leadMinutes: Math.round(
+            (v.startsAt - v.registrationOpensAt) / 60000,
+          ),
+        });
+      }
+
+      // Auto-teams was (re-)armed in this edit — track the method and
+      // how far ahead of kickoff the generation is scheduled. The
+      // toggle-off path writes null and must stay silent.
+      if (v.autoTeamsAt > 0) {
+        logEvent(AnalyticsEvent.AutoTeamsScheduled, {
+          gameId: game.id,
+          method: v.autoTeamsMethod,
+          leadMinutes: Math.round((v.startsAt - v.autoTeamsAt) / 60000),
+          source: 'edit',
+        });
+      }
+
       // "גם הגדרות הסדרה": overwrite the weekly template with what was just
       // saved, so every FUTURE occurrence is built from it. The upcoming match
       // that already exists is deliberately left alone — players signed up for
@@ -383,6 +433,10 @@ export function GameEditScreen() {
         code?: string;
         conflict?: { title: string; startsAt: number };
       };
+      logEvent(AnalyticsEvent.GameSaveBlocked, {
+        mode: 'edit',
+        reason: e.code ?? 'unknown',
+      });
       if (e.code === 'GAME_OVERLAP' && e.conflict) {
         const ts = new Date(e.conflict.startsAt);
         const when = `${ts.getDate()}.${ts.getMonth() + 1} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;

@@ -21,6 +21,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
 import { submitFeedback, type FeedbackType } from '@/services/feedbackService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { he } from '@/i18n/he';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 
@@ -45,6 +46,11 @@ export function FeedbackScreen() {
     setSending(true);
     try {
       await submitFeedback(type, trimmed, route.name);
+      logEvent(AnalyticsEvent.FeedbackSubmitted, {
+        type,
+        length: trimmed.length,
+        fromScreen: route.name,
+      });
       toast.success(he.feedbackSuccess);
       nav.goBack();
     } catch {

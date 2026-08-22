@@ -24,6 +24,7 @@ import {
   type PlayerLite,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { appAlert } from '@/components/AppDialog';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -163,10 +164,16 @@ export function Shootout({
   // ── actions ──
   const startFirst = (side: 'A' | 'B') => {
     void gameService.startShootout(gameId, side);
+    logEvent(AnalyticsEvent.ShootoutStarted, { gameId, firstTeam: side, kicks: kicks.length });
   };
   const chooseRandom = () => startFirst(Math.random() < 0.5 ? 'A' : 'B');
   const pickKeeper = (uid: string) => {
     void gameService.setShootoutKeeper(gameId, defendingTeam, uid);
+    logEvent(AnalyticsEvent.ShootoutKeeperPicked, {
+      gameId,
+      team: defendingTeam,
+      kickIndex: kicks.length,
+    });
     setKeeperPicking(false);
   };
   const proceed = () => {
@@ -180,12 +187,27 @@ export function Shootout({
       keeperId: facingKeeperId,
       scored,
     });
+    logEvent(AnalyticsEvent.ShootoutKickRecorded, {
+      gameId,
+      team: kickingTeam,
+      scored,
+      kickIndex: kicks.length,
+      scoredA: scoredOf('A'),
+      scoredB: scoredOf('B'),
+    });
     setKickerId(null);
     setScreen('board');
   };
   const finish = () => {
     const sa = scoredOf('A');
     const sb = scoredOf('B');
+    logEvent(AnalyticsEvent.ShootoutFinished, {
+      gameId,
+      result: sa === sb ? 'tie' : 'decided',
+      scoredA: sa,
+      scoredB: sb,
+      kicks: kicks.length,
+    });
     if (sa === sb) {
       onTie();
       return;

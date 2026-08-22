@@ -116,6 +116,10 @@ export function CreateGroupScreen() {
         platform: Platform.OS,
         appCheckSuspected: code === 'unauthenticated',
       });
+      logEvent(AnalyticsEvent.GroupCreateFailed, {
+        code,
+        platform: Platform.OS,
+      });
       let msg: string = he.createGroupGenericError;
       if (code === 'unauthenticated') {
         msg = he.createGroupAuthError;

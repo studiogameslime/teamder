@@ -14,6 +14,7 @@ import { Platform } from 'react-native';
 import analytics from '@react-native-firebase/analytics';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { logError } from '@/services/errorLog';
+import { joryio } from '@/services/joryio';
 
 export const AnalyticsEvent = {
   // Navigation
@@ -297,6 +298,236 @@ export const AnalyticsEvent = {
   /** The public community page (web) "פתח באפליקציה" CTA was tapped
    *  and the user landed inside the app on the community details. */
   PublicPageDeepLinkOpened: 'public_page_deep_link_opened',
+
+  // ══════════════════════════════════════════════════════════════════
+  // Added for full-funnel coverage. Every one of these is wired at a real
+  // call site — see the matching logEvent() in the screen or service.
+  // ══════════════════════════════════════════════════════════════════
+
+  // ─── Auth — attempt funnel ───
+  SignInAttempted: 'sign_in_attempted',
+  SignInFailed: 'sign_in_failed',
+  SignInCancelled: 'sign_in_cancelled',
+  SignInProviderConflict: 'sign_in_provider_conflict',
+  AuthModeSwitched: 'auth_mode_switched',
+  PasswordResetRequested: 'password_reset_requested',
+
+  // ─── Onboarding & activation ───
+  OnboardingChecklistStepTapped: 'onboarding_checklist_step_tapped',
+  BootHydrateFailed: 'boot_hydrate_failed',
+  InviteLinkDead: 'invite_link_dead',
+
+  // ─── Notifications ───
+  PushPermissionResult: 'push_permission_result',
+  NotificationPermissionSettingsOpened: 'notification_permission_settings_opened',
+
+  // ─── Profile & account ───
+  ProfileSaveFailed: 'profile_save_failed',
+  PhotoUploadFailed: 'photo_upload_failed',
+  PhotoUploadAbandoned: 'photo_upload_abandoned',
+  SettingsSaveFailed: 'settings_save_failed',
+  AccountDeleteSheetOpened: 'account_delete_sheet_opened',
+  AccountDeleteCancelled: 'account_delete_cancelled',
+  AccountDeleteFailed: 'account_delete_failed',
+  GuestRegisterCtaTapped: 'guest_register_cta_tapped',
+  GuestGateBlocked: 'guest_gate_blocked',
+  ReferralsScreenOpened: 'referrals_screen_opened',
+  UserUnblocked: 'user_unblocked',
+
+  // ─── Support ───
+  FeedbackSubmitted: 'feedback_submitted',
+
+  // ─── Home surface ───
+  HomeActionTileTapped: 'home_action_tile_tapped',
+
+  // ─── Availability ───
+  AvailabilityWeekOpened: 'availability_week_opened',
+  AvailabilityDayPicked: 'availability_day_picked',
+  AvailabilityPromptTapped: 'availability_prompt_tapped',
+  AvailabilityLocationToggled: 'availability_location_toggled',
+  AvailabilitySlotToggled: 'availability_slot_toggled',
+  AvailabilityPresetApplied: 'availability_preset_applied',
+  AvailabilityGpsUsed: 'availability_gps_used',
+  AvailabilityFillerPushToggled: 'availability_filler_push_toggled',
+
+  // ─── Communities — join funnel ───
+  GroupJoined: 'group_joined',   // groupId, instant — instant = open community, no approval step
+  GroupJoinFailed: 'group_join_failed',
+  GroupJoinRequestCancelled: 'group_join_request_cancelled',
+
+  // ─── Communities — lifecycle ───
+  GroupCreateFailed: 'group_create_failed',
+  GroupSettingsEditFailed: 'group_settings_edit_failed',
+  GroupDeleted: 'group_deleted',
+  GroupLeavePrompted: 'group_leave_prompted',
+  CommunityCreateStarted: 'community_create_started',
+  CommunityWizardStepCompleted: 'community_wizard_step_completed',
+  CommunitySettingToggled: 'community_setting_toggled',
+  CommunityEditOpened: 'community_edit_opened',
+
+  // ─── Communities — discovery ───
+  CommunitiesMapOpened: 'communities_map_opened',
+  CommunityFilterSheetOpened: 'community_filter_sheet_opened',
+  CommunityFilterApplied: 'community_filter_applied',
+  CommunityFilterCleared: 'community_filter_cleared',
+  RequestsInboxOpened: 'requests_inbox_opened',
+
+  // ─── Communities — engagement ───
+  CommunityPlayersOpened: 'community_players_opened',
+  CommunityChatOpened: 'community_chat_opened',
+  CommunityContactAdminTapped: 'community_contact_admin_tapped',
+  CommunityApprovalsOpened: 'community_approvals_opened',
+  CommunityRecurringCtaTapped: 'community_recurring_cta_tapped',
+  CommunityNextGameLocked: 'community_next_game_locked',
+  FriendsInvitedToCommunity: 'friends_invited_to_community',
+
+  // ─── Player drill-ins ───
+  PlayerCompareOpened: 'player_compare_opened',
+
+  // ─── Discipline ───
+  DisciplineCardPrompted: 'discipline_card_prompted',
+
+  // ─── App lifecycle ───
+  AppOpenAdShown: 'app_open_ad_shown',       // countToday — a REAL impression, after show() resolved
+  AppOpenAdGateChecked: 'app_open_ad_gate_checked',  // timedOut — the splash wait, fires every cold start
+
+  // ─── Live match — timer ───
+  LiveTimerAction: 'live_timer_action',   // gameId, action ('start'|'pause'|'resume'|'reset'), elapsedSec, isAdmin
+  LiveStoppagesOpened: 'live_stoppages_opened',   // gameId, stopCount, totalStoppedSec
+  LiveOvertimeReached: 'live_overtime_reached',   // gameId, totalMinutes, round
+  LiveTimerRemoteChange: 'live_timer_remote_change',   // gameId, running
+
+  // ─── Live match — entry ───
+  LiveMatchEntryTapped: 'live_match_entry_tapped',   // gameId, source ('primary_cta'|'menu'), isAdmin
+
+  // ─── Live match — rounds ───
+  RoundStarted: 'round_started',   // gameId, round, teams, perTeam
+  RoundEndPrompted: 'round_end_prompted',   // gameId, round, scoreA, scoreB, tie
+  RoundTieDecision: 'round_tie_decision',   // gameId, round, method ('manual'|'penalties')
+
+  // ─── Penalty shootout ───
+  ShootoutStarted: 'shootout_started',   // gameId, firstTeam, kicks
+  ShootoutKeeperPicked: 'shootout_keeper_picked',   // gameId, team, kickIndex
+  ShootoutKickRecorded: 'shootout_kick_recorded',   // gameId, team, scored, kickIndex, scoredA, scoredB
+  ShootoutFinished: 'shootout_finished',   // gameId, result ('decided'|'tie'), scoredA, scoredB, kicks
+  ShootoutAbandoned: 'shootout_abandoned',   // gameId, round
+
+  // ─── Goals & assists ───
+  GoalWizardOpened: 'goal_wizard_opened',   // gameId, team, minute
+  GoalWizardCancelled: 'goal_wizard_cancelled',   // gameId, team
+  OwnGoalPickerOpened: 'own_goal_picker_opened',   // gameId, team
+  GoalDeletePrompted: 'goal_delete_prompted',   // gameId
+  GoalLogToggled: 'goal_log_toggled',   // gameId, open, goals
+
+  // ─── Retro goals ───
+  RetroGoalsOpened: 'retro_goals_opened',   // gameId, roster
+  RetroGoalAdded: 'retro_goal_added',   // gameId, hasAssist, total
+  RetroGoalRemoved: 'retro_goal_removed',   // gameId, total
+
+  // ─── Live match — roster ───
+  LineupFillPrompted: 'lineup_fill_prompted',   // gameId, teamIndex, required, donors, keepClock
+  LineupFillResolved: 'lineup_fill_resolved',   // gameId, teamIndex, result ('confirmed'|'cancelled'|'no_donor'), count
+  LiveRosterAction: 'live_roster_action',   // gameId, action ('went_home'|'restored'|'swap_started'|'swapped'|'swap_cancelled'|'menu_o
+
+  // ─── End of evening ───
+  EndEveningPrompted: 'end_evening_prompted',   // gameId, source ('inline_button'|'menu'), elapsedSec
+  EquipmentHandoffAction: 'equipment_handoff_action',   // gameId, groupId, action ('saved'|'skipped'), ballHolders, jerseysHolders
+
+  // ─── Recap screens ───
+  MatchRoundsOpened: 'match_rounds_opened',   // gameId, rounds, goals
+  EveningSummaryOpened: 'evening_summary_opened',   // gameId, rounds, goals, assists, wins, noPlay
+
+  // ─── Chat — surface ───
+  ChatOpened: 'chat_opened',   // scope, parentId
+  ChatTabPressed: 'chat_tab_pressed',   // badge
+  ChatEntryPointTapped: 'chat_entry_point_tapped',   // source ('game_details'|'community_details'|'community_admin_dm'|'player_card'|'chats_lis
+
+  // ─── Chat — messaging ───
+  ChatMessageSent: 'chat_message_sent',   // scope, length
+  ChatMessageSendFailed: 'chat_message_send_failed',   // scope
+  ChatMessageBlockedProfanity: 'chat_message_blocked_profanity',   // scope, length
+
+  // ─── Chat — terms gate ───
+  ChatTermsPrompted: 'chat_terms_prompted',   // scope
+  ChatTermsAccepted: 'chat_terms_accepted',   // scope
+  ChatTermsDismissed: 'chat_terms_dismissed',   // scope
+
+  // ─── Chat — moderation ───
+  ChatMessageMenuOpened: 'chat_message_menu_opened',   // scope, mine, canModerate
+  ChatMessageDeleted: 'chat_message_deleted',   // scope, mine, asModerator
+  ChatMessageReported: 'chat_message_reported',   // scope, mine
+  ChatUserBlocked: 'chat_user_blocked',   // scope
+  ChatUserUnblocked: 'chat_user_unblocked',   // source
+  ChatActionFailed: 'chat_action_failed',   // scope, action ('delete'|'report'|'block'|'unblock')
+  ChatBlockedListOpened: 'chat_blocked_list_opened',   // count
+
+  // ─── Chat — engagement ───
+  ChatReadReceiptsViewed: 'chat_read_receipts_viewed',   // scope, seenCount, readerCount
+  ChatMuteToggled: 'chat_mute_toggled',   // scope, muted
+  ChatMembersSheetOpened: 'chat_members_sheet_opened',   // scope, memberCount
+
+  // ─── Chat — health ───
+  ChatAccessDenied: 'chat_access_denied',   // scope
+  ChatLoadFailed: 'chat_load_failed',   // scope, reason ('listener_error'|'game_unavailable'|'fetch_failed'|'restricted'), attempt
+  ChatLoadRetryTapped: 'chat_load_retry_tapped',   // scope
+
+  // ─── Ratings ───
+  RatingSheetOpened: 'rating_sheet_opened',   // groupId, hasRating
+
+  // ─── Guests ───
+  GuestModalOpened: 'guest_modal_opened',   // gameId, mode ('add'|'edit'), isAdmin
+  GuestRatingSet: 'guest_rating_set',   // gameId, rating, cleared
+  GuestRenamed: 'guest_renamed',   // gameId
+  GuestSaveFailed: 'guest_save_failed',   // gameId, mode, reason ('GAME_FULL'|'GAME_NOT_OPEN'|'PERMISSION_DENIED'|'other')
+
+  // ─── Teams / draft ───
+  TeamsFlowOpened: 'teams_flow_opened',   // gameId, source ('menu'|'menu_view'|'create_banner'|'manage_banner'|'teams_section'), has
+  TeamsSplitMethodChosen: 'teams_split_method_chosen',   // gameId, method ('auto'|'manual'|'random'|'edit'), numTeams
+  TeamsGenerated: 'teams_generated',   // gameId, method, numTeams, players, unratedCount, gap, band, fallback, historyGames, rege
+  TeamsGenerateFailed: 'teams_generate_failed',   // gameId, method
+  DraftBoardStarted: 'draft_board_started',   // gameId, numTeams, order, participants
+  DraftPickMade: 'draft_pick_made',   // gameId, pickIndex, isGuest
+  DraftPickUndone: 'draft_pick_undone',   // gameId, pickIndex
+  TeamColorPicked: 'team_color_picked',   // gameId, teamIndex, color
+  TeamsSaved: 'teams_saved',   // gameId, numTeams, order, source, published
+  TeamPlayerSwapped: 'team_player_swapped',   // gameId
+  TeamsEditedManually: 'teams_edited_manually',   // gameId, numTeams
+  TeamsPublished: 'teams_published',   // gameId, numTeams, stale
+  TeamsNotifySent: 'teams_notify_sent',   // gameId, numTeams
+  TeamFeedbackGiven: 'team_feedback_given',   // gameId, value ('like'|'dislike'|'cleared')
+  TeamsViewed: 'teams_viewed',   // gameId, readOnly, numTeams
+  TeamsExportShared: 'teams_export_shared',   // gameId, numTeams
+
+  // ─── Auto-teams ───
+  AutoTeamsScheduled: 'auto_teams_scheduled',   // gameId, method, leadMinutes, source ('create'|'edit')
+  AutoTeamsScheduleToggled: 'auto_teams_schedule_toggled',   // enabled
+
+  // ─── Games — create & edit ───
+  GameCreateStarted: 'game_create_started',   // stage ('chooser'|'wizard'), source, mode ('community'|'quick'|'recurring'), prefilled, c
+  GameWizardStepChanged: 'game_wizard_step_changed',   // step, direction ('next'|'back'|'submit'), mode
+  GameCreateCommunityChanged: 'game_create_community_changed',   // groupId, communityCount
+  GameFormWarningShown: 'game_form_warning_shown',   // mode, reason, confirmed, count
+  GameSaveBlocked: 'game_save_blocked',   // mode, reason, registeredCount, newMaxPlayers
+  GameWizardSubmitFailed: 'game_wizard_submit_failed',   // mode
+  GameSettingToggled: 'game_setting_toggled',   // setting, enabled, value, mode
+  GameScheduleSet: 'game_schedule_set',   // kind, leadMinutes, earlier, mode
+  GameEditOpened: 'game_edit_opened',   // gameId, hasSeries, scope ('single'|'series')
+
+  // ─── Games — recurring series ───
+  GameRecurringToggled: 'game_recurring_toggled',   // enabled, mode
+  GameSeriesSettingsApplied: 'game_series_settings_applied',   // seriesId, groupId
+  GameSeriesStopped: 'game_series_stopped',   // seriesId
+
+  // ─── Games — roster admin ───
+  GameVisibilityChanged: 'game_visibility_changed',   // gameId, visibility, source
+  GameDeleted: 'game_deleted',   // gameId, rosterCount, manual, hadSeries
+  GamePinnedMessageSet: 'game_pinned_message_set',   // gameId, cleared, length
+  PlayerRemovedByAdmin: 'player_removed_by_admin',   // gameId, fromWaitlist, offered
+  RosterReordered: 'roster_reordered',   // gameId, list ('players'|'guests'), action ('reorder'|'promote'|'move_up'|'move_down'), p
+  MembersAddedByAdmin: 'members_added_by_admin',   // gameId, requested, addedToPlayers, addedToWaitlist
+  SpotOfferDecided: 'spot_offer_decided',   // gameId, decision ('passed'|'admin_advanced')
+  AvailablePlayerInvited: 'available_player_invited',   // gameId, targetId
+  FillerPulseSent: 'filler_pulse_sent',   // gameId, started, reason
 } as const;
 
 export type AnalyticsEventName =
@@ -308,13 +539,20 @@ export type AnalyticsEventName =
  * Real mode → @react-native-firebase/analytics.logEvent (native bridge).
  */
 export function logEvent(
-  name: AnalyticsEventName | string,
+  // Deliberately NOT `| string`: the union let a typo'd literal like
+  // 'grop_created' compile and ship a dead event name to both sinks. Every
+  // call site uses an AnalyticsEvent constant, so the compiler can enforce it.
+  name: AnalyticsEventName,
   params?: Record<string, string | number | boolean | undefined | null>,
 ): void {
   const cleaned = cleanParams(params);
 
   if (__DEV__) console.log('[analytics]', name, cleaned);
   if (USE_MOCK_DATA) return;
+
+  // Second sink: the same event, to Joryio. Queued and batched there, so this
+  // is a push onto an array — it cannot slow down or break the caller.
+  void joryio.track(name, cleaned);
 
   analytics()
     .logEvent(name, cleaned)

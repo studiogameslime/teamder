@@ -27,6 +27,7 @@ import Animated, {
 import { spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   PreviewMatches,
   PreviewClub,
@@ -82,6 +83,7 @@ export function OnboardingScreen() {
   // the last slide AND the sign-in screen carried login buttons.
   const handleStart = async () => {
     setBusy(true);
+    logEvent(AnalyticsEvent.OnboardingCompleted, { via: 'cta', slide: index + 1 });
     try {
       await completeOnboarding();
     } catch {
@@ -89,6 +91,15 @@ export function OnboardingScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  // "דלג" used to call completeOnboarding directly, so leaving the intro early
+  // produced no event at all — only the screen_view of wherever the user
+  // landed. Skipping is the more interesting of the two exits: it is the
+  // signal that the slides are not earning their place.
+  const handleSkip = () => {
+    logEvent(AnalyticsEvent.OnboardingSkipped, { slide: index + 1, total: SLIDES.length });
+    void completeOnboarding();
   };
 
   return (
@@ -102,7 +113,7 @@ export function OnboardingScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.skipRow}>
           {!isLast ? (
-            <Pressable onPress={completeOnboarding} hitSlop={12}>
+            <Pressable onPress={handleSkip} hitSlop={12}>
               <Text style={styles.skip}>{he.onbSkip}</Text>
             </Pressable>
           ) : null}

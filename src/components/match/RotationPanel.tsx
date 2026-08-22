@@ -26,6 +26,7 @@ import {
   type PlayerLite,
   type RosterMember,
 } from '@/components/match/rotationView';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import type { DraftTeamsResult, MatchRotation } from '@/types';
 import { colors, spacing, radius, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -123,12 +124,18 @@ export function RotationPanel({
   });
 
   const isRegistered = (id: string) => !!playersMap[id];
-  const openMenu = (m: RosterMember | typeof leftHomeList[number], rect: PlayerMenuTarget['anchor'], kind: MenuTarget['kind']) =>
+  const openMenu = (m: RosterMember | typeof leftHomeList[number], rect: PlayerMenuTarget['anchor'], kind: MenuTarget['kind']) => {
+    logEvent(AnalyticsEvent.LiveRosterAction, {
+      action: 'menu_opened',
+      kind,
+      isGuest: !isRegistered(m.id),
+    });
     setMenu({
       player: { id: m.id, name: m.name, avatarId: m.avatarId, photoUrl: m.photoUrl },
       anchor: rect,
       kind,
     });
+  };
 
   // Build the menu items for whoever is currently tapped (action depends on
   // whether they're on the field or already in the "went home" list).
@@ -165,7 +172,13 @@ export function RotationPanel({
           icon: 'swap-horizontal',
           label: he.playerMenuSwap,
           color: colors.primary,
-          onPress: () => setSwapSource(p.id),
+          onPress: () => {
+            logEvent(AnalyticsEvent.LiveRosterAction, {
+              action: 'swap_started',
+              midRound: !canMarkHome,
+            });
+            setSwapSource(p.id);
+          },
         });
       }
       if (isAdmin) {
@@ -193,7 +206,16 @@ export function RotationPanel({
           <Ionicons name="football" size={16} color={colors.primary} />
         </View>
         {swapSource ? (
-          <Pressable onPress={() => setSwapSource(null)} style={styles.swapBanner}>
+          <Pressable
+            onPress={() => {
+              logEvent(AnalyticsEvent.LiveRosterAction, {
+                action: 'swap_cancelled',
+                midRound: !canMarkHome,
+              });
+              setSwapSource(null);
+            }}
+            style={styles.swapBanner}
+          >
             <Ionicons name="swap-horizontal" size={16} color="#1D4ED8" />
             <Text style={styles.swapBannerText}>{he.swapPickTarget}</Text>
             <View style={styles.swapCancelBtn}>

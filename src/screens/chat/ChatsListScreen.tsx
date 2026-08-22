@@ -29,6 +29,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
 import { chatKeyFor } from '@/services/chatService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useChatStore } from '@/store/chatStore';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -229,6 +230,11 @@ export function ChatsListScreen() {
   });
 
   const open = (row: Row) => {
+    logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+      source: 'chats_list',
+      scope: row.kind,
+      unread: row.unread,
+    });
     if (row.kind === 'community') {
       nav.navigate('CommunityChat', { groupId: row.id });
     } else if (row.kind === 'dm') {

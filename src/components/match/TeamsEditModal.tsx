@@ -27,6 +27,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/Button';
 import { toast } from '@/components/Toast';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -103,6 +104,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
     teams.findIndex((t) => t.playerIds.includes(id));
 
   const doSwap = (aId: string, bId: string) => {
+    logEvent(AnalyticsEvent.TeamPlayerSwapped, { gameId: game.id });
     setTeams((prev) => {
       const next = prev.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
       let aT = -1,
@@ -168,6 +170,7 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
         ...base,
         teams,
       });
+      logEvent(AnalyticsEvent.TeamsEditedManually, { gameId: game.id, numTeams: teams.length });
       onSaved?.();
       onClose();
     } catch (err) {

@@ -14,6 +14,8 @@ import * as ExpoSplash from 'expo-splash-screen';
 // Hold the OS-level splash up until our custom animation has actually
 // taken over the screen. This avoids the brief flash of plain bg
 // between the native splash dismissing and Reanimated's first frame.
+void joryio.init();
+
 ExpoSplash.preventAutoHideAsync().catch(() => {
   // Already hidden / not available — non-fatal.
 });
@@ -198,6 +200,7 @@ import { WhatsNewGate } from '@/components/WhatsNewGate';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, isDarkTheme } from '@/theme';
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
+import { joryio } from '@/services/joryio';
 
 // ── Force RTL on first launch ───────────────────────────────────────────────
 // Hebrew is RTL. Setting this once at startup mirrors the entire layout.
@@ -766,14 +769,27 @@ export default function App() {
     //   2. Even for signed-in users, race the ad against a hard timeout so a
     //      hung show() can't block setSplashDone.
     if (useUserStore.getState().currentUser) {
+      // Flips only when the hard timeout wins the race, so the analytics
+      // call below can tell "ad flow finished" from "we gave up on it".
+      let timedOut = false;
       try {
         await Promise.race([
           adsService.showAppOpenAdIfAvailable(),
-          new Promise<void>((resolve) => setTimeout(resolve, 3500)),
+          new Promise<void>((resolve) =>
+            setTimeout(() => {
+              timedOut = true;
+              resolve();
+            }, 3500),
+          ),
         ]);
       } catch {
         // never block reveal on an ad failure
       }
+      // NOT an impression. This fires on every signed-in cold start, after the
+      // splash waited on showAppOpenAdIfAvailable() — which returns early on
+      // any of ~8 gates (kill switch, cooldown, daily cap, new-user grace, …).
+      // The real impression is logged inside adsService, after show() resolves.
+      logEvent(AnalyticsEvent.AppOpenAdGateChecked, { timedOut });
     }
     setSplashDone(true);
   };

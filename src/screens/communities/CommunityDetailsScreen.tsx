@@ -282,8 +282,17 @@ export function CommunityDetailsScreen() {
   const handleChatAdmin = useCallback(() => {
     if (!me || !adminUid || me.id === adminUid) return;
     if (!ensureNotGuest(he.guestRegisterChatAdmin)) return;
+    logEvent(AnalyticsEvent.CommunityContactAdminTapped, {
+      groupId,
+      channel: 'in_app',
+      source: 'inline_button',
+    });
+    logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+      source: 'community_admin_dm',
+      scope: 'dm',
+    });
     goToDirectChat(dmConvId(me.id, adminUid));
-  }, [me, adminUid]);
+  }, [me, adminUid, groupId]);
 
   // ─── Action handlers ────────────────────────────────────────────────────
 
@@ -324,6 +333,14 @@ export function CommunityDetailsScreen() {
     const res = await pickAndUploadGroupCover(group.id);
     if (!res.ok) {
       setUploadingCover(false);
+      // 'cancelled' is the user backing out, not a failure — don't log it.
+      if (res.reason !== 'cancelled') {
+        logEvent(AnalyticsEvent.PhotoUploadFailed, {
+          source: 'community_cover',
+          groupId: group.id,
+          reason: res.reason,
+        });
+      }
       // 'cancelled' and 'permission' are no-ops — the user backed out of the
       // picker or denied access. Built-in cover images are available, and
       // App Store guideline 5.1.1(iv) forbids nagging to reconsider / sending
@@ -351,6 +368,11 @@ export function CommunityDetailsScreen() {
         field: 'coverPhotoUrl',
       });
       if (__DEV__) console.warn('[community] cover meta save failed', e);
+      logEvent(AnalyticsEvent.PhotoUploadFailed, {
+        source: 'community_cover',
+        groupId: group.id,
+        reason: 'metadata_save',
+      });
       appAlert(he.error, he.communityCoverUploadFailed);
     } finally {
       setUploadingCover(false);
@@ -367,6 +389,10 @@ export function CommunityDetailsScreen() {
       );
       setInviteOpen(false);
       setInviteIds([]);
+      logEvent(AnalyticsEvent.FriendsInvitedToCommunity, {
+        groupId: group.id,
+        invitedCount: invited,
+      });
       toast.success(he.communityInviteFriendsSent(invited));
       reload();
     } catch (e) {
@@ -389,6 +415,7 @@ export function CommunityDetailsScreen() {
       appAlert(he.error, he.communityDetailsLeaveLastAdmin);
       return;
     }
+    logEvent(AnalyticsEvent.GroupLeavePrompted, { groupId: group.id });
     setLeaveOpen(true);
   };
 
@@ -449,8 +476,18 @@ export function CommunityDetailsScreen() {
     }
   };
 
-  const handleCreateRecurring = () => {
+  const handleCreateRecurring = (source: 'menu' | 'next_game_card') => {
     if (!group || !me) return;
+    logEvent(AnalyticsEvent.CommunityRecurringCtaTapped, {
+      groupId: group.id,
+      source,
+    });
+    logEvent(AnalyticsEvent.GameCreateStarted, {
+      stage: 'wizard',
+      source: 'community',
+      mode: 'recurring',
+      groupId: group.id,
+    });
     // Recurring is now a step-3 toggle inside the Game wizard itself
     // — the community no longer owns recurring defaults (preferred
     // day / time / format / # teams). For legacy groups that DO have
@@ -561,11 +598,15 @@ export function CommunityDetailsScreen() {
                 id: 'edit',
                 label: he.communityEditTitle,
                 icon: 'create-outline' as const,
-                onPress: () =>
+                onPress: () => {
+                  logEvent(AnalyticsEvent.CommunityEditOpened, {
+                    groupId: group.id,
+                  });
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'CommunityEdit',
                     { groupId: group.id },
-                  ),
+                  );
+                },
               },
             ]
           : []),
@@ -575,7 +616,7 @@ export function CommunityDetailsScreen() {
                 id: 'recurring',
                 label: he.communityMenuRecurringGame,
                 icon: 'repeat-outline' as const,
-                onPress: handleCreateRecurring,
+                onPress: () => handleCreateRecurring('menu'),
               },
             ]
           : []),
@@ -586,11 +627,16 @@ export function CommunityDetailsScreen() {
                 label: he.communityMenuApprovals,
                 icon: 'shield-checkmark-outline' as const,
                 badge: group.pendingPlayerIds.length,
-                onPress: () =>
+                onPress: () => {
+                  logEvent(AnalyticsEvent.CommunityApprovalsOpened, {
+                    groupId: group.id,
+                    pendingCount: group.pendingPlayerIds.length,
+                  });
                   (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                     'AdminApproval',
                     undefined,
-                  ),
+                  );
+                },
               },
             ]
           : []),
@@ -644,7 +690,14 @@ export function CommunityDetailsScreen() {
                 id: 'whatsapp',
                 label: he.communityMenuContactAdmin,
                 icon: 'logo-whatsapp' as const,
-                onPress: () => openWhatsApp(group.contactPhone),
+                onPress: () => {
+                  logEvent(AnalyticsEvent.CommunityContactAdminTapped, {
+                    groupId: group.id,
+                    channel: 'whatsapp',
+                    source: 'menu',
+                  });
+                  openWhatsApp(group.contactPhone);
+                },
               },
             ]
           : []),
@@ -707,7 +760,18 @@ export function CommunityDetailsScreen() {
           onMenuPress={openMenu}
           onEditCoverPress={handleEditCover}
           onChatPress={
-            isMember && me ? () => goToCommunityChat(group.id) : undefined
+            isMember && me
+              ? () => {
+                  logEvent(AnalyticsEvent.CommunityChatOpened, {
+                    groupId: group.id,
+                  });
+                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+                    source: 'community_details',
+                    scope: 'community',
+                  });
+                  goToCommunityChat(group.id);
+                }
+              : undefined
           }
         />
 
@@ -847,7 +911,9 @@ export function CommunityDetailsScreen() {
             // Admin-only CTA shown when the empty state renders. Lets
             // the admin open the Game wizard in recurring mode without
             // hunting through the hamburger menu.
-            onCreateRecurring={isAdmin ? handleCreateRecurring : undefined}
+            onCreateRecurring={
+              isAdmin ? () => handleCreateRecurring('next_game_card') : undefined
+            }
             onPress={
               nextGame
                 ? () => {
@@ -861,6 +927,11 @@ export function CommunityDetailsScreen() {
                       typeof nextGame.registrationOpensAt === 'number' &&
                       !isAdmin
                     ) {
+                      logEvent(AnalyticsEvent.CommunityNextGameLocked, {
+                        groupId: group.id,
+                        gameId: nextGame.id,
+                        opensAt: nextGame.registrationOpensAt,
+                      });
                       const d = new Date(nextGame.registrationOpensAt);
                       const dd = String(d.getDate()).padStart(2, '0');
                       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -982,7 +1053,14 @@ export function CommunityDetailsScreen() {
               // iconRight lands the WhatsApp glyph on the visual LEFT of
               // the label in this RTL layout (QA request).
               iconRight="logo-whatsapp"
-              onPress={() => openWhatsApp(group.contactPhone)}
+              onPress={() => {
+                logEvent(AnalyticsEvent.CommunityContactAdminTapped, {
+                  groupId: group.id,
+                  channel: 'whatsapp',
+                  source: 'inline_button',
+                });
+                openWhatsApp(group.contactPhone);
+              }}
             />
           ) : null}
 
@@ -1046,6 +1124,10 @@ export function CommunityDetailsScreen() {
           if (!me) return;
           try {
             await deleteGroup(group.id, me.id);
+            logEvent(AnalyticsEvent.GroupDeleted, {
+              groupId: group.id,
+              memberCount: group.playerIds?.length ?? 0,
+            });
             setDeleteOpen(false);
             toast.success(he.deleteGroupSuccess);
             nav.goBack();

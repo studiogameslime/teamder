@@ -316,7 +316,13 @@ export function PublicGroupsFeedScreen() {
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) return;
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) {
+      logEvent(AnalyticsEvent.GuestGateBlocked, {
+        action: 'join_community',
+        groupId: item.id,
+      });
+      return;
+    }
     if (!user) return;
     try {
       const status = await requestJoinById(item.id, user.id);
@@ -354,6 +360,10 @@ export function PublicGroupsFeedScreen() {
         err instanceof GroupJoinRejectedError ||
         (err as Error)?.name === 'GroupJoinRejectedError'
       ) {
+        logEvent(AnalyticsEvent.GroupJoinFailed, {
+          groupId: item.id,
+          reason: 'rejected',
+        });
         toast.error(he.toastJoinRejected);
         return;
       }
@@ -361,6 +371,10 @@ export function PublicGroupsFeedScreen() {
         typeof (err as { code?: unknown })?.code === 'string'
           ? ((err as { code: string }).code)
           : '';
+      logEvent(AnalyticsEvent.GroupJoinFailed, {
+        groupId: item.id,
+        reason: code || 'unknown',
+      });
       if (code === 'GROUP_FULL') {
         toast.error(he.toastGroupFull);
       } else {
@@ -385,8 +399,9 @@ export function PublicGroupsFeedScreen() {
 
   // Creating a community is an account action — guests are prompted to
   // register first.
-  const handleCreate = () => {
+  const handleCreate = (source: 'fab' | 'empty_state' | 'my_clubs_hint') => {
     if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    logEvent(AnalyticsEvent.CommunityCreateStarted, { source });
     nav.navigate('CommunitiesCreate');
   };
 
@@ -662,6 +677,10 @@ export function PublicGroupsFeedScreen() {
               });
             }
 
+            logEvent(AnalyticsEvent.CommunitiesMapOpened, {
+              pinCount: mapItems.length,
+              overlayCount: overlay.length,
+            });
             nav.navigate('CommunitiesMap', {
               mode: 'communities',
               items: mapItems,
@@ -678,7 +697,12 @@ export function PublicGroupsFeedScreen() {
           <Ionicons name="map-outline" size={20} color="#1E40AF" />
         </Pressable>
         <Pressable
-          onPress={() => setFilterOpen(true)}
+          onPress={() => {
+            logEvent(AnalyticsEvent.CommunityFilterSheetOpened, {
+              activeFilters: filterCount,
+            });
+            setFilterOpen(true);
+          }}
           style={({ pressed }) => [
             styles.filterButton,
             filterCount > 0 && styles.filterButtonActive,
@@ -711,7 +735,7 @@ export function PublicGroupsFeedScreen() {
             variant="primary"
             size="lg"
             iconLeft="add-circle-outline"
-            onPress={handleCreate}
+            onPress={() => handleCreate('empty_state')}
             style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
             fullWidth
           />
@@ -761,7 +785,7 @@ export function PublicGroupsFeedScreen() {
                       variant="primary"
                       size="md"
                       iconLeft="add-circle-outline"
-                      onPress={handleCreate}
+                      onPress={() => handleCreate('my_clubs_hint')}
                       style={{ marginTop: spacing.md, alignSelf: 'stretch' }}
                       fullWidth
                     />
@@ -822,7 +846,7 @@ export function PublicGroupsFeedScreen() {
               styles.fabInner,
               pressed && { opacity: 0.92, transform: [{ scale: 0.96 }] },
             ]}
-            onPress={handleCreate}
+            onPress={() => handleCreate('fab')}
             accessibilityRole="button"
             accessibilityLabel={he.communitiesCreateGroup}
           >

@@ -380,7 +380,13 @@ function OtherTopCard({ user, viewerId }: { user: User; viewerId: string }) {
             variant="outline"
             size="sm"
             iconLeft="chatbubble-outline"
-            onPress={() => goToDirectChat(dmConvId(viewerId, user.id))}
+            onPress={() => {
+              logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+                source: 'player_card',
+                scope: 'dm',
+              });
+              goToDirectChat(dmConvId(viewerId, user.id));
+            }}
             fullWidth
           />
         </View>

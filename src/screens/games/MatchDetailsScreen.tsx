@@ -988,7 +988,7 @@ export function MatchDetailsScreen() {
           };
         });
       } else {
-        const result = await gameService.requestJoinGame(game.id, user.id);
+        const result = await gameService.requestJoinGame(game.id, user.id, 'match_details');
         // Capture the post-join game state out of the optimistic-splice
         // updater so we can assert the silent-failure post-condition
         // below WITHOUT a second Firestore read. `joined` records the
@@ -1470,6 +1470,11 @@ export function MatchDetailsScreen() {
 
   const handleGoLive = () => {
     if (!game) return;
+    logEvent(AnalyticsEvent.LiveMatchEntryTapped, {
+      gameId: game.id,
+      source: 'primary_cta',
+      isAdmin,
+    });
     nav.navigate('LiveMatch', { gameId: game.id });
   };
 
@@ -1723,6 +1728,11 @@ export function MatchDetailsScreen() {
   // which is exactly what the old version of this dialog did.
   const handleEditPress = () => {
     if (!game.seriesId) {
+      logEvent(AnalyticsEvent.GameEditOpened, {
+        gameId: game.id,
+        hasSeries: false,
+        scope: 'single',
+      });
       nav.navigate('GameEdit', { gameId: game.id });
       return;
     }
@@ -1730,12 +1740,25 @@ export function MatchDetailsScreen() {
       { text: he.cancel, style: 'cancel' },
       {
         text: he.editSeriesThisOnly,
-        onPress: () => nav.navigate('GameEdit', { gameId: game.id }),
+        onPress: () => {
+          logEvent(AnalyticsEvent.GameEditOpened, {
+            gameId: game.id,
+            hasSeries: true,
+            scope: 'single',
+          });
+          nav.navigate('GameEdit', { gameId: game.id });
+        },
       },
       {
         text: he.editSeriesAll,
-        onPress: () =>
-          nav.navigate('GameEdit', { gameId: game.id, applyToSeries: true }),
+        onPress: () => {
+          logEvent(AnalyticsEvent.GameEditOpened, {
+            gameId: game.id,
+            hasSeries: true,
+            scope: 'series',
+          });
+          nav.navigate('GameEdit', { gameId: game.id, applyToSeries: true });
+        },
       },
     ]);
   };
@@ -1757,6 +1780,10 @@ export function MatchDetailsScreen() {
     });
     try {
       await gameService.setDraftTeamFeedback(game.id, user.id, next);
+      logEvent(AnalyticsEvent.TeamFeedbackGiven, {
+        gameId: game.id,
+        value: next ?? 'cleared',
+      });
     } catch (err) {
       logError('setDraftTeamFeedback', err, { gameId: game.id });
       toast.error(he.error);
@@ -1769,6 +1796,10 @@ export function MatchDetailsScreen() {
     setNotifyingTeams(true);
     try {
       await gameService.notifyTeamsReady(game.id);
+      logEvent(AnalyticsEvent.TeamsNotifySent, {
+        gameId: game.id,
+        numTeams: (draftTeams?.teams ?? []).length,
+      });
       toast.success(he.autoBalanceNotifySent);
     } catch (err) {
       logError('notifyTeamsReady', err, { gameId: game.id });
@@ -1791,6 +1822,11 @@ export function MatchDetailsScreen() {
           setPublishingTeams(true);
           try {
             await gameService.publishDraftTeams(game.id);
+            logEvent(AnalyticsEvent.TeamsPublished, {
+              gameId: game.id,
+              numTeams: (draftTeams?.teams ?? []).length,
+              stale: teamsStale,
+            });
             toast.success(he.draftPublishedToast);
           } catch (err) {
             logError('publishDraftTeams', err, { gameId: game.id });
@@ -1963,7 +1999,14 @@ export function MatchDetailsScreen() {
                 // else sees "צפייה במשחק" — same screen, view-only.
                 label: isAdmin ? he.matchMenuManage : he.matchMenuWatchLive,
                 icon: 'settings-outline' as const,
-                onPress: () => nav.navigate('LiveMatch', { gameId: game.id }),
+                onPress: () => {
+                  logEvent(AnalyticsEvent.LiveMatchEntryTapped, {
+                    gameId: game.id,
+                    source: 'menu',
+                    isAdmin,
+                  });
+                  nav.navigate('LiveMatch', { gameId: game.id });
+                },
               },
             ]
           : []),
@@ -1998,6 +2041,11 @@ export function MatchDetailsScreen() {
                 label: game.draftTeams ? he.draftEditMenu : he.draftTitle,
                 icon: 'shuffle-outline' as const,
                 onPress: () => {
+                  logEvent(AnalyticsEvent.TeamsFlowOpened, {
+                    gameId: game.id,
+                    source: 'menu',
+                    hasTeams: !!game.draftTeams,
+                  });
                   const dt = game.draftTeams;
                   if (dt) {
                     nav.navigate('DraftBoard', {
@@ -2024,6 +2072,11 @@ export function MatchDetailsScreen() {
                 label: he.draftViewMenu,
                 icon: 'people-outline' as const,
                 onPress: () => {
+                  logEvent(AnalyticsEvent.TeamsFlowOpened, {
+                    gameId: game.id,
+                    source: 'menu_view',
+                    hasTeams: true,
+                  });
                   const dt = game.draftTeams!;
                   nav.navigate('DraftBoard', {
                     gameId: game.id,
@@ -2336,6 +2389,10 @@ export function MatchDetailsScreen() {
       .join('\n\n');
     try {
       await Share.share({ message: `${game.title}\n\n${body}` });
+      logEvent(AnalyticsEvent.TeamsExportShared, {
+        gameId: game.id,
+        numTeams: splitTeams.length,
+      });
     } catch {
       /* user dismissed the share sheet */
     }
@@ -2360,13 +2417,25 @@ export function MatchDetailsScreen() {
   const showManageTeamsBanner =
     isAdmin && !!draftTeams && !isTerminalGame(game);
 
-  const openDraftSetup = () => nav.navigate('DraftSetup', { gameId: game.id });
+  const openDraftSetup = (source: 'create_banner' | 'manage_banner') => {
+    logEvent(AnalyticsEvent.TeamsFlowOpened, {
+      gameId: game.id,
+      source,
+      hasTeams: !!draftTeams,
+    });
+    nav.navigate('DraftSetup', { gameId: game.id });
+  };
 
   // Tapping the teams section just VIEWS the split (read-only) — no stray
   // "סיים חלוקת כוחות" button on already-saved teams. Editing/rebalancing is
   // done from the "נהל כוחות" banner → DraftSetup.
   const openDraftView = () => {
     if (!draftTeams) return;
+    logEvent(AnalyticsEvent.TeamsFlowOpened, {
+      gameId: game.id,
+      source: 'teams_section',
+      hasTeams: true,
+    });
     const captainIds = [...draftTeams.teams]
       .sort((a, b) => a.index - b.index)
       .map((t) => t.captainId);
@@ -2559,7 +2628,14 @@ export function MatchDetailsScreen() {
           onSharePress={!isTerminalGame(game) ? handleShare : undefined}
           onChatPress={
             user && (game.players.includes(user.id) || user.id === game.createdBy)
-              ? () => goToGameChat(game.id)
+              ? () => {
+                  logEvent(AnalyticsEvent.ChatEntryPointTapped, {
+                    source: 'game_details',
+                    scope: 'game',
+                    unread: chatUnread,
+                  });
+                  goToGameChat(game.id);
+                }
               : undefined
           }
           chatUnread={chatUnread}
@@ -2675,7 +2751,7 @@ export function MatchDetailsScreen() {
           {showCreateTeamsBanner ? (
             <Pressable
               style={styles.createTeamsBanner}
-              onPress={openDraftSetup}
+              onPress={() => openDraftSetup('create_banner')}
               accessibilityRole="button"
             >
               <View style={styles.createTeamsIcon}>
@@ -2705,7 +2781,7 @@ export function MatchDetailsScreen() {
           {showManageTeamsBanner ? (
             <Pressable
               style={styles.createTeamsBanner}
-              onPress={openDraftSetup}
+              onPress={() => openDraftSetup('manage_banner')}
               accessibilityRole="button"
             >
               <View style={styles.createTeamsIcon}>
@@ -3330,7 +3406,13 @@ export function MatchDetailsScreen() {
         {isFinished(game) && isAdmin ? (
           <Pressable
             style={({ pressed }) => [styles.retroBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => setRetroOpen(true)}
+            onPress={() => {
+              logEvent(AnalyticsEvent.RetroGoalsOpened, {
+                gameId: game.id,
+                roster: (game.players ?? []).length,
+              });
+              setRetroOpen(true);
+            }}
             accessibilityRole="button"
             accessibilityLabel={he.retroEntryCta}
           >

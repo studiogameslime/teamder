@@ -537,6 +537,18 @@ function liveRosterTeams(
   }));
 }
 
+/** The surfaces a player can join a game from. Kept as a closed union so a
+ *  new entry point has to name itself instead of silently reporting 'unknown'. */
+export type JoinSource =
+  | 'games_list'        // the מחזורים feed
+  | 'match_details'     // the game screen
+  | 'deep_link'         // an invite link opened into the app
+  | 'notification'      // a push action button
+  | 'filler_push'       // a shortage invitation to a non-member
+  | 'quick_game'        // the quick-game flow
+  | 'admin_added'       // an admin put them in
+  | 'unknown';
+
 export const gameService = {
   /**
    * Returns the active game for a group, or null if none exists yet.
@@ -3066,11 +3078,21 @@ export const gameService = {
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) m.pinnedMessage = trimmed.length > 0 ? trimmed : undefined;
+      logEvent(AnalyticsEvent.GamePinnedMessageSet, {
+        gameId,
+        cleared: trimmed.length === 0,
+        length: trimmed.length,
+      });
       return;
     }
     await updateGameDoc(gameId, {
       pinnedMessage: trimmed.length > 0 ? trimmed : null,
       updatedAt: Date.now(),
+    });
+    logEvent(AnalyticsEvent.GamePinnedMessageSet, {
+      gameId,
+      cleared: trimmed.length === 0,
+      length: trimmed.length,
     });
   },
 
@@ -3212,11 +3234,18 @@ export const gameService = {
       getFirebase().functions,
       'startGameFillerPulse',
     )({ gameId });
-    return (res.data ?? { started: false }) as {
+    const out = (res.data ?? { started: false }) as {
       started: boolean;
       reason?: string;
       alreadyRunning?: boolean;
     };
+    logEvent(AnalyticsEvent.FillerPulseSent, {
+      gameId,
+      started: !!out.started,
+      alreadyRunning: !!out.alreadyRunning,
+      reason: out.reason ?? '',
+    });
+    return out;
   },
 
   /**
@@ -3258,6 +3287,12 @@ export const gameService = {
           new Set([...(m.players ?? []), ...(m.waitlist ?? []), ...(m.pending ?? [])]),
         );
       }
+      logEvent(AnalyticsEvent.MembersAddedByAdmin, {
+        gameId,
+        requested: userIds.length,
+        addedToPlayers: added,
+        addedToWaitlist: waited,
+      });
       return { addedToPlayers: added, addedToWaitlist: waited };
     }
     // Make sure auth is actually ready before calling — right after an app
@@ -3290,6 +3325,12 @@ export const gameService = {
       }
     }
     const d = (res?.data ?? {}) as { addedToPlayers?: number; addedToWaitlist?: number };
+    logEvent(AnalyticsEvent.MembersAddedByAdmin, {
+      gameId,
+      requested: userIds.length,
+      addedToPlayers: d.addedToPlayers ?? 0,
+      addedToWaitlist: d.addedToWaitlist ?? 0,
+    });
     return {
       addedToPlayers: d.addedToPlayers ?? 0,
       addedToWaitlist: d.addedToWaitlist ?? 0,
@@ -4382,6 +4423,11 @@ export const gameService = {
         },
       });
     }
+    logEvent(AnalyticsEvent.GameDeleted, {
+      gameId,
+      rosterCount: recipientUids.length,
+      manual: !!deletedBy,
+    });
     logEvent(AnalyticsEvent.GameFinished, { gameId, deleted: true });
   },
 
@@ -4568,6 +4614,7 @@ export const gameService = {
   async requestJoinGame(
     gameId: string,
     userId: UserId,
+    source: JoinSource = 'unknown',
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
     // Capture the tap timestamp FIRST — before any await — so network latency
     // on the pre-checks below never shifts a user's place in line.
@@ -4719,15 +4766,26 @@ export const gameService = {
       requestedAt: serverTimestamp(),
       state: 'queued',
     });
-    logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true });
+    // `fair` says HOW the place was allocated (the tap-ordered queue);
+    // `source` says WHERE the user tapped from. Different questions.
+    logEvent(AnalyticsEvent.GameJoined, { gameId, fair: true, source });
     return { bucket: predictBucket(data) };
   },
 
+  /**
+   * @param source WHERE the join came from. Every join funnels through here, so
+   *   this one param answers "how did people get into this game" — the surface
+   *   that produced the registration, which nothing recorded before. Callers
+   *   that do not pass it report 'unknown' rather than being guessed at.
+   */
   async joinGameV2(
     gameId: string,
-    userId: UserId
+    userId: UserId,
+    source: JoinSource = 'unknown'
   ): Promise<{ bucket: 'players' | 'waitlist' | 'pending' }> {
     clearMyGamesCache(); // joining adds the game to the user's my-games list
+    // Emitted by the CALLER on success (it knows the resulting bucket), see the
+    // logEvent(GameJoined) sites in GamesListScreen / MatchDetailsScreen.
     if (USE_MOCK_DATA) {
       const g = mockGamesV2.find((x) => x.id === gameId);
       if (!g) throw new Error('joinGameV2: game not found');
@@ -4821,7 +4879,7 @@ export const gameService = {
       }
       logEvent(
         bucket === 'waitlist' ? AnalyticsEvent.WaitlistJoined : AnalyticsEvent.GameJoined,
-        { gameId, bucket },
+        { gameId, bucket, source },
       );
       return { bucket };
     }
@@ -5131,7 +5189,7 @@ export const gameService = {
       result.bucket === 'waitlist'
         ? AnalyticsEvent.WaitlistJoined
         : AnalyticsEvent.GameJoined,
-      { gameId, bucket: result.bucket },
+      { gameId, bucket: result.bucket, source },
     );
     return result;
   },
@@ -5195,6 +5253,7 @@ export const gameService = {
         groupId: g.groupId,
         bucket,
         viaApproval: true,
+        source: 'admin_added',
       });
       return { bucket };
     }
@@ -5305,6 +5364,7 @@ export const gameService = {
       groupId: result.groupId,
       bucket: result.bucket,
       viaApproval: true,
+      source: 'admin_added',
     });
     return { bucket: result.bucket };
   },
@@ -5776,6 +5836,11 @@ export const gameService = {
         recipientId: targetUserId,
         payload: { gameId, gameTitle: g.title },
       });
+      logEvent(AnalyticsEvent.PlayerRemovedByAdmin, {
+        gameId,
+        fromWaitlist: !wasInPlayers,
+        offered: !!offeredUid,
+      });
       logEvent(AnalyticsEvent.GameCancelled, {
         gameId,
         promoted: false,
@@ -5921,6 +5986,11 @@ export const gameService = {
       type: 'gameCanceledOrUpdated',
       recipientId: targetUserId,
       payload: { gameId, gameTitle: result.title, directedTo: targetUserId },
+    });
+    logEvent(AnalyticsEvent.PlayerRemovedByAdmin, {
+      gameId,
+      fromWaitlist: !(permData.players ?? []).includes(targetUserId),
+      offered: !!result.offeredUid,
     });
     logEvent(AnalyticsEvent.GameCancelled, {
       gameId,
@@ -6109,6 +6179,7 @@ export const gameService = {
     }
     if (!result.ok) return;
     if ('alreadyResolved' in result && result.alreadyResolved) return;
+    logEvent(AnalyticsEvent.SpotOfferDecided, { gameId, decision: 'passed' });
     if (result.nextOfferUid) {
       notificationsService.dispatch({
         type: 'spotOffered',
@@ -6181,6 +6252,10 @@ export const gameService = {
       throw err;
     }
     if (!result.ok) return; // no-op when there's nothing to advance
+    logEvent(AnalyticsEvent.SpotOfferDecided, {
+      gameId,
+      decision: 'admin_advanced',
+    });
     if (result.nextOfferUid) {
       notificationsService.dispatch({
         type: 'spotOffered',
@@ -6508,6 +6583,7 @@ export const gameService = {
       }
       g.visibility = visibility;
       g.updatedAt = Date.now();
+      logEvent(AnalyticsEvent.GameVisibilityChanged, { gameId, visibility });
       return;
     }
     const { auth } = getFirebase();
@@ -6543,6 +6619,7 @@ export const gameService = {
         visibility,
         updatedAt: Date.now(),
       });
+      logEvent(AnalyticsEvent.GameVisibilityChanged, { gameId, visibility });
     } catch (err) {
       logError('setVisibility', err, { gameId, visibility, uid });
       if (__DEV__) console.warn('[gameService] setVisibility failed', err);
@@ -7488,6 +7565,7 @@ export const gameService = {
         ...g.guests!.slice(idx + 1),
       ];
       g.updatedAt = Date.now();
+      logEvent(AnalyticsEvent.GuestRenamed, { gameId });
       return updated;
     }
 
@@ -7503,7 +7581,7 @@ export const gameService = {
         callerId,
       );
 
-      return await runTransaction(db, async (tx) => {
+      const saved = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         if (!snap.exists()) throw new Error('updateGuest: game not found');
         const data = snap.data();
@@ -7522,6 +7600,8 @@ export const gameService = {
         });
         return updated;
       });
+      logEvent(AnalyticsEvent.GuestRenamed, { gameId });
+      return saved;
     } catch (err) {
       logError('updateGuest', err, { gameId, callerId, guestId });
       if (__DEV__) console.warn('[gameService] updateGuest failed', err);
@@ -7572,6 +7652,11 @@ export const gameService = {
         ...g.guests!.slice(idx + 1),
       ];
       g.updatedAt = Date.now();
+      logEvent(AnalyticsEvent.GuestRatingSet, {
+        gameId,
+        rating: rating ?? 0,
+        cleared: rating === null,
+      });
       return;
     }
 
@@ -7586,6 +7671,11 @@ export const gameService = {
       if (__DEV__) console.warn('[gameService] setGuestRating failed', err);
       throw err;
     }
+    logEvent(AnalyticsEvent.GuestRatingSet, {
+      gameId,
+      rating: rating ?? 0,
+      cleared: rating === null,
+    });
   },
 
   /**

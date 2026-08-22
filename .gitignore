@@ -50,3 +50,11 @@ audit-screenshots/
 
 # iOS build artifacts
 *.ipa
+
+# Joryio SDK build outputs (the SOURCES under vendor/joryio are tracked —
+# eas build --local copies by git, so an untracked vendor/ silently ships an
+# app with no analytics).
+vendor/joryio/android/.gradle/
+vendor/joryio/android/build/
+vendor/joryio/**/build/
+vendor/joryio/react-native-sdk/node_modules/

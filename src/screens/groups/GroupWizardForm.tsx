@@ -39,6 +39,7 @@ import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { InfoTip } from '@/components/InfoTip';
 import { StepIndicator } from '@/components/StepIndicator';
 import { RichRulesInput } from '@/components/community/RichRulesInput';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { searchCities } from '@/services/israelLocationService';
 import { isValidIsraeliPhone } from '@/services/whatsappService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN, shadows } from '@/theme';
@@ -177,6 +178,17 @@ export function GroupWizardForm({
     val: GroupFormValues[K],
   ) => setValues((s) => ({ ...s, [key]: val }));
 
+  // One shared logger for the step-2 switches so every toggle reports the
+  // same shape (setting key + the value it moved to) instead of four ad-hoc
+  // call sites drifting apart.
+  const setToggle = (
+    key: 'isOpen' | 'internalRating' | 'hideInternalRating' | 'cardsEnabled',
+    v: boolean,
+  ) => {
+    set(key, v);
+    logEvent(AnalyticsEvent.CommunitySettingToggled, { setting: key, value: v });
+  };
+
   const fetchCities = useCallback((q: string) => searchCities(q), []);
 
   // Phone is now OPTIONAL (the community chat covers contact) — but if typed
@@ -199,7 +211,10 @@ export function GroupWizardForm({
 
   const goNext = () => {
     if (step === 1 && !step1Valid) return;
-    if (step < 2) setStep(2);
+    if (step < 2) {
+      setStep(2);
+      logEvent(AnalyticsEvent.CommunityWizardStepCompleted, { step: 1 });
+    }
   };
   const goBack = () => {
     if (step > 1) setStep(1);
@@ -319,7 +334,7 @@ export function GroupWizardForm({
                   label={he.createGroupIsOpen}
                   info={{ title: he.createGroupIsOpen, text: he.createGroupIsOpenHint }}
                   value={values.isOpen}
-                  onValueChange={(v) => set('isOpen', v)}
+                  onValueChange={(v) => setToggle('isOpen', v)}
                 />
 
                 {/* Community-wide member cap field REMOVED (user request) — the
@@ -339,7 +354,7 @@ export function GroupWizardForm({
                   }}
                   value={values.internalRating}
                   onValueChange={(v) => {
-                    set('internalRating', v);
+                    setToggle('internalRating', v);
                     // Turning internal rating off makes "hide" meaningless — reset
                     // it so a stale `true` doesn't get persisted.
                     if (!v) set('hideInternalRating', false);
@@ -356,7 +371,7 @@ export function GroupWizardForm({
                       text: he.createGroupHideInternalRatingHint,
                     }}
                     value={values.hideInternalRating}
-                    onValueChange={(v) => set('hideInternalRating', v)}
+                    onValueChange={(v) => setToggle('hideInternalRating', v)}
                   />
                 ) : null}
 
@@ -367,7 +382,7 @@ export function GroupWizardForm({
                   label={he.cardsToggleLabel}
                   info={{ title: he.cardsToggleLabel, text: he.cardsToggleHint }}
                   value={values.cardsEnabled}
-                  onValueChange={(v) => set('cardsEnabled', v)}
+                  onValueChange={(v) => setToggle('cardsEnabled', v)}
                 />
 
                 {values.cardsEnabled ? (

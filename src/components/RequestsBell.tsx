@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserStore } from '@/store/userStore';
 import { getInboxCount } from '@/services/requestsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 
@@ -38,7 +39,10 @@ export function RequestsBell({
 
   return (
     <Pressable
-      onPress={() => nav.navigate('Requests')}
+      onPress={() => {
+        logEvent(AnalyticsEvent.RequestsInboxOpened, { count });
+        nav.navigate('Requests');
+      }}
       style={({ pressed }) => [styles.btn, { backgroundColor: bg }, style, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
       accessibilityLabel={he.requestsTitle}

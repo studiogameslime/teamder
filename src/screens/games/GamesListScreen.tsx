@@ -314,6 +314,10 @@ export function GamesListScreen() {
   const handleCreate = () => {
     // Guests browse games freely but must register to create one.
     if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    logEvent(AnalyticsEvent.GameCreateStarted, {
+      stage: 'chooser',
+      source: 'games_list_fab',
+    });
     setCreateSheetVisible(true);
   };
 
@@ -366,7 +370,7 @@ export function GamesListScreen() {
         // Surface the outcome — the card join was silent (user report), so a
         // user who landed on the WAITLIST (e.g. a full game holding a spot for
         // a pending promotion) had no idea they weren't actually in the roster.
-        const { bucket } = await gameService.requestJoinGame(game.id, user.id);
+        const { bucket } = await gameService.requestJoinGame(game.id, user.id, 'games_list');
         toast.success(
           bucket === 'waitlist'
             ? he.toastGameJoinedWaitlist
@@ -560,6 +564,12 @@ export function GamesListScreen() {
     city: string | null,
   ) => {
     if (!ensureNotGuest(he.guestRegisterCreate)) return;
+    logEvent(AnalyticsEvent.GameCreateStarted, {
+      stage: 'wizard',
+      source: 'availability_slot',
+      mode: 'quick',
+      prefilled: true,
+    });
     nav.navigate('GameCreate', {
       quick: true,
       prefillDateMs: dateMs,
@@ -1033,7 +1043,7 @@ export function GamesListScreen() {
             await gameService.cancelGameV2(conflictGameId, user.id);
             const target = conflict?.target;
             if (target) {
-              await gameService.requestJoinGame(target.id, user.id);
+              await gameService.requestJoinGame(target.id, user.id, 'games_list');
             }
             setConflict(null);
             const fresh = await reload();

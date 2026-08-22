@@ -175,6 +175,9 @@ export function NotificationsSettingsScreen() {
   const handleEnablePermission = async () => {
     if (permBusy) return;
     if (!permCanAsk) {
+      // Permanently denied — the OS prompt is gone, so the only remaining
+      // path is the app's own page in the system settings.
+      logEvent(AnalyticsEvent.NotificationPermissionSettingsOpened);
       Linking.openSettings().catch(() => {});
       return;
     }
@@ -225,6 +228,10 @@ export function NotificationsSettingsScreen() {
       logError('saveNotificationPrefs', e, {
         screen: 'NotificationsSettingsScreen',
         userId: user.id,
+      });
+      logEvent(AnalyticsEvent.SettingsSaveFailed, {
+        entity: 'notification_prefs',
+        reason: String((e as Error)?.message ?? e),
       });
       appAlert(he.error, String((e as Error).message ?? e));
     } finally {

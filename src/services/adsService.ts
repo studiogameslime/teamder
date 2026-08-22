@@ -22,6 +22,7 @@ import { logError } from '@/services/errorLog';
 import { storage } from '@/services/storage';
 import { rcNumber, rcBool, useRemoteConfig } from '@/services/remoteConfigService';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 // ─── App-open ad frequency controls ───────────────────────────────────────
 // The app-open ad is the most lucrative format but also the most intrusive
@@ -466,6 +467,10 @@ export const adsService = {
     try {
       appOpenShownThisSession = true;
       await appOpenAdHandle.show();
+      // AFTER the await: `show()` rejects if the ad fails to present, and an
+      // ad that never appeared should not be counted as shown — same reason
+      // the daily budget below is only spent here.
+      logEvent(AnalyticsEvent.AppOpenAdShown, { countToday: countToday + 1 });
       // Record only on a successful show so a load-failure doesn't burn
       // the user's daily budget.
       await storage

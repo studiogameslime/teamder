@@ -29,6 +29,7 @@ import { RangeSlider } from './RangeSlider';
 import { FilterRadiusMap } from '@/components/games/FilterRadiusMap';
 import { RadiusMapModal } from '@/components/games/RadiusMapModal';
 import { SpringSheet } from '@/components/anim/SpringSheet';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { GroupPublic, WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -185,12 +186,24 @@ export function CommunityFilterSheet({
             <SwitchRow
               label={he.communityFiltersOnlyOpen}
               value={filters.autoJoinOnly}
-              onChange={(v) => onChange({ ...filters, autoJoinOnly: v })}
+              onChange={(v) => {
+                logEvent(AnalyticsEvent.CommunityFilterApplied, {
+                  filter: 'auto_join_only',
+                  value: v,
+                });
+                onChange({ ...filters, autoJoinOnly: v });
+              }}
             />
             <SwitchRow
               label="מועדונים עם מחזורים קבועים"
               value={filters.regularGamesOnly}
-              onChange={(v) => onChange({ ...filters, regularGamesOnly: v })}
+              onChange={(v) => {
+                logEvent(AnalyticsEvent.CommunityFilterApplied, {
+                  filter: 'regular_games_only',
+                  value: v,
+                });
+                onChange({ ...filters, regularGamesOnly: v });
+              }}
             />
 
             {/* ── קרוב אליי — identical to GameFilterSheet ──────────── */}
@@ -232,7 +245,14 @@ export function CommunityFilterSheet({
                           : he.gameFiltersNearbyPermissionHint}
                       </Text>
                       <Pressable
-                        onPress={() => onChange({ ...filters, nearby: true })}
+                        onPress={() => {
+                          logEvent(AnalyticsEvent.CommunityFilterApplied, {
+                            filter: 'nearby',
+                            value: true,
+                            radiusKm: filters.nearbyRadiusKm,
+                          });
+                          onChange({ ...filters, nearby: true });
+                        }}
                         style={({ pressed }) => [
                           styles.nearbyAllowBtn,
                           pressed && { opacity: 0.9 },
@@ -290,7 +310,12 @@ export function CommunityFilterSheet({
               title={he.gameFiltersReset}
               variant="outline"
               size="lg"
-              onPress={() => onChange(EMPTY_GROUP_FILTERS)}
+              onPress={() => {
+                logEvent(AnalyticsEvent.CommunityFilterCleared, {
+                  clearedCount: activeGroupFiltersCount(filters),
+                });
+                onChange(EMPTY_GROUP_FILTERS);
+              }}
             />
             <View style={{ flex: 1 }}>
               <Button

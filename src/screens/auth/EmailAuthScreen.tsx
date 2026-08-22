@@ -24,6 +24,7 @@ import { appAlert } from '@/components/AppDialog';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useUserStore } from '@/store/userStore';
 import { EmailRegisteredWithProviderError } from '@/firebase/auth';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -58,6 +59,16 @@ export function EmailAuthScreen() {
   const canSubmit =
     emailOk && passwordOk && (!isSignUp || passwordsMatch && confirmPassword.length > 0) && !busy;
 
+  // Both the error dialog's "עבור להתחברות" action and the bottom toggle link
+  // flip modes — route them through here so the switch is logged once.
+  const switchMode = (to: 'signIn' | 'signUp', trigger: 'dialog' | 'link') => {
+    logEvent(AnalyticsEvent.AuthModeSwitched, {
+      to: to === 'signUp' ? 'signup' : 'signin',
+      trigger,
+    });
+    setMode(to);
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
@@ -77,6 +88,7 @@ export function EmailAuthScreen() {
 
   const handleAuthError = (err: unknown) => {
     if (err instanceof EmailRegisteredWithProviderError) {
+      logEvent(AnalyticsEvent.SignInProviderConflict, { provider: err.provider });
       appAlert(
         he.error,
         err.provider === 'google'
@@ -86,6 +98,11 @@ export function EmailAuthScreen() {
       return;
     }
     const code = (err as { code?: string })?.code ?? '';
+    logEvent(AnalyticsEvent.SignInFailed, {
+      method: 'email',
+      code,
+      mode: mode === 'signUp' ? 'signup' : 'signin',
+    });
     let msg: string = he.emailAuthGenericError;
     if (code === 'auth/invalid-email') msg = he.emailAuthInvalidEmail;
     else if (code === 'auth/weak-password') msg = he.emailAuthWeakPassword;
@@ -96,7 +113,7 @@ export function EmailAuthScreen() {
       // "you used Google/Apple → use that button". Offer to flip to sign-in.
       appAlert(he.error, he.emailAuthAlreadyInUse, [
         { text: he.cancel, style: 'cancel' },
-        { text: he.emailAuthSwitchToSignIn, onPress: () => setMode('signIn') },
+        { text: he.emailAuthSwitchToSignIn, onPress: () => switchMode('signIn', 'dialog') },
       ]);
       return;
     } else if (
@@ -119,22 +136,30 @@ export function EmailAuthScreen() {
 
   const onForgotPassword = async () => {
     if (!emailOk) {
+      logEvent(AnalyticsEvent.PasswordResetRequested, {
+        result: 'blocked',
+        reason: 'invalid_email',
+      });
       appAlert(he.error, he.emailAuthResetNeedEmail);
       return;
     }
     try {
       await sendPasswordReset(email);
+      logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'sent' });
       appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(email.trim()));
     } catch (err) {
       // Don't reveal whether the address exists — generic confirmation either
       // way is the safe default, but a network/invalid error is worth showing.
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/invalid-email') {
+        logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'failed', code });
         appAlert(he.error, he.emailAuthInvalidEmail);
       } else if (code === 'auth/network-request-failed') {
+        logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'failed', code });
         appAlert(he.error, he.signInNetworkError);
       } else {
         // user-not-found etc. → still show "sent" so we don't leak accounts.
+        logEvent(AnalyticsEvent.PasswordResetRequested, { result: 'sent', code });
         appAlert(he.emailAuthResetSentTitle, he.emailAuthResetSentBody(email.trim()));
       }
     }
@@ -263,7 +288,7 @@ export function EmailAuthScreen() {
 
           <Pressable
             onPress={() => {
-              setMode(isSignUp ? 'signIn' : 'signUp');
+              switchMode(isSignUp ? 'signIn' : 'signUp', 'link');
               setConfirmPassword('');
             }}
             hitSlop={8}

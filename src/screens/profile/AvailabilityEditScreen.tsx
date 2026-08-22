@@ -194,6 +194,10 @@ export function AvailabilityEditScreen() {
   // enabled abroad.)
   const handleToggleLocation = (next: boolean) => {
     setLocationEnabled(next);
+    logEvent(AnalyticsEvent.AvailabilityLocationToggled, {
+      enabled: next,
+      locationGranted,
+    });
   };
 
   // Explicit, opt-in GPS: only fires on a deliberate tap, never automatically.
@@ -202,6 +206,11 @@ export function AvailabilityEditScreen() {
     setGpsBusy(true);
     try {
       const r = await resolveNearbyLocation(initial.homeCity);
+      logEvent(AnalyticsEvent.AvailabilityGpsUsed, {
+        granted: r.granted,
+        city: r.city ?? '',
+        canAskAgain: r.canAskAgain,
+      });
       if (r.granted) {
         if (r.latLng) setPin(r.latLng);
         if (r.city) setCityLabel(r.city);
@@ -232,6 +241,7 @@ export function AvailabilityEditScreen() {
   }, []);
 
   const applyPreset = useCallback((kind: 'evenings' | 'weekend' | 'clear') => {
+    logEvent(AnalyticsEvent.AvailabilityPresetApplied, { preset: kind });
     setSlots((prev) => {
       if (kind === 'clear') return {};
       const next: SlotGrid = { ...prev };
@@ -310,6 +320,12 @@ export function AvailabilityEditScreen() {
       logError('saveAvailability', e, {
         screen: 'AvailabilityEditScreen',
         userId: user.id,
+        days: derivedDays.join(','),
+        radiusKm,
+      });
+      logEvent(AnalyticsEvent.SettingsSaveFailed, {
+        entity: 'availability',
+        reason: String((e as Error)?.message ?? e),
         days: derivedDays.join(','),
         radiusKm,
       });
@@ -410,7 +426,14 @@ export function AvailabilityEditScreen() {
                   return (
                     <Pressable
                       key={t.key}
-                      onPress={() => toggleSlot(d, t.key)}
+                      onPress={() => {
+                        toggleSlot(d, t.key);
+                        logEvent(AnalyticsEvent.AvailabilitySlotToggled, {
+                          day: d,
+                          bucket: t.key,
+                          on: !on,
+                        });
+                      }}
                       style={({ pressed }) => [
                         styles.gridCell,
                         on && styles.gridCellOn,
@@ -538,7 +561,10 @@ export function AvailabilityEditScreen() {
           </View>
           <BallSwitch
             value={notify}
-            onValueChange={setNotify}
+            onValueChange={(v) => {
+              setNotify(v);
+              logEvent(AnalyticsEvent.AvailabilityFillerPushToggled, { enabled: v });
+            }}
             trackColor={{ false: colors.border, true: colors.success }}
             thumbColor="#fff"
           />

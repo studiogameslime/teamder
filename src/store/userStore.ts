@@ -109,10 +109,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
     const [onboardingDone, user] = await Promise.all([
       storage.getOnboardingDone().catch((err) => {
         logError('userHydrateGetOnboardingDone', err, {});
+        logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'storage' });
         return false;
       }),
       userService.getCurrentUser().catch((err) => {
         logError('userHydrateGetCurrentUser', err, {});
+        logEvent(AnalyticsEvent.BootHydrateFailed, { source: 'user_read' });
         if (__DEV__) console.warn('[userStore.hydrate] getCurrentUser', err);
         return null;
       }),

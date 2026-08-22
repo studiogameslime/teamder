@@ -16,6 +16,7 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 export function ProfileSetupScreen() {
   const user = useUserStore((s) => s.currentUser);
@@ -33,6 +34,11 @@ export function ProfileSetupScreen() {
       // failure here strands the user on this screen with no feedback —
       // surface the error so they know to retry.
       if (__DEV__) console.warn('[profileSetup] save failed', err);
+      const code =
+        typeof (err as { code?: unknown })?.code === 'string'
+          ? ((err as { code: string }).code)
+          : '';
+      logEvent(AnalyticsEvent.ProfileSaveFailed, { source: 'profile_setup', code });
       appAlert(he.error, he.profileSaveError);
     } finally {
       setBusy(false);

@@ -27,6 +27,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { gameService } from '@/services';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, shadows, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { toGuestRosterId, type Game } from '@/types';
@@ -147,6 +148,15 @@ export function DraftSetupScreen() {
   );
   const hasTeams = !!game?.draftTeams?.teams?.length;
 
+  // Step 0 — record which split method the manager picked, then advance.
+  const chooseSplitMode = useCallback(
+    (m: 'auto' | 'manual' | 'random') => {
+      logEvent(AnalyticsEvent.TeamsSplitMethodChosen, { gameId, method: m });
+      setSplitMode(m);
+    },
+    [gameId],
+  );
+
   const toggleCaptain = useCallback((uid: string) => {
     setCaptainIds((prev) =>
       prev.includes(uid) ? prev.filter((x) => x !== uid) : [...prev, uid],
@@ -181,6 +191,12 @@ export function DraftSetupScreen() {
 
   const onContinue = () => {
     if (!canContinue || !method) return;
+    logEvent(AnalyticsEvent.DraftBoardStarted, {
+      gameId,
+      numTeams,
+      order: method,
+      participants: participants.length,
+    });
     nav.navigate('DraftBoard', { gameId, captainIds, method });
   };
 
@@ -258,6 +274,18 @@ export function DraftSetupScreen() {
           historyGames: history.length,
         },
       );
+      logEvent(AnalyticsEvent.TeamsGenerated, {
+        gameId: game.id,
+        method: splitMode ?? 'auto',
+        numTeams: autoNumTeams,
+        players: playerIds.length,
+        unratedCount,
+        gap: Math.round(gap * 1000) / 1000,
+        band,
+        fallback,
+        historyGames: history.length,
+        regenerate: hasTeams,
+      });
       if (__DEV__) {
         console.log(
           `[autoBalance] gap=${gap.toFixed(3)} band=${band} repeat=${repeat.toFixed(2)}` +
@@ -284,6 +312,10 @@ export function DraftSetupScreen() {
       });
     } catch (err) {
       logError('draftGenerate', err, { gameId: game.id, splitMode });
+      logEvent(AnalyticsEvent.TeamsGenerateFailed, {
+        gameId: game.id,
+        method: splitMode ?? 'auto',
+      });
       toast.error(he.autoBalanceError);
     } finally {
       setGenerating(false);
@@ -295,6 +327,7 @@ export function DraftSetupScreen() {
     myCommunities,
     splitMode,
     autoNumTeams,
+    hasTeams,
     nav,
   ]);
 
@@ -316,7 +349,14 @@ export function DraftSetupScreen() {
                   icon="git-compare"
                   title={he.draftEditExistingTitle}
                   subtitle={he.draftEditExistingSub}
-                  onPress={() => setEditOpen(true)}
+                  onPress={() => {
+                    logEvent(AnalyticsEvent.TeamsSplitMethodChosen, {
+                      gameId,
+                      method: 'edit',
+                      numTeams: game?.draftTeams?.teams?.length ?? 0,
+                    });
+                    setEditOpen(true);
+                  }}
                 />
                 <Text style={styles.orHint}>{he.draftMethodTitle}</Text>
               </>
@@ -328,20 +368,20 @@ export function DraftSetupScreen() {
                 icon="sparkles"
                 title={he.draftMethodAuto}
                 subtitle={he.draftMethodAutoSub}
-                onPress={() => setSplitMode('auto')}
+                onPress={() => chooseSplitMode('auto')}
               />
             ) : null}
             <MethodCard
               icon="people"
               title={he.draftMethodManual}
               subtitle={he.draftMethodManualSub}
-              onPress={() => setSplitMode('manual')}
+              onPress={() => chooseSplitMode('manual')}
             />
             <MethodCard
               icon="shuffle"
               title={he.draftMethodRandom}
               subtitle={he.draftMethodRandomSub}
-              onPress={() => setSplitMode('random')}
+              onPress={() => chooseSplitMode('random')}
             />
           </>
         ) : splitMode === 'manual' ? (

@@ -44,6 +44,7 @@ import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
 import { logError, logUnexpected } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 let groupsById: Record<GroupId, Group> = {
   [mockGroup.id]: { ...mockGroup },
@@ -2148,6 +2149,11 @@ async function writeJoin(
   }
   try {
     await batch.commit();
+    // An OPEN community adds the user straight to playerIds — no join-request
+    // doc, so group_join_requested/approved never fire and the join was
+    // invisible in the funnel. Emit the completed join explicitly; `isOpen`
+    // distinguishes it from the approval path.
+    logEvent(AnalyticsEvent.GroupJoined, { groupId, instant: isOpen });
   } catch (e) {
     const code = (e as { code?: string })?.code;
     if (

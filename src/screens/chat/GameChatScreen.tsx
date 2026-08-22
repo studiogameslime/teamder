@@ -8,6 +8,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 
 import { ChatView } from '@/components/chat/ChatView';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { gameService } from '@/services/gameService';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -30,11 +31,15 @@ export function GameChatScreen() {
       .getGameById(gameId)
       .then((g) => {
         if (alive) {
+          if (!g) {
+            logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: 'game_unavailable' });
+          }
           setGame(g);
           setLoading(false);
         }
       })
       .catch(() => {
+        logEvent(AnalyticsEvent.ChatLoadFailed, { scope: 'game', reason: 'fetch_failed' });
         if (alive) setLoading(false);
       });
     return () => {

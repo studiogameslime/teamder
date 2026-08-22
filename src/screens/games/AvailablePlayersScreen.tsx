@@ -27,6 +27,7 @@ import { gameService } from '@/services/gameService';
 import { notificationsService } from '@/services/notificationsService';
 import { achievementsService } from '@/services/achievementsService';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { toast } from '@/components/Toast';
 import type { Game, User } from '@/types';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -149,6 +150,10 @@ export function AvailablePlayersScreen() {
       await notificationsService.inviteToGame({
         recipientId: target.id,
         gameId: game.id,
+      });
+      logEvent(AnalyticsEvent.AvailablePlayerInvited, {
+        gameId: game.id,
+        targetId: target.id,
       });
       // CF bumps invitesSent server-side; we just update the local
       // "invited X" state so the row immediately disables.

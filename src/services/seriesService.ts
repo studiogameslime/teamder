@@ -22,6 +22,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { getFirebase, USE_MOCK_DATA } from '@/firebase/config';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import type { GameSeries, GameSeriesSettings, GroupId, UserId } from '@/types';
 
@@ -135,6 +136,7 @@ export const seriesService = {
       settings,
       updatedAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.GameSeriesSettingsApplied, { seriesId });
   },
 
   /** Stop the weekly fixture. Kept (not deleted) so past occurrences can still
@@ -151,6 +153,7 @@ export const seriesService = {
       active: false,
       updatedAt: Date.now(),
     });
+    logEvent(AnalyticsEvent.GameSeriesStopped, { seriesId });
   },
 
   /** Hard-delete — only used when a series is created and immediately rolled

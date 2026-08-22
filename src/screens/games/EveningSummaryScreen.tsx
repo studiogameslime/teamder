@@ -57,6 +57,21 @@ export function EveningSummaryScreen() {
       );
       if (!alive) return;
       setModel(m);
+      if (m) {
+        logEvent(AnalyticsEvent.EveningSummaryOpened, {
+          gameId,
+          rounds: m.rounds,
+          goals: m.goals,
+          assists: m.assists,
+          wins: m.wins,
+          noPlay:
+            m.rounds === 0 &&
+            m.wins === 0 &&
+            m.losses === 0 &&
+            m.goals === 0 &&
+            m.assists === 0,
+        });
+      }
       setLoading(false);
     })();
     return () => {

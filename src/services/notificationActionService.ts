@@ -37,6 +37,7 @@ export async function handleGameReminderAction(
       logEvent(AnalyticsEvent.GameJoined, {
         gameId,
         viaNotificationAction: true,
+        source: 'notification',
       });
       // The join ran in the BACKGROUND (no app launch) — post a local
       // notification so the user still gets a result (in / waitlist /
@@ -202,6 +203,7 @@ export async function handleFillerOpportunityAction(
       gameId,
       viaNotificationAction: true,
       asFillerInterest: true,
+      source: 'filler_push',
     });
   } catch (err) {
     // Common failure modes: game already filled, admin disabled

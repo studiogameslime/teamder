@@ -70,6 +70,17 @@ export function PostSignInOnboardingScreen() {
       // the user denies gallery access we must NOT nag them to reconsider
       // or point them to Settings (App Store guideline 5.1.1(iv)); just
       // fall back silently and let them pick an avatar instead.
+      if (res.reason === 'cancelled' || res.reason === 'permission') {
+        logEvent(AnalyticsEvent.PhotoUploadAbandoned, {
+          source: 'onboarding',
+          reason: res.reason === 'permission' ? 'permission_denied' : 'cancelled',
+        });
+      } else {
+        logEvent(AnalyticsEvent.PhotoUploadFailed, {
+          source: 'onboarding',
+          reason: res.reason,
+        });
+      }
       if (res.reason === 'network') {
         appAlert(he.error, he.profilePhotoUploadFailed);
       } else if (res.reason === 'unavailable') {
@@ -109,6 +120,10 @@ export function PostSignInOnboardingScreen() {
       });
     } catch (err) {
       if (__DEV__) console.warn('[onboarding] complete failed', err);
+      logEvent(AnalyticsEvent.ProfileSaveFailed, {
+        source: 'post_signin_onboarding',
+        code: (err as { code?: string } | null)?.code ?? 'unknown',
+      });
       appAlert(he.error, he.signInFailed);
     } finally {
       setBusy(false);

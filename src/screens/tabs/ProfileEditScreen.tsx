@@ -130,6 +130,10 @@ export function ProfileEditScreen() {
     const res = await pickAndUploadAvatar(user.id);
     setUploading(false);
     if (!res.ok) {
+      logEvent(AnalyticsEvent.PhotoUploadFailed, {
+        source: 'profile_edit',
+        reason: res.reason,
+      });
       // Photo is optional (built-in avatars available). Per App Store
       // guideline 5.1.1(iv) we don't nag to reconsider or send the user to
       // Settings after a denial — just fall back silently.
@@ -214,6 +218,17 @@ export function ProfileEditScreen() {
       // __DEV__ warn above and never reaches the user. Generic save-failure
       // copy (the failure may be the NAME write, not the photo).
       appAlert(he.error, he.profileSaveFailed);
+      logEvent(AnalyticsEvent.ProfileSaveFailed, {
+        source: 'profile_edit',
+        code: (err as { code?: string })?.code ?? 'unknown',
+        fields: [
+          nameDirty && 'name',
+          photoDirty && 'photo',
+          avatarDirty && 'avatar',
+        ]
+          .filter(Boolean)
+          .join(','),
+      });
       // Bail out so the finally still resets busy/saving but goBack
       // never runs.
     } finally {

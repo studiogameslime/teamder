@@ -25,6 +25,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { teamName } from '@/utils/draft';
 import { useGameStore } from '@/store/gameStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -113,6 +114,11 @@ export function MatchRoundsScreen() {
       if (!alive) return;
       setGame(g);
       setRounds(rs);
+      logEvent(AnalyticsEvent.MatchRoundsOpened, {
+        gameId,
+        rounds: rs.length,
+        goals: rs.reduce((n, r) => n + (r.goals?.length ?? 0), 0),
+      });
       // Hydrate every REAL player id referenced across the rounds so names +
       // avatars resolve (guests come from the game doc, not /users).
       // Round history stores a guest as the PREFIXED roster id (`guest:<id>`).

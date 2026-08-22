@@ -240,7 +240,7 @@ function PlainLiveMatchScreen() {
         setNotFound(true);
         return;
       }
-      logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id });
+      logEvent(AnalyticsEvent.LiveMatchOpened, { gameId: g.id, mode: 'plain' });
 
       const terminal = isFinishedHelper(g) || isCancelledHelper(g);
       const adminHere =
@@ -296,6 +296,7 @@ function PlainLiveMatchScreen() {
     if (ctrlId && ctrlId !== me?.id && running !== prevRunning) {
       const who = ctrlName || 'אדמין אחר';
       toast.info(running ? `${who} הפעיל את הטיימר` : `${who} עצר את הטיימר`, 1800);
+      if (gameId) logEvent(AnalyticsEvent.LiveTimerRemoteChange, { gameId, running });
     }
     lastCtrlRef.current = ctrlId;
     lastRunningRef.current = running;
@@ -316,8 +317,16 @@ function PlainLiveMatchScreen() {
       // First press flips Game.status→'active' and stamps
       // liveMatch.startedAt (and creates liveMatch if absent — required
       // before startTimer can run). Idempotent on subsequent presses.
+      const firstStart = !timerStarted;
       await gameService.markGameStarted(gameId);
+      if (firstStart) logEvent(AnalyticsEvent.GameStarted, { gameId, mode: 'plain' });
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'start',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerStart', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] startTimer failed', err);
@@ -327,6 +336,12 @@ function PlainLiveMatchScreen() {
     if (!gameId || !me) return;
     try {
       await gameService.pauseTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'pause',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerPause', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] pauseTimer failed', err);
@@ -336,6 +351,12 @@ function PlainLiveMatchScreen() {
     if (!gameId || !me) return;
     try {
       await gameService.startTimer(gameId, me.id, me.name ?? '');
+      logEvent(AnalyticsEvent.LiveTimerAction, {
+        gameId,
+        action: 'resume',
+        elapsedSec: Math.round(timerMs / 1000),
+        isAdmin,
+      });
     } catch (err) {
       logError('liveTimerResume', err, { gameId, userId: me?.id });
       if (__DEV__) console.warn('[live] resumeTimer failed', err);
@@ -356,6 +377,12 @@ function PlainLiveMatchScreen() {
           onPress: async () => {
             try {
               await gameService.resetTimer(gameId, me.id, me.name ?? '');
+              logEvent(AnalyticsEvent.LiveTimerAction, {
+                gameId,
+                action: 'reset',
+                elapsedSec: Math.round(timerMs / 1000),
+                isAdmin,
+              });
             } catch (err) {
               logError('liveTimerReset', err, { gameId, userId: me?.id });
               if (__DEV__) console.warn('[live] resetTimer failed', err);
@@ -376,6 +403,12 @@ function PlainLiveMatchScreen() {
       if (__DEV__) console.warn('[live] endEvening failed', err);
       return;
     }
+    logEvent(AnalyticsEvent.MatchCompleted, {
+      gameId,
+      mode: 'plain',
+      elapsedSec: Math.round(timerMs / 1000),
+      stopCount: stoppages.stopCount,
+    });
     setEndOpen(false);
     if (nav.canGoBack()) nav.goBack();
   };
@@ -431,6 +464,7 @@ function PlainLiveMatchScreen() {
     if (inOvertime && !enteredOvertimeRef.current) {
       enteredOvertimeRef.current = true;
       warningHaptic();
+      if (gameId) logEvent(AnalyticsEvent.LiveOvertimeReached, { gameId, totalMinutes });
     }
     if (!inOvertime) enteredOvertimeRef.current = false;
   }, [timerRunning, inLastMinute, inOvertime, remainingMs]);
@@ -566,7 +600,14 @@ function PlainLiveMatchScreen() {
         {timerStarted ? (
           <Pressable
             style={styles.stoppagesChip}
-            onPress={() => setStoppagesOpen(true)}
+            onPress={() => {
+              setStoppagesOpen(true);
+              logEvent(AnalyticsEvent.LiveStoppagesOpened, {
+                gameId: game.id,
+                stopCount: stoppages.stopCount,
+                totalStoppedSec: Math.round(totalStoppedMs / 1000),
+              });
+            }}
             accessibilityRole="button"
             accessibilityLabel={he.liveStoppagesTitle}
           >
@@ -624,7 +665,14 @@ function PlainLiveMatchScreen() {
             {timerStarted ? (
               <Pressable
                 style={styles.endBtn}
-                onPress={() => setEndOpen(true)}
+                onPress={() => {
+                  setEndOpen(true);
+                  logEvent(AnalyticsEvent.EndEveningPrompted, {
+                    gameId: game.id,
+                    source: 'inline_button',
+                    elapsedSec: Math.round(timerMs / 1000),
+                  });
+                }}
                 accessibilityRole="button"
               >
                 <Text style={styles.endBtnText}>{he.liveEndEvening}</Text>

@@ -46,6 +46,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { LocationSearchSheet } from '@/components/games/LocationSearchSheet';
 import { reverseGeocodeCity } from '@/services/geocodeService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { FieldType, GameFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -341,10 +342,24 @@ export function GameWizardForm({
     step1Missing.push(he.createGameField);
   const goNext = () => {
     if (step === 1 && !step1Valid) return;
-    if (step < 3) setStep(((step + 1) as 1 | 2 | 3));
+    if (step < 3) {
+      setStep(((step + 1) as 1 | 2 | 3));
+      logEvent(AnalyticsEvent.GameWizardStepChanged, {
+        step: step + 1,
+        direction: 'next',
+        mode: isEdit ? 'edit' : 'create',
+      });
+    }
   };
   const goBack = () => {
-    if (step > 1) setStep(((step - 1) as 1 | 2 | 3));
+    if (step > 1) {
+      setStep(((step - 1) as 1 | 2 | 3));
+      logEvent(AnalyticsEvent.GameWizardStepChanged, {
+        step: step - 1,
+        direction: 'back',
+        mode: isEdit ? 'edit' : 'create',
+      });
+    }
   };
 
   // Recurring-game mode (driven by the step-3 toggle) requires the
@@ -359,6 +374,11 @@ export function GameWizardForm({
     if (!values.scheduledRegEnabled) return true;
     const v = values.registrationOpensAt;
     if (!v) {
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: isEdit ? 'edit' : 'create',
+        reason: 'reg_opens_missing',
+        confirmed: false,
+      });
       appAlert(he.error, he.wizardRegOpensRequired);
       return false;
     }
@@ -373,6 +393,11 @@ export function GameWizardForm({
   const validateAutoTeamsAt = (): boolean => {
     if (!values.autoTeamsAt) return true;
     if (values.autoTeamsAt >= values.startsAt) {
+      logEvent(AnalyticsEvent.GameFormWarningShown, {
+        mode: isEdit ? 'edit' : 'create',
+        reason: 'auto_teams_after_kickoff',
+        confirmed: false,
+      });
       appAlert(he.error, he.wizardAutoTeamsBeforeKickoff);
       return false;
     }
@@ -405,6 +430,9 @@ export function GameWizardForm({
     } catch (e) {
       savingRef.current = false; // stayed on the form → re-arm the guard
       if (__DEV__) console.warn('[gameWizard] submit failed', e);
+      logEvent(AnalyticsEvent.GameWizardSubmitFailed, {
+        mode: isEdit ? 'edit' : 'create',
+      });
       appAlert(he.error, he.gameWizardSubmitFailed);
     } finally {
       setBusy(false);
@@ -412,6 +440,11 @@ export function GameWizardForm({
   };
 
   const submit = async () => {
+    logEvent(AnalyticsEvent.GameWizardStepChanged, {
+      step: 3,
+      direction: 'submit',
+      mode: isEdit ? 'edit' : 'create',
+    });
     if (!validateRegistrationOpensAt()) return;
     if (!validateAutoTeamsAt()) return;
     if (values.scheduledRegEnabled && values.registrationOpensAt > 0) {
@@ -423,6 +456,12 @@ export function GameWizardForm({
         // Soft warning — admin can choose to continue. The hard
         // "must be before kickoff" check above is the only block.
         // Styled popup (ConfirmDialog) instead of a native Alert.
+        logEvent(AnalyticsEvent.GameFormWarningShown, {
+          mode: isEdit ? 'edit' : 'create',
+          reason: isPast ? 'reg_window_past' : 'reg_window_short',
+          confirmed: false,
+          leadMinutes: Math.round(delta / 60000),
+        });
         setRegWarn({ isPast });
         return;
       }
@@ -539,6 +578,11 @@ export function GameWizardForm({
         cancelLabel={he.wizardRegOpensWarnEdit}
         confirmLabel={he.wizardRegOpensWarnContinue}
         onConfirm={() => {
+          logEvent(AnalyticsEvent.GameFormWarningShown, {
+            mode: isEdit ? 'edit' : 'create',
+            reason: regWarn?.isPast ? 'reg_window_past' : 'reg_window_short',
+            confirmed: true,
+          });
           setRegWarn(null);
           void finalizeSubmit();
         }}
@@ -718,6 +762,10 @@ function Step1({
         onChange={(v) => {
           set('visibility', v ? 'public' : 'community');
           set('acceptsFillers', v);
+          logEvent(AnalyticsEvent.GameSettingToggled, {
+            setting: 'visibility_public',
+            enabled: v,
+          });
         }}
       />
     </View>
@@ -855,14 +903,26 @@ function Step3({
         label={he.createGameRequiresApproval}
         info={{ title: he.createGameRequiresApproval, text: he.createGameRequiresApprovalHint }}
         value={values.requiresApproval}
-        onChange={(v) => set('requiresApproval', v)}
+        onChange={(v) => {
+          set('requiresApproval', v);
+          logEvent(AnalyticsEvent.GameSettingToggled, {
+            setting: 'requires_approval',
+            enabled: v,
+          });
+        }}
       />
 
       <ToggleRow
         label={he.createGameWaitlistApproval}
         info={{ title: he.createGameWaitlistApproval, text: he.createGameWaitlistApprovalHint }}
         value={values.waitlistApprovalRequired}
-        onChange={(v) => set('waitlistApprovalRequired', v)}
+        onChange={(v) => {
+          set('waitlistApprovalRequired', v);
+          logEvent(AnalyticsEvent.GameSettingToggled, {
+            setting: 'waitlist_approval',
+            enabled: v,
+          });
+        }}
       />
       {values.waitlistApprovalRequired ? (
         <View style={styles.section}>
@@ -886,16 +946,26 @@ function Step3({
               label={he.wizardGuestsOpenToggle}
               info={{ title: he.wizardGuestsOpenToggle, text: he.wizardGuestsOpenHint }}
               value={values.guestsOpenAt > 0}
-              onChange={(v) =>
-                set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0)
-              }
+              onChange={(v) => {
+                set('guestsOpenAt', v ? values.startsAt - 24 * 60 * 60 * 1000 : 0);
+                logEvent(AnalyticsEvent.GameSettingToggled, {
+                  setting: 'guests_open',
+                  enabled: v,
+                });
+              }}
             />
           }
         >
           <AppDateTimeField
             label={he.wizardGuestsOpenLabel}
             value={values.guestsOpenAt}
-            onChange={(ms) => set('guestsOpenAt', ms)}
+            onChange={(ms) => {
+              set('guestsOpenAt', ms);
+              logEvent(AnalyticsEvent.GameScheduleSet, {
+                kind: 'guests_open',
+                leadMinutes: Math.round((values.startsAt - ms) / 60000),
+              });
+            }}
             required
           />
         </ScheduleGroup>
@@ -908,16 +978,27 @@ function Step3({
               label={he.wizardAutoTeamsToggle}
               info={{ title: he.wizardAutoTeamsToggle, text: he.wizardAutoTeamsHint }}
               value={values.autoTeamsAt > 0}
-              onChange={(v) =>
-                set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0)
-              }
+              onChange={(v) => {
+                set('autoTeamsAt', v ? values.startsAt - 60 * 60 * 1000 : 0);
+                logEvent(AnalyticsEvent.AutoTeamsScheduleToggled, { enabled: v });
+                logEvent(AnalyticsEvent.GameSettingToggled, {
+                  setting: 'auto_teams',
+                  enabled: v,
+                });
+              }}
             />
           }
         >
           <AppDateTimeField
             label={he.wizardAutoTeamsLabel}
             value={values.autoTeamsAt}
-            onChange={(ms) => set('autoTeamsAt', ms)}
+            onChange={(ms) => {
+              set('autoTeamsAt', ms);
+              logEvent(AnalyticsEvent.GameScheduleSet, {
+                kind: 'auto_teams',
+                leadMinutes: Math.round((values.startsAt - ms) / 60000),
+              });
+            }}
             required
           />
           <PillRow
@@ -927,7 +1008,13 @@ function Step3({
               { value: 'random', label: he.draftMethodRandom },
             ]}
             selected={values.autoTeamsMethod}
-            onSelect={(v) => set('autoTeamsMethod', v as 'rating' | 'random')}
+            onSelect={(v) => {
+              set('autoTeamsMethod', v as 'rating' | 'random');
+              logEvent(AnalyticsEvent.GameSettingToggled, {
+                setting: 'auto_teams_method',
+                value: v,
+              });
+            }}
           />
         </ScheduleGroup>
       ) : null}
@@ -953,7 +1040,13 @@ function Step3({
               label={he.communityEditRecurringEnabled}
               info={{ title: he.communityEditRecurringEnabled, text: he.communityEditRecurringHint }}
               value={values.recurringGameEnabled}
-              onChange={(v) => set('recurringGameEnabled', v)}
+              onChange={(v) => {
+                set('recurringGameEnabled', v);
+                logEvent(AnalyticsEvent.GameRecurringToggled, {
+                  enabled: v,
+                  mode: 'create',
+                });
+              }}
             />
           ) : null}
 
@@ -968,6 +1061,10 @@ function Step3({
                 value={values.scheduledRegEnabled}
                 onChange={(v) => {
                   set('scheduledRegEnabled', v);
+                  logEvent(AnalyticsEvent.GameSettingToggled, {
+                    setting: 'scheduled_registration',
+                    enabled: v,
+                  });
                   // Reset the picker value when turning the toggle off so a
                   // stale registrationOpensAt doesn't survive into submit.
                   if (!v) set('registrationOpensAt', 0);
@@ -989,7 +1086,13 @@ function Step3({
                 values.registrationOpensAt ||
                 defaultRegOpensAt(values.startsAt)
               }
-              onChange={(ms) => set('registrationOpensAt', ms)}
+              onChange={(ms) => {
+                set('registrationOpensAt', ms);
+                logEvent(AnalyticsEvent.GameScheduleSet, {
+                  kind: 'registration_opens',
+                  leadMinutes: Math.round((values.startsAt - ms) / 60000),
+                });
+              }}
               required
             />
           </ScheduleGroup>
@@ -1008,16 +1111,26 @@ function Step3({
                 label={he.wizardPublicOpenToggle}
                 info={{ title: he.wizardPublicOpenToggle, text: he.wizardPublicOpenHint }}
                 value={values.publicOpenAt > 0}
-                onChange={(v) =>
-                  set('publicOpenAt', v ? values.startsAt - 4 * 60 * 60 * 1000 : 0)
-                }
+                onChange={(v) => {
+                  set('publicOpenAt', v ? values.startsAt - 4 * 60 * 60 * 1000 : 0);
+                  logEvent(AnalyticsEvent.GameSettingToggled, {
+                    setting: 'public_open',
+                    enabled: v,
+                  });
+                }}
               />
             }
           >
             <AppDateTimeField
               label={he.wizardPublicOpenLabel}
               value={values.publicOpenAt}
-              onChange={(ms) => set('publicOpenAt', ms)}
+              onChange={(ms) => {
+                set('publicOpenAt', ms);
+                logEvent(AnalyticsEvent.GameScheduleSet, {
+                  kind: 'public_open',
+                  leadMinutes: Math.round((values.startsAt - ms) / 60000),
+                });
+              }}
               required
             />
           </ScheduleGroup>

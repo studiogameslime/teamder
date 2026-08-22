@@ -35,6 +35,7 @@ import {
 import { getFirebase, googleOAuth, USE_MOCK_DATA } from './config';
 import { logError } from '@/services/errorLog';
 import { Player } from '@/types';
+import { joryio } from '@/services/joryio';
 
 const EXPECTED_PROJECT_NUMBER = '559368532219';
 
@@ -448,6 +449,15 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
       // native mirror never fires for them — re-establish it here on boot so
       // the home widget / Wear relay can control the timer. Fire-and-forget.
       if (user) ensureNativeAuthMirror();
+      // Bind this install's anonymous id to the person, so anything tracked
+      // before sign-in stitches onto their Joryio profile instead of stranding
+      // on a nameless anonymous record.
+      if (user) {
+        void joryio.identify(user.uid, {
+          email: user.email ?? undefined,
+          name: user.displayName ?? undefined,
+        });
+      }
       resolve(user);
     });
   });

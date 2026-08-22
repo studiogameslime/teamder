@@ -1910,7 +1910,8 @@ exports.flushPendingJoinerNotifsTask = (0, tasks_1.onTaskDispatched)({
 //
 // The cron stays as a safety net (covers moments >25 days out, which
 // exceed the Cloud Tasks 30-day schedule horizon, and any enqueue that
-// failed). `moment` is 'registrationOpen' | 'publicOpen'.
+// failed). `moment` is 'registrationOpen' | 'publicOpen' | 'reminder1h'
+//         | 'autoTeams'.
 exports.scheduledGameMomentTask = (0, tasks_1.onTaskDispatched)({
     retryConfig: { maxAttempts: 5, minBackoffSeconds: 10 },
     rateLimits: { maxConcurrentDispatches: 6 },
@@ -1928,6 +1929,14 @@ exports.scheduledGameMomentTask = (0, tasks_1.onTaskDispatched)({
         else if (moment === 'publicOpen') {
             const r = await flipPublicGameOnce(gameId);
             console.log(`[scheduledGameMomentTask] publicOpen ${gameId} → ${r}`);
+        }
+        else if (moment === 'autoTeams') {
+            // Fires at exactly `autoTeamsAt`. Previously this moment had no task at
+            // all and rode the 5-minute sweep, so a split set for 19:00 was pushed
+            // at 19:04 — the sweep's phase is wherever the scheduler happened to
+            // land, and it drifts on every redeploy.
+            const r = await generateDueAutoTeamsForGame(gameId);
+            console.log(`[scheduledGameMomentTask] autoTeams ${gameId} → ${r}`);
         }
         else if (moment === 'reminder1h') {
             // Fires at exactly startsAt−60min. The helper re-checks status /
@@ -1989,6 +1998,17 @@ async function enqueueGameMoments(gameId, before, after) {
         sa - REMINDER_LEAD_MS < horizon &&
         sa !== before?.startsAt) {
         ops.push({ moment: 'reminder1h', at: sa - REMINDER_LEAD_MS });
+    }
+    // autoTeams — the admin-chosen wall-clock minute to build the split and push
+    // every player their team. Only while the game is still open and unsplit;
+    // once generated the field is deleted, so a stale task finds nothing to do.
+    const ata = after.autoTeamsAt;
+    if (after.status === 'open' &&
+        typeof ata === 'number' &&
+        ata > now + 1000 &&
+        ata < horizon &&
+        ata !== before?.autoTeamsAt) {
+        ops.push({ moment: 'autoTeams', at: ata });
     }
     if (ops.length === 0)
         return;
@@ -5080,6 +5100,44 @@ async function runScheduledAutoGenerateTeams() {
  * whose admin-picked `autoTeamsAt` time has passed and which hasn't been
  * generated yet. Writes `draftTeams` and fans out the "teams ready" push.
  */
+/**
+ * Generate the split for ONE game, applying exactly the guards the sweep
+ * applies. Used by the precise Cloud Task so a scheduled split fires at its
+ * wall-clock minute instead of waiting for the next 5-minute tick.
+ *
+ * Every guard here is also re-checked inside `generateDraftTeamsForGame`'s
+ * transaction, so a task and a cron tick racing each other can't double-write —
+ * the second one finds `autoTeamsGeneratedAt` set and does nothing.
+ */
+async function generateDueAutoTeamsForGame(gameId) {
+    const ref = db.collection('games').doc(gameId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        return 'missing';
+    const g = snap.data();
+    g.id = snap.id;
+    if (g.status !== 'open')
+        return `status:${g.status}`;
+    if (!g.autoTeamsAt || g.autoTeamsAt <= 0)
+        return 'no-autoTeamsAt';
+    // Not due yet — a task can only fire early if the admin moved the time
+    // later after it was queued. The sweep will take it at the new time.
+    if (g.autoTeamsAt > Date.now() + 1000)
+        return 'not-due';
+    if (g.autoTeamsGeneratedAt)
+        return 'already-generated';
+    if (g.teamsEditedManually)
+        return 'manual';
+    if (g.draftTeams)
+        return 'has-teams';
+    if (!g.groupId)
+        return 'no-group';
+    if ((g.players ?? []).length === 0 && (g.guests ?? []).length === 0) {
+        return 'empty-roster';
+    }
+    await generateDraftTeamsForGame(ref, g);
+    return 'generated';
+}
 async function runDueAutoTeamsAt(now) {
     // Bounded circuit-breaker. The index is (status, autoTeamsAt) so results come
     // oldest-autoTeamsAt first (FIFO), and generation clears autoTeamsAt — so the

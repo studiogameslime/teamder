@@ -5,7 +5,7 @@
 // Visual: identity-row card per player (jersey + name + admin badge
 // + games played). Sorted admins-first, then by games-played desc.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -55,6 +55,7 @@ import { toast } from '@/components/Toast';
 import { groupService } from '@/services';
 import { gameService } from '@/services/gameService';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -138,6 +139,18 @@ export function CommunityPlayersScreen() {
     }, [reload]),
   );
 
+  // Screen-open analytics — fired once, after the first load resolves so the
+  // member count is real. The ref guards the refocus reloads.
+  const openLogged = useRef(false);
+  useEffect(() => {
+    if (openLogged.current || !group) return;
+    openLogged.current = true;
+    logEvent(AnalyticsEvent.CommunityPlayersOpened, {
+      groupId,
+      memberCount: members.length,
+    });
+  }, [group, members.length, groupId]);
+
   // Viewer-is-admin gate. Only group admins see the "remove member"
   // affordance, and only on rows that aren't the creator / aren't
   // themselves. Closes TU-22 — kicking a member used to be impossible
@@ -170,13 +183,25 @@ export function CommunityPlayersScreen() {
   // Head-to-head comparison — anchored to THIS community's groupId (unambiguous
   // here, unlike the player card which had to guess the group). Per-community
   // stats vs the viewer.
-  const goToCompare = (u: User) =>
+  const goToCompare = (u: User) => {
+    logEvent(AnalyticsEvent.PlayerCompareOpened, { groupId, otherUid: u.id });
     nav.navigate('PlayerCompare', { groupId, otherUid: u.id, otherName: u.name });
+  };
 
   // Yellow/red card actions only appear when the club enabled the cards
   // feature in its advanced settings. The player-card + timeline entries
   // always show for admins.
   const cardsOn = !!group?.cardsEnabled;
+  // Single entry point to the issue-card sheet (yellow is one-tap, red only
+  // after the confirm) — so the prompt is counted once per type.
+  const openCardSheet = (u: User, type: 'yellow' | 'red') => {
+    logEvent(AnalyticsEvent.DisciplineCardPrompted, {
+      groupId,
+      userId: u.id,
+      type,
+    });
+    setCardTarget({ user: u, type });
+  };
   // ONE ⋮ menu per row with every action (no row-tap, no chevron). Card shows
   // for everyone; the admin/creator actions are gated. Rating is edited ONLY
   // here (the row chip is display-only).
@@ -200,17 +225,23 @@ export function CommunityPlayersScreen() {
         ? ([{ key: 'timeline', icon: 'time-outline', label: he.playerMenuTimeline, onPress: () => goToTimeline(u) }] as PlayerMenuItem[])
         : []),
       ...(internalRating && iAmAdmin
-        ? ([{ key: 'rate', icon: 'star-outline', label: he.playerMenuRate, color: colors.warning, onPress: () => setRatingTarget(u) }] as PlayerMenuItem[])
+        ? ([{ key: 'rate', icon: 'star-outline', label: he.playerMenuRate, color: colors.warning, onPress: () => {
+            logEvent(AnalyticsEvent.RatingSheetOpened, {
+              groupId,
+              hasRating: (group?.adminRatings?.[u.id] ?? 0) > 0,
+            });
+            setRatingTarget(u);
+          } }] as PlayerMenuItem[])
         : []),
       ...(cardsOn && iAmAdmin
         ? ([
-            { key: 'yellow', iconNode: <RefereeCard color={CARD_YELLOW} w={14} h={19} radius={3} />, label: he.cardYellow, color: colors.warning, onPress: () => setCardTarget({ user: u, type: 'yellow' }) },
+            { key: 'yellow', iconNode: <RefereeCard color={CARD_YELLOW} w={14} h={19} radius={3} />, label: he.cardYellow, color: colors.warning, onPress: () => openCardSheet(u, 'yellow') },
             // A red card BLOCKS registration — confirm first (yellow stays one-tap).
             { key: 'red', iconNode: <RefereeCard color={CARD_RED} w={14} h={19} radius={3} />, label: he.cardRed, color: colors.danger, onPress: () => {
               warningHaptic();
               appAlert(he.cardRedConfirmTitle, he.cardRedConfirmBody(u.name), [
                 { text: he.cancel, style: 'cancel' },
-                { text: he.cardRed, style: 'destructive', onPress: () => setCardTarget({ user: u, type: 'red' }) },
+                { text: he.cardRed, style: 'destructive', onPress: () => openCardSheet(u, 'red') },
               ]);
             } },
           ] as PlayerMenuItem[])
@@ -326,6 +357,15 @@ export function CommunityPlayersScreen() {
       setSavingRating(true);
       try {
         await groupService.setAdminRating(group.id, me.id, playerId, rating);
+        if (rating !== null) {
+          logEvent(AnalyticsEvent.PlayerRated, {
+            groupId: group.id,
+            rating,
+            wasRated: (group.adminRatings?.[playerId] ?? 0) > 0,
+          });
+        } else {
+          logEvent(AnalyticsEvent.RatingCleared, { groupId: group.id });
+        }
         setRatingTarget(null);
         await reload();
       } catch (err) {

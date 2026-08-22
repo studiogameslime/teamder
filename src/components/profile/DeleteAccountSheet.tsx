@@ -10,6 +10,7 @@ import { SpringSheet } from '@/components/anim/SpringSheet';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 interface Props {
   visible: boolean;
@@ -39,6 +40,7 @@ export function DeleteAccountSheet({
   const close = () => {
     setWord('');
     setPassword('');
+    logEvent(AnalyticsEvent.AccountDeleteCancelled);
     onCancel();
   };
 

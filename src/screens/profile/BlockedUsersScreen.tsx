@@ -3,7 +3,7 @@
 // /users/{uid}/blocked/{blockedId}; unblocking deletes that doc, after which
 // the person's messages reappear in chats again.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
 import { chatService } from '@/services/chatService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
@@ -29,6 +30,9 @@ export function BlockedUsersScreen() {
 
   const [ids, setIds] = useState<string[] | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  // The list is live, so the subscription fires on every change — only the
+  // first emission is the "screen opened" event.
+  const loggedOpenRef = useRef(false);
 
   // Live block list — so unblocking elsewhere (or here) reflects instantly.
   useEffect(() => {
@@ -36,6 +40,10 @@ export function BlockedUsersScreen() {
     const unsub = chatService.subscribeBlocked(me.id, (set) => {
       const list = Array.from(set);
       setIds(list);
+      if (!loggedOpenRef.current) {
+        loggedOpenRef.current = true;
+        logEvent(AnalyticsEvent.ChatBlockedListOpened, { count: list.length });
+      }
       if (list.length > 0) hydratePlayers(list);
     });
     // Fallback: subscribeBlocked swallows a listener error internally and never
@@ -61,10 +69,13 @@ export function BlockedUsersScreen() {
           setBusy((s) => ({ ...s, [uid]: true }));
           try {
             await chatService.unblockUser(me.id, uid);
+            logEvent(AnalyticsEvent.UserUnblocked, { targetUserId: uid });
+            logEvent(AnalyticsEvent.ChatUserUnblocked, { source: 'blocked_screen' });
             toast.success(he.blockedUnblockDone);
             // The live listener will drop the row.
           } catch (err) {
             logError('unblockUser', err, { screen: 'BlockedUsersScreen', targetUserId: uid });
+            logEvent(AnalyticsEvent.ChatActionFailed, { action: 'unblock' });
             toast.error(String((err as Error)?.message ?? err));
           } finally {
             setBusy((s) => ({ ...s, [uid]: false }));

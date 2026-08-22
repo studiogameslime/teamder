@@ -52,6 +52,7 @@ import { communityEventsService } from '@/services/communityEventsService';
 import type { CardCounts, CardCountsMap } from '@/services/communityEventsService';
 import { CardCountBadges } from '@/components/community/CardCountBadges';
 import { isTerminalGame } from '@/services/gameLifecycle';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
 import { useGameStore } from '@/store/gameStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -392,6 +393,11 @@ export function MatchPlayersScreen() {
   const promoteGuestToRoster = useCallback(
     (guestId: string) => {
       if (!game) return;
+      logEvent(AnalyticsEvent.RosterReordered, {
+        gameId: game.id,
+        list: 'guests',
+        action: 'promote',
+      });
       persistGuests(
         (game.guests ?? []).map((g) =>
           g.id === guestId ? { ...g, waitlisted: false } : g,
@@ -415,6 +421,11 @@ export function MatchPlayersScreen() {
       const a = wlPos[at];
       const b = wlPos[to];
       [guests[a], guests[b]] = [guests[b], guests[a]];
+      logEvent(AnalyticsEvent.RosterReordered, {
+        gameId: game.id,
+        list: 'guests',
+        action: dir === 'up' ? 'move_up' : 'move_down',
+      });
       persistGuests(guests);
     },
     [game, persistGuests],

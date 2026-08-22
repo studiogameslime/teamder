@@ -11,6 +11,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 
 import { ChatView } from '@/components/chat/ChatView';
 import { chatService } from '@/services/chatService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { userService } from '@/services/userService';
 import { useUserStore } from '@/store/userStore';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -62,6 +63,10 @@ export function DirectChatScreen() {
         // Only a rules rejection (friends-only) is a real restriction; every
         // other error (offline / transient) gets a retryable error state.
         const code = String((e as { code?: string })?.code ?? '');
+        logEvent(AnalyticsEvent.ChatLoadFailed, {
+          scope: 'dm',
+          reason: code.includes('permission-denied') ? 'restricted' : 'fetch_failed',
+        });
         if (code.includes('permission-denied')) setRestricted(true);
         else setFailed(true);
       } finally {
@@ -103,7 +108,10 @@ export function DirectChatScreen() {
           <Button
             title={he.gameRetry}
             variant="outline"
-            onPress={() => setReloadTick((t) => t + 1)}
+            onPress={() => {
+              logEvent(AnalyticsEvent.ChatLoadRetryTapped, { scope: 'dm' });
+              setReloadTick((t) => t + 1);
+            }}
           />
         </View>
       </View>

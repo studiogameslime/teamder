@@ -6,6 +6,8 @@
 import { Linking } from 'react-native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+
 export const navigationRef = createNavigationContainerRef();
 
 /**
@@ -179,6 +181,10 @@ export function navigateForPush(
       const scope = typeof data.scope === 'string' ? data.scope : undefined;
       const parentId = typeof data.parentId === 'string' ? data.parentId : undefined;
       if (!parentId) return false;
+      logEvent(AnalyticsEvent.NotificationOpened, {
+        type: 'chatMessage',
+        scope: scope ?? 'game',
+      });
       if (scope === 'community') {
         nav.navigate('ChatTab', {
           screen: 'CommunityChat',

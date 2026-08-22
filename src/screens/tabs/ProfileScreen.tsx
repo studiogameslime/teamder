@@ -580,7 +580,12 @@ export function ProfileScreen() {
 
   // Open the typed-confirmation sheet (user must type בטוח) instead of a
   // one-tap destructive alert — deletion is irreversible.
-  const onDeleteAccount = () => setDeleteSheetOpen(true);
+  const onDeleteAccount = () => {
+    logEvent(AnalyticsEvent.AccountDeleteSheetOpened, {
+      requirePassword: currentAuthProviderId() === 'password',
+    });
+    setDeleteSheetOpen(true);
+  };
 
   const confirmDeleteAccount = async (password?: string) => {
     try {
@@ -588,6 +593,9 @@ export function ProfileScreen() {
       await deleteOwnAccount(password);
       setDeleteSheetOpen(false);
     } catch (err) {
+      logEvent(AnalyticsEvent.AccountDeleteFailed, {
+        reason: (err as { code?: string } | null)?.code ?? 'unknown',
+      });
       if (__DEV__) console.warn('[profile] delete failed', err);
       appAlert(he.profileDeleteAccountFailed);
     } finally {
@@ -609,28 +617,52 @@ export function ProfileScreen() {
       label: he.homeStepPhoto,
       icon: 'person-outline',
       done: !!user.photoUrl,
-      onPress: () => nav.navigate('ProfileEdit'),
+      onPress: () => {
+        logEvent(AnalyticsEvent.OnboardingChecklistStepTapped, {
+          step: 'photo',
+          done: !!user.photoUrl,
+        });
+        nav.navigate('ProfileEdit');
+      },
     },
     {
       key: 'availability',
       label: he.homeStepAvailability,
       icon: 'calendar-outline',
       done: (user.availability?.preferredDays?.length ?? 0) > 0,
-      onPress: () => nav.navigate('AvailabilityEdit'),
+      onPress: () => {
+        logEvent(AnalyticsEvent.OnboardingChecklistStepTapped, {
+          step: 'availability',
+          done: (user.availability?.preferredDays?.length ?? 0) > 0,
+        });
+        nav.navigate('AvailabilityEdit');
+      },
     },
     {
       key: 'community',
       label: he.homeStepCommunity,
       icon: 'people-outline',
       done: myCommunities.length > 0,
-      onPress: () => nav.navigate('CommunitiesTab'),
+      onPress: () => {
+        logEvent(AnalyticsEvent.OnboardingChecklistStepTapped, {
+          step: 'community',
+          done: myCommunities.length > 0,
+        });
+        nav.navigate('CommunitiesTab');
+      },
     },
     {
       key: 'game',
       label: he.homeStepGame,
       icon: 'football-outline',
       done: totalGames > 0 || myGames.length > 0,
-      onPress: () => nav.navigate('GameTab'),
+      onPress: () => {
+        logEvent(AnalyticsEvent.OnboardingChecklistStepTapped, {
+          step: 'game',
+          done: totalGames > 0 || myGames.length > 0,
+        });
+        nav.navigate('GameTab');
+      },
     },
     {
       key: 'invite',
@@ -641,6 +673,10 @@ export function ProfileScreen() {
       // they tapped share — the meaningful signal the owner asked for.
       done: (referralCount ?? 0) > 0,
       onPress: () => {
+        logEvent(AnalyticsEvent.OnboardingChecklistStepTapped, {
+          step: 'invite',
+          done: (referralCount ?? 0) > 0,
+        });
         void handleShareInvite();
       },
     },
@@ -1060,7 +1096,12 @@ export function ProfileScreen() {
             title={he.guestRegisterCta}
             variant="primary"
             size="lg"
-            onPress={() => void signOut()}
+            onPress={() => {
+              logEvent(AnalyticsEvent.GuestRegisterCtaTapped, {
+                source: 'profile_guest_card',
+              });
+              void signOut();
+            }}
             fullWidth
             style={{ marginTop: spacing.lg }}
           />
@@ -1089,7 +1130,13 @@ export function ProfileScreen() {
           user={user}
           hasNotif={inboxCount > 0}
           onMenu={() => setMenuOpen(true)}
-          onBell={() => nav.navigate('Requests')}
+          onBell={() => {
+            logEvent(AnalyticsEvent.RequestsInboxOpened, {
+              count: inboxCount,
+              source: 'profile',
+            });
+            nav.navigate('Requests');
+          }}
           onAvatar={() => nav.navigate('ProfileEdit')}
         />
 
@@ -1122,7 +1169,13 @@ export function ProfileScreen() {
                   myCommunities.find((c) => c.id === nextGame.groupId)?.name
                 }
                 onOpen={(gameId) => nav.navigate('MatchDetails', { gameId })}
-                onFind={() => nav.navigate('GameTab')}
+                onFind={() => {
+                  logEvent(AnalyticsEvent.HomeActionTileTapped, {
+                    tile: 'find_game',
+                    source: 'profile_next_game',
+                  });
+                  nav.navigate('GameTab');
+                }}
               />
             </NextGameCardEntrance>
           ) : heroGame ? (
@@ -1145,7 +1198,15 @@ export function ProfileScreen() {
             <HomeRecommendedDay
               dayLetter={recommended.letter}
               count={recommended.count}
-              onPress={() =>
+              onPress={() => {
+                logEvent(AnalyticsEvent.AvailabilityDayPicked, {
+                  dateMs: recommended.dateMs,
+                  window: 'evening',
+                  source: 'home_recommended',
+                  ...(availData?.viewerCity
+                    ? { city: availData.viewerCity }
+                    : {}),
+                });
                 (
                   nav as { navigate: (s: string, p?: unknown) => void }
                 ).navigate('GameTab', {
@@ -1157,21 +1218,37 @@ export function ProfileScreen() {
                     prefillCity: availData?.viewerCity ?? undefined,
                     inviteAvailable: true,
                   },
-                })
-              }
+                });
+              }}
             />
           ) : null}
 
           {/* ⑤ Three action tiles. */}
           <HomeActionTiles
-            onOpen={() =>
+            onOpen={() => {
+              logEvent(AnalyticsEvent.HomeActionTileTapped, {
+                tile: 'create',
+                source: 'profile',
+              });
               nav.navigate('GameTab', {
                 screen: 'GamesList',
                 params: { openCreate: true },
-              })
-            }
-            onAvailability={() => nav.navigate('AvailabilityEdit')}
-            onJoin={() => nav.navigate('GameTab')}
+              });
+            }}
+            onAvailability={() => {
+              logEvent(AnalyticsEvent.HomeActionTileTapped, {
+                tile: 'availability',
+                source: 'profile',
+              });
+              nav.navigate('AvailabilityEdit');
+            }}
+            onJoin={() => {
+              logEvent(AnalyticsEvent.HomeActionTileTapped, {
+                tile: 'join',
+                source: 'profile',
+              });
+              nav.navigate('GameTab');
+            }}
           />
 
           {/* ⑥ Evening-availability podium. "הצג שבוע מלא" NAVIGATES to the
@@ -1181,7 +1258,15 @@ export function ProfileScreen() {
               days={podium}
               maxCount={podiumMax}
               onShowWeek={() => nav.navigate('AvailabilityWeek')}
-              onPickDay={(dateMs) =>
+              onPickDay={(dateMs) => {
+                logEvent(AnalyticsEvent.AvailabilityDayPicked, {
+                  dateMs,
+                  window: 'evening',
+                  source: 'home_podium',
+                  ...(availData?.viewerCity
+                    ? { city: availData.viewerCity }
+                    : {}),
+                });
                 (
                   nav as { navigate: (s: string, p?: unknown) => void }
                 ).navigate('GameTab', {
@@ -1193,13 +1278,18 @@ export function ProfileScreen() {
                     prefillCity: availData?.viewerCity ?? undefined,
                     inviteAvailable: true,
                   },
-                })
-              }
+                });
+              }}
             />
           ) : !markedAvailability ? (
             // No availability marked → keep nudging the key action.
             <AvailabilityPromptCard
-              onSetAvailability={() => nav.navigate('AvailabilityEdit')}
+              onSetAvailability={() => {
+                logEvent(AnalyticsEvent.AvailabilityPromptTapped, {
+                  source: 'home_prompt_card',
+                });
+                nav.navigate('AvailabilityEdit');
+              }}
             />
           ) : null}
 

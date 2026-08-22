@@ -39,6 +39,7 @@ import {
 import { appAlert } from '@/components/AppDialog';
 import { toast } from '@/components/Toast';
 import { logError } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   ChatTermsModal,
   useChatTermsAccepted,
@@ -145,10 +146,16 @@ export function ChatView({
         // networks) is TRANSIENT: don't show the lock, retry a FEW times.
         const code = (err as { code?: string } | undefined)?.code;
         if (code === 'permission-denied') {
+          logEvent(AnalyticsEvent.ChatAccessDenied, { scope });
           setDenied(true);
           setLoading(false);
           return;
         }
+        logEvent(AnalyticsEvent.ChatLoadFailed, {
+          scope,
+          reason: 'listener_error',
+          attempt: retryTick,
+        });
         logError('ChatView.subscribe', err, { scope, parentId });
         setLoading(false);
         // Cap retries so a persistent error doesn't loop forever — which felt
@@ -200,6 +207,7 @@ export function ChatView({
   // you're already reading). Cleared on blur/unmount.
   useFocusEffect(
     useCallback(() => {
+      logEvent(AnalyticsEvent.ChatOpened, { scope, parentId });
       setActiveChat(`${scope}__${parentId}`);
       return () => setActiveChat(null);
     }, [scope, parentId]),
@@ -207,6 +215,7 @@ export function ChatView({
 
   const toggleMute = () => {
     if (!me) return;
+    logEvent(AnalyticsEvent.ChatMuteToggled, { scope, muted: !muted });
     chatService.setMuted(me.id, scope, parentId, !muted).catch(() => {});
   };
 
@@ -228,11 +237,13 @@ export function ChatView({
     // loading it is `null`, and `=== false` let a never-accepted user post in
     // that window. Anything but a definite `true` shows the terms first.
     if (termsAccepted !== true) {
+      logEvent(AnalyticsEvent.ChatTermsPrompted, { scope });
       setShowTerms(true);
       return;
     }
     // First-line profanity filter (real moderation is report+block+delete).
     if (containsProfanity(text)) {
+      logEvent(AnalyticsEvent.ChatMessageBlockedProfanity, { scope, length: text.length });
       toast.error(he.chatProfanityBlocked);
       return;
     }
@@ -257,10 +268,12 @@ export function ChatView({
     // `sending` stuck true so no further message could be sent. Only a genuine
     // server REJECTION restores the draft + alerts.
     chatService.sendMessage(scope, parentId, me, text).catch(() => {
+      logEvent(AnalyticsEvent.ChatMessageSendFailed, { scope });
       // Restore only if the box is still empty (user hasn't started a new one).
       setDraft((cur) => cur || text);
       appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
     });
+    logEvent(AnalyticsEvent.ChatMessageSent, { scope, length: text.length });
     setSending(false);
   };
 
@@ -299,7 +312,13 @@ export function ChatView({
           onPress: async () => {
             try {
               await chatService.deleteMessage(scope, parentId, m.id);
+              logEvent(AnalyticsEvent.ChatMessageDeleted, {
+                scope,
+                mine,
+                asModerator: !mine && canModerate,
+              });
             } catch {
+              logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'delete' });
               appAlert(he.chatDeleteFailedTitle, he.chatDeleteFailedBody);
             }
           },
@@ -318,8 +337,10 @@ export function ChatView({
         onPress: async () => {
           try {
             await chatService.reportMessage(me.id, scope, parentId, m);
+            logEvent(AnalyticsEvent.ChatMessageReported, { scope, mine: m.senderId === me?.id });
             toast.success(he.chatReportThanks);
           } catch {
+            logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'report' });
             appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
           }
         },
@@ -337,8 +358,10 @@ export function ChatView({
         onPress: async () => {
           try {
             await chatService.blockUser(me.id, m.senderId);
+            logEvent(AnalyticsEvent.ChatUserBlocked, { scope });
             toast.success(he.chatBlockDone);
           } catch {
+            logEvent(AnalyticsEvent.ChatActionFailed, { scope, action: 'block' });
             appAlert(he.chatSendFailedTitle, he.chatSendFailedBody);
           }
         },
@@ -352,6 +375,11 @@ export function ChatView({
       .filter((r) => r.uid !== m.senderId && r.lastReadAt >= m.createdAt)
       .map((r) => (r.uid === me?.id ? he.chatReadByYou : r.name))
       .filter(Boolean);
+    logEvent(AnalyticsEvent.ChatReadReceiptsViewed, {
+      scope,
+      seenCount: seen.length,
+      readerCount: readers.length,
+    });
     appAlert(
       he.chatWhoRead,
       seen.length ? seen.join('\n') : he.chatReadByNobody,
@@ -361,6 +389,11 @@ export function ChatView({
   // Open the small floating action menu anchored at the touch point.
   const openMenu = (m: ChatMessage, e: GestureResponderEvent) => {
     const { pageX, pageY } = e.nativeEvent;
+    logEvent(AnalyticsEvent.ChatMessageMenuOpened, {
+      scope,
+      mine: m.senderId === me?.id,
+      canModerate,
+    });
     setMenu({ message: m, x: pageX, y: pageY });
   };
 
@@ -399,6 +432,10 @@ export function ChatView({
                 {
                   icon: 'people-outline' as const,
                   onPress: () => {
+                    logEvent(AnalyticsEvent.ChatMembersSheetOpened, {
+                      scope,
+                      memberCount: memberIds.length,
+                    });
                     hydratePlayers(memberIds);
                     setMembersOpen(true);
                   },
@@ -528,9 +565,13 @@ export function ChatView({
         visible={showTerms}
         onAccept={async () => {
           await acceptTerms();
+          logEvent(AnalyticsEvent.ChatTermsAccepted, { scope });
           setShowTerms(false);
         }}
-        onClose={() => setShowTerms(false)}
+        onClose={() => {
+          logEvent(AnalyticsEvent.ChatTermsDismissed, { scope });
+          setShowTerms(false);
+        }}
       />
 
       {/* Small floating action menu anchored next to the tapped message

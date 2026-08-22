@@ -13,6 +13,7 @@ import { ProfileStack } from './ProfileStack';
 import { CommunitiesStack } from './CommunitiesStack';
 import { ChatStack } from './ChatStack';
 import { BannerAd } from '@/services/adsService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { AnimatedTabIcon } from '@/components/anim/AnimatedTabIcon';
 import { chatService } from '@/services/chatService';
 import { useChatStore, totalUnread } from '@/store/chatStore';
@@ -154,7 +155,10 @@ export function MainTabs() {
           tabBarBadge: chatBadge > 0 ? (chatBadge > 99 ? '99+' : chatBadge) : undefined,
         }}
         listeners={({ navigation, route }) => ({
-          tabPress: (e) => resetTabToRoot(e, navigation, route.name),
+          tabPress: (e) => {
+            logEvent(AnalyticsEvent.ChatTabPressed, { badge: chatBadge });
+            resetTabToRoot(e, navigation, route.name);
+          },
         })}
       />
     </Tab.Navigator>

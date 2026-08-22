@@ -228,6 +228,13 @@ export function CommunityDetailsPublicScreen() {
         toast.info(he.groupAlreadyMember);
       }
     } catch (err) {
+      logEvent(AnalyticsEvent.GroupJoinFailed, {
+        groupId: group.id,
+        reason:
+          typeof (err as { code?: unknown })?.code === 'string'
+            ? (err as { code: string }).code
+            : (err as Error)?.name ?? 'unknown',
+      });
       if (
         err instanceof GroupJoinRejectedError ||
         (err as Error)?.name === 'GroupJoinRejectedError'
@@ -266,6 +273,7 @@ export function CommunityDetailsPublicScreen() {
     setBusyJoin(true);
     try {
       await cancelJoinById(group.id, me.id);
+      logEvent(AnalyticsEvent.GroupJoinRequestCancelled, { groupId: group.id });
       toast.success(he.toastJoinRequestCancelled);
       nav.goBack();
     } catch (err) {
@@ -336,7 +344,14 @@ export function CommunityDetailsPublicScreen() {
             size="lg"
             fullWidth
             iconLeft="logo-whatsapp"
-            onPress={() => openWhatsApp(group.contactPhone)}
+            onPress={() => {
+              logEvent(AnalyticsEvent.CommunityContactAdminTapped, {
+                groupId: group.id,
+                channel: 'whatsapp',
+                source: 'public_preview',
+              });
+              openWhatsApp(group.contactPhone);
+            }}
           />
         ) : null}
 

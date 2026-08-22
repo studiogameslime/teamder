@@ -23,6 +23,7 @@ import { notificationsService } from '@/services/notificationsService';
 import { storage } from '@/services/storage';
 import { gameService } from '@/services/gameService';
 import { groupService } from '@/services/groupService';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { toast } from '@/components/Toast';
 import { useGameStore } from '@/store/gameStore';
 
@@ -116,6 +117,10 @@ export function RootNavigator() {
         if (__DEV__) {
           console.info('[invite] consumer — target missing, dropping', pending);
         }
+        logEvent(AnalyticsEvent.InviteLinkDead, {
+          type: pending.type,
+          id: pending.id,
+        });
         toast.error('הקישור לא תקין או שהפריט כבר לא קיים');
         await storage.clearPendingInvite();
         return;

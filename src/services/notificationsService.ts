@@ -45,8 +45,10 @@ import {
   defaultNotificationPrefs,
 } from '@/types';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { joryio } from '@/services/joryio';
 import { docs } from '@/firebase/firestore';
 import { logError, isExpectedDenial } from '@/services/errorLog';
+import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import {
   cooldownMsFor,
   dedupeIdFor,
@@ -384,6 +386,9 @@ export const notificationsService = {
    */
   async registerDeviceToken(uid: UserId, token: string): Promise<void> {
     if (USE_MOCK_DATA || !token) return;
+    // Mirror the token to Joryio so it can reach this device too. Independent
+    // of the Firestore write below: whichever fails, the other still lands.
+    void joryio.registerPushToken(token);
     try {
       await setDoc(
         docs.userPrivatePush(uid),
@@ -542,6 +547,10 @@ export const notificationsService = {
       if (!granted && existing.canAskAgain) {
         const req = await Notifications.requestPermissionsAsync();
         granted = req.granted;
+        logEvent(AnalyticsEvent.PushPermissionResult, {
+          granted: req.granted,
+          can_ask_again: req.canAskAgain,
+        });
       }
       if (!granted) {
         if (__DEV__) console.log('[notifications] permission not granted');
