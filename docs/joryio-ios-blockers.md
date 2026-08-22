@@ -10,6 +10,12 @@ sources (`vendor/joryio/`), since the packages are not published yet. That works
 today; the items in §1–§3 below are therefore **not blockers**, they are the
 maintenance cost of vendoring and a list of what to fix when you do publish.
 
+> **In-app messaging findings live in a separate document:**
+> [`joryio-inapp-findings.md`](./joryio-inapp-findings.md) — covers the
+> free-`String` action parameter that silently records a click as a display,
+> the stale `push_permission` attribute, the duplicate device rows, and the
+> discarded `present()` return value in `Joryio.kt`.
+
 ---
 
 ## 1. `@joryio/react-native-sdk` is not published to npm (not a blocker — vendored)
