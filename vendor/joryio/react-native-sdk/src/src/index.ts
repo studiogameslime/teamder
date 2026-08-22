@@ -821,9 +821,6 @@ class JoryioEcommerce {
   removeFromCart(product: EcommerceProduct, quantity = 1): void {
     this.send('removeFromCart', {product, quantity});
   }
-  cartViewed(items: EcommerceCartItem[], cartValue: number): void {
-    this.send('cartViewed', {items, cartValue});
-  }
   updateCart(items: EcommerceCartItem[], cartValue: number): void {
     this.send('updateCart', {items, cartValue});
   }

@@ -25,8 +25,25 @@ internal class InAppMessagingManager(
      * in rather than read from a global for the same reason the renderer takes
      * it: one source, no drift.
      */
-    private val allowHtmlJsInAppMessages: Boolean = false
+    private val allowHtmlJsInAppMessages: Boolean = false,
 ) {
+    /**
+     * What the HOST can render, when the host renders instead of this SDK.
+     *
+     * The list below describes THIS SDK's own views. The moment a host sets an
+     * in-app callback those views never run, so describing them is describing
+     * the wrong renderer - and the answer matters, because the server targets
+     * campaigns on it and its rollup resolves an absent capability to "no",
+     * not to "unknown".
+     *
+     * A Unity game laying a message out on its own canvas can render structured
+     * `content.native` and almost certainly cannot render `content.html` unless
+     * it also hosts a WebView. Only the host knows, so only the host can say.
+     *
+     * Null means nobody has said, and the SDK keeps describing its own renderer
+     * - which is exactly right while the SDK is the one drawing.
+     */
+    internal var hostCapabilities: List<String>? = null
     private var campaigns: List<InAppCampaign> = emptyList()
     private var lastSyncTime: Date? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -65,7 +82,7 @@ internal class InAppMessagingManager(
                 // SDK's own views with no WebView involved. HTML appears only
                 // when the integration opted in, because for everyone else it
                 // genuinely cannot display.
-                capabilities = if (allowHtmlJsInAppMessages) {
+                capabilities = hostCapabilities ?: if (allowHtmlJsInAppMessages) {
                     listOf("content.native", "content.html")
                 } else {
                     listOf("content.native")
@@ -357,6 +374,12 @@ internal class InAppMessagingManager(
         return Date(now.time - offset)
     }
 
+    /** ISO-8601 UTC, the format the web SDK sends and the backend canonicalises to. */
+    private fun isoTimestamp(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            .format(java.util.Date())
+
     suspend fun trackImpression(campaignId: String, action: String) {
         try {
             logger.debug("Tracking impression: $campaignId - $action")
@@ -372,12 +395,29 @@ internal class InAppMessagingManager(
             val deliveryToken = campaigns.firstOrNull { it.id == campaignId }?.deliveryToken
 
             // Send to backend
+            // Map the action onto the SAME structured markers the web SDK sends.
+            // The backend gate for in_app.displayed reads these; sending only
+            // `action` made every mobile click and dismiss count as a display.
+            // Mirrors sdk-web/src/core/inapp.ts exactly, including collapsing
+            // the action to the singular 'click'/'dismiss' it uses.
+            val nowIso = isoTimestamp()
+            val normalized = action.lowercase()
             val request = TrackImpressionRequest(
                 campaignId = campaignId,
                 userId = identityManager.getUserId() ?: "",
                 anonymousId = identityManager.getAnonymousId(),
                 sessionId = sessionManager.getSessionId(),
-                action = action,
+                action = when {
+                    normalized.contains("click") -> "click"
+                    normalized.contains("dismiss") -> "dismiss"
+                    else -> action
+                },
+                displayedAt = if (normalized.contains("display")) nowIso else null,
+                clicked = if (normalized.contains("click")) true else null,
+                clickedAt = if (normalized.contains("click")) nowIso else null,
+                dismissedAt = if (normalized.contains("dismiss")) nowIso else null,
+                converted = if (normalized.contains("convert")) true else null,
+                convertedAt = if (normalized.contains("convert")) nowIso else null,
                 deliveryToken = deliveryToken
             )
 

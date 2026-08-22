@@ -187,6 +187,32 @@ class EcommerceTracker(
     /**
      * Track when a user updates their cart
      */
+    /**
+     * Track the cart being viewed.
+     *
+     * `Cart Viewed` has been canonical all along, but no tracker had a method
+     * for it - so the only way to send it was to type the name by hand, which
+     * is the habit these trackers exist to remove. Same payload as
+     * [updateCart]: the cart is the same thing either way.
+     */
+    fun cartViewed(items: List<EcommerceCartItem>, cartValue: Double) {
+        sdk.track("Cart Viewed", mapOf(
+            "items" to items.map { item ->
+                buildMap<String, Any?> {
+                    put("product_id", item.productId)
+                    put("name", item.name)
+                    put("price", item.price)
+                    put("quantity", item.quantity)
+                    item.variantId?.let { put("variant_id", it) }
+                    item.sku?.let { put("sku", it) }
+                }
+            },
+            "item_count" to items.sumOf { it.quantity },
+            "cart_value" to cartValue,
+            "currency" to config.currency
+        ))
+    }
+
     fun updateCart(items: List<EcommerceCartItem>, cartValue: Double) {
         val itemCount = items.sumOf { it.quantity }
         val itemsData = items.map { item ->
@@ -269,10 +295,21 @@ class EcommerceTracker(
         }
 
         val props = mutableMapOf<String, Any?>(
-            "order_id" to order.orderId,
+            // `total` and `orderId`, NOT `value` and `order_id`.
+            //
+            // The revenue pipeline reads exactly these two keys - see
+            // purchase-vocabulary.ts, which says of `value`/`revenue`: "somebody
+            // else's convention", and of `order_id`: "a key nothing reads".
+            // Every purchase tracked through this tracker therefore landed as
+            // ZERO revenue with no order id for attribution, on all three SDKs.
+            //
+            // Not a crash, not a warning: a $0 order that looks like an order.
+            // The demo app hit the same thing and its comment already warned
+            // about it - the SDK it was warning about never got fixed.
+            "orderId" to order.orderId,
             "items" to itemsData,
             "item_count" to order.itemCount,
-            "value" to order.value,
+            "total" to order.value,
             "currency" to (order.currency ?: config.currency)
         )
         order.shipping?.let { props["shipping"] = it }

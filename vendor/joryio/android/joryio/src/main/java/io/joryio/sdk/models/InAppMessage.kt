@@ -445,6 +445,42 @@ data class TrackImpressionRequest(
     @SerializedName("action")
     val action: String,
 
+    /**
+     * STRUCTURED MARKERS, matching what the web SDK sends.
+     *
+     * This request used to carry the interaction ONLY in [action], while the web
+     * SDK set displayedAt / clicked+clickedAt / dismissedAt. The backend gate
+     * that decides whether to emit `in_app.displayed` reads those markers, so on
+     * mobile every call fell through to "this is a display" - one message
+     * displayed, clicked and dismissed emitted THREE in_app.displayed events,
+     * inflating mobile display counts up to 3x and over-crediting revenue
+     * attribution, which joins on that event.
+     *
+     * The backend now understands both shapes, so this is not what fixes it - it
+     * removes the second shape, which is what allowed it. One event, one wire
+     * format, whichever SDK reports it.
+     *
+     * Gson omits nulls, so only the markers relevant to this call are sent.
+     * ISO-8601 to match web exactly; the backend also tolerates epoch millis.
+     */
+    @SerializedName("displayedAt")
+    val displayedAt: String? = null,
+
+    @SerializedName("clicked")
+    val clicked: Boolean? = null,
+
+    @SerializedName("clickedAt")
+    val clickedAt: String? = null,
+
+    @SerializedName("dismissedAt")
+    val dismissedAt: String? = null,
+
+    @SerializedName("converted")
+    val converted: Boolean? = null,
+
+    @SerializedName("convertedAt")
+    val convertedAt: String? = null,
+
     @SerializedName("timestamp")
     val timestamp: java.util.Date = java.util.Date(),
 

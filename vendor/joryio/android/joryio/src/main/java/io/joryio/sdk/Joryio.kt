@@ -163,7 +163,7 @@ class Joryio private constructor(
             logLevel = config.effectiveLogLevel
         )
 
-        logger.info("Initializing Joryio SDK v1.0.0")
+        logger.info("Initializing Joryio SDK v${Logger.SDK_VERSION}")
 
         // Kick off the push store's keystore setup NOW so it runs alongside the
         // main store's rather than after it. Android Keystore initialisation is
@@ -785,8 +785,34 @@ class Joryio private constructor(
      * Setting a callback OVERRIDES the SDK's own rendering - the SDK will not
      * also display the message, so a host app that renders its own UI does not
      * get two copies. Leave it unset and the SDK displays messages itself.
+     *
+     * YOU MUST REPORT WHAT HAPPENED via [trackInAppImpression], with
+     * `displayed`, `clicked` or `dismissed`. The SDK cannot see a message it did
+     * not draw, and the two halves of "displayed" come apart here: handing the
+     * message over DOES stamp the cross-campaign gap (so this message spends the
+     * frequency budget), but it does NOT emit `in_app.displayed`. A campaign
+     * that is never reported therefore reads as delivered to nobody, and revenue
+     * attribution joins on that exact event - so the channel looks dead while
+     * still suppressing the campaigns behind it. It fails silently and it looks
+     * like a targeting problem rather than an integration one.
+     *
+     * Matches the same warning on iOS `setInAppMessageCallback`.
      */
-    fun setInAppMessageCallback(callback: (InAppCampaign) -> Unit) {
+    /**
+     * @param capabilities what YOUR renderer can draw, e.g.
+     *   `listOf("content.native")` for a game canvas, adding `"content.html"`
+     *   only if you host a WebView. Null keeps the SDK describing its OWN
+     *   renderer, which is what every existing caller gets and is wrong only in
+     *   the sense that it describes views that will not run. Declaring is
+     *   strictly better: the server targets campaigns on this, and its rollup
+     *   resolves an absent capability to "no" rather than to "unknown".
+     */
+    @JvmOverloads
+    fun setInAppMessageCallback(
+        callback: (InAppCampaign) -> Unit,
+        capabilities: List<String>? = null,
+    ) {
+        inAppMessagingManager.hostCapabilities = capabilities
         // Wrapped so the cross-campaign gap is stamped on handoff. The host owns
         // rendering from here, so handing the message over IS the display as far
         // as the SDK can tell. Without this wrapper the gap would never be
@@ -794,13 +820,26 @@ class Joryio private constructor(
         // eligible campaign would fire back-to-back.
         inAppMessagingManager.onMessageReady = { campaign ->
             inAppMessagingManager.noteDisplayed()
+            inAppHandedOff++
             callback(campaign)
+            warnIfInAppNeverReported()
         }
         hostHandlesDisplay = true
     }
 
     /** True once the host app has claimed display via setInAppMessageCallback. */
     private var hostHandlesDisplay = false
+
+    // Host-rendered in-app messages report nothing unless the host calls
+    // trackInAppImpression, and the failure is silent: the campaign spends its
+    // frequency budget, emits no in_app.displayed, and reads as delivered to
+    // nobody. Nothing else in the system can notice - the server sees an SDK
+    // that synced campaigns and never showed one, which is indistinguishable
+    // from an audience nobody matched. So the SDK says it, once, where the
+    // developer is already looking.
+    private var inAppHandedOff = 0
+    private var inAppReported = 0
+    private var warnedAboutUnreportedInApp = false
 
     /** Cached e-commerce tracker, replaced when a caller passes a fresh config. */
     private var ecommerceTracker: EcommerceTracker? = null
@@ -880,9 +919,34 @@ class Joryio private constructor(
      * Track in-app message impression
      */
     fun trackInAppImpression(campaignId: String, action: String) {
+        inAppReported++
         scope.launch {
             inAppMessagingManager.trackImpression(campaignId, action)
         }
+    }
+
+    /**
+     * Warn once when a host takes in-app messages and reports none of them.
+     *
+     * Threshold of 3 rather than 1: a host may legitimately decline to show a
+     * particular message (mid-cutscene, mid-transaction), and one unreported
+     * handoff proves nothing. Three in a row is an integration that has not
+     * wired reporting at all.
+     *
+     * Logged rather than thrown, and once rather than per message, because this
+     * is a correctness hint for a developer, not a runtime fault - a message
+     * that failed to report is still better delivered than not delivered.
+     */
+    private fun warnIfInAppNeverReported() {
+        if (warnedAboutUnreportedInApp || inAppReported > 0) return
+        if (inAppHandedOff < 3) return
+        warnedAboutUnreportedInApp = true
+        logger.warn(
+            "$inAppHandedOff in-app messages were handed to your callback and none were reported. " +
+                "Call Joryio.trackInAppImpression(campaignId, \"displayed\"|\"clicked\"|\"dismissed\") " +
+                "when you render one, or campaign analytics will show zero displays while these " +
+                "messages still consume the frequency budget.",
+        )
     }
 
     /**

@@ -107,6 +107,12 @@ export async function initJoryio(): Promise<void> {
     // bot detector classifies as a bot; every analytics query then filters the
     // event out with `$is_bot != 'true'`. An app-shaped UA is not flagged.
     userAgent: `Teamder/${APP_VERSION} (${Platform.OS} ${String(Platform.Version)})`,
+    // Every log line in the SDK — including the one that says a track call
+    // failed — is gated behind this flag. With it off the SDK is completely
+    // silent in logcat, so a rejected impression looks exactly like one that
+    // was never sent. That cost a full diagnostic build to discover.
+    enableDebug: __DEV__,
+    logLevel: 'debug',
   } as Record<string, unknown>);
 }
 

@@ -12,7 +12,11 @@ internal class Logger(
 ) {
     companion object {
         private const val TAG = "Joryio"
-        private const val SDK_VERSION = "1.1.0"
+        // internal, not private: Joryio.kt logs the version at startup and was
+        // hardcoding its own copy, which said 1.0.0 while this said 1.1.0. The
+        // version-parity tripwire cannot catch that, because a log string is not
+        // one of the sites it pins. One constant, no second copy to drift.
+        internal const val SDK_VERSION = "1.1.0"
     }
 
     fun verbose(message: String) {

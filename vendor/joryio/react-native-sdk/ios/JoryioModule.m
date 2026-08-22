@@ -48,7 +48,9 @@ RCT_EXTERN_METHOD(trackPushClick:(NSString *)trackingId)
 
 RCT_EXTERN_METHOD(setSdkAuthenticationToken:(NSString *)token)
 
-RCT_EXTERN_METHOD(enableInAppMessages)
+RCT_EXTERN_METHOD(enableInAppMessages:(NSArray *)capabilities)
+
+RCT_EXTERN_METHOD(ecommerce:(NSString *)method payload:(NSDictionary *)payload)
 
 RCT_EXTERN_METHOD(trackInAppImpression:(NSString *)campaignId
                   action:(NSString *)action)
