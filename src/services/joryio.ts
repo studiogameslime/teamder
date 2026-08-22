@@ -24,15 +24,27 @@ const API_HOST =
 /** One app per platform — each carries its own key and, later, its own push
  *  credentials (APNs for iOS, FCM for Android).
  *
- *  Joryio calls the SDK key "configuration, not a secret", and it does ship
- *  inside the binary either way. It is still read from the environment rather
- *  than hardcoded, for two practical reasons: a leaked key can be rotated by
- *  changing one env var instead of shipping a new build, and the value never
- *  enters git history. Missing at build time → the SDK simply stays off. */
+ *  Joryio calls the SDK key "configuration, not a secret", and it ships inside
+ *  the binary either way — a release bundle cannot hide it.
+ *
+ *  The env var is kept as an OVERRIDE, but the literal has to be the fallback.
+ *  `.env` is gitignored and `eas build --local` copies the project by git, so
+ *  an env-only key resolves to '' in a store build: initJoryio() returns early,
+ *  and the app ships with analytics silently switched off. That is exactly what
+ *  the first 1.0.94 AAB did — the bundle contained the API host and the Firebase
+ *  config, and no SDK key at all.
+ *
+ *  To rotate without a release, set the value in EAS environment variables. */
 const SDK_KEYS = {
-  ios: process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_IOS ?? '',
-  android: process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_ANDROID ?? '',
-  web: process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_WEB ?? '',
+  ios:
+    process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_IOS ??
+    'jry_sdk_ios_d51ace7ab39f1672be01485b733b9c26b4d48c9741e4247f',
+  android:
+    process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_ANDROID ??
+    'jry_sdk_android_1a5fba8fd7b8a96c1d14ce64aa9fa39c27a5b487a26f244e',
+  web:
+    process.env.EXPO_PUBLIC_JORYIO_SDK_KEY_WEB ??
+    'jry_sdk_web_32fb87e179b49a5b6312788d557b247de189c0d416f33a9f',
 } as const;
 
 const KEY = Platform.select({
