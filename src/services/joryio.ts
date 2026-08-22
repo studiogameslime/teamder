@@ -152,6 +152,17 @@ export async function registerPushToken(token: string): Promise<boolean> {
   if (USE_MOCK_DATA || !token) return false;
   if (!started) await initJoryio();
   Joryio.registerPushToken(token);
+  // The SDK stamps `push_permission` once at init and never refreshes it, so a
+  // user who granted permission after that first launch stays 'not_determined'
+  // in Joryio and drops out of every push-targeted segment. Re-read the live
+  // status here — we only reach this line holding a real token, so the OS said
+  // yes — and write it back ourselves.
+  try {
+    const status = await Joryio.getPushPermissionStatus();
+    Joryio.setAttribute('push_permission', status ?? 'granted');
+  } catch {
+    Joryio.setAttribute('push_permission', 'granted');
+  }
   return true;
 }
 
@@ -178,9 +189,16 @@ export function syncInAppCampaigns(): void {
   Joryio.syncInAppCampaigns();
 }
 
-/** Report what happened to a message — shown, dismissed, which button.
+/** The only three actions the backend classifies. It matches by SUBSTRING —
+ *  'click' → a click, 'dismiss' → a dismissal, anything else falls through to a
+ *  DISPLAY. So a friendly label like 'impression' or 'button:cta' silently
+ *  becomes another impression, which is exactly how a campaign reports displays
+ *  it never had and zero clicks it did. The union makes that unspellable. */
+export type InAppAction = 'displayed' | 'clicked' | 'dismissed';
+
+/** Report what happened to a message — shown, clicked, dismissed.
  *  Without it a campaign has no idea whether it was ever seen. */
-export function trackInAppImpression(campaignId: string, action: string): void {
+export function trackInAppImpression(campaignId: string, action: InAppAction): void {
   if (USE_MOCK_DATA || !campaignId) return;
   Joryio.trackInAppImpression(campaignId, action);
 }

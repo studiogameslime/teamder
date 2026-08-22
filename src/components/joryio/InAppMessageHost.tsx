@@ -84,12 +84,19 @@ export function InAppMessageHost(): React.ReactElement | null {
     if (!msg) return;
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    joryio.trackInAppImpression(msg.id, 'impression');
+    joryio.trackInAppImpression(msg.id, 'displayed');
   }, [msg, fade]);
 
+  // The SDK classifies an interaction by SUBSTRING — an action containing
+  // 'click' becomes a click, one containing 'dismiss' becomes a dismissal, and
+  // anything else falls through to a DISPLAY. So the vocabulary here is wire
+  // protocol, not a label: 'impression' and 'button:cta' both read as another
+  // display, which is how this campaign showed 3 impressions and 0 clicks while
+  // every layer underneath worked. Only 'displayed' | 'clicked' | 'dismissed'
+  // may be passed to trackInAppImpression.
   const close = useCallback(
-    (action: string) => {
-      if (msg) joryio.trackInAppImpression(msg.id, action);
+    (reason: 'dismissed' | 'clicked') => {
+      if (msg) joryio.trackInAppImpression(msg.id, reason);
       setMsg(null);
     },
     [msg],
@@ -102,9 +109,13 @@ export function InAppMessageHost(): React.ReactElement | null {
         // URL are each handled by the app's existing link routing.
         Linking.openURL(b.url).catch(() => undefined);
       }
-      close(`button:${b.id}`);
+      // A button is a click AND a close, and the SDK's own native presenter
+      // reports both for the same tap. Report them in that order so CTR counts
+      // the tap and the dismissal still closes the delivery.
+      if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
+      close('dismissed');
     },
-    [close],
+    [close, msg],
   );
 
   if (!msg) return null;
@@ -131,11 +142,11 @@ export function InAppMessageHost(): React.ReactElement | null {
   const isBanner = msg.type === 'banner' || msg.type === 'slideup';
 
   return (
-    <Modal transparent animationType="none" visible onRequestClose={() => close('dismiss')}>
+    <Modal transparent animationType="none" visible onRequestClose={() => close('dismissed')}>
       <Animated.View style={[styles.backdrop, isBanner && styles.backdropBanner, { opacity: fade }]}>
         <Pressable
           style={StyleSheet.absoluteFill}
-          onPress={() => (msg.backdropDismissible ? close('backdrop') : undefined)}
+          onPress={() => (msg.backdropDismissible ? close('dismissed') : undefined)}
         />
         <View
           style={[
@@ -146,7 +157,7 @@ export function InAppMessageHost(): React.ReactElement | null {
           ]}
         >
           {msg.closeButton ? (
-            <Pressable onPress={() => close('close')} hitSlop={12} style={styles.close}>
+            <Pressable onPress={() => close('dismissed')} hitSlop={12} style={styles.close}>
               <Text style={[styles.closeText, { color: fg }]}>✕</Text>
             </Pressable>
           ) : null}
