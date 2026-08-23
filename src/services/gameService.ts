@@ -1807,7 +1807,29 @@ export const gameService = {
         )
         .sort((a, b) => a.startsAt - b.startsAt);
     }
-    return cachedMyGames(`live:${userId}`, async () => {
+    const all = await this.getMyRecentGamesRaw(userId);
+    return all
+      .filter((g) => LIVE_STATUSES.includes(g.status))
+      .filter((g) => !isStaleAfterStart(g))
+      .sort((a, b) => a.startsAt - b.startsAt);
+  },
+
+  /**
+   * Every game of mine from the last 48h, unfiltered by status — the single
+   * read that both `getMyLiveOrUpcomingGames` (live/upcoming) and
+   * `getJustFinishedGame` (last night) narrow down. Extracted so the two share
+   * one cached query instead of issuing two nearly identical ones.
+   */
+  async getMyRecentGamesRaw(userId: UserId): Promise<Game[]> {
+    if (USE_MOCK_DATA) {
+      return mockGamesV2.filter(
+        (g) =>
+          (g.participantIds ?? [...g.players, ...g.waitlist, ...(g.pending ?? [])]).includes(
+            userId,
+          ) || g.createdBy === userId,
+      );
+    }
+    return cachedMyGames(`recent:${userId}`, async () => {
     // Two-query union (participating + created) — same G-09 rationale
     // as getMyGames above. Both floored at `startsAt >= now-48h` so we read
     // only recent/upcoming games, never the whole history. `allSettled`
@@ -1871,11 +1893,47 @@ export const gameService = {
         );
       }
     }
-    return all
-      .filter((g) => LIVE_STATUSES.includes(g.status))
-      .filter((g) => !isStaleAfterStart(g))
-      .sort((a, b) => a.startsAt - b.startsAt);
+    return all;
     });
+  },
+
+  /**
+   * The evening that just ended — a game the user PLAYED that finished within
+   * the last 24 hours. Home shows a link into its summary for that window.
+   *
+   * Costs NOTHING extra: `getMyLiveOrUpcomingGames` already reads every game of
+   * mine from the last 48h and then throws away the finished ones, and its
+   * result is memoised for 15s. This runs the identical cached read and keeps
+   * the half that one discards, so the home screen gains a card without gaining
+   * a query.
+   *
+   * "Played", not "was registered to": someone who signed up and never showed
+   * has no evening to look back on. `arrivals[uid] === 'no_show'` is the same
+   * signal the stats pipeline uses to withhold credit.
+   */
+  async getJustFinishedGame(userId: UserId): Promise<Game | null> {
+    if (!userId) return null;
+    const WINDOW_MS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    let mine: Game[] = [];
+    try {
+      mine = await this.getMyRecentGamesRaw(userId);
+    } catch {
+      return null; // a home card is never worth surfacing an error for
+    }
+    const played = mine
+      .filter((g) => g.status === 'finished')
+      .filter((g) => {
+        const ended = g.endedAt ?? g.startsAt;
+        return ended <= now && now - ended <= WINDOW_MS;
+      })
+      .filter((g) => {
+        const arrivals = (g.arrivals ?? {}) as Record<string, string>;
+        if (arrivals[userId] === 'no_show') return false;
+        return (g.players ?? []).includes(userId);
+      })
+      .sort((a, b) => (b.endedAt ?? b.startsAt) - (a.endedAt ?? a.startsAt));
+    return played[0] ?? null;
   },
 
   /**

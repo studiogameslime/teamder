@@ -189,6 +189,10 @@ export function ProfileScreen() {
   // The user's full registered/created game list (getMyGames) — kept so
   // the activity feed can surface "created" + "registered to" events.
   const [myGames, setMyGames] = useState<Game[]>([]);
+  // The evening that ended in the last 24h, if the user actually played it —
+  // drives the "איך היה אתמול?" card under the coach message. Null the rest of
+  // the time, which is most of the week.
+  const [justPlayed, setJustPlayed] = useState<Game | null>(null);
   // Live "games played" count — games the user was placed in the teams for
   // and that have passed. Replaces the dead user.stats.totalGames (never
   // incremented by any flow). null = not loaded yet.
@@ -296,6 +300,7 @@ export function ProfileScreen() {
         setNextGame(null);
         setMyGames([]);
         setCreatedGames([]);
+        setJustPlayed(null);
         return;
       }
       let alive = true;
@@ -319,6 +324,16 @@ export function ProfileScreen() {
         .catch(() => {
           // Leave the previous value — a transient fetch error
           // shouldn't blank an already-shown game.
+        });
+      // Reads the SAME cached 48h window the call above just warmed, so this
+      // costs no extra query — see getMyRecentGamesRaw.
+      gameService
+        .getJustFinishedGame(uid)
+        .then((g) => {
+          if (alive) setJustPlayed(g);
+        })
+        .catch(() => {
+          if (alive) setJustPlayed(null);
         });
       return () => {
         alive = false;
@@ -1153,6 +1168,35 @@ export function ProfileScreen() {
             onCta={handleAssistantCta}
           />
 
+          {/* Straight after an evening the player PLAYED, a way back into its
+              summary — the one moment they want it, and until now the only
+              route was digging through the club's history. Lives for 24h and
+              then disappears on its own. */}
+          {justPlayed ? (
+            <Pressable
+              style={styles.justPlayedCard}
+              onPress={() => {
+                logEvent(AnalyticsEvent.HomeActionTileTapped, {
+                  tile: 'evening_summary',
+                  source: 'just_played',
+                });
+                nav.navigate('GameTab', {
+                  screen: 'EveningSummary',
+                  params: { gameId: justPlayed.id },
+                } as never);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={he.homeJustPlayedCta}
+            >
+              <View style={styles.justPlayedText}>
+                <Text style={styles.justPlayedTitle}>{he.homeJustPlayedTitle}</Text>
+                <Text style={styles.justPlayedBody}>{he.homeJustPlayedBody}</Text>
+                <Text style={styles.justPlayedCta}>{he.homeJustPlayedCta}</Text>
+              </View>
+              <Text style={styles.justPlayedEmoji}>⚽</Text>
+            </Pressable>
+          ) : null}
+
           {/* ③ Hero — exactly ONE card, in priority order (see pickHomeHero):
               1. a game I'm registered to / created (always wins, even if it's
                  further than a week out — a registered game beats everything);
@@ -1492,6 +1536,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
   },
+  // "איך היה אתמול?" — the 24h door back into the evening summary. Text first,
+  // emoji last: the row is flipped under RTL, so the ball lands on the visual
+  // left, matching every other card on this screen.
+  justPlayedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  justPlayedText: { flex: 1, gap: 2 },
+  justPlayedTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#065F46',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  justPlayedBody: {
+    fontSize: 13,
+    color: '#047857',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  justPlayedCta: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F766E',
+    marginTop: 4,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  justPlayedEmoji: { fontSize: 30 },
   // Amber "pending join requests" banner (admins only).
   pendingBanner: {
     flexDirection: 'row',

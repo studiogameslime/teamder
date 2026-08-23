@@ -599,6 +599,10 @@ export const he = {
   // Evening summary card + sharing
   summaryTitle: 'סיכום המחזור',
   summaryCta: 'סיכום המחזור שלי',
+  // Home card, shown for 24h after an evening the player actually played.
+  homeJustPlayedTitle: 'איך היה אתמול?',
+  homeJustPlayedBody: 'המחזור הסתיים — הציון, הגולים והדירוג שלך מחכים בפנים.',
+  homeJustPlayedCta: 'לסיכום המחזור',
   summaryShareCta: 'שתף את סיכום המחזור ⚡',
   summaryShareTitle: 'שיתוף סיכום המחזור',
   summaryShareUnavailable: 'שיתוף לא זמין במכשיר הזה',

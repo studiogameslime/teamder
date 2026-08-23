@@ -17,7 +17,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { AppearItem } from '@/components/anim/AppearItem';
-import { CommunityCard } from '@/components/community/CommunityCard';
+import { ClubCard } from '@/components/community/ClubCard';
+import { resolveClubCard } from '@/utils/clubCard';
 import { toast } from '@/components/Toast';
 import { nearbyClubsService } from '@/services/nearbyClubsService';
 import { GroupJoinRejectedError } from '@/services/groupService';
@@ -166,39 +167,39 @@ export function NearbyClubsSection({
 
       <View style={styles.list}>
         {visible.map((g, idx) => {
-          // "עיר · מגרש" — drop the standalone city when the free-text address
-          // already names it (same rule the communities feed applies).
+          // ClubCard shows the CITY only — no pitch name, no address, no
+          // distance. The composed "עיר · מגרש · כתובת" line the old card took
+          // has no slot here, so it is not built.
           const city = (g.city ?? '').trim();
-          const fieldName = (g.fieldName ?? '').trim();
-          const fieldAddress = (g.fieldAddress ?? '').trim();
-          const cityInAddress =
-            city.length > 0 &&
-            fieldAddress.toLowerCase().includes(city.toLowerCase());
-          const locationLine = [
-            cityInAddress ? '' : city,
-            fieldName,
-            fieldAddress,
-          ]
-            .filter((s) => s.length > 0)
-            .join(' · ');
           return (
             <AppearItem key={g.id} index={idx}>
-              <CommunityCard
+              {/* The SAME card the communities feed uses. This section had kept
+                  the older CommunityCard, so the identical club rendered two
+                  different ways one tab apart. `locationLine` (pitch + address)
+                  is deliberately dropped: ClubCard takes the city only. */}
+              <ClubCard
+                vm={resolveClubCard({
+                  // Always 'none' here — members and pending requests are
+                  // filtered out before we ever build a card.
+                  isAdmin: false,
+                  isMember: false,
+                  isPending: false,
+                  isOpen: g.isOpen === true,
+                  playerCount: g.memberCount ?? 0,
+                  // This section ranks by proximity but never surfaces the
+                  // number, and null must not read as "far away".
+                  distanceKm: null,
+                  friends: [],
+                  gamesLast30: g.gamesLast30 ?? null,
+                  gamesLast60: g.gamesLast60 ?? null,
+                })}
                 name={g.name}
-                locationLine={locationLine}
-                description={g.description}
+                city={city}
                 coverPhotoUrl={g.coverPhotoUrl}
                 coverImageId={g.coverImageId}
-                memberCount={g.memberCount}
-                // Always 'none' here — members and pending requests are
-                // filtered out before we ever build a card.
-                status="none"
                 onPress={() => onOpenClub(g.id)}
-                onJoinPress={() => handleJoin(g)}
-                joinBusy={busyId === g.id}
-                joinLabel={
-                  g.isOpen ? he.communitiesCardJoin : he.communityRequestToJoin
-                }
+                onCtaPress={() => handleJoin(g)}
+                ctaBusy={busyId === g.id}
               />
             </AppearItem>
           );

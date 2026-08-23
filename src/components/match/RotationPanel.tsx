@@ -448,14 +448,20 @@ export function RotationPanel({
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             {openTeam != null ? (
               <>
-                <Text style={styles.sheetTitle}>{teamName(openTeam, draftTeams?.teams)}</Text>
+                {/* No separate title: TeamScore renders the team name itself,
+                    in the team colour, so a plain heading above it printed the
+                    name twice. And `list` — the same variant the cards behind
+                    this sheet use — so a waiting team's roster shows each
+                    player's goals instead of avatars with no numbers. */}
                 <TeamScore
                   teamIdx={openTeam}
                   teams={draftTeams.teams}
                   roster={openRoster}
-                  wins={0}
+                  wins={winsOf(openTeam)}
                   align="right"
-                  avatarSize={50}
+                  variant="list"
+                  goalsByPlayer={goalsByPlayer}
+                  avatarSize={44}
                 />
                 <Pressable style={styles.sheetClose} onPress={() => setOpenTeam(null)}>
                   <Text style={styles.sheetCloseText}>{he.close}</Text>

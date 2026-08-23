@@ -13,34 +13,35 @@
  * (which the engine downgrades to sending the veteran off).
  */
 import { recordTieSkeleton } from '@/services/rotationEngine';
-import type { MatchRotation, RotationTeam } from '@/types';
+import type { RotationTeam } from '@/services/rotationEngine';
+import type { MatchRotation } from '@/types';
 
 const teams = (n: number): RotationTeam[] =>
-  Array.from({ length: n }, (_, i) => ({ index: i, playerIds: [`p${i}a`, `p${i}b`] })) as RotationTeam[];
+  Array.from({ length: n }, (_, i) => ({ index: i, playerIds: [`p${i}a`, `p${i}b`] }));
 
 const rot = (playing: [number, number], waiting: number[]): MatchRotation =>
   ({ playing, waiting, wins: {}, round: 1, loans: [] }) as unknown as MatchRotation;
 
 describe('tie confirmation names the right incoming teams', () => {
   it('bothOut with two waiting → the two waiting teams come on', () => {
-    const s = recordTieSkeleton(teams(4), rot([0, 1], [2, 3]), 2, 'random', 'bothOut');
+    const s = recordTieSkeleton(teams(4), rot([0, 1], [2, 3]), 2, 'temporary', 'bothOut');
     // What the dialog promises in this branch: waiting[0] and waiting[1].
     expect(s.playing).toEqual([2, 3]);
   });
 
   it('bothOut with ONE waiting → falls back to veteran-out, so only one team comes on', () => {
-    const s = recordTieSkeleton(teams(3), rot([0, 1], [2]), 2, 'random', 'bothOut');
+    const s = recordTieSkeleton(teams(3), rot([0, 1], [2]), 2, 'temporary', 'bothOut');
     // The dialog must say "team b stays, waiting[0] comes on" — not "both leave".
     expect(s.playing).toEqual([1, 2]);
   });
 
   it('veteranOut → the challenger stays and waiting[0] comes on', () => {
-    const s = recordTieSkeleton(teams(4), rot([0, 1], [2, 3]), 2, 'random', 'veteranOut');
+    const s = recordTieSkeleton(teams(4), rot([0, 1], [2, 3]), 2, 'temporary', 'veteranOut');
     expect(s.playing).toEqual([1, 2]);
   });
 
   it('nobody waiting → both teams stay, so there is nothing to promise', () => {
-    const s = recordTieSkeleton(teams(2), rot([0, 1], []), 2, 'random', 'bothOut');
+    const s = recordTieSkeleton(teams(2), rot([0, 1], []), 2, 'temporary', 'bothOut');
     expect(s.playing).toEqual([0, 1]);
   });
 });
