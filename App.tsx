@@ -645,6 +645,19 @@ export default function App() {
       };
     }) => {
       const data = response.notification.request.content.data ?? {};
+      // A Joryio campaign push carries `trackingId` and none of OUR `type`s, so
+      // it must be reported BEFORE the `!type` bail-out below — otherwise every
+      // marketing push reads as delivered-and-never-opened. Reported first for
+      // the same reason: the navigation branches below return early on their own
+      // and would strand the click.
+      const trackingId =
+        typeof data.trackingId === 'string' ? data.trackingId : '';
+      if (trackingId) {
+        joryio.trackPushClick(trackingId);
+        void logEvent(AnalyticsEvent.NotificationOpened, { source: 'joryio' });
+        // Tapping a marketing push is as intentful as tapping our own.
+        adsService.noteIntentfulOpen();
+      }
       const type = typeof data.type === 'string' ? data.type : '';
       if (!type) return;
       // Opened by tapping a push → suppress the next app-open ad.
