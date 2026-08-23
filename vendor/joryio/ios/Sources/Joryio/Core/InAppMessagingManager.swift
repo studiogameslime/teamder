@@ -97,9 +97,12 @@ class InAppMessagingManager {
                 // when a campaign arrives. Native is unconditional - those
                 // messages are drawn by this SDK's own views with no web view
                 // involved; HTML appears only when the integration opted in.
-                capabilities: allowHtmlJsInAppMessages
+                // hostCapabilities wins when a host renders: the list below
+                // describes THIS SDK's views, and the moment a host sets an
+                // in-app callback those views never run. See hostCapabilities.
+                capabilities: hostCapabilities ?? (allowHtmlJsInAppMessages
                     ? ["content.native", "content.html"]
-                    : ["content.native"]
+                    : ["content.native"])
             )
 
             logger.debug("Syncing in-app campaigns...")
@@ -465,6 +468,34 @@ class InAppMessagingManager {
     /// messages with its own UI at all.
     var onMessageReady: ((InAppCampaign) -> Void)?
 
+    /// What the HOST can render, when the host renders instead of this SDK.
+    ///
+    /// The SDK's own capability list describes its own views. Once a host sets
+    /// an in-app callback those views never run, so describing them describes
+    /// the wrong renderer - and the answer matters, because the server targets
+    /// campaigns on it and its rollup resolves an absent capability to "no"
+    /// rather than to "unknown".
+    ///
+    /// A Unity game laying a message out on its own canvas can render
+    /// structured `content.native` and almost certainly cannot render
+    /// `content.html` unless it also hosts a WebView. Only the host knows.
+    ///
+    /// Nil means nobody has said, and the SDK keeps describing its own
+    /// renderer - correct while the SDK is the one drawing. Matches Android.
+    var hostCapabilities: [String]?
+
+    /// ISO-8601 UTC with milliseconds - the format the web SDK sends and the
+    /// backend canonicalises to. Static so it costs one formatter, not one per
+    /// impression.
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f
+    }()
+
+    static func isoTimestamp() -> String { isoFormatter.string(from: Date()) }
+
     /// Public entry point for a host that rendered the message itself and now
     /// needs to report what happened. Impressions are what frequency caps and
     /// reporting are built on, so a host-rendered message that cannot report is
@@ -485,12 +516,29 @@ class InAppMessagingManager {
         // (display, click, dismiss) carries it without having to remember to.
         let deliveryToken = activeCampaigns.first { $0.id == campaignId }?.deliveryToken
 
+        // Map the action onto the SAME structured markers the web SDK sends.
+        // The backend gate for in_app.displayed reads these; sending only
+        // `action` made every mobile click and dismiss count as a display.
+        // Mirrors sdk-web/src/core/inapp.ts exactly, including collapsing the
+        // action to the singular 'click'/'dismiss' it uses.
+        let nowIso = Self.isoTimestamp()
+        let normalized = action.lowercased()
+        let isClick = normalized.contains("click")
+        let isDismiss = normalized.contains("dismiss")
+        let isConvert = normalized.contains("convert")
+
         let request = TrackImpressionRequest(
             campaignId: campaignId,
             userId: identityManager.getUserId() ?? "",
             anonymousId: identityManager.getAnonymousId(),
             sessionId: sessionId,
-            action: action,
+            action: isClick ? "click" : (isDismiss ? "dismiss" : action),
+            displayedAt: normalized.contains("display") ? nowIso : nil,
+            clicked: isClick ? true : nil,
+            clickedAt: isClick ? nowIso : nil,
+            dismissedAt: isDismiss ? nowIso : nil,
+            converted: isConvert ? true : nil,
+            convertedAt: isConvert ? nowIso : nil,
             deliveryToken: deliveryToken
         )
 

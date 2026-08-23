@@ -94,13 +94,14 @@ class NetworkClient {
 
     // MARK: - Push Notifications
 
-    func registerPushToken(userId: String?, anonymousId: String, deviceToken: String, deviceInfo: [String: Any]) async throws {
+    func registerPushToken(userId: String?, anonymousId: String, deviceToken: String, deviceId: String?, deviceInfo: [String: Any]) async throws {
         let endpoint = "\(apiEndpoint)/v1/push/register"
         let body = PushTokenRequest(
             userId: userId,
             anonymousId: anonymousId,
             token: deviceToken,
             platform: "ios",
+            deviceId: deviceId,
             deviceInfo: deviceInfo
         )
         try await sendRequest(endpoint: endpoint, method: "POST", body: body)

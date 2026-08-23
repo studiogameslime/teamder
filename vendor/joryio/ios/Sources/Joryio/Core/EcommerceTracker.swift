@@ -237,6 +237,37 @@ public class EcommerceTracker {
     }
 
     /// Track when a user updates their cart
+    /// Track the cart being viewed.
+    ///
+    /// `Cart Viewed` has been canonical all along, but no tracker had a method
+    /// for it - so the only way to send it was to type the name by hand, which
+    /// is the habit these trackers exist to remove. Same payload as
+    /// `updateCart`: the cart is the same thing either way.
+    public func cartViewed(items: [EcommerceCartItem], cartValue: Double) {
+        let itemsData = items.map { item -> [String: Any] in
+            var data: [String: Any] = [
+                "product_id": item.product.productId,
+                "name": item.product.name,
+                "price": item.product.price,
+                "quantity": item.quantity
+            ]
+            if let variantId = item.product.variantId {
+                data["variant_id"] = variantId
+            }
+            if let sku = item.product.sku {
+                data["sku"] = sku
+            }
+            return data
+        }
+
+        sdk.track("Cart Viewed", properties: [
+            "items": itemsData,
+            "item_count": items.reduce(0) { $0 + $1.quantity },
+            "cart_value": cartValue,
+            "currency": config.currency
+        ])
+    }
+
     public func updateCart(items: [EcommerceCartItem], cartValue: Double) {
         let itemCount = items.reduce(0) { $0 + $1.quantity }
         let itemsData = items.map { item -> [String: Any] in
@@ -328,10 +359,21 @@ public class EcommerceTracker {
         }
 
         var props: [String: Any] = [
-            "order_id": order.orderId,
+            // `total` and `orderId`, NOT `value` and `order_id`.
+            //
+            // The revenue pipeline reads exactly these two keys - see
+            // purchase-vocabulary.ts, which says of `value`/`revenue`: "somebody
+            // else's convention", and of `order_id`: "a key nothing reads".
+            // Every purchase tracked through this tracker therefore landed as
+            // ZERO revenue with no order id for attribution, on all three SDKs.
+            //
+            // Not a crash, not a warning: a $0 order that looks like an order.
+            // The demo app hit the same thing and its comment already warned
+            // about it - the SDK it was warning about never got fixed.
+            "orderId": order.orderId,
             "items": itemsData,
             "item_count": order.itemCount,
-            "value": order.value,
+            "total": order.value,
             "currency": order.currency ?? config.currency
         ]
         if let shipping = order.shipping { props["shipping"] = shipping }

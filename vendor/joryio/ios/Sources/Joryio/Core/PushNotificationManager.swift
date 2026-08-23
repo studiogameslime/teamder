@@ -191,6 +191,10 @@ class PushNotificationManager: NSObject {
                 userId: userId,
                 anonymousId: anonymousId,
                 deviceToken: token,
+                // The same identity the track path sends, so the server joins
+                // this token to the existing device row instead of inserting a
+                // second one.
+                deviceId: storage.getDeviceId(),
                 deviceInfo: deviceInfo
             )
 

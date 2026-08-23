@@ -85,6 +85,15 @@ public struct PushTokenRequest: Codable {
     public let anonymousId: String
     public let token: String
     public let platform: String
+
+    /// Stable device identity, so the server attaches this token to the device
+    /// row that already exists rather than inserting a second one keyed only by
+    /// the token. Without it, first launch produced TWO rows seconds apart -
+    /// one with the identity and no token, one with the token and no identity,
+    /// nothing joining them. Reported from a production integration on Android,
+    /// 2026-08-23; iOS matches so the split cannot appear here either.
+    public let deviceId: String?
+
     public let deviceInfo: [String: AnyCodable]?
 
     public init(
@@ -92,12 +101,14 @@ public struct PushTokenRequest: Codable {
         anonymousId: String,
         token: String,
         platform: String,
+        deviceId: String? = nil,
         deviceInfo: [String: Any]
     ) {
         self.userId = userId
         self.anonymousId = anonymousId
         self.token = token
         self.platform = platform
+        self.deviceId = deviceId
         self.deviceInfo = deviceInfo.isEmpty ? nil : deviceInfo.mapValues { AnyCodable($0) }
     }
 }

@@ -943,12 +943,57 @@ public class Joryio {
     /// A host that renders its own UI MUST report what happened via
     /// `trackInAppImpression`, or frequency caps and reporting never see the
     /// message.
-    public func setInAppMessageCallback(_ callback: @escaping (InAppCampaign) -> Void) {
+    /// - Parameter capabilities: what YOUR renderer can draw, e.g.
+    ///   `["content.native"]` for a game canvas, adding `"content.html"` only if
+    ///   you host a WebView. Nil keeps the SDK describing its OWN renderer,
+    ///   which is what every existing caller gets and is wrong only in the sense
+    ///   that it describes views that will not run. Declaring is strictly
+    ///   better: the server targets campaigns on this, and its rollup resolves
+    ///   an absent capability to "no" rather than to "unknown". Matches Android.
+    public func setInAppMessageCallback(
+        _ callback: @escaping (InAppCampaign) -> Void,
+        capabilities: [String]? = nil
+    ) {
         guard isInitialized else {
             logNotInitialized()
             return
         }
-        inAppMessaging.onMessageReady = callback
+        inAppMessaging.hostCapabilities = capabilities
+        // Wrapped to count handoffs, so the SDK can say something when a host
+        // takes messages and reports none of them. Matches Android.
+        inAppMessaging.onMessageReady = { [weak self] campaign in
+            self?.inAppHandedOff += 1
+            callback(campaign)
+            self?.warnIfInAppNeverReported()
+        }
+    }
+
+    // Host-rendered in-app messages report nothing unless the host calls
+    // trackInAppImpression, and the failure is silent: the campaign spends its
+    // frequency budget, emits no in_app.displayed, and reads as delivered to
+    // nobody. Nothing else in the system can notice - the server sees an SDK
+    // that synced campaigns and never showed one, which is indistinguishable
+    // from an audience nobody matched.
+    private var inAppHandedOff = 0
+    private var inAppReported = 0
+    private var warnedAboutUnreportedInApp = false
+
+    /// Warn once when a host takes in-app messages and reports none.
+    ///
+    /// Threshold of 3 rather than 1: a host may legitimately decline to show a
+    /// particular message, and one unreported handoff proves nothing. Three is
+    /// an integration that has not wired reporting at all. Logged rather than
+    /// thrown, and once rather than per message - this is a correctness hint for
+    /// a developer, not a runtime fault.
+    private func warnIfInAppNeverReported() {
+        guard !warnedAboutUnreportedInApp, inAppReported == 0, inAppHandedOff >= 3 else { return }
+        warnedAboutUnreportedInApp = true
+        logger.warn(
+            "\(inAppHandedOff) in-app messages were handed to your callback and none were reported. "
+                + "Call trackInAppImpression(campaignId:action:) with \"displayed\"/\"clicked\"/\"dismissed\" "
+                + "when you render one, or campaign analytics will show zero displays while these "
+                + "messages still consume the frequency budget."
+        )
     }
 
     /// Report an in-app impression for a message YOU rendered.
@@ -961,6 +1006,7 @@ public class Joryio {
             logNotInitialized()
             return
         }
+        inAppReported += 1
         inAppMessaging.trackHostImpression(campaignId: campaignId, action: action)
     }
 
@@ -1086,6 +1132,20 @@ public class Joryio {
         }
 
         pushNotifications.registerDeviceToken(token)
+
+        // Refresh push_permission: ARRIVING HERE IS EVIDENCE. iOS does not hand
+        // out a device token without authorisation, so a token in hand settles
+        // the question regardless of what was last reported.
+        //
+        // Otherwise the attribute refreshes on init and on foreground, and a
+        // host app that grants permission after init and registers its own
+        // token - every React Native integration using Firebase Messaging, for
+        // instance - can sit on a stale not_determined until the next
+        // foreground. That is the common path: the prompt is deliberately
+        // deferred until after sign-up in most apps, and init always runs
+        // first. A segment on push_permission = granted then excludes real,
+        // reachable users. Matches Android.
+        Task { await reportPushPermissionIfChanged() }
     }
 
     /// Track a push-notification click by tracking id.

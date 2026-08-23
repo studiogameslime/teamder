@@ -479,18 +479,47 @@ public struct TrackImpressionRequest: Codable {
     public let action: String
     public let timestamp: Date
 
+    /// STRUCTURED MARKERS, matching what the web SDK sends.
+    ///
+    /// This request used to carry the interaction ONLY in `action`, while the
+    /// web SDK set displayedAt / clicked+clickedAt / dismissedAt. The backend
+    /// gate that decides whether to emit `in_app.displayed` reads those markers,
+    /// so on mobile every call fell through to "this is a display" - one message
+    /// displayed, clicked and dismissed emitted THREE in_app.displayed events,
+    /// inflating mobile display counts up to 3x and over-crediting revenue
+    /// attribution, which joins on that event.
+    ///
+    /// The backend now understands both shapes, so this is not what fixes it -
+    /// it removes the second shape, which is what allowed it. One event, one
+    /// wire format, whichever SDK reports it.
+    ///
+    /// Synthesized Codable omits nil, so only the markers relevant to this call
+    /// are sent. ISO-8601 to match web; the backend also tolerates epoch millis.
+    public let displayedAt: String?
+    public let clicked: Bool?
+    public let clickedAt: String?
+    public let dismissedAt: String?
+    public let converted: Bool?
+    public let convertedAt: String?
+
     /// Echoed from `InAppCampaign.deliveryToken` - see that field. Synthesized
     /// Codable omits a nil optional entirely, which is what the server needs:
     /// an explicit null would be read as a malformed token rather than as absent.
     public let deliveryToken: String?
 
-    /// `deliveryToken` defaults to nil so existing callers keep compiling.
+    /// Everything after `action` defaults, so existing callers keep compiling.
     public init(
         campaignId: String,
         userId: String,
         anonymousId: String,
         sessionId: String,
         action: String,
+        displayedAt: String? = nil,
+        clicked: Bool? = nil,
+        clickedAt: String? = nil,
+        dismissedAt: String? = nil,
+        converted: Bool? = nil,
+        convertedAt: String? = nil,
         timestamp: Date = Date(),
         deliveryToken: String? = nil
     ) {
@@ -499,6 +528,12 @@ public struct TrackImpressionRequest: Codable {
         self.anonymousId = anonymousId
         self.sessionId = sessionId
         self.action = action
+        self.displayedAt = displayedAt
+        self.clicked = clicked
+        self.clickedAt = clickedAt
+        self.dismissedAt = dismissedAt
+        self.converted = converted
+        self.convertedAt = convertedAt
         self.timestamp = timestamp
         self.deliveryToken = deliveryToken
     }

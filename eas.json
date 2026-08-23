@@ -28,7 +28,8 @@
       "ios": {
         "resourceClass": "m-medium",
         "image": "latest"
-      }
+      },
+      "credentialsSource": "local"
     },
     "production-wear": {
       "extends": "production",
