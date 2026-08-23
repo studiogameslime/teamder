@@ -471,10 +471,16 @@ public class EcommerceTracker {
 }
 
 // MARK: - Joryio Extension
-
-extension Joryio {
-    /// Get the e-commerce tracker instance
-    public func ecommerce(config: EcommerceConfig = EcommerceConfig()) -> EcommerceTracker {
-        return EcommerceTracker(sdk: self, config: config)
-    }
-}
+//
+// LOCAL PATCH — the upstream extension declared a SECOND `ecommerce(config:)`
+// on Joryio, alongside the one in JoryioSDK.swift. Both are callable with no
+// arguments (`EcommerceConfig? = nil` there, `= EcommerceConfig()` here), so
+// `Joryio.shared.ecommerce()` — which their own React Native bridge calls —
+// fails to compile:
+//
+//     error: ambiguous use of 'ecommerce(config:)'
+//
+// The class method is the one to keep: it caches the tracker in `_ecommerce`
+// and is @discardableResult. This one built a fresh tracker on every call and
+// dropped the cache. Removed rather than renamed so there is exactly one
+// spelling. Re-apply after any re-vendor until they fix it upstream.
