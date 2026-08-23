@@ -165,10 +165,14 @@ export function ClubCard({
               accessibilityRole="button"
               accessibilityLabel={CTA_LABEL[vm.cta]}
             >
-              <Ionicons name={cta.icon as never} size={16} color={cta.fg} />
+              {/* Text first: the row is flipped under RTL, so the FIRST child
+                  lands on the right. Icon-then-text put the clock to the right
+                  of "בקש להצטרף"; it belongs on the left, like every other CTA
+                  in the app. */}
               <Text style={[styles.ctaTxt, { color: cta.fg }]}>
                 {CTA_LABEL[vm.cta]}
               </Text>
+              <Ionicons name={cta.icon as never} size={16} color={cta.fg} />
             </Pressable>
           ) : (
             <View style={styles.statusRow}>

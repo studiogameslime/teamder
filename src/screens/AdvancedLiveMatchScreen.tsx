@@ -588,7 +588,40 @@ export function AdvancedLiveMatchScreen() {
       tie: winnerIdx == null,
     });
     if (winnerIdx == null) {
-      void onEndRound(); // tie → picker
+      // A 4-team advanced tie resolves itself — nobody picks anything, and it
+      // is the ONE case where both teams can leave the pitch at once. Confirm
+      // it and name who is coming on, mirroring the winner path. A 2–3 team tie
+      // still goes straight through: the chooser that follows (manual pick /
+      // shootout) is itself the decision, so there is nothing to preview yet.
+      const tieMode =
+        game?.numberOfTeams === 4 && game?.advancedMode
+          ? (game?.advancedTieMode ?? 'bothOut')
+          : undefined;
+      const [inc1, inc2] = rotation.waiting;
+      if (!tieMode || inc1 == null) {
+        void onEndRound();
+        return;
+      }
+      // `bothOut` needs TWO waiting teams; with one it falls back to sending the
+      // veteran off, exactly like recordTieSkeleton does. Keep the two in step —
+      // naming the wrong team here is worse than not naming one.
+      const bothLeave = tieMode === 'bothOut' && inc2 != null;
+      appAlert(
+        he.rotationEndRoundTieConfirmTitle,
+        bothLeave
+          ? he.rotationEndRoundTieConfirmBodyTwo(
+              teamName(inc1, draftTeams?.teams),
+              teamName(inc2, draftTeams?.teams),
+            )
+          : he.rotationEndRoundTieConfirmBodyOne(
+              teamName(b, draftTeams?.teams),
+              teamName(inc1, draftTeams?.teams),
+            ),
+        [
+          { text: he.cancel, style: 'cancel' },
+          { text: he.rotationEndRoundConfirmOk, onPress: () => void onEndRound() },
+        ],
+      );
       return;
     }
     const next = rotation.waiting[0];
@@ -1638,8 +1671,10 @@ export function AdvancedLiveMatchScreen() {
               <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
             </Pressable>
             <Pressable style={styles.roundBtn} onPress={confirmEndRound}>
-              <Ionicons name="flag" size={22} color="#FFFFFF" />
+              {/* Text before icon: under RTL the row is flipped, so the first
+                  child renders rightmost. The flag belongs on the left. */}
               <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
+              <Ionicons name="flag" size={22} color="#FFFFFF" />
             </Pressable>
             {timerRunning ? (
               <Pressable style={styles.sideBtn} onPress={onTimerPause}>

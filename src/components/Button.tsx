@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  I18nManager,
   StyleSheet,
   Text,
   View,
@@ -54,6 +55,20 @@ export function Button({
   const padV = size === 'sm' ? spacing.sm : size === 'lg' ? spacing.lg : spacing.md;
   const padH = size === 'sm' ? spacing.md : spacing.lg;
 
+  // `iconLeft` means the VISUAL left, and under forceRTL it was landing on the
+  // right — the row is flipped, so the first child renders rightmost and the
+  // prop's own name became a lie. Reported three times from three screens
+  // ("שהאייקון יהיה מצד שמאל של הטקסט") before it was recognised as one bug in
+  // this component rather than three in the callers.
+  //
+  // So order by DIRECTION, not by prop name: the icon that must sit on the
+  // visual left is the last child when the row is flipped, and the first child
+  // when it is not. Spacing moved to `gap` on the row, because marginStart /
+  // marginEnd are themselves direction-aware and would re-introduce the bug on
+  // the other side.
+  const first = I18nManager.isRTL ? iconRight : iconLeft;
+  const second = I18nManager.isRTL ? iconLeft : iconRight;
+
   return (
     <PressableScale
       onPress={onPress}
@@ -84,25 +99,11 @@ export function Button({
         <ActivityIndicator color={palette.text} />
       ) : (
         <View style={styles.content}>
-          {iconLeft && (
-            <Ionicons
-              name={iconLeft}
-              size={18}
-              color={palette.text}
-              style={{ marginEnd: spacing.xs }}
-            />
-          )}
+          {first && <Ionicons name={first} size={18} color={palette.text} />}
           <Text style={[typography.button, { color: palette.text }]} numberOfLines={1}>
             {title}
           </Text>
-          {iconRight && (
-            <Ionicons
-              name={iconRight}
-              size={18}
-              color={palette.text}
-              style={{ marginStart: spacing.xs }}
-            />
-          )}
+          {second && <Ionicons name={second} size={18} color={palette.text} />}
         </View>
       )}
     </PressableScale>
@@ -151,5 +152,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.xs,
   },
 });

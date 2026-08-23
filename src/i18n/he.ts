@@ -299,9 +299,14 @@ export const he = {
   liveTimerResume: 'המשך',
   liveTimerStart: 'התחל',
   liveTimerReset: 'אפס',
-  liveTimerResetConfirmTitle: 'לאפס את המחזור ולהתחיל מחדש?',
+  // Says MATCH, not round, because that is what resetTimer actually clears:
+  // the clock, this match's score and its goal log. The evening's per-player
+  // tally (`liveMatch.goalTally`) and every finished match survive. The old
+  // wording promised to wipe the whole מחזור, so an admin read it and reported
+  // the button as broken — the copy was wrong, not the behaviour.
+  liveTimerResetConfirmTitle: 'לאפס את המשחק הנוכחי ולהתחיל אותו מחדש?',
   liveTimerResetConfirmBody:
-    'כל הגולים יימחקו, הטיימר יתאפס, והמחזור יתחיל מהתחלה. אי אפשר לבטל.',
+    'הטיימר והתוצאה של המשחק הזה יתאפסו, והגולים שנרשמו בו יימחקו. משחקים קודמים במחזור לא יושפעו. אי אפשר לבטל.',
   // Stoppages log — synced history of every start / pause / resume so
   // players can settle "the clock kept running!" arguments.
   liveStoppagesTitle: 'יומן עצירות',
@@ -334,7 +339,9 @@ export const he = {
   rotationStreak: (n: number) => (n === 1 ? 'ניצחון אחד' : `${n} ניצחונות`),
   rotationWinsLabel: 'ניצחונות',
   rotationActiveBadge: 'מחזור פעיל עכשיו',
-  rotationPlayingTeams: 'קבוצות במחזור',
+  // The two teams on the pitch RIGHT NOW — not every team in the round, which
+  // is what the waiting list below shows.
+  rotationPlayingTeams: 'קבוצות במשחק',
   rotationWaitingTeams: 'קבוצות ממתינות',
   rotationNextUp: 'הבאה בתור',
   rotationAfter: 'אחריה',
@@ -353,6 +360,14 @@ export const he = {
   rotationEndRoundConfirmBody: (next: string) =>
     `הבאה שעולה למגרש: ${next}. לסיים את המשחק?`,
   rotationEndRoundConfirmBodyNoNext: 'לסיים את המשחק?',
+  // A TIE used to skip the confirm entirely and drop straight into the next
+  // step, so the admin ended a match without being told who was coming on —
+  // the one case where BOTH teams can leave the pitch at once.
+  rotationEndRoundTieConfirmTitle: 'האם אתה בטוח שאתה רוצה לסיים משחק?',
+  rotationEndRoundTieConfirmBodyTwo: (a: string, b: string) =>
+    `תיקו — שתי הקבוצות יורדות. עולות למגרש: ${a} ו${b}.`,
+  rotationEndRoundTieConfirmBodyOne: (staying: string, incoming: string) =>
+    `תיקו — ${staying} נשארת במגרש, ועולה ${incoming}.`,
   rotationEndRoundConfirmOk: 'סיים משחק',
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   fillPickerSelectCount: (chosen: number, required: number) =>
