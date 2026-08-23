@@ -297,7 +297,10 @@ const styles = StyleSheet.create({
     borderColor: ACCENT,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
+    // row-reverse, not row: under forceRTL a `row` puts its first child on the
+    // RIGHT, so the Google / mail glyph sat to the right of its label — on the
+    // very first screen of the app. Same convention as the live-match CTAs.
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,

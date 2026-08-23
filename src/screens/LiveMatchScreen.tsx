@@ -1055,7 +1055,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryBtn: {
-    flexDirection: 'row',
+    // row-reverse, not row: under forceRTL a `row` renders its first child on
+    // the RIGHT, so an icon written before the label lands on the wrong side.
+    // Same convention as approveAllBtn / addBtn elsewhere in the app.
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -1077,7 +1080,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#16A34A',
   },
   resetBtn: {
-    flexDirection: 'row',
+    // row-reverse, not row: under forceRTL a `row` renders its first child on
+    // the RIGHT, so an icon written before the label lands on the wrong side.
+    // Same convention as approveAllBtn / addBtn elsewhere in the app.
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
