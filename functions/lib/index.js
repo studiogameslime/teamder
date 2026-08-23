@@ -10396,12 +10396,25 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     // (`guestRoster`, the same anti-forgery check a real roster gives).
     const scorerPlayed = (id) => (isReal(id) && onField.has(id)) || guestRoster.has(id);
     const byAssister = {};
+    // Guest assisters, kept separate: they get the per-GAME row (so the round
+    // table counts them like anyone else) and nothing lifetime or club-wide,
+    // exactly like guest GOALS above. The scorer side already accepted a guest;
+    // the assist side rejected one, so a guest who set up a goal showed 0.
+    const byGuestAssister = {};
     const assistPairs = [];
     for (const g of goals ?? []) {
         if (g.ownGoal || !g.scorerId || !scorerPlayed(g.scorerId))
             continue;
-        if (!g.assisterId || !isReal(g.assisterId) || g.assisterId === g.scorerId)
+        if (!g.assisterId || g.assisterId === g.scorerId)
             continue;
+        if (!isReal(g.assisterId)) {
+            // Same anti-forgery guard the guest SCORER path uses: the id must be a
+            // registered guest of this game.
+            if (guestRoster.has(g.assisterId)) {
+                byGuestAssister[g.assisterId] = (byGuestAssister[g.assisterId] ?? 0) + 1;
+            }
+            continue;
+        }
         if (!onField.has(g.assisterId))
             continue; // assister not on a playing side (B12)
         byAssister[g.assisterId] = (byAssister[g.assisterId] ?? 0) + 1;
@@ -10418,6 +10431,9 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
             batch.set(db.collection('communityPlayerStats').doc(`${groupId}__${assister}`), { groupId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
         // Per-GAME assist tally (mirrors the per-game goals write above).
         batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${assister}`), { gameId, userId: assister, assists: inc(n), updatedAt: now }, { merge: true });
+    }
+    for (const [guest, n] of Object.entries(byGuestAssister)) {
+        batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${guest}`), { gameId, userId: guest, assists: inc(n), isGuest: true, updatedAt: now }, { merge: true });
     }
     // 1c-clean) "שער נקי" — a mini-game whose side finished with nothing
     //     conceded. A TEAM outcome credited to every participant, not a claim
@@ -10472,6 +10488,44 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
         // counters can never diverge — the rule `stats.wins` follows.
         if (clean) {
             batch.set(db.collection('users').doc(uid), { stats: { cleanSheets: inc(1) } }, { merge: true });
+        }
+    }
+    // 1c-guest) The SAME per-game tallies for GUESTS.
+    //
+    // A/B are real-only (isReal), so a guest was credited goals and nothing
+    // else: the round table listed them at 0 rounds / 0 wins next to a
+    // team-mate on the very same side showing 3/3. Reported from a live evening
+    // — "לאורח צריך להיספר הכל כמו לשחקן רגיל בטבלת המחזור".
+    //
+    // Deliberately per-GAME only. `users.stats` and `communityPlayerStats` stay
+    // real-only: a guest has no account and no cross-cycle identity, so they
+    // never join the club's ranked table. That part was never the bug.
+    //
+    // Kept OUT of A/B rather than merged into them, because A/B also drive the
+    // pair writes (|A|×|B| against-pairs + same-team pairs). Adding guests there
+    // would grow the batch quadratically against the 500-op ceiling that
+    // MAX_SIDE is sized for; this pass costs exactly one op per guest.
+    const guestsOnA = fullA.filter((id) => !isReal(id));
+    const guestsOnB = fullB.filter((id) => !isReal(id));
+    for (const [side, guestsOnSide] of [
+        ['A', guestsOnA],
+        ['B', guestsOnB],
+    ]) {
+        const onA = side === 'A';
+        const clean = onA ? cleanA : cleanB;
+        const result = winnerSide === side ? 'wins' : winnerSide === 'A' || winnerSide === 'B' ? 'losses' : null;
+        for (const gid of guestsOnSide) {
+            batch.set(db.collection('gamePlayerStats').doc(`${gameId}__${gid}`), {
+                gameId,
+                userId: gid,
+                isGuest: true,
+                rounds: inc(1),
+                ...(clean ? { cleanSheets: inc(1) } : {}),
+                ...(result ? { [result]: inc(1) } : {}),
+                teamGoalsFor: inc(onA ? creditedA : creditedB),
+                teamGoalsAgainst: inc(onA ? creditedB : creditedA),
+                updatedAt: now,
+            }, { merge: true });
         }
     }
     // 1d) mini-games WON / LOST — the winning side's players get a +1 `wins`
