@@ -88,7 +88,7 @@ export type GameStackParamList = {
    *  GameStack + ProfileStack + CommunitiesStack (shared screen). */
   EveningSummary: { gameId: string };
   RoundSummary: { gameId: string };
-  /** Per-mini-game history of a finished game ("היסטוריית המשחקונים"). Shared
+  /** Per-game history of a finished round ("היסטוריית המשחקים"). Shared
    *  screen — registered in GameStack + ProfileStack + CommunitiesStack. */
   MatchRounds: { gameId: string };
   /** v2 — live-match screen takes the gameId of the game it manages. */

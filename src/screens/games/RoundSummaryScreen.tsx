@@ -115,7 +115,7 @@ export function RoundSummaryScreen() {
           <View style={styles.numbers}>
             {/* The mini-game count is omitted when the evening has no
                 per-mini-game history: they played, we simply do not know how
-                many, and printing "0 משחקונים" would be a confident lie about
+                many, and printing "0 משחקים" would be a confident lie about
                 a night people remember. Same reason the teams and the pair
                 sections disappear — they come from the same source. */}
             {summary.coverage.hasRoundHistory ? (

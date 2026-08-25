@@ -878,7 +878,7 @@ export const he = {
   chemistryRivalry: 'היריבות הגדולה',
   chemistryBalanced: 'היריבות הכי מאוזנת',
   chemistryWinsTogether: (n: number) => `${n} ניצחונות יחד`,
-  chemistryGamesTogether: (n: number) => `${n} משחקונים יחד`,
+  chemistryGamesTogether: (n: number) => `${n} משחקים יחד`,
   chemistryAssistsBetween: (n: number) => `${n} בישולים אחד לשני`,
   chemistryCleanSheetsTogether: (n: number) => `${n} שערים נקיים יחד`,
   chemistryMeetings: (n: number) => `${n} מפגשים כיריבים`,
@@ -890,7 +890,7 @@ export const he = {
   chemistryEmpty: 'עוד קצת משחקים ונגלה מי הכימיה של המועדון',
   // כרטיס הזוג
   pairCardTogether: 'ביחד',
-  pairCardGames: 'משחקונים',
+  pairCardGames: 'משחקים',
   pairCardWins: 'ניצחונות',
   pairCardLosses: 'הפסדים',
   pairCardCleanSheets: 'שערים נקיים',
@@ -908,7 +908,7 @@ export const he = {
   roundSummaryStars: 'כוכבי המחזור',
   roundSummaryTeams: 'הקבוצות',
   roundSummaryWhatHappened: 'מה קרה הערב',
-  roundSummaryStatRounds: (n: number) => `${n} משחקונים`,
+  roundSummaryStatRounds: (n: number) => `${n} משחקים`,
   roundSummaryStatGoals: (n: number) => `${n} שערים`,
   roundSummaryStatAssists: (n: number) => `${n} בישולים`,
   roundSummaryStatShootouts: (n: number) =>
@@ -936,7 +936,7 @@ export const he = {
   summaryMetricInvolvement: 'מעורבויות בשער',
   summaryMetricCleanSheets: 'שערים נקיים',
   summaryMetricWins: 'ניצחונות',
-  summaryMetricRounds: 'משחקונים',
+  summaryMetricRounds: 'משחקים',
   summaryMetricEvenings: 'מחזורים',
   summaryMetricShootouts: 'הכרעות פנדלים',
   summaryRecordNew: (who: string, value: number, metric: string, prev: number) =>
@@ -2493,7 +2493,7 @@ export const he = {
     `${n} בישולים בקריירה. גם מסירה נכנסת לתיק 🎯`,
   assistantContribution: (n: number) =>
     `${n} מעורבויות בשערים — שערים ובישולים יחד 📈`,
-  assistantWinsTotal: (n: number) => `${n} ניצחונות במשחקונים עד היום 🏆`,
+  assistantWinsTotal: (n: number) => `${n} ניצחונות במשחקים עד היום 🏆`,
   assistantOwnGoals: (n: number) =>
     n === 1
       ? 'שער עצמי אחד בקריירה. קורה גם לטובים 🙃'

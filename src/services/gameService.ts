@@ -1307,7 +1307,7 @@ export const gameService = {
   /**
    * Read the per-mini-game history for a finished game (one doc per committed
    * round under games/{id}/roundHistory). Returns them in CHRONOLOGICAL order
-   * (earliest mini-game first) for the "היסטוריית המשחקונים" screen. Each doc
+   * (earliest game first) for the "היסטוריית המשחקים" screen. Each doc
    * holds both rosters, the score, the winner, the goal log (scorer + assister
    * + own-goal) and the shootout kicks (when the round was decided on penalties).
    * Best-effort data — old games predating this feature return []. Reads are
