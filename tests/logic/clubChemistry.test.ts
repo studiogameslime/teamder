@@ -231,3 +231,44 @@ describe('choosing the six', () => {
     expect(titlesOf(picks, 'x__y')).toEqual([]);
   });
 });
+
+// ─── why the marker exists ────────────────────────────────────────────────
+
+describe('folding the same evening in twice', () => {
+  it('DOUBLES — which is the whole reason the rollup is written behind a marker', () => {
+    // mergePairs is additive on purpose: an evening is a delta onto a running
+    // total, and the second evening must not overwrite the first. The cost of
+    // that is that re-applying ONE evening counts it twice, so nothing but the
+    // marker stands between a re-delivered trigger and a doubled record. This
+    // test exists so that anyone who "simplifies" the marker away has to delete
+    // a case that spells out what it was for.
+    const evening = pairsFromRounds([R(), R({ winnerSide: 'B' })]);
+    const once = mergePairs({}, evening);
+    const twice = mergePairs(once, evening);
+    expect(once[pairKey('a', 'b')]).toMatchObject({ sameTeam: 2, winsTogether: 1 });
+    expect(twice[pairKey('a', 'b')]).toMatchObject({ sameTeam: 4, winsTogether: 2 });
+  });
+
+  it('is deterministic, so a retry that DOES reach the core computes the same delta', () => {
+    const rounds = [R(), R({ winnerSide: 'tie', scoreA: 1, scoreB: 1 })];
+    expect(pairsFromRounds(rounds)).toEqual(pairsFromRounds(rounds));
+  });
+});
+
+describe('a pair is one pair, whichever card opened it', () => {
+  const club = {
+    [pairKey('a', 'b')]: P({ sameTeam: 27, winsTogether: 14, assistsAToB: 6, assistsBToA: 3 }),
+  };
+
+  it('resolves to the same totals from either order', () => {
+    // The card sorts its two ids before reading, so "open b×a" and "open a×b"
+    // are the same lookup — and `winsA` keeps belonging to whoever sorts first.
+    expect(club[pairKey('a', 'b')]).toBe(club[pairKey('b', 'a')]);
+  });
+
+  it('carries every title it holds, so the card can show two of them', () => {
+    const picks = pickChemistry(club);
+    expect(titlesOf(picks, pairKey('b', 'a'))).toEqual(titlesOf(picks, pairKey('a', 'b')));
+    expect(titlesOf(picks, pairKey('a', 'b')).length).toBeGreaterThanOrEqual(2);
+  });
+});
