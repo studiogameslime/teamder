@@ -1656,6 +1656,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── /communityPairStats/{gid__a__b} — pairs, inside ONE club ───────
+    // Server-written (commitRoundStats for assists, the end-of-evening rollup
+    // for everything else). Readable by members of that club: the whole point
+    // of the collection is that it does NOT cross clubs the way the global
+    // `pairStats` does, and the membership check is what keeps that true.
+    match /communityPairStats/{pairId} {
+      allow read: if isGroupMember(resource.data.groupId);
+      allow write: if false;
+    }
+
+    // ── /communityPairRollups/{gid__gameId} — "this evening is counted" ──
+    // A marker, not data. Server-only in both directions: a client able to
+    // delete one could make an evening count twice.
+    match /communityPairRollups/{rollupId} {
+      allow read, write: if false;
+    }
+
     // ── /roundSummaries/{gameId} — the club's story of one evening ─────
     // Written ONLY by onGameRosterChanged (Admin SDK), exactly once, when the
     // night's stats are final. Read by members of that club: unlike the

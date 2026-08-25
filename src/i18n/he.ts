@@ -869,6 +869,39 @@ export const he = {
   roundSummaryUnavailable: 'אין סיכום למחזור הזה',
   roundSummaryUnavailableHint:
     'הסיכום נוצר בסוף מחזור שנוהל במסך החי. למחזורים ישנים יותר הוא לא קיים.',
+  // ── כימיה במועדון ───────────────────────────────────────────────────
+  chemistrySection: 'כימיה במועדון',
+  chemistryWinningDuo: 'הצמד המנצח',
+  chemistryRegulars: 'השותפים הקבועים',
+  chemistryDeadlyDuo: 'הצמד הקטלני',
+  chemistryWall: 'החומה',
+  chemistryRivalry: 'היריבות הגדולה',
+  chemistryBalanced: 'היריבות הכי מאוזנת',
+  chemistryWinsTogether: (n: number) => `${n} ניצחונות יחד`,
+  chemistryGamesTogether: (n: number) => `${n} משחקונים יחד`,
+  chemistryAssistsBetween: (n: number) => `${n} בישולים אחד לשני`,
+  chemistryCleanSheetsTogether: (n: number) => `${n} שערים נקיים יחד`,
+  chemistryMeetings: (n: number) => `${n} מפגשים כיריבים`,
+  chemistryBalancedLine: (a: number, b: number) => `${a}–${b}`,
+  chemistryTied: 'שוויון',
+  // הבסיס ההיסטורי — כל מספר בכרטיס הזוג נמדד מהתאריך הזה, ולא מעורבב עם
+  // נתונים מוקדמים יותר שאין להם אותה רזולוציה.
+  chemistrySince: (date: string) => `הנתונים מ-${date} ואילך`,
+  chemistryEmpty: 'עוד קצת משחקים ונגלה מי הכימיה של המועדון',
+  // כרטיס הזוג
+  pairCardTogether: 'ביחד',
+  pairCardGames: 'משחקונים',
+  pairCardWins: 'ניצחונות',
+  pairCardLosses: 'הפסדים',
+  pairCardCleanSheets: 'שערים נקיים',
+  pairCardAttack: 'חיבור התקפי',
+  pairCardAssistsTotal: (n: number) => `בישולים ביניהם: ${n}`,
+  pairCardAssistLeg: (from: string, to: string, n: number) => `${from} → ${to} ${n}`,
+  pairCardHeadToHead: 'אחד נגד השני',
+  pairCardHeadToHeadLine: (meetings: number, a: string, wa: number, wb: number, b: string) =>
+    `${meetings} מפגשים · ${a} ${wa}–${wb} ${b}`,
+  pairCardNoMeetings: 'עוד לא שיחקו אחד נגד השני',
+  pairCardNoAssists: 'עוד לא בישלו אחד לשני',
   roundSummaryNumbers: 'המחזור במספרים',
   roundSummaryBackfilled:
     'הסיכום הופק בדיעבד — בערב הזה חלק מהנתונים עוד לא נאספו',

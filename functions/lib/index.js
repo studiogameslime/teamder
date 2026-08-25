@@ -70,6 +70,7 @@ const v2_1 = require("firebase-functions/v2");
 const params_1 = require("firebase-functions/params");
 const reviewAlerts_1 = require("./reviewAlerts");
 const teamBalanceCore_1 = require("./teamBalanceCore");
+const clubChemistry_1 = require("./clubChemistry");
 const roundSummary_1 = require("./roundSummary");
 const adminPush_1 = require("./adminPush");
 const adminUserPush_1 = require("./adminUserPush");
@@ -3822,6 +3823,96 @@ exports.onGameRotationChanged = (0, firestore_1.onDocumentWritten)('games/{id}',
  * branch there).
  */
 /**
+ * Fold one evening into the club's pair rollup.
+ *
+ * WHY THIS IS NOT IN `commitRoundStats`. The obvious place to count pairs is
+ * where the round is committed — and it is the wrong one. Mirroring the
+ * same-team and against pairs into a per-club document adds n² + n(n−1)
+ * operations to that batch: 45 at five a side, but 231 at eleven, on top of the
+ * ~400 already there. Firestore stops a batch at 500, and the idempotency latch
+ * lives in that same batch — so on a big format every retry would fail
+ * identically and the round's statistics would be lost permanently. Since the
+ * format picker opened up to eleven a side, that is a reachable configuration,
+ * not a hypothetical.
+ *
+ * Collapsing the whole evening first turns roughly 450 writes into at most one
+ * per pair who actually played: 105 for a fifteen-player club, measured. Those
+ * go in their own batches, chunked, touching nothing the round commit owns.
+ *
+ * Idempotent through a marker document created in the FIRST chunk: `create()`
+ * fails if it exists, so a re-delivered trigger stops before double-counting.
+ */
+async function rollUpClubPairs(args) {
+    const { gameId, groupId, at, rounds } = args;
+    if (!groupId || rounds.length === 0)
+        return 0;
+    const markerRef = db
+        .collection('communityPairRollups')
+        .doc(`${groupId}__${gameId}`);
+    if ((await markerRef.get()).exists) {
+        console.log('[clubPairs] already rolled up — skip', gameId);
+        return 0;
+    }
+    const pairs = (0, clubChemistry_1.pairsFromRounds)(rounds);
+    const entries = Object.entries(pairs);
+    if (entries.length === 0)
+        return 0;
+    const inc = admin.firestore.FieldValue.increment;
+    const now = Date.now();
+    // 450, not 500: the marker rides in the first chunk and Firestore counts
+    // every operation, so leaving headroom is cheaper than discovering the
+    // ceiling on the one evening a club fields eleven a side.
+    const CHUNK = 450;
+    for (let i = 0; i < entries.length; i += CHUNK) {
+        const batch = db.batch();
+        if (i === 0) {
+            batch.create(markerRef, {
+                groupId,
+                gameId,
+                at,
+                pairs: entries.length,
+                createdAt: now,
+            });
+        }
+        for (const [key, v] of entries.slice(i, i + CHUNK)) {
+            const [a, b] = (0, clubChemistry_1.pairMembers)(key);
+            batch.set(db.collection('communityPairStats').doc(`${groupId}__${key}`), {
+                groupId,
+                a,
+                b,
+                sameTeam: inc(v.sameTeam),
+                winsTogether: inc(v.winsTogether),
+                lossesTogether: inc(v.lossesTogether),
+                cleanSheetsTogether: inc(v.cleanSheetsTogether),
+                against: inc(v.against),
+                winsA: inc(v.winsA),
+                winsB: inc(v.winsB),
+                assistsAToB: inc(v.assistsAToB),
+                assistsBToA: inc(v.assistsBToA),
+                updatedAt: now,
+            }, { merge: true });
+        }
+        await batch.commit();
+    }
+    // The window these counters cover, held in ONE place so every pair card in
+    // the club quotes the same date.
+    //
+    // It matters because the legacy `assists` field on the same documents counts
+    // MORE history and carries no direction. A card that showed that total beside
+    // a directional breakdown drawn from this narrower window would print a
+    // breakdown that does not add up to its own total — so the card reads only
+    // the fields written here, and says which date they start from.
+    const csRef2 = db.collection('communityStats').doc(groupId);
+    const cs2 = await csRef2.get();
+    const since = cs2.data()?.chemistrySince;
+    if (typeof since !== 'number' || since <= 0 || at < since) {
+        await csRef2.set({ chemistrySince: at, updatedAt: now }, { merge: true });
+    }
+    console.log(`[clubPairs] ${gameId}: ${entries.length} pair(s) in ` +
+        `${Math.ceil(entries.length / CHUNK)} batch(es)`);
+    return entries.length;
+}
+/**
  * Seal the club's summary of one evening.
  *
  * Called once, from the end-of-evening hook, after every stat for the night is
@@ -4688,6 +4779,44 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                 }
                 catch (err) {
                     console.error('[onGameRosterChanged] round summary failed', event.params.gameId, err);
+                }
+                // ── Club chemistry: fold the evening into the pair rollup ───────
+                // Separate try and separate batches from everything above: this is
+                // the one write path whose size grows with the SQUARE of the team,
+                // and it must never be able to take the round's statistics with it.
+                try {
+                    const rhSnap2 = await db
+                        .collection('games')
+                        .doc(event.params.gameId)
+                        .collection('roundHistory')
+                        .get();
+                    const rounds2 = rhSnap2.docs
+                        .map((d) => d.data())
+                        .map((r) => ({
+                        teamA: Array.isArray(r.teamA) ? r.teamA : [],
+                        teamB: Array.isArray(r.teamB) ? r.teamB : [],
+                        scoreA: num(r.scoreA),
+                        scoreB: num(r.scoreB),
+                        winnerSide: r.winnerSide === 'A' || r.winnerSide === 'B'
+                            ? r.winnerSide
+                            : 'tie',
+                        goals: Array.isArray(r.goals)
+                            ? r.goals.map((g) => ({
+                                scorerId: typeof g.scorerId === 'string' ? g.scorerId : null,
+                                assisterId: typeof g.assisterId === 'string' ? g.assisterId : null,
+                                ownGoal: g.ownGoal === true,
+                            }))
+                            : [],
+                    }));
+                    await rollUpClubPairs({
+                        gameId: event.params.gameId,
+                        groupId: gid,
+                        at: typeof after.startsAt === 'number' ? after.startsAt : Date.now(),
+                        rounds: rounds2,
+                    });
+                }
+                catch (err) {
+                    console.error('[onGameRosterChanged] club pair rollup failed', event.params.gameId, err);
                 }
             }
             catch (err) {

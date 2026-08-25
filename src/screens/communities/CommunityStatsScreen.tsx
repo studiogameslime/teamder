@@ -41,6 +41,7 @@ import { groupService } from '@/services';
 import { type ChampionshipRow } from '@/utils/championship';
 import { penaltyKing, penaltyKeeperKing, pctOf } from '@/utils/penaltyStats';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
+import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
 import type { User } from '@/types';
@@ -467,6 +468,13 @@ export function CommunityStatsScreen() {
           </Card>
           </>
           ) : null}
+
+          {/* ── כימיה במועדון ── */}
+          {/* After the leaders and before the fun facts: the leaders are about
+              individuals, this is about who they play WITH, and the fun facts
+              are club-wide. It reads in that order. */}
+          <SectionTitle icon="people" text={he.chemistrySection} />
+          <ChemistrySection groupId={groupId} />
 
           {/* ── נתונים מעניינים (מעל הטבלה — בקשת אלירן) ── */}
           <SectionTitle icon="sparkles" text={he.communityStatsSectionFun} />
