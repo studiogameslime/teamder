@@ -497,3 +497,24 @@ describe('the record baseline after the evening', () => {
     expect(next.goals).toEqual({ value: 2, userIds: ['a'] });
   });
 });
+
+describe('a round whose colours were never recorded', () => {
+  it('is skipped, not counted under a phantom team', () => {
+    // `undefined < 0` is false, so a missing index used to slip past the guard
+    // and every such round piled onto one key — producing a team that had
+    // played more games than the evening contained.
+    const noColours = { ...R(), teamAIndex: undefined, teamBIndex: undefined } as unknown as RoundRec;
+    const t = buildRoundSummary(
+      input({ rounds: [noColours, R({ teamAIndex: 0, teamBIndex: 1 })] }),
+    ).teamHighlights;
+    expect(t.best).toEqual([{ colourIndex: 0, wins: 1, losses: 0, played: 1 }]);
+  });
+
+  it('never reports a team as having played more games than there were', () => {
+    const rounds = [R(), R({ teamAIndex: 2, teamBIndex: 1 }), R({ teamAIndex: 2, teamBIndex: 0 })];
+    const s = buildRoundSummary(input({ rounds }));
+    for (const line of [...s.teamHighlights.best, ...s.teamHighlights.worst]) {
+      expect(line.played).toBeLessThanOrEqual(rounds.length);
+    }
+  });
+});

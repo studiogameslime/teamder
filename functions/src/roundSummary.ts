@@ -386,6 +386,11 @@ function teamsOf(rounds: RoundRec[]): RoundSummary['teamHighlights'] {
   for (const r of rounds) {
     const a = r.teamAIndex;
     const b = r.teamBIndex;
+    // `< 0` alone let a MISSING index through: `undefined < 0` is false, so a
+    // round whose colours were never recorded was counted under the key
+    // `undefined` — every such round piling onto one phantom team that had
+    // played twice as many games as existed. Require an actual number.
+    if (typeof a !== 'number' || typeof b !== 'number') continue;
     if (a < 0 || b < 0) continue;
     bump(played, a);
     bump(played, b);
