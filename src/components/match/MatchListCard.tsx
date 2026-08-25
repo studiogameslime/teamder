@@ -429,11 +429,16 @@ const styles = StyleSheet.create({
   cta: {
     backgroundColor: ACCENT,
     paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
     marginTop: 2,
   },
-  ctaText: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '800', letterSpacing: 0.2 },
+  // Smaller and with room at the sides: "בקש להצטרף" is twice the length of
+  // "הצטרף" and ran past the pill on Android. The Text already asks to shrink
+  // to fit, but `adjustsFontSizeToFit` is iOS-only — on Android nothing
+  // happened and the label simply overflowed (user report, with a screenshot).
+  ctaText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.1 },
 });

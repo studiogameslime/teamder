@@ -1073,7 +1073,12 @@ export function CommunityDetailsScreen() {
               variant="outline"
               size="lg"
               fullWidth
-              iconRight="chatbubble-ellipses-outline"
+              // Left, like the share button directly below it. Reported by a
+              // user who had the two stacked on screen and saw one icon on each
+              // side — the fifth instance of this, and the first that was a
+              // wrong PROP rather than the direction-flipping bug the Button
+              // itself used to have.
+              iconLeft="chatbubble-ellipses-outline"
               onPress={handleChatAdmin}
             />
           ) : null}

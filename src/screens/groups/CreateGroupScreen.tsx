@@ -110,12 +110,18 @@ export function CreateGroupScreen() {
       // always means the App Check gate rejected the callable, NOT a
       // missing auth session — capture platform + code so the panel can
       // tell them apart.
-      logError('createGroup', e, {
-        screen: 'CreateGroupScreen',
-        code,
-        platform: Platform.OS,
-        appCheckSuspected: code === 'unauthenticated',
-      });
+      // A VALIDATION_ERROR is the form telling the user they left the name
+      // empty — the guard working, not the app failing. It reached the
+      // production error panel as "יצירת מועדון נכשלה" and read like a defect;
+      // the user still sees the message, it just is not filed as a fault.
+      if (code !== 'VALIDATION_ERROR') {
+        logError('createGroup', e, {
+          screen: 'CreateGroupScreen',
+          code,
+          platform: Platform.OS,
+          appCheckSuspected: code === 'unauthenticated',
+        });
+      }
       logEvent(AnalyticsEvent.GroupCreateFailed, {
         code,
         platform: Platform.OS,
