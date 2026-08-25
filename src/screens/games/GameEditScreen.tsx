@@ -16,7 +16,7 @@ import { seriesService, settingsFromGame } from '@/services/seriesService';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
-import { Game } from '@/types';
+import { DEFAULT_FORMAT, Game, teamSizeFromFormat } from '@/types';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import type { GameStackParamList } from '@/navigation/GameStack';
@@ -62,7 +62,10 @@ function gameToValues(g: Game): GameFormValues {
         ? { lat: g.fieldLat, lng: g.fieldLng }
         : undefined,
     fieldType: g.fieldType,
-    format: g.format ?? '5v5',
+    format: g.format ?? DEFAULT_FORMAT,
+    // Games created before the field existed have no count. They ran as two
+    // teams, so that is what editing one must show — the new 3-team default
+    // belongs to NEW games only, not to reopening an old one.
     numberOfTeams: g.numberOfTeams ?? 2,
     advancedMode: g.advancedMode === true,
     advancedFillMode: g.advancedFillMode ?? 'temporary',
@@ -180,14 +183,7 @@ export function GameEditScreen() {
 
   const submit = async (v: GameFormValues) => {
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
-    const playersPerTeam =
-      v.format === '4v4'
-        ? 4
-        : v.format === '6v6'
-          ? 6
-          : v.format === '7v7'
-            ? 7
-            : 5;
+    const playersPerTeam = teamSizeFromFormat(v.format);
     const newMaxPlayers = playersPerTeam * v.numberOfTeams;
     // Block lowering capacity below what's already registered. Counts
     // players + guests + pending (anyone currently holding a slot or
@@ -472,9 +468,17 @@ export function GameEditScreen() {
   };
 
   const isOrphan = game.isOrphanContext === true;
+  // Same tally the save-time capacity guard uses (players + guests + pending,
+  // waitlist excluded as overflow). Passed down so the format card can say
+  // whether the structure still fits before the save refuses it.
+  const registeredCount =
+    (game.players?.length ?? 0) +
+    (game.guests?.length ?? 0) +
+    (game.pending?.length ?? 0);
   return (
     <GameWizardForm
       isEdit
+      registeredCount={registeredCount}
       headerTitle={he.editGameTitle}
       submitLabel={he.editGameSubmit}
       initial={gameToValues(game)}

@@ -1180,10 +1180,11 @@ export function ProfileScreen() {
                   tile: 'evening_summary',
                   source: 'just_played',
                 });
-                nav.navigate('GameTab', {
-                  screen: 'EveningSummary',
-                  params: { gameId: justPlayed.id },
-                } as never);
+                // Match details, not straight to the personal summary. From
+                // there the summary is one tap away, along with the score, the
+                // teams and everyone else's evening — a user asked for the
+                // whole match back, not only their own card.
+                nav.navigate('MatchDetails', { gameId: justPlayed.id });
               }}
               accessibilityRole="button"
               accessibilityLabel={he.homeJustPlayedCta}
@@ -1555,22 +1556,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#065F46',
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    // Not `'right'`: under forceRTL that resolves to the visual LEFT, and
+    // `writingDirection` applies the same swap a second time. The card shipped
+    // with its title and link hugging the left and a user sent a screenshot of
+    // it. See theme/rtl.ts.
+    textAlign: RTL_LABEL_ALIGN,
   },
   justPlayedBody: {
     fontSize: 13,
     color: '#047857',
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   justPlayedCta: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F766E',
     marginTop: 4,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   justPlayedEmoji: { fontSize: 30 },
   // Amber "pending join requests" banner (admins only).

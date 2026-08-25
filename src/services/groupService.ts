@@ -40,6 +40,7 @@ import { optionalString, requireString } from '@/utils/validate';
 import { enforceRateLimit } from '@/services/rateLimitService';
 import { achievementsService } from './achievementsService';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 import { col, docs, GroupJoinRequestDoc } from '@/firebase/firestore';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { notificationsService } from './notificationsService';
@@ -1844,9 +1845,15 @@ export const groupService = {
     let fetched: User[] = [];
     try {
       const chunks = chunk(userIds, 30);
-      const results = await Promise.all(
-        chunks.map((ids) =>
-          getDocs(query(col.users(), where(documentId(), 'in', ids))),
+      // Retried once through the cold-start auth race: this is one of the very
+      // first reads after an app restart, and it failed permission-denied in
+      // production within five seconds of launch — together with the two other
+      // reads that fire at the same moment.
+      const results = await withAuthRaceRetry(() =>
+        Promise.all(
+          chunks.map((ids) =>
+            getDocs(query(col.users(), where(documentId(), 'in', ids))),
+          ),
         ),
       );
       fetched = results.flatMap((snap) => snap.docs.map((d) => d.data()));

@@ -1,6 +1,7 @@
 package io.joryio.sdk
 
 import android.app.Application
+import io.joryio.sdk.push.PushRegistrationResult
 import android.os.Handler
 import android.os.Looper
 import android.content.Context
@@ -888,12 +889,29 @@ class Joryio private constructor(
                         // gap alone lets the next sync retry this campaign.
                         logger.debug("No foreground Activity; not displaying ${campaign.id}")
                     else -> activity.runOnUiThread {
-                        inAppMessagingManager.noteDisplayed()
-                        // Only track when the presenter says it actually drew.
-                        // Counting an impression for a message that failed to
-                        // display is how a channel looks healthier than it is.
-                        presenter.present(activity, campaign) { action, _ ->
+                        // Stamp the gap only AFTER the presenter says it drew.
+                        //
+                        // This used to call noteDisplayed() first and discard
+                        // present()'s Boolean, which made three comments here
+                        // describe behaviour the code did not have: the branch
+                        // above goes out of its way not to spend the budget on
+                        // a message nobody saw, and then this branch spent it
+                        // before knowing. Both DefaultInAppMessagePresenter and
+                        // the renderer are carefully written to return false
+                        // when they decline (null content, type == CUSTOM, HTML
+                        // without opt-in, a Throwable), and every one of those
+                        // returns was being thrown away.
+                        //
+                        // Reported from a production integration, 2026-08-23.
+                        val drew = presenter.present(activity, campaign) { action, _ ->
                             trackInAppImpression(campaign.id, action)
+                        }
+                        if (drew) {
+                            inAppMessagingManager.noteDisplayed()
+                        } else {
+                            // Deliberately leaves the gap alone, exactly as the
+                            // no-Activity branch does: the next sync retries.
+                            logger.debug("Presenter declined to draw ${campaign.id}; gap not stamped")
                         }
                     }
                 }
@@ -1025,10 +1043,49 @@ class Joryio private constructor(
     // MARK: - Push Notifications
 
     /**
-     * Register push notification token
+     * Register push notification token.
+     *
+     * Also refreshes `push_permission`, because ARRIVING HERE IS EVIDENCE. The
+     * OS does not hand out a token without permission, so a token in hand
+     * settles the question no matter what was last reported.
+     *
+     * Why that matters: the attribute is otherwise refreshed on init and on
+     * foreground, and a host app that grants permission after init and
+     * registers its own token - every React Native integration using Firebase
+     * Messaging, for instance - could sit on a stale `not_determined` until the
+     * next foreground. A production integration reported exactly that: token
+     * stored correctly, attribute still not_determined.
+     *
+     * That is the common path, not an edge case: the OS prompt is deliberately
+     * deferred until after sign-up in most apps, and init always runs first. A
+     * segment filtering on push_permission = granted then excludes real,
+     * reachable users - it shrinks the audience silently, which is the failure
+     * mode nobody notices.
      */
-    fun registerPushToken(token: String) {
-        pushManager?.registerToken(token)
+    /**
+     * @param onResult called once with the registration outcome. Optional, and
+     *   omitting it is exactly the previous behaviour.
+     *
+     *   Without it this was fire-and-forget: the only sign of a rejection was
+     *   a logger.error gated behind enableDebug, so a release build could fail
+     *   on every launch and never say so. Matches iOS's
+     *   `registerPushToken(_:onResult:)`.
+     *
+     *   Invoked on a background coroutine, not the main thread - post to the
+     *   main looper before touching UI.
+     */
+    @JvmOverloads
+    fun registerPushToken(
+        token: String,
+        onResult: ((PushRegistrationResult) -> Unit)? = null,
+    ) {
+        pushManager?.registerToken(token, onResult = onResult)
+            ?: onResult?.invoke(
+                // No push manager means initialize() has not run. Silence here
+                // would look identical to a successful registration.
+                PushRegistrationResult(success = false, message = "SDK not initialized")
+            )
+        reportPushPermissionIfChanged()
     }
 
     /**

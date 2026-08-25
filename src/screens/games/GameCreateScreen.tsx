@@ -17,7 +17,7 @@ import { groupService } from '@/services/groupService';
 import { notificationsService } from '@/services/notificationsService';
 import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Group } from '@/types';
+import { DEFAULT_FORMAT, DEFAULT_TEAM_COUNT, Group, teamSizeFromFormat } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { WINDOW_START_HOUR } from '@/utils/demandSlots';
 import { he } from '@/i18n/he';
@@ -89,8 +89,8 @@ function buildInitial(
     cityFromList: presetCity.length > 0,
     fieldAddress: '',
     fieldType: undefined,
-    format: overrides?.format ?? '5v5',
-    numberOfTeams: overrides?.numberOfTeams ?? 2,
+    format: overrides?.format ?? DEFAULT_FORMAT,
+    numberOfTeams: overrides?.numberOfTeams ?? DEFAULT_TEAM_COUNT,
     matchDurationMinutes: '8',
     advancedMode: false,
     advancedFillMode: 'temporary',
@@ -404,14 +404,7 @@ export function GameCreateScreen() {
       if (!proceed) return;
     }
     const parsedDuration = parseInt(v.matchDurationMinutes, 10);
-    const playersPerTeam =
-      v.format === '4v4'
-        ? 4
-        : v.format === '6v6'
-          ? 6
-          : v.format === '7v7'
-            ? 7
-            : 5;
+    const playersPerTeam = teamSizeFromFormat(v.format);
     // Recurring is now an in-form toggle (step 3). When enabled with
     // a real timestamp, persist `registrationOpensAt`; otherwise omit
     // and the game opens immediately. Past values are allowed and

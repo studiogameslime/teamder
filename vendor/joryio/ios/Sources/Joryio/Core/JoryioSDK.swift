@@ -1120,18 +1120,35 @@ public class Joryio {
     /// Register a push token supplied as a hex string (e.g. from a
     /// cross-platform bridge that already has the APNs token as a string).
     /// Mirrors the Android SDK's `registerPushToken(String)`.
-    public func registerPushToken(_ token: String) {
+    /// - Parameter onResult: called once with the registration outcome.
+    ///   Optional, and omitting it is exactly the previous behaviour.
+    ///
+    ///   Without it this was fire-and-forget: the only sign of a rejection was
+    ///   a logger call gated behind debug logging, so a release build could
+    ///   fail on every launch and never say so. Matches Android's
+    ///   `registerPushToken(token, onResult:)`.
+    ///
+    ///   Called on a background task, not necessarily the main thread - hop to
+    ///   the main actor before touching UI.
+    public func registerPushToken(
+        _ token: String,
+        onResult: ((PushRegistrationResult) -> Void)? = nil
+    ) {
         guard isInitialized else {
             logNotInitialized()
+            onResult?(PushRegistrationResult(success: false, message: "SDK not initialized"))
             return
         }
 
         guard !isOptedOut else {
             logger.debug("User opted out, skipping push token registration")
+            // Opted out is not a failure to report as one, but the caller still
+            // needs to know the token is not registered.
+            onResult?(PushRegistrationResult(success: false, message: "User opted out"))
             return
         }
 
-        pushNotifications.registerDeviceToken(token)
+        pushNotifications.registerDeviceToken(token, onResult: onResult)
 
         // Refresh push_permission: ARRIVING HERE IS EVIDENCE. iOS does not hand
         // out a device token without authorisation, so a token in hand settles

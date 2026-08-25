@@ -130,7 +130,7 @@ publishing {
         create<MavenPublication>("release") {
             groupId = "io.joryio"
             artifactId = "joryio-android"
-            version = "1.1.0"
+            version = "1.2.0"
 
             afterEvaluate {
                 from(components["release"])

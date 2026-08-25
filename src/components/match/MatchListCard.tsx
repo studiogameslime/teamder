@@ -17,10 +17,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Game, GameFormat, FieldType, UserId, activeGuestCount } from '@/types';
+import { Game, FieldType, UserId, activeGuestCount } from '@/types';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { dayDiff, formatDateShort, formatTime } from '@/utils/format';
+import { dayDiff, formatDateShort, formatTime,
+  gameFormatLabel,
+} from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 
 export type MatchCardCta =
@@ -75,15 +77,6 @@ function ctaForGame(
   return 'waitlist';
 }
 
-function formatLabel(f: GameFormat | undefined): string | null {
-  const s = f as string | undefined;
-  if (s === '4v4') return he.gameFormat4;
-  if (s === '5v5') return he.gameFormat5;
-  if (s === '6v6') return he.gameFormat6;
-  if (s === '7v7') return he.gameFormat7;
-  if (typeof s === 'string' && /^\d+v\d+$/.test(s)) return s.replace('v', '×');
-  return null;
-}
 
 function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
@@ -98,7 +91,7 @@ export function MatchListCard({ game, userId, onPrimary, busy }: Props) {
   const status = statusForUser(game, userId);
   const cta = ctaForGame(game, status);
   const isManager = !!userId && game.createdBy === userId;
-  const fmt = formatLabel(game.format);
+  const fmt = game.format ? gameFormatLabel(game.format) : null;
   const occupancy =
     game.players.length +
     activeGuestCount(game.guests) +

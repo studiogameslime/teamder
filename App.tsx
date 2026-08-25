@@ -86,6 +86,30 @@ try {
           shouldSetBadge: false,
         };
       }
+      // Joryio's SILENT sync nudge. The backend fires one after queueing an
+      // in-app message so the SDK pulls it immediately instead of waiting for
+      // the next foreground. It is data-only and carries no title or body.
+      //
+      // Their SDK handles this in its own FirebaseMessagingService — which
+      // nothing registers: on Android only one service holds the
+      // `MESSAGING_EVENT` slot, and in this app that is
+      // TeamderMessagingService (it forwards everything to
+      // expo-notifications). So the nudge landed here instead, where it did
+      // nothing except risk being drawn as an empty notification. Do the two
+      // things their handler would have done: sync, and show nothing.
+      const jryData = (notification?.request?.content?.data ?? {}) as Record<string, unknown>;
+      if (jryData.joryio === 'true' && typeof jryData.jry_sync === 'string' && jryData.jry_sync) {
+        if (jryData.jry_sync === 'campaigns' || jryData.jry_sync === 'in_app') {
+          joryio.syncInAppCampaigns();
+        }
+        return {
+          shouldShowBanner: false,
+          shouldShowList: false,
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      }
       // expo-notifications split `shouldShowAlert` into the more
       // granular `shouldShowBanner` (head-up alert) +
       // `shouldShowList` (notification center) in newer SDKs. We set

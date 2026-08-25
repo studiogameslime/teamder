@@ -35,11 +35,15 @@ export function TieDecisionModal({
   visible,
   onManual,
   onPenalties,
+  onBothOut,
   onClose,
 }: {
   visible: boolean;
   onManual: () => void;
   onPenalties: () => void;
+  /** Send BOTH sides off and bring the next two on. Absent when there is
+   *  nothing to bring on — with 3 teams or fewer the pitch would empty. */
+  onBothOut?: () => void;
   onClose: () => void;
 }) {
   return (
@@ -64,6 +68,15 @@ export function TieDecisionModal({
             </View>
             <Text style={styles.decideEmoji}>🥅</Text>
           </Pressable>
+          {onBothOut ? (
+            <Pressable style={styles.decideOpt} onPress={onBothOut}>
+              <View style={styles.flex1}>
+                <Text style={styles.decideLabel}>{he.shDecideBothOut}</Text>
+                <Text style={styles.decideHint}>{he.shDecideBothOutHint}</Text>
+              </View>
+              <Text style={styles.decideEmoji}>🔄</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable style={styles.backRow} onPress={onClose}>
             <Text style={styles.backText}>{he.shBack}</Text>

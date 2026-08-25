@@ -120,11 +120,20 @@ export function DraftBoardScreen() {
     };
   }, [gameId, hydratePlayers, readOnly, currentUser, myCommunities, nav]);
 
-  // Roster = registered players (from the store) + per-game guests.
-  const participants = useMemo<
-    { id: string; name: string; avatarId?: string; photoUrl?: string }[]
+  // Everyone attached to the game, waitlist included — this is the NAME
+  // directory, so a person already sitting on a team still resolves to their
+  // name rather than an ellipsis.
+  const roster = useMemo<
+    {
+      id: string;
+      name: string;
+      avatarId?: string;
+      photoUrl?: string;
+      waitlisted: boolean;
+    }[]
   >(() => {
     if (!game) return [];
+    const waitlisted = new Set(game.waitlist ?? []);
     const players = (game.players ?? []).map((uid) => {
       const p = playersMap[uid];
       return {
@@ -132,6 +141,7 @@ export function DraftBoardScreen() {
         name: p?.displayName ?? '…',
         avatarId: p?.avatarId,
         photoUrl: p?.photoUrl,
+        waitlisted: waitlisted.has(uid),
       };
     });
     // Guests MUST carry the `guest:` roster-id prefix here — same as every
@@ -142,12 +152,23 @@ export function DraftBoardScreen() {
     const guests = (game.guests ?? []).map((g) => ({
       id: toGuestRosterId(g.id),
       name: g.name,
+      waitlisted: g.waitlisted === true,
     }));
     return [...players, ...guests];
   }, [game, playersMap]);
+
+  // Who can actually be drafted. The waitlist is overflow — those people hold
+  // no slot in the game — and a waitlisted guest was appearing under
+  // "שחקנים זמינים" and could be picked onto a team (user report, with a
+  // screenshot of exactly that). The draft SETUP screen already filtered them
+  // out, so the same roster had two different definitions.
+  const participants = useMemo(
+    () => roster.filter((p) => !p.waitlisted),
+    [roster],
+  );
   const byId = useMemo(
-    () => new Map(participants.map((p) => [p.id, p])),
-    [participants],
+    () => new Map(roster.map((p) => [p.id, p])),
+    [roster],
   );
   const resolve = useCallback(
     (id: string) => byId.get(id) ?? { id, name: '…' },

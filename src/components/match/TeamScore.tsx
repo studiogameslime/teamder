@@ -65,6 +65,19 @@ interface Props {
   /** "החלפה" mode: blink every candidate (all but the picked source). */
   swapMode?: boolean;
   swapSourceId?: string | null;
+  /**
+   * Lay the list out as a BLOCK — natural height, full width — instead of as
+   * one half of the scoreboard row.
+   *
+   * The list variant is normally one of two columns in a `flexDirection: 'row'`
+   * container, where `flex: 1` gives it half the width. Dropped into a COLUMN
+   * (the waiting-team roster sheet) the same `flex: 1` applies to HEIGHT, and
+   * its `flexBasis: 0` makes the block ignore its own content and collapse to
+   * nothing: the roster rendered as a stack of squashed white bars with the
+   * avatars spilling out the side, and a user sent a screenshot asking
+   * "מה זה הדבר הזה?!". Column callers pass `block`.
+   */
+  block?: boolean;
 }
 
 export function TeamScore({
@@ -77,6 +90,7 @@ export function TeamScore({
   goalsByPlayer,
   teams,
   onPlayerPress,
+  block,
   swapMode,
   swapSourceId,
 }: Props) {
@@ -108,7 +122,7 @@ export function TeamScore({
   if (variant === 'list') {
     const size = avatarSize ?? 36;
     return (
-      <View style={styles.listCol}>
+      <View style={block ? styles.listBlock : styles.listCol}>
         <View style={styles.headerRow}>
           <Text style={[styles.nameOnly, { color: teamColor(teamIdx, teams) }]}>{teamName(teamIdx, teams)}</Text>
           <View style={styles.winsBox}>
@@ -229,6 +243,7 @@ const styles = StyleSheet.create({
 
   // list variant
   listCol: { flex: 1, minWidth: 0, gap: 8 },
+  listBlock: { width: '100%', minWidth: 0, gap: 8 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   winsBox: {
     minWidth: 52,

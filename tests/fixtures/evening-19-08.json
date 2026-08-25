@@ -1,0 +1,342 @@
+{
+ "gameId": "cSGXyDgRKSyci4mgBToO",
+ "groupId": "0cdCmLhkaOdTsQA2AF0a",
+ "rounds": [
+  {
+   "teamAIndex": 0,
+   "teamBIndex": 2,
+   "winnerSide": "A",
+   "goals": [],
+   "shootout": true
+  },
+  {
+   "teamAIndex": 0,
+   "teamBIndex": 1,
+   "winnerSide": "B",
+   "goals": [
+    {
+     "scorerId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "assisterId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 2,
+   "winnerSide": "A",
+   "goals": [
+    {
+     "scorerId": "VGPpDG3c9RNMNlsNMvfwNF2MkQ03",
+     "assisterId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "assisterId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "ownGoal": false,
+     "team": "A"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 0,
+   "winnerSide": "A",
+   "goals": [
+    {
+     "scorerId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "assisterId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "assisterId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "ownGoal": false,
+     "team": "A"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 2,
+   "winnerSide": "B",
+   "goals": [
+    {
+     "scorerId": "XEVi4UPvuZbVnsq2ntBtMAqTPGR2",
+     "assisterId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "ownGoal": false,
+     "team": "B"
+    },
+    {
+     "scorerId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "assisterId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "ADNcyWgL5dgQTosJ3l6mr4dtNAv2",
+     "assisterId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 2,
+   "teamBIndex": 0,
+   "winnerSide": "A",
+   "goals": [
+    {
+     "scorerId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "assisterId": null,
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "c3TocTM8nCPCRJ2YWKa2zMpTUhv1",
+     "assisterId": "9OZlK5fmd1Vh46SszBs5y5cQVyg1",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": true
+  },
+  {
+   "teamAIndex": 2,
+   "teamBIndex": 1,
+   "winnerSide": "B",
+   "goals": [
+    {
+     "scorerId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "assisterId": null,
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "assisterId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "ownGoal": false,
+     "team": "B"
+    },
+    {
+     "scorerId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+     "assisterId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 0,
+   "winnerSide": "A",
+   "goals": [
+    {
+     "scorerId": "IkGmP0AAadR9LKVD4zeyM06K2xz1",
+     "assisterId": "9OZlK5fmd1Vh46SszBs5y5cQVyg1",
+     "ownGoal": false,
+     "team": "B"
+    },
+    {
+     "scorerId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "assisterId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "assisterId": null,
+     "ownGoal": false,
+     "team": "A"
+    }
+   ],
+   "shootout": false
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 2,
+   "winnerSide": "A",
+   "goals": [
+    {
+     "scorerId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+     "assisterId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+     "ownGoal": false,
+     "team": "A"
+    },
+    {
+     "scorerId": "fw3knoc4buQoLmWKGbmnYElidvs2",
+     "assisterId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": true
+  },
+  {
+   "teamAIndex": 1,
+   "teamBIndex": 0,
+   "winnerSide": "B",
+   "goals": [
+    {
+     "scorerId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+     "assisterId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+     "ownGoal": false,
+     "team": "B"
+    },
+    {
+     "scorerId": "9OZlK5fmd1Vh46SszBs5y5cQVyg1",
+     "assisterId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+     "ownGoal": false,
+     "team": "B"
+    }
+   ],
+   "shootout": false
+  }
+ ],
+ "players": [
+  {
+   "userId": "1IdtNEjbEXfiRSqvLrJVn99NsfI2",
+   "isGuest": false,
+   "goals": 2,
+   "assists": 3,
+   "wins": 6,
+   "cleanSheets": 3,
+   "rounds": 8
+  },
+  {
+   "userId": "9OZlK5fmd1Vh46SszBs5y5cQVyg1",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 2,
+   "wins": 2,
+   "cleanSheets": 2,
+   "rounds": 6
+  },
+  {
+   "userId": "ADNcyWgL5dgQTosJ3l6mr4dtNAv2",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 1,
+   "rounds": 6
+  },
+  {
+   "userId": "B5KpYO4ILhQD0YVmMng997matof1",
+   "isGuest": false,
+   "goals": 0,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 1,
+   "rounds": 6
+  },
+  {
+   "userId": "BM8jdihtGNPiSl1dYwXt9o9WgMC2",
+   "isGuest": false,
+   "goals": 0,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 2,
+   "rounds": 6
+  },
+  {
+   "userId": "IkGmP0AAadR9LKVD4zeyM06K2xz1",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 2,
+   "rounds": 6
+  },
+  {
+   "userId": "Ky0Rrgce6MXsu7EGdhIQiEm6jlM2",
+   "isGuest": false,
+   "goals": 3,
+   "assists": 5,
+   "wins": 6,
+   "cleanSheets": 3,
+   "rounds": 8
+  },
+  {
+   "userId": "PHlSgRAvPgRJUkzTZtmNpWmwB1w2",
+   "isGuest": false,
+   "goals": 5,
+   "assists": 2,
+   "wins": 6,
+   "cleanSheets": 3,
+   "rounds": 8
+  },
+  {
+   "userId": "VGPpDG3c9RNMNlsNMvfwNF2MkQ03",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 5,
+   "cleanSheets": 2,
+   "rounds": 7
+  },
+  {
+   "userId": "XEVi4UPvuZbVnsq2ntBtMAqTPGR2",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 1,
+   "rounds": 6
+  },
+  {
+   "userId": "YIZlKWBvvjae3oqgIoAMr9nzQEi1",
+   "isGuest": false,
+   "goals": 0,
+   "assists": 2,
+   "wins": 2,
+   "cleanSheets": 2,
+   "rounds": 6
+  },
+  {
+   "userId": "bVHUo9Iscacfg7otf6wrPQ60Nlh1",
+   "isGuest": false,
+   "goals": 3,
+   "assists": 3,
+   "wins": 4,
+   "cleanSheets": 3,
+   "rounds": 8
+  },
+  {
+   "userId": "c3TocTM8nCPCRJ2YWKa2zMpTUhv1",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 1,
+   "cleanSheets": 1,
+   "rounds": 5
+  },
+  {
+   "userId": "fw3knoc4buQoLmWKGbmnYElidvs2",
+   "isGuest": false,
+   "goals": 1,
+   "assists": 0,
+   "wins": 2,
+   "cleanSheets": 1,
+   "rounds": 6
+  },
+  {
+   "userId": "qGxgwVXmhGTlYeEN7WbZDxjyWcb2",
+   "isGuest": false,
+   "goals": 0,
+   "assists": 0,
+   "wins": 6,
+   "cleanSheets": 3,
+   "rounds": 8
+  }
+ ]
+}

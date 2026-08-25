@@ -16,6 +16,7 @@
 import { groupService } from '@/services/groupService';
 import { haversineKm } from '@/utils/geo';
 import { logError } from '@/services/errorLog';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 import type { GroupPublic, User } from '@/types';
 
 export interface NearbyClubsResult {
@@ -90,7 +91,10 @@ export const nearbyClubsService = {
     if (!user) return { clubs: [], scope: 'all' };
     let directory: GroupPublic[];
     try {
-      directory = await loadDirectory();
+      // Same cold-start auth race as the roster reads — the communities feed
+      // renders immediately on launch, so this fires before the ID token has
+      // reached the Firestore channel.
+      directory = await withAuthRaceRetry(() => loadDirectory());
     } catch (err) {
       logError('getNearbyClubs', err, { userId: user.id });
       return { clubs: [], scope: 'all' };

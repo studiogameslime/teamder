@@ -13,11 +13,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Game, GameFormat, UserId } from '@/types';
+import type { Game, UserId } from '@/types';
 import { activeGuestCount } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { dayDiff, formatGameDay, formatTime, relativeKickoff } from '@/utils/format';
+import { dayDiff, formatGameDay, formatTime, relativeKickoff,
+  gameFormatLabel,
+} from '@/utils/format';
 import { PressableScale } from '@/components/PressableScale';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 
@@ -32,12 +34,6 @@ interface Props {
 
 const ACCENT = '#3B82F6';
 
-function formatLabel(f: GameFormat | undefined): string {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '6v6') return he.gameFormat6;
-  if (f === '7v7') return he.gameFormat7;
-  return he.gameFormat5;
-}
 
 function statusForUser(
   g: Game,
@@ -140,7 +136,7 @@ function GameBody({
 
         <View style={styles.tagsRow}>
           <View style={styles.formatTag}>
-            <Text style={styles.formatTagText}>{formatLabel(game.format)}</Text>
+            <Text style={styles.formatTagText}>{gameFormatLabel(game.format ?? '')}</Text>
           </View>
           <Text style={styles.playersInline} numberOfLines={1}>
             {he.matchCardPlayersOf(occupancy, game.maxPlayers)}

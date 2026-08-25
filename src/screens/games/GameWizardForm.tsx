@@ -47,7 +47,16 @@ import { FriendsInvitePicker } from '@/components/games/FriendsInvitePicker';
 import { LocationSearchSheet } from '@/components/games/LocationSearchSheet';
 import { reverseGeocodeCity } from '@/services/geocodeService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { FieldType, GameFormat } from '@/types';
+import {
+  FieldType,
+  GameFormat,
+  TEAM_COUNT_MAX,
+  TEAM_COUNT_MIN,
+  TEAM_SIZE_MAX,
+  TEAM_SIZE_MIN,
+  formatFromTeamSize,
+  teamSizeFromFormat,
+} from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import {
@@ -55,12 +64,12 @@ import {
   HEBREW_DAYS_LONG,
   formatTime,
   formatDateShort,
+  gameFormatLabel,
 } from '@/utils/format';
+import { FormatStepper } from '@/components/games/FormatStepper';
 import { lightHaptic } from '@/utils/haptics';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 
-const FORMATS: GameFormat[] = ['4v4', '5v5', '6v6', '7v7'];
-const TEAM_COUNTS = [2, 3, 4, 5] as const;
 const FIELD_TYPES = ['asphalt', 'synthetic', 'grass'] as const;
 const CANCEL_DEADLINE_OPTIONS: Array<number | undefined> = [
   undefined,
@@ -74,19 +83,10 @@ const CANCEL_DEADLINE_OPTIONS: Array<number | undefined> = [
  *  score is null and never passes any minimum). */
 const FILLER_MIN_TRUST_OPTIONS = [0, 50, 70, 80, 90] as const;
 
-function formatLabel(f: GameFormat): string {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '5v5') return he.gameFormat5;
-  if (f === '6v6') return he.gameFormat6;
-  return he.gameFormat7;
-}
 function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
   if (f === 'synthetic') return he.fieldTypeSynthetic;
   return he.fieldTypeGrass;
-}
-function playersPerTeam(f: GameFormat): number {
-  return f === '4v4' ? 4 : f === '5v5' ? 5 : f === '6v6' ? 6 : 7;
 }
 function cancelOptionLabel(h: number | undefined): string {
   return h === undefined ? he.wizardCancelOptionNone : he.wizardCancelOption(h);
@@ -248,6 +248,11 @@ interface Props {
   /** Warn on leave when there are unsaved edits. On for the EDIT flow
    *  (where discarding silently loses real changes); off for create. */
   enableUnsavedGuard?: boolean;
+  /** Players + guests already holding a slot. Passed by the EDIT flow, which
+   *  has the roster loaded anyway, so the format card can say whether the
+   *  structure still fits. Omitted on create — a new game has nobody, and this
+   *  must not become a reason to fetch anything. */
+  registeredCount?: number;
 }
 
 // Advanced game mode (teams/rotation/winner-stays live screen). Enabled in
@@ -267,6 +272,7 @@ export function GameWizardForm({
   communityName,
   internalRating = false,
   enableUnsavedGuard = false,
+  registeredCount,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
@@ -303,7 +309,7 @@ export function GameWizardForm({
     val: GameFormValues[K],
   ) => setValues((s) => ({ ...s, [key]: val }));
 
-  const maxPlayers = playersPerTeam(values.format) * values.numberOfTeams;
+  const maxPlayers = teamSizeFromFormat(values.format) * values.numberOfTeams;
 
   // Subtle fade-in when transitioning between steps. We animate a fresh
   // Animated.Value PER STEP (keyed below) rather than resetting one shared
@@ -506,7 +512,11 @@ export function GameWizardForm({
               />
             ) : null}
             {step === 2 ? (
-              <Step2 values={values} maxPlayers={maxPlayers} set={set} />
+              <Step2
+                values={values}
+                set={set}
+                registeredCount={registeredCount}
+              />
             ) : null}
             {step === 3 ? (
               <Step3
@@ -774,41 +784,37 @@ function Step1({
 
 function Step2({
   values,
-  maxPlayers,
   set,
+  registeredCount,
 }: {
   values: GameFormValues;
-  maxPlayers: number;
   set: SetFn;
+  registeredCount?: number;
 }) {
-  // Step 2 — "פורמט". Match shape: format + team count → derived max
-  // players, plus duration + game-rule toggles (penalties / referee /
-  // halves). Bring-ball / bring-shirts moved to step 3 — they're a
-  // logistics concern, not a match rule.
+  // Step 2 — three sections, in the order an organiser decides them:
+  // פורמט המחזור (shape: size per team × how many teams), אופן המשחק (whether
+  // the live screen runs the rotation), משך וחוקים (length + free-text rules).
+  // Bring-ball / bring-shirts live on step 3 — logistics, not match rules.
   return (
     <View style={styles.stack}>
       <FormSectionHeader title={he.wizardSectionFormat} first />
-      <PillRow
-        label={he.createGameFormat}
-        options={FORMATS.map((f) => ({ value: f, label: formatLabel(f) }))}
-        selected={values.format}
-        onSelect={(v) => set('format', v as GameFormat)}
+      {/* One card instead of two chip rows. The chips hard-coded 4v4–7v7 and
+          2–5 teams, which read as "these are the supported shapes" when in fact
+          nothing downstream cared; the real ceilings are TEAM_SIZE_MAX /
+          TEAM_COUNT_MAX and they live in @/types beside the reason for each. */}
+      <FormatStepper
+        registeredCount={registeredCount}
+        teamSize={teamSizeFromFormat(values.format)}
+        teamCount={values.numberOfTeams}
+        sizeMin={TEAM_SIZE_MIN}
+        sizeMax={TEAM_SIZE_MAX}
+        countMin={TEAM_COUNT_MIN}
+        countMax={TEAM_COUNT_MAX}
+        onChangeTeamSize={(n) => set('format', formatFromTeamSize(n))}
+        onChangeTeamCount={(n) => set('numberOfTeams', n)}
       />
 
-      <PillRow
-        label={he.createGameNumberOfTeams}
-        options={TEAM_COUNTS.map((n) => ({ value: n, label: String(n) }))}
-        selected={values.numberOfTeams}
-        onSelect={(v) => set('numberOfTeams', v as number)}
-      />
-
-      <View style={styles.totalRow}>
-        <Ionicons name="people-outline" size={18} color={colors.primary} />
-        <Text style={styles.totalText}>
-          {he.createGameTotalShort(maxPlayers)}
-        </Text>
-      </View>
-
+      <FormSectionHeader title={he.wizardSectionPlayStyle} />
       {/* Advanced game mode — master toggle + conditional sub-options. Hidden
           behind ADVANCED_MODE_ENABLED while the feature is unfinished. */}
       {ADVANCED_MODE_ENABLED ? (
@@ -835,17 +841,12 @@ function Step2({
               <Text style={styles.hint}>{he.createGameAdvancedFillHint}</Text>
             </View>
           ) : null}
-          {values.advancedMode && values.numberOfTeams === 4 ? (
-            <View style={styles.advancedSub}>
-              <ToggleRow
-                label={he.createGameAdvancedTie}
-                hint={he.createGameAdvancedTieHint}
-                info={{ title: he.createGameAdvancedTie, text: he.createGameAdvancedTieInfo }}
-                value={values.advancedTieMode === 'veteranOut'}
-                onChange={(v) => set('advancedTieMode', v ? 'veteranOut' : 'bothOut')}
-              />
-            </View>
-          ) : null}
+          {/* The tie rule used to be decided HERE, weeks before anyone played:
+              a toggle for "veteran out" vs "both out" that then applied itself
+              silently at the end of every drawn match. It now lives where the
+              tie actually happens — the chooser on the live screen offers
+              "both teams out" alongside a manual pick and penalties, so the
+              admin decides with the score in front of them. */}
         </>
       ) : null}
 
@@ -1245,7 +1246,7 @@ function SummaryCard({
   // prefer it alone; fall back to city only when there's no field name.
   const placeLabel =
     values.fieldName.trim() || values.city.trim() || '—';
-  const formatStr = `${formatLabel(values.format)} · ${values.numberOfTeams} קבוצות · ${maxPlayers} שחקנים`;
+  const formatStr = `${gameFormatLabel(values.format)} · ${values.numberOfTeams} קבוצות · ${maxPlayers} שחקנים`;
   const visibilityStr =
     values.visibility === 'public'
       ? he.wizardVisibilityPublic
@@ -1643,18 +1644,6 @@ const styles = StyleSheet.create({
   },
   durationCell: {
     flex: 1,
-  },
-
-  totalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: -spacing.xs,
-  },
-  totalText: {
-    ...typography.label,
-    color: colors.primary,
-    fontWeight: '700',
   },
 
   pillRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },

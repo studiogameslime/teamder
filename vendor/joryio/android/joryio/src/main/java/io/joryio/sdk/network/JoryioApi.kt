@@ -177,6 +177,19 @@ data class PushTokenRequest(
     val anonymousId: String,
     val token: String,
     val platform: String = "android",
+
+    /**
+     * The stable device id, so the server attaches this token to the device row
+     * that already exists rather than inserting a second one keyed only by the
+     * token.
+     *
+     * Without it, first launch produced TWO rows seconds apart - one carrying
+     * the identity with no token, one carrying the token with no identity, and
+     * nothing joining them. Device counts doubled and any read of "the device"
+     * got a 50/50 chance of the row without the token. Reported from a
+     * production integration, 2026-08-23.
+     */
+    val deviceId: String? = null,
     // What the device IS - model, os_version, app_version. Absent until now,
     // which left Android device rows with nothing to filter or target on.
     val deviceInfo: Map<String, Any>? = null,

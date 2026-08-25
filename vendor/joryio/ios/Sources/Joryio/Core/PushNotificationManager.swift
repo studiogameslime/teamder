@@ -3,6 +3,40 @@ import UIKit
 import UserNotifications
 
 /// Manages push notifications (APNS)
+/// The outcome of a push-token registration.
+///
+/// Mirrors Android's `PushRegistrationResult` exactly - same name, same fields,
+/// same meanings - so an integrator reads one document for both platforms.
+///
+/// registerPushToken used to be pure fire-and-forget: its only reaction to a
+/// rejection was a logger call, which is gated behind debug logging. A release
+/// build could therefore fail to register on every single launch with nothing,
+/// anywhere, saying so - the device was simply never reachable. An integrator
+/// worked around it by polling diagnostics a few seconds later and comparing
+/// timestamps against a global last-error, which is a lot of machinery to learn
+/// something this function already knew and threw away.
+public struct PushRegistrationResult {
+    public let success: Bool
+    /// Provider or transport message on failure; nil on success.
+    public let message: String?
+    /// A bad or missing SDK key - retrying will not fix it.
+    public let isUnauthorized: Bool
+    /// Transient (network, 5xx): the SDK will try again on next launch.
+    public let isRetryable: Bool
+
+    public init(
+        success: Bool,
+        message: String? = nil,
+        isUnauthorized: Bool = false,
+        isRetryable: Bool = false
+    ) {
+        self.success = success
+        self.message = message
+        self.isUnauthorized = isUnauthorized
+        self.isRetryable = isRetryable
+    }
+}
+
 class PushNotificationManager: NSObject {
     private let networkClient: NetworkClient
     private let identityManager: IdentityManager
@@ -121,12 +155,15 @@ class PushNotificationManager: NSObject {
 
     /// Register a device token supplied directly as a hex string (used by the
     /// cross-platform bridge, which already has the token as a string).
-    func registerDeviceToken(_ token: String) {
+    func registerDeviceToken(
+        _ token: String,
+        onResult: ((PushRegistrationResult) -> Void)? = nil
+    ) {
         logger.info("Registering supplied device token: \(token.prefix(20))...")
         saveDeviceToken(token)
         isRegistered = false
         Task {
-            await registerDeviceWithBackend(token)
+            await registerDeviceWithBackend(token, onResult: onResult)
         }
     }
 
@@ -166,7 +203,11 @@ class PushNotificationManager: NSObject {
     }
 
     /// Register device token with backend
-    private func registerDeviceWithBackend(_ token: String, force: Bool = false) async {
+    private func registerDeviceWithBackend(
+        _ token: String,
+        force: Bool = false,
+        onResult: ((PushRegistrationResult) -> Void)? = nil
+    ) async {
         let userId = identityManager.getUserId()
         let anonymousId = identityManager.getAnonymousId()
 
@@ -180,6 +221,10 @@ class PushNotificationManager: NSObject {
         let key = "\(token)|\(userId ?? anonymousId)"
         if !force, storage.getRegisteredPushKey() == key {
             logger.debug("Push token already registered for this identity; skipping")
+            // Already registered IS success. A caller that heard nothing here
+            // would read a no-op as a silent failure - the very ambiguity this
+            // callback removes.
+            onResult?(PushRegistrationResult(success: true))
             return
         }
 
@@ -204,8 +249,19 @@ class PushNotificationManager: NSObject {
             // unreachable by push.
             storage.setRegisteredPushKey(key)
             logger.info("Device token registered with backend successfully")
+            onResult?(PushRegistrationResult(success: true))
         } catch {
             logger.error("Failed to register device token with backend: \(error.localizedDescription)")
+            let transport = networkClient.lastTransportError
+            onResult?(
+                PushRegistrationResult(
+                    success: false,
+                    message: transport?.message ?? error.localizedDescription,
+                    isUnauthorized: transport?.isUnauthorized ?? false,
+                    // Anything not an auth rejection is worth another launch.
+                    isRetryable: !(transport?.isUnauthorized ?? false)
+                )
+            )
         }
     }
 

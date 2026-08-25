@@ -30,7 +30,7 @@ import { logError } from '@/services/errorLog';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { toast } from '@/components/Toast';
 import type { Game, User } from '@/types';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -98,6 +98,9 @@ export function AvailablePlayersScreen() {
         setInvitedIds(new Set(g.invitedUserIds ?? []));
         const day = new Date(g.startsAt).getDay();
         const hour = formatHour(g.startsAt);
+        // Prefer the game's actual field coords for the radius match; fall
+        // back to the community's coords, then the city name.
+        const grp = myCommunities.find((c) => c.id === g.groupId);
         const exclude = [
           // Never offer to invite yourself — the CF rejects it with
           // invalid-argument ("cannot invite yourself"), which surfaced
@@ -106,10 +109,14 @@ export function AvailablePlayersScreen() {
           ...(g.players ?? []),
           ...(g.waitlist ?? []),
           ...(g.pending ?? []),
+          // The club's own members and coaches. This screen exists to reach
+          // people OUTSIDE the club — a member already sees the game in their
+          // feed and gets its pushes, so offering to "invite" them is noise on
+          // a list whose whole value is that everyone on it is a stranger
+          // worth asking (user report, with a screenshot).
+          ...(grp?.playerIds ?? []),
+          ...(grp?.adminIds ?? []),
         ];
-        // Prefer the game's actual field coords for the radius match; fall
-        // back to the community's coords, then the city name.
-        const grp = myCommunities.find((c) => c.id === g.groupId);
         const gameLat = g.fieldLat ?? grp?.lat;
         const gameLng = g.fieldLng ?? grp?.lng;
         // Resolve the filter city from the just-loaded game's community.
@@ -307,18 +314,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Not `'right'`: under forceRTL that resolves to the visual LEFT, and
+  // `writingDirection` applies the same swap again. This card was reported as
+  // left-aligned once before and closed as "already right-aligned in the code,
+  // no change needed" — reading the literal instead of what it renders as.
+  // See theme/rtl.ts.
   pulseTitle: {
     ...typography.h3,
     color: colors.text,
     fontWeight: '900',
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
   },
   pulseExplain: {
     ...typography.caption,
     color: colors.textMuted,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: RTL_LABEL_ALIGN,
     lineHeight: 19,
   },
   list: { padding: spacing.lg, gap: 0 },

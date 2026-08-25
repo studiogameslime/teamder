@@ -9,8 +9,9 @@
  * than the silence this replaced.
  *
  * These assert the branch the screen encodes matches the engine, for the two
- * cases that differ: bothOut with two waiting, and bothOut with only one
- * (which the engine downgrades to sending the veteran off).
+ * cases that differ: bothOut with two waiting (what the confirmation on the tie
+ * chooser promises), and bothOut with only one, which the engine downgrades to
+ * sending the veteran off — the reason the option is hidden below four teams.
  */
 import { recordTieSkeleton } from '@/services/rotationEngine';
 import type { RotationTeam } from '@/services/rotationEngine';
@@ -31,7 +32,9 @@ describe('tie confirmation names the right incoming teams', () => {
 
   it('bothOut with ONE waiting → falls back to veteran-out, so only one team comes on', () => {
     const s = recordTieSkeleton(teams(3), rot([0, 1], [2]), 2, 'temporary', 'bothOut');
-    // The dialog must say "team b stays, waiting[0] comes on" — not "both leave".
+    // This is WHY the chooser hides "both teams out" unless two teams are
+    // waiting: asking for it here would silently get something else, and the
+    // confirmation would have named a team that never came on.
     expect(s.playing).toEqual([1, 2]);
   });
 

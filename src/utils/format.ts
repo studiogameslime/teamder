@@ -11,6 +11,8 @@
 // actually used; everything else is built from `pad2` + the day
 // constants.
 
+import { teamSizeFromFormat } from '@/types';
+
 const pad2 = (n: number): string => String(n).padStart(2, '0');
 
 /** "יום ראשון", "יום שני", … "שבת". Index = `Date.getDay()`. */
@@ -198,4 +200,18 @@ export function formatDayDate(ms: number, opts?: DayDateOptions): string {
     out += `${timeSep}${formatTime(ms)}`;
   }
   return out;
+}
+
+/**
+ * `'5v5'` → `"5 × 5"`. The one place a format becomes a label.
+ *
+ * Seven screens each carried their own copy of this as an if/else ladder over
+ * the four sizes the create form used to offer, and every copy fell through to
+ * a hard-coded 5 or 7 for anything else. Once the picker opened up to 3–11 that
+ * would have printed the wrong number on cards, filters and the match header
+ * while the game itself was stored correctly.
+ */
+export function gameFormatLabel(format: string): string {
+  const n = teamSizeFromFormat(format);
+  return `${n} × ${n}`;
 }

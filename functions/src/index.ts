@@ -46,6 +46,15 @@ import {
   normalizeRating,
   type PastSplit,
 } from './teamBalanceCore';
+import {
+  buildRoundSummary,
+  nextRecordBaseline,
+  type ClubRecordBaseline,
+  type PersonalBest,
+  type PlayerCareer,
+  type PlayerEvening,
+  type RoundRec,
+} from './roundSummary';
 import { pushToAdmins } from './adminPush';
 import { processCampaign, sweepDueCampaigns, recordCampaignMetric } from './adminUserPush';
 import {
@@ -1627,7 +1636,20 @@ async function deliverBatch(
           .doc(uid)
           .collection('private')
           .doc('push')
-          .update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(...toks) })
+          // The varargs form, not an object literal: the client stores which
+          // device each token came from under `devices[<token>]`, and an FCM
+          // token contains ':' and '-', which a dotted string path would need
+          // escaped. A FieldPath skips the parser entirely. Deleting these
+          // alongside the token keeps the map from growing forever with
+          // entries describing devices that can no longer be reached.
+          .update(
+            'fcmTokens',
+            admin.firestore.FieldValue.arrayRemove(...toks),
+            ...toks.flatMap((t) => [
+              new admin.firestore.FieldPath('devices', t),
+              admin.firestore.FieldValue.delete(),
+            ]),
+          )
           .catch(() => undefined),
       ]),
     );
@@ -4397,6 +4419,224 @@ export const onGameRotationChanged = onDocumentWritten(
  * `onNotificationCreated → resolveRecipients` (see `gameFillingUp`
  * branch there).
  */
+/**
+ * Seal the club's summary of one evening.
+ *
+ * Called once, from the end-of-evening hook, after every stat for the night is
+ * committed. Everything it needs is either already in the caller's hands or one
+ * read away; the judgement — what counts as a record, what is worth telling —
+ * lives in `roundSummary.ts`, which the phone shares byte-for-byte.
+ *
+ * WRITE ORDER MATTERS. The summary is written FIRST and the record baseline
+ * only afterwards: the summary asks "is this better than what came before", and
+ * raising the baseline first would make every record look like it had merely
+ * been equalled.
+ */
+async function sealRoundSummary(args: {
+  gameId: string;
+  groupId: string;
+  at: number;
+  attendees: string[];
+  evSnaps: admin.firestore.DocumentSnapshot[];
+  psSnap: admin.firestore.QuerySnapshot;
+  csRef: admin.firestore.DocumentReference;
+  standings: {
+    userId: string;
+    score: number;
+    rank: number | null;
+    rankTotal: number | null;
+    rankDelta: number | null;
+  }[];
+}): Promise<void> {
+  const { gameId, groupId } = args;
+  const num = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? v : 0;
+  const summaryRef = db.collection('roundSummaries').doc(gameId);
+  // Create-only. A re-delivery of the trigger must not rewrite a story anyone
+  // may already have read.
+  if ((await summaryRef.get()).exists) {
+    console.log('[roundSummary] already sealed — skip', gameId);
+    return;
+  }
+
+  // Every player row for the night, GUESTS INCLUDED: they were on the pitch and
+  // their goals belong in the evening's totals. (The core leaves them out of
+  // the titles, which are club standings.)
+  const statSnap = await db
+    .collection('gamePlayerStats')
+    .where('gameId', '==', gameId)
+    .get();
+  const players: PlayerEvening[] = statSnap.docs.map((d) => {
+    const x = d.data() as Record<string, unknown>;
+    return {
+      userId: typeof x.userId === 'string' ? x.userId : d.id.split('__')[1] ?? '',
+      isGuest: x.isGuest === true,
+      goals: num(x.goals),
+      assists: num(x.assists),
+      wins: num(x.wins),
+      cleanSheets: num(x.cleanSheets),
+      rounds: num(x.rounds),
+    };
+  }).filter((p) => p.userId);
+
+  const rhSnap = await db
+    .collection('games')
+    .doc(gameId)
+    .collection('roundHistory')
+    .get();
+  const rounds: RoundRec[] = rhSnap.docs
+    .map((d) => d.data() as Record<string, unknown>)
+    .sort((a, b) => num(a.at) - num(b.at))
+    .map((r) => ({
+      teamAIndex: typeof r.teamAIndex === 'number' ? r.teamAIndex : -1,
+      teamBIndex: typeof r.teamBIndex === 'number' ? r.teamBIndex : -1,
+      winnerSide:
+        r.winnerSide === 'A' || r.winnerSide === 'B' ? r.winnerSide : 'tie',
+      goals: Array.isArray(r.goals)
+        ? (r.goals as Record<string, unknown>[]).map((g) => ({
+            scorerId: typeof g.scorerId === 'string' ? g.scorerId : null,
+            assisterId: typeof g.assisterId === 'string' ? g.assisterId : null,
+            ownGoal: g.ownGoal === true,
+            team: g.team === 'B' ? ('B' as const) : ('A' as const),
+          }))
+        : [],
+      shootout: Array.isArray(r.penalties) && r.penalties.length > 0,
+    }));
+
+  // Career rows AFTER tonight, plus each player's previous best evening. The
+  // best-evening figure is maintained here rather than derived, because
+  // deriving it would mean re-reading every past evening of the club on every
+  // finish.
+  const career: PlayerCareer[] = [];
+  const personalBests: Record<string, PersonalBest> = {};
+  for (const d of args.psSnap.docs) {
+    const x = d.data() as Record<string, unknown>;
+    const uid = typeof x.userId === 'string' ? x.userId : '';
+    if (!uid) continue;
+    career.push({
+      userId: uid,
+      goals: num(x.goals),
+      assists: num(x.assists),
+      rounds: num(x.rounds),
+      wins: num(x.wins),
+      cleanSheets: num(x.cleanSheets),
+      games: num(x.games),
+    });
+    const be = x.bestEvening as Record<string, unknown> | undefined;
+    if (be && typeof be === 'object') {
+      personalBests[uid] = {
+        goals: typeof be.goals === 'number' ? be.goals : undefined,
+        assists: typeof be.assists === 'number' ? be.assists : undefined,
+        involvement:
+          typeof be.involvement === 'number' ? be.involvement : undefined,
+        cleanSheets:
+          typeof be.cleanSheets === 'number' ? be.cleanSheets : undefined,
+        wins: typeof be.wins === 'number' ? be.wins : undefined,
+      };
+    }
+  }
+
+  const [csDoc, recDoc] = await Promise.all([
+    args.csRef.get(),
+    db.collection('clubRecords').doc(groupId).get(),
+  ]);
+  const cs = (csDoc.data() ?? {}) as Record<string, unknown>;
+  const rec = (recDoc.data() ?? {}) as Record<string, unknown>;
+
+  // `communityStats` has no assists or clean-sheet counter, so those two club
+  // totals are summed from the member rows — which is exact, just not O(1).
+  let clubAssists = 0;
+  let clubCleanSheets = 0;
+  for (const c of career) {
+    clubAssists += c.assists;
+    clubCleanSheets += c.cleanSheets;
+  }
+
+  const baseline: ClubRecordBaseline | null = recDoc.exists
+    ? {
+        goals: rec.goals as ClubRecordBaseline['goals'],
+        assists: rec.assists as ClubRecordBaseline['assists'],
+        involvement: rec.involvement as ClubRecordBaseline['involvement'],
+        cleanSheets: rec.cleanSheets as ClubRecordBaseline['cleanSheets'],
+        wins: rec.wins as ClubRecordBaseline['wins'],
+        firstEverSeen: Array.isArray(rec.firstEverSeen)
+          ? (rec.firstEverSeen as string[])
+          : [],
+      }
+    : null;
+
+  // Only SEALED evenings count as comparable history: they are the ones whose
+  // numbers went into the baseline. Evenings that predate this feature are
+  // invisible to it, and saying "record" on the strength of them would be a
+  // guess dressed as a fact.
+  const eveningsSealed = num(rec.eveningsSealed);
+  const summary = buildRoundSummary({
+    gameId,
+    groupId,
+    at: args.at,
+    players,
+    rounds,
+    career,
+    club: {
+      goals: num(cs.goals),
+      assists: clubAssists,
+      rounds: num(cs.rounds),
+      cleanSheets: clubCleanSheets,
+      shootoutRounds: num(cs.shootoutRounds),
+      evenings: eveningsSealed + 1,
+    },
+    records: baseline,
+    personalBests,
+    standings: args.standings,
+    basis: {
+      since: typeof rec.since === 'number' ? rec.since : args.at,
+      eveningsCompared: eveningsSealed,
+    },
+    now: Date.now(),
+  });
+
+  await summaryRef.create(summary as unknown as admin.firestore.DocumentData);
+
+  // ── and only NOW does the baseline move ──
+  const next = nextRecordBaseline(baseline, summary, players);
+  const batch = db.batch();
+  batch.set(
+    db.collection('clubRecords').doc(groupId),
+    {
+      groupId,
+      ...next,
+      eveningsSealed: eveningsSealed + 1,
+      since: typeof rec.since === 'number' ? rec.since : args.at,
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+  // Each player's own high-water mark, for next time.
+  for (const p of players) {
+    if (p.isGuest) continue;
+    const prev = personalBests[p.userId] ?? {};
+    const involvement = p.goals + p.assists;
+    batch.set(
+      db.collection('communityPlayerStats').doc(`${groupId}__${p.userId}`),
+      {
+        bestEvening: {
+          goals: Math.max(prev.goals ?? 0, p.goals),
+          assists: Math.max(prev.assists ?? 0, p.assists),
+          involvement: Math.max(prev.involvement ?? 0, involvement),
+          cleanSheets: Math.max(prev.cleanSheets ?? 0, p.cleanSheets),
+          wins: Math.max(prev.wins ?? 0, p.wins),
+        },
+      },
+      { merge: true },
+    );
+  }
+  await batch.commit();
+  console.log(
+    `[roundSummary] sealed ${gameId}: ${summary.stats.rounds} mini-games, ` +
+      `${summary.stats.goals} goals, ${summary.events.length} event(s)`,
+  );
+}
+
 export const onGameRosterChanged = onDocumentWritten(
   'games/{gameId}',
   async (event) => {
@@ -5243,6 +5483,43 @@ export const onGameRosterChanged = onDocumentWritten(
             { merge: true },
           );
           await standingBatch.commit();
+
+          // ── Round summary: the club's story of the evening ──────────────
+          // Sealed HERE, once, and never recomputed. Whether tonight was a
+          // club record depends on what the club had done before tonight, and
+          // that comparison stops being answerable the moment another evening
+          // is played or an admin completes a goal that was missed. A summary
+          // that recomputes itself would quietly rewrite last week's story.
+          //
+          // Nested try: the standings above are already committed, and a
+          // failure to tell a story must not look like a failure to record the
+          // night.
+          try {
+            await sealRoundSummary({
+              gameId: event.params.gameId,
+              groupId: gid,
+              at: typeof after.startsAt === 'number' ? after.startsAt : Date.now(),
+              attendees,
+              evSnaps,
+              psSnap,
+              csRef,
+              standings: attendees.map((uid) => ({
+                userId: uid,
+                score: scoreOf.get(uid) ?? 0,
+                rank: nowRanked.findIndex((c) => c.uid === uid) + 1 || null,
+                rankTotal: nowRanked.length || null,
+                rankDelta:
+                  beforeRanked.findIndex((c) => c.uid === uid) -
+                  nowRanked.findIndex((c) => c.uid === uid),
+              })),
+            });
+          } catch (err) {
+            console.error(
+              '[onGameRosterChanged] round summary failed',
+              event.params.gameId,
+              err,
+            );
+          }
         } catch (err) {
           console.error(
             '[onGameRosterChanged] evening standings failed',
@@ -5759,7 +6036,7 @@ interface BalanceGameDoc {
   status?: string;
   players?: string[];
   guests?: GuestDoc[];
-  format?: '4v4' | '5v5' | '6v6' | '7v7';
+  format?: string; // '<n>v<n>', n = players per team (3-11)
   numberOfTeams?: number;
   autoTeamGenerationMinutesBeforeStart?: number;
   /** ms-epoch wall-clock auto-generation time (preferred over minutes-before). */
@@ -5790,11 +6067,12 @@ interface RatingSummaryDoc {
   average?: number;
 }
 
-function perTeamSize(format: BalanceGameDoc['format']): number {
-  if (format === '4v4') return 4;
-  if (format === '6v6') return 6;
-  if (format === '7v7') return 7;
-  return 5;
+function perTeamSize(format: string | undefined): number {
+  // Mirrors teamSizeFromFormat in src/types — "<n>v<n>", n players PER TEAM.
+  // The if/else ladder this replaces stopped at 7v7 and fell through to 5 for
+  // anything else, so an 8v8 game would have had its rounds sized as 5v5.
+  const n = parseInt(String(format ?? ''), 10);
+  return Number.isFinite(n) && n >= 3 && n <= 11 ? n : 5;
 }
 
 /** In-place Fisher–Yates shuffle. */
@@ -10427,7 +10705,7 @@ interface ShortageGameDoc {
   startsAt?: number;
   maxPlayers?: number;
   minPlayers?: number;
-  format?: '4v4' | '5v5' | '6v6' | '7v7';
+  format?: string; // '<n>v<n>', n = players per team (3-11)
   numberOfTeams?: number;
   players?: string[];
   guests?: unknown[];
@@ -10437,10 +10715,11 @@ interface ShortageGameDoc {
 }
 
 function playersPerTeamForFormat(format: string | undefined): number {
-  if (format === '4v4') return 4;
-  if (format === '6v6') return 6;
-  if (format === '7v7') return 7;
-  return 5;
+  // Mirrors teamSizeFromFormat in src/types — "<n>v<n>", n players PER TEAM.
+  // The if/else ladder this replaces stopped at 7v7 and fell through to 5 for
+  // anything else, so an 8v8 game would have had its rounds sized as 5v5.
+  const n = parseInt(String(format ?? ''), 10);
+  return Number.isFinite(n) && n >= 3 && n <= 11 ? n : 5;
 }
 
 async function runSendShortageWarnings(): Promise<void> {

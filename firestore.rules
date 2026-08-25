@@ -703,10 +703,15 @@ service cloud.firestore {
             request.resource.data.ruleTags.size() <= 12
           )
         ) &&
-        // maxPlayers must be a positive int.
+        // maxPlayers must be a positive int. The ceiling is the largest shape
+        // the create form can produce — 11 per team × 7 teams — plus room for
+        // an organiser who raises it by hand. It was 50, which the picker could
+        // not exceed back when it offered at most 7×5=35; once it opened up to
+        // 3-11 per side a big game would have been rejected here as
+        // permission-denied, with nothing in the app able to explain why.
         request.resource.data.maxPlayers is int &&
         request.resource.data.maxPlayers > 0 &&
-        request.resource.data.maxPlayers <= 50;
+        request.resource.data.maxPlayers <= 100;
 
       allow update: if isSignedIn() && (
         // ── Publish a stored split, even after the final whistle ──────
@@ -1649,6 +1654,29 @@ service cloud.firestore {
     match /eveningStandings/{standingId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow write: if false;
+    }
+
+    // ── /roundSummaries/{gameId} — the club's story of one evening ─────
+    // Written ONLY by onGameRosterChanged (Admin SDK), exactly once, when the
+    // night's stats are final. Read by members of that club: unlike the
+    // per-player standing above, this belongs to everyone who was there — it is
+    // the evening itself, not anybody's private position in it.
+    //
+    // No client write, at all. The whole value of the document is that it was
+    // sealed against a history that no longer exists to be re-checked; a client
+    // able to rewrite it could invent a record nobody set.
+    match /roundSummaries/{gameId} {
+      allow read: if isGroupMember(resource.data.groupId);
+      allow write: if false;
+    }
+
+    // ── /clubRecords/{groupId} — the bar every evening is measured against ──
+    // Server-only in both directions. It is bookkeeping for the summary above,
+    // not a surface: the club sees its records through the summaries that
+    // announced them, and a readable copy would only invite a second, drifting
+    // source of truth for "the best evening ever".
+    match /clubRecords/{groupId} {
+      allow read, write: if false;
     }
 
     // ── /tasks/{taskId} — the Pulse work list. NO client access ────────

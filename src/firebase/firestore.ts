@@ -56,6 +56,7 @@ import {
   defaultDisciplineState,
   defaultNotificationPrefs,
 } from '@/types';
+import { TEAM_SIZE_MAX, TEAM_SIZE_MIN } from '@/types';
 import { getFirebase } from './config';
 
 // ─── Top-level types not yet in @/types ────────────────────────────────────
@@ -590,11 +591,23 @@ function readWeekdayIndex(v: unknown): WeekdayIndex | undefined {
     ? (v as WeekdayIndex)
     : undefined;
 }
+/**
+ * Parse a stored format string, accepting every size in the supported range
+ * rather than a hand-listed four.
+ *
+ * The whitelist this replaces returned `undefined` for anything outside
+ * 4v4–7v7, and `undefined` reads back as 5 — so an 8v8 game would have SAVED
+ * correctly and LOADED as 5v5, with nothing anywhere to show for it. That is
+ * this file's recurring failure mode: a reader that quietly drops a field it
+ * does not recognise.
+ */
 function readGameFormat(
   v: unknown,
 ): import('@/types').GameFormat | undefined {
-  return v === '4v4' || v === '5v5' || v === '6v6' || v === '7v7'
-    ? v
+  if (typeof v !== 'string') return undefined;
+  const n = parseInt(v, 10);
+  return v === `${n}v${n}` && n >= TEAM_SIZE_MIN && n <= TEAM_SIZE_MAX
+    ? (v as import('@/types').GameFormat)
     : undefined;
 }
 
@@ -1269,11 +1282,7 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
       rawStatus === 'cancelled'
         ? rawStatus
         : 'open';
-    const fmt = d.format;
-    const format: GameDoc['format'] =
-      fmt === '4v4' || fmt === '5v5' || fmt === '6v6' || fmt === '7v7'
-        ? fmt
-        : undefined;
+    const format = readGameFormat(d.format);
     return {
       id: snap.id,
       groupId: d.groupId,

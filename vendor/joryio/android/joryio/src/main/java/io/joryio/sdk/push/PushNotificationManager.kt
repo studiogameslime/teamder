@@ -57,6 +57,28 @@ internal object PendingTokenStore {
 /**
  * Manages push notifications with Firebase Cloud Messaging
  */
+/**
+ * The outcome of a push-token registration.
+ *
+ * registerPushToken used to be pure fire-and-forget: its only reaction to a
+ * rejection was logger.error, which is gated behind enableDebug. A store build
+ * with debug off could therefore fail to register on every single launch with
+ * nothing, anywhere, saying so - the device was simply never reachable.
+ *
+ * An integrator worked around it by polling getDiagnostics() a few seconds
+ * later and comparing timestamps against a global lastError. That is a lot of
+ * machinery to learn something this function already knew and threw away.
+ */
+data class PushRegistrationResult(
+    val success: Boolean,
+    /** Provider or transport message on failure; null on success. */
+    val message: String? = null,
+    /** A bad or missing SDK key - retrying will not fix it. */
+    val isUnauthorized: Boolean = false,
+    /** Transient (network, 5xx): the SDK will try again on next launch. */
+    val isRetryable: Boolean = false,
+)
+
 internal class PushNotificationManager(
     context: Context,
     private val networkClient: NetworkClient,
@@ -169,7 +191,11 @@ internal class PushNotificationManager(
 
     /** Register a device token with the backend under the current identity. */
     @JvmOverloads
-    fun registerToken(token: String, force: Boolean = false) {
+    fun registerToken(
+        token: String,
+        force: Boolean = false,
+        onResult: ((PushRegistrationResult) -> Unit)? = null,
+    ) {
         scope.launch {
             try {
                 // Skip a registration the backend already has. bootstrapToken()
@@ -181,6 +207,10 @@ internal class PushNotificationManager(
                 val key = "$token|${identityManager.getUserId() ?: identityManager.getAnonymousId()}"
                 if (!force && storage.getRegisteredPushKey() == key) {
                     logger.debug("Push token already registered for this identity; skipping")
+                    // Already registered IS success. A caller that heard
+                    // nothing here would read a no-op as a silent failure -
+                    // the very ambiguity this callback removes.
+                    onResult?.invoke(PushRegistrationResult(success = true))
                     return@launch
                 }
 
@@ -195,6 +225,9 @@ internal class PushNotificationManager(
                     anonymousId = identityManager.getAnonymousId(),
                     token = token,
                     platform = "android",
+                    // Same identity the track path sends, so the server can
+                    // join this token to the existing device row.
+                    deviceId = storage.getDeviceId(),
                     // Send what the device IS, not just its token. Without this
                     // an Android device row carried no model, os_version or
                     // app_version, so segment filters over those fields matched
@@ -211,13 +244,24 @@ internal class PushNotificationManager(
                         // device permanently unreachable by push.
                         storage.setRegisteredPushKey(key)
                         logger.info("Push token registered successfully")
+                        onResult?.invoke(PushRegistrationResult(success = true))
                     }
                     is NetworkResult.Error -> {
                         logger.error("Failed to register push token: ${result.message}")
+                        onResult?.invoke(
+                            PushRegistrationResult(
+                                success = false,
+                                message = result.message,
+                                isRetryable = result.isRetryable,
+                            )
+                        )
                     }
                 }
             } catch (e: Exception) {
                 logger.error("Failed to register push token: ${e.message}", e)
+                onResult?.invoke(
+                    PushRegistrationResult(success = false, message = e.message)
+                )
             }
         }
     }

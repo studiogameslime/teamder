@@ -10,25 +10,31 @@ import {
 } from '@/utils/draft';
 
 describe('team labels', () => {
-  it('letters א–ד then numeric fallback', () => {
+  it('letters א–ז then numeric fallback', () => {
     expect(teamLetter(0)).toBe('א');
     expect(teamLetter(1)).toBe('ב');
     expect(teamLetter(2)).toBe('ג');
     expect(teamLetter(3)).toBe('ד');
-    expect(teamLetter(4)).toBe('5');
+    expect(teamLetter(6)).toBe('ז');
+    // Only past MAX_TEAMS does it fall back to a number.
+    expect(teamLetter(7)).toBe('8');
     expect(teamLetter(9)).toBe('10');
   });
   it('teamName composes "קבוצה <color>" (color-named for clarity)', () => {
     expect(teamName(0)).toBe('קבוצה אדומה');
     expect(teamName(1)).toBe('קבוצה כחולה');
     expect(teamName(3)).toBe('קבוצה צהובה');
-    // Falls back to the letter helper beyond the 4 colors.
-    expect(teamName(4)).toBe('קבוצה 5');
+    // A colour for every supported team — the 5th used to be "קבוצה 5".
+    expect(teamName(4)).toBe('קבוצה כתומה');
+    expect(teamName(6)).toBe('קבוצה שחורה');
+    // Falls back to the letter helper only past the supported range.
+    expect(teamName(7)).toBe('קבוצה 8');
   });
   it('constants', () => {
     expect(MIN_TEAMS).toBe(2);
-    expect(MAX_TEAMS).toBe(4);
-    expect(TEAM_LETTERS).toEqual(['א', 'ב', 'ג', 'ד']);
+    expect(MAX_TEAMS).toBe(7);
+    expect(TEAM_LETTERS).toHaveLength(MAX_TEAMS);
+    expect(TEAM_LETTERS).toEqual(['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז']);
   });
 });
 

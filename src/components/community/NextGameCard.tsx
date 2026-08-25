@@ -17,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { FieldType, GameFormat } from '@/types';
-import { formatDayDate, formatGameDay, formatTime } from '@/utils/format';
+import { formatDayDate, formatGameDay, formatTime,
+  gameFormatLabel,
+} from '@/utils/format';
 
 interface Props {
   /** ms epoch — undefined when there is no upcoming game. */
@@ -34,15 +36,6 @@ interface Props {
   fieldType?: FieldType;
 }
 
-function formatLabel(f: GameFormat | undefined): string | null {
-  const s = f as string | undefined;
-  if (s === '4v4') return he.gameFormat4;
-  if (s === '5v5') return he.gameFormat5;
-  if (s === '6v6') return he.gameFormat6;
-  if (s === '7v7') return he.gameFormat7;
-  if (typeof s === 'string' && /^\d+v\d+$/.test(s)) return s.replace('v', '×');
-  return null;
-}
 
 function fieldTypeLabel(f: FieldType | undefined): string | null {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
@@ -91,7 +84,7 @@ export function NextGameCard({
       t: he.communityNextGameStatPlayers,
     });
   }
-  const fmt = formatLabel(format);
+  const fmt = format ? gameFormatLabel(format) : null;
   if (fmt) stats.push({ n: fmt, t: he.communityNextGameStatFormat });
   const field = fieldTypeLabel(fieldType);
   if (field) stats.push({ n: field, t: he.communityNextGameStatField });

@@ -14,8 +14,15 @@ export function teamLetter(i: number): string {
 // Teams are identified by COLOR (clearer than "קבוצה א/ב"). The color is fixed
 // per team INDEX so a team keeps its identity across rotations. Falls back to
 // the Hebrew letter for a hypothetical 5th+ team.
-const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה'];
-const TEAM_COLORS = [colors.team1, colors.team2, colors.team3, colors.team4];
+// Seven entries, one per team the format picker allows. The list stopped at
+// four while the picker stopped at five, so a fifth team already fell through
+// to "קבוצה ה" in grey — not broken, but the odd one out on its own pitch.
+// Colours 5-7 are taken from TEAM_PALETTE below so the two stay one vocabulary.
+const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה', 'כתומה', 'סגולה', 'שחורה'];
+const TEAM_COLORS = [
+  colors.team1, colors.team2, colors.team3, colors.team4,
+  '#F97316', '#8B5CF6', '#1F2937',
+];
 
 // Admin-selectable team colours. `key` is stored on DraftTeam.colorKey; `plural`
 // is the team name when chosen ("האדומים"); `hex` tints the team everywhere.

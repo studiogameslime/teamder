@@ -1282,7 +1282,48 @@ export type GameStatus =
   | 'active'
   | 'finished'
   | 'cancelled';
-export type GameFormat = '4v4' | '5v5' | '6v6' | '7v7';
+/** "<n>v<n>" — n players PER TEAM, not n in total. 5v5 with 3 teams is 15
+ *  players. The range is the product of two real limits: below 3 a side is not
+ *  a team, and above 11 `commitRoundStats` refuses the round (its per-round
+ *  batch writes ~2n² pair docs and crosses Firestore's 500-op ceiling around
+ *  n≈13, where the committedRounds latch would make every retry fail
+ *  identically and lose the round's stats permanently). */
+export type GameFormat =
+  | '3v3' | '4v4' | '5v5' | '6v6' | '7v7'
+  | '8v8' | '9v9' | '10v10' | '11v11';
+
+/** Team sizes offered anywhere a format is chosen. */
+export const TEAM_SIZE_MIN = 3;
+export const TEAM_SIZE_MAX = 11;
+/** Team counts. Two is the floor — one team has nobody to play. Seven is the
+ *  ceiling the rotation UI and the colour palette are sized for. */
+export const TEAM_COUNT_MIN = 2;
+export const TEAM_COUNT_MAX = 7;
+
+/** What a brand-new game starts as: three teams of five. Two teams was the old
+ *  default and it fought the app's own rotation feature — most organisers here
+ *  run three sides so one waits. */
+export const DEFAULT_TEAM_SIZE = 5;
+export const DEFAULT_TEAM_COUNT = 3;
+export const DEFAULT_FORMAT: GameFormat = '5v5';
+
+/** `'5v5'` → 5. The single place the string is turned back into a number, so a
+ *  new size cannot be half-supported: four separate if/else ladders used to do
+ *  this and every one of them fell through to 5 for anything they did not
+ *  recognise. */
+export function teamSizeFromFormat(format?: GameFormat | string | null): number {
+  const n = parseInt(String(format ?? ''), 10);
+  return Number.isFinite(n) && n >= TEAM_SIZE_MIN && n <= TEAM_SIZE_MAX
+    ? n
+    : DEFAULT_TEAM_SIZE;
+}
+
+/** 5 → `'5v5'`. Clamped, so a bad number can never produce a format string the
+ *  readers would reject. */
+export function formatFromTeamSize(n: number): GameFormat {
+  const c = Math.min(TEAM_SIZE_MAX, Math.max(TEAM_SIZE_MIN, Math.round(n || 0)));
+  return `${c}v${c}` as GameFormat;
+}
 /** Surface of the pitch. Drives default match-duration suggestions. */
 export type FieldType = 'asphalt' | 'synthetic' | 'grass';
 

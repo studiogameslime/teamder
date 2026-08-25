@@ -26,6 +26,14 @@ LIVE = "--live" in sys.argv
 # retry from. 50 keeps each request small enough to answer.
 MAX_DEVICES = 50
 
+# Joryio app ids, one per platform (Settings → Apps in their dashboard). Every
+# imported device MUST name one — see the comment on the payload below.
+APP_IDS = {
+    "android": "582c204f-327e-4d76-9703-b8655454b887",
+    "ios": "61169e4e-72ab-45fd-84f0-7ec606be0424",
+    "web": "418d3496-9a1e-49af-83a7-a7bdc8122d49",
+}
+
 
 def val(x):
     k = next(iter(x))
@@ -69,14 +77,32 @@ for i, u in enumerate(users):
         continue
     people += 1
     for t in toks:
+        # FCM tokens are issued per Firebase sender, not per OS, so a token
+        # alone does not say which platform it came from. The user doc's
+        # `platform` is the only signal we have; default to android, which is
+        # where the overwhelming majority of this install base is.
+        platform = plat if plat in ("ios", "android", "web") else "android"
+        app_id = APP_IDS.get(platform)
+        if not app_id:
+            raise SystemExit(f"no appId configured for platform {platform!r} — see APP_IDS")
         devices.append({
             "externalId": uid,
-            # FCM tokens are issued per Firebase sender, not per OS, so a token
-            # alone does not say which platform it came from. The user doc's
-            # `platform` is the only signal we have; default to android, which
-            # is where the overwhelming majority of this install base is.
-            "platform": plat if plat in ("ios", "android", "web") else "android",
+            "platform": platform,
             "pushToken": t,
+            # REQUIRED. Campaign sends filter devices on `deviceInfo.appId`, and
+            # a device without one is excluded from every send — while the
+            # campaign reports "no active push devices", which reads as "this
+            # person never installed the app" rather than "we are holding a
+            # token we declined to use". The first import of this file had no
+            # appId at all and 200 valid tokens sat unreachable because of it.
+            #
+            # There was briefly a server-side fallback that included untagged
+            # devices when a workspace had exactly one app per platform. It has
+            # been REMOVED, deliberately — it made reachability depend on how
+            # many apps a workspace happened to have, and would have dropped
+            # hundreds of recipients the day a second one was added. So this is
+            # not optional regardless of how many apps exist.
+            "appId": app_id,
         })
     if i % 100 == 0:
         print(f"\r  {i}/{len(users)}", end="", flush=True)

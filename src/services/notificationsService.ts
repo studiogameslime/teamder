@@ -44,6 +44,9 @@ import {
   UserId,
   defaultNotificationPrefs,
 } from '@/types';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { joryio } from '@/services/joryio';
 import { docs } from '@/firebase/firestore';
@@ -72,6 +75,30 @@ const STALE_UNREAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const STRICT_UNREAD_DEDUP: Partial<Record<NotificationType, true>> = {
   gameCanceledOrUpdated: true,
 };
+
+/**
+ * A short, human-readable identity for the device a token came from.
+ *
+ * Deliberately built from modules the app already ships — react-native,
+ * expo-constants, expo-application. Naming a device is not worth adding a
+ * native dependency for, and `expo-device` (the obvious choice) is not
+ * installed.
+ */
+function describeThisDevice(): {
+  platform: string;
+  device: string;
+  osVersion: string;
+  appVersion: string;
+  registeredAt: number;
+} {
+  return {
+    platform: Platform.OS,
+    device: Constants.deviceName ?? '',
+    osVersion: String(Platform.Version ?? ''),
+    appVersion: Application.nativeApplicationVersion ?? '',
+    registeredAt: Date.now(),
+  };
+}
 
 export const notificationsService = {
   /**
@@ -394,6 +421,15 @@ export const notificationsService = {
         docs.userPrivatePush(uid),
         {
           fcmTokens: arrayUnion(token),
+          // Which DEVICE each token belongs to. `fcmTokens` is a bare string
+          // array, so a user with three tokens was three anonymous strings —
+          // when a push went missing there was no way to tell whether the token
+          // that received it was the phone in their hand, an old install or an
+          // emulator, and answering it took sending one probe push per token
+          // and asking the person which arrived. Keyed by token so a rotated
+          // token adds an entry and the dead one is pruned with it server-side
+          // (see the DEAD_TOKEN_CODES prune in functions/src/index.ts).
+          devices: { [token]: describeThisDevice() },
           updatedAt: Date.now(),
         },
         { merge: true },

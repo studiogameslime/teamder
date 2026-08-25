@@ -453,6 +453,15 @@ export function RotationPanel({
                     name twice. And `list` — the same variant the cards behind
                     this sheet use — so a waiting team's roster shows each
                     player's goals instead of avatars with no numbers. */}
+                {/* The list variant sizes itself with `flex: 1` + `minWidth: 0`,
+                    which is right inside the live scoreboard's ROW and wrong
+                    here: the sheet is a COLUMN with `alignItems: 'center'`, so
+                    flex applied to height while the width shrink-wrapped to
+                    nothing. The roster came out as a stack of squashed white
+                    bars with the avatars spilling past the sheet — a user sent
+                    a screenshot asking "מה זה הדבר הזה?!". An explicit
+                    full-width box gives it something to lay out against. */}
+                <View style={styles.sheetBody}>
                 <TeamScore
                   teamIdx={openTeam}
                   teams={draftTeams.teams}
@@ -462,7 +471,9 @@ export function RotationPanel({
                   variant="list"
                   goalsByPlayer={goalsByPlayer}
                   avatarSize={44}
+                  block
                 />
+                </View>
                 <Pressable style={styles.sheetClose} onPress={() => setOpenTeam(null)}>
                   <Text style={styles.sheetCloseText}>{he.close}</Text>
                 </Pressable>
@@ -631,6 +642,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'center',
   },
+  sheetBody: { width: '100%' },
   sheetTitle: { ...typography.h3, color: colors.text, fontWeight: '800' },
   sheetClose: { paddingVertical: 10, paddingHorizontal: 24 },
   sheetCloseText: { color: '#1D4ED8', fontSize: 15, fontWeight: '700' },

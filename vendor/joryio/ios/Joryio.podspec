@@ -2,7 +2,7 @@ Pod::Spec.new do |s|
   s.name             = 'Joryio'
   # Keep in sync with the SDK release version (package.json in sdk-web is the
   # fleet reference; all SDKs ship 1.0.0 until the first public release).
-  s.version          = '1.1.0'
+  s.version          = '1.2.0'
   s.summary          = 'Joryio iOS SDK — identify, track, push, and in-app messaging.'
   s.description      = <<-DESC
     Official Joryio SDK for iOS: user identification, event tracking with

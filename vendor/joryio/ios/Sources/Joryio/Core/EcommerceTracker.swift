@@ -472,15 +472,13 @@ public class EcommerceTracker {
 
 // MARK: - Joryio Extension
 //
-// LOCAL PATCH — the upstream extension declared a SECOND `ecommerce(config:)`
-// on Joryio, alongside the one in JoryioSDK.swift. Both are callable with no
-// arguments (`EcommerceConfig? = nil` there, `= EcommerceConfig()` here), so
-// `Joryio.shared.ecommerce()` — which their own React Native bridge calls —
-// fails to compile:
+// `ecommerce(config:)` deliberately lives ONLY on JoryioSDK.swift.
 //
-//     error: ambiguous use of 'ecommerce(config:)'
+// A second declaration used to sit here, and because both carried a default
+// argument every `Joryio.shared.ecommerce()` call was ambiguous - the SDK did
+// not compile for an integrator who had to patch it out locally to ship.
 //
-// The class method is the one to keep: it caches the tracker in `_ecommerce`
-// and is @discardableResult. This one built a fresh tracker on every call and
-// dropped the cache. Removed rather than renamed so there is exactly one
-// spelling. Re-apply after any re-vendor until they fix it upstream.
+// It was also the worse of the two: it built a NEW tracker on every call,
+// where the surviving one caches `_ecommerce` and reuses it. So an app that
+// called ecommerce() twice got two trackers and, with auto-tracking enabled,
+// two of every event.

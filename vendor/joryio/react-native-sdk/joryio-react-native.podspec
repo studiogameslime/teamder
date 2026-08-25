@@ -10,18 +10,25 @@ Pod::Spec.new do |s|
   s.license      = "MIT"
   s.author       = "Joryio"
   s.platforms    = { :ios => "14.0" }
-  # Upstream names HippoCampus-Tech/Joryio, which does not exist, and the pod is
-  # not on CocoaPods trunk. Irrelevant while we consume by :path from
-  # vendor/joryio — CocoaPods never reads `source` for a path pod — but the
-  # attribute is required, so it points at the repo the sources really live in.
-  s.source       = { :git => "https://github.com/HippoCampus-Tech/Hippomation.git", :tag => s.version }
+  s.source       = { :git => "https://github.com/HippoCampus-Tech/Joryio.git", :tag => s.version }
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
   s.dependency "React-Core"
+
   # Joryio/UI, not Joryio: the UI subspec pulls Core and adds native in-app
   # rendering, so a plain install displays messages without any JavaScript.
   # Calling Joryio.onInAppMessage() from JS still takes rendering over.
-  # No version pin: Joryio is supplied by :path, and `~> 1.0` makes CocoaPods
-  # look for a PUBLISHED spec instead of accepting the local one.
+  #
+  # NO VERSION PIN, deliberately, until the pod is published. `"~> 1.0"` cannot
+  # resolve against any spec repo because Joryio is not on CocoaPods trunk yet,
+  # so `pod install` fails outright and the integrator has to edit this file by
+  # hand - which a production integration reported doing (2026-08-23).
+  #
+  # Until then, point CocoaPods at a local checkout from your app's Podfile:
+  #
+  #   pod 'Joryio', :path => '../path/to/packages/sdk-ios'
+  #
+  # A :path pod resolves from source and satisfies this dependency. Restore the
+  # pin at publish time - see PRODUCTION_DEPLOYMENT_PLAN, "Publishing the SDKs".
   s.dependency "Joryio/UI"
 end

@@ -12,7 +12,7 @@
 // `useSyncedTimer`, so every phone AND watch sees the same time without
 // per-tick pushes.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -54,7 +54,7 @@ import { useGameEvents } from '@/services/useGameEvents';
 import { useSyncedTimer } from '@/services/useSyncedTimer';
 import { serverNow } from '@/services/serverClock';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult } from '@/types';
+import { Game, LiveMatchState, TimerEvent, MatchRotation, DraftTeamsResult, teamSizeFromFormat } from '@/types';
 import { RotationPanel } from '@/components/match/RotationPanel';
 import { WinnerPickerModal } from '@/components/match/WinnerPickerModal';
 import { Shootout, TieDecisionModal } from '@/components/match/Shootout';
@@ -383,6 +383,19 @@ export function AdvancedLiveMatchScreen() {
   // re-runs onEndRound against an already-cleared score (read as a tie) and
   // corrupts the rotation. Held true across commitFilledRotation.
   const committingRef = useRef(false);
+  // The guards above are refs, so they block a second tap without re-rendering
+  // anything — the admin saw a dead screen for the second or two the round
+  // transition takes and tapped again ("צריך לעשות loader או משהו שרואים
+  // שנטען כדי שלא נלחץ שוב בטעות"). This mirrors them into state so the
+  // controls can SAY they are working. A counter, not a boolean: the commit at
+  // the end of the fill flow starts before the end-round handler's `finally`
+  // runs, and two booleans would race to leave it stuck off.
+  const busyCountRef = useRef(0);
+  const [roundBusy, setRoundBusy] = useState(false);
+  const markBusy = useCallback((delta: 1 | -1) => {
+    busyCountRef.current = Math.max(0, busyCountRef.current + delta);
+    setRoundBusy(busyCountRef.current > 0);
+  }, []);
   // Latch around the timer/round START so a rapid double-tap can't run
   // prepareStartRotation / beginFillFlow twice and clobber fillFlowRef.
   const startingRef = useRef(false);
@@ -499,6 +512,7 @@ export function AdvancedLiveMatchScreen() {
     if (!gameId) return;
     const rotation = { ...flow.rotationBase, loans: flow.working.loans };
     committingRef.current = true;
+    markBusy(1);
     try {
       // Commit the rotation. For a round transition we ALSO zero the new round's
       // clock+score in the same atomic write (a concurrent admin's timer-start
@@ -516,6 +530,7 @@ export function AdvancedLiveMatchScreen() {
       if (__DEV__) console.warn('[live] commitFilledRotation failed', err);
     } finally {
       committingRef.current = false;
+      markBusy(-1);
     }
   };
 
@@ -588,40 +603,13 @@ export function AdvancedLiveMatchScreen() {
       tie: winnerIdx == null,
     });
     if (winnerIdx == null) {
-      // A 4-team advanced tie resolves itself — nobody picks anything, and it
-      // is the ONE case where both teams can leave the pitch at once. Confirm
-      // it and name who is coming on, mirroring the winner path. A 2–3 team tie
-      // still goes straight through: the chooser that follows (manual pick /
-      // shootout) is itself the decision, so there is nothing to preview yet.
-      const tieMode =
-        game?.numberOfTeams === 4 && game?.advancedMode
-          ? (game?.advancedTieMode ?? 'bothOut')
-          : undefined;
-      const [inc1, inc2] = rotation.waiting;
-      if (!tieMode || inc1 == null) {
-        void onEndRound();
-        return;
-      }
-      // `bothOut` needs TWO waiting teams; with one it falls back to sending the
-      // veteran off, exactly like recordTieSkeleton does. Keep the two in step —
-      // naming the wrong team here is worse than not naming one.
-      const bothLeave = tieMode === 'bothOut' && inc2 != null;
-      appAlert(
-        he.rotationEndRoundTieConfirmTitle,
-        bothLeave
-          ? he.rotationEndRoundTieConfirmBodyTwo(
-              teamName(inc1, draftTeams?.teams),
-              teamName(inc2, draftTeams?.teams),
-            )
-          : he.rotationEndRoundTieConfirmBodyOne(
-              teamName(b, draftTeams?.teams),
-              teamName(inc1, draftTeams?.teams),
-            ),
-        [
-          { text: he.cancel, style: 'cancel' },
-          { text: he.rotationEndRoundConfirmOk, onPress: () => void onEndRound() },
-        ],
-      );
+      // A tie goes straight to the chooser — it IS the decision, so there is
+      // nothing to preview yet and a confirmation here would only be a dialog
+      // in front of another dialog. (Until the tie rule moved onto the live
+      // screen, a 4-team game resolved a draw by itself from a setting chosen
+      // weeks earlier, and this branch existed to say who was coming on. Now
+      // the "both teams out" option carries that confirmation itself.)
+      void onEndRound();
       return;
     }
     const next = rotation.waiting[0];
@@ -655,6 +643,7 @@ export function AdvancedLiveMatchScreen() {
     )
       return;
     finalizingRef.current = true;
+    markBusy(1);
     try {
       // STOP (don't reset) the clock the moment the round ends — it shouldn't
       // keep ticking through the fill flow. It's zeroed after the new round is
@@ -684,6 +673,7 @@ export function AdvancedLiveMatchScreen() {
       if (__DEV__) console.warn('[live] finalizeRound failed', err);
     } finally {
       finalizingRef.current = false;
+      markBusy(-1);
     }
   };
 
@@ -743,6 +733,60 @@ export function AdvancedLiveMatchScreen() {
       method: 'penalties',
     });
     setShootoutOpen(true);
+  };
+  // Third way out of a draw: nobody wins, both sides come off, the next two go
+  // on. Only offered when there ARE two waiting — with 3 teams or fewer this
+  // would empty the pitch. Confirmed before it runs, because unlike the other
+  // two options it ends the match with no winner at all.
+  const onDecideBothOut = () => {
+    const [inc1, inc2] = rotation?.waiting ?? [];
+    if (inc1 == null || inc2 == null) return;
+    appAlert(
+      he.shDecideBothOutConfirmTitle,
+      he.shDecideBothOutConfirmBody(
+        teamName(inc1, draftTeams?.teams),
+        teamName(inc2, draftTeams?.teams),
+      ),
+      [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.shDecideBothOutConfirmOk,
+          onPress: () => {
+            setDecisionOpen(false);
+            logEvent(AnalyticsEvent.RoundTieDecision, {
+              gameId,
+              round: rotation?.round ?? 0,
+              method: 'both_out',
+            });
+            void resolveTie('bothOut');
+          },
+        },
+      ],
+    );
+  };
+  // Shared tail for a tie resolved WITHOUT a winner — mirrors onTieWinner,
+  // which does the same for a tie the admin resolved in favour of one side.
+  const resolveTie = async (mode: 'bothOut' | 'veteranOut') => {
+    if (!gameId || !me || finalizingRef.current || committingRef.current) return;
+    finalizingRef.current = true;
+    try {
+      const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode);
+      if (!res || res.outcome === null) return;
+      logEvent(AnalyticsEvent.MatchRoundCompleted, {
+        gameId,
+        round: rotation?.round ?? 0,
+        resolution: mode,
+        outcome: String(res.outcome),
+        goals: live?.goals?.length ?? 0,
+        elapsedSec: Math.round(timerMs / 1000),
+      });
+      beginFillFlow(res.skeleton, res.draft);
+    } catch (err) {
+      logError('liveResolveTie', err, { gameId, userId: me.id, mode });
+      toast.error(he.roundFinalizeFailed);
+    } finally {
+      finalizingRef.current = false;
+    }
   };
 
   // Shootout produced a winner (more penalties scored) → record that side as
@@ -1212,8 +1256,7 @@ export function AdvancedLiveMatchScreen() {
     (s, t) => s + t.playerIds.length,
     0,
   );
-  const perTeam =
-    game.format === '4v4' ? 4 : game.format === '6v6' ? 6 : game.format === '7v7' ? 7 : 5;
+  const perTeam = teamSizeFromFormat(game.format);
   const enoughPlayers = hasTeams && totalDrafted >= perTeam * 2;
   // Also require exactly two chosen starters (effectiveStartOrder is empty
   // until then) so we never start with an ambiguous opening pair.
@@ -1666,25 +1709,52 @@ export function AdvancedLiveMatchScreen() {
         ) : (
           // ── Active rotation → [אפס] [סיים משחק] [השהה / המשך] ──────────
           <View style={styles.controlRow}>
-            <Pressable style={styles.sideBtn} onPress={onTimerReset}>
+            <Pressable
+              style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
+              onPress={onTimerReset}
+              disabled={roundBusy}
+            >
               <Ionicons name="refresh" size={22} color="#1D4ED8" />
               <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
             </Pressable>
-            <Pressable style={styles.roundBtn} onPress={confirmEndRound}>
-              {/* Text before icon: under RTL the row is flipped, so the first
-                  child renders rightmost. The flag belongs on the left. */}
-              <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
-              <Ionicons name="flag" size={22} color="#FFFFFF" />
+            {/* While the round is being committed the button says so, instead
+                of looking untouched for the second or two it takes. The taps it
+                swallows were already swallowed by `finalizingRef`; what was
+                missing was telling the admin that. */}
+            <Pressable
+              style={[styles.roundBtn, roundBusy && styles.roundBtnBusy]}
+              onPress={confirmEndRound}
+              disabled={roundBusy}
+              accessibilityState={{ disabled: roundBusy, busy: roundBusy }}
+            >
+              {roundBusy ? (
+                <>
+                  <Text style={styles.roundBtnText}>{he.rotationEndRoundBusy}</Text>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                </>
+              ) : (
+                <>
+                  {/* Text before icon: under RTL the row is flipped, so the first
+                      child renders rightmost. The flag belongs on the left. */}
+                  <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
+                  <Ionicons name="flag" size={22} color="#FFFFFF" />
+                </>
+              )}
             </Pressable>
             {timerRunning ? (
-              <Pressable style={styles.sideBtn} onPress={onTimerPause}>
+              <Pressable
+                style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
+                onPress={onTimerPause}
+                disabled={roundBusy}
+              >
                 <Ionicons name="pause" size={22} color="#1D4ED8" />
                 <Text style={styles.sideBtnText}>{he.liveTimerPause}</Text>
               </Pressable>
             ) : (
               <Pressable
-                style={styles.sideBtn}
+                style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
                 onPress={timerStarted ? onTimerResume : onTimerStart}
+                disabled={roundBusy}
               >
                 <Ionicons name="play" size={22} color="#1D4ED8" />
                 <Text style={styles.sideBtnText}>
@@ -1843,6 +1913,11 @@ export function AdvancedLiveMatchScreen() {
         visible={decisionOpen}
         onManual={onDecideManual}
         onPenalties={onDecidePenalties}
+        // Needs TWO waiting teams — i.e. 4+ teams in the round. With 3 or
+        // fewer there is nobody to replace the pair coming off.
+        onBothOut={
+          rotation?.waiting?.[1] != null ? onDecideBothOut : undefined
+        }
         onClose={() => setDecisionOpen(false)}
       />
 
@@ -2127,6 +2202,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   sideBtnText: { color: '#1D4ED8', fontSize: 14, fontWeight: '800' },
+  sideBtnBusy: { opacity: 0.4 },
   roundBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -2137,6 +2213,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D4ED8',
     paddingVertical: 18,
   },
+  // Dimmed but still blue: the button is working, not unavailable.
+  roundBtnBusy: { backgroundColor: '#3B82F6' },
   roundBtnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
   btnDisabled: { opacity: 0.5 },
   warnText: { textAlign: 'center', color: '#DC2626', fontSize: 13, fontWeight: '600' },

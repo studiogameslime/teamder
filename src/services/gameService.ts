@@ -56,10 +56,12 @@ import {
   toGuestRosterId,
   UserId,
 } from '@/types';
+import { teamSizeFromFormat } from '@/types';
 import { mockGame, mockGamesV2, mockPlayers, mockRoundHistory } from '@/data/mockData';
 import { mockHistory } from '@/data/mockUsers';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { waitForAuthRestore } from '@/firebase/auth';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
@@ -141,40 +143,6 @@ const CONFLICT_QUERY_LIMIT = 50;
  */
 const MY_GAMES_WINDOW_MS = 48 * 60 * 60 * 1000;
 const myGamesFloor = (): number => Date.now() - MY_GAMES_WINDOW_MS;
-
-/**
- * Cold-start auth-race guard for Firestore reads.
- *
- * On a cold start (e.g. right after an app update restart) the persisted
- * session is restored — so `auth.currentUser` is already set — a few
- * milliseconds BEFORE the ID token has attached to the Firestore channel. A
- * query fired in that window reaches the rules with `request.auth == null`
- * and fails `permission-denied`, even though the query itself is valid. It
- * then self-recovers on the next read.
- *
- * This wraps a read: on `permission-denied` WHILE a user session exists, it
- * forces the token (which propagates it to the Firestore channel), waits a
- * beat, and retries ONCE. A genuine "not signed in", or any non-permission
- * error, rethrows immediately — so we never paper over a real rules bug.
- */
-async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (err) {
-    const code = (err as { code?: string })?.code;
-    const user = getFirebase().auth.currentUser;
-    if (code === 'permission-denied' && user) {
-      try {
-        await user.getIdToken();
-      } catch {
-        /* ignore — the retry below surfaces any real failure */
-      }
-      await new Promise((r) => setTimeout(r, 300));
-      return await run();
-    }
-    throw err;
-  }
-}
 
 /**
  * Tiny per-user cache for the my-games lists. Absorbs repeated reads when the
@@ -433,7 +401,7 @@ async function findOverlappingGameInGroup(
 /** On-field players per team for a game format (the live-rotation target
  *  size each playing team is filled up to). Defaults to 5. */
 function playersPerTeamFor(format: GameFormat | undefined): number {
-  return format === '4v4' ? 4 : format === '6v6' ? 6 : format === '7v7' ? 7 : 5;
+  return teamSizeFromFormat(format);
 }
 
 /**
@@ -2509,9 +2477,10 @@ export const gameService = {
       max: 1000,
       label: 'הערות',
     });
+    // Ceiling mirrors firestore.rules — see the note on the update path.
     const maxPlayers = requireInt('maxPlayers', input.maxPlayers, {
       min: 2,
-      max: 50,
+      max: 100,
       label: 'מספר שחקנים',
     });
     // Mutate the input view so the rest of the function sees the
@@ -2956,7 +2925,10 @@ export const gameService = {
       patch.notes = optionalString('notes', patch.notes, { max: 1000, label: 'הערות' });
     }
     if (patch.maxPlayers != null) {
-      patch.maxPlayers = requireInt('maxPlayers', patch.maxPlayers, { min: 2, max: 50, label: 'מספר שחקנים' });
+      // 100 mirrors the firestore.rules ceiling. Both were 50, which the
+      // format picker could not reach when it topped out at 7×5; it now reaches
+      // 11×7 = 77, and a mismatch here would surface as a bare permission-denied.
+      patch.maxPlayers = requireInt('maxPlayers', patch.maxPlayers, { min: 2, max: 100, label: 'מספר שחקנים' });
     }
     // Pre-flight validation that needs the current doc — the overlap
     // check and the startsAt-vs-registrationOpensAt invariant. We
@@ -3961,12 +3933,20 @@ export const gameService = {
   },
 
   /** Commit round stats + clear scoreboard, then return the post-round
-   *  skeleton (no persist). `{ outcome: null }` → a 2–3 team tie needs a
-   *  manual winner; caller opens the picker and calls again with it. */
+   *  skeleton (no persist). `{ outcome: null }` → the round was drawn and
+   *  nobody has decided it yet; the caller opens the tie chooser and calls
+   *  again with the decision.
+   *
+   *  A draw NEVER resolves itself any more. It used to, whenever the game had
+   *  4 teams and `advancedTieMode` was set — a rule chosen in the create form,
+   *  possibly weeks earlier, that then applied itself with no prompt. The
+   *  admin now decides with the score in front of them, so `tieResolution`
+   *  carries that decision back instead. */
   async prepareRoundResult(
     gameId: string,
     _userId: string,
     manualWinnerSide?: 'A' | 'B',
+    tieResolution?: 'bothOut' | 'veteranOut',
   ): Promise<
     | { outcome: 'A' | 'B' | 'tie'; skeleton: RotationFillState; draft: DraftTeamsResult }
     | { outcome: null }
@@ -3981,8 +3961,11 @@ export const gameService = {
     const [idxA, idxB] = rot.playing;
     const winnerSide: 'A' | 'B' | null =
       lm.scoreA > lm.scoreB ? 'A' : lm.scoreB > lm.scoreA ? 'B' : manualWinnerSide ?? null;
-    const tieMode =
-      g.numberOfTeams === 4 && g.advancedMode ? g.advancedTieMode ?? 'bothOut' : undefined;
+    // Only an EXPLICIT decision resolves a draw. `g.advancedTieMode` is no
+    // longer consulted: the setting is gone from the form, and honouring a
+    // leftover value on old games would resolve their draws without asking,
+    // which is the behaviour this replaces.
+    const tieMode = tieResolution;
     const isTie = !winnerSide;
     if (isTie && !tieMode) return { outcome: null };
 

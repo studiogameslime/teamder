@@ -35,6 +35,7 @@ import { RadiusMapModal } from '@/components/games/RadiusMapModal';
 import { SpringSheet } from '@/components/anim/SpringSheet';
 import { GameFormat, WeekdayIndex } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { gameFormatLabel } from '@/utils/format';
 import { he } from '@/i18n/he';
 // Pure filtering logic lives in @/utils/gameFilters (unit-tested). Re-exported
 // here so existing `from '@/components/GameFilterSheet'` imports keep working.
@@ -353,7 +354,7 @@ export function GameFilterSheet({
               {FORMATS.map((f) => (
                 <Segment
                   key={f}
-                  label={formatLabel(f)}
+                  label={gameFormatLabel(f)}
                   active={filters.formats.includes(f)}
                   onPress={() => toggleFormat(f)}
                 />
@@ -492,12 +493,6 @@ function QuickToggle({
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
-function formatLabel(f: GameFormat): string {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '5v5') return he.gameFormat5;
-  if (f === '6v6') return he.gameFormat6;
-  return he.gameFormat7;
-}
 
 // ─── Styles ─────────────────────────────────────────────────────────────
 

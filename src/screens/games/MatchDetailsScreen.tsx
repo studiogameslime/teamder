@@ -113,17 +113,17 @@ import {
 } from '@/services/weatherService';
 import {
   Game,
-  GameFormat,
   FieldType,
   LiveMatchState,
   LiveMatchZone,
   UserId,
   toGuestRosterId,
-  activeGuestCount,
-} from '@/types';
+  activeGuestCount, teamSizeFromFormat } from '@/types';
 import { colors, radius, shadows, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
-import { formatDateShortYear, formatDayDate, formatTime } from '@/utils/format';
+import { formatDateShortYear, formatDayDate, formatTime,
+  gameFormatLabel,
+} from '@/utils/format';
 import { teamName, normalizeRating, NEUTRAL_RATING } from '@/utils/draft';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
@@ -158,13 +158,6 @@ function formatDateLong(ms: number): string {
 // details grid. Compact enough to share a row with a label.
 const formatShortDate = formatDateShortYear;
 
-function formatLabel(f: GameFormat | undefined): string | null {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '5v5') return he.gameFormat5;
-  if (f === '6v6') return he.gameFormat6;
-  if (f === '7v7') return he.gameFormat7;
-  return null;
-}
 
 function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;
@@ -192,15 +185,7 @@ type SessionStatus =
  */
 function effectiveMinPlayers(game: Game): number {
   if (game.minPlayers && game.minPlayers > 0) return game.minPlayers;
-  const perTeam =
-    game.format === '4v4'
-      ? 4
-      : game.format === '6v6'
-        ? 6
-        : game.format === '7v7'
-          ? 7
-          : 5;
-  return perTeam * 2;
+  return teamSizeFromFormat(game.format) * 2;
 }
 
 /**
@@ -1347,7 +1332,7 @@ export function MatchDetailsScreen() {
   // toast (the service blocks it server-side regardless).
   const wasRejected =
     !!user && (game.rejectedPlayerIds ?? []).includes(user.id);
-  const fmt = formatLabel(game.format);
+  const fmt = game.format ? gameFormatLabel(game.format) : null;
   // Capacity tracks BOTH registered uids and per-game guests — a guest
   // is a real seat at the match, just without a /users record.
   const guestCount = activeGuestCount(game.guests);
@@ -2804,6 +2789,22 @@ export function MatchDetailsScreen() {
               Participants only (the summary/roundHistory reads are gated). */}
           {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
             <>
+              {/* The CLUB's evening sits above the player's own — the night
+                  happened to everyone, and the personal card is the follow-up
+                  question. It leads to a screen that says "no summary" when the
+                  evening predates the feature, which is honest and rare enough
+                  not to warrant hiding the button behind a probe read. */}
+              <Pressable
+                onPress={() => nav.navigate('RoundSummary', { gameId: game.id })}
+                style={({ pressed }) => [
+                  styles.roundSummaryCta,
+                  pressed && { opacity: 0.9 },
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons name="stats-chart" size={18} color="#fff" />
+                <Text style={styles.summaryCtaTxt}>{he.roundSummaryCta}</Text>
+              </Pressable>
               <Pressable
                 onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
                 style={({ pressed }) => [
@@ -3326,13 +3327,7 @@ export function MatchDetailsScreen() {
                 icon: 'grid-outline',
                 label: he.matchDetailsLabelFormat,
                 value: game.format
-                  ? game.format === '4v4'
-                    ? '4×4'
-                    : game.format === '5v5'
-                      ? '5×5'
-                      : game.format === '6v6'
-                        ? '6×6'
-                        : '7×7'
+                  ? gameFormatLabel(game.format).replace(/ /g, '')
                   : null,
               },
               // One-time games (or any game with no real community to show)
@@ -3864,6 +3859,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
     backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+  },
+  // Same shape as the personal CTA below it, a shade darker: they are a pair,
+  // and the club's evening is the one that leads.
+  roundSummaryCta: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colors.primaryDark,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
   },

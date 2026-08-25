@@ -12,6 +12,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { FieldType, GameFormat } from '@/types';
 import { colors, spacing, typography } from '@/theme';
+import { gameFormatLabel } from '@/utils/format';
 import { he } from '@/i18n/he';
 
 interface Props {
@@ -42,7 +43,7 @@ export function MatchFactsRow(props: Props) {
     chips.push({
       key: 'format',
       icon: 'football-outline',
-      label: formatLabel(props.format),
+      label: gameFormatLabel(props.format),
     });
   }
   if (props.fieldType) {
@@ -91,12 +92,6 @@ export function MatchFactsRow(props: Props) {
   );
 }
 
-function formatLabel(f: GameFormat): string {
-  if (f === '4v4') return he.gameFormat4;
-  if (f === '5v5') return he.gameFormat5;
-  if (f === '6v6') return he.gameFormat6;
-  return he.gameFormat7;
-}
 
 function fieldTypeLabel(f: FieldType): string {
   if (f === 'asphalt') return he.fieldTypeAsphalt;

@@ -356,6 +356,7 @@ export const he = {
     `${count} עצירות · ${time}`,
   rotationStartRound: 'התחל משחק',
   rotationEndRound: 'סיים משחק',
+  rotationEndRoundBusy: 'מסיים…',
   rotationEndRoundConfirmTitle: (winner: string) => `${winner} ניצחה! 🏆`,
   rotationEndRoundConfirmBody: (next: string) =>
     `הבאה שעולה למגרש: ${next}. לסיים את המשחק?`,
@@ -363,11 +364,6 @@ export const he = {
   // A TIE used to skip the confirm entirely and drop straight into the next
   // step, so the admin ended a match without being told who was coming on —
   // the one case where BOTH teams can leave the pitch at once.
-  rotationEndRoundTieConfirmTitle: 'האם אתה בטוח שאתה רוצה לסיים משחק?',
-  rotationEndRoundTieConfirmBodyTwo: (a: string, b: string) =>
-    `תיקו — שתי הקבוצות יורדות. עולות למגרש: ${a} ו${b}.`,
-  rotationEndRoundTieConfirmBodyOne: (staying: string, incoming: string) =>
-    `תיקו — ${staying} נשארת במגרש, ועולה ${incoming}.`,
   rotationEndRoundConfirmOk: 'סיים משחק',
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   fillPickerSelectCount: (chosen: number, required: number) =>
@@ -530,6 +526,15 @@ export const he = {
   shDecideManualHint: 'בוחרים קבוצה מנצחת בלי פנדלים',
   shDecidePenalties: 'שובר שוויון בפנדלים',
   shDecidePenaltiesHint: 'סבב בעיטות פנדל עד להכרעה',
+  // Third way out of a draw, offered only when there are teams waiting: send
+  // BOTH sides off and bring the next two on. Used to be a create-form toggle
+  // that applied itself silently; it is a choice made at the whistle now.
+  shDecideBothOut: 'שתי הקבוצות יורדות',
+  shDecideBothOutHint: 'אף אחת לא ניצחה — שתיהן יורדות ועולות הבאות בתור',
+  shDecideBothOutConfirmTitle: 'שתי הקבוצות יורדות?',
+  shDecideBothOutConfirmBody: (a: string, b: string) =>
+    `המשחק ייסגר בתיקו ללא מנצח. עולות למגרש: ${a} ו${b}.`,
+  shDecideBothOutConfirmOk: 'אישור',
   shTag: '🥅 שובר שוויון בפנדלים',
   shFirstTitle: 'מי בועטים ראשונים?',
   shRandom: 'אקראי',
@@ -602,7 +607,9 @@ export const he = {
   // Home card, shown for 24h after an evening the player actually played.
   homeJustPlayedTitle: 'איך היה אתמול?',
   homeJustPlayedBody: 'המחזור הסתיים — הציון, הגולים והדירוג שלך מחכים בפנים.',
-  homeJustPlayedCta: 'לסיכום המחזור',
+  // The card opens the match, not the personal summary — the label has to say
+  // where it actually goes.
+  homeJustPlayedCta: 'לפרטי המחזור',
   summaryShareCta: 'שתף את סיכום המחזור ⚡',
   summaryShareTitle: 'שיתוף סיכום המחזור',
   summaryShareUnavailable: 'שיתוף לא זמין במכשיר הזה',
@@ -773,7 +780,6 @@ export const he = {
   createGameMaxPlayers: 'מקסימום שחקנים',
   createGameMinPlayers: 'מינימום שחקנים (לא חובה)',
   createGameMinPlayersHint: 'מתחת למספר הזה המחזור עלול להתבטל',
-  createGameNumberOfTeams: 'מספר קבוצות',
   // Advanced game mode toggle + sub-options.
   createGameAdvancedMode: 'מצב מחזור מתקדם',
   createGameAdvancedModeHint:
@@ -813,7 +819,6 @@ export const he = {
   createGameCancelDeadline: 'דדליין לביטול (שעות לפני המחזור)',
   createGameCancelDeadlineHint:
     'אחרי הזמן הזה ביטול ייספר כאי-הגעה',
-  createGameFormat: 'פורמט',
   createGameIsPublic: 'מחזור פתוח לכולם',
   createGameIsPublicHint:
     'כשמופעל — המחזור פתוח ומוצג בלשונית המחזורים גם למי שאינם במועדון, וגם נשלחת פנייה לשחקנים פנויים בקרבת מקום כשחסרים משתתפים. כבוי — המחזור סגור לחברי המועדון בלבד.',
@@ -841,7 +846,91 @@ export const he = {
   createGameBringShirts: 'מישהו צריך להביא גופיות',
   createGameSubmit: 'יצירת מחזור',
   createGameAdvanced: 'הגדרות מתקדמות',
-  createGameTotalShort: (n: number) => `סך ${n} שחקנים`,
+  // Format card — an open stepper, replacing the fixed 4v4-7v7 / 2-5 chips.
+  formatSummary: (size: number, teams: number) => `${size} × ${size} · ${teams} קבוצות`,
+  formatTotalPlayers: (n: number) => `סך הכל ${n} שחקנים`,
+  formatTeamSizeLabel: 'שחקנים בקבוצה',
+  formatTeamSizeHint: 'גודל כל קבוצה',
+  formatTeamCountLabel: 'מספר קבוצות',
+  formatTeamCountHint: 'כמה קבוצות מתחלפות במגרש',
+  formatDecrease: 'הפחת',
+  formatIncrease: 'הוסף',
+  // Fit against the roster that is ALREADY registered — edit flow only, where
+  // the number is on screen anyway. Hebrew needs the singular spelled out:
+  // "חסרים 1 שחקנים" is not a sentence anyone would write.
+  formatFitExact: (n: number) => `המבנה מתאים ל־${n} שחקנים`,
+  formatFitShort: (n: number) =>
+    n === 1 ? 'חסר שחקן אחד למבנה שבחרת' : `חסרים ${n} שחקנים למבנה שבחרת`,
+  formatFitOver: (n: number) =>
+    n === 1 ? 'שחקן אחד מעבר למבנה שבחרת' : `${n} שחקנים מעבר למבנה שבחרת`,
+  // ── סיכום המחזור (מועדוני) ──────────────────────────────────────────
+  roundSummaryCta: 'סיכום המחזור',
+  roundSummaryTitle: 'סיכום המחזור',
+  roundSummaryUnavailable: 'אין סיכום למחזור הזה',
+  roundSummaryUnavailableHint:
+    'הסיכום נוצר בסוף מחזור שנוהל במסך החי. למחזורים ישנים יותר הוא לא קיים.',
+  roundSummaryNumbers: 'המחזור במספרים',
+  roundSummaryBackfilled:
+    'הסיכום הופק בדיעבד — בערב הזה חלק מהנתונים עוד לא נאספו',
+  roundSummaryStars: 'כוכבי המחזור',
+  roundSummaryTeams: 'הקבוצות',
+  roundSummaryWhatHappened: 'מה קרה הערב',
+  roundSummaryStatRounds: (n: number) => `${n} משחקונים`,
+  roundSummaryStatGoals: (n: number) => `${n} שערים`,
+  roundSummaryStatAssists: (n: number) => `${n} בישולים`,
+  roundSummaryStatShootouts: (n: number) =>
+    n === 1 ? 'הכרעת פנדלים אחת' : `${n} הכרעות פנדלים`,
+  roundSummaryKingGoals: 'מלך השערים',
+  roundSummaryKingAssists: 'מלך הבישולים',
+  roundSummaryKingCleanSheets: 'מלך השערים הנקיים',
+  roundSummaryKingInvolvement: 'הכי מעורב בשערים',
+  roundSummaryKingWins: 'מלך הניצחונות',
+  roundSummaryTeamBest: (colour: string, wins: number) =>
+    `קבוצה ${colour} — ${wins} ניצחונות`,
+  roundSummaryTeamWorst: (colour: string, losses: number) =>
+    `ערב קשה ל${colour} — ${losses} הפסדים`,
+  roundSummaryPair: 'הצמד של הערב',
+  roundSummaryPairText: (a: string, b: string, goals: number) =>
+    `${a} ו${b} — ${goals} שערים נוצרו ביניהם`,
+  roundSummaryPairLeg: (from: string, to: string, n: number) =>
+    `${from} → ${to}: ${n}`,
+  // הבסיס שממנו נמדדים השיאים — כדי לא לטעון "אי פעם" על היסטוריה חלקית.
+  roundSummaryBasis: (date: string) => `שיאים נמדדים מאז ${date}`,
+  summaryNamesAndMore: (a: string, b: string, more: number) =>
+    `${a}, ${b} ועוד ${more}`,
+  summaryMetricGoals: 'שערים',
+  summaryMetricAssists: 'בישולים',
+  summaryMetricInvolvement: 'מעורבויות בשער',
+  summaryMetricCleanSheets: 'שערים נקיים',
+  summaryMetricWins: 'ניצחונות',
+  summaryMetricRounds: 'משחקונים',
+  summaryMetricEvenings: 'מחזורים',
+  summaryMetricShootouts: 'הכרעות פנדלים',
+  summaryRecordNew: (who: string, value: number, metric: string, prev: number) =>
+    `שיא מועדון חדש · ${who} — ${value} ${metric} (הקודם: ${prev})`,
+  summaryRecordTied: (who: string, value: number, metric: string) =>
+    `השוואת שיא מועדון · ${who} — ${value} ${metric}`,
+  summaryPersonalNew: (who: string, value: number, metric: string) =>
+    `שיא אישי · ${who} — ${value} ${metric}`,
+  summaryPersonalTied: (who: string, value: number, metric: string) =>
+    `השוואת שיא אישי · ${who} — ${value} ${metric}`,
+  summaryClubMilestone: (threshold: number, metric: string) =>
+    `${threshold} ${metric} למועדון`,
+  summaryPlayerMilestone: (who: string, threshold: number, metric: string) =>
+    `${who} — ${threshold} ${metric} במועדון`,
+  summaryNewLeader: (who: string) => `מקום ראשון חדש · ${who}`,
+  summaryRankJump: (who: string, places: number, to: number) =>
+    `${who} — ${places} מקומות למעלה, למקום ${to}`,
+  summaryTopEntry: (who: string, tier: number) =>
+    `${who} — כניסה ל-${tier} המובילים`,
+  summaryTightTop: (line: string) => `צמוד בצמרת · ${line}`,
+  summaryFirstTwoScorers: 'לראשונה במועדון — שני שחקנים עם 4 שערים ומעלה',
+  summaryFirstAllRound: 'לראשונה במועדון — שחקן עם 3 שערים ו-3 בישולים',
+  summaryFirstAllLevel: 'לראשונה במועדון — כל הקבוצות סיימו באותו מספר ניצחונות',
+  summaryFirstThreeShootouts: 'לראשונה במועדון — שלוש הכרעות פנדלים בערב אחד',
+  summaryFirstManyPersonalBests: 'לראשונה במועדון — שלושה שחקנים שברו שיא אישי בערב אחד',
+  summaryFirstEveryTeamWon: 'לראשונה במועדון — כל הקבוצות ניצחו לפחות פעם אחת',
+  wizardSectionPlayStyle: 'אופן המשחק',
   editGameTitle: 'עריכת מחזור',
   editGameSubmit: 'שמירת שינויים',
   editGameRegAfterKickoffTitle: 'תזמון לא תקין',

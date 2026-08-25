@@ -10,6 +10,7 @@
 // a fixed count.
 
 import type { DraftTeamsResult, GameFormat, UserId } from '@/types';
+import { TEAM_COUNT_MAX, TEAM_COUNT_MIN, teamSizeFromFormat } from '@/types';
 import {
   balanceCore,
   buildPairRepeatWeights,
@@ -34,23 +35,35 @@ export type DraftMethod = 'snake' | 'regular';
  * roster sizes. Default 5 for 5v5 / unknown.
  */
 export function playersPerTeam(format?: GameFormat): number {
-  if (format === '4v4') return 4;
-  if (format === '6v6') return 6;
-  if (format === '7v7') return 7;
-  return 5;
+  return teamSizeFromFormat(format);
 }
 
-/** Hebrew team letters; team index 0 → 'א'. Dynamic for 2–4 teams. */
-export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד'] as const;
-export const MIN_TEAMS = 2;
-export const MAX_TEAMS = 4;
+/** Hebrew team letters; team index 0 → 'א'. One per supported team. */
+export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז'] as const;
+// The draft screen clamps to these. MAX_TEAMS used to be 4 while the create
+// form already offered 5, so a 5-team game silently drafted into 4 teams and
+// the fifth team's players landed on the bench. Both ends now come from the
+// single pair of constants in @/types, so the picker and the draft cannot
+// drift apart again.
+export const MIN_TEAMS = TEAM_COUNT_MIN;
+export const MAX_TEAMS = TEAM_COUNT_MAX;
 
 export function teamLetter(i: number): string {
   return TEAM_LETTERS[i] ?? String(i + 1);
 }
 
 // Teams are identified by COLOR (clearer than "קבוצה א/ב"), fixed per index.
-const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה'];
+// Kept in step with rotationView.ts — the same team must not be "ירוקה" in the
+// draft and "קבוצה ג" on the live pitch.
+const TEAM_COLOR_NAMES = [
+  'אדומה',
+  'כחולה',
+  'ירוקה',
+  'צהובה',
+  'כתומה',
+  'סגולה',
+  'שחורה',
+];
 export function teamName(i: number): string {
   const c = TEAM_COLOR_NAMES[i];
   return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
