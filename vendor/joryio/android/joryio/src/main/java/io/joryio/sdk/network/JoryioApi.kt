@@ -97,7 +97,24 @@ internal interface JoryioApi {
     suspend fun unregisterPushToken(
         @Body request: PushTokenRequest
     ): Response<PushTokenResponse>
+
+    /**
+     * Report that a push actually ARRIVED on this device.
+     *
+     * The only positive delivery signal push can produce. FCM answers a send
+     * with "accepted" and never reports what reached the handset, so the device
+     * telling us for itself is the difference between "we handed it to Google"
+     * and "it reached someone".
+     */
+    // Root-mounted, like the click route: the signed trackingId is the
+    // authority, and the same route serves the web service worker, which has
+    // no SDK key at all.
+    @POST("track/push/delivered/{trackingId}")
+    suspend fun reportPushDelivered(
+        @retrofit2.http.Path("trackingId") trackingId: String
+    ): Response<PushTokenResponse>
 }
+
 
 // API Response Models
 data class BatchResponse(

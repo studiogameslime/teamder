@@ -107,6 +107,20 @@ class JoryioFirebaseMessagingService : FirebaseMessagingService() {
             it !in listOf("joryio", "title", "body", "image_url", "deep_link", "trackingId")
         }
 
+        // Report that it ARRIVED, before drawing anything.
+        //
+        // This is the only positive delivery signal push can produce: FCM
+        // answers a send with "accepted" and never says what reached the
+        // handset. The backend used to emit a `delivered` event next to `sent`
+        // regardless, which made every campaign read 100% delivered - including
+        // sends to devices that had uninstalled.
+        //
+        // Before display on purpose. Delivery is "the device received it", not
+        // "the user saw it" - a notification the OS suppresses, or that fails
+        // to render, still arrived. Reporting after would quietly redefine the
+        // metric as something narrower.
+        reportDelivered(trackingId)
+
         // Display notification
         displayNotification(
             title = title,
@@ -116,6 +130,29 @@ class JoryioFirebaseMessagingService : FirebaseMessagingService() {
             trackingId = trackingId,
             customData = customData
         )
+    }
+
+    /**
+     * Fire-and-forget delivery receipt.
+     *
+     * Never blocks or fails the notification: this method's job is to show a
+     * message, and telemetry must not be able to stop it. An exception here
+     * would surface as a crash in the HOST app, triggered remotely by us
+     * sending a push - the same reasoning as the NotificationManager guard
+     * below.
+     *
+     * The backend deduplicates by tracking id, so a redelivery from FCM or an
+     * OS replay after a restart collapses to one event rather than pushing
+     * delivery past 100% of sends.
+     */
+    private fun reportDelivered(trackingId: String?) {
+        if (trackingId.isNullOrBlank()) return
+        try {
+            if (!Joryio.isInitialized()) return
+            Joryio.getInstance().reportPushDelivered(trackingId)
+        } catch (e: Exception) {
+            android.util.Log.w("Joryio", "Delivery receipt not sent: ${e.message}")
+        }
     }
 
     /**

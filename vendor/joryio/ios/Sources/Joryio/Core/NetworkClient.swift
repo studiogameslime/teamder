@@ -108,6 +108,27 @@ class NetworkClient {
         logger.debug("Push token registered")
     }
 
+    /// Report that a push ARRIVED on this device.
+    ///
+    /// The only positive delivery signal push can produce: APNs answers a send
+    /// with "accepted" and never reports what reached the handset, so the
+    /// device saying so for itself is the difference between "Apple took it"
+    /// and "it reached someone".
+    ///
+    /// `trackingId` is HMAC-signed by the backend and identifies the campaign,
+    /// variant and recipient - this device asserts none of them.
+    func reportPushDelivered(trackingId: String) async throws {
+        // Root-mounted, like trackPushClick below: the signed trackingId is the
+        // authority, and the same route serves the web service worker, which
+        // has no SDK key at all.
+        let endpoint = "\(apiEndpoint)/track/push/delivered/\(trackingId)"
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        _ = try await URLSession.shared.data(for: request)
+        logger.debug("Push delivery receipt sent")
+    }
+
     func trackPushClick(trackingId: String) async throws {
         let endpoint = "\(apiEndpoint)/track/push/click/\(trackingId)"
 

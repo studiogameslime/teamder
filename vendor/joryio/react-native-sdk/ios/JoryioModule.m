@@ -31,6 +31,7 @@ RCT_EXTERN_METHOD(incrementAttribute:(NSString *)key
 
 RCT_EXTERN_METHOD(unsetAttribute:(NSString *)key)
 
+RCT_EXTERN_METHOD(reportPushDelivered:(NSString *)trackingId)
 RCT_EXTERN_METHOD(registerPushToken:(NSString *)token)
 
 RCT_EXTERN_METHOD(unregisterPush)

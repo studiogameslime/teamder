@@ -252,16 +252,58 @@ class PushNotificationManager: NSObject {
             onResult?(PushRegistrationResult(success: true))
         } catch {
             logger.error("Failed to register device token with backend: \(error.localizedDescription)")
-            let transport = networkClient.lastTransportError
+            // Classified from THIS call's error.
+            //
+            // It used to read `networkClient.lastTransportError`, which does not
+            // exist on NetworkClient - the property lives on JoryioSDK - so the
+            // SDK did not compile. Pointing it at the SDK's copy would have
+            // compiled and still been wrong: that property is shared, so a
+            // concurrent request completing between the throw and the read
+            // makes this callback describe someone else's failure. The caught
+            // error IS this registration's outcome.
+            let (message, isUnauthorized) = Self.describe(error)
             onResult?(
                 PushRegistrationResult(
                     success: false,
-                    message: transport?.message ?? error.localizedDescription,
-                    isUnauthorized: transport?.isUnauthorized ?? false,
+                    message: message,
+                    isUnauthorized: isUnauthorized,
                     // Anything not an auth rejection is worth another launch.
-                    isRetryable: !(transport?.isUnauthorized ?? false)
+                    isRetryable: !isUnauthorized
                 )
             )
+        }
+    }
+
+    /// Turn a registration failure into something an integrator can act on.
+    ///
+    /// `isUnauthorized` is the one distinction that matters to a host app: a
+    /// rejected SDK key is a thing they can FIX (wrong key, or a key for
+    /// another workspace), everything else is worth retrying on next launch.
+    /// NetworkError does not conform to LocalizedError, so localizedDescription
+    /// alone would report "The operation couldn't be completed" for every one
+    /// of these.
+    static func describe(_ error: Error) -> (message: String, isUnauthorized: Bool) {
+        guard let netError = error as? NetworkClient.NetworkError else {
+            return (error.localizedDescription, false)
+        }
+        switch netError {
+        case .unauthorized:
+            return ("SDK key rejected by the server (401)", true)
+        case let .sdkAuthError(reason, endpoint):
+            return ("SDK authentication failed (\(reason)) at \(endpoint)", true)
+        case let .httpError(code):
+            // 403 is an authorization refusal too - retrying it forever without
+            // saying so is how a mis-scoped key looks like a flaky network.
+            return ("Server returned HTTP \(code)", code == 401 || code == 403)
+        case let .rateLimited(retryAfter):
+            let suffix = retryAfter.map { " - retry after \(Int($0))s" } ?? ""
+            return ("Rate limited by the server\(suffix)", false)
+        case .invalidURL:
+            return ("Invalid API endpoint configured", false)
+        case .invalidResponse:
+            return ("Unreadable response from the server", false)
+        case .unknown:
+            return ("Network request failed", false)
         }
     }
 
@@ -289,12 +331,43 @@ class PushNotificationManager: NSObject {
         // add a phantom "received" to whatever campaign the tester was checking.
         if campaignId != nil {
             trackNotificationEvent(userInfo: userInfo, action: "received")
+            // The delivery RECEIPT - distinct from the analytics event above.
+            // This one becomes `message.delivered`, the only push delivery
+            // signal with evidence behind it: APNs answers a send with
+            // "accepted" and never reports what reached the handset.
+            reportDelivered(userInfo: userInfo)
         }
 
         // Handle notification content
         handleNotificationContent(userInfo: userInfo)
 
         completionHandler(.newData)
+    }
+
+    /// Fire-and-forget delivery receipt.
+    ///
+    /// Never throws into the notification path: this method's job is to handle
+    /// a message, and telemetry must not be able to stop it.
+    ///
+    /// COVERAGE, stated plainly: this fires when the app process is running -
+    /// foreground, or backgrounded with content-available. A notification
+    /// delivered while the app is fully suspended is handled by the
+    /// Notification Service Extension, which runs in a SEPARATE process without
+    /// the SDK's endpoint or key, so it cannot report from there today. Closing
+    /// that gap needs an App Group the host app configures, so the SDK can
+    /// share its config with the extension. Until then iOS delivery is a
+    /// LOWER BOUND, and undercounting is the right direction for a metric whose
+    /// whole purpose is to stop overstating delivery.
+    private func reportDelivered(userInfo: [AnyHashable: Any]) {
+        guard let trackingId = userInfo["trackingId"] as? String,
+              !trackingId.isEmpty else { return }
+        Task { [weak self] in
+            do {
+                try await self?.networkClient.reportPushDelivered(trackingId: trackingId)
+            } catch {
+                self?.logger.debug("Delivery receipt failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     /// Handle notification tap/interaction

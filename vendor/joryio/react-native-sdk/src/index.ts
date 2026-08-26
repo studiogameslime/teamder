@@ -443,6 +443,29 @@ class JoryioSDK {
   }
 
   /**
+   * Report that a push ARRIVED on this device.
+   *
+   * Needed because most React Native apps run their OWN messaging service -
+   * @react-native-firebase/messaging, Expo notifications - so a push never
+   * passes through our native service and would report no delivery at all.
+   * The same apps already call `registerPushToken`; this is the matching half.
+   *
+   * ```ts
+   * messaging().onMessage(async (msg) => {
+   *   if (msg.data?.trackingId) Joryio.reportPushDelivered(msg.data.trackingId);
+   * });
+   * messaging().setBackgroundMessageHandler(async (msg) => {
+   *   if (msg.data?.trackingId) Joryio.reportPushDelivered(msg.data.trackingId);
+   * });
+   * ```
+   *
+   * @param trackingId the `trackingId` from the message's data payload.
+   */
+  reportPushDelivered(trackingId: string): void {
+    this._dispatch(() => JoryioModule.reportPushDelivered(trackingId));
+  }
+
+  /**
    * Unregister from push notifications.
    */
   unregisterPush(): void {

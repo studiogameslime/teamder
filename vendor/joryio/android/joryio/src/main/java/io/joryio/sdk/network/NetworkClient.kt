@@ -508,6 +508,22 @@ internal class NetworkClient(
         }
     }
 
+    /**
+     * Report that a push arrived on this device.
+     *
+     * Retried like any other call: a receipt lost to a flaky moment of network
+     * is a delivery that silently reads as undelivered, and the backend
+     * deduplicates by tracking id, so a retry that actually succeeded twice
+     * costs nothing.
+     */
+    suspend fun reportPushDelivered(
+        trackingId: String,
+    ): NetworkResult<PushTokenResponse> {
+        return executeWithRetry("reportPushDelivered") {
+            api.reportPushDelivered(trackingId)
+        }
+    }
+
     suspend fun trackPushClick(trackingId: String): NetworkResult<Unit> = withContext(Dispatchers.IO) {
         // okHttpClient.execute() is a BLOCKING call — it must never run on the main
         // thread (callers dispatch on Dispatchers.Main), hence the withContext(IO).

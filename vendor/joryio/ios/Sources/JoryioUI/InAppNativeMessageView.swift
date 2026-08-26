@@ -25,6 +25,7 @@ final class InAppNativeMessageView: BaseMessageView {
     private let backdrop = UIView()
     private let card = UIView()
     private let stack = UIStackView()
+    private let close = UIButton(type: .system)
 
     /// Returns nil when there is nothing to show - an empty card the user has
     /// to dismiss is worse than no message, and it would still count an
@@ -129,7 +130,29 @@ final class InAppNativeMessageView: BaseMessageView {
             label.numberOfLines = 0
             label.textAlignment = resolvedAlignment
             label.accessibilityTraits.insert(.header)
-            stack.addArrangedSubview(label)
+
+            if content.closeButton {
+                // The ✕ floats over the card's trailing corner, so a long
+                // headline would run under it. A stack arranges its subviews
+                // edge to edge, so the inset has to come from a container -
+                // constraining the label against the button instead would
+                // fight the fill alignment.
+                let row = UIView()
+                row.translatesAutoresizingMaskIntoConstraints = false
+                label.translatesAutoresizingMaskIntoConstraints = false
+                row.addSubview(label)
+                NSLayoutConstraint.activate([
+                    label.topAnchor.constraint(equalTo: row.topAnchor),
+                    label.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+                    label.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                    // Trailing-relative, so the gap lands on the LEFT for a
+                    // right-to-left message - the same side as the button.
+                    label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -32),
+                ])
+                stack.addArrangedSubview(row)
+            } else {
+                stack.addArrangedSubview(label)
+            }
         }
 
         let bodyLabel = UILabel()
@@ -160,20 +183,30 @@ final class InAppNativeMessageView: BaseMessageView {
             stack.addArrangedSubview(row)
         }
 
+        // An ✕ in the card's TRAILING corner, not a "Close" row under the
+        // buttons. Three reasons it changed:
+        //   - it is where people look to dismiss a card, on every platform;
+        //   - the old row hardcoded the English word "Close", which is simply
+        //     wrong in a Hebrew or Arabic message - a glyph needs no
+        //     translation, only an accessibility label;
+        //   - the web SDK already drew an ✕ for HTML messages while drawing
+        //     "Close" for native ones, so one product had two dismiss designs.
+        // A dismissible message must always have a visible way out; relying on
+        // the backdrop alone traps fullscreen users, which have none.
         if content.closeButton {
-            let close = UIButton(type: .system)
-            close.setTitle("Close", for: .normal)
-            close.titleLabel?.font = .preferredFont(forTextStyle: .footnote)
-            close.titleLabel?.adjustsFontForContentSizeCategory = true
-            close.setTitleColor(
-                UIColor(joryioHex: style?.textColor)?.withAlphaComponent(0.78) ?? .secondaryLabel,
+            close.setImage(
+                UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)),
                 for: .normal
             )
-            close.titleLabel?.textAlignment = .center
+            close.tintColor =
+                UIColor(joryioHex: style?.textColor)?.withAlphaComponent(0.55) ?? .secondaryLabel
+            // Icon-only, so VoiceOver would otherwise announce "button".
+            close.accessibilityLabel = "Close"
             close.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
-            // A dismissible message must always have a visible way out; relying
-            // on the backdrop alone traps fullscreen users, which have none.
-            stack.addArrangedSubview(close)
+            close.translatesAutoresizingMaskIntoConstraints = false
+            // On the CARD, not in the stack: it floats over the corner rather
+            // than taking a row, so the headline starts at the top as before.
+            card.addSubview(close)
         }
 
         NSLayoutConstraint.activate([
@@ -187,6 +220,20 @@ final class InAppNativeMessageView: BaseMessageView {
             stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
         ])
+
+        if content.closeButton {
+            NSLayoutConstraint.activate([
+                close.topAnchor.constraint(equalTo: card.topAnchor, constant: 8),
+                // trailingAnchor, not right: the card carries a right-to-left
+                // semanticContentAttribute for a Hebrew or Arabic message, so
+                // this resolves to the LEFT corner there, which is where that
+                // reader looks for it.
+                close.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
+                // 44x44 is Apple's minimum tap target; the glyph inside is 13pt.
+                close.widthAnchor.constraint(equalToConstant: 44),
+                close.heightAnchor.constraint(equalToConstant: 44),
+            ])
+        }
 
         applyPlacement()
     }

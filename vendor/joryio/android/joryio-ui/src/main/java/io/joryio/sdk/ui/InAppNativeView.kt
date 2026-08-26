@@ -116,7 +116,15 @@ internal object InAppNativeView {
                     layoutParams = LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ).apply { bottomMargin = dp(8) }
+                    ).apply {
+                        bottomMargin = dp(8)
+                        // Room for the ✕, which floats over the card's trailing
+                        // corner. marginEnd, not marginRight: the card carries
+                        // an RTL layoutDirection for a Hebrew or Arabic message,
+                        // so this gap lands on the LEFT there - the same side
+                        // the button is on.
+                        if (content.closeButton) marginEnd = dp(28)
+                    }
                 },
             )
         }
@@ -155,28 +163,9 @@ internal object InAppNativeView {
             card.addView(row)
         }
 
-        if (content.closeButton) {
-            card.addView(
-                TextView(context).apply {
-                    text = "Close"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, ((st?.fontSize ?: 14.5f) * 0.9f))
-                    setTextColor(hex(st?.textColor)?.let(::softened) ?: secondaryTextColor(context))
-                    gravity = Gravity.CENTER
-                    // A dismissible message must always have a visible way out;
-                    // relying on the backdrop alone traps fullscreen users.
-                    setPadding(0, dp(12), 0, dp(4))
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { host.onClose("close_button") }
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                },
-            )
-        }
-
         return FrameLayout(context).apply {
+            layoutDirection =
+                if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
             addView(
                 card,
                 FrameLayout.LayoutParams(
@@ -188,6 +177,48 @@ internal object InAppNativeView {
                     },
                 ),
             )
+
+            // An ✕ in the card's TRAILING corner, not a "Close" row under the
+            // buttons. Three reasons it changed:
+            //   - it is where people look to dismiss a card, on every platform;
+            //   - the old row hardcoded the English word "Close", which is
+            //     simply wrong in a Hebrew or Arabic message - a glyph needs no
+            //     translation, only a contentDescription;
+            //   - the web SDK already drew an ✕ for HTML messages while drawing
+            //     "Close" for native ones, so one product had two designs.
+            // A dismissible message must always have a visible way out; relying
+            // on the backdrop alone traps fullscreen users, which have none.
+            if (content.closeButton) {
+                addView(
+                    TextView(context).apply {
+                        text = "\u2715"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                        setTextColor(
+                            hex(st?.textColor)?.let(::softened) ?: secondaryTextColor(context),
+                        )
+                        gravity = Gravity.CENTER
+                        // Icon-only, so TalkBack would otherwise announce it as
+                        // an unlabelled button.
+                        contentDescription = "Close"
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener { host.onClose("close_button") }
+                        layoutParams = FrameLayout.LayoutParams(
+                            // 44dp is the tap target; the glyph inside is 16sp.
+                            // Smaller is hard to hit, and it is the only way out
+                            // of a full-screen message.
+                            dp(44),
+                            dp(44),
+                            // Gravity.END, not RIGHT: resolves against the
+                            // layoutDirection set above, so it flips for RTL.
+                            Gravity.TOP or Gravity.END,
+                        ).apply {
+                            topMargin = dp(4)
+                            marginEnd = dp(4)
+                        }
+                    },
+                )
+            }
         }
     }
 

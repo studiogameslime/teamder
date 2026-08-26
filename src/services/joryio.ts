@@ -231,6 +231,30 @@ export function trackPushClick(trackingId: string): void {
   Joryio.trackPushClick(trackingId);
 }
 
+/** Report that a push actually ARRIVED on this device.
+ *
+ *  Joryio's own FirebaseMessagingService reports this for apps that let the SDK
+ *  own push. We don't — Teamder has its own notification stack (expo-
+ *  notifications) and registers its own service, so the SDK's never runs and
+ *  this device reported no deliveries at all. The backend used to paper over
+ *  that by emitting `delivered` alongside `sent` for everyone, which made every
+ *  campaign read 100% delivered including sends to uninstalled devices. It now
+ *  waits for the device to say so; `reportPushDelivered` is that half, added in
+ *  the 2026-08-26 SDK for exactly our shape of app.
+ *
+ *  COVERAGE, so the number is read correctly: a Joryio push carries a
+ *  `notification` block, so when the app is backgrounded or killed Android
+ *  hands it straight to the tray and no JS of ours runs. We can therefore
+ *  witness arrival in only two moments — a push that lands while the app is in
+ *  the foreground, and a push the user taps. Both are TRUE arrivals, so nothing
+ *  here inflates; a push delivered to the tray and never opened is simply not
+ *  counted. Receipts dedupe by trackingId on the backend, so reporting the same
+ *  push from both paths is free. */
+export function reportPushDelivered(trackingId: string): void {
+  if (USE_MOCK_DATA || !trackingId) return;
+  Joryio.reportPushDelivered(trackingId);
+}
+
 /** In-app campaigns — the capability a hand-written HTTP client cannot provide.
  *  Subscribing is not enough on its own: something has to DRAW the message.
  *  See components/joryio/InAppMessageHost. */
@@ -274,6 +298,7 @@ export const joryio = {
   resetUser,
   registerPushToken,
   trackPushClick,
+  reportPushDelivered,
   onInAppMessage,
   syncInAppCampaigns,
   trackInAppImpression,

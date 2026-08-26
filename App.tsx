@@ -73,6 +73,17 @@ try {
     handleNotification: async (notification: {
       request?: { content?: { data?: unknown } };
     }) => {
+      // A Joryio push that reaches us at all has ARRIVED — report it before any
+      // of the branches below, each of which returns on its own. FCM answers a
+      // send with "accepted" and never says what reached the handset, so this
+      // receipt is the only positive delivery signal push can produce. See
+      // services/joryio.reportPushDelivered for what it can and cannot see.
+      {
+        const d = (notification?.request?.content?.data ?? {}) as Record<string, unknown>;
+        if (typeof d.trackingId === 'string' && d.trackingId) {
+          joryio.reportPushDelivered(d.trackingId);
+        }
+      }
       // Suppress the heads-up banner for the chat the user is ALREADY viewing —
       // otherwise two people chatting live each get a banner per message (the
       // server re-arms its one-push gate every time the open chat resets its
@@ -677,6 +688,11 @@ export default function App() {
       const trackingId =
         typeof data.trackingId === 'string' ? data.trackingId : '';
       if (trackingId) {
+        // A tap proves the push arrived, and it is the ONLY arrival we witness
+        // when Android drew it in the tray while we were backgrounded. Deduped
+        // by trackingId server-side, so double-reporting a foreground push we
+        // already receipted costs nothing.
+        joryio.reportPushDelivered(trackingId);
         joryio.trackPushClick(trackingId);
         void logEvent(AnalyticsEvent.NotificationOpened, { source: 'joryio' });
         // Tapping a marketing push is as intentful as tapping our own.

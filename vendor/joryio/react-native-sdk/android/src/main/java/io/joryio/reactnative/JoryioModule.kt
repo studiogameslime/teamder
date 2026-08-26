@@ -151,6 +151,11 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
     // ─── Push ──────────────────────────────────────────────────────────────
 
     @ReactMethod
+    fun reportPushDelivered(trackingId: String) {
+        Joryio.whenReady { it.reportPushDelivered(trackingId) }
+    }
+
+    @ReactMethod
     fun registerPushToken(token: String) {
         Joryio.whenReady { it.registerPushToken(token) }
     }

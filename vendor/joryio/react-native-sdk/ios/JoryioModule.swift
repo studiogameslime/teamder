@@ -150,6 +150,10 @@ class JoryioModule: RCTEventEmitter {
 
   // MARK: - Push
 
+  @objc func reportPushDelivered(_ trackingId: String) {
+    Joryio.shared.reportPushDelivered(trackingId)
+  }
+
   @objc func registerPushToken(_ token: String) {
     Joryio.shared.registerPushToken(token)
   }

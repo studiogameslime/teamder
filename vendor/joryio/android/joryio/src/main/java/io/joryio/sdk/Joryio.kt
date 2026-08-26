@@ -1096,6 +1096,30 @@ class Joryio private constructor(
     }
 
     /**
+     * Report that a push arrived on this device.
+     *
+     * Called by JoryioFirebaseMessagingService the moment a Joryio message is
+     * received. Public because a host app running its OWN messaging service -
+     * which most apps with an existing push stack do - never routes through
+     * ours, and would otherwise report no deliveries at all. Those apps already
+     * call registerPushToken(); this is the matching half.
+     *
+     * @param trackingId the `trackingId` from the message's data payload.
+     */
+    fun reportPushDelivered(trackingId: String) {
+        if (trackingId.isBlank()) return
+        scope.launch {
+            try {
+                networkClient.reportPushDelivered(trackingId)
+            } catch (e: Exception) {
+                // Telemetry never surfaces to the host app: the notification
+                // has already been shown, and a receipt is not worth a crash.
+                logger.debug("Delivery receipt failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Check if push is enabled
      */
     fun isPushEnabled(): Boolean {
