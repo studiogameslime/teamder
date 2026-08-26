@@ -257,12 +257,25 @@ export function reportPushDelivered(trackingId: string): void {
 
 /** In-app campaigns — the capability a hand-written HTTP client cannot provide.
  *  Subscribing is not enough on its own: something has to DRAW the message.
- *  See components/joryio/InAppMessageHost. */
+ *  See components/joryio/InAppMessageHost.
+ *
+ *  CAPABILITIES declare what OUR renderer can draw, and the server targets
+ *  campaigns on them — an undeclared one is read as "cannot", not "unknown".
+ *  Both are listed because InAppMessageHost now draws both: native with the
+ *  app's own components, html in a WebView (HtmlMessageView).
+ *
+ *  This is the right lever, and the SDK's `allowHtmlJsInAppMessages` config
+ *  flag is NOT, however plainly the dashboard suggests it: that flag describes
+ *  the native SDK's own views, and subscribing here is exactly what stops those
+ *  views from ever running. Setting it would tell the server we can show HTML
+ *  while the message still landed in a renderer that dropped it. */
 export function onInAppMessage(
   cb: (message: unknown) => void,
 ): () => void {
   if (USE_MOCK_DATA) return () => {};
-  return Joryio.onInAppMessage(cb as never);
+  return Joryio.onInAppMessage(cb as never, {
+    capabilities: ['content.native', 'content.html'],
+  });
 }
 
 /** Ask for campaigns the user is eligible for right now. The SDK also pushes

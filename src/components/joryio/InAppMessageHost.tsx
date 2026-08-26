@@ -7,9 +7,14 @@
 //
 // Two message kinds arrive. `native` is structured (title, body, buttons) and
 // is rendered here with the app's own look. `html` is a self-contained document
-// the campaign author wrote; we deliberately do NOT render it — that needs a
-// WebView with its own sandboxing decisions — and log it instead of showing
-// something half-right.
+// the campaign author wrote, drawn by HtmlMessageView in a locked-down WebView
+// — same document, same CSP and same `joryioBridge` surface as the SDK's own
+// web view, so one authored template behaves identically on web and here.
+//
+// Both are declared to the server as capabilities (services/joryio), because an
+// undeclared kind is targeted as "cannot show". Until HtmlMessageView existed,
+// an html campaign was logged and dropped: it read as delivered and showed
+// nobody anything.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -22,9 +27,19 @@ import {
   View,
 } from 'react-native';
 import { joryio } from '@/services/joryio';
+import { HtmlMessageView } from '@/components/joryio/HtmlMessageView';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Btn = { id: string; text: string; action: 'dismiss' | 'url' | 'deep_link'; url?: string };
+interface HtmlMsg {
+  id: string;
+  name: string;
+  type: 'modal' | 'banner' | 'slideup' | 'fullscreen' | 'custom';
+  priority: number;
+  kind: 'html';
+  html: string;
+  css?: string;
+}
 interface NativeMsg {
   id: string;
   name: string;
@@ -57,23 +72,28 @@ const WEIGHT = {
   bold: '700',
 } as const;
 
+type Msg = NativeMsg | HtmlMsg;
+
 export function InAppMessageHost(): React.ReactElement | null {
-  const [msg, setMsg] = useState<NativeMsg | null>(null);
+  const [msg, setMsg] = useState<Msg | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const off = joryio.onInAppMessage((raw) => {
-      const m = raw as NativeMsg & { kind: string };
-      // An html campaign needs a WebView we have not built. Showing the raw
-      // markup would look broken; dropping it silently would hide a campaign
-      // someone scheduled. Report it and move on.
-      if (m?.kind !== 'native') {
+      // Read `kind` off the untyped payload: narrowing the union first makes
+      // the unknown-kind branch unreachable to the compiler, which is exactly
+      // the branch that has to survive a newer SDK than this build.
+      const wire = (raw ?? {}) as { kind?: string; id?: string; html?: string };
+      // Never drop one silently — the campaign is already counted as delivered
+      // by the time it reaches us.
+      if (wire.kind !== 'native' && wire.kind !== 'html') {
         if (__DEV__) {
-          console.warn('[joryio] in-app message kind not renderable:', m?.kind, m?.id);
+          console.warn('[joryio] in-app message kind not renderable:', wire.kind, wire.id);
         }
         return;
       }
-      setMsg(m);
+      if (wire.kind === 'html' && !wire.html) return;
+      setMsg(raw as Msg);
     });
     // Pull whatever is eligible now; the listener above catches the rest.
     joryio.syncInAppCampaigns();
@@ -119,6 +139,47 @@ export function InAppMessageHost(): React.ReactElement | null {
   );
 
   if (!msg) return null;
+
+  if (msg.kind === 'html') {
+    const full = msg.type === 'fullscreen';
+    const banner = msg.type === 'banner' || msg.type === 'slideup';
+    return (
+      <Modal transparent animationType="none" visible onRequestClose={() => close('dismissed')}>
+        <Animated.View
+          style={[styles.backdrop, banner && styles.backdropBanner, { opacity: fade }]}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => close('dismissed')} />
+          <View
+            style={[
+              styles.card,
+              styles.cardHtml,
+              banner && styles.cardBanner,
+              full && styles.cardFull,
+            ]}
+          >
+            <HtmlMessageView
+              campaignId={msg.id}
+              html={msg.html}
+              css={msg.css}
+              fullscreen={full}
+              onClick={(url) => {
+                if (url) Linking.openURL(url).catch(() => undefined);
+                if (msg) joryio.trackInAppImpression(msg.id, 'clicked');
+                close('dismissed');
+              }}
+              onClose={() => close('dismissed')}
+            />
+            {/* Always ours, never the document's. An html message that forgot a
+                close control would otherwise trap the user behind a modal, and
+                we cannot inspect author markup to find out whether it has one. */}
+            <Pressable onPress={() => close('dismissed')} hitSlop={12} style={styles.close}>
+              <Text style={styles.closeTextHtml}>✕</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      </Modal>
+    );
+  }
 
   const s = msg.style ?? {};
   // Absent override = inherit the app's own styling. Never substitute a
@@ -236,9 +297,27 @@ const styles = StyleSheet.create({
   backdropBanner: { justifyContent: 'flex-end' },
   card: { width: '100%', maxWidth: 420, padding: spacing.lg, gap: spacing.sm },
   cardBanner: { maxWidth: undefined },
+  // No padding and no colour: an html message paints its own background right
+  // to the edge, and a surface-coloured inset would frame it in the app's
+  // theme instead of the author's.
+  cardHtml: { padding: 0, gap: 0, overflow: 'hidden', backgroundColor: 'transparent' },
   cardFull: { flex: 1, maxWidth: undefined, justifyContent: 'center' },
   close: { position: 'absolute', top: spacing.sm, left: spacing.sm, zIndex: 2, padding: 4 },
   closeText: { fontSize: 18, fontWeight: '600' },
+  // Its own contrast: the document behind it can be any colour, so the glyph
+  // rides on a dark disc rather than borrowing a theme token.
+  closeTextHtml: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    width: 26,
+    height: 26,
+    lineHeight: 26,
+    textAlign: 'center',
+    borderRadius: 13,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
   title: { marginTop: spacing.xs },
   body: { lineHeight: 22 },
   buttons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
