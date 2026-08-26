@@ -15,6 +15,8 @@ import {
   nextOccurrenceAt,
   occurrenceSchedule,
   settingsFromGame,
+  isAnchorDrifted,
+  anchorFromOccurrences,
 } from '@/utils/seriesSchedule';
 
 const HOUR = 60 * 60 * 1000;
@@ -399,5 +401,44 @@ describe('the match document an occurrence produces', () => {
       expect((g.startsAt as number) - (g.registrationOpensAt as number)).toBe(DAY);
       expect(g.startsAt).toBe(KICKOFF + (i + 1) * WEEK);
     });
+  });
+});
+
+describe('isAnchorDrifted', () => {
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.UTC(2026, 7, 26, 10, 0);
+
+  it('accepts an anchor set to the occurrence just created', () => {
+    // The normal state for most of every week: the anchor IS next kickoff.
+    expect(isAnchorDrifted(now + 2 * 24 * 60 * 60 * 1000, now)).toBe(false);
+    expect(isAnchorDrifted(now + WEEK, now)).toBe(false);
+  });
+
+  it('accepts an anchor in the past — that is a series simply waiting', () => {
+    expect(isAnchorDrifted(now - WEEK, now)).toBe(false);
+  });
+
+  it('catches the real case: anchor two weeks out, nothing in between', () => {
+    // כדורגל אנשים טובים, 26.08.2026: anchor read 09.09 while the last match
+    // actually played was 25.08, so every run skipped the series in silence.
+    expect(isAnchorDrifted(now + 2 * WEEK, now)).toBe(true);
+  });
+
+  it('ignores junk rather than reporting drift on it', () => {
+    expect(isAnchorDrifted(0, now)).toBe(false);
+    expect(isAnchorDrifted(NaN, now)).toBe(false);
+  });
+});
+
+describe('anchorFromOccurrences', () => {
+  it('picks the newest real kickoff, so the fixture keeps its weekday', () => {
+    const a = Date.UTC(2026, 7, 19, 17, 0);
+    const b = Date.UTC(2026, 7, 25, 17, 0);
+    expect(anchorFromOccurrences([a, b, Date.UTC(2026, 6, 29, 17, 0)])).toBe(b);
+  });
+
+  it('returns null with nothing to reason from', () => {
+    expect(anchorFromOccurrences([])).toBeNull();
+    expect(anchorFromOccurrences([0, NaN])).toBeNull();
   });
 });

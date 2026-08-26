@@ -2956,9 +2956,53 @@ async function runCreateSeriesOccurrences(): Promise<void> {
       lastOccurrenceAt?: number;
       settings?: Record<string, unknown>;
     };
-    const last = sdoc.lastOccurrenceAt;
+    let last = sdoc.lastOccurrenceAt;
     const st = sdoc.settings;
     if (typeof last !== 'number' || !sdoc.groupId || !st) continue;
+
+    // Self-heal a drifted anchor before it silences the series.
+    //
+    // The anchor is this function's ONLY state, and the gate below reads it
+    // first: an anchor pushed too far forward doesn't fail, it goes QUIET —
+    // skipping every run and logging "created 0" exactly like a healthy series
+    // with nothing due. A club lost two weeks that way (anchor 09.09 while the
+    // last match actually played was 25.08) and nothing anywhere compared the
+    // two. A legitimate anchor is at most one week out, because it is set to
+    // the kickoff of the occurrence just created.
+    //
+    // Reconciled against the series' newest REAL occurrence rather than to
+    // `now`, so the fixture keeps its own weekday and time instead of snapping
+    // to whenever the repair happened to run.
+    //
+    // ⚠️ MIRRORS `isAnchorDrifted` in src/utils/seriesSchedule.ts (unit-tested).
+    const MAX_ANCHOR_LEAD_MS = 7 * 24 * 60 * 60 * 1000 + RECURRING_CLONE_DELAY_MS;
+    if (last > now + MAX_ANCHOR_LEAD_MS) {
+      const newest = await db
+        .collection('games')
+        .where('seriesId', '==', doc.id)
+        .orderBy('startsAt', 'desc')
+        .limit(1)
+        .get();
+      const realLast = newest.empty
+        ? undefined
+        : (newest.docs[0].data().startsAt as number | undefined);
+      if (typeof realLast === 'number' && realLast > 0 && realLast < last) {
+        console.warn(
+          `[seriesOccurrences] anchor drift on ${doc.id}: ${last} → ${realLast}`,
+        );
+        await doc.ref.update({ lastOccurrenceAt: realLast });
+        last = realLast;
+      } else {
+        // Nothing to reason from. Say so loudly rather than skip in silence —
+        // silence is the whole failure mode here.
+        console.error(
+          `[seriesOccurrences] anchor ${last} is unreachably far ahead and the ` +
+            `series has no earlier occurrence to reconcile against: ${doc.id}`,
+        );
+        continue;
+      }
+    }
+
     // Due only once the previous occurrence is well past — same 3h grace the
     // old clone used, so a fixture never doubles up while it's still being
     // played.

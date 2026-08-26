@@ -59,6 +59,42 @@ export function isOccurrenceDue(lastOccurrenceAt: number, now: number): boolean 
   return now >= lastOccurrenceAt + OCCURRENCE_CREATE_DELAY_MS;
 }
 
+/** How far ahead the anchor can legitimately sit: it is set to the kickoff of
+ *  the occurrence just created, which is at most one week out. */
+const MAX_ANCHOR_LEAD_MS = 7 * 24 * 60 * 60 * 1000 + OCCURRENCE_CREATE_DELAY_MS;
+
+/**
+ * Has the anchor drifted into a future it could never have reached honestly?
+ *
+ * The anchor is the series' ONLY state, and every run reads it before doing
+ * anything: `now < anchor + 3h` means skip. So an anchor pushed too far forward
+ * doesn't fail — it goes QUIET, and stays quiet for as long as the drift lasts,
+ * logging "created 0" like a healthy series with nothing due. That is exactly
+ * how a club lost two weeks of fixtures: its anchor read 09.09 while the last
+ * match actually played was 25.08, and nothing anywhere compared the two.
+ *
+ * A legitimate anchor is at most one week ahead — it is set to the kickoff of
+ * the occurrence just created. Anything beyond that is drift, not schedule.
+ */
+export function isAnchorDrifted(lastOccurrenceAt: number, now: number): boolean {
+  if (!Number.isFinite(lastOccurrenceAt) || lastOccurrenceAt <= 0) return false;
+  return lastOccurrenceAt > now + MAX_ANCHOR_LEAD_MS;
+}
+
+/**
+ * The anchor a drifted series should be reset to: the kickoff of its newest
+ * REAL occurrence. Falls back to null when the series has no occurrences at all
+ * (nothing to reason from — leave it alone and let a human look).
+ *
+ * Reconciling against the games rather than resetting to `now` keeps the
+ * fixture on its own weekday and time instead of snapping it to whenever the
+ * repair happened to run.
+ */
+export function anchorFromOccurrences(startsAtList: number[]): number | null {
+  const valid = startsAtList.filter((t) => Number.isFinite(t) && t > 0);
+  return valid.length ? Math.max(...valid) : null;
+}
+
 /**
  * Absolute schedule timestamps for one occurrence, derived from the template's
  * offsets. Offsets (not absolute times) are what keep every week identical:
