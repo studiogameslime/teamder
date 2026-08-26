@@ -88,6 +88,7 @@ import {
   type RotationFillState,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
+import { canMoveOut } from '@/utils/teamSlots';
 import { failValidation, optionalString, requireInt, requireString } from '@/utils/validate';
 import { he } from '@/i18n/he';
 import { enforceRateLimit } from '@/services/rateLimitService';
@@ -4145,6 +4146,64 @@ export const gameService = {
       patch.rotation = {
         ...g.rotation,
         loans: g.rotation.loans.filter((l) => l.playerId !== aId && l.playerId !== bId),
+        updatedAt: Date.now(),
+      };
+    }
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.draftTeams = newDraft;
+        if (patch.rotation) m.rotation = patch.rotation as import('@/types').MatchRotation;
+      }
+      return;
+    }
+    await updateGameDoc(gameId, patch);
+  },
+
+  /** Move one player to another team — the "מקום פנוי" half of a live
+   *  "החלפה". Where swapPlayers exchanges two players and therefore CANNOT
+   *  change a team's size, this is the only manual operation that can: it is
+   *  what fixes a team drafted short (13 players over 3 teams is 5/4/4) or left
+   *  short by a cancellation, which swapping never could.
+   *
+   *  Same write shape as swapPlayers on purpose — captains kept valid, any loan
+   *  referencing the mover dropped so rosterOf resolves to their new home, and
+   *  `teamsEditedManually` set so the scheduled auto-balancer won't undo it. */
+  async movePlayerToTeam(
+    gameId: string,
+    playerId: string,
+    teamIndex: number,
+  ): Promise<void> {
+    if (!gameId || !playerId) return;
+    const g = await this.getGameById(gameId);
+    const draft = g?.draftTeams;
+    if (!draft) return;
+    const teams = draft.teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
+    const from = teams.find((t) => t.playerIds.includes(playerId));
+    const to = teams.find((t) => t.index === teamIndex);
+    if (!to || from?.index === teamIndex) return;
+    // Re-checked here, not only in the UI: the caller is a tap on a slot whose
+    // count was computed a render ago, and a concurrent admin can have emptied
+    // the source in between.
+    if (from && !canMoveOut(from.playerIds.length)) return;
+    if (from) from.playerIds = from.playerIds.filter((p) => p !== playerId);
+    // A player who belonged to NO team still moves — that is how someone who
+    // joined after the draw gets onto one at all.
+    if (!to.playerIds.includes(playerId)) to.playerIds.push(playerId);
+    for (const t of teams) {
+      if (t.captainId && !t.playerIds.includes(t.captainId)) {
+        t.captainId = t.playerIds[0] ?? t.captainId;
+      }
+    }
+    const newDraft = { ...draft, teams, teamsEditedManually: true };
+    const patch: Record<string, unknown> = {
+      draftTeams: newDraft,
+      updatedAt: Date.now(),
+    };
+    if (g?.rotation?.loans?.some((l) => l.playerId === playerId)) {
+      patch.rotation = {
+        ...g.rotation,
+        loans: g.rotation.loans.filter((l) => l.playerId !== playerId),
         updatedAt: Date.now(),
       };
     }

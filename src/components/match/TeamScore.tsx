@@ -65,6 +65,13 @@ interface Props {
   /** "החלפה" mode: blink every candidate (all but the picked source). */
   swapMode?: boolean;
   swapSourceId?: string | null;
+  /** Empty "מקום פנוי" rows to draw under the roster — how many players this
+   *  team is short of the format. Shown ONLY while a swap source is picked:
+   *  a permanent dashed gap on every uneven team would be noise on an evening
+   *  where 13 players simply cannot make three fives. Tapping one MOVES the
+   *  picked player here, which is the only thing that changes a team's size. */
+  openSlots?: number;
+  onOpenSlotPress?: () => void;
   /**
    * Lay the list out as a BLOCK — natural height, full width — instead of as
    * one half of the scoreboard row.
@@ -93,6 +100,8 @@ export function TeamScore({
   block,
   swapMode,
   swapSourceId,
+  openSlots = 0,
+  onOpenSlotPress,
 }: Props) {
   const star = (
     <View style={styles.star}>
@@ -171,6 +180,26 @@ export function TeamScore({
               </View>
             );
           })}
+          {swapMode && openSlots > 0 && onOpenSlotPress
+            ? Array.from({ length: openSlots }).map((_, i) => (
+                <Blink key={`slot-${i}`} active>
+                  <MeasurablePressable
+                    onMeasured={onOpenSlotPress}
+                    hitSlop={6}
+                    accessibilityLabel={he.matchPlayersOpenSlot}
+                  >
+                    <View style={styles.slotRow}>
+                      <View style={[styles.slotAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
+                        <Ionicons name="add" size={size * 0.5} color="#94A3B8" />
+                      </View>
+                      <Text style={styles.slotText} numberOfLines={1}>
+                        {he.matchPlayersOpenSlot}
+                      </Text>
+                    </View>
+                  </MeasurablePressable>
+                </Blink>
+              ))
+            : null}
         </View>
       </View>
     );
@@ -300,6 +329,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#1E293B',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+
+  // An empty slot mirrors playerRow exactly — same pill, same height, same
+  // avatar-leads-on-the-right order — so it reads as "a row waiting for
+  // someone" rather than as a control bolted onto the list. Dashed, because a
+  // solid pill would look like a player whose name failed to load.
+  slotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#93A4BC',
+    backgroundColor: '#F8FAFF',
+  },
+  slotAvatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#93A4BC',
+    backgroundColor: '#FFFFFF',
+  },
+  slotText: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
     textAlign: RTL_LABEL_ALIGN,
   },
 

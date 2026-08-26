@@ -27,6 +27,7 @@ import {
   type RosterMember,
 } from '@/components/match/rotationView';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
+import { canMoveOut, openSlots } from '@/utils/teamSlots';
 import type { DraftTeamsResult, MatchRotation } from '@/types';
 import { colors, spacing, radius, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -57,6 +58,12 @@ interface Props {
   onRestorePlayer?: (player: { id: string; name: string }) => void;
   /** Swap two on-field players ("החלפה"). */
   onSwapPlayers?: (aId: string, bId: string) => void;
+  /** Move the picked player onto another team — the "מקום פנוי" half of the
+   *  same interaction, and the only one that changes a team's SIZE. */
+  onMovePlayer?: (playerId: string, teamIndex: number) => void;
+  /** On-field players per team for this game's format. Empty slots are the
+   *  gap up to it; without it no slot is offered. */
+  perTeam?: number;
 }
 
 type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
@@ -73,6 +80,8 @@ export function RotationPanel({
   onPlayerWentHome,
   onRestorePlayer,
   onSwapPlayers,
+  onMovePlayer,
+  perTeam,
 }: Props) {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
@@ -81,6 +90,11 @@ export function RotationPanel({
   const handleSwapTap = (id: string) => {
     if (!swapSource) return;
     if (id !== swapSource) onSwapPlayers?.(swapSource, id);
+    setSwapSource(null);
+  };
+  const handleSlotTap = (teamIndex: number) => {
+    if (!swapSource) return;
+    onMovePlayer?.(swapSource, teamIndex);
     setSwapSource(null);
   };
 
@@ -103,6 +117,22 @@ export function RotationPanel({
   const sourceOnA = !!swapSource && rosterA.some((m) => m.id === swapSource);
   const sourceOnB = !!swapSource && rosterB.some((m) => m.id === swapSource);
   const winsOf = (i: number) => rotation.wins?.[String(i)] ?? 0;
+
+  // ─── "מקום פנוי" — the move half of the swap interaction ────────────────
+  // A short team has no manual remedy otherwise: "החלפה" exchanges two players
+  // one-for-one, so team sizes are invariant under it. Slots appear only while
+  // a source is picked, never on the source's OWN team, and never on a team the
+  // format already fills.
+  const sourceHome = swapSource
+    ? teams.find((t) => t.playerIds.includes(swapSource))
+    : undefined;
+  // The size that actually shrinks is the HOME roster in draftTeams, not the
+  // on-field one — a team lending a player out is already smaller than it looks.
+  const canGive = !!onMovePlayer && !!perTeam && canMoveOut(sourceHome?.playerIds.length ?? 0);
+  const slotsFor = (teamIndex: number, effectiveSize: number) =>
+    canGive && teamIndex !== sourceHome?.index
+      ? openSlots(effectiveSize, perTeam as number)
+      : 0;
 
   // Filler legend — name the specific player(s) + their home team, so it's
   // clear WHO is completing the team.
@@ -243,6 +273,8 @@ export function RotationPanel({
                 }
                 swapMode={!!swapSource && !sourceOnA}
                 swapSourceId={swapSource}
+                openSlots={slotsFor(aIdx, rosterA.length)}
+                onOpenSlotPress={() => handleSlotTap(aIdx)}
               />
             </View>
             <View style={styles.divider} />
@@ -264,6 +296,8 @@ export function RotationPanel({
                 }
                 swapMode={!!swapSource && !sourceOnB}
                 swapSourceId={swapSource}
+                openSlots={slotsFor(bIdx, rosterB.length)}
+                onOpenSlotPress={() => handleSlotTap(bIdx)}
               />
             </View>
           </View>
@@ -376,6 +410,25 @@ export function RotationPanel({
                       )}
                       <Text style={styles.waitMiniName} numberOfLines={1}>
                         {firstName(m.name)}
+                      </Text>
+                    </View>
+                  ))}
+                  {/* A waiting team can be the short one just as easily — and
+                      moving INTO it is often the right fix, since it is the
+                      team that comes on next. */}
+                  {Array.from({ length: slotsFor(idx, roster.length) }).map((_, k) => (
+                    <View key={`slot-${k}`} style={[styles.waitMini, styles.waitMiniSwap]}>
+                      <Pressable
+                        onPress={() => handleSlotTap(idx)}
+                        hitSlop={4}
+                        accessibilityLabel={he.matchPlayersOpenSlot}
+                      >
+                        <View style={styles.waitSlot}>
+                          <Ionicons name="add" size={16} color="#94A3B8" />
+                        </View>
+                      </Pressable>
+                      <Text style={[styles.waitMiniName, styles.waitSlotName]} numberOfLines={1}>
+                        {he.matchPlayersOpenSlot}
                       </Text>
                     </View>
                   ))}
@@ -608,6 +661,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   waitMini: { alignItems: 'center', gap: 3, width: 52 },
+  // Same 32px footprint as a waiting player's avatar, so a short team's card
+  // keeps its rhythm instead of the slot sitting half a row off.
+  waitSlot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#93A4BC',
+    backgroundColor: '#F8FAFF',
+  },
+  waitSlotName: { color: '#64748B' },
 
   // ── הלכו הביתה section ──
   leftWrap: { width: '100%', gap: spacing.sm },

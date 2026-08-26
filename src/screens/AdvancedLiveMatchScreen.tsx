@@ -1386,6 +1386,15 @@ export function AdvancedLiveMatchScreen() {
     void (async () => {
       try {
         await gameService.swapPlayers(gameId, aId, bId);
+        // Both outcomes of "החלפה" now confirm themselves. Without this, a move
+        // announced itself and a swap said nothing — and on a crowded live
+        // board two avatars trading places is easy to miss.
+        toast.info(
+          he.swapDoneSwapped(
+            resolveFillPlayer(aId)?.name ?? '',
+            resolveFillPlayer(bId)?.name ?? '',
+          ),
+        );
         logEvent(AnalyticsEvent.LiveRosterAction, {
           gameId,
           action: 'swapped',
@@ -1393,6 +1402,33 @@ export function AdvancedLiveMatchScreen() {
         });
       } catch (err) {
         logError('swapPlayers', err, { gameId, aId, bId });
+      } finally {
+        homeActionRef.current = false;
+      }
+    })();
+  };
+
+  // "מקום פנוי" — the other half of the same gesture. Where onSwapPlayers
+  // exchanges two players and cannot change a team's size, this moves ONE, and
+  // is therefore the only manual fix for a team drafted short (13 players over
+  // three fives is 5/4/4) or left short by a cancellation.
+  const onMovePlayer = (playerId: string, teamIndex: number) => {
+    if (!gameId || !playerId) return;
+    if (homeActionRef.current) return;
+    homeActionRef.current = true;
+    void (async () => {
+      try {
+        await gameService.movePlayerToTeam(gameId, playerId, teamIndex);
+        const who = resolveFillPlayer(playerId)?.name ?? '';
+        toast.info(he.swapDoneMoved(who, teamName(teamIndex, draftTeams?.teams)));
+        logEvent(AnalyticsEvent.LiveRosterAction, {
+          gameId,
+          action: 'moved',
+          teamIndex,
+          midRound: timerRunning,
+        });
+      } catch (err) {
+        logError('movePlayerToTeam', err, { gameId, playerId, teamIndex });
       } finally {
         homeActionRef.current = false;
       }
@@ -1639,6 +1675,8 @@ export function AdvancedLiveMatchScreen() {
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}
               onSwapPlayers={onSwapPlayers}
+              onMovePlayer={onMovePlayer}
+              perTeam={perTeam}
             />
           ) : null}
         </View>

@@ -393,7 +393,14 @@ export const he = {
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuSwap: 'החלפה',
-  swapPickTarget: 'בחרו שחקן להחלפה',
+  swapPickTarget: 'בחרו שחקן להחלפה או מקום פנוי',
+  /** After a swap / after a move. Two outcomes of the same "החלפה" gesture, so
+   *  each says exactly what happened rather than sharing a vague word. The team
+   *  leads as a LABEL in the move line — "עבר לקבוצה כחולה" wants a definite
+   *  article the team name doesn't carry, and "לקבוצה הכחולה" can't be built
+   *  from a custom palette name. */
+  swapDoneSwapped: (a: string, b: string) => `${a} ו${b} הוחלפו`,
+  swapDoneMoved: (name: string, team: string) => `${team} · ${name} הצטרף`,
   swapCancel: 'ביטול',
   playerMenuWentHome: 'הלך הביתה',
   playerMenuWentHomeHint: 'זמין רק במהלך מחזור פעיל',
