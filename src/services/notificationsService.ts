@@ -100,6 +100,67 @@ function describeThisDevice(): {
   };
 }
 
+/**
+ * The device's FCM registration token — the ONLY thing our sender can address.
+ *
+ * WHY THIS EXISTS. We used to take `expo-notifications`'
+ * `getDevicePushTokenAsync().data` and store it. On Android that is an FCM
+ * token and everything worked. On iOS it is the raw APNs device token — 64 hex
+ * characters — and `admin.messaging().sendEachForMulticast()` only accepts FCM
+ * tokens, so every one of them was rejected with INVALID_ARGUMENT.
+ *
+ * Nobody noticed because the send "succeeded" at our layer: the failures sat in
+ * the per-response array, and the pruner only recognises the two
+ * not-registered/invalid-registration codes, so the tokens were never even
+ * cleaned up. Measured on production 2026-08-27 by validating every stored
+ * token against FCM: 154 of 414 were APNs hex — every iOS install we have.
+ * iOS users had never received a single push from this app.
+ *
+ * `@react-native-firebase/messaging` performs the APNs→FCM exchange on the
+ * native side, so `getToken()` returns a real FCM token on BOTH platforms.
+ * expo-notifications keeps doing what it is good at — permissions, categories,
+ * presentation, taps.
+ */
+function looksLikeApnsToken(token: string): boolean {
+  return /^[0-9a-f]{64}$/i.test(token);
+}
+
+async function getFcmToken(): Promise<string | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const messaging = require('@react-native-firebase/messaging').default;
+    // iOS will not issue a token until the device is registered for remote
+    // messages. Android no-ops. Errors here are non-fatal — the fallback below
+    // still produces the (correct) Android token.
+    try {
+      if (!messaging().isDeviceRegisteredForRemoteMessages) {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+    } catch {
+      /* already registered, or not applicable on this platform */
+    }
+    const token = await messaging().getToken();
+    if (typeof token === 'string' && token.length > 0) return token;
+  } catch {
+    // Native module missing (Expo Go, a dev client built before this shipped).
+    // Fall through rather than lose Android, which never had the bug.
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Notifications = require('expo-notifications');
+    const tokenObj = await Notifications.getDevicePushTokenAsync();
+    const token = tokenObj?.data;
+    if (typeof token !== 'string' || token.length === 0) return null;
+    // Never store what we cannot send to. On a build without the native module
+    // an iOS device would otherwise re-register the same dead APNs token and
+    // undo the cleanup on every launch.
+    if (looksLikeApnsToken(token)) return null;
+    return token;
+  } catch {
+    return null;
+  }
+}
+
 export const notificationsService = {
   /**
    * Write a notification doc that a Cloud Function will pick up.
@@ -438,6 +499,36 @@ export const notificationsService = {
       logError('registerDeviceToken', err, { uid });
       if (__DEV__) console.warn('[notifications] registerDeviceToken', err);
     }
+    // Drop this account's dead APNs tokens the first time a real FCM token
+    // lands. 153 users carry one and the server pruner will never take it:
+    // it only removes the two not-registered codes, and an APNs token fails as
+    // INVALID_ARGUMENT — which is also what a MALFORMED MESSAGE returns, so
+    // adding that code to the pruner would let one bad payload wipe every
+    // token we have. Cleaning by SHAPE is the safe half of that job, and only
+    // the owner can write here anyway.
+    void this.pruneApnsTokens(uid);
+  },
+
+  /** Remove any 64-hex APNs tokens from this user — they can never be
+   *  delivered to, and they make an iOS account look reachable when it is not. */
+  async pruneApnsTokens(uid: UserId): Promise<void> {
+    if (USE_MOCK_DATA || !uid) return;
+    try {
+      const snap = await getDoc(docs.userPrivatePush(uid));
+      const stored = (snap.data()?.fcmTokens ?? []) as unknown;
+      if (!Array.isArray(stored)) return;
+      const dead = stored.filter(
+        (t): t is string => typeof t === 'string' && looksLikeApnsToken(t),
+      );
+      if (dead.length === 0) return;
+      await setDoc(
+        docs.userPrivatePush(uid),
+        { fcmTokens: arrayRemove(...dead), updatedAt: Date.now() },
+        { merge: true },
+      );
+    } catch {
+      // Best-effort cleanup — never block registration on it.
+    }
   },
 
   /**
@@ -458,9 +549,8 @@ export const notificationsService = {
     }
     if (!Notifications) return;
     try {
-      const tokenObj = await Notifications.getDevicePushTokenAsync();
-      const token = tokenObj?.data;
-      if (typeof token !== 'string' || token.length === 0) return;
+      const token = await getFcmToken();
+      if (!token) return;
       await setDoc(
         docs.userPrivatePush(uid),
         {
@@ -592,9 +682,8 @@ export const notificationsService = {
         if (__DEV__) console.log('[notifications] permission not granted');
         return null;
       }
-      const tokenObj = await Notifications.getDevicePushTokenAsync();
-      const token = tokenObj?.data;
-      if (typeof token !== 'string' || token.length === 0) return null;
+      const token = await getFcmToken();
+      if (!token) return null;
       await this.registerDeviceToken(uid, token);
       return token;
     } catch (err) {

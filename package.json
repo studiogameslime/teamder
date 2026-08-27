@@ -21,11 +21,13 @@
     "@bacons/apple-targets": "^4.0.7",
     "@expo/vector-icons": "^14.1.0",
     "@firebase/app": "^0.14.12",
+    "@joryio/react-native-sdk": "file:./vendor/joryio/react-native-sdk",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-firebase/analytics": "^24.0.0",
     "@react-native-firebase/app": "^24.0.0",
     "@react-native-firebase/app-check": "^24.0.0",
     "@react-native-firebase/auth": "24.0.0",
+    "@react-native-firebase/messaging": "^24.0.0",
     "@react-native-firebase/remote-config": "^24.0.0",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^6.6.1",
@@ -70,8 +72,7 @@
     "react-native-svg": "15.11.2",
     "react-native-view-shot": "4.0.3",
     "react-native-webview": "13.13.5",
-    "zustand": "^4.5.4",
-    "@joryio/react-native-sdk": "file:./vendor/joryio/react-native-sdk"
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

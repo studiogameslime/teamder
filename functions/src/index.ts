@@ -1553,6 +1553,18 @@ async function deliverBatch(
     'messaging/registration-token-not-registered',
     'messaging/invalid-registration-token',
   ]);
+  // A raw APNs device token is 64 hex characters. FCM answers one with
+  // INVALID_ARGUMENT — which is ALSO what it answers for a malformed message,
+  // so that code can never join DEAD_TOKEN_CODES: one bad payload would prune
+  // every token we hold in a single run. Guarding on the token's SHAPE makes
+  // the prune safe, because a message-level failure cannot make a valid FCM
+  // token look like 64 hex characters.
+  //
+  // The client stopped producing these (it now takes the token from
+  // @react-native-firebase/messaging, which performs the APNs→FCM exchange),
+  // and the 154 already stored were cleaned out on 2026-08-27. This is the
+  // backstop for anything that slips through from an old build.
+  const looksLikeApnsToken = (t: string) => /^[0-9a-f]{64}$/i.test(t);
   for (let i = 0; i < all.length; i += 500) {
     const chunk = all.slice(i, i + 500);
     const baseData: Record<string, string> = categoryIdentifier
@@ -1608,9 +1620,15 @@ async function deliverBatch(
       );
       // Flag permanently-invalid tokens for pruning.
       res.responses.forEach((r, idx) => {
-        if (!r.success && r.error && DEAD_TOKEN_CODES.has(r.error.code)) {
+        if (!r.success && r.error) {
           const tok = chunk[idx];
-          if (tok) deadTokens.add(tok);
+          const shapeDead =
+            r.error.code === 'messaging/invalid-argument' &&
+            !!tok &&
+            looksLikeApnsToken(tok);
+          if (tok && (DEAD_TOKEN_CODES.has(r.error.code) || shapeDead)) {
+            deadTokens.add(tok);
+          }
         }
       });
     }
