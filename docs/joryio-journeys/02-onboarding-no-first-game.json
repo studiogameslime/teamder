@@ -1,11 +1,14 @@
 {
   "name": "Onboarding — signed up, never joined a round",
-  "description": "A new user who created a profile and has not joined any round. Two nudges only: after one day, then after three more. Anyone who joins leaves immediately through the `did` port and is never messaged.",
+  "description": "A new user who created a profile and has not joined any round. Two nudges only: after one day, then after three more. Anyone who joins leaves immediately through the `did` port and is never messaged. The day-one push asks for availability, so it is skipped for anyone who has already set it — they go straight to the open-games nudge three days later.",
   "nodes": [
     {
       "id": "trigger",
       "type": "trigger",
-      "position": { "x": 0, "y": 0 },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
       "config": {
         "event": "profile_created",
         "_note": "The first moment a person is identifiable. The install itself is anonymous and has no event."
@@ -14,53 +17,138 @@
     {
       "id": "wait_day_1",
       "type": "behavior_split",
-      "position": { "x": 260, "y": 0 },
+      "position": {
+        "x": 260,
+        "y": 0
+      },
       "config": {
         "event": "game_joined",
-        "window": { "value": 1, "unit": "days" },
+        "window": {
+          "value": 1,
+          "unit": "days"
+        },
         "_note": "A full day without joining a round. `did` means they found a game on their own — nothing to push."
+      }
+    },
+    {
+      "id": "has_availability",
+      "type": "condition",
+      "position": {
+        "x": 520,
+        "y": 0
+      },
+      "config": {
+        "branchMode": "yesno",
+        "_note": "Skips the availability push for anyone who already set it. Telling someone to do a thing they have already done is the fastest way to teach them our notifications are not worth reading. `yes` jumps straight to the second wait: availability is not their blocker, so the open-games nudge is the one that can still help.",
+        "filterGroups": [
+          {
+            "operator": "AND",
+            "filters": [
+              {
+                "type": "event",
+                "operator": "performed",
+                "eventName": "availability_set"
+              }
+            ]
+          }
+        ]
       }
     },
     {
       "id": "push_day_1",
       "type": "message",
-      "position": { "x": 520, "y": 80 },
+      "position": {
+        "x": 780,
+        "y": 140
+      },
       "config": {
         "channel": "push",
         "_note": "Asks for AVAILABILITY, not for a game. Someone who did not join on day one usually found nothing that fit; pointing them back at the same list repeats what already failed.",
         "title": "בוא נמצא לך משחק 👟",
         "body": "סמן באילו ימים אתה פנוי, ונודיע לך כשנפתח מחזור שמתאים לך.",
-        "data": { "deeplink": "footy://availability" }
+        "data": {
+          "deeplink": "footy://availability"
+        }
       }
     },
     {
       "id": "wait_day_4",
       "type": "behavior_split",
-      "position": { "x": 780, "y": 80 },
+      "position": {
+        "x": 1040,
+        "y": 60
+      },
       "config": {
         "event": "game_joined",
-        "window": { "value": 3, "unit": "days" },
+        "window": {
+          "value": 3,
+          "unit": "days"
+        },
         "_note": "Three more days. The journey ends after the second push — a third nudge to someone who has not played is pursuit, not onboarding."
       }
     },
     {
       "id": "push_day_4",
       "type": "message",
-      "position": { "x": 1040, "y": 160 },
+      "position": {
+        "x": 1300,
+        "y": 140
+      },
       "config": {
         "channel": "push",
         "_note": "Removes the real blocker, which is social rather than logistical: you need neither a club nor to know anyone.",
         "title": "יש מחזורים פתוחים לידך",
         "body": "לא צריך מועדון ולא צריך להכיר אף אחד — נכנסים למחזור פתוח ומשחקים.",
-        "data": { "deeplink": "footy://games" }
+        "data": {
+          "deeplink": "footy://games"
+        }
       }
     }
   ],
   "edges": [
-    { "id": "e1", "source": "trigger", "target": "wait_day_1" },
-    { "id": "e2", "source": "wait_day_1", "target": "push_day_1", "sourceHandle": "timed_out", "label": "Did not join" },
-    { "id": "e3", "source": "push_day_1", "target": "wait_day_4" },
-    { "id": "e4", "source": "wait_day_4", "target": "push_day_4", "sourceHandle": "timed_out", "label": "Still not joined" }
+    {
+      "id": "e1",
+      "source": "trigger",
+      "target": "wait_day_1"
+    },
+    {
+      "id": "e2",
+      "source": "wait_day_1",
+      "target": "has_availability",
+      "sourceHandle": "timed_out",
+      "label": "Did not join"
+    },
+    {
+      "id": "e3",
+      "source": "has_availability",
+      "target": "wait_day_4",
+      "sourceHandle": "yes",
+      "label": "Availability already set"
+    },
+    {
+      "id": "e4",
+      "source": "has_availability",
+      "target": "push_day_1",
+      "sourceHandle": "no",
+      "label": "No availability yet"
+    },
+    {
+      "id": "e5",
+      "source": "push_day_1",
+      "target": "wait_day_4"
+    },
+    {
+      "id": "e6",
+      "source": "wait_day_4",
+      "target": "push_day_4",
+      "sourceHandle": "timed_out",
+      "label": "Still not joined"
+    }
   ],
-  "entryTrigger": { "type": "event", "config": { "event": "profile_created" } }
+  "entryTrigger": {
+    "type": "event",
+    "config": {
+      "event": "profile_created"
+    }
+  }
 }
