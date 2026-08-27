@@ -1,70 +1,42 @@
 {
-  "name": "מארגן ששקט — חודש בלי מחזור",
-  "description": "מנהל מועדון שפתח מחזור ולא פתח עוד אחד במשך 30 יום. כשמארגן שוקע, כל המועדון נוטש איתו — אז היעד הוא הוא, לא 15 השחקנים.",
-  "entryTrigger": {
-    "type": "event",
-    "config": {
-      "event": "game_created"
-    }
-  },
+  "name": "Dormant organiser — 30 days without a round",
+  "description": "A club organiser who opened a round and has not opened another in 30 days. When an organiser goes quiet the whole club churns with them, so this reaches the one person rather than the fifteen. Entry is game_created, not an is_admin attribute: it targets whoever actually runs the evening, not whoever holds the permission.",
   "nodes": [
     {
       "id": "trigger",
       "type": "trigger",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
+      "position": { "x": 0, "y": 0 },
       "config": {
         "event": "game_created",
-        "_note": "מי שפותח מחזורים הוא המארגן בפועל. זה פילוח טוב יותר מתכונת is_admin — הוא תופס את מי שבאמת מנהל את הערב, ולא את מי שיש לו הרשאה."
+        "_note": "Whoever opens rounds IS the organiser. Better targeting than an is_admin attribute — and it needs no attribute we don't already send."
       }
     },
     {
       "id": "wait_for_next_round",
       "type": "behavior_split",
-      "position": {
-        "x": 260,
-        "y": 0
-      },
+      "position": { "x": 260, "y": 0 },
       "config": {
         "event": "game_created",
-        "window": {
-          "value": 30,
-          "unit": "days"
-        },
-        "_note": "ממתין 30 יום לראות אם ייפתח מחזור נוסף. יציאה דרך did = הכל בסדר, אין מה לומר. רק timed_out ממשיך להודעה."
+        "window": { "value": 30, "unit": "days" },
+        "_note": "Waits 30 days for another round to be opened. Leaving through `did` means all is well and there is nothing to say; only timed_out reaches the push."
       }
     },
     {
       "id": "push_nudge",
       "type": "message",
-      "position": {
-        "x": 520,
-        "y": 80
-      },
+      "position": { "x": 520, "y": 80 },
       "config": {
         "channel": "push",
+        "_note": "Body copy stays Hebrew — it is the only text a player reads.",
         "title": "המגרש מחכה ⚽",
         "body": "חודש בלי מחזור. פתיחה לוקחת פחות מדקה, והשחקנים שלך כבר יודעים את התרגיל.",
-        "data": {
-          "deeplink": "footy://games/create"
-        }
+        "data": { "deeplink": "footy://games/create" }
       }
     }
   ],
   "edges": [
-    {
-      "id": "e1",
-      "source": "trigger",
-      "target": "wait_for_next_round"
-    },
-    {
-      "id": "e2",
-      "source": "wait_for_next_round",
-      "target": "push_nudge",
-      "sourceHandle": "timed_out",
-      "label": "לא נפתח מחזור"
-    }
-  ]
+    { "id": "e1", "source": "trigger", "target": "wait_for_next_round" },
+    { "id": "e2", "source": "wait_for_next_round", "target": "push_nudge", "sourceHandle": "timed_out", "label": "No round opened" }
+  ],
+  "entryTrigger": { "type": "event", "config": { "event": "game_created" } }
 }

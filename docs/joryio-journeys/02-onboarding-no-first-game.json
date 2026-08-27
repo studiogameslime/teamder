@@ -1,114 +1,66 @@
 {
-  "name": "אונבורדינג — נרשם ולא הצטרף למחזור",
-  "description": "משתמש חדש שיצר פרופיל ולא הצטרף לשום מחזור. שתי דחיפות בלבד: אחרי יום, ואחרי עוד שלושה. מי שמצטרף — יוצא מיד.",
-  "entryTrigger": {
-    "type": "event",
-    "config": {
-      "event": "profile_created"
-    }
-  },
+  "name": "Onboarding — signed up, never joined a round",
+  "description": "A new user who created a profile and has not joined any round. Two nudges only: after one day, then after three more. Anyone who joins leaves immediately through the `did` port and is never messaged.",
   "nodes": [
     {
       "id": "trigger",
       "type": "trigger",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
+      "position": { "x": 0, "y": 0 },
       "config": {
         "event": "profile_created",
-        "_note": "הרגע הראשון שבו אנחנו מזהים אדם. התקנה עצמה אנונימית ואין לה אירוע."
+        "_note": "The first moment a person is identifiable. The install itself is anonymous and has no event."
       }
     },
     {
       "id": "wait_day_1",
       "type": "behavior_split",
-      "position": {
-        "x": 260,
-        "y": 0
-      },
+      "position": { "x": 260, "y": 0 },
       "config": {
         "event": "game_joined",
-        "window": {
-          "value": 1,
-          "unit": "days"
-        },
-        "_note": "יום שלם בלי הצטרפות למחזור. did = מצא משחק לבד, אין מה לדחוף."
+        "window": { "value": 1, "unit": "days" },
+        "_note": "A full day without joining a round. `did` means they found a game on their own — nothing to push."
       }
     },
     {
       "id": "push_day_1",
       "type": "message",
-      "position": {
-        "x": 520,
-        "y": 80
-      },
+      "position": { "x": 520, "y": 80 },
       "config": {
         "channel": "push",
+        "_note": "Asks for AVAILABILITY, not for a game. Someone who did not join on day one usually found nothing that fit; pointing them back at the same list repeats what already failed.",
         "title": "בוא נמצא לך משחק 👟",
         "body": "סמן באילו ימים אתה פנוי, ונודיע לך כשנפתח מחזור שמתאים לך.",
-        "data": {
-          "deeplink": "footy://availability"
-        }
+        "data": { "deeplink": "footy://availability" }
       }
     },
     {
       "id": "wait_day_4",
       "type": "behavior_split",
-      "position": {
-        "x": 780,
-        "y": 80
-      },
+      "position": { "x": 780, "y": 80 },
       "config": {
         "event": "game_joined",
-        "window": {
-          "value": 3,
-          "unit": "days"
-        },
-        "_note": "עוד שלושה ימים. אחרי ההודעה השנייה המסע נגמר — שלוש דחיפות למי שלא שיחק זה כבר רדיפה."
+        "window": { "value": 3, "unit": "days" },
+        "_note": "Three more days. The journey ends after the second push — a third nudge to someone who has not played is pursuit, not onboarding."
       }
     },
     {
       "id": "push_day_4",
       "type": "message",
-      "position": {
-        "x": 1040,
-        "y": 160
-      },
+      "position": { "x": 1040, "y": 160 },
       "config": {
         "channel": "push",
+        "_note": "Removes the real blocker, which is social rather than logistical: you need neither a club nor to know anyone.",
         "title": "יש מחזורים פתוחים לידך",
         "body": "לא צריך מועדון ולא צריך להכיר אף אחד — נכנסים למחזור פתוח ומשחקים.",
-        "data": {
-          "deeplink": "footy://games"
-        }
+        "data": { "deeplink": "footy://games" }
       }
     }
   ],
   "edges": [
-    {
-      "id": "e1",
-      "source": "trigger",
-      "target": "wait_day_1"
-    },
-    {
-      "id": "e2",
-      "source": "wait_day_1",
-      "target": "push_day_1",
-      "sourceHandle": "timed_out",
-      "label": "לא הצטרף"
-    },
-    {
-      "id": "e3",
-      "source": "push_day_1",
-      "target": "wait_day_4"
-    },
-    {
-      "id": "e4",
-      "source": "wait_day_4",
-      "target": "push_day_4",
-      "sourceHandle": "timed_out",
-      "label": "עדיין לא הצטרף"
-    }
-  ]
+    { "id": "e1", "source": "trigger", "target": "wait_day_1" },
+    { "id": "e2", "source": "wait_day_1", "target": "push_day_1", "sourceHandle": "timed_out", "label": "Did not join" },
+    { "id": "e3", "source": "push_day_1", "target": "wait_day_4" },
+    { "id": "e4", "source": "wait_day_4", "target": "push_day_4", "sourceHandle": "timed_out", "label": "Still not joined" }
+  ],
+  "entryTrigger": { "type": "event", "config": { "event": "profile_created" } }
 }
