@@ -74,6 +74,10 @@ function shim(campaignId: string, fullscreen: boolean): string {
 })();`;
 }
 
+/** Our own url schemes, from app.json. A link on one of these is a request to
+ *  go somewhere INSIDE the app, not out to a browser. */
+const APP_SCHEMES = ['footy', 'teamder'];
+
 interface Props {
   campaignId: string;
   html: string;
@@ -167,6 +171,19 @@ export function HtmlMessageView({
     (req: { url: string; navigationType?: string }) => {
       if (req.url === 'about:blank' || req.url.startsWith('data:')) return true;
       const scheme = req.url.split(':')[0]?.toLowerCase();
+      // The app's OWN schemes route INWARDS. Without this an authored CTA
+      // pointing at a screen was swallowed silently — the tap did nothing, and
+      // an html message could only ever inform, never send anyone anywhere.
+      // Linking.openURL on our own scheme hands the url to the app's existing
+      // deep-link routing, the same path a push tap takes.
+      if (APP_SCHEMES.includes(scheme ?? '')) {
+        if (!clickedRef.current) {
+          clickedRef.current = true;
+          onClick(undefined); // report the click; we navigate ourselves
+        }
+        void Linking.openURL(req.url).catch(() => undefined);
+        return false;
+      }
       if (scheme === 'http' || scheme === 'https') {
         if (!clickedRef.current) {
           clickedRef.current = true;

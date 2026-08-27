@@ -1,6 +1,6 @@
 {
   "name": "Onboarding — signed up, never joined a round",
-  "description": "A new user who created a profile and has not joined any round. Two nudges only: after one day, then after three more. Anyone who joins leaves immediately through the `did` port and is never messaged. The day-one push asks for availability, so it is skipped for anyone who has already set it — they go straight to the open-games nudge three days later.",
+  "description": "A new user who created a profile and has not joined any round. Two nudges only: after one day, then after three more. Anyone who joins leaves through the `did` port and is never messaged. The day-one nudge is skipped entirely for users who already set availability, and is delivered in-app rather than by push for users who never granted notification permission — day one is exactly when that permission is least likely to exist.",
   "nodes": [
     {
       "id": "trigger",
@@ -55,11 +55,36 @@
       }
     },
     {
-      "id": "push_day_1",
-      "type": "message",
+      "id": "can_push",
+      "type": "condition",
       "position": {
         "x": 780,
         "y": 140
+      },
+      "config": {
+        "branchMode": "yesno",
+        "_note": "Day one is the WORST moment for push reach: the permission prompt has barely been seen, so a large slice of this audience is unreachable by push and would silently receive nothing. push_permission is one of the five attributes the app actually sends, so the branch is free. `no` delivers the same message in-app — the one channel that still reaches them.",
+        "filterGroups": [
+          {
+            "operator": "AND",
+            "filters": [
+              {
+                "type": "attribute",
+                "field": "push_permission",
+                "operator": "equals",
+                "value": "granted"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "push_day_1",
+      "type": "message",
+      "position": {
+        "x": 1040,
+        "y": 80
       },
       "config": {
         "channel": "push",
@@ -72,11 +97,27 @@
       }
     },
     {
+      "id": "inapp_day_1",
+      "type": "in_app_message",
+      "position": {
+        "x": 1040,
+        "y": 220
+      },
+      "config": {
+        "_note": "HTML rather than native so the card can carry the pitch header and read as part of the product. Needs Teamder 1.0.99+, which is the build that added the HTML in-app renderer and declares content.html — older installs report they cannot draw it and are simply not targeted.",
+        "customContent": {
+          "mode": "html",
+          "html": "<div class=\"jr-card\" dir=\"rtl\">\n  <div class=\"jr-pitch\">\n    <span class=\"jr-line\"></span>\n    <span class=\"jr-circle\"></span>\n    <span class=\"jr-ball\">⚽</span>\n  </div>\n\n  <div class=\"jr-body\">\n    <p class=\"jr-eyebrow\">רגע לפני שאתה יוצא למגרש</p>\n    <h1 class=\"jr-title\">מתי נוח לך לשחק?</h1>\n    <p class=\"jr-text\">\n      סמן את הימים והשעות שאתה פנוי, ונודיע לך ברגע שנפתח מחזור שמתאים בדיוק לך —\n      בלי לחפש, בלי לפספס.\n    </p>\n\n    <a class=\"jr-cta\" href=\"footy://availability\">\n      <span>סימון זמינות</span>\n      <span class=\"jr-arrow\">←</span>\n    </a>\n    <p class=\"jr-note\">לוקח פחות מדקה · אפשר לשנות בכל רגע</p>\n  </div>\n</div>\n",
+          "css": "/* Teamder in-app — availability nudge.\n   Palette is the app's own (primary #1E40AF, text #111827, muted #6B7280) so\n   the card reads as part of the product, not as an ad dropped into it.\n   System font stack only: the renderer's CSP allows remote fonts, but a webfont\n   that fails to load would silently reshuffle the whole layout. */\n* { box-sizing: border-box; margin: 0; padding: 0; }\n\n.jr-card {\n  font-family: -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n  background: #FFFFFF;\n  border-radius: 22px;\n  overflow: hidden;\n  text-align: right;\n  color: #111827;\n}\n\n/* A pitch, drawn in CSS rather than shipped as an image: the renderer allows\n   https images, but a hero that depends on the network is a hero that is blank\n   on a bad connection — in a message that gets one appearance. */\n.jr-pitch {\n  position: relative;\n  height: 104px;\n  background:\n    radial-gradient(120% 140% at 50% -30%, #2563EB 0%, #1E40AF 55%, #1E3A8A 100%);\n  overflow: hidden;\n}\n.jr-line {\n  position: absolute; inset: 0 auto 0 50%;\n  width: 2px; background: rgba(255,255,255,.22);\n}\n.jr-circle {\n  position: absolute; top: 50%; left: 50%;\n  width: 76px; height: 76px; margin: -38px 0 0 -38px;\n  border: 2px solid rgba(255,255,255,.22); border-radius: 50%;\n}\n.jr-ball {\n  position: absolute; top: 50%; left: 50%;\n  transform: translate(-50%, -50%);\n  font-size: 34px; line-height: 1;\n  filter: drop-shadow(0 6px 10px rgba(0,0,0,.28));\n}\n\n.jr-body { padding: 20px 22px 22px; }\n\n.jr-eyebrow {\n  font-size: 12px; font-weight: 700; letter-spacing: .2px;\n  color: #1E40AF; margin-bottom: 6px;\n}\n.jr-title { font-size: 21px; font-weight: 800; line-height: 1.25; margin-bottom: 8px; }\n.jr-text  { font-size: 14.5px; line-height: 1.6; color: #4B5563; margin-bottom: 18px; }\n\n.jr-cta {\n  display: flex; align-items: center; justify-content: center; gap: 8px;\n  height: 52px; border-radius: 14px;\n  background: #1E40AF; color: #FFFFFF;\n  font-size: 16px; font-weight: 800; text-decoration: none;\n  box-shadow: 0 8px 18px rgba(30,64,175,.28);\n}\n/* The arrow points at the reading direction's end — in RTL that is left. */\n.jr-arrow { font-size: 18px; line-height: 1; opacity: .9; }\n\n.jr-note {\n  margin-top: 10px; text-align: center;\n  font-size: 11.5px; color: #6B7280;\n}\n\n/* The card is the only thing on screen at phone width; on anything wider it\n   stops growing rather than stretching the headline across the viewport. */\n@media (min-width: 520px) {\n  .jr-card { max-width: 460px; margin: 0 auto; }\n}\n"
+        }
+      }
+    },
+    {
       "id": "wait_day_4",
       "type": "behavior_split",
       "position": {
-        "x": 1040,
-        "y": 60
+        "x": 1320,
+        "y": 140
       },
       "config": {
         "event": "game_joined",
@@ -91,8 +132,8 @@
       "id": "push_day_4",
       "type": "message",
       "position": {
-        "x": 1300,
-        "y": 140
+        "x": 1580,
+        "y": 220
       },
       "config": {
         "channel": "push",
@@ -128,17 +169,36 @@
     {
       "id": "e4",
       "source": "has_availability",
-      "target": "push_day_1",
+      "target": "can_push",
       "sourceHandle": "no",
       "label": "No availability yet"
     },
     {
       "id": "e5",
+      "source": "can_push",
+      "target": "push_day_1",
+      "sourceHandle": "yes",
+      "label": "Push allowed"
+    },
+    {
+      "id": "e6",
+      "source": "can_push",
+      "target": "inapp_day_1",
+      "sourceHandle": "no",
+      "label": "Push blocked → in-app"
+    },
+    {
+      "id": "e7",
       "source": "push_day_1",
       "target": "wait_day_4"
     },
     {
-      "id": "e6",
+      "id": "e8",
+      "source": "inapp_day_1",
+      "target": "wait_day_4"
+    },
+    {
+      "id": "e9",
       "source": "wait_day_4",
       "target": "push_day_4",
       "sourceHandle": "timed_out",
