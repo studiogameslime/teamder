@@ -1,5 +1,16 @@
 import { Easing } from 'react-native-reanimated';
 
+// The micro-interaction half of the language now lives in theme/motion — press,
+// entrance, pulse and sweep are design tokens like colour and spacing, and
+// shared components need them without reaching into a folder named `game`.
+// Re-exported here so a reader of this file finds the whole vocabulary and the
+// two can't drift into two different apps.
+//
+// The TOKENS, not `@/theme` — that barrel reaches Reanimated's Easing, and
+// pulling a native package into this module took two pure logic suites down
+// with it the moment it was added. The curves stay where they are needed.
+export { motionTokens } from '@/theme/motionTokens';
+
 /**
  * Shared visual language for the game product-animations (registration,
  * waitlist promotion, last-spot, next-game card, live entrance, draft pick,

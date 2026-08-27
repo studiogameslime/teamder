@@ -18,6 +18,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { Game } from '@/types';
 import { activeGuestCount } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
+import { motion } from '@/theme/motion';
+import { LightSweep } from '@/components/anim/LightSweep';
+import { PressableScale } from '@/components/PressableScale';
 import { he } from '@/i18n/he';
 import { formatGameDay, formatTime } from '@/utils/format';
 
@@ -134,18 +137,26 @@ export function HomeNextGameCard({
         </View>
       </View>
 
-      {/* Full-width details button */}
-      <Pressable
-        onPress={() => onOpen(game.id)}
-        style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]}
-        accessibilityRole="button"
-        accessibilityLabel={he.homeGameDetailsCta}
-      >
-        {/* Icon AFTER the text → visual-left in RTL (user request); the old
-            leading chevron was dropped (redundant with the ball icon). */}
-        <Text style={styles.ctaText}>{he.homeGameDetailsCta}</Text>
-        <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
-      </Pressable>
+      {/* Full-width details button — the home screen's ONE primary action, so
+          it is the one element that gets the light sweep. It passes once,
+          shortly after the screen settles, and never again: this button sits
+          under the user's eye the whole time they are on the tab, and anything
+          that repeats there stops being a highlight and becomes a flicker. */}
+      <LightSweep style={styles.ctaSweep}>
+        <PressableScale
+          onPress={() => onOpen(game.id)}
+          pressedScale={motion.press.controlScale}
+          haptic={false}
+          style={styles.cta}
+          accessibilityRole="button"
+          accessibilityLabel={he.homeGameDetailsCta}
+        >
+          {/* Icon AFTER the text → visual-left in RTL (user request); the old
+              leading chevron was dropped (redundant with the ball icon). */}
+          <Text style={styles.ctaText}>{he.homeGameDetailsCta}</Text>
+          <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
+        </PressableScale>
+      </LightSweep>
     </View>
   );
 }
@@ -252,6 +263,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  // The sweep host clips the band to the button's own shape. Radius matches
+  // `cta` exactly — a mismatch would show the highlight cutting the corners.
+  ctaSweep: { borderRadius: 14 },
   // empty state
   emptyWrap: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.sm },
   emptyIcon: {

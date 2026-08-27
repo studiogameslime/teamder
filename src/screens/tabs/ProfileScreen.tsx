@@ -53,6 +53,8 @@ import {
 } from '@/components/home/HomeDashboardParts';
 import { HomeNextGameCard } from '@/components/home/HomeNextGameCard';
 import { AssistantCard } from '@/components/home/AssistantCard';
+import { ScreenEntrance } from '@/components/anim/ScreenEntrance';
+import { PressableScale } from '@/components/PressableScale';
 import { newAssistantNonce, resolveAssistantMessage } from '@/utils/assistant/resolve';
 import { ASSISTANT_RULES } from '@/utils/assistant/rules';
 import type {
@@ -98,6 +100,7 @@ import {
   typography,
   RTL_LABEL_ALIGN,
 } from '@/theme';
+import { motion } from '@/theme/motion';
 import { he } from '@/i18n/he';
 import { pickHomeHero } from '@/utils/homeHero';
 import { useUserStore } from '@/store/userStore';
@@ -1162,19 +1165,24 @@ export function ProfileScreen() {
               the data cards because it's the coach talking to the player, not
               another readout; renders nothing when no rule has anything worth
               saying. */}
-          <AssistantCard
-            message={assistantMessage}
-            greeting={coachGreeting}
-            onCta={handleAssistantCta}
-          />
+          <ScreenEntrance index={0}>
+            <AssistantCard
+              message={assistantMessage}
+              greeting={coachGreeting}
+              onCta={handleAssistantCta}
+            />
+          </ScreenEntrance>
 
           {/* Straight after an evening the player PLAYED, a way back into its
               summary — the one moment they want it, and until now the only
               route was digging through the club's history. Lives for 24h and
               then disappears on its own. */}
           {justPlayed ? (
-            <Pressable
+            <ScreenEntrance index={1}>
+            <PressableScale
               style={styles.justPlayedCard}
+              pressedScale={motion.press.cardScale}
+              haptic={false}
               onPress={() => {
                 logEvent(AnalyticsEvent.HomeActionTileTapped, {
                   tile: 'evening_summary',
@@ -1195,7 +1203,8 @@ export function ProfileScreen() {
                 <Text style={styles.justPlayedCta}>{he.homeJustPlayedCta}</Text>
               </View>
               <Text style={styles.justPlayedEmoji}>⚽</Text>
-            </Pressable>
+            </PressableScale>
+            </ScreenEntrance>
           ) : null}
 
           {/* ③ Hero — exactly ONE card, in priority order (see pickHomeHero):
@@ -1227,15 +1236,21 @@ export function ProfileScreen() {
             // Same component for both: it reads `status` and switches between
             // "ההרשמה פתוחה" (green, places left) and "מחזור בדרך" (grey,
             // countdown to opening).
-            <UpcomingScheduledGameCard
-              game={heroGame}
-              communityName={
-                myCommunities.find((c) => c.id === heroGame.groupId)?.name
-              }
-              onOpen={(gameId) =>
-                nav.navigate('MatchDetails', { gameId })
-              }
-            />
+            // The OTHER hero branch, NextGameCardEntrance, already carries a
+            // fade+rise keyed to the game id — wrapping it again would run two
+            // entrances on one card. This branch had none, so it gets the hero
+            // treatment here and the two now match.
+            <ScreenEntrance hero>
+              <UpcomingScheduledGameCard
+                game={heroGame}
+                communityName={
+                  myCommunities.find((c) => c.id === heroGame.groupId)?.name
+                }
+                onOpen={(gameId) =>
+                  nav.navigate('MatchDetails', { gameId })
+                }
+              />
+            </ScreenEntrance>
           ) : null}
 
           {/* ④ Recommended day to open a game — busiest evening nearby. */}
