@@ -1,16 +1,20 @@
 {
   "name": "מארגן ששקט — חודש בלי מחזור",
   "description": "מנהל מועדון שפתח מחזור ולא פתח עוד אחד במשך 30 יום. כשמארגן שוקע, כל המועדון נוטש איתו — אז היעד הוא הוא, לא 15 השחקנים.",
-  "status": "draft",
   "entryTrigger": {
     "type": "event",
-    "config": { "event": "game_created" }
+    "config": {
+      "event": "game_created"
+    }
   },
   "nodes": [
     {
       "id": "trigger",
       "type": "trigger",
-      "position": { "x": 0, "y": 0 },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
       "config": {
         "event": "game_created",
         "_note": "מי שפותח מחזורים הוא המארגן בפועל. זה פילוח טוב יותר מתכונת is_admin — הוא תופס את מי שבאמת מנהל את הערב, ולא את מי שיש לו הרשאה."
@@ -19,27 +23,48 @@
     {
       "id": "wait_for_next_round",
       "type": "behavior_split",
-      "position": { "x": 260, "y": 0 },
+      "position": {
+        "x": 260,
+        "y": 0
+      },
       "config": {
         "event": "game_created",
-        "window": { "value": 30, "unit": "days" },
+        "window": {
+          "value": 30,
+          "unit": "days"
+        },
         "_note": "ממתין 30 יום לראות אם ייפתח מחזור נוסף. יציאה דרך did = הכל בסדר, אין מה לומר. רק timed_out ממשיך להודעה."
       }
     },
     {
       "id": "push_nudge",
       "type": "message",
-      "position": { "x": 520, "y": 80 },
+      "position": {
+        "x": 520,
+        "y": 80
+      },
       "config": {
         "channel": "push",
         "title": "המגרש מחכה ⚽",
         "body": "חודש בלי מחזור. פתיחה לוקחת פחות מדקה, והשחקנים שלך כבר יודעים את התרגיל.",
-        "data": { "deeplink": "footy://games/create" }
+        "data": {
+          "deeplink": "footy://games/create"
+        }
       }
     }
   ],
   "edges": [
-    { "id": "e1", "source": "trigger", "target": "wait_for_next_round" },
-    { "id": "e2", "source": "wait_for_next_round", "target": "push_nudge", "sourceHandle": "timed_out", "label": "לא נפתח מחזור" }
+    {
+      "id": "e1",
+      "source": "trigger",
+      "target": "wait_for_next_round"
+    },
+    {
+      "id": "e2",
+      "source": "wait_for_next_round",
+      "target": "push_nudge",
+      "sourceHandle": "timed_out",
+      "label": "לא נפתח מחזור"
+    }
   ]
 }
