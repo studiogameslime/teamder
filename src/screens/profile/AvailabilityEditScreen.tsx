@@ -360,8 +360,8 @@ export function AvailabilityEditScreen() {
         <View style={styles.gateCard}>
           <View style={styles.notifText}>
             <View style={styles.sectionHeaderInner}>
-              <Ionicons name="navigate-circle-outline" size={18} color={ACCENT} />
               <Text style={styles.notifTitle}>{he.availabilityLocationToggle}</Text>
+              <Ionicons name="navigate-circle-outline" size={18} color={ACCENT} />
             </View>
             <Text style={styles.notifHint}>
               {locationGranted
@@ -468,8 +468,8 @@ export function AvailabilityEditScreen() {
               as part of marking availability, not a separate section (Pulse #15). */}
           <View style={styles.gridDivider} />
           <View style={styles.quickFillHead}>
-            <Ionicons name="flash-outline" size={15} color={colors.textMuted} />
             <Text style={styles.quickFillLabel}>{he.availabilityQuickFill}</Text>
+            <Ionicons name="flash-outline" size={15} color={colors.textMuted} />
           </View>
           <View style={styles.presetRow}>
             <Pressable style={styles.preset} onPress={() => applyPreset('evenings')}>
@@ -497,8 +497,8 @@ export function AvailabilityEditScreen() {
             onPress={() => setSearchOpen(true)}
             style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
           >
-            <Ionicons name="search" size={16} color={ACCENT} />
             <Text style={styles.areaBtnText}>{he.availabilitySearchCity}</Text>
+            <Ionicons name="search" size={16} color={ACCENT} />
           </Pressable>
           <Pressable
             onPress={handleUseCurrentLocation}
@@ -528,8 +528,8 @@ export function AvailabilityEditScreen() {
         {/* Range slider */}
         <View style={styles.rangeHeader}>
           <View style={styles.sectionHeaderInner}>
-            <Ionicons name="resize-outline" size={18} color={ACCENT} />
             <Text style={styles.sectionTitle}>{he.availabilityRangeTitle}</Text>
+            <Ionicons name="resize-outline" size={18} color={ACCENT} />
           </View>
           <Text style={styles.rangeValue}>
             {he.availabilityRangeValue(radiusKm)}
@@ -554,8 +554,8 @@ export function AvailabilityEditScreen() {
         <View style={styles.notifCard}>
           <View style={styles.notifText}>
             <View style={styles.sectionHeaderInner}>
-              <Ionicons name="notifications-outline" size={18} color={colors.success} />
               <Text style={styles.notifTitle}>{he.availabilityNotifTitle}</Text>
+              <Ionicons name="notifications-outline" size={18} color={colors.success} />
             </View>
             <Text style={styles.notifHint}>{he.availabilityNotifHint}</Text>
           </View>
@@ -624,8 +624,8 @@ function SectionHeader({
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionHeaderInner}>
-        <Ionicons name={icon} size={18} color={ACCENT} />
         <Text style={styles.sectionTitle}>{title}</Text>
+        <Ionicons name={icon} size={18} color={ACCENT} />
       </View>
     </View>
   );

@@ -840,7 +840,7 @@ export function CommunityDetailsScreen() {
             variant="outline"
             size="lg"
             fullWidth
-            iconRight="stats-chart"
+            iconLeft="stats-chart"
             onPress={() =>
               (nav as { navigate: (s: string, p: unknown) => void }).navigate(
                 'CommunityStats',
@@ -1062,9 +1062,7 @@ export function CommunityDetailsScreen() {
               variant="outline"
               size="lg"
               fullWidth
-              // iconRight lands the WhatsApp glyph on the visual LEFT of
-              // the label in this RTL layout (QA request).
-              iconRight="logo-whatsapp"
+              iconLeft="logo-whatsapp"
               onPress={() => {
                 logEvent(AnalyticsEvent.CommunityContactAdminTapped, {
                   groupId: group.id,

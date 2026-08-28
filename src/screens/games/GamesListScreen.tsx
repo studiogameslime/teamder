@@ -1349,9 +1349,7 @@ function FullEmptyState({
               title={he.emptyHomePrimary}
               variant="primary"
               size="lg"
-              // Plus on the visual LEFT of the label (user report). Under
-              // forceRTL the last row child renders left, so use iconRight.
-              iconRight="add-circle-outline"
+              iconLeft="add-circle-outline"
               onPress={onCreate}
               fullWidth
             />

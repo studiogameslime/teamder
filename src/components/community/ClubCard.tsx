@@ -183,11 +183,7 @@ export function ClubCard({
                   vm.cta === 'requested' && { backgroundColor: '#FFF7ED' },
                 ]}
               >
-                <Ionicons
-                  name={cta.icon as never}
-                  size={14}
-                  color={vm.cta === 'requested' ? '#C2710C' : '#15803D'}
-                />
+                {/* Same order as the CTA above, for the same reason. */}
                 <Text
                   style={[
                     styles.statusTxt,
@@ -196,6 +192,11 @@ export function ClubCard({
                 >
                   {CTA_LABEL[vm.cta]}
                 </Text>
+                <Ionicons
+                  name={cta.icon as never}
+                  size={14}
+                  color={vm.cta === 'requested' ? '#C2710C' : '#15803D'}
+                />
               </View>
             </View>
           )}
@@ -218,13 +219,13 @@ export function ClubCard({
               pinned to the bottom corner where the spec puts it. */}
           {vm.topBadge === 'manager' ? (
             <View style={[styles.topBadge, { backgroundColor: '#F0A03C' }]}>
-              <Ionicons name="ribbon" size={11} color="#FFF" />
               <Text style={styles.topBadgeTxt}>{he.clubCardManager}</Text>
+              <Ionicons name="ribbon" size={11} color="#FFF" />
             </View>
           ) : vm.topBadge === 'recommended' ? (
             <View style={[styles.topBadge, { backgroundColor: '#2563EB' }]}>
-              <Ionicons name="star" size={11} color="#FFF" />
               <Text style={styles.topBadgeTxt}>{he.clubCardRecommended}</Text>
+              <Ionicons name="star" size={11} color="#FFF" />
             </View>
           ) : (
             <View />
@@ -238,8 +239,8 @@ export function ClubCard({
             // where to look.
             <AttentionPulse active={vm.activity === 'veryActive'} cycles={2}>
               <View style={styles.activityBadge}>
-                <View style={[styles.dot, { backgroundColor: activity.dot }]} />
                 <Text style={styles.activityTxt}>{activity.label}</Text>
+                <View style={[styles.dot, { backgroundColor: activity.dot }]} />
               </View>
             </AttentionPulse>
           ) : (

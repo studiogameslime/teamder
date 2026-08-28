@@ -104,7 +104,7 @@ export function ChemistrySection({ groupId }: { groupId: string }) {
               accessibilityLabel={`${CHEMISTRY_LABEL[p.kind]}: ${px?.name ?? ''} ${py?.name ?? ''}`}
             >
               <Text style={styles.cardTitle}>
-                {`${CHEMISTRY_EMOJI[p.kind]} ${CHEMISTRY_LABEL[p.kind]}`}
+                {`${CHEMISTRY_LABEL[p.kind]} ${CHEMISTRY_EMOJI[p.kind]}`}
               </Text>
               <View style={styles.avatars}>
                 {px ? <UserAvatar user={{ id: x, name: px.name, avatarId: px.avatarId, photoUrl: px.photoUrl }} size={38} /> : null}

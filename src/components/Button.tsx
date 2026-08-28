@@ -66,6 +66,13 @@ export function Button({
   // when it is not. Spacing moved to `gap` on the row, because marginStart /
   // marginEnd are themselves direction-aware and would re-introduce the bug on
   // the other side.
+  //
+  // AND THEN THE REPORTS CAME BACK. Three callers had been hand-compensating
+  // for the old bug — passing `iconRight` precisely BECAUSE it used to land on
+  // the left — with comments saying so. Fixing the component inverted exactly
+  // those three and nothing else. If a caller comment claims `iconRight` puts
+  // the glyph on the left, it is stale: delete it and pass `iconLeft`. The prop
+  // names mean the visual side now, on both sides of the flip.
   const first = I18nManager.isRTL ? iconRight : iconLeft;
   const second = I18nManager.isRTL ? iconLeft : iconRight;
 

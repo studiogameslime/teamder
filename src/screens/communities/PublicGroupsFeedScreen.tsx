@@ -298,11 +298,25 @@ export function PublicGroupsFeedScreen() {
           !pendingIds.has(g.id) &&
           passesDiscoveryFilters(g)
       )
-        // Biggest communities first — more players = more games happening,
-        // so the discovery feed leads with the most active clubs. Tie-break
-        // by name for a stable, predictable order.
+        // Clubs that actually PLAY first.
+        //
+        // This used to sort by member count, on the reasoning that "more
+        // players = more games happening". It isn't true here: of 53 real
+        // clubs only 15 have ever opened a round, and the ones that never did
+        // are not the small ones — the biggest club in the app has 40 members
+        // and no fixture. So the first screen of the join-a-club journey led
+        // with the largest DEAD clubs, each wearing the red "לא פעיל" badge
+        // the card computes from these very counters.
+        //
+        // gamesLast30/gamesLast60 are written onto every public club doc daily
+        // by the server and were already being read for the badge — only the
+        // sort ignored them. Nulls (a club the sweep hasn't reached yet) sort
+        // as 0, which puts them below anything with a known fixture rather
+        // than above it.
         .sort(
           (a, b) =>
+            (b.gamesLast30 ?? 0) - (a.gamesLast30 ?? 0) ||
+            (b.gamesLast60 ?? 0) - (a.gamesLast60 ?? 0) ||
             (b.memberCount ?? 0) - (a.memberCount ?? 0) ||
             (a.name ?? '').localeCompare(b.name ?? '', 'he'),
         ),

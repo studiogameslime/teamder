@@ -35,6 +35,9 @@ export const CHEMISTRY_LABEL: Record<ChemistryKind, string> = {
   balancedRivalry: he.chemistryBalanced,
 };
 
+// Rendered AFTER the label, never before: under forceRTL the first thing in a
+// string lands on the visual right, and the emoji reads as an icon — reported
+// from the club-stats cards.
 export const CHEMISTRY_EMOJI: Record<ChemistryKind, string> = {
   winningDuo: '🏆',
   regulars: '🤝',
@@ -109,7 +112,7 @@ export function PairCard({
               {titles.map((k) => (
                 <View key={k} style={styles.tag}>
                   <Text style={styles.tagText}>
-                    {`${CHEMISTRY_EMOJI[k]} ${CHEMISTRY_LABEL[k]}`}
+                    {`${CHEMISTRY_LABEL[k]} ${CHEMISTRY_EMOJI[k]}`}
                   </Text>
                 </View>
               ))}

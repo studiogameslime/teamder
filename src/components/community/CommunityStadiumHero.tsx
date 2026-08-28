@@ -143,10 +143,10 @@ export function CommunityStadiumHero({
               {name}
             </Text>
             <View style={styles.memberPill}>
-              <Ionicons name="people" size={14} color="#FFFFFF" />
               <Text style={styles.memberPillText}>
                 {he.communityMembersCount(memberCount)}
               </Text>
+              <Ionicons name="people" size={14} color="#FFFFFF" />
             </View>
 
             {canEditCover ? (
@@ -161,16 +161,16 @@ export function CommunityStadiumHero({
                 accessibilityRole="button"
                 accessibilityLabel={he.communityCoverChange}
               >
-                {uploadingCover ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons name="camera" size={15} color="#FFFFFF" />
-                )}
                 <Text style={styles.coverEditText}>
                   {uploadingCover
                     ? he.communityCoverUploading
                     : he.communityCoverChange}
                 </Text>
+                {uploadingCover ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="camera" size={15} color="#FFFFFF" />
+                )}
               </Pressable>
             ) : null}
           </View>

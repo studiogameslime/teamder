@@ -86,14 +86,14 @@ export function UpcomingScheduledGameCard({
           {game.title}
         </Text>
         <View style={[styles.chip, isOpen && styles.chipOpen]}>
+          <Text style={[styles.chipText, isOpen && styles.chipTextOpen]}>
+            {isOpen ? he.homeOpenNowBadge : he.homeUpcomingBadge}
+          </Text>
           <MaterialCommunityIcons
             name={isOpen ? 'lock-open-variant' : 'lock-clock'}
             size={15}
             color={isOpen ? colors.success : colors.primary}
           />
-          <Text style={[styles.chipText, isOpen && styles.chipTextOpen]}>
-            {isOpen ? he.homeOpenNowBadge : he.homeUpcomingBadge}
-          </Text>
         </View>
       </View>
 
