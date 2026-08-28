@@ -1684,6 +1684,31 @@ class Joryio private constructor(
             withSdk { it.flush() }
         }
 
+        // ── LOCAL PATCH (Teamder, 2026-08-28) ──────────────────────────────
+        // Upstream's tracking-consent commit bridged optOut/optIn/
+        // isUserOptedOut in the React Native module, which calls them
+        // STATICALLY as Joryio.optOut() — but added no companion forwarders
+        // here, so :joryio_react-native-sdk:compileReleaseKotlin fails with
+        // "Unresolved reference 'optOut'". The parity tripwire greps the SDK
+        // sources for method names and a grep cannot tell an instance method
+        // from a static one, so it passed on code that does not compile.
+        //
+        // Same shape as the subscription forwarders below, which the marketing
+        // commit DID add. Remove when upstream carries these.
+        fun optOut() {
+            withSdk { it.optOut() }
+        }
+
+        fun optIn() {
+            withSdk { it.optIn() }
+        }
+
+        // Reads through getInstance() rather than withSdk: withSdk QUEUES the
+        // action when the SDK is not yet up, and a queued action cannot return
+        // a Boolean. Before initialize() nobody has opted out, so false is both
+        // the honest answer and the safe default.
+        fun isUserOptedOut(): Boolean = instance?.isUserOptedOut() ?: false
+
         // Marketing subscription - NOT optIn/optOut, which is tracking consent.
         fun setSubscription(channel: String, status: String) {
             withSdk { it.setSubscription(channel, status) }
