@@ -59,6 +59,7 @@ import { NextGameCard } from '@/components/community/NextGameCard';
 import { UpcomingMoreRow } from '@/components/community/UpcomingMoreRow';
 import { PlayersPreview } from '@/components/community/PlayersPreview';
 import { CommunityShareInviteCta } from '@/components/community/CommunityShareInviteCta';
+import { InviteMembersSheet } from '@/components/community/InviteMembersSheet';
 import { RichRulesText } from '@/components/community/RichRulesText';
 import { groupService } from '@/services';
 import { logError } from '@/services/errorLog';
@@ -136,6 +137,10 @@ export function CommunityDetailsScreen() {
   const [inviteIds, setInviteIds] = useState<string[]>([]);
   // Celebration burst when arriving fresh from creating this group.
   const [celebrate, setCelebrate] = useState(false);
+  // The invite prompt rides in AFTER the confetti rather than under it: two
+  // things arriving at once reads as a glitch, and this is meant to be the
+  // celebration's next beat, not an interruption of it.
+  const [invitePrompt, setInvitePrompt] = useState(false);
   useEffect(() => {
     if (celebrateOnArrival) {
       successHaptic();
@@ -733,7 +738,14 @@ export function CommunityDetailsScreen() {
     <View style={styles.root}>
       {celebrate ? (
         <View pointerEvents="none" style={styles.celebrationLayer}>
-          <CelebrationOverlay onDone={() => setCelebrate(false)} />
+          <CelebrationOverlay
+            onDone={() => {
+              setCelebrate(false);
+              // Only for a club the user has just made. Re-entering an
+              // established club must never ask.
+              if (celebrateOnArrival) setInvitePrompt(true);
+            }}
+          />
         </View>
       ) : null}
       <ScrollView
@@ -1186,6 +1198,15 @@ export function CommunityDetailsScreen() {
           <SoccerBallLoader size={36} />
         </View>
       ) : null}
+      <InviteMembersSheet
+        visible={invitePrompt}
+        clubName={group?.name ?? ''}
+        onShare={() => {
+          setInvitePrompt(false);
+          void handleInvite();
+        }}
+        onDismiss={() => setInvitePrompt(false)}
+      />
     </View>
   );
 }

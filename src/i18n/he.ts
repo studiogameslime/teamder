@@ -393,6 +393,12 @@ export const he = {
   // ── Player tap menu + "went home" section ──
   playerMenuCard: 'כרטיס שחקן',
   playerMenuSwap: 'החלפה',
+  /** Shown once, right after a club is created. */
+  inviteSheetTitle: (club: string) => `${club} מוכן. עכשיו צריך אנשים.`,
+  inviteSheetBody:
+    'מועדון בלי חברים לא עושה כלום. שלחו את הקישור בוואטסאפ — מי שילחץ עליו מצטרף ישירות, בלי חיפושים.',
+  inviteSheetCta: 'הזמינו חברים',
+  inviteSheetLater: 'אחר כך',
   swapPickTarget: 'בחרו שחקן להחלפה או מקום פנוי',
   /** After a swap / after a move. Two outcomes of the same "החלפה" gesture, so
    *  each says exactly what happened rather than sharing a vague word. The team
