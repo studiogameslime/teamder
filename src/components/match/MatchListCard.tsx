@@ -68,13 +68,21 @@ function ctaForGame(
   if (status === 'waitlist') return 'leaveWaitlist';
   if (status === 'pending') return 'pending';
   if (g.status === 'scheduled') return 'none';
-  if (g.requiresApproval) return 'requestJoin';
+  // Occupancy FIRST. `requiresApproval` used to short-circuit above this, so a
+  // full game that happened to require approval still offered "בקש להצטרף" —
+  // the request went to the organiser and could only ever be declined, because
+  // there was no seat behind it. The one public game in the country is sitting
+  // at exactly 21/21 (1 player + 20 active guests) and has collected 7 such
+  // requests over 17 days, aged up to 18. Whether a seat exists is a fact about
+  // the game; whether an admin must bless it is a fact about the club. The
+  // first question has to be asked first.
   const occupancy =
     g.players.length +
     activeGuestCount(g.guests) +
     (g.pendingPromotion?.uid ? 1 : 0);
-  if (occupancy < g.maxPlayers) return 'join';
-  return 'waitlist';
+  if (occupancy >= g.maxPlayers) return 'waitlist';
+  if (g.requiresApproval) return 'requestJoin';
+  return 'join';
 }
 
 
