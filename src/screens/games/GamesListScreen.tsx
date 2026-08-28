@@ -531,6 +531,11 @@ export function GamesListScreen() {
   // none, the chooser's "community game" option is locked with a hint.
   const canCreateCommunityGame =
     !!user && myCommunities.some((g) => g.adminIds.includes(user.id));
+  // Being in NO club and being in clubs you don't administer both fail the
+  // check above, and they are not the same problem — one needs a club, the
+  // other needs an admin. Telling a member of two clubs "you have no club"
+  // reads as the app not knowing who they are.
+  const hasAnyCommunity = myCommunities.length > 0;
   const isEmpty = mineList.length === 0 && restList.length === 0;
 
   // ── How full does this tab feel, and what do we put underneath ─────────
@@ -1168,7 +1173,9 @@ export function GamesListScreen() {
                 <Text style={createSheetStyles.choiceBody}>
                   {canCreateCommunityGame
                     ? he.createGameChooseCommunityBody
-                    : he.createGameChooseCommunityLocked}
+                    : hasAnyCommunity
+                      ? he.createGameChooseCommunityNotAdmin
+                      : he.createGameChooseCommunityLocked}
                 </Text>
               </View>
             </Pressable>
@@ -1194,7 +1201,9 @@ export function GamesListScreen() {
               >
                 <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
                 <Text style={createSheetStyles.createCommunityCtaText}>
-                  {he.createGameCreateCommunityCta}
+                  {hasAnyCommunity
+                    ? he.createGameCreateOwnCommunityCta
+                    : he.createGameCreateCommunityCta}
                 </Text>
               </Pressable>
             ) : null}

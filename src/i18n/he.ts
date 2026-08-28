@@ -1036,9 +1036,16 @@ export const he = {
   createGameNamePlaceholder: 'לדוגמה: כדורגל שישי בבוקר',
   createGameNameHint: 'השם שיוצג בפיד ובכרטיס המחזור.',
   createGameForCommunity: (name: string) => `המחזור ייפתח למועדון: ${name}`,
+  // Two different reasons you can't open a club round, and they are not the
+  // same sentence. `canCreateCommunityGame` tests whether you ADMINISTER a
+  // club; the copy told everyone who failed it that they have no club at all —
+  // which is wrong, and confusing, for a member of one.
   createGameChooseCommunityLocked:
     'מחזור למועדון קבוע שלך — אבל עדיין אין לך מועדון. הקם מועדון ראשון כדי לפתוח לו מחזורים.',
+  createGameChooseCommunityNotAdmin:
+    'רק מנהל מועדון יכול לפתוח מחזור למועדון. בקש מהמנהל שלכם לפתוח, או הקם מועדון משלך.',
   createGameCreateCommunityCta: 'הקמת מועדון ראשון',
+  createGameCreateOwnCommunityCta: 'הקמת מועדון משלי',
   // Scheduled public-open + guests-open pickers (community games)
   wizardPublicOpenToggle: 'פתיחה לכלל האפליקציה בזמן מתוזמן',
   wizardPublicOpenHint:
