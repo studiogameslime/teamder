@@ -59,6 +59,25 @@ internal interface JoryioApi {
     ): Response<SetAttributesResponse>
 
     /**
+     * Marketing subscription: set a channel's status.
+     *
+     * NOT tracking consent (optIn/optOut). This is whether the person may be
+     * MESSAGED on a channel, and it is what an in-app preference centre writes.
+     */
+    @POST("v1/subscriptions/channel")
+    suspend fun updateChannelSubscription(
+        @Body request: ChannelSubscriptionRequest
+    ): Response<SubscriptionResponse>
+
+    /**
+     * Marketing subscription: join or leave a subscription group (list).
+     */
+    @POST("v1/subscriptions/group")
+    suspend fun updateSubscriptionGroup(
+        @Body request: SubscriptionGroupRequest
+    ): Response<SubscriptionResponse>
+
+    /**
      * Sync in-app messages for current session
      */
     @POST("v1/in-app/sync")
@@ -187,6 +206,31 @@ data class SetAttributesRequest(
     val append: Map<String, Any?>? = null,
     val remove: Map<String, Any?>? = null,
     val unset: List<String>? = null
+)
+
+/*
+ * Wire values are byte-identical to the web SDK and the backend DTO: the status
+ * is camelCase `optedIn` (a NormalizeEnumCasing migration renamed the stored
+ * value and the API 400s on `opted_in`), and the action is `subscribe` /
+ * `unsubscribe`. One state must not become two segment rules.
+ */
+data class ChannelSubscriptionRequest(
+    val channel: String,
+    val status: String,
+    val userId: String? = null,
+    val anonymousId: String? = null
+)
+
+data class SubscriptionGroupRequest(
+    val groupId: String,
+    val channel: String,
+    val action: String,
+    val userId: String? = null,
+    val anonymousId: String? = null
+)
+
+data class SubscriptionResponse(
+    val success: Boolean = false
 )
 
 data class PushTokenRequest(

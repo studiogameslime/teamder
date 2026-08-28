@@ -119,6 +119,53 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
         Joryio.reset()
     }
 
+    // ─── Tracking consent ──────────────────────────────────────────────────
+    //
+    // Tracking consent, NOT marketing subscription. optOut stops the SDK
+    // collecting and sending; it does not unsubscribe anyone from email.
+    //
+    // Bridged because it was missing: web, Android, iOS and Unity all had these
+    // and React Native had no consent surface at all, so an RN app could not
+    // honour a "do not track" choice through the SDK. The native call already
+    // reports `$tracking_opted_out` to the server, so bridging is the whole fix
+    // here - no wire behaviour is defined in this layer.
+
+    @ReactMethod
+    fun optOut() {
+        Joryio.optOut()
+    }
+
+    @ReactMethod
+    fun optIn() {
+        Joryio.optIn()
+    }
+
+    @ReactMethod
+    fun isUserOptedOut(promise: Promise) {
+        promise.resolve(Joryio.isUserOptedOut())
+    }
+
+    // ─── Marketing subscription ────────────────────────────────────────────
+    //
+    // A DIFFERENT consent from optIn/optOut above: that is whether we may
+    // OBSERVE, this is whether we may MESSAGE. Existed on web only, so no
+    // mobile app could offer an in-app preference centre.
+
+    @ReactMethod
+    fun setSubscription(channel: String, status: String) {
+        Joryio.setSubscription(channel, status)
+    }
+
+    @ReactMethod
+    fun addToSubscriptionGroup(groupId: String, channel: String) {
+        Joryio.addToSubscriptionGroup(groupId, channel)
+    }
+
+    @ReactMethod
+    fun removeFromSubscriptionGroup(groupId: String, channel: String) {
+        Joryio.removeFromSubscriptionGroup(groupId, channel)
+    }
+
     // ─── Attributes ────────────────────────────────────────────────────────
 
     @ReactMethod

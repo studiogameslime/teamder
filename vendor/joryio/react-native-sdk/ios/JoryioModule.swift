@@ -129,6 +129,45 @@ class JoryioModule: RCTEventEmitter {
     Joryio.shared.reset()
   }
 
+  // MARK: - Tracking consent
+  //
+  // Tracking consent, NOT marketing subscription. optOut stops the SDK
+  // collecting and sending; it does not unsubscribe anyone from email.
+  //
+  // Bridged because it was missing: web, Android, iOS and Unity all had these
+  // and React Native had no consent surface at all. The native call already
+  // reports `$tracking_opted_out`, so bridging is the whole fix.
+
+  @objc func optOut() {
+    Joryio.shared.optOut()
+  }
+
+  @objc func optIn() {
+    Joryio.shared.optIn()
+  }
+
+  @objc func isUserOptedOut(_ resolve: @escaping RCTPromiseResolveBlock,
+                            rejecter reject: @escaping RCTPromiseRejectBlock) {
+    resolve(Joryio.shared.isUserOptedOut())
+  }
+
+  // MARK: - Marketing subscription
+  //
+  // A DIFFERENT consent from optIn/optOut above: that is whether we may
+  // OBSERVE, this is whether we may MESSAGE.
+
+  @objc func setSubscription(_ channel: String, status: String) {
+    Joryio.shared.setSubscription(channel: channel, status: status)
+  }
+
+  @objc func addToSubscriptionGroup(_ groupId: String, channel: String) {
+    Joryio.shared.addToSubscriptionGroup(groupId, channel: channel)
+  }
+
+  @objc func removeFromSubscriptionGroup(_ groupId: String, channel: String) {
+    Joryio.shared.removeFromSubscriptionGroup(groupId, channel: channel)
+  }
+
   // MARK: - Attributes
 
   @objc func setAttributes(_ attributes: NSDictionary) {

@@ -11,6 +11,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import io.joryio.sdk.core.*
 import io.joryio.sdk.messaging.InAppMessagingManager
 import io.joryio.sdk.models.*
+import io.joryio.sdk.network.ChannelSubscriptionRequest
+import io.joryio.sdk.network.SubscriptionGroupRequest
 import io.joryio.sdk.network.IdentifyRequest
 import io.joryio.sdk.network.JoryioTransportError
 import io.joryio.sdk.network.NetworkClient
@@ -696,9 +698,130 @@ class Joryio private constructor(
         isOptedOut = false
         storage.setOptedOut(false)
         logger.info("User opted in to tracking")
+        /*
+         * Clear the record on the way back in.
+         *
+         * optOut set `$tracking_opted_out` to true and nothing ever set it
+         * back, so a person who declined and later accepted stayed flagged
+         * forever. A segment excluding opted-out people would exclude them for
+         * good - the server's view of a reversible decision was one-way.
+         *
+         * After the flag is cleared, because before it the send is suppressed.
+         * Best-effort: it must never block opting in.
+         */
+        scope.launch {
+            try {
+                networkClient.setAttributes(
+                    SetAttributesRequest(
+                        userId = identityManager.getUserId(),
+                        anonymousId = identityManager.getAnonymousId(),
+                        attributes = mapOf("\$tracking_opted_out" to false)
+                    )
+                )
+            } catch (e: Exception) {
+                logger.debug("Could not clear tracking-consent record: ${e.message}")
+            }
+        }
     }
 
     fun isUserOptedOut(): Boolean = isOptedOut
+
+    /*
+     * Mirrors the backend's SUBSCRIPTION_CHANNELS and the web SDK's list. Five,
+     * including viber - it was added to the backend and to no SDK, so a
+     * preference centre could not offer a channel the API accepts.
+     */
+    private val SUBSCRIPTION_CHANNELS = listOf("email", "sms", "whatsapp", "push", "viber")
+    private val SUBSCRIPTION_STATUSES = listOf("optedIn", "subscribed", "unsubscribed")
+
+    // ─── Marketing subscription ────────────────────────────────────────────
+    //
+    // A DIFFERENT consent from optIn/optOut above. That one is whether we may
+    // OBSERVE this person; this is whether we may MESSAGE them. Neither implies
+    // the other - somebody can decline tracking and still want the newsletter.
+    //
+    // This existed on web only, so a mobile app could not offer an in-app
+    // preference centre at all: an Android user had to find an email and click
+    // its unsubscribe link. Unsubscribing being harder on mobile than on the
+    // web is the wrong way round for the one action that must always be easy.
+
+    /**
+     * Set the marketing subscription status for one channel.
+     *
+     * @param channel one of email, sms, whatsapp, push, viber
+     * @param status  one of optedIn, subscribed, unsubscribed
+     */
+    fun setSubscription(channel: String, status: String) {
+        if (!SUBSCRIPTION_CHANNELS.contains(channel)) {
+            logger.error("Invalid channel: $channel. Must be one of: ${SUBSCRIPTION_CHANNELS.joinToString(", ")}")
+            return
+        }
+        if (!SUBSCRIPTION_STATUSES.contains(status)) {
+            logger.error("Invalid status: $status. Must be one of: ${SUBSCRIPTION_STATUSES.joinToString(", ")}")
+            return
+        }
+        val userId = identityManager.getUserId()
+        val anonymousId = identityManager.getAnonymousId()
+        if (userId == null && anonymousId == null) {
+            logger.error("Cannot update subscription: no user or anonymous id")
+            return
+        }
+        scope.launch {
+            try {
+                networkClient.updateChannelSubscription(
+                    ChannelSubscriptionRequest(
+                        channel = channel,
+                        status = status,
+                        // One identifier, never both - same rule as the web SDK.
+                        userId = userId,
+                        anonymousId = if (userId == null) anonymousId else null
+                    )
+                )
+            } catch (e: Exception) {
+                logger.error("Failed to update $channel subscription: ${e.message}")
+            }
+        }
+    }
+
+    /** Join a subscription group (list) on a channel. */
+    fun addToSubscriptionGroup(groupId: String, channel: String) =
+        updateSubscriptionGroup(groupId, channel, "subscribe")
+
+    /** Leave a subscription group (list) on a channel. */
+    fun removeFromSubscriptionGroup(groupId: String, channel: String) =
+        updateSubscriptionGroup(groupId, channel, "unsubscribe")
+
+    private fun updateSubscriptionGroup(groupId: String, channel: String, action: String) {
+        if (groupId.isBlank()) {
+            logger.error("Cannot update subscription group: groupId is required")
+            return
+        }
+        if (!SUBSCRIPTION_CHANNELS.contains(channel)) {
+            logger.error("Invalid channel: $channel. Must be one of: ${SUBSCRIPTION_CHANNELS.joinToString(", ")}")
+            return
+        }
+        val userId = identityManager.getUserId()
+        val anonymousId = identityManager.getAnonymousId()
+        if (userId == null && anonymousId == null) {
+            logger.error("Cannot update subscription group: no user or anonymous id")
+            return
+        }
+        scope.launch {
+            try {
+                networkClient.updateSubscriptionGroup(
+                    SubscriptionGroupRequest(
+                        groupId = groupId,
+                        channel = channel,
+                        action = action,
+                        userId = userId,
+                        anonymousId = if (userId == null) anonymousId else null
+                    )
+                )
+            } catch (e: Exception) {
+                logger.error("Failed to $action group $groupId on $channel: ${e.message}")
+            }
+        }
+    }
 
     /**
      * Delete everything this SDK stored on the device.
@@ -1559,6 +1682,19 @@ class Joryio private constructor(
 
         fun flush() {
             withSdk { it.flush() }
+        }
+
+        // Marketing subscription - NOT optIn/optOut, which is tracking consent.
+        fun setSubscription(channel: String, status: String) {
+            withSdk { it.setSubscription(channel, status) }
+        }
+
+        fun addToSubscriptionGroup(groupId: String, channel: String) {
+            withSdk { it.addToSubscriptionGroup(groupId, channel) }
+        }
+
+        fun removeFromSubscriptionGroup(groupId: String, channel: String) {
+            withSdk { it.removeFromSubscriptionGroup(groupId, channel) }
         }
 
         fun setSdkAuthenticationToken(token: String) {

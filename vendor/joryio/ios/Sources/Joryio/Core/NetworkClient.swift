@@ -67,6 +67,20 @@ class NetworkClient {
         logger.debug("Attributes set for user")
     }
 
+    // MARK: - Subscriptions (marketing, not tracking consent)
+
+    func updateChannelSubscription(_ request: ChannelSubscriptionRequest) async throws {
+        let endpoint = "\(apiEndpoint)/v1/subscriptions/channel"
+        try await sendRequest(endpoint: endpoint, method: "POST", body: request)
+        logger.debug("Subscription updated for channel \(request.channel)")
+    }
+
+    func updateSubscriptionGroup(_ request: SubscriptionGroupRequest) async throws {
+        let endpoint = "\(apiEndpoint)/v1/subscriptions/group"
+        try await sendRequest(endpoint: endpoint, method: "POST", body: request)
+        logger.debug("Subscription group \(request.groupId) \(request.action)d")
+    }
+
     // MARK: - In-App Messaging
 
     /// Display-time re-check for a `reevaluateBeforeDisplay` campaign.

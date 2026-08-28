@@ -2,6 +2,20 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 
 const { JoryioModule } = NativeModules;
 
+/**
+ * Mirrors the backend's SUBSCRIPTION_CHANNELS and the web SDK. Five, including
+ * viber - it was added to the backend and to no SDK.
+ */
+export type SubscriptionChannel = 'email' | 'sms' | 'whatsapp' | 'push' | 'viber';
+
+/**
+ * Wire values are camelCase. The backend 400s on `opted_in` - a
+ * NormalizeEnumCasing migration renamed the stored value and the enum NAME,
+ * not the wire string, is what changed.
+ */
+export type SubscriptionStatus = 'optedIn' | 'subscribed' | 'unsubscribed';
+
+
 const MODULE_MISSING_MESSAGE =
   '@joryio/react-native-sdk: NativeModule not found. ' +
   'Make sure you ran `pod install` (iOS) / rebuilt the app (Android). ' +
@@ -379,6 +393,67 @@ class JoryioSDK {
    */
   reset(): void {
     this._dispatch(() => JoryioModule.reset());
+  }
+
+  // ─── Tracking consent ────────────────────────────────────────────────────
+
+  /**
+   * Stop collecting and sending. Call when a user declines tracking.
+   *
+   * TRACKING consent, not marketing subscription - this does not unsubscribe
+   * anyone from email or SMS. Those live on the contact's subscription state
+   * and are changed through the API or the preference centre.
+   *
+   * Existed on web, Android, iOS and Unity; React Native had no consent surface
+   * at all, so an app built on it could not honour a "do not track" choice
+   * through the SDK. The native SDKs report `$tracking_opted_out` to the server
+   * as part of opting out, so that behaviour comes through this bridge
+   * unchanged - nothing about the wire is decided here.
+   */
+  optOut(): void {
+    this._dispatch(() => JoryioModule.optOut());
+  }
+
+  /** Resume collecting and sending after {@link optOut}. */
+  optIn(): void {
+    this._dispatch(() => JoryioModule.optIn());
+  }
+
+  /** Whether the user has opted out of tracking. */
+  isUserOptedOut(): Promise<boolean> {
+    return JoryioModule.isUserOptedOut();
+  }
+
+  // ─── Marketing subscription ──────────────────────────────────────────────
+
+  /**
+   * Set the marketing subscription status for one channel.
+   *
+   * A DIFFERENT consent from {@link optOut}: that controls whether we may
+   * OBSERVE this person, this controls whether we may MESSAGE them. Neither
+   * implies the other - somebody can decline tracking and still want the
+   * newsletter.
+   *
+   * This is what an in-app preference centre writes. It existed on web only,
+   * so a mobile user had to find an email and click its unsubscribe link -
+   * unsubscribing being harder in the app than on the web, which is the wrong
+   * way round for the one action that must always be easy.
+   *
+   * @param channel one of email, sms, whatsapp, push, viber
+   * @param status  one of optedIn, subscribed, unsubscribed
+   */
+  setSubscription(channel: SubscriptionChannel, status: SubscriptionStatus): void {
+    this._dispatch(() => JoryioModule.setSubscription(channel, status));
+  }
+
+  /** Join a subscription group (list) on a channel. */
+  addToSubscriptionGroup(groupId: string, channel: SubscriptionChannel): void {
+    this._dispatch(() => JoryioModule.addToSubscriptionGroup(groupId, channel));
+  }
+
+  /** Leave a subscription group (list) on a channel. */
+  removeFromSubscriptionGroup(groupId: string, channel: SubscriptionChannel): void {
+    this._dispatch(() => JoryioModule.removeFromSubscriptionGroup(groupId, channel));
   }
 
   // ─── User Attributes ─────────────────────────────────────────────────────

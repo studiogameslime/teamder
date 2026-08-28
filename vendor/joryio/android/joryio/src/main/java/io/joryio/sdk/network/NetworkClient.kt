@@ -471,6 +471,24 @@ internal class NetworkClient(
         }
     }
 
+    // MARK: - Subscriptions (marketing, not tracking consent)
+
+    suspend fun updateChannelSubscription(
+        request: ChannelSubscriptionRequest
+    ): NetworkResult<SubscriptionResponse> {
+        return executeWithRetry("updateChannelSubscription") {
+            api.updateChannelSubscription(request)
+        }
+    }
+
+    suspend fun updateSubscriptionGroup(
+        request: SubscriptionGroupRequest
+    ): NetworkResult<SubscriptionResponse> {
+        return executeWithRetry("updateSubscriptionGroup") {
+            api.updateSubscriptionGroup(request)
+        }
+    }
+
     // MARK: - In-App Messaging
 
     suspend fun syncInAppMessages(request: io.joryio.sdk.models.SessionSyncRequest): NetworkResult<io.joryio.sdk.models.SessionSyncResponse> {

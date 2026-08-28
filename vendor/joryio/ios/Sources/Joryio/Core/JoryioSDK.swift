@@ -762,11 +762,126 @@ public class Joryio {
         isOptedOut = false
         storage?.setOptedOut(false)
         logger.info("User opted in to tracking")
+
+        // Clear the record on the way back in.
+        //
+        // optOut set `$tracking_opted_out` to true and nothing ever set it
+        // back, so a person who declined and later accepted stayed flagged
+        // forever. A segment excluding opted-out people would exclude them for
+        // good - the server's view of a reversible decision was one-way.
+        //
+        // After the flag is cleared, because before it the send is suppressed.
+        // Best-effort: it must never block opting in.
+        guard isInitialized else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            let request = SetAttributesRequest(
+                userId: self.identity.getUserId(),
+                anonymousId: self.identity.getAnonymousId(),
+                attributes: ["$tracking_opted_out": false]
+            )
+            try? await self.network.setAttributes(request)
+        }
     }
 
     /// Get current opt-out status
     public func isUserOptedOut() -> Bool {
         return isOptedOut
+    }
+
+    // MARK: - Marketing subscription
+    //
+    // A DIFFERENT consent from optIn/optOut above. That one is whether we may
+    // OBSERVE this person; this is whether we may MESSAGE them. Neither implies
+    // the other - somebody can decline tracking and still want the newsletter.
+    //
+    // This existed on web only, so a mobile app could not offer an in-app
+    // preference centre at all: an iOS user had to find an email and click its
+    // unsubscribe link. Unsubscribing being harder in the app than on the web
+    // is the wrong way round for the one action that must always be easy.
+
+    /// Mirrors the backend's SUBSCRIPTION_CHANNELS and the other SDKs. Five,
+    /// including viber - added to the backend and to no SDK, so a preference
+    /// centre could not offer a channel the API accepts.
+    private static let subscriptionChannels = ["email", "sms", "whatsapp", "push", "viber"]
+    private static let subscriptionStatuses = ["optedIn", "subscribed", "unsubscribed"]
+
+    /// Set the marketing subscription status for one channel.
+    /// - Parameters:
+    ///   - channel: one of email, sms, whatsapp, push, viber
+    ///   - status: one of optedIn, subscribed, unsubscribed
+    public func setSubscription(channel: String, status: String) {
+        guard Self.subscriptionChannels.contains(channel) else {
+            logger.error("Invalid channel: \(channel). Must be one of: \(Self.subscriptionChannels.joined(separator: ", "))")
+            return
+        }
+        guard Self.subscriptionStatuses.contains(status) else {
+            logger.error("Invalid status: \(status). Must be one of: \(Self.subscriptionStatuses.joined(separator: ", "))")
+            return
+        }
+        let userId = identity.getUserId()
+        let anonymousId = identity.getAnonymousId()
+        guard userId != nil || anonymousId != nil else {
+            logger.error("Cannot update subscription: no user or anonymous id")
+            return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            let request = ChannelSubscriptionRequest(
+                channel: channel,
+                status: status,
+                // One identifier, never both - same rule as the other SDKs.
+                userId: userId,
+                anonymousId: userId == nil ? anonymousId : nil
+            )
+            do {
+                try await self.network.updateChannelSubscription(request)
+            } catch {
+                self.logger.error("Failed to update \(channel) subscription: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Join a subscription group (list) on a channel.
+    public func addToSubscriptionGroup(_ groupId: String, channel: String) {
+        updateSubscriptionGroup(groupId, channel: channel, action: "subscribe")
+    }
+
+    /// Leave a subscription group (list) on a channel.
+    public func removeFromSubscriptionGroup(_ groupId: String, channel: String) {
+        updateSubscriptionGroup(groupId, channel: channel, action: "unsubscribe")
+    }
+
+    private func updateSubscriptionGroup(_ groupId: String, channel: String, action: String) {
+        guard !groupId.trimmingCharacters(in: .whitespaces).isEmpty else {
+            logger.error("Cannot update subscription group: groupId is required")
+            return
+        }
+        guard Self.subscriptionChannels.contains(channel) else {
+            logger.error("Invalid channel: \(channel). Must be one of: \(Self.subscriptionChannels.joined(separator: ", "))")
+            return
+        }
+        let userId = identity.getUserId()
+        let anonymousId = identity.getAnonymousId()
+        guard userId != nil || anonymousId != nil else {
+            logger.error("Cannot update subscription group: no user or anonymous id")
+            return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            let request = SubscriptionGroupRequest(
+                groupId: groupId,
+                channel: channel,
+                action: action,
+                userId: userId,
+                anonymousId: userId == nil ? anonymousId : nil
+            )
+            do {
+                try await self.network.updateSubscriptionGroup(request)
+            } catch {
+                self.logger.error("Failed to \(action) group \(groupId) on \(channel): \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: - SDK Authentication

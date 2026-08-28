@@ -51,6 +51,43 @@ public struct AliasRequest: Codable {
 ///   - append:     `$addToSet`
 ///   - remove:     `$pull`
 ///   - unset:      `$unset`
+/*
+ * Marketing subscription requests.
+ *
+ * Wire values byte-identical to the web and Android SDKs and the backend DTO:
+ * status is camelCase `optedIn` (the API 400s on `opted_in`), action is
+ * `subscribe` / `unsubscribe`. One state must not become two segment rules.
+ */
+public struct ChannelSubscriptionRequest: Codable {
+    public let channel: String
+    public let status: String
+    public let userId: String?
+    public let anonymousId: String?
+
+    public init(channel: String, status: String, userId: String?, anonymousId: String?) {
+        self.channel = channel
+        self.status = status
+        self.userId = userId
+        self.anonymousId = anonymousId
+    }
+}
+
+public struct SubscriptionGroupRequest: Codable {
+    public let groupId: String
+    public let channel: String
+    public let action: String
+    public let userId: String?
+    public let anonymousId: String?
+
+    public init(groupId: String, channel: String, action: String, userId: String?, anonymousId: String?) {
+        self.groupId = groupId
+        self.channel = channel
+        self.action = action
+        self.userId = userId
+        self.anonymousId = anonymousId
+    }
+}
+
 public struct SetAttributesRequest: Codable {
     public let userId: String?
     public let anonymousId: String

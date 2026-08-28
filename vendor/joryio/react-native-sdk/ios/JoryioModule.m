@@ -21,6 +21,22 @@ RCT_EXTERN_METHOD(alias:(NSString *)userId)
 
 RCT_EXTERN_METHOD(reset)
 
+RCT_EXTERN_METHOD(optOut)
+
+RCT_EXTERN_METHOD(optIn)
+
+RCT_EXTERN_METHOD(isUserOptedOut:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(setSubscription:(NSString *)channel
+                  status:(NSString *)status)
+
+RCT_EXTERN_METHOD(addToSubscriptionGroup:(NSString *)groupId
+                  channel:(NSString *)channel)
+
+RCT_EXTERN_METHOD(removeFromSubscriptionGroup:(NSString *)groupId
+                  channel:(NSString *)channel)
+
 RCT_EXTERN_METHOD(setAttributes:(NSDictionary *)attributes)
 
 RCT_EXTERN_METHOD(setAttribute:(NSString *)key
