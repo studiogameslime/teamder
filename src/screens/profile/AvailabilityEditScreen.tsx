@@ -240,7 +240,7 @@ export function AvailabilityEditScreen() {
     });
   }, []);
 
-  const applyPreset = useCallback((kind: 'evenings' | 'weekend' | 'clear') => {
+  const applyPreset = useCallback((kind: 'evenings' | 'weekend' | 'all' | 'clear') => {
     logEvent(AnalyticsEvent.AvailabilityPresetApplied, { preset: kind });
     setSlots((prev) => {
       if (kind === 'clear') return {};
@@ -251,6 +251,10 @@ export function AvailabilityEditScreen() {
         }
       } else if (kind === 'weekend') {
         for (const d of [5, 6] as WeekdayIndex[]) next[d] = [...ALL_BUCKETS];
+      } else if (kind === 'all') {
+        // Whole board. "כל הערבים" only ever fills one bucket per day, and
+        // there was no way to say "any time, any day" short of 21 taps.
+        for (const d of ALL_DAYS) next[d] = [...ALL_BUCKETS];
       }
       return next;
     });
@@ -478,6 +482,9 @@ export function AvailabilityEditScreen() {
             <Pressable style={styles.preset} onPress={() => applyPreset('weekend')}>
               <Text style={styles.presetText}>{he.availabilityPresetWeekend}</Text>
             </Pressable>
+            <Pressable style={styles.preset} onPress={() => applyPreset('all')}>
+              <Text style={styles.presetText}>{he.availabilityPresetAll}</Text>
+            </Pressable>
             <Pressable
               style={[styles.preset, styles.presetGhost]}
               onPress={() => applyPreset('clear')}
@@ -497,7 +504,9 @@ export function AvailabilityEditScreen() {
             onPress={() => setSearchOpen(true)}
             style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
           >
-            <Text style={styles.areaBtnText}>{he.availabilitySearchCity}</Text>
+            <Text style={styles.areaBtnText} numberOfLines={1}>
+              {he.availabilitySearchCity}
+            </Text>
             <Ionicons name="search" size={16} color={ACCENT} />
           </Pressable>
           <Pressable
@@ -505,12 +514,14 @@ export function AvailabilityEditScreen() {
             disabled={gpsBusy}
             style={({ pressed }) => [styles.areaBtn, pressed && { opacity: 0.85 }]}
           >
+            <Text style={styles.areaBtnText} numberOfLines={1}>
+              {he.availabilityUseCurrent}
+            </Text>
             {gpsBusy ? (
               <SoccerBallLoader size={16} />
             ) : (
               <Ionicons name="locate" size={16} color={ACCENT} />
             )}
-            <Text style={styles.areaBtnText}>{he.availabilityUseCurrent}</Text>
           </Pressable>
         </View>
         <AvailabilityRadiusMap
@@ -766,7 +777,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  areaBtnText: { fontSize: 13, fontWeight: '700', color: ACCENT },
+  areaBtnText: { fontSize: 13, fontWeight: '700', color: ACCENT, flexShrink: 1 },
   areaCityLabel: {
     fontSize: 13,
     fontWeight: '700',

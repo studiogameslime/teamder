@@ -2053,6 +2053,7 @@ export const he = {
   availabilityQuickFill: 'מילוי מהיר',
   availabilityPresetEvenings: 'כל הערבים',
   availabilityPresetWeekend: 'סופ״ש',
+  availabilityPresetAll: 'סמן הכל',
   availabilityPresetClear: 'נקה הכל',
   availabilityLegendFree: 'פנוי',
   availabilityLegendBusy: 'לא פנוי',
@@ -2060,7 +2061,8 @@ export const he = {
   availabilityAreaHint:
     'סמן על המפה או חפש עיר. זה אזור קבוע — נשאר גם אם תיסע לחופשה, ולא נלקח מהמיקום הנוכחי.',
   availabilitySearchCity: 'חפש עיר / אזור',
-  availabilityUseCurrent: 'השתמש במיקום הנוכחי שלי',
+  // Half of a two-up row, so it has to fit on one line next to its icon at 13pt.
+  availabilityUseCurrent: 'המיקום הנוכחי שלי',
   availabilityHomeAreaLabel: (city: string) => `אזור הבית: ${city}`,
   availabilityRangeTitle: 'טווח חיפוש',
   availabilityRangeValue: (km: number) => `${km} ק"מ`,

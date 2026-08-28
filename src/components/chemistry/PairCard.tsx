@@ -86,7 +86,11 @@ export function PairCard({
   const key = pairKey(playerAId, playerBId);
   const [aId, bId] = pairMembers(key);
   const t = pairs[key] ?? EMPTY_PAIR;
-  const titles = useMemo(() => titlesOf(picks, key).slice(0, 2), [picks, key]);
+  // Every title the pair holds, not the first two. A pair that is at once the
+  // winning duo, the regulars and the deadly duo was showing two of the three,
+  // which reads as a bug in the data rather than a cap in the view — and it was
+  // reported as one. There are six kinds in total and the row wraps.
+  const titles = useMemo(() => titlesOf(picks, key), [picks, key]);
 
   const a = person(aId);
   const b = person(bId);

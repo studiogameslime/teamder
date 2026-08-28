@@ -694,6 +694,11 @@ export function AdvancedLiveMatchScreen() {
       return;
     const side: 'A' | 'B' = teamIndex === rotation.playing[0] ? 'A' : 'B';
     finalizingRef.current = true;
+    // Same busy latch as onEndRound. A round that ends level takes the SAME
+    // second or two to commit, but the latch lived only on the score path —
+    // so after picking a winner / penalties / both-out the admin got the dead
+    // screen the latch was written to prevent, and reported it.
+    markBusy(1);
     try {
       const res = await gameService.prepareRoundResult(gameId, me.id, side);
       if (res && res.outcome !== null) {
@@ -712,6 +717,7 @@ export function AdvancedLiveMatchScreen() {
       if (__DEV__) console.warn('[live] finalizeRound (tie) failed', err);
     } finally {
       finalizingRef.current = false;
+      markBusy(-1);
     }
   };
 
@@ -769,6 +775,11 @@ export function AdvancedLiveMatchScreen() {
   const resolveTie = async (mode: 'bothOut' | 'veteranOut') => {
     if (!gameId || !me || finalizingRef.current || committingRef.current) return;
     finalizingRef.current = true;
+    // Same busy latch as onEndRound. A round that ends level takes the SAME
+    // second or two to commit, but the latch lived only on the score path —
+    // so after picking a winner / penalties / both-out the admin got the dead
+    // screen the latch was written to prevent, and reported it.
+    markBusy(1);
     try {
       const res = await gameService.prepareRoundResult(gameId, me.id, undefined, mode);
       if (!res || res.outcome === null) return;
@@ -786,6 +797,7 @@ export function AdvancedLiveMatchScreen() {
       toast.error(he.roundFinalizeFailed);
     } finally {
       finalizingRef.current = false;
+      markBusy(-1);
     }
   };
 
@@ -804,6 +816,11 @@ export function AdvancedLiveMatchScreen() {
     )
       return;
     finalizingRef.current = true;
+    // Same busy latch as onEndRound. A round that ends level takes the SAME
+    // second or two to commit, but the latch lived only on the score path —
+    // so after picking a winner / penalties / both-out the admin got the dead
+    // screen the latch was written to prevent, and reported it.
+    markBusy(1);
     try {
       const res = await gameService.prepareRoundResult(gameId, me.id, side);
       if (res && res.outcome !== null) {
@@ -822,6 +839,7 @@ export function AdvancedLiveMatchScreen() {
       if (__DEV__) console.warn('[live] shootout decided failed', err);
     } finally {
       finalizingRef.current = false;
+      markBusy(-1);
     }
   };
 

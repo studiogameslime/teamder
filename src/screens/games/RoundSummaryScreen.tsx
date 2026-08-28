@@ -246,7 +246,16 @@ function King({
   const names = leader.userIds.map(nameOf).filter((n): n is string => !!n);
   if (names.length === 0) return null;
   return (
+    // Text FIRST, avatars last. With the avatar stack leading, its width — one
+    // to three faces — pushed the text's right edge somewhere different on every
+    // row, so the five headings never lined up. Reported as headings that "move
+    // according to the player icons"; the fix is to pin the text to the card
+    // edge and let the ragged side be the avatars'.
     <View style={styles.kingRow}>
+      <View style={styles.kingText}>
+        <Text style={styles.kingLabel}>{`${label} ${emoji}`}</Text>
+        <Text style={styles.kingName}>{`${names.join(' · ')} — ${leader.value}`}</Text>
+      </View>
       <View style={styles.kingAvatars}>
         {leader.userIds.slice(0, 3).map((uid) => (
           <UserAvatar
@@ -260,10 +269,6 @@ function King({
             size={34}
           />
         ))}
-      </View>
-      <View style={styles.kingText}>
-        <Text style={styles.kingLabel}>{`${emoji} ${label}`}</Text>
-        <Text style={styles.kingName}>{`${names.join(' · ')} — ${leader.value}`}</Text>
       </View>
     </View>
   );
