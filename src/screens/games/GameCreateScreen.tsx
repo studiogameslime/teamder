@@ -3,7 +3,14 @@
 // translates the wizard's GameFormValues into a `createGameV2` call.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { appAlert } from '@/components/AppDialog';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -159,6 +166,11 @@ export function GameCreateScreen() {
   // promote prompt converts it into a real community.
   const [orphanGroup, setOrphanGroup] = useState<Group | null>(null);
   const [orphanLoading, setOrphanLoading] = useState(false);
+  // Provisioning threw. Without this the quick-entry spinner below would hold
+  // forever on `!orphanGroup` — the user dismisses the error alert and is left
+  // watching it spin. On failure we fall through to the ordinary gate, which
+  // carries the CTA that retries.
+  const [orphanFailed, setOrphanFailed] = useState(false);
   // Styled single-button notice popup (overlap / reg-after-kickoff) —
   // replaces the native Alert so it matches the app's other popups.
   const [notice, setNotice] = useState<{ title: string; body: string } | null>(
@@ -168,6 +180,7 @@ export function GameCreateScreen() {
   const startOrphanFlow = async () => {
     if (!user) return;
     setOrphanLoading(true);
+    setOrphanFailed(false);
     logEvent(AnalyticsEvent.QuickGameFlowStarted);
     try {
       const groupId = await groupService.ensurePersonalGroupId();
@@ -195,6 +208,7 @@ export function GameCreateScreen() {
       };
       setOrphanGroup(synthesized);
     } catch (err) {
+      setOrphanFailed(true);
       logError('ensurePersonalGroupId', err, {
         screen: 'GameCreateScreen',
         userId: user.id,
@@ -329,6 +343,32 @@ export function GameCreateScreen() {
   // the note above) so the hook count never changes. Both show the same
   // primary CTA ("צור מחזור חד־פעמי"): the answer for "no community to
   // create in" is to make a one-off game without one.
+  // Arriving with `quick` means the decision is already made: this user is
+  // creating a one-off game. Provisioning the hidden personal group happens in
+  // an effect, which runs AFTER the first paint — and on that paint
+  // orphanGroup is null and the user administers no club, so the "רק מנהל
+  // יכול ליצור מחזור" gate below matched and rendered for as long as the
+  // round-trip took. The user tapped "מחזור חד־פעמי" and was told, for a
+  // second, that they were not allowed to create one.
+  //
+  // Keyed on params.quick rather than on orphanLoading: the flag is false on
+  // that first paint too (it is set inside the effect), and seeding it true
+  // instead would deadlock the screen — the effect is guarded by
+  // `!orphanLoading` and would never run.
+  //
+  // The manual CTA path is deliberately NOT covered here. There the gate is a
+  // true answer the user has already read, and OrphanCta spins in place;
+  // replacing the whole screen with a bare spinner would be a step backwards.
+  if (params.quick && !orphanGroup && !orphanFailed) {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <ScreenHeader title={he.createGameTitle} />
+        <View style={styles.emptyAll}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
   if (!orphanGroup && allMyCommunities.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
