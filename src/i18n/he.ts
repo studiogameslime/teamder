@@ -618,7 +618,7 @@ export const he = {
   summaryTitle: 'סיכום המחזור',
   summaryCta: 'סיכום המחזור שלי',
   // Home card, shown for 24h after an evening the player actually played.
-  homeJustPlayedTitle: 'איך היה אתמול?',
+  homeJustPlayedTitle: 'המחזור האחרון',
   homeJustPlayedBody: 'המחזור הסתיים — הציון, הגולים והדירוג שלך מחכים בפנים.',
   // The card opens the match, not the personal summary — the label has to say
   // where it actually goes.
@@ -1197,7 +1197,7 @@ export const he = {
   communityStatsEmptyBody: 'אחרי שתשחקו כמה מחזורים, כאן תופיע כל הסטטיסטיקה של המועדון.',
   communityStatsSectionNumbers: 'המועדון במספרים',
   communityStatsSectionLeaders: 'מובילי המועדון',
-  communityStatsSectionScorers: 'טבלת המבקיעים',
+  communityStatsSectionScorers: 'טבלת המועדון',
   communityStatsSectionFun: 'נתונים מעניינים',
   // ── Club achievements & level ──
   communityStatsSectionAchievements: 'הישגי המועדון',
@@ -1897,11 +1897,8 @@ export const he = {
   homeRecommendedLine: (day: string, n: number) => `יום ${day}׳ • ${n} פנויים`,
   // Three action tiles.
   homeActionOpenTitle: 'פתח מחזור',
-  homeActionOpenSub: 'ארגן מחזור משלך',
   homeActionAvailTitle: 'סמן זמינות',
-  homeActionAvailSub: 'עדכן את הנוכחות שלך',
   homeActionJoinTitle: 'הצטרף למחזור',
-  homeActionJoinSub: 'מצא מחזורים פתוחים',
   // "Available by (evening) window" — per-day evening counts.
   homeWindowsTitle: 'פנויים לידך',
   homeWindowsPlayersUnit: 'שחקנים',
@@ -2660,7 +2657,7 @@ export const he = {
   gamesDemandLookingHeadline: (n: number, window: string) =>
     `${n} שחקנים מחפשים מחזור היום ${window} באזור שלך`,
   gamesDemandImFreeCta: 'גם אני פנוי',
-  gamesDemandFoot: 'הספירה מבוססת על שחקנים שסימנו זמינות — בלי שמות',
+  gamesDemandFoot: 'הספירה מבוססת על שחקנים שסימנו זמינות',
   gamesDemandPromptTitle: 'רוצה לדעת מי מחפש משחק לידך?',
   gamesDemandPromptBody:
     'הגדר את אזור הבית והימים שנוח לך, ונראה לך כמה שחקנים פנויים בכל חלון — כדי לפתוח מחזור בדיוק מתי שיש ביקוש.',

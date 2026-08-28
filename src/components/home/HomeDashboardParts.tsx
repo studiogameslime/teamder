@@ -135,37 +135,24 @@ export function HomeActionTiles({
 }) {
   return (
     <View style={styles.tilesRow}>
-      <ActionTile
-        icon="calendar-outline"
-        title={he.homeActionOpenTitle}
-        sub={he.homeActionOpenSub}
-        onPress={onOpen}
-      />
-      <ActionTile
-        icon="people-outline"
-        title={he.homeActionAvailTitle}
-        sub={he.homeActionAvailSub}
-        onPress={onAvailability}
-      />
-      <ActionTile
-        icon="person-add-outline"
-        title={he.homeActionJoinTitle}
-        sub={he.homeActionJoinSub}
-        onPress={onJoin}
-      />
+      <ActionTile icon="calendar-outline" title={he.homeActionOpenTitle} onPress={onOpen} />
+      <ActionTile icon="people-outline" title={he.homeActionAvailTitle} onPress={onAvailability} />
+      <ActionTile icon="person-add-outline" title={he.homeActionJoinTitle} onPress={onJoin} />
     </View>
   );
 }
 
+// The subtitle is gone. Three tiles share a phone's width, so each column is
+// around 110pt — and a one-line subtitle under a one-line title left neither
+// with room: "הצטרף למחזור" was rendering clipped. The titles already say what
+// each tile does, which is what the subtitle was repeating.
 function ActionTile({
   icon,
   title,
-  sub,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  sub: string;
   onPress: () => void;
 }) {
   return (
@@ -178,9 +165,6 @@ function ActionTile({
       <Ionicons name={icon} size={22} color={colors.primary} />
       <Text style={styles.tileTitle} numberOfLines={1}>
         {title}
-      </Text>
-      <Text style={styles.tileSub} numberOfLines={1}>
-        {sub}
       </Text>
     </Pressable>
   );
@@ -407,12 +391,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '900',
     marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  tileSub: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '600',
     textAlign: 'center',
   },
   // ── evening podium ──
