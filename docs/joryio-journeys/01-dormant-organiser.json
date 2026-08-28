@@ -7,7 +7,7 @@
       "type": "trigger",
       "position": { "x": 0, "y": 0 },
       "config": {
-        "event": "game_created",
+        "event": "Game Created",
         "_note": "Whoever opens rounds IS the organiser. Better targeting than an is_admin attribute — and it needs no attribute we don't already send."
       }
     },
@@ -16,7 +16,7 @@
       "type": "behavior_split",
       "position": { "x": 260, "y": 0 },
       "config": {
-        "event": "game_created",
+        "event": "Game Created",
         "window": { "value": 30, "unit": "days" },
         "_note": "Waits 30 days for another round to be opened. Leaving through `did` means all is well and there is nothing to say; only timed_out reaches the push."
       }
@@ -38,5 +38,5 @@
     { "id": "e1", "source": "trigger", "target": "wait_for_next_round" },
     { "id": "e2", "source": "wait_for_next_round", "target": "push_nudge", "sourceHandle": "timed_out", "label": "No round opened" }
   ],
-  "entryTrigger": { "type": "event", "config": { "event": "game_created" } }
+  "entryTrigger": { "type": "event", "config": { "event": "Game Created" } }
 }

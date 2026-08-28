@@ -443,8 +443,19 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
   if (USE_MOCK_DATA) return Promise.resolve(null);
   const { auth } = getFirebase();
   return new Promise((resolve) => {
+    // `identified` guards the one-shot: the promise still resolves on the FIRST
+    // emission (that is what callers wait for), but the listener stays alive so
+    // a sign-in later in the same session still reaches Joryio.
+    //
+    // On a fresh install the first emission is `null` — there is no session to
+    // restore — and `unsub()` used to run right there. So a day-one user spent
+    // their entire first session as an anonymous record with no email and no
+    // `push_permission`, which is precisely the attribute the onboarding
+    // journey branches on. The users the lifecycle messaging is FOR were the
+    // ones it could not see.
+    let identified = false;
+    let settled = false;
     const unsub = onAuthStateChanged(auth, (user) => {
-      unsub();
       // Existing users won't re-login on an app update, so the sign-in-time
       // native mirror never fires for them — re-establish it here on boot so
       // the home widget / Wear relay can control the timer. Fire-and-forget.
@@ -452,13 +463,19 @@ export function waitForAuthRestore(): Promise<FirebaseUser | null> {
       // Bind this install's anonymous id to the person, so anything tracked
       // before sign-in stitches onto their Joryio profile instead of stranding
       // on a nameless anonymous record.
-      if (user) {
+      if (user && !identified) {
+        identified = true;
         void joryio.identify(user.uid, {
           email: user.email ?? undefined,
           name: user.displayName ?? undefined,
         });
+        // Nothing more to watch for once the person is bound.
+        unsub();
       }
-      resolve(user);
+      if (!settled) {
+        settled = true;
+        resolve(user);
+      }
     });
   });
 }

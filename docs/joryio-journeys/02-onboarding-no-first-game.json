@@ -10,7 +10,7 @@
         "y": 0
       },
       "config": {
-        "event": "profile_created",
+        "event": "Profile Created",
         "_note": "The first moment a person is identifiable. The install itself is anonymous and has no event."
       }
     },
@@ -22,7 +22,7 @@
         "y": 0
       },
       "config": {
-        "event": "game_joined",
+        "event": "Game Joined",
         "window": {
           "value": 1,
           "unit": "days"
@@ -47,7 +47,7 @@
               {
                 "type": "event",
                 "operator": "performed",
-                "eventName": "availability_set"
+                "eventName": "Availability Set"
               }
             ]
           }
@@ -120,7 +120,7 @@
         "y": 140
       },
       "config": {
-        "event": "game_joined",
+        "event": "Game Joined",
         "window": {
           "value": 3,
           "unit": "days"
@@ -208,7 +208,7 @@
   "entryTrigger": {
     "type": "event",
     "config": {
-      "event": "profile_created"
+      "event": "Profile Created"
     }
   }
 }
