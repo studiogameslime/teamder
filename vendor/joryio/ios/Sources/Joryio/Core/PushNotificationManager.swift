@@ -361,6 +361,17 @@ class PushNotificationManager: NSObject {
     private func reportDelivered(userInfo: [AnyHashable: Any]) {
         guard let trackingId = userInfo["trackingId"] as? String,
               !trackingId.isEmpty else { return }
+        reportDelivered(trackingId: trackingId)
+    }
+
+    // LOCAL PATCH (Teamder, 2026-08-28). The path above only fires when the
+    // SDK itself handles the notification. An app running its own messaging
+    // stack - @react-native-firebase/messaging here - never routes the message
+    // through the SDK, so it has to be able to report a receipt by trackingId.
+    // The React Native bridge already calls exactly this; only the iOS side of
+    // it was missing. See the facade method in JoryioSDK.swift.
+    func reportDelivered(trackingId: String) {
+        guard !trackingId.isEmpty else { return }
         Task { [weak self] in
             do {
                 try await self?.networkClient.reportPushDelivered(trackingId: trackingId)

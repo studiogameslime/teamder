@@ -1280,6 +1280,25 @@ public class Joryio {
         Task { await reportPushPermissionIfChanged() }
     }
 
+    /// Report that a push actually reached this device.
+    ///
+    /// LOCAL PATCH (Teamder, 2026-08-28). Upstream added delivery receipts to
+    /// all five SDKs, and the React Native bridge calls
+    /// `Joryio.shared.reportPushDelivered(trackingId)` — but on iOS the method
+    /// was only ever reachable from the SDK's own notification handling, never
+    /// from the public facade, so the bridge does not compile. Their parity
+    /// tripwire greps the sources for the name, which is present in
+    /// NetworkClient, so it passed. Unlabelled first argument to match the call
+    /// the bridge already makes. Remove when upstream carries it.
+    public func reportPushDelivered(_ trackingId: String) {
+        guard isInitialized else {
+            logNotInitialized()
+            return
+        }
+
+        pushNotifications.reportDelivered(trackingId: trackingId)
+    }
+
     /// Track a push-notification click by tracking id.
     /// Mirrors the Android SDK's `trackPushClick(String)`.
     public func trackPushClick(trackingId: String) {
