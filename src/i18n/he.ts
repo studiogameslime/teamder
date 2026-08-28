@@ -3142,6 +3142,16 @@ export const he = {
   notifCategoryGames: 'ניהול מחזורים',
   notifCategoryCommunity: 'קהילה וחברה',
   notifCategoryReminders: 'תזכורות',
+  notifCategoryMarketing: 'עדכונים מ-Teamder',
+  notifMarketingPush: 'טיפים ועדכונים',
+  notifMarketingPushSub: 'עצות למארגנים, תזכורת כשהמועדון שקט וכל מה שאנחנו שולחים ביוזמתנו',
+  // Two consents, deliberately far apart on the screen and worded so they
+  // can't be mistaken for each other: one is about being MESSAGED, this one
+  // is about being OBSERVED.
+  notifPrivacyTitle: 'פרטיות',
+  notifTracking: 'איסוף נתוני שימוש',
+  notifTrackingSub: 'עוזר לנו להבין מה עובד באפליקציה. כיבוי לא משפיע על אף התראה שביקשת',
+  notifTrackingOffNote: 'איסוף הנתונים כבוי במכשיר הזה.',
   // OS-permission gate — shown when notifications are turned off for the
   // app on the device, BEFORE the per-type toggles (which do nothing
   // until the OS lets pushes through).

@@ -299,6 +299,62 @@ export function trackInAppImpression(campaignId: string, action: InAppAction): v
   Joryio.trackInAppImpression(campaignId, action);
 }
 
+/* ── The two consents ───────────────────────────────────────────────────────
+ *
+ *  They are NOT the same thing and must never share a switch:
+ *
+ *    optOut / optIn   — may we OBSERVE this person (analytics, events).
+ *    setSubscription  — may we MESSAGE this person on a channel.
+ *
+ *  Somebody can refuse tracking and still want the "your club has a game
+ *  tomorrow" push, and the reverse. Both existed on the web SDK for a long
+ *  time and neither reached React Native until 1.2.0, so until now the app
+ *  simply had no way to honour either choice through the SDK. */
+
+/** Stop collecting and sending analytics for this device.
+ *
+ *  Tracking only. This unsubscribes nobody from anything — a user who opts out
+ *  here still gets every push they have asked for. The SDK reports
+ *  `$tracking_opted_out` to the server as part of opting out; the wire shape is
+ *  the SDK's business, not ours. */
+export function optOutTracking(): void {
+  if (USE_MOCK_DATA) return;
+  Joryio.optOut();
+}
+
+/** Resume collecting after {@link optOutTracking}. */
+export function optInTracking(): void {
+  if (USE_MOCK_DATA) return;
+  Joryio.optIn();
+}
+
+/** Whether this device has opted out of tracking. The SDK holds this natively
+ *  and it survives reinstall-free restarts, so the settings screen asks the SDK
+ *  rather than keeping its own copy that could drift. */
+export async function isTrackingOptedOut(): Promise<boolean> {
+  if (USE_MOCK_DATA) return false;
+  try {
+    return await Joryio.isUserOptedOut();
+  } catch {
+    return false;
+  }
+}
+
+/** Marketing consent for one channel.
+ *
+ *  We only ever write 'push'. Teamder has no email or SMS channel — and per the
+ *  owner's standing instruction there is no payments/marketing-email surface at
+ *  all — so writing the other four would claim a consent we never act on.
+ *
+ *  Fire-and-forget on purpose: the switch has already been persisted to our own
+ *  Firestore prefs by the time this runs, and the CFs that send OUR pushes read
+ *  that, not Joryio. If this call fails the user is still unsubscribed
+ *  everywhere it matters to them; only Joryio's copy lags until the next save. */
+export function setMarketingPush(subscribed: boolean): void {
+  if (USE_MOCK_DATA) return;
+  Joryio.setSubscription('push', subscribed ? 'subscribed' : 'unsubscribed');
+}
+
 export function flush(): void {
   if (USE_MOCK_DATA) return;
   Joryio.flush();
@@ -315,5 +371,9 @@ export const joryio = {
   onInAppMessage,
   syncInAppCampaigns,
   trackInAppImpression,
+  optOutTracking,
+  optInTracking,
+  isTrackingOptedOut,
+  setMarketingPush,
   flush,
 };

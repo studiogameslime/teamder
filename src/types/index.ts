@@ -393,6 +393,12 @@ export interface NotificationPrefs {
   /** Player: someone sent me a friend request / accepted mine. Optional
    *  so existing pref objects round-trip without this key. */
   friendRequest?: boolean;
+  /** Marketing pushes from Teamder itself — tips, "your club has gone quiet",
+   *  onboarding nudges. NOT one of our Cloud Functions: this one is mirrored to
+   *  Joryio as the push channel's subscription state, which is what actually
+   *  stops those sends. Kept here so it saves, hydrates and dirty-checks with
+   *  every other switch on the screen. */
+  marketingPush?: boolean;
 }
 
 /** Defaults applied when `User.notificationPrefs` is missing or partial. */
@@ -414,6 +420,7 @@ export const defaultNotificationPrefs: NotificationPrefs = {
   groupDeleted: true,
   gameShortageWarning: true,
   friendRequest: true,
+  marketingPush: true,
 };
 
 // ─── Friends ───────────────────────────────────────────────────────────

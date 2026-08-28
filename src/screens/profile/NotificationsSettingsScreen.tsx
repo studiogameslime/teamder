@@ -42,6 +42,7 @@ import { NotificationPrefs } from '@/types';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
+import { joryio } from '@/services/joryio';
 
 interface Row {
   key: keyof NotificationPrefs;
@@ -91,6 +92,16 @@ const CATEGORIES: Category[] = [
       { key: 'growthMilestone', label: he.notifGrowthMilestone, sub: he.notifGrowthMilestoneSub },
     ],
   },
+  // The only category that is not one of our Cloud Functions. Turning this off
+  // writes 'unsubscribed' on the Joryio push channel, which is what actually
+  // stops the journey sends — our own CFs never look at it.
+  {
+    title: he.notifCategoryMarketing,
+    icon: 'megaphone-outline',
+    rows: [
+      { key: 'marketingPush', label: he.notifMarketingPush, sub: he.notifMarketingPushSub },
+    ],
+  },
 ];
 
 export function NotificationsSettingsScreen() {
@@ -108,6 +119,10 @@ export function NotificationsSettingsScreen() {
   // OS-level push permission. `null` = unknown/not-checked (e.g. Expo Go,
   // mock mode) — we hide the gate entirely so we never show a misleading
   // "blocked" message where we can't actually do anything about it.
+  // Tracking consent. Lives OUTSIDE `prefs` and outside the save button on
+  // purpose: it is a device-level SDK state, not a message preference, and the
+  // SDK is the one holding it — asking it beats keeping a copy that can drift.
+  const [trackingOut, setTrackingOut] = useState(false);
   const [permGranted, setPermGranted] = useState<boolean | null>(null);
   const [permCanAsk, setPermCanAsk] = useState(true);
   const [permBusy, setPermBusy] = useState(false);
@@ -125,6 +140,8 @@ export function NotificationsSettingsScreen() {
       if (cancelled) return;
       setPermGranted(s.available ? s.granted : null);
       setPermCanAsk(s.canAskAgain);
+      const out = await joryio.isTrackingOptedOut();
+      if (!cancelled) setTrackingOut(out);
     })();
     return () => {
       cancelled = true;
@@ -206,10 +223,32 @@ export function NotificationsSettingsScreen() {
       return { ...p, [k]: nextVal };
     });
 
+  // Applies on the spot rather than waiting for "שמור": the save button
+  // persists OUR prefs document, and this writes nothing there. Leaving it to
+  // the same button would mean a switch that looks saved and is not.
+  const toggleTracking = () => {
+    const nextOut = !trackingOut;
+    lightHaptic();
+    setTrackingOut(nextOut);
+    // Logged BEFORE the opt-out lands, so the last thing we record is the
+    // decision to stop recording — after optOut the SDK drops events entirely.
+    logEvent(AnalyticsEvent.NotificationPrefChanged, {
+      pref: 'tracking',
+      enabled: !nextOut,
+    });
+    if (nextOut) joryio.optOutTracking();
+    else joryio.optInTracking();
+  };
+
   const save = async () => {
     setBusy(true);
     try {
       await notificationsService.savePreferences(user.id, prefs);
+      // Only on a real change — the marketing switch is the one preference our
+      // own backend does not enforce, so this call IS the unsubscribe.
+      const wasSubscribed = user.notificationPrefs?.marketingPush !== false;
+      const nowSubscribed = prefs.marketingPush !== false;
+      if (wasSubscribed !== nowSubscribed) joryio.setMarketingPush(nowSubscribed);
       // Mirror locally so subsequent screens read the saved state without
       // a round-trip to Firestore.
       useUserStore.setState({
@@ -298,8 +337,8 @@ export function NotificationsSettingsScreen() {
           {CATEGORIES.map((cat) => (
             <View key={cat.title} style={styles.categoryBlock}>
               <View style={styles.categoryHeader}>
-                <Ionicons name={cat.icon} size={16} color={colors.primary} />
                 <Text style={styles.categoryTitle}>{cat.title}</Text>
+                <Ionicons name={cat.icon} size={16} color={colors.primary} />
               </View>
               <Card style={styles.card}>
                 {cat.rows.map((row, i) => (
@@ -323,6 +362,30 @@ export function NotificationsSettingsScreen() {
               </Card>
             </View>
           ))}
+        </View>
+
+        {/* Deliberately OUTSIDE the gated group: whether we may observe someone
+            has nothing to do with whether the OS lets us notify them, and
+            dimming it behind a push-permission gate would imply otherwise. */}
+        <View style={styles.categoryBlock}>
+          <View style={styles.categoryHeader}>
+            <Text style={styles.categoryTitle}>{he.notifPrivacyTitle}</Text>
+            <Ionicons name="lock-closed-outline" size={16} color={colors.primary} />
+          </View>
+          <Card style={styles.card}>
+            <Pressable onPress={toggleTracking} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>{he.notifTracking}</Text>
+                <Text style={styles.sub}>{he.notifTrackingSub}</Text>
+              </View>
+              <BallSwitch
+                value={!trackingOut}
+                onValueChange={toggleTracking}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </Pressable>
+          </Card>
         </View>
       </ScrollView>
       <View style={{ padding: spacing.lg }}>
