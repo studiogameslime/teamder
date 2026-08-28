@@ -28,7 +28,7 @@
 // card renders nothing rather than dressing up "2 people are free" as demand,
 // and a viewer with no home area gets an honest prompt instead of a grid.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,15 +63,23 @@ function dayShort(slot: DemandSlot, todayMs: number): string {
 export function AreaDemandCard({
   onCreateGame,
   onSetAvailability,
+  refreshTick,
 }: {
   /** Open the quick-match wizard seeded with this day + window + the viewer's
    *  city, so the filler engine has somewhere to invite the free players from. */
   onCreateGame: (dateMs: number, window: TimeBucket, city: string | null) => void;
   /** Viewer has no home area yet, or wants to declare themselves free. */
   onSetAvailability: () => void;
+  /** Bumped by pull-to-refresh; refetches in place without remounting. */
+  refreshTick?: number;
 }) {
   const [data, setData] = useState<AvailabilityCounts | null>(null);
   const [failed, setFailed] = useState(false);
+
+  const dataRef = useRef<typeof data>(null);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   // Refetch on focus so returning from the availability editor (which calls
   // invalidate() on save) reflects immediately. The service's 15-minute cache
@@ -82,11 +90,18 @@ export function AreaDemandCard({
       availabilityFeedService
         .getAvailabilityCounts()
         .then((d) => alive && setData(d))
-        .catch(() => alive && setFailed(true));
+        // Only fail into nothing if we have never had data. A transient error
+        // on a REFETCH used to hide a card that was already showing.
+        // Only fail into nothing if we have NEVER had data — a transient
+        // error on a refetch used to hide a card that was already showing.
+        // Via a ref, because this callback has empty deps on purpose.
+        .catch(() => {
+          if (alive && !dataRef.current) setFailed(true);
+        });
       return () => {
         alive = false;
       };
-    }, []),
+    }, [refreshTick]),
   );
 
   // Fail silently — this is supporting content, it must never take the

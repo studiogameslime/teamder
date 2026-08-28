@@ -559,8 +559,11 @@ export function GamesListScreen() {
   // Discovery is supporting content: it appears only when real matches don't
   // already carry the screen, and always BELOW them.
   const showDiscovery = !filteredToNothing && density !== 'many';
-  // Bumped by pull-to-refresh; used as a React key so the discovery blocks
-  // remount and refetch instead of serving their cached snapshot.
+  // Bumped by pull-to-refresh. Passed as a PROP, not a key: keying it
+  // remounted both blocks, which threw away good content before the refetch
+  // had produced any — so a refresh whose request then failed left an empty
+  // padded box where the section had been (user report, iOS 1.0.97). As a prop
+  // it refetches in place and what is on screen survives until new data lands.
   const [discoveryTick, setDiscoveryTick] = useState(0);
 
   const openCreateForSlot = (
@@ -612,12 +615,12 @@ export function GamesListScreen() {
   const discovery = showDiscovery ? (
     <View style={styles.discovery}>
       <AreaDemandCard
-        key={`demand-${discoveryTick}`}
+        refreshTick={discoveryTick}
         onCreateGame={openCreateForSlot}
         onSetAvailability={() => nav.navigate('AvailabilityEdit')}
       />
       <NearbyClubsSection
-        key={`clubs-${discoveryTick}`}
+        refreshTick={discoveryTick}
         radiusKm={feedCfg.clubsRadiusKm}
         limit={feedCfg.clubsMax}
         minMembers={feedCfg.clubsMinMembers}

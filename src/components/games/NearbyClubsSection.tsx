@@ -12,7 +12,7 @@
 // fixtures, times, venues and sign-up counts cannot leak through this surface
 // no matter what the club has scheduled.
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -36,6 +36,7 @@ export function NearbyClubsSection({
   limit,
   minMembers,
   onOpenClub,
+  refreshTick,
 }: {
   radiusKm: number;
   limit: number;
@@ -43,6 +44,8 @@ export function NearbyClubsSection({
   minMembers: number;
   /** Open the club's PUBLIC page (the viewer is never a member of these). */
   onOpenClub: (groupId: string) => void;
+  /** Bumped by pull-to-refresh; refetches in place without remounting. */
+  refreshTick?: number;
 }) {
   const user = useUserStore((s) => s.currentUser);
   const myGroups = useGroupStore((s) => s.groups);
@@ -80,15 +83,38 @@ export function NearbyClubsSection({
           setClubs(res.clubs);
           setScope(res.scope);
         })
-        .catch(() => alive && setClubs([]));
+        // A failed fetch must NOT blank the section. `setClubs([])` here made
+        // an error indistinguishable from "no clubs nearby", and since the
+        // parent remounts this on pull-to-refresh, one bad request wiped
+        // content that was on screen a second earlier — leaving an empty
+        // padded box with no explanation (user report, iOS 1.0.97).
+        // Keep whatever is already rendered; the next focus refetches.
+        // A failed fetch must NOT blank the section. `setClubs([])` made an
+        // error indistinguishable from "no clubs nearby", and one bad request
+        // wiped content that was on screen a second earlier — leaving an empty
+        // padded box with no explanation (user report, iOS 1.0.97).
+        //
+        // Read through a ref: this callback's deps deliberately exclude
+        // `clubs`, so the captured value would be whatever it was when the
+        // deps last changed — i.e. still null after the first success.
+        .catch(() => {
+          if (alive && clubsRef.current === null) setClubs([]);
+        });
       return () => {
         alive = false;
       };
       // `excludeIds` is a fresh Set each render — key on its contents instead
       // so this doesn't refetch on every parent re-render.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, Array.from(excludeIds).sort().join(','), radiusKm, limit, minMembers]),
+    }, [user?.id, Array.from(excludeIds).sort().join(','), radiusKm, limit, minMembers, refreshTick]),
   );
+
+  // Mirrors `clubs` for the error path above, which runs inside a callback
+  // that must not depend on it (depending on it would refetch on every load).
+  const clubsRef = useRef<typeof clubs>(null);
+  useEffect(() => {
+    clubsRef.current = clubs;
+  }, [clubs]);
 
   const visible = useMemo(
     () => (clubs ?? []).filter((g) => !actedOn.has(g.id)),
