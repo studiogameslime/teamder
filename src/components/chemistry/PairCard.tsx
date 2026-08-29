@@ -137,14 +137,36 @@ export function PairCard({
           {assists > 0 ? (
             <>
               <Text style={styles.line}>{he.pairCardAssistsTotal(assists)}</Text>
-              <Text style={styles.sub}>
-                {[
-                  t.assistsAToB > 0 ? he.pairCardAssistLeg(aName, bName, t.assistsAToB) : null,
-                  t.assistsBToA > 0 ? he.pairCardAssistLeg(bName, aName, t.assistsBToA) : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </Text>
+              {/* One row per direction, each carrying its own share of the
+                  total as a bar. The bar is what the old arrow was reaching
+                  for — "who feeds whom, and by how much" — and it says it
+                  without a glyph that can point the wrong way. */}
+              {[
+                { from: aName, to: bName, n: t.assistsAToB },
+                { from: bName, to: aName, n: t.assistsBToA },
+              ]
+                .filter((leg) => leg.n > 0)
+                .map((leg) => (
+                  <View key={leg.from} style={styles.leg}>
+                    <View style={styles.legHead}>
+                      <Text style={styles.legText} numberOfLines={1}>
+                        {he.pairCardAssistLeg(leg.from, leg.to)}
+                      </Text>
+                      <Text style={styles.legCount}>{leg.n}</Text>
+                    </View>
+                    {/* Filled from the RIGHT: the first child of a flipped row
+                        lands rightmost, so the fill grows the way the line is
+                        read. */}
+                    <View style={styles.legTrack}>
+                      <View
+                        style={[
+                          styles.legFill,
+                          { width: `${Math.round((leg.n / assists) * 100)}%` },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ))}
             </>
           ) : (
             <Text style={styles.sub}>{he.pairCardNoAssists}</Text>
@@ -205,6 +227,25 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   tagText: { fontSize: 12, fontWeight: '800', color: colors.primary },
+  // ── assist legs ──
+  leg: { marginTop: spacing.sm, gap: 5 },
+  legHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  legText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  legCount: { fontSize: 15, fontWeight: '900', color: colors.primary },
+  legTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  legFill: { height: 6, borderRadius: 999, backgroundColor: colors.primary },
   block: {
     ...typography.label,
     fontWeight: '800',

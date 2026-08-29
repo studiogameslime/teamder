@@ -909,7 +909,11 @@ export const he = {
   pairCardCleanSheets: 'שערים נקיים',
   pairCardAttack: 'חיבור התקפי',
   pairCardAssistsTotal: (n: number) => `בישולים ביניהם: ${n}`,
-  pairCardAssistLeg: (from: string, to: string, n: number) => `${from} → ${to} ${n}`,
+  // Direction in WORDS, never an arrow. "→" is a bidi-neutral character: in an
+  // RTL line it is placed correctly but still DRAWS pointing right, which in a
+  // right-to-left reading order points back at the first name — so the line
+  // claimed the exact opposite of the truth. Reported 2026-08-29.
+  pairCardAssistLeg: (from: string, to: string) => `${from} בישל ל${to}`,
   pairCardHeadToHead: 'אחד נגד השני',
   pairCardHeadToHeadLine: (meetings: number, a: string, wa: number, wb: number, b: string) =>
     `${meetings} מפגשים · ${a} ${wa}–${wb} ${b}`,
@@ -938,8 +942,9 @@ export const he = {
   roundSummaryPair: 'הצמד של הערב',
   roundSummaryPairText: (a: string, b: string, goals: number) =>
     `${a} ו${b} — ${goals} שערים נוצרו ביניהם`,
+  // Same bidi trap as pairCardAssistLeg — words, not arrows.
   roundSummaryPairLeg: (from: string, to: string, n: number) =>
-    `${from} → ${to}: ${n}`,
+    `${from} בישל ל${to} · ${n}`,
   // הבסיס שממנו נמדדים השיאים — כדי לא לטעון "אי פעם" על היסטוריה חלקית.
   roundSummaryBasis: (date: string) => `שיאים נמדדים מאז ${date}`,
   summaryNamesAndMore: (a: string, b: string, more: number) =>
