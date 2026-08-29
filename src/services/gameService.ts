@@ -3638,6 +3638,16 @@ export const gameService = {
    *
    * NOTE: writes one pairStats doc per player-pair per round (~C(n,2)). Fine
    * behind the flag for now; a server-side aggregation is the eventual home.
+   *
+   * ⚠️ DEAD, AND IT LIES. Nothing calls this — the live screen finalises through
+   * prepareRoundResult + commitFilledRotation. Left here only because deleting a
+   * hundred lines of a critical service is a separate decision.
+   *
+   * Read it and you will conclude two things that are false today: that a tie
+   * auto-resolves from `advancedTieMode` (that setting is gone from the form and
+   * prepareRoundResult explicitly ignores leftovers), and that "both teams out"
+   * is a 4-team rule (the live gate is `rotation.waiting[1] != null`, which is
+   * FOUR TEAMS AND UP). I misread it once on 2026-08-29; hence this note.
    */
   async finalizeRoundAndRotate(
     gameId: string,
