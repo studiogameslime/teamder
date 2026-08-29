@@ -34,6 +34,7 @@ import { successHaptic } from '@/utils/haptics';
 import { friendsService, type FriendRequestWithUser } from '@/services/friendsService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { logError } from '@/services/errorLog';
+import { EmptyPitch } from '@/components/EmptyPitch';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
@@ -293,13 +294,10 @@ export function FriendsScreen() {
               // Card with title + body + invite CTA gives the screen
               // a real "do something" affordance.
               <View style={styles.emptyCard}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons
-                    name="people-outline"
-                    size={28}
-                    color={colors.primary}
-                  />
-                </View>
+                {/* The pitch, not a grey outline in a circle — it is the
+                    same football the rest of the app is made of, and it was
+                    already built. */}
+                <EmptyPitch width={190} style={{ marginBottom: 12 }} />
                 <Text style={styles.emptyCardTitle}>
                   {he.friendsEmptyCtaTitle}
                 </Text>
