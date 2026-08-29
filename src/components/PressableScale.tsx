@@ -17,6 +17,7 @@
 import React from 'react';
 import {
   Pressable,
+  StyleSheet,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
@@ -91,6 +92,25 @@ export function PressableScale({
     transform: [{ scale: ringScale.value }],
   }));
 
+  // A row style on the Pressable with more than one child is always this bug —
+  // there is no arrangement where it does what the author meant. Dev-only, and
+  // it names the fix rather than just complaining.
+  if (__DEV__) {
+    const flat = StyleSheet.flatten(style) as ViewStyle | undefined;
+    const dir = flat?.flexDirection;
+    if (
+      (dir === 'row' || dir === 'row-reverse') &&
+      React.Children.count(children) > 1
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[PressableScale] flexDirection on the Pressable does not reach its ' +
+          'children — they sit inside one wrapper View and will stack. Put the ' +
+          'row on an inner <View> around the children, as Button does.',
+      );
+    }
+  }
+
   return (
     <Pressable
       {...rest}
@@ -152,7 +172,15 @@ export function PressableScale({
         />
       ) : null}
       {/* Inner wrapper carries only the transform — keeps the
-          Pressable's hit area at the full visual size. */}
+          Pressable's hit area at the full visual size.
+          
+          THE TRAP THIS CREATES, said out loud because it has now cost two
+          bugs: this wrapper is a plain View, so it is DEFAULT COLUMN. A caller
+          that puts `flexDirection: 'row'` in `style` is styling the Pressable,
+          whose only child is this wrapper — the row does nothing, and the
+          caller's icon ends up stacked under its label. Button gets it right
+          with an inner `content` View; do the same. The check below shouts
+          when it doesn't. */}
       <Animated.View style={animStyle}>{children}</Animated.View>
     </Pressable>
   );

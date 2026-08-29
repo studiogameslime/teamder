@@ -1050,13 +1050,13 @@ export function CommunityDetailsScreen() {
               request; `history` is still loaded above solely as the pre-stats
               fallback for the "מפגשים שנערכו" count (matchesHeld). */}
 
-          {/* WhatsApp contact CTA — visible to non-admin members (and
-              non-members on this private view) when the community has
-              a valid phone on file. Mirrors the public-showcase page,
-              which always exposed this button. The hamburger menu also
-              has the same action, but the inline button keeps it
-              reachable without opening the overflow. */}
-          {phoneValid && !isAdmin ? (
+          {/* WhatsApp contact CTA — for people who are NOT in the club yet and
+              are deciding whether to join. A member already has the club's
+              chat and every other way in; asking him to "contact the admin"
+              treats him like an outsider. Removed for members at the owner's
+              request; the ⋯ menu still carries the same action, so nobody
+              loses the ability, only the prompt. */}
+          {phoneValid && !isAdmin && !isMember ? (
             <Button
               title={he.communityDetailsContactAdmin}
               variant="outline"
@@ -1074,10 +1074,10 @@ export function CommunityDetailsScreen() {
             />
           ) : null}
 
-          {/* In-app chat contact — DM the admin without leaving the app.
-              Shown to non-admins (members and non-members on the private
-              view) whenever we know who the admin is. */}
-          {!isAdmin && me && adminUid && me.id !== adminUid ? (
+          {/* In-app chat contact — DM the admin without leaving the app. Same
+              gate as the WhatsApp button above and for the same reason: it is
+              an outsider's question. */}
+          {!isAdmin && !isMember && me && adminUid && me.id !== adminUid ? (
             <Button
               title={he.communityDetailsChatAdmin}
               variant="outline"

@@ -152,9 +152,15 @@ export function HomeNextGameCard({
           accessibilityLabel={he.homeGameDetailsCta}
         >
           {/* Icon AFTER the text → visual-left in RTL (user request); the old
-              leading chevron was dropped (redundant with the ball icon). */}
-          <Text style={styles.ctaText}>{he.homeGameDetailsCta}</Text>
-          <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
+              leading chevron was dropped (redundant with the ball icon).
+              The row lives on THIS inner View, not on the Pressable: a style
+              given to PressableScale reaches the Pressable, whose only child
+              is its transform wrapper, so the row never touched these two and
+              the ball sat under the label. */}
+          <View style={styles.ctaRow}>
+            <Text style={styles.ctaText}>{he.homeGameDetailsCta}</Text>
+            <MaterialCommunityIcons name="soccer" size={18} color="#FFFFFF" />
+          </View>
         </PressableScale>
       </LightSweep>
     </View>
@@ -254,13 +260,16 @@ const styles = StyleSheet.create({
   badgeFull: { backgroundColor: '#15803D' },
   badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   cta: {
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+  },
+  ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
   },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   // The sweep host clips the band to the button's own shape. Radius matches

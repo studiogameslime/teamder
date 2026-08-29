@@ -552,8 +552,11 @@ function MethodCard({
 function BackToMethods({ onPress }: { onPress: () => void }) {
   return (
     <PressableScale onPress={onPress} style={styles.backRow}>
-      <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-      <Text style={styles.backText}>{he.draftMethodBack}</Text>
+      {/* Row on the inner View — see HomeNextGameCard. */}
+      <View style={styles.backRowInner}>
+        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+        <Text style={styles.backText}>{he.draftMethodBack}</Text>
+      </View>
     </PressableScale>
   );
 }
@@ -803,12 +806,10 @@ const styles = StyleSheet.create({
     textAlign: RTL_LABEL_ALIGN,
   },
   backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     alignSelf: 'flex-start',
     marginBottom: spacing.md,
   },
+  backRowInner: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   backText: { ...typography.caption, color: colors.primary, fontWeight: '800' },
   // ── Team-count pills (auto/random) ─────────────────────────────────
   countRow: {

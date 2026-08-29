@@ -1644,7 +1644,7 @@ export const he = {
   onb2Title: 'מועדון קבוע, מחזור אוטומטי',
   onb2Body: 'בנו את הסגל הקבוע שלכם — והמחזור השבועי נפתח לבד עם הזמנה לכולם',
   onb3Title: 'הכל זורם מעצמו',
-  onb3Body: 'מישהו ביטל? המקום מתמלא אוטומטית מחזורנים מתאימים. ותזכורות חכמות דואגות שכולם יגיעו',
+  onb3Body: 'מישהו ביטל? המקום מתמלא אוטומטית מרשימת ההמתנה עם תזכורות חכמות שדואגות שכולם יגיעו',
   // 4th = final CTA screen — see onbStart / onbCtaSignIn above
   // (kept onb4* as legacy strings in case any UI still references them)
   onb4Title: 'בוא נתחיל',

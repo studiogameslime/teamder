@@ -80,7 +80,19 @@ export function UserAvatar({ user, size, style, ring }: Props) {
       ]}
     >
       <Text
-        style={[styles.glyph, { fontSize: Math.max(14, size * 0.55) }]}
+        style={[
+          styles.glyph,
+          {
+            // 0.5, not 0.55, and with an explicit line box. An emoji's ink can
+            // stand taller than its em box, and Android's default font padding
+            // pushes the line down inside it — at 132px the top of the hair was
+            // being cut off by the disc. lineHeight sized ABOVE the glyph gives
+            // the ascent somewhere to go; includeFontPadding:false stops the
+            // extra padding from shifting it back down again.
+            fontSize: Math.max(14, size * 0.5),
+            lineHeight: Math.max(18, size * 0.66),
+          },
+        ]}
         numberOfLines={1}
       >
         {def.glyph}
@@ -120,5 +132,7 @@ const styles = StyleSheet.create({
   },
   glyph: {
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

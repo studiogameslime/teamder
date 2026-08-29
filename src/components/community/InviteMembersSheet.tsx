@@ -49,8 +49,11 @@ export function InviteMembersSheet({ visible, clubName, onShare, onDismiss }: Pr
             accessibilityRole="button"
             accessibilityLabel={he.inviteSheetCta}
           >
-            <Text style={styles.ctaText}>{he.inviteSheetCta}</Text>
-            <Ionicons name="share-social" size={18} color="#FFFFFF" />
+            {/* Row on the inner View — see HomeNextGameCard. */}
+            <View style={styles.ctaRow}>
+              <Text style={styles.ctaText}>{he.inviteSheetCta}</Text>
+              <Ionicons name="share-social" size={18} color="#FFFFFF" />
+            </View>
           </PressableScale>
 
           <PressableScale
@@ -101,13 +104,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   cta: {
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+  },
+  ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
   },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   later: {

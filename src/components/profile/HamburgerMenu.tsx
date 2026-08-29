@@ -237,6 +237,13 @@ const styles = StyleSheet.create({
   },
   safe: {
     paddingTop: spacing.xs,
+    // flexShrink is what makes the list scroll. Without it this view sizes to
+    // its content, the ScrollView inside inherits an unbounded height and
+    // therefore never scrolls, and the sheet's maxHeight + overflow:hidden
+    // simply cuts the tail off — on a tall menu that meant "מחיקת חשבון" was
+    // permanently unreachable rather than merely below the fold. Reported from
+    // an iPhone, where the home-indicator inset pushed it just over the edge.
+    flexShrink: 1,
   },
   handle: {
     alignSelf: 'center',
