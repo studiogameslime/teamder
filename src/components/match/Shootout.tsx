@@ -919,8 +919,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
     textAlign: 'center',
+    // No centring margin: the slot centres this already, and the -17 that was
+    // here put the name plate visibly left of the avatar. See slotLabel in
+    // PenaltyPitch.
     width: 86,
-    marginLeft: -17,
     // A name over grass needs its own ground; the pitch is busy behind it.
     backgroundColor: 'rgba(17,24,39,0.55)',
     borderRadius: 6,

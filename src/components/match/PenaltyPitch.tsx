@@ -282,8 +282,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     textAlign: 'center',
+    // Wider than the slot on purpose. The parent's alignItems already centres
+    // it — an oversized flex child overflows evenly on both sides — so the
+    // marginLeft:-17 that used to "centre the overhang" was pure offset, and
+    // the name sat visibly left of the avatar. Reported 2026-08-29.
+    //
+    // Don't reach for a left/right margin to correct it either: those are
+    // direction-sensitive under forceRTL, so any hand-centring here is a
+    // coin flip on which side it lands.
     width: SLOT + 34,
-    marginLeft: -17,
   },
   // Wrapper that carries the dive transform; the slot inside it is positioned
   // at 0,0 because the wrapper already sits on the keeper's point.
