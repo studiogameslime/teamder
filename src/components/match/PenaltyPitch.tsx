@@ -36,9 +36,10 @@ const SIX = { x: 20, y: GOAL_LINE, w: 60, h: 20 };
 const BOX = { x: 6, y: GOAL_LINE, w: 88, h: 66 };
 /** The penalty spot. */
 const SPOT = { x: 50, y: 66 };
-/** The kicker stands ON the spot: the avatar is centred just above it so his
- *  feet land on the mark and the ball sits at them. */
-const KICKER = { x: 50, y: 58 };
+/** The kicker stands just BEHIND the spot, so the ball is between him and the
+ *  goal. Above it he was facing the wrong way — a player about to strike it
+ *  away from the net. */
+const KICKER = { x: 50, y: 75 };
 /** The keeper, on his line in the middle of the mouth. */
 const KEEPER = { x: 50, y: GOAL_LINE - 5 };
 /** The D. Big enough to actually bulge past the box, which is the whole point
@@ -74,9 +75,9 @@ interface SlotProps {
   onPress: () => void;
   tint: string;
   style: ViewStyle;
-  /** The kicker's name goes ABOVE his head — below it would sit exactly where
-   *  the ball rests at his feet. The keeper keeps his underneath, where the
-   *  six-yard box is empty. */
+  /** Kept for the case where a slot's name plate would land on the ball. Not
+   *  needed now that the kicker stands behind it, but the geometry above is
+   *  the kind of thing that moves. */
   labelAbove?: boolean;
   testID?: string;
 }
@@ -227,7 +228,6 @@ export function PenaltyPitch({
         filled={kickerNode}
         onPress={onPressKicker}
         tint={kickerTint}
-        labelAbove
         style={{ ...PITCH_POS.kicker } as ViewStyle}
       />
 
