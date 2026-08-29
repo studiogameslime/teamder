@@ -155,6 +155,22 @@ describe('tie rotation invariants (4 teams)', () => {
     // The two previously-waiting teams (2,3) are now on.
     expect(res.rotation.playing).toEqual([2, 3]);
   });
+  it('bothOut: the team that had been on LONGER goes further back in the queue', () => {
+    // The reason this test exists: the queue order was whatever `playing`
+    // happened to be, which put the incumbent — the side that had been on the
+    // pitch longest — back on FIRST. Nobody chose that, and the old test only
+    // looked at `playing`, so flipping it broke nothing and pinned nothing.
+    let teams = makeTeams([4, 4, 4, 4]);
+    const start = startRotation(teams, 5, 'temporary', pickFirst)!;
+    teams = start.teams;
+    const [incumbent, challenger] = start.rotation.playing;
+    const res = recordTie(teams, start.rotation, 5, 'temporary', 'bothOut', pickFirst);
+    // Both come off, and the challenger — fewer minutes played — is ahead.
+    expect(res.rotation.waiting).toEqual([challenger, incumbent]);
+    expect(res.rotation.waiting.indexOf(challenger)).toBeLessThan(
+      res.rotation.waiting.indexOf(incumbent),
+    );
+  });
   it('veteranOut: only the incumbent leaves, challenger stays', () => {
     const original = allPlayers(makeTeams([4, 4, 4, 4]));
     let teams = makeTeams([4, 4, 4, 4]);

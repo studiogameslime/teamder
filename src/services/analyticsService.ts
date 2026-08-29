@@ -404,6 +404,7 @@ export const AnalyticsEvent = {
   RoundStarted: 'round_started',   // gameId, round, teams, perTeam
   RoundEndPrompted: 'round_end_prompted',   // gameId, round, scoreA, scoreB, tie
   RoundTieDecision: 'round_tie_decision',   // gameId, round, method ('manual'|'penalties')
+  RotationQueueReordered: 'rotation_queue_reordered', // gameId, round, teams — admin changed who is next up
 
   // ─── Penalty shootout ───
   ShootoutStarted: 'shootout_started',   // gameId, firstTeam, kicks

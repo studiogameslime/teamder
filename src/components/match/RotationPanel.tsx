@@ -64,6 +64,9 @@ interface Props {
   /** On-field players per team for this game's format. Empty slots are the
    *  gap up to it; without it no slot is offered. */
   perTeam?: number;
+  /** Reorder the waiting queue — the front is next up. Admin only; absent for
+   *  everyone else, which is also how the control disappears. */
+  onReorderWaiting?: (waiting: number[]) => void;
 }
 
 type MenuTarget = PlayerMenuTarget & { kind: 'active' | 'left' };
@@ -81,6 +84,7 @@ export function RotationPanel({
   onRestorePlayer,
   onSwapPlayers,
   onMovePlayer,
+  onReorderWaiting,
   perTeam,
 }: Props) {
   const [openTeam, setOpenTeam] = useState<number | null>(null);
@@ -322,6 +326,21 @@ export function RotationPanel({
           <View style={styles.waitHeader}>
             <Text style={styles.waitHeaderText}>{he.rotationWaitingTeams}</Text>
             <Ionicons name="people" size={16} color={colors.primary} />
+            {/* With exactly two waiting, swapping them IS the whole feature —
+                a single control says it better than a menu. Three or more and
+                a swap is ambiguous, so those use the long-press below. */}
+            {isAdmin && onReorderWaiting && rotation.waiting.length === 2 ? (
+              <Pressable
+                onPress={() => onReorderWaiting([rotation.waiting[1], rotation.waiting[0]])}
+                hitSlop={10}
+                style={({ pressed }) => [styles.queueSwap, pressed && { opacity: 0.6 }]}
+                accessibilityRole="button"
+                accessibilityLabel={he.rotationSwapQueue}
+              >
+                <Text style={styles.queueSwapText}>{he.rotationSwapQueue}</Text>
+                <Ionicons name="swap-vertical" size={14} color={colors.primary} />
+              </Pressable>
+            ) : null}
           </View>
           {rotation.waiting.map((idx, i) => {
             const roster = draftRoster(idx, teams, resolve);
@@ -332,6 +351,15 @@ export function RotationPanel({
                 // During a swap, tapping the card must NOT open the team picker —
                 // the swap target is a specific avatar below (user report [KSV6]).
                 onPress={swapSource ? undefined : () => setOpenTeam(idx)}
+                // Three or more waiting: long-press promotes to the front. Not
+                // a tap — tapping already opens the roster, and that is the
+                // action people want ninety-nine times out of a hundred.
+                onLongPress={
+                  isAdmin && onReorderWaiting && !swapSource && !next && rotation.waiting.length > 2
+                    ? () =>
+                        onReorderWaiting([idx, ...rotation.waiting.filter((w) => w !== idx)])
+                    : undefined
+                }
                 style={({ pressed }) => [
                   styles.waitCard,
                   next && styles.waitCardNext,
@@ -599,6 +627,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   waitHeaderText: { ...typography.body, color: colors.text, fontWeight: '800' },
+  queueSwap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginStart: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+  },
+  queueSwapText: { fontSize: 12, fontWeight: '900', color: colors.primary },
   waitCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,

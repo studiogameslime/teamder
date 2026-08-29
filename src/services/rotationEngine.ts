@@ -396,7 +396,13 @@ export function recordTieSkeleton(
     return rotateOneOut(b, a, inc1);
   }
   const newPlaying: [number, number] = [inc1, inc2];
-  const newWaiting = [...rotation.waiting.slice(2), a, b];
+  // `b` before `a`. playing[0] is always the INCUMBENT — rotateOneOut builds
+  // [stay, incoming] — so `a` has been on the pitch longer than `b`. Pushing
+  // `a` first sent the team that had played most back on soonest, which is
+  // backwards from how a pitch queue actually works: whoever sat longer goes
+  // on first. Nobody chose the old order; it was just the order `playing`
+  // happened to be in. The admin can still swap the two from the waiting list.
+  const newWaiting = [...rotation.waiting.slice(2), b, a];
   // Incoming teams come on → return their loaned-out players; drop loans into
   // the two teams going off.
   let loans = rotation.loans.filter((l) => l.homeTeam !== inc1 && l.homeTeam !== inc2);
@@ -423,4 +429,20 @@ export function recordTie(
     pick,
   );
   return { teams: filled.teams, rotation: { ...s.rotation, loans: filled.loans } };
+}
+
+/**
+ * Whether a reordered waiting queue may be written.
+ *
+ * The admin taps a list that was rendered a moment ago. If a round turned over
+ * in between, the array they send names teams that are now ON the pitch —
+ * writing it would put a playing team back in the queue and drop a waiting one
+ * entirely. So the only orders accepted are permutations of the queue as it
+ * stands at write time, and an unchanged order is not a write at all.
+ */
+export function acceptsReorder(current: number[], incoming: number[]): boolean {
+  if (!Array.isArray(incoming) || current.length !== incoming.length) return false;
+  const key = (xs: number[]) => [...xs].sort((a, b) => a - b).join();
+  if (key(current) !== key(incoming)) return false;
+  return current.join() !== incoming.join();
 }

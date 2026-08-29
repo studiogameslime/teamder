@@ -86,6 +86,7 @@ import {
   rosterOf as effectiveRosterOf,
   type RotationTeam,
   type RotationFillState,
+  acceptsReorder,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
 import { canMoveOut } from '@/utils/teamSlots';
@@ -4097,6 +4098,12 @@ export const gameService = {
             scoreB: 0,
           };
         }
+        // The mock live subscription re-fires only when the GAME's updatedAt
+        // changes. Without this the rotation advanced in the data and the
+        // screen kept showing the previous two teams — every rotation, winner
+        // or tie, looked broken in demo mode while being perfectly correct.
+        // Not a production bug: the real path puts updatedAt in the patch.
+        m.updatedAt = Date.now();
       }
       return;
     }
@@ -4226,6 +4233,43 @@ export const gameService = {
       return;
     }
     await updateGameDoc(gameId, patch);
+  },
+
+  /** Reorder the waiting queue. The FRONT of `rotation.waiting` is next up —
+   *  that is already the contract the panel renders, so the order IS the
+   *  feature and there is no separate "next" flag to fall out of sync with it.
+   *
+   *  The caller sends the whole array. It is validated against the rotation we
+   *  read here rather than trusted: the admin tapped a list that was rendered
+   *  a moment ago, and a round can have turned over in between — replaying a
+   *  stale order would put a team that is now ON the pitch back in the queue.
+   *  Same set or nothing. */
+  async reorderWaiting(gameId: string, waiting: number[]): Promise<void> {
+    if (!gameId || !Array.isArray(waiting)) return;
+    const g = await this.getGameById(gameId);
+    const rot = g?.rotation;
+    if (!rot) return;
+    if (!acceptsReorder(rot.waiting, waiting)) return;
+    const next = { ...rot, waiting: [...waiting], updatedAt: Date.now() };
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m) {
+        m.rotation = next;
+        // The mock live subscription polls the GAME's updatedAt to decide
+        // whether to re-fire. Touching only the rotation left the screen
+        // showing the old order until something else happened to bump it —
+        // the write landed and nothing moved.
+        m.updatedAt = Date.now();
+      }
+      return;
+    }
+    // Field path, not the whole rotation: a concurrent fill or timer write must
+    // not be clobbered by an order change.
+    await updateGameDoc(gameId, {
+      'rotation.waiting': [...waiting],
+      'rotation.updatedAt': Date.now(),
+      updatedAt: Date.now(),
+    });
   },
 
   async markPlayerWentHome(gameId: string, playerId: string): Promise<void> {

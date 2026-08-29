@@ -263,6 +263,91 @@ export const mockGamesV2: Game[] = [
       timerAccumulatedMs: 0,
     },
   },
+  // 0a3. DEMO — FOUR teams (20 players): 0+1 play, 2 and 3 wait. Added because
+  //      everything about the waiting QUEUE only exists at four teams and up —
+  //      "שתי הקבוצות יורדות" is offered only when two teams are waiting, and
+  //      so is reordering them. With a maximum of three teams in the demo data
+  //      none of it could be seen, let alone tested, without a real evening.
+  {
+    id: 'gv2-live4',
+    groupId: 'g1',
+    title: 'ליגת השכונה · 4 קבוצות',
+    startsAt: Date.now() - 1000 * 60 * 20,
+    fieldName: 'מגרש סינטטי · גני תקווה',
+    fieldLat: 32.0853,
+    fieldLng: 34.7818,
+    maxPlayers: 20,
+    minPlayers: 16,
+    players: mockPlayers.slice(0, 20).map((p) => p.id),
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 20).map((p) => p.id), [], []),
+    ballHolderUserId: mockPlayers[2].id,
+    jerseysHolderUserId: mockPlayers[3].id,
+    status: 'open',
+    locked: false,
+    currentMatchIndex: 0,
+    matches: [],
+    weather: { tempC: 24, rainProb: 5 },
+    createdBy: mockPlayers[6].id, // ME (דניאל) → admin can enter live
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 4,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 15,
+    cancelDeadlineHours: 12,
+    bringBall: true,
+    bringShirts: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 4,
+    advancedMode: true,
+    draftTeams: {
+      method: 'snake',
+      numTeams: 4,
+      createdAt: Date.now() - 1000 * 60 * 30,
+      createdBy: mockPlayers[6].id,
+      teams: [
+        { index: 0, captainId: mockPlayers[0].id, playerIds: [0, 1, 2, 3, 4].map((i) => mockPlayers[i].id) },
+        { index: 1, captainId: mockPlayers[5].id, playerIds: [5, 6, 7, 8, 9].map((i) => mockPlayers[i].id) },
+        { index: 2, captainId: mockPlayers[10].id, playerIds: [10, 11, 12, 13, 14].map((i) => mockPlayers[i].id) },
+        { index: 3, captainId: mockPlayers[15].id, playerIds: [15, 16, 17, 18, 19].map((i) => mockPlayers[i].id) },
+      ],
+    },
+    // Level on the scoreboard, so "סיים משחק" lands straight on the tie chooser
+    // — the entry point to both-teams-out.
+    rotation: {
+      playing: [0, 1],
+      waiting: [2, 3],
+      loans: [],
+      wins: { '0': 1, '1': 1 },
+      round: 2,
+      updatedAt: Date.now() - 1000 * 60 * 3,
+    },
+    liveMatch: {
+      phase: 'roundRunning',
+      startedAt: Date.now() - 1000 * 60 * 25,
+      assignments: {
+        [mockPlayers[0].id]: 'teamA', [mockPlayers[1].id]: 'teamA', [mockPlayers[2].id]: 'teamA',
+        [mockPlayers[3].id]: 'teamA', [mockPlayers[4].id]: 'teamA',
+        [mockPlayers[5].id]: 'teamB', [mockPlayers[6].id]: 'teamB', [mockPlayers[7].id]: 'teamB',
+        [mockPlayers[8].id]: 'teamB', [mockPlayers[9].id]: 'teamB',
+      },
+      benchOrder: [],
+      scoreA: 2,
+      scoreB: 2,
+      goals: [
+        { id: 'm4g1', team: 'A', scorerId: mockPlayers[0].id, assisterId: mockPlayers[1].id, minute: 4, at: Date.now() - 1000 * 60 * 8 },
+        { id: 'm4g2', team: 'B', scorerId: mockPlayers[5].id, assisterId: null, minute: 7, at: Date.now() - 1000 * 60 * 6 },
+        { id: 'm4g3', team: 'A', scorerId: mockPlayers[2].id, assisterId: mockPlayers[0].id, minute: 10, at: Date.now() - 1000 * 60 * 4 },
+        { id: 'm4g4', team: 'B', scorerId: mockPlayers[7].id, assisterId: mockPlayers[6].id, minute: 12, at: Date.now() - 1000 * 60 * 2 },
+      ],
+      winsByTeam: { A: 1, B: 1 },
+      roundNumber: 2,
+      timerRunning: true,
+      timerLastStartedAt: Date.now() - (1000 * 60 * 2 + 1000 * 10),
+      timerAccumulatedMs: 0,
+    },
+  },
   // 0b. DEMO — advanced timer-only game that already has a score but the clock
   //     was reset to 00:00 (the "reset keeps goals" fix). Re-entering shows the
   //     CTA as "המשך מחזור" instead of "התחל" (continue-vs-start fix).

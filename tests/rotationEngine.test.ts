@@ -85,7 +85,12 @@ describe('rotationEngine — recordTie (4-team advancedTieMode)', () => {
     expect(start.rotation.waiting).toEqual([2, 3]);
     const res = recordTie(teams, start.rotation, perTeam, 'temporary', 'bothOut', pickFirst);
     expect(res.rotation.playing).toEqual([2, 3]);     // waiting teams came on
-    expect(res.rotation.waiting).toEqual([0, 1]);      // both went to the back
+    // Both went to the back — CHALLENGER FIRST. playing[0] is the incumbent, so
+    // team 0 had been on the pitch longer than team 1; sending it back on first
+    // meant the side that had played most returned soonest. This expectation
+    // used to read [0, 1] and was pinning that, which is why the order stood so
+    // long. Changed deliberately 2026-08-29.
+    expect(res.rotation.waiting).toEqual([1, 0]);
   });
 
   it('veteranOut: the veteran (playing[0]) goes off, the challenger stays', () => {

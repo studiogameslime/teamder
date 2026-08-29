@@ -722,6 +722,17 @@ export function AdvancedLiveMatchScreen() {
   };
 
   // Tie chooser: admin picks how to break the draw.
+  const onReorderWaiting = (waiting: number[]) => {
+    if (!gameId) return;
+    lightHaptic();
+    void gameService.reorderWaiting(gameId, waiting);
+    logEvent(AnalyticsEvent.RotationQueueReordered, {
+      gameId,
+      round: rotation?.round ?? 0,
+      teams: waiting.length,
+    });
+  };
+
   const onDecideManual = () => {
     setDecisionOpen(false);
     logEvent(AnalyticsEvent.RoundTieDecision, {
@@ -1690,6 +1701,12 @@ export function AdvancedLiveMatchScreen() {
               // immediate replacement and keeps the clock running.
               canMarkHome={isAdmin && rotationActive}
               onPlayerCard={openPlayerCard}
+              // Reordering the queue only changes who comes on NEXT, so it is
+              // allowed mid-round — but not while a round is committing, or the
+              // order would race the rotation the commit is about to write.
+              onReorderWaiting={
+                isAdmin && rotationActive && !roundBusy ? onReorderWaiting : undefined
+              }
               onPlayerWentHome={onPlayerWentHome}
               onRestorePlayer={onRestorePlayer}
               onSwapPlayers={onSwapPlayers}
