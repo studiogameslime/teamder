@@ -4,15 +4,19 @@
 //   TieDecisionModal → admin picks ✋ manual (WinnerPickerModal) or 🥅 penalties.
 //   Shootout screen 0 (first)  — who kicks first (team A / team B / random).
 //   Shootout screen 1 (board)  — per-team tally + turn + split kick log + add/finish.
-//   Shootout screen 2 (entry)  — pick keeper (sticky) + kicker (radio); המשך gated.
-//   Shootout screen 3 (result) — נכנס / הוחמץ → records the kick → back to board.
+//   Shootout screen 2 (entry)  — the penalty box itself: two slots (keeper in
+//                                 the goal, kicker on the spot). Tapping a slot
+//                                 opens the same roster list as before; the
+//                                 pitch stays on screen for נכנס / הוחמץ, and
+//                                 the ball is kicked before the kick is
+//                                 recorded — see takeKick().
 //
 // State lives on `liveMatch.shootout` (gameService.startShootout / setShootoutKeeper /
 // recordShootoutKick). The winner (more scored) flows out via `onDecided(side)`, a
 // penalty tie via `onTie()` — both handled by the screen like a manual pick, so the
 // kicks credit penalty stats through the round-end commit.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -22,6 +26,7 @@ import {
   teamColor,
   teamName,
   type PlayerLite,
+  type RosterMember,
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
@@ -29,6 +34,16 @@ import { appAlert } from '@/components/AppDialog';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import {
+  runOnJS,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { PenaltyPitch } from '@/components/match/PenaltyPitch';
+import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 
 // ── Tie decision chooser: manual pick vs penalties ────────────────────────
 export function TieDecisionModal({
@@ -103,7 +118,7 @@ interface Props {
   onExit: () => void;
 }
 
-type Screen = 'first' | 'board' | 'entry' | 'result';
+type Screen = 'first' | 'board' | 'entry';
 
 export function Shootout({
   visible,
@@ -120,6 +135,12 @@ export function Shootout({
   const [screen, setScreen] = useState<Screen>('first');
   const [kickerId, setKickerId] = useState<string | null>(null);
   const [keeperPicking, setKeeperPicking] = useState(false);
+  const [kickerPicking, setKickerPicking] = useState(false);
+  /** Set once the admin has committed to taking the kick — the pitch stays up
+   *  and the נכנס / הוחמץ pair replaces the button, so the box never leaves
+   *  the screen between choosing the players and saying what happened. */
+  const [asking, setAsking] = useState(false);
+  const [flying, setFlying] = useState(false);
 
   // Reset local UI when the modal closes.
   useEffect(() => {
@@ -127,6 +148,9 @@ export function Shootout({
       setScreen('first');
       setKickerId(null);
       setKeeperPicking(false);
+      setKickerPicking(false);
+      setAsking(false);
+      setFlying(false);
     }
   }, [visible]);
 
@@ -189,8 +213,87 @@ export function Shootout({
     });
     setKeeperPicking(false);
   };
+  // ── the kick itself ──────────────────────────────────────────────────────
+  //
+  // Ball and keeper are shared values driven from here rather than from inside
+  // the pitch, because the animation has to FINISH before the kick is written:
+  // recording flips back to the board, and a ball still in the air when the
+  // screen changes reads as a bug rather than a flourish.
+  //
+  // Units are pitch-widths, converted to pixels once the sheet has measured —
+  // the geometry is proportional, so the same numbers work on any phone.
+  const ballX = useSharedValue(0);
+  const ballY = useSharedValue(0);
+  const ballScale = useSharedValue(1);
+  const keeperX = useSharedValue(0);
+  const keeperY = useSharedValue(0);
+  const keeperScale = useSharedValue(1);
+  const pitchW = useRef(320);
+  const reduced = useReducedMotion();
+
+  const resetBall = useCallback(() => {
+    ballX.value = 0;
+    ballY.value = 0;
+    ballScale.value = 1;
+    keeperX.value = 0;
+    keeperY.value = 0;
+    keeperScale.value = 1;
+  }, [ballX, ballY, ballScale, keeperX, keeperY, keeperScale]);
+
   const proceed = () => {
-    if (kickerId && facingKeeperId) setScreen('result');
+    if (kickerId && facingKeeperId) setAsking(true);
+  };
+
+  /** Play the kick, then record it. `scored` decides where the ball ends up:
+   *  inside the frame, or wide of the post it was aimed at. The keeper always
+   *  goes the same way as the ball — a keeper diving away from a save would be
+   *  a lie, and a keeper diving away from a goal is the one case where going
+   *  the WRONG way is the truth, so that is the only place it is used. */
+  const takeKick = (scored: boolean) => {
+    if (flying) return;
+    if (reduced) {
+      record(scored);
+      return;
+    }
+    setFlying(true);
+    const W = pitchW.current;
+    // Aim at one post or the other. The goal mouth is 44% of the width, so a
+    // corner is ±18% from the centre; wide is beyond the post at ±30%.
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const targetX = side * W * (scored ? 0.18 : 0.3);
+    // The spot sits at 52% of the height and the goal mouth at ~13%, and the
+    // pitch is 1.22 tall for every 1 wide.
+    const targetY = -W * (scored ? 0.44 : 0.5);
+    const t = { duration: 430, easing: Easing.out(Easing.quad) };
+
+    ballX.value = withTiming(targetX, t);
+    ballY.value = withTiming(targetY, t);
+    // Shrinking as it travels is the only depth cue a flat pitch can give.
+    ballScale.value = withTiming(0.62, t);
+
+    // The keeper commits a beat after the ball is struck, as a real one does.
+    // He goes the WRONG way on a goal — that is what being beaten looks like —
+    // and towards the ball when it does not go in.
+    const dive = { duration: 340, easing: Easing.out(Easing.cubic) };
+    // 0.2 of the width is exactly the post — the goal mouth is 40% wide, so
+    // half of it is 20% either side of centre. Further than that and the
+    // keeper ends up diving outside his own goal.
+    const diveTo = side * W * (scored ? -0.2 : 0.2);
+    keeperX.value = withDelay(90, withTiming(diveTo, dive));
+    keeperY.value = withDelay(90, withTiming(W * 0.06, dive));
+    keeperScale.value = withDelay(
+      90,
+      withSequence(
+        withTiming(0.88, dive),
+        // Held at full stretch, then handed back to JS to write the kick.
+        withDelay(
+          280,
+          withTiming(0.88, { duration: 1 }, (done) => {
+            if (done) runOnJS(record)(scored);
+          }),
+        ),
+      ),
+    );
   };
   const record = (scored: boolean) => {
     if (!kickerId || !facingKeeperId) return;
@@ -209,6 +312,9 @@ export function Shootout({
       scoredB: scoredOf('B'),
     });
     setKickerId(null);
+    setAsking(false);
+    setFlying(false);
+    resetBall();
     setScreen('board');
   };
   const finish = () => {
@@ -242,12 +348,24 @@ export function Shootout({
   const back = () => {
     // Android back / "חזור": step to the PREVIOUS screen, never abandon the
     // whole shootout mid-flow (user report: back kicked me out entirely).
+    // A kick in flight owns the screen until it lands; letting back interrupt
+    // it would leave the ball mid-air and the kick unrecorded.
+    if (flying) return;
     if (keeperPicking) {
       setKeeperPicking(false);
       return;
     }
-    if (screen === 'result') setScreen('entry');
-    else if (screen === 'entry') {
+    if (kickerPicking) {
+      setKickerPicking(false);
+      return;
+    }
+    // "נכנס / הוחמץ" is a step inside the pitch screen now, so back returns to
+    // the pitch with both players still standing on it.
+    if (asking) {
+      setAsking(false);
+      return;
+    }
+    if (screen === 'entry') {
       setKickerId(null);
       setScreen('board');
     } else onExit(); // 'first' or 'board' → abandon the shootout
@@ -382,111 +500,159 @@ export function Shootout({
     );
   };
 
-  const renderEntry = () => {
-    // Keeper sub-picker: the DEFENDING team's roster.
-    if (keeperPicking) {
-      return (
-        <View>
-          <Text style={styles.sTitle}>{he.shPickKeeperTitle}</Text>
-          <ScrollView style={[styles.pickList, { marginTop: spacing.sm }]}>
-            {defendingRoster.map((p) => (
-              <Pressable key={p.id} style={styles.prow} onPress={() => pickKeeper(p.id)}>
-                <Avatar id={p.id} tint={colorOf(defendingTeam)} />
-                <Text style={styles.pname} numberOfLines={1}>
-                  {p.name}
-                </Text>
-                <View style={styles.prowSpacer} />
-                <View style={[styles.radio, facingKeeperId === p.id && styles.radioOn]} />
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Pressable style={styles.backRow} onPress={() => setKeeperPicking(false)} hitSlop={8}>
-            <Text style={styles.backText}>{he.shBack}</Text>
+  /** One roster as a tappable list — the same list both slots open. It was
+   *  already written twice with a radio each; the pitch made the radio
+   *  redundant (the chosen player is standing on the grass behind you), so it
+   *  is one function now and the selection shows as a highlighted row. */
+  const renderRoster = (
+    title: string,
+    roster: RosterMember[],
+    tint: string,
+    selectedId: string | null | undefined,
+    onPick: (uid: string) => void,
+    onBack: () => void,
+    showCounts?: boolean,
+  ) => (
+    <View>
+      <Text style={styles.sTitle}>{title}</Text>
+      <ScrollView style={[styles.pickList, { marginTop: spacing.sm }]}>
+        {roster.map((p) => (
+          <Pressable
+            key={p.id}
+            style={[styles.prow, selectedId === p.id && { backgroundColor: colors.primaryLight }]}
+            onPress={() => onPick(p.id)}
+          >
+            <Avatar id={p.id} tint={tint} />
+            <Text style={styles.pname} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <View style={styles.prowSpacer} />
+            {showCounts ? (
+              <Text style={styles.pcnt}>{he.shKickedN(kicksByPlayer[p.id] ?? 0)}</Text>
+            ) : null}
+            <View style={[styles.radio, selectedId === p.id && styles.radioOn]} />
           </Pressable>
-        </View>
+        ))}
+      </ScrollView>
+      <Pressable style={styles.backRow} onPress={onBack} hitSlop={8}>
+        <Text style={styles.backText}>{he.shBack}</Text>
+      </Pressable>
+    </View>
+  );
+
+  /** An avatar standing on the pitch, with the name under it. */
+  /** An avatar standing on the pitch. The name plate hangs under it and is
+   *  dropped while the ball is in the air: it rides along with the keeper's
+   *  dive, and a dark bar sliding across the six-yard box is not a dive. */
+  const OnPitch = ({ id, tint }: { id: string; tint: string }) => (
+    <>
+      <View style={[styles.pitchAv, { borderColor: tint }]}>
+        <Text style={styles.pitchAvTxt}>{(nameOf(id) || '?').charAt(0)}</Text>
+      </View>
+      {flying ? null : (
+        <Text style={styles.pitchName} numberOfLines={1}>
+          {nameOf(id)}
+        </Text>
+      )}
+    </>
+  );
+
+  const renderEntry = () => {
+    if (keeperPicking) {
+      return renderRoster(
+        he.shPickKeeperTitle,
+        defendingRoster,
+        colorOf(defendingTeam),
+        facingKeeperId,
+        (uid) => pickKeeper(uid),
+        () => setKeeperPicking(false),
+      );
+    }
+    if (kickerPicking) {
+      return renderRoster(
+        he.shWhoKicks,
+        kickingRoster,
+        colorOf(kickingTeam),
+        kickerId,
+        (uid) => {
+          setKickerId(uid);
+          setKickerPicking(false);
+        },
+        () => setKickerPicking(false),
+        true,
       );
     }
     return (
-      <View>
+      <View onLayout={(e) => (pitchW.current = e.nativeEvent.layout.width)}>
         <Text style={styles.sTitle}>{he.shKickTitle}</Text>
         <Text style={[styles.turnBig, { backgroundColor: colorOf(kickingTeam) }]}>
           {he.shKicking(teamNameOf(kickingTeam))}
         </Text>
+        <Text style={styles.qlabel}>{asking ? he.shResultQ : he.shPickBoth}</Text>
 
-        <Pressable
-          style={[
-            styles.keeperSel,
-            { backgroundColor: colorOf(defendingTeam), borderColor: colorOf(defendingTeam) },
-          ]}
-          onPress={() => setKeeperPicking(true)}
-        >
-          <Text style={styles.keeperSelTxt} numberOfLines={1}>
-            {he.shVsKeeper(teamNameOf(defendingTeam))}{' '}
-            <Text style={styles.keeperName}>{facingKeeperId ? nameOf(facingKeeperId) : '—'}</Text>
-          </Text>
-          <View style={styles.prowSpacer} />
-          <Text style={[styles.pickK, { color: colorOf(defendingTeam) }]}>
-            {facingKeeperId ? he.shReplaceKeeper : he.shPickKeeper}
-          </Text>
-        </Pressable>
+        <PenaltyPitch
+          keeperLabel={he.shTapKeeper}
+          kickerLabel={he.shTapKicker}
+          keeperTint={colorOf(defendingTeam)}
+          kickerTint={colorOf(kickingTeam)}
+          onPressKeeper={() => !flying && setKeeperPicking(true)}
+          onPressKicker={() => !flying && setKickerPicking(true)}
+          keeperNode={
+            facingKeeperId ? (
+              <OnPitch id={facingKeeperId} tint={colorOf(defendingTeam)} />
+            ) : undefined
+          }
+          kickerNode={
+            kickerId ? <OnPitch id={kickerId} tint={colorOf(kickingTeam)} /> : undefined
+          }
+          ball={{ x: ballX, y: ballY, scale: ballScale }}
+          keeperDive={{ x: keeperX, y: keeperY, scale: keeperScale }}
+        />
 
-        <Text style={styles.qlabel}>{he.shWhoKicks}</Text>
-        <ScrollView style={styles.pickList}>
-          {kickingRoster.map((p) => (
-            <Pressable key={p.id} style={styles.prow} onPress={() => setKickerId(p.id)}>
-              <Avatar id={p.id} tint={colorOf(kickingTeam)} />
-              <Text style={styles.pname} numberOfLines={1}>
-                {p.name}
-              </Text>
+        {/* Before the kick: one button. After it: the same two answers as
+            before, in the same place, with the box still behind them. */}
+        {asking ? (
+          <View style={styles.resRow}>
+            <Pressable
+              style={[styles.rbtn, styles.rOk, flying && styles.contDisabled]}
+              disabled={flying}
+              onPress={() => takeKick(true)}
+            >
+              <Text style={styles.rOkTxt}>{he.shResultIn}</Text>
               <View style={styles.prowSpacer} />
-              <Text style={styles.pcnt}>{he.shKickedN(kicksByPlayer[p.id] ?? 0)}</Text>
-              <View style={[styles.radio, kickerId === p.id && styles.radioOn]} />
+              <Text style={styles.rIcon}>✅</Text>
             </Pressable>
-          ))}
-        </ScrollView>
-
-        <Pressable
-          style={[styles.contBtn, !canContinue && styles.contDisabled]}
-          onPress={proceed}
-          disabled={!canContinue}
-        >
-          <Text style={styles.contTxt}>{he.shContinue}</Text>
-        </Pressable>
-        {!canContinue ? <Text style={styles.contHint}>{he.shContinueHint}</Text> : null}
-        <BackBtn />
+            <Pressable
+              style={[styles.rbtn, styles.rNo, flying && styles.contDisabled]}
+              disabled={flying}
+              onPress={() => takeKick(false)}
+            >
+              <Text style={styles.rNoTxt}>{he.shResultMiss}</Text>
+              <View style={styles.prowSpacer} />
+              <Text style={styles.rIcon}>❌</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <Pressable
+              style={[styles.contBtn, !canContinue && styles.contDisabled]}
+              onPress={proceed}
+              disabled={!canContinue}
+            >
+              <Text style={styles.contTxt}>{he.shTakeKick}</Text>
+            </Pressable>
+            {!canContinue ? <Text style={styles.contHint}>{he.shContinueHint}</Text> : null}
+          </>
+        )}
+        {!flying ? <BackBtn /> : null}
       </View>
     );
   };
 
-  const renderResult = () => (
-    <View>
-      <Text style={styles.sTitle}>{he.shResultKickBy(nameOf(kickerId))}</Text>
-      <Text style={[styles.turnBig, { backgroundColor: colorOf(defendingTeam) }]}>
-        {he.shResultVsKeeper(nameOf(facingKeeperId))}
-      </Text>
-      <Text style={[styles.qlabel, { marginTop: spacing.md }]}>{he.shResultQ}</Text>
-      <View style={styles.resRow}>
-        {/* icon on the LEFT, text on the RIGHT (user request) */}
-        <Pressable style={[styles.rbtn, styles.rOk]} onPress={() => record(true)}>
-          <Text style={styles.rOkTxt}>{he.shResultIn}</Text>
-          <View style={styles.prowSpacer} />
-          <Text style={styles.rIcon}>✅</Text>
-        </Pressable>
-        <Pressable style={[styles.rbtn, styles.rNo]} onPress={() => record(false)}>
-          <Text style={styles.rNoTxt}>{he.shResultMiss}</Text>
-          <View style={styles.prowSpacer} />
-          <Text style={styles.rIcon}>❌</Text>
-        </Pressable>
-      </View>
-      <BackBtn />
-    </View>
-  );
-
   let body: React.ReactNode = null;
   if (screen === 'first') body = renderFirst();
   else if (screen === 'board') body = renderBoard();
-  else if (screen === 'entry') body = renderEntry();
-  else body = renderResult();
+  else body = renderEntry();
 
   return (
     <Modal visible={visible && ready} transparent animationType="fade" onRequestClose={back}>
@@ -682,27 +848,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     writingDirection: 'rtl',
   },
-  keeperSel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderRadius: 11,
-    padding: 11,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  keeperSelTxt: { flexShrink: 1, fontSize: 12.5, fontWeight: '700', color: '#FFFFFF', textAlign: RTL_LABEL_ALIGN, writingDirection: 'rtl' },
-  keeperName: { fontWeight: '900', color: '#FFFFFF' },
-  pickK: {
-    backgroundColor: '#FFFFFF',
-    fontWeight: '800',
-    paddingVertical: 4,
-    paddingHorizontal: 11,
-    borderRadius: 8,
-    fontSize: 12,
-    overflow: 'hidden',
-    writingDirection: 'rtl',
-  },
   hint: { fontSize: 10.5, color: '#9CA3AF', textAlign: 'center', marginVertical: 6, fontWeight: '600', writingDirection: 'rtl' },
   qlabel: { fontSize: 13.5, fontWeight: '800', color: '#111827', textAlign: 'center', marginVertical: 4, writingDirection: 'rtl' },
   pickList: { maxHeight: 240 },
@@ -758,5 +903,30 @@ const styles = StyleSheet.create({
   rNo: { backgroundColor: '#FEF2F2', borderColor: '#EF4444' },
   rIcon: { fontSize: 20 },
   rOkTxt: { fontSize: 18, fontWeight: '900', color: '#16A34A', writingDirection: 'rtl' },
+  // ── on the pitch ──
+  pitchAv: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pitchAvTxt: { fontSize: 17, fontWeight: '900', color: colors.text },
+  pitchName: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    width: 86,
+    marginLeft: -17,
+    // A name over grass needs its own ground; the pitch is busy behind it.
+    backgroundColor: 'rgba(17,24,39,0.55)',
+    borderRadius: 6,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
   rNoTxt: { fontSize: 18, fontWeight: '900', color: '#EF4444', writingDirection: 'rtl' },
 });
