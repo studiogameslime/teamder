@@ -45,7 +45,10 @@ describe('motion tokens', () => {
     expect(motion.pulse.opacityTo).toBeGreaterThanOrEqual(0.75);
     // Slow enough to be felt rather than noticed.
     expect(motion.pulse.periodMs).toBeGreaterThanOrEqual(1500);
-    // And it ENDS. A badge pulsing on minute two is a badge nobody sees.
+    // The DEFAULT still ends — a status that goes stale must not pulse for the
+    // life of the screen. Callers may opt into a continuous breath (the clubs
+    // feed does, because a finite pulse there expires below the fold), and that
+    // is a call-site decision, not a token one.
     expect(motion.pulse.maxCycles).toBeGreaterThan(0);
     expect(motion.pulse.maxCycles).toBeLessThanOrEqual(4);
   });

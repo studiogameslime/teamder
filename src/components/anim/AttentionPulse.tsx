@@ -5,10 +5,13 @@
 // Two decisions worth stating, because both are the difference between polish
 // and irritation:
 //
-//   It STOPS. Breathing (the existing primitive) loops forever, which is right
-//   for ambient life on an idle screen and wrong for a status — a badge still
-//   pulsing on minute two is a badge nobody sees. This runs a few breaths and
-//   settles at rest.
+//   It stops BY DEFAULT, and the caller can say otherwise. The original
+//   argument — a badge still pulsing on minute two is a badge nobody sees —
+//   holds for a status that goes stale, like "3 מקומות אחרונים". It does not
+//   hold for "פעיל מאוד", which is a standing fact about a club and is met in
+//   a scrolling feed: a finite pulse there fires while the card is still below
+//   the fold and is over before anyone looks at it. Pass cycles={INFINITE} for
+//   that case; keep a small number for anything urgent.
 //
 //   It never changes colour and never blinks. Scale and opacity only, and the
 //   opacity floor is high enough that the text stays fully readable at every
@@ -28,12 +31,17 @@ import Animated, {
 import { useReducedMotion } from '@/hooks/animations/useReducedMotion';
 import { motion } from '@/theme/motion';
 
+/** Reanimated reads a negative repeat count as "forever". Named, because
+ *  `cycles={-1}` at a call site reads like a bug. */
+export const INFINITE = -1;
+
 interface Props {
   children: React.ReactNode;
   /** Off switch, so a caller can pulse only while the status is actually
    *  urgent (e.g. only while spots are nearly gone). Default true. */
   active?: boolean;
-  /** Breaths before it settles. Default 3. One is often enough. */
+  /** Breaths before it settles. Default 3. One is often enough.
+   *  Pass {@link INFINITE} to breathe for as long as the card is mounted. */
   cycles?: number;
   /** Wait for the screen's entrance to finish first. */
   delayMs?: number;
@@ -55,7 +63,12 @@ export function AttentionPulse({
   useEffect(() => {
     // Reduce Motion gets no pulse at all — a repeating animation is exactly
     // what the setting asks us not to do. The badge simply sits there.
-    if (!active || reduced || played.current) return;
+    // The latch stops a routine re-render from restarting a FINITE pulse
+    // mid-breath. An infinite one has nothing to restart — it simply keeps
+    // going — so it must not be latched, or the cleanup below would cancel it
+    // on the first re-render and never start it again.
+    const forever = cycles < 0;
+    if (!active || reduced || (played.current && !forever)) return;
     played.current = true;
 
     const half = motion.pulse.periodMs / 2;

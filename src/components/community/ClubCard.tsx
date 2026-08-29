@@ -35,7 +35,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { AttentionPulse } from '@/components/anim/AttentionPulse';
+import { AttentionPulse, INFINITE } from '@/components/anim/AttentionPulse';
 import { PressableScale } from '@/components/PressableScale';
 import { getCoverSource } from '@/data/coverImages';
 import { he } from '@/i18n/he';
@@ -232,12 +232,16 @@ export function ClubCard({
           )}
 
           {activity ? (
-            // Only "פעיל מאוד" breathes, and only a few times. It is the one
-            // activity level that is an invitation rather than a fact — "פעיל"
-            // and "לא פעיל" are just the club's state and pulsing them would
-            // make the whole feed twitch, which tells the eye nothing about
-            // where to look.
-            <AttentionPulse active={vm.activity === 'veryActive'} cycles={2}>
+            // Only "פעיל מאוד" breathes. It is the one activity level that is
+            // an invitation rather than a fact — "פעיל" and "לא פעיל" are just
+            // the club's state and pulsing them would make the whole feed
+            // twitch, which tells the eye nothing about where to look.
+            //
+            // It breathes CONTINUOUSLY. Two breaths was the original call and
+            // it was wrong here: the feed scrolls, so a finite pulse burned
+            // itself out below the fold and the badge you actually looked at
+            // never moved. Owner's call, 2026-08-29.
+            <AttentionPulse active={vm.activity === 'veryActive'} cycles={INFINITE}>
               <View style={styles.activityBadge}>
                 <Text style={styles.activityTxt}>{activity.label}</Text>
                 <View style={[styles.dot, { backgroundColor: activity.dot }]} />
