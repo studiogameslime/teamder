@@ -15,6 +15,7 @@
 
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Path, G } from 'react-native-svg';
 import Animated, {
   useAnimatedStyle,
@@ -35,8 +36,9 @@ const SIX = { x: 20, y: GOAL_LINE, w: 60, h: 20 };
 const BOX = { x: 6, y: GOAL_LINE, w: 88, h: 66 };
 /** The penalty spot. */
 const SPOT = { x: 50, y: 66 };
-/** Where the kicker stands — behind the ball, not on it. */
-const KICKER = { x: 50, y: 100 };
+/** The kicker stands ON the spot: the avatar is centred just above it so his
+ *  feet land on the mark and the ball sits at them. */
+const KICKER = { x: 50, y: 58 };
 /** The keeper, on his line in the middle of the mouth. */
 const KEEPER = { x: 50, y: GOAL_LINE - 5 };
 /** The D. Big enough to actually bulge past the box, which is the whole point
@@ -71,28 +73,38 @@ interface SlotProps {
   filled?: React.ReactNode;
   onPress: () => void;
   tint: string;
-  /** Keeper sits inside the goal and needs the label BELOW the circle;
-   *  the kicker's label sits below too, but clear of the ball. */
   style: ViewStyle;
+  /** The kicker's name goes ABOVE his head — below it would sit exactly where
+   *  the ball rests at his feet. The keeper keeps his underneath, where the
+   *  six-yard box is empty. */
+  labelAbove?: boolean;
   testID?: string;
 }
 
-function Slot({ placeholder, filled, onPress, tint, style, testID }: SlotProps) {
+function Slot({ placeholder, filled, onPress, tint, style, testID, labelAbove }: SlotProps) {
+  const label = filled ? null : (
+    <Text style={styles.slotLabel} numberOfLines={1}>
+      {placeholder}
+    </Text>
+  );
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
       hitSlop={10}
-      style={({ pressed }) => [styles.slot, style, pressed && { opacity: 0.75 }]}
+      style={({ pressed }) => [
+        styles.slot,
+        labelAbove && { flexDirection: 'column-reverse' as const },
+        style,
+        pressed && { opacity: 0.75 },
+      ]}
     >
       {filled ?? (
         <View style={[styles.empty, { borderColor: tint }]}>
           <Text style={[styles.plus, { color: tint }]}>+</Text>
         </View>
       )}
-      <Text style={styles.slotLabel} numberOfLines={1}>
-        {filled ? '' : placeholder}
-      </Text>
+      {label}
     </Pressable>
   );
 }
@@ -215,6 +227,7 @@ export function PenaltyPitch({
         filled={kickerNode}
         onPress={onPressKicker}
         tint={kickerTint}
+        labelAbove
         style={{ ...PITCH_POS.kicker } as ViewStyle}
       />
 
@@ -222,7 +235,12 @@ export function PenaltyPitch({
         pointerEvents="none"
         style={[styles.ball, PITCH_POS.spot as ViewStyle, ballStyle]}
       >
-        <View style={styles.ballDot} />
+        {/* An actual ball: white leather with the panel seams over it. A plain
+            white disc read as a marker on the grass, not as something to
+            kick. */}
+        <View style={styles.ballDot}>
+          <Ionicons name="football" size={13} color="#111827" />
+        </View>
       </Animated.View>
     </View>
   );
@@ -278,20 +296,23 @@ const styles = StyleSheet.create({
   slotInner: { position: 'relative', marginLeft: 0, marginTop: 0 },
   ball: {
     position: 'absolute',
-    width: 18,
-    height: 18,
-    marginLeft: -9,
-    marginTop: -9,
+    width: 20,
+    height: 20,
+    marginLeft: -10,
+    marginTop: -10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ballDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
 });
 
