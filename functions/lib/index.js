@@ -2639,6 +2639,10 @@ async function runCreateSeriesOccurrences() {
             maxPlayers: num(st.maxPlayers) ?? 10,
             visibility: st.visibility === 'public' ? 'public' : 'community',
             requiresApproval: st.requiresApproval === true,
+            // Explicit boolean, not `opt(...)` below: the client reader turns an
+            // ABSENT field into `true`, so leaving it off would flip every clone of
+            // an opted-out series back on.
+            waitlistApprovalRequired: st.waitlistApprovalRequired === true,
             bringBall: st.bringBall === true,
             bringShirts: st.bringShirts === true,
             status,
@@ -2676,6 +2680,7 @@ async function runCreateSeriesOccurrences() {
         opt('ruleTags', Array.isArray(st.ruleTags) ? st.ruleTags : undefined);
         opt('acceptsFillers', st.acceptsFillers === true ? true : undefined);
         opt('fillerMinTrust', num(st.fillerMinTrust));
+        opt('waitlistApprovalTimeoutMinutes', num(st.waitlistApprovalTimeoutMinutes));
         opt('advancedMode', st.advancedMode === true ? true : undefined);
         opt('advancedFillMode', st.advancedFillMode);
         opt('advancedTieMode', st.advancedTieMode);
@@ -10665,16 +10670,26 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
                         ? 'A'
                         : 'B',
             })),
+            // Store EVERY kick for the recap — guests INCLUDED. This used to
+            // gate on `isReal`, the rule for stat CREDITING, and reused it as
+            // the rule for DOCUMENTATION: an evening whose shootouts were
+            // taken by guests wrote an empty array, so the match-history screen
+            // showed two 0:0 mini-games with "לא נרשמו גולים" and no trace that
+            // penalties had happened at all (Eliran's report). Guests still earn
+            // no penalty stats — that gating lives in the §1c loop below, which
+            // reads the `penalties` INPUT, not this display array.
+            //
+            // `okForDisplay` is the same anti-forgery gate the roster uses, and
+            // the side comes from `fullA` (guests included) — `A` is real-only,
+            // so every guest kicker would have been labelled team B.
             penalties: (penalties ?? [])
-                .filter((p) => p.kickerId && isReal(p.kickerId) && onField.has(p.kickerId))
+                .filter((p) => p.kickerId && okForDisplay(p.kickerId))
                 .slice(0, 100)
                 .map((p) => ({
                 kickerId: p.kickerId,
-                keeperId: p.keeperId && isReal(p.keeperId) && onField.has(p.keeperId)
-                    ? p.keeperId
-                    : null,
+                keeperId: p.keeperId && okForDisplay(p.keeperId) ? p.keeperId : null,
                 scored: !!p.scored,
-                team: A.includes(p.kickerId) ? 'A' : 'B',
+                team: fullA.includes(p.kickerId) ? 'A' : 'B',
             })),
             at: now,
         }

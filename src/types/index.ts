@@ -1402,6 +1402,11 @@ export interface GameSeriesSettings {
   cancelDeadlineHours?: number;
   visibility: 'public' | 'community';
   requiresApproval: boolean;
+  /** Waitlist auto-promotion needs the promoted player's confirmation, and the
+   *  window they get. Part of the series so a weekly clone keeps the choice —
+   *  omitted, the game reader reconstitutes an opted-out game as opted-IN. */
+  waitlistApprovalRequired?: boolean;
+  waitlistApprovalTimeoutMinutes?: number;
   bringBall: boolean;
   bringShirts: boolean;
   notes?: string;

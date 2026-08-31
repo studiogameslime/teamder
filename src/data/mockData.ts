@@ -397,6 +397,55 @@ export const mockGamesV2: Game[] = [
       timerAccumulatedMs: 0, // reset to 00:00 → started=false → "המשך מחזור"
     },
   },
+  // A QUICK GAME — created outside any club (`isOrphanContext`). Demo mode had
+  // no such game at all, which is exactly why a run of club-only features
+  // (guest rating, club-table lines in the personal summary) leaked into the
+  // one-off flow unnoticed. Keep it here so the quick-game path is testable.
+  {
+    id: 'gv2-quick',
+    // A quick game still has a groupId — the creator's hidden personal group.
+    // `isOrphanContext` is the flag the UI actually reads.
+    groupId: 'g-personal-me',
+    isOrphanContext: true,
+    title: 'משחק מהיר בפארק',
+    startsAt: Date.now() + 1000 * 60 * 90,
+    fieldName: 'פארק הירקון · מגרש 2',
+    fieldLat: 32.0999,
+    fieldLng: 34.8021,
+    maxPlayers: 10,
+    minPlayers: 8,
+    players: mockPlayers.slice(0, 6).map((p) => p.id),
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 6).map((p) => p.id), [], []),
+    status: 'open',
+    locked: false,
+    currentMatchIndex: 0,
+    matches: [],
+    createdBy: ME,
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 2,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 10,
+    cancelDeadlineHours: 2,
+    bringBall: true,
+    bringShirts: false,
+    createdAt: Date.now() - 1000 * 60 * 20,
+    // A guest ME added — the case that surfaced the leak: a rating control on a
+    // game with no club behind it. Carries an `estimatedRating` on purpose, so
+    // the READ-ONLY path is covered too (an old value must not show either).
+    guests: [
+      {
+        id: 'guest-quick-shay',
+        name: 'שי',
+        estimatedRating: 4,
+        addedBy: ME,
+        createdAt: Date.now() - 1000 * 60 * 10,
+      },
+    ],
+  },
   // 1. My Game — already registered, full 15/15 so the live match
   //    screen renders three full teams without a shuffle. Scheduled a couple
   //    of weeks out so it doesn't time-clash with the joinable gv2-2 (which

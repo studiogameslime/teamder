@@ -1150,6 +1150,18 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? g.visibility
           : 'community',
       requiresApproval: g.requiresApproval ?? false,
+      // These two were MISSING from this whitelist, and that is the whole bug.
+      // The converter rebuilds the doc field by field, so a field that is not
+      // named here is never written — an explicit `false` at creation simply
+      // vanished, and the reader below (`!== false`) then reconstituted it as
+      // `true`. Created OFF, reopened ON.
+      //
+      // `=== true`, not `?? true`: the create default is OFF, and a fallback
+      // that flips an absent value to ON is what the reader already does. Note
+      // the three consumers test strict `=== false`, so this must be a real
+      // boolean and never null.
+      waitlistApprovalRequired: g.waitlistApprovalRequired === true,
+      waitlistApprovalTimeoutMinutes: g.waitlistApprovalTimeoutMinutes ?? null,
       format: g.format ?? null,
       numberOfTeams: g.numberOfTeams ?? null,
       cancelDeadlineHours: g.cancelDeadlineHours ?? null,
@@ -1364,6 +1376,10 @@ const gameDocConverter: FirestoreDataConverter<GameDoc> = {
           ? d.visibility
           : 'community',
       requiresApproval: d.requiresApproval === true,
+      waitlistApprovalTimeoutMinutes:
+        typeof d.waitlistApprovalTimeoutMinutes === 'number'
+          ? d.waitlistApprovalTimeoutMinutes
+          : undefined,
       // Default true (approval required) unless the doc explicitly stores
       // false — previously this field was never read back, so an admin who
       // turned it OFF saw the toggle spring back ON in the edit form and the

@@ -357,6 +357,14 @@ export const he = {
     `${playerName} משלים מ${teamName}`,
   rotationStoppagesInline: (count: number, time: string) =>
     `${count} עצירות · ${time}`,
+  // Advanced live entered before the teams were drafted (Eliran's report):
+  // the screen silently degraded to a bare timer, so the admin had no idea the
+  // stats and mini-game management they'd turned on were not running.
+  liveNoTeamsTitle: 'עוד לא חולקו כוחות',
+  liveNoTeamsBody:
+    'המחזור הזה מוגדר עם מסך לייב מתקדם, אבל עוד לא חולקו כוחות — אז אי אפשר להפעיל אותו.\n\nאם תמשיכו בלי כוחות תקבלו טיימר בלבד: בלי ניהול משחקים, בלי גולים ובישולים, ובלי סטטיסטיקות שנספרות לשחקנים.',
+  liveNoTeamsGoDraft: 'לחלוקת כוחות',
+  liveNoTeamsContinue: 'המשך בלי כוחות',
   rotationStartRound: 'התחל משחק',
   rotationEndRound: 'סיים משחק',
   rotationEndRoundBusy: 'מסיים…',

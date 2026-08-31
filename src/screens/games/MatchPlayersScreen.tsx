@@ -202,6 +202,10 @@ export function MatchPlayersScreen() {
   // community runs in internal-rating mode (user report: admin couldn't see
   // the ratings they'd assigned on the match roster).
   const showRatings = internalRating && iAmAdmin;
+  // A quick game has no club, so there is nothing to rate FOR — no squad to
+  // balance, no admin to read the number. Gates the guest rating the same way
+  // `internalRating` already gates the registered-player one.
+  const ratingEnabled = game?.isOrphanContext !== true;
   // Club equipment holders (carried over from the end-evening handoff) so the
   // roster surfaces who has the ball / jerseys, same as the community list.
   const ballHolders = useMemo(
@@ -623,7 +627,7 @@ export function MatchPlayersScreen() {
               ))}
               {guests.map((g, i) => {
                 const isAdder = currentUser?.id === g.addedBy;
-                const canSeeRating = isAdder || isAdminViewer;
+                const canSeeRating = ratingEnabled && (isAdder || isAdminViewer);
                 // The adder edits the rating; the admin can rename. Either
                 // reason opens the editor (the modal gates the fields).
                 const canEdit = isAdder || isAdminViewer;
@@ -775,7 +779,7 @@ export function MatchPlayersScreen() {
                   them instead of blindly re-adding a duplicate. */}
               {waitlistGuests.map((g, i) => {
                 const isAdder = currentUser?.id === g.addedBy;
-                const canSeeRating = isAdder || isAdminViewer;
+                const canSeeRating = ratingEnabled && (isAdder || isAdminViewer);
                 // The adder edits the rating; the admin can rename. Either
                 // reason opens the editor (the modal gates the fields).
                 const canEdit = isAdder || isAdminViewer;
@@ -976,6 +980,7 @@ export function MatchPlayersScreen() {
           callerId={currentUser.id}
           existing={editingGuest}
           isAdmin={isAdminViewer}
+          ratingEnabled={ratingEnabled}
           addedByLabel={
             editingGuest
               ? he.guestAddedByLine(

@@ -62,6 +62,10 @@ interface Props {
   stoppagesText: string;
   onStoppages: () => void;
   controllerName?: string | null;
+  /** 1-based mini-game number within the evening. The scoreboard shows several
+   *  mini-games in a row on the same card, and nothing on screen said WHICH one
+   *  you were watching (Eliran's report) — this is that heading. */
+  roundNumber?: number;
 }
 
 export function LiveScoreboardCard(props: Props) {
@@ -211,6 +215,16 @@ export function LiveScoreboardCard(props: Props) {
         pointerEvents="none"
         style={[styles.flashOverlay, { backgroundColor: flashTint }, flashStyle]}
       />
+      {/* Which mini-game of the evening this is — the card otherwise looks
+          identical from round to round. */}
+      {props.roundNumber ? (
+        <View style={styles.roundChip}>
+          <Text style={styles.roundChipText}>
+            {he.matchNumber(props.roundNumber)}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Top row: team A (right) · timer (center) · team B (left). */}
       <View style={styles.row}>
         <ScoreSide
@@ -587,6 +601,20 @@ const styles = StyleSheet.create({
   addBtnBusy: { opacity: 0.5 },
   addBtnTxt: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', flexShrink: 1 },
   // ── Timer center ──
+  roundChip: {
+    alignSelf: 'center',
+    marginBottom: spacing.xs,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
+  },
+  roundChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
+    textAlign: 'center',
+  },
   timerCol: { flex: 1.1, alignItems: 'center', gap: 2, paddingHorizontal: 2 },
   timer: { fontSize: 38, fontWeight: '900', color: colors.text, fontVariant: ['tabular-nums'], letterSpacing: 1 },
   timerDanger: { color: colors.danger },

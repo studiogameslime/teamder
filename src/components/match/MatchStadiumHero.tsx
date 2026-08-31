@@ -46,6 +46,12 @@ interface Props {
   onSharePress?: () => void;
   /** Registered players only — opens the game chat. Hidden when undefined. */
   onChatPress?: () => void;
+  /** Hide the kickoff countdown chip. A game can leave the "waiting to
+   *  start" state BEFORE its scheduled time — finished early, started
+   *  early, cancelled — and the chip only knows about the clock, so it
+   *  happily kept ticking "עוד 2:45" under a game that was already over
+   *  (Eliran's report). The screen knows the status; it decides. */
+  countdownHidden?: boolean;
   /** Unread message count for the game chat — renders a badge on the
    *  chat icon. 0/undefined → no badge. */
   chatUnread?: number;
@@ -60,6 +66,7 @@ export function MatchStadiumHero({
   onBackPress,
   onSharePress,
   onChatPress,
+  countdownHidden = false,
   chatUnread = 0,
 }: Props) {
   // Living sky: the gradient tint follows the kickoff hour (morning/day/
@@ -190,7 +197,9 @@ export function MatchStadiumHero({
               <Text style={styles.floatingTime}>
                 {startsAt ? formatTime(startsAt) : '—'}
               </Text>
-              {startsAt ? <LiveCountdown startsAt={startsAt} /> : null}
+              {startsAt && !countdownHidden ? (
+                <LiveCountdown startsAt={startsAt} />
+              ) : null}
             </View>
           </View>
         </SafeAreaView>

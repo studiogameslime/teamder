@@ -101,6 +101,7 @@ import {
   isRoundRunning,
   isScheduled,
   isTerminal as isTerminalGame,
+  isActive as isActiveGame,
 } from '@/services/gameLifecycle';
 import { deepLinkService } from '@/services/deepLinkService';
 import { createShortInviteUrl } from '@/services/inviteLinkService';
@@ -2611,6 +2612,9 @@ export function MatchDetailsScreen() {
           // session-action). Hidden for terminal-state games where
           // there's nothing meaningful to share.
           onSharePress={!isTerminalGame(game) ? handleShare : undefined}
+          // A game that ended (or was cancelled, or already kicked off)
+          // must not still be counting down to its own kickoff.
+          countdownHidden={isTerminalGame(game) || isActiveGame(game)}
           onChatPress={
             user && (game.players.includes(user.id) || user.id === game.createdBy)
               ? () => {
@@ -3521,6 +3525,8 @@ export function MatchDetailsScreen() {
           visible={guestModalOpen}
           gameId={game.id}
           callerId={user.id}
+          // No club behind a quick game → no guest rating (see GuestModal).
+          ratingEnabled={game.isOrphanContext !== true}
           onClose={() => setGuestModalOpen(false)}
           onChanged={(action, saved) => {
             setGame((prev) => {

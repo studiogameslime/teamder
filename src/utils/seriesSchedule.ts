@@ -160,6 +160,10 @@ export function buildOccurrence(
     maxPlayers: settings.maxPlayers,
     visibility: settings.visibility,
     requiresApproval: settings.requiresApproval === true,
+    // Explicit boolean, not `opt(...)`: three consumers test strict `=== false`,
+    // and the reader turns an ABSENT field into `true` — so omitting it here
+    // would flip every clone of an opted-out series back on.
+    waitlistApprovalRequired: settings.waitlistApprovalRequired === true,
     bringBall: settings.bringBall === true,
     bringShirts: settings.bringShirts === true,
     status,
@@ -196,6 +200,7 @@ export function buildOccurrence(
   opt('ruleTags', settings.ruleTags);
   opt('acceptsFillers', settings.acceptsFillers);
   opt('fillerMinTrust', settings.fillerMinTrust);
+  opt('waitlistApprovalTimeoutMinutes', settings.waitlistApprovalTimeoutMinutes);
   opt('advancedMode', settings.advancedMode);
   opt('advancedFillMode', settings.advancedFillMode);
   opt('advancedTieMode', settings.advancedTieMode);
@@ -224,6 +229,12 @@ export function settingsFromGame(g: {
   cancelDeadlineHours?: number;
   visibility: 'public' | 'community';
   requiresApproval?: boolean;
+  /** Waitlist auto-promotion needs the promoted player's confirmation, and how
+   *  long they have to give it. Carried through the series so a weekly clone
+   *  keeps the organiser's choice instead of silently reverting to the
+   *  default-on behaviour. */
+  waitlistApprovalRequired?: boolean;
+  waitlistApprovalTimeoutMinutes?: number;
   bringBall?: boolean;
   bringShirts?: boolean;
   notes?: string;
@@ -248,6 +259,7 @@ export function settingsFromGame(g: {
     maxPlayers: g.maxPlayers,
     visibility: g.visibility,
     requiresApproval: g.requiresApproval === true,
+    waitlistApprovalRequired: g.waitlistApprovalRequired === true,
     bringBall: g.bringBall === true,
     bringShirts: g.bringShirts === true,
   };
@@ -271,6 +283,7 @@ export function settingsFromGame(g: {
   opt('ruleTags', g.ruleTags);
   opt('acceptsFillers', g.acceptsFillers);
   opt('fillerMinTrust', g.fillerMinTrust);
+  opt('waitlistApprovalTimeoutMinutes', g.waitlistApprovalTimeoutMinutes);
   opt('advancedMode', g.advancedMode);
   opt('advancedFillMode', g.advancedFillMode);
   opt('advancedTieMode', g.advancedTieMode);

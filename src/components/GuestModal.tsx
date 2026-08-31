@@ -55,6 +55,13 @@ interface Props {
   /** Fires after an admin removes the guest, so the parent can splice it out
    *  of local state. Removal works for active AND waitlisted guests. */
   onRemoved?: (guest: GameGuest) => void | Promise<void>;
+  /** Whether a rating field belongs on this game at all. A quick game has no
+   *  club behind it, so there is no squad to balance and no admin to read the
+   *  number — rating a guest there is a club feature leaking into a one-off
+   *  (Eliran's report). Registered-player ratings were already gated on the
+   *  community's `internalRating` flag; the guest rating was gated on nothing.
+   *  Default true keeps every club caller unchanged. */
+  ratingEnabled?: boolean;
   /** Pre-built "צורף ע״י X · <date>" line (edit mode). The parent resolves the
    *  adder's name + formats the date; shown as a small caption under the title. */
   addedByLabel?: string;
@@ -66,6 +73,7 @@ export function GuestModal({
   callerId,
   existing,
   isAdmin,
+  ratingEnabled = true,
   onClose,
   onChanged,
   onRemoved,
@@ -93,7 +101,7 @@ export function GuestModal({
   const isEdit = !!existing;
   const isAdder = !!existing && !!callerId && existing.addedBy === callerId;
   const canEditName = !isEdit || !!isAdmin;
-  const canEditRating = !isEdit || isAdder;
+  const canEditRating = ratingEnabled && (!isEdit || isAdder);
 
   const trimmed = name.trim();
   const nameValid = trimmed.length > 0 && trimmed.length <= MAX_NAME_LEN;
@@ -283,8 +291,11 @@ export function GuestModal({
             )}
           </View>
 
-          {/* Rating: editable only by the adder. Admins see it read-only. */}
-          {canEditRating || rating != null ? (
+          {/* Rating: editable only by the adder. Admins see it read-only.
+              Absent entirely on a game with no club (see `ratingEnabled`) —
+              including read-only, so a stale value from a club game can't
+              surface here either. */}
+          {ratingEnabled && (canEditRating || rating != null) ? (
             <View style={styles.field}>
               <Text style={styles.label}>{he.guestRatingLabel}</Text>
               {canEditRating ? (

@@ -394,6 +394,8 @@ export const AnalyticsEvent = {
   // ─── Live match — timer ───
   LiveTimerAction: 'live_timer_action',   // gameId, action ('start'|'pause'|'resume'|'reset'), elapsedSec, isAdmin
   LiveStoppagesOpened: 'live_stoppages_opened',   // gameId, stopCount, totalStoppedSec
+  // Advanced live opened on a game with no drafted teams — the degraded state.
+  LiveNoTeamsWarned: 'live_no_teams_warned',      // gameId, isAdmin
   LiveOvertimeReached: 'live_overtime_reached',   // gameId, totalMinutes, round
   LiveTimerRemoteChange: 'live_timer_remote_change',   // gameId, running
 

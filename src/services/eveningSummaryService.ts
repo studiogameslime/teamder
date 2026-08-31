@@ -365,6 +365,15 @@ export const eveningSummaryService = {
       // be crowned by a stats rule that never looked at the result.
       const t = pickEveningTitle(narrative, seed, score);
 
+      // A quick game has no club table to stand in. Its "community" is the
+      // creator's hidden personal group, so the server ranked the player
+      // against a table of one — every metric came back rank 1 / delta 0, and
+      // the card cheerfully announced "שמרת על התואר מלך השערים" for a title
+      // that had never existed, under "מקום 1 מתוך 1 בטבלת המועדון"
+      // (Eliran's report). Drop the whole club-comparison block; the personal
+      // stats and tonight's own ranking below it are still real.
+      const clubRanked = game?.isOrphanContext !== true;
+
       return {
         gameId,
         uid,
@@ -384,12 +393,12 @@ export const eveningSummaryService = {
         titleEmoji: t.emoji,
         insights: pickEveningInsights(narrative, seed),
         scoreDelta: numOrNull(stand?.scoreDelta),
-        rank: numOrNull(stand?.rank),
-        rankTotal: numOrNull(stand?.rankTotal),
-        rankDelta: numOrNull(stand?.rankDelta),
+        rank: clubRanked ? numOrNull(stand?.rank) : null,
+        rankTotal: clubRanked ? numOrNull(stand?.rankTotal) : null,
+        rankDelta: clubRanked ? numOrNull(stand?.rankDelta) : null,
         scoreRank: numOrNull(stand?.scoreRank),
         scoreTotal: numOrNull(stand?.scoreTotal),
-        metrics: readMetrics(stand?.metrics),
+        metrics: clubRanked ? readMetrics(stand?.metrics) : [],
         heldPitch: rs.heldPitch,
         teamGoalsFor,
         teamGoalsAgainst,

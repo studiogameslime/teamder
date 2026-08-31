@@ -311,6 +311,10 @@ export function AdvancedLiveMatchScreen() {
   const playersMap = useGameStore((s) => s.players);
   const [rotation, setRotation] = useState<MatchRotation | null>(null);
   const [draftTeams, setDraftTeams] = useState<DraftTeamsResult | null>(null);
+  // The live listener has delivered at least once. `draftTeams === null` alone
+  // can't tell "no teams" from "not loaded yet", and the no-teams warning below
+  // must not fire on the empty first frame.
+  const [liveLoaded, setLiveLoaded] = useState(false);
   // Opening order of team indices — the first two play first, the rest wait in
   // this order. RANDOMISED by default once teams are drafted; the admin can
   // re-shuffle or tap a waiting team to swap it in (preview controls below).
@@ -348,6 +352,7 @@ export function AdvancedLiveMatchScreen() {
         setLive(liveMatch ?? null);
         setRotation(r ?? null);
         setDraftTeams(d ?? null);
+        setLiveLoaded(true);
         // Hydrate team players AND anyone who went home (they're off their team
         // now, so they wouldn't be fetched otherwise — their name would be
         // missing in the "הלכו הביתה" section).
@@ -940,6 +945,50 @@ export function AdvancedLiveMatchScreen() {
     const grp = myCommunities.find((g) => g.id === game.groupId);
     return !!grp && grp.adminIds.includes(me.id);
   }, [me, game, myCommunities]);
+
+  // ─── "advanced mode, but no teams" gate ────────────────────────────────
+  // Turning advancedMode on and then walking into the live screen without
+  // drafting teams left the admin on a bare timer that looks exactly like the
+  // plain live screen — no rotation, no goal entry, and, crucially, no stats
+  // credited to anyone, with nothing on screen saying so (Eliran's report).
+  // Say it once, up front, and offer the way out.
+  const noTeamsWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!liveLoaded || noTeamsWarnedRef.current) return;
+    // Only before the evening is under way: mid-round the rotation exists and
+    // this is moot, and after a reset the admin doesn't need it re-explained.
+    if (rotation) return;
+    if (draftTeams && draftTeams.teams.length >= 2) return;
+    noTeamsWarnedRef.current = true;
+    logEvent(AnalyticsEvent.LiveNoTeamsWarned, { gameId, isAdmin });
+    appAlert(
+      he.liveNoTeamsTitle,
+      he.liveNoTeamsBody,
+      [
+        // Only an admin can actually draft, so a viewer gets the explanation
+        // without a button that would bounce them off a screen they can't use.
+        ...(isAdmin
+          ? [
+              {
+                text: he.liveNoTeamsGoDraft,
+                onPress: () => {
+                  // Every stack that registers LiveMatch also registers
+                  // DraftSetup (GameStack / CommunitiesStack / ProfileStack),
+                  // so this resolves from all of them — verified, not assumed.
+                  (
+                    nav as unknown as {
+                      navigate: (r: string, p?: object) => void;
+                    }
+                  ).navigate('DraftSetup', { gameId });
+                },
+              },
+            ]
+          : []),
+        { text: he.liveNoTeamsContinue, style: 'cancel' as const },
+      ],
+      { tone: 'warning' },
+    );
+  }, [liveLoaded, rotation, draftTeams, isAdmin, gameId, nav]);
 
   // ─── Timer controls (flow through Firestore transactions) ──────────────
   const onTimerStart = async () => {
@@ -1544,6 +1593,7 @@ export function AdvancedLiveMatchScreen() {
             // happened to be scored in the first minute.
             minute={Math.floor((totalMs > 0 ? clockMs : timerMs) / 60000) + 1}
             canEdit={isAdmin}
+            roundNumber={rotation?.round ?? 1}
             totalMinutes={totalMinutes || undefined}
             timerText={formatTime(totalMs > 0 ? clockMs : timerMs)}
             statusLabel={statusLabel}
