@@ -335,8 +335,21 @@ enum class MessageType {
 }
 
 data class FrequencyCap(
+    /**
+     * How many times, or `null` for UNLIMITED.
+     *
+     * Nullable because the composer sends null for it: "Allow this campaign to
+     * show more than once per user" with no number means no ceiling, and the
+     * backend and web SDK have always read it that way.
+     *
+     * It was a non-null `Int`. Gson does not run constructors, so a JSON null
+     * left the primitive at 0 and `recentImpressions.size >= 0` was ALWAYS
+     * true - a campaign set to unlimited displayed never, the exact opposite of
+     * the setting. iOS failed the same input differently (it could not decode
+     * the cap at all and fell back to show-once).
+     */
     @SerializedName("maxImpressions")
-    val maxImpressions: Int,
+    val maxImpressions: Int? = null,
 
     @SerializedName("timeWindow")
     val timeWindow: String,

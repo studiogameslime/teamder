@@ -9,6 +9,7 @@ import io.joryio.sdk.network.NetworkClient
 import io.joryio.sdk.network.NetworkResult
 import kotlinx.coroutines.*
 import java.util.Date
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Manages in-app messaging campaigns
@@ -46,6 +47,25 @@ internal class InAppMessagingManager(
     internal var hostCapabilities: List<String>? = null
     private var campaigns: List<InAppCampaign> = emptyList()
     private var lastSyncTime: Date? = null
+
+    /**
+     * Is a sync IN FLIGHT right now?
+     *
+     * Android had no sync guard of ANY kind - not an in-flight flag and not a
+     * minimum interval - so every trigger (session start, foreground, push tap,
+     * attribute change, a host calling syncInAppCampaigns) went straight to the
+     * network, and two that overlapped both evaluated and both could display.
+     *
+     * The web SDK has always claimed `isSyncing` before its request. iOS
+     * checked a `lastSyncTime` that is only written once the response arrives,
+     * which is a check-then-act race across the whole round trip. Observed on
+     * production 2026-08-31: paired /v1/in-app/sync requests 40ms apart on every
+     * launch, and one queued test send counted as two displays.
+     *
+     * Atomic compare-and-set rather than a plain flag: `sync()` is called from
+     * several coroutines and there is no lock around this class.
+     */
+    private val isSyncing = AtomicBoolean(false)
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     /** Seconds between two DIFFERENT campaigns. Replaced by the server's value. */
@@ -66,6 +86,13 @@ internal class InAppMessagingManager(
      * Sync campaigns from backend
      */
     suspend fun sync() {
+        // Check AND claim in one atomic step. Reading a flag and then setting it
+        // is the race this exists to close, so compareAndSet does both or
+        // neither.
+        if (!isSyncing.compareAndSet(false, true)) {
+            logger.debug("Skipping sync, a sync is already in flight")
+            return
+        }
         try {
             logger.debug("Syncing in-app campaigns")
 
@@ -122,6 +149,11 @@ internal class InAppMessagingManager(
             }
         } catch (e: Exception) {
             logger.error("Failed to sync campaigns: ${e.message}", e)
+        } finally {
+            // Released on EVERY exit, the exception path included. A sync that
+            // fails must not wedge the flag on, or in-app messaging goes silent
+            // for the rest of the process with no error to show for it.
+            isSyncing.set(false)
         }
     }
 
@@ -286,6 +318,32 @@ internal class InAppMessagingManager(
             return false
         }
 
+        // SHOW ONCE unless the marketer asked for more.
+        //
+        // The product rule is that a campaign is shown to a user once, and
+        // repeating it is something you turn ON - which is what a frequency cap
+        // expresses. Android honoured the cap but had no default, so a campaign
+        // with no cap set re-displayed on EVERY sync: every launch, every
+        // foreground. iOS has always applied show-once-ever in exactly this
+        // position (`frequencyCap != nil || !displayedCampaigns.contains(id)`),
+        // so the same campaign behaved oppositely on the two platforms and the
+        // marketer had no way to know which they were getting.
+        //
+        // Deliberately built on the impression history rather than on a second
+        // "displayed" set. That history is already persisted, and it is written
+        // in trackImpression - AFTER a message really reached the screen. iOS's
+        // separate set is written when a display is CLAIMED, which is how one
+        // failed render silently suppressed a campaign forever there
+        // (fixed 2026-08-31). Reusing the record that means "this was actually
+        // seen" cannot reproduce that.
+        //
+        // resetDisplayedCampaigns() clears this same history, so the testing
+        // affordance keeps working unchanged.
+        if (campaign.frequencyCap == null && storage.getCampaignImpressions(campaign.id).isNotEmpty()) {
+            logger.debug("Campaign ${campaign.name} was already shown and sets no frequency cap; skipping")
+            return false
+        }
+
         // Check frequency cap
         if (!checkFrequencyCap(campaign)) {
             logger.debug("Campaign ${campaign.name} frequency cap exceeded")
@@ -325,12 +383,18 @@ internal class InAppMessagingManager(
         val impressions = storage.getCampaignImpressions(campaign.id)
         val now = Date()
 
-        // Filter impressions within time window
+        // Filter impressions within time window. null = ALL TIME
+        // ('once' / 'lifetime' / 'session'), so every impression on record
+        // counts - which is what makes the composer's default, "each user sees
+        // this campaign one time only", mean once rather than once per day.
         val windowStart = getWindowStart(now, frequencyCap.timeWindow)
-        val recentImpressions = impressions.filter { it.after(windowStart) }
+        val recentImpressions =
+            if (windowStart == null) impressions else impressions.filter { it.after(windowStart) }
 
-        // Check max impressions
-        if (recentImpressions.size >= frequencyCap.maxImpressions) {
+        // Check max impressions. null = UNLIMITED, so there is no ceiling to
+        // reach - the window and the minimum delay below still apply.
+        val maxImpressions = frequencyCap.maxImpressions
+        if (maxImpressions != null && recentImpressions.size >= maxImpressions) {
             return false
         }
 
@@ -350,28 +414,56 @@ internal class InAppMessagingManager(
     /**
      * Get window start time based on time window string
      */
-    private fun getWindowStart(now: Date, timeWindow: String): Date {
-        val millisInDay = 24 * 60 * 60 * 1000L
-        val millisInHour = 60 * 60 * 1000L
-        val millisInMinute = 60 * 1000L
+    /**
+     * Start of the frequency-cap window, or `null` for ALL TIME.
+     *
+     * Shared vocabulary - see the backend's common/in-app-frequency-window.ts.
+     * Android knew only d/h/m, and read `m` as MINUTES while the dashboard and
+     * every other layer meant MONTHS: a three-month cap was enforced as three
+     * minutes, a 43,000x error in the direction of over-messaging, which is the
+     * one direction a frequency cap exists to prevent.
+     *
+     * Two more it could not read, both falling through to "1 day":
+     *   'lifetime'  the DEFAULT saved for "show once per user", so the product
+     *               promise "one time only" meant "once per day, forever"
+     *   '2w'        weeks had no branch at all - and the fallback discarded the
+     *               NUMBER too, so any weeks window became one day
+     *
+     * `min` is minutes and `m` is months, tested longest-first: "30min" ends
+     * with "m" as well.
+     */
+    private fun getWindowStart(now: Date, timeWindow: String): Date? {
+        val w = timeWindow.trim().lowercase()
 
-        val offset = when {
-            timeWindow.endsWith("d") -> {
-                val days = timeWindow.dropLast(1).toIntOrNull() ?: 1
-                days * millisInDay
-            }
-            timeWindow.endsWith("h") -> {
-                val hours = timeWindow.dropLast(1).toIntOrNull() ?: 1
-                hours * millisInHour
-            }
-            timeWindow.endsWith("m") -> {
-                val minutes = timeWindow.dropLast(1).toIntOrNull() ?: 1
-                minutes * millisInMinute
-            }
-            else -> millisInDay // Default to 1 day
+        when (w) {
+            // 'session' is all-time here deliberately: this manager holds no
+            // session boundary, and counting MORE impressions caps harder,
+            // which is the safe direction for a control against over-messaging.
+            "once", "lifetime", "session" -> return null
+            "day" -> return Date(now.time - 24L * 60 * 60 * 1000)
+            "week" -> return Date(now.time - 7L * 24 * 60 * 60 * 1000)
+            "month" -> return Date(now.time - 30L * 24 * 60 * 60 * 1000)
         }
 
-        return Date(now.time - offset)
+        // Longest suffix first, so "min" and "mo" are never read as "m".
+        val units = listOf(
+            "min" to 60L * 1000,
+            "mo" to 30L * 24 * 60 * 60 * 1000,
+            "h" to 60L * 60 * 1000,
+            "d" to 24L * 60 * 60 * 1000,
+            "w" to 7L * 24 * 60 * 60 * 1000,
+            "m" to 30L * 24 * 60 * 60 * 1000,
+        )
+        for ((suffix, millis) in units) {
+            if (!w.endsWith(suffix)) continue
+            val value = w.dropLast(suffix.length).toLongOrNull() ?: break
+            if (value <= 0) break
+            return Date(now.time - value * millis)
+        }
+
+        // Unparseable. One day, matching the backend - safer than all-time
+        // (which caps harder than asked) or zero (which does not cap).
+        return Date(now.time - 24L * 60 * 60 * 1000)
     }
 
     /** ISO-8601 UTC, the format the web SDK sends and the backend canonicalises to. */

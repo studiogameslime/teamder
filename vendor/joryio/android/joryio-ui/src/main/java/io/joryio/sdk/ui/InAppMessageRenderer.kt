@@ -335,6 +335,9 @@ internal class InAppMessageRenderer(
             <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
             <style>
               html,body{margin:0;padding:0;background:transparent;}
+              /* Responsive by default - see the iOS renderer for why. Before
+                 the author stylesheet, so an explicit width still wins. */
+              img,video{max-width:100%;height:auto;}
               ${if (type == MessageType.FULLSCREEN) "html,body{height:100%;}" else ""}
             </style>
             <style>${content.css}</style>

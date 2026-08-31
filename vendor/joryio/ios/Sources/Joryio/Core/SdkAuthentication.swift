@@ -38,11 +38,26 @@ public struct SdkAuthError {
     /// (or could not obtain a fresh token). When `true`, the request was left
     /// queued and no further automatic retry will happen for it this cycle.
     public let refreshExhausted: Bool
+    /// The backend's ORIGINAL `reason` string, before it was mapped onto the
+    /// enum above.
+    ///
+    /// Carried because `reason` collapses to `.unknown` for any value this SDK
+    /// version does not know, which is precisely the case where a host most
+    /// needs to see what the server actually said - a new backend reason is
+    /// otherwise indistinguishable from a parse failure. Android has always
+    /// exposed this; iOS parsed the string and threw it away.
+    public let rawReason: String?
 
-    public init(reason: SdkAuthErrorReason, endpoint: String, refreshExhausted: Bool) {
+    public init(
+        reason: SdkAuthErrorReason,
+        endpoint: String,
+        refreshExhausted: Bool,
+        rawReason: String? = nil
+    ) {
         self.reason = reason
         self.endpoint = endpoint
         self.refreshExhausted = refreshExhausted
+        self.rawReason = rawReason
     }
 }
 

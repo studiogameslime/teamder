@@ -1684,17 +1684,24 @@ class Joryio private constructor(
             withSdk { it.flush() }
         }
 
-        // ── LOCAL PATCH (Teamder, 2026-08-28) ──────────────────────────────
-        // Upstream's tracking-consent commit bridged optOut/optIn/
-        // isUserOptedOut in the React Native module, which calls them
-        // STATICALLY as Joryio.optOut() — but added no companion forwarders
-        // here, so :joryio_react-native-sdk:compileReleaseKotlin fails with
-        // "Unresolved reference 'optOut'". The parity tripwire greps the SDK
-        // sources for method names and a grep cannot tell an instance method
-        // from a static one, so it passed on code that does not compile.
+        // ── LOCAL PATCH (Teamder, 2026-08-31) ──────────────────────────────
+        // The React Native module calls all five of these STATICALLY
+        // (Joryio.optOut(), Joryio.syncInAppCampaigns(), …) but Joryio is a
+        // `class` with a companion, and upstream declares them as INSTANCE
+        // methods only — so :joryio_react-native-sdk:compileReleaseKotlin
+        // fails with "Unresolved reference".
         //
-        // Same shape as the subscription forwarders below, which the marketing
-        // commit DID add. Remove when upstream carries these.
+        // Third pull in a row with this shape, and this time the commit that
+        // ADDED two of the bindings (969a0caf4 "bridge methods that were bound
+        // on one platform or existed on none") is the commit that broke them:
+        // it bound syncInAppCampaigns and resetDisplayedCampaigns on Android
+        // without adding the statics they call. Their parity tripwire greps
+        // the SDK sources for method NAMES, and a grep cannot tell an instance
+        // method from a static one — so it keeps approving code that does not
+        // compile.
+        //
+        // Same shape as the subscription forwarders directly below, which the
+        // marketing commit DID add. Remove when upstream carries these.
         fun optOut() {
             withSdk { it.optOut() }
         }
@@ -1708,6 +1715,14 @@ class Joryio private constructor(
         // a Boolean. Before initialize() nobody has opted out, so false is both
         // the honest answer and the safe default.
         fun isUserOptedOut(): Boolean = instance?.isUserOptedOut() ?: false
+
+        fun syncInAppCampaigns() {
+            withSdk { it.syncInAppCampaigns() }
+        }
+
+        fun resetDisplayedCampaigns() {
+            withSdk { it.resetDisplayedCampaigns() }
+        }
 
         // Marketing subscription - NOT optIn/optOut, which is tracking consent.
         fun setSubscription(channel: String, status: String) {

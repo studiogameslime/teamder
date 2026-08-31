@@ -232,6 +232,13 @@ internal class NetworkClient(
             val refreshed = sdkAuthenticator.currentToken()
             if (refreshed == null || refreshed == token) {
                 // No (new) token available synchronously → stop. Events stay queued.
+                //
+                // Say so. This branch used to return in silence, so a host that
+                // set no token could not distinguish "the SDK is asking" from
+                // "the SDK has given up", and never learned the request was
+                // abandoned. iOS has always emitted this second, terminal
+                // notification; Android emitted nothing.
+                sdkAuthenticator.notifyError(authError.copy(refreshExhausted = true))
                 return@Interceptor firstResponse
             }
 
@@ -246,7 +253,8 @@ internal class NetworkClient(
             // If it STILL fails auth, surface the terminal error and stop — no loop.
             parseSdkAuthError(retryResponse)?.let {
                 logger.error("SDK authentication still failing after refresh: ${it.rawReason ?: it.reason}")
-                sdkAuthenticator.notifyError(it)
+                // Terminal: a fresh token was supplied and rejected too.
+                sdkAuthenticator.notifyError(it.copy(refreshExhausted = true))
             }
 
             retryResponse
@@ -275,7 +283,8 @@ internal class NetworkClient(
             } else {
                 SdkAuthError(
                     reason = SdkAuthErrorReason.fromWire(body.reason),
-                    rawReason = body.reason
+                    rawReason = body.reason,
+                    endpoint = response.request.url.encodedPath
                 )
             }
         } catch (e: Exception) {

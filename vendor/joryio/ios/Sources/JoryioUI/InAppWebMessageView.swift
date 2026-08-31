@@ -209,6 +209,12 @@ final class InAppWebMessageView: BaseMessageView {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <style>
           html,body{margin:0;padding:0;background:transparent;}
+          /* Responsive by default: an authored image keeps its intrinsic size
+             otherwise, so anything wider than the device overflows and the
+             message can be scrolled sideways. Declared BEFORE the author
+             stylesheet, so an explicit width still wins. height:auto keeps the
+             aspect ratio when only the width is constrained. */
+          img,video{max-width:100%;height:auto;}
           \(campaign.type == .fullscreen ? "html,body{height:100%;}" : "")
         </style>
         <style>\(css)</style>

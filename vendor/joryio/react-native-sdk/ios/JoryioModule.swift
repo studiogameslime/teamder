@@ -516,8 +516,13 @@ class JoryioModule: RCTEventEmitter {
   /// has an active listener (RCTEventEmitter requirement).
   private func emitSdkAuthError(_ authError: SdkAuthError) {
     guard hasListeners else { return }
+    // All four fields, on both platforms. A JS handler is written once; it used
+    // to receive {reason, endpoint, refreshExhausted} here and
+    // {reason, rawReason} on Android, so half of any handler was silently dead
+    // on whichever platform the developer had not tested.
     sendEvent(withName: "JoryioSdkAuthError", body: [
       "reason": authError.reason.rawValue,
+      "rawReason": authError.rawReason as Any,
       "endpoint": authError.endpoint,
       "refreshExhausted": authError.refreshExhausted
     ])

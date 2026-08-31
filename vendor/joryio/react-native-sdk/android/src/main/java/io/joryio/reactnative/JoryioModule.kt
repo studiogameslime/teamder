@@ -444,6 +444,34 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
         )
     }
 
+    /**
+     * Ask the SDK to fetch in-app campaigns now.
+     *
+     * Bound here because it was iOS-only, so `Joryio.syncInAppCampaigns()` from
+     * JS was `undefined` on Android and _dispatch's catch swallowed it - a
+     * cross-platform API that silently did nothing on half its platforms. The
+     * native method has existed all along (Joryio.kt:1053); only the binding
+     * was missing.
+     */
+    @ReactMethod
+    fun syncInAppCampaigns() {
+        Joryio.syncInAppCampaigns()
+    }
+
+    /**
+     * Forget local frequency state so a campaign can be re-tested.
+     *
+     * Also previously iOS-only, and the JS doc said Android had "no
+     * already-displayed filter at all - nothing to reset". That is out of date:
+     * Joryio.kt:1102 clears the per-campaign impression history and the
+     * cross-campaign gap, which is exactly the state that suppresses a repeat
+     * on Android. It is debug-gated natively, so a release build is unaffected.
+     */
+    @ReactMethod
+    fun resetDisplayedCampaigns() {
+        Joryio.resetDisplayedCampaigns()
+    }
+
     @ReactMethod
     fun enableInAppMessages(capabilities: ReadableArray?) {
         // What THIS app can render, declared from JS.
@@ -561,6 +589,11 @@ class JoryioModule(private val reactContext: ReactApplicationContext) :
                 // matching the JS SdkAuthError.reason union.
                 putString("reason", error.reason.name.lowercase())
                 error.rawReason?.let { putString("rawReason", it) }
+                // All four fields, on both platforms - see the iOS emitter. A JS
+                // handler that signs the user out on refreshExhausted used to be
+                // dead code on Android, because the field only existed on iOS.
+                error.endpoint?.let { putString("endpoint", it) }
+                putBoolean("refreshExhausted", error.refreshExhausted)
             }
 
             reactContext

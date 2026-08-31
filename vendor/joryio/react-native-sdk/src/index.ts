@@ -108,8 +108,29 @@ export type PushPermissionStatus =
 /** Reason an ingest request was rejected with a 401 `sdk_authentication_error`. */
 export interface SdkAuthError {
   reason: 'missing' | 'invalid' | 'expired' | 'sub_mismatch' | 'unknown';
-  /** Raw wire `reason` string, for logging / forward-compat. */
+  /**
+   * Raw wire `reason` string, for logging / forward-compat.
+   *
+   * Worth reading whenever `reason` is `'unknown'`: that value means only that
+   * THIS SDK version did not recognise what the server sent, and this is the
+   * only place the server's actual word survives.
+   */
   rawReason?: string;
+  /** The ingest endpoint whose request was rejected. */
+  endpoint?: string;
+  /**
+   * The SDK has STOPPED trying for this request - either no fresh token
+   * arrived, or one did and was rejected as well.
+   *
+   * `false` means the SDK is asking you for a token; `true` means it gave up.
+   * Branch on this rather than on the arrival of an error, or a handler that
+   * signs the user out fires on the first recoverable rejection.
+   *
+   * Both platforms emit all four fields. Until 2026-08-31 iOS sent
+   * {reason, endpoint, refreshExhausted} and Android sent {reason, rawReason},
+   * so half of any handler was dead on whichever platform was not tested.
+   */
+  refreshExhausted?: boolean;
 }
 
 /**
@@ -771,7 +792,14 @@ class JoryioSDK {
    * moments in between - after resetDisplayedCampaigns(), or once the user has
    * done something that should make them newly eligible.
    *
-   * iOS only for now: the Android facade exposes no public sync.
+   * Both platforms. It was iOS-only, which was a missing BINDING rather than a
+   * missing capability - the Android facade has exposed `syncInAppCampaigns()`
+   * all along and the module simply never bound it, so this call was
+   * `undefined` on Android and did nothing at all.
+   *
+   * `?.()` is kept for a different reason than before: an app on an older
+   * native module than this JS package would otherwise throw
+   * "undefined is not a function".
    */
   syncInAppCampaigns(): void {
     this._dispatch(() => JoryioModule.syncInAppCampaigns?.());
@@ -785,15 +813,24 @@ class JoryioSDK {
    * Useful when testing: without it you must delete and reinstall the app to
    * see the same campaign twice.
    *
-   * iOS ONLY today. Android has no already-displayed filter at all - the same
-   * campaign can show repeatedly there - so there is nothing to reset. That
-   * divergence is a real behavioural difference between the platforms, not a
-   * missing binding.
+   * Both platforms, but they forget different things, and the difference is
+   * real rather than an oversight:
+   *
+   *   iOS      clears the persisted show-once-ever set AND the per-campaign
+   *            impression history.
+   *   Android  has no show-once-ever set - a campaign with no frequency cap
+   *            repeats there by design - so it clears the impression history
+   *            and the cross-campaign gap, which is the state that actually
+   *            suppresses a repeat on that platform.
+   *
+   * This was documented as "iOS ONLY - Android has nothing to reset", which was
+   * out of date: Joryio.kt has exposed resetDisplayedCampaigns() throughout and
+   * it does the second thing above. Debug-gated natively, so release builds are
+   * unaffected on both.
    */
   resetDisplayedCampaigns(): void {
-    // `?.()` like its sibling syncInAppCampaigns: iOS-only, so a plain call is
-    // "undefined is not a function" on Android. _dispatch's catch would swallow
-    // it, but a warning-per-call is not the same as a documented no-op.
+    // `?.()` guards an app on an older native module than this JS package, not
+    // a platform gap.
     this._dispatch(() => JoryioModule.resetDisplayedCampaigns?.());
   }
 

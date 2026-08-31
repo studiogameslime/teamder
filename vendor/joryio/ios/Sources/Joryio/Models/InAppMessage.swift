@@ -247,7 +247,20 @@ public struct InAppCampaign: Codable {
     }
 
     public struct FrequencyCap: Codable {
-        public let maxImpressions: Int
+        /**
+         How many times, or `nil` for UNLIMITED.
+
+         Nullable because the composer sends null for it. "Allow this campaign
+         to show more than once per user" with no number means no ceiling, and
+         the backend and web SDK have always read a missing/null value that way.
+
+         It was `Int` here, and Swift cannot decode null into a non-optional -
+         so `try? decode(FrequencyCap.self)` threw and the WHOLE cap came back
+         nil. With no cap, iOS fell through to its show-once-ever set, and a
+         marketer who explicitly asked for unlimited got exactly one display.
+         The setting did the opposite of what it said.
+         */
+        public let maxImpressions: Int?
         public let timeWindow: String
         public let minDelayBetweenImpressions: Int?
     }

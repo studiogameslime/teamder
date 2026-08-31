@@ -289,7 +289,7 @@ class PushNotificationManager: NSObject {
         switch netError {
         case .unauthorized:
             return ("SDK key rejected by the server (401)", true)
-        case let .sdkAuthError(reason, endpoint):
+        case let .sdkAuthError(reason, endpoint, _):
             return ("SDK authentication failed (\(reason)) at \(endpoint)", true)
         case let .httpError(code):
             // 403 is an authorization refusal too - retrying it forever without
@@ -364,12 +364,13 @@ class PushNotificationManager: NSObject {
         reportDelivered(trackingId: trackingId)
     }
 
-    // LOCAL PATCH (Teamder, 2026-08-28). The path above only fires when the
-    // SDK itself handles the notification. An app running its own messaging
-    // stack - @react-native-firebase/messaging here - never routes the message
-    // through the SDK, so it has to be able to report a receipt by trackingId.
-    // The React Native bridge already calls exactly this; only the iOS side of
-    // it was missing. See the facade method in JoryioSDK.swift.
+    /// Report a delivery by trackingId, for a host that received the push itself.
+    ///
+    /// Split out of the userInfo variant above rather than duplicated: an app
+    /// with its own notification handling never routes through ours, so it has
+    /// the trackingId but not our extraction. Android has exposed exactly this
+    /// (Joryio.reportPushDelivered) all along; iOS had the capability and no
+    /// public way in.
     func reportDelivered(trackingId: String) {
         guard !trackingId.isEmpty else { return }
         Task { [weak self] in

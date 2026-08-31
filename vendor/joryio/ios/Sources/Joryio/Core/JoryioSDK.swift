@@ -1280,25 +1280,6 @@ public class Joryio {
         Task { await reportPushPermissionIfChanged() }
     }
 
-    /// Report that a push actually reached this device.
-    ///
-    /// LOCAL PATCH (Teamder, 2026-08-28). Upstream added delivery receipts to
-    /// all five SDKs, and the React Native bridge calls
-    /// `Joryio.shared.reportPushDelivered(trackingId)` — but on iOS the method
-    /// was only ever reachable from the SDK's own notification handling, never
-    /// from the public facade, so the bridge does not compile. Their parity
-    /// tripwire greps the sources for the name, which is present in
-    /// NetworkClient, so it passed. Unlabelled first argument to match the call
-    /// the bridge already makes. Remove when upstream carries it.
-    public func reportPushDelivered(_ trackingId: String) {
-        guard isInitialized else {
-            logNotInitialized()
-            return
-        }
-
-        pushNotifications.reportDelivered(trackingId: trackingId)
-    }
-
     /// Track a push-notification click by tracking id.
     /// Mirrors the Android SDK's `trackPushClick(String)`.
     public func trackPushClick(trackingId: String) {
@@ -1397,6 +1378,35 @@ public class Joryio {
     }
 
     /// Unregister from push notifications
+    /**
+     Report that a push arrived on this device.
+
+     For a host app running its OWN notification handling - which most apps with
+     an existing push stack do - so nothing routes through the SDK's handlers
+     and it would otherwise report no deliveries at all. Those apps already call
+     `registerPushToken`; this is the matching half.
+
+     - Parameter trackingId: the `trackingId` from the notification's payload.
+
+     Named and shaped to match `Joryio.reportPushDelivered(trackingId)` on
+     Android, which has had it throughout. iOS reported deliveries only from its
+     own handlers, so a host with its own stack had no way in - and the React
+     Native bridge called `Joryio.shared.reportPushDelivered` regardless
+     (JoryioModule.swift:193), against a method that did not exist.
+
+     Coverage is unchanged and still a LOWER BOUND on iOS: a notification
+     delivered while the app is suspended is handled by the Notification Service
+     Extension, a separate process without the SDK's config. See
+     PushNotificationManager.reportDelivered.
+     */
+    public func reportPushDelivered(_ trackingId: String) {
+        guard isInitialized else {
+            logNotInitialized()
+            return
+        }
+        pushNotifications.reportDelivered(trackingId: trackingId)
+    }
+
     public func unregisterPush() {
         guard isInitialized else { return }
         pushNotifications.unregister()

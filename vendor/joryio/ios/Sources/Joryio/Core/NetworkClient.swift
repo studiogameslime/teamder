@@ -283,20 +283,20 @@ class NetworkClient {
     ) async throws -> R {
         do {
             return try await performRequest(endpoint: endpoint, method: method, body: body)
-        } catch let NetworkError.sdkAuthError(reason, ep) {
+        } catch let NetworkError.sdkAuthError(reason, ep, raw) {
             // Only meaningful when SDK auth is enabled; otherwise rethrow.
-            guard authStore.enabled else { throw NetworkError.sdkAuthError(reason: reason, endpoint: ep) }
+            guard authStore.enabled else { throw NetworkError.sdkAuthError(reason: reason, endpoint: ep, rawReason: raw) }
 
             let failedToken = authStore.currentToken()
 
             guard let handler = authStore.currentHandler() else {
                 logger.warn("SDK auth rejected (\(reason.rawValue)) at \(ep) but no error handler is set; leaving request unsent")
-                throw NetworkError.sdkAuthError(reason: reason, endpoint: ep)
+                throw NetworkError.sdkAuthError(reason: reason, endpoint: ep, rawReason: raw)
             }
 
             // Ask the app to mint a fresh token. It responds by calling
             // setSdkAuthenticationToken(_:), synchronously or asynchronously.
-            handler(SdkAuthError(reason: reason, endpoint: ep, refreshExhausted: false))
+            handler(SdkAuthError(reason: reason, endpoint: ep, refreshExhausted: false, rawReason: raw))
 
             if let refreshed = await waitForRefreshedToken(differentFrom: failedToken),
                refreshed != failedToken {
@@ -307,8 +307,8 @@ class NetworkClient {
 
             // No fresh token arrived in time — surface exhaustion and stop (no loop).
             logger.warn("No refreshed SDK auth token after handler for \(ep); not retrying")
-            handler(SdkAuthError(reason: reason, endpoint: ep, refreshExhausted: true))
-            throw NetworkError.sdkAuthError(reason: reason, endpoint: ep)
+            handler(SdkAuthError(reason: reason, endpoint: ep, refreshExhausted: true, rawReason: raw))
+            throw NetworkError.sdkAuthError(reason: reason, endpoint: ep, rawReason: raw)
         }
     }
 
@@ -366,8 +366,12 @@ class NetworkClient {
             if httpResponse.statusCode == 401 {
                 // Distinguish a customer-JWT rejection (triggers refresh-and-retry)
                 // from a plain unauthorized (bad SDK key — permanent).
-                if let reason = Self.parseSdkAuthError(from: data) {
-                    throw NetworkError.sdkAuthError(reason: reason, endpoint: endpoint)
+                if let parsed = Self.parseSdkAuthError(from: data) {
+                    throw NetworkError.sdkAuthError(
+                        reason: parsed.reason,
+                        endpoint: endpoint,
+                        rawReason: parsed.rawReason
+                    )
                 }
                 throw NetworkError.unauthorized
             } else if httpResponse.statusCode == 429 {
@@ -400,7 +404,7 @@ class NetworkClient {
         case httpError(Int)
         /// A 401 whose body is `{ error: "sdk_authentication_error", reason: ... }`.
         /// Carries the reason and endpoint so the refresh flow can surface context.
-        case sdkAuthError(reason: SdkAuthErrorReason, endpoint: String)
+        case sdkAuthError(reason: SdkAuthErrorReason, endpoint: String, rawReason: String?)
         case unknown
     }
 
@@ -412,14 +416,18 @@ class NetworkClient {
 
     /// Decode a 401 body into an `SdkAuthErrorReason` if it is an
     /// `sdk_authentication_error`; otherwise nil (a plain unauthorized).
-    private static func parseSdkAuthError(from data: Data) -> SdkAuthErrorReason? {
+    private static func parseSdkAuthError(
+        from data: Data
+    ) -> (reason: SdkAuthErrorReason, rawReason: String?)? {
         guard
             let body = try? JSONDecoder().decode(SdkAuthErrorBody.self, from: data),
             body.error == "sdk_authentication_error"
         else {
             return nil
         }
-        return SdkAuthErrorReason(backendReason: body.reason)
+        // Both halves: the mapped enum for branching, and what the server
+        // literally said for the `.unknown` case.
+        return (SdkAuthErrorReason(backendReason: body.reason), body.reason)
     }
 
     /// Parse a `Retry-After` header. Supports the delta-seconds form (e.g. "30")

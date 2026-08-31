@@ -19,6 +19,21 @@ class InAppMessagingManager {
     private var campaignImpressions: [String: [Date]] = [:]
     private var lastSyncTime: Date?
     private var isDisplaying = false
+    /**
+     Is a sync IN FLIGHT right now?
+
+     Distinct from `lastSyncTime`, and both are needed. `lastSyncTime` is only
+     written once the response comes back, so it says nothing about the window
+     between issuing a request and receiving it - and that window is where two
+     callers collide. Two concurrent `syncCampaigns()` calls both read a stale
+     `lastSyncTime`, both pass the interval check, and both go to the network.
+
+     Observed on production 2026-08-31: every launch produced a PAIR of
+     `/v1/in-app/sync` requests 40ms apart, and one queued test send was counted
+     as two displays. The web SDK has always claimed an in-flight flag before
+     its request (`isSyncing`); iOS and Android checked only the timestamp.
+     */
+    private var isSyncing = false
 
     // Configuration
     private let syncInterval: TimeInterval = 300 // 5 minutes
@@ -70,17 +85,30 @@ class InAppMessagingManager {
     func syncCampaigns() async {
         let sessionId = sessionManager.getSessionId()
 
-        // Check if we need to sync (rate limiting)
-        let shouldSkip = withState { () -> Bool in
-            if let lastSync = lastSyncTime, Date().timeIntervalSince(lastSync) < syncInterval {
-                return true
+        // Check AND CLAIM in one locked block, exactly like the display slot in
+        // evaluateAndDisplay. Reading the guard and taking it in separate steps
+        // is what let two callers through: `lastSyncTime` is not written until
+        // the response arrives, so during the round trip the check is answering
+        // with information that is already stale.
+        let skipReason = withState { () -> String? in
+            if isSyncing {
+                return "a sync is already in flight"
             }
-            return false
+            if let lastSync = lastSyncTime, Date().timeIntervalSince(lastSync) < syncInterval {
+                return "last sync was too recent"
+            }
+            isSyncing = true
+            return nil
         }
-        if shouldSkip {
-            logger.debug("Skipping sync, last sync was too recent")
+        if let skipReason {
+            logger.debug("Skipping sync, \(skipReason)")
             return
         }
+        // Released on EVERY exit - the throw inside the do block below included.
+        // A sync that fails must not wedge the flag on, or the SDK stops syncing
+        // for the rest of the process and in-app messaging goes quiet with no
+        // error to show for it.
+        defer { withState { isSyncing = false } }
 
         do {
             let request = SessionSyncRequest(
@@ -225,9 +253,26 @@ class InAppMessagingManager {
         } else {
             // Undo the local bookkeeping claimed optimistically before display,
             // so a failed render does not permanently suppress the campaign.
+            //
+            // MUST re-save. The claim above went through recordImpressionLocked,
+            // which calls saveImpressionData() - so by the time we get here the
+            // id is already on DISK in `jry_displayed_campaigns`. Undoing only
+            // the in-memory copy left that file holding a campaign that was
+            // never shown, and loadCachedData() read it straight back on the
+            // next launch. From then on the campaign was filtered out by the
+            // `displayedCampaigns.contains` check before anything looked at its
+            // content, so ONE failed render suppressed it on that device
+            // forever, silently and unrecoverably (short of resetDisplayedCampaigns).
+            //
+            // Observed 2026-08-31: an in-app test send was served on three
+            // consecutive syncs, chosen every time, and never displayed - the
+            // server logged "1 eligible campaigns" while the device dropped it
+            // at the filter. The message that finally appeared was a different
+            // campaign, whose id had never been claimed.
             withState {
                 displayedCampaigns.remove(campaign.id)
                 campaignImpressions[campaign.id]?.removeLast()
+                saveImpressionData()
             }
         }
     }
@@ -263,15 +308,22 @@ class InAppMessagingManager {
         // Get impression history for this campaign
         let impressions = campaignImpressions[campaign.id] ?? []
 
-        // Parse time window
-        let timeWindow = parseTimeWindow(frequencyCap.timeWindow)
-        let cutoffTime = Date().addingTimeInterval(-timeWindow)
+        // Parse time window. nil = ALL TIME ('once' / 'lifetime' / 'session'),
+        // so every impression on record counts - which is what makes the
+        // composer's default, "each user sees this campaign one time only",
+        // actually mean once rather than once per day.
+        let recentImpressions: [Date]
+        if let windowSeconds = Self.parseTimeWindow(frequencyCap.timeWindow) {
+            let cutoffTime = Date().addingTimeInterval(-windowSeconds)
+            recentImpressions = impressions.filter { $0 > cutoffTime }
+        } else {
+            recentImpressions = impressions
+        }
 
-        // Count impressions within time window
-        let recentImpressions = impressions.filter { $0 > cutoffTime }
-
-        // Check max impressions
-        if recentImpressions.count >= frequencyCap.maxImpressions {
+        // Check max impressions. nil = UNLIMITED, so there is no ceiling to
+        // reach - the window and the minimum delay below still apply.
+        if let maxImpressions = frequencyCap.maxImpressions,
+           recentImpressions.count >= maxImpressions {
             logger.debug("Campaign \(campaign.id) has reached frequency cap")
             return false
         }
@@ -289,23 +341,62 @@ class InAppMessagingManager {
         return true
     }
 
-    /// Parse time window string (e.g., "1d", "1w", "1h") to seconds
-    private func parseTimeWindow(_ timeWindow: String) -> TimeInterval {
-        // Parse and multiply in Double, and clamp: the server-supplied value must
-        // never trap the host app. Swift's `Int * Int` traps on overflow, so a
-        // large window (e.g. "9999999999999999d") would deterministically crash
-        // during campaign evaluation. Double arithmetic doesn't trap, and the
-        // clamp keeps the result to a sane range (non-numeric/negative → default).
-        let parsed = Double(timeWindow.dropLast()) ?? 1
-        let value = max(0, min(parsed, 3_650_000)) // cap the numeric magnitude
-        let unit = timeWindow.last ?? "d"
+    /**
+     Seconds in a frequency-cap window, or `nil` for ALL TIME.
 
-        switch unit {
-        case "h": return value * 3600
-        case "d": return value * 86400
-        case "w": return value * 604800
-        default: return value * 86400
+     The vocabulary is shared with the backend and the other SDKs - see
+     backend `common/in-app-frequency-window.ts`. iOS knew only h/d/w, so:
+
+       'lifetime'  the DEFAULT the composer saves for "show once per user"
+                   -> `dropLast()` left "lifetim", which is not a number, so
+                   value fell back to 1 and the unit fell through to days.
+                   "Once, ever" was enforced as ONCE PER DAY.
+       'session'   unknown -> 1 day.
+       '3m'        3 months -> 3 DAYS.
+
+     `nil` rather than a huge number so the caller counts EVERY impression it
+     holds; a sentinel would have to be bigger than any install is old, which is
+     the kind of number that is right until it is not.
+
+     `min` is minutes and `m` is months, checked longest-first: "30min" ends
+     with "m" too. Android read `m` as minutes while the dashboard meant months
+     - a 43,000x under-cap - which is why the two never share a letter again.
+     */
+    static func parseTimeWindow(_ timeWindow: String) -> TimeInterval? {
+        let w = timeWindow.trimmingCharacters(in: .whitespaces).lowercased()
+
+        switch w {
+        case "once", "lifetime", "session":
+            // 'session' is all-time here on purpose: this manager holds no
+            // session boundary, and counting MORE impressions caps harder,
+            // which is the safe direction for a control against over-messaging.
+            return nil
+        case "day": return 86400
+        case "week": return 604800
+        case "month": return 2_592_000
+        default: break
         }
+
+        // Longest suffix first. "min" before "m", "mo" before "m".
+        let units: [(String, TimeInterval)] = [
+            ("min", 60),
+            ("mo", 2_592_000),
+            ("h", 3600),
+            ("d", 86400),
+            ("w", 604800),
+            ("m", 2_592_000),
+        ]
+        for (suffix, seconds) in units where w.hasSuffix(suffix) {
+            let numeric = String(w.dropLast(suffix.count))
+            // Clamped: `Int * Int` traps in Swift, so a server-supplied
+            // "9999999999999999d" would deterministically crash evaluation.
+            guard let parsed = Double(numeric), parsed > 0 else { break }
+            return min(parsed, 3_650_000) * seconds
+        }
+
+        // Unparseable. One day, matching the backend - safer than all-time
+        // (which caps harder than asked) or zero (which does not cap).
+        return 86400
     }
 
     // MARK: - Campaign Display
@@ -391,21 +482,41 @@ class InAppMessagingManager {
         // Native content renders with UIKit views; HTML renders in a web view.
         // Both share the placement and dismissal semantics - those belong to the
         // message TYPE, not to its content.
-        // HTML runs author-supplied JavaScript in this app's process. The
-        // POLICY stays here in base - it is a decision about whether to show a
-        // message, not about how it looks - so the presenter is never handed an
-        // HTML campaign the app has not opted into. This is a SKIP, not a
-        // failure: native campaigns keep displaying, so the channel stays
-        // usable rather than becoming all-or-nothing.
-        var isHtml = true
-        if case .native = campaign.content { isHtml = false }
-        if isHtml && !allowHtmlJsInAppMessages {
-            logger.warn(
-                "Campaign \(campaign.id) is an HTML in-app message, but "
-                    + "InAppConfig.allowHtmlJsInAppMessages is false - not displaying it."
-            )
-            withState { isDisplaying = false }
-            return false
+        // HTML runs author-supplied JavaScript in this app's process, so it is
+        // opt-in. This is a SKIP, not a failure: native campaigns keep
+        // displaying, so the channel stays usable rather than all-or-nothing.
+        //
+        // THE FLAG IS ABOUT THIS SDK'S WEB VIEW, so it applies only when THIS
+        // SDK is going to draw. When the host has set an in-app callback the
+        // SDK's views never run - the host renders with whatever it has - and
+        // gating the handoff on a flag describing a renderer that is not
+        // involved blocked HTML from apps that had explicitly said they could
+        // draw it.
+        //
+        // That is what happened on 2026-08-31. `setInAppMessageCallback(_:capabilities:)`
+        // sets `hostCapabilities`, and the sync reports it VERBATIM - the flag
+        // is not consulted there. So an app declaring `content.html` told the
+        // server it could render HTML, the composer warned the marketer about
+        // nothing, the campaign was served, and then this gate dropped it
+        // silently. Reported as "the SDK shows eligibility but nothing appears".
+        //
+        // Android has always had it right: it passes the flag INTO the presenter
+        // (Joryio.kt:113) and has no gate before `onMessageReady`. This now
+        // matches. If the SDK is refusing HTML, the report must also say
+        // `content.native` only - the two must never disagree, because their
+        // disagreement is invisible until a message goes missing.
+        if onMessageReady == nil {
+            var isHtml = true
+            if case .native = campaign.content { isHtml = false }
+            if isHtml && !allowHtmlJsInAppMessages {
+                logger.warn(
+                    "Campaign \(campaign.id) is an HTML in-app message, but "
+                        + "InAppConfig.allowHtmlJsInAppMessages is false and no host "
+                        + "renderer is set - not displaying it."
+                )
+                withState { isDisplaying = false }
+                return false
+            }
         }
 
         // Display delay, in SECONDS: wait after the trigger before showing.

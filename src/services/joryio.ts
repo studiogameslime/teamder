@@ -114,23 +114,6 @@ export async function initJoryio(): Promise<void> {
     // was never sent. That cost a full diagnostic build to discover.
     enableDebug: __DEV__,
     logLevel: 'debug',
-    // HTML in-app messages. We render every message ourselves (see
-    // onInAppMessage / InAppMessageHost) and never use the SDK's own views, so
-    // on the face of it this flag should be irrelevant to us — and on Android
-    // it is: its manager hands the campaign to the host callback with no HTML
-    // gate at all, which is exactly why HTML worked there.
-    //
-    // iOS gates in the WRONG PLACE. In InAppMessagingManager.displayCampaign
-    // the `isHtml && !allowHtmlJsInAppMessages` skip runs BEFORE
-    // `onMessageReady`, so the campaign is dropped before our callback ever
-    // sees it — even though the flag is documented as describing the SDK's own
-    // presenter, and even though our hostCapabilities already declare
-    // content.html. Reported to Joryio.
-    //
-    // Turning it on is safe for us and stays correct after their fix: the flag
-    // only ever unblocks the handoff. It cannot make the SDK draw anything,
-    // because setting an in-app callback is what stops its views from running.
-    allowHtmlJsInAppMessages: true,
   } as Record<string, unknown>);
 }
 
@@ -281,12 +264,17 @@ export function reportPushDelivered(trackingId: string): void {
  *  Both are listed because InAppMessageHost now draws both: native with the
  *  app's own components, html in a WebView (HtmlMessageView).
  *
- *  This is the right lever for what the SERVER is told. The SDK's
- *  `allowHtmlJsInAppMessages` flag is documented as describing the native
- *  SDK's own views — which never run once a callback is set here — and on
- *  Android that holds. On iOS it does not: the flag also gates the handoff to
- *  this callback, so HTML campaigns were dropped before reaching us. Both are
- *  set now; see the note on that flag in initJoryio. */
+ *  This is the only lever we need, and `allowHtmlJsInAppMessages` is NOT one:
+ *  that flag asks whether author HTML/JS may run in the web view the SDK
+ *  itself owns, and setting a callback here is exactly what stops those views
+ *  from running. We draw HTML in our own WebView (HtmlMessageView).
+ *
+ *  iOS used to disagree — its gate ran BEFORE the handoff, so declaring
+ *  content.html got us HTML campaigns that were then silently dropped. Fixed
+ *  upstream (sdk-ios 342d3834e, vendored 2026-08-31): the gate now applies
+ *  only when no host renderer is set. We briefly turned the flag on as a
+ *  workaround; carrying a permissive JS flag we never needed is worse than not
+ *  carrying it, so it came back out with the pull. */
 export function onInAppMessage(
   cb: (message: unknown) => void,
 ): () => void {
