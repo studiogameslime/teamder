@@ -217,7 +217,12 @@ export function ProfileEditScreen() {
       // Friendly Hebrew only — the technical code/message stays in the
       // __DEV__ warn above and never reaches the user. Generic save-failure
       // copy (the failure may be the NAME write, not the photo).
-      appAlert(he.error, he.profileSaveFailed);
+      appAlert(
+        he.error,
+        (err as Error)?.message === 'RESERVED_NAME'
+          ? he.officialNameTaken
+          : he.profileSaveFailed,
+      );
       logEvent(AnalyticsEvent.ProfileSaveFailed, {
         source: 'profile_edit',
         code: (err as { code?: string })?.code ?? 'unknown',

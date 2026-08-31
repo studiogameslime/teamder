@@ -99,6 +99,44 @@ service cloud.firestore {
         isShortString(data[key], max);
     }
 
+    // The brand name is reserved for the official `teamder` sender, which is
+    // not an account and has no /users doc. Nobody can SEND as it (chat writes
+    // require senderId == request.auth.uid), but anyone could name themselves
+    // "Teamder" and upload our logo — this is what stops that.
+    //
+    // Deliberately a SUBSTRING match: "Teamder Support" and "teamder.app"
+    // impersonate just as well as the bare word, and no real person needs any
+    // of these in a display name. Spaces, dots, hyphens and underscores are
+    // stripped first so "T e a m d e r" and "team-der" fall to the same test.
+    //
+    // ⚠️ MIRRORED in src/utils/officialAccount.ts (RESERVED_NAME_RE). The
+    // client copy exists to show a helpful message; THIS is the enforcement.
+    // An EMAIL-shaped name is exempt. Our own signup seeds `name` from the
+    // address when there's nothing better, which is how all 27 App Store review
+    // accounts ended up named "appstore.review@teamder.app" — without this
+    // exemption the rule would deny every /users write for them, including the
+    // FCM-token refresh, and an Apple reviewer would hit a broken app. An
+    // address on screen reads as an address, not as our brand, so it is not the
+    // impersonation vector this guards.
+    function nameNotReserved(data) {
+      return !('name' in data) || data.name == null ||
+        data.name.matches('.*@.*') ||
+        !(data.name.lower().replace('[\\s._-]', '')
+          .matches('.*(teamder|טימדר|טיאמדר|תימדר).*'));
+    }
+
+    // Update variant: only police a name that is actually CHANGING. The point
+    // is to stop someone TAKING the brand name, not to permanently brick an
+    // account that already carries it — a blanket check on update would deny
+    // every unrelated write (availability, tokens, profile) for such an
+    // account forever, since `request.resource.data` on an update is the whole
+    // merged document, not the patch.
+    function nameNotNewlyReserved() {
+      return !('name' in request.resource.data) ||
+        request.resource.data.name == resource.data.get('name', null) ||
+        nameNotReserved(request.resource.data);
+    }
+
     // Whitelist of notification `type` values a client is legitimately
     // the source of. System / fan-out pushes are dispatched via Cloud
     // Function with Admin SDK, which bypasses these rules.
@@ -163,11 +201,13 @@ service cloud.firestore {
         // Field validation on the initial write so a malicious client
         // can't seed the doc with garbage that we then have to clean up.
         isOptionalShortString(request.resource.data, 'name', 60) &&
+        nameNotReserved(request.resource.data) &&
         isOptionalShortString(request.resource.data, 'email', 200) &&
         isOptionalShortString(request.resource.data, 'photoUrl', 2048) &&
         isOptionalShortString(request.resource.data, 'avatarId', 80);
 
       allow update: if isSelf(uid) &&
+        nameNotNewlyReserved() &&
         // Attribution is first-set-only: once a real inviter is locked in
         // (a non-null invitedBy), every subsequent write must keep it
         // identical. A null placeholder does NOT lock — it's "no inviter

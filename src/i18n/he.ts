@@ -569,6 +569,14 @@ export const he = {
   // Undo the last kick. A shootout is logged live at speed by one person, so a
   // mis-tapped kicker or a wrong נכנס/הוחמץ is routine; before this the only
   // escape was abandoning the whole shootout.
+  // The verified mark on the Teamder account. Derived from the reserved sender
+  // id, so a lookalike account cannot earn it.
+  officialAccount: 'חשבון רשמי',
+  // The brand name as it appears to a user. Not a lookup — the account has no
+  // /users doc on purpose.
+  officialAccountName: 'Teamder',
+  officialNameTaken:
+    'השם הזה שמור לחשבון הרשמי של Teamder. בחרו שם אחר.',
   shUndoLast: 'בטל את הבעיטה האחרונה',
   shUndoTitle: 'לבטל את הבעיטה?',
   shUndoBody: (kicker: string) =>

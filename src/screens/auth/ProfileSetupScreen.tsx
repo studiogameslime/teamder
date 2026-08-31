@@ -39,7 +39,14 @@ export function ProfileSetupScreen() {
           ? ((err as { code: string }).code)
           : '';
       logEvent(AnalyticsEvent.ProfileSaveFailed, { source: 'profile_setup', code });
-      appAlert(he.error, he.profileSaveError);
+      // A reserved brand name is a choice the user can fix, not a failure —
+      // say which one it is instead of the generic "save failed".
+      appAlert(
+        he.error,
+        (err as Error)?.message === 'RESERVED_NAME'
+          ? he.officialNameTaken
+          : he.profileSaveError,
+      );
     } finally {
       setBusy(false);
     }

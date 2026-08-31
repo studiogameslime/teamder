@@ -18,6 +18,7 @@ import { Platform } from 'react-native';
 import { User } from '@/types';
 import { haversineKm } from '@/utils/geo';
 import { sanitizeDisplayString } from '@/utils/validate';
+import { isReservedName } from '@/utils/officialAccount';
 import { mockCurrentUser } from '@/data/mockUsers';
 import { pickRandomAvatarId } from '@/data/avatars';
 import { storage } from './storage';
@@ -361,6 +362,10 @@ export const userService = {
     // to only trim(), letting bidi/zero-width/impersonation chars persist.
     const trimmedName = sanitizeDisplayString(patch.name);
     if (!trimmedName) throw new Error('completeOnboarding: name is required');
+    // The brand name is reserved. Rejected in firestore.rules too — that is the
+    // enforcement, since a client check is bypassable; this exists so the user
+    // gets a sentence they can act on instead of a permission error.
+    if (isReservedName(trimmedName)) throw new Error('RESERVED_NAME');
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();
       if (!cur) throw new Error('completeOnboarding: no current user');
@@ -717,7 +722,9 @@ export const userService = {
     // and layout-reversal attacks. sanitizeDisplayString existed for exactly
     // this but had no call-site until now.
     if (typeof patch.name === 'string') {
-      patch = { ...patch, name: sanitizeDisplayString(patch.name) };
+      const clean = sanitizeDisplayString(patch.name);
+      if (isReservedName(clean)) throw new Error('RESERVED_NAME');
+      patch = { ...patch, name: clean };
     }
     if (USE_MOCK_DATA) {
       const cur = await this.getCurrentUser();

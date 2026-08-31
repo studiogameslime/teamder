@@ -36,6 +36,8 @@ import { useGroupStore } from '@/store/groupStore';
 import { getCoverSource } from '@/data/coverImages';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { OfficialBadge } from '@/components/OfficialBadge';
+import { isOfficialSender } from '@/utils/officialAccount';
 import type { Game, User } from '@/types';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
 
@@ -71,6 +73,8 @@ type Row = {
   image?: ImageSourcePropType;
   /** DM rows only: the other participant, used to render their avatar. */
   dmUser?: { id: string; name: string; avatarId?: string; photoUrl?: string };
+  /** The Teamder account — earns the verified mark next to its name. */
+  official?: boolean;
 };
 
 export function ChatsListScreen() {
@@ -192,16 +196,22 @@ export function ChatsListScreen() {
       // Prefer the freshly-resolved profile; fall back to the denormalised
       // entry fields until it loads (or if the fetch failed).
       const profile = dmProfiles[otherId];
+      // The Teamder account has no /users doc, so `profile` is always
+      // undefined for it — its name comes from the constant, not the lookup.
+      const official = isOfficialSender(otherId);
       return {
         kind: 'dm' as const,
         id: e.parentId,
-        title: profile?.name || e.title || '',
+        official,
+        title: official
+          ? he.officialAccountName
+          : profile?.name || e.title || '',
         preview: chatPreview(e),
         unread: e.count ?? 0,
         sortAt: e.lastMessageAt ?? 0,
         dmUser: {
           id: otherId,
-          name: profile?.name || e.title || '',
+          name: official ? he.officialAccountName : profile?.name || e.title || '',
           avatarId: profile?.avatarId ?? e.avatarId,
           photoUrl: profile?.photoUrl ?? e.photoUrl,
         },
@@ -299,6 +309,7 @@ export function ChatsListScreen() {
                   >
                     {item.title}
                   </Text>
+                  {item.official ? <OfficialBadge size={13} /> : null}
                   {item.sortAt > 0 ? (
                     <Text style={styles.rowTime}>{relativeChatTime(item.sortAt)}</Text>
                   ) : null}

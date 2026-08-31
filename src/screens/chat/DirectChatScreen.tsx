@@ -15,6 +15,7 @@ import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 import { userService } from '@/services/userService';
 import { useUserStore } from '@/store/userStore';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { TEAMDER_UID, isOfficialSender } from '@/utils/officialAccount';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
@@ -26,6 +27,9 @@ export function DirectChatScreen() {
   const { convId } = route.params;
   const me = useUserStore((s) => s.currentUser);
   const otherId = me ? convId.split('__').find((u) => u !== me.id) ?? '' : '';
+  // The Teamder account deliberately has no /users doc, so `getUserById` comes
+  // back null — its name is a constant, not a lookup, or the header renders empty.
+  const official = isOfficialSender(otherId);
 
   const [other, setOther] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +40,7 @@ export function DirectChatScreen() {
   // so an offline user isn't wrongly told "friends-only". Offers a retry.
   const [failed, setFailed] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const headerName = official ? he.officialAccountName : other?.name ?? '';
 
   useEffect(() => {
     let alive = true;
@@ -89,7 +94,7 @@ export function DirectChatScreen() {
   if (restricted || !me || !otherId) {
     return (
       <View style={styles.root}>
-        <ScreenHeader title={other?.name ?? he.dmTitle} />
+        <ScreenHeader title={headerName || he.dmTitle} />
         <View style={styles.center}>
           <Ionicons name="lock-closed-outline" size={42} color={colors.textMuted} />
           <Text style={styles.restrictedText}>{he.dmRestricted}</Text>
@@ -101,7 +106,7 @@ export function DirectChatScreen() {
   if (failed) {
     return (
       <View style={styles.root}>
-        <ScreenHeader title={other?.name ?? he.dmTitle} />
+        <ScreenHeader title={headerName || he.dmTitle} />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={42} color={colors.textMuted} />
           <Text style={styles.restrictedText}>{he.dmLoadError}</Text>
@@ -122,9 +127,12 @@ export function DirectChatScreen() {
     <ChatView
       scope="dm"
       parentId={convId}
-      title={other?.name ?? ''}
+      title={headerName}
       canModerate={false}
-      memberIds={[me.id, otherId]}
+      official={official}
+      // No members sheet for the official account — there is no profile to open
+      // behind it, and the sheet would list a person who doesn't exist.
+      memberIds={official ? [] : [me.id, otherId]}
       adminIds={[]}
     />
   );

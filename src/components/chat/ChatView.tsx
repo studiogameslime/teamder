@@ -49,6 +49,8 @@ import { PitchLinesBackdrop, EmptyPitch, RedCardGlyph } from '@/components/chat/
 import { formatTime } from '@/utils/format';
 import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
+import { OfficialBadge } from '@/components/OfficialBadge';
+import { isOfficialSender } from '@/utils/officialAccount';
 import { useUserStore } from '@/store/userStore';
 import { useGameStore } from '@/store/gameStore';
 import type { ChatStackParamList } from '@/navigation/ChatStack';
@@ -71,6 +73,9 @@ interface Props {
   /** Subset of `memberIds` who are admins/organisers — flagged in the
    *  members sheet. */
   adminIds?: string[];
+  /** Renders "חשבון רשמי" under the header title. Set only for the Teamder
+   *  account, and only from its reserved id — see utils/officialAccount. */
+  official?: boolean;
 }
 
 export function ChatView({
@@ -80,6 +85,7 @@ export function ChatView({
   canModerate,
   memberIds = [],
   adminIds = [],
+  official = false,
 }: Props) {
   const me = useUserStore((s) => s.currentUser);
   const hydratePlayers = useGameStore((s) => s.hydratePlayers);
@@ -426,6 +432,7 @@ export function ChatView({
       <PitchLinesBackdrop />
       <ScreenHeader
         title={title}
+        subtitle={official ? he.officialAccount : undefined}
         actions={[
           ...(memberIds.length > 0
             ? [
@@ -647,6 +654,9 @@ function MessageRow({
 }) {
   // First name only — keeps the header above the bubble tidy.
   const firstName = (message.senderName || '').trim().split(/\s+/)[0] || message.senderName;
+  // Verified from the SENDER ID, not from any field on the message — an
+  // impostor can copy the name and the logo but cannot produce this id.
+  const official = isOfficialSender(message.senderId);
   const avatar = (
     <Pressable onPress={onOpenProfile} hitSlop={6}>
       <UserAvatar
@@ -668,9 +678,12 @@ function MessageRow({
       style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
     >
       {!mine ? (
-        <Text style={styles.senderName} onPress={onOpenProfile}>
-          {firstName}
-        </Text>
+        <View style={styles.senderRow}>
+          <Text style={styles.senderName} onPress={onOpenProfile}>
+            {official ? message.senderName : firstName}
+          </Text>
+          {official ? <OfficialBadge size={12} /> : null}
+        </View>
       ) : null}
       <Text style={[styles.messageText, mine && styles.messageTextMine]}>
         {message.text}
@@ -947,11 +960,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(27,138,67,0.18)',
   },
+  // Name + badge share a row. First child lands on the visual RIGHT under RTL,
+  // so the name leads and the mark trails it — the order a reader expects.
+  senderRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
   senderName: {
     ...typography.caption,
     color: colors.primary,
     fontWeight: '800',
-    marginBottom: 2,
     textAlign: RTL_LABEL_ALIGN,
   },
   messageText: { ...typography.body, color: colors.text, textAlign: RTL_LABEL_ALIGN },
