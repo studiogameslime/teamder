@@ -114,6 +114,23 @@ export async function initJoryio(): Promise<void> {
     // was never sent. That cost a full diagnostic build to discover.
     enableDebug: __DEV__,
     logLevel: 'debug',
+    // HTML in-app messages. We render every message ourselves (see
+    // onInAppMessage / InAppMessageHost) and never use the SDK's own views, so
+    // on the face of it this flag should be irrelevant to us — and on Android
+    // it is: its manager hands the campaign to the host callback with no HTML
+    // gate at all, which is exactly why HTML worked there.
+    //
+    // iOS gates in the WRONG PLACE. In InAppMessagingManager.displayCampaign
+    // the `isHtml && !allowHtmlJsInAppMessages` skip runs BEFORE
+    // `onMessageReady`, so the campaign is dropped before our callback ever
+    // sees it — even though the flag is documented as describing the SDK's own
+    // presenter, and even though our hostCapabilities already declare
+    // content.html. Reported to Joryio.
+    //
+    // Turning it on is safe for us and stays correct after their fix: the flag
+    // only ever unblocks the handoff. It cannot make the SDK draw anything,
+    // because setting an in-app callback is what stops its views from running.
+    allowHtmlJsInAppMessages: true,
   } as Record<string, unknown>);
 }
 
@@ -264,11 +281,12 @@ export function reportPushDelivered(trackingId: string): void {
  *  Both are listed because InAppMessageHost now draws both: native with the
  *  app's own components, html in a WebView (HtmlMessageView).
  *
- *  This is the right lever, and the SDK's `allowHtmlJsInAppMessages` config
- *  flag is NOT, however plainly the dashboard suggests it: that flag describes
- *  the native SDK's own views, and subscribing here is exactly what stops those
- *  views from ever running. Setting it would tell the server we can show HTML
- *  while the message still landed in a renderer that dropped it. */
+ *  This is the right lever for what the SERVER is told. The SDK's
+ *  `allowHtmlJsInAppMessages` flag is documented as describing the native
+ *  SDK's own views — which never run once a callback is set here — and on
+ *  Android that holds. On iOS it does not: the flag also gates the handoff to
+ *  this callback, so HTML campaigns were dropped before reaching us. Both are
+ *  set now; see the note on that flag in initJoryio. */
 export function onInAppMessage(
   cb: (message: unknown) => void,
 ): () => void {
