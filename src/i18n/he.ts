@@ -566,6 +566,14 @@ export const he = {
   shTurn: (team: string, n: number) => `התור: ${team} · בעיטה ${n}`,
   shKicksCount: (n: number) => `${n} בעיטות`,
   shLogTitle: 'היסטוריית בעיטות',
+  // Undo the last kick. A shootout is logged live at speed by one person, so a
+  // mis-tapped kicker or a wrong נכנס/הוחמץ is routine; before this the only
+  // escape was abandoning the whole shootout.
+  shUndoLast: 'בטל את הבעיטה האחרונה',
+  shUndoTitle: 'לבטל את הבעיטה?',
+  shUndoBody: (kicker: string) =>
+    `הבעיטה של ${kicker} תימחק מהתיעוד ותורו של אותו כוח יחזור. אפשר לרשום אותה מחדש.`,
+  shUndoCta: 'בטל בעיטה',
   shLogEmpty: 'עדיין לא נבעטו פנדלים',
   shScored: (keeper: string) => `⚽ נכנס · מול ${keeper}`,
   shMissed: (keeper: string) => `❌ החמיץ · מול ${keeper}`,

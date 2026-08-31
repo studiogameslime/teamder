@@ -3761,6 +3761,40 @@ export const gameService = {
     });
   },
 
+  /** Remove the LAST recorded kick. A shootout is entered live, at speed, by
+   *  one person watching the pitch — a mis-tapped kicker or a "נכנס" that was
+   *  actually saved is routine, and until now the only escape was abandoning
+   *  the whole shootout and starting over (owner request: an option to cancel
+   *  a kick).
+   *
+   *  Rewrites the whole array rather than `arrayRemove`: two kicks can be
+   *  identical in every field a person sees, and only the generated `id` tells
+   *  them apart — `arrayRemove` on a value the caller reconstructed could take
+   *  the wrong one. Reading the array first also means an undo raced against a
+   *  concurrent kick from another admin drops the newest, which is the one the
+   *  admin is looking at. */
+  async undoLastShootoutKick(gameId: string): Promise<void> {
+    if (!gameId) return;
+    if (USE_MOCK_DATA) {
+      const m =
+        mockGamesV2.find((x) => x.id === gameId) ?? (gameId === mockGame.id ? mockGame : undefined);
+      const so = m?.liveMatch?.shootout;
+      if (so?.kicks?.length) so.kicks = so.kicks.slice(0, -1);
+      // The mock live subscription polls the game's `updatedAt`; without this
+      // bump the undo never reaches the screen in demo mode.
+      if (m) m.updatedAt = Date.now();
+      return;
+    }
+    const cur = await readTimerState(gameId);
+    const kicks = cur?.liveMatch?.shootout?.kicks;
+    if (!cur || !kicks?.length) return;
+    if (cur.status === 'finished' || cur.status === 'cancelled') return;
+    await updateDoc(docs.game(gameId), {
+      'liveMatch.shootout.kicks': kicks.slice(0, -1),
+      updatedAt: Date.now(),
+    });
+  },
+
   /** Abandon a shootout without deciding (e.g. admin backs all the way out).
    *  Clears the state; the round stays drawn and can be decided another way. */
   async clearShootout(gameId: string): Promise<void> {

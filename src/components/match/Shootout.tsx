@@ -1,6 +1,6 @@
 // Penalty shootout (שובר שוויון) — the tiebreaker for a drawn mini-game.
 //
-// Flow (each screen has a "חזור" back button; no undo-kick for now):
+// Flow (each screen has a "חזור" back button; the board can undo the last kick):
 //   TieDecisionModal → admin picks ✋ manual (WinnerPickerModal) or 🥅 penalties.
 //   Shootout screen 0 (first)  — who kicks first (team A / team B / random).
 //   Shootout screen 1 (board)  — per-team tally + turn + split kick log + add/finish.
@@ -30,7 +30,6 @@ import {
 } from '@/components/match/rotationView';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { appAlert } from '@/components/AppDialog';
 import type { DraftTeamsResult, LiveMatchState, MatchRotation } from '@/types';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -141,6 +140,23 @@ export function Shootout({
    *  the screen between choosing the players and saying what happened. */
   const [asking, setAsking] = useState(false);
   const [flying, setFlying] = useState(false);
+  /** A write is in flight (currently only the undo) — blocks a double tap. */
+  const [busy, setBusy] = useState(false);
+  /** In-sheet confirmation. It is NOT `appAlert`, and that is the point:
+   *  `AppDialogHost` lives at the app root and renders its own <Modal>, so
+   *  asking from in here means presenting a modal on top of an already-
+   *  presented one. Android stacks those as plain views and it works; iOS
+   *  presents them through the view controller, the second present is
+   *  refused, and the button appears to do nothing at all — which is exactly
+   *  the report ("סיים שובר שיוויון doesn't work on iPhone"). Rendering the
+   *  confirmation INSIDE this modal removes the stacking entirely. */
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    body: string;
+    cta: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Reset local UI when the modal closes.
   useEffect(() => {
@@ -151,6 +167,8 @@ export function Shootout({
       setKickerPicking(false);
       setAsking(false);
       setFlying(false);
+      setBusy(false);
+      setConfirm(null);
     }
   }, [visible]);
 
@@ -336,21 +354,53 @@ export function Shootout({
     // round, so name the winner + the score and require a deliberate tap
     // (user request: "no feedback that the leading team won + add an
     // are-you-sure window").
-    appAlert(
-      he.shConfirmWinTitle(teamNameOf(winner)),
-      he.shConfirmWinBody(teamNameOf(winner), scoredOf(winner), scoredOf(winner === 'A' ? 'B' : 'A')),
-      [
-        { text: he.cancel, style: 'cancel' },
-        { text: he.shConfirmWinCta, onPress: () => onDecided(winner) },
-      ],
-    );
+    setConfirm({
+      title: he.shConfirmWinTitle(teamNameOf(winner)),
+      body: he.shConfirmWinBody(
+        teamNameOf(winner),
+        scoredOf(winner),
+        scoredOf(winner === 'A' ? 'B' : 'A'),
+      ),
+      cta: he.shConfirmWinCta,
+      onConfirm: () => onDecided(winner),
+    });
   };
+  // Undo the last kick. Confirmed, because it rewrites the round's evidence and
+  // the row it removes is one tap away from the row above it.
+  const undoLast = () => {
+    if (busy || flying) return;
+    const last = kicks[kicks.length - 1];
+    if (!last) return;
+    setConfirm({
+      title: he.shUndoTitle,
+      body: he.shUndoBody(nameOf(last.kickerId) || ''),
+      cta: he.shUndoCta,
+      danger: true,
+      onConfirm: () => {
+        setBusy(true);
+        logEvent(AnalyticsEvent.ShootoutKickUndone, {
+          gameId,
+          kicks: kicks.length,
+          scored: last.scored,
+        });
+        gameService
+          .undoLastShootoutKick(gameId)
+          .catch(() => {})
+          .finally(() => setBusy(false));
+      },
+    });
+  };
+
   const back = () => {
     // Android back / "חזור": step to the PREVIOUS screen, never abandon the
     // whole shootout mid-flow (user report: back kicked me out entirely).
     // A kick in flight owns the screen until it lands; letting back interrupt
     // it would leave the ball mid-air and the kick unrecorded.
     if (flying) return;
+    if (confirm) {
+      setConfirm(null);
+      return;
+    }
     if (keeperPicking) {
       setKeeperPicking(false);
       return;
@@ -481,6 +531,28 @@ export function Shootout({
             ))
           )}
         </ScrollView>
+
+        {/* Undo sits directly under the log it edits, and only when there is
+            something to undo. Always the LAST kick — the log is ordered, and
+            two kicks can look identical to a reader, so "the one you just
+            entered" is the only unambiguous target. */}
+        {kicks.length > 0 ? (
+          <Pressable
+            style={styles.undoRow}
+            onPress={undoLast}
+            disabled={busy || flying}
+            hitSlop={6}
+          >
+            <Text style={[styles.undoTxt, (busy || flying) && styles.dim]}>
+              {he.shUndoLast}
+            </Text>
+            <Ionicons
+              name="arrow-undo-outline"
+              size={15}
+              color={busy || flying ? '#9CA3AF' : colors.danger}
+            />
+          </Pressable>
+        ) : null}
 
         <Pressable style={styles.kickBtn} onPress={() => setScreen('entry')}>
           <Text style={styles.kickTxt}>{he.shAddKick}</Text>
@@ -670,6 +742,41 @@ export function Shootout({
         >
           {body}
         </View>
+
+        {/* Confirmation, rendered INSIDE this modal — see `confirm` above. */}
+        {confirm ? (
+          <View style={styles.confirmWrap} pointerEvents="box-none">
+            <Pressable
+              style={styles.confirmScrim}
+              onPress={() => setConfirm(null)}
+            />
+            <View style={styles.confirmCard}>
+              <Text style={styles.confirmTitle}>{confirm.title}</Text>
+              <Text style={styles.confirmBody}>{confirm.body}</Text>
+              <View style={styles.confirmBtns}>
+                <Pressable
+                  style={[styles.confirmBtn, styles.confirmCancel]}
+                  onPress={() => setConfirm(null)}
+                >
+                  <Text style={styles.confirmCancelTxt}>{he.cancel}</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.confirmBtn,
+                    confirm.danger ? styles.confirmDanger : styles.confirmGo,
+                  ]}
+                  onPress={() => {
+                    const run = confirm.onConfirm;
+                    setConfirm(null);
+                    run();
+                  }}
+                >
+                  <Text style={styles.confirmGoTxt}>{confirm.cta}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -808,6 +915,70 @@ const styles = StyleSheet.create({
   logSpacer: { flex: 1 },
   resScored: { color: '#16A34A' },
   resMissed: { color: '#EF4444' },
+  // in-sheet confirmation
+  confirmWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  confirmScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.bg,
+    borderRadius: 22,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  confirmTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  confirmBody: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    color: colors.textMuted,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  confirmBtns: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCancel: { borderWidth: 1.5, borderColor: colors.primary },
+  confirmCancelTxt: { fontSize: 15, fontWeight: '800', color: colors.primary },
+  confirmGo: { backgroundColor: colors.primary },
+  confirmDanger: { backgroundColor: colors.danger },
+  confirmGoTxt: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  undoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginBottom: 2,
+  },
+  undoTxt: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.danger,
+  },
   kickBtn: {
     backgroundColor: '#2563EB',
     borderRadius: 12,

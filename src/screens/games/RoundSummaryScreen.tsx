@@ -79,6 +79,21 @@ export function RoundSummaryScreen() {
 
   const nameOf = (uid: string) => players[uid]?.displayName ?? null;
 
+  // The five night titles, filtered to the ones that actually have a leader
+  // whose name we can resolve — the same two tests `King` applies internally.
+  // Computed here so the SECTION can disappear when none survive.
+  const kings = !summary
+    ? []
+    : (
+        [
+          { emoji: '👑', label: he.roundSummaryKingGoals, leader: summary.leaders.topScorers },
+          { emoji: '🎯', label: he.roundSummaryKingAssists, leader: summary.leaders.topAssisters },
+          { emoji: '⭐', label: he.roundSummaryKingInvolvement, leader: summary.leaders.topGoalInvolvement },
+          { emoji: '🧱', label: he.roundSummaryKingCleanSheets, leader: summary.leaders.topCleanSheets },
+          { emoji: '🏆', label: he.roundSummaryKingWins, leader: summary.leaders.topWinners },
+        ] as const
+      ).filter((k) => k.leader && k.leader.userIds.some((u) => nameOf(u)));
+
   if (loading) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
@@ -133,14 +148,26 @@ export function RoundSummaryScreen() {
         </Section>
 
         {/* ② Titles for the night. A category with no leader is simply absent:
-            an evening without a single assist crowns nobody. */}
-        <Section title={he.roundSummaryStars}>
-          <King emoji="👑" label={he.roundSummaryKingGoals} leader={summary.leaders.topScorers} nameOf={nameOf} players={players} />
-          <King emoji="🎯" label={he.roundSummaryKingAssists} leader={summary.leaders.topAssisters} nameOf={nameOf} players={players} />
-          <King emoji="⭐" label={he.roundSummaryKingInvolvement} leader={summary.leaders.topGoalInvolvement} nameOf={nameOf} players={players} />
-          <King emoji="🧱" label={he.roundSummaryKingCleanSheets} leader={summary.leaders.topCleanSheets} nameOf={nameOf} players={players} />
-          <King emoji="🏆" label={he.roundSummaryKingWins} leader={summary.leaders.topWinners} nameOf={nameOf} players={players} />
-        </Section>
+            an evening without a single assist crowns nobody.
+            The SECTION itself is conditional for the same reason. The titles
+            deliberately exclude guests, so an evening played mostly by guests
+            makes all five come back empty — and the section rendered its
+            heading over nothing at all. Every other section here already
+            guards on length; this one didn't. */}
+        {kings.length > 0 ? (
+          <Section title={he.roundSummaryStars}>
+            {kings.map((k) => (
+              <King
+                key={k.label}
+                emoji={k.emoji}
+                label={k.label}
+                leader={k.leader}
+                nameOf={nameOf}
+                players={players}
+              />
+            ))}
+          </Section>
+        ) : null}
 
         {summary.teamHighlights.best.length > 0 ? (
           <Section title={he.roundSummaryTeams}>

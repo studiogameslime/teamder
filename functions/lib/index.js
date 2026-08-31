@@ -7100,6 +7100,63 @@ exports.promoteOrphanToGroup = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_AP
             console.error('[promoteOrphanToGroup] stats reset failed', groupId, effectiveFromGameId, err);
         }
     }
+    // Every OTHER club-scoped artefact from the personal-group era.
+    //
+    // A personal group is stable per user, so all of that user's quick games
+    // over all time land in it. The reset above rebuilt communityPlayerStats
+    // and communityStats from the promoting game — but records, chemistry,
+    // sealed round summaries and evening standings were left behind, so a
+    // brand-new club opened with club records and a chemistry history earned
+    // in one-off games nobody in it ever played.
+    //
+    // (bestEvening, lastEveningScore and chemistrySince need no work here:
+    // they live ON the two docs above, and both are rewritten with a
+    // non-merge `set`, which drops them.)
+    //
+    // Pair stats are wiped rather than rebuilt for the promoting game. The
+    // club's chemistry card is anchored to `chemistrySince`, which the
+    // communityStats overwrite just cleared and the next sealed evening will
+    // re-stamp — so "no pairs yet, counting from <next evening>" is the one
+    // self-consistent state. Rebuilding a single game's pairs would instead
+    // show a total dated from a window it doesn't cover.
+    try {
+        const [pairSnap, standSnap, gamesSnap] = await Promise.all([
+            db.collection('communityPairStats').where('groupId', '==', groupId).get(),
+            db.collection('eveningStandings').where('groupId', '==', groupId).get(),
+            db.collection('games').where('groupId', '==', groupId).get(),
+        ]);
+        let b = db.batch();
+        let n = 0;
+        const step = async () => {
+            if (++n >= 450) {
+                await b.commit();
+                b = db.batch();
+                n = 0;
+            }
+        };
+        for (const d of pairSnap.docs) {
+            b.delete(d.ref);
+            await step();
+        }
+        for (const d of standSnap.docs) {
+            b.delete(d.ref);
+            await step();
+        }
+        // Sealed summaries + rollup markers are keyed by game id, so they're
+        // addressed directly — no field query and no index needed.
+        for (const g of gamesSnap.docs) {
+            b.delete(db.collection('roundSummaries').doc(g.id));
+            await step();
+            b.delete(db.collection('communityPairRollups').doc(`${groupId}__${g.id}`));
+            await step();
+        }
+        b.delete(db.collection('clubRecords').doc(groupId));
+        await step();
+        await b.commit();
+    }
+    catch (err) {
+        console.error('[promoteOrphanToGroup] club artefact purge failed', groupId, err);
+    }
     // Write the /groupsPublic mirror so the new community shows up in
     // discovery. Mirror the same shape the createGroup callable uses.
     await db
