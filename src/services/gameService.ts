@@ -84,6 +84,8 @@ import {
   recordWinnerSkeleton,
   recordTieSkeleton,
   rosterOf as effectiveRosterOf,
+  resolveRoundInstance,
+  roundCommitKey,
   type RotationTeam,
   type RotationFillState,
   acceptsReorder,
@@ -3841,14 +3843,23 @@ export const gameService = {
         const { httpsCallable } = require('firebase/functions');
         await httpsCallable(getFirebase().functions, 'commitRoundStats')({
           gameId,
-          // Idempotency key for the server's double-commit latch. Combine the
-          // monotonic round number WITH the rotation's updatedAt: identical on
-          // an SDK retry of the same round (so the create() collides and dedupes),
-          // distinct across rounds (round increments each finalize). Never null
-          // and can't collide two different rounds the way a bare `updatedAt`
-          // fallback could — so the latch always applies and never silently
-          // drops or double-credits a round.
-          roundId: `${rot.round ?? 'r'}:${rot.updatedAt ?? 0}`,
+          // Idempotency key for the server's double-commit latch.
+          //
+          // This used to be `${round}:${updatedAt}`, and the comment here
+          // claimed it was "identical on an SDK retry of the same round". It
+          // was not: `rotation.updatedAt` is restamped mid-round by
+          // markPlayerWentHome / movePlayerToTeam / removePlayerFromTeams (each
+          // when the player held a loan) and unconditionally by reorderWaiting.
+          // A commit that succeeded server-side but lost its response, followed
+          // by any of those, produced a DIFFERENT key on the retry — the latch
+          // missed and the mini-game was credited TWICE.
+          //
+          // `roundInstanceId` is minted once when the round begins and never
+          // moves while it is live. The fallback keeps an evening that is
+          // already in flight at deploy time working: its rotation predates the
+          // field, so it keeps the legacy key (and the legacy risk) until its
+          // next round transition mints one. Nothing historical is rewritten.
+          roundId: roundCommitKey(rot),
           sideA,
           sideB,
           // Team indices (0=red,1=blue,2=green,…) → the round-history screen shows
@@ -4099,6 +4110,21 @@ export const gameService = {
     res: { rotation: import('@/types').MatchRotation; teams: RotationTeam[] },
     resetTimerBy?: { userId: string; userName: string },
   ): Promise<void> {
+    // Stamp the round's immutable identity before anything is written. This is
+    // the ONE funnel every rotation write passes through — round transitions
+    // (startRotation / recordWinner / recordTie) and mid-round fills alike — so
+    // stamping here means no caller can forget, and mock and production agree.
+    // Preserves the id while the round number is unchanged; mints on a new
+    // round. See resolveRoundInstance for why it compares the round number.
+    const instance = resolveRoundInstance(res.rotation);
+    res = {
+      ...res,
+      rotation: {
+        ...res.rotation,
+        roundInstanceId: instance.roundInstanceId,
+        roundInstanceRound: instance.roundInstanceRound,
+      },
+    };
     const newDraft: DraftTeamsResult = {
       ...draft,
       teams: res.teams.map((rt) => {

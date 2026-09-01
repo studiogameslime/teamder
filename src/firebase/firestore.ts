@@ -1046,7 +1046,7 @@ export function readDraftTeams(v: unknown): DraftTeamsResult | undefined {
   };
 }
 
-function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
+export function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   const playing = Array.isArray(o.playing)
@@ -1097,6 +1097,16 @@ function readRotation(v: unknown): import('@/types').MatchRotation | undefined {
               : [],
           }))
       : undefined,
+    // ⚠️ This reader rebuilds the rotation field by field, so a field absent
+    // HERE is silently dropped on read no matter what was written. Without
+    // these two the round's identity would never survive a reload and every
+    // commit would fall back to the legacy key.
+    roundInstanceId:
+      typeof o.roundInstanceId === 'string' && o.roundInstanceId
+        ? o.roundInstanceId
+        : undefined,
+    roundInstanceRound:
+      typeof o.roundInstanceRound === 'number' ? o.roundInstanceRound : undefined,
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : undefined,
   };
 }

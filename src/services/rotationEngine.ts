@@ -446,3 +446,69 @@ export function acceptsReorder(current: number[], incoming: number[]): boolean {
   if (key(current) !== key(incoming)) return false;
   return current.join() !== incoming.join();
 }
+
+/**
+ * The identity of the mini-game about to be persisted.
+ *
+ * The commit's idempotency key used to be `${round}:${updatedAt}`. That is not
+ * stable within a round: `rotation.updatedAt` is restamped mid-round by
+ * `markPlayerWentHome`, `movePlayerToTeam` and `removePlayerFromTeams` (each
+ * when the player held a loan) and unconditionally by `reorderWaiting`. So a
+ * commit whose success response was lost, followed by any of those, produced a
+ * DIFFERENT key on the retry — the `committedRounds` latch missed it and the
+ * whole mini-game was credited twice: rounds, wins/losses, GF/GA, clean sheets,
+ * pair stats, and a duplicate roundHistory doc that the club-chemistry rollup
+ * then ingested as a real second mini-game.
+ *
+ * The rule: keep the id while the round number is unchanged, mint a new one
+ * when it moves.
+ *
+ * Keying the decision on `roundInstanceRound` rather than on "is an id
+ * present?" is what makes it safe. `recordWinnerSkeleton` has two branches and
+ * one of them builds the next round by SPREADING the current rotation — so an
+ * id CAN arrive attached to a round it was not minted for. Comparing the two
+ * numbers detects exactly that and re-mints, instead of silently carrying one
+ * mini-game's identity into the next and blocking its commit.
+ */
+export function resolveRoundInstance(
+  next: {
+    round?: number;
+    roundInstanceId?: string;
+    roundInstanceRound?: number;
+  },
+  mint: () => string = defaultRoundInstanceId,
+): { roundInstanceId: string; roundInstanceRound: number } {
+  const round = next.round ?? 1;
+  const inherited =
+    !!next.roundInstanceId && next.roundInstanceRound === round
+      ? next.roundInstanceId
+      : null;
+  return {
+    roundInstanceId: inherited ?? mint(),
+    roundInstanceRound: round,
+  };
+}
+
+/** Opaque, collision-safe enough for one game's rounds. Not derived from any
+ *  mutable field — that derivation is the bug this replaces. */
+export function defaultRoundInstanceId(): string {
+  return `r_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * The key the round-end commit sends as its idempotency token.
+ *
+ * Kept here, next to the mint, so the two can never drift — and so a test can
+ * assert the property that actually matters: the SAME live round always
+ * produces the SAME key, no matter what else on the rotation has moved.
+ */
+export function roundCommitKey(rot: {
+  round?: number;
+  roundInstanceId?: string;
+  updatedAt?: number;
+}): string {
+  // Legacy fallback only for a rotation written before this field existed —
+  // an evening already in flight at deploy time. It carries the old
+  // instability until that evening's next round transition mints an id.
+  return rot.roundInstanceId ?? `${rot.round ?? 'r'}:${rot.updatedAt ?? 0}`;
+}

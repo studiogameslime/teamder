@@ -1188,6 +1188,23 @@ export interface MatchRotation {
    *  `draftTeams` from this so a reset returns to the original teams (permanent
    *  mode rewrites the rosters round-by-round). */
   baseTeams?: { index: number; playerIds: string[] }[];
+  /** Immutable identity of the mini-game currently being played.
+   *
+   *  The commit's idempotency key. It used to be derived as
+   *  `${round}:${updatedAt}` — but `updatedAt` is restamped mid-round by four
+   *  operations (go-home / move-player / remove-player when the player held a
+   *  loan, and reorder-waiting), so the "same" mini-game could present two
+   *  different keys to the server and be credited twice. This is minted once,
+   *  when the round begins, and never changes while that round is live.
+   *
+   *  `roundInstanceRound` records which round number the id was minted for.
+   *  That is what makes the mint/preserve decision self-correcting: one branch
+   *  of the rotation engine builds the next round by SPREADING the previous
+   *  rotation, which would otherwise carry the old id into a new mini-game.
+   *  A mismatch against `round` means the id was inherited, so a fresh one is
+   *  minted. See `resolveRoundInstance`. */
+  roundInstanceId?: string;
+  roundInstanceRound?: number;
   updatedAt?: number;
 }
 
