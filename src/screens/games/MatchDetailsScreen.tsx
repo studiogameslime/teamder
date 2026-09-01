@@ -871,7 +871,7 @@ export function MatchDetailsScreen() {
     });
   }, [game, adminUids, myCommunities, isAdmin]);
 
-  const handlePrimary = async () => {
+  const performPrimary = async () => {
     if (!user || !game) return;
     // Guests can browse a game but must register to register/join it.
     if (!ensureNotGuest(he.guestRegisterJoinGame)) return;
@@ -1352,6 +1352,45 @@ export function MatchDetailsScreen() {
   // that silently waitlists them (mirrors requestJoinGame + MatchListCard).
   const isFull =
     totalParticipants + (game.pendingPromotion?.uid ? 1 : 0) >= game.maxPlayers;
+
+  /**
+   * Every "cancel my registration" entry point on this screen goes through
+   * here, so none of them can ship without the confirmation: the ☰ menu item,
+   * the red button at the bottom of the content, and the sticky CTA when it is
+   * showing the destructive action. Putting the prompt inside the handler
+   * rather than at each call site is what makes that guarantee hold when a
+   * fourth entry point is added later.
+   *
+   * Joining is never confirmed — it is reversible and asking would just be in
+   * the way. A cancel that is already blocked (mid-round) is passed straight
+   * through so `performPrimary` can explain why, instead of asking the user to
+   * confirm something that will then be refused.
+   *
+   * Not to be confused with the late-cancel warning removed on 2026-06-21:
+   * that one warned about a reliability score that was scrapped. This is a
+   * plain "are you sure", asked every time.
+   */
+  const handlePrimary = () => {
+    if (!user || !game) {
+      void performPrimary();
+      return;
+    }
+    const status = statusForUser(game, user.id);
+    const isCancelAction =
+      status === 'joined' || status === 'waitlist' || status === 'pending';
+    if (!isCancelAction || !canCancelRegistration(game)) {
+      void performPrimary();
+      return;
+    }
+    appAlert(he.leaveGameConfirmTitle, he.leaveGameConfirmBody, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.matchMenuLeave,
+        style: 'destructive',
+        onPress: () => void performPrimary(),
+      },
+    ]);
+  };
 
   const primaryDestructive =
     status === 'joined' || status === 'waitlist' || status === 'pending';
@@ -2150,16 +2189,10 @@ export function MatchDetailsScreen() {
                 id: 'leave',
                 label: he.matchMenuLeave,
                 icon: 'exit-outline' as const,
-                // Confirm before cancelling registration (user report [tycM]).
-                onPress: () =>
-                  appAlert(he.leaveGameConfirmTitle, he.leaveGameConfirmBody, [
-                    { text: he.cancel, style: 'cancel' },
-                    {
-                      text: he.matchMenuLeave,
-                      style: 'destructive',
-                      onPress: handlePrimary,
-                    },
-                  ]),
+                // The confirmation lives inside handlePrimary now, so every
+                // cancel entry point gets it — this one included. Prompting
+                // here as well would ask twice.
+                onPress: handlePrimary,
                 tone: 'danger' as const,
               },
             ]

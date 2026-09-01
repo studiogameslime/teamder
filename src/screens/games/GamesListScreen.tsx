@@ -52,6 +52,7 @@ import { Breathing } from '@/components/anim/Breathing';
 import { joinLocation } from '@/utils/format';
 import { BouncingBall } from '@/components/anim/BouncingBall';
 import { toast } from '@/components/Toast';
+import { appAlert } from '@/components/AppDialog';
 import { ConfirmDestructiveModal } from '@/components/ConfirmDestructiveModal';
 import { RegistrationConflictModal } from '@/components/games/RegistrationConflictModal';
 import { AvailabilityNudgeModal } from '@/components/AvailabilityNudgeModal';
@@ -364,6 +365,23 @@ export function GamesListScreen() {
       setLateCancelGame(game);
       return;
     }
+    // Cancelling from the card used to be a single unguarded tap: one press on
+    // a small control in a scrolling list and the registration was gone, with
+    // the game details screen never opened. Ask first — and only here, so the
+    // late-cancel modal above still owns its own case rather than stacking two
+    // prompts. `leaveWaitlist` stays unprompted: a waitlist place is not a
+    // confirmed spot, and it is what the card's own copy already says.
+    if (cta === 'cancel') {
+      appAlert(he.leaveGameConfirmTitle, he.leaveGameConfirmBody, [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.matchMenuLeave,
+          style: 'destructive',
+          onPress: () => void runCancel(game),
+        },
+      ]);
+      return;
+    }
     setBusyGameId(game.id);
     try {
       if (cta === 'join' || cta === 'requestJoin' || cta === 'waitlist') {
@@ -417,8 +435,9 @@ export function GamesListScreen() {
           reconcileTimerRef.current = null;
           void reload();
         }, 2500);
-      } else if (cta === 'cancel' || cta === 'leaveWaitlist') {
-        // Cancel is a direct write → an immediate reload reflects it.
+      } else if (cta === 'leaveWaitlist') {
+        // Only the waitlist case reaches here now — a real cancel is confirmed
+        // above and then runs through `runCancel`.
         await gameService.cancelGameV2(game.id, user.id);
         await reload();
       }
