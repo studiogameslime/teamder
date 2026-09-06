@@ -1200,9 +1200,14 @@ export function ProfileScreen() {
               <View style={styles.justPlayedText}>
                 <Text style={styles.justPlayedTitle}>{he.homeJustPlayedTitle}</Text>
                 <Text style={styles.justPlayedBody}>{he.homeJustPlayedBody}</Text>
-                <Text style={styles.justPlayedCta}>{he.homeJustPlayedCta}</Text>
+                {/* Ball sits ON the link row, not as a card-level sibling of the
+                    whole text block — as a floating sibling it rendered on a
+                    line of its own under the link (report from Eliran). */}
+                <View style={styles.justPlayedCtaRow}>
+                  <Text style={styles.justPlayedCta}>{he.homeJustPlayedCta}</Text>
+                  <Text style={styles.justPlayedCtaEmoji}>⚽</Text>
+                </View>
               </View>
-              <Text style={styles.justPlayedEmoji}>⚽</Text>
             </PressableScale>
             </ScreenEntrance>
           ) : null}
@@ -1553,8 +1558,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   // "איך היה אתמול?" — the 24h door back into the evening summary. Text first,
-  // emoji last: the row is flipped under RTL, so the ball lands on the visual
-  // left, matching every other card on this screen.
   justPlayedCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1582,14 +1585,21 @@ const styles = StyleSheet.create({
     color: '#047857',
     textAlign: RTL_LABEL_ALIGN,
   },
+  // Link + ball on one row. Under forceRTL the first child takes the visual
+  // RIGHT, so the label reads first and the ball trails it on the left.
+  justPlayedCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
   justPlayedCta: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F766E',
-    marginTop: 4,
     textAlign: RTL_LABEL_ALIGN,
   },
-  justPlayedEmoji: { fontSize: 30 },
+  justPlayedCtaEmoji: { fontSize: 16 },
   // Amber "pending join requests" banner (admins only).
   pendingBanner: {
     flexDirection: 'row',

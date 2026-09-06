@@ -3145,15 +3145,35 @@ export const gameService = {
   ): Promise<void> {
     if (!gameId) return;
     // Freeze the split as first drawn so the post-game "הכוחות שחולקו" record
-    // survives go-home / removals. Preserve an existing snapshot if the incoming
-    // draft already carries one (edits/re-saves keep the original); a fresh
-    // draft (new split / re-balance) captures the current teams as the original.
+    // survives go-home / removals — those mutate `teams` directly and never
+    // reach this function, so the snapshot is safe from them either way.
+    //
+    // What it must NOT survive is a deliberate re-split. Every caller here is a
+    // human saving a split (captain draft / setup screen / "עריכת הכוחות"), and
+    // preserving the first snapshot unconditionally meant an admin's edit landed
+    // in `teams` while the screen kept rendering the stale `originalTeams` — the
+    // edit simply vanished (report from Eliran; game 49sGSo4y8DfMRUlGBzvc saved
+    // teams [5,3,5] under an original of [4,4,5]).
+    //
+    // So: re-capture the snapshot, UNLESS the evening is already under way. Once
+    // a rotation exists the starting split is history and must stay frozen, even
+    // if an admin reopens the setup screen mid-evening.
+    let keepFrozen = false;
+    if (draft?.originalTeams?.length) {
+      const current = await this.getGameById(gameId).catch(() => null);
+      keepFrozen =
+        !!current &&
+        (current.status === 'finished' ||
+          current.liveMatch?.startedAt != null ||
+          (current.rotation?.baseTeams?.length ?? 0) > 0);
+    }
     const withOriginal: DraftTeamsResult | null = draft
       ? {
           ...draft,
           originalTeams:
-            draft.originalTeams ??
-            draft.teams.map((t) => ({ ...t, playerIds: [...(t.playerIds ?? [])] })),
+            keepFrozen && draft.originalTeams
+              ? draft.originalTeams
+              : draft.teams.map((t) => ({ ...t, playerIds: [...(t.playerIds ?? [])] })),
         }
       : null;
     if (USE_MOCK_DATA) {

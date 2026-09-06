@@ -38,6 +38,7 @@ import { getDocs, query, where } from 'firebase/firestore';
 import { ArrivalStatus, Game, UserId } from '@/types';
 import { USE_MOCK_DATA } from '@/firebase/config';
 import { col } from '@/firebase/firestore';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 import { mockGamesV2 } from '@/data/mockData';
 import { logError } from './errorLog';
 
@@ -200,10 +201,17 @@ export const trustService = {
       ? mockGamesV2.map((g) => ({ ...g, matches: [] }) as Game)
       : await (async () => {
           try {
-            const snap = await getDocs(
-              query(
-                col.games(),
-                where('participantIds', 'array-contains', userId),
+            // Cold-start auth race: the session is restored before the ID token
+            // reaches the Firestore channel, so this query hit the rules with
+            // request.auth == null and failed permission-denied. It self-heals
+            // on the next read, but each occurrence landed in the production
+            // error log (10 of them, `getTrustSummary` / permission-denied).
+            const snap = await withAuthRaceRetry(() =>
+              getDocs(
+                query(
+                  col.games(),
+                  where('participantIds', 'array-contains', userId),
+                ),
               ),
             );
             return snap.docs.map(

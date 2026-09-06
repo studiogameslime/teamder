@@ -72,6 +72,7 @@ import {
   inferEntityFromPayload,
 } from './notificationDedup';
 import { holidayNameOnDate } from './holidays';
+import { computeMovement } from './eveningMovement';
 
 // Chat fan-out + "one push per chat until opened" — defined in its own
 // module, re-exported so Cloud Functions discovers the triggers.
@@ -5540,17 +5541,12 @@ export const onGameRosterChanged = onDocumentWritten(
               const iNow = o.now.indexOf(uid);
               const iBefore = o.before.indexOf(uid);
               if (iNow < 0 || iBefore < 0) continue;
-              // Passed = above me before, below me now. Derived from positions
-              // rather than values, so equal-value ties never read as a pass.
-              const passed: string[] = [];
-              const passedBy: string[] = [];
-              for (const other of o.now) {
-                if (other === uid) continue;
-                const oNow = o.now.indexOf(other);
-                const oBefore = o.before.indexOf(other);
-                if (oBefore < iBefore && oNow > iNow) passed.push(other);
-                else if (oBefore > iBefore && oNow < iNow) passedBy.push(other);
-              }
+              // Who I actually went past. See computeMovement — the rule is
+              // value-based on purpose; positions read a tie as an overtake.
+              const { passed, passedBy } = computeMovement(uid, o.now, (id) => ({
+                now: cumOf(id, m),
+                tonight: evOf(id, m),
+              }));
               const aboveId = iNow > 0 ? o.now[iNow - 1] : null;
               out[m] = {
                 value: cumOf(uid, m),

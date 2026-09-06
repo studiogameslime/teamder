@@ -643,6 +643,10 @@ export const he = {
   // Evening summary card + sharing
   summaryTitle: 'סיכום המחזור',
   summaryCta: 'סיכום המחזור שלי',
+  // Shown in place of "סיכום המחזור שלי" to a club member who wasn't on this
+  // week's roster: the club's evening and the mini-game history are still
+  // theirs to read, but there is no personal card to open (Eliran's request).
+  summaryNotPlayedPlaceholder: 'לא שיחקת במחזור הזה, לא קיים סיכום מחזור אישי',
   // Home card, shown for 24h after an evening the player actually played.
   homeJustPlayedTitle: 'המחזור האחרון',
   homeJustPlayedBody: 'המחזור הסתיים — הציון, הגולים והדירוג שלך מחכים בפנים.',

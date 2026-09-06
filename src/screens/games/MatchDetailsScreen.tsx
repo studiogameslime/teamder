@@ -62,6 +62,7 @@ import {
 import { WaitlistPromotionAnimation } from '@/components/anim/game/WaitlistPromotionAnimation';
 import { isWaitlistPromotion } from '@/components/anim/game/triggerLogic';
 import { usePreviousValue } from '@/hooks/animations';
+import { resolveSplitTeams, isSplitStale } from '@/utils/draftTeamsView';
 import { successHaptic } from '@/utils/haptics';
 import { toast } from '@/components/Toast';
 import {
@@ -2329,17 +2330,6 @@ export function MatchDetailsScreen() {
   const gameWasPlayed =
     game.status === 'finished' || game.liveMatch?.startedAt != null;
 
-  // Teams go "stale" when someone registered AFTER the split was saved —
-  // i.e. a registered player isn't assigned to any team. We surface a "!"
-  // on the section so the admin knows to re-balance. Guests are draftable
-  // too, so they count toward the assigned set.
-  const assignedIds = new Set<string>(
-    (draftTeams?.teams ?? []).flatMap((t) => t.playerIds),
-  );
-  const teamsStale =
-    !!draftTeams &&
-    (game.players ?? []).some((uid) => !assignedIds.has(uid));
-
   // The "הכוחות שחולקו" section is a RECORD of the starting split — it must NOT
   // change when a player goes home or is substituted mid-match (user request).
   // Once a rotation has started, `rotation.baseTeams` is the frozen snapshot of
@@ -2347,20 +2337,28 @@ export function MatchDetailsScreen() {
   // `draftTeams.teams` is the split as created. `draftTeams.teams` itself is the
   // LIVE/working roster (mutated by went-home + permanent-fill), so it is used
   // only by the live-match rotation panel, never for this fixed display.
-  const splitTeams = draftTeams?.originalTeams?.length
-    ? // FROZEN original split (survives go-home / removals) — the true "as
-      // divided" record the user wants in the summary.
-      [...draftTeams.originalTeams].sort((a, b) => a.index - b.index)
-    : game.rotation?.baseTeams?.length
-      ? [...game.rotation.baseTeams]
-          .sort((a, b) => a.index - b.index)
-          .map((b) => ({
-            index: b.index,
-            // baseTeams keeps the original order → playerIds[0] is the captain.
-            captainId: b.playerIds[0] ?? '',
-            playerIds: b.playerIds,
-          }))
-      : draftTeams?.teams ?? [];
+  const splitTeams = resolveSplitTeams(draftTeams, game.rotation);
+
+  // Teams go "stale" when someone registered AFTER the split was saved — i.e. a
+  // registered player isn't assigned to any team. We surface a "!" on the
+  // section so the admin knows to re-balance. Guests are draftable too, so they
+  // count toward the assigned set.
+  //
+  // Read the SAME array the section renders (`splitTeams`), not `draftTeams.teams`.
+  // `teams` is the live/working roster: go-home strips players out of it, so a
+  // player who left mid-evening looked like someone who "joined after the split"
+  // and the warning fired on a perfectly balanced night — 15/15, three teams of
+  // five, and a red "someone joined after teams were divided" over the top
+  // (report from Eliran, game 87n2y26N2nsHdMILkKzg: teams [4,5,4] vs original
+  // [5,5,5]). A genuine late joiner is in neither array, so they're still caught.
+  const teamsStale = isSplitStale(splitTeams, game.players, !!draftTeams);
+
+  // Who may read the finished-evening shortcuts. Playing here is the obvious
+  // case; club membership is the one that was missing — a member left off the
+  // roster could not open the club's own evening.
+  const viewerPlayedHere = !!user && (game.players ?? []).includes(user.id);
+  const viewerIsClubMember =
+    !!user && !!game.groupId && myCommunities.some((c) => c.id === game.groupId);
 
   // ── Team internal-rating (average) + WhatsApp export ──────────────────────
   const teamsGrp = myCommunities.find((c) => c.id === game.groupId);
@@ -2827,15 +2825,43 @@ export function MatchDetailsScreen() {
           ) : null}
 
           {/* Finished-game shortcuts — placed ABOVE the drawn teams (user
-              request): the personal summary first, then the mini-games history.
-              Participants only (the summary/roundHistory reads are gated). */}
-          {isFinished(game) && !!user && (game.players ?? []).includes(user.id) ? (
+              request). Open to anyone in the CLUB, not only to this week's
+              roster: a member who sat the evening out still wants to read what
+              happened (Eliran's request). `roundSummaries` and `roundHistory`
+              are both club-readable, so this matches what the rules allow. */}
+          {isFinished(game) && (viewerPlayedHere || viewerIsClubMember) ? (
             <>
-              {/* The CLUB's evening sits above the player's own — the night
-                  happened to everyone, and the personal card is the follow-up
-                  question. It leads to a screen that says "no summary" when the
-                  evening predates the feature, which is honest and rare enough
-                  not to warrant hiding the button behind a probe read. */}
+              {/* The player's OWN card leads (Eliran's request — it is the one
+                  he opens; the club's evening is the follow-up). A member who
+                  didn't play has no personal card, so that slot becomes a
+                  placeholder saying so rather than a button into an empty
+                  screen. */}
+              {viewerPlayedHere ? (
+                <Pressable
+                  onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
+                  style={({ pressed }) => [
+                    styles.summaryCta,
+                    pressed && { opacity: 0.9 },
+                  ]}
+                >
+                  <Ionicons name="sparkles" size={18} color="#fff" />
+                  <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.summaryPlaceholder}>
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={18}
+                    color={colors.textMuted}
+                  />
+                  <Text style={styles.summaryPlaceholderTxt}>
+                    {he.summaryNotPlayedPlaceholder}
+                  </Text>
+                </View>
+              )}
+              {/* It leads to a screen that says "no summary" when the evening
+                  predates the feature, which is honest and rare enough not to
+                  warrant hiding the button behind a probe read. */}
               <Pressable
                 onPress={() => nav.navigate('RoundSummary', { gameId: game.id })}
                 style={({ pressed }) => [
@@ -2846,16 +2872,6 @@ export function MatchDetailsScreen() {
               >
                 <Ionicons name="stats-chart" size={18} color="#fff" />
                 <Text style={styles.summaryCtaTxt}>{he.roundSummaryCta}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => nav.navigate('EveningSummary', { gameId: game.id })}
-                style={({ pressed }) => [
-                  styles.summaryCta,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Ionicons name="sparkles" size={18} color="#fff" />
-                <Text style={styles.summaryCtaTxt}>{he.summaryCta}</Text>
               </Pressable>
               <Pressable
                 onPress={() => nav.navigate('MatchRounds', { gameId: game.id })}
@@ -3919,6 +3935,29 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   summaryCtaTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  // Same footprint as the two CTAs above it so the block keeps its rhythm, but
+  // visibly inert — there is nothing to tap.
+  summaryPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    marginBottom: spacing.sm,
+  },
+  summaryPlaceholderTxt: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+    flexShrink: 1,
+  },
   roundsCta: {
     flexDirection: 'row',
     alignItems: 'center',

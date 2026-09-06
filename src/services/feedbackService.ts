@@ -73,6 +73,11 @@ export async function submitFeedback(
         ? imageBase64
         : undefined;
 
+    // `addDoc` generates the id on the CLIENT, so a write that landed but whose
+    // ack was lost (flaky network, backgrounded app) gets replayed by the SDK
+    // with the same id and comes back `already-exists`. The report was saved;
+    // telling the user it failed only makes them send it twice. Swallow that one
+    // code — every other failure still surfaces.
     await addDoc(collection(db, 'feedback'), {
       type,
       message: text,
@@ -87,6 +92,7 @@ export async function submitFeedback(
       status: 'new',
     });
   } catch (err) {
+    if ((err as { code?: string })?.code === 'already-exists') return;
     logError('submitFeedback', err, { type, screen });
     throw err;
   }

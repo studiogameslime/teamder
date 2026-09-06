@@ -1269,18 +1269,21 @@ service cloud.firestore {
       // ── /games/{id}/roundHistory/{roundId} — per-mini-game roster+result ──
       // Written ONLY by commitRoundStats (Admin SDK, bypasses rules). Read by
       // any game participant so the "סיכום הערב" card can derive contribution%,
-      // streaks and the best mini-game. No client writes.
+      // streaks and the best mini-game — and by any MEMBER of the club, who can
+      // already read the evening's own /roundSummaries doc and was being denied
+      // only the per-mini-game detail behind it. No client writes.
       match /roundHistory/{roundId} {
-        allow read: if isGamePlayer(id);
+        allow read: if isGamePlayer(id) || isGroupMember(gameDoc(id).groupId);
         allow write: if false;
       }
 
       // ── /games/{id}/committedRounds/{roundId} — one doc per committed round ──
       // The idempotency latch, written by commitRoundStats. Its COUNT is the
       // evening's TOTAL mini-games (even for old games predating roundHistory),
-      // so the summary can show "played X of Y". Read-only for participants.
+      // so the summary can show "played X of Y". Read-only, participants and
+      // club members alike (mirrors roundHistory above).
       match /committedRounds/{roundId} {
-        allow read: if isGamePlayer(id);
+        allow read: if isGamePlayer(id) || isGroupMember(gameDoc(id).groupId);
         allow write: if false;
       }
 
