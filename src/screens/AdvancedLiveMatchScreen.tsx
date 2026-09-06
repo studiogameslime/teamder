@@ -290,11 +290,19 @@ export function AdvancedLiveMatchScreen() {
         !!me &&
         ((g.players ?? []).includes(me.id) ||
           (g.waitlist ?? []).includes(me.id));
+      // A club member who isn't on this week's roster may still WATCH.
+      // Controls stay admin-only. See canEnterLive.
+      const isClubMember =
+        !!me && !!g.groupId && myCommunities.some((c) => c.id === g.groupId);
       if (terminal) {
         toast.info(he.matchDetailsAlreadyFinished);
         if (nav.canGoBack()) nav.goBack();
       } else if (
-        !canEnterLive(g, { isOrganizerOrAdmin: adminHere, isParticipant }) &&
+        !canEnterLive(g, {
+          isOrganizerOrAdmin: adminHere,
+          isParticipant,
+          isClubMember,
+        }) &&
         !adminHere
       ) {
         toast.info(he.liveMatchNotActiveYet);

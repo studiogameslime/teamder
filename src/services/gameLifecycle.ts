@@ -19,10 +19,15 @@ interface ActorFlags {
   /** true if the user is the game's `createdBy` OR an admin of the parent group. */
   isOrganizerOrAdmin: boolean;
   /** true if the user appears in players[] or waitlist[] of the game.
-   *  Used by `canEnterLive` to gate access to the live-match screen —
-   *  non-participants have nothing to watch and historically caused
-   *  random viewers to wander into a match they aren't part of. */
+   *  Used by `canEnterLive` to gate access to the live-match screen. */
   isParticipant?: boolean;
+  /** true if the user is a member of the game's parent community.
+   *  A member who did NOT sign up for this particular evening can still
+   *  watch it live — they are part of the club and the evening is a club
+   *  event (owner request: a member left off the roster could not open the
+   *  live screen at all). Watching only; every control on both live screens
+   *  is gated on `isOrganizerOrAdmin` separately. */
+  isClubMember?: boolean;
 }
 
 // ─── Status normalization (backward-compat) ─────────────────────────────
@@ -235,14 +240,29 @@ export function canStartEvening(
   return true;
 }
 
-/** Re-enter an already-started evening. Only the game admin (creator
- *  or group admin) and registered participants (players[] / waitlist[])
- *  can enter — random viewers and non-members are blocked. The game
- *  must be in the active runtime state for anyone to enter at all. */
+/** Re-enter an already-started evening.
+ *
+ *  Open to the game admin (creator or group admin), to registered
+ *  participants (players[] / waitlist[]), and to any MEMBER of the game's
+ *  community. The evening belongs to the club, so a member who happened not
+ *  to be on the roster this week can still follow it — previously they were
+ *  bounced out with "not active yet", which read as a bug.
+ *
+ *  Non-members remain blocked, and membership grants WATCHING only: the
+ *  timer, goal entry, rotation and every other control on both live screens
+ *  are gated on `isOrganizerOrAdmin`, so a member sees the read-only view
+ *  with `liveTimerViewerHint`.
+ *
+ *  Firestore already agreed with this: `match /games/{id}` allows a read to
+ *  `isGroupMember(resource.data.groupId)`, so the restriction was only ever
+ *  client-side. No rules change accompanies this.
+ *
+ *  The game must be in the active runtime state for anyone to enter at all. */
 export function canEnterLive(game: Game, actor: ActorFlags): boolean {
   if (!isActive(game)) return false;
   if (actor.isOrganizerOrAdmin) return true;
-  return actor.isParticipant === true;
+  if (actor.isParticipant === true) return true;
+  return actor.isClubMember === true;
 }
 
 /** Wrap up the evening → flip to 'finished' + lock everything. */

@@ -2009,13 +2009,18 @@ export function MatchDetailsScreen() {
           : []),
         ...(canEnterLive(game, {
           isOrganizerOrAdmin: isAdmin,
-          // Only registered participants (players or waitlist) — random
-          // community members who didn't sign up have nothing to do on
-          // the live screen and shouldn't be able to walk in.
           isParticipant:
             !!user &&
             (game.players.includes(user.id) ||
               game.waitlist.includes(user.id)),
+          // Any member of the club may WATCH, roster or not — the evening is
+          // a club event, and a member left off this week's roster could not
+          // open the live screen at all (owner report). Controls remain
+          // admin-only, so a member gets the read-only view.
+          isClubMember:
+            !!user &&
+            !!game.groupId &&
+            myCommunities.some((c) => c.id === game.groupId),
         })
           ? [
               {
