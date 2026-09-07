@@ -33,6 +33,7 @@ import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { isGuestId, type DraftTeam, type Game } from '@/types';
 import { teamName } from '@/utils/draft';
+import { teamColor } from '@/components/match/rotationView';
 import { selectionHaptic, successHaptic } from '@/utils/haptics';
 
 export interface RosterUser {
@@ -55,7 +56,6 @@ interface Props {
 // Per-team accent by index (0=red, 1=blue, 2=green, 3=yellow) — the SAME bib
 // colours used everywhere else (draft, live match, round history). The old
 // array had red/blue swapped, so "קבוצה א" showed a blue dot.
-const TEAM_TINTS = [colors.team1, colors.team2, colors.team3, colors.team4];
 
 /** Pulsing opacity — marks the swap-target candidates while a source is picked.
  *  Resets cleanly to opacity 1 on deactivate so a chip never stays dimmed. */
@@ -227,11 +227,11 @@ export function TeamsEditModal({ visible, game, resolve, onClose, onSaved }: Pro
                   <View
                     style={[
                       styles.teamDot,
-                      { backgroundColor: TEAM_TINTS[t.index % TEAM_TINTS.length] },
+                      { backgroundColor: teamColor(t.index, teams) },
                     ]}
                   />
                   <Text style={styles.columnTitle} numberOfLines={1}>
-                    {teamName(t.index)}
+                    {teamName(t.index, teams)}
                   </Text>
                 </View>
                 <View style={styles.chipList}>

@@ -39,7 +39,6 @@ export function playersPerTeam(format?: GameFormat): number {
 }
 
 /** Hebrew team letters; team index 0 → 'א'. One per supported team. */
-export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז'] as const;
 // The draft screen clamps to these. MAX_TEAMS used to be 4 while the create
 // form already offered 5, so a 5-team game silently drafted into 4 teams and
 // the fifth team's players landed on the bench. Both ends now come from the
@@ -48,26 +47,22 @@ export const TEAM_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז'] as const;
 export const MIN_TEAMS = TEAM_COUNT_MIN;
 export const MAX_TEAMS = TEAM_COUNT_MAX;
 
-export function teamLetter(i: number): string {
-  return TEAM_LETTERS[i] ?? String(i + 1);
-}
-
-// Teams are identified by COLOR (clearer than "קבוצה א/ב"), fixed per index.
-// Kept in step with rotationView.ts — the same team must not be "ירוקה" in the
-// draft and "קבוצה ג" on the live pitch.
-const TEAM_COLOR_NAMES = [
-  'אדומה',
-  'כחולה',
-  'ירוקה',
-  'צהובה',
-  'כתומה',
-  'סגולה',
-  'שחורה',
-];
-export function teamName(i: number): string {
-  const c = TEAM_COLOR_NAMES[i];
-  return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
-}
+// Team identity (name / tint / palette) is shared with the live surfaces —
+// see utils/teamIdentity. It used to be duplicated here WITHOUT palette
+// support, which is why an admin's chosen colours showed on the live screens
+// and nowhere else.
+// NOTE: `teamColor` is NOT re-exported here — it depends on the theme, and this
+// module is imported by the pure logic suites. Screens take it from rotationView.
+export {
+  TEAM_LETTERS,
+  teamLetter,
+  teamName,
+  teamDot,
+  teamPaletteEntry,
+  TEAM_PALETTE,
+  type TeamPaletteEntry,
+  type TeamLike,
+} from '@/utils/teamIdentity';
 
 /**
  * The sequence of team indices that pick, in order, for `picks` total

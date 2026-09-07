@@ -11,11 +11,22 @@ export interface SplitTeam {
   index: number;
   captainId: string;
   playerIds: string[];
+  /** The admin's chosen team colour, if any. Carried through so the record
+   *  renders in the same colours as the live pitch — dropping it here is what
+   *  left "הכוחות שחולקו" on the default red/blue/green. */
+  colorKey?: string;
+}
+
+interface DraftTeamLike {
+  index: number;
+  captainId?: string;
+  playerIds?: string[];
+  colorKey?: string;
 }
 
 interface DraftTeamsLike {
-  teams?: { index: number; captainId?: string; playerIds?: string[] }[];
-  originalTeams?: { index: number; captainId?: string; playerIds?: string[] }[];
+  teams?: DraftTeamLike[];
+  originalTeams?: DraftTeamLike[];
 }
 
 interface RotationLike {
@@ -37,24 +48,28 @@ export function resolveSplitTeams(
   draftTeams: DraftTeamsLike | null | undefined,
   rotation?: RotationLike | null,
 ): SplitTeam[] {
-  const norm = (
-    t: { index: number; captainId?: string; playerIds?: string[] },
-  ): SplitTeam => ({
+  const norm = (t: DraftTeamLike): SplitTeam => ({
     index: t.index,
     captainId: t.captainId ?? '',
     playerIds: [...(t.playerIds ?? [])],
+    ...(t.colorKey ? { colorKey: t.colorKey } : {}),
   });
 
   if (draftTeams?.originalTeams?.length) {
     return [...draftTeams.originalTeams].sort((a, b) => a.index - b.index).map(norm);
   }
   if (rotation?.baseTeams?.length) {
+    // baseTeams carries no colour — fall back to the draft's colour for the
+    // same index so an older game still renders in the club's chosen colours.
+    const colourAt = (i: number) =>
+      draftTeams?.teams?.find((t) => t.index === i)?.colorKey;
     return [...rotation.baseTeams]
       .sort((a, b) => a.index - b.index)
       .map((b) => ({
         index: b.index,
         captainId: b.playerIds?.[0] ?? '',
         playerIds: [...(b.playerIds ?? [])],
+        ...(colourAt(b.index) ? { colorKey: colourAt(b.index) } : {}),
       }));
   }
   return (draftTeams?.teams ?? []).map(norm);

@@ -126,7 +126,7 @@ import { he } from '@/i18n/he';
 import { formatDateShortYear, formatDayDate, formatTime,
   gameFormatLabel,
 } from '@/utils/format';
-import { teamName, normalizeRating, NEUTRAL_RATING } from '@/utils/draft';
+import { teamName, teamDot, normalizeRating, NEUTRAL_RATING } from '@/utils/draft';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
 import { communityEventsService } from '@/services/communityEventsService';
@@ -2395,10 +2395,9 @@ export function MatchDetailsScreen() {
   // Export the split to WhatsApp as plain text — names only, NO team or
   // individual ratings (user request).
   const handleExportTeams = async () => {
-    // Dot colours must line up with teamName(index): 0=red, 1=blue, 2=green,
-    // 3=yellow. Index by t.index (NOT the loop position) so a non-contiguous
-    // set of team indices still gets the right colour beside each name.
-    const dots = ['🔴', '🔵', '🟢', '🟡'];
+    // Dot + name both come from the shared team identity, so an admin's chosen
+    // colours travel into WhatsApp too — the hardcoded dot list here was one of
+    // the places that kept saying red/blue/green after the colours changed.
     const body = [...splitTeams]
       .sort((a, b) => a.index - b.index)
       .map((t) => {
@@ -2406,7 +2405,7 @@ export function MatchDetailsScreen() {
           .map((id) => resolveDraftUser(id).name.trim().split(/\s+/)[0])
           .filter(Boolean)
           .join(', ');
-        return `${dots[t.index % dots.length]} ${teamName(t.index)}\n${names}`;
+        return `${teamDot(t.index, splitTeams)} ${teamName(t.index, splitTeams)}\n${names}`;
       })
       .join('\n\n');
     try {
@@ -2934,6 +2933,7 @@ export function MatchDetailsScreen() {
                     <DraftTeamCard
                       key={t.index}
                       index={t.index}
+                      colorKey={t.colorKey}
                       captain={resolveDraftUser(t.captainId)}
                       members={t.playerIds.slice(1).map(resolveDraftUser)}
                       teamRating={teamAvgRating(t.playerIds)}

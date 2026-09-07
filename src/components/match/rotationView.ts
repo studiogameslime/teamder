@@ -6,68 +6,29 @@ import { rosterOf } from '@/services/rotationEngine';
 import { parseGuestRosterId, type MatchRotation } from '@/types';
 import { colors } from '@/theme';
 
-const LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
-export function teamLetter(i: number): string {
-  return LETTERS[i] ?? String(i + 1);
-}
+// Team identity (name / tint / palette) now lives in one place — see
+// utils/teamIdentity. Re-exported here so the live surfaces keep their import.
+import { teamName, chosenFor, type TeamLike } from '@/utils/teamIdentity';
+export {
+  teamLetter,
+  teamName,
+  teamDot,
+  teamPaletteEntry,
+  TEAM_PALETTE,
+  type TeamPaletteEntry,
+  type TeamLike,
+} from '@/utils/teamIdentity';
 
-// Teams are identified by COLOR (clearer than "קבוצה א/ב"). The color is fixed
-// per team INDEX so a team keeps its identity across rotations. Falls back to
-// the Hebrew letter for a hypothetical 5th+ team.
-// Seven entries, one per team the format picker allows. The list stopped at
-// four while the picker stopped at five, so a fifth team already fell through
-// to "קבוצה ה" in grey — not broken, but the odd one out on its own pitch.
-// Colours 5-7 are taken from TEAM_PALETTE below so the two stay one vocabulary.
-const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה', 'כתומה', 'סגולה', 'שחורה'];
+// Default per-index tints. Theme-dependent (dark mode uses lighter variants),
+// which is why this half stays here and not in the pure identity module.
 const TEAM_COLORS = [
   colors.team1, colors.team2, colors.team3, colors.team4,
   '#F97316', '#8B5CF6', '#1F2937',
 ];
 
-// Admin-selectable team colours. `key` is stored on DraftTeam.colorKey; `plural`
-// is the team name when chosen ("האדומים"); `hex` tints the team everywhere.
-export interface TeamPaletteEntry {
-  key: string;
-  plural: string;
-  hex: string;
-  /** true when the colour is light → needs dark text/contrast on top. */
-  light?: boolean;
-}
-export const TEAM_PALETTE: TeamPaletteEntry[] = [
-  { key: 'red', plural: 'האדומים', hex: '#EF4444' },
-  { key: 'blue', plural: 'הכחולים', hex: '#3B82F6' },
-  { key: 'green', plural: 'הירוקים', hex: '#22C55E' },
-  { key: 'yellow', plural: 'הצהובים', hex: '#EAB308' },
-  { key: 'orange', plural: 'הכתומים', hex: '#F97316' },
-  { key: 'purple', plural: 'הסגולים', hex: '#8B5CF6' },
-  { key: 'black', plural: 'השחורים', hex: '#1F2937' },
-  { key: 'white', plural: 'הלבנים', hex: '#E5E7EB', light: true },
-];
-const PALETTE_BY_KEY: Record<string, TeamPaletteEntry> = Object.fromEntries(
-  TEAM_PALETTE.map((p) => [p.key, p]),
-);
-export function teamPaletteEntry(colorKey?: string): TeamPaletteEntry | undefined {
-  return colorKey ? PALETTE_BY_KEY[colorKey] : undefined;
-}
-
-type TeamLike = { index: number; colorKey?: string };
-
-/** Team name. When a `teams` list is passed and the team at index `i` has a
- *  chosen colour, the name is that colour in plural ("האדומים"); otherwise the
- *  default "קבוצה אדומה" / letter. */
-export function teamName(i: number, teams?: TeamLike[]): string {
-  const chosen = teamPaletteEntry(teams?.find((t) => t.index === i)?.colorKey);
-  if (chosen) return chosen.plural;
-  const c = TEAM_COLOR_NAMES[i];
-  return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
-}
-
-/** The tint for a team index — the chosen colour when set, else the fixed
- *  index colour. */
-export function teamColor(i: number, teams?: TeamLike[]): string {
-  const chosen = teamPaletteEntry(teams?.find((t) => t.index === i)?.colorKey);
-  if (chosen) return chosen.hex;
-  return TEAM_COLORS[i] ?? colors.textMuted;
+/** The tint for a team index — the chosen colour when set, else the index one. */
+export function teamColor(i: number, teams?: readonly TeamLike[]): string {
+  return chosenFor(i, teams)?.hex ?? TEAM_COLORS[i] ?? colors.textMuted;
 }
 
 /** First name only — keeps live roster rows compact ("Eliran Tzabari" →

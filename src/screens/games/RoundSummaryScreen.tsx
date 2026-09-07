@@ -235,6 +235,12 @@ export function RoundSummaryScreen() {
 
 function colourName(index: number): string {
   // teamName gives "קבוצה אדומה"; the sentence supplies its own "קבוצה".
+  //
+  // NOTE: this screen alone still uses the DEFAULT colour names, because it
+  // renders a sealed /roundSummaries doc that carries no colorKey, and its two
+  // sentence templates bake in "קבוצה {x}" / "ל{x}" — a chosen name would read
+  // "קבוצה הצהובים" and "להצהובים" instead of "הצהובים" and "לצהובים". Doing it
+  // properly needs the colour on the summary doc plus grammar-aware templates.
   return teamName(index).replace('קבוצה ', '');
 }
 

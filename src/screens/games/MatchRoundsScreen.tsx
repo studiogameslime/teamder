@@ -26,7 +26,8 @@ import { SoccerBallLoader } from '@/components/SoccerBallLoader';
 import { UserAvatar } from '@/components/UserAvatar';
 import { gameService } from '@/services/gameService';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
-import { teamName } from '@/utils/draft';
+import { teamName, type TeamLike } from '@/utils/draft';
+import { teamColor } from '@/components/match/rotationView';
 import { useGameStore } from '@/store/gameStore';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
@@ -46,17 +47,17 @@ import type { GameStackParamList } from '@/navigation/GameStack';
 
 type Params = RouteProp<GameStackParamList, 'MatchRounds'>;
 
-// Bib colours by team index (0=red,1=blue,2=green,3=yellow) — matches the live
-// mini-game teams. Rounds record the two sides' indices, so the recap shows the
-// real colours + names ("אדומה נגד כחולה"). Old games (no index, −1) fall back to
-// neutral orange/blue + "קבוצה א׳/ב׳".
-const TEAM_HEX = [colors.team1, colors.team2, colors.team3, colors.team4];
+// Colour + name come from the shared team identity, so the recap honours the
+// admin's chosen bib colours ("הצהובים נגד הלבנים") instead of always saying
+// אדומה/כחולה/ירוקה. Old games (no index, −1) fall back to neutral
+// orange/blue + "קבוצה א׳/ב׳".
 function teamStyle(
   index: number | undefined,
   side: 'A' | 'B',
+  teams?: readonly TeamLike[],
 ): { color: string; name: string } {
-  if (typeof index === 'number' && index >= 0 && index < TEAM_HEX.length) {
-    return { color: TEAM_HEX[index], name: teamName(index) };
+  if (typeof index === 'number' && index >= 0) {
+    return { color: teamColor(index, teams), name: teamName(index, teams) };
   }
   return side === 'A'
     ? { color: '#F97316', name: he.matchRoundsTeamA }
@@ -179,6 +180,9 @@ export function MatchRoundsScreen() {
   // count. Prefer the authoritative draft split; fall back to whatever indices
   // the rounds recorded (old games with a real index but no draftTeams). −1
   // (index-less legacy rounds) is dropped: there's no colour to show.
+  // Same array the rounds below are coloured from — the admin's chosen bibs.
+  const splitForColors =
+    game?.draftTeams?.originalTeams ?? game?.draftTeams?.teams;
   const cycleTeams = useMemo<number[]>(() => {
     const fromDraft = (game?.draftTeams?.teams ?? [])
       .map((t) => t.index)
@@ -227,9 +231,14 @@ export function MatchRoundsScreen() {
               {cycleTeams.map((idx) => (
                 <View key={idx} style={styles.teamsLegendChip}>
                   <View
-                    style={[styles.teamsLegendDot, { backgroundColor: TEAM_HEX[idx] }]}
+                    style={[
+                      styles.teamsLegendDot,
+                      { backgroundColor: teamColor(idx, splitForColors) },
+                    ]}
                   />
-                  <Text style={styles.teamsLegendName}>{teamName(idx)}</Text>
+                  <Text style={styles.teamsLegendName}>
+                    {teamName(idx, splitForColors)}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -284,8 +293,8 @@ function RoundCard({
     typeof round.teamBIndex === 'number' && round.teamBIndex >= 0
       ? round.teamBIndex
       : resolveTeamIndex(round.teamB, teams);
-  const A = teamStyle(aIdx, 'A');
-  const B = teamStyle(bIdx, 'B');
+  const A = teamStyle(aIdx, 'A', teams);
+  const B = teamStyle(bIdx, 'B', teams);
   const pens = round.penalties ?? [];
   const penA = pens.filter((p) => p.team === 'A' && p.scored).length;
   const penB = pens.filter((p) => p.team === 'B' && p.scored).length;
