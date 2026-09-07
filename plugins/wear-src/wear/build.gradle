@@ -35,7 +35,7 @@ android {
   // Distinct namespace (R / BuildConfig package) but SAME applicationId
   // as the phone — that's what makes it the "watch version" in Play.
   namespace "com.studiogameslime.soccerapp.wear"
-  compileSdk 35
+  compileSdk 36
 
   defaultConfig {
     applicationId "com.studiogameslime.soccerapp"
@@ -43,7 +43,7 @@ android {
     // API 35 (Android 15): Google requires Wear OS updates to target API 35+
     // to publish after 2026-08-31. compileSdk is already 35 + the phone app
     // targets 35, so this only opts the watch into the same behaviour.
-    targetSdk 35
+    targetSdk 36
     // Wear uses its own high versionCode range so it never collides with
     // the phone app (phone is ~45 and auto-increments). Bump +1 each
     // new watch release.
