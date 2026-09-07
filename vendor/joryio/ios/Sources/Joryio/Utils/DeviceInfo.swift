@@ -19,8 +19,25 @@ struct DeviceInfo {
             info["app_version"] = appVersion
         }
 
-        // Build number
-        if let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
+        // Build number - sent as a NUMBER, to match Android.
+        //
+        // CFBundleVersion is a String in Apple's API, and this used to forward
+        // it as one. Android sends packageInfo.longVersionCode, a Long. So the
+        // same property crossed the wire as two types depending on the phone,
+        // and `$build_number` became the only genuinely mixed property in the
+        // workspace: 365 numeric rows from Android against 134 string rows
+        // from iOS, on one event. A segment rule like "build >= 220" then
+        // compared iOS builds lexicographically, where "98" > "220".
+        //
+        // Apple documents CFBundleVersion as a monotonically increasing
+        // integer, and every value observed in production ("1", "95", "97",
+        // "98") is one. When it is NOT parseable - some apps use "1.2.3" - the
+        // key is OMITTED rather than sent as a string: re-introducing the
+        // second type would restore exactly the bug this fixes, and
+        // `$app_version` (CFBundleShortVersionString) already carries the
+        // human-readable version for those apps.
+        if let raw = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+           let buildNumber = Int(raw.trimmingCharacters(in: .whitespaces)) {
             info["build_number"] = buildNumber
         }
 

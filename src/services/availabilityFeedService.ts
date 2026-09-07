@@ -11,6 +11,7 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
+import { withAuthRaceRetry } from '@/firebase/authRace';
 import type { TimeBucket, WeekdayIndex } from '@/types';
 import { logError } from './errorLog';
 
@@ -101,13 +102,21 @@ export const availabilityFeedService = {
       try {
         const { functions } = getFirebase();
         const fn = httpsCallable(functions, 'availabilityCounts');
-        const res = await fn({});
+        // Retry once through the cold-start auth race — the callable rejects
+        // with `functions/unauthenticated` if it fires before the ID token has
+        // attached, which is what put this in the production error log.
+        const res = await withAuthRaceRetry(() => fn({}));
         const value = res.data as AvailabilityCounts;
         // Only cache if no invalidate() raced in while we were fetching.
         if (epoch === startEpoch) cached = { at: Date.now(), value };
         return value;
       } catch (err) {
-        logError('getAvailabilityCounts', err, {});
+        // A session that hasn't finished attaching yet is a timing fact, not a
+        // bug, and the card already fails soft. Reporting it filled the error
+        // inbox with an entry nobody can act on.
+        if ((err as { code?: string })?.code !== 'functions/unauthenticated') {
+          logError('getAvailabilityCounts', err, {});
+        }
         // Fail-soft but DISTINGUISHABLE: `error:true` tells the card to render
         // nothing (not the "set your location" prompt, which would be wrong for
         // an already-located user). Not cached — a transient error shouldn't

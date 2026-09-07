@@ -1684,21 +1684,17 @@ class Joryio private constructor(
             withSdk { it.flush() }
         }
 
-        // ── LOCAL PATCH (Teamder, 2026-08-31) ──────────────────────────────
+        // ── LOCAL PATCH (Teamder, re-applied 2026-09-07) ───────────────────
         // The React Native module calls all five of these STATICALLY
         // (Joryio.optOut(), Joryio.syncInAppCampaigns(), …) but Joryio is a
         // `class` with a companion, and upstream declares them as INSTANCE
         // methods only — so :joryio_react-native-sdk:compileReleaseKotlin
         // fails with "Unresolved reference".
         //
-        // Third pull in a row with this shape, and this time the commit that
-        // ADDED two of the bindings (969a0caf4 "bridge methods that were bound
-        // on one platform or existed on none") is the commit that broke them:
-        // it bound syncInAppCampaigns and resetDisplayedCampaigns on Android
-        // without adding the statics they call. Their parity tripwire greps
+        // FOURTH pull in a row carrying this patch. Their parity tripwire greps
         // the SDK sources for method NAMES, and a grep cannot tell an instance
-        // method from a static one — so it keeps approving code that does not
-        // compile.
+        // method from a static one — so it keeps approving a bridge that does
+        // not compile. Audited again on this pull: all five still missing.
         //
         // Same shape as the subscription forwarders directly below, which the
         // marketing commit DID add. Remove when upstream carries these.

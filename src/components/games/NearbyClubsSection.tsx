@@ -122,7 +122,9 @@ export function NearbyClubsSection({
   );
 
   const handleJoin = async (club: GroupPublic) => {
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) return;
+    // Come back to THIS club after signing up — see the note in guestGate.
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: club.id }))
+      return;
     if (!user) return;
     setBusyId(club.id);
     try {

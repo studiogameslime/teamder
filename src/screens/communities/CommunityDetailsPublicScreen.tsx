@@ -190,7 +190,9 @@ export function CommunityDetailsPublicScreen() {
     !!group.contactPhone && isValidIsraeliPhone(group.contactPhone);
 
   const handleJoin = async () => {
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) return;
+    // Come back to THIS club after signing up — see the note in guestGate.
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: group.id }))
+      return;
     if (!me || isPending) return;
     setBusyJoin(true);
     try {

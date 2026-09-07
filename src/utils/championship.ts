@@ -18,6 +18,10 @@ export interface ChampionshipRow {
   rounds: number;
   /** Mini-games (rounds) the player's side won. */
   wins: number;
+  /** Mini-games (rounds) that ended level. Only reachable in formats where a
+   *  draw can stand — four teams and up. In a three-team club it is 0 for
+   *  everyone, which is why the column that shows it hides itself. */
+  ties: number;
   /** Mini-games (rounds) the player's side lost. */
   losses: number;
   /** Full games (evenings) the player took part in. */
@@ -79,6 +83,7 @@ export function rankChampionshipRows(
     assists?: number;
     rounds?: number;
     wins?: number;
+    ties?: number;
     losses?: number;
     games?: number;
     penTaken?: number;
@@ -101,6 +106,7 @@ export function rankChampionshipRows(
     assists: typeof x.assists === 'number' ? x.assists : 0,
     rounds: typeof x.rounds === 'number' ? x.rounds : 0,
     wins: typeof x.wins === 'number' ? x.wins : 0,
+    ties: typeof x.ties === 'number' ? x.ties : 0,
     losses: typeof x.losses === 'number' ? x.losses : 0,
     games: typeof x.games === 'number' ? x.games : 0,
     penTaken: typeof x.penTaken === 'number' ? x.penTaken : 0,

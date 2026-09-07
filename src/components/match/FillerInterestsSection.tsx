@@ -155,11 +155,17 @@ export function FillerInterestsSection({
     } catch (err) {
       const e = err as { code?: string; message?: string };
       const msg = (e.code ?? '').replace(/^functions\//, '');
-      logError('approveFiller', err, {
-        screen: 'FillerInterestsSection',
-        gameId,
-        candidateUid,
-      });
+      // `failed-precondition` means the game closed or filled while the admin
+      // was looking at the list. That is an ordinary outcome with its own
+      // Hebrew message below — not a defect, and reporting it only buried the
+      // real errors underneath it.
+      if (msg !== 'failed-precondition') {
+        logError('approveFiller', err, {
+          screen: 'FillerInterestsSection',
+          gameId,
+          candidateUid,
+        });
+      }
       toast.error(
         msg === 'failed-precondition'
           ? he.fillerApproveStale

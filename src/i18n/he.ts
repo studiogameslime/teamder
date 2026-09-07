@@ -295,10 +295,19 @@ export const he = {
   /** Label above the "+MM:SS" added-time counter shown once the configured
    *  duration is exceeded (the main clock freezes at the duration). */
   liveTimerOvertime: 'תוספת זמן',
-  liveTimerPause: 'השהה',
-  liveTimerResume: 'המשך',
-  liveTimerStart: 'התחל',
+  // "זמן" spelled out: the clock is now the primary button on the live
+  // controls and carries the width to match, so a bare verb read as an
+  // instruction without an object. It is also the one control an admin hits
+  // repeatedly mid-round, often without looking straight at it.
+  liveTimerPause: 'השהה זמן',
+  liveTimerResume: 'המשך זמן',
+  liveTimerStart: 'התחל זמן',
   liveTimerReset: 'אפס',
+  // The ⋯-menu wording. Spelled out because in a menu there is no surrounding
+  // context to make a bare "אפס" mean anything — and because what it resets is
+  // the CURRENT mini-game, not the evening, which is the thing worth being
+  // unambiguous about next to "סיים מחזור".
+  liveTimerResetCurrent: 'אפס משחק נוכחי',
   // Says MATCH, not round, because that is what resetTimer actually clears:
   // the clock, this match's score and its goal log. The evening's per-player
   // tally (`liveMatch.goalTally`) and every finished match survive. The old
@@ -497,6 +506,7 @@ export const he = {
   wentHomeConfirmBody:
     'השחקן יוצא מהמחזור. אם קבוצתו במגרש ותישאר חסרה — תוצע החלפה, והשעון ימשיך לרוץ. אפשר להחזיר אותו בכל רגע.',
   wentHomeConfirmOk: 'הלך הביתה',
+  emptyTeamRetireOk: 'כן, להמשיך בלעדיהם',
   restoreConfirmTitle: (name: string) => `להחזיר את ${name}?`,
   restoreConfirmBody: 'השחקן יחזור לקבוצתו. אם נכנס לו מחליף — המחליף יפנה את מקומו.',
   restoreConfirmOk: 'החזר',
@@ -994,6 +1004,7 @@ export const he = {
   summaryMetricRounds: 'משחקים',
   summaryMetricEvenings: 'מחזורים',
   summaryMetricShootouts: 'הכרעות פנדלים',
+  summaryMetricTies: 'תיקו',
   summaryRecordNew: (who: string, value: number, metric: string, prev: number) =>
     `שיא מועדון חדש · ${who} — ${value} ${metric} (הקודם: ${prev})`,
   summaryRecordTied: (who: string, value: number, metric: string) =>
@@ -1992,6 +2003,7 @@ export const he = {
   statGoals: 'שערים',
   statAssists: 'בישולים',
   statOwnGoals: 'שערים עצמיים',
+  statTies: 'תיקו',
   statGoalsPerEvening: 'גולים למחזור',
   statDistinctPlayers: 'שחקנים שונים',
   statMostPlayedWith: 'השותף הקבוע',
@@ -2968,6 +2980,7 @@ export const he = {
   champColMiniGames: 'משחקים',
   champColAppearances: 'הופעות',
   champColWins: 'ניצחונות',
+  champColTies: 'תיקו',
   champColLosses: 'הפסדים',
   champColScore: 'ניקוד',
   champColCleanSheets: 'שער נקי',

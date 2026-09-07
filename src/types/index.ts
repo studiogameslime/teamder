@@ -710,6 +710,11 @@ export interface UserStats {
   /** Own goals the player scored (into their own net). Incremented server-side
    *  by `commitRoundStats`; optional (no migration). Never part of `goals`. */
   ownGoals?: number;
+  /** Mini-games that ended level. Only reachable from four teams up — with
+   *  three, the loser rotates out and every mini-game has a winner — so it is
+   *  0 for whole clubs, and every surface that shows it hides itself at 0.
+   *  Incremented server-side by `commitRoundStats`; optional (no migration). */
+  ties?: number;
   /**
    * "שער נקי" — mini-games the player was on the field for whose side finished
    * with nothing conceded. A TEAM outcome credited to every participant, not a

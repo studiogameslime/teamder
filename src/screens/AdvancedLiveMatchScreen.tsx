@@ -45,6 +45,13 @@ import {
 } from '@/components/match/EquipmentHandoffModal';
 import { logError } from '@/services/errorLog';
 import { lightHaptic, successHaptic, warningHaptic } from '@/utils/haptics';
+import { tallyCreditFor } from '@/utils/goalTally';
+import {
+  emptyWaitingTeams,
+  remainingTeams,
+  retirePrompt,
+  canContinueWithout,
+} from '@/utils/emptyTeamRetire';
 import {
   canEnterLive,
   isCancelled as isCancelledHelper,
@@ -333,18 +340,21 @@ export function AdvancedLiveMatchScreen() {
 
   // Goals per player for the WHOLE evening — shown in each roster row's badge.
   // Prefer the persistent `goalTally` (accumulates across rounds); fall back to
-  // summing the current round's log for legacy live states without the tally.
+  // summing the current round's log only for LEGACY live states that predate the
+  // tally field.
+  //
+  // The fallback keys off the field being ABSENT, not empty. Testing for
+  // emptiness conflated "this live match never had a tally" with "the tally was
+  // deliberately cleared" — and stopRotation clears it. An admin who reset the
+  // evening watched the badges they had just zeroed reappear, rebuilt from a
+  // stale round log, because an empty map read as "no tally, go derive one".
   const goalsByPlayer = useMemo(() => {
-    if (live?.goalTally && Object.keys(live.goalTally).length > 0) {
-      return live.goalTally;
-    }
+    if (live?.goalTally) return live.goalTally;
     const acc: Record<string, number> = {};
     for (const g of live?.goals ?? []) {
-      // Credit real AND guest scorers (a guest is a full player in the cycle and
-      // now earns a per-game scorer row + badge). Only own goals / unknown
-      // scorers credit no one. Matches the goalTally path.
-      if (g.ownGoal || !g.scorerId) continue;
-      acc[g.scorerId] = (acc[g.scorerId] ?? 0) + 1;
+      // Same crediting rule as the tally itself, kept in one place.
+      const id = tallyCreditFor(g);
+      if (id) acc[id] = (acc[id] ?? 0) + 1;
     }
     return acc;
   }, [live?.goalTally, live?.goals]);
@@ -1384,6 +1394,51 @@ export function AdvancedLiveMatchScreen() {
   // point in an active rotation (mid-round too, not just between משחקים): if a
   // playing team is left short we immediately offer a replacement, and the
   // fill is committed WITHOUT resetting the running clock (keepClock).
+  /**
+   * A waiting team just lost its last player — ask whether to carry on without
+   * it. Deliberately a QUESTION, never automatic: those five might be coming
+   * back, or the admin might be mid-reshuffle, and dropping a team from the
+   * evening on our own initiative is presumptuous. Named in the evening's real
+   * colours ("האדומים נשארו בלי שחקנים — להמשיך רק עם הכחולים והירוקים?").
+   */
+  const offerRetireEmptyTeam = React.useCallback(
+    async (teams: DraftTeamsResult['teams'] | undefined, rot: MatchRotation | null) => {
+      if (!gameId || !teams || !rot) return;
+      const empties = emptyWaitingTeams(rot, teams);
+      const dropping = empties[0];
+      if (dropping === undefined) return;
+      const remaining = remainingTeams(rot, teams, dropping);
+      const { title, body } = retirePrompt(dropping, remaining, teams);
+      // One team left is not a shorter evening, it is no evening — say so and
+      // offer nothing, rather than a button that leads nowhere.
+      if (!canContinueWithout(rot, teams, dropping)) {
+        appAlert(title, body, [{ text: he.close }]);
+        return;
+      }
+      appAlert(title, body, [
+        { text: he.cancel, style: 'cancel' },
+        {
+          text: he.emptyTeamRetireOk,
+          onPress: async () => {
+            try {
+              await gameService.retireEmptyTeam(gameId, dropping);
+              logEvent(AnalyticsEvent.LiveRosterAction, {
+                gameId,
+                action: 'team_retired',
+                playerId: '',
+                isGuest: false,
+                midRound: timerRunning,
+              });
+            } catch (err) {
+              logError('retireEmptyTeam', err, { gameId, teamIndex: dropping });
+            }
+          },
+        },
+      ]);
+    },
+    [gameId, timerRunning],
+  );
+
   const onPlayerWentHome = (player: { id: string; name: string }) => {
     if (!gameId) return;
     appAlert(
@@ -1416,6 +1471,11 @@ export function AdvancedLiveMatchScreen() {
                 // running through the swap (don't zero them on commit).
                 if (refill) beginFillFlow(refill.skeleton, refill.draft, undefined, true);
               }
+              // Re-read rather than trusting the screen's copy: the write above
+              // and any refill have both landed by now, so this sees the roster
+              // as it actually is.
+              const fresh = await gameService.getGameById(gameId).catch(() => null);
+              await offerRetireEmptyTeam(fresh?.draftTeams?.teams, fresh?.rotation ?? null);
             } catch (err) {
               logError('markPlayerWentHome', err, { gameId, playerId: player.id });
             } finally {
@@ -1838,61 +1898,62 @@ export function AdvancedLiveMatchScreen() {
             ) : null}
           </>
         ) : (
-          // ── Active rotation → [אפס] [סיים משחק] [השהה / המשך] ──────────
+          // ── Active rotation → [השהה זמן / התחל זמן]  [סיים משחק] ─────────
+          //
+          // The clock is the PRIMARY action and takes the width to say so. It
+          // is the control an admin touches over and over through the evening —
+          // every stoppage, every restart — while "סיים משחק" is once per
+          // mini-game. The old row had it as an 84px square beside a
+          // half-screen "סיים משחק", which is exactly backwards.
+          //
+          // Reset moved into the header's ⋯ menu: it is irreversible (it wipes
+          // the running clock and the round's goals) and it sat one thumb-width
+          // from the two buttons pressed all night.
+          //
+          // Order matters under forceRTL — the FIRST child renders RIGHTMOST,
+          // so the clock leads on the right and "סיים משחק" sits to its left.
           <View style={styles.controlRow}>
+            {timerRunning ? (
+              <Pressable
+                style={[styles.timerBtn, roundBusy && styles.timerBtnBusy]}
+                onPress={onTimerPause}
+                disabled={roundBusy}
+              >
+                <Text style={styles.timerBtnText}>{he.liveTimerPause}</Text>
+                <Ionicons name="pause" size={24} color="#FFFFFF" />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.timerBtn, roundBusy && styles.timerBtnBusy]}
+                onPress={timerStarted ? onTimerResume : onTimerStart}
+                disabled={roundBusy}
+              >
+                <Text style={styles.timerBtnText}>
+                  {timerStarted ? he.liveTimerResume : he.liveTimerStart}
+                </Text>
+                <Ionicons name="play" size={24} color="#FFFFFF" />
+              </Pressable>
+            )}
             <Pressable
-              style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
-              onPress={onTimerReset}
-              disabled={roundBusy}
-            >
-              <Ionicons name="refresh" size={22} color="#1D4ED8" />
-              <Text style={styles.sideBtnText}>{he.liveTimerReset}</Text>
-            </Pressable>
-            {/* While the round is being committed the button says so, instead
-                of looking untouched for the second or two it takes. The taps it
-                swallows were already swallowed by `finalizingRef`; what was
-                missing was telling the admin that. */}
-            <Pressable
-              style={[styles.roundBtn, roundBusy && styles.roundBtnBusy]}
+              style={[styles.endRoundBtn, roundBusy && styles.endRoundBtnBusy]}
               onPress={confirmEndRound}
               disabled={roundBusy}
               accessibilityState={{ disabled: roundBusy, busy: roundBusy }}
             >
               {roundBusy ? (
                 <>
-                  <Text style={styles.roundBtnText}>{he.rotationEndRoundBusy}</Text>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <Text style={styles.endRoundBtnText}>{he.rotationEndRoundBusy}</Text>
+                  <ActivityIndicator color="#1D4ED8" size="small" />
                 </>
               ) : (
                 <>
-                  {/* Text before icon: under RTL the row is flipped, so the first
-                      child renders rightmost. The flag belongs on the left. */}
-                  <Text style={styles.roundBtnText}>{he.rotationEndRound}</Text>
-                  <Ionicons name="flag" size={22} color="#FFFFFF" />
+                  {/* Text before icon: under RTL the row is flipped, so the
+                      first child renders rightmost. The flag belongs left. */}
+                  <Text style={styles.endRoundBtnText}>{he.rotationEndRound}</Text>
+                  <Ionicons name="flag" size={20} color="#1D4ED8" />
                 </>
               )}
             </Pressable>
-            {timerRunning ? (
-              <Pressable
-                style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
-                onPress={onTimerPause}
-                disabled={roundBusy}
-              >
-                <Ionicons name="pause" size={22} color="#1D4ED8" />
-                <Text style={styles.sideBtnText}>{he.liveTimerPause}</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={[styles.sideBtn, roundBusy && styles.sideBtnBusy]}
-                onPress={timerStarted ? onTimerResume : onTimerStart}
-                disabled={roundBusy}
-              >
-                <Ionicons name="play" size={22} color="#1D4ED8" />
-                <Text style={styles.sideBtnText}>
-                  {timerStarted ? he.liveTimerResume : he.liveTimerStart}
-                </Text>
-              </Pressable>
-            )}
           </View>
         )}
         {/* Ending the evening lives ONLY in the header menu now — see the
@@ -2097,6 +2158,25 @@ export function AdvancedLiveMatchScreen() {
       >
         <Pressable style={styles.backdrop} onPress={() => setMenuOpen(false)}>
           <Pressable style={styles.menuCard} onPress={() => undefined}>
+            {/* Reset lives here now, not in the round controls. It wipes the
+                running clock AND the round's goals, and it used to sit a
+                thumb-width from the two buttons pressed all evening. Its own
+                confirm dialog is unchanged. */}
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                onTimerReset();
+              }}
+            >
+              {/* Text first: under forceRTL the first child renders rightmost,
+                  so writing the label first puts the icon immediately to its
+                  LEFT — beside the word, not shoved to the far edge of the
+                  sheet (which is what `justifyContent: space-between` would
+                  have done). */}
+              <Text style={styles.menuItemText}>{he.liveTimerResetCurrent}</Text>
+              <Ionicons name="refresh" size={20} color="#1D4ED8" />
+            </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => {
@@ -2109,10 +2189,10 @@ export function AdvancedLiveMatchScreen() {
                 setEndOpen(true);
               }}
             >
-              <Ionicons name="flag-outline" size={20} color="#DC2626" />
               <Text style={[styles.menuItemText, styles.menuItemDanger]}>
                 {he.liveEndEvening}
               </Text>
+              <Ionicons name="flag-outline" size={20} color="#DC2626" />
             </Pressable>
             <Pressable style={styles.menuCancel} onPress={() => setMenuOpen(false)}>
               <Text style={styles.menuCancelText}>{he.cancel}</Text>
@@ -2323,19 +2403,10 @@ const styles = StyleSheet.create({
   statusWord: { fontSize: 15, fontWeight: '700', color: '#64748B' },
   statusWordRunning: { color: '#0F172A' },
   controlRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
-  sideBtn: {
-    width: 84,
-    borderRadius: 18,
-    backgroundColor: 'rgba(29,78,216,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 12,
-  },
-  sideBtnText: { color: '#1D4ED8', fontSize: 14, fontWeight: '800' },
-  sideBtnBusy: { opacity: 0.4 },
-  roundBtn: {
-    flex: 1,
+  // The clock — PRIMARY. Filled, and 1.6× the width of the button beside it,
+  // because it is the control the admin actually lives on during a round.
+  timerBtn: {
+    flex: 1.6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2344,9 +2415,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D4ED8',
     paddingVertical: 18,
   },
-  // Dimmed but still blue: the button is working, not unavailable.
-  roundBtnBusy: { backgroundColor: '#3B82F6' },
-  roundBtnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  timerBtnBusy: { opacity: 0.45 },
+  timerBtnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  // Ending the mini-game — SECONDARY. Once per round, not once a minute, so it
+  // reads as available without competing with the clock for the eye.
+  endRoundBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(29,78,216,0.10)',
+    paddingVertical: 18,
+  },
+  endRoundBtnBusy: { opacity: 0.55 },
+  endRoundBtnText: { color: '#1D4ED8', fontSize: 16, fontWeight: '800' },
   btnDisabled: { opacity: 0.5 },
   warnText: { textAlign: 'center', color: '#DC2626', fontSize: 13, fontWeight: '600' },
   menuCard: {

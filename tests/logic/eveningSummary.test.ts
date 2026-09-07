@@ -17,12 +17,21 @@ const score = (p: Partial<EveningScoreInput>): number =>
   });
 
 describe('eveningScore (weighted model)', () => {
-  it('floors at 6 for a tough evening (lost all, no goals)', () => {
-    expect(score({ wins: 0, goals: 0, assists: 0 })).toBe(6);
+  // Since WIN_PRIOR_GAMES, a win RATE is shrunk toward a draw so a tiny sample
+  // can't read as a perfect record. The consequence at both ends of the range:
+  // showing up and losing everything sits just ABOVE the 6.0 no-show floor, and
+  // sweeping the evening no longer reaches a literal 10 on the wins axis.
+  it('a tough evening (lost all, no goals) sits just above the no-show floor', () => {
+    expect(score({ wins: 0, goals: 0, assists: 0 })).toBe(6.2);
+    // …and still beats not turning up at all.
+    expect(score({ wins: 0, goals: 0, assists: 0 })).toBeGreaterThan(
+      score({ gamesPlayed: 0 }),
+    );
   });
 
   it('never exceeds 10 (won all + prolific)', () => {
-    expect(score({ wins: 7, goals: 20, assists: 20 })).toBe(10);
+    expect(score({ wins: 7, goals: 20, assists: 20 })).toBeLessThanOrEqual(10);
+    expect(score({ wins: 7, goals: 20, assists: 20 })).toBe(9.8);
   });
 
   it('a zero-game evening does not divide by zero', () => {
@@ -34,10 +43,22 @@ describe('eveningScore (weighted model)', () => {
     expect(Math.round(s * 10) / 10).toBe(s);
   });
 
-  it('wins dominate (50%): all-wins no-goals lands at the 8.0 midpoint', () => {
+  it('wins dominate (50%): all-wins no-goals carries the score on its own', () => {
     const runner = score({ wins: 7, goals: 0, assists: 0 });
-    // 0.5 weight × a perfect win-rate (10) → weighted 5 → 6 + 5/10*4 = 8.0
-    expect(runner).toBe(8);
+    // 0.5 weight × a shrunk win rate (7+1)/(7+2) = 0.889 → 8.89 → weighted
+    // 4.44 → 6 + 4.44/10*4 = 7.8. Was exactly 8.0 on the raw rate.
+    expect(runner).toBe(7.8);
+    // Wins remain the single heaviest axis, but note what shrinkage costs it:
+    // over only 7 mini-games the rate tops out at 8.89, not 10, so its
+    // EFFECTIVE weight here is 0.44 rather than 0.5 — and a goals+assists
+    // perfect evening (5.0 weighted) now edges out an all-wins one (4.44).
+    // The gap closes as the sample grows: over 20 mini-games the rate reaches
+    // 9.55, which is the whole point — a perfect record has to be earned over
+    // more than a handful of games.
+    const over20 = eveningScore({
+      goals: 0, assists: 0, wins: 20, gamesPlayed: 20, pen: noPen,
+    });
+    expect(over20).toBeGreaterThan(runner);
   });
 
   it('more goals ⇒ higher, all else equal', () => {

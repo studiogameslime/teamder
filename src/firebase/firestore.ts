@@ -144,6 +144,9 @@ export function readStats(d: DocumentData): UserStats | undefined {
     ownGoals: typeof s.ownGoals === 'number' ? s.ownGoals : undefined,
     // Clean sheets ("שער נקי") — server-maintained, same strip-on-read risk.
     cleanSheets: typeof s.cleanSheets === 'number' ? s.cleanSheets : undefined,
+    // Draws — server-maintained. Named here or it is silently dropped on read
+    // and the profile tile never appears no matter what the document says.
+    ties: typeof s.ties === 'number' ? s.ties : undefined,
   };
 }
 
@@ -206,6 +209,7 @@ const userConverter: FirestoreDataConverter<User> = {
             ...(typeof u.stats.cleanSheets === 'number'
               ? { cleanSheets: u.stats.cleanSheets }
               : {}),
+            ...(typeof u.stats.ties === 'number' ? { ties: u.stats.ties } : {}),
           }
         : null,
       // fcmTokens are NO LONGER written to the world-readable /users doc —
@@ -663,6 +667,23 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
     return Object.keys(out).length ? out : undefined;
   };
 
+  // The evening goal BADGE needs a distinction `readSlots` deliberately throws
+  // away: ABSENT (a live state from before the field existed — the screen falls
+  // back to summing the current round's log) versus EMPTY (stopRotation cleared
+  // it — the badge really is zero, and must NOT be re-derived). readSlots
+  // collapses both to undefined, so an admin who reset the evening saw the
+  // badges reappear from a stale round log. An explicit {} is preserved here.
+  // Entries are kept only while positive: a decremented-to-zero player has no
+  // badge, and a value that somehow went negative must never render.
+  const readTally = (raw: unknown): Record<UserId, number> | undefined => {
+    if (raw === null || raw === undefined || typeof raw !== 'object') return undefined;
+    const out: Record<UserId, number> = {};
+    for (const [uid, n] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof n === 'number' && n > 0) out[uid] = n;
+    }
+    return out;
+  };
+
   // Round counter — increments after every "סיים סיבוב" press.
   // Without explicit handling here the field was being stripped on
   // read, so the header rendered "סיבוב 1" forever even though the
@@ -768,7 +789,7 @@ export function readLiveMatch(v: unknown): LiveMatchState | undefined {
     teamBSlots: readSlots(o.teamBSlots),
     // Evening-long goal tally (drives the badge). Same strip-on-read risk as
     // the slots/round counter — without this it'd vanish on every read.
-    goalTally: readSlots(o.goalTally),
+    goalTally: readTally(o.goalTally),
     roundNumber,
     winsByTeam: readWins(o.winsByTeam),
     // Synced match clock — three primitives every device uses to

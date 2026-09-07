@@ -66,6 +66,8 @@ import { isStaleAfterStart, LATE_REG_GRACE_MS } from '@/services/gameLifecycle';
 import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
+import { tallyDelta, tallyWithout } from '@/utils/goalTally';
+import { buildEditNotice } from '@/utils/gameEditNotice';
 import { HISTORY_GAMES, type PastSplit } from '@/utils/teamBalanceCore';
 import type {
   RoundHistoryDoc,
@@ -1102,6 +1104,9 @@ export const gameService = {
           assists: Math.max(0, 26 - i * 3),
           rounds: 150 - i * 12,
           wins,
+          // Demo draws — deliberately spread, and ZERO for two players, so the
+          // emulator exercises both the column appearing and a player with none.
+          ties: [6, 3, 9, 0, 4, 2, 0, 5][i] ?? 0,
           losses: Math.max(0, games - wins),
           games,
           penTaken,
@@ -1122,7 +1127,7 @@ export const gameService = {
         const have = new Set(players.map((p) => p.uid));
         for (const uid of memberIds) {
           if (uid && !have.has(uid)) {
-            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0, ownGoals: 0, cleanSheets: 0 });
+            withZeros.push({ uid, goals: 0, assists: 0, rounds: 0, wins: 0, ties: 0, losses: 0, games: 0, penTaken: 0, penScored: 0, penFaced: 0, penSaved: 0, ownGoals: 0, cleanSheets: 0 });
             have.add(uid);
           }
         }
@@ -3072,20 +3077,43 @@ export const gameService = {
     } else {
       await updateGameDoc(gameId, updates);
     }
-    notificationsService.dispatch({
-      type: 'gameCanceledOrUpdated',
-      recipientId: gameId,
-      // editorUid lets the CF self-exclude the admin from the fan-out
-      // (organisers usually also play, and they don't need a "המשחק
-      // עודכן" push for an action they themselves just took).
-      payload: {
-        gameId,
-        action: 'updated',
-        editorUid: USE_MOCK_DATA
-          ? ''
-          : getFirebase().auth.currentUser?.uid ?? '',
-      },
-    });
+    // Only wake the roster for a change they have to act on — a moved kickoff
+    // or a different venue. Every save used to push fifteen people, including
+    // a typo fix or a rule chip, which is how notifications get switched off.
+    // See utils/gameEditNotice.
+    const notice = buildEditNotice(
+      patch,
+      existing as unknown as Record<string, unknown>,
+    );
+    if (notice) {
+      notificationsService.dispatch({
+        type: 'gameCanceledOrUpdated',
+        recipientId: gameId,
+        // editorUid lets the CF self-exclude the admin from the fan-out
+        // (organisers usually also play, and they don't need a "המחזור
+        // עודכן" push for an action they themselves just took).
+        payload: {
+          gameId,
+          action: 'updated',
+          editorUid: USE_MOCK_DATA
+            ? ''
+            : getFirebase().auth.currentUser?.uid ?? '',
+          gameTitle:
+            (patch.title as string | undefined) ??
+            ((existing as unknown as { title?: string }).title || ''),
+          // WHAT changed, as data. The Hebrew is written server-side next to
+          // every other push, so the wording can't drift per client version
+          // and a client can't put words in our mouth.
+          //
+          // `startsAt` is the kickoff to STATE — the new one when the time
+          // moved, the unchanged one otherwise, so a venue-only push can still
+          // remind people when the game is.
+          startsAt: notice.newStartsAt ?? existing.startsAt ?? null,
+          timeChanged: notice.newStartsAt !== undefined,
+          placeChanged: notice.placeChanged === true,
+        },
+      });
+    }
     logEvent(AnalyticsEvent.GameEdited, {
       gameId,
       fields: Object.keys(patch).join(','),
@@ -4096,16 +4124,31 @@ export const gameService = {
       const m = mockGamesV2.find((x) => x.id === gameId);
       if (m) {
         m.rotation = undefined;
-        if (m.liveMatch) m.liveMatch = { ...m.liveMatch, goalTally: {} };
+        if (m.liveMatch) {
+          m.liveMatch = {
+            ...m.liveMatch,
+            goalTally: {},
+            goals: [],
+            scoreA: 0,
+            scoreB: 0,
+          };
+        }
       }
       return;
     }
-    // Resetting the rotation restarts the evening → clear the evening goal tally
-    // too (the per-round `resetTimer` deliberately keeps it; this full reset
-    // doesn't).
+    // Resetting the rotation restarts the evening → clear the evening goal
+    // tally. The uncommitted round goes with it: `goals[]` and the mini-game
+    // score are cleared in the SAME write. Clearing only the tally left the two
+    // sources contradicting each other — and worse, an empty tally made the
+    // live screen fall back to summing the stale `goals[]`, so the badge the
+    // reset had just zeroed came straight back with the leftover round's goals
+    // in it.
     const patch: Record<string, unknown> = {
       rotation: null,
       'liveMatch.goalTally': {},
+      'liveMatch.goals': [],
+      'liveMatch.scoreA': 0,
+      'liveMatch.scoreB': 0,
       updatedAt: Date.now(),
     };
     if (g?.draftTeams && base && base.length > 0) {
@@ -4350,6 +4393,54 @@ export const gameService = {
       'rotation.updatedAt': Date.now(),
       updatedAt: Date.now(),
     });
+  },
+
+  /**
+   * Take a team that emptied out OFF the rotation queue for the rest of the
+   * evening.
+   *
+   * Fifteen players in three teams, five go home, one team is left with nobody
+   * — and the queue still holds it. Finish the mini-game and the empty team is
+   * brought on, at which point the fill logic offers to borrow five players
+   * into it: that is where the team statistics break, because people start
+   * collecting wins under a shirt they never wore.
+   *
+   * Nothing new has to be invented for the end state. `recordWinner` already
+   * keeps the SAME two teams on when the queue is empty, so removing the empty
+   * team from `waiting` IS the whole fix — the two survivors simply play each
+   * other, and every stat keeps working exactly as before.
+   *
+   * Re-validated against the rotation we read here rather than trusting the
+   * caller: the admin answered a dialog about a state from a moment ago, and a
+   * round can have turned over since — the team might be ON the pitch now, and
+   * dropping a playing side would erase a result in progress.
+   */
+  async retireEmptyTeam(gameId: string, teamIndex: number): Promise<boolean> {
+    if (!gameId || typeof teamIndex !== 'number') return false;
+    const g = await this.getGameById(gameId);
+    const rot = g?.rotation;
+    if (!rot) return false;
+    // Must still be WAITING, and must still be empty.
+    if (!rot.waiting.includes(teamIndex)) return false;
+    const roster = g?.draftTeams?.teams.find((t) => t.index === teamIndex);
+    if (!roster || roster.playerIds.length > 0) return false;
+    const waiting = rot.waiting.filter((i) => i !== teamIndex);
+    if (USE_MOCK_DATA) {
+      const m = mockGamesV2.find((x) => x.id === gameId);
+      if (m && m.rotation) {
+        m.rotation = { ...m.rotation, waiting, updatedAt: Date.now() };
+        m.updatedAt = Date.now();
+      }
+      return true;
+    }
+    // Field path, not the whole rotation — a concurrent fill or timer write
+    // must not be clobbered.
+    await updateGameDoc(gameId, {
+      'rotation.waiting': waiting,
+      'rotation.updatedAt': Date.now(),
+      updatedAt: Date.now(),
+    });
+    return true;
   },
 
   async markPlayerWentHome(gameId: string, playerId: string): Promise<void> {
@@ -7231,11 +7322,13 @@ export const gameService = {
         timerControlledBy: userId,
         timerControlledByName: userName,
         timerEvents: [],
-        // Clear the clock, mini-game SCORE, and round goal LOG together (badge
-        // = goalTally survives). See the real-path comment below.
+        // Clear the clock, mini-game SCORE, and round goal LOG together, and
+        // roll the discarded goals back out of the evening badge. See the
+        // real-path comment below.
         scoreA: 0,
         scoreB: 0,
         goals: [],
+        goalTally: tallyWithout(prev.goalTally, prev.goals),
       };
       g.updatedAt = Date.now();
       return;
@@ -7259,13 +7352,23 @@ export const gameService = {
         // Reset the clock + the mini-game SCORE *and* the round's goal LOG so
         // the score (now 0-0) and `goals[]` stay consistent. Keeping the log
         // while zeroing the score left phantom goals that the next round-end
-        // committed to stats. The evening-long per-player BADGE survives — it
-        // reads `liveMatch.goalTally`, which is NOT touched here.
+        // committed to stats.
         'liveMatch.scoreA': 0,
         'liveMatch.scoreB': 0,
         'liveMatch.goals': [],
         updatedAt: serverNow(),
       };
+      // The evening BADGE has to lose those goals too. It used to survive a
+      // reset untouched, on the reading that goalTally is evening-scoped while
+      // goals[] is round-scoped — true, but a reset DISCARDS this round: its
+      // goals are wiped from the log, never committed to stats, and yet stayed
+      // in the badge forever. The badge then over-counted against both the
+      // round table and the club table for the rest of the evening. Decrement
+      // exactly the goals being thrown away, with the same crediting rule
+      // recordGoal used (own goals and unknown scorers credit no one).
+      for (const [scorerId, n] of Object.entries(tallyDelta(cur.liveMatch.goals))) {
+        patch[`liveMatch.goalTally.${scorerId}`] = increment(-n);
+      }
       // Preserve the minutes actually played: if the clock was running when
       // reset was tapped, close the open active-interval before zeroing so those
       // timer-active minutes still count toward the physical/health read (mirror

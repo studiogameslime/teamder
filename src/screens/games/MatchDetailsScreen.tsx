@@ -875,7 +875,11 @@ export function MatchDetailsScreen() {
   const performPrimary = async () => {
     if (!user || !game) return;
     // Guests can browse a game but must register to register/join it.
-    if (!ensureNotGuest(he.guestRegisterJoinGame)) return;
+    // Carry the game across the sign-up: registering signs the guest out and
+    // unmounts this screen, so without a return target they come back to the
+    // feed having lost the game they were trying to join.
+    if (!ensureNotGuest(he.guestRegisterJoinGame, { type: 'session', id: game.id }))
+      return;
     const status = statusForUser(game, user.id);
     // Lifecycle gate via the shared helper (mirrors the txn check
     // inside joinGameV2 and the firestore.rules clause). Cancel

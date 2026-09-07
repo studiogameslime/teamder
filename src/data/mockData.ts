@@ -86,6 +86,12 @@ function inDays(n: number, hour = 20, minute = 0): number {
   return d.getTime();
 }
 
+/** N hours before now — for states that only exist inside a short window
+ *  (the "last night" card lives for 24h). */
+function hoursAgo(n: number): number {
+  return Date.now() - n * 60 * 60 * 1000;
+}
+
 function daysAgo(n: number, hour = 20, minute = 0): number {
   return inDays(-n, hour, minute);
 }
@@ -773,6 +779,47 @@ export const mockGamesV2: Game[] = [
     bringBall: true,
     bringShirts: true,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 4,
+  },
+  // 7b. LAST NIGHT — finished a few hours ago, with the mock signed-in user
+  //     (mockPlayers[6], "דניאל") on the roster.
+  //
+  //     Added because two screens could not otherwise be reached in mock mode
+  //     at all: the home "איך היה אתמול?" card, which only appears within 24h
+  //     of a game the user actually played, and the round-summary block on
+  //     MatchDetails that hangs off a finished evening. Both had UI fixes that
+  //     were impossible to see — and therefore impossible to review — without
+  //     a game in exactly this state.
+  {
+    id: 'gv2-lastnight',
+    groupId: 'g1',
+    title: 'חמישי כדורגל',
+    startsAt: hoursAgo(4),
+    endedAt: hoursAgo(2),
+    fieldName: 'המגרש הקבוע',
+    fieldAddress: 'רחוב הספורט 12, רמת גן',
+    fieldLat: 32.0853,
+    fieldLng: 34.7818,
+    maxPlayers: 15,
+    minPlayers: 10,
+    players: mockPlayers.slice(0, 15).map((p) => p.id),
+    waitlist: [],
+    pending: [],
+    participantIds: unionIds(mockPlayers.slice(0, 15).map((p) => p.id), [], []),
+    ballHolderUserId: mockPlayers[2].id,
+    jerseysHolderUserId: mockPlayers[3].id,
+    status: 'finished',
+    locked: true,
+    currentMatchIndex: 0,
+    matches: [],
+    weather: { tempC: 21, rainProb: 0 },
+    createdBy: mockPlayers[0].id,
+    visibility: 'community' as const,
+    requiresApproval: false,
+    format: '5v5',
+    numberOfTeams: 3,
+    fieldType: 'synthetic',
+    matchDurationMinutes: 90,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
   },
   // 8. Brand-new public game with low signup so the Open Games section
   //    has a "join early" feel. Different city again.

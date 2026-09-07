@@ -7,7 +7,7 @@
 // right and the stat columns scroll horizontally as one unit (header + rows
 // together). Avatar + name open the player's card.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card } from '@/components/Card';
@@ -130,6 +130,9 @@ export function CommunityStatsTable({
     { key: 'wins', label: he.champColWins, primary: true },
     { key: 'goals', label: he.champColGoals },
     { key: 'assists', label: he.champColAssists },
+    // Draws sit between wins and losses — the three outcomes of a mini-game,
+    // in the order they rank. Hidden entirely when nobody has one; see below.
+    { key: 'ties', label: he.champColTies },
     { key: 'losses', label: he.champColLosses },
     // "שער נקי" — mini-games the player's side finished without conceding.
     // A counter like the rest (no percentage), and it sorts by tapping the
@@ -138,7 +141,16 @@ export function CommunityStatsTable({
     { key: 'games', label: he.champColAppearances }, // evenings attended
     { key: 'rounds', label: he.champColMiniGames }, // mini-games played
   ];
-  const cols = allCols.filter((c) => !(hideAppearances && c.key === 'games'));
+  // A draw is only reachable in a four-team-and-up format: with three teams
+  // the loser rotates out and every mini-game has a winner. A club that plays
+  // three teams would carry a column of zeros forever, so the column shows
+  // itself only once somebody actually has a draw. (The rule is "anyone", not
+  // "this player" — a column that appears and disappears as you scroll would
+  // be worse than either.)
+  const anyTies = useMemo(() => players.some((p) => (p.ties ?? 0) > 0), [players]);
+  const cols = allCols.filter(
+    (c) => !(hideAppearances && c.key === 'games') && !(c.key === 'ties' && !anyTies),
+  );
 
   return (
     <Card style={styles.table}>

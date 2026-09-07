@@ -28,6 +28,10 @@ import {
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
+import { commitRoundInOrder } from './commitProtocol';
+import { eveningScoreServer } from './eveningScoreCore';
+import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
@@ -732,8 +736,47 @@ function buildMessage(
           body: `${gameTitle} בוטל. בדוק את לשונית המשחקים.`,
         };
       }
+      // ── What actually changed ────────────────────────────────────────
+      // Only TIME and PLACE ever reach the roster (see
+      // src/utils/gameEditNotice), and the client sends them as DATA, not as
+      // a sentence — the Hebrew is written here, beside every other push, so
+      // the wording cannot drift between app versions and a client cannot put
+      // words in our mouth.
+      //
+      // The time is stated outright, because that is the thing a player has to
+      // re-plan around. The venue is only flagged as changed, deliberately
+      // WITHOUT naming it: the address is right there in the game, and
+      // spelling it out costs length without adding a decision.
+      const timeChanged = payload.timeChanged === true;
+      const placeChanged = payload.placeChanged === true;
+      if (timeChanged || placeChanged) {
+        if (timeChanged && placeChanged) {
+          return {
+            title: 'הזמן והמיקום השתנו',
+            body: when
+              ? `${gameTitle} מתחיל ${when}, והמיקום השתנה. בדוק בפרטי המחזור.`
+              : `${gameTitle} — הזמן והמיקום השתנו. בדוק בפרטי המחזור.`,
+          };
+        }
+        if (timeChanged) {
+          return {
+            title: 'הזמן השתנה',
+            body: when
+              ? `${gameTitle} מתחיל ${when}.`
+              : `${gameTitle} — הזמן השתנה. בדוק בפרטי המחזור.`,
+          };
+        }
+        return {
+          title: 'המיקום השתנה',
+          body: when
+            ? `המיקום של ${gameTitle} (${when}) השתנה. בדוק בפרטי המחזור.`
+            : `המיקום של ${gameTitle} השתנה. בדוק בפרטי המחזור.`,
+        };
+      }
+      // Legacy clients send no `timeChanged`/`placeChanged` — they still get
+      // the old, vague copy rather than nothing.
       return {
-        title: 'המשחק עודכן',
+        title: 'המחזור עודכן',
         body: `${gameTitle} עודכן. בדוק את הפרטים בלשונית המשחקים.`,
       };
     }
@@ -4513,6 +4556,49 @@ export const onGameRotationChanged = onDocumentWritten(
  * Idempotent through a marker document created in the FIRST chunk: `create()`
  * fails if it exists, so a re-delivered trigger stops before double-counting.
  */
+/**
+ * Is this "club" actually one person's private bucket?
+ *
+ * There is no such thing as a game without a community: creating a quick game
+ * calls ensurePersonalGroup, which mints a real group with `isPersonal: true,
+ * hidden: true`, and the game carries its id like any other. Those two flags
+ * only control who can SEE the club — never the bookkeeping. So every
+ * club-level write branched on the same test, `if (groupId)`, and a quick game
+ * always has one.
+ *
+ * The result was a full club ceremony performed for an audience of one, into a
+ * group nobody can open: club records, a sealed round summary, pair chemistry,
+ * a public showcase. And because the personal group is PERMANENT per user,
+ * every quick game anyone ever plays piles into the same fictional club — so
+ * after five evenings it starts announcing club records, and after ten,
+ * "10 מחזורים למועדון". Reported as the root cause behind a cluster of
+ * quick-game complaints.
+ *
+ * Gating here rather than at the call sites, so a future caller can't miss it.
+ * What a quick game still gets is everything that belongs to the PLAYER —
+ * lifetime stats, the per-game table, his own evening card. What it loses is
+ * the pretence that a club was involved.
+ */
+const personalGroupCache = new Map<string, boolean>();
+async function isPersonalGroup(groupId: string): Promise<boolean> {
+  if (!groupId) return false;
+  const hit = personalGroupCache.get(groupId);
+  if (hit !== undefined) return hit;
+  let personal = false;
+  try {
+    const snap = await db.collection('groups').doc(groupId).get();
+    personal = snap.data()?.isPersonal === true;
+  } catch (err) {
+    // A read failure must not silently turn a personal group into a real one.
+    // Treating it as NOT personal preserves the old behaviour, which is the
+    // safer direction: it writes a document nobody reads rather than skipping
+    // one a real club needs.
+    console.warn('[isPersonalGroup] read failed', groupId, err);
+  }
+  personalGroupCache.set(groupId, personal);
+  return personal;
+}
+
 async function rollUpClubPairs(args: {
   gameId: string;
   groupId: string;
@@ -4521,6 +4607,12 @@ async function rollUpClubPairs(args: {
 }): Promise<number> {
   const { gameId, groupId, at, rounds } = args;
   if (!groupId || rounds.length === 0) return 0;
+  // A personal group has one member, so "who plays well together" is a
+  // question about nobody. See isPersonalGroup.
+  if (await isPersonalGroup(groupId)) {
+    console.log('[clubPairs] personal group — skip', gameId);
+    return 0;
+  }
 
   const markerRef = db
     .collection('communityPairRollups')
@@ -4628,6 +4720,12 @@ async function sealRoundSummary(args: {
   }[];
 }): Promise<void> {
   const { gameId, groupId } = args;
+  // No club story, no club records, for a club of one. This is the write that
+  // produced "שיאי מועדון" out of a handful of quick games. See isPersonalGroup.
+  if (await isPersonalGroup(groupId)) {
+    console.log('[roundSummary] personal group — skip', gameId);
+    return;
+  }
   const num = (v: unknown) =>
     typeof v === 'number' && Number.isFinite(v) ? v : 0;
   const summaryRef = db.collection('roundSummaries').doc(gameId);
@@ -5304,41 +5402,10 @@ export const onGameRosterChanged = onDocumentWritten(
           // own score — and became real the moment the card started showing
           // the STORED one: a keeper who saved a shootout penalty saw it
           // recorded in his stats and absent from the score that ranked him.
-          const eveningScore = (
-            goals: number,
-            assists: number,
-            wins: number,
-            gamesPlayed: number,
-            goalsFor10: number,
-            assistsFor10: number,
-            pen: { scored: number; saved: number; missed: number; conceded: number },
-          ) => {
-            if (gamesPlayed <= 0) return 6.0;
-            const clamp10 = (x: number) => Math.max(0, Math.min(10, x));
-            const winsScore = clamp10((wins / gamesPlayed) * 10);
-            const goalsScore = clamp10((goals / goalsFor10) * 10);
-            const assistsScore = clamp10((assists / assistsFor10) * 10);
-            const penInvolved =
-              pen.scored + pen.saved + pen.missed + pen.conceded;
-            // Two explicit weight sets, each summing to 1.0 — the penalty axis
-            // takes its 5% out of WINS (50→45), exactly as on the client.
-            let weighted: number;
-            if (penInvolved > 0) {
-              const penScore = clamp10(
-                5 + pen.scored * 2 + pen.saved * 3 + pen.missed * -2 + pen.conceded * -1,
-              );
-              weighted =
-                winsScore * 0.45 +
-                goalsScore * 0.3 +
-                assistsScore * 0.2 +
-                penScore * 0.05;
-            } else {
-              weighted =
-                winsScore * 0.5 + goalsScore * 0.3 + assistsScore * 0.2;
-            }
-            const score = 6 + (weighted / 10) * 4;
-            return Math.round(Math.min(10, Math.max(6, score)) * 10) / 10;
-          };
+          // Extracted to ./eveningScoreCore so the client's copy in
+          // src/utils/eveningScore.ts can be held to it by a contract test
+          // (tests/logic/eveningScoreParity) instead of by a comment.
+          const eveningScore = eveningScoreServer;
           const attendees = after.players.filter(
             (u) => arrivals[u] !== 'no_show',
           );
@@ -9209,6 +9276,16 @@ async function recomputeCommunityShowcase(
     }
     return;
   }
+  // A hidden, one-member personal group is not a community and must never
+  // acquire a public showcase card. Tear one down if it somehow exists.
+  if (groupSnap.data()?.isPersonal === true) {
+    try {
+      await db.collection('communityShowcase').doc(groupId).delete();
+    } catch {
+      /* nothing to tear down */
+    }
+    return;
+  }
   const group = groupSnap.data() as {
     name?: string;
     description?: string | null;
@@ -10262,6 +10339,9 @@ interface FillerGameDoc {
   acceptsFillers?: boolean;
   fillerMinTrust?: number;
   players?: string[];
+  /** Registered guests. They occupy real spots on the pitch, so every
+   *  occupancy test here has to count them — see `occupancyOf`. */
+  guests?: unknown[];
   waitlist?: string[];
   pending?: string[];
   maxPlayers?: number;
@@ -10270,8 +10350,16 @@ interface FillerGameDoc {
   fillerNoCandidatesAt?: number;
 }
 
+// `occupancyOf` and `inFillerQuietHours` live in ./fillerRules — both caused a
+// production bug, and both are pure, so they belong where a test can reach them.
+
+
 async function runFindFillerCandidates(): Promise<void> {
   const now = Date.now();
+  if (inFillerQuietHours(now)) {
+    console.log('[findFillerCandidates] quiet hours — skipping this tick');
+    return;
+  }
   const earliest = now + FILLER_WINDOW_EARLIEST_HOURS * FILLER_HOUR_MS;
   const latest = now + FILLER_WINDOW_LATEST_HOURS * FILLER_HOUR_MS;
 
@@ -10302,18 +10390,20 @@ async function runFindFillerCandidates(): Promise<void> {
     const game = doc.data() as FillerGameDoc;
     if (game.acceptsFillers !== true) continue;
     const players = game.players ?? [];
+    // Guests INCLUDED — a guest holds a spot exactly like a registered player.
+    const taken = occupancyOf(game);
     const maxPlayers = game.maxPlayers ?? 0;
     if (maxPlayers <= 0) continue;
-    if (players.length >= maxPlayers) continue; // already full
+    if (taken >= maxPlayers) continue; // already full
 
     // Shortage threshold:
-    //  • if `minPlayers` set: shortage when players < minPlayers
-    //  • else: shortage when players < 80% of maxPlayers
+    //  • if `minPlayers` set: shortage when taken < minPlayers
+    //  • else: shortage when taken < 80% of maxPlayers
     const threshold =
       typeof game.minPlayers === 'number' && game.minPlayers > 0
         ? game.minPlayers
         : Math.floor(maxPlayers * 0.8);
-    if (players.length >= threshold) continue;
+    if (taken >= threshold) continue;
 
     processed += 1;
 
@@ -10468,10 +10558,12 @@ async function runFindFillerCandidates(): Promise<void> {
           gameTitle: game.title,
           startsAt: game.startsAt,
           city,
-          // Open spots until the game is FULL (maxPlayers − registered), e.g.
-          // 10/15 → 5. NOT `threshold − players` (threshold is the shortage
-          // trigger = minPlayers or 80%, which overstated the gap).
-          shortBy: maxPlayers - players.length,
+          // Open spots until the game is FULL (maxPlayers − taken), e.g.
+          // 10/15 → 5. NOT `threshold − taken` (threshold is the shortage
+          // trigger = minPlayers or 80%, which overstated the gap), and NOT
+          // `maxPlayers − players.length`, which ignored guests and announced
+          // "חסרים 20 שחקנים" for a game that was already full of them.
+          shortBy: Math.max(0, maxPlayers - taken),
         },
       });
       newlyPushed[uid] = now;
@@ -12514,17 +12606,57 @@ async function runSweep(label: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
+// ── Persistent, race-free "run this at most every N hours" ──────────────────
+//
+// A sweep that should fire once a day rides an HOURLY dispatcher, so something
+// has to say "not yet". That something cannot be a module-level variable: Cloud
+// Functions instances are created, recycled and run in parallel, so an
+// in-memory counter resets on every cold start and is not shared between
+// instances — a "once per 20 hours" sweep written that way runs as often as the
+// dispatcher ticks, on whichever instance happens to be cold. (That is exactly
+// what `lastActivitySweep` did — audit P1-5.)
+//
+// It also cannot be a plain read-then-write on a marker document: two
+// dispatcher ticks landing together both read the old timestamp, both decide
+// they are due, and the sweep runs twice. The claim has to be atomic, so the
+// timestamp is read AND advanced inside one transaction — whoever commits it
+// owns this window, and everyone else is told to stand down.
+//
+// The claim is staked BEFORE the work runs, deliberately. A sweep that dies
+// half-way waits for the next window instead of being retried immediately by
+// the next tick: every one of these sweeps is idempotent and self-healing on
+// the following run, and a delete-heavy job looping on failure is the worse
+// outcome.
+async function claimCronWindow(name: string, dueAfterMs: number): Promise<boolean> {
+  const ref = db.collection('cronMeta').doc(name);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const lastRunAt = (snap.exists ? (snap.data()?.lastRunAt as number) : 0) ?? 0;
+      const now = Date.now();
+      if (typeof lastRunAt === 'number' && now - lastRunAt < dueAfterMs) return false;
+      tx.set(ref, { lastRunAt: now, claimedBy: process.env.K_REVISION ?? null }, { merge: true });
+      return true;
+    });
+  } catch (err) {
+    // A contended transaction that cannot commit means someone else claimed the
+    // window. Not being due is the safe answer.
+    console.warn(`[cron] could not claim window "${name}"`, err);
+    return false;
+  }
+}
+
+/** Run `fn` only if its window is due, claiming it atomically first. */
+async function runIfDue(name: string, dueAfterMs: number, fn: () => Promise<void>): Promise<void> {
+  if (!(await claimCronWindow(name, dueAfterMs))) return;
+  await fn();
+}
+
 // dailyCleanup was its own `every 24 hours` job. Folded into the hourly
 // dispatcher but gated by a Firestore marker so the (delete-heavy) sweep
 // still fires at most once per ~23h instead of every hour.
 async function runDailyCleanupIfDue(): Promise<void> {
-  const ref = db.collection('cronMeta').doc('dailyCleanup');
-  const snap = await ref.get();
-  const lastRunAt = (snap.exists ? (snap.data()?.lastRunAt as number) : 0) ?? 0;
-  const DUE_AFTER_MS = 23 * 60 * 60 * 1000;
-  if (Date.now() - lastRunAt < DUE_AFTER_MS) return;
-  await runDailyCleanup();
-  await ref.set({ lastRunAt: Date.now() }, { merge: true });
+  await runIfDue('dailyCleanup', 23 * 60 * 60 * 1000, runDailyCleanup);
 }
 
 // Every 5 minutes — latency-sensitive game-state transitions.
@@ -12631,13 +12763,17 @@ async function runClubActivitySweep(): Promise<void> {
   console.log(`[clubActivity] ${pubs.size} clubs, ${per.size} with games`);
 }
 
-/** Once a day is plenty — an activity badge does not need to be live. */
-let lastActivitySweep = 0;
+/** Once a day is plenty — an activity badge does not need to be live.
+ *
+ *  This used to throttle on a module-level `lastActivitySweep` variable. In a
+ *  serverless runtime that is not a throttle at all: the value dies with the
+ *  instance and is not shared across the instances the dispatcher may fan out
+ *  to, so a sweep meant to run once per 20 hours ran on every cold start —
+ *  potentially hourly, each time rewriting `gamesLast30`/`gamesLast60` across
+ *  every public club. Now it claims the window in Firestore, atomically, the
+ *  same way dailyCleanup does. */
 async function runClubActivityIfDue(): Promise<void> {
-  const now = Date.now();
-  if (now - lastActivitySweep < 20 * 60 * 60 * 1000) return;
-  lastActivitySweep = now;
-  await runClubActivitySweep();
+  await runIfDue('clubActivity', 20 * 60 * 60 * 1000, runClubActivitySweep);
 }
 
 export const cronEvery60Min = onSchedule(
@@ -12826,6 +12962,14 @@ export const commitRoundStats = onCall(
     // — so crediting them rounds/wins/goals here (while games:0 elsewhere) left a
     // self-contradictory table (rounds=3, games=0). Skip them on both sides; since
     // onField = A∪B gates goals/assists too, their stats drop out consistently.
+    // Cap the goal log, the way `penalties` is already capped. It was
+    // unbounded: every distinct ASSISTED pair adds a communityPairStats
+    // document to the round batch, so a long (or forged) goals[] grew the
+    // batch without limit — straight into the 500-op wall that cannot be
+    // retried past. 60 is far beyond any real mini-game (the stored copy was
+    // already sliced at 100; the busiest round in production is single digits).
+    const MAX_GOALS_PER_ROUND = 60;
+    const cappedGoals = (goals ?? []).slice(0, MAX_GOALS_PER_ROUND);
     const arrivals = (game.arrivals as Record<string, string> | undefined) ?? {};
     const seen = new Set<string>();
     const A: string[] = [];
@@ -12854,13 +12998,57 @@ export const commitRoundStats = onCall(
         `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
       );
     }
+    // ── Scoring is proof that you played ────────────────────────────────
+    //
+    // Goals and assists are credited only to players on a playing side, so
+    // that nobody can collect a goal while being denied the matching "round
+    // played" (B12/B13) — the per-round stats stay internally consistent.
+    //
+    // But the sides are the split as it stands AT ROUND END, and the goal log
+    // is the whole round. A player who scored and then went home, was swapped
+    // out, or was moved between teams is missing from both sides — and the
+    // guard silently threw his goal away. Reported from production: "שחקן ששם
+    // גול או בישול ולא נמצא בקבוצות לא מקבל את זה לסטטיסטיקה האישית שלו".
+    //
+    // Dropping the goal was the wrong half to give up. If a real, rostered
+    // player scored or assisted in this round then he was on the pitch for it,
+    // so he is PUT BACK on a side rather than erased — which credits the goal
+    // AND the round, and keeps the invariant that produced the guard.
+    //
+    // Which side: `team` on a goal is the side that got the point. A normal
+    // goal is scored by that side; an OWN goal is scored by the other one. An
+    // assister is always the scorer's team-mate. Goals with no `team` (legacy
+    // payloads) can't place anyone, so they still can't resurrect a player.
+    const canRejoin = (id: string | null | undefined): id is string =>
+      typeof id === 'string' &&
+      isReal(id) &&
+      roster.has(id) &&
+      arrivals[id] !== 'no_show' &&
+      !seen.has(id);
+    for (const g of cappedGoals) {
+      if (g.team !== 'A' && g.team !== 'B') continue;
+      const scorerSide = g.ownGoal
+        ? g.team === 'A' ? B : A   // own goal → scorer is on the CONCEDING side
+        : g.team === 'A' ? A : B;
+      if (canRejoin(g.scorerId)) { seen.add(g.scorerId); scorerSide.push(g.scorerId); }
+      // The assister set up his own team's goal, so he shares the scorer's
+      // side — except on an own goal, which has no assist to credit.
+      if (!g.ownGoal && canRejoin(g.assisterId)) {
+        const side = g.team === 'A' ? A : B;
+        seen.add(g.assisterId);
+        side.push(g.assisterId);
+      }
+    }
+    // Re-check the bound AFTER the repair pass — it can only have grown the
+    // sides, and the batch guard downstream depends on this holding.
+    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
+      throw new HttpsError(
+        'invalid-argument',
+        `side too large after restoring scorers (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
+      );
+    }
+
     // The set of players who actually played this round (both on-field sides).
-    // Goals + assists are credited ONLY to members of this set, exactly like
-    // rounds/wins/losses below — so a scorer or assister who isn't on either
-    // playing side (a stale/over-full roster, a departed player still named on
-    // a goal) can never be credited a goal/assist while being denied the
-    // matching "round played" (B12, B13). Keeps every per-round stat internally
-    // consistent: you played, or you got nothing.
     const onField = new Set<string>([...A, ...B]);
     // The game's registered guests (roster ids are `guest:<id>`). Used to
     // validate a guest actually belongs to THIS game before listing them / a
@@ -12879,18 +13067,39 @@ export const commitRoundStats = onCall(
       isReal(id)
         ? roster.has(id) && arrivals[id] !== 'no_show'
         : guestRoster.has(id);
+    // Same ceiling the stored roster was already sliced to. Enforced during
+    // the BUILD now, not only on the stored copy, because every guest on a side
+    // also costs one gamePlayerStats operation in the round batch — an
+    // unbounded guest list was an unbounded batch.
+    const MAX_DISPLAY_SIDE = 25;
     const fseen = new Set<string>();
     const fullA: string[] = [];
     const fullB: string[] = [];
     for (const id of sideA ?? []) {
+      if (fullA.length >= MAX_DISPLAY_SIDE) break;
       if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullA.push(id); }
     }
     for (const id of sideB ?? []) {
+      if (fullB.length >= MAX_DISPLAY_SIDE) break;
       if (typeof id === 'string' && id && !fseen.has(id) && okForDisplay(id)) { fseen.add(id); fullB.push(id); }
     }
     const inc = (n: number) => admin.firestore.FieldValue.increment(n);
     const now = Date.now();
-    const batch = db.batch();
+    // ONE write per DOCUMENT, not one per stat. See functions/src/statBatch.ts:
+    // a WriteBatch charges an operation for every set() even when several land
+    // on the same row, and the old shape spent up to five ops on a single
+    // player's gamePlayerStats. At 11-a-side with a full shootout that pushed
+    // the total OVER Firestore's 500-op ceiling — an unrecoverable failure,
+    // because the idempotency latch lives in this same batch, so every retry
+    // fails identically and the round's stats are lost for good. Folding the
+    // increments per document is arithmetically identical and makes the count
+    // bounded and computable (asserted below before we commit).
+    const sb = new StatBatch();
+    const uRef = (id: string) => db.collection('users').doc(id);
+    const cpsRef = (id: string) =>
+      db.collection('communityPlayerStats').doc(`${groupId}__${id}`);
+    const gpsRef = (id: string) =>
+      db.collection('gamePlayerStats').doc(`${gameId}__${id}`);
     const pairKey = (x: string, y: string) => [x, y].sort().join('__');
 
     // Idempotency latch — record this round's commit marker via create() in the
@@ -12899,7 +13108,7 @@ export const commitRoundStats = onCall(
     // then fails ALREADY_EXISTS and the whole batch is rejected, so increments
     // never double-apply. Skipped only for legacy callers that send no roundId.
     if (roundId !== undefined && roundId !== null) {
-      batch.create(
+      sb.create(
         db.collection('games').doc(gameId).collection('committedRounds').doc(String(roundId)),
         { committedAt: now, by: uid, winnerSide },
       );
@@ -12907,7 +13116,7 @@ export const commitRoundStats = onCall(
 
     // 1) goals → scorer.stats.goals + community tally
     const byScorer: Record<string, number> = {};
-    for (const g of goals ?? []) {
+    for (const g of cappedGoals) {
       if (g.ownGoal || !g.scorerId || !isReal(g.scorerId)) continue;
       if (!onField.has(g.scorerId)) continue; // not on a playing side → skip
       byScorer[g.scorerId] = (byScorer[g.scorerId] ?? 0) + 1;
@@ -12920,7 +13129,7 @@ export const commitRoundStats = onCall(
     // counter. Own goals excluded (they belong to no one). Validated against the
     // game's guest roster so a forged guest id can't inflate the counter.
     const byGuest: Record<string, number> = {};
-    for (const g of goals ?? []) {
+    for (const g of cappedGoals) {
       if (g.ownGoal || !g.scorerId || isReal(g.scorerId)) continue;
       if (!guestRoster.has(g.scorerId)) continue;
       byGuest[g.scorerId] = (byGuest[g.scorerId] ?? 0) + 1;
@@ -12932,7 +13141,7 @@ export const commitRoundStats = onCall(
     // goal — a separate `ownGoals` stat. Real players only (a guest own-goal
     // just displays in history). Inverse of the byScorer guard (ownGoal only).
     const byOwnScorer: Record<string, number> = {};
-    for (const g of goals ?? []) {
+    for (const g of cappedGoals) {
       if (!g.ownGoal || !g.scorerId || !isReal(g.scorerId)) continue;
       if (!onField.has(g.scorerId)) continue;
       byOwnScorer[g.scorerId] = (byOwnScorer[g.scorerId] ?? 0) + 1;
@@ -12955,7 +13164,7 @@ export const commitRoundStats = onCall(
     // old scorer-side derivation so older app versions still store a score.
     let scoreA = 0;
     let scoreB = 0;
-    for (const g of goals ?? []) {
+    for (const g of cappedGoals) {
       if (g.team === 'A') { scoreA++; continue; }
       if (g.team === 'B') { scoreB++; continue; }
       // Legacy (no team): real on-field scorer only; own goal credits the other.
@@ -12994,7 +13203,7 @@ export const commitRoundStats = onCall(
             // scorer). A goal is kept if it carries a `team` (new payloads) or,
             // for legacy payloads, if it has a real on-field scorer. `team`
             // comes from the payload; legacy falls back to scorer-side.
-            goals: (goals ?? [])
+            goals: cappedGoals
               .filter(
                 (g) =>
                   g.team === 'A' ||
@@ -13048,20 +13257,12 @@ export const commitRoundStats = onCall(
         : null;
 
     for (const [scorer, n] of Object.entries(byScorer)) {
-      batch.set(db.collection('users').doc(scorer), { stats: { goals: inc(n) } }, { merge: true });
+      sb.bump(uRef(scorer), {}, { 'stats.goals': n });
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${scorer}`),
-          { groupId, userId: scorer, goals: inc(n), updatedAt: now },
-          { merge: true },
-        );
+        sb.bump(cpsRef(scorer), { groupId, userId: scorer, updatedAt: now }, { goals: n });
       // Per-GAME tally → drives the in-game championship (shown once the
       // game is finished). Same idempotent batch, so a retry can't double.
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${scorer}`),
-        { gameId, userId: scorer, goals: inc(n), updatedAt: now },
-        { merge: true },
-      );
+      sb.bump(gpsRef(scorer), { gameId, userId: scorer, updatedAt: now }, { goals: n });
     }
 
     // GUEST scorers get a per-GAME row ONLY (so the finished-game scorers table
@@ -13070,10 +13271,10 @@ export const commitRoundStats = onCall(
     // the club's ranked table. `isGuest` marks the row so the read side can
     // resolve the name from game.guests instead of /users.
     for (const [guest, n] of Object.entries(byGuest)) {
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${guest}`),
-        { gameId, userId: guest, goals: inc(n), isGuest: true, updatedAt: now },
-        { merge: true },
+      sb.bump(
+        gpsRef(guest),
+        { gameId, userId: guest, isGuest: true, updatedAt: now },
+        { goals: n },
       );
     }
 
@@ -13081,52 +13282,42 @@ export const commitRoundStats = onCall(
     // normal goal (a dubious honour, but a real per-player stat). NEVER touches
     // `goals` — an own goal is not a scoring achievement.
     for (const [owner, n] of Object.entries(byOwnScorer)) {
-      batch.set(db.collection('users').doc(owner), { stats: { ownGoals: inc(n) } }, { merge: true });
+      sb.bump(uRef(owner), {}, { 'stats.ownGoals': n });
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${owner}`),
-          { groupId, userId: owner, ownGoals: inc(n), updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${owner}`),
-        { gameId, userId: owner, ownGoals: inc(n), updatedAt: now },
-        { merge: true },
-      );
+        sb.bump(cpsRef(owner), { groupId, userId: owner, updatedAt: now }, { ownGoals: n });
+      sb.bump(gpsRef(owner), { gameId, userId: owner, updatedAt: now }, { ownGoals: n });
     }
 
     // Community-level rollup for the club's stats + championship table:
     // total mini-games (rounds) and total goals scored THROUGH this club's
     // games. In the same idempotent batch, so a retry can't double-count.
     if (groupId) {
-      batch.set(
+      sb.bump(
         db.collection('communityStats').doc(groupId),
+        { groupId, updatedAt: now },
         {
-          groupId,
-          rounds: inc(1),
-          goals: inc(totalGoalsThisRound),
+          rounds: 1,
+          goals: totalGoalsThisRound,
           // Goals scored by GUESTS this round → drives the "X גולים ע"י אורחים"
           // fun fact. Kept OUT of the `goals` total above (guests aren't in the
           // ranked table); this is a separate breakout. Counts from deploy on.
-          ...(guestGoalsThisRound > 0 ? { guestGoals: inc(guestGoalsThisRound) } : {}),
+          ...(guestGoalsThisRound > 0 ? { guestGoals: guestGoalsThisRound } : {}),
           // Own goals scored this round → the club "X שערים עצמיים" fun fact.
           // Also separate from `goals` (an own goal isn't a scoring goal).
-          ...(totalOwnGoalsThisRound > 0 ? { ownGoals: inc(totalOwnGoalsThisRound) } : {}),
+          ...(totalOwnGoalsThisRound > 0 ? { ownGoals: totalOwnGoalsThisRound } : {}),
           // Ties get their own counter → drives the club's draw-rate fun fact.
-          tiedRounds: inc(winnerSide === 'tie' ? 1 : 0),
+          tiedRounds: winnerSide === 'tie' ? 1 : 0,
           // Mini-games decided by a penalty SHOOTOUT (a drawn round the admin
           // resolved with penalties). Identified by a non-empty penalties[]
           // payload — those commits carry a real winnerSide (the shootout
           // winner), so they DON'T count as ties. Drives the "% decided by
           // penalties" fun fact. Counts from deploy onward.
-          shootoutRounds: inc((penalties?.length ?? 0) > 0 ? 1 : 0),
+          shootoutRounds: (penalties?.length ?? 0) > 0 ? 1 : 0,
           // Scoreless mini-games (ended 0:0 in regulation) → the "% ended 0:0"
           // fun fact. Counts from deploy onward — round-level scores aren't
           // stored historically, so old 0:0 rounds can't be backfilled.
-          scorelessRounds: inc(scoreA === 0 && scoreB === 0 ? 1 : 0),
-          updatedAt: now,
+          scorelessRounds: scoreA === 0 && scoreB === 0 ? 1 : 0,
         },
-        { merge: true },
       );
     }
 
@@ -13162,34 +13353,26 @@ export const commitRoundStats = onCall(
       }
     }
     for (const [kicker, s] of Object.entries(kickerPen)) {
-      const fields = { penTaken: inc(s.taken), penScored: inc(s.scored), penMissed: inc(s.missed) };
-      batch.set(db.collection('users').doc(kicker), { stats: fields }, { merge: true });
+      const fields = { penTaken: s.taken, penScored: s.scored, penMissed: s.missed };
+      sb.bump(uRef(kicker), {}, {
+        'stats.penTaken': s.taken,
+        'stats.penScored': s.scored,
+        'stats.penMissed': s.missed,
+      });
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${kicker}`),
-          { groupId, userId: kicker, ...fields, updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${kicker}`),
-        { gameId, userId: kicker, ...fields, updatedAt: now },
-        { merge: true },
-      );
+        sb.bump(cpsRef(kicker), { groupId, userId: kicker, updatedAt: now }, fields);
+      sb.bump(gpsRef(kicker), { gameId, userId: kicker, updatedAt: now }, fields);
     }
     for (const [keeper, s] of Object.entries(keeperPen)) {
-      const fields = { penFaced: inc(s.faced), penSaved: inc(s.saved), penConceded: inc(s.conceded) };
-      batch.set(db.collection('users').doc(keeper), { stats: fields }, { merge: true });
+      const fields = { penFaced: s.faced, penSaved: s.saved, penConceded: s.conceded };
+      sb.bump(uRef(keeper), {}, {
+        'stats.penFaced': s.faced,
+        'stats.penSaved': s.saved,
+        'stats.penConceded': s.conceded,
+      });
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${keeper}`),
-          { groupId, userId: keeper, ...fields, updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${keeper}`),
-        { gameId, userId: keeper, ...fields, updatedAt: now },
-        { merge: true },
-      );
+        sb.bump(cpsRef(keeper), { groupId, userId: keeper, updatedAt: now }, fields);
+      sb.bump(gpsRef(keeper), { gameId, userId: keeper, updatedAt: now }, fields);
     }
 
     // 1b) assists → assister.stats.assists + community tally + directional
@@ -13215,7 +13398,7 @@ export const commitRoundStats = onCall(
     // the assist side rejected one, so a guest who set up a goal showed 0.
     const byGuestAssister: Record<string, number> = {};
     const assistPairs: { assister: string; scorer: string }[] = [];
-    for (const g of goals ?? []) {
+    for (const g of cappedGoals) {
       if (g.ownGoal || !g.scorerId || !scorerPlayed(g.scorerId)) continue;
       if (!g.assisterId || g.assisterId === g.scorerId) continue;
       if (!isReal(g.assisterId)) {
@@ -13236,25 +13419,17 @@ export const commitRoundStats = onCall(
       }
     }
     for (const [assister, n] of Object.entries(byAssister)) {
-      batch.set(db.collection('users').doc(assister), { stats: { assists: inc(n) } }, { merge: true });
+      sb.bump(uRef(assister), {}, { 'stats.assists': n });
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${assister}`),
-          { groupId, userId: assister, assists: inc(n), updatedAt: now },
-          { merge: true },
-        );
+        sb.bump(cpsRef(assister), { groupId, userId: assister, updatedAt: now }, { assists: n });
       // Per-GAME assist tally (mirrors the per-game goals write above).
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${assister}`),
-        { gameId, userId: assister, assists: inc(n), updatedAt: now },
-        { merge: true },
-      );
+      sb.bump(gpsRef(assister), { gameId, userId: assister, updatedAt: now }, { assists: n });
     }
     for (const [guest, n] of Object.entries(byGuestAssister)) {
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${guest}`),
-        { gameId, userId: guest, assists: inc(n), isGuest: true, updatedAt: now },
-        { merge: true },
+      sb.bump(
+        gpsRef(guest),
+        { gameId, userId: guest, isGuest: true, updatedAt: now },
+        { assists: n },
       );
     }
 
@@ -13288,43 +13463,30 @@ export const commitRoundStats = onCall(
     for (const uid of new Set([...A, ...B])) {
       const clean = cleanSheetFor(uid);
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
-          {
-            groupId,
-            userId: uid,
-            rounds: inc(1),
-            ...(clean ? { cleanSheets: inc(1) } : {}),
-            updatedAt: now,
-          },
-          { merge: true },
+        sb.bump(
+          cpsRef(uid),
+          { groupId, userId: uid, updatedAt: now },
+          { rounds: 1, ...(clean ? { cleanSheets: 1 } : {}) },
         );
       // Per-GAME rounds + this player's team goals for/against this round.
       // teamGoalsFor is the contribution% denominator (player.goals ÷ team.goals
       // over the evening); teamGoalsAgainst rounds out GF/GA. Folded into the
       // existing per-game write so it adds no extra Firestore op.
       const onA = A.includes(uid);
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
+      sb.bump(
+        gpsRef(uid),
+        { gameId, userId: uid, updatedAt: now },
         {
-          gameId,
-          userId: uid,
-          rounds: inc(1),
-          ...(clean ? { cleanSheets: inc(1) } : {}),
-          teamGoalsFor: inc(onA ? creditedA : creditedB),
-          teamGoalsAgainst: inc(onA ? creditedB : creditedA),
-          updatedAt: now,
+          rounds: 1,
+          ...(clean ? { cleanSheets: 1 } : {}),
+          teamGoalsFor: onA ? creditedA : creditedB,
+          teamGoalsAgainst: onA ? creditedB : creditedA,
         },
-        { merge: true },
       );
       // Lifetime tally, in the SAME latched batch as the other two so the three
       // counters can never diverge — the rule `stats.wins` follows.
       if (clean) {
-        batch.set(
-          db.collection('users').doc(uid),
-          { stats: { cleanSheets: inc(1) } },
-          { merge: true },
-        );
+        sb.bump(uRef(uid), {}, { 'stats.cleanSheets': 1 });
       }
     }
 
@@ -13352,22 +13514,22 @@ export const commitRoundStats = onCall(
       const onA = side === 'A';
       const clean = onA ? cleanA : cleanB;
       const result =
-        winnerSide === side ? 'wins' : winnerSide === 'A' || winnerSide === 'B' ? 'losses' : null;
+        winnerSide === side
+          ? 'wins'
+          : winnerSide === 'A' || winnerSide === 'B'
+            ? 'losses'
+            : 'ties';
       for (const gid of guestsOnSide) {
-        batch.set(
-          db.collection('gamePlayerStats').doc(`${gameId}__${gid}`),
+        sb.bump(
+          gpsRef(gid),
+          { gameId, userId: gid, isGuest: true, updatedAt: now },
           {
-            gameId,
-            userId: gid,
-            isGuest: true,
-            rounds: inc(1),
-            ...(clean ? { cleanSheets: inc(1) } : {}),
-            ...(result ? { [result]: inc(1) } : {}),
-            teamGoalsFor: inc(onA ? creditedA : creditedB),
-            teamGoalsAgainst: inc(onA ? creditedB : creditedA),
-            updatedAt: now,
+            rounds: 1,
+            ...(clean ? { cleanSheets: 1 } : {}),
+            ...(result ? { [result]: 1 } : {}),
+            teamGoalsFor: onA ? creditedA : creditedB,
+            teamGoalsAgainst: onA ? creditedB : creditedA,
           },
-          { merge: true },
         );
       }
     }
@@ -13380,18 +13542,16 @@ export const commitRoundStats = onCall(
       winnerSide === 'A' ? A : winnerSide === 'B' ? B : [];
     const roundLosers =
       winnerSide === 'A' ? B : winnerSide === 'B' ? A : [];
-    const tallyResult = (uid: string, field: 'wins' | 'losses') => {
+    // A DRAWN mini-game credits everyone who played it. This used to credit
+    // nobody: `roundWinners` and `roundLosers` are both empty on a tie, so the
+    // result simply fell on the floor. The consequence was visible in the club
+    // table — a player with 10 mini-games and 3 draws showed 4 wins and 3
+    // losses, and nothing on screen accounted for the missing three.
+    const roundDrawers = winnerSide === 'tie' ? [...A, ...B] : [];
+    const tallyResult = (uid: string, field: 'wins' | 'losses' | 'ties') => {
       if (groupId)
-        batch.set(
-          db.collection('communityPlayerStats').doc(`${groupId}__${uid}`),
-          { groupId, userId: uid, [field]: inc(1), updatedAt: now },
-          { merge: true },
-        );
-      batch.set(
-        db.collection('gamePlayerStats').doc(`${gameId}__${uid}`),
-        { gameId, userId: uid, [field]: inc(1), updatedAt: now },
-        { merge: true },
-      );
+        sb.bump(cpsRef(uid), { groupId, userId: uid, updatedAt: now }, { [field]: 1 });
+      sb.bump(gpsRef(uid), { gameId, userId: uid, updatedAt: now }, { [field]: 1 });
     };
     for (const uid of roundWinners) {
       tallyResult(uid, 'wins');
@@ -13400,27 +13560,31 @@ export const commitRoundStats = onCall(
       // instead of the onGameRotationChanged trigger. That guarantees the
       // three win counters (lifetime / community / game) can never diverge:
       // they all commit together, or none of them on a failure.
-      batch.set(db.collection('users').doc(uid), { stats: { wins: inc(1) } }, { merge: true });
+      sb.bump(uRef(uid), {}, { 'stats.wins': 1 });
     }
     for (const uid of roundLosers) tallyResult(uid, 'losses');
+    for (const uid of roundDrawers) {
+      tallyResult(uid, 'ties');
+      sb.bump(uRef(uid), {}, { 'stats.ties': 1 });
+    }
 
     // Directional pair assists: assistsAToB = sorted-first player assisted the
     // sorted-second; assistsBToA = the reverse. The player card reads its side.
     for (const { assister, scorer } of assistPairs) {
       const [pa, pb] = [assister, scorer].sort();
       const field = assister === pa ? 'assistsAToB' : 'assistsBToA';
-      batch.set(
+      sb.bump(
         db.collection('pairStats').doc(pairKey(assister, scorer)),
-        { a: pa, b: pb, [field]: inc(1), updatedAt: now },
-        { merge: true },
+        { a: pa, b: pb, updatedAt: now },
+        { [field]: 1 },
       );
       // Per-COMMUNITY assist pair → drives the club's "deadly duo" fun fact.
       // (pairStats is global/cross-group; this one is scoped to the club.)
       if (groupId) {
-        batch.set(
+        sb.bump(
           db.collection('communityPairStats').doc(`${groupId}__${pairKey(assister, scorer)}`),
-          { groupId, a: pa, b: pb, assists: inc(1), updatedAt: now },
-          { merge: true },
+          { groupId, a: pa, b: pb, updatedAt: now },
+          { assists: 1 },
         );
       }
     }
@@ -13442,7 +13606,7 @@ export const commitRoundStats = onCall(
         const sideAWinsField = aIsFirst ? 'winsA' : 'winsB';
         const sideBWinsField = aIsFirst ? 'winsB' : 'winsA';
         const [pa, pb] = [w, l].sort();
-        batch.set(
+        sb.bump(
           db.collection('pairStats').doc(pairKey(w, l)),
           {
             // Write a/b so against-ONLY pairs (never same-team) are still
@@ -13450,12 +13614,13 @@ export const commitRoundStats = onCall(
             // queries — otherwise the rival/nemesis cards would miss them.
             a: pa,
             b: pb,
-            against: inc(1),
-            [sideAWinsField]: inc(aWon ? 1 : 0),
-            [sideBWinsField]: inc(bWon ? 1 : 0),
             updatedAt: now,
           },
-          { merge: true },
+          {
+            against: 1,
+            [sideAWinsField]: aWon ? 1 : 0,
+            [sideBWinsField]: bWon ? 1 : 0,
+          },
         );
       }
 
@@ -13470,17 +13635,14 @@ export const commitRoundStats = onCall(
       for (let i = 0; i < team.length; i++) {
         for (let j = i + 1; j < team.length; j++) {
           const [pa, pb] = [team[i], team[j]].sort();
-          batch.set(
+          sb.bump(
             db.collection('pairStats').doc(pairKey(team[i], team[j])),
+            { a: pa, b: pb, updatedAt: now },
             {
-              a: pa,
-              b: pb,
-              sameTeam: inc(1),
-              ...(won ? { winsTogether: inc(1) } : {}),
-              ...(lost ? { lossesTogether: inc(1) } : {}),
-              updatedAt: now,
+              sameTeam: 1,
+              ...(won ? { winsTogether: 1 } : {}),
+              ...(lost ? { lossesTogether: 1 } : {}),
             },
-            { merge: true },
           );
         }
       }
@@ -13490,38 +13652,87 @@ export const commitRoundStats = onCall(
     sameTeamPairs(A, aWon, bWon);
     sameTeamPairs(B, bWon, aWon);
 
-    try {
-      await batch.commit();
-    } catch (err) {
-      // The idempotency latch (committedRounds/{roundId}.create) already fired
-      // for this round on a PRIOR attempt — the SDK auto-retried after a lost
-      // success response, or the admin double-tapped "סיים משחקון". The stats
-      // are already committed, so a re-run must SUCCEED (idempotent), not surface
-      // a permanent failure that leaves the round/evening stuck. Only swallow the
-      // duplicate-latch case; any other commit error still propagates.
-      const code = (err as { code?: unknown } | undefined)?.code;
-      if (code === 6 || code === 'already-exists') {
-        return { ok: true, alreadyCommitted: true };
-      }
-      throw err;
+    // ── Batch-size guard, computed rather than assumed ──────────────────────
+    // `sb.opCount` is the exact operation count the commit will issue. Firestore
+    // rejects a batch over 500, and that rejection is UNRECOVERABLE here: the
+    // idempotency latch is inside this batch, so it never lands, and every
+    // retry of the same payload overflows identically. MAX_SIDE bounds the
+    // quadratic pair writes and the caps on goals/penalties bound the rest, so
+    // this should be unreachable — which is exactly why it must shout if it
+    // ever isn't, instead of silently overflowing.
+    if (sb.opCount > MAX_ROUND_BATCH_OPS) {
+      console.error(
+        `[commitRoundStats] batch too large: ${sb.opCount} ops ` +
+          `(A=${A.length} B=${B.length} goals=${cappedGoals.length} pens=${pens.length})`,
+      );
+      throw new HttpsError(
+        'resource-exhausted',
+        `round too large to commit atomically (${sb.opCount} ops)`,
+      );
     }
 
-    // Round-history write, OUTSIDE the atomic stats batch (op-count + doc-size
-    // safety). Runs only after the batch commits, so on an idempotent retry the
-    // batch throws ALREADY_EXISTS first and we never reach here — no duplicate.
-    // Best-effort: a failure here loses only summary richness, never a stat.
-    if (roundHistoryDoc) {
-      try {
-        await db
+    // ── Round history FIRST, then the latched stats batch ───────────────────
+    // The ordering, and the reasoning behind it, live in ./commitProtocol —
+    // where they are unit-tested against every failure window rather than only
+    // described in a comment here.
+    const roundHistoryRef = roundHistoryDoc
+      ? db
           .collection('games')
           .doc(gameId)
           .collection('roundHistory')
           .doc(roundHistoryDoc.roundId)
-          .set(roundHistoryDoc);
-      } catch (err) {
-        console.warn('roundHistory write failed', gameId, roundId, err);
-      }
-    }
+      : null;
+
+    const latchRef =
+      roundId !== undefined && roundId !== null
+        ? db
+            .collection('games')
+            .doc(gameId)
+            .collection('committedRounds')
+            .doc(String(roundId))
+        : null;
+
+    const outcome = await commitRoundInOrder({
+      isAlreadyCommitted: latchRef
+        ? async () => (await latchRef.get()).exists
+        : undefined,
+      writeHistory:
+        roundHistoryRef && roundHistoryDoc
+          ? async () => {
+              await roundHistoryRef.set(roundHistoryDoc);
+            }
+          : undefined,
+      commitStats: async () => {
+        await sb.build(db.batch(), inc).commit();
+      },
+      healHistory:
+        roundHistoryRef && roundHistoryDoc
+          ? async () => {
+              try {
+                // create(), never set() — an existing document is the one the
+                // original commit agreed with, and a later retry could carry a
+                // different (edited) payload.
+                await roundHistoryRef.create(roundHistoryDoc);
+                console.log(
+                  '[commitRoundStats] healed missing roundHistory',
+                  gameId,
+                  roundId,
+                );
+              } catch {
+                // Already there — the normal case for a duplicate press.
+              }
+            }
+          : undefined,
+      isAlreadyExists: (err) => {
+        const code = (err as { code?: unknown } | undefined)?.code;
+        return code === 6 || code === 'already-exists';
+      },
+      historyFailure: (err) => {
+        console.error('roundHistory write failed', gameId, roundId, err);
+        return new HttpsError('unavailable', 'could not store round history');
+      },
+    });
+    if (outcome.alreadyCommitted) return { ok: true, alreadyCommitted: true };
 
     return { ok: true, scorers: Object.keys(byScorer).length };
   },

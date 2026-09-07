@@ -25,6 +25,7 @@ export interface ComparePlayer {
   goals: number;
   assists: number;
   wins: number;
+  ties: number;
   losses: number;
   rounds: number;
   /** Penalty-shootout: scored (kicker) + saved (keeper). */
@@ -67,6 +68,7 @@ interface Row {
   goals: number;
   assists: number;
   wins: number;
+  ties: number;
   losses: number;
   games: number;
   rounds: number;
@@ -90,6 +92,7 @@ function toPlayer(
     goals: row.goals,
     assists: row.assists,
     wins: row.wins,
+    ties: row.ties,
     losses: row.losses,
     rounds: row.rounds,
     penScored: row.penScored,
@@ -140,6 +143,7 @@ export const playerCompareService = {
         goals: 0,
         assists: 0,
         wins: 0,
+        ties: 0,
         losses: 0,
         games: 0,
         rounds: 0,
@@ -160,6 +164,20 @@ export const playerCompareService = {
         metric('games', 'מחזורים', a.games, b.games, 'int'),
         metric('rounds', 'משחקים', a.rounds, b.rounds, 'int'),
       ];
+      // Draws only when one of them has any — a three-team club never draws,
+      // and a 0-vs-0 row teaches nothing. Same rule as the penalty rows below
+      // and as the club table's ties column.
+      if (a.ties > 0 || b.ties > 0) {
+        // Shown, but NEVER scored. `metric()` awards the row to whoever has the
+        // bigger number, and the counts feed the head-to-head verdict — but
+        // more draws is not better than fewer, it is just a different way the
+        // evening went. Forcing 'tie' keeps the row informative and keeps it
+        // out of the "who leads" tally.
+        metrics.push({
+          ...metric('ties', 'תיקו', a.ties, b.ties, 'int'),
+          winner: 'tie',
+        });
+      }
       // Penalty rows only when at least one of the two has taken/faced any —
       // otherwise every comparison would carry two 0-vs-0 rows.
       if (a.penScored > 0 || b.penScored > 0) {

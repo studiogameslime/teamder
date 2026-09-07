@@ -15,7 +15,7 @@ export function mockRoundSummary(gameId: string): RoundSummary {
     gameId,
     groupId: 'mock-club',
     at: Date.now() - 12 * 60 * 60 * 1000,
-    stats: { rounds: 10, goals: 31, assists: 18, shootouts: 2 },
+    stats: { rounds: 10, goals: 31, assists: 18, shootouts: 2, ties: 3 },
     leaders: {
       topScorers: { userIds: [id(0)], value: 6 },
       topAssisters: { userIds: [id(1)], value: 4 },

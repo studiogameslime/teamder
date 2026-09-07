@@ -21,6 +21,11 @@ import { useUserStore } from '@/store/userStore';
 import { colors } from '@/theme';
 import { he } from '@/i18n/he';
 import { maybeInterceptTabLeave } from '@/navigation/tabLeaveGuard';
+import {
+  planTabPress,
+  inFlightSettled,
+  type InFlight,
+} from '@/navigation/tabTransition';
 
 // 3-tab layout. RTL flips flexDirection automatically, so array index 0 →
 // rightmost on screen, last index → leftmost. v2 order:
@@ -192,49 +197,85 @@ const TAB_ROOT: Record<string, string> = {
 // payload replaces the nested state outright, so taps on the
 // Communities / Games tabs land on the feed every time, never on
 // MatchDetails or CommunityDetails.
+// The dispatch we have issued and not yet seen land. Module-level rather than
+// component state on purpose: it must be readable SYNCHRONOUSLY inside the
+// tabPress handler, before any re-render, which is the whole window a second
+// rapid tap arrives in.
+let inFlight: InFlight | null = null;
+
 function resetTabToRoot(
   e: { defaultPrevented: boolean; preventDefault: () => void },
   navigation: { isFocused: () => boolean; getState: () => unknown; dispatch: (a: unknown) => void },
   tabName: string,
 ) {
   const state = navigation.getState() as {
+    index?: number;
     routes: Array<{
       name: string;
       state?: { index?: number; routes: Array<{ name: string }> };
     }>;
   };
   const tabRoute = state.routes.find((r) => r.name === tabName);
-  const stackRoutes = tabRoute?.state?.routes;
+  const stack = tabRoute?.state;
   // Prefer the CONFIGURED root; fall back to the live first route only for
-  // tabs not in the map (defensive — all three are mapped).
-  const rootName = TAB_ROOT[tabName] ?? stackRoutes?.[0]?.name;
+  // tabs not in the map (defensive — all four are mapped).
+  const rootName = TAB_ROOT[tabName] ?? stack?.routes?.[0]?.name;
   if (!rootName) return;
-  // Already at the root of this tab AND it's the focused tab → no-op.
-  // (If the user is on tab A's root and taps tab A again, nothing to
-  // do.) When switching FROM a different tab we let the navigate fire
-  // even if the destination was already at root, because we still
-  // need to actually focus the tab.
-  // "Already at root" means the stack is EXACTLY [configured-root] — not
-  // merely length 1. A persisted [Friends]-only stack is length 1 but its
-  // sole route is NOT the root, so we must still reset (self-heal) instead
-  // of no-op'ing and leaving the user stuck on the wrong screen.
-  const stackIndex = tabRoute?.state?.index ?? 0;
-  const alreadyAtRoot =
-    stackIndex === 0 &&
-    stackRoutes?.length === 1 &&
-    stackRoutes[0]?.name === rootName;
-  if (alreadyAtRoot && navigation.isFocused()) return;
-  const perform = () =>
+
+  const now = Date.now();
+  // Retire a landed (or timed-out) in-flight record before deciding, so the
+  // guard reflects where navigation actually is rather than where it was.
+  const focusedTab = state.routes[state.index ?? 0]?.name;
+  if (
+    inFlightSettled(
+      inFlight,
+      {
+        tabName: focusedTab ?? '',
+        stack: state.routes.find((r) => r.name === focusedTab)?.state,
+        isFocused: true,
+      },
+      now,
+    )
+  ) {
+    inFlight = null;
+  }
+
+  const plan = planTabPress({
+    tabName,
+    rootName,
+    stack,
+    isFocused: navigation.isFocused(),
+    inFlight,
+    now,
+  });
+
+  if (plan.action === 'none') {
+    // A duplicate of a transition already in flight must still be SWALLOWED —
+    // letting the default tab-press behaviour run would issue the very second
+    // navigation the guard exists to prevent.
+    if (plan.reason === 'duplicate-in-flight') e.preventDefault();
+    return;
+  }
+
+  const perform = () => {
+    inFlight = { tabName, rootName, at: Date.now() };
     navigation.dispatch(
-      CommonActions.navigate({
-        name: tabName,
-        params: {
-          // Force the nested stack to exactly `[root]` — drops any
-          // deep route the tab had been on (MatchDetails, etc.).
-          state: { routes: [{ name: rootName }] },
-        },
-      }),
+      plan.action === 'reset'
+        ? CommonActions.navigate({
+            name: tabName,
+            params: {
+              // Force the nested stack to exactly `[root]` — drops any
+              // deep route the tab had been on (MatchDetails, etc.).
+              state: { routes: [{ name: rootName }] },
+            },
+          })
+        : // The tab is already at its root; only focus has to move. Carrying a
+          // nested-state payload here would re-create the stack for no reason,
+          // and it is that needless re-creation that overlaps under fast taps
+          // and crashes the native view manager.
+          CommonActions.navigate({ name: tabName }),
     );
+  };
   // A focused edit screen with unsaved changes gets to confirm first —
   // `beforeRemove` doesn't fire on tab switches, so this is the only hook
   // that catches "tapped another tab mid-edit". The guard defers `perform`

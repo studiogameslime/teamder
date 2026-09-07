@@ -74,8 +74,35 @@ service cloud.firestore {
         isGroupAdmin(gameDoc(gid).groupId)
       );
     }
+    // Mirrors the audience of /games' own `allow read` (public game, club
+    // member, participant, creator). Used by per-game subcollections whose
+    // documents carry a `gameId` but no `groupId`, so they can be bound to the
+    // same audience as the game itself instead of to every signed-in account.
+    // Ordered cheapest-first, with the group lookup LAST: a game with no
+    // groupId makes isGroupMember error, and CEL's `||` short-circuits, so the
+    // free checks must get their chance first.
+    function canReadGame(gid) {
+      return isSignedIn() && gid is string && gid.size() > 0 && (
+        gameDoc(gid).get('visibility', '') == 'public' ||
+        request.auth.uid == gameDoc(gid).get('createdBy', '') ||
+        request.auth.uid in gameDoc(gid).get('participantIds', []) ||
+        request.auth.uid in gameDoc(gid).get('players', []) ||
+        isGroupMember(gameDoc(gid).get('groupId', ''))
+      );
+    }
     function isGroupAdmin(gid) {
       return isSignedIn() && request.auth.uid in groupDoc(gid).adminIds;
+    }
+    // Non-throwing variant of isGroupMember. Plain isGroupMember() ERRORS on a
+    // blank/absent gid or a deleted group (get() returns null, then `.playerIds`
+    // raises) — and a raised error denies the whole request, even a branch that
+    // would otherwise have allowed it. Used where the group id may legitimately
+    // be missing from a document.
+    function isGroupMemberSafe(gid) {
+      return isSignedIn() && gid is string && gid.size() > 0 &&
+        exists(/databases/$(database)/documents/groups/$(gid)) &&
+        (request.auth.uid in groupDoc(gid).playerIds ||
+         request.auth.uid in groupDoc(gid).adminIds);
     }
     function isGroupMember(gid) {
       return isSignedIn() && (
@@ -1469,7 +1496,14 @@ service cloud.firestore {
     }
 
     match /groups/{gid}/ratings/{ratedUid} {
-      allow read: if isSignedIn();
+      // Members of THAT club only. Frozen legacy data (write:false) but still
+      // club data; `isSignedIn()` let any account read any club's per-player
+      // rating summaries. No live screen reads this collection — the refs in
+      // src/firebase/firestore.ts have no callers, and the current internal
+      // rating lives on groups/{gid}.adminRatings, which is already
+      // member-gated. The GLOBAL /ratings/{uid} below stays cross-club by
+      // design.
+      allow read: if isGroupMember(gid);
       allow write: if false;
 
       match /votes/{raterUid} {
@@ -1957,24 +1991,63 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Community goals rollups — read by the club stats + championship table.
-    // Written server-side only (commitRoundStats).
+    // ── Club-scoped stat rollups — MEMBERS OF THAT CLUB ONLY ────────────
+    //
+    // ⚠️ These four used to be `allow read: if isSignedIn()`, which made every
+    // club's table, totals and pair chemistry readable by ANY signed-in
+    // account — a full cross-club data leak (audit P0-1). Worse for
+    // /communityPairStats: a SECOND, membership-gated `match` block for the
+    // same collection already existed further up this file. Firestore ORs
+    // overlapping match blocks — the more specific rule does NOT win — so the
+    // permissive copy here silently defeated it. That duplicate block is gone;
+    // /communityPairStats is now governed ONLY by the one at
+    // "── /communityPairStats/{gid__a__b} ──" above.
+    //
+    // Every read path in the app is already scoped to one club, so nothing
+    // legitimate loses access:
+    //   • communityPlayerStats → where('groupId','==',gid)  (club table,
+    //     championship, player compare, penalty cards)
+    //   • communityStats       → doc(groupId) / where('groupId','==',gid)
+    //   • communityPairStats   → where('groupId','==',gid)  (deadly duo)
+    // A LIST is evaluated per candidate document, so those group-filtered
+    // queries succeed for a member and fail for everyone else — which is the
+    // point.
     match /communityPlayerStats/{doc} {
-      allow read: if isSignedIn();
+      allow read: if isGroupMember(resource.data.groupId);
       allow write: if false;
     }
-    match /gamePlayerStats/{doc} {
-      allow read: if isSignedIn();
-      allow write: if false;
-    }
+    // Keyed BY the group id AND carrying it as a field. Both are needed:
+    //   • a LIST does not bind the path wildcard (it is null there — the rules
+    //     test proves it), so the query the chemistry screen issues,
+    //     where('groupId','==',gid), has to be answered from the FIELD;
+    //   • one production doc, written only by the chemistry-window path, has
+    //     never carried the field, so a plain `resource.data.groupId` would
+    //     make it permanently unreadable — the wildcard covers it on get().
+    // A doc with no field can never come back from the field-filtered query, so
+    // the null default is unreachable on the list path.
     match /communityStats/{groupId} {
-      allow read: if isSignedIn();
+      // TWO statements, deliberately. A `list` does NOT bind the path wildcard
+      // — touching `groupId` there raises "Null value error" and denies the
+      // whole query (the rules test proves it), so the list path must be
+      // answered from the FIELD. `allow get` is only ever evaluated for a
+      // single-document read, where the wildcard IS bound, and covers the one
+      // production doc that has never carried the field (a hidden personal
+      // group's, written only by the chemistry-window path). Both use the
+      // non-throwing membership check so neither statement can error out the
+      // other.
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow get: if isGroupMemberSafe(groupId);
       allow write: if false;
     }
-    // Per-community assist pairs — read by the club's "deadly duo" fun fact.
-    // Written server-side only (commitRoundStats).
-    match /communityPairStats/{doc} {
-      allow read: if isSignedIn();
+    // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────
+    // Not club-scoped (the documents carry `gameId`, never `groupId`), so the
+    // right bound is the GAME's own audience: if you may read the game, you may
+    // read its per-player rows. That is strictly narrower than the old
+    // `isSignedIn()` and mirrors /games' read rule, so the finished-game
+    // scorers table and the evening-summary card keep working for exactly the
+    // people who can already open the game.
+    match /gamePlayerStats/{doc} {
+      allow read: if canReadGame(resource.data.gameId);
       allow write: if false;
     }
     // Audit trail of DELETED games — "who deleted a game" record. Written by

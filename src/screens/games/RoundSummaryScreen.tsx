@@ -138,6 +138,13 @@ export function RoundSummaryScreen() {
             ) : null}
             <Stat value={s.goals} label={he.summaryMetricGoals} />
             <Stat value={s.assists} label={he.summaryMetricAssists} />
+            {/* Draws — a club-wide figure for the evening, not a personal one.
+                Shown only when the evening actually had one, for the same
+                reason as shootouts: a three-team club would carry a permanent
+                0 that says nothing. */}
+            {s.ties > 0 ? (
+              <Stat value={s.ties} label={he.summaryMetricTies} />
+            ) : null}
             {s.shootouts > 0 ? (
               <Stat value={s.shootouts} label={he.summaryMetricShootouts} />
             ) : null}

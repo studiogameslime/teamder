@@ -103,7 +103,9 @@ it('replays every finished evening without falling over on the gaps', () => {
   expect(summaries).toHaveLength(history.evenings.length);
   // The first evening in this club's history has no player rows at all. It must
   // produce an empty-but-valid summary rather than throw or invent one.
-  expect(summaries[0].summary.stats).toEqual({ rounds: 0, goals: 0, assists: 0, shootouts: 0 });
+  expect(summaries[0].summary.stats).toEqual({
+    rounds: 0, goals: 0, assists: 0, shootouts: 0, ties: 0,
+  });
   expect(summaries[0].summary.leaders.topScorers).toBeNull();
 });
 

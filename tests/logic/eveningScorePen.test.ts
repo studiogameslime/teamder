@@ -54,7 +54,19 @@ describe('a shootout save moves the score', () => {
   it('treats conceding as the norm — a small dent, not a punishment', () => {
     const conceded = eveningScore({ ...base, pen: { ...NO_PEN, conceded: 3 } });
     const missed = eveningScore({ ...base, pen: { ...NO_PEN, missed: 3 } });
-    expect(conceded).toBeGreaterThan(missed);
+    // Never worse. The displayed score is quantised to one decimal while the
+    // penalty axis carries only 5% of the weight, so three conceded vs three
+    // missed differ by ~0.04 — below what a single decimal can show. Asserting
+    // a strict `>` there was really asserting where a rounding boundary fell.
+    expect(conceded).toBeGreaterThanOrEqual(missed);
+    // The substance of the claim, asserted where it is actually resolvable:
+    // on the axis itself, three conceded scores strictly above three missed.
+    const axis = (p: { missed?: number; conceded?: number }) =>
+      Math.max(0, Math.min(10,
+        PENALTY_POINTS.base +
+          (p.missed ?? 0) * PENALTY_POINTS.missed +
+          (p.conceded ?? 0) * PENALTY_POINTS.conceded));
+    expect(axis({ conceded: 3 })).toBeGreaterThan(axis({ missed: 3 }));
     expect(PENALTY_POINTS.conceded).toBeGreaterThan(PENALTY_POINTS.missed);
   });
 

@@ -18,7 +18,17 @@
 // protected: three reads on OTHER paths (hydrateUsers, hydratePlayers,
 // getNearbyClubs) all failed within five seconds of the same cold start and
 // landed in the production error log.
+//
+// CALLABLES hit the same race under a different name. A Cloud Function invoked
+// in that window rejects with `functions/unauthenticated` rather than
+// `permission-denied` — same cause, same cure, different string. That is what
+// put `getAvailabilityCounts` in the production error log with "sign-in
+// required" while a session plainly existed.
 import { getFirebase } from './config';
+
+/** The cold-start race, in both dialects: Firestore rules say permission-denied,
+ *  a callable says unauthenticated. */
+const RACE_CODES = new Set(['permission-denied', 'functions/unauthenticated']);
 
 export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
   try {
@@ -26,7 +36,7 @@ export async function withAuthRaceRetry<T>(run: () => Promise<T>): Promise<T> {
   } catch (err) {
     const code = (err as { code?: string })?.code;
     const user = getFirebase().auth.currentUser;
-    if (code === 'permission-denied' && user) {
+    if (code && RACE_CODES.has(code) && user) {
       try {
         await user.getIdToken();
       } catch {

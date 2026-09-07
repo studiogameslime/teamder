@@ -208,7 +208,16 @@ export interface RoundSummary {
   gameId: string;
   groupId: string;
   at: number;
-  stats: { rounds: number; goals: number; assists: number; shootouts: number };
+  stats: {
+    rounds: number;
+    goals: number;
+    assists: number;
+    shootouts: number;
+    /** Mini-games that ended level. 0 in a three-team club, where the loser
+     *  rotates out and every mini-game has a winner — the summary hides the
+     *  figure at 0 rather than printing it. */
+    ties: number;
+  };
   leaders: {
     topScorers: Leader | null;
     topAssisters: Leader | null;
@@ -358,6 +367,7 @@ function statsOf(input: RoundSummaryInput): RoundSummary['stats'] {
     goals,
     assists,
     shootouts: input.rounds.filter((r) => r.shootout).length,
+    ties: input.rounds.filter((r) => r.winnerSide === 'tie').length,
   };
 }
 

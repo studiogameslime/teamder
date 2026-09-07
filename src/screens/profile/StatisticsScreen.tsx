@@ -37,6 +37,7 @@ export function StatisticsScreen() {
     penFaced: number;
     penSaved: number;
     ownGoals: number;
+    ties: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,6 +63,7 @@ export function StatisticsScreen() {
                 penFaced: st.penFaced ?? 0,
                 penSaved: st.penSaved ?? 0,
                 ownGoals: st.ownGoals ?? 0,
+                ties: st.ties ?? 0,
               }
             : null,
         );
@@ -135,6 +137,11 @@ export function StatisticsScreen() {
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
             {/* Own goals — only shown once the player has one (a rare, dubious
                 stat; no need for a permanent 0 tile). */}
+            {/* Draws — only once the player has one. A three-team club never
+                draws, so a permanent 0 tile would be noise for most people. */}
+            {pen && pen.ties > 0 ? (
+              <NumberTile icon="swap-horizontal-outline" value={String(pen.ties)} label={he.statTies} />
+            ) : null}
             {pen && pen.ownGoals > 0 ? (
               <NumberTile icon="footsteps-outline" value={String(pen.ownGoals)} label={he.statOwnGoals} />
             ) : null}

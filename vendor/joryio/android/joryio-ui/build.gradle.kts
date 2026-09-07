@@ -7,7 +7,12 @@ plugins {
 // Single source of truth for both artifacts' version. base and -ui are released
 // in LOCKSTEP at the same number, which is what stops a consumer assembling an
 // incompatible pair; Braze does the same for android-sdk-base/-ui.
-val sdkVersion = "1.0.0"
+//
+// It was "1.0.0" while :joryio published 1.1.0 - so this artifact went out a
+// version behind and pinned base to a version that did not exist beside it.
+// "Single source of truth" is the intent, not the mechanism: :joryio hardcodes
+// its own number in its own file, and nothing compares the two.
+val sdkVersion = "1.1.0"
 
 android {
     namespace = "io.joryio.sdk.ui"
@@ -71,23 +76,17 @@ publishing {
             version = sdkVersion
 
             afterEvaluate {
+                // The generated POM ALREADY carries io.joryio:joryio-android at
+                // this exact version, from the project dependency below - so the
+                // pin the intent called for is there for free.
+                //
+                // There used to be a pom.withXml block adding it a second time.
+                // It appended a SECOND <dependencies> element to a POM that
+                // already had one, which is invalid, and Gradle refused the
+                // publication outright: `:joryio-ui:publishReleasePublicationToMavenLocal`
+                // failed with "POM file is invalid" on every machine, so this
+                // artifact could not be released at all.
                 from(components["release"])
-
-                // Pin base to the EXACT same version rather than letting Gradle
-                // resolve a range. The reflective lookup between the two
-                // artifacts (base finds DefaultInAppMessagePresenter by name)
-                // has no compile-time check, so a mismatched pair would fail by
-                // displaying nothing rather than by failing to build. An exact
-                // pin makes that impossible at resolution time.
-                pom.withXml {
-                    val deps = asNode().appendNode("dependencies")
-                    deps.appendNode("dependency").apply {
-                        appendNode("groupId", "io.joryio")
-                        appendNode("artifactId", "joryio-android")
-                        appendNode("version", "[$sdkVersion]")
-                        appendNode("scope", "compile")
-                    }
-                }
             }
         }
     }

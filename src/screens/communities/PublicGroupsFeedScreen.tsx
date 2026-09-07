@@ -330,7 +330,8 @@ export function PublicGroupsFeedScreen() {
     : [];
 
   const handleRequest = async (item: GroupPublic) => {
-    if (!ensureNotGuest(he.guestRegisterJoinCommunity)) {
+    // Come back to THIS club after signing up — see the note in guestGate.
+    if (!ensureNotGuest(he.guestRegisterJoinCommunity, { type: 'team', id: item.id })) {
       logEvent(AnalyticsEvent.GuestGateBlocked, {
         action: 'join_community',
         groupId: item.id,

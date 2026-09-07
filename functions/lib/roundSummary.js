@@ -137,6 +137,7 @@ function statsOf(input) {
         goals,
         assists,
         shootouts: input.rounds.filter((r) => r.shootout).length,
+        ties: input.rounds.filter((r) => r.winnerSide === 'tie').length,
     };
 }
 // ─── Teams ────────────────────────────────────────────────────────────────

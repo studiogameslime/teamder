@@ -55,6 +55,28 @@ export const DEFAULT_ASSISTS_FOR_10 = 2;
  *  a single goal worth a perfect 10. */
 export const BENCHMARK_FLOOR = 1;
 
+/**
+ * Phantom mini-games, drawn, added to everyone's win rate.
+ *
+ * A raw `wins / gamesPlayed` treats one game won as a flawless record: a player
+ * who played a single mini-game and won it scored 10 on this axis, ahead of a
+ * player who played five and won four. Reported as "שחקן ששיחק משחק אחד וניצח
+ * אותו יכול לקבל יתרון על שחקן ששיחק 5 משחקים וניצח 4 — לא תקין".
+ *
+ * The fix is the standard one for a rate over a tiny sample: shrink it toward
+ * the middle by pretending everyone also played WIN_PRIOR_GAMES draws. A small
+ * sample is pulled hard toward 0.5 and a large one is barely moved, so:
+ *
+ *      1 of 1  → 0.67       4 of 5  → 0.71       5 of 5  → 0.86
+ *
+ * — the five-game player now leads, which is the point. It stays monotonic in
+ * both directions: winning more always scores higher, and so does winning the
+ * same share over more mini-games. The cost is that a perfect 10 on this axis
+ * is no longer reachable from a single game, which is exactly the claim that
+ * was wrong.
+ */
+export const WIN_PRIOR_GAMES = 2;
+
 /** Penalty axis: start neutral at 5, move per shootout outcome, clamp 0–10. */
 export const PENALTY_POINTS = {
   base: 5,
@@ -110,10 +132,14 @@ export function eveningScore(input: EveningScoreInput): number {
       : DEFAULT_ASSISTS_FOR_10,
   );
 
-  // Wins is a rate (share of mini-games won). Goals/assists are SELF-based
-  // evening TOTALS measured against the community king benchmark — NOT divided
-  // per mini-game, because the benchmark is itself a per-evening figure.
-  const winsScore = clamp10((input.wins / gp) * 10);
+  // Wins is a rate (share of mini-games won), SHRUNK toward a draw so a
+  // one-game sample can't read as a perfect record — see WIN_PRIOR_GAMES.
+  // Goals/assists are SELF-based evening TOTALS measured against the community
+  // king benchmark — NOT divided per mini-game, because the benchmark is itself
+  // a per-evening figure.
+  const winsScore = clamp10(
+    ((input.wins + WIN_PRIOR_GAMES / 2) / (gp + WIN_PRIOR_GAMES)) * 10,
+  );
   const goalsScore = clamp10((input.goals / goalsFor10) * 10);
   const assistsScore = clamp10((input.assists / assistsFor10) * 10);
 

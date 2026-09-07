@@ -29,7 +29,11 @@ const summary = buildRoundSummary({
 });
 
 it('reads the evening exactly as it was played', () => {
-  expect(summary.stats).toEqual({ rounds: 10, goals: 20, assists: 17, shootouts: 3 });
+  // A real 3-team evening: every mini-game had a winner, so `ties` is 0 — which
+  // is exactly why the club table hides the draws column for this club.
+  expect(summary.stats).toEqual({
+    rounds: 10, goals: 20, assists: 17, shootouts: 3, ties: 0,
+  });
 });
 
 it('finds the same leaders a human counting by hand would', () => {
