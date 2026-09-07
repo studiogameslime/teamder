@@ -65,12 +65,14 @@ export function DraftTeamCard({
   onPickColor,
   teamRating,
 }: Props) {
-  // Each team carries its own colour. When the admin chose one, the team is
-  // named by that colour in plural ("האדומים") and tinted it; otherwise the
-  // default per-index colour + name.
+  // Each team carries its own colour. teamName/teamColor resolve the chosen
+  // colour when there is one and the per-index default otherwise, so the branch
+  // that used to live here is theirs.
+  const asTeams = colorKey ? [{ index, colorKey }] : undefined;
+  // Only needed for the swatch: a light bib needs dark contrast on top.
   const chosen = teamPaletteEntry(colorKey);
-  const tColor = chosen ? chosen.hex : teamColor(index);
-  const tLabel = chosen ? chosen.plural : teamName(index);
+  const tColor = teamColor(index, asTeams);
+  const tLabel = teamName(index, asTeams);
   return (
     <View
       style={[

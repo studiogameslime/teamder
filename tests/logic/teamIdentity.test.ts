@@ -1,10 +1,12 @@
 import {
   teamName,
+  teamNameAfterPreposition,
   teamDot,
   teamLetter,
   teamPaletteEntry,
   TEAM_PALETTE,
 } from '@/utils/teamIdentity';
+import { he } from '@/i18n/he';
 import { resolveSplitTeams } from '@/utils/draftTeamsView';
 
 // The reported game 6HMQeD17G8zjGZaffYQJ: the admin set the bibs to
@@ -23,15 +25,15 @@ describe('teamName', () => {
   });
 
   it('falls back to the index default when no colour was chosen', () => {
-    expect(teamName(0)).toBe('קבוצה אדומה');
-    expect(teamName(1)).toBe('קבוצה כחולה');
-    expect(teamName(2)).toBe('קבוצה ירוקה');
+    expect(teamName(0)).toBe('האדומים');
+    expect(teamName(1)).toBe('הכחולים');
+    expect(teamName(2)).toBe('הירוקים');
   });
 
   it('mixes: an unset team keeps its default while its neighbours are chosen', () => {
     const partial = [{ index: 0, colorKey: 'white' }, { index: 1 }];
     expect(teamName(0, partial)).toBe('הלבנים');
-    expect(teamName(1, partial)).toBe('קבוצה כחולה');
+    expect(teamName(1, partial)).toBe('הכחולים');
   });
 
   it('matches by team index, not array position', () => {
@@ -41,7 +43,7 @@ describe('teamName', () => {
   });
 
   it('ignores an unknown colour key rather than blanking the name', () => {
-    expect(teamName(0, [{ index: 0, colorKey: 'chartreuse' }])).toBe('קבוצה אדומה');
+    expect(teamName(0, [{ index: 0, colorKey: 'chartreuse' }])).toBe('האדומים');
   });
 
   it('falls back to the Hebrew letter past the palette, then to the number', () => {
@@ -98,6 +100,46 @@ describe('resolveSplitTeams carries colorKey', () => {
   it('leaves colorKey absent when no colour was ever chosen', () => {
     const split = resolveSplitTeams({ teams: [{ index: 0, playerIds: ['a'] }] });
     expect(split[0].colorKey).toBeUndefined();
-    expect(teamName(0, split)).toBe('קבוצה אדומה');
+    expect(teamName(0, split)).toBe('האדומים');
+  });
+});
+
+// Every team name is now one shape — a definite plural — so the sentences that
+// embed one agree with it. Before this, a CHOSEN colour already produced
+// "האדומים ניצחה" in production; the default just hid it.
+describe('sentences agree with a plural team name', () => {
+  const red = teamName(0);
+  const green = teamName(2, [{ index: 2, colorKey: 'green' }]);
+
+  it('the win verb is plural, chosen colour or default', () => {
+    expect(he.rotationEndRoundConfirmTitle(red)).toBe('האדומים ניצחו! 🏆');
+    expect(he.matchRoundsWon(green)).toBe('הירוקים ניצחו');
+    expect(he.shConfirmWinTitle(red)).toBe('האדומים ניצחו?');
+  });
+
+  it('the shootout body is plural throughout', () => {
+    expect(he.shConfirmWinBody(red, 3, 1)).toContain('האדומים מובילים 3-1');
+    expect(he.shConfirmWinBody(red, 3, 1)).toContain('כמנצחי המשחק');
+  });
+
+  it('a ל preposition absorbs the definite ה', () => {
+    expect(teamNameAfterPreposition(0)).toBe('אדומים');
+    expect(he.fillPickerTitle(teamNameAfterPreposition(0))).toBe('השלמת שחקנים לאדומים');
+    expect(he.roundSummaryTeamWorst(teamNameAfterPreposition(1), 4)).toBe(
+      'ערב קשה לכחולים — 4 הפסדים',
+    );
+  });
+
+  it('a מ preposition KEEPS the ה — "מהאדומים", not "מאדומים"', () => {
+    expect(he.rotationFillerNamed('דני', red)).toBe('דני משלים מהאדומים');
+  });
+
+  it('the round-summary best line no longer prefixes its own "קבוצה"', () => {
+    expect(he.roundSummaryTeamBest(red, 5)).toBe('האדומים — 5 ניצחונות');
+  });
+
+  it('leaves a past-the-palette fallback alone — it has no ה to absorb', () => {
+    expect(teamName(9)).toBe('קבוצה 10');
+    expect(teamNameAfterPreposition(9)).toBe('קבוצה 10');
   });
 });

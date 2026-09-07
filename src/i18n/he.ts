@@ -368,7 +368,8 @@ export const he = {
   rotationStartRound: 'התחל משחק',
   rotationEndRound: 'סיים משחק',
   rotationEndRoundBusy: 'מסיים…',
-  rotationEndRoundConfirmTitle: (winner: string) => `${winner} ניצחה! 🏆`,
+  // Team names are a definite PLURAL ("האדומים") — the verb agrees.
+  rotationEndRoundConfirmTitle: (winner: string) => `${winner} ניצחו! 🏆`,
   rotationEndRoundConfirmBody: (next: string) =>
     `הבאה שעולה למגרש: ${next}. לסיים את המשחק?`,
   rotationEndRoundConfirmBodyNoNext: 'לסיים את המשחק?',
@@ -376,6 +377,7 @@ export const he = {
   // step, so the admin ended a match without being told who was coming on —
   // the one case where BOTH teams can leave the pitch at once.
   rotationEndRoundConfirmOk: 'סיים משחק',
+  /** `team` arrives WITHOUT its leading ה — see teamNameAfterPreposition. */
   fillPickerTitle: (team: string) => `השלמת שחקנים ל${team}`,
   fillPickerSelectCount: (chosen: number, required: number) =>
     `בחר ${required} שחקנים להשלמה — נבחרו ${chosen}/${required}`,
@@ -603,9 +605,9 @@ export const he = {
   shResultIn: 'נכנס',
   shResultMiss: 'הוחמץ',
   // Winner confirmation on "finish shootout"
-  shConfirmWinTitle: (team: string) => `${team} ניצחה?`,
+  shConfirmWinTitle: (team: string) => `${team} ניצחו?`,
   shConfirmWinBody: (team: string, w: number, l: number) =>
-    `${team} מובילה ${w}-${l} בפנדלים. לקבוע אותה כמנצחת המשחק?`,
+    `${team} מובילים ${w}-${l} בפנדלים. לקבוע אותם כמנצחי המשחק?`,
   shConfirmWinCta: 'אישור',
   liveEndEvening: 'סיים מחזור',
   liveEndEveningTitle: 'לסיים את המחזור?',
@@ -626,7 +628,10 @@ export const he = {
   matchRoundsRoundN: (n: number) => `משחק ${n}`,
   matchRoundsTeamA: 'קבוצה א׳',
   matchRoundsTeamB: 'קבוצה ב׳',
-  matchRoundsWon: (team: string) => `${team} ניצחה`,
+  matchRoundsWon: (team: string) => `${team} ניצחו`,
+  /** Legacy games have no team index, so the side is the anonymous, feminine
+   *  singular "קבוצה א׳" rather than a plural colour — and the verb follows it. */
+  matchRoundsWonLegacy: (team: string) => `${team} ניצחה`,
   matchRoundsWonPens: (team: string) => `${team} בפנדלים`,
   matchRoundsTie: 'תיקו',
   matchRoundsNoGoals: 'לא נרשמו גולים במשחק',
@@ -965,10 +970,12 @@ export const he = {
   roundSummaryKingCleanSheets: 'מלך השערים הנקיים',
   roundSummaryKingInvolvement: 'הכי מעורב בשערים',
   roundSummaryKingWins: 'מלך הניצחונות',
-  roundSummaryTeamBest: (colour: string, wins: number) =>
-    `קבוצה ${colour} — ${wins} ניצחונות`,
-  roundSummaryTeamWorst: (colour: string, losses: number) =>
-    `ערב קשה ל${colour} — ${losses} הפסדים`,
+  /** `team` is the full name ("האדומים"); `teamAfterL` arrives without its
+   *  leading ה so the ל reads "לאדומים". */
+  roundSummaryTeamBest: (team: string, wins: number) =>
+    `${team} — ${wins} ניצחונות`,
+  roundSummaryTeamWorst: (teamAfterL: string, losses: number) =>
+    `ערב קשה ל${teamAfterL} — ${losses} הפסדים`,
   roundSummaryPair: 'הצמד של הערב',
   roundSummaryPairText: (a: string, b: string, goals: number) =>
     `${a} ו${b} — ${goals} שערים נוצרו ביניהם`,

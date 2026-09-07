@@ -21,12 +21,12 @@ describe('team labels', () => {
     expect(teamLetter(9)).toBe('10');
   });
   it('teamName composes "קבוצה <color>" (color-named for clarity)', () => {
-    expect(teamName(0)).toBe('קבוצה אדומה');
-    expect(teamName(1)).toBe('קבוצה כחולה');
-    expect(teamName(3)).toBe('קבוצה צהובה');
+    expect(teamName(0)).toBe('האדומים');
+    expect(teamName(1)).toBe('הכחולים');
+    expect(teamName(3)).toBe('הצהובים');
     // A colour for every supported team — the 5th used to be "קבוצה 5".
-    expect(teamName(4)).toBe('קבוצה כתומה');
-    expect(teamName(6)).toBe('קבוצה שחורה');
+    expect(teamName(4)).toBe('הכתומים');
+    expect(teamName(6)).toBe('השחורים');
     // Falls back to the letter helper only past the supported range.
     expect(teamName(7)).toBe('קבוצה 8');
   });

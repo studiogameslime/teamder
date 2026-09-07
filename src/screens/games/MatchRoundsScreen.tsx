@@ -55,13 +55,15 @@ function teamStyle(
   index: number | undefined,
   side: 'A' | 'B',
   teams?: readonly TeamLike[],
-): { color: string; name: string } {
+): { color: string; name: string; plural: boolean } {
   if (typeof index === 'number' && index >= 0) {
-    return { color: teamColor(index, teams), name: teamName(index, teams) };
+    // Real team names are a definite plural ("האדומים") — verbs agree.
+    return { color: teamColor(index, teams), name: teamName(index, teams), plural: true };
   }
+  // Legacy fallback: "קבוצה א׳" is feminine singular, so it needs its own verb.
   return side === 'A'
-    ? { color: '#F97316', name: he.matchRoundsTeamA }
-    : { color: colors.primary, name: he.matchRoundsTeamB };
+    ? { color: '#F97316', name: he.matchRoundsTeamA, plural: false }
+    : { color: colors.primary, name: he.matchRoundsTeamB, plural: false };
 }
 
 /** Old roundHistory docs (pre-teamAIndex) don't record which bib colour each
@@ -309,7 +311,9 @@ function RoundCard({
     ? {
         label: shootoutWinner
           ? he.matchRoundsWonPens(winTeam.name)
-          : he.matchRoundsWon(winTeam.name),
+          : winTeam.plural
+            ? he.matchRoundsWon(winTeam.name)
+            : he.matchRoundsWonLegacy(winTeam.name),
         color: winTeam.color,
         icon: shootoutWinner ? ('hand-left' as const) : ('trophy' as const),
       }

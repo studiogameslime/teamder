@@ -57,6 +57,7 @@ export {
   TEAM_LETTERS,
   teamLetter,
   teamName,
+  teamNameAfterPreposition,
   teamDot,
   teamPaletteEntry,
   TEAM_PALETTE,

@@ -23,9 +23,12 @@ export function teamLetter(i: number): string {
   return TEAM_LETTERS[i] ?? String(i + 1);
 }
 
-// Default identity, fixed per team INDEX so a team keeps it across rotations.
-// Seven entries, one per team the format picker allows.
-const TEAM_COLOR_NAMES = ['אדומה', 'כחולה', 'ירוקה', 'צהובה', 'כתומה', 'סגולה', 'שחורה'];
+// Default identity is the palette entry at that INDEX, so a team keeps its
+// colour across rotations. The default USED to read "קבוצה אדומה" while a
+// chosen colour read "האדומים"; the owner preferred the plural, so both forms
+// are now the plural and every team name in the app is one shape — a definite
+// plural noun phrase. That also settled the verb agreement, which had been
+// wrong for chosen colours all along ("האדומים ניצחה").
 
 /** Admin-selectable team colours. `key` is stored on `DraftTeam.colorKey`;
  *  `plural` is the team's name once chosen ("האדומים"); `hex` tints it. */
@@ -58,6 +61,12 @@ export function teamPaletteEntry(colorKey?: string): TeamPaletteEntry | undefine
   return colorKey ? PALETTE_BY_KEY[colorKey] : undefined;
 }
 
+// The default name per team INDEX — the first TEAM_COUNT_MAX palette entries.
+// White is deliberately excluded: it is choosable but was never an index
+// default, and promoting it would move the "past the palette" boundary that the
+// draft tests pin.
+const DEFAULT_TEAM_NAMES = TEAM_PALETTE.slice(0, 7).map((p) => p.plural);
+
 export type TeamLike = { index: number; colorKey?: string };
 
 /** The palette entry chosen for team `i`, if the admin picked one. */
@@ -68,18 +77,29 @@ export function chosenFor(
   return teamPaletteEntry(teams?.find((t) => t.index === i)?.colorKey);
 }
 
-/** Team name. With a chosen colour it is that colour in plural ("האדומים");
- *  otherwise the default "קבוצה אדומה", or the Hebrew letter past the palette. */
+/** Team name — always a definite plural ("האדומים"), whether the colour was
+ *  chosen by the admin or is the index default. Past the palette it falls back
+ *  to "קבוצה ז" / "קבוצה 9". */
 export function teamName(i: number, teams?: readonly TeamLike[]): string {
   const chosen = chosenFor(i, teams);
   if (chosen) return chosen.plural;
-  const c = TEAM_COLOR_NAMES[i];
-  return c ? `קבוצה ${c}` : `קבוצה ${teamLetter(i)}`;
+  return DEFAULT_TEAM_NAMES[i] ?? `קבוצה ${teamLetter(i)}`;
+}
+
+/** The team name after a ל / ב / כ preposition. Hebrew absorbs the definite ה
+ *  into the preposition — "ל" + "האדומים" is "לאדומים", never "להאדומים". The
+ *  past-the-palette fallback ("קבוצה ז") has no ה and is left alone. */
+export function teamNameAfterPreposition(
+  i: number,
+  teams?: readonly TeamLike[],
+): string {
+  const name = teamName(i, teams);
+  return name.startsWith('ה') ? name.slice(1) : name;
 }
 
 /** Emoji dot for plain-text surfaces, matching `teamName`. */
 export function teamDot(i: number, teams?: readonly TeamLike[]): string {
   const chosen = chosenFor(i, teams);
   if (chosen) return chosen.dot;
-  return TEAM_PALETTE[i]?.dot ?? '⚽';
+  return i < DEFAULT_TEAM_NAMES.length ? TEAM_PALETTE[i].dot : '⚽';
 }

@@ -20,7 +20,7 @@ import { roundSummaryService } from '@/services/roundSummaryService';
 import { summaryLines, type SummaryLine } from '@/utils/roundSummaryLines';
 import type { Leader, RoundSummary } from '@/utils/roundSummary';
 import { useGameStore } from '@/store/gameStore';
-import { teamName } from '@/utils/draft';
+import { teamName, teamNameAfterPreposition } from '@/utils/draft';
 import { formatDateShort } from '@/utils/format';
 import { logEvent, AnalyticsEvent } from '@/services/analyticsService';
 import { colors, radius, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -176,7 +176,7 @@ export function RoundSummaryScreen() {
                 key={`b${t.colourIndex}`}
                 icon="🏆"
                 tone="gold"
-                text={he.roundSummaryTeamBest(colourName(t.colourIndex), t.wins)}
+                text={he.roundSummaryTeamBest(teamLabel(t.colourIndex), t.wins)}
               />
             ))}
             {summary.teamHighlights.worst.map((t) => (
@@ -184,7 +184,7 @@ export function RoundSummaryScreen() {
                 key={`w${t.colourIndex}`}
                 icon="📉"
                 tone="blue"
-                text={he.roundSummaryTeamWorst(colourName(t.colourIndex), t.losses)}
+                text={he.roundSummaryTeamWorst(teamLabelAfterL(t.colourIndex), t.losses)}
               />
             ))}
           </Section>
@@ -233,15 +233,16 @@ export function RoundSummaryScreen() {
   );
 }
 
-function colourName(index: number): string {
-  // teamName gives "קבוצה אדומה"; the sentence supplies its own "קבוצה".
-  //
-  // NOTE: this screen alone still uses the DEFAULT colour names, because it
-  // renders a sealed /roundSummaries doc that carries no colorKey, and its two
-  // sentence templates bake in "קבוצה {x}" / "ל{x}" — a chosen name would read
-  // "קבוצה הצהובים" and "להצהובים" instead of "הצהובים" and "לצהובים". Doing it
-  // properly needs the colour on the summary doc plus grammar-aware templates.
-  return teamName(index).replace('קבוצה ', '');
+// The sealed /roundSummaries doc carries no colorKey, so this screen shows the
+// DEFAULT team names — which are now the same plural shape as a chosen colour
+// ("האדומים"), so the sentences read correctly either way.
+function teamLabel(index: number): string {
+  return teamName(index);
+}
+
+/** Same name, minus its definite ה, for the sentence that prefixes it with ל. */
+function teamLabelAfterL(index: number): string {
+  return teamNameAfterPreposition(index);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

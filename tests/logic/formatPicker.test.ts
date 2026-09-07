@@ -170,8 +170,8 @@ describe('six and seven teams', () => {
     const names = Array.from({ length: TEAM_COUNT_MAX }, (_, i) => teamName(i));
     expect(new Set(names).size).toBe(TEAM_COUNT_MAX);
     expect(names.every((n) => !/\d/.test(n))).toBe(true);
-    expect(names[4]).toBe('קבוצה כתומה');
-    expect(names[6]).toBe('קבוצה שחורה');
+    expect(names[4]).toBe('הכתומים');
+    expect(names[6]).toBe('השחורים');
     expect(TEAM_LETTERS).toHaveLength(TEAM_COUNT_MAX);
   });
 });
@@ -204,7 +204,7 @@ describe('no regression on 5 × 5 with 3 teams', () => {
     expect(teamSizeFromFormat(fmt)).toBe(5);
     expect(totalPlayers(teamSizeFromFormat(fmt), 3)).toBe(15);
     expect(gameFormatLabel(fmt)).toBe('5 × 5');
-    expect(teamName(0)).toBe('קבוצה אדומה');
-    expect(teamName(2)).toBe('קבוצה ירוקה');
+    expect(teamName(0)).toBe('האדומים');
+    expect(teamName(2)).toBe('הירוקים');
   });
 });

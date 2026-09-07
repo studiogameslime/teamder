@@ -12,6 +12,7 @@ import { teamName, chosenFor, type TeamLike } from '@/utils/teamIdentity';
 export {
   teamLetter,
   teamName,
+  teamNameAfterPreposition,
   teamDot,
   teamPaletteEntry,
   TEAM_PALETTE,

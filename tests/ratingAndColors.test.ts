@@ -56,8 +56,8 @@ describe('team colour naming', () => {
   });
 
   it('falls back to the default name/colour when no colour chosen', () => {
-    expect(teamName(0)).toBe('קבוצה אדומה');
-    expect(teamName(0, [{ index: 0 }])).toBe('קבוצה אדומה');
+    expect(teamName(0)).toBe('האדומים');
+    expect(teamName(0, [{ index: 0 }])).toBe('האדומים');
     // a real colour is returned for the default index too
     expect(typeof teamColor(0)).toBe('string');
   });
