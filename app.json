@@ -49,6 +49,7 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.studiogameslime.soccerapp",
+      "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
