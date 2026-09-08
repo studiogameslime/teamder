@@ -1401,43 +1401,49 @@ export function AdvancedLiveMatchScreen() {
    * evening on our own initiative is presumptuous. Named in the evening's real
    * colours ("האדומים נשארו בלי שחקנים — להמשיך רק עם הכחולים והירוקים?").
    */
-  const offerRetireEmptyTeam = React.useCallback(
-    async (teams: DraftTeamsResult['teams'] | undefined, rot: MatchRotation | null) => {
-      if (!gameId || !teams || !rot) return;
-      const empties = emptyWaitingTeams(rot, teams);
-      const dropping = empties[0];
-      if (dropping === undefined) return;
-      const remaining = remainingTeams(rot, teams, dropping);
-      const { title, body } = retirePrompt(dropping, remaining, teams);
-      // One team left is not a shorter evening, it is no evening — say so and
-      // offer nothing, rather than a button that leads nowhere.
-      if (!canContinueWithout(rot, teams, dropping)) {
-        appAlert(title, body, [{ text: he.close }]);
-        return;
-      }
-      appAlert(title, body, [
-        { text: he.cancel, style: 'cancel' },
-        {
-          text: he.emptyTeamRetireOk,
-          onPress: async () => {
-            try {
-              await gameService.retireEmptyTeam(gameId, dropping);
-              logEvent(AnalyticsEvent.LiveRosterAction, {
-                gameId,
-                action: 'team_retired',
-                playerId: '',
-                isGuest: false,
-                midRound: timerRunning,
-              });
-            } catch (err) {
-              logError('retireEmptyTeam', err, { gameId, teamIndex: dropping });
-            }
-          },
+  // A plain function, NOT a useCallback: this sits below the `notFound` and
+  // `!game` early returns, so a hook here runs only once the game has loaded —
+  // React counts more hooks on that render than on the spinner render before
+  // it and tears the screen down ("Rendered more hooks than during the previous
+  // render"). It is called from one plain handler and never passed as a prop,
+  // so memoising it bought nothing to begin with.
+  const offerRetireEmptyTeam = async (
+    teams: DraftTeamsResult['teams'] | undefined,
+    rot: MatchRotation | null,
+  ) => {
+    if (!gameId || !teams || !rot) return;
+    const empties = emptyWaitingTeams(rot, teams);
+    const dropping = empties[0];
+    if (dropping === undefined) return;
+    const remaining = remainingTeams(rot, teams, dropping);
+    const { title, body } = retirePrompt(dropping, remaining, teams);
+    // One team left is not a shorter evening, it is no evening — say so and
+    // offer nothing, rather than a button that leads nowhere.
+    if (!canContinueWithout(rot, teams, dropping)) {
+      appAlert(title, body, [{ text: he.close }]);
+      return;
+    }
+    appAlert(title, body, [
+      { text: he.cancel, style: 'cancel' },
+      {
+        text: he.emptyTeamRetireOk,
+        onPress: async () => {
+          try {
+            await gameService.retireEmptyTeam(gameId, dropping);
+            logEvent(AnalyticsEvent.LiveRosterAction, {
+              gameId,
+              action: 'team_retired',
+              playerId: '',
+              isGuest: false,
+              midRound: timerRunning,
+            });
+          } catch (err) {
+            logError('retireEmptyTeam', err, { gameId, teamIndex: dropping });
+          }
         },
-      ]);
-    },
-    [gameId, timerRunning],
-  );
+      },
+    ]);
+  };
 
   const onPlayerWentHome = (player: { id: string; name: string }) => {
     if (!gameId) return;
