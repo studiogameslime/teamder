@@ -108,3 +108,50 @@ export function shouldNotifyRosterOfEdit(
 ): boolean {
   return buildEditNotice(patch, existing) !== null;
 }
+
+/**
+ * The subset of a game that updateGameV2 needs in hand: the overlap and
+ * status guards want `startsAt` / `registrationOpensAt` / `groupId` /
+ * `status`, and `buildEditNotice` needs every MATERIAL_EDIT_FIELD to diff
+ * the patch against.
+ *
+ * It lives here, beside the field list, because those two needs were once
+ * served by one hand-written object literal that only satisfied the first.
+ * The venue fields were missing from it, so they were compared against
+ * `undefined` on every edit — and every save of a game with a venue told the
+ * whole roster the location had changed, whatever the organiser touched.
+ * `startsAt` happened to be in the slice, which is why the time half was
+ * right and only the venue half lied.
+ */
+export interface GameEditSlice {
+  startsAt: number;
+  registrationOpensAt?: number;
+  groupId: string;
+  status: string;
+  fieldName?: string;
+  fieldAddress?: string;
+  city?: string;
+}
+
+/** Build that slice. The one place the field list is honoured.
+ *  Takes the game structurally rather than as `Game`/`GameDoc` so both the
+ *  mock list and the Firestore snapshot can be passed without a cast. */
+export function gameSliceForEdit(g: {
+  startsAt: number;
+  registrationOpensAt?: number;
+  groupId: string;
+  status: string;
+  fieldName?: string;
+  fieldAddress?: string;
+  city?: string;
+}): GameEditSlice {
+  return {
+    startsAt: g.startsAt,
+    registrationOpensAt: g.registrationOpensAt,
+    groupId: g.groupId,
+    status: g.status,
+    fieldName: g.fieldName,
+    fieldAddress: g.fieldAddress,
+    city: g.city,
+  };
+}

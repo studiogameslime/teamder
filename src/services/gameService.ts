@@ -67,7 +67,11 @@ import { col, docs, GameDoc } from '@/firebase/firestore';
 import { geocodeAddress } from '@/services/geocodeService';
 import { isAttendedGame } from '@/utils/playedGames';
 import { tallyDelta, tallyWithout } from '@/utils/goalTally';
-import { buildEditNotice } from '@/utils/gameEditNotice';
+import {
+  buildEditNotice,
+  gameSliceForEdit,
+  type GameEditSlice as GameSlice,
+} from '@/utils/gameEditNotice';
 import { HISTORY_GAMES, type PastSplit } from '@/utils/teamBalanceCore';
 import type {
   RoundHistoryDoc,
@@ -2944,23 +2948,19 @@ export const gameService = {
     // read once and reuse the snapshot for both. Mock mode reads
     // from the in-memory list. We only need a tiny slice of fields,
     // so type loosely instead of forcing GameDoc → Game.
-    type GameSlice = {
-      startsAt: number;
-      registrationOpensAt?: number;
-      groupId: GroupId;
-      status: string;
-    };
+    // ⚠️ This slice is also what buildEditNotice() diffs the patch against, so
+    // it MUST carry every MATERIAL_EDIT_FIELD. It once carried only the four
+    // fields the overlap/status guards needed, and the venue fields were
+    // therefore compared against `undefined` — so EVERY save of a game that
+    // had a venue looked like "the venue changed" and pushed the whole roster
+    // "המיקום השתנה", whatever the organiser had actually touched. `startsAt`
+    // was in the slice, which is why only the venue half lied.
+    // gameSliceForEdit is the single builder for both branches and
+    // tests/logic/editNoticeSlice.test.ts pins it to MATERIAL_EDIT_FIELDS.
     let existing: GameSlice | null;
     if (USE_MOCK_DATA) {
       const m = mockGamesV2.find((x) => x.id === gameId);
-      existing = m
-        ? {
-            startsAt: m.startsAt,
-            registrationOpensAt: m.registrationOpensAt,
-            groupId: m.groupId,
-            status: m.status,
-          }
-        : null;
+      existing = m ? gameSliceForEdit(m) : null;
     } else {
       let snap;
       try {
@@ -2971,14 +2971,7 @@ export const gameService = {
         throw err;
       }
       const d = snap.exists() ? snap.data() : null;
-      existing = d
-        ? {
-            startsAt: d.startsAt,
-            registrationOpensAt: d.registrationOpensAt,
-            groupId: d.groupId,
-            status: d.status,
-          }
-        : null;
+      existing = d ? gameSliceForEdit(d) : null;
     }
     if (!existing) {
       throw new Error('updateGameV2: game not found');
