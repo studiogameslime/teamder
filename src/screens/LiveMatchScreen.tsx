@@ -482,7 +482,7 @@ function PlainLiveMatchScreen() {
   // a way out instead of an endless spinner.
   if (notFound) {
     return (
-      <SafeAreaView style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.loading}>
           <Text style={styles.loadingText}>{he.liveMatchNotFound}</Text>
           <Pressable
@@ -500,7 +500,7 @@ function PlainLiveMatchScreen() {
   // ─── Loading ───────────────────────────────────────────────────────────
   if (!game) {
     return (
-      <SafeAreaView style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.loading}>
           <ActivityIndicator color={colors.primary} />
           <Text style={styles.loadingText}>{he.gameLoading}</Text>
@@ -521,7 +521,7 @@ function PlainLiveMatchScreen() {
     timerView.controlledById !== me?.id;
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable

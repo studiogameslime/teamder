@@ -1307,7 +1307,7 @@ export function AdvancedLiveMatchScreen() {
   // a way out instead of an endless spinner.
   if (notFound) {
     return (
-      <SafeAreaView style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.loading}>
           <Text style={styles.loadingText}>{he.liveMatchNotFound}</Text>
           <Pressable
@@ -1325,7 +1325,7 @@ export function AdvancedLiveMatchScreen() {
   // ─── Loading ───────────────────────────────────────────────────────────
   if (!game) {
     return (
-      <SafeAreaView style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.loading}>
           <ActivityIndicator color={colors.primary} />
           <Text style={styles.loadingText}>{he.gameLoading}</Text>
@@ -1611,8 +1611,15 @@ export function AdvancedLiveMatchScreen() {
   const showStartCtrl =
     !rotationActive && hasTeams && isAdmin && !!draftTeams && draftTeams.teams.length > 2;
 
+  // edges: top only. This screen lives inside the bottom tab navigator, which
+  // already reserves the gesture-bar inset for the tab bar — letting
+  // SafeAreaView claim 'bottom' as well pads that inset a SECOND time. It went
+  // unnoticed until targeting API 36 made edge-to-edge mandatory and the inset
+  // became a real ~48px, at which point it read as a big empty band under the
+  // controls ("למה יש פה רווח גדול כזה?"). Every other tab-hosted screen
+  // already scopes its edges this way.
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable

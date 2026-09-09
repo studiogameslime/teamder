@@ -405,15 +405,27 @@ service cloud.firestore {
         !(request.auth.uid in resource.data.playerIds) &&
         !(request.auth.uid in resource.data.adminIds) &&
         affectedKeys().hasOnly(['pendingPlayerIds', 'updatedAt']) &&
-        request.resource.data.pendingPlayerIds.size() ==
-          resource.data.pendingPlayerIds.size() + 1 &&
-        request.auth.uid in request.resource.data.pendingPlayerIds &&
-        // Nobody else may be dropped or swapped in. Without this, a "+1 in
-        // size" write could remove an existing entry and inject a stranger
-        // (net +1 still passes the size check) — a membership hijack.
+        // A club that predates the field has no `pendingPlayerIds` at all, and
+        // reading it unguarded ERRORS — which denies the whole clause, so that
+        // club could never receive a join request and the asker just saw
+        // "Missing or insufficient permissions". Default it to empty.
         request.resource.data.pendingPlayerIds.hasAll(
-          resource.data.pendingPlayerIds
+          resource.data.get('pendingPlayerIds', [])
         ) &&
+        // At most ONE entry may appear, and with the hasAll above that entry
+        // can only be the caller: nobody else may be dropped or swapped in.
+        // Without this pairing a "+1 in size" write could remove an existing
+        // entry and inject a stranger (net +1 still passes) — a hijack.
+        //
+        // `<=` and not `==` on purpose. arrayUnion is a no-op when the caller
+        // is ALREADY pending, so an `== old + 1` size check turned the second
+        // tap on "בקש להצטרף" — or any retry after a network blip — into a
+        // hard permission error, on a request that had in fact gone through.
+        // Equal size here means new == old (hasAll + no growth), i.e. the
+        // write is idempotent, which is exactly what a retry should be.
+        request.resource.data.pendingPlayerIds.size() <=
+          resource.data.get('pendingPlayerIds', []).size() + 1 &&
+        request.auth.uid in request.resource.data.pendingPlayerIds &&
         // Capacity gate.
         (
           !('maxMembers' in resource.data) ||
