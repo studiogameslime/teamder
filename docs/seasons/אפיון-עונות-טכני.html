@@ -1,0 +1,567 @@
+<title>עונות — אפיון טכני</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#FAFAF8;
+  --surface:#FFFFFF;
+  --surface-2:#F1F1EE;
+  --line:#E0E0DA;
+  --line-soft:#EDEDE8;
+  --text:#1A1A18;
+  --muted:#67675F;
+  --accent:#0B6E4F;
+  --accent-soft:#E1F0E9;
+  --stop:#A02B1E;
+  --stop-soft:#FAE8E5;
+  --warn:#9A6410;
+  --warn-soft:#FBF0DC;
+  --slab:#16181A;
+  --slab-fg:#D5D9D6;
+  --slab-fg-strong:#FFFFFF;
+  --slab-line:#2C3033;
+  --shadow:0 1px 2px rgba(20,20,18,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101211;
+    --surface:#181B1A;
+    --surface-2:#202423;
+    --line:#2C312F;
+    --line-soft:#242927;
+    --text:#E7E9E7;
+    --muted:#9A9F9B;
+    --accent:#5BC49A;
+    --accent-soft:#14261F;
+    --stop:#F0897C;
+    --stop-soft:#2B1815;
+    --warn:#D6A24E;
+    --warn-soft:#2A2115;
+    --slab:#0A0C0B;
+    --slab-fg:#C6CCC8;
+    --slab-fg-strong:#F2F5F3;
+    --slab-line:#252A28;
+    --shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101211;--surface:#181B1A;--surface-2:#202423;--line:#2C312F;--line-soft:#242927;
+  --text:#E7E9E7;--muted:#9A9F9B;--accent:#5BC49A;--accent-soft:#14261F;
+  --stop:#F0897C;--stop-soft:#2B1815;--warn:#D6A24E;--warn-soft:#2A2115;
+  --slab:#0A0C0B;--slab-fg:#C6CCC8;--slab-fg-strong:#F2F5F3;--slab-line:#252A28;
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);
+  font-family:'Heebo',-apple-system,BlinkMacSystemFont,sans-serif;font-size:16.5px;line-height:1.7;}
+.doc{direction:rtl;text-align:right;max-width:860px;margin:0 auto;padding:0 20px 96px}
+
+.mast{padding:56px 0 28px;border-bottom:3px solid var(--text)}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 14px;font-weight:600}
+h1{font-size:clamp(34px,7vw,52px);font-weight:800;line-height:1.05;margin:0 0 16px;letter-spacing:-.02em}
+.sub{font-size:19px;color:var(--muted);margin:0;font-weight:300;max-width:60ch}
+.mast dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:14px;margin:28px 0 0;font-family:'IBM Plex Mono',monospace;font-size:12px}
+.mast dt{color:var(--muted);margin-bottom:2px}
+.mast dd{margin:0;font-weight:600;color:var(--text)}
+
+.gate{margin:32px 0 0;padding:22px 24px;background:var(--stop-soft);
+  border:1px solid var(--stop);border-radius:3px}
+.gate h2{margin:0 0 8px;font-size:20px;font-weight:800;color:var(--stop)}
+.gate p{margin:0 0 8px;font-size:16px}
+.gate p:last-child{margin:0}
+.gate code{background:transparent;border:1px solid var(--stop);color:var(--stop)}
+
+section{margin-top:56px}
+.snum{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--accent);
+  font-weight:600;letter-spacing:.1em;display:block;margin-bottom:4px}
+h2{font-size:27px;font-weight:800;margin:0 0 8px;line-height:1.2;letter-spacing:-.01em}
+h3{font-size:19px;font-weight:700;margin:30px 0 8px;line-height:1.3}
+.lede{color:var(--muted);margin:0 0 22px;max-width:62ch;font-weight:300}
+p{margin:0 0 14px;max-width:68ch}
+ul,ol{margin:0 0 14px;padding-inline-start:22px;max-width:68ch}
+li{margin-bottom:7px}
+code{font-family:'IBM Plex Mono',monospace;font-size:.85em;direction:ltr;display:inline-block;
+  background:var(--surface-2);padding:1px 5px;border-radius:2px;border:1px solid var(--line-soft)}
+
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  padding:18px 20px;margin-bottom:10px;box-shadow:var(--shadow)}
+.rule-h{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.rule-id{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;
+  color:#FFF;background:var(--accent);padding:2px 7px;border-radius:2px;flex:0 0 auto}
+.rule.stop .rule-id{background:var(--stop)}
+.rule-t{font-weight:700;font-size:17.5px;flex:1 1 auto;min-width:180px;line-height:1.35}
+.rule p{margin:0 0 8px;font-size:15.5px}
+.rule p:last-child{margin:0}
+.rule .fix{margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft);
+  font-size:15px;color:var(--muted)}
+.rule .fix b{color:var(--accent);font-weight:700}
+.rule.stop .fix b{color:var(--stop)}
+
+pre.code{background:var(--slab);color:var(--slab-fg);border:1px solid var(--slab-line);
+  border-radius:4px;padding:16px 18px;overflow-x:auto;direction:ltr;text-align:left;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;margin:16px 0}
+pre.code b{color:var(--slab-fg-strong);font-weight:600}
+pre.code i{color:#7E8C85;font-style:normal}
+
+.tw{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:3px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:540px;font-size:15px}
+th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{background:var(--surface-2);font-weight:700;font-size:12.5px;color:var(--muted);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.keep{color:var(--accent);font-weight:700;white-space:nowrap}
+td.zero{color:var(--stop);font-weight:700;white-space:nowrap}
+td.mono{font-family:'IBM Plex Mono',monospace;font-size:13px;direction:ltr;text-align:right}
+
+.flow{margin:20px 0;border-inline-start:2px solid var(--line);padding-inline-start:0}
+.step{position:relative;padding:0 26px 20px 0;margin:0}
+.step:last-child{padding-bottom:0}
+.step::before{content:'';position:absolute;right:-6px;top:9px;width:10px;height:10px;
+  border-radius:50%;background:var(--accent);border:2px solid var(--ground)}
+.step b{display:block;font-weight:700;font-size:16.5px;margin-bottom:2px}
+.step span{display:block;color:var(--muted);font-size:15px}
+
+.verdict{margin-top:56px;padding:30px 28px;background:var(--slab);border-radius:4px}
+.verdict h2{color:var(--slab-fg-strong);margin:0 0 14px;font-size:25px}
+.verdict p{color:var(--slab-fg);margin:0 0 12px;max-width:64ch}
+.verdict p:last-child{margin:0}
+.verdict strong{color:var(--slab-fg-strong)}
+
+@media(max-width:620px){
+  body{font-size:16px}.doc{padding:0 15px 60px}.mast{padding:38px 0 22px}
+  .rule{padding:15px 16px}
+}
+</style>
+
+<div class="doc">
+
+<header class="mast">
+  <p class="eyebrow">Teamder · אפיון עונות · גרסה 3 · 13.09.2026</p>
+  <h1>עונות מועדון</h1>
+  <p class="sub">שכבת תחרות מעל המועדון — לא החלפה של ההיסטוריה. ההחלטות המוצריות לפי המסמך המסוכם; שכבת המימוש לפי מה שנמצא בקוד.</p>
+  <dl>
+    <div><dt>מקור מוצרי</dt><dd>המסמך המסוכם</dd></div>
+    <div><dt>מקור טכני</dt><dd>15 סוכני מחקר</dd></div>
+    <div><dt>מקרי קצה</dt><dd>40 מתועדים</dd></div>
+    <div><dt>תנאי סף</dt><dd>PITR</dd></div>
+  </dl>
+</header>
+
+<div class="gate">
+  <h2>תנאי סף — לא מתחילים בלעדיו</h2>
+  <p>אימתתי מול GCP: <code>POINT_IN_TIME_RECOVERY_DISABLED</code>, <code>DELETE_PROTECTION_DISABLED</code>. אין גיבוי, אין ייצוא מתוזמן, אין סקריפט שחזור.</p>
+  <p>זה הפיצ'ר הראשון באפליקציה שמאפס נתוני פרודקשן אוטומטית, לכל מועדון, בלי אדם שמסתכל. <strong>מדליקים PITR והגנת מחיקה לפני שנכתבת שורת קוד אחת.</strong></p>
+</div>
+
+<section>
+  <span class="snum">א</span>
+  <h2>מבנה העונה והפעלה</h2>
+  <ul>
+    <li><strong>ברירת מחדל: כבוי.</strong> מועדון שלא הפעיל ממשיך לעבוד בדיוק כמו היום.</li>
+    <li>לעונה יש <code>seasonId</code> קבוע, מספר, סטטוס, תאריך התחלה ושיטת סיום.</li>
+    <li><strong>שתי שיטות סיום:</strong> תאריך או משך מוגדר מראש, או מספר מחזורים מוגדר מראש.</li>
+    <li>נספרים <strong>רק מחזורים שהסתיימו בפועל</strong>. מחזור שבוטל או עדיין פעיל אינו נספר.</li>
+    <li><strong>עונה לעולם לא נסגרת באמצע מחזור.</strong> מחזור שהתחיל לפני נקודת הסיום שייך לעונה הנוכחית ומסתיים בה.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="snum">ב</span>
+  <h2>שינוי עונה פעילה</h2>
+  <ul>
+    <li>המנהל יכול לשנות בזמן עונה חיה את יעד הסיום, ואף לעבור בין שיטת תאריך לשיטת מחזורים.</li>
+    <li><strong>לפי מחזורים:</strong> אי אפשר להגדיר יעד קטן או שווה למספר המחזורים שכבר הסתיימו.</li>
+    <li><strong>לפי זמן:</strong> אי אפשר להזיז את תאריך הסיום לעבר.</li>
+    <li>לסיום מיידי יש פעולה נפרדת — "סיים עונה עכשיו". שינוי יעד אינו תחליף לה.</li>
+    <li>כל שינוי יעד מציג <strong>תצוגה מקדימה ברורה לפני אישור</strong>.</li>
+    <li><strong>אין הארכה אוטומטית</strong> בגלל ביטולים, גשם או תקופה ללא משחקים. המנהל מעדכן ידנית אם ירצה.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="snum">ג</span>
+  <h2>הפעלה במועדון קיים</h2>
+  <p class="lede">בהפעלה ראשונה כל המחזורים ההיסטוריים משויכים לעונה 1, ואז המנהל בוחר.</p>
+
+  <pre class="code">┌─────────────────────────────────────────────┐
+│  הפעלת עונות                                │
+│                                             │
+│  למועדון יש <b>17 מחזורים</b> שהסתיימו.          │
+│  כולם משויכים ל<b>עונה 1</b>.                    │
+│                                             │
+│  ○ <b>סיים עונה 1 עכשיו</b>                      │
+│    ההיסטוריה נחתמת, התארים מחולקים,         │
+│    והמחזור הבא מתחיל את עונה 2.             │
+│                                             │
+│  ● <b>המשך עונה 1</b>                            │
+│    ההיסטוריה נשארת בתוך עונה 1,             │
+│    ואתה מגדיר יעד סיום חדש.                 │
+│                                             │
+│  ─────────────────────────────────────────  │
+│  שיטה:   ( ) לפי זמן   (•) לפי מחזורים      │
+│  סך מחזורים בעונה:  [ 24 ]                  │
+│  <i>כבר שוחקו 17 · נשארו 7</i>                   │
+└─────────────────────────────────────────────┘</pre>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ג-1</span><span class="rule-t">היעד הוא סך המחזורים, לא תוספת</span></div>
+    <p>כשממשיכים עונה לפי מספר מחזורים, המספר שהמנהל מגדיר הוא <strong>סך המחזורים הכולל של העונה</strong>. כבר שוחקו 17 והיעד 24 ← נשארו 7. הממשק מציג את החישוב הזה בזמן אמת, כדי שלא תהיה אי־הבנה.</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ג-2</span><span class="rule-t">"להמשיך" עולה אפס</span></div>
+    <p>אין אחסון נפרד ל"עונה נוכחית" — הטבלה החיה <em>היא</em> העונה הפתוחה. לכן "המשך עונה 1" לא דורש שום כתיבה מלבד שורת הגדרה, וכל המורכבות מרוכזת בסגירה, שם היא ממילא נדרשת.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">ד</span>
+  <h2>סיום מוקדם, כיבוי וחידוש</h2>
+  <ul>
+    <li><strong>"סיים עונה עכשיו"</strong> אפשרי רק כשאין מחזור פעיל, וכשהמחזור האחרון סיים להירשם במערכת.</li>
+    <li>הסיום חותם את העונה לפי המצב הנוכחי ושומר: שהיא הסתיימה מוקדם, <strong>מי סיים אותה, מתי, ומה היה היעד המקורי</strong>.</li>
+    <li><strong>כיבוי הפיצ'ר</strong> סוגר קודם את העונה הפעילה ושומר אותה בהיסטוריה; אחר כך המועדון חוזר למצב כל הזמנים.</li>
+    <li><strong>הפעלה מחדש ממשיכה את המספור.</strong> אחרי עונות 1–3, הפעלה מחדש פותחת עונה 4.</li>
+    <li>אחרי סיום רגיל, <strong>העונה הבאה נפתחת אוטומטית</strong> עם אותם כללים, והמנהל רשאי לשנותם.</li>
+  </ul>
+
+  <h3>מסך הסיום המוקדם</h3>
+  <pre class="code">┌─────────────────────────────────────────────┐
+│  סיום מוקדם · עונה 3                        │
+│  16 מחזורים · היעד המקורי היה 24            │
+│                                             │
+│  <b>אלה התארים שיוענקו:</b>                      │
+│  👑 מלך השערים        יוסי · 31             │
+│  🎯 מלך הבישולים      דני · 22              │
+│  ⭐ השחקן המצטיין      יוסי · 8.37           │
+│  🏆 מלך הניצחונות     אבי · 19              │
+│  💪 מלך ההתמדה        אבי · 16              │
+│  🧤 מלך השערים הנקיים  משה · 9               │
+│  ⚽ מלך הפנדלים        <i>אין זכאים</i>           │
+│  🧤 מלך שוערי הפנדלים  <i>אין זכאים</i>           │
+│  🤝 הצמד הקטלני       דני ← יוסי            │
+│                                             │
+│         [ ביטול ]      [ סיים והכתר ]       │
+└─────────────────────────────────────────────┘</pre>
+  <p>התצוגה המקדימה היא ההגנה האמיתית: מנהל שרואה שם שהוא לא ציפה לו עוצר בעצמו.</p>
+</section>
+
+<section>
+  <span class="snum">ה</span>
+  <h2>שיוך מחזורים לעונות</h2>
+  <ul>
+    <li>כל מחזור שהתקיים שייך <strong>לעונה אחת בלבד</strong>.</li>
+    <li>מחזור עתידי <strong>לא ננעל לפי מועד היצירה</strong> — השיוך נקבע לפי מועד ההתקיימות בפועל.</li>
+    <li>נתוני כל הזמנים ממשיכים להצטבר במקביל ואינם נמחקים או מתאפסים.</li>
+  </ul>
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ה-1</span><span class="rule-t">החותמת נכתבת בשרת</span></div>
+    <p><code>games/{id}.seasonId</code> נחתם כשהמחזור עולה ללייב, לא ביצירה. בשרת ולא בלקוח: 141 חותמות זמן בקוד הלקוח מגיעות משעון המכשיר, ופלאפון עם שעון שגוי היה משייך מחזור לעונה הלא נכונה.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">ו</span>
+  <h2>זכאות לתארים</h2>
+  <ul>
+    <li>סף: השתתפות ב<strong>לפחות מחצית מהמחזורים שהתקיימו בעונה</strong> — <code>ceil(completedRounds × 50%)</code>.</li>
+    <li>שחקן שהצטרף באמצע כפוף לאותו רף. <strong>אין רף אישי לפי מועד הצטרפות.</strong></li>
+    <li><strong>שחקן שעזב או הוסר מהמועדון עדיין יכול לזכות</strong> אם עמד בתנאי. התואר נשאר חלק מההיסטוריה שלו.</li>
+    <li>בתואר זוגי — <strong>שני השחקנים חייבים לעמוד בנפרד</strong> ברף.</li>
+    <li>בשוויון במקום הראשון — <strong>כל השחקנים או הזוגות שבשוויון מקבלים את התואר</strong>.</li>
+  </ul>
+  <p>בדיקה מול הפרודקשן: במועדון הגדול 13 מחזורים, סף 7, ו-13 שחקנים מתוך 29 עוברים. ההתפלגות דו־שיאית — גרעין של 9–12 הגעות ואז צניחה ל-5 — כלומר הסף חותך בדיוק בין הגרעין לשוליים.</p>
+</section>
+
+<section>
+  <span class="snum">ז</span>
+  <h2>תשעת התארים</h2>
+  <div class="tw"><table>
+    <thead><tr><th>תואר</th><th>לפי</th><th>רף נוסף</th></tr></thead>
+    <tbody>
+      <tr><td>👑 מלך השערים</td><td>הכי הרבה שערים</td><td class="mono">—</td></tr>
+      <tr><td>🎯 מלך הבישולים</td><td>הכי הרבה בישולים</td><td class="mono">—</td></tr>
+      <tr><td>⭐ השחקן המצטיין</td><td>ממוצע ציוני המחזור הגבוה ביותר</td><td class="mono">—</td></tr>
+      <tr><td>🏆 מלך הניצחונות</td><td>הכי הרבה ניצחונות</td><td class="mono">—</td></tr>
+      <tr><td>💪 מלך ההתמדה</td><td>הכי הרבה מחזורים שהשתתף בהם</td><td class="mono">—</td></tr>
+      <tr><td>🧤 מלך השערים הנקיים</td><td>הכי הרבה שערים נקיים</td><td class="mono">—</td></tr>
+      <tr><td>⚽ מלך הפנדלים</td><td>אחוז הבקעה</td><td class="mono">רף ניסיונות</td></tr>
+      <tr><td>🧤 מלך שוערי הפנדלים</td><td>אחוז עצירות</td><td class="mono">רף ניסיונות</td></tr>
+      <tr><td>🤝 הצמד הקטלני</td><td>מדד הצמד הקיים במערכת</td><td class="mono">שניהם זכאים</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>אין תואר למלך השערים העצמיים.</strong> הנתון יכול להופיע בסיכום העונה בלבד.</p>
+</section>
+
+<section>
+  <span class="snum">ח</span>
+  <h2>רף פנדלים דינמי</h2>
+  <p class="lede">כדי שאחוז מושלם מניסיון בודד לא יזכה בתואר.</p>
+  <pre class="code">min_attempts = <b>min(5, max(2, ceil(completedRounds × 10%)))</b></pre>
+  <div class="tw"><table>
+    <thead><tr><th>מחזורים בעונה</th><th>מינימום ניסיונות</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">10</td><td class="mono">2</td></tr>
+      <tr><td class="mono">24</td><td class="mono">3</td></tr>
+      <tr><td class="mono">35</td><td class="mono">4</td></tr>
+      <tr><td class="mono">50+</td><td class="mono">5</td></tr>
+    </tbody>
+  </table></div>
+  <p>אותו עיקרון לבועטים ולשוערים. <strong>אם אף אחד לא עומד ברף — התואר לא מחולק באותה עונה.</strong></p>
+</section>
+
+<section>
+  <span class="snum">ט</span>
+  <h2>השחקן המצטיין</h2>
+  <ul>
+    <li>בסוף כל מחזור כל שחקן מקבל את הדירוג הקיים במערכת.</li>
+    <li>ציון העונה שלו הוא <strong>ממוצע כל ציוני המחזורים שקיבל בפועל</strong> באותה עונה.</li>
+    <li>רק מי שעומד ברף ה-50% זכאי.</li>
+    <li>ההשוואה לפי <strong>הערך המדויק</strong>; התצוגה יכולה להיות מעוגלת, למשל 8.37.</li>
+    <li>בשוויון אמיתי — כל המובילים מקבלים את התואר.</li>
+  </ul>
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">ט-1</span><span class="rule-t">המדד של ציון המחזור לא מתאפס</span></div>
+    <p>ציון המחזור נמדד מול ממוצע מלך הערב של המועדון, שנצבר ב־<code>kingGoalsSum/Count</code>. איפוסו יחד עם הטבלה היה הופך את מלך הערב הראשון של העונה ל-10/10 בהגדרה ומנפח את כל הציונים — הזזה של כרבע מטווח הציון כולו.</p>
+    <p class="fix"><b>המימוש:</b> המדד עובר בין עונות ואינו חלק מהאיפוס.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">י</span>
+  <h2>עונה 1 היסטורית</h2>
+  <ul>
+    <li>מחלקים תארים <strong>גם אם חלק מסוגי הנתונים לא נאספו</strong> מתחילת ההיסטוריה.</li>
+    <li>המערכת משתמשת בנתונים הקיימים בפועל: מי שמוביל בשערים מקבל מלך השערים, וכן הלאה.</li>
+    <li><strong>חוסר כיסוי היסטורי אינו מבטל תואר ואינו מונע את סגירת עונה 1.</strong></li>
+  </ul>
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">י-1</span><span class="rule-t">היקף הפער, למידע בלבד</span></div>
+    <p>מדדתי בפרודקשן: <strong>שערים נקיים — 229 מתוך 1,044 משחקוני־שחקן (22%) בלי נתון</strong>, כי הנתון התחיל להיאסף ב-17.08 ולארבעה ערבים אין היסטוריית משחקונים להשלים ממנה. <strong>בישולים — משחק אחד מתוך 13</strong> בלבד. שאר המדדים מכוסים מלא.</p>
+    <p class="fix"><b>לפי ההחלטה:</b> התארים מוענקים בכל זאת. מומלץ לסמן את עונה 1 בשדה <code>partialData</code> ולהציג שורה בכרטיס שלה.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יא</span>
+  <h2>מסך סטטיסטיקות המועדון</h2>
+  <p class="lede">בורר Scope בראש המסך. ברירת המחדל: העונה הנוכחית.</p>
+  <pre class="code">┌─────────────────────────────────────────────┐
+│   כל הזמנים  ←  עונות קודמות  ←  <b>עונה נוכחית ▾</b> │
+└─────────────────────────────────────────────┘</pre>
+  <p>הבחירה משפיעה על <strong>כל מסך הסטטיסטיקות</strong>, לא רק על הטבלה: נתוני המועדון, מובילים, כוכבים, נתונים מעניינים, טבלאות וכל רכיב סטטיסטי רלוונטי. "כל הזמנים" מציג את המידע המצטבר כפי שהוא היום.</p>
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">יא-1</span><span class="rule-t">זה מרחיב את היקף העבודה משמעותית</span></div>
+    <p>המסך גוזר היום מובילים, אחוזי שליטה, כוכבים ונתונים מעניינים ישירות מהמסמכים החיים. אם הבורר משפיע על כולם, <strong>כל נתון נגזר במסך צריך ממד עונה</strong> — לא רק הטבלה. זו ההרחבה הגדולה ביותר באפיון הזה מבחינת עבודה.</p>
+    <p class="fix"><b>המימוש:</b> מסמך העונה מחזיק את הסכומים המוכנים, כך שבחירת עונה קודמת היא <em>קריאה אחת</em> ולא סריקה מחדש לפי שחקן.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יב</span>
+  <h2>שני טאבים: מצטבר ויעילות</h2>
+  <p class="lede">בתוך ה-Scope שנבחר, מעל טבלת השחקנים.</p>
+  <div class="tw"><table>
+    <thead><tr><th>טאב</th><th>עמודות</th></tr></thead>
+    <tbody>
+      <tr><td><strong>מצטבר</strong></td><td>הטבלה הקיימת: משחקים, ניצחונות, תיקו, הפסדים, גולים, בישולים, שערים נקיים</td></tr>
+      <tr><td><strong>יעילות</strong></td><td>% ניצחון · גולים/משחק · בישולים/משחק · G+A/משחק · % שער נקי · משחקים</td></tr>
+    </tbody>
+  </table></div>
+  <p>החישובים תמיד בתוך ה-Scope הנבחר: בעונה 4 מוצגת היעילות של עונה 4, וב"כל הזמנים" היעילות המצטברת.</p>
+
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">יב-1</span><span class="rule-t">המכנה חייב להיות של התקופה שנמדדה</span></div>
+    <p>הדרישה במסמך: לא להציג חוסר נתונים היסטורי כאפס. זו בדיוק הבעיה שעצרתי עליה קודם — היום המערכת סופרת רק כמה פעמים קרה משהו, ולא בכמה משחקונים המדד בכלל נבדק. חלוקה ב־<code>rounds</code> תציג לשחקן ותיק אחוז שער נקי נמוך ב-22% מהאמת, וזה ייראה כמו נתון אמיתי.</p>
+    <p class="fix"><b>המימוש הנדרש:</b> מוני כיסוי בשרת — <code>csRounds</code> ו־<code>asRounds</code> — שעולים באותה כתיבה שכבר מעדכנת <code>rounds</code>. אפס פעולות Firestore נוספות, אפס עלות קריאה. ובקפיל חד־פעמי לאחור לפי אותה שיטה שכבר הוכחה בבקפיל השערים הנקיים.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יג</span>
+  <h2>סיכום וסגירת עונה</h2>
+  <ul>
+    <li>בסיום נוצרת <strong>תמונת מצב חתומה</strong> (<code>seasonSummary</code>). <strong>לא מחשבים את הזוכים מחדש בכל פתיחת מסך.</strong></li>
+    <li>הסיכום שומר: תארים וזוכים, טבלאות סופיות, שיאים, נתונים כלליים, מספר מחזורים, תקופת העונה וסטטיסטיקות סיום.</li>
+    <li>אפשר להציג בו גם נתונים שאינם תארים — מלך השערים העצמיים, שיאי עונה, נתוני מועדון מעניינים.</li>
+    <li><strong>תיקון נתונים לאחר סגירה אינו משנה תארים בשקט.</strong> למנהל יש פעולה מפורשת של <strong>חישוב עונה מחדש</strong>, עם אזהרה שהתארים עשויים להשתנות.</li>
+  </ul>
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">יג-1</span><span class="rule-t">תיקון רטרו חייב לדעת לאיזו עונה הוא שייך</span></div>
+    <p>היום הבדיקה היחידה היא שהמחזור הסתיים — אין מודעות לעונה. תיקון למחזור ממרץ נכנס לעונה של אפריל, והסרת גול רטרו אחרי איפוס גורעת ממונה מאופס ומייצרת <strong>מספר שלילי</strong>. אין בקוד שום חסימה לזה.</p>
+    <p class="fix"><b>המימוש:</b> התיקון מנותב לפי <code>seasonId</code> של המחזור ומעדכן את נתוני אותה עונה. התארים עצמם משתנים רק דרך "חישוב עונה מחדש", בדיוק כפי שהאפיון קובע. ובנוסף — רצפה של 0 על כל מוני המועדון.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יד</span>
+  <h2>קריירה, הישגים ורצפים</h2>
+  <div class="tw"><table>
+    <thead><tr><th>נתון</th><th>עונה</th></tr></thead>
+    <tbody>
+      <tr><td>טבלת המועדון, המרוץ על התארים</td><td class="zero">מתאפס</td></tr>
+      <tr><td>נתוני קריירה וכל הזמנים</td><td class="keep">ממשיך להצטבר</td></tr>
+      <tr><td>הישגים אישיים מצטברים (100 שערים וכו')</td><td class="keep">לא מתאפס</td></tr>
+      <tr><td>רצפים אישיים, כגון רצף הגעה</td><td class="keep">ממשיך מעבר לגבול</td></tr>
+      <tr><td>תארי עונה</td><td class="keep">בפרופיל לנצח</td></tr>
+      <tr><td>שיא אישי, מדד ציון הערב</td><td class="keep">נשמר — יושבים בטעות במסמך המועדון</td></tr>
+      <tr><td>תארי מועדון ורמת מועדון</td><td class="keep">נשמר</td></tr>
+    </tbody>
+  </table></div>
+  <p>תארי העונה נשמרים בפרופיל כהיסטוריית אליפויות — כולל המועדון, מספר העונה והנתון שבזכותו זכה.</p>
+</section>
+
+<section>
+  <span class="snum">טו</span>
+  <h2>הודעה מהמאמן</h2>
+  <ul>
+    <li><strong>בגרסה הראשונה אין פושים ייעודיים לעונות.</strong></li>
+    <li>מנוע "הודעה מהמאמן" משתמש בהקשר העונתי: "נשארו 3 מחזורים לסיום העונה", "הפער בצמרת הכובשים הוא שער אחד", "זה המחזור האחרון של עונה 3".</li>
+    <li>ההודעות נשארות חלק מהמנגנון הקיים ולא יוצרות מערכת התראות חדשה.</li>
+  </ul>
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">טו-1</span><span class="rule-t">הניסוחים הקיימים על הכתר הם כל־זמניים</span></div>
+    <p>"אתה מלך השערים של {מועדון}" ו"עוד 2 גולים ואתה מלך השערים" מנוסחים היום כאילו הכתר נצחי. תחת עונות המשפט אומר "מלך שלושת המחזורים האחרונים". וכרטיס הערב מברך על "שמרת על התואר" גם במחזור הראשון של עונה, שבו כולם ראשונים בהגדרה.</p>
+    <p class="fix"><b>המימוש:</b> להוסיף "של העונה" לניסוחים, ולחסום "שמרת" במחזורים הראשונים.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">טז</span>
+  <h2>מודל הנתונים</h2>
+  <pre class="code">groups/{id}.seasons
+{
+  <b>enabled: false</b>,
+  currentNo, currentId,
+  startedAt,
+  cadence: { <b>type: 'date' | 'rounds'</b>, endsAt?, targetRounds? },
+  <b>targetHistory: []</b>,   <i>// כל שינוי יעד: מי, מתי, מה היה, מה נהיה</i>
+  count
+}
+
+games/{id}.seasonId        <i>// נחתם בשרת כשהמחזור עולה ללייב</i>
+
+seasonSummary/{groupId}__{seasonId}   <i>// נכתב פעם אחת · create()</i>
+{
+  groupId, seasonId, no, startsAt, endsAt, closedAt,
+  <b>endedEarly: bool, closedBy, closedByName, originalTarget</b>,
+  completedRounds,
+  <b>partialData?: true</b>,
+  totals: { rounds, goals, assists, cleanSheets, guestGoals,
+            ownGoals, tiedRounds, shootoutRounds, scorelessRounds },
+  players: {
+    [uid]: { <b>displayName</b>,  <i>// מוקפא — חשבון שנמחק עדיין מוצג</i>
+             goals, assists, rounds, wins, losses, ties,
+             cleanSheets, ownGoals, games, mvpAvg,
+             penTaken, penScored, penFaced, penSaved,
+             <b>csRounds, asRounds</b>,  <i>// מכנים לחישובי יעילות</i>
+             <b>eligible</b>: bool }
+  },
+  pairs: { [`${a}__${b}`]: number },
+  awards: { [titleKey]: { <b>winners: string[]</b>, value } | <b>null</b> },
+  records, funFacts, sourceGameIds
+}
+
+users/{uid}.seasonTitles[]
+{ groupId, <b>groupName</b>, seasonId, seasonNo, titleKey, value, at }</pre>
+  <p><b>גודל.</b> שורה ≈ 650 בתים; מועדון של 100 שחקנים ≈ 65KB, כ-6% מתקרת המסמך. מזהה התואר חייב להיות <code>{groupId}:{seasonId}:{titleKey}</code> — ההישגים הם מערך שטוח, ובלי מרחב שמות מועדונים יתנגשו.</p>
+</section>
+
+<section>
+  <span class="snum">יז</span>
+  <h2>הגלגול — סדר הפעולות</h2>
+  <p class="lede">זהה בסגירה אוטומטית, בסיום מוקדם ובכיבוי הפיצ'ר. מסלול אחד.</p>
+  <div class="flow">
+    <div class="step"><b>הקרון בודק זכאות בלבד</b><span>כל שעה. הוא לא מגלגל.</span></div>
+    <div class="step"><b>ממתינים לנקודת החיתוך</b><span>רק אחרי ש־<code>sealRoundSummary</code> סיים ואין מחזור שאינו <code>finished</code>.</span></div>
+    <div class="step"><b>בונים את הסיכום בזיכרון</b></div>
+    <div class="step"><b>יוצרים את המסמך עם <code>create()</code></b><span>נכשל ב־ALREADY_EXISTS אם קיים. זו כל האידמפוטנטיות.</span></div>
+    <div class="step"><b>רק אחרי שהוא נחת — מאפסים</b><span><code>set</code> מוחלט על רשימה מוגדרת. לעולם לא <code>increment</code>, לעולם לא מחיקה.</span></div>
+    <div class="step"><b>פותחים את העונה הבאה</b><span>אותם כללים, אלא אם המנהל שינה.</span></div>
+  </div>
+
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">גל-1</span><span class="rule-t">איפוס לפני החתימה יוצר שיאי מועדון מזויפים</span></div>
+    <p><code>sealRoundSummary</code> משווה את הערב מול סכומי המועדון. איפוס שקדם לו הופך כל נתון ל"שיא מועדון חדש" — והמסמך נכתב פעם אחת, כלומר הסיפור השגוי נצרב לתמיד.</p>
+  </div>
+
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">גל-2</span><span class="rule-t">איפוס עיוור הורג נתונים שאסור לגעת בהם</span></div>
+    <p>על אותם מסמכים יושבים <code>bestEvening</code>, <code>lastEveningScore</code>, <code>kingGoalsSum/Count</code> ו־<code>chemistrySince</code>.</p>
+    <p class="fix"><b>המימוש:</b> מאפסים רשימה מפורשת: <code>rounds, goals, assists, cleanSheets, ownGoals, wins, losses, ties, games, pen*, csRounds, asRounds</code>. חותמים מחדש <code>chemistrySince</code>. כל השאר עובר כמו שהוא.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יח</span>
+  <h2>מקרי קצה מהקוד</h2>
+  <p class="lede">אלה שמייצרים נתון שגוי ולא שגיאה גלויה.</p>
+
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">ק-1</span><span class="rule-t">ביום הראשון כל המסך נעלם</span></div>
+    <p>שש קומפוננטות מחזירות ריק כשאין נתונים; אחרי איפוס כולן נדלקות יחד. ותיק לא יחשוב "עונה חדשה" — הוא יחשוב "מחקו לי הכל".</p>
+    <p class="fix"><b>המימוש:</b> כל החברים עם אפסים, ממוינים לפי הדירוג הסופי של העונה שעברה, שורת הסבר, וקישור לסיכום העונה הקודמת.</p>
+  </div>
+
+  <div class="rule stop">
+    <div class="rule-h"><span class="rule-id">ק-2</span><span class="rule-t">גרסה ישנה תציג מספר עונתי כאילו הוא כל־זמני</span></div>
+    <p>הממירים בקריאה בונים אובייקטים שדה־שדה; מה שלא רשום שם נמחק. לקוח ישן שכותב חזרה אף מוחק שדות שאינו מכיר.</p>
+    <p class="fix"><b>המימוש:</b> שדות חדשים בלבד, בבעלות השרת, חסומים לכתיבה מהלקוח. ה-UI מאחורי דגל.</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ק-3</span><span class="rule-t">מחיקת מחזור לא גורעת כלום</span></div>
+    <p>ספירת מחזורים לפי שאילתה על משחקים תמיד תסטה מטה.</p>
+    <p class="fix"><b>המימוש:</b> סופרים לפי <code>clubRecords.eveningsSealed</code> — מונה מונוטוני חסין למחיקות. זו גם הסיבה שהסיכום החתום הוא המקור היחיד ואינו ניתן לחישוב מחדש מהמשחקים ששרדו.</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ק-4</span><span class="rule-t">מחזור שנסגר אוטומטית מזייף את הספירה</span></div>
+    <p>הניקוי מסמן מחזור שאיחר בשלוש שעות כ"הסתיים" אך חוסם את זקיפת הסטטיסטיקה. עונה של 24 מחזורים עלולה להסתיים אחרי פחות ערבים אמיתיים.</p>
+    <p class="fix"><b>המימוש:</b> נספרים רק מחזורים שנחתמו, בהתאם ל-§א.</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ק-5</span><span class="rule-t">מטמונים מגישים טבלה ישנה עד 6 שעות</span></div>
+    <p>אף מטמון בלקוח לא מכיר עונה.</p>
+    <p class="fix"><b>המימוש:</b> <code>seasonEpoch</code> גלובלי שעולה בגלגול ומשמש סיומת לכל מפתח מטמון.</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ק-6</span><span class="rule-t">אריתמטיקה של חודשים ומעבר שעון</span></div>
+    <p>אין בקוד חשבון חודשים — רק שבועות. הקרון גם נודד שעה אחורה בכל יום ובתוך שלושה שבועות ינחת בשעת המשחק.</p>
+    <p class="fix"><b>המימוש:</b> הצמדה ליום האחרון התקף, שימוש בפונקציית חצות הישראלית הקיימת שמטפלת בשעון קיץ, ובדיקת יעד מוחלט במקום "עברו N שעות".</p>
+  </div>
+
+  <div class="rule">
+    <div class="rule-h"><span class="rule-id">ק-7</span><span class="rule-t">אורחים בסכום אבל לא בטבלה</span></div>
+    <p>גולי אורחים נספרים לסך המועדון אך אין להם שורה, ולכן אחוזי שליטה לא מסתדרים. זה כבר לא מסתדר היום, ועונה עם מספרים קטנים תחשוף את זה.</p>
+    <p class="fix"><b>המימוש:</b> הסיכום שומר <code>goals</code> ו־<code>guestGoals</code> בנפרד.</p>
+  </div>
+</section>
+
+<section>
+  <span class="snum">יט</span>
+  <h2>שלבי ביצוע</h2>
+  <div class="flow">
+    <div class="step"><b>0 · תשתית בטיחות</b><span>PITR, הגנת מחיקה, ייצוא יומי.</span></div>
+    <div class="step"><b>1 · מוני כיסוי</b><span><code>csRounds</code>/<code>asRounds</code> בשרת + בקפיל. נדרשים גם לטאב היעילות וגם לסיכום העונה. שקוף למשתמש.</span></div>
+    <div class="step"><b>2 · תשתית ומתג</b><span><code>seasonId</code> על המחזור, מסמך הסיכום, מסך ההפעלה, הגדרות. דגל כבוי, בלי גלגול.</span></div>
+    <div class="step"><b>3 · בורר Scope + שני הטאבים</b><span>כולל היעילות. עדיין בלי איפוס — קריאה בלבד.</span></div>
+    <div class="step"><b>4 · סיום מוקדם</b><span>עם תצוגה מקדימה. מריצים על מועדון אחד אמיתי ומשווים סיכום מול טבלה חיה לפני האיפוס.</span></div>
+    <div class="step"><b>5 · אוטומטי + תארים + סיכום עונה</b><span>הקרון, ההכתרה, מסך הסיכום, חישוב עונה מחדש.</span></div>
+    <div class="step"><b>6 · היכל התהילה</b><span>ארכיון עונות, אליפויות בפרופיל, הקשר עונתי בהודעה מהמאמן.</span></div>
+  </div>
+</section>
+
+<div class="verdict">
+  <h2>עקרון המוצר</h2>
+  <p><strong>עונות הן שכבת תחרות מעל המועדון — לא החלפה של ההיסטוריה.</strong> המשתמש יכול בכל רגע לראות את העונה הנוכחית, עונה קודמת או את כל הזמנים. התארים נותנים משמעות לסיום עונה, בעוד הקריירה, ההישגים והרצפים ממשיכים לאורך חיי המועדון.</p>
+  <p>שלוש נקודות מימוש שיהרסו את זה אם ייפלו: <strong>מסך ריק ביום הראשון</strong> שייקרא כמחיקה, <strong>תיקון רטרו</strong> שיזליג נתונים בין עונות ויוליד מספרים שליליים, ו<strong>איפוס עיוור</strong> שיהרוג את השיאים האישיים ואת מדד ציון הערב שיושבים בטעות באותם מסמכים.</p>
+  <p><strong>ו-PITR קודם לכל.</strong></p>
+</div>
+
+</div>

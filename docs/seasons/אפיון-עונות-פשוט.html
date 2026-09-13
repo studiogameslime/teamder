@@ -1,0 +1,273 @@
+<title>עונות בכדורגל שלנו</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700;900&family=Assistant:wght@300;400;600;700&display=swap">
+
+<style>
+:root{
+  --ground:#F7F5F0;
+  --surface:#FFFFFF;
+  --text:#1C1A16;
+  --muted:#6B6559;
+  --line:#E4DFD4;
+  --grass:#1F6B3A;
+  --grass-soft:#E6F0E7;
+  --chalk:#FFFFFF;
+  --gold:#9A6B12;
+  --gold-soft:#F7EEDA;
+  --slab:#16241A;
+  --slab-fg:#D6E2D8;
+  --slab-fg-strong:#FFFFFF;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#12140F;
+    --surface:#1A1D17;
+    --text:#EAE7DF;
+    --muted:#9C9789;
+    --line:#2B2F26;
+    --grass:#6FBF89;
+    --grass-soft:#182619;
+    --gold:#D9AE5E;
+    --gold-soft:#2A2216;
+    --slab:#0B120D;
+    --slab-fg:#C3D2C6;
+    --slab-fg-strong:#F2F7F3;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#12140F;--surface:#1A1D17;--text:#EAE7DF;--muted:#9C9789;--line:#2B2F26;
+  --grass:#6FBF89;--grass-soft:#182619;--gold:#D9AE5E;--gold-soft:#2A2216;
+  --slab:#0B120D;--slab-fg:#C3D2C6;--slab-fg-strong:#F2F7F3;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);
+  font-family:'Assistant',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:18px;line-height:1.8;-webkit-font-smoothing:antialiased}
+.page{direction:rtl;text-align:right;max-width:660px;margin:0 auto;padding:0 22px 80px}
+
+.top{padding:64px 0 0;text-align:center}
+.ball{font-size:40px;line-height:1;margin-bottom:18px}
+h1{font-family:'Frank Ruhl Libre',Georgia,serif;font-weight:900;
+  font-size:clamp(36px,9vw,54px);line-height:1.08;margin:0 0 16px;letter-spacing:-.02em}
+.lead{font-size:21px;color:var(--muted);margin:0 auto;font-weight:300;max-width:26em;line-height:1.6}
+.lead b{color:var(--text);font-weight:600}
+.divider{width:52px;height:3px;background:var(--grass);margin:36px auto 0;border-radius:2px}
+
+h2{font-family:'Frank Ruhl Libre',Georgia,serif;font-weight:700;font-size:27px;
+  margin:52px 0 10px;line-height:1.25}
+p{margin:0 0 16px}
+strong{font-weight:700}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:26px 0}
+.box{border-radius:10px;padding:22px 20px}
+.box.keep{background:var(--grass-soft);border:1.5px solid var(--grass)}
+.box.reset{background:var(--gold-soft);border:1.5px solid var(--gold)}
+.box h3{margin:0 0 12px;font-size:18px;font-weight:700;
+  font-family:'Frank Ruhl Libre',Georgia,serif}
+.box.keep h3{color:var(--grass)}
+.box.reset h3{color:var(--gold)}
+.box ul{margin:0;padding-inline-start:19px;font-size:16.5px;line-height:1.65}
+.box li{margin-bottom:7px}
+.box li:last-child{margin-bottom:0}
+
+.beat{display:flex;gap:16px;align-items:flex-start;margin-bottom:22px}
+.beat .n{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--grass);
+  color:#FFF;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:17px;margin-top:4px}
+.beat div{flex:1 1 auto}
+.beat b{display:block;font-weight:700;font-size:18.5px;margin-bottom:2px}
+.beat span{display:block;color:var(--muted);font-size:17px;line-height:1.65}
+
+.pull{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:26px 24px;margin:30px 0}
+.pull p{margin:0 0 12px;font-size:17.5px}
+.pull p:last-child{margin:0}
+
+
+.trophy{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:20px 22px;margin:24px 0}
+.trophy-h{font-family:'Frank Ruhl Libre',Georgia,serif;font-weight:700;font-size:17px;
+  color:var(--muted);margin-bottom:14px}
+.trophy-row{display:flex;align-items:center;gap:12px;padding:9px 0;
+  border-top:1px solid var(--line)}
+.trophy-row:first-of-type{border-top:none;padding-top:0}
+.trophy-row .tm{font-size:22px;flex:0 0 auto;line-height:1}
+.trophy-row .tt{font-weight:700;font-size:17px;flex:0 0 auto}
+.trophy-row .ts{color:var(--muted);font-size:15px;margin-inline-start:auto;text-align:left}
+
+.titles{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 18px}
+.titles span{background:var(--grass-soft);color:var(--grass);border:1px solid var(--grass);
+  border-radius:999px;padding:5px 13px;font-size:15.5px;font-weight:600;white-space:nowrap}
+
+.qa{border-top:1px solid var(--line);padding:20px 0 0;margin-top:20px}
+.qa:first-of-type{border-top:none;padding-top:0}
+.qa b{display:block;font-family:'Frank Ruhl Libre',Georgia,serif;
+  font-size:20px;font-weight:700;margin-bottom:5px}
+.qa p{margin:0;color:var(--muted);font-size:17px}
+
+.end{margin-top:52px;padding:32px 28px;background:var(--slab);border-radius:12px;text-align:center}
+.end p{color:var(--slab-fg);margin:0 0 12px;font-size:18px;line-height:1.7}
+.end p:last-child{margin:0}
+.end strong{color:var(--slab-fg-strong)}
+
+@media(max-width:560px){
+  body{font-size:17.5px}
+  .page{padding:0 18px 60px}
+  .top{padding:44px 0 0}
+  .two{grid-template-columns:1fr}
+}
+</style>
+
+<div class="page">
+
+<div class="top">
+  <div class="ball">⚽</div>
+  <h1>עונות בכדורגל שלנו</h1>
+  <p class="lead">הטבלה של המועדון תתחיל מחדש כל כמה חודשים. <b>הסטטיסטיקה האישית שלך נשארת לתמיד.</b></p>
+  <div class="divider"></div>
+</div>
+
+<h2>למה בכלל</h2>
+<p>אחרי שנתיים של משחק, מלך השערים של המועדון מחזיק שלוש מאות שערים. אף אחד לא ישיג אותו, ולכן אף אחד כבר לא מנסה. הטבלה הפסיקה לספר מי טוב עכשיו והתחילה לספר מי היה כאן הכי הרבה זמן.</p>
+<p>עונה פותרת את זה. כל תקופה הטבלה מתחילה מאפס, יש מרוץ חדש שאפשר לנצח בו, ובסוף יש הכתרה.</p>
+
+<h2>מה מתאפס ומה לא</h2>
+<div class="two">
+  <div class="box reset">
+    <h3>מתחיל מאפס</h3>
+    <ul>
+      <li>הטבלה של המועדון</li>
+      <li>המרוץ על מלך השערים</li>
+      <li>המרוץ על שאר התארים</li>
+    </ul>
+  </div>
+  <div class="box keep">
+    <h3>נשאר לתמיד</h3>
+    <ul>
+      <li>כל הסטטיסטיקה בפרופיל שלך</li>
+      <li>כל האליפויות שזכית בהן</li>
+      <li>רצף ההגעות שלך</li>
+      <li>כל העונות הקודמות</li>
+    </ul>
+  </div>
+</div>
+<p>שום דבר לא נמחק. הכל ממשיך להתקיים — גם בפרופיל האישי שלך, וגם במסך שמראה את כל הזמנים.</p>
+
+<h2>האליפויות נשמרות לנצח</h2>
+<p>זה הלב של העונה. בסוף כל עונה מוכתרים הזוכים, וכל אליפות נרשמת בפרופיל של מי שזכה בה — עם שם המועדון, מספר העונה והנתון שבזכותו זכה. היא נשארת שם גם בעונה הבאה, גם אם לא זכית בכלום, וגם אם עזבת את המועדון.</p>
+
+<div class="trophy">
+  <div class="trophy-h">האליפויות שלי</div>
+  <div class="trophy-row"><span class="tm">👑</span><span class="tt">מלך השערים</span><span class="ts">כדורגל חמישי · עונה 2</span></div>
+  <div class="trophy-row"><span class="tm">🎯</span><span class="tt">מלך הבישולים</span><span class="ts">כדורגל חמישי · עונה 1</span></div>
+  <div class="trophy-row"><span class="tm">💪</span><span class="tt">מלך ההתמדה</span><span class="ts">רביעי בנחלים · עונה 3</span></div>
+</div>
+
+<p>אלה האליפויות שאפשר לזכות בהן בכל עונה:</p>
+<div class="titles">
+  <span>👑 מלך השערים</span>
+  <span>🎯 מלך הבישולים</span>
+  <span>⭐ השחקן המצטיין</span>
+  <span>🏆 מלך הניצחונות</span>
+  <span>💪 מלך ההתמדה</span>
+  <span>🧤 מלך השערים הנקיים</span>
+  <span>⚽ מלך הפנדלים</span>
+  <span>🥅 מלך שוערי הפנדלים</span>
+  <span>🤝 הצמד הקטלני</span>
+</div>
+<p>בתארי הפנדלים יש גם דרישת מינימום בעיטות, שגדלה ככל שהעונה ארוכה יותר — כדי שאחוז מושלם מבעיטה אחת לא יזכה בתואר. אם אף אחד לא עומד בה, התואר פשוט לא מוענק העונה.</p>
+
+<h2>איך זה עובד</h2>
+
+<div class="beat">
+  <div class="n">1</div>
+  <div><b>מנהל המועדון מדליק את זה</b>
+  <span>הוא בוחר כמה זמן תימשך עונה — למשל חצי שנה, או עשרים וארבעה ערבי כדורגל. מועדון שלא מדליק, לא משתנה אצלו כלום.</span></div>
+</div>
+
+<div class="beat">
+  <div class="n">2</div>
+  <div><b>משחקים כרגיל</b>
+  <span>הטבלה עובדת בדיוק כמו היום, רק שכתוב מעליה איזו עונה זו וכמה נשאר.</span></div>
+</div>
+
+<div class="beat">
+  <div class="n">3</div>
+  <div><b>לקראת הסוף המתח עולה</b>
+  <span>ההודעה מהמאמן מספרת לכם: "נשארו 3 ערבים לסיום העונה", או "הפער בצמרת הכובשים הוא שער אחד".</span></div>
+</div>
+
+<div class="beat">
+  <div class="n">4</div>
+  <div><b>הערב האחרון נגמר, והעונה נסגרת</b>
+  <span>לא באמצע משחק ולא באמצע ערב — רק אחרי שהערב האחרון הסתיים והכל נספר.</span></div>
+</div>
+
+<div class="beat">
+  <div class="n">5</div>
+  <div><b>מכריזים על הזוכים</b>
+  <span>מסך סיכום עם מלך השערים, מלך הבישולים, השחקן המצטיין ועוד — עם המקום שלך, ואפשרות לשלוח לקבוצה בוואטסאפ.</span></div>
+</div>
+
+<div class="beat">
+  <div class="n">6</div>
+  <div><b>עונה חדשה נפתחת</b>
+  <span>הטבלה מתחילה מאפס. העונה הקודמת נשארת שמורה, במרחק לחיצה אחת.</span></div>
+</div>
+
+<h2>מה הוחלט</h2>
+<p>כל השאלות הפתוחות נסגרו. אלה הכללים.</p>
+
+<div class="qa">
+  <b>1 · כמה זמן נמשכת עונה</b>
+  <p>מנהל המועדון בוחר אחת משתיים: לפי זמן, או לפי מספר ערבי כדורגל. אפשר לשנות את זה גם באמצע עונה — אבל השינוי מוגבל, וכל חברי המועדון מקבלים הודעה עליו.</p>
+</div>
+
+<div class="qa">
+  <b>2 · מה קורה לכל מה שהיה עד היום</b>
+  <p>כל המחזורים ששוחקתם הופכים לעונה 1. בהפעלה בוחרים: לסגור אותה עכשיו, לחלק תארים ולפתוח עונה 2 — או להשאיר את עונה 1 פתוחה עד מועד הסיום שתקבעו.</p>
+</div>
+
+<div class="qa">
+  <b>3 · האם מחלקים אליפויות על העבר</b>
+  <p>כן. כשעונה 1 נסגרת מחולקות אליפויות על כל ההיסטוריה — אחת מכל סוג. אותו שחקן יכול לקחת כמה: מי שהיה גם מלך השערים וגם מלך הבישולים יקבל את שתיהן.</p>
+</div>
+
+<div class="qa">
+  <b>4 · כמה צריך להגיע כדי להתמודד</b>
+  <p>לפחות מחצית מהערבים שהתקיימו בעונה. בדקנו על המועדון האמיתי: מתוך 13 ערבים הסף הוא 7, ו-13 שחקנים עוברים אותו — בדיוק הגרעין שמגיע כל שבוע. מי שהצטרף באמצע כפוף לאותו רף.</p>
+</div>
+
+<div class="qa">
+  <b>5 · מלך השערים העצמיים</b>
+  <p>אין תואר כזה. מוצג בסיכום העונה בקבוצה בתור קוריוז, ולא נשמר באף פרופיל.</p>
+</div>
+
+<div class="qa">
+  <b>6 · שחקן שעזב את המועדון באמצע</b>
+  <p>נשאר בטבלה של העונה, ואם עמד ברף ההשתתפות הוא עדיין יכול לזכות. האליפות נשארת חלק מההיסטוריה שלו — הוא הרוויח אותה על המגרש.</p>
+</div>
+
+<div class="qa">
+  <b>7 · המנהל יכול לסיים עונה מוקדם</b>
+  <p>כן, אבל לא בלחיצה אחת. הוא רואה קודם מסך שמראה בדיוק מי יזכה בכל אליפות אם יסיים עכשיו, ורק אז מאשר. אפשר רק כשאין ערב פעיל, ונשאר רשום שהעונה נסגרה מוקדם, על ידי מי, ומה היה היעד המקורי.</p>
+</div>
+
+<div class="qa">
+  <b>8 · האם עונות דולקות לכולם</b>
+  <p>לא. ברירת המחדל היא בלי עונות, וכל מנהל מדליק את זה בהגדרות המועדון אם הוא רוצה. אפשר גם לכבות אחר כך — העונה הפעילה נסגרת ונשמרת, והמועדון חוזר למצב כל הזמנים.</p>
+</div>
+
+<div class="pull">
+  <p><strong>הכלל הפשוט:</strong> מה שהוא תחרות — מתאפס. מה שהוא אתה — נשאר.</p>
+  <p>גולים וניצחונות במועדון הם מרוץ, ומרוץ מתחיל מחדש. הנוכחות שלך, האמינות שלך, ומה שהשגת לאורך השנים — אלה שלך, ואף עונה לא נוגעת בהם.</p>
+</div>
+
+<div class="end">
+  <p><strong>מועדון שלא מדליק עונות — לא משתנה אצלו שום דבר.</strong></p>
+  <p>הכל ממשיך לעבוד בדיוק כמו היום.</p>
+</div>
+
+</div>
