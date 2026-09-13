@@ -931,8 +931,82 @@ export interface Group {
    *  admins can't issue yellow/red cards and the validity fields are moot. */
   cardsEnabled?: boolean;
 
+  /**
+   * Seasons — a competition layer over the club, not a replacement for its
+   * history. When a season closes, the club TABLE resets and the titles are
+   * awarded; career totals, achievements and streaks carry straight on.
+   *
+   * Absent or `enabled: false` means the club behaves exactly as it always
+   * has, which is the default for every club. Nothing here is written by the
+   * client except through the admin settings form — the rollover itself is
+   * server-owned, because it decides what a number means.
+   */
+  seasons?: GroupSeasons;
+
   createdAt: number;
   updatedAt?: number;
+}
+
+/** How a season ends: on a date, or after a number of finished rounds. */
+export type SeasonCadenceType = 'date' | 'rounds';
+
+export interface GroupSeasons {
+  enabled: boolean;
+  /** 1-based. Survives the feature being switched off and on again, so a club
+   *  that ran seasons 1–3 and re-enables opens season 4, never season 1. */
+  currentNo: number;
+  currentId: string;
+  /** Display only. For season 1 of an existing club this is its first game,
+   *  which can predate the feature by a year. */
+  startedAt: number;
+  cadence: {
+    type: SeasonCadenceType;
+    /** `date`: when the season is due to end. */
+    endsAt?: number;
+    /** `rounds`: the season's TOTAL finished rounds, not a remainder. A club
+     *  that has already played 17 and sets 24 has 7 left. */
+    targetRounds?: number;
+  };
+  /** Every change to the target, kept and shown. An admin may move the finish
+   *  line mid-season — they run the club — but never quietly. */
+  targetHistory?: SeasonTargetChange[];
+  /** Seasons closed so far. */
+  count: number;
+}
+
+export interface SeasonTargetChange {
+  at: number;
+  by: UserId;
+  /** Frozen: the account may be renamed or deleted later. */
+  byName: string;
+  from: { type: SeasonCadenceType; endsAt?: number; targetRounds?: number };
+  to: { type: SeasonCadenceType; endsAt?: number; targetRounds?: number };
+}
+
+/** The nine season titles. `ownGoals` is deliberately NOT among them — it is
+ *  shown in the season summary and never written to a profile. */
+export type SeasonTitleKey =
+  | 'topScorer'
+  | 'topAssister'
+  | 'mvp'
+  | 'topWinner'
+  | 'mostLoyal'
+  | 'cleanSheetKing'
+  | 'penaltyKing'
+  | 'penaltyKeeper'
+  | 'deadlyDuo';
+
+/** A title on the winner's profile. Kept for good, including after they leave
+ *  the club or the club is renamed — hence the frozen `groupName`. */
+export interface SeasonTitle {
+  groupId: GroupId;
+  groupName: string;
+  seasonId: string;
+  seasonNo: number;
+  titleKey: SeasonTitleKey;
+  /** The number it was won on: 31 goals, 8.37 average, 62% saved. */
+  value: number;
+  at: number;
 }
 
 /**
