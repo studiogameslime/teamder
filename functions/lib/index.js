@@ -11151,7 +11151,29 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     for (const uid of new Set([...A, ...B])) {
         const clean = cleanSheetFor(uid);
         if (groupId)
-            sb.bump(cpsRef(uid), { groupId, userId: uid, updatedAt: now }, { rounds: 1, ...(clean ? { cleanSheets: 1 } : {}) });
+            sb.bump(cpsRef(uid), { groupId, userId: uid, updatedAt: now }, {
+                rounds: 1,
+                ...(clean ? { cleanSheets: 1 } : {}),
+                // Coverage denominators. `cleanSheets` and `assists` only count the
+                // times something HAPPENED, so dividing either by `rounds` silently
+                // includes mini-games from before that metric was collected at all
+                // — clean sheets began 17.08, assists 21.06, the app 28.04. In the
+                // big club that is 229 of 1,044 player-rounds (22%) with no clean
+                // sheet data, so `cleanSheets / rounds` understates every affected
+                // player by roughly a fifth and looks like a real number.
+                //
+                // These two say "the metric was being measured for this round",
+                // regardless of outcome. Both metrics are always collected today,
+                // so from here they simply track `rounds`; the gap is historical
+                // and scripts/backfill_coverage_rounds.py closes it.
+                //
+                // They ride the SAME write to the SAME document — zero extra
+                // Firestore operations, zero read cost, no pressure on the 500-op
+                // batch ceiling. See the efficiency table (§12 of the seasons
+                // spec), which requires the denominator of the measured period.
+                csRounds: 1,
+                asRounds: 1,
+            });
         // Per-GAME rounds + this player's team goals for/against this round.
         // teamGoalsFor is the contribution% denominator (player.goals ÷ team.goals
         // over the evening); teamGoalsAgainst rounds out GF/GA. Folded into the
