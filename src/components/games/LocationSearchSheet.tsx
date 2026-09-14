@@ -60,6 +60,8 @@ export function LocationSearchSheet({
   const [query, setQuery] = useState(initialQuery ?? '');
   const [results, setResults] = useState<GovmapPlace[]>([]);
   const [loading, setLoading] = useState(false);
+  /** The search service didn't answer — a different message from "no match". */
+  const [searchDown, setSearchDown] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // The currently-staged choice. `label` may be '' briefly while a map
   // tap is being reverse-geocoded; coords are always present once set.
@@ -101,6 +103,7 @@ export function LocationSearchSheet({
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
+      setSearchDown(false);
       setLoading(false);
       return;
     }
@@ -109,9 +112,15 @@ export function LocationSearchSheet({
     const t = setTimeout(async () => {
       try {
         const r = await searchPlaces(q);
-        if (alive) setResults(r);
+        if (alive) {
+          setResults(r.places);
+          setSearchDown(r.unavailable);
+        }
       } catch {
-        if (alive) setResults([]);
+        if (alive) {
+          setResults([]);
+          setSearchDown(true);
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -239,7 +248,9 @@ export function LocationSearchSheet({
                   </Pressable>
                 ))
               ) : (
-                <Text style={styles.empty}>{he.locationNoResults}</Text>
+                <Text style={styles.empty}>
+                  {searchDown ? he.locationSearchUnavailable : he.locationNoResults}
+                </Text>
               )}
             </View>
           ) : null}

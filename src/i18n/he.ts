@@ -827,6 +827,10 @@ export const he = {
   locationConfirm: 'אישור המיקום',
   locationSearchAgain: 'חיפוש אחר',
   locationNoResults: 'לא נמצאו תוצאות. אפשר להקיש על המפה לבחירת המיקום.',
+  // Shown when the search SERVICE didn't answer — telling the user "no
+  // results" there sends them looking for a place that exists.
+  locationSearchUnavailable:
+    'שירות החיפוש אינו זמין כרגע. אפשר להקיש על המפה או להקליד את הכתובת כטקסט חופשי.',
   locationUseTyped: (q: string) => `השתמש ב: "${q}"`,
   // Always-on map picker
   locationTapHint: 'חפש כתובת, או הקש על המפה כדי לסמן את המיקום המדויק',
@@ -1203,6 +1207,11 @@ export const he = {
   signInCancelled: 'ההתחברות בוטלה',
   signInConfigMissing: 'הגדרות Google עדיין לא מוגדרות',
   signInFailed: 'ההתחברות נכשלה. נסה שוב.',
+  // Safari (or the system browser) is blocked on the device — Screen Time
+  // limits or a management profile. Nothing we can open for them, so point at
+  // the sign-in methods that need no browser.
+  signInBrowserBlocked:
+    'לא ניתן לפתוח את הדפדפן במכשיר הזה, ולכן ההתחברות עם Google נחסמה. בדרך כלל זה מגיע מהגבלת תוכן ב"זמן מסך" או מפרופיל ניהול. אפשר להתחבר עם Apple או עם אימייל במקום.',
   signInNetworkError: 'אין חיבור לאינטרנט',
 
   // Communities (public groups feed)

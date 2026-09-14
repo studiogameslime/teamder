@@ -39,36 +39,109 @@ function parsePoint(shape: unknown): { lat: number; lng: number } | null {
 // recover the coordinates of the item the user tapped.
 const lastResults = new Map<string, GovmapPlace>();
 
-export async function searchPlaces(query: string, maxResults = 8): Promise<GovmapPlace[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
+/** Give up on a single attempt — govmap has no SLA and an unanswered request
+ *  used to hang the autocomplete spinner indefinitely. */
+const TIMEOUT_MS = 6000;
+/** One short backoff before the single retry. */
+const RETRY_DELAY_MS = 600;
+
+export interface GovmapSearchResult {
+  places: GovmapPlace[];
+  /**
+   * The service never answered — timeout, 5xx, or no network. NOT the same as
+   * "answered, nothing matched", and the sheet says something different for
+   * each: "no results, tap the map" is wrong and confusing advice when the
+   * search itself is down.
+   */
+  unavailable: boolean;
+}
+
+/**
+ * Their problem, not ours: upstream is overloaded, slow, or unreachable.
+ *
+ * govmap is a free public service with no uptime promise, and it does go down
+ * — the production log took four `govmapSearch` errors in a minute, all 504,
+ * for a search that was a typo anyway. Logging those as app errors buries real
+ * failures under noise we can do nothing about. A 4xx or a malformed body is a
+ * different matter: that means THEY changed and WE have to follow, so it is
+ * still reported.
+ */
+export function isUpstreamDown(err: unknown): boolean {
+  const e = err as { name?: string; message?: string; status?: number };
+  if (e?.name === 'AbortError') return true; // our own timeout
+  const msg = String(e?.message ?? '');
+  // React Native's fetch reports a dead network as a plain TypeError.
+  if (/network request failed|timeout|timed out/i.test(msg)) return true;
+  const m = msg.match(/govmap autocomplete (\d{3})/);
+  if (!m) return false;
+  const status = Number(m[1]);
+  return status >= 500 || status === 408 || status === 429;
+}
+
+async function fetchOnce(
+  q: string,
+  maxResults: number,
+): Promise<Array<Record<string, unknown>>> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(AUTOCOMPLETE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ searchText: q, language: 'he', isAccurate: false, maxResults }),
+      signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`govmap autocomplete ${res.status}`);
     const json = (await res.json()) as { results?: Array<Record<string, unknown>> };
-    const out: GovmapPlace[] = [];
-    for (const r of json.results ?? []) {
-      const coords = parsePoint(r.shape);
-      const label = typeof r.text === 'string' ? r.text : '';
-      if (!coords || !label) continue;
-      const place: GovmapPlace = {
-        label,
-        type: (typeof r.type === 'string' ? r.type : 'poi') as GovmapPlace['type'],
-        lat: coords.lat,
-        lng: coords.lng,
-      };
-      out.push(place);
-      lastResults.set(label, place);
-    }
-    return out;
-  } catch (err) {
-    if (!isExpectedDenial(err)) logError('govmapSearch', err, { query: q });
-    return []; // graceful: the field still works as free text
+    return json.results ?? [];
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+function toPlaces(rows: Array<Record<string, unknown>>): GovmapPlace[] {
+  const out: GovmapPlace[] = [];
+  for (const r of rows) {
+    const coords = parsePoint(r.shape);
+    const label = typeof r.text === 'string' ? r.text : '';
+    if (!coords || !label) continue;
+    const place: GovmapPlace = {
+      label,
+      type: (typeof r.type === 'string' ? r.type : 'poi') as GovmapPlace['type'],
+      lat: coords.lat,
+      lng: coords.lng,
+    };
+    out.push(place);
+    lastResults.set(label, place);
+  }
+  return out;
+}
+
+export async function searchPlaces(
+  query: string,
+  maxResults = 8,
+): Promise<GovmapSearchResult> {
+  const q = query.trim();
+  if (q.length < 2) return { places: [], unavailable: false };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return { places: toPlaces(await fetchOnce(q, maxResults)), unavailable: false };
+    } catch (err) {
+      if (isUpstreamDown(err)) {
+        // One retry — a 504 from an overloaded public service is usually over
+        // by the next request.
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+          continue;
+        }
+      } else if (!isExpectedDenial(err)) {
+        logError('govmapSearch', err, { query: q });
+      }
+      // Graceful either way: the field still works as free text.
+      return { places: [], unavailable: true };
+    }
+  }
+  return { places: [], unavailable: true };
 }
 
 // Coordinates for a label the user selected from a previous searchPlaces call.

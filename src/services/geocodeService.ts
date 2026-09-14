@@ -64,8 +64,8 @@ export async function geocodeAddress(
   ]) {
     if (!q) continue;
     try {
-      const hits = await searchPlaces(q, 1);
-      if (hits.length) return { lat: hits[0].lat, lng: hits[0].lng };
+      const { places } = await searchPlaces(q, 1);
+      if (places.length) return { lat: places[0].lat, lng: places[0].lng };
     } catch {
       /* fall through to OSM */
     }

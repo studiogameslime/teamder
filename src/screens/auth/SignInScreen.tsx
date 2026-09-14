@@ -18,6 +18,7 @@ import { colors, spacing, typography } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { logError } from '@/services/errorLog';
+import { isBrowserBlocked } from '@/utils/signInErrors';
 import { AnalyticsEvent, logEvent } from '@/services/analyticsService';
 
 // Brand-blue palette — same tones as the redesigned onboarding /
@@ -51,6 +52,10 @@ export function SignInScreen() {
       const msg = (e?.message ?? '').toLowerCase();
       const cancelled =
         msg.includes('cancel') || code.includes('cancel') || code === '12501';
+      // Not our failure and not a config bug — the device has no browser to
+      // hand off to. See src/utils/signInErrors.ts. Kept out of the error
+      // panel, but the user is told what to do instead of "sign-in failed".
+      const browserBlocked = isBrowserBlocked(err);
       // Transient/recoverable failures (Play Services hiccup, network, an
       // INTERNAL_ERROR, or a concurrent attempt). The user just retries —
       // these are NOT config bugs, so don't pollute the error panel. Only a
@@ -63,7 +68,7 @@ export function SignInScreen() {
         // Firestore read during sign-in while the device is offline — the user
         // just had no connection; not a config bug. (error report 30.6)
         code === 'unavailable' || msg.includes('offline');
-      if (!cancelled && !transient) {
+      if (!cancelled && !transient && !browserBlocked) {
         logError('signInGoogleScreen', err, {
           screen: 'SignInScreen',
           provider: 'google',
@@ -156,6 +161,7 @@ export function SignInScreen() {
     const code = e?.code ?? '';
     if (msg.includes('cancelled') || code.includes('cancelled')) return he.signInCancelled;
     if (msg.includes('OAuth client ID not configured')) return he.signInConfigMissing;
+    if (isBrowserBlocked(err)) return he.signInBrowserBlocked;
     if (
       code === 'auth/network-request-failed' || msg.includes('network') ||
       code === 'unavailable' || msg.includes('offline')
