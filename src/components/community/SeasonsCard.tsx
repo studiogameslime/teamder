@@ -41,9 +41,28 @@ export function SeasonsCard({
     nav.navigate('SeasonHistory', { groupId });
   }, [nav, groupId]);
 
-  // A club that does not run seasons has nothing to say here — not even to an
-  // admin, who meets the switch in settings where they went looking for it.
-  if (seasons?.enabled !== true) return null;
+  const closedSeasons = seasons?.count ?? 0;
+
+  // Seasons off, but the club HAS closed some: the archives are untouched and
+  // the titles in them are permanent, so the door to them stays. Switching the
+  // feature off means "stop running a competition", not "erase the ones we
+  // ran" — and without this the only way back to a club's own history was to
+  // switch seasons on again.
+  if (seasons?.enabled !== true) {
+    if (closedSeasons === 0) return null;
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>{he.seasonsCardTitle}</Text>
+        <Text style={styles.note}>{he.seasonsOffButArchived}</Text>
+        <Button
+          title={he.seasonHistoryCta}
+          variant="outline"
+          fullWidth
+          onPress={openHistory}
+        />
+      </View>
+    );
+  }
 
   const cadence = seasons.cadence;
   const line =
@@ -67,7 +86,7 @@ export function SeasonsCard({
       />
       {/* Only once there is history to look at — a club in its first season
           would otherwise be offered an empty room. */}
-      {(seasons.count ?? 0) > 0 ? (
+      {closedSeasons > 0 ? (
         <Button
           title={he.seasonHistoryCta}
           variant="outline"

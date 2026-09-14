@@ -365,6 +365,27 @@ service cloud.firestore {
           !affectedKeys().hasAny(['adminIds']) ||
           resource.data.creatorId in request.resource.data.adminIds
         ) &&
+        // `seasons` is SERVER-OWNED and immutable from here.
+        //
+        // Four callables exist precisely because this block is not the right
+        // place to decide what a number means: enabling can seal the club's
+        // whole history, ending a season archives and zeroes every stat row and
+        // hands out nine permanent titles, and the rollover re-bases the finish
+        // line. An admin who could write the field directly could skip all of
+        // it — move `currentId` back and close a season twice, or set
+        // `count` and rewrite which archives exist.
+        //
+        // The client's own converter already refuses to send it (see
+        // src/firebase/firestore.ts, where `seasons` is read-only by design);
+        // this makes that a rule rather than a convention. The Admin SDK
+        // bypasses rules, so the callables are unaffected.
+        (
+          !affectedKeys().hasAny(['seasons']) ||
+          (
+            'seasons' in resource.data &&
+            request.resource.data.seasons == resource.data.seasons
+          )
+        ) &&
         // Free-text caps when the admin edits.
         isOptionalShortString(request.resource.data, 'name', 80) &&
         isOptionalShortString(request.resource.data, 'description', 500) &&

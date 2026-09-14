@@ -9,7 +9,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,8 +28,8 @@ before(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'groups', GID), {
-      name: 'club', adminIds: ['admin'], playerIds: [MEMBER, 'admin'],
-      pendingPlayerIds: [], createdAt: 1,
+      name: 'club', adminIds: ['admin'], creatorId: 'admin',
+      playerIds: [MEMBER, 'admin'], pendingPlayerIds: [], createdAt: 1,
     });
     await setDoc(doc(db, 'seasonSummary', `${GID}__s1`), {
       groupId: GID, groupName: 'club', seasonId: 's1', no: 1, totals: {},
@@ -177,5 +177,44 @@ describe('but nobody awards themselves a title', () => {
     await assert.rejects(() => setDoc(
       doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`),
       { groupId: GID, titleKey: 'topScorer', value: 999 }));
+  });
+});
+
+// ── The club's own seasons block ─────────────────────────────────────────
+//
+// Four callables exist because this decision does not belong to a document
+// write: enabling can seal a club's whole history, ending a season archives
+// and zeroes every stat row and hands out nine permanent titles. An admin who
+// could write the field directly could skip every one of those guards.
+describe('nobody edits groups.seasons from a client', () => {
+  const asAdmin = () => env.authenticatedContext('admin').firestore();
+
+  test('not an admin adding it', async () => {
+    await assert.rejects(() => updateDoc(doc(asAdmin(), 'groups', GID), {
+      seasons: { enabled: true, currentNo: 1, currentId: 's1', count: 0 },
+    }));
+  });
+
+  test('not an admin rewinding one that exists', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'groups', GID), {
+        seasons: { enabled: true, currentNo: 4, currentId: 's4', count: 3, startedAt: 1 },
+      });
+    });
+    // Moving currentId back would let the same season be closed twice.
+    await assert.rejects(() => updateDoc(doc(asAdmin(), 'groups', GID), {
+      seasons: { enabled: true, currentNo: 3, currentId: 's3', count: 2, startedAt: 1 },
+    }));
+  });
+
+  test('and an ordinary member certainly does not', async () => {
+    await assert.rejects(() => updateDoc(doc(asMember(), 'groups', GID), {
+      seasons: { enabled: false },
+    }));
+  });
+
+  test('but an admin can still edit the rest of the club', async () => {
+    await assert.doesNotReject(() =>
+      updateDoc(doc(asAdmin(), 'groups', GID), { description: 'עדיין אפשר לערוך' }));
   });
 });

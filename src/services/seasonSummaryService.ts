@@ -339,6 +339,10 @@ export const seasonSummaryService = {
       if (!groupSnap.exists()) return null;
       const g = groupSnap.data() as { name?: string; seasons?: GroupSeasons };
       const seasons = g.seasons;
+      // Reaching here means no specific season was asked for, so the answer is
+      // the RUNNING one — and a club with seasons switched off has none. A
+      // closed season is served above, from its own archive, whether or not the
+      // feature is still on.
       if (!seasons?.enabled) return null;
       const groupName = str(g.name);
 
