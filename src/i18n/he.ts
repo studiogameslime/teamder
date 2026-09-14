@@ -2987,6 +2987,23 @@ export const he = {
   champColLosses: 'הפסדים',
   champColScore: 'ניקוד',
   champColCleanSheets: 'שער נקי',
+
+  // ── Efficiency table ──────────────────────────────────────────────
+  // Per-game rates, beside the cumulative table rather than instead of it.
+  // The cumulative one answers "who has done the most here", which after two
+  // years answers "who has been here longest".
+  statsTabCumulative: 'מצטבר',
+  statsTabEfficiency: 'יעילות',
+  effColWinPct: '% ניצחון',
+  effColGoalsPerGame: 'גולים/משחק',
+  effColAssistsPerGame: 'בישולים/משחק',
+  effColGaPerGame: 'G+A/משחק',
+  effColCleanSheetPct: '% שער נקי',
+  effColRounds: 'משחקים',
+  /** Shown under the efficiency table when any row's window is shorter than
+   *  its history — clean sheets have only been recorded since 17.08. */
+  effPartialNote:
+    'שערים נקיים נאספים מאמצע אוגוסט. אצל ותיקים האחוז מחושב רק מהמשחקים שבהם הנתון נאסף בפועל.',
   pairStatsSharedCommunities: 'מועדונים משותפים',
   pairStatsSharedCommunitiesPlural: (n: number) =>
     n === 1 ? 'מועדון אחד משותף' : `${n} מועדונים משותפים`,

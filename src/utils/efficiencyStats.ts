@@ -1,0 +1,132 @@
+// Per-game efficiency, next to the cumulative table rather than instead of it.
+//
+// The cumulative table answers "who has done the most here", which after two
+// years answers "who has been here longest". This one answers "who is good
+// right now", and the two are different questions — a player with 12 games and
+// 9 goals is having a better season than one with 300 games and 180, and the
+// standing table cannot say so.
+//
+// THE DENOMINATOR IS THE WHOLE PROBLEM.
+//
+// `cleanSheets` and `assists` count the times something HAPPENED. They do not
+// count the mini-games in which the metric was being recorded at all — clean
+// sheets began 17.08 and assists 21.06, while clubs have existed since 28.04.
+// Dividing either by `rounds` silently folds in mini-games nobody was
+// measuring, and produces a number that is wrong and looks right.
+//
+// Measured in production: clean sheets are recorded for 78% of the big club's
+// player-rounds. Dividing by `rounds` puts the top players at 42/47/44%, and
+// the correct denominator puts them at 54/58/51% — a tenth of the scale,
+// missing, for every long-standing member.
+//
+// So the server now keeps `csRounds` and `asRounds` — "the metric was being
+// measured for this round" — and every rate here divides by the right one.
+// When a denominator is missing (an old row the backfill never reached), the
+// answer is `null` and the cell shows a dash. A dash is honest; a zero is a
+// claim that the player kept no clean sheets, which is a different statement.
+
+import type { ChampionshipRow } from './championship';
+
+export interface EfficiencyRow {
+  uid: string;
+  /** Wins as a share of mini-games played. 0–100, or null when none played. */
+  winPct: number | null;
+  goalsPerGame: number | null;
+  assistsPerGame: number | null;
+  /** Goals + assists per mini-game — the headline, and the default sort. */
+  gaPerGame: number | null;
+  cleanSheetPct: number | null;
+  /** Mini-games played. The sample the rest of the row rests on. */
+  rounds: number;
+  /** True when this player's history predates one of the metrics, so at least
+   *  one rate is computed over a shorter window than `rounds`. */
+  partial: boolean;
+}
+
+/** A rate, or null when there is nothing to divide by. */
+function rate(numerator: number, denominator: number): number | null {
+  return denominator > 0 ? numerator / denominator : null;
+}
+
+/**
+ * Which denominator a metric may honestly use.
+ *
+ * Falls back to `rounds` only when the coverage counter is absent entirely —
+ * a row written before the counters existed and not yet backfilled. That is
+ * the pre-existing behaviour, no worse than before, and the backfill removes
+ * it. A counter of 0 with rounds > 0 is NOT missing: it means the metric was
+ * never measured for this player, and the rate is genuinely unknowable.
+ */
+function coverage(counter: number | undefined, rounds: number): number {
+  return typeof counter === 'number' ? counter : rounds;
+}
+
+export function toEfficiencyRow(row: ChampionshipRow): EfficiencyRow {
+  const rounds = row.rounds ?? 0;
+  const csRounds = coverage(row.csRounds, rounds);
+  const asRounds = coverage(row.asRounds, rounds);
+
+  // Goals have been recorded since the first evening, so they divide by the
+  // full sample. Assists have not, which also makes `asRounds` the honest
+  // denominator for goals+assists: it is the window in which BOTH were being
+  // recorded, and inflating it with goal-only rounds would overstate the
+  // combined rate for exactly the longest-standing players.
+  return {
+    uid: row.uid,
+    winPct: rate(row.wins ?? 0, rounds) === null ? null : (row.wins / rounds) * 100,
+    goalsPerGame: rate(row.goals ?? 0, rounds),
+    assistsPerGame: rate(row.assists ?? 0, asRounds),
+    gaPerGame: rate((row.goals ?? 0) + (row.assists ?? 0), asRounds),
+    cleanSheetPct:
+      rate(row.cleanSheets ?? 0, csRounds) === null
+        ? null
+        : (row.cleanSheets / csRounds) * 100,
+    rounds,
+    partial: rounds > 0 && (csRounds < rounds || asRounds < rounds),
+  };
+}
+
+/** Whole numbers. 55%, not 54.8% — a decimal here implies a precision the
+ *  sample does not have. */
+export function formatPct(v: number | null): string {
+  return v === null ? '—' : `${Math.round(v)}%`;
+}
+
+/** Two decimals. 0.24 carries real information at these volumes; 0.2 does not. */
+export function formatPerGame(v: number | null): string {
+  return v === null ? '—' : v.toFixed(2);
+}
+
+export type EfficiencySortKey =
+  | 'winPct'
+  | 'goalsPerGame'
+  | 'assistsPerGame'
+  | 'gaPerGame'
+  | 'cleanSheetPct'
+  | 'rounds';
+
+/**
+ * Sort by a column, descending, with nulls last.
+ *
+ * A player with no data has not "scored zero" — they are unrankable on that
+ * column, and pushing them below everyone who does have a number is the only
+ * placement that does not assert something false about them.
+ *
+ * Ties fall through to more mini-games, so the deeper sample wins. Without it,
+ * a player with one appearance and one goal would sit above a regular on the
+ * same rate, which is the complaint that started this table.
+ */
+export function sortEfficiency(
+  rows: readonly EfficiencyRow[],
+  key: EfficiencySortKey,
+): EfficiencyRow[] {
+  return [...rows].sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    if (av === null && bv === null) return b.rounds - a.rounds;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    if (bv !== av) return bv - av;
+    return b.rounds - a.rounds;
+  });
+}

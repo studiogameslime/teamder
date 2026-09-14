@@ -37,6 +37,15 @@ export interface ChampionshipRow {
   ownGoals: number;
   /** "שער נקי" — mini-games the player's side finished without conceding. */
   cleanSheets: number;
+  /** Coverage denominators: how many mini-games the metric was actually being
+   *  recorded in. `cleanSheets / rounds` folds in rounds from before the
+   *  metric existed — 22% of them in the big club — and understates every
+   *  long-standing player. Absent on rows the backfill has not reached, which
+   *  is why both are optional rather than defaulted to 0: a 0 would claim the
+   *  metric was never measured, which is a different statement from not
+   *  knowing. See src/utils/efficiencyStats.ts. */
+  csRounds?: number;
+  asRounds?: number;
   /** True for a GUEST row (per-game table only) — the caller resolves the name
    *  from game.guests instead of /users, and it opens no player card. */
   isGuest?: boolean;
@@ -92,6 +101,8 @@ export function rankChampionshipRows(
     penSaved?: number;
     ownGoals?: number;
     cleanSheets?: number;
+    csRounds?: number;
+    asRounds?: number;
     isGuest?: boolean;
   }>,
   sortBy: ChampionshipSort = 'perGame',
@@ -115,6 +126,10 @@ export function rankChampionshipRows(
     penSaved: typeof x.penSaved === 'number' ? x.penSaved : 0,
     ownGoals: typeof x.ownGoals === 'number' ? x.ownGoals : 0,
     cleanSheets: typeof x.cleanSheets === 'number' ? x.cleanSheets : 0,
+    // Deliberately NOT defaulted to 0 — see the field comment. Undefined means
+    // "unknown, fall back to rounds"; 0 would mean "never measured".
+    ...(typeof x.csRounds === 'number' ? { csRounds: x.csRounds } : {}),
+    ...(typeof x.asRounds === 'number' ? { asRounds: x.asRounds } : {}),
     ...(x.isGuest === true ? { isGuest: true } : {}),
   }));
   if (sortBy === 'goals' || sortBy === 'points') {

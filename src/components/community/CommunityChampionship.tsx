@@ -10,6 +10,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { CommunityStatsTable } from '@/components/community/CommunityStatsTable';
+import { MatchSegmentControl } from '@/components/match/MatchSegmentControl';
 import { gameService } from '@/services';
 import { appAlert } from '@/components/AppDialog';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
@@ -29,6 +30,10 @@ export function CommunityChampionship({
   memberIds?: string[];
   attendedByUser?: Record<string, number>;
 }) {
+  // Which view of the same rows. 'מצטבר' is the table exactly as it has
+  // always been; 'יעילות' is per-game rates over those same players. Not
+  // remembered between visits — the totals are what most people come for.
+  const [tab, setTab] = useState<'cumulative' | 'efficiency'>('cumulative');
   const [data, setData] = useState<{
     totalGoals: number;
     totalRounds: number;
@@ -51,6 +56,18 @@ export function CommunityChampionship({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, memberKey]);
+
+  // Clean sheets have only been recorded since mid-August, so a long-standing
+  // player's percentage is computed over a shorter window than their history.
+  // Say so once, under the table, rather than starring individual cells.
+  const anyPartial =
+    !!data &&
+    data.players.some(
+      (p) =>
+        (p.rounds ?? 0) > 0 &&
+        typeof p.csRounds === 'number' &&
+        p.csRounds < (p.rounds ?? 0),
+    );
 
   if (!data || data.players.length === 0) return null;
 
@@ -88,11 +105,25 @@ export function CommunityChampionship({
         </Card>
       </View>
 
+      <MatchSegmentControl
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'cumulative', label: he.statsTabCumulative },
+          { value: 'efficiency', label: he.statsTabEfficiency },
+        ]}
+      />
+
       <CommunityStatsTable
         players={data.players}
         groupId={groupId}
         attendedByUser={attendedByUser}
+        mode={tab}
       />
+
+      {tab === 'efficiency' && anyPartial && (
+        <Text style={styles.coverageNote}>{he.effPartialNote}</Text>
+      )}
     </View>
   );
 }
@@ -108,6 +139,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: { ...typography.body, color: colors.text, fontWeight: '800', textAlign: RTL_LABEL_ALIGN },
+  coverageNote: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+    marginTop: spacing.xs,
+    lineHeight: 18,
+  },
   note: { ...typography.caption, color: colors.textMuted, textAlign: RTL_LABEL_ALIGN, marginTop: -2 },
   totals: { flexDirection: 'row', gap: spacing.sm },
   totalCard: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: spacing.md },

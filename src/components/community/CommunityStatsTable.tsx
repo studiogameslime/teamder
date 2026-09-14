@@ -14,6 +14,14 @@ import { Card } from '@/components/Card';
 import { UserAvatar } from '@/components/UserAvatar';
 import { userService } from '@/services';
 import { type ChampionshipRow } from '@/utils/championship';
+import {
+  toEfficiencyRow,
+  sortEfficiency,
+  formatPct,
+  formatPerGame,
+  type EfficiencyRow,
+  type EfficiencySortKey,
+} from '@/utils/efficiencyStats';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { User } from '@/types';
@@ -23,6 +31,11 @@ const MEDALS = ['#F4B73E', '#9AA4B2', '#CD7F32']; // gold / silver / bronze
 const ROW_H = 56;
 const HEADER_H = 34;
 const STAT_W = 66;
+// The efficiency labels are whole phrases — "בישולים/משחק" against "גולים" —
+// and at 66 they truncate to "בישולים/מ…" and run into the next column. Wider
+// only in that mode, so the cumulative table keeps the density it was tuned
+// for and fits one more column on screen before scrolling.
+const STAT_W_EFF = 104;
 // Wide enough for a real first name (e.g. "מקסימיליאן", ~10 chars) to show in
 // full next to the 30px avatar without clipping to "מקסימילי…". After the
 // avatar (30) + horizontal padding/gap (~30) the name gets the remaining ~140,
@@ -49,6 +62,12 @@ export function CommunityStatsTable({
   /** Guest roster-id → name. Rows whose uid is here resolve to that name (no
    *  /users fetch) and open no player card. Used by the per-game table. */
   guestNames,
+  /** 'cumulative' is the table as it has always been — totals, ranked by wins.
+   *  'efficiency' shows per-game rates over the SAME rows and the same
+   *  chrome: identical name column, medals, row heights and header-tap
+   *  sorting. Deliberately one component, so the two can never drift apart
+   *  visually. */
+  mode = 'cumulative',
 }: {
   players: ChampionshipRow[];
   groupId?: string;
@@ -56,11 +75,21 @@ export function CommunityStatsTable({
   hideAppearances?: boolean;
   attendedByUser?: Record<string, number>;
   guestNames?: Record<string, string>;
+  mode?: 'cumulative' | 'efficiency';
 }) {
   const nav = useNavigation<{ navigate: (s: string, p: object) => void }>();
   const [people, setPeople] = useState<Record<string, Resolved>>({});
-  // Tap a column header to sort by it. Default = wins (the headline stat).
-  const [sortKey, setSortKey] = useState<keyof ChampionshipRow>('wins');
+  // Tap a column header to sort by it. Cumulative leads on wins, the headline
+  // stat; efficiency leads on goals+assists per game, the one the table exists
+  // to surface.
+  const [sortKey, setSortKey] = useState<string>(
+    mode === 'efficiency' ? 'gaPerGame' : 'wins',
+  );
+  // Switching tabs must not carry a column that does not exist on the other
+  // side — 'wins' means nothing to the efficiency grid and vice versa.
+  useEffect(() => {
+    setSortKey(mode === 'efficiency' ? 'gaPerGame' : 'wins');
+  }, [mode]);
   // Replace the rollup `games` with the authoritative scan count when provided.
   const effPlayers = React.useMemo(
     () =>
@@ -72,13 +101,32 @@ export function CommunityStatsTable({
   // Sort by the chosen column (desc), THEN slice — so the top-N reflects the
   // active sort. V8's sort is stable, so ties keep the incoming order (which is
   // itself wins→goals ranked), giving sensible tie-breaking.
-  const rows = React.useMemo(
-    () =>
-      [...effPlayers]
-        .sort((a, b) => Number(b[sortKey] ?? 0) - Number(a[sortKey] ?? 0))
-        .slice(0, limit),
-    [effPlayers, sortKey, limit],
-  );
+  /** Per-game rates, keyed by uid. Built for both modes so the efficiency
+   *  sort can run without re-deriving on every comparison. */
+  const efficiency = React.useMemo(() => {
+    const map: Record<string, EfficiencyRow> = {};
+    for (const p of effPlayers) map[p.uid] = toEfficiencyRow(p);
+    return map;
+  }, [effPlayers]);
+
+  const rows = React.useMemo(() => {
+    if (mode === 'efficiency') {
+      // Sorted on the efficiency rows — which put unrankable players last
+      // rather than calling them zero — then mapped back, because the name
+      // column still renders from the championship row.
+      const order = sortEfficiency(
+        effPlayers.map((p) => efficiency[p.uid]),
+        sortKey as EfficiencySortKey,
+      );
+      const byUid: Record<string, ChampionshipRow> = {};
+      for (const p of effPlayers) byUid[p.uid] = p;
+      return order.map((e) => byUid[e.uid]).slice(0, limit);
+    }
+    return [...effPlayers]
+      .sort((a, b) => Number(b[sortKey as keyof ChampionshipRow] ?? 0) -
+                      Number(a[sortKey as keyof ChampionshipRow] ?? 0))
+      .slice(0, limit);
+  }, [effPlayers, efficiency, sortKey, limit, mode]);
 
   useEffect(() => {
     let alive = true;
@@ -126,7 +174,8 @@ export function CommunityStatsTable({
   // assists → then the outcomes/counts (losses → appearances → mini-games).
   // Wins lead — it's the headline stat the owner wants read first — followed by
   // the two point sources (goals, assists).
-  const allCols: Array<{ key: keyof ChampionshipRow; label: string; primary?: boolean }> = [
+  type Col = { key: string; label: string; cell: (r: ChampionshipRow) => string };
+  const cumulativeCols: Col[] = ([
     { key: 'wins', label: he.champColWins, primary: true },
     { key: 'goals', label: he.champColGoals },
     { key: 'assists', label: he.champColAssists },
@@ -140,6 +189,27 @@ export function CommunityStatsTable({
     { key: 'cleanSheets', label: he.champColCleanSheets },
     { key: 'games', label: he.champColAppearances }, // evenings attended
     { key: 'rounds', label: he.champColMiniGames }, // mini-games played
+  ] as Array<{ key: keyof ChampionshipRow; label: string }>).map((c) => ({
+    key: c.key as string,
+    label: c.label,
+    cell: (r: ChampionshipRow) => String(r[c.key] ?? 0),
+  }));
+
+  // Right-to-left after the name column, in the order asked for. Under
+  // forceRTL the first child lands rightmost, so array order IS reading order.
+  const efficiencyCols: Col[] = [
+    { key: 'winPct', label: he.effColWinPct,
+      cell: (r) => formatPct(efficiency[r.uid]?.winPct ?? null) },
+    { key: 'goalsPerGame', label: he.effColGoalsPerGame,
+      cell: (r) => formatPerGame(efficiency[r.uid]?.goalsPerGame ?? null) },
+    { key: 'assistsPerGame', label: he.effColAssistsPerGame,
+      cell: (r) => formatPerGame(efficiency[r.uid]?.assistsPerGame ?? null) },
+    { key: 'gaPerGame', label: he.effColGaPerGame,
+      cell: (r) => formatPerGame(efficiency[r.uid]?.gaPerGame ?? null) },
+    { key: 'cleanSheetPct', label: he.effColCleanSheetPct,
+      cell: (r) => formatPct(efficiency[r.uid]?.cleanSheetPct ?? null) },
+    { key: 'rounds', label: he.effColRounds,
+      cell: (r) => String(r.rounds ?? 0) },
   ];
   // A draw is only reachable in a four-team-and-up format: with three teams
   // the loser rotates out and every mini-game has a winner. A club that plays
@@ -148,9 +218,15 @@ export function CommunityStatsTable({
   // "this player" — a column that appears and disappears as you scroll would
   // be worse than either.)
   const anyTies = useMemo(() => players.some((p) => (p.ties ?? 0) > 0), [players]);
-  const cols = allCols.filter(
-    (c) => !(hideAppearances && c.key === 'games') && !(c.key === 'ties' && !anyTies),
-  );
+  const statW = mode === 'efficiency' ? STAT_W_EFF : STAT_W;
+  const cols =
+    mode === 'efficiency'
+      ? efficiencyCols
+      : cumulativeCols.filter(
+          (c) =>
+            !(hideAppearances && c.key === 'games') &&
+            !(c.key === 'ties' && !anyTies),
+        );
 
   return (
     <Card style={styles.table}>
@@ -196,14 +272,18 @@ export function CommunityStatsTable({
                   <Pressable
                     key={c.key}
                     onPress={() => setSortKey(c.key)}
-                    style={styles.headerHit}
+                    style={[styles.headerHit, { width: statW }]}
                     accessibilityRole="button"
                     accessibilityLabel={c.label}
                     accessibilityState={{ selected: active }}
                   >
                     <Text
                       numberOfLines={1}
-                      style={[styles.statHeader, active && styles.primaryHeader]}
+                      style={[
+                        styles.statHeader,
+                        { width: statW },
+                        active && styles.primaryHeader,
+                      ]}
                     >
                       {active ? `${c.label} ▾` : c.label}
                     </Text>
@@ -216,9 +296,13 @@ export function CommunityStatsTable({
                 {cols.map((c) => (
                   <Text
                     key={c.key}
-                    style={[styles.statCell, c.key === sortKey && styles.primaryCell]}
+                    style={[
+                      styles.statCell,
+                      { width: statW },
+                      c.key === sortKey && styles.primaryCell,
+                    ]}
                   >
-                    {r[c.key]}
+                    {c.cell(r)}
                   </Text>
                 ))}
               </View>
