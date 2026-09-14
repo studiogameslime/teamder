@@ -132,6 +132,35 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.completedRounds, 16);
   });
 
+  test('the titles are decided and sealed with the numbers', async () => {
+    // The end-season dialog promises the admin that titles are awarded. Until
+    // this landed, nothing computed them.
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    assert.ok(s.awards, 'the archive carries awards');
+    // u1: 31 goals to u2's 9. Both cleared the half-season gate (16 rounds → 8).
+    assert.deepEqual(s.awards.topScorer.winners, ['u1']);
+    assert.equal(s.awards.topScorer.value, 31);
+    // u2: 22 assists to u1's 4.
+    assert.deepEqual(s.awards.topAssister.winners, ['u2']);
+    // The duo is scored on the pair's assists and needs BOTH halves eligible.
+    assert.deepEqual(s.awards.deadlyDuo.winners, ['u1__u2']);
+    // Every one of the nine keys is present, decided or explicitly null — a
+    // missing key and "not awarded" are different facts.
+    for (const k of [
+      'topScorer', 'topAssister', 'mvp', 'topWinner', 'mostLoyal',
+      'cleanSheetKing', 'penaltyKing', 'penaltyKeeper', 'deadlyDuo',
+    ]) {
+      assert.ok(k in s.awards, `${k} is present`);
+    }
+  });
+
+  test('a title nobody can win is null, not a silly winner', async () => {
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    // Neither player has an evening-score mean (the accumulator is new), so
+    // the MVP is not awarded rather than handed to whoever sorts first.
+    assert.equal(s.awards.mvp, null);
+  });
+
   test('names are frozen FROM /users, so a deleted account still reads', async () => {
     const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
     assert.equal(s.players.u1.displayName, 'מתן');

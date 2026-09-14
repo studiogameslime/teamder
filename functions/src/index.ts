@@ -5749,10 +5749,26 @@ export const onGameRosterChanged = onDocumentWritten(
               },
               { merge: true },
             );
-            // Remember this evening's score for next evening's delta.
+            // Remember this evening's score for next evening's delta, and
+            // fold it into the season's running mean.
+            //
+            // The mean is why the sum exists. The MVP title is "highest AVERAGE
+            // evening score this season" — and nothing was accumulating it:
+            // `lastEveningScore` is only the most recent one and `bestEvening`
+            // only the high-water mark, so the title was literally not
+            // computable from anything we stored. Two increments, once per
+            // player per evening.
+            //
+            // Both are season-scoped (they are in PLAYER_SEASON_FIELDS), so a
+            // new season starts the average from nothing rather than dragging
+            // a career of scores into it.
             standingBatch.set(
               db.collection('communityPlayerStats').doc(`${gid}__${uid}`),
-              { lastEveningScore: score },
+              {
+                lastEveningScore: score,
+                eveningScoreSum: admin.firestore.FieldValue.increment(score),
+                eveningScoreCount: admin.firestore.FieldValue.increment(1),
+              },
               { merge: true },
             );
           }

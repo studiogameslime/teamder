@@ -1,0 +1,199 @@
+// seasonAwards — server-side mirror of `src/utils/seasonAwards.ts`.
+//
+// Cloud Functions live in their own tsconfig rootDir (`functions/src`), so the
+// app source cannot be imported from here. Same arrangement as
+// notificationDedup: the two files are kept byte-identical below this header,
+// and tests/logic/seasonAwardsMirror.test.ts fails if they ever drift.
+//
+// Why the SERVER decides the titles: they are decided once, at the moment a
+// season closes, from the numbers as they stood — and they are written into
+// the sealed archive. A client computing them later would be re-deciding a
+// past season from whatever it could still read, which is exactly the drift
+// the archive exists to prevent.
+//
+// ---- everything below this line is a copy of the client file ----
+
+// Who wins what when a season closes.
+//
+// This is the file the arguments will be about, so every rule in it comes
+// from the spec rather than from taste, and every one is tested.
+//
+// Three ideas carry the whole thing:
+//
+//   1. ELIGIBILITY IS A GATE, NOT A RANKING. A player must have turned up for
+//      at least half the season's finished rounds. Below that they are not
+//      compared at all — they cannot win a title on two lucky evenings, and
+//      they are not "beaten" either.
+//
+//   2. "NOT AWARDED" IS A RESULT. If nobody is eligible, or the leader's
+//      number is zero, or no keeper faced enough penalties, the title simply
+//      is not given. An empty crown is better than a silly one, and the
+//      season document stores `null` so a past season stays auditable.
+//
+//   3. TIES ARE SHARED. Every player on the top number wins. No coin toss, no
+//      alphabetical order, no id comparison — the club would notice, and it
+//      would be indefensible.
+//
+// A player who has LEFT the club can still win: the title was earned on the
+// pitch, and it belongs to them. Membership is not a condition anywhere here.
+
+/** One player's season line. Only the fields a title can be decided on. */
+export interface SeasonPlayerLine {
+  uid: string;
+  /** Finished rounds this player took part in — the eligibility numerator. */
+  rounds: number;
+  goals: number;
+  assists: number;
+  wins: number;
+  cleanSheets: number;
+  /** Mean of the round scores they actually received this season. */
+  mvpAvg: number;
+  penTaken: number;
+  penScored: number;
+  penFaced: number;
+  penSaved: number;
+}
+
+/** A pair's season line, for the deadly duo. */
+export interface SeasonPairLine {
+  a: string;
+  b: string;
+  /** The existing club pair metric. */
+  score: number;
+  /** Rounds the two were on the same side. */
+  together: number;
+}
+
+export type SeasonTitleKey =
+  | 'topScorer'
+  | 'topAssister'
+  | 'mvp'
+  | 'topWinner'
+  | 'mostLoyal'
+  | 'cleanSheetKing'
+  | 'penaltyKing'
+  | 'penaltyKeeper'
+  | 'deadlyDuo';
+
+/** A decided title. `winners` holds every player on the top number. */
+export interface SeasonAward {
+  winners: string[];
+  value: number;
+}
+
+export type SeasonAwards = Record<SeasonTitleKey, SeasonAward | null>;
+
+export const SEASON_TITLE_KEYS: readonly SeasonTitleKey[] = [
+  'topScorer',
+  'topAssister',
+  'mvp',
+  'topWinner',
+  'mostLoyal',
+  'cleanSheetKing',
+  'penaltyKing',
+  'penaltyKeeper',
+  'deadlyDuo',
+];
+
+/**
+ * Half the season's finished rounds, rounded up.
+ *
+ * Measured against the club: 13 rounds → 7, and 13 of 29 players clear it.
+ * That club's attendance is bimodal — a core on 9–12 and then a drop to 5 —
+ * so half lands in the gap rather than through anybody's middle.
+ */
+export function eligibilityThreshold(completedRounds: number): number {
+  return Math.ceil(Math.max(0, completedRounds) / 2);
+}
+
+/** Did this player turn up enough to be considered? */
+export function isEligible(
+  line: Pick<SeasonPlayerLine, 'rounds'>,
+  completedRounds: number,
+): boolean {
+  return line.rounds >= eligibilityThreshold(completedRounds);
+}
+
+/**
+ * Penalties need a second gate, because a rate off one kick is not a record.
+ * Scales with the season and then stops: a 50-round season should not demand
+ * a shootout specialist.
+ *
+ *   10 rounds → 2    24 → 3    35 → 4    50+ → 5
+ */
+export function minPenaltyAttempts(completedRounds: number): number {
+  return Math.min(5, Math.max(2, Math.ceil(Math.max(0, completedRounds) / 10)));
+}
+
+/** Everyone holding the maximum, or null when the max is not worth a title. */
+function leaders<T>(
+  rows: readonly T[],
+  value: (row: T) => number,
+  id: (row: T) => string,
+  /** The value must EXCEED this to count. Zero goals is not a goalscoring title. */
+  floor = 0,
+): SeasonAward | null {
+  let best = -Infinity;
+  for (const r of rows) {
+    const v = value(r);
+    if (v > best) best = v;
+  }
+  if (!Number.isFinite(best) || best <= floor) return null;
+  // Compared on the exact value; only the DISPLAY is ever rounded, so two
+  // averages of 8.3746 and 8.3751 are two different numbers here.
+  const winners = rows.filter((r) => value(r) === best).map(id);
+  return winners.length ? { winners, value: best } : null;
+}
+
+/**
+ * Decide every title for a closed season.
+ *
+ * `completedRounds` is the season's finished-round count — the denominator for
+ * both gates. It comes from the sealed-evening counter, never from a query
+ * over games: deleting a game does not decrement anything, so a live count
+ * drifts below the rounds that were actually credited.
+ */
+export function computeSeasonAwards(
+  players: readonly SeasonPlayerLine[],
+  pairs: readonly SeasonPairLine[],
+  completedRounds: number,
+): SeasonAwards {
+  const eligible = players.filter((p) => isEligible(p, completedRounds));
+  const minAttempts = minPenaltyAttempts(completedRounds);
+
+  // Both halves of a pair must clear the gate on their own, or a regular and
+  // a one-night guest could take the duo title between them.
+  const eligibleUids = new Set(eligible.map((p) => p.uid));
+  const eligiblePairs = pairs.filter(
+    (p) => eligibleUids.has(p.a) && eligibleUids.has(p.b),
+  );
+
+  const rate = (made: number, attempts: number) =>
+    attempts > 0 ? made / attempts : 0;
+
+  return {
+    topScorer: leaders(eligible, (p) => p.goals, (p) => p.uid),
+    topAssister: leaders(eligible, (p) => p.assists, (p) => p.uid),
+    // Average, not sum: the spec's call. The half-season gate is what stops
+    // it rewarding someone who only shows up on the easy nights.
+    mvp: leaders(eligible, (p) => p.mvpAvg, (p) => p.uid),
+    topWinner: leaders(eligible, (p) => p.wins, (p) => p.uid),
+    mostLoyal: leaders(eligible, (p) => p.rounds, (p) => p.uid),
+    cleanSheetKing: leaders(eligible, (p) => p.cleanSheets, (p) => p.uid),
+    penaltyKing: leaders(
+      eligible.filter((p) => p.penTaken >= minAttempts),
+      (p) => rate(p.penScored, p.penTaken),
+      (p) => p.uid,
+    ),
+    penaltyKeeper: leaders(
+      eligible.filter((p) => p.penFaced >= minAttempts),
+      (p) => rate(p.penSaved, p.penFaced),
+      (p) => p.uid,
+    ),
+    deadlyDuo: leaders(
+      eligiblePairs,
+      (p) => p.score,
+      (p) => `${p.a}__${p.b}`,
+    ),
+  };
+}

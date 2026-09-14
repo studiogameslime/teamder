@@ -24,6 +24,7 @@
 // scale, silently.
 
 import * as admin from 'firebase-admin';
+import { computeSeasonAwards } from './seasonAwards';
 
 /** Club-scoped counters a season owns. Everything not named here survives. */
 const PLAYER_SEASON_FIELDS = [
@@ -46,6 +47,13 @@ const PLAYER_SEASON_FIELDS = [
   // rates would divide this season's handful of clean sheets by a career.
   'csRounds',
   'asRounds',
+  // The season's evening-score mean, as sum and count. The MVP title is the
+  // highest AVERAGE this season, so both halves must reset together: keeping
+  // the sum across a rollover would carry last season's evenings into this
+  // season's average, and keeping only one of the two produces a mean that is
+  // not a mean at all.
+  'eveningScoreSum',
+  'eveningScoreCount',
 ] as const;
 
 /** The same, for the club total document. */
@@ -212,6 +220,47 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     };
   }
 
+  // ── The titles ──────────────────────────────────────────────────────────
+  //
+  // Decided HERE, from the numbers as they stand, and sealed into the archive
+  // with them. The end-season dialog has been telling admins that titles are
+  // awarded; until now nothing computed them, and the promise was empty.
+  //
+  // `completedRounds` is the season's finished-round count and it is the
+  // denominator of both gates (turn up for half the season; take enough
+  // penalties for a rate to mean anything). It comes from the sealed-evening
+  // counter rather than a query, because deleting a game decrements nothing.
+  const awardLines = Object.entries(players).map(([uid, row]) => ({
+    uid,
+    rounds: num(row.rounds),
+    goals: num(row.goals),
+    assists: num(row.assists),
+    wins: num(row.wins),
+    cleanSheets: num(row.cleanSheets),
+    // The season's mean evening score. Absent until the accumulator that feeds
+    // it has been live for a season, and 0 keeps that player out of the MVP
+    // running rather than handing them the title on an empty number.
+    mvpAvg:
+      num(row.eveningScoreCount) > 0
+        ? num(row.eveningScoreSum) / num(row.eveningScoreCount)
+        : 0,
+    penTaken: num(row.penTaken),
+    penScored: num(row.penScored),
+    penFaced: num(row.penFaced),
+    penSaved: num(row.penSaved),
+  }));
+  const awardPairs = Object.values(pairs).map((p) => ({
+    a: p.a,
+    b: p.b,
+    score: p.assists,
+    together: p.sameTeam,
+  }));
+  const awards = computeSeasonAwards(
+    awardLines,
+    awardPairs,
+    args.completedRounds,
+  );
+
   // ── 1. Archive, exactly once ────────────────────────────────────────────
   const summaryRef = db
     .collection('seasonSummary')
@@ -233,6 +282,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       totals,
       players,
       pairs,
+      awards,
     });
   } catch (err) {
     const code = (err as { code?: number | string }).code;

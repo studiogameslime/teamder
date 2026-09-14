@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.endSeasonNow = exports.updateSeasonTarget = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
+exports.endSeasonNow = exports.updateSeasonTarget = exports.disableClubSeasons = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -4911,8 +4911,24 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
                         scoreTotal: scoreRanked.length,
                         at: Date.now(),
                     }, { merge: true });
-                    // Remember this evening's score for next evening's delta.
-                    standingBatch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), { lastEveningScore: score }, { merge: true });
+                    // Remember this evening's score for next evening's delta, and
+                    // fold it into the season's running mean.
+                    //
+                    // The mean is why the sum exists. The MVP title is "highest AVERAGE
+                    // evening score this season" — and nothing was accumulating it:
+                    // `lastEveningScore` is only the most recent one and `bestEvening`
+                    // only the high-water mark, so the title was literally not
+                    // computable from anything we stored. Two increments, once per
+                    // player per evening.
+                    //
+                    // Both are season-scoped (they are in PLAYER_SEASON_FIELDS), so a
+                    // new season starts the average from nothing rather than dragging
+                    // a career of scores into it.
+                    standingBatch.set(db.collection('communityPlayerStats').doc(`${gid}__${uid}`), {
+                        lastEveningScore: score,
+                        eveningScoreSum: admin.firestore.FieldValue.increment(score),
+                        eveningScoreCount: admin.firestore.FieldValue.increment(1),
+                    }, { merge: true });
                 }
                 // Fold this evening's kings into the community benchmark (atomic
                 // increments, so concurrent finishes in the same group don't clobber).
@@ -10574,6 +10590,7 @@ exports.cronEvery60Min = (0, scheduler_1.onSchedule)({ schedule: 'every 60 minut
     await runSweep('holidayGameNotices', runHolidayGameNotices);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
     await runSweep('clubActivity', runClubActivityIfDue);
+    await runSweep('seasonRollovers', runSeasonRollovers);
 });
 /**
  * Which of my friends are in these clubs.
@@ -11815,10 +11832,29 @@ async function clubIsQuiet(groupId) {
 /** Finished rounds credited to the club. From the sealed-evening counter, not
  *  a query over games: deleting a game decrements nothing, so a live count
  *  drifts below the rounds that were actually credited. */
-async function completedRoundsOf(groupId) {
+/** The club's ALL-TIME sealed evenings. Never resets. */
+async function sealedEveningsOf(groupId) {
     const rec = await db.collection('clubRecords').doc(groupId).get();
     const n = rec.data()?.eveningsSealed;
     return typeof n === 'number' && n > 0 ? n : 0;
+}
+/**
+ * Rounds credited to THIS season.
+ *
+ * The counter behind it is all-time and never resets, so a season has to
+ * remember where it started. `roundsAtStart` is stamped when the season opens:
+ * 0 when the season continues the club's history (season 1 of an existing club
+ * owns everything played so far — that is what "continue" means), and the
+ * all-time count at that moment for every season opened after a close.
+ *
+ * Without the offset a rounds target is broken for every season after the
+ * first: season 2 of a club with 200 sealed evenings would be measured against
+ * 200 and be "due" the instant it opened, over and over.
+ */
+async function completedRoundsOf(groupId, roundsAtStart) {
+    const all = await sealedEveningsOf(groupId);
+    const base = typeof roundsAtStart === 'number' && roundsAtStart > 0 ? roundsAtStart : 0;
+    return Math.max(0, all - base);
 }
 async function requireClubAdmin(groupId, uid) {
     if (typeof groupId !== 'string' || !groupId) {
@@ -11857,6 +11893,105 @@ function addMonthsClampedServer(from, months) {
  * otherwise be handed a deadline eighteen months past and season 1 would close
  * on save, which is the exact opposite of "continue".
  */
+/**
+ * Close every season that has reached its target.
+ *
+ * Until this existed, a season's finish line was a decoration: both cadences
+ * could be set, shown and moved, and nothing ever acted on them — only the
+ * admin's manual "end now" actually closed anything.
+ *
+ * Three rules, and each of them is here because the alternative is worse:
+ *
+ *   DUE, not overdue. A date target fires the first hour after it passes; a
+ *   rounds target the first hour after the count is reached. There is no grace
+ *   period — a season that has met its terms is over.
+ *
+ *   QUIET, or wait. `clubIsQuiet` is checked per club and a busy one is simply
+ *   skipped until the next run. Closing across a live evening splits it between
+ *   two seasons: each mini-game commits separately, so the first rounds land in
+ *   the old season and the rest in the new. Waiting an hour costs nothing;
+ *   splitting an evening cannot be undone.
+ *
+ *   ONE AT A TIME, and never fatally. Each club is wrapped on its own, because
+ *   a single club whose close throws must not stop the sweep from reaching the
+ *   others. `closeSeason` is idempotent on its own (the archive is a create()),
+ *   so a retry after a partial failure cannot double-archive.
+ */
+async function runSeasonRollovers() {
+    const now = Date.now();
+    const clubs = await db
+        .collection('groups')
+        .where('seasons.enabled', '==', true)
+        .get();
+    if (clubs.empty)
+        return;
+    let closed = 0;
+    let waiting = 0;
+    for (const doc of clubs.docs) {
+        const g = doc.data();
+        const seasons = g.seasons;
+        if (!seasons?.enabled || !seasons.currentId)
+            continue;
+        const cadence = seasons.cadence ?? {};
+        try {
+            const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
+            const due = cadence.type === 'rounds'
+                ? typeof cadence.targetRounds === 'number' &&
+                    cadence.targetRounds > 0 &&
+                    played >= cadence.targetRounds
+                : typeof cadence.endsAt === 'number' &&
+                    cadence.endsAt > 0 &&
+                    now >= cadence.endsAt;
+            if (!due)
+                continue;
+            const quiet = await clubIsQuiet(doc.id);
+            if (!quiet.ok) {
+                // Not a failure. The club is mid-evening; it will be due next hour too.
+                waiting += 1;
+                console.log('[season] due but busy — waiting', doc.id, quiet.blocker);
+                continue;
+            }
+            const seasonId = seasons.currentId;
+            const seasonNo = seasons.currentNo ?? 1;
+            const result = await (0, seasonRollover_1.closeSeason)({
+                db,
+                groupId: doc.id,
+                seasonId,
+                seasonNo,
+                startsAt: seasons.startedAt ?? 0,
+                completedRounds: played,
+                originalTarget: cadence,
+                now,
+            });
+            const nextNo = seasonNo + 1;
+            await doc.ref.set({
+                seasons: {
+                    currentNo: nextNo,
+                    currentId: `s${nextNo}`,
+                    startedAt: now,
+                    roundsAtStart: await sealedEveningsOf(doc.id),
+                    targetHistory: [],
+                    count: (seasons.count ?? 0) + 1,
+                },
+            }, { merge: true });
+            if (result.archived) {
+                await announceSeasonClosed({
+                    groupId: doc.id,
+                    groupName: g.name ?? '',
+                    seasonId,
+                    seasonNo,
+                });
+            }
+            closed += 1;
+        }
+        catch (err) {
+            console.error('[season] rollover failed', doc.id, err);
+        }
+    }
+    if (closed || waiting) {
+        console.log(`[season] rollovers: ${closed} closed, ${waiting} waiting`);
+    }
+}
 exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
@@ -11937,6 +12072,9 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
             currentNo: no,
             currentId: `s${no}`,
             startedAt: now,
+            // "Continue" means this season owns the club's whole history, so it
+            // counts from zero — and `played` above is already its own count.
+            roundsAtStart: 0,
             cadence,
             targetHistory: [],
             count: closedSoFar,
@@ -11956,6 +12094,31 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
  * visibility, not prevention: a change everyone can see is a management
  * decision, and a quiet one is not.
  */
+/**
+ * Switch seasons off for a club.
+ *
+ * Deliberately does NOT close the running season. Closing is an archive plus a
+ * table reset plus a set of titles, and none of that is what "I don't want this
+ * feature" means — a manager who wants the season sealed has an action that
+ * says so, with its own confirmation. Here the club simply goes back to one
+ * table that never resets.
+ *
+ * Everything else on the block is left in place, `count` included, so
+ * re-enabling continues the numbering: a club that ran seasons 1-3 opens
+ * season 4, never season 1 again.
+ */
+exports.disableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {});
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const seasons = group.seasons;
+    if (!seasons?.enabled)
+        return { ok: true, alreadyOff: true };
+    await ref.set({ seasons: { enabled: false } }, { merge: true });
+    return { ok: true };
+});
 exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
@@ -11968,7 +12131,7 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         throw new https_1.HttpsError('failed-precondition', 'seasons are off');
     }
     const now = Date.now();
-    const played = await completedRoundsOf(groupId);
+    const played = await completedRoundsOf(groupId, seasons.roundsAtStart);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
     let next;
     if (type === 'rounds') {
@@ -12039,7 +12202,7 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
         seasonId: seasons.currentId,
         seasonNo: seasons.currentNo ?? 1,
         startsAt: seasons.startedAt ?? 0,
-        completedRounds: await completedRoundsOf(groupId),
+        completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart),
         endedEarly: true,
         closedBy: uid,
         closedByName: who.data()?.name ?? '',
@@ -12053,6 +12216,7 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
             currentNo: nextNo,
             currentId: `s${nextNo}`,
             startedAt: now,
+            roundsAtStart: await sealedEveningsOf(groupId),
             targetHistory: [],
             count: (seasons.count ?? 0) + 1,
         },

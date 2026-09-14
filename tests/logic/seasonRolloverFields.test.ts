@@ -44,9 +44,10 @@ const MUST_SURVIVE = [
 describe('the reset list is exactly the competition', () => {
   it('zeroes the player counters a season owns', () => {
     expect(PLAYER.sort()).toEqual([
-      'asRounds', 'assists', 'cleanSheets', 'csRounds', 'games', 'goals',
-      'losses', 'ownGoals', 'penConceded', 'penFaced', 'penMissed',
-      'penSaved', 'penScored', 'penTaken', 'rounds', 'ties', 'wins',
+      'asRounds', 'assists', 'cleanSheets', 'csRounds', 'eveningScoreCount',
+      'eveningScoreSum', 'games', 'goals', 'losses', 'ownGoals', 'penConceded',
+      'penFaced', 'penMissed', 'penSaved', 'penScored', 'penTaken', 'rounds',
+      'ties', 'wins',
     ]);
   });
 
@@ -69,6 +70,19 @@ describe('the reset list is exactly the competition', () => {
     // clean sheets by a whole career, and vice versa.
     expect(PLAYER.includes('cleanSheets')).toBe(PLAYER.includes('csRounds'));
     expect(PLAYER.includes('assists')).toBe(PLAYER.includes('asRounds'));
+  });
+
+  it('resets the evening-score mean as a PAIR', () => {
+    // The MVP title is the highest average evening score this season. Keeping
+    // the sum but resetting the count — or the reverse — yields a number that
+    // is not an average of anything.
+    expect(PLAYER.includes('eveningScoreSum')).toBe(
+      PLAYER.includes('eveningScoreCount'),
+    );
+    // And `lastEveningScore` is NOT part of it: it is next evening's delta
+    // baseline, and zeroing it would announce the first evening of a season as
+    // an enormous improvement over nothing.
+    expect(PLAYER).not.toContain('lastEveningScore');
   });
 
   it('resets every penalty counter together', () => {
