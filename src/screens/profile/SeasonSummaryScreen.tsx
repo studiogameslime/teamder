@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -92,8 +93,11 @@ function PeerRow({
 export function SeasonSummaryScreen() {
   const params = useRoute<Params>().params;
   const groupId = params?.groupId ?? '';
-  const seasonId = params?.seasonId;
   const currentUser = useUserStore((s) => s.currentUser);
+  // Which season is on screen. Starts at whatever opened the screen — the club
+  // card sends none (meaning "the one running"), the end-of-season push sends
+  // the one that just closed — and the picker moves it from there.
+  const [seasonId, setSeasonId] = useState<string | undefined>(params?.seasonId);
 
   const [model, setModel] = useState<SeasonSummaryModel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +177,37 @@ export function SeasonSummaryScreen() {
             <Text style={styles.heroClosed}>{he.seasonClosedBadge}</Text>
           ) : null}
         </View>
+
+        {/* Seasons never mix: each closed one is its own sealed record and
+            nothing is ever summed across them. This is where that becomes
+            visible — one club has had more than one season, and switching
+            between them replaces every number on the screen. */}
+        {model.available.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {model.available.map((c) => {
+              const active = c.id === model.seasonId;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setSeasonId(c.closed ? c.id : undefined)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {c.closed
+                      ? he.seasonNumberLabel(c.no)
+                      : he.seasonChipCurrent(c.no)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
 
         {!me.hasData ? (
           <View style={styles.card}>
@@ -301,6 +336,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
   hero: { gap: spacing.xs },
+  // First child renders rightmost under forceRTL, so the running season — the
+  // first entry — sits on the right where reading starts.
+  chipRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.caption, color: colors.text },
+  chipTextActive: { color: colors.surface, fontWeight: '700' },
   heroSeason: {
     ...typography.h2,
     color: colors.text,

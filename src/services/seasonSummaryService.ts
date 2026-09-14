@@ -23,6 +23,14 @@ import {
 } from '@/utils/seasonPersonal';
 import type { GroupSeasons, UserId } from '@/types';
 
+/** One season the club has, for the picker. */
+export interface SeasonChoice {
+  no: number;
+  id: string;
+  /** False for the one still running. */
+  closed: boolean;
+}
+
 export interface SeasonSummaryModel {
   groupId: string;
   groupName: string;
@@ -37,6 +45,16 @@ export interface SeasonSummaryModel {
   me: PersonalSeason;
   /** Display names for the handful of people the summary actually names. */
   names: Record<string, string>;
+  /**
+   * Every season this club has had, newest first.
+   *
+   * Derivable without a query: `count` seasons have closed, so they are s1..sN,
+   * and `currentNo` is the one running. Seasons are wholly separate — each
+   * closed one is its own frozen document and nothing is ever summed across
+   * them — so the screen needs a way to move between them or the separation is
+   * real but invisible.
+   */
+  available: SeasonChoice[];
 }
 
 const num = (v: unknown): number =>
@@ -135,6 +153,22 @@ async function resolveNames(
   return out;
 }
 
+
+/** The club's seasons, newest first. `count` have closed; `currentNo` runs. */
+function seasonChoices(seasons: GroupSeasons): SeasonChoice[] {
+  const out: SeasonChoice[] = [
+    { no: seasons.currentNo, id: seasons.currentId, closed: false },
+  ];
+  for (let no = seasons.count; no >= 1; no -= 1) {
+    // A club that enabled, disabled and re-enabled keeps numbering, so the
+    // current season's number can be higher than count + 1. Skip anything that
+    // would duplicate the running one.
+    if (no === seasons.currentNo) continue;
+    out.push({ no, id: `s${no}`, closed: true });
+  }
+  return out;
+}
+
 export interface LoadSeasonArgs {
   groupId: string;
   userId: UserId;
@@ -153,7 +187,7 @@ export const seasonSummaryService = {
     seasonId,
   }: LoadSeasonArgs): Promise<SeasonSummaryModel | null> {
     if (!groupId || !userId) return null;
-    if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId);
+    if (USE_MOCK_DATA) return mockSeasonSummary(groupId, userId, seasonId);
     try {
       const { db } = getFirebase();
       const groupSnap = await getDoc(doc(db, 'groups', groupId));
@@ -199,6 +233,7 @@ export const seasonSummaryService = {
           completedRounds: num(d.completedRounds),
           me,
           names: await resolveNames(namedUids(me), frozen),
+          available: seasonChoices(seasons),
         };
       }
 
@@ -232,6 +267,7 @@ export const seasonSummaryService = {
         completedRounds: num(clubSnap.data()?.rounds),
         me,
         names: await resolveNames(namedUids(me), new Map()),
+        available: seasonChoices(seasons),
       };
     } catch (err) {
       logError('seasonSummaryLoad', err, { groupId, userId, seasonId: seasonId ?? '' });
@@ -240,30 +276,58 @@ export const seasonSummaryService = {
   },
 };
 
-/** A believable season so the card can be worked on without a live club. */
-function mockSeasonSummary(groupId: string, userId: UserId): SeasonSummaryModel {
-  const players: SeasonPlayerRow[] = [
-    { userId, goals: 14, assists: 9, rounds: 41, wins: 24, losses: 13, ties: 4, cleanSheets: 11, csRounds: 41, ownGoals: 1, penTaken: 4, penScored: 3 },
-    { userId: 'u_dani', goals: 19, assists: 4, rounds: 44, wins: 26, losses: 14, ties: 4, cleanSheets: 9, csRounds: 44 },
-    { userId: 'u_roi', goals: 6, assists: 12, rounds: 38, wins: 18, losses: 16, ties: 4, cleanSheets: 12, csRounds: 38 },
-    { userId: 'u_omer', goals: 11, assists: 7, rounds: 30, wins: 15, losses: 12, ties: 3, cleanSheets: 7, csRounds: 30 },
-  ];
-  const pairs: SeasonPairRow[] = [
-    { a: userId, b: 'u_roi', sameTeam: 23, against: 18, winsTogether: 15, lossesTogether: 6, cleanSheetsTogether: 8, winsA: 11, winsB: 6, assistsAToB: 4, assistsBToA: 6 },
-    { a: userId, b: 'u_dani', sameTeam: 9, against: 32, winsTogether: 5, lossesTogether: 3, cleanSheetsTogether: 2, winsA: 13, winsB: 18, assistsAToB: 1, assistsBToA: 2 },
-    { a: userId, b: 'u_omer', sameTeam: 14, against: 15, winsTogether: 9, lossesTogether: 4, cleanSheetsTogether: 5, winsA: 10, winsB: 4, assistsAToB: 5, assistsBToA: 1 },
-  ];
+/**
+ * A believable season so the card can be worked on without a live club.
+ *
+ * TWO of them, and deliberately different: seasons are wholly separate records
+ * and the picker has to be seen replacing every number on the screen. A mock
+ * that answered the same thing for both would make a broken switch look fine.
+ */
+function mockSeasonSummary(
+  groupId: string,
+  userId: UserId,
+  seasonId?: string,
+): SeasonSummaryModel {
+  const past = seasonId === 's1';
+  const players: SeasonPlayerRow[] = past
+    ? [
+        { userId, goals: 6, assists: 3, rounds: 22, wins: 9, losses: 11, ties: 2, cleanSheets: 4, csRounds: 22, ownGoals: 0, penTaken: 1, penScored: 0 },
+        { userId: 'u_dani', goals: 8, assists: 2, rounds: 24, wins: 13, losses: 9, ties: 2, cleanSheets: 6, csRounds: 24 },
+        { userId: 'u_roi', goals: 2, assists: 9, rounds: 20, wins: 11, losses: 7, ties: 2, cleanSheets: 5, csRounds: 20 },
+        { userId: 'u_omer', goals: 4, assists: 1, rounds: 12, wins: 5, losses: 6, ties: 1, cleanSheets: 2, csRounds: 12 },
+      ]
+    : [
+        { userId, goals: 14, assists: 9, rounds: 41, wins: 24, losses: 13, ties: 4, cleanSheets: 11, csRounds: 41, ownGoals: 1, penTaken: 4, penScored: 3 },
+        { userId: 'u_dani', goals: 19, assists: 4, rounds: 44, wins: 26, losses: 14, ties: 4, cleanSheets: 9, csRounds: 44 },
+        { userId: 'u_roi', goals: 6, assists: 12, rounds: 38, wins: 18, losses: 16, ties: 4, cleanSheets: 12, csRounds: 38 },
+        { userId: 'u_omer', goals: 11, assists: 7, rounds: 30, wins: 15, losses: 12, ties: 3, cleanSheets: 7, csRounds: 30 },
+      ];
+  const pairs: SeasonPairRow[] = past
+    ? [
+        { a: userId, b: 'u_dani', sameTeam: 15, against: 7, winsTogether: 7, lossesTogether: 6, cleanSheetsTogether: 3, winsA: 2, winsB: 5, assistsAToB: 2, assistsBToA: 1 },
+        { a: userId, b: 'u_roi', sameTeam: 4, against: 16, winsTogether: 2, lossesTogether: 2, cleanSheetsTogether: 1, winsA: 6, winsB: 9, assistsAToB: 1, assistsBToA: 3 },
+        { a: userId, b: 'u_omer', sameTeam: 6, against: 5, winsTogether: 3, lossesTogether: 2, cleanSheetsTogether: 1, winsA: 3, winsB: 2, assistsAToB: 0, assistsBToA: 1 },
+      ]
+    : [
+        { a: userId, b: 'u_roi', sameTeam: 23, against: 18, winsTogether: 15, lossesTogether: 6, cleanSheetsTogether: 8, winsA: 11, winsB: 6, assistsAToB: 4, assistsBToA: 6 },
+        { a: userId, b: 'u_dani', sameTeam: 9, against: 32, winsTogether: 5, lossesTogether: 3, cleanSheetsTogether: 2, winsA: 13, winsB: 18, assistsAToB: 1, assistsBToA: 2 },
+        { a: userId, b: 'u_omer', sameTeam: 14, against: 15, winsTogether: 9, lossesTogether: 4, cleanSheetsTogether: 5, winsA: 10, winsB: 4, assistsAToB: 5, assistsBToA: 1 },
+      ];
   const me = buildPersonalSeason({ me: userId, players, pairs });
   return {
     groupId,
     groupName: 'שכחת שושי',
-    seasonId: 's1',
-    seasonNo: 1,
-    startsAt: Date.now() - 1000 * 60 * 60 * 24 * 150,
-    endsAt: null,
-    closed: false,
-    completedRounds: 48,
+    seasonId: past ? 's1' : 's2',
+    seasonNo: past ? 1 : 2,
+    startsAt: Date.now() - 1000 * 60 * 60 * 24 * (past ? 420 : 150),
+    endsAt: past ? Date.now() - 1000 * 60 * 60 * 24 * 160 : null,
+    closed: past,
+    completedRounds: past ? 26 : 48,
     me,
     names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
+    available: [
+      { no: 2, id: 's2', closed: false },
+      { no: 1, id: 's1', closed: true },
+    ],
   };
 }

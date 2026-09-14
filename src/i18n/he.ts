@@ -2051,6 +2051,7 @@ export const he = {
   seasonNow: 'עכשיו',
   seasonNumberLabel: (no: number) => `עונה ${no}`,
   seasonClosedBadge: 'העונה הסתיימה',
+  seasonChipCurrent: (no: number) => `עונה ${no} · עכשיו`,
   seasonSummaryUnavailable:
     'אין עדיין סיכום עונה. המועדון הזה לא מנהל עונות, או שהעונה עוד לא נפתחה.',
   seasonSummaryNoRounds: 'עוד לא שיחקת משחקון בעונה הזאת, אז אין מה לסכם. בוא נשחק.',
