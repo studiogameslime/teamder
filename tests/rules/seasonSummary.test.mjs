@@ -34,6 +34,10 @@ before(async () => {
     await setDoc(doc(db, 'seasonSummary', `${GID}__s1`), {
       groupId: GID, seasonId: 's1', no: 1, players: {}, totals: {},
     });
+    await setDoc(doc(db, 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`), {
+      groupId: GID, groupName: 'club', seasonId: 's1', seasonNo: 1,
+      titleKey: 'topScorer', value: 31, at: 1,
+    });
   });
 });
 after(async () => { await env.cleanup(); });
@@ -79,5 +83,58 @@ describe('nobody writes', () => {
     await assert.rejects(() => setDoc(
       doc(env.authenticatedContext('admin').firestore(), 'seasonSummary', `${GID}__s1`),
       { groupId: GID, tampered: true }));
+  });
+});
+
+// ── The titles themselves ────────────────────────────────────────────────
+//
+// Deliberately wider than the season document they came from. A title is a
+// boast worn on a public profile: it says a club name, a number and a season,
+// and it hangs on a screen that is already open to every signed-in user.
+// Binding it to club membership instead would mean a player could not show a
+// title to anyone outside the club that gave it — which is the opposite of
+// what a title is for.
+//
+// Writing is a different matter entirely.
+describe('a season title is public, like the profile it hangs on', () => {
+  test('a club member reads it', async () => {
+    const t = await getDoc(doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`));
+    assert.equal(t.exists(), true);
+    assert.equal(t.data().value, 31);
+  });
+
+  test('and so does someone outside the club', async () => {
+    const t = await getDoc(doc(asOutsider(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`));
+    assert.equal(t.exists(), true);
+  });
+
+  test('a player can list their own titles', async () => {
+    const snap = await getDocs(collection(asMember(), 'users', MEMBER, 'seasonTitles'));
+    assert.equal(snap.size, 1);
+  });
+
+  test('and list somebody else\'s, which is the point of a boast', async () => {
+    const snap = await getDocs(collection(asOutsider(), 'users', MEMBER, 'seasonTitles'));
+    assert.equal(snap.size, 1);
+  });
+});
+
+describe('but nobody awards themselves a title', () => {
+  test('not on their own profile', async () => {
+    await assert.rejects(() => setDoc(
+      doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s2__topScorer`),
+      { groupId: GID, titleKey: 'topScorer', value: 99 }));
+  });
+
+  test('not on anybody else\'s', async () => {
+    await assert.rejects(() => setDoc(
+      doc(asOutsider(), 'users', MEMBER, 'seasonTitles', `${GID}__s2__mvp`),
+      { groupId: GID, titleKey: 'mvp', value: 10 }));
+  });
+
+  test('and not by overwriting one they really did win', async () => {
+    await assert.rejects(() => setDoc(
+      doc(asMember(), 'users', MEMBER, 'seasonTitles', `${GID}__s1__topScorer`),
+      { groupId: GID, titleKey: 'topScorer', value: 999 }));
   });
 });

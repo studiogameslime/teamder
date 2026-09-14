@@ -1969,6 +1969,20 @@ service cloud.firestore {
     match /users/{uid}/chatSettings/{chatKey} {
       allow read, write: if isSelf(uid);
     }
+    // ── /users/{uid}/seasonTitles/{id} — the titles a player has won ─────
+    // Readable by any signed-in user, exactly like the profile they hang on:
+    // a title is a public boast, and the profile screen that shows it is
+    // already open to everyone. Nothing here identifies anybody else — the
+    // club name is frozen text and the value is a number.
+    //
+    // WRITE IS SERVER-ONLY. These are decided by closeSeason from the sealed
+    // numbers; a client that could write them could award itself the league.
+    // The Admin SDK bypasses these rules, so denying outright costs nothing.
+    match /users/{uid}/seasonTitles/{titleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // Per-user block list. Self-only — used client-side to hide a blocked
     // user's messages and (store-safety) to stop seeing their content.
     match /users/{uid}/blocked/{blockedUid} {
