@@ -13,7 +13,7 @@
 // No new collection needed — everything here is derived client-side.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -44,7 +44,7 @@ import { colors, spacing, typography, radius, RTL_LABEL_ALIGN } from '@/theme';
 import { ChemistrySection } from '@/components/chemistry/ChemistrySection';
 import { he } from '@/i18n/he';
 import type { CommunitiesStackParamList } from '@/navigation/CommunitiesStack';
-import type { User } from '@/types';
+import type { GroupSeasons, User } from '@/types';
 
 type Params = RouteProp<CommunitiesStackParamList, 'CommunityStats'>;
 type Resolved = Pick<User, 'id' | 'name' | 'avatarId' | 'photoUrl'>;
@@ -106,8 +106,15 @@ function leaderBy(
 }
 
 export function CommunityStatsScreen() {
-  const nav = useNavigation();
+  const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const { groupId } = useRoute<Params>().params;
+  // Which season these numbers belong to, when the club runs them.
+  //
+  // Without this the table simply RESETS one day and says nothing: a member
+  // opens the club, finds their goals gone, and has no way to learn that a
+  // season closed. The numbers on this screen are the running season's — that
+  // is what a season IS — so the screen has to say so.
+  const [seasons, setSeasons] = useState<GroupSeasons | undefined>(undefined);
   const [champ, setChamp] = useState<ChampData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [duo, setDuo] = useState<DeadlyDuo | null>(null);
@@ -135,6 +142,7 @@ export function CommunityStatsScreen() {
       if (s) setAttended(s.attendedByUser ?? {});
       if (g) {
         setSubtitle(g.name);
+        setSeasons(g.seasons);
         setMemberIds(g.playerIds ?? []);
         setClubMeta({
           members: g.playerIds?.length ?? 0,
@@ -339,6 +347,26 @@ export function CommunityStatsScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* The table below belongs to ONE season. Said out loud, at the top,
+              because otherwise the numbers reset one day with no explanation. */}
+          {seasons?.enabled ? (
+            <Pressable
+              style={styles.seasonBanner}
+              onPress={() =>
+                (seasons.count ?? 0) > 0
+                  ? nav.navigate('SeasonHistory', { groupId })
+                  : undefined
+              }
+              accessibilityRole={(seasons.count ?? 0) > 0 ? 'button' : 'text'}
+            >
+              <Text style={styles.seasonBannerText}>
+                {he.communityStatsSeasonBanner(seasons.currentNo ?? 1)}
+              </Text>
+              {(seasons.count ?? 0) > 0 ? (
+                <Text style={styles.seasonBannerLink}>{he.seasonHistoryCta}</Text>
+              ) : null}
+            </Pressable>
+          ) : null}
           {/* ── המצטיין (מלך השערים) — הגיבור בראש המסך ── */}
           {derived.topScorer && derived.totalGoals > 0 ? (
             <AppearItem index={0}>
@@ -748,6 +776,24 @@ function FunDonutRow({
 }
 
 const styles = StyleSheet.create({
+  seasonBanner: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: 2,
+  },
+  seasonBannerText: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  seasonBannerLink: {
+    ...typography.caption,
+    color: colors.primary,
+    textAlign: RTL_LABEL_ALIGN,
+  },
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.xl },
   loadingText: { ...typography.body, color: colors.textMuted },

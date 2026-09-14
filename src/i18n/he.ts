@@ -2076,6 +2076,8 @@ export const he = {
     penaltyKeeper: 'שוער הפנדלים',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
+  communityStatsSeasonBanner: (no: number) =>
+    `הטבלה מציגה את עונה ${no} — העונה שרצה עכשיו. עונות שהסתיימו נשמרות בנפרד.`,
   seasonHistoryTitle: 'עונות קודמות',
   seasonHistoryCta: 'עונות קודמות ותארים',
   seasonHistoryEmpty:
