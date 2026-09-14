@@ -2076,6 +2076,11 @@ export const he = {
     penaltyKeeper: 'שוער הפנדלים',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
+  seasonTitlesShelfTitle: 'תארי עונה',
+  seasonTitlesShelfCount: (n: number) =>
+    n === 1 ? 'תואר אחד' : `${n} תארים`,
+  seasonTitleWhere: (club: string, no: number) =>
+    club ? `${club} · עונה ${no}` : `עונה ${no}`,
   seasonSectionTitles: 'התארים שלי בעונה',
   seasonTitleSharedWith: (n: number) =>
     n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,

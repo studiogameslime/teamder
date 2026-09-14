@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { AchievementBadge } from '@/components/AchievementBadge';
+import { SeasonTitlesShelf } from '@/components/profile/SeasonTitlesShelf';
 import { AchievementCelebration } from '@/components/AchievementCelebration';
 import { AppearItem } from '@/components/anim/AppearItem';
 import { SoccerBallLoader } from '@/components/SoccerBallLoader';
@@ -154,6 +155,11 @@ export function AchievementsScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScreenHeader title={he.profileSectionMyAchievements} />
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Titles above the achievements grid, and only when there are any.
+            An achievement is granted for a milestone; a title was won off
+            other people, once, in a competition with an end — so it leads. */}
+        {localUser?.id ? <SeasonTitlesShelf userId={localUser.id} /> : null}
+
         <View style={styles.headerRow}>
           <Text style={styles.title}>{he.achievementsTitle}</Text>
           <Text style={styles.count}>
