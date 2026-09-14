@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
+exports.endSeasonNow = exports.updateSeasonTarget = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -64,6 +64,8 @@ const statBatch_1 = require("./statBatch");
 const commitProtocol_1 = require("./commitProtocol");
 const eveningScoreCore_1 = require("./eveningScoreCore");
 const fillerRules_1 = require("./fillerRules");
+const seasonRollover_1 = require("./seasonRollover");
+const roundSides_1 = require("./roundSides");
 const https_1 = require("firebase-functions/v2/https");
 const tasks_1 = require("firebase-functions/v2/tasks");
 const functions_1 = require("firebase-admin/functions");
@@ -10696,86 +10698,31 @@ exports.commitRoundStats = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CH
     const MAX_GOALS_PER_ROUND = 60;
     const cappedGoals = (goals ?? []).slice(0, MAX_GOALS_PER_ROUND);
     const arrivals = game.arrivals ?? {};
-    const seen = new Set();
-    const A = [];
-    const B = [];
-    for (const id of sideA ?? []) {
-        if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) {
-            seen.add(id);
-            A.push(id);
-        }
+    // Sides + the scorer-restoration rule, in ./roundSides so they can be
+    // tested rather than trusted — see that file for why a substituted scorer
+    // is put back rather than dropped.
+    const { A, B, restored } = (0, roundSides_1.buildRoundSides)({
+        sideA: sideA ?? [],
+        sideB: sideB ?? [],
+        goals: cappedGoals,
+        roster,
+        arrivals,
+        isReal,
+    });
+    if (restored.length) {
+        console.log(`[round] restored ${restored.length} player(s) who scored or assisted ` +
+            `and were no longer on a side: ${restored.join(', ')}`);
     }
-    for (const id of sideB ?? []) {
-        if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) {
-            seen.add(id);
-            B.push(id);
-        }
-    }
-    // Bound the side sizes BEFORE building the batch. Per round this batch writes
-    // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
-    // per-player tallies + the latch — all in ONE atomic batch. Worst case at
-    // n-per-side ≈ 2n² + ~15n (the clean-sheet lifetime write adds up to 2n on a
-    // 0:0); that crosses Firestore's 500-op cap around n≈13,
-    // where commit() throws and — because the committedRounds latch is in the
-    // SAME batch — every retry re-fails identically (permanent loss of the
-    // round's stats). Real football tops out at 11-a-side, so 11 covers every
-    // legitimate format with worst-case ≈ 400 ops (safe margin), and a larger
-    // (unreal / forged) round fails fast with a clear error instead of a silent
-    // batch overflow. [Was 20 — that allowed the overflow.]
+    // Bound the sides before anything is written. This batch holds
+    // against-pairs (|A|×|B|) + same-team pairs + per-player tallies + the
+    // latch, roughly 2n² + 15n, which crosses Firestore's 500-op ceiling
+    // around n≈13 — and because the idempotency latch is IN the batch, a
+    // commit that overflows cannot be retried past. Checked AFTER the
+    // restoration, which is the only step that can grow a side.
     const MAX_SIDE = 11;
     if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
         throw new https_1.HttpsError('invalid-argument', `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`);
     }
-    // ── Scoring is proof that you played ────────────────────────────────
-    //
-    // Goals and assists are credited only to players on a playing side, so
-    // that nobody can collect a goal while being denied the matching "round
-    // played" (B12/B13) — the per-round stats stay internally consistent.
-    //
-    // But the sides are the split as it stands AT ROUND END, and the goal log
-    // is the whole round. A player who scored and then went home, was swapped
-    // out, or was moved between teams is missing from both sides — and the
-    // guard silently threw his goal away. Reported from production: "שחקן ששם
-    // גול או בישול ולא נמצא בקבוצות לא מקבל את זה לסטטיסטיקה האישית שלו".
-    //
-    // Dropping the goal was the wrong half to give up. If a real, rostered
-    // player scored or assisted in this round then he was on the pitch for it,
-    // so he is PUT BACK on a side rather than erased — which credits the goal
-    // AND the round, and keeps the invariant that produced the guard.
-    //
-    // Which side: `team` on a goal is the side that got the point. A normal
-    // goal is scored by that side; an OWN goal is scored by the other one. An
-    // assister is always the scorer's team-mate. Goals with no `team` (legacy
-    // payloads) can't place anyone, so they still can't resurrect a player.
-    const canRejoin = (id) => typeof id === 'string' &&
-        isReal(id) &&
-        roster.has(id) &&
-        arrivals[id] !== 'no_show' &&
-        !seen.has(id);
-    for (const g of cappedGoals) {
-        if (g.team !== 'A' && g.team !== 'B')
-            continue;
-        const scorerSide = g.ownGoal
-            ? g.team === 'A' ? B : A // own goal → scorer is on the CONCEDING side
-            : g.team === 'A' ? A : B;
-        if (canRejoin(g.scorerId)) {
-            seen.add(g.scorerId);
-            scorerSide.push(g.scorerId);
-        }
-        // The assister set up his own team's goal, so he shares the scorer's
-        // side — except on an own goal, which has no assist to credit.
-        if (!g.ownGoal && canRejoin(g.assisterId)) {
-            const side = g.team === 'A' ? A : B;
-            seen.add(g.assisterId);
-            side.push(g.assisterId);
-        }
-    }
-    // Re-check the bound AFTER the repair pass — it can only have grown the
-    // sides, and the batch guard downstream depends on this holding.
-    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
-        throw new https_1.HttpsError('invalid-argument', `side too large after restoring scorers (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`);
-    }
-    // The set of players who actually played this round (both on-field sides).
     const onField = new Set([...A, ...B]);
     // The game's registered guests (roster ids are `guest:<id>`). Used to
     // validate a guest actually belongs to THIS game before listing them / a
@@ -11763,4 +11710,286 @@ exports.onFeedbackCreated = (0, firestore_1.onDocumentCreated)('feedback/{feedba
         updatedAt: now,
         doneAt: 0,
     });
+});
+// ─── Seasons ─────────────────────────────────────────────────────────────
+//
+// Three admin actions and one sweep. Every one of them funnels into the same
+// `closeSeason`, because a second closing path is a second set of bugs and the
+// one that runs unattended is the one nobody would be watching.
+/** Is the club quiet enough to close a season right now? */
+async function clubIsQuiet(groupId) {
+    // Anything not finished/cancelled is still in play. Closing across a live
+    // evening splits it between two seasons: each mini-game commits separately,
+    // so rounds 1-3 land in the old season and 4-6 in the new, while the
+    // player's own career total — written in the same batch — keeps the whole.
+    const open = await db
+        .collection('games')
+        .where('groupId', '==', groupId)
+        .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
+        .limit(1)
+        .get();
+    if (!open.empty)
+        return { ok: false, blocker: 'openGame' };
+    // Finished but not yet sealed. Closing in that gap makes sealRoundSummary
+    // compare tonight against a table with no history, so every stat reads as a
+    // brand-new club record — and the summary is written once, so the wrong
+    // story is permanent.
+    const recent = await db
+        .collection('games')
+        .where('groupId', '==', groupId)
+        .where('status', '==', 'finished')
+        .orderBy('startsAt', 'desc')
+        .limit(3)
+        .get();
+    for (const g of recent.docs) {
+        const summary = await db.collection('roundSummaries').doc(g.id).get();
+        const lm = g.data().liveMatch;
+        // Only a game that was actually played gets sealed; one the cleanup
+        // finished without play never will, so it must not block forever.
+        if (!summary.exists && typeof lm?.startedAt === 'number') {
+            return { ok: false, blocker: 'unsealedGame' };
+        }
+    }
+    return { ok: true };
+}
+/** Finished rounds credited to the club. From the sealed-evening counter, not
+ *  a query over games: deleting a game decrements nothing, so a live count
+ *  drifts below the rounds that were actually credited. */
+async function completedRoundsOf(groupId) {
+    const rec = await db.collection('clubRecords').doc(groupId).get();
+    const n = rec.data()?.eveningsSealed;
+    return typeof n === 'number' && n > 0 ? n : 0;
+}
+async function requireClubAdmin(groupId, uid) {
+    if (typeof groupId !== 'string' || !groupId) {
+        throw new https_1.HttpsError('invalid-argument', 'groupId required');
+    }
+    const snap = await db.collection('groups').doc(groupId).get();
+    if (!snap.exists)
+        throw new https_1.HttpsError('not-found', 'club not found');
+    const g = snap.data();
+    if (!Array.isArray(g.adminIds) || !g.adminIds.includes(uid)) {
+        throw new https_1.HttpsError('permission-denied', 'admin only');
+    }
+    return { ref: snap.ref, group: g };
+}
+const MONTH_CHOICES = [1, 3, 6, 12];
+/** Add months, clamped to the last valid day. Mirrors src/utils/seasonLifecycle
+ *  so both sides agree; there is no month arithmetic anywhere else here. */
+function addMonthsClampedServer(from, months) {
+    const d = new Date(from);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return d.getTime();
+}
+/**
+ * Switch seasons on for a club.
+ *
+ * Everything already played becomes season 1. The admin then chooses whether
+ * to seal it now — history gets its champions and season 2 starts empty — or
+ * to carry season 1 on to a target.
+ *
+ * Carrying on is the subtle one: the target is measured from THIS MOMENT, not
+ * from the club's first game. A two-year-old club choosing six months would
+ * otherwise be handed a deadline eighteen months past and season 1 would close
+ * on save, which is the exact opposite of "continue".
+ */
+exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {});
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId;
+    const existing = group.seasons;
+    if (existing?.enabled) {
+        throw new https_1.HttpsError('failed-precondition', 'seasons already on');
+    }
+    const now = Date.now();
+    const played = await completedRoundsOf(groupId);
+    const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+    let cadence;
+    if (type === 'rounds') {
+        const asked = Number(data.targetRounds);
+        if (!Number.isFinite(asked) || asked <= 0) {
+            throw new https_1.HttpsError('invalid-argument', 'targetRounds required');
+        }
+        cadence = { type: 'rounds', targetRounds: Math.round(asked) };
+    }
+    else {
+        const months = MONTH_CHOICES.includes(Number(data.months))
+            ? Number(data.months)
+            : 6;
+        cadence = { type: 'date', endsAt: addMonthsClampedServer(now, months) };
+    }
+    // Numbering CONTINUES across the feature being switched off and on again:
+    // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
+    const closedSoFar = existing?.count ?? 0;
+    if (data.closeFirstNow === true) {
+        const quiet = await clubIsQuiet(groupId);
+        if (!quiet.ok) {
+            throw new https_1.HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+        }
+        const firstNo = closedSoFar + 1;
+        await (0, seasonRollover_1.closeSeason)({
+            db,
+            groupId,
+            seasonId: `s${firstNo}`,
+            seasonNo: firstNo,
+            startsAt: 0, // display resolves the club's first game
+            completedRounds: played,
+            // Assists were only collected from 21.06 and clean sheets from 17.08,
+            // while clubs predate both. The spec awards titles anyway and flags it.
+            partialData: true,
+            now,
+        });
+        await ref.set({
+            seasons: {
+                enabled: true,
+                currentNo: firstNo + 1,
+                currentId: `s${firstNo + 1}`,
+                startedAt: now,
+                cadence,
+                targetHistory: [],
+                count: firstNo,
+            },
+        }, { merge: true });
+        return { ok: true, closedSeasonNo: firstNo, currentNo: firstNo + 1 };
+    }
+    // Carry season 1 on. If the cadence counts rounds, the target has to be
+    // ahead of what has already been played or "continue" ends it on save.
+    if (cadence.type === 'rounds') {
+        cadence.targetRounds = Math.max(cadence.targetRounds ?? 0, played + 1);
+    }
+    const no = closedSoFar + 1;
+    await ref.set({
+        seasons: {
+            enabled: true,
+            currentNo: no,
+            currentId: `s${no}`,
+            startedAt: now,
+            cadence,
+            targetHistory: [],
+            count: closedSoFar,
+        },
+    }, { merge: true });
+    return { ok: true, currentNo: no, playedAlready: played };
+});
+/**
+ * Move the finish line of a running season.
+ *
+ * Allowed — an admin runs the club, and a season that lost six weeks to rain
+ * genuinely needs adjusting. Refused when the new target is already behind the
+ * club, in either cadence, because that is "end it now" in disguise and skips
+ * the preview and confirmation the real action has.
+ *
+ * Every change is recorded on the club and shown. The protection here is
+ * visibility, not prevention: a change everyone can see is a management
+ * decision, and a quiet one is not.
+ */
+exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {});
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId;
+    const seasons = group.seasons;
+    if (!seasons?.enabled) {
+        throw new https_1.HttpsError('failed-precondition', 'seasons are off');
+    }
+    const now = Date.now();
+    const played = await completedRoundsOf(groupId);
+    const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+    let next;
+    if (type === 'rounds') {
+        const asked = Math.round(Number(data.targetRounds));
+        if (!Number.isFinite(asked) || asked <= 0) {
+            throw new https_1.HttpsError('invalid-argument', 'targetRounds required');
+        }
+        if (asked <= played) {
+            throw new https_1.HttpsError('failed-precondition', `target ${asked} is not above the ${played} rounds already played`);
+        }
+        next = { type: 'rounds', targetRounds: asked };
+    }
+    else {
+        const months = MONTH_CHOICES.includes(Number(data.months))
+            ? Number(data.months)
+            : 6;
+        const endsAt = addMonthsClampedServer(now, months);
+        if (endsAt <= now) {
+            throw new https_1.HttpsError('failed-precondition', 'end date is in the past');
+        }
+        next = { type: 'date', endsAt };
+    }
+    const who = await db.collection('users').doc(uid).get();
+    const byName = who.data()?.name ?? '';
+    await ref.set({
+        seasons: {
+            cadence: next,
+            targetHistory: admin.firestore.FieldValue.arrayUnion({
+                at: now,
+                by: uid,
+                byName,
+                from: seasons.cadence ?? null,
+                to: next,
+            }),
+        },
+    }, { merge: true });
+    return { ok: true, cadence: next };
+});
+/**
+ * End the running season now.
+ *
+ * Deliberately its own action rather than a target change, so it can carry the
+ * guards a target change cannot: the club has to be quiet, and the client shows
+ * the admin exactly which titles are about to be awarded before they confirm.
+ * A manager who sees a name they did not expect stops on their own, and no
+ * amount of validation beats that.
+ */
+exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {});
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId;
+    const seasons = group.seasons;
+    if (!seasons?.enabled || !seasons.currentId) {
+        throw new https_1.HttpsError('failed-precondition', 'seasons are off');
+    }
+    const quiet = await clubIsQuiet(groupId);
+    if (!quiet.ok) {
+        throw new https_1.HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+    const now = Date.now();
+    const who = await db.collection('users').doc(uid).get();
+    const result = await (0, seasonRollover_1.closeSeason)({
+        db,
+        groupId,
+        seasonId: seasons.currentId,
+        seasonNo: seasons.currentNo ?? 1,
+        startsAt: seasons.startedAt ?? 0,
+        completedRounds: await completedRoundsOf(groupId),
+        endedEarly: true,
+        closedBy: uid,
+        closedByName: who.data()?.name ?? '',
+        originalTarget: seasons.cadence,
+        now,
+    });
+    // The next season inherits the same rules; the admin may change them.
+    const nextNo = (seasons.currentNo ?? 1) + 1;
+    await ref.set({
+        seasons: {
+            currentNo: nextNo,
+            currentId: `s${nextNo}`,
+            startedAt: now,
+            targetHistory: [],
+            count: (seasons.count ?? 0) + 1,
+        },
+    }, { merge: true });
+    return { ok: true, ...result, closedNo: seasons.currentNo ?? 1 };
 });

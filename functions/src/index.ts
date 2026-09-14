@@ -33,6 +33,7 @@ import { commitRoundInOrder } from './commitProtocol';
 import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
 import { closeSeason } from './seasonRollover';
+import { buildRoundSides } from './roundSides';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
@@ -13003,26 +13004,29 @@ export const commitRoundStats = onCall(
     const MAX_GOALS_PER_ROUND = 60;
     const cappedGoals = (goals ?? []).slice(0, MAX_GOALS_PER_ROUND);
     const arrivals = (game.arrivals as Record<string, string> | undefined) ?? {};
-    const seen = new Set<string>();
-    const A: string[] = [];
-    const B: string[] = [];
-    for (const id of sideA ?? []) {
-      if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) { seen.add(id); A.push(id); }
+    // Sides + the scorer-restoration rule, in ./roundSides so they can be
+    // tested rather than trusted — see that file for why a substituted scorer
+    // is put back rather than dropped.
+    const { A, B, restored } = buildRoundSides({
+      sideA: sideA ?? [],
+      sideB: sideB ?? [],
+      goals: cappedGoals,
+      roster,
+      arrivals,
+      isReal,
+    });
+    if (restored.length) {
+      console.log(
+        `[round] restored ${restored.length} player(s) who scored or assisted ` +
+          `and were no longer on a side: ${restored.join(', ')}`,
+      );
     }
-    for (const id of sideB ?? []) {
-      if (isReal(id) && roster.has(id) && arrivals[id] !== 'no_show' && !seen.has(id)) { seen.add(id); B.push(id); }
-    }
-    // Bound the side sizes BEFORE building the batch. Per round this batch writes
-    // against-pairs (|A|×|B|) + same-team pairs (C(|A|,2)+C(|B|,2)) + O(n)
-    // per-player tallies + the latch — all in ONE atomic batch. Worst case at
-    // n-per-side ≈ 2n² + ~15n (the clean-sheet lifetime write adds up to 2n on a
-    // 0:0); that crosses Firestore's 500-op cap around n≈13,
-    // where commit() throws and — because the committedRounds latch is in the
-    // SAME batch — every retry re-fails identically (permanent loss of the
-    // round's stats). Real football tops out at 11-a-side, so 11 covers every
-    // legitimate format with worst-case ≈ 400 ops (safe margin), and a larger
-    // (unreal / forged) round fails fast with a clear error instead of a silent
-    // batch overflow. [Was 20 — that allowed the overflow.]
+    // Bound the sides before anything is written. This batch holds
+    // against-pairs (|A|×|B|) + same-team pairs + per-player tallies + the
+    // latch, roughly 2n² + 15n, which crosses Firestore's 500-op ceiling
+    // around n≈13 — and because the idempotency latch is IN the batch, a
+    // commit that overflows cannot be retried past. Checked AFTER the
+    // restoration, which is the only step that can grow a side.
     const MAX_SIDE = 11;
     if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
       throw new HttpsError(
@@ -13030,57 +13034,6 @@ export const commitRoundStats = onCall(
         `side too large (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
       );
     }
-    // ── Scoring is proof that you played ────────────────────────────────
-    //
-    // Goals and assists are credited only to players on a playing side, so
-    // that nobody can collect a goal while being denied the matching "round
-    // played" (B12/B13) — the per-round stats stay internally consistent.
-    //
-    // But the sides are the split as it stands AT ROUND END, and the goal log
-    // is the whole round. A player who scored and then went home, was swapped
-    // out, or was moved between teams is missing from both sides — and the
-    // guard silently threw his goal away. Reported from production: "שחקן ששם
-    // גול או בישול ולא נמצא בקבוצות לא מקבל את זה לסטטיסטיקה האישית שלו".
-    //
-    // Dropping the goal was the wrong half to give up. If a real, rostered
-    // player scored or assisted in this round then he was on the pitch for it,
-    // so he is PUT BACK on a side rather than erased — which credits the goal
-    // AND the round, and keeps the invariant that produced the guard.
-    //
-    // Which side: `team` on a goal is the side that got the point. A normal
-    // goal is scored by that side; an OWN goal is scored by the other one. An
-    // assister is always the scorer's team-mate. Goals with no `team` (legacy
-    // payloads) can't place anyone, so they still can't resurrect a player.
-    const canRejoin = (id: string | null | undefined): id is string =>
-      typeof id === 'string' &&
-      isReal(id) &&
-      roster.has(id) &&
-      arrivals[id] !== 'no_show' &&
-      !seen.has(id);
-    for (const g of cappedGoals) {
-      if (g.team !== 'A' && g.team !== 'B') continue;
-      const scorerSide = g.ownGoal
-        ? g.team === 'A' ? B : A   // own goal → scorer is on the CONCEDING side
-        : g.team === 'A' ? A : B;
-      if (canRejoin(g.scorerId)) { seen.add(g.scorerId); scorerSide.push(g.scorerId); }
-      // The assister set up his own team's goal, so he shares the scorer's
-      // side — except on an own goal, which has no assist to credit.
-      if (!g.ownGoal && canRejoin(g.assisterId)) {
-        const side = g.team === 'A' ? A : B;
-        seen.add(g.assisterId);
-        side.push(g.assisterId);
-      }
-    }
-    // Re-check the bound AFTER the repair pass — it can only have grown the
-    // sides, and the batch guard downstream depends on this holding.
-    if (A.length > MAX_SIDE || B.length > MAX_SIDE) {
-      throw new HttpsError(
-        'invalid-argument',
-        `side too large after restoring scorers (A=${A.length}, B=${B.length}, max ${MAX_SIDE})`,
-      );
-    }
-
-    // The set of players who actually played this round (both on-field sides).
     const onField = new Set<string>([...A, ...B]);
     // The game's registered guests (roster ids are `guest:<id>`). Used to
     // validate a guest actually belongs to THIS game before listing them / a
