@@ -2076,6 +2076,17 @@ export const he = {
     penaltyKeeper: 'שוער הפנדלים',
     deadlyDuo: 'הצמד הקטלני',
   } as const,
+  seasonHistoryTitle: 'עונות קודמות',
+  seasonHistoryCta: 'עונות קודמות ותארים',
+  seasonHistoryEmpty:
+    'עוד לא הסתיימה עונה במועדון. כשהראשונה תיסגר היא תופיע כאן עם התארים שחולקו בה.',
+  seasonHistoryLine: (rounds: number, miniGames: number, players: number) =>
+    `${rounds} מחזורים · ${miniGames} משחקונים · ${players} שחקנים`,
+  seasonHistoryEndedEarly: 'העונה נסגרה ידנית לפני שהגיעה ליעד',
+  seasonHistoryPartial:
+    'חלק מהנתונים לא נאספו לאורך כל העונה, אז המספרים חלקיים',
+  seasonHistoryNoTitles:
+    'לא חולקו תארים בעונה הזאת — אף שחקן לא שיחק מספיק מחזורים.',
   seasonTitlesShelfTitle: 'תארי עונה',
   seasonTitlesShelfCount: (n: number) =>
     n === 1 ? 'תואר אחד' : `${n} תארים`,

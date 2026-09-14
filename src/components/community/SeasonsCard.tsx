@@ -37,6 +37,9 @@ export function SeasonsCard({
   const openMySummary = useCallback(() => {
     nav.navigate('SeasonSummary', { groupId });
   }, [nav, groupId]);
+  const openHistory = useCallback(() => {
+    nav.navigate('SeasonHistory', { groupId });
+  }, [nav, groupId]);
 
   // A club that does not run seasons has nothing to say here — not even to an
   // admin, who meets the switch in settings where they went looking for it.
@@ -62,6 +65,16 @@ export function SeasonsCard({
         fullWidth
         onPress={openMySummary}
       />
+      {/* Only once there is history to look at — a club in its first season
+          would otherwise be offered an empty room. */}
+      {(seasons.count ?? 0) > 0 ? (
+        <Button
+          title={he.seasonHistoryCta}
+          variant="outline"
+          fullWidth
+          onPress={openHistory}
+        />
+      ) : null}
     </View>
   );
 }
