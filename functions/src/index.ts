@@ -14615,6 +14615,33 @@ export const enableClubSeasons = onCall(
  * visibility, not prevention: a change everyone can see is a management
  * decision, and a quiet one is not.
  */
+/**
+ * Switch seasons off for a club.
+ *
+ * Deliberately does NOT close the running season. Closing is an archive plus a
+ * table reset plus a set of titles, and none of that is what "I don't want this
+ * feature" means — a manager who wants the season sealed has an action that
+ * says so, with its own confirmation. Here the club simply goes back to one
+ * table that never resets.
+ *
+ * Everything else on the block is left in place, `count` included, so
+ * re-enabling continues the numbering: a club that ran seasons 1-3 opens
+ * season 4, never season 1 again.
+ */
+export const disableClubSeasons = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {}) as { groupId?: unknown };
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const seasons = group.seasons as { enabled?: boolean } | undefined;
+    if (!seasons?.enabled) return { ok: true, alreadyOff: true };
+    await ref.set({ seasons: { enabled: false } }, { merge: true });
+    return { ok: true };
+  },
+);
+
 export const updateSeasonTarget = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {

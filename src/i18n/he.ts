@@ -2017,6 +2017,18 @@ export const he = {
   // because the numbers look like the career ones and the whole point is
   // that they are not.
   // Seasons — the admin side.
+  seasonsToggleLabel: 'עונות',
+  seasonsToggleHint: 'לחלק את המועדון לעונות עם התחלה, סוף ותארים',
+  seasonsCadenceQuestion: 'איך העונה נגמרת',
+  seasonsHowLong: 'אחרי כמה זמן',
+  seasonsHowMany: 'אחרי כמה מחזורים',
+  seasonsSaveTargetCta: 'עדכן את יעד העונה',
+  seasonsTargetSavedToast: 'יעד העונה עודכן',
+  seasonsDisableTitle: 'לכבות עונות?',
+  seasonsDisableBody:
+    'המועדון יחזור לטבלה אחת שלא מתאפסת. העונה שרצה עכשיו לא תיסגר ולא יחולקו עליה תארים — אם רצית לסגור אותה, יש לזה כפתור נפרד.\n\nעונות שכבר הסתיימו נשארות בארכיון, ואם תפעילו עונות שוב הספירה תמשיך מהמקום שבו עצרה.',
+  seasonsDisableConfirm: 'כבה עונות',
+  seasonsDisabledToast: 'העונות כובו במועדון',
   seasonsCardTitle: 'עונות',
   seasonsOffTitle: 'במועדון הזה אין עונות',
   seasonsOffBody:

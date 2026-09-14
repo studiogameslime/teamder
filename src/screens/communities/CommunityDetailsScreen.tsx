@@ -113,12 +113,6 @@ export function CommunityDetailsScreen() {
     (params as { celebrate?: boolean } | undefined)?.celebrate === true;
   const me = useUserStore((s) => s.currentUser);
   const leaveGroup = useGroupStore((s) => s.leaveGroup);
-  // Switching seasons on, or ending one, changes the GROUP document — re-read
-  // it so the card redraws against the new state instead of the stale one.
-  const hydrateGroups = useGroupStore((s) => s.hydrate);
-  const reloadSeasons = useCallback(() => {
-    if (me?.id) void hydrateGroups(me.id);
-  }, [hydrateGroups, me?.id]);
   const deleteGroup = useGroupStore((s) => s.deleteGroup);
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -842,15 +836,8 @@ export function CommunityDetailsScreen() {
               + superlatives + club level). Was duplicated — a club-level chip
               here AND a button lower down both opened CommunityStats; per owner
               request the chip was dropped and the button lives here at the top. */}
-          {/* Seasons. Hidden entirely for a member of a club that doesn't run
-              them — only the person who could switch them on is told they
-              exist. */}
-          <SeasonsCard
-            groupId={group.id}
-            seasons={group.seasons}
-            isAdmin={isAdmin}
-            onChanged={reloadSeasons}
-          />
+          {/* Where the season stands. Managing it lives in club settings. */}
+          <SeasonsCard groupId={group.id} seasons={group.seasons} />
 
           <Button
             title={he.communityViewStatsTable}

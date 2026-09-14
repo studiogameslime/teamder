@@ -115,6 +115,15 @@ interface Props {
   revertFields?: Array<keyof GroupFormValues>;
   /** Warn on leave when there are unsaved edits (edit flow only). */
   enableUnsavedGuard?: boolean;
+  /**
+   * Extra content at the end of step 2 ("מתקדם").
+   *
+   * For settings that do NOT live in `GroupFormValues` because they are not
+   * document writes — the seasons block, whose actions are server callables
+   * with their own confirmations. Kept out of the dirty check for the same
+   * reason: nothing here is saved by this form's Save.
+   */
+  extraAdvanced?: React.ReactNode;
 }
 
 export function GroupWizardForm({
@@ -126,6 +135,7 @@ export function GroupWizardForm({
   revertToStep,
   revertFields,
   enableUnsavedGuard = false,
+  extraAdvanced,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<GroupFormValues>(initial);
@@ -407,6 +417,11 @@ export function GroupWizardForm({
                     />
                   </View>
                 ) : null}
+                {/* Slot for settings that are NOT part of this form's values:
+                    server-owned actions with their own confirm. The create flow
+                    passes nothing — a club has to exist before it can have a
+                    season. */}
+                {extraAdvanced}
               </>
             )}
           </View>

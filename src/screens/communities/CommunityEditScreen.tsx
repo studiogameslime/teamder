@@ -18,6 +18,7 @@ import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import { useUserStore } from '@/store/userStore';
 import { useGroupStore } from '@/store/groupStore';
+import { SeasonsSettings } from '@/components/community/SeasonsSettings';
 import {
   GroupWizardForm,
   EMPTY_GROUP_FORM_VALUES,
@@ -176,6 +177,15 @@ export function CommunityEditScreen() {
       revertSignal={revertSignal}
       revertToStep={2}
       revertFields={['maxMembers']}
+      extraAdvanced={
+        <SeasonsSettings
+          groupId={original.id}
+          seasons={original.seasons}
+          onChanged={() => {
+            if (me?.id) void reloadGroups(me.id);
+          }}
+        />
+      }
     />
   );
 }

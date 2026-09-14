@@ -98,6 +98,15 @@ export const seasonService = {
     await call('enableClubSeasons', { ...args });
   },
 
+  /**
+   * Switch seasons off. Does NOT close the running season — that is a separate,
+   * deliberate action. Numbering survives, so re-enabling opens the next one.
+   */
+  async disable(groupId: string): Promise<void> {
+    if (USE_MOCK_DATA) return;
+    await call('disableClubSeasons', { groupId });
+  },
+
   /** Move the finish line. The server refuses a target already behind the club
    *  — that would close the season on save, which is "end it now" in disguise. */
   async updateTarget(args: {
