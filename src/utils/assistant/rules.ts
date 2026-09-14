@@ -297,7 +297,22 @@ function statsCandidates(ctx: AssistantContext): Candidate[] {
   const club = ctx.clubName;
 
   // ── club crowns ──
-  if (club && ins) {
+  //
+  // A crown needs something to have happened first. The club table these come
+  // from is the running SEASON once a club runs seasons, and a season starts
+  // at zero — so on the first morning after a close the app told one player
+  // "אתה מלך השערים עם 1 שערים" and a dozen others "עוד גול אחד ואתה מלך
+  // השערים", all phrased as a standing club crown. A single goal is not a
+  // crown in week one any more than it is in week one of a new club.
+  // Gated on the CROWN, not on the viewer: the chase line is just as silly when
+  // the leader has one goal, and it is shown to everybody at once.
+  const CROWN_MIN_GOALS = 3;
+  const crownGoals = ins
+    ? ins.isTopScorer
+      ? (ins.goals ?? 0)
+      : (ins.goals ?? 0) + (ins.goalsToCrown ?? 0)
+    : 0;
+  if (club && ins && crownGoals >= CROWN_MIN_GOALS) {
     if (ins.isTopScorer) {
       out.push({
         id: 'crownGoalsHeld',
@@ -695,6 +710,13 @@ const engagementRule: AssistantRule = (ctx) => {
 };
 
 /** Registration order = the tie-break among equal priorities. */
+/** Exported for the tests that pin the crown gate.
+ *
+ *  Neither the resolver nor statsRule can answer "was a crown offered": the
+ *  first picks one message across every rule and the second picks one variant
+ *  out of these. Only the candidate list knows. */
+export const __statsCandidates = statsCandidates;
+
 export const ASSISTANT_RULES: readonly AssistantRule[] = [
   gameDayRule,
   postGameRule,

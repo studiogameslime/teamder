@@ -6,7 +6,8 @@
 // a renderer. These tests pin the behaviour that the feature exists for.
 
 import { resolveAssistantMessage, pickVariant } from '@/utils/assistant/resolve';
-import { ASSISTANT_RULES } from '@/utils/assistant/rules';
+import { ASSISTANT_RULES,
+  __statsCandidates } from '@/utils/assistant/rules';
 import {
   AssistantPriority,
   type AssistantContext,
@@ -656,5 +657,45 @@ describe('resilience', () => {
     };
     const m = resolveAssistantMessage(ctx(), [boom, ...ASSISTANT_RULES]);
     expect(m).not.toBeNull();
+  });
+});
+
+describe('a crown needs something to have happened first', () => {
+  // The club table these come from IS the running season once a club runs
+  // seasons, and a season starts at zero. On the first morning after a close
+  // the app told one player "אתה מלך השערים עם 1 שערים" and a dozen others
+  // "עוד גול אחד ואתה מלך השערים", all phrased as a standing club crown.
+  it('one goal is not a crown', () => {
+    const m = resolve(
+      ctx({ clubInsight: insight({ goals: 1, isTopScorer: true }) }),
+    );
+    expect(m?.id).not.toBe('crownGoalsHeld');
+  });
+
+  it('and nobody is told to chase a one-goal leader', () => {
+    const m = resolve(
+      ctx({ clubInsight: insight({ goals: 0, goalsToCrown: 1 }) }),
+    );
+    expect(m?.id).not.toBe('crownGoalsChase');
+  });
+
+  // Neither the resolver nor statsRule can answer "was a crown offered": the
+  // first picks one message across every rule and the second picks one variant
+  // out of these. The candidate list is asked directly.
+  const crowns = (over: Partial<ClubInsight>) =>
+    __statsCandidates(ctx({ clubInsight: insight(over) })).map((x) => x.id);
+
+  it('three is', () => {
+    expect(crowns({ goals: 3, isTopScorer: true })).toContain('crownGoalsHeld');
+  });
+
+  it('and a real chase survives — the gate is on the crown, not the chaser', () => {
+    // Leader on 9, viewer on 7: the viewer's own tally is irrelevant.
+    expect(crowns({ goals: 7, goalsToCrown: 2 })).toContain('crownGoalsChase');
+  });
+
+  it('while one goal offers neither', () => {
+    expect(crowns({ goals: 1, isTopScorer: true })).not.toContain('crownGoalsHeld');
+    expect(crowns({ goals: 0, goalsToCrown: 1 })).not.toContain('crownGoalsChase');
   });
 });
