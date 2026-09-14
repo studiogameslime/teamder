@@ -97,6 +97,7 @@ import {
   acceptsReorder,
 } from '@/services/rotationEngine';
 import { stripUndefined } from '@/utils/stripUndefined';
+import { restoreTargetTeam } from '@/utils/restoreTarget';
 import { canMoveOut } from '@/utils/teamSlots';
 import { failValidation, optionalString, requireInt, requireString } from '@/utils/validate';
 import { he } from '@/i18n/he';
@@ -4498,8 +4499,11 @@ export const gameService = {
     const entry = (draft.leftHome ?? []).find((l) => l.playerId === playerId);
     if (!entry) return;
     const homeTeam = entry.homeTeam ?? draft.teams[0]?.index ?? 0;
-    const hasHome = draft.teams.some((t) => t.index === homeTeam);
-    const targetIdx = hasHome ? homeTeam : draft.teams[0]?.index ?? 0;
+    // Which side he rejoins — see src/utils/restoreTarget.ts. Retiring an
+    // emptied team leaves it in draftTeams while removing it from the
+    // rotation, so "does this team exist" is the wrong question and used to
+    // park a returning player on a side that would never play again.
+    const targetIdx = restoreTargetTeam(homeTeam, draft.teams, g?.rotation);
     let teams = draft.teams.map((t) => {
       const target = t.index === targetIdx;
       return target && !t.playerIds.includes(playerId)

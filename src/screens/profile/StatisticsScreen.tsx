@@ -137,11 +137,16 @@ export function StatisticsScreen() {
             <NumberTile icon="restaurant-outline" value={String(stats!.assists)} label={he.statAssists} />
             {/* Own goals — only shown once the player has one (a rare, dubious
                 stat; no need for a permanent 0 tile). */}
-            {/* Draws — only once the player has one. A three-team club never
-                draws, so a permanent 0 tile would be noise for most people. */}
-            {pen && pen.ties > 0 ? (
-              <NumberTile icon="swap-horizontal-outline" value={String(pen.ties)} label={he.statTies} />
-            ) : null}
+            {/* Draws are NOT shown here, deliberately.
+                `users.stats` carries wins and ties but no losses and no
+                mini-game count, so a draws tile stands on this screen with
+                nothing to be a fraction of: "6 תיקו" beside 33 evenings and
+                29 goals reads as a result without a record. Reported exactly
+                that way — "יש רק תיקו אבל אין נצחונות והפסדים" — with the
+                tile circled.
+                The club table is where the three outcomes live together and
+                mean something. Bring this back only alongside wins AND
+                losses, which needs the personal stats to carry losses first. */}
             {pen && pen.ownGoals > 0 ? (
               <NumberTile icon="footsteps-outline" value={String(pen.ownGoals)} label={he.statOwnGoals} />
             ) : null}
