@@ -253,6 +253,7 @@ export function SeasonSummaryScreen() {
                 <Stat label={he.statGoals} value={String(me.goals)} />
                 <Stat label={he.statAssists} value={String(me.assists)} />
                 <Stat label={he.seasonStatContributions} value={String(me.contributions)} />
+                <Stat label={he.seasonStatEvenings} value={String(me.evenings)} />
                 <Stat label={he.seasonStatRounds} value={String(me.rounds)} />
                 <Stat label={he.seasonStatWins} value={String(me.wins)} />
                 <Stat label={he.seasonStatLosses} value={String(me.losses)} />

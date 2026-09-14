@@ -107,6 +107,9 @@ export interface RolloverArgs {
   completedRounds: number;
   /** Frozen onto each winner's title, so it still reads after a rename. */
   groupName?: string;
+  /** Where this season started counting evenings. Sealed so a season that is
+   *  reopened can be given back its own offset rather than a guess. */
+  roundsAtStart?: number;
   /** Set when an admin ended it early rather than it running its course. */
   endedEarly?: boolean;
   closedBy?: string;
@@ -341,6 +344,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
       endsAt: now,
       closedAt: now,
       completedRounds: args.completedRounds,
+      roundsAtStartOfSeason: args.roundsAtStart ?? 0,
       ...(args.endedEarly ? { endedEarly: true } : {}),
       ...(args.closedBy ? { closedBy: args.closedBy } : {}),
       ...(args.closedByName ? { closedByName: args.closedByName } : {}),
@@ -535,3 +539,109 @@ export const __seasonFields = {
   player: PLAYER_SEASON_FIELDS,
   club: CLUB_SEASON_FIELDS,
 };
+
+/**
+ * Undo a season that was closed by mistake.
+ *
+ * The one thing the close deliberately has no path back from, which is exactly
+ * why it needs one: past the seven-day PITR window a wrong close is permanent,
+ * and an admin who ends a season a week early has no way to say so.
+ *
+ * It is the wind-back in reverse, and it is only safe because of how the close
+ * was built:
+ *
+ *   • The archive holds every number as it stood, so the live rows are restored
+ *     by ADDING back exactly what was subtracted — a round played since the
+ *     close keeps its own contribution instead of being overwritten.
+ *   • Each row's `seasonWoundBack` stamp is cleared in the same transaction, so
+ *     the row is once again eligible to be wound back when the season is
+ *     properly closed later.
+ *   • The titles are keyed by club+season+title, so they are deleted exactly.
+ *   • The archive is removed LAST. While it exists the operation is repeatable
+ *     from the top; once it is gone there is nothing left to repeat.
+ *
+ * The caller is responsible for restoring the club's `seasons` block — this
+ * function owns the numbers, not the lifecycle.
+ */
+export async function reopenSeason(args: {
+  db: admin.firestore.Firestore;
+  groupId: string;
+  seasonId: string;
+}): Promise<{ reopened: boolean; players: number; titles: number }> {
+  const { db, groupId, seasonId } = args;
+  const summaryRef = db
+    .collection('seasonSummary')
+    .doc(`${groupId}__${seasonId}`);
+  const snap = await summaryRef.get();
+  if (!snap.exists) return { reopened: false, players: 0, titles: 0 };
+
+  const data = snap.data() as Record<string, unknown>;
+  const players = (data.players ?? {}) as Record<string, Record<string, unknown>>;
+  const totals = (data.totals ?? {}) as Record<string, unknown>;
+  const awards = (data.awards ?? {}) as Record<string, { winners?: unknown } | null>;
+  const num2 = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? v : 0;
+
+  // 1. Give every player their season back.
+  let restored = 0;
+  for (const [uid, row] of Object.entries(players)) {
+    const ref = db.collection('communityPlayerStats').doc(`${groupId}__${uid}`);
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      const cur = (fresh.exists ? fresh.data() : {}) as Record<string, unknown>;
+      const patch: Record<string, unknown> = {
+        groupId,
+        userId: uid,
+        seasonWoundBack: admin.firestore.FieldValue.delete(),
+        updatedAt: Date.now(),
+      };
+      for (const f of PLAYER_SEASON_FIELDS) {
+        patch[f] = num2(cur[f]) + num2(row[f]);
+      }
+      tx.set(ref, patch, { merge: true });
+    });
+    restored += 1;
+  }
+
+  // 2. And the club its totals.
+  await db.collection('communityStats').doc(groupId).set(
+    Object.fromEntries([
+      ...CLUB_SEASON_FIELDS.map((f) => [f, admin.firestore.FieldValue.increment(num2(totals[f]))]),
+      ['updatedAt', Date.now()],
+    ]),
+    { merge: true },
+  );
+
+  // 3. Take the titles back off the winners' profiles. A title for a season
+  //    that no longer exists is worse than no title.
+  let titles = 0;
+  let batch = db.batch();
+  let ops = 0;
+  for (const [titleKey, award] of Object.entries(awards)) {
+    if (!award || !Array.isArray(award.winners)) continue;
+    for (const winner of award.winners) {
+      if (typeof winner !== 'string') continue;
+      for (const uid of winner.split('__')) {
+        if (!uid || !isReal(uid)) continue;
+        batch.delete(
+          db
+            .collection('users')
+            .doc(uid)
+            .collection('seasonTitles')
+            .doc(`${groupId}__${seasonId}__${titleKey}`),
+        );
+        titles += 1;
+        if (++ops >= 400) {
+          await batch.commit();
+          batch = db.batch();
+          ops = 0;
+        }
+      }
+    }
+  }
+  if (ops > 0) await batch.commit();
+
+  // 4. Last, because while it exists this is repeatable.
+  await summaryRef.delete();
+  return { reopened: true, players: restored, titles };
+}

@@ -36,11 +36,12 @@ const SEASON = 's1';
 
 let db;
 let closeSeason;
+let reopenSeason;
 
 before(async () => {
   admin.initializeApp({ projectId: 'seasons-rollover' });
   db = admin.firestore();
-  ({ closeSeason } = await import('./lib/seasonRollover.js'));
+  ({ closeSeason, reopenSeason } = await import('./lib/seasonRollover.js'));
 });
 
 after(async () => {
@@ -420,5 +421,58 @@ describe('the next season is a clean slate', () => {
     // Season 1 untouched.
     const s1 = (await db.collection('seasonSummary').doc(`${GID}__s1`).get()).data();
     assert.equal(s1.players.u1.goals, 31);
+  });
+});
+
+// ── Undoing a close ──────────────────────────────────────────────────────
+//
+// The close deliberately has no path back, which is exactly why it needs one:
+// past the seven-day PITR window a wrong close is permanent, and an admin who
+// ends a season a week early has no way to say so.
+describe('a season closed by mistake can be reopened', () => {
+  before(async () => {
+    await wipe();
+    await seed();
+    await closeSeason(args());
+  });
+
+  test('the table gets its season back', async () => {
+    const before = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(before.goals, 0, 'wound back by the close');
+
+    const res = await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    assert.equal(res.reopened, true);
+
+    const after = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(after.goals, 31);
+    assert.equal(after.cleanSheets, 18);
+    // And the row can be wound back again when the season is properly closed.
+    assert.equal(after.seasonWoundBack, undefined);
+  });
+
+  test('the titles come off the winners', async () => {
+    const t = await db.collection('users').doc('u1').collection('seasonTitles').get();
+    assert.equal(t.size, 0, 'a title for a season that no longer exists is worse than none');
+  });
+
+  test('and the archive is gone, so it cannot be reopened twice', async () => {
+    const s = await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get();
+    assert.equal(s.exists, false);
+    const again = await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    assert.equal(again.reopened, false);
+  });
+
+  test('a round played AFTER the close survives the reopen', async () => {
+    await wipe();
+    await seed();
+    await closeSeason(args());
+    // The new season starts, somebody scores twice…
+    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
+      { goals: admin.firestore.FieldValue.increment(2) }, { merge: true });
+    // …and only then does the admin realise the close was a mistake.
+    await reopenSeason({ db, groupId: GID, seasonId: SEASON });
+    const after = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    // 31 restored PLUS the 2 that were scored since — added back, not overwritten.
+    assert.equal(after.goals, 33);
   });
 });

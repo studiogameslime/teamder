@@ -23,9 +23,44 @@
 // that last one would make the first top scorer of the new season a perfect
 // 10 by construction and inflate everyone's score by about a quarter of the
 // scale, silently.
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.__seasonFields = void 0;
 exports.closeSeason = closeSeason;
+exports.reopenSeason = reopenSeason;
+const admin = __importStar(require("firebase-admin"));
 const seasonAwards_1 = require("./seasonAwards");
 /** A per-game identity with no account. See the archive note below. */
 const isReal = (id) => !!id && !id.startsWith('guest:');
@@ -280,6 +315,7 @@ async function closeSeason(args) {
             endsAt: now,
             closedAt: now,
             completedRounds: args.completedRounds,
+            roundsAtStartOfSeason: args.roundsAtStart ?? 0,
             ...(args.endedEarly ? { endedEarly: true } : {}),
             ...(args.closedBy ? { closedBy: args.closedBy } : {}),
             ...(args.closedByName ? { closedByName: args.closedByName } : {}),
@@ -461,3 +497,98 @@ exports.__seasonFields = {
     player: PLAYER_SEASON_FIELDS,
     club: CLUB_SEASON_FIELDS,
 };
+/**
+ * Undo a season that was closed by mistake.
+ *
+ * The one thing the close deliberately has no path back from, which is exactly
+ * why it needs one: past the seven-day PITR window a wrong close is permanent,
+ * and an admin who ends a season a week early has no way to say so.
+ *
+ * It is the wind-back in reverse, and it is only safe because of how the close
+ * was built:
+ *
+ *   • The archive holds every number as it stood, so the live rows are restored
+ *     by ADDING back exactly what was subtracted — a round played since the
+ *     close keeps its own contribution instead of being overwritten.
+ *   • Each row's `seasonWoundBack` stamp is cleared in the same transaction, so
+ *     the row is once again eligible to be wound back when the season is
+ *     properly closed later.
+ *   • The titles are keyed by club+season+title, so they are deleted exactly.
+ *   • The archive is removed LAST. While it exists the operation is repeatable
+ *     from the top; once it is gone there is nothing left to repeat.
+ *
+ * The caller is responsible for restoring the club's `seasons` block — this
+ * function owns the numbers, not the lifecycle.
+ */
+async function reopenSeason(args) {
+    const { db, groupId, seasonId } = args;
+    const summaryRef = db
+        .collection('seasonSummary')
+        .doc(`${groupId}__${seasonId}`);
+    const snap = await summaryRef.get();
+    if (!snap.exists)
+        return { reopened: false, players: 0, titles: 0 };
+    const data = snap.data();
+    const players = (data.players ?? {});
+    const totals = (data.totals ?? {});
+    const awards = (data.awards ?? {});
+    const num2 = (v) => typeof v === 'number' && Number.isFinite(v) ? v : 0;
+    // 1. Give every player their season back.
+    let restored = 0;
+    for (const [uid, row] of Object.entries(players)) {
+        const ref = db.collection('communityPlayerStats').doc(`${groupId}__${uid}`);
+        await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(ref);
+            const cur = (fresh.exists ? fresh.data() : {});
+            const patch = {
+                groupId,
+                userId: uid,
+                seasonWoundBack: admin.firestore.FieldValue.delete(),
+                updatedAt: Date.now(),
+            };
+            for (const f of PLAYER_SEASON_FIELDS) {
+                patch[f] = num2(cur[f]) + num2(row[f]);
+            }
+            tx.set(ref, patch, { merge: true });
+        });
+        restored += 1;
+    }
+    // 2. And the club its totals.
+    await db.collection('communityStats').doc(groupId).set(Object.fromEntries([
+        ...CLUB_SEASON_FIELDS.map((f) => [f, admin.firestore.FieldValue.increment(num2(totals[f]))]),
+        ['updatedAt', Date.now()],
+    ]), { merge: true });
+    // 3. Take the titles back off the winners' profiles. A title for a season
+    //    that no longer exists is worse than no title.
+    let titles = 0;
+    let batch = db.batch();
+    let ops = 0;
+    for (const [titleKey, award] of Object.entries(awards)) {
+        if (!award || !Array.isArray(award.winners))
+            continue;
+        for (const winner of award.winners) {
+            if (typeof winner !== 'string')
+                continue;
+            for (const uid of winner.split('__')) {
+                if (!uid || !isReal(uid))
+                    continue;
+                batch.delete(db
+                    .collection('users')
+                    .doc(uid)
+                    .collection('seasonTitles')
+                    .doc(`${groupId}__${seasonId}__${titleKey}`));
+                titles += 1;
+                if (++ops >= 400) {
+                    await batch.commit();
+                    batch = db.batch();
+                    ops = 0;
+                }
+            }
+        }
+    }
+    if (ops > 0)
+        await batch.commit();
+    // 4. Last, because while it exists this is repeatable.
+    await summaryRef.delete();
+    return { reopened: true, players: restored, titles };
+}

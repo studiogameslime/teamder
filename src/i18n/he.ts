@@ -2085,6 +2085,14 @@ export const he = {
     'יש מחזור פתוח במועדון. אפשר לסיים עונה רק כשאין מחזור בדרך — סיימו או בטלו אותו קודם.',
   seasonBlockedUnsealed:
     'יש מחזור שהסתיים אבל הנתונים שלו עדיין לא נסגרו. חכו שיסתיים העדכון ונסו שוב.',
+  seasonsReopenCta: 'בטל את סגירת העונה האחרונה',
+  seasonsReopenConfirmTitle: 'לבטל את סגירת העונה?',
+  seasonsReopenConfirmBody:
+    'העונה האחרונה שנסגרה תיפתח מחדש: הטבלה תחזור למצב שבו הייתה, התארים יוסרו מהשחקנים שקיבלו אותם, והארכיון שלה יימחק.\n\nמה ששוחק מאז הסגירה נשמר ומתווסף חזרה.\n\nמיועד לתיקון סגירה בטעות.',
+  seasonsReopenConfirmCta: 'פתח מחדש',
+  seasonsReopenedToast: (no: number) => `עונה ${no} נפתחה מחדש`,
+  seasonBlockedNothingToReopen:
+    'אין עונה סגורה לפתוח מחדש.',
   seasonBlockedTargetBehind:
     'היעד הזה כבר מאחורי המועדון, אז שמירה שלו הייתה סוגרת את העונה מיד. בחרו יעד גדול יותר, או השתמשו ב"סיים עונה עכשיו".',
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
@@ -2139,6 +2147,7 @@ export const he = {
   seasonSectionStanding: 'המיקום שלי במועדון',
   seasonSectionPeople: 'האנשים של העונה',
   seasonStatContributions: 'שערים + בישולים',
+  seasonStatEvenings: 'מחזורים שהגעתי',
   seasonStatRounds: 'משחקונים',
   seasonStatWins: 'ניצחונות',
   seasonStatLosses: 'הפסדים',

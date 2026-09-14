@@ -32,7 +32,7 @@ import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
 import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
-import { closeSeason } from './seasonRollover';
+import { closeSeason, reopenSeason } from './seasonRollover';
 import { buildRoundSides } from './roundSides';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
@@ -14627,6 +14627,7 @@ async function runSeasonRollovers(): Promise<void> {
         seasonNo,
         startsAt: seasons.startedAt ?? 0,
         completedRounds: played,
+        roundsAtStart: seasons.roundsAtStart ?? 0,
         originalTarget: cadence as { type: string; endsAt?: number; targetRounds?: number },
         now,
       });
@@ -14729,6 +14730,7 @@ export const enableClubSeasons = onCall(
         seasonNo: firstNo,
         startsAt: 0, // display resolves the club's first game
         completedRounds: played,
+        roundsAtStart: 0,
         // Assists were only collected from 21.06 and clean sheets from 17.08,
         // while clubs predate both. The spec awards titles anyway and flags it.
         partialData: true,
@@ -14922,6 +14924,87 @@ export const updateSeasonTarget = onCall(
  * A manager who sees a name they did not expect stops on their own, and no
  * amount of validation beats that.
  */
+/**
+ * Undo the last close.
+ *
+ * Deliberately only the LAST one, and only while it is still the club's most
+ * recent: reopening season 2 of four would leave seasons 3 and 4 sitting on
+ * numbers that were counted from a table that no longer starts where they
+ * think it does. This is a correction for "I pressed it a week early", not a
+ * time machine.
+ *
+ * The same quiet rule as closing. Restoring a table while an evening is being
+ * played would fold that evening's rounds into the season being reopened.
+ */
+export const reopenLastSeason = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {}) as { groupId?: unknown };
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId as string;
+    const seasons = group.seasons as
+      | {
+          currentNo?: number;
+          currentId?: string;
+          roundsAtStart?: number;
+          cadence?: { type?: string; months?: number; endsAt?: number; targetRounds?: number };
+          count?: number;
+        }
+      | undefined;
+    const closedSoFar = seasons?.count ?? 0;
+    if (closedSoFar < 1) {
+      throw new HttpsError('failed-precondition', 'no closed season');
+    }
+    const quiet = await clubIsQuiet(groupId);
+    if (!quiet.ok) {
+      throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+
+    const lastNo = closedSoFar;
+    const lastId = `s${lastNo}`;
+    const archive = await db
+      .collection('seasonSummary')
+      .doc(`${groupId}__${lastId}`)
+      .get();
+    if (!archive.exists) {
+      throw new HttpsError('not-found', 'no archive for the last season');
+    }
+    // How far back the reopened season had counted — its own offset, which the
+    // season that replaced it recorded when it opened.
+    const reopenedRoundsAtStart = archNum(archive.get('roundsAtStartOfSeason'));
+
+    const result = await reopenSeason({ db, groupId, seasonId: lastId });
+
+    await ref.set(
+      {
+        seasons: {
+          enabled: true,
+          currentNo: lastNo,
+          currentId: lastId,
+          startedAt: archNum(archive.get('startsAt')),
+          roundsAtStart: reopenedRoundsAtStart,
+          playedRounds: Math.max(
+            0,
+            (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart,
+          ),
+          // The target it was closed against, so it is not immediately due
+          // again on a date cadence.
+          cadence: rebaseCadence(
+            (archive.get('originalTarget') ?? seasons?.cadence) as never,
+            archNum(archive.get('startsAt')),
+            Date.now(),
+          ),
+          count: closedSoFar - 1,
+        },
+      },
+      { merge: true },
+    );
+    return { ok: true, ...result, reopenedNo: lastNo };
+  },
+);
+
 export const endSeasonNow = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -14960,6 +15043,7 @@ export const endSeasonNow = onCall(
       seasonNo: seasons.currentNo ?? 1,
       startsAt: seasons.startedAt ?? 0,
       completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart),
+      roundsAtStart: seasons.roundsAtStart ?? 0,
       endedEarly: true,
       closedBy: uid,
       closedByName: (who.data() as { name?: string } | undefined)?.name ?? '',

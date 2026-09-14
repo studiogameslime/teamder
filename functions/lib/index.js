@@ -56,7 +56,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stampMembershipDates = exports.onCommunityJoinedAlert = exports.onCommunityCreatedAlert = exports.onGameJoinedAlert = exports.onGameCreatedAlert = exports.onNewUserJoined = exports.inviteFriendsToGroup = exports.removeFriendship = exports.acceptFriendRequest = exports.onFriendRequestCreated = exports.declineFiller = exports.approveFiller = exports.submitFillerInterest = exports.availabilityCounts = exports.onFillerInterestCreated = exports.startGameFillerPulse = exports.fillerPulseTask = exports.serveInviteCode = exports.serveCommunityPage = exports.updateShowcaseOnGameChange = exports.updateShowcaseOnGroupChange = exports.backfillGroupCreatorIdsOnce = exports.createGroupCallable = exports.uploadGroupCover = exports.promoteOrphanToGroup = exports.getServerTime = exports.ensurePersonalGroup = exports.notifyTeamsReady = exports.notifyPlayerCancelled = exports.adminReorderRoster = exports.adminAddPlayers = exports.sendGameInvite = exports.reportChatMessage = exports.deleteMyAccount = exports.setGuestRating = exports.updateAppConfig = exports.onVoteWrittenLegacy = exports.onVoteWritten = exports.onGameRosterChanged = exports.onGameRotationChanged = exports.onGameTimerChanged = exports.onGroupPendingChanged = exports.reconcileJoinsTask = exports.onJoinRequestCreated = exports.scheduledGameMomentTask = exports.flushPendingJoinerNotifsTask = exports.onNotificationCreated = exports.onDmChatMessage = exports.onCommunityChatMessage = exports.onGameChatMessage = void 0;
-exports.endSeasonNow = exports.updateSeasonTarget = exports.disableClubSeasons = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
+exports.endSeasonNow = exports.reopenLastSeason = exports.updateSeasonTarget = exports.disableClubSeasons = exports.enableClubSeasons = exports.onFeedbackCreated = exports.removeRetroGoal = exports.addRetroGoal = exports.savePitchCalibration = exports.saveGamePhysical = exports.commitRoundStats = exports.getFriendsInClubs = exports.cronEvery60Min = exports.cronEvery15Min = exports.cronEvery5Min = exports.onFeedbackSubmitted = exports.trackLinkClick = exports.getInvitePreview = exports.trackCampaignEvent = exports.onCampaignCreated = exports.onErrorLogged = exports.onAvailabilityUpdated = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -12094,6 +12094,7 @@ async function runSeasonRollovers() {
                 seasonNo,
                 startsAt: seasons.startedAt ?? 0,
                 completedRounds: played,
+                roundsAtStart: seasons.roundsAtStart ?? 0,
                 originalTarget: cadence,
                 now,
             });
@@ -12179,6 +12180,7 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
             seasonNo: firstNo,
             startsAt: 0, // display resolves the club's first game
             completedRounds: played,
+            roundsAtStart: 0,
             // Assists were only collected from 21.06 and clean sheets from 17.08,
             // while clubs predate both. The spec awards titles anyway and flags it.
             partialData: true,
@@ -12334,6 +12336,63 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
  * A manager who sees a name they did not expect stops on their own, and no
  * amount of validation beats that.
  */
+/**
+ * Undo the last close.
+ *
+ * Deliberately only the LAST one, and only while it is still the club's most
+ * recent: reopening season 2 of four would leave seasons 3 and 4 sitting on
+ * numbers that were counted from a table that no longer starts where they
+ * think it does. This is a correction for "I pressed it a week early", not a
+ * time machine.
+ *
+ * The same quiet rule as closing. Restoring a table while an evening is being
+ * played would fold that evening's rounds into the season being reopened.
+ */
+exports.reopenLastSeason = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {});
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId;
+    const seasons = group.seasons;
+    const closedSoFar = seasons?.count ?? 0;
+    if (closedSoFar < 1) {
+        throw new https_1.HttpsError('failed-precondition', 'no closed season');
+    }
+    const quiet = await clubIsQuiet(groupId);
+    if (!quiet.ok) {
+        throw new https_1.HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+    const lastNo = closedSoFar;
+    const lastId = `s${lastNo}`;
+    const archive = await db
+        .collection('seasonSummary')
+        .doc(`${groupId}__${lastId}`)
+        .get();
+    if (!archive.exists) {
+        throw new https_1.HttpsError('not-found', 'no archive for the last season');
+    }
+    // How far back the reopened season had counted — its own offset, which the
+    // season that replaced it recorded when it opened.
+    const reopenedRoundsAtStart = archNum(archive.get('roundsAtStartOfSeason'));
+    const result = await (0, seasonRollover_1.reopenSeason)({ db, groupId, seasonId: lastId });
+    await ref.set({
+        seasons: {
+            enabled: true,
+            currentNo: lastNo,
+            currentId: lastId,
+            startedAt: archNum(archive.get('startsAt')),
+            roundsAtStart: reopenedRoundsAtStart,
+            playedRounds: Math.max(0, (await sealedEveningsOf(groupId)) - reopenedRoundsAtStart),
+            // The target it was closed against, so it is not immediately due
+            // again on a date cadence.
+            cadence: rebaseCadence((archive.get('originalTarget') ?? seasons?.cadence), archNum(archive.get('startsAt')), Date.now()),
+            count: closedSoFar - 1,
+        },
+    }, { merge: true });
+    return { ok: true, ...result, reopenedNo: lastNo };
+});
 exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid)
@@ -12359,6 +12418,7 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
         seasonNo: seasons.currentNo ?? 1,
         startsAt: seasons.startedAt ?? 0,
         completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart),
+        roundsAtStart: seasons.roundsAtStart ?? 0,
         endedEarly: true,
         closedBy: uid,
         closedByName: who.data()?.name ?? '',

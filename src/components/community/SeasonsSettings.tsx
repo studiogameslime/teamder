@@ -210,6 +210,21 @@ export function SeasonsSettings({
     });
   }, [groupId, targetArgs, run]);
 
+  const reopenLast = useCallback(() => {
+    appAlert(he.seasonsReopenConfirmTitle, he.seasonsReopenConfirmBody, [
+      {
+        text: he.seasonsReopenConfirmCta,
+        style: 'destructive',
+        onPress: () =>
+          run(async () => {
+            const res = await seasonService.reopenLast(groupId);
+            toast.success(he.seasonsReopenedToast(res.reopenedNo));
+          }),
+      },
+      { text: he.cancel, style: 'cancel' },
+    ]);
+  }, [groupId, run]);
+
   const endNow = useCallback(() => {
     appAlert(he.seasonsEndConfirmTitle, he.seasonsEndConfirmBody, [
       {
@@ -356,6 +371,17 @@ export function SeasonsSettings({
               fullWidth
               disabled={busy}
               onPress={endNow}
+            />
+          ) : null}
+          {/* The way back from "I pressed it a week early". Offered only when
+              there is actually a closed season to reopen. */}
+          {(seasons?.count ?? 0) > 0 ? (
+            <Button
+              title={he.seasonsReopenCta}
+              variant="outline"
+              fullWidth
+              disabled={busy}
+              onPress={reopenLast}
             />
           ) : null}
         </View>

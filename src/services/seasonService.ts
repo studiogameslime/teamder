@@ -20,6 +20,7 @@ export type SeasonRefusal =
   | 'seasonsOff'
   | 'notAdmin'
   | 'targetBehind'
+  | 'nothingToReopen'
   | 'unknown';
 
 export class SeasonRefusedError extends Error {
@@ -43,6 +44,8 @@ export function seasonRefusalText(reason: SeasonRefusal): string {
       return he.seasonBlockedOff;
     case 'targetBehind':
       return he.seasonBlockedTargetBehind;
+    case 'nothingToReopen':
+      return he.seasonBlockedNothingToReopen;
     case 'notAdmin':
       return he.seasonBlockedNotAdmin;
     default:
@@ -59,6 +62,9 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   if (msg.includes('openGame')) return 'openGame';
   if (msg.includes('unsealedGame')) return 'unsealedGame';
   if (msg.includes('seasons are off')) return 'seasonsOff';
+  if (msg.includes('no closed season') || msg.includes('no archive')) {
+    return 'nothingToReopen';
+  }
   // The server refuses a target the club has already passed, because saving it
   // would close the season on the spot — "end it now" without the confirmation
   // that action carries. Falling through to the generic line told an admin to
@@ -127,6 +133,16 @@ export const seasonService = {
   }): Promise<void> {
     if (USE_MOCK_DATA) return;
     await call('updateSeasonTarget', { ...args });
+  },
+
+  /**
+   * Undo the last close. Restores the table, takes the titles back off the
+   * winners, and deletes the archive — only for the most recent season, and
+   * only while the club is quiet.
+   */
+  async reopenLast(groupId: string): Promise<{ reopenedNo: number }> {
+    if (USE_MOCK_DATA) return { reopenedNo: 1 };
+    return call<{ reopenedNo: number }>('reopenLastSeason', { groupId });
   },
 
   /** End it now. Archives, awards, zeroes — and pushes every player their card. */

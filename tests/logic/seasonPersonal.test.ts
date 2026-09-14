@@ -276,3 +276,23 @@ describe('the two kinds of "wins" are not interchangeable', () => {
     expect(s.partner?.winsTogether).not.toBe(s.partner?.myWins);
   });
 });
+
+describe('evenings attended is its own number', () => {
+  // The gate for every season title is half the season's EVENINGS, so a player
+  // asking why they did or did not win one has to be able to see it. It is not
+  // `rounds`, which counts mini-games — roughly six an evening.
+  it('comes from `games`, not from rounds', () => {
+    const s = buildPersonalSeason({
+      me: 'me',
+      players: [player('me', { games: 11, rounds: 64 })],
+      pairs: [],
+    });
+    expect(s.evenings).toBe(11);
+    expect(s.rounds).toBe(64);
+  });
+
+  it('is zero, not undefined, for a player with no row', () => {
+    const s = buildPersonalSeason({ me: 'ghost', players: [], pairs: [] });
+    expect(s.evenings).toBe(0);
+  });
+});

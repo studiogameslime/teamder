@@ -91,6 +91,13 @@ export interface PersonalSeason {
   /** Goals + assists — the number people actually quote at each other. */
   contributions: number;
   rounds: number;
+  /**
+   * EVENINGS I turned up to. Not the same as `rounds` (mini-games), and worth
+   * its own tile: it is the number every season title is judged on — the gate
+   * is half the season's evenings — so a player looking at why they did or did
+   * not win one should be able to see it.
+   */
+  evenings: number;
   wins: number;
   losses: number;
   ties: number;
@@ -283,6 +290,7 @@ export function buildPersonalSeason({
     assists,
     contributions: goals + assists,
     rounds,
+    evenings: num(mine?.games),
     wins,
     losses,
     ties,
