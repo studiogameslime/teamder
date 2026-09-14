@@ -96,6 +96,14 @@ async function seed() {
     winsTogether: 12, lossesTogether: 8, cleanSheetsTogether: 5,
     against: 18, winsA: 10, winsB: 8, assistsAToB: 3, assistsBToA: 4,
   });
+  // A guest pair. The chemistry engine writes these on purpose, and a guest id
+  // is minted fresh every game — so they accumulate forever and must not be
+  // copied into the one document a season is archived into.
+  await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).set({
+    groupId: GID, a: 'guest:abc', b: 'u1', assists: 3, sameTeam: 4,
+    winsTogether: 2, lossesTogether: 2, cleanSheetsTogether: 1,
+    against: 2, winsA: 1, winsB: 1, assistsAToB: 1, assistsBToA: 2,
+  });
 }
 
 const args = (over = {}) => ({
@@ -130,6 +138,20 @@ describe('the archive is taken before the wipe', () => {
       against: 18, winsA: 10, winsB: 8, assistsAToB: 3, assistsBToA: 4,
     });
     assert.equal(s.completedRounds, 16);
+  });
+
+  test('guest pairs are kept OUT of the archive', async () => {
+    // One document per season, and a club accumulates a new guest pair for
+    // every stranger who ever turned out. Past 1MB the season could not be
+    // written at all and the club could never close another one.
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    const keys = Object.keys(s.pairs);
+    assert.deepEqual(keys, ['u1__u2']);
+    assert.ok(!keys.some((k) => k.includes('guest:')));
+    // And the live document is untouched — the archive filters, it does not
+    // delete anybody's data.
+    const live = await db.collection('communityPairStats').doc(`${GID}__guest:abc__u1`).get();
+    assert.equal(live.exists, true);
   });
 
   test('the titles are decided and sealed with the numbers', async () => {

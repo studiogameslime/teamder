@@ -27,6 +27,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.__seasonFields = void 0;
 exports.closeSeason = closeSeason;
 const seasonAwards_1 = require("./seasonAwards");
+/** A per-game identity with no account. See the archive note below. */
+const isReal = (id) => !!id && !id.startsWith('guest:');
+/**
+ * Ceiling on archived pairs, so one document cannot grow past Firestore's 1MB
+ * limit and make the club permanently unable to close a season.
+ *
+ * Pairs grow as n(n-1)/2 over REAL members: 60 players is 1,770 entries at
+ * roughly 140 bytes each, about 250KB. 4,000 is a 90-player club and still
+ * inside half the limit — far beyond any real club, and a hard stop rather
+ * than a silent failure if one ever gets there.
+ */
+const MAX_ARCHIVED_PAIRS = 4000;
 /** Club-scoped counters a season owns. Everything not named here survives. */
 const PLAYER_SEASON_FIELDS = [
     'goals',
@@ -145,12 +157,36 @@ async function closeSeason(args) {
     // 60KB; sixty players is 1,770 and about 240KB, still well inside the 1MB
     // document limit. Written once per season.
     const pairs = {};
+    let droppedGuestPairs = 0;
+    let droppedOverflowPairs = 0;
     for (const d of pairSnap.docs) {
         const x = d.data();
         const a = typeof x.a === 'string' ? x.a : '';
         const b = typeof x.b === 'string' ? x.b : '';
         if (!a || !b)
             continue;
+        // Guests do not go into the archive, and this is the difference between a
+        // season that can close and one that eventually cannot.
+        //
+        // The chemistry engine counts guests on purpose — they were on the pitch
+        // and the pass was real — but a guest id is minted fresh for every game, so
+        // `communityPairStats` accumulates a permanent new pair for every stranger
+        // who ever turned out. Copying all of them into ONE document means the
+        // archive grows without bound, and the first season that pushes it past
+        // Firestore's 1MB limit cannot be written at all: the club could never
+        // close another season, ever.
+        //
+        // Nothing downstream wants them either. The personal summary filters
+        // guests out by hand, and the duo title needs both halves past the
+        // eligibility gate, which a player with no account can never be.
+        if (!isReal(a) || !isReal(b)) {
+            droppedGuestPairs += 1;
+            continue;
+        }
+        if (Object.keys(pairs).length >= MAX_ARCHIVED_PAIRS) {
+            droppedOverflowPairs += 1;
+            continue;
+        }
         // Sorted key, and the archived a/b sorted WITH it — the direction of
         // `winsA` and `assistsAToB` is meaningless unless the reader knows which
         // player is which, and the live document's own a/b need not be sorted.
@@ -173,6 +209,12 @@ async function closeSeason(args) {
             // chemistry card still quotes it.
             assists: num(x.assists),
         };
+    }
+    if (droppedGuestPairs > 0 || droppedOverflowPairs > 0) {
+        // Never silent. A dropped pair is a fact about the archive, and the
+        // overflow case in particular should never happen for a real club.
+        console.log(`[season] archive pairs: kept ${Object.keys(pairs).length}, ` +
+            `dropped ${droppedGuestPairs} guest, ${droppedOverflowPairs} over cap`, groupId, seasonId);
     }
     // ── The titles ──────────────────────────────────────────────────────────
     //

@@ -2087,9 +2087,15 @@ service cloud.firestore {
       // erase what you did: denying them would deep-link a real notification
       // straight into a permission error. Membership is a key in the archive's
       // own `players` map, so it costs no extra read.
-      allow read: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
-        (request.auth != null &&
-         request.auth.uid in resource.data.get('players', {}));
+      // The LIST path stays membership-bound, and only membership-bound. A
+      // list is evaluated per document and the whole query is denied if any
+      // one fails — so a participant clause here would deny a member's entire
+      // history the moment it contained one season they sat out. Answered from
+      // the field, never the path wildcard.
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      // The single-document path is where the participant clause belongs: it
+      // authorises exactly the document being read, so somebody who played the
+      // season opens it whether or not they are still in the club.
       allow get: if isGroupMemberSafe(resource.data.get('groupId', '')) ||
         (request.auth != null &&
          request.auth.uid in resource.data.get('players', {}));

@@ -75,6 +75,21 @@ describe('and so does somebody who PLAYED it and has since left', () => {
     assert.equal(s.data().groupName, 'club');
   });
 
+  test('but a LIST is still members-only — the wildcard trap, again', async () => {
+    // A participant clause on the list path would be evaluated per document
+    // and deny the whole query the moment it met a season this caller sat
+    // out. So listing stays bound to membership; only the single-document
+    // read widens.
+    await assert.rejects(() => getDocs(query(
+      collection(asDeparted(), 'seasonSummary'), where('groupId', '==', GID))));
+  });
+
+  test('and a member listing their club still gets every season', async () => {
+    const snap = await getDocs(query(
+      collection(asMember(), 'seasonSummary'), where('groupId', '==', GID)));
+    assert.ok(snap.size >= 1);
+  });
+
   test('but not a season they never played', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'seasonSummary', `${GID}__s0`), {
