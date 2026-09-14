@@ -14469,6 +14469,7 @@ async function runSeasonRollovers(): Promise<void> {
       const result = await closeSeason({
         db,
         groupId: doc.id,
+        groupName: g.name ?? '',
         seasonId,
         seasonNo,
         startsAt: seasons.startedAt ?? 0,
@@ -14560,6 +14561,7 @@ export const enableClubSeasons = onCall(
       await closeSeason({
         db,
         groupId,
+        groupName: (group as { name?: string }).name ?? '',
         seasonId: `s${firstNo}`,
         seasonNo: firstNo,
         startsAt: 0, // display resolves the club's first game
@@ -14776,6 +14778,7 @@ export const endSeasonNow = onCall(
     const result = await closeSeason({
       db,
       groupId,
+      groupName: (group as { name?: string }).name ?? '',
       seasonId: seasons.currentId,
       seasonNo: seasons.currentNo ?? 1,
       startsAt: seasons.startedAt ?? 0,

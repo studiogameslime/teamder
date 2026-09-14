@@ -99,7 +99,7 @@ async function seed() {
 }
 
 const args = (over = {}) => ({
-  db, groupId: GID, seasonId: SEASON, seasonNo: 1,
+  db, groupId: GID, groupName: 'חמישי כדורגל', seasonId: SEASON, seasonNo: 1,
   startsAt: 1_780_000_000_000, completedRounds: 16,
   now: 1_790_000_000_000, ...over,
 });
@@ -152,6 +152,31 @@ describe('the archive is taken before the wipe', () => {
     ]) {
       assert.ok(k in s.awards, `${k} is present`);
     }
+  });
+
+  test('every decided title lands on its winner\'s profile', async () => {
+    const t = await db.collection('users').doc('u1').collection('seasonTitles').get();
+    const keys = t.docs.map((d) => d.data().titleKey).sort();
+    assert.ok(keys.includes('topScorer'), 'u1 holds the scoring title');
+    const scorer = t.docs.find((d) => d.data().titleKey === 'topScorer').data();
+    assert.equal(scorer.value, 31);
+    assert.equal(scorer.seasonNo, 1);
+    // The club name is FROZEN, not looked up: the title has to still read
+    // after the club is renamed or the player leaves it.
+    assert.equal(scorer.groupName, 'חמישי כדורגל');
+    assert.equal(scorer.id ?? undefined, undefined);
+  });
+
+  test('the duo title lands on BOTH players, not on a joined non-person', async () => {
+    for (const uid of ['u1', 'u2']) {
+      const t = await db.collection('users').doc(uid).collection('seasonTitles').get();
+      assert.ok(
+        t.docs.some((d) => d.data().titleKey === 'deadlyDuo'),
+        `${uid} holds the duo title`,
+      );
+    }
+    const ghost = await db.collection('users').doc('u1__u2').collection('seasonTitles').get();
+    assert.equal(ghost.size, 0, 'no titles on a player that does not exist');
   });
 
   test('a title nobody can win is null, not a silly winner', async () => {

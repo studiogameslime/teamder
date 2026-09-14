@@ -91,6 +91,8 @@ export interface RolloverArgs {
   seasonNo: number;
   startsAt: number;
   completedRounds: number;
+  /** Frozen onto each winner's title, so it still reads after a rename. */
+  groupName?: string;
   /** Set when an admin ended it early rather than it running its course. */
   endedEarly?: boolean;
   closedBy?: string;
@@ -294,6 +296,56 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     }
     throw err;
   }
+
+  // ── 1b. The titles onto their winners' profiles ─────────────────────────
+  //
+  // Written only AFTER the archive has landed, and outside its create() latch
+  // on purpose: the archive is the record, and a title is a copy of it placed
+  // where a player will actually look. If this half fails the season is still
+  // correctly sealed and the titles are still readable from the archive.
+  //
+  // Each title doc is keyed by club+season+title so a redelivery overwrites
+  // rather than duplicates, and it FREEZES the club's name: the title belongs
+  // to the player for good, including after they leave the club or the club is
+  // renamed, and a live lookup would then render it as a dash.
+  const groupName = args.groupName ?? '';
+  let titleBatch = db.batch();
+  let titleOps = 0;
+  const flushTitles = async () => {
+    if (titleOps === 0) return;
+    await titleBatch.commit();
+    titleBatch = db.batch();
+    titleOps = 0;
+  };
+  for (const [titleKey, award] of Object.entries(awards)) {
+    if (!award) continue; // "not awarded" is a result, not a gap.
+    for (const winner of award.winners) {
+      // The duo title is held by a PAIR, under a joined key. It belongs on
+      // both profiles, not on a player who does not exist.
+      for (const uid of winner.split('__')) {
+        if (!uid || uid.startsWith('guest:')) continue;
+        titleBatch.set(
+          db
+            .collection('users')
+            .doc(uid)
+            .collection('seasonTitles')
+            .doc(`${groupId}__${seasonId}__${titleKey}`),
+          {
+            groupId,
+            groupName,
+            seasonId,
+            seasonNo: args.seasonNo,
+            titleKey,
+            value: award.value,
+            at: now,
+          },
+          { merge: true },
+        );
+        if (++titleOps >= 400) await flushTitles();
+      }
+    }
+  }
+  await flushTitles();
 
   // ── 2. Only now, zero ───────────────────────────────────────────────────
   // Absolute writes, so a retry converges instead of drifting. Chunked well

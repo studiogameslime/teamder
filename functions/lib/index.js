@@ -11956,6 +11956,7 @@ async function runSeasonRollovers() {
             const result = await (0, seasonRollover_1.closeSeason)({
                 db,
                 groupId: doc.id,
+                groupName: g.name ?? '',
                 seasonId,
                 seasonNo,
                 startsAt: seasons.startedAt ?? 0,
@@ -12032,6 +12033,7 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
         await (0, seasonRollover_1.closeSeason)({
             db,
             groupId,
+            groupName: group.name ?? '',
             seasonId: `s${firstNo}`,
             seasonNo: firstNo,
             startsAt: 0, // display resolves the club's first game
@@ -12199,6 +12201,7 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
     const result = await (0, seasonRollover_1.closeSeason)({
         db,
         groupId,
+        groupName: group.name ?? '',
         seasonId: seasons.currentId,
         seasonNo: seasons.currentNo ?? 1,
         startsAt: seasons.startedAt ?? 0,
