@@ -61,6 +61,17 @@ export const mockGroup: Group = {
   preferredHour: '20:00',
   costPerGame: 25,
   notes: 'מים ומגבת אישית. נוהג להגיע 10 דקות מראש לחימום.',
+  // Seasons ON, mid-season — so the seasons card and the personal season
+  // summary are both reachable in mock mode. Without this the card renders its
+  // "switched off" state and the summary screen has no entry point at all.
+  seasons: {
+    enabled: true,
+    currentNo: 2,
+    currentId: 's2',
+    startedAt: Date.now() - 1000 * 60 * 60 * 24 * 150,
+    cadence: { type: 'date', endsAt: Date.now() + 1000 * 60 * 60 * 24 * 32 },
+    count: 1,
+  },
   createdAt: Date.now() - 1000 * 60 * 60 * 24 * 800, // ~2.2y — demos club ותק
   updatedAt: Date.now() - 1000 * 60 * 60 * 24,
 };

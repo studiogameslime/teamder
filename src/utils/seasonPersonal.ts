@@ -61,10 +61,16 @@ export interface SeasonPeer {
   userId: string;
   /** The number that won them the spot — mini-games together, or faced, or beaten. */
   count: number;
-  /** Record from MY side: how the two of us did. */
+  /**
+   * Head to head, from MY side: mini-games I won against them, and they
+   * against me. NOT the same as `winsTogether` — one is us on opposite sides,
+   * the other is us on the same side, and mixing them up produces a sentence
+   * that is true about the wrong relationship.
+   */
   myWins: number;
   theirWins: number;
-  /** Only meaningful for the teammate line. */
+  /** Same side: mini-games we won together, and clean sheets we kept together. */
+  winsTogether: number;
   cleanSheetsTogether: number;
 }
 
@@ -205,6 +211,7 @@ function best(
     count: winnerCount,
     myWins: winner.myWins,
     theirWins: winner.theirWins,
+    winsTogether: winner.winsTogether,
     cleanSheetsTogether: winner.cleanSheetsTogether,
   };
 }

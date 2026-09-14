@@ -245,7 +245,9 @@ export function SeasonSummaryScreen() {
                 label={he.seasonPeerPartner}
                 peer={me.partner}
                 names={names}
-                detail={(p) => he.seasonPeerPartnerDetail(p.count, p.myWins)}
+                // winsTogether, not myWins: this line is about the two of us
+                // on the SAME side, and myWins counts the opposite.
+                detail={(p) => he.seasonPeerPartnerDetail(p.count, p.winsTogether)}
               />
               <PeerRow
                 icon="flame-outline"

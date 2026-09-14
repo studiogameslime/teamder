@@ -242,3 +242,37 @@ describe('who is left out', () => {
     expect(s.nemesis).toBeNull();
   });
 });
+
+describe('the two kinds of "wins" are not interchangeable', () => {
+  // The teammate line reads "N mini-games together, you won M of them". M is
+  // winsTogether. Reaching for myWins there produces a sentence that is true
+  // about the wrong relationship — it counts the games we spent on OPPOSITE
+  // sides. Caught on the emulator, where the card claimed 11 and the answer
+  // was 15.
+  const s = buildPersonalSeason({
+    me: 'me',
+    players: [player('me')],
+    pairs: [
+      pair('me', 'mate', {
+        sameTeam: 23,
+        winsTogether: 15,
+        against: 18,
+        winsA: 11,
+        winsB: 6,
+      }),
+    ],
+  });
+
+  it('the teammate carries what we won TOGETHER', () => {
+    expect(s.partner?.winsTogether).toBe(15);
+  });
+
+  it('and, separately, our head-to-head record', () => {
+    expect(s.partner?.myWins).toBe(11);
+    expect(s.partner?.theirWins).toBe(6);
+  });
+
+  it('they are different numbers, which is the whole point', () => {
+    expect(s.partner?.winsTogether).not.toBe(s.partner?.myWins);
+  });
+});
