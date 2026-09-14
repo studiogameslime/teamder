@@ -4547,6 +4547,35 @@ exports.onGameRosterChanged = (0, firestore_1.onDocumentWritten)('games/{gameId}
     // Gated on "was actually played" (timer started / a round ran) so a game
     // that the stale-cleanup FINISHES without ever being played in-app doesn't
     // credit everyone a phantom game — same signal the cleanup uses.
+    // ── Season stamp ────────────────────────────────────────────────────
+    // Which season a round belongs to is decided by WHEN IT WAS PLAYED, not
+    // when it was created: a weekly fixture is cloned days ahead, and a game
+    // created in one season and played in the next belongs to the next.
+    //
+    // Stamped here, on the server, and never by the client — 141 timestamps in
+    // the client service come from the device clock, and a phone a day out
+    // would file an evening under the wrong season with nothing to catch it.
+    //
+    // Written once. `create()` on the field is not available, so the guard is
+    // the absent-check: a stamp already present is never overwritten, which
+    // keeps a redelivered event and the finish backstop below idempotent.
+    if (after.groupId &&
+        !after.seasonId &&
+        (after.status === 'active' || after.status === 'finished')) {
+        try {
+            const gSnap = await db.collection('groups').doc(after.groupId).get();
+            const seasons = gSnap.data()?.seasons;
+            if (seasons?.enabled && seasons.currentId) {
+                await event.data.after.ref.update({ seasonId: seasons.currentId });
+            }
+        }
+        catch (err) {
+            // A missing stamp is recoverable — the rollover resolves an unstamped
+            // game to the open season. Losing the evening's stats is not, so this
+            // never throws into the rest of the trigger.
+            console.error('[season] stamp failed', event.params.gameId, err);
+        }
+    }
     const afterLm = after.liveMatch;
     const afterPhase = afterLm?.phase;
     const finishWasPlayed = typeof afterLm?.startedAt === 'number' ||

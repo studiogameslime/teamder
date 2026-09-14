@@ -101,6 +101,36 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
 
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
+  const uids: string[] = [];
+  for (const d of psSnap.docs) {
+    const uid = (d.data() as { userId?: string }).userId;
+    if (typeof uid === 'string' && uid) uids.push(uid);
+  }
+
+  // Names are FETCHED here, not read off the stat row.
+  //
+  // `communityPlayerStats` carries no name — the table resolves one per row
+  // from /users at render time. Freezing `x.displayName` therefore froze an
+  // empty string for every player, which a dry run against the real club
+  // caught: 29 of 29 rows blank. That would have defeated the whole point of
+  // freezing, which is that a sealed table still reads after somebody deletes
+  // their account (the deletion anonymises /users to "משתמש שהוסר", and a
+  // missing document renders as a dash).
+  //
+  // One read per player, once per season. getAll batches them.
+  const nameByUid = new Map<string, string>();
+  if (uids.length) {
+    const refs = uids.map((u) => db.collection('users').doc(u));
+    for (let i = 0; i < refs.length; i += 300) {
+      const docs = await db.getAll(...refs.slice(i, i + 300));
+      for (const d of docs) {
+        const n = (d.data() as { name?: string; displayName?: string } | undefined);
+        const name = n?.name ?? n?.displayName;
+        if (typeof name === 'string' && name) nameByUid.set(d.id, name);
+      }
+    }
+  }
+
   const players: Record<string, Record<string, number | string | boolean>> = {};
   for (const d of psSnap.docs) {
     const x = d.data() as Record<string, unknown>;
@@ -108,10 +138,7 @@ export async function closeSeason(args: RolloverArgs): Promise<RolloverResult> {
     if (!uid) continue;
     const row: Record<string, number | string | boolean> = {};
     for (const f of PLAYER_SEASON_FIELDS) row[f] = num(x[f]);
-    // Frozen at close. A deleted account is anonymised to "משתמש שהוסר" and a
-    // missing /users doc renders as a dash — a sealed table must not degrade
-    // months later because somebody left.
-    row.displayName = typeof x.displayName === 'string' ? x.displayName : '';
+    row.displayName = nameByUid.get(uid) ?? '';
     players[uid] = row;
   }
 
