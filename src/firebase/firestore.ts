@@ -654,6 +654,7 @@ function readGroupSeasons(v: unknown): GroupSeasons | undefined {
       : {}),
     cadence: {
       type: c.type === 'rounds' ? 'rounds' : 'date',
+      ...(typeof c.months === 'number' ? { months: c.months } : {}),
       ...(typeof c.endsAt === 'number' ? { endsAt: c.endsAt } : {}),
       ...(typeof c.targetRounds === 'number'
         ? { targetRounds: c.targetRounds }

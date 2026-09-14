@@ -969,6 +969,10 @@ export interface GroupSeasons {
   roundsAtStart?: number;
   cadence: {
     type: SeasonCadenceType;
+    /** `date`: the LENGTH the admin chose, in months. Stored beside the date
+     *  because a season that rolls over has to compute its own end date; an
+     *  inherited one is already in the past. */
+    months?: number;
     /** `date`: when the season is due to end. */
     endsAt?: number;
     /** `rounds`: the season's TOTAL finished rounds, not a remainder. A club

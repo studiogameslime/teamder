@@ -2022,6 +2022,8 @@ export const he = {
   seasonsCadenceQuestion: 'איך העונה נגמרת',
   seasonsHowLong: 'אחרי כמה זמן',
   seasonsHowMany: 'אחרי כמה מחזורים',
+  seasonsTargetCustom:
+    'היעד הנוכחי של המועדון לא אחת מהאפשרויות כאן. בחירה תחליף אותו.',
   seasonsSaveTargetCta: 'עדכן את יעד העונה',
   seasonsTargetSavedToast: 'יעד העונה עודכן',
   seasonsDisableTitle: 'לכבות עונות?',

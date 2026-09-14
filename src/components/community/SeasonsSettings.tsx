@@ -79,15 +79,35 @@ export function SeasonsSettings({
   // with seasons off shows the options the moment the switch flips, and nothing
   // is written until the admin presses the button below them.
   const [open, setOpen] = useState(live);
+  // Seeded from the club's REAL target, not from a default.
+  //
+  // These chips are the only place an admin sees what the season is set to, and
+  // they double as the editor. Starting them at 6 months / 24 rounds told a
+  // club running a twelve-month season that it was running a six-month one —
+  // and then "עדכן את יעד העונה" wrote that fiction back, silently moving the
+  // finish line the admin never touched.
   const [cadence, setCadence] = useState<Cadence>(
     seasons?.cadence?.type === 'rounds' ? 'rounds' : 'date',
   );
-  const [months, setMonths] = useState<number>(6);
-  const [rounds, setRounds] = useState<number>(24);
+  const [months, setMonths] = useState<number>(() =>
+    MONTH_CHOICES.includes(seasons?.cadence?.months as never)
+      ? (seasons?.cadence?.months as number)
+      : 6,
+  );
+  const [rounds, setRounds] = useState<number>(() =>
+    ROUND_CHOICES.includes(seasons?.cadence?.targetRounds as never)
+      ? (seasons?.cadence?.targetRounds as number)
+      : 24,
+  );
   /** Only asked on the FIRST enable — after that there is no loose history. */
   const [sealHistory, setSealHistory] = useState(false);
 
   const firstTime = (seasons?.count ?? 0) === 0 && !live;
+  /** Does the club's current target correspond to one of the chips below? */
+  const offeredTarget =
+    seasons?.cadence?.type === 'rounds'
+      ? ROUND_CHOICES.includes(seasons.cadence.targetRounds as never)
+      : MONTH_CHOICES.includes(seasons?.cadence?.months as never);
 
   const run = useCallback(
     async (action: () => Promise<void>) => {
@@ -110,6 +130,16 @@ export function SeasonsSettings({
     },
     [onChanged],
   );
+
+  /** Has the admin actually moved the target away from the club's own? */
+  const targetChanged = useMemo(() => {
+    if (!live) return true;
+    const c = seasons?.cadence;
+    if (cadence === 'rounds') {
+      return c?.type !== 'rounds' || c.targetRounds !== rounds;
+    }
+    return c?.type !== 'date' || c.months !== months;
+  }, [live, seasons?.cadence, cadence, months, rounds]);
 
   const targetArgs = useMemo(
     () =>
@@ -234,6 +264,12 @@ export function SeasonsSettings({
           <Text style={styles.fieldLabel}>
             {cadence === 'date' ? he.seasonsHowLong : he.seasonsHowMany}
           </Text>
+          {/* A club can hold a target that is not one of the chips — an older
+              season, or one set before these choices existed. Say so rather
+              than showing an unselected row that looks broken. */}
+          {live && !offeredTarget ? (
+            <Text style={styles.fieldHint}>{he.seasonsTargetCustom}</Text>
+          ) : null}
           <View style={styles.chipRow}>
             {cadence === 'date'
               ? MONTH_CHOICES.map((m) => (
@@ -279,7 +315,10 @@ export function SeasonsSettings({
             title={live ? he.seasonsSaveTargetCta : he.seasonsEnableCta}
             variant="outline"
             fullWidth
-            disabled={busy}
+            // Nothing to save when the chips still show what the club holds.
+            // A live "update" button on an unchanged target invites an admin
+            // to move a finish line they only came to look at.
+            disabled={busy || (live && !targetChanged)}
             onPress={live ? saveTarget : enable}
           />
 
