@@ -2051,6 +2051,21 @@ service cloud.firestore {
       allow get: if isGroupMemberSafe(groupId);
       allow write: if false;
     }
+    // ── /seasonSummary/{groupId__seasonId} — a closed season, sealed ────
+    // Written once by the rollover and never again, so the client has no
+    // business writing here at all.
+    //
+    // TWO read statements, for the same reason communityStats above needs
+    // them: a `list` does not bind the path wildcard, so touching `groupId`
+    // there raises a Null value error and denies the whole query. The list
+    // path is answered from the FIELD; `allow get` covers a direct read by id,
+    // which is how a shared link to a past season resolves. Both use the
+    // non-throwing membership check so neither can error out the other.
+    match /seasonSummary/{doc} {
+      allow read: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow get: if isGroupMemberSafe(resource.data.get('groupId', ''));
+      allow write: if false;
+    }
     // ── /gamePlayerStats/{gameId__uid} — per-GAME rows ──────────────────
     // Not club-scoped (the documents carry `gameId`, never `groupId`), so the
     // right bound is the GAME's own audience: if you may read the game, you may

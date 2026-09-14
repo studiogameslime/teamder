@@ -32,6 +32,7 @@ import { StatBatch, MAX_ROUND_BATCH_OPS } from './statBatch';
 import { commitRoundInOrder } from './commitProtocol';
 import { eveningScoreServer } from './eveningScoreCore';
 import { occupancyOf, inFillerQuietHours } from './fillerRules';
+import { closeSeason } from './seasonRollover';
 import { onCall, HttpsError, onRequest } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { getFunctions as getGcpFunctions } from 'firebase-admin/functions';
@@ -14230,5 +14231,357 @@ export const onFeedbackCreated = onDocumentCreated(
       updatedAt: now,
       doneAt: 0,
     });
+  },
+);
+
+// ─── Seasons ─────────────────────────────────────────────────────────────
+//
+// Three admin actions and one sweep. Every one of them funnels into the same
+// `closeSeason`, because a second closing path is a second set of bugs and the
+// one that runs unattended is the one nobody would be watching.
+
+/** Is the club quiet enough to close a season right now? */
+async function clubIsQuiet(groupId: string): Promise<{
+  ok: boolean;
+  blocker?: 'openGame' | 'unsealedGame';
+}> {
+  // Anything not finished/cancelled is still in play. Closing across a live
+  // evening splits it between two seasons: each mini-game commits separately,
+  // so rounds 1-3 land in the old season and 4-6 in the new, while the
+  // player's own career total — written in the same batch — keeps the whole.
+  const open = await db
+    .collection('games')
+    .where('groupId', '==', groupId)
+    .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
+    .limit(1)
+    .get();
+  if (!open.empty) return { ok: false, blocker: 'openGame' };
+
+  // Finished but not yet sealed. Closing in that gap makes sealRoundSummary
+  // compare tonight against a table with no history, so every stat reads as a
+  // brand-new club record — and the summary is written once, so the wrong
+  // story is permanent.
+  const recent = await db
+    .collection('games')
+    .where('groupId', '==', groupId)
+    .where('status', '==', 'finished')
+    .orderBy('startsAt', 'desc')
+    .limit(3)
+    .get();
+  for (const g of recent.docs) {
+    const summary = await db.collection('roundSummaries').doc(g.id).get();
+    const lm = (g.data() as { liveMatch?: { startedAt?: number } }).liveMatch;
+    // Only a game that was actually played gets sealed; one the cleanup
+    // finished without play never will, so it must not block forever.
+    if (!summary.exists && typeof lm?.startedAt === 'number') {
+      return { ok: false, blocker: 'unsealedGame' };
+    }
+  }
+  return { ok: true };
+}
+
+/** Finished rounds credited to the club. From the sealed-evening counter, not
+ *  a query over games: deleting a game decrements nothing, so a live count
+ *  drifts below the rounds that were actually credited. */
+async function completedRoundsOf(groupId: string): Promise<number> {
+  const rec = await db.collection('clubRecords').doc(groupId).get();
+  const n = (rec.data() as { eveningsSealed?: number } | undefined)?.eveningsSealed;
+  return typeof n === 'number' && n > 0 ? n : 0;
+}
+
+async function requireClubAdmin(groupId: unknown, uid: string) {
+  if (typeof groupId !== 'string' || !groupId) {
+    throw new HttpsError('invalid-argument', 'groupId required');
+  }
+  const snap = await db.collection('groups').doc(groupId).get();
+  if (!snap.exists) throw new HttpsError('not-found', 'club not found');
+  const g = snap.data() as { adminIds?: string[]; name?: string; seasons?: unknown };
+  if (!Array.isArray(g.adminIds) || !g.adminIds.includes(uid)) {
+    throw new HttpsError('permission-denied', 'admin only');
+  }
+  return { ref: snap.ref, group: g };
+}
+
+const MONTH_CHOICES = [1, 3, 6, 12];
+
+/** Add months, clamped to the last valid day. Mirrors src/utils/seasonLifecycle
+ *  so both sides agree; there is no month arithmetic anywhere else here. */
+function addMonthsClampedServer(from: number, months: number): number {
+  const d = new Date(from);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, last));
+  return d.getTime();
+}
+
+/**
+ * Switch seasons on for a club.
+ *
+ * Everything already played becomes season 1. The admin then chooses whether
+ * to seal it now — history gets its champions and season 2 starts empty — or
+ * to carry season 1 on to a target.
+ *
+ * Carrying on is the subtle one: the target is measured from THIS MOMENT, not
+ * from the club's first game. A two-year-old club choosing six months would
+ * otherwise be handed a deadline eighteen months past and season 1 would close
+ * on save, which is the exact opposite of "continue".
+ */
+export const enableClubSeasons = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {}) as {
+      groupId?: unknown;
+      closeFirstNow?: unknown;
+      cadenceType?: unknown;
+      months?: unknown;
+      targetRounds?: unknown;
+    };
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId as string;
+
+    const existing = group.seasons as { count?: number; enabled?: boolean } | undefined;
+    if (existing?.enabled) {
+      throw new HttpsError('failed-precondition', 'seasons already on');
+    }
+
+    const now = Date.now();
+    const played = await completedRoundsOf(groupId);
+    const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+
+    let cadence: { type: string; endsAt?: number; targetRounds?: number };
+    if (type === 'rounds') {
+      const asked = Number(data.targetRounds);
+      if (!Number.isFinite(asked) || asked <= 0) {
+        throw new HttpsError('invalid-argument', 'targetRounds required');
+      }
+      cadence = { type: 'rounds', targetRounds: Math.round(asked) };
+    } else {
+      const months = MONTH_CHOICES.includes(Number(data.months))
+        ? Number(data.months)
+        : 6;
+      cadence = { type: 'date', endsAt: addMonthsClampedServer(now, months) };
+    }
+
+    // Numbering CONTINUES across the feature being switched off and on again:
+    // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
+    const closedSoFar = existing?.count ?? 0;
+
+    if (data.closeFirstNow === true) {
+      const quiet = await clubIsQuiet(groupId);
+      if (!quiet.ok) {
+        throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+      }
+      const firstNo = closedSoFar + 1;
+      await closeSeason({
+        db,
+        groupId,
+        seasonId: `s${firstNo}`,
+        seasonNo: firstNo,
+        startsAt: 0, // display resolves the club's first game
+        completedRounds: played,
+        // Assists were only collected from 21.06 and clean sheets from 17.08,
+        // while clubs predate both. The spec awards titles anyway and flags it.
+        partialData: true,
+        now,
+      });
+      await ref.set(
+        {
+          seasons: {
+            enabled: true,
+            currentNo: firstNo + 1,
+            currentId: `s${firstNo + 1}`,
+            startedAt: now,
+            cadence,
+            targetHistory: [],
+            count: firstNo,
+          },
+        },
+        { merge: true },
+      );
+      return { ok: true, closedSeasonNo: firstNo, currentNo: firstNo + 1 };
+    }
+
+    // Carry season 1 on. If the cadence counts rounds, the target has to be
+    // ahead of what has already been played or "continue" ends it on save.
+    if (cadence.type === 'rounds') {
+      cadence.targetRounds = Math.max(cadence.targetRounds ?? 0, played + 1);
+    }
+    const no = closedSoFar + 1;
+    await ref.set(
+      {
+        seasons: {
+          enabled: true,
+          currentNo: no,
+          currentId: `s${no}`,
+          startedAt: now,
+          cadence,
+          targetHistory: [],
+          count: closedSoFar,
+        },
+      },
+      { merge: true },
+    );
+    return { ok: true, currentNo: no, playedAlready: played };
+  },
+);
+
+/**
+ * Move the finish line of a running season.
+ *
+ * Allowed — an admin runs the club, and a season that lost six weeks to rain
+ * genuinely needs adjusting. Refused when the new target is already behind the
+ * club, in either cadence, because that is "end it now" in disguise and skips
+ * the preview and confirmation the real action has.
+ *
+ * Every change is recorded on the club and shown. The protection here is
+ * visibility, not prevention: a change everyone can see is a management
+ * decision, and a quiet one is not.
+ */
+export const updateSeasonTarget = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {}) as {
+      groupId?: unknown;
+      cadenceType?: unknown;
+      months?: unknown;
+      targetRounds?: unknown;
+    };
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId as string;
+    const seasons = group.seasons as
+      | {
+          enabled?: boolean;
+          cadence?: { type: string; endsAt?: number; targetRounds?: number };
+          targetHistory?: unknown[];
+        }
+      | undefined;
+    if (!seasons?.enabled) {
+      throw new HttpsError('failed-precondition', 'seasons are off');
+    }
+
+    const now = Date.now();
+    const played = await completedRoundsOf(groupId);
+    const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
+
+    let next: { type: string; endsAt?: number; targetRounds?: number };
+    if (type === 'rounds') {
+      const asked = Math.round(Number(data.targetRounds));
+      if (!Number.isFinite(asked) || asked <= 0) {
+        throw new HttpsError('invalid-argument', 'targetRounds required');
+      }
+      if (asked <= played) {
+        throw new HttpsError(
+          'failed-precondition',
+          `target ${asked} is not above the ${played} rounds already played`,
+        );
+      }
+      next = { type: 'rounds', targetRounds: asked };
+    } else {
+      const months = MONTH_CHOICES.includes(Number(data.months))
+        ? Number(data.months)
+        : 6;
+      const endsAt = addMonthsClampedServer(now, months);
+      if (endsAt <= now) {
+        throw new HttpsError('failed-precondition', 'end date is in the past');
+      }
+      next = { type: 'date', endsAt };
+    }
+
+    const who = await db.collection('users').doc(uid).get();
+    const byName =
+      (who.data() as { name?: string } | undefined)?.name ?? '';
+
+    await ref.set(
+      {
+        seasons: {
+          cadence: next,
+          targetHistory: admin.firestore.FieldValue.arrayUnion({
+            at: now,
+            by: uid,
+            byName,
+            from: seasons.cadence ?? null,
+            to: next,
+          }),
+        },
+      },
+      { merge: true },
+    );
+    return { ok: true, cadence: next };
+  },
+);
+
+/**
+ * End the running season now.
+ *
+ * Deliberately its own action rather than a target change, so it can carry the
+ * guards a target change cannot: the club has to be quiet, and the client shows
+ * the admin exactly which titles are about to be awarded before they confirm.
+ * A manager who sees a name they did not expect stops on their own, and no
+ * amount of validation beats that.
+ */
+export const endSeasonNow = onCall(
+  { enforceAppCheck: ENFORCE_APP_CHECK },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'sign-in required');
+    const data = (request.data ?? {}) as { groupId?: unknown };
+    const { ref, group } = await requireClubAdmin(data.groupId, uid);
+    const groupId = data.groupId as string;
+    const seasons = group.seasons as
+      | {
+          enabled?: boolean;
+          currentNo?: number;
+          currentId?: string;
+          startedAt?: number;
+          cadence?: { type: string; endsAt?: number; targetRounds?: number };
+          count?: number;
+        }
+      | undefined;
+    if (!seasons?.enabled || !seasons.currentId) {
+      throw new HttpsError('failed-precondition', 'seasons are off');
+    }
+
+    const quiet = await clubIsQuiet(groupId);
+    if (!quiet.ok) {
+      throw new HttpsError('failed-precondition', quiet.blocker ?? 'busy');
+    }
+
+    const now = Date.now();
+    const who = await db.collection('users').doc(uid).get();
+    const result = await closeSeason({
+      db,
+      groupId,
+      seasonId: seasons.currentId,
+      seasonNo: seasons.currentNo ?? 1,
+      startsAt: seasons.startedAt ?? 0,
+      completedRounds: await completedRoundsOf(groupId),
+      endedEarly: true,
+      closedBy: uid,
+      closedByName: (who.data() as { name?: string } | undefined)?.name ?? '',
+      originalTarget: seasons.cadence,
+      now,
+    });
+
+    // The next season inherits the same rules; the admin may change them.
+    const nextNo = (seasons.currentNo ?? 1) + 1;
+    await ref.set(
+      {
+        seasons: {
+          currentNo: nextNo,
+          currentId: `s${nextNo}`,
+          startedAt: now,
+          targetHistory: [],
+          count: (seasons.count ?? 0) + 1,
+        },
+      },
+      { merge: true },
+    );
+    return { ok: true, ...result, closedNo: seasons.currentNo ?? 1 };
   },
 );
