@@ -30,6 +30,7 @@ import {
   type SeasonSummaryModel,
 } from '@/services/seasonSummaryService';
 import type { SeasonPeer } from '@/utils/seasonPersonal';
+import type { SeasonTitleWon } from '@/services/seasonSummaryService';
 import { useUserStore } from '@/store/userStore';
 import { colors, spacing, typography } from '@/theme';
 import { RTL_LABEL_ALIGN } from '@/theme/rtl';
@@ -85,6 +86,22 @@ function PeerRow({
         <Text style={styles.peerLabel}>{label}</Text>
         <Text style={styles.peerName}>{names[peer.userId] ?? '—'}</Text>
         <Text style={styles.peerDetail}>{detail(peer)}</Text>
+      </View>
+    </View>
+  );
+}
+
+function TitleRow({ title }: { title: SeasonTitleWon }) {
+  return (
+    <View style={styles.titleRow}>
+      <Text style={styles.titleMedal}>🏆</Text>
+      <View style={styles.titleText}>
+        <Text style={styles.titleName}>{he.seasonTitleNames[title.key]}</Text>
+        {title.sharedWith > 0 ? (
+          <Text style={styles.titleShared}>
+            {he.seasonTitleSharedWith(title.sharedWith)}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -215,6 +232,21 @@ export function SeasonSummaryScreen() {
           </View>
         ) : (
           <>
+            {/* Titles first when there are any: it is the one thing on this
+                screen a person tells someone else about. A running season has
+                none by design — they are decided when the numbers stop. */}
+            {model.closed ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{he.seasonSectionTitles}</Text>
+                {me.hasData && model.myTitles.length === 0 ? (
+                  <Text style={styles.cardNote}>{he.seasonTitlesNone}</Text>
+                ) : null}
+                {model.myTitles.map((t) => (
+                  <TitleRow key={t.key} title={t} />
+                ))}
+              </View>
+            ) : null}
+
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{he.seasonSectionNumbers}</Text>
               <View style={styles.statGrid}>
@@ -401,6 +433,22 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   statLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  // Medal first in source order → rightmost under forceRTL, where the eye
+  // starts.
+  titleRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  titleMedal: { fontSize: 22 },
+  titleText: { flex: 1, gap: 1 },
+  titleName: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+    textAlign: RTL_LABEL_ALIGN,
+  },
+  titleShared: {
     ...typography.caption,
     color: colors.textMuted,
     textAlign: RTL_LABEL_ALIGN,

@@ -2064,6 +2064,25 @@ export const he = {
   seasonBlockedOff: 'העונות כבויות במועדון הזה.',
   seasonBlockedNotAdmin: 'רק מנהל המועדון יכול לסיים עונה.',
   seasonActionFailed: 'משהו השתבש. נסו שוב עוד רגע.',
+  // The nine season titles. Names, not descriptions — they are worn.
+  seasonTitleNames: {
+    topScorer: 'מלך השערים',
+    topAssister: 'מלך הבישולים',
+    mvp: 'שחקן העונה',
+    topWinner: 'מלך הניצחונות',
+    mostLoyal: 'הנאמן של העונה',
+    cleanSheetKing: 'מלך השערים הנקיים',
+    penaltyKing: 'מלך הפנדלים',
+    penaltyKeeper: 'שוער הפנדלים',
+    deadlyDuo: 'הצמד הקטלני',
+  } as const,
+  seasonSectionTitles: 'התארים שלי בעונה',
+  seasonTitleSharedWith: (n: number) =>
+    n === 1 ? 'במשותף עם עוד שחקן' : `במשותף עם עוד ${n} שחקנים`,
+  seasonTitlesNone:
+    'לא לקחת תואר בעונה הזאת. תשעה תארים מחכים בעונה הבאה.',
+  seasonTitlesPending:
+    'התארים מחולקים כשהעונה נסגרת.',
   seasonSummaryTitle: 'סיכום העונה שלי',
   seasonNow: 'עכשיו',
   seasonNumberLabel: (no: number) => `עונה ${no}`,

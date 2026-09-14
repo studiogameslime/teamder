@@ -21,7 +21,17 @@ import {
   type SeasonPairRow,
   type SeasonPlayerRow,
 } from '@/utils/seasonPersonal';
-import type { GroupSeasons, UserId } from '@/types';
+import type { GroupSeasons, SeasonTitleKey, UserId } from '@/types';
+import { SEASON_TITLE_KEYS } from '@/utils/seasonAwards';
+
+/** A title this player holds in the season being shown. */
+export interface SeasonTitleWon {
+  key: SeasonTitleKey;
+  /** The number it was won on: 31 goals, 8.37 average, 62% saved. */
+  value: number;
+  /** Other holders — ties are shared, never broken. */
+  sharedWith: number;
+}
 
 /** One season the club has, for the picker. */
 export interface SeasonChoice {
@@ -51,6 +61,14 @@ export interface SeasonSummaryModel {
   me: PersonalSeason;
   /** Display names for the handful of people the summary actually names. */
   names: Record<string, string>;
+  /**
+   * Titles this player took in this season, decided when it closed.
+   *
+   * Empty while a season is still running — the titles do not exist until the
+   * numbers stop moving, and showing a provisional leader as a title holder
+   * would be a promise the season has not made yet.
+   */
+  myTitles: SeasonTitleWon[];
   /**
    * Every season this club has had, newest first.
    *
@@ -109,6 +127,30 @@ function pairRow(x: Record<string, unknown>): SeasonPairRow | null {
     assistsAToB: num(x.assistsAToB),
     assistsBToA: num(x.assistsBToA),
   };
+}
+
+/**
+ * Which of the sealed titles are mine.
+ *
+ * A tie is shared by everyone on the top number, so a title can have several
+ * holders; `sharedWith` counts the others. The duo title is held under a
+ * joined `a__b` key, so membership is tested against its parts.
+ */
+function titlesFor(
+  awards: Record<string, unknown> | undefined,
+  me: string,
+): SeasonTitleWon[] {
+  if (!awards) return [];
+  const out: SeasonTitleWon[] = [];
+  for (const key of SEASON_TITLE_KEYS) {
+    const a = awards[key] as { winners?: unknown; value?: unknown } | null | undefined;
+    if (!a || !Array.isArray(a.winners)) continue;
+    const holders = a.winners.filter((w): w is string => typeof w === 'string');
+    const mine = holders.some((w) => w === me || w.split('__').includes(me));
+    if (!mine) continue;
+    out.push({ key, value: num(a.value), sharedWith: Math.max(0, holders.length - 1) });
+  }
+  return out;
 }
 
 /** Every uid the finished summary actually names — nothing more is fetched. */
@@ -243,6 +285,7 @@ export const seasonSummaryService = {
             (d.totals as Record<string, unknown> | undefined)?.rounds,
           ),
           me,
+          myTitles: titlesFor(d.awards as Record<string, unknown> | undefined, userId),
           names: await resolveNames(namedUids(me), frozen),
           available: seasonChoices(seasons),
         };
@@ -277,6 +320,8 @@ export const seasonSummaryService = {
         closed: false,
         completedRounds: num(clubSnap.data()?.rounds),
         me,
+        // A running season has no titles yet, by design.
+        myTitles: [],
         names: await resolveNames(namedUids(me), new Map()),
         available: seasonChoices(seasons),
       };
@@ -335,6 +380,12 @@ function mockSeasonSummary(
     closed: past,
     completedRounds: past ? 26 : 48,
     me,
+    myTitles: past
+      ? [
+          { key: 'topAssister', value: 3, sharedWith: 1 },
+          { key: 'mostLoyal', value: 22, sharedWith: 0 },
+        ]
+      : [],
     names: { u_dani: 'דני', u_roi: 'רועי', u_omer: 'עומר' },
     available: [
       { no: 2, id: 's2', closed: false },
