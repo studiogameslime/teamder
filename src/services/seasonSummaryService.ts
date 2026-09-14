@@ -40,7 +40,13 @@ export interface SeasonSummaryModel {
   /** Null while the season is still running. */
   endsAt: number | null;
   closed: boolean;
-  /** Rounds the CLUB finished this season — the context every rank sits in. */
+  /**
+   * MINI-GAMES the club played this season — the context every rank sits in.
+   *
+   * Not the same counter as a rounds-cadence target, which counts sealed
+   * EVENINGS. The archive happens to carry both; this reads the one the live
+   * season can also answer, so the number means one thing on both paths.
+   */
   completedRounds: number;
   me: PersonalSeason;
   /** Display names for the handful of people the summary actually names. */
@@ -230,7 +236,12 @@ export const seasonSummaryService = {
           startsAt: num(d.startsAt),
           endsAt: num(d.endsAt) || null,
           closed: true,
-          completedRounds: num(d.completedRounds),
+          // totals.rounds, not the top-level completedRounds: that one counts
+          // sealed evenings and would silently change units when a season
+          // closed.
+          completedRounds: num(
+            (d.totals as Record<string, unknown> | undefined)?.rounds,
+          ),
           me,
           names: await resolveNames(namedUids(me), frozen),
           available: seasonChoices(seasons),

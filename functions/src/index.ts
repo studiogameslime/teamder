@@ -12832,6 +12832,7 @@ export const cronEvery60Min = onSchedule(
     await runSweep('holidayGameNotices', runHolidayGameNotices);
     await runSweep('dailyCleanup', runDailyCleanupIfDue);
     await runSweep('clubActivity', runClubActivityIfDue);
+    await runSweep('seasonRollovers', runSeasonRollovers);
   },
 );
 
@@ -14308,10 +14309,33 @@ async function clubIsQuiet(groupId: string): Promise<{
 /** Finished rounds credited to the club. From the sealed-evening counter, not
  *  a query over games: deleting a game decrements nothing, so a live count
  *  drifts below the rounds that were actually credited. */
-async function completedRoundsOf(groupId: string): Promise<number> {
+/** The club's ALL-TIME sealed evenings. Never resets. */
+async function sealedEveningsOf(groupId: string): Promise<number> {
   const rec = await db.collection('clubRecords').doc(groupId).get();
   const n = (rec.data() as { eveningsSealed?: number } | undefined)?.eveningsSealed;
   return typeof n === 'number' && n > 0 ? n : 0;
+}
+
+/**
+ * Rounds credited to THIS season.
+ *
+ * The counter behind it is all-time and never resets, so a season has to
+ * remember where it started. `roundsAtStart` is stamped when the season opens:
+ * 0 when the season continues the club's history (season 1 of an existing club
+ * owns everything played so far — that is what "continue" means), and the
+ * all-time count at that moment for every season opened after a close.
+ *
+ * Without the offset a rounds target is broken for every season after the
+ * first: season 2 of a club with 200 sealed evenings would be measured against
+ * 200 and be "due" the instant it opened, over and over.
+ */
+async function completedRoundsOf(
+  groupId: string,
+  roundsAtStart?: number,
+): Promise<number> {
+  const all = await sealedEveningsOf(groupId);
+  const base = typeof roundsAtStart === 'number' && roundsAtStart > 0 ? roundsAtStart : 0;
+  return Math.max(0, all - base);
 }
 
 async function requireClubAdmin(groupId: unknown, uid: string) {
@@ -14353,6 +14377,122 @@ function addMonthsClampedServer(from: number, months: number): number {
  * otherwise be handed a deadline eighteen months past and season 1 would close
  * on save, which is the exact opposite of "continue".
  */
+/**
+ * Close every season that has reached its target.
+ *
+ * Until this existed, a season's finish line was a decoration: both cadences
+ * could be set, shown and moved, and nothing ever acted on them — only the
+ * admin's manual "end now" actually closed anything.
+ *
+ * Three rules, and each of them is here because the alternative is worse:
+ *
+ *   DUE, not overdue. A date target fires the first hour after it passes; a
+ *   rounds target the first hour after the count is reached. There is no grace
+ *   period — a season that has met its terms is over.
+ *
+ *   QUIET, or wait. `clubIsQuiet` is checked per club and a busy one is simply
+ *   skipped until the next run. Closing across a live evening splits it between
+ *   two seasons: each mini-game commits separately, so the first rounds land in
+ *   the old season and the rest in the new. Waiting an hour costs nothing;
+ *   splitting an evening cannot be undone.
+ *
+ *   ONE AT A TIME, and never fatally. Each club is wrapped on its own, because
+ *   a single club whose close throws must not stop the sweep from reaching the
+ *   others. `closeSeason` is idempotent on its own (the archive is a create()),
+ *   so a retry after a partial failure cannot double-archive.
+ */
+async function runSeasonRollovers(): Promise<void> {
+  const now = Date.now();
+  const clubs = await db
+    .collection('groups')
+    .where('seasons.enabled', '==', true)
+    .get();
+  if (clubs.empty) return;
+
+  let closed = 0;
+  let waiting = 0;
+  for (const doc of clubs.docs) {
+    const g = doc.data() as {
+      name?: string;
+      seasons?: {
+        enabled?: boolean;
+        currentNo?: number;
+        currentId?: string;
+        startedAt?: number;
+        roundsAtStart?: number;
+        cadence?: { type?: string; endsAt?: number; targetRounds?: number };
+        count?: number;
+      };
+    };
+    const seasons = g.seasons;
+    if (!seasons?.enabled || !seasons.currentId) continue;
+    const cadence = seasons.cadence ?? {};
+
+    try {
+      const played = await completedRoundsOf(doc.id, seasons.roundsAtStart);
+      const due =
+        cadence.type === 'rounds'
+          ? typeof cadence.targetRounds === 'number' &&
+            cadence.targetRounds > 0 &&
+            played >= cadence.targetRounds
+          : typeof cadence.endsAt === 'number' &&
+            cadence.endsAt > 0 &&
+            now >= cadence.endsAt;
+      if (!due) continue;
+
+      const quiet = await clubIsQuiet(doc.id);
+      if (!quiet.ok) {
+        // Not a failure. The club is mid-evening; it will be due next hour too.
+        waiting += 1;
+        console.log('[season] due but busy — waiting', doc.id, quiet.blocker);
+        continue;
+      }
+
+      const seasonId = seasons.currentId;
+      const seasonNo = seasons.currentNo ?? 1;
+      const result = await closeSeason({
+        db,
+        groupId: doc.id,
+        seasonId,
+        seasonNo,
+        startsAt: seasons.startedAt ?? 0,
+        completedRounds: played,
+        originalTarget: cadence as { type: string; endsAt?: number; targetRounds?: number },
+        now,
+      });
+
+      const nextNo = seasonNo + 1;
+      await doc.ref.set(
+        {
+          seasons: {
+            currentNo: nextNo,
+            currentId: `s${nextNo}`,
+            startedAt: now,
+            roundsAtStart: await sealedEveningsOf(doc.id),
+            targetHistory: [],
+            count: (seasons.count ?? 0) + 1,
+          },
+        },
+        { merge: true },
+      );
+      if (result.archived) {
+        await announceSeasonClosed({
+          groupId: doc.id,
+          groupName: g.name ?? '',
+          seasonId,
+          seasonNo,
+        });
+      }
+      closed += 1;
+    } catch (err) {
+      console.error('[season] rollover failed', doc.id, err);
+    }
+  }
+  if (closed || waiting) {
+    console.log(`[season] rollovers: ${closed} closed, ${waiting} waiting`);
+  }
+}
+
 export const enableClubSeasons = onCall(
   { enforceAppCheck: ENFORCE_APP_CHECK },
   async (request) => {
@@ -14449,6 +14589,9 @@ export const enableClubSeasons = onCall(
           currentNo: no,
           currentId: `s${no}`,
           startedAt: now,
+          // "Continue" means this season owns the club's whole history, so it
+          // counts from zero — and `played` above is already its own count.
+          roundsAtStart: 0,
           cadence,
           targetHistory: [],
           count: closedSoFar,
@@ -14488,6 +14631,7 @@ export const updateSeasonTarget = onCall(
     const seasons = group.seasons as
       | {
           enabled?: boolean;
+          roundsAtStart?: number;
           cadence?: { type: string; endsAt?: number; targetRounds?: number };
           targetHistory?: unknown[];
         }
@@ -14497,7 +14641,7 @@ export const updateSeasonTarget = onCall(
     }
 
     const now = Date.now();
-    const played = await completedRoundsOf(groupId);
+    const played = await completedRoundsOf(groupId, seasons.roundsAtStart);
     const type = data.cadenceType === 'rounds' ? 'rounds' : 'date';
 
     let next: { type: string; endsAt?: number; targetRounds?: number };
@@ -14570,6 +14714,7 @@ export const endSeasonNow = onCall(
           currentNo?: number;
           currentId?: string;
           startedAt?: number;
+          roundsAtStart?: number;
           cadence?: { type: string; endsAt?: number; targetRounds?: number };
           count?: number;
         }
@@ -14591,7 +14736,7 @@ export const endSeasonNow = onCall(
       seasonId: seasons.currentId,
       seasonNo: seasons.currentNo ?? 1,
       startsAt: seasons.startedAt ?? 0,
-      completedRounds: await completedRoundsOf(groupId),
+      completedRounds: await completedRoundsOf(groupId, seasons.roundsAtStart),
       endedEarly: true,
       closedBy: uid,
       closedByName: (who.data() as { name?: string } | undefined)?.name ?? '',
@@ -14607,6 +14752,7 @@ export const endSeasonNow = onCall(
           currentNo: nextNo,
           currentId: `s${nextNo}`,
           startedAt: now,
+          roundsAtStart: await sealedEveningsOf(groupId),
           targetHistory: [],
           count: (seasons.count ?? 0) + 1,
         },

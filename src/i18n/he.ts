@@ -2025,16 +2025,16 @@ export const he = {
   seasonsEndCta: 'סיים עונה עכשיו',
   seasonsMySummaryCta: 'סיכום העונה שלי',
   seasonsTargetDate: (when: string) => `העונה אמורה להסתיים ב־${when}`,
-  seasonsTargetRounds: (target: number, played: number) =>
-    `העונה תסתיים אחרי ${target} משחקונים — שוחקו ${played}`,
+  seasonsTargetRounds: (target: number) =>
+    `העונה תסתיים אחרי ${target} מחזורים`,
   seasonsEndConfirmTitle: 'לסיים את העונה?',
   seasonsEndConfirmBody:
     'הטבלה של המועדון תאופס והתארים יחולקו. הסטטיסטיקה לכל החיים לא נוגעים בה, והעונה תישמר בארכיון ותמיד תהיה זמינה לצפייה. אי אפשר לבטל.',
   seasonsEnableTitle: 'איך העונה תסתיים?',
   seasonsCadenceDate: 'אחרי פרק זמן',
-  seasonsCadenceRounds: 'אחרי מספר משחקונים',
+  seasonsCadenceRounds: 'אחרי מספר מחזורים',
   seasonsMonthsLabel: (n: number) => `${n} חודשים`,
-  seasonsRoundsLabel: (n: number) => `${n} משחקונים`,
+  seasonsRoundsLabel: (n: number) => `${n} מחזורים`,
   seasonsCloseFirstTitle: 'ומה עם מה ששיחקתם עד היום?',
   seasonsCloseFirstKeep: 'להמשיך — הכל נחשב לעונה הנוכחית',
   seasonsCloseFirstSeal: 'לסגור כעונה 1 ולהתחיל עונה חדשה מאופסת',
@@ -2073,7 +2073,7 @@ export const he = {
   seasonStatOwnGoals: 'שערים עצמיים',
   seasonRankOf: (rank: number, of: number) => `${rank} מתוך ${of}`,
   seasonClubRounds: (rounds: number) =>
-    `המועדון סיים ${rounds} משחקונים בעונה הזאת. המיקום נספר רק מול מי ששיחק.`,
+    `המועדון שיחק ${rounds} משחקונים בעונה הזאת. המיקום נספר רק מול מי ששיחק.`,
   seasonPeerPartner: 'הכי הרבה יחד באותה קבוצה',
   seasonPeerPartnerDetail: (together: number, wins: number) =>
     `${together} משחקונים יחד, ${wins} מהם ניצחתם`,

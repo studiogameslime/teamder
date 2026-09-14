@@ -10,11 +10,9 @@
 // spelled out, because both of them reset the club's table. Neither is a
 // settings toggle for that reason — see seasonService.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-
-import { doc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/Button';
 import { appAlert } from '@/components/AppDialog';
@@ -24,7 +22,6 @@ import {
   seasonRefusalText,
   SeasonRefusedError,
 } from '@/services/seasonService';
-import { USE_MOCK_DATA, getFirebase } from '@/firebase/config';
 import { colors, spacing, typography, RTL_LABEL_ALIGN } from '@/theme';
 import { he } from '@/i18n/he';
 import type { GroupSeasons } from '@/types';
@@ -56,29 +53,11 @@ export function SeasonsCard({
   const nav = useNavigation<{ navigate: (s: string, p?: unknown) => void }>();
   const [busy, setBusy] = useState(false);
   const on = seasons?.enabled === true;
-  // Rounds the club has finished THIS season — `communityStats.rounds` is
-  // zeroed by the same rollover, so it is already season-scoped. Fetched here
-  // rather than passed in: only the rounds cadence needs it, and one document
-  // read on a card that is usually hidden is cheaper than threading it through
-  // the club screen.
-  const [played, setPlayed] = useState<number | null>(null);
-  useEffect(() => {
-    if (!on || seasons?.cadence?.type !== 'rounds' || USE_MOCK_DATA) return;
-    let alive = true;
-    (async () => {
-      try {
-        const { db } = getFirebase();
-        const snap = await getDoc(doc(db, 'communityStats', groupId));
-        const r = snap.data()?.rounds;
-        if (alive && typeof r === 'number') setPlayed(r);
-      } catch {
-        // The progress half of one line — never worth failing the card for.
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [on, seasons?.cadence?.type, groupId]);
+  // No progress number here on purpose. The counter the server measures a
+  // rounds target against is `clubRecords.eveningsSealed`, which the rules keep
+  // server-only, and every other counter in reach means something else — so a
+  // progress line would either be blank or quietly disagree with the rule that
+  // actually closes the season.
 
   const run = useCallback(async (action: () => Promise<void>) => {
     setBusy(true);
@@ -190,7 +169,7 @@ export function SeasonsCard({
   const cadence = seasons?.cadence;
   const line =
     cadence?.type === 'rounds' && typeof cadence.targetRounds === 'number'
-      ? he.seasonsTargetRounds(cadence.targetRounds, played ?? 0)
+      ? he.seasonsTargetRounds(cadence.targetRounds)
       : typeof cadence?.endsAt === 'number'
         ? he.seasonsTargetDate(formatDate(cadence.endsAt))
         : '';

@@ -959,6 +959,14 @@ export interface GroupSeasons {
   /** Display only. For season 1 of an existing club this is its first game,
    *  which can predate the feature by a year. */
   startedAt: number;
+  /**
+   * The club's all-time sealed-evening count when this season opened.
+   *
+   * The counter it offsets never resets, so without this a rounds target is
+   * measured against the club's whole history and every season after the first
+   * is "due" the moment it opens. 0 for a season that continues the history.
+   */
+  roundsAtStart?: number;
   cadence: {
     type: SeasonCadenceType;
     /** `date`: when the season is due to end. */
