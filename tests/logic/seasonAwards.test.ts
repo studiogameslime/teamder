@@ -253,3 +253,50 @@ describe('there is no own-goals title', () => {
     expect(SEASON_TITLE_KEYS).not.toContain('ownGoalKing');
   });
 });
+
+describe('the deadly duo is a partnership, not an accident', () => {
+  // The club's chemistry card shows a "הצמד הקטלני" all year, computed from
+  // directional assists with a floor of 3. A season title wearing the same
+  // Hebrew name and crowning a different pair would simply look wrong.
+  const eligible = (uid: string) => player(uid, { games: 12 });
+
+  it('one assist between two regulars is not a duo', () => {
+    const a = computeSeasonAwards(
+      [eligible('x'), eligible('y')],
+      [pair('x', 'y', { score: 1, together: 9 })],
+      13,
+    );
+    expect(a.deadlyDuo).toBeNull();
+  });
+
+  it('two is still not', () => {
+    const a = computeSeasonAwards(
+      [eligible('x'), eligible('y')],
+      [pair('x', 'y', { score: 2, together: 9 })],
+      13,
+    );
+    expect(a.deadlyDuo).toBeNull();
+  });
+
+  it('three is', () => {
+    const a = computeSeasonAwards(
+      [eligible('x'), eligible('y')],
+      [pair('x', 'y', { score: 3, together: 9 })],
+      13,
+    );
+    expect(a.deadlyDuo?.winners).toEqual(['x__y']);
+    expect(a.deadlyDuo?.value).toBe(3);
+  });
+
+  it('and the busier pair still wins when both clear the floor', () => {
+    const a = computeSeasonAwards(
+      [eligible('x'), eligible('y'), eligible('p'), eligible('q')],
+      [
+        pair('x', 'y', { score: 4, together: 9 }),
+        pair('p', 'q', { score: 11, together: 9 }),
+      ],
+      13,
+    );
+    expect(a.deadlyDuo?.winners).toEqual(['p__q']);
+  });
+});

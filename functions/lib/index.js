@@ -220,7 +220,12 @@ const DORMANT_SUPPRESSIBLE = {
     gamePlayersJoined: true,
     playerCancelled: true,
     eveningSummary: true,
-    seasonSummary: true,
+    // seasonSummary is deliberately NOT here. Dormant suppression drops a push
+    // for anyone not seen in 21 days, which is exactly the person a closing
+    // season is for: someone who played the first half, drifted off, and is
+    // being told what they did and which title they took. It fires once per
+    // season per player, so it is not the kind of noise that rule exists to
+    // stop. Suppressing it would silence precisely the audience.
     fillerOpportunity: true,
     growthMilestone: true,
     gameShortageWarning: true,
@@ -12186,9 +12191,16 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
             currentNo: no,
             currentId: `s${no}`,
             startedAt: now,
-            // "Continue" means this season owns the club's whole history, so it
-            // counts from zero — and `played` above is already its own count.
-            roundsAtStart: 0,
+            // "Continue" means this season owns the club's whole history — but
+            // only the FIRST time. A club that ran three seasons, switched the
+            // feature off and switched it back on has three sealed seasons whose
+            // evenings belong to them; counting from zero would measure season 4
+            // against the club's entire lifetime and make it due on day one. The
+            // surviving offset is reused, or the current count when there is
+            // none to reuse.
+            roundsAtStart: closedSoFar > 0
+                ? (existing?.roundsAtStart ?? (await sealedEveningsOf(groupId)))
+                : 0,
             cadence,
             targetHistory: [],
             count: closedSoFar,

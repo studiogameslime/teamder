@@ -19,6 +19,7 @@ export type SeasonRefusal =
   | 'unsealedGame'
   | 'seasonsOff'
   | 'notAdmin'
+  | 'targetBehind'
   | 'unknown';
 
 export class SeasonRefusedError extends Error {
@@ -40,6 +41,8 @@ export function seasonRefusalText(reason: SeasonRefusal): string {
       return he.seasonBlockedUnsealed;
     case 'seasonsOff':
       return he.seasonBlockedOff;
+    case 'targetBehind':
+      return he.seasonBlockedTargetBehind;
     case 'notAdmin':
       return he.seasonBlockedNotAdmin;
     default:
@@ -56,6 +59,13 @@ function refusalOf(err: unknown): SeasonRefusal | null {
   if (msg.includes('openGame')) return 'openGame';
   if (msg.includes('unsealedGame')) return 'unsealedGame';
   if (msg.includes('seasons are off')) return 'seasonsOff';
+  // The server refuses a target the club has already passed, because saving it
+  // would close the season on the spot — "end it now" without the confirmation
+  // that action carries. Falling through to the generic line told an admin to
+  // "try again in a moment", which would never work.
+  if (msg.includes('is not above the') || msg.includes('end date is in the past')) {
+    return 'targetBehind';
+  }
   return 'unknown';
 }
 

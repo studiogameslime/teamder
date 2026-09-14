@@ -250,7 +250,14 @@ async function closeSeason(args) {
     const awardPairs = Object.values(pairs).map((p) => ({
         a: p.a,
         b: p.b,
-        score: p.assists,
+        // DIRECTIONAL assists, both ways, not the legacy `assists` counter.
+        //
+        // Two reasons. The legacy field covers a wider window than the directional
+        // ones (see the note on the archive above), so it is not a season number at
+        // all. And the club's chemistry card already crowns a "הצמד הקטלני"
+        // computed exactly this way — two surfaces wearing the same Hebrew name
+        // must not name two different pairs.
+        score: p.assistsAToB + p.assistsBToA,
         together: p.sameTeam,
     }));
     const awards = (0, seasonAwards_1.computeSeasonAwards)(awardLines, awardPairs, args.completedRounds);

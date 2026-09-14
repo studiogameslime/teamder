@@ -178,14 +178,29 @@ export function SeasonsSettings({
   );
 
   const enable = useCallback(() => {
-    run(async () => {
-      await seasonService.enable({
-        groupId,
-        ...targetArgs,
-        ...(sealHistory ? { closeFirstNow: true } : {}),
+    const go = () =>
+      run(async () => {
+        await seasonService.enable({
+          groupId,
+          ...targetArgs,
+          ...(sealHistory ? { closeFirstNow: true } : {}),
+        });
+        toast.success(he.seasonsEnabledToast);
       });
-      toast.success(he.seasonsEnabledToast);
-    });
+    // Switching seasons on is ordinary. Switching them on while sealing the
+    // club's ENTIRE history as season 1 is not: it archives every number the
+    // club has ever recorded, resets the table, and hands out nine permanent
+    // titles — and it was one unconfirmed tap away, on a button whose label
+    // only says "הפעל עונות". The destructive half gets the same confirmation
+    // that ending a season does.
+    if (!sealHistory) {
+      go();
+      return;
+    }
+    appAlert(he.seasonsSealConfirmTitle, he.seasonsSealConfirmBody, [
+      { text: he.seasonsSealConfirmCta, style: 'destructive', onPress: go },
+      { text: he.cancel, style: 'cancel' },
+    ]);
   }, [groupId, targetArgs, sealHistory, run]);
 
   const saveTarget = useCallback(() => {

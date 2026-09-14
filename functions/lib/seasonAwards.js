@@ -59,6 +59,14 @@ function isEligible(line, completedRounds) {
 function minPenaltyAttempts(completedRounds) {
     return Math.min(5, Math.max(2, Math.ceil(Math.max(0, completedRounds) / 10)));
 }
+/**
+ * Assists a pair must have exchanged before "deadly duo" means anything.
+ *
+ * Mirrors CHEMISTRY_MIN.deadlyDuo in src/utils/clubChemistry.ts — the club's
+ * chemistry card shows a הצמד הקטלני under that name all year, and a season
+ * title that crowned a different pair would simply look wrong.
+ */
+const MIN_DUO_ASSISTS = 3;
 /** Everyone holding the maximum, or null when the max is not worth a title. */
 function leaders(rows, value, id, 
 /** The value must EXCEED this to count. Zero goals is not a goalscoring title. */
@@ -105,6 +113,9 @@ function computeSeasonAwards(players, pairs, completedRounds) {
         cleanSheetKing: leaders(eligible, (p) => p.cleanSheets, (p) => p.uid),
         penaltyKing: leaders(eligible.filter((p) => p.penTaken >= minAttempts), (p) => rate(p.penScored, p.penTaken), (p) => p.uid),
         penaltyKeeper: leaders(eligible.filter((p) => p.penFaced >= minAttempts), (p) => rate(p.penSaved, p.penFaced), (p) => p.uid),
-        deadlyDuo: leaders(eligiblePairs, (p) => p.score, (p) => `${p.a}__${p.b}`),
+        // A floor, like every other title has. With the default of 0 a single
+        // assist between two regulars took the crown, which is not a partnership —
+        // and the club's chemistry card uses the same threshold for the same name.
+        deadlyDuo: leaders(eligiblePairs, (p) => p.score, (p) => `${p.a}__${p.b}`, MIN_DUO_ASSISTS - 1),
     };
 }

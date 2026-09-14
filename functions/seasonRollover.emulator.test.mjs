@@ -164,8 +164,11 @@ describe('the archive is taken before the wipe', () => {
     assert.equal(s.awards.topScorer.value, 31);
     // u2: 22 assists to u1's 4.
     assert.deepEqual(s.awards.topAssister.winners, ['u2']);
-    // The duo is scored on the pair's assists and needs BOTH halves eligible.
+    // Scored on DIRECTIONAL assists both ways (3 + 4 = 7), not the legacy
+    // undirected counter — the club's chemistry card crowns its own
+    // "הצמד הקטלני" the same way, and the two must not disagree.
     assert.deepEqual(s.awards.deadlyDuo.winners, ['u1__u2']);
+    assert.equal(s.awards.deadlyDuo.value, 7);
     // Every one of the nine keys is present, decided or explicitly null — a
     // missing key and "not awarded" are different facts.
     for (const k of [
