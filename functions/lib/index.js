@@ -11794,15 +11794,63 @@ async function announceSeasonClosed(args) {
     }
 }
 /** Is the club quiet enough to close a season right now? */
+/**
+ * The cadence a newly-opened season should carry.
+ *
+ * A rounds target needs nothing: it is measured from `roundsAtStart`, so the
+ * same number means "another N rounds" for every season.
+ *
+ * A DATE target does. The end date belongs to the season that just closed, and
+ * inheriting it hands the new season a deadline in the past — which makes it
+ * due the moment it opens. With the hourly sweep running, that is a club that
+ * archives one empty season every hour, forever, each one pushing every player
+ * a summary of nothing. The season is re-based to the same LENGTH from now.
+ *
+ * A legacy cadence with no `months` (written before the length was stored)
+ * falls back to the length of the season that just ended, and to six months
+ * when even that is unknowable — anything but a date already behind us.
+ */
+function rebaseCadence(cadence, seasonStartedAt, now) {
+    if (!cadence || cadence.type !== 'date') {
+        return (cadence ?? { type: 'date', months: 6 });
+    }
+    let months = MONTH_CHOICES.includes(Number(cadence.months))
+        ? Number(cadence.months)
+        : 0;
+    if (!months && seasonStartedAt > 0 && typeof cadence.endsAt === 'number') {
+        const ranMs = cadence.endsAt - seasonStartedAt;
+        const ranMonths = Math.round(ranMs / (30 * 24 * 60 * 60 * 1000));
+        months = MONTH_CHOICES.includes(ranMonths) ? ranMonths : 0;
+    }
+    if (!months)
+        months = 6;
+    return { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
+}
+/** How long after kickoff a game still counts as "tonight". Past this it is
+ *  stale, not in progress, and the cleanup sweep owns it. */
+const TONIGHT_MS = 12 * 60 * 60 * 1000;
 async function clubIsQuiet(groupId) {
-    // Anything not finished/cancelled is still in play. Closing across a live
-    // evening splits it between two seasons: each mini-game commits separately,
-    // so rounds 1-3 land in the old season and 4-6 in the new, while the
-    // player's own career total — written in the same batch — keeps the whole.
+    // What must not happen is closing ACROSS an evening: each mini-game commits
+    // separately, so rounds 1-3 would land in the old season and 4-6 in the new,
+    // while the player's career total — written in the same batch — keeps the
+    // whole. That is a game already under way, not a game on the calendar.
+    //
+    // This used to block on any game in scheduled/open/locked/active, with no
+    // time bound. Nearly every real club runs a recurring fixture, so next
+    // week's clone always sits in `scheduled` or `open` — and the season could
+    // therefore never close, on any path, for any of them. The gap between two
+    // evenings is exactly when a season SHOULD close.
+    //
+    // Bounded below as well as above: a game left open days ago is stale (the
+    // cleanup sweep owns those) and must not hold a club's season hostage
+    // forever.
+    const now = Date.now();
     const open = await db
         .collection('games')
         .where('groupId', '==', groupId)
         .where('status', 'in', ['scheduled', 'open', 'locked', 'active'])
+        .where('startsAt', '<=', now)
+        .where('startsAt', '>=', now - TONIGHT_MS)
         .limit(1)
         .get();
     if (!open.empty)
@@ -11971,6 +12019,10 @@ async function runSeasonRollovers() {
                     currentId: `s${nextNo}`,
                     startedAt: now,
                     roundsAtStart: await sealedEveningsOf(doc.id),
+                    // The whole reason this sweep is safe to run hourly: without a
+                    // re-based end date it would close this club again next hour, and
+                    // the hour after that, forever.
+                    cadence: rebaseCadence(cadence, seasons.startedAt ?? 0, now),
                     targetHistory: [],
                     count: (seasons.count ?? 0) + 1,
                 },
@@ -12019,7 +12071,10 @@ exports.enableClubSeasons = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_C
         const months = MONTH_CHOICES.includes(Number(data.months))
             ? Number(data.months)
             : 6;
-        cadence = { type: 'date', endsAt: addMonthsClampedServer(now, months) };
+        // `months` is stored beside the date, not just the date. Without it a
+        // season that rolls over has no way to compute its OWN end date, and
+        // inherits a deadline that has already passed — see rebaseCadence.
+        cadence = { type: 'date', months, endsAt: addMonthsClampedServer(now, months) };
     }
     // Numbering CONTINUES across the feature being switched off and on again:
     // a club that ran seasons 1-3 and re-enables opens season 4, never 1.
@@ -12154,7 +12209,7 @@ exports.updateSeasonTarget = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_
         if (endsAt <= now) {
             throw new https_1.HttpsError('failed-precondition', 'end date is in the past');
         }
-        next = { type: 'date', endsAt };
+        next = { type: 'date', months, endsAt };
     }
     const who = await db.collection('users').doc(uid).get();
     const byName = who.data()?.name ?? '';
@@ -12220,6 +12275,9 @@ exports.endSeasonNow = (0, https_1.onCall)({ enforceAppCheck: ENFORCE_APP_CHECK 
             currentId: `s${nextNo}`,
             startedAt: now,
             roundsAtStart: await sealedEveningsOf(groupId),
+            // Same length, measured from now — an inherited end date is already
+            // in the past and would close this season the moment it opened.
+            cadence: rebaseCadence(seasons.cadence, seasons.startedAt ?? 0, now),
             targetHistory: [],
             count: (seasons.count ?? 0) + 1,
         },

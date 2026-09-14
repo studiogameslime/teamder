@@ -265,6 +265,48 @@ describe('the wipe is exactly the competition', () => {
   });
 });
 
+describe('a close that died halfway is resumed, not abandoned', () => {
+  // The archive landing and the table resetting are two writes. If the process
+  // died between them the old code took the ALREADY_EXISTS branch on every
+  // retry: sealed season, no titles, table never reset, and the next season
+  // inheriting the last one's totals for good.
+  before(async () => {
+    await seed();
+    await closeSeason(args());
+    // Rewind to the half-done state: the archive exists, the wipe did not
+    // happen, and nothing recorded that it did.
+    await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).update({
+      zeroedAt: admin.firestore.FieldValue.delete(),
+    });
+    await db.collection('communityPlayerStats').doc(`${GID}__u1`).set(
+      { goals: 31, rounds: 34, games: 12 }, { merge: true });
+    await db.collection('users').doc('u1').collection('seasonTitles')
+      .doc(`${GID}__${SEASON}__topScorer`).delete();
+  });
+
+  test('the retry finishes the job', async () => {
+    const res = await closeSeason(args());
+    assert.equal(res.archived, true, 'it resumed rather than skipping');
+    const p = (await db.collection('communityPlayerStats').doc(`${GID}__u1`).get()).data();
+    assert.equal(p.goals, 0, 'the table is reset');
+  });
+
+  test('and the titles it never wrote are written', async () => {
+    const t = await db.collection('users').doc('u1').collection('seasonTitles')
+      .doc(`${GID}__${SEASON}__topScorer`).get();
+    assert.equal(t.exists, true);
+    // From the ARCHIVE, not recomputed: the live rows were half-wiped, and a
+    // title decided from those would differ from the one already sealed.
+    assert.equal(t.data().value, 31);
+  });
+
+  test('and the archive itself was never rewritten', async () => {
+    const s = (await db.collection('seasonSummary').doc(`${GID}__${SEASON}`).get()).data();
+    assert.equal(s.players.u1.goals, 31);
+    assert.ok(s.zeroedAt, 'and is now marked finished');
+  });
+});
+
 describe('a redelivered event cannot seal the zeroes', () => {
   test('the second run refuses to archive', async () => {
     // The table is zero now. Without the create() latch this pass would

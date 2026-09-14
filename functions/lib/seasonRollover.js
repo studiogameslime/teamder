@@ -212,6 +212,8 @@ async function closeSeason(args) {
         together: p.sameTeam,
     }));
     const awards = (0, seasonAwards_1.computeSeasonAwards)(awardLines, awardPairs, args.completedRounds);
+    /** Set when we are resuming a close that died before it finished. */
+    let resumedAwards = null;
     // ── 1. Archive, exactly once ────────────────────────────────────────────
     const summaryRef = db
         .collection('seasonSummary')
@@ -219,6 +221,10 @@ async function closeSeason(args) {
     try {
         await summaryRef.create({
             groupId,
+            // Frozen, like the player names. A closed season has to be readable by
+            // someone who has since LEFT the club — they played in it — and they
+            // cannot read /groups to find out what it was called.
+            groupName: args.groupName ?? '',
             seasonId,
             no: args.seasonNo,
             startsAt: args.startsAt,
@@ -238,13 +244,35 @@ async function closeSeason(args) {
     }
     catch (err) {
         const code = err.code;
-        if (code === 6 || code === 'already-exists') {
-            // Already closed. Crucially we do NOT go on to zero: the live rows now
-            // belong to the season that opened after this one.
-            console.log('[season] already archived — skip', groupId, seasonId);
+        if (code !== 6 && code !== 'already-exists')
+            throw err;
+        // The archive already exists. That means one of two very different things,
+        // and treating them the same was a permanent data bug.
+        //
+        // If the first pass FINISHED, the live rows now belong to the season that
+        // opened after this one and must not be touched — returning here is the
+        // whole idempotency story, and it is why the archive can never be sealed
+        // over a table of zeroes.
+        //
+        // But if the first pass DIED between the archive landing and the zeroing,
+        // the old behaviour left the club permanently half-closed: the season was
+        // sealed, the titles were never written, the table was never reset, and
+        // every retry took this same early exit. The next season then inherited
+        // the last one's totals, for good.
+        //
+        // `zeroedAt` is the marker that tells them apart. It is stamped only after
+        // the wipe, so its absence means "resume", and everything after this point
+        // is an absolute write that converges on a retry.
+        const existing = await summaryRef.get();
+        if (existing.get('zeroedAt')) {
+            console.log('[season] already closed — skip', groupId, seasonId);
             return { archived: false, players: 0, pairs: 0 };
         }
-        throw err;
+        console.warn('[season] archive exists but the wipe never finished — resuming', groupId, seasonId);
+        // Decided titles come from the ARCHIVE on this path, never recomputed: the
+        // live rows may be half-zeroed by the pass that died, and a title decided
+        // from those would be a different title from the one already sealed.
+        resumedAwards = (existing.get('awards') ?? null);
     }
     // ── 1b. The titles onto their winners' profiles ─────────────────────────
     //
@@ -267,7 +295,7 @@ async function closeSeason(args) {
         titleBatch = db.batch();
         titleOps = 0;
     };
-    for (const [titleKey, award] of Object.entries(awards)) {
+    for (const [titleKey, award] of Object.entries(resumedAwards ?? awards)) {
         if (!award)
             continue; // "not awarded" is a result, not a gap.
         for (const winner of award.winners) {
@@ -344,6 +372,8 @@ async function closeSeason(args) {
         chemistrySince: now,
         updatedAt: now,
     }, { merge: true });
+    // Only now. Everything above is repeatable; this says it does not need to be.
+    await summaryRef.set({ zeroedAt: Date.now() }, { merge: true });
     return {
         archived: true,
         players: psSnap.size,
