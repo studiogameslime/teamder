@@ -1989,26 +1989,15 @@ async function submitJoin(
     throw err;
   }
   await writeJoin(g.id, userId, !!g.isOpen);
-  // Silent-failure guard: the write resolved, so the user should now be a
-  // member (open group → playerIds) or pending (closed group →
-  // pendingPlayerIds). Verify against the computed in-memory next-state
-  // arrays only — no extra Firestore read.
+  // The join-by-code twin of the guard removed from submitJoinByPublic, and
+  // dead for the same reason: every branch below puts the user into one of the
+  // two arrays it then checks, so the condition could not be true. See the
+  // note there for where the join is actually verified.
   const nextPlayerIds = g.isOpen ? [...g.playerIds, userId] : g.playerIds;
   const nextPendingPlayerIds =
     !g.isOpen && !g.pendingPlayerIds.includes(userId)
       ? [...g.pendingPlayerIds, userId]
       : g.pendingPlayerIds;
-  if (
-    !nextPlayerIds.includes(userId) &&
-    !g.adminIds.includes(userId) &&
-    !nextPendingPlayerIds.includes(userId)
-  ) {
-    logUnexpected('joinGroupDidNotApply', {
-      groupId: g.id,
-      userId,
-      viaCode: true,
-    });
-  }
   if (g.isOpen) {
     return {
       group: { ...g, playerIds: nextPlayerIds },
@@ -2056,20 +2045,16 @@ async function submitJoinByPublic(
     }
   }
   await writeJoin(groupId, userId, isOpen);
-  // Silent-failure guard: post-write the user must be in members (open) or
-  // pending (closed). Computed in-memory next-state — no extra read.
-  const nextPlayerIds = isOpen ? [userId] : [];
-  const nextPendingPlayerIds = isOpen ? [] : [userId];
-  if (
-    !nextPlayerIds.includes(userId) &&
-    !nextPendingPlayerIds.includes(userId)
-  ) {
-    logUnexpected('joinGroupDidNotApply', {
-      groupId,
-      userId,
-      viaCode: false,
-    });
-  }
+  // There WAS a "silent-failure guard" here, and it could never fire: it built
+  // `[userId]` and then asked whether it contained userId. Nothing about the
+  // write was being checked. Removed rather than left as a decoration —
+  // a guard that cannot fail reads like coverage and is not.
+  //
+  // There is nothing to verify from here anyway: writeJoin's batch either
+  // commits or throws, and confirming the result would cost a fresh read the
+  // caller is about to do regardless. The join IS verified, one level up —
+  // the store re-reads the user's clubs (with a retry) and the screen reports
+  // `communityJoinNotReflected` if the club still isn't there.
   return {
     group: {
       id: groupId,

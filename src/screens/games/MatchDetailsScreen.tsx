@@ -140,6 +140,16 @@ type Params = RouteProp<GameStackParamList, 'MatchDetails'>;
 
 type CardStatus = 'joined' | 'waitlist' | 'pending' | 'none';
 
+/**
+ * How long the post-join audit waits before asking "am I in this game".
+ *
+ * Seating is done by the server reconciler off the request doc, and the result
+ * comes back over the live snapshot. Long enough that a normal round-trip on a
+ * slow phone has finished; short enough that the user is still on the screen
+ * and the report is about the tap they just made.
+ */
+const JOIN_AUDIT_DELAY_MS = 6000;
+
 function statusForUser(g: Game, uid: UserId): CardStatus {
   if (g.players.includes(uid)) return 'joined';
   if (g.waitlist.includes(uid)) return 'waitlist';
@@ -410,6 +420,21 @@ export function MatchDetailsScreen() {
   );
 
   const [game, setGame] = useState<Game | null>(null);
+  // Always-current mirror of `game`, for the post-join audit below. A React
+  // state updater's side effects are NOT guaranteed to run at the call site
+  // (see the audit comment), so the audit reads the COMMITTED state instead.
+  const gameRef = useRef<Game | null>(null);
+  useEffect(() => {
+    gameRef.current = game;
+  }, [game]);
+  /** Pending post-join audit timer — superseded by any newer join/cancel. */
+  const joinAudit = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (joinAudit.current) clearTimeout(joinAudit.current);
+    },
+    [],
+  );
   const [loading, setLoading] = useState(true);
   // Pull-to-refresh state — kept separate from `loading` so the
   // native RefreshControl spinner doesn't fire on top of our
@@ -949,6 +974,12 @@ export function MatchDetailsScreen() {
     setBusy(true);
     try {
       if (!isJoinAction) {
+        // A cancel makes any in-flight join audit meaningless — the user is
+        // SUPPOSED to be out of the roster now.
+        if (joinAudit.current) {
+          clearTimeout(joinAudit.current);
+          joinAudit.current = null;
+        }
         await gameService.cancelGameV2(game.id, user.id);
         // Splice locally — same race avoidance as the guest-add
         // path: a getDoc round-trip after the transaction commit
@@ -980,11 +1011,6 @@ export function MatchDetailsScreen() {
         });
       } else {
         const result = await gameService.requestJoinGame(game.id, user.id, 'match_details');
-        // Capture the post-join game state out of the optimistic-splice
-        // updater so we can assert the silent-failure post-condition
-        // below WITHOUT a second Firestore read. `joined` records the
-        // result of the splice (or null if the game object disappeared).
-        let joined: Game | null = null;
         setGame((prev) => {
           if (!prev) return prev;
           const next = { ...prev };
@@ -1004,7 +1030,6 @@ export function MatchDetailsScreen() {
           next.participantIds = Array.from(
             new Set([...(prev.participantIds ?? []), user.id]),
           );
-          joined = next;
           return next;
         });
         // Celebrate the win: a real seat in the game (not waitlist/
@@ -1045,41 +1070,51 @@ export function MatchDetailsScreen() {
           toast.info(he.toastGameJoinedPending);
         }
         // Silent-failure guard: a successful join MUST leave the user in
-        // the roster the UI now holds (players ∪ waitlist ∪ pending ∪
-        // participantIds). If the game object vanished, or the user is in
-        // none of those buckets, nothing threw yet the expected UI state
-        // didn't materialise — record it with full context. `joined` is
-        // set synchronously by the updater above; a null means the game
-        // disappeared (prev was null), which is itself a violation.
-        const j = joined as Game | null;
-        if (!j) {
-          logUnexpected('joinNotReflectedInMatch', {
-            screen: 'MatchDetailsScreen',
-            gameId: game.id,
-            userId: user.id,
-            isOrphanContext: game.isOrphanContext ?? false,
-            visibility: game.visibility,
-            status: game.status,
-            reason: 'gameDisappeared',
-          });
-        } else {
+        // the roster the screen holds (players ∪ waitlist ∪ pending ∪
+        // participantIds).
+        //
+        // This used to read `joined`, a variable the optimistic updater above
+        // assigns — and it reported on `joined === null` as "the game
+        // disappeared". That reasoning was wrong twice over. React only
+        // evaluates a state updater at the call site when the fiber has no
+        // work pending; the join itself makes the server reconciler write the
+        // game, whose live snapshot queues its own setGame, so in exactly the
+        // interesting moment the updater is DEFERRED and `joined` stays null
+        // with nothing wrong. Every such report was noise, and the real join
+        // had landed (verified in production against the joinRequests
+        // receipts).
+        //
+        // Seating is asynchronous anyway: requestJoinGame files a request doc
+        // and the server seats it. So the honest question is not "what did the
+        // updater return" but "a few seconds on, does the screen show me in
+        // this game" — read from the COMMITTED state, not from a closure. A
+        // later cancel (or a newer join) supersedes the audit; leaving the
+        // screen drops it.
+        if (joinAudit.current) clearTimeout(joinAudit.current);
+        const auditedGameId = game.id;
+        const auditedBucket = result.bucket;
+        joinAudit.current = setTimeout(() => {
+          joinAudit.current = null;
+          const g = gameRef.current;
+          // Screen moved to another game, or unloaded it — nothing to assert.
+          if (!g || g.id !== auditedGameId) return;
           const inRoster =
-            j.players.includes(user.id) ||
-            j.waitlist.includes(user.id) ||
-            (j.pending ?? []).includes(user.id) ||
-            (j.participantIds ?? []).includes(user.id);
+            g.players.includes(user.id) ||
+            g.waitlist.includes(user.id) ||
+            (g.pending ?? []).includes(user.id) ||
+            (g.participantIds ?? []).includes(user.id);
           if (!inRoster) {
             logUnexpected('joinNotReflectedInMatch', {
               screen: 'MatchDetailsScreen',
-              gameId: game.id,
+              gameId: auditedGameId,
               userId: user.id,
-              isOrphanContext: game.isOrphanContext ?? false,
-              visibility: game.visibility,
-              status: game.status,
-              bucket: result.bucket,
+              isOrphanContext: g.isOrphanContext ?? false,
+              visibility: g.visibility,
+              status: g.status,
+              bucket: auditedBucket,
             });
           }
-        }
+        }, JOIN_AUDIT_DELAY_MS);
       }
     } catch (err) {
       if (__DEV__) {

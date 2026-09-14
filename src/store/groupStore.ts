@@ -103,6 +103,32 @@ interface GroupStore {
 // it never triggers a re-render; lifecycle owned by RootNavigator.
 let groupsUnsub: (() => void) | null = null;
 
+/**
+ * Refresh the user's clubs after an OPEN club let them straight in, and make
+ * sure the club actually shows up.
+ *
+ * The join is a write, the refresh is a separate query, and the screens assert
+ * on the result: PublicGroupsFeed / CommunityDetailsPublic report
+ * `communityJoinNotReflected` when the freshly-joined club is in neither list.
+ * A production case (club "שישי כדורגל") had the membership land correctly on
+ * the server while the screen still reported it missing — the refresh, not the
+ * join, is what failed. One retry covers the blip; if it is still missing, the
+ * report that follows is worth reading.
+ */
+async function refreshAfterJoin(
+  hydrate: (userId: UserId) => Promise<void>,
+  present: () => boolean,
+  userId: UserId,
+): Promise<void> {
+  await hydrate(userId);
+  if (present()) return;
+  await new Promise((r) => setTimeout(r, JOIN_REFRESH_RETRY_MS));
+  await hydrate(userId);
+}
+
+/** Backoff before the single post-join refresh retry. */
+const JOIN_REFRESH_RETRY_MS = 800;
+
 export const useGroupStore = create<GroupStore>((set, get) => ({
   hydrated: false,
   currentGroupId: null,
@@ -144,34 +170,54 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
     // silent rejection meant a permanently-stuck loader after,
     // e.g., a transient permission-denied or a fresh-install state
     // where the queries return empty under odd rules.
-    const [groups, pendingGroups, savedId] = await Promise.all([
-      groupService.listForUser(userId).catch((err) => {
-        logError('groupHydrateListForUser', err, { userId });
-        if (__DEV__) console.warn('[groupStore.hydrate] listForUser', err);
-        return [] as Group[];
-      }),
-      groupService.listPendingForUser(userId).catch((err) => {
-        logError('groupHydrateListPending', err, { userId });
-        if (__DEV__) console.warn('[groupStore.hydrate] listPending', err);
-        return [] as Group[];
-      }),
+    //
+    // But a failed fetch must not be READ as "this user has no clubs". It used
+    // to return [], and an empty list is not a neutral value here: it wiped
+    // the user's clubs out of the store, and the currentGroupId logic below
+    // then found the selected club "missing" and erased it FROM DISK too. One
+    // transient blip — the exact thing this catch exists to survive — and the
+    // user lands on an empty clubs screen with their selection forgotten.
+    // A failure now keeps whatever we already had, and leaves the selection
+    // alone; `hydrated` still flips so the splash can never stick.
+    const before = get();
+    const settle = <T,>(op: string, fallback: T) =>
+      (p: Promise<T>) =>
+        p.then(
+          (value) => ({ ok: true, value }),
+          (err: unknown) => {
+            logError(op, err, { userId });
+            if (__DEV__) console.warn(`[groupStore.hydrate] ${op}`, err);
+            return { ok: false, value: fallback };
+          },
+        );
+    const [groupsRes, pendingRes, savedId] = await Promise.all([
+      settle('groupHydrateListForUser', before.groups)(
+        groupService.listForUser(userId),
+      ),
+      settle('groupHydrateListPending', before.pendingGroups)(
+        groupService.listPendingForUser(userId),
+      ),
       storage.getCurrentGroupId().catch((err) => {
         logError('groupHydrateGetCurrentGroupId', err, { userId });
         return null;
       }),
     ]);
-    let currentGroupId = savedId;
-    if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
-      currentGroupId = null;
-      await storage.setCurrentGroupId(null).catch((err) => {
-        logError('groupHydrateSetCurrentGroupId', err, { userId });
-      });
-    }
-    if (!currentGroupId && groups.length > 0) {
-      currentGroupId = groups[0].id;
-      await storage.setCurrentGroupId(currentGroupId).catch((err) => {
-        logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
-      });
+    const groups = groupsRes.value;
+    const pendingGroups = pendingRes.value;
+    let currentGroupId = groupsRes.ok ? savedId : (before.currentGroupId ?? savedId);
+    if (groupsRes.ok) {
+      if (currentGroupId && !groups.find((g) => g.id === currentGroupId)) {
+        currentGroupId = null;
+        await storage.setCurrentGroupId(null).catch((err) => {
+          logError('groupHydrateSetCurrentGroupId', err, { userId });
+        });
+      }
+      if (!currentGroupId && groups.length > 0) {
+        currentGroupId = groups[0].id;
+        await storage.setCurrentGroupId(currentGroupId).catch((err) => {
+          logError('groupHydrateSetCurrentGroupId', err, { userId, currentGroupId });
+        });
+      }
     }
     set({ hydrated: true, groups, pendingGroups, currentGroupId });
   },
@@ -227,7 +273,11 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
     } else if (status === 'joined') {
       // Open community: re-hydrate so the group jumps from "discoverable"
       // to "my groups" without a manual refresh.
-      await get().hydrate(userId);
+      await refreshAfterJoin(
+        get().hydrate,
+        () => get().groups.some((g) => g.id === group.id),
+        userId,
+      );
     }
     return status;
   },
@@ -243,7 +293,11 @@ export const useGroupStore = create<GroupStore>((set, get) => ({
       // See requestJoin above — admin push is fully owned by the
       // server-side `onGroupPendingChanged` Cloud Function.
     } else if (status === 'joined') {
-      await get().hydrate(userId);
+      await refreshAfterJoin(
+        get().hydrate,
+        () => get().groups.some((g) => g.id === group.id),
+        userId,
+      );
     }
     return status;
   },
